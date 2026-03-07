@@ -7,11 +7,13 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -103,21 +105,29 @@ fun GameListScreen(
                 .fillMaxSize()
                 .padding(top = 4.dp, bottom = 48.dp)
         ) {
-            LazyColumn(
-                state = listState,
+            Column(
                 modifier = Modifier
                     .fillMaxHeight()
                     .then(if (showArt) Modifier.fillMaxWidth(0.6f) else Modifier.fillMaxWidth())
             ) {
-                itemsIndexed(state.games) { index, game ->
-                    GameRow(
-                        game = game,
-                        isSelected = state.selectedIndex == index,
-                        fontSize = listFontSize,
-                        lineHeight = listLineHeight,
-                        verticalPadding = listVerticalPadding,
-                        scrollSpeed = scrollSpeed
-                    )
+                Text(
+                    text = state.breadcrumb,
+                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = listFontSize * 1.2f, lineHeight = listLineHeight * 1.2f),
+                    color = Color.White,
+                    modifier = Modifier.padding(start = pillInternalH)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                LazyColumn(state = listState) {
+                    itemsIndexed(state.games) { index, game ->
+                        GameRow(
+                            game = game,
+                            isSelected = state.selectedIndex == index,
+                            fontSize = listFontSize,
+                            lineHeight = listLineHeight,
+                            verticalPadding = listVerticalPadding,
+                            scrollSpeed = scrollSpeed
+                        )
+                    }
                 }
             }
 
@@ -193,9 +203,9 @@ private fun GameRow(
     val scrollState = rememberScrollState()
 
     val pxPerMs = when (scrollSpeed) {
-        ScrollSpeed.SLOW -> 8
-        ScrollSpeed.NORMAL -> 12
-        ScrollSpeed.FAST -> 18
+        ScrollSpeed.SLOW -> 16
+        ScrollSpeed.NORMAL -> 8
+        ScrollSpeed.FAST -> 4
     }
 
     LaunchedEffect(isSelected, scrollSpeed) {

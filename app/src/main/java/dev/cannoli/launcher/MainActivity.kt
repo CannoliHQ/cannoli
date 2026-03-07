@@ -314,8 +314,6 @@ class MainActivity : ComponentActivity() {
                     }
                     Screen.SETTINGS -> {
                         if (settingsViewModel.state.value.inSubList) {
-                            settingsViewModel.exitSubList()
-                        } else {
                             navController?.popBackStack()
                             systemListViewModel.scan()
                         }
