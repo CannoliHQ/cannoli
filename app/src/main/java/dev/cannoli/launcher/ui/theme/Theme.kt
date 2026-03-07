@@ -19,7 +19,7 @@ private val CannoliColorScheme = darkColorScheme(
 fun CannoliTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = CannoliColorScheme,
-        typography = Typography,
+        typography = buildTypography(),
         content = content
     )
 }
