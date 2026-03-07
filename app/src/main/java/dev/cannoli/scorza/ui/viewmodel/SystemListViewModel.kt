@@ -28,6 +28,7 @@ class SystemListViewModel(
         val items: List<ListItem> = emptyList(),
         val platforms: List<Platform> = emptyList(),
         val selectedIndex: Int = 0,
+        val scrollTarget: Int = 0,
         val isLoading: Boolean = true,
         val reorderMode: Boolean = false,
         val reorderOriginalIndex: Int = -1,
@@ -42,6 +43,11 @@ class SystemListViewModel(
     var firstVisibleIndex: Int = 0
 
     fun scan() {
+        val prev = _state.value
+        val prevItemCount = prev.items.size
+        val prevSelectedIndex = prev.selectedIndex
+        val prevFirstVisible = firstVisibleIndex
+
         viewModelScope.launch(Dispatchers.IO) {
             val platforms = scanner.scanPlatforms()
             val collections = scanner.scanCollections().map { it.name to it.entries.size }
@@ -78,17 +84,24 @@ class SystemListViewModel(
                 }
             }
 
-            val prevIndex = _state.value.selectedIndex
+            val sameSize = items.size == prevItemCount && prevItemCount > 0
             val selectableIndices = items.indices.filter { items[it] !is ListItem.Divider }
-            val safeIndex = when {
-                selectableIndices.isEmpty() -> 0
-                prevIndex in selectableIndices -> prevIndex
-                else -> selectableIndices.firstOrNull { it >= prevIndex } ?: selectableIndices.last()
+            val (safeIndex, scrollTo) = if (sameSize) {
+                val idx = when {
+                    selectableIndices.isEmpty() -> 0
+                    prevSelectedIndex in selectableIndices -> prevSelectedIndex
+                    else -> selectableIndices.firstOrNull { it >= prevSelectedIndex } ?: selectableIndices.last()
+                }
+                idx to prevFirstVisible.coerceAtMost(items.lastIndex.coerceAtLeast(0))
+            } else {
+                val idx = if (selectableIndices.isNotEmpty()) selectableIndices.first() else 0
+                idx to 0
             }
             _state.value = State(
                 items = items,
                 platforms = platforms,
                 selectedIndex = safeIndex,
+                scrollTarget = scrollTo,
                 isLoading = false
             )
         }

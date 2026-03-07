@@ -21,6 +21,7 @@ class GameListViewModel(
         val breadcrumb: String = "",
         val games: List<Game> = emptyList(),
         val selectedIndex: Int = 0,
+        val scrollTarget: Int = 0,
         val subfolderPath: String? = null,
         val isLoading: Boolean = true,
         val isCollection: Boolean = false,
@@ -39,9 +40,13 @@ class GameListViewModel(
     var firstVisibleIndex: Int = 0
 
     private val breadcrumbStack = mutableListOf<String>()
+    private val indexStack = mutableListOf<Pair<Int, Int>>() // selectedIndex to firstVisibleIndex
+    private var collectionsListSaved: Pair<Int, Int> = 0 to 0 // selectedIndex to firstVisibleIndex
+    private var collectionsListItemCount: Int = 0
 
     fun loadPlatform(tag: String, onReady: () -> Unit = {}) {
         breadcrumbStack.clear()
+        indexStack.clear()
         viewModelScope.launch(Dispatchers.IO) {
             val games = scanner.scanGames(tag, null)
             val displayName = platformResolver.getDisplayName(tag)
@@ -57,7 +62,13 @@ class GameListViewModel(
     }
 
     fun loadCollection(collectionName: String, onReady: () -> Unit = {}) {
+        val current = _state.value
+        if (current.isCollectionsList) {
+            collectionsListSaved = current.selectedIndex to firstVisibleIndex
+            collectionsListItemCount = current.games.size
+        }
         breadcrumbStack.clear()
+        indexStack.clear()
         viewModelScope.launch(Dispatchers.IO) {
             val games = scanner.scanCollectionGames(collectionName)
             _state.value = State(
@@ -72,8 +83,9 @@ class GameListViewModel(
         }
     }
 
-    fun loadCollectionsList(onReady: () -> Unit = {}) {
+    fun loadCollectionsList(restoreIndex: Boolean = false, onReady: () -> Unit = {}) {
         breadcrumbStack.clear()
+        indexStack.clear()
         viewModelScope.launch(Dispatchers.IO) {
             val collections = scanner.scanCollections()
                 .filter { !it.name.equals("Favorites", ignoreCase = true) && it.entries.isNotEmpty() }
@@ -94,10 +106,17 @@ class GameListViewModel(
                     platformTag = ""
                 )
             }
+            val (idx, scroll) = if (restoreIndex && games.size == collectionsListItemCount && collectionsListItemCount > 0) {
+                val maxIdx = games.lastIndex.coerceAtLeast(0)
+                collectionsListSaved.first.coerceAtMost(maxIdx) to collectionsListSaved.second.coerceAtMost(maxIdx)
+            } else {
+                0 to 0
+            }
             _state.value = State(
                 breadcrumb = "Collections",
                 games = games,
-                selectedIndex = 0,
+                selectedIndex = idx,
+                scrollTarget = scroll,
                 isLoading = false,
                 isCollectionsList = true
             )
@@ -108,18 +127,32 @@ class GameListViewModel(
     fun reload() {
         val current = _state.value
         val preserveIndex = current.selectedIndex
-        if (current.isCollection && current.collectionName != null) {
+        val preserveScroll = firstVisibleIndex
+        val prevCount = current.games.size
+        if (current.isCollectionsList) {
+            collectionsListSaved = preserveIndex to preserveScroll
+            collectionsListItemCount = prevCount
+            loadCollectionsList(restoreIndex = true)
+        } else if (current.isCollection && current.collectionName != null) {
             loadCollection(current.collectionName) {
                 val s = _state.value
-                _state.value = s.copy(selectedIndex = preserveIndex.coerceAtMost(s.games.lastIndex.coerceAtLeast(0)))
+                if (s.games.size == prevCount && prevCount > 0) {
+                    _state.value = s.copy(
+                        selectedIndex = preserveIndex.coerceAtMost(s.games.lastIndex.coerceAtLeast(0)),
+                        scrollTarget = preserveScroll.coerceAtMost(s.games.lastIndex.coerceAtLeast(0))
+                    )
+                } else {
+                    _state.value = s.copy(selectedIndex = 0, scrollTarget = 0)
+                }
             }
         } else if (current.platformTag.isNotEmpty()) {
-            loadGames(current.platformTag, current.subfolderPath, preserveIndex)
+            loadGames(current.platformTag, current.subfolderPath, preserveIndex, preserveScroll, prevCount)
         }
     }
 
     fun enterSubfolder(folderName: String) {
         val current = _state.value
+        indexStack.add(current.selectedIndex to firstVisibleIndex)
         breadcrumbStack.add(folderName)
         val subPath = breadcrumbStack.joinToString("/")
         loadGames(current.platformTag, subPath)
@@ -128,8 +161,9 @@ class GameListViewModel(
     fun exitSubfolder(): Boolean {
         if (breadcrumbStack.isEmpty()) return false
         breadcrumbStack.removeAt(breadcrumbStack.lastIndex)
+        val (parentIndex, parentScroll) = if (indexStack.isNotEmpty()) indexStack.removeAt(indexStack.lastIndex) else (0 to 0)
         val subPath = if (breadcrumbStack.isEmpty()) null else breadcrumbStack.joinToString("/")
-        loadGames(_state.value.platformTag, subPath)
+        loadGames(_state.value.platformTag, subPath, parentIndex, parentScroll)
         return true
     }
 
@@ -255,7 +289,7 @@ class GameListViewModel(
         loadCollectionsList()
     }
 
-    private fun loadGames(tag: String, subfolder: String?, preserveIndex: Int = 0) {
+    private fun loadGames(tag: String, subfolder: String?, preserveIndex: Int = 0, preserveScroll: Int = 0, prevCount: Int = -1) {
         viewModelScope.launch(Dispatchers.IO) {
             val games = scanner.scanGames(tag, subfolder)
             val displayName = platformResolver.getDisplayName(tag)
@@ -267,11 +301,20 @@ class GameListViewModel(
                     .joinToString(" \u203A ")
             }
 
+            val sameSize = prevCount >= 0 && games.size == prevCount && prevCount > 0
+            val maxIdx = games.lastIndex.coerceAtLeast(0)
+            val (idx, scroll) = if (sameSize || prevCount < 0) {
+                preserveIndex.coerceAtMost(maxIdx) to preserveScroll.coerceAtMost(maxIdx)
+            } else {
+                0 to 0
+            }
+
             _state.value = State(
                 platformTag = tag,
                 breadcrumb = breadcrumb,
                 games = games,
-                selectedIndex = preserveIndex.coerceAtMost(games.lastIndex.coerceAtLeast(0)),
+                selectedIndex = idx,
+                scrollTarget = scroll,
                 subfolderPath = subfolder,
                 isLoading = false
             )
