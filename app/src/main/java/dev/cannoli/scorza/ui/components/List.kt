@@ -14,11 +14,12 @@ fun <T> List(
     items: kotlin.collections.List<T>,
     selectedIndex: Int,
     modifier: Modifier = Modifier,
+    scrollTarget: Int = 0,
     listState: LazyListState = rememberLazyListState(),
     onVisibleRangeChanged: ((firstVisible: Int, visibleCount: Int) -> Unit)? = null,
     itemContent: @Composable (index: Int, item: T) -> Unit
 ) {
-    ListScrollEffect(listState, selectedIndex, items.size, onVisibleRangeChanged)
+    ListScrollEffect(listState, selectedIndex, items.size, scrollTarget, onVisibleRangeChanged)
 
     LazyColumn(
         state = listState,

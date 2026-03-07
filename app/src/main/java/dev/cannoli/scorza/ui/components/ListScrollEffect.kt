@@ -15,12 +15,18 @@ fun ListScrollEffect(
     listState: LazyListState,
     selectedIndex: Int,
     itemCount: Int,
+    scrollTarget: Int = 0,
     onVisibleRangeChanged: ((firstVisible: Int, visibleCount: Int) -> Unit)? = null
 ) {
     var previousIndex by remember { mutableIntStateOf(selectedIndex) }
 
-    LaunchedEffect(itemCount) {
+    // Scroll to target when items load or scrollTarget changes (back navigation, reload)
+    LaunchedEffect(itemCount, scrollTarget) {
         previousIndex = selectedIndex
+        if (itemCount > 0) {
+            val target = scrollTarget.coerceIn(0, itemCount - 1)
+            listState.scrollToItem(target)
+        }
     }
 
     if (onVisibleRangeChanged != null) {
