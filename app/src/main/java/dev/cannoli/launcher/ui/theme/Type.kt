@@ -1,55 +1,63 @@
 package dev.cannoli.launcher.ui.theme
 
+import android.content.res.AssetManager
+import android.graphics.Typeface
 import androidx.compose.material3.Typography
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.Typeface as ComposeTypeface
 import androidx.compose.ui.unit.sp
-import dev.cannoli.launcher.R
 
-val Nunito = FontFamily(
-    Font(R.font.nunito, FontWeight.Normal),
-    Font(R.font.nunito, FontWeight.Bold),
-    Font(R.font.nunito, FontWeight.ExtraBold),
-    Font(R.font.nunito, FontWeight.Black)
-)
+lateinit var MPlus1Code: FontFamily
+    private set
 
-val NerdSymbols = FontFamily(
-    Font(R.font.nerd_symbols, FontWeight.Normal)
-)
+lateinit var NerdSymbols: FontFamily
+    private set
 
-val Typography = Typography(
-    headlineLarge = TextStyle(
-        fontFamily = Nunito,
-        fontWeight = FontWeight.Black,
-        fontSize = 28.sp,
-        color = Color.White
-    ),
-    titleLarge = TextStyle(
-        fontFamily = Nunito,
-        fontWeight = FontWeight.Black,
-        fontSize = 24.sp,
-        color = Color.White
-    ),
-    bodyLarge = TextStyle(
-        fontFamily = Nunito,
-        fontWeight = FontWeight.ExtraBold,
-        fontSize = 22.sp,
-        lineHeight = 32.sp,
-        color = Color.White
-    ),
-    bodyMedium = TextStyle(
-        fontFamily = Nunito,
-        fontWeight = FontWeight.Bold,
-        fontSize = 16.sp,
-        color = Color.White
-    ),
-    labelSmall = TextStyle(
-        fontFamily = Nunito,
-        fontWeight = FontWeight.Bold,
-        fontSize = 14.sp,
-        color = Color.White
+fun initFonts(assets: AssetManager) {
+    val typeface = Typeface.createFromAsset(assets, "fonts/MPlus-1c-NerdFont-Bold.ttf")
+    MPlus1Code = FontFamily(ComposeTypeface(typeface))
+
+    val nerdTypeface = Typeface.createFromAsset(assets, "fonts/NerdSymbols.ttf")
+    NerdSymbols = FontFamily(ComposeTypeface(nerdTypeface))
+}
+
+fun buildTypography(): Typography {
+    return Typography(
+        headlineLarge = TextStyle(
+            fontFamily = MPlus1Code,
+            fontWeight = FontWeight.Black,
+            fontSize = 28.sp,
+            color = Color.White
+        ),
+        titleLarge = TextStyle(
+            fontFamily = MPlus1Code,
+            fontWeight = FontWeight.Black,
+            fontSize = 24.sp,
+            color = Color.White
+        ),
+        bodyLarge = TextStyle(
+            fontFamily = MPlus1Code,
+            fontWeight = FontWeight.Black,
+            fontSize = 22.sp,
+            lineHeight = 32.sp,
+            color = Color.White
+        ),
+        bodyMedium = TextStyle(
+            fontFamily = MPlus1Code,
+            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp,
+            color = Color.White
+        ),
+        labelSmall = TextStyle(
+            fontFamily = MPlus1Code,
+            fontWeight = FontWeight.Bold,
+            fontSize = 14.sp,
+            color = Color.White
+        )
     )
-)
+}
