@@ -63,8 +63,8 @@ fun AppNavGraph(
     }
     val listVerticalPadding = when (appSettings.textSize) {
         TextSize.SMALL -> 4.dp
-        TextSize.MEDIUM -> 8.dp
-        TextSize.LARGE -> 10.dp
+        TextSize.MEDIUM -> 4.dp
+        TextSize.LARGE -> 6.dp
     }
 
     Box(modifier = Modifier.fillMaxSize()) {

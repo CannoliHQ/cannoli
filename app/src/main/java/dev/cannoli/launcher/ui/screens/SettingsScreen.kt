@@ -2,9 +2,12 @@ package dev.cannoli.launcher.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -80,20 +83,28 @@ fun SettingsScreen(
                 rightItems = listOf("\uDB81\uDC0A" to stringResource(R.string.label_save))
             )
         } else {
-            LazyColumn(
-                state = listState,
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(top = 4.dp, bottom = 48.dp)
             ) {
-                itemsIndexed(state.categories) { index, category ->
-                    MenuRow(
-                        label = stringResource(category.labelRes),
-                        isSelected = state.categoryIndex == index,
-                        fontSize = listFontSize,
-                        lineHeight = listLineHeight,
-                        verticalPadding = listVerticalPadding
-                    )
+                Text(
+                    text = stringResource(R.string.settings_title),
+                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = listFontSize * 1.2f, lineHeight = listLineHeight * 1.2f),
+                    color = Color.White,
+                    modifier = Modifier.padding(start = pillInternalH)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                LazyColumn(state = listState) {
+                    itemsIndexed(state.categories) { index, category ->
+                        MenuRow(
+                            label = stringResource(category.labelRes),
+                            isSelected = state.categoryIndex == index,
+                            fontSize = listFontSize,
+                            lineHeight = listLineHeight,
+                            verticalPadding = listVerticalPadding
+                        )
+                    }
                 }
             }
 
