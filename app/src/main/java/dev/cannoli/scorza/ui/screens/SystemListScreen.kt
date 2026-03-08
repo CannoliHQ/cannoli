@@ -20,6 +20,7 @@ import dev.cannoli.scorza.ui.components.DialogOverlay
 import dev.cannoli.scorza.ui.components.List
 import dev.cannoli.scorza.ui.components.PillRowText
 import dev.cannoli.scorza.ui.components.ScreenBackground
+import dev.cannoli.scorza.ui.components.pillItemHeight
 import dev.cannoli.scorza.ui.components.screenPadding
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel.ListItem
@@ -35,6 +36,7 @@ fun SystemListScreen(
     dialogState: DialogState = DialogState.None
 ) {
     val state by viewModel.state.collectAsState()
+    val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
 
     if (dialogState.isFullScreen) {
         DialogOverlay(
@@ -57,6 +59,7 @@ fun SystemListScreen(
             List(
                 items = state.items,
                 selectedIndex = state.selectedIndex,
+                itemHeight = itemHeight,
                 scrollTarget = state.scrollTarget,
                 onVisibleRangeChanged = { first, count ->
                     viewModel.firstVisibleIndex = first

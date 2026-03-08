@@ -24,6 +24,7 @@ import dev.cannoli.scorza.ui.components.PillRowKeyValue
 import dev.cannoli.scorza.ui.components.PillRowText
 import dev.cannoli.scorza.ui.components.ScreenBackground
 import dev.cannoli.scorza.ui.components.ScreenTitle
+import dev.cannoli.scorza.ui.components.pillItemHeight
 import dev.cannoli.scorza.ui.components.screenPadding
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 
@@ -39,6 +40,7 @@ fun SettingsScreen(
     onBack: () -> Unit
 ) {
     val state by viewModel.state.collectAsState()
+    val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
 
     if (dialogState.isFullScreen) {
         DialogOverlay(
@@ -62,6 +64,7 @@ fun SettingsScreen(
             List(
                 items = state.items,
                 selectedIndex = state.selectedIndex,
+                itemHeight = itemHeight,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(top = 4.dp, bottom = 48.dp)
@@ -108,7 +111,8 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(8.dp))
                 List(
                     items = state.categories,
-                    selectedIndex = state.categoryIndex
+                    selectedIndex = state.categoryIndex,
+                    itemHeight = itemHeight
                 ) { index, category ->
                     PillRowText(
                         label = stringResource(category.labelRes),

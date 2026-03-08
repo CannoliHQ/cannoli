@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -26,6 +27,11 @@ import dev.cannoli.scorza.ui.theme.LocalCannoliColors
 
 val screenPadding = 20.dp
 val pillInternalH = 14.dp
+
+@Composable
+fun pillItemHeight(lineHeight: TextUnit, verticalPadding: Dp): Dp {
+    return with(LocalDensity.current) { lineHeight.toDp() } + verticalPadding * 2 + 4.dp
+}
 
 /**
  * A row that highlights with a pill when selected.
