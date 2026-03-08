@@ -134,15 +134,53 @@ fun DialogOverlay(
                     items = dialogState.mappings,
                     selectedIndex = dialogState.selectedIndex,
                     itemHeight = itemHeight
-                ) { index, (tag, core) ->
+                ) { index, entry ->
+                    val value = if (entry.runnerLabel.isNotEmpty())
+                        "${entry.coreDisplayName} (${entry.runnerLabel})"
+                    else entry.coreDisplayName
                     PillRowKeyValue(
-                        label = tag,
-                        value = core,
+                        label = entry.platformName,
+                        value = value,
                         isSelected = dialogState.selectedIndex == index,
                         fontSize = listFontSize,
                         lineHeight = listLineHeight,
                         verticalPadding = listVerticalPadding
                     )
+                }
+            }
+        }
+
+        is DialogState.CorePicker -> {
+            ListDialogScreen(
+                backgroundImagePath = backgroundImagePath,
+                backgroundTint = backgroundTint,
+                title = dialogState.platformName,
+                listFontSize = listFontSize,
+                listLineHeight = listLineHeight,
+                fullWidth = true,
+                rightBottomItems = listOf("A" to stringResource(R.string.label_select))
+            ) {
+                if (dialogState.cores.isEmpty()) {
+                    Text(
+                        text = "No compatible cores found",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = GrayText,
+                        modifier = Modifier.padding(start = 14.dp)
+                    )
+                } else {
+                    List(
+                        items = dialogState.cores,
+                        selectedIndex = dialogState.selectedIndex,
+                        itemHeight = itemHeight
+                    ) { index, option ->
+                        PillRowText(
+                            label = "${option.displayName} (${option.runnerLabel})",
+                            isSelected = dialogState.selectedIndex == index,
+                            fontSize = listFontSize,
+                            lineHeight = listLineHeight,
+                            verticalPadding = listVerticalPadding
+                        )
+                    }
                 }
             }
         }
@@ -191,8 +229,7 @@ fun DialogOverlay(
 
         is DialogState.RenameInput,
         is DialogState.NewCollectionInput,
-        is DialogState.CollectionRenameInput,
-        is DialogState.CoreMappingEdit -> {
+        is DialogState.CollectionRenameInput -> {
             val ks = dialogState as KeyboardInputState
             KeyboardOverlay(
                 text = ks.currentName,
