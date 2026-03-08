@@ -18,9 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.ui.components.BottomBar
-import dev.cannoli.scorza.ui.components.ColorPickerOverlay
-import dev.cannoli.scorza.ui.components.HexColorInputOverlay
-import dev.cannoli.scorza.ui.components.KeyboardOverlay
+import dev.cannoli.scorza.ui.components.DialogOverlay
 import dev.cannoli.scorza.ui.components.List
 import dev.cannoli.scorza.ui.components.PillRowKeyValue
 import dev.cannoli.scorza.ui.components.PillRowText
@@ -42,116 +40,16 @@ fun SettingsScreen(
 ) {
     val state by viewModel.state.collectAsState()
 
-    when (dialogState) {
-        is DialogState.ColorPicker -> {
-            ColorPickerOverlay(
-                selectedRow = dialogState.selectedRow,
-                selectedCol = dialogState.selectedCol,
-                currentColor = dialogState.currentColor
-            )
-            return
-        }
-        is DialogState.HexColorInput -> {
-            HexColorInputOverlay(
-                currentHex = dialogState.currentHex,
-                selectedIndex = dialogState.selectedIndex
-            )
-            return
-        }
-        is DialogState.CoreMappingList -> {
-            ScreenBackground(backgroundImagePath = backgroundImagePath, backgroundTint = backgroundTint) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(screenPadding)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(top = 4.dp, bottom = 48.dp)
-                    ) {
-                        ScreenTitle(
-                            text = stringResource(R.string.setting_core_mapping),
-                            fontSize = listFontSize,
-                            lineHeight = listLineHeight
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        List(
-                            items = dialogState.mappings,
-                            selectedIndex = dialogState.selectedIndex
-                        ) { index, (tag, core) ->
-                            PillRowKeyValue(
-                                label = tag,
-                                value = core,
-                                isSelected = dialogState.selectedIndex == index,
-                                fontSize = listFontSize,
-                                lineHeight = listLineHeight,
-                                verticalPadding = listVerticalPadding
-                            )
-                        }
-                    }
-                    BottomBar(
-                        modifier = Modifier.align(Alignment.BottomCenter),
-                        leftItems = listOf("B" to stringResource(R.string.label_back)),
-                        rightItems = listOf("A" to stringResource(R.string.label_select))
-                    )
-                }
-            }
-            return
-        }
-        is DialogState.CoreMappingEdit -> {
-            KeyboardOverlay(
-                text = dialogState.currentName,
-                cursorPos = dialogState.cursorPos,
-                keyRow = dialogState.keyRow,
-                keyCol = dialogState.keyCol,
-                caps = dialogState.caps,
-                symbols = dialogState.symbols
-            )
-            return
-        }
-        is DialogState.AppPicker -> {
-            ScreenBackground(backgroundImagePath = backgroundImagePath, backgroundTint = backgroundTint) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(screenPadding)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(top = 4.dp, bottom = 48.dp)
-                    ) {
-                        ScreenTitle(
-                            text = dialogState.title,
-                            fontSize = listFontSize,
-                            lineHeight = listLineHeight
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        List(
-                            items = dialogState.apps,
-                            selectedIndex = dialogState.selectedIndex
-                        ) { index, app ->
-                            PillRowText(
-                                label = app,
-                                isSelected = dialogState.selectedIndex == index,
-                                fontSize = listFontSize,
-                                lineHeight = listLineHeight,
-                                verticalPadding = listVerticalPadding,
-                                checkState = index in dialogState.checkedIndices
-                            )
-                        }
-                    }
-                    BottomBar(
-                        modifier = Modifier.align(Alignment.BottomCenter),
-                        leftItems = listOf("B" to stringResource(R.string.label_back)),
-                        rightItems = listOf("\uDB81\uDC0A" to stringResource(R.string.label_confirm))
-                    )
-                }
-            }
-            return
-        }
-        else -> {}
+    if (dialogState.isFullScreen) {
+        DialogOverlay(
+            dialogState = dialogState,
+            backgroundImagePath = backgroundImagePath,
+            backgroundTint = backgroundTint,
+            listFontSize = listFontSize,
+            listLineHeight = listLineHeight,
+            listVerticalPadding = listVerticalPadding
+        )
+        return
     }
 
     ScreenBackground(backgroundImagePath = backgroundImagePath, backgroundTint = backgroundTint) {
