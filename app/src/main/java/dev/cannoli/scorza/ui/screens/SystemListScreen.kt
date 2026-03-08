@@ -67,7 +67,7 @@ fun SystemListScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth(0.65f)
-                    .padding(top = 4.dp, bottom = 48.dp)
+                    .padding(bottom = 48.dp)
             ) { index, item ->
                 val label = when (item) {
                     is ListItem.FavoritesItem -> "Favorites"

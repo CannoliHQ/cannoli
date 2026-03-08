@@ -61,23 +61,35 @@ fun SettingsScreen(
             .padding(screenPadding)
     ) {
         if (state.inSubList) {
-            List(
-                items = state.items,
-                selectedIndex = state.selectedIndex,
-                itemHeight = itemHeight,
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(top = 4.dp, bottom = 48.dp)
-            ) { index, item ->
-                PillRowKeyValue(
-                    label = stringResource(item.labelRes),
-                    value = item.valueText ?: item.valueRes?.let { stringResource(it) } ?: "",
-                    isSelected = state.selectedIndex == index,
-                    fontSize = listFontSize,
-                    lineHeight = listLineHeight,
-                    verticalPadding = listVerticalPadding,
-                    swatchColor = item.swatchColor
-                )
+                    .padding(bottom = 48.dp)
+            ) {
+                val categoryLabel = state.categories.getOrNull(state.categoryIndex)?.labelRes
+                if (categoryLabel != null) {
+                    ScreenTitle(
+                        text = stringResource(categoryLabel),
+                        fontSize = listFontSize,
+                        lineHeight = listLineHeight
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                List(
+                    items = state.items,
+                    selectedIndex = state.selectedIndex,
+                    itemHeight = itemHeight
+                ) { index, item ->
+                    PillRowKeyValue(
+                        label = stringResource(item.labelRes),
+                        value = item.valueText ?: item.valueRes?.let { stringResource(it) } ?: "",
+                        isSelected = state.selectedIndex == index,
+                        fontSize = listFontSize,
+                        lineHeight = listLineHeight,
+                        verticalPadding = listVerticalPadding,
+                        swatchColor = item.swatchColor
+                    )
+                }
             }
 
             val selectedItem = state.items.getOrNull(state.selectedIndex)
@@ -101,7 +113,7 @@ fun SettingsScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(top = 4.dp, bottom = 48.dp)
+                    .padding(bottom = 48.dp)
             ) {
                 ScreenTitle(
                     text = stringResource(R.string.settings_title),
