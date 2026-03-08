@@ -153,7 +153,9 @@ class MainActivity : ComponentActivity() {
 
     private fun initializeApp() {
         val root = File(settings.sdCardRoot)
-        platformResolver = PlatformResolver(root)
+        val coreInfo = dev.cannoli.scorza.scanner.CoreInfoRepository(assets)
+        coreInfo.load()
+        platformResolver = PlatformResolver(root, coreInfo)
         platformResolver.load()
 
         scanner = FileScanner(root, platformResolver)
@@ -208,8 +210,7 @@ class MainActivity : ComponentActivity() {
                 }
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput,
-                is DialogState.CoreMappingEdit -> {
+                is DialogState.CollectionRenameInput -> {
                     val ks = ds.asKeyboardState()!!
                     val rows = getKeyboardRows(ks.caps, ks.symbols)
                     val newRow = if (ks.keyRow <= 0) rows.lastIndex else ks.keyRow - 1
@@ -219,6 +220,12 @@ class MainActivity : ComponentActivity() {
                 is DialogState.CoreMappingList -> {
                     if (ds.mappings.isNotEmpty()) {
                         val newIdx = if (ds.selectedIndex <= 0) ds.mappings.lastIndex else ds.selectedIndex - 1
+                        dialogState.value = ds.copy(selectedIndex = newIdx)
+                    }
+                }
+                is DialogState.CorePicker -> {
+                    if (ds.cores.isNotEmpty()) {
+                        val newIdx = if (ds.selectedIndex <= 0) ds.cores.lastIndex else ds.selectedIndex - 1
                         dialogState.value = ds.copy(selectedIndex = newIdx)
                     }
                 }
@@ -271,8 +278,7 @@ class MainActivity : ComponentActivity() {
                 }
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput,
-                is DialogState.CoreMappingEdit -> {
+                is DialogState.CollectionRenameInput -> {
                     val ks = ds.asKeyboardState()!!
                     val rows = getKeyboardRows(ks.caps, ks.symbols)
                     val newRow = if (ks.keyRow >= rows.lastIndex) 0 else ks.keyRow + 1
@@ -282,6 +288,12 @@ class MainActivity : ComponentActivity() {
                 is DialogState.CoreMappingList -> {
                     if (ds.mappings.isNotEmpty()) {
                         val newIdx = if (ds.selectedIndex >= ds.mappings.lastIndex) 0 else ds.selectedIndex + 1
+                        dialogState.value = ds.copy(selectedIndex = newIdx)
+                    }
+                }
+                is DialogState.CorePicker -> {
+                    if (ds.cores.isNotEmpty()) {
+                        val newIdx = if (ds.selectedIndex >= ds.cores.lastIndex) 0 else ds.selectedIndex + 1
                         dialogState.value = ds.copy(selectedIndex = newIdx)
                     }
                 }
@@ -324,8 +336,7 @@ class MainActivity : ComponentActivity() {
             when (val ds = dialogState.value) {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput,
-                is DialogState.CoreMappingEdit -> {
+                is DialogState.CollectionRenameInput -> {
                     val ks = ds.asKeyboardState()!!
                     val rows = getKeyboardRows(ks.caps, ks.symbols)
                     val rowSize = rows[ks.keyRow.coerceIn(0, rows.lastIndex)].size
@@ -356,8 +367,7 @@ class MainActivity : ComponentActivity() {
             when (val ds = dialogState.value) {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput,
-                is DialogState.CoreMappingEdit -> {
+                is DialogState.CollectionRenameInput -> {
                     val ks = ds.asKeyboardState()!!
                     val rows = getKeyboardRows(ks.caps, ks.symbols)
                     val rowSize = rows[ks.keyRow.coerceIn(0, rows.lastIndex)].size
@@ -424,24 +434,26 @@ class MainActivity : ComponentActivity() {
                     dialogState.value = ds.copy(checkedIndices = newChecked)
                 }
                 is DialogState.CoreMappingList -> {
-                    val (tag, core) = ds.mappings[ds.selectedIndex]
-                    dialogState.value = DialogState.CoreMappingEdit(
-                        tag = tag,
-                        currentName = core,
-                        cursorPos = core.length
+                    val entry = ds.mappings[ds.selectedIndex]
+                    val options = platformResolver.getCorePickerOptions(entry.tag)
+                    val currentCore = platformResolver.getCoreMapping(entry.tag)
+                    val selectedIdx = options.indexOfFirst { it.coreId == currentCore }.coerceAtLeast(0)
+                    dialogState.value = DialogState.CorePicker(
+                        tag = entry.tag,
+                        platformName = entry.platformName,
+                        cores = options,
+                        selectedIndex = selectedIdx
                     )
                 }
-                is DialogState.CoreMappingEdit -> handleKeyboardConfirm(ds.caps, ds.symbols, ds.keyRow, ds.keyCol, ds.currentName, ds.cursorPos,
-                    onChar = { name, pos -> dialogState.value = ds.copy(currentName = name, cursorPos = pos) },
-                    onShift = { dialogState.value = ds.copy(caps = !ds.caps) },
-                    onSymbols = { dialogState.value = ds.copy(symbols = !ds.symbols) },
-                    onEnter = {
-                        platformResolver.setCoreMapping(ds.tag, ds.currentName.trim())
-                        val mappings = platformResolver.getAllCoreMappings()
-                        val idx = mappings.indexOfFirst { it.first == ds.tag }.coerceAtLeast(0)
+                is DialogState.CorePicker -> {
+                    if (ds.cores.isNotEmpty()) {
+                        val chosen = ds.cores[ds.selectedIndex]
+                        platformResolver.setCoreMapping(ds.tag, chosen.coreId)
+                        val mappings = platformResolver.getDetailedMappings()
+                        val idx = mappings.indexOfFirst { it.tag == ds.tag }.coerceAtLeast(0)
                         dialogState.value = DialogState.CoreMappingList(mappings = mappings, selectedIndex = idx)
                     }
-                )
+                }
                 is DialogState.ColorPicker -> {
                     val idx = ds.selectedRow * COLOR_GRID_COLS + ds.selectedCol
                     val preset = COLOR_PRESETS.getOrNull(idx)
@@ -513,7 +525,7 @@ class MainActivity : ComponentActivity() {
                                 openColorPicker(key)
                             } else if (key == "core_mapping") {
                                 dialogState.value = DialogState.CoreMappingList(
-                                    mappings = platformResolver.getAllCoreMappings()
+                                    mappings = platformResolver.getDetailedMappings()
                                 )
                             } else if (key == "manage_tools") {
                                 openAppPicker("tools")
@@ -538,9 +550,13 @@ class MainActivity : ComponentActivity() {
             when (val ds = dialogState.value) {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput,
-                is DialogState.CoreMappingEdit -> {
+                is DialogState.CollectionRenameInput -> {
                     ds.withBackspace()?.let { dialogState.value = it }
+                }
+                is DialogState.CorePicker -> {
+                    val mappings = platformResolver.getDetailedMappings()
+                    val idx = mappings.indexOfFirst { it.tag == ds.tag }.coerceAtLeast(0)
+                    dialogState.value = DialogState.CoreMappingList(mappings = mappings, selectedIndex = idx)
                 }
                 is DialogState.CoreMappingList -> {
                     platformResolver.saveCoreMappings()
@@ -638,11 +654,14 @@ class MainActivity : ComponentActivity() {
                 is DialogState.RenameInput -> onRenameConfirm(ds)
                 is DialogState.NewCollectionInput -> onNewCollectionConfirm(ds)
                 is DialogState.CollectionRenameInput -> onCollectionRenameConfirm(ds)
-                is DialogState.CoreMappingEdit -> {
-                    platformResolver.setCoreMapping(ds.tag, ds.currentName.trim())
-                    val mappings = platformResolver.getAllCoreMappings()
-                    val idx = mappings.indexOfFirst { it.first == ds.tag }.coerceAtLeast(0)
-                    dialogState.value = DialogState.CoreMappingList(mappings = mappings, selectedIndex = idx)
+                is DialogState.CorePicker -> {
+                    if (ds.cores.isNotEmpty()) {
+                        val chosen = ds.cores[ds.selectedIndex]
+                        platformResolver.setCoreMapping(ds.tag, chosen.coreId)
+                        val mappings = platformResolver.getDetailedMappings()
+                        val idx = mappings.indexOfFirst { it.tag == ds.tag }.coerceAtLeast(0)
+                        dialogState.value = DialogState.CoreMappingList(mappings = mappings, selectedIndex = idx)
+                    }
                 }
                 is DialogState.AppPicker -> onAppPickerConfirm(ds)
                 is DialogState.CoreMappingList -> {
@@ -722,8 +741,7 @@ class MainActivity : ComponentActivity() {
             when (val ds = dialogState.value) {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput,
-                is DialogState.CoreMappingEdit -> {
+                is DialogState.CollectionRenameInput -> {
                     val ks = ds.asKeyboardState()!!
                     dialogState.value = ds.withCaps(!ks.caps)
                 }
@@ -764,8 +782,7 @@ class MainActivity : ComponentActivity() {
                 }
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput,
-                is DialogState.CoreMappingEdit -> {
+                is DialogState.CollectionRenameInput -> {
                     ds.withInsertedChar(" ")?.let { dialogState.value = it }
                 }
                 is DialogState.ColorPicker -> {
@@ -788,11 +805,6 @@ class MainActivity : ComponentActivity() {
 
         inputHandler.onY = {
             when (val ds = dialogState.value) {
-                is DialogState.CoreMappingEdit -> {
-                    val mappings = platformResolver.getAllCoreMappings()
-                    val idx = mappings.indexOfFirst { it.first == ds.tag }.coerceAtLeast(0)
-                    dialogState.value = DialogState.CoreMappingList(mappings = mappings, selectedIndex = idx)
-                }
                 is DialogState.RenameInput,
                 is DialogState.CollectionRenameInput -> {
                     restoreContextMenu()
@@ -827,8 +839,7 @@ class MainActivity : ComponentActivity() {
             when (val ds = dialogState.value) {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput,
-                is DialogState.CoreMappingEdit -> {
+                is DialogState.CollectionRenameInput -> {
                     val ks = ds.asKeyboardState()!!
                     if (ks.cursorPos > 0) dialogState.value = ds.withCursor(ks.cursorPos - 1)
                 }
@@ -841,8 +852,7 @@ class MainActivity : ComponentActivity() {
             when (val ds = dialogState.value) {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput,
-                is DialogState.CoreMappingEdit -> {
+                is DialogState.CollectionRenameInput -> {
                     val ks = ds.asKeyboardState()!!
                     if (ks.cursorPos < ks.currentName.length) dialogState.value = ds.withCursor(ks.cursorPos + 1)
                 }
@@ -855,8 +865,7 @@ class MainActivity : ComponentActivity() {
             when (val ds = dialogState.value) {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput,
-                is DialogState.CoreMappingEdit -> {
+                is DialogState.CollectionRenameInput -> {
                     dialogState.value = ds.withCursor(0)
                 }
                 else -> {}
@@ -867,8 +876,7 @@ class MainActivity : ComponentActivity() {
             when (val ds = dialogState.value) {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput,
-                is DialogState.CoreMappingEdit -> {
+                is DialogState.CollectionRenameInput -> {
                     val ks = ds.asKeyboardState()!!
                     dialogState.value = ds.withCursor(ks.currentName.length)
                 }
@@ -1412,7 +1420,6 @@ class MainActivity : ComponentActivity() {
         is DialogState.RenameInput -> copy(keyRow = row, keyCol = col)
         is DialogState.NewCollectionInput -> copy(keyRow = row, keyCol = col)
         is DialogState.CollectionRenameInput -> copy(keyRow = row, keyCol = col)
-        is DialogState.CoreMappingEdit -> copy(keyRow = row, keyCol = col)
         else -> this
     }
 
@@ -1420,7 +1427,6 @@ class MainActivity : ComponentActivity() {
         is DialogState.RenameInput -> copy(cursorPos = pos)
         is DialogState.NewCollectionInput -> copy(cursorPos = pos)
         is DialogState.CollectionRenameInput -> copy(cursorPos = pos)
-        is DialogState.CoreMappingEdit -> copy(cursorPos = pos)
         else -> this
     }
 
@@ -1428,7 +1434,6 @@ class MainActivity : ComponentActivity() {
         is DialogState.RenameInput -> copy(caps = caps)
         is DialogState.NewCollectionInput -> copy(caps = caps)
         is DialogState.CollectionRenameInput -> copy(caps = caps)
-        is DialogState.CoreMappingEdit -> copy(caps = caps)
         else -> this
     }
 
@@ -1436,7 +1441,6 @@ class MainActivity : ComponentActivity() {
         is DialogState.RenameInput -> copy(currentName = name, cursorPos = pos)
         is DialogState.NewCollectionInput -> copy(currentName = name, cursorPos = pos)
         is DialogState.CollectionRenameInput -> copy(currentName = name, cursorPos = pos)
-        is DialogState.CoreMappingEdit -> copy(currentName = name, cursorPos = pos)
         else -> this
     }
 

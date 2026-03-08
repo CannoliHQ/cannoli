@@ -25,8 +25,10 @@ sealed interface DialogState {
     data class CollectionCreated(val collectionName: String) : DialogState
     data class ColorPicker(val settingKey: String, val currentColor: Long, val selectedRow: Int = 0, val selectedCol: Int = 0) : DialogState
     data class HexColorInput(val settingKey: String, val currentHex: String = "", val selectedIndex: Int = 0) : DialogState
-    data class CoreMappingList(val mappings: List<Pair<String, String>>, val selectedIndex: Int = 0) : DialogState
-    data class CoreMappingEdit(val tag: String, override val currentName: String, override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
+    data class CoreMappingEntry(val tag: String, val platformName: String, val coreDisplayName: String, val runnerLabel: String)
+    data class CoreMappingList(val mappings: List<CoreMappingEntry>, val selectedIndex: Int = 0) : DialogState
+    data class CorePickerOption(val coreId: String, val displayName: String, val runnerLabel: String)
+    data class CorePicker(val tag: String, val platformName: String, val cores: List<CorePickerOption>, val selectedIndex: Int = 0) : DialogState
     data class AppPicker(val type: String, val title: String, val apps: List<String>, val packages: List<String>, val selectedIndex: Int = 0, val checkedIndices: Set<Int> = emptySet(), val initialChecked: Set<Int> = emptySet()) : DialogState
 }
 
@@ -42,6 +44,6 @@ val DialogState.isFullScreen: Boolean
         is DialogState.RenameInput,
         is DialogState.NewCollectionInput,
         is DialogState.CollectionRenameInput,
-        is DialogState.CoreMappingEdit -> true
+        is DialogState.CorePicker -> true
         else -> false
     }

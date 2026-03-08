@@ -4,10 +4,14 @@ import dev.cannoli.scorza.model.LaunchTarget
 import dev.cannoli.scorza.model.Platform
 import dev.cannoli.scorza.util.IniData
 import dev.cannoli.scorza.util.IniParser
+import dev.cannoli.scorza.util.sortedNatural
 import org.json.JSONObject
 import java.io.File
 
-class PlatformResolver(private val cannoliRoot: File) {
+class PlatformResolver(
+    private val cannoliRoot: File,
+    private val coreInfo: CoreInfoRepository? = null
+) {
 
     private val defaultCores = mapOf(
         "GB" to "gambatte_libretro",
@@ -39,6 +43,7 @@ class PlatformResolver(private val cannoliRoot: File) {
         "DOS" to "dosbox_pure_libretro",
         "SCUM" to "scummvm_libretro"
     )
+
 
     private val defaultPlatformNames = mapOf(
         "GB" to "Game Boy",
@@ -124,9 +129,63 @@ class PlatformResolver(private val cannoliRoot: File) {
         }
     }
 
-    fun getAllCoreMappings(): List<Pair<String, String>> {
-        val tags = (defaultCores.keys + userCores.keys).sorted()
-        return tags.map { tag -> tag to getCoreMapping(tag) }
+    fun getCoreDisplayName(coreId: String): String {
+        return coreInfo?.getDisplayName(coreId) ?: coreId
+    }
+
+    fun getCoresForTag(tag: String): List<CoreInfo> {
+        return coreInfo?.getCoresForTag(tag) ?: emptyList()
+    }
+
+    fun getRunnerLabel(tag: String, coreId: String): String {
+        val romsDir = File(cannoliRoot, "Roms")
+        if (File(romsDir, "$tag/.emu_launch").exists()) return "External"
+        val coresDir = File(cannoliRoot, "Cores")
+        if (File(coresDir, "${coreId}_android.so").exists()) return "Internal"
+        return "RetroArch"
+    }
+
+    fun getDetailedMappings(): List<dev.cannoli.scorza.ui.screens.DialogState.CoreMappingEntry> {
+        val tags = (defaultCores.keys + userCores.keys)
+        return tags.map { tag ->
+            val coreId = getCoreMapping(tag)
+            dev.cannoli.scorza.ui.screens.DialogState.CoreMappingEntry(
+                tag = tag,
+                platformName = getDisplayName(tag),
+                coreDisplayName = if (coreId.isBlank()) "None" else getCoreDisplayName(coreId),
+                runnerLabel = if (coreId.isBlank()) "" else getRunnerLabel(tag, coreId)
+            )
+        }.sortedNatural { it.platformName }
+    }
+
+    fun getCorePickerOptions(tag: String): List<dev.cannoli.scorza.ui.screens.DialogState.CorePickerOption> {
+        val cores = getCoresForTag(tag)
+        val coresDir = File(cannoliRoot, "Cores")
+        return cores.flatMap { core ->
+            val hasInternal = File(coresDir, "${core.id}_android.so").exists()
+            if (hasInternal) {
+                listOf(
+                    dev.cannoli.scorza.ui.screens.DialogState.CorePickerOption(
+                        coreId = core.id,
+                        displayName = core.displayName,
+                        runnerLabel = "Internal"
+                    ),
+                    dev.cannoli.scorza.ui.screens.DialogState.CorePickerOption(
+                        coreId = core.id,
+                        displayName = core.displayName,
+                        runnerLabel = "RetroArch"
+                    )
+                )
+            } else {
+                listOf(
+                    dev.cannoli.scorza.ui.screens.DialogState.CorePickerOption(
+                        coreId = core.id,
+                        displayName = core.displayName,
+                        runnerLabel = getRunnerLabel(tag, core.id)
+                    )
+                )
+            }
+        }.sortedNatural { it.displayName }
     }
 
     fun getDisplayName(tag: String): String {
