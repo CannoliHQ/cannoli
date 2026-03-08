@@ -50,19 +50,16 @@ fun AppNavGraph(
     val appSettings by settingsViewModel.appSettings.collectAsState()
 
     val listFontSize = when (appSettings.textSize) {
-        TextSize.SMALL -> 16.sp
-        TextSize.MEDIUM -> 22.sp
-        TextSize.LARGE -> 24.sp
+        TextSize.COMPACT -> 16.sp
+        TextSize.DEFAULT -> 22.sp
     }
     val listLineHeight = when (appSettings.textSize) {
-        TextSize.SMALL -> 22.sp
-        TextSize.MEDIUM -> 32.sp
-        TextSize.LARGE -> 34.sp
+        TextSize.COMPACT -> 22.sp
+        TextSize.DEFAULT -> 32.sp
     }
     val listVerticalPadding = when (appSettings.textSize) {
-        TextSize.SMALL -> 4.dp
-        TextSize.MEDIUM -> 4.dp
-        TextSize.LARGE -> 6.dp
+        TextSize.COMPACT -> 4.dp
+        TextSize.DEFAULT -> 4.dp
     }
 
     val cannoliColors = CannoliColors(

@@ -162,10 +162,10 @@ enum class ButtonLayout {
 }
 
 enum class TextSize {
-    SMALL, MEDIUM, LARGE;
+    COMPACT, DEFAULT;
     companion object {
         fun fromString(value: String?): TextSize =
-            entries.firstOrNull { it.name == value } ?: MEDIUM
+            entries.firstOrNull { it.name == value } ?: DEFAULT
     }
 }
 
