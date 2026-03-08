@@ -705,7 +705,7 @@ class MainActivity : ComponentActivity() {
                     }
                     Screen.SETTINGS -> {
                         if (settingsViewModel.state.value.inSubList) {
-                            navController?.popBackStack()
+                            settingsViewModel.exitSubList()
                             rescanSystemList()
                         }
                     }
