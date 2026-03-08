@@ -49,6 +49,7 @@ import dev.cannoli.scorza.ui.components.PillRow
 import dev.cannoli.scorza.ui.components.PillRowText
 import dev.cannoli.scorza.ui.components.ScreenBackground
 import dev.cannoli.scorza.ui.components.ScreenTitle
+import dev.cannoli.scorza.ui.components.pillItemHeight
 import dev.cannoli.scorza.ui.components.screenPadding
 import dev.cannoli.scorza.ui.theme.GrayText
 import dev.cannoli.scorza.ui.theme.LocalCannoliColors
@@ -71,6 +72,7 @@ fun GameListScreen(
     onNextPlatform: () -> Unit
 ) {
     val state by viewModel.state.collectAsState()
+    val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
 
     if (dialogState.isFullScreen) {
         DialogOverlay(
@@ -121,6 +123,7 @@ fun GameListScreen(
                     List(
                         items = state.games,
                         selectedIndex = state.selectedIndex,
+                        itemHeight = itemHeight,
                         scrollTarget = state.scrollTarget,
                         onVisibleRangeChanged = { first, count ->
                             viewModel.firstVisibleIndex = first

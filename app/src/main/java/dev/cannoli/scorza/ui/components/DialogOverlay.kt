@@ -30,6 +30,7 @@ fun DialogOverlay(
     listLineHeight: TextUnit,
     listVerticalPadding: Dp
 ) {
+    val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
     when (dialogState) {
         is DialogState.ContextMenu -> {
             ListDialogScreen(
@@ -42,7 +43,8 @@ fun DialogOverlay(
             ) {
                 List(
                     items = dialogState.options,
-                    selectedIndex = dialogState.selectedOption
+                    selectedIndex = dialogState.selectedOption,
+                    itemHeight = itemHeight
                 ) { index, option ->
                     PillRowText(
                         label = option,
@@ -66,7 +68,8 @@ fun DialogOverlay(
             ) {
                 List(
                     items = dialogState.options,
-                    selectedIndex = dialogState.selectedOption
+                    selectedIndex = dialogState.selectedOption,
+                    itemHeight = itemHeight
                 ) { index, option ->
                     PillRowText(
                         label = option,
@@ -101,7 +104,8 @@ fun DialogOverlay(
                 } else {
                     List(
                         items = dialogState.collections,
-                        selectedIndex = dialogState.selectedIndex
+                        selectedIndex = dialogState.selectedIndex,
+                        itemHeight = itemHeight
                     ) { index, collection ->
                         PillRowText(
                             label = collection,
@@ -128,7 +132,8 @@ fun DialogOverlay(
             ) {
                 List(
                     items = dialogState.mappings,
-                    selectedIndex = dialogState.selectedIndex
+                    selectedIndex = dialogState.selectedIndex,
+                    itemHeight = itemHeight
                 ) { index, (tag, core) ->
                     PillRowKeyValue(
                         label = tag,
@@ -154,7 +159,8 @@ fun DialogOverlay(
             ) {
                 List(
                     items = dialogState.apps,
-                    selectedIndex = dialogState.selectedIndex
+                    selectedIndex = dialogState.selectedIndex,
+                    itemHeight = itemHeight
                 ) { index, app ->
                     PillRowText(
                         label = app,
