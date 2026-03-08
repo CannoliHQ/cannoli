@@ -620,7 +620,10 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                     Screen.SETTINGS -> {
-                        if (!settingsViewModel.exitSubList()) {
+                        if (settingsViewModel.state.value.inSubList) {
+                            settingsViewModel.cancel()
+                            settingsViewModel.exitSubList()
+                        } else {
                             settingsViewModel.cancel()
                             navController?.popBackStack()
                         }
