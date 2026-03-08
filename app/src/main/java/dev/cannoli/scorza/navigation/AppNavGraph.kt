@@ -90,9 +90,7 @@ fun AppNavGraph(
                     listFontSize = listFontSize,
                     listLineHeight = listLineHeight,
                     listVerticalPadding = listVerticalPadding,
-                    onPlatformSelected = { },
-                    onCollectionSelected = { },
-                    onSettingsRequested = { }
+                    dialogState = dialog
                 )
             }
 
