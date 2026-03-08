@@ -34,7 +34,6 @@
     <string name="setting_text_size">Text Size</string>
     <string name="setting_bg_image">Background Image</string>
     <string name="setting_time_format">Time Format</string>
-    <string name="setting_battery_pct">Battery Percentage</string>
     <string name="setting_button_layout">Button Layout</string>
     <string name="setting_swap_start_select">Swap Start/Select</string>
     <string name="setting_platform_switching">Platform Switching</string>
