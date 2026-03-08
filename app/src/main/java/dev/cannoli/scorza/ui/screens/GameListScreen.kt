@@ -40,7 +40,7 @@ import dev.cannoli.scorza.model.Game
 import dev.cannoli.scorza.settings.ScrollSpeed
 import dev.cannoli.scorza.ui.components.BottomBar
 import dev.cannoli.scorza.ui.components.ConfirmOverlay
-import dev.cannoli.scorza.ui.components.KeyboardOverlay
+import dev.cannoli.scorza.ui.components.DialogOverlay
 import dev.cannoli.scorza.ui.components.List
 import dev.cannoli.scorza.ui.components.MessageOverlay
 import dev.cannoli.scorza.ui.components.MissingAppDialog
@@ -72,307 +72,137 @@ fun GameListScreen(
 ) {
     val state by viewModel.state.collectAsState()
 
-    when (dialogState) {
-        is DialogState.ContextMenu -> {
-            ScreenBackground(backgroundImagePath = backgroundImagePath, backgroundTint = backgroundTint) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(screenPadding)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth(0.65f)
-                            .padding(top = 4.dp, bottom = 48.dp)
-                    ) {
-                        ScreenTitle(
-                            text = dialogState.gameName,
-                            fontSize = listFontSize,
-                            lineHeight = listLineHeight
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        List(
-                            items = dialogState.options,
-                            selectedIndex = dialogState.selectedOption
-                        ) { index, option ->
-                            PillRowText(
-                                label = option,
-                                isSelected = dialogState.selectedOption == index,
-                                fontSize = listFontSize,
-                                lineHeight = listLineHeight,
-                                verticalPadding = listVerticalPadding
-                            )
-                        }
-                    }
-                    BottomBar(
-                        modifier = Modifier.align(Alignment.BottomCenter),
-                        leftItems = listOf("B" to stringResource(R.string.label_back)),
-                        rightItems = emptyList()
-                    )
-                }
+    if (dialogState.isFullScreen) {
+        DialogOverlay(
+            dialogState = dialogState,
+            backgroundImagePath = backgroundImagePath,
+            backgroundTint = backgroundTint,
+            listFontSize = listFontSize,
+            listLineHeight = listLineHeight,
+            listVerticalPadding = listVerticalPadding
+        )
+        return
+    }
+
+    val selectedGame = state.games.getOrNull(state.selectedIndex)
+    val selectedArt: ImageBitmap? = if (boxArtEnabled && selectedGame != null && !selectedGame.isSubfolder) {
+        remember(selectedGame.artFile?.absolutePath) {
+            selectedGame.artFile?.let { file ->
+                try {
+                    BitmapFactory.decodeFile(file.absolutePath)?.asImageBitmap()
+                } catch (_: Exception) { null }
             }
         }
+    } else null
 
-        is DialogState.BulkContextMenu -> {
-            ScreenBackground(backgroundImagePath = backgroundImagePath, backgroundTint = backgroundTint) {
-                Box(
+    ScreenBackground(backgroundImagePath = backgroundImagePath, backgroundTint = backgroundTint) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(screenPadding)
+        ) {
+            val showArt = boxArtEnabled && selectedArt != null
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = 4.dp, bottom = 48.dp)
+            ) {
+                Column(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(screenPadding)
+                        .fillMaxHeight()
+                        .then(if (showArt) Modifier.fillMaxWidth(0.6f) else Modifier.fillMaxWidth())
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth(0.65f)
-                            .padding(top = 4.dp, bottom = 48.dp)
-                    ) {
-                        ScreenTitle(
-                            text = "${dialogState.gamePaths.size} Selected",
-                            fontSize = listFontSize,
-                            lineHeight = listLineHeight
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        List(
-                            items = dialogState.options,
-                            selectedIndex = dialogState.selectedOption
-                        ) { index, option ->
-                            PillRowText(
-                                label = option,
-                                isSelected = dialogState.selectedOption == index,
-                                fontSize = listFontSize,
-                                lineHeight = listLineHeight,
-                                verticalPadding = listVerticalPadding
-                            )
-                        }
-                    }
-                    BottomBar(
-                        modifier = Modifier.align(Alignment.BottomCenter),
-                        leftItems = listOf("B" to stringResource(R.string.label_back)),
-                        rightItems = emptyList()
+                    ScreenTitle(
+                        text = state.breadcrumb,
+                        fontSize = listFontSize,
+                        lineHeight = listLineHeight
                     )
-                }
-            }
-        }
-
-        is DialogState.CollectionPicker -> {
-            ScreenBackground(backgroundImagePath = backgroundImagePath, backgroundTint = backgroundTint) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(screenPadding)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth(0.65f)
-                            .padding(top = 4.dp, bottom = 48.dp)
-                    ) {
-                        ScreenTitle(
-                            text = dialogState.title,
-                            fontSize = listFontSize,
-                            lineHeight = listLineHeight
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        if (dialogState.collections.isEmpty()) {
-                            Text(
-                                text = "No collections",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = GrayText,
-                                modifier = Modifier.padding(start = 14.dp)
-                            )
-                        } else {
-                            List(
-                                items = dialogState.collections,
-                                selectedIndex = dialogState.selectedIndex
-                            ) { index, collection ->
-                                PillRowText(
-                                    label = collection,
-                                    isSelected = dialogState.selectedIndex == index,
-                                    fontSize = listFontSize,
-                                    lineHeight = listLineHeight,
-                                    verticalPadding = listVerticalPadding,
-                                    checkState = index in dialogState.checkedIndices
-                                )
-                            }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    List(
+                        items = state.games,
+                        selectedIndex = state.selectedIndex,
+                        scrollTarget = state.scrollTarget,
+                        onVisibleRangeChanged = { first, count ->
+                            viewModel.firstVisibleIndex = first
+                            viewModel.pageSize = count
                         }
-                    }
-                    BottomBar(
-                        modifier = Modifier.align(Alignment.BottomCenter),
-                        leftItems = listOf("B" to stringResource(R.string.label_back)),
-                        rightItems = listOf(
-                            "X" to stringResource(R.string.label_new),
-                            "▶" to stringResource(R.string.label_confirm)
+                    ) { index, game ->
+                        GameRow(
+                            game = game,
+                            isSelected = state.selectedIndex == index,
+                            fontSize = listFontSize,
+                            lineHeight = listLineHeight,
+                            verticalPadding = listVerticalPadding,
+                            scrollSpeed = scrollSpeed,
+                            showReorderIcon = state.reorderMode && state.selectedIndex == index,
+                            checkState = if (state.multiSelectMode) index in state.checkedIndices else null
                         )
-                    )
-                }
-            }
-        }
-
-        else -> {
-            val selectedGame = state.games.getOrNull(state.selectedIndex)
-            val selectedArt: ImageBitmap? = if (boxArtEnabled && selectedGame != null && !selectedGame.isSubfolder) {
-                remember(selectedGame.artFile?.absolutePath) {
-                    selectedGame.artFile?.let { file ->
-                        try {
-                            BitmapFactory.decodeFile(file.absolutePath)?.asImageBitmap()
-                        } catch (_: Exception) { null }
                     }
                 }
-            } else null
 
-            ScreenBackground(backgroundImagePath = backgroundImagePath, backgroundTint = backgroundTint) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(screenPadding)
-                ) {
-                    val showArt = boxArtEnabled && selectedArt != null
-                    Row(
+                if (showArt) {
+                    Box(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .padding(top = 4.dp, bottom = 48.dp)
+                            .fillMaxHeight()
+                            .fillMaxWidth()
+                            .padding(start = 16.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Column(
+                        Image(
+                            bitmap = selectedArt!!,
+                            contentDescription = null,
                             modifier = Modifier
-                                .fillMaxHeight()
-                                .then(if (showArt) Modifier.fillMaxWidth(0.6f) else Modifier.fillMaxWidth())
-                        ) {
-                            ScreenTitle(
-                                text = state.breadcrumb,
-                                fontSize = listFontSize,
-                                lineHeight = listLineHeight
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            List(
-                                items = state.games,
-                                selectedIndex = state.selectedIndex,
-                                scrollTarget = state.scrollTarget,
-                                onVisibleRangeChanged = { first, count ->
-                                    viewModel.firstVisibleIndex = first
-                                    viewModel.pageSize = count
-                                }
-                            ) { index, game ->
-                                GameRow(
-                                    game = game,
-                                    isSelected = state.selectedIndex == index,
-                                    fontSize = listFontSize,
-                                    lineHeight = listLineHeight,
-                                    verticalPadding = listVerticalPadding,
-                                    scrollSpeed = scrollSpeed,
-                                    showReorderIcon = state.reorderMode && state.selectedIndex == index,
-                                    checkState = if (state.multiSelectMode) index in state.checkedIndices else null
-                                )
-                            }
-                        }
-
-                        if (showArt) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxHeight()
-                                    .fillMaxWidth()
-                                    .padding(start = 16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Image(
-                                    bitmap = selectedArt!!,
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(8.dp)),
-                                    contentScale = ContentScale.Fit
-                                )
-                            }
-                        }
-                    }
-
-                    val actionLabel = if (state.multiSelectMode) {
-                        stringResource(R.string.label_toggle)
-                    } else if (selectedGame?.isSubfolder == true || state.isCollectionsList) {
-                        stringResource(R.string.label_open)
-                    } else if (state.platformTag == "tools") {
-                        stringResource(R.string.label_launch)
-                    } else {
-                        stringResource(R.string.label_play)
-                    }
-                    val rightItems = if (state.multiSelectMode) {
-                        listOf("A" to actionLabel, "▶" to stringResource(R.string.label_confirm))
-                    } else {
-                        listOf("A" to actionLabel)
-                    }
-                    BottomBar(
-                        modifier = Modifier.align(Alignment.BottomCenter),
-                        leftItems = listOf("B" to stringResource(R.string.label_back)),
-                        rightItems = rightItems
-                    )
-
-                    when (dialogState) {
-                        is DialogState.MissingCore -> MissingCoreDialog(dialogState.coreName)
-                        is DialogState.MissingApp -> MissingAppDialog(dialogState.packageName)
-                        is DialogState.DeleteConfirm -> ConfirmOverlay(
-                            message = stringResource(R.string.dialog_delete_confirm, dialogState.gameName)
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.Fit
                         )
-                        is DialogState.DeleteCollectionConfirm -> ConfirmOverlay(
-                            message = stringResource(R.string.dialog_delete_confirm, dialogState.collectionName)
-                        )
-                        is DialogState.RenameInput,
-                        is DialogState.NewCollectionInput,
-                        is DialogState.CollectionRenameInput -> {
-                            val ks = dialogState as KeyboardInputState
-                            KeyboardOverlay(
-                                text = ks.currentName,
-                                cursorPos = ks.cursorPos,
-                                keyRow = ks.keyRow,
-                                keyCol = ks.keyCol,
-                                caps = ks.caps,
-                                symbols = ks.symbols
-                            )
-                        }
-                        is DialogState.RenameResult -> MessageOverlay(
-                            message = if (dialogState.success) {
-                                stringResource(R.string.dialog_rename_success)
-                            } else {
-                                stringResource(R.string.dialog_rename_failed, dialogState.message)
-                            }
-                        )
-                        is DialogState.CollectionCreated -> MessageOverlay(
-                            message = "${dialogState.collectionName} Created"
-                        )
-                        DialogState.None -> {}
-                        else -> {}
                     }
                 }
+            }
+
+            val actionLabel = if (state.multiSelectMode) {
+                stringResource(R.string.label_toggle)
+            } else if (selectedGame?.isSubfolder == true || state.isCollectionsList) {
+                stringResource(R.string.label_open)
+            } else if (state.platformTag == "tools") {
+                stringResource(R.string.label_launch)
+            } else {
+                stringResource(R.string.label_play)
+            }
+            val rightItems = if (state.multiSelectMode) {
+                listOf("A" to actionLabel, "▶" to stringResource(R.string.label_confirm))
+            } else {
+                listOf("A" to actionLabel)
+            }
+            BottomBar(
+                modifier = Modifier.align(Alignment.BottomCenter),
+                leftItems = listOf("B" to stringResource(R.string.label_back)),
+                rightItems = rightItems
+            )
+
+            when (dialogState) {
+                is DialogState.MissingCore -> MissingCoreDialog(dialogState.coreName)
+                is DialogState.MissingApp -> MissingAppDialog(dialogState.packageName)
+                is DialogState.DeleteConfirm -> ConfirmOverlay(
+                    message = stringResource(R.string.dialog_delete_confirm, dialogState.gameName)
+                )
+                is DialogState.DeleteCollectionConfirm -> ConfirmOverlay(
+                    message = stringResource(R.string.dialog_delete_confirm, dialogState.collectionName)
+                )
+                is DialogState.RenameResult -> MessageOverlay(
+                    message = if (dialogState.success) {
+                        stringResource(R.string.dialog_rename_success)
+                    } else {
+                        stringResource(R.string.dialog_rename_failed, dialogState.message)
+                    }
+                )
+                is DialogState.CollectionCreated -> MessageOverlay(
+                    message = "${dialogState.collectionName} Created"
+                )
+                else -> {}
             }
         }
     }
-}
-
-/** Common interface for dialog states that involve keyboard input. */
-interface KeyboardInputState {
-    val currentName: String
-    val cursorPos: Int
-    val keyRow: Int
-    val keyCol: Int
-    val caps: Boolean
-    val symbols: Boolean
-}
-
-sealed interface DialogState {
-    data object None : DialogState
-    data class MissingCore(val coreName: String) : DialogState
-    data class MissingApp(val packageName: String) : DialogState
-    data class ContextMenu(val gameName: String, val selectedOption: Int = 0, val options: List<String> = listOf("Add to Favorites", "Manage Collections", "Rename", "Delete")) : DialogState
-    data class BulkContextMenu(val gamePaths: List<String>, val selectedOption: Int = 0, val options: List<String> = listOf("Add to Favorites", "Manage Collections", "Delete")) : DialogState
-    data class DeleteConfirm(val gameName: String) : DialogState
-    data class CollectionPicker(val gamePaths: List<String>, val title: String, val collections: List<String>, val selectedIndex: Int = 0, val checkedIndices: Set<Int> = emptySet(), val initialChecked: Set<Int> = emptySet()) : DialogState
-    data class RenameInput(val gameName: String, override val currentName: String, override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
-    data class NewCollectionInput(val gamePaths: List<String> = emptyList(), override val currentName: String = "", override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
-    data class CollectionRenameInput(val oldName: String, override val currentName: String, override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
-    data class DeleteCollectionConfirm(val collectionName: String) : DialogState
-    data class RenameResult(val success: Boolean, val message: String) : DialogState
-    data class CollectionCreated(val collectionName: String) : DialogState
-    data class ColorPicker(val settingKey: String, val currentColor: Long, val selectedRow: Int = 0, val selectedCol: Int = 0) : DialogState
-    data class HexColorInput(val settingKey: String, val currentHex: String = "", val selectedIndex: Int = 0) : DialogState
-    data class CoreMappingList(val mappings: List<Pair<String, String>>, val selectedIndex: Int = 0) : DialogState
-    data class CoreMappingEdit(val tag: String, override val currentName: String, override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
-    data class AppPicker(val type: String, val title: String, val apps: List<String>, val packages: List<String>, val selectedIndex: Int = 0, val checkedIndices: Set<Int> = emptySet(), val initialChecked: Set<Int> = emptySet()) : DialogState
 }
 
 @Composable

@@ -1,11 +1,8 @@
 package dev.cannoli.scorza.ui.screens
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -19,11 +16,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.ui.components.BottomBar
-import dev.cannoli.scorza.ui.components.KeyboardOverlay
+import dev.cannoli.scorza.ui.components.DialogOverlay
 import dev.cannoli.scorza.ui.components.List
 import dev.cannoli.scorza.ui.components.PillRowText
 import dev.cannoli.scorza.ui.components.ScreenBackground
-import dev.cannoli.scorza.ui.components.ScreenTitle
 import dev.cannoli.scorza.ui.components.screenPadding
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel.ListItem
@@ -40,57 +36,18 @@ fun SystemListScreen(
 ) {
     val state by viewModel.state.collectAsState()
 
-    when (dialogState) {
-        is DialogState.ContextMenu -> {
-            ScreenBackground(backgroundImagePath = backgroundImagePath, backgroundTint = backgroundTint) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(screenPadding)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth(0.65f)
-                            .padding(top = 4.dp, bottom = 48.dp)
-                    ) {
-                        ScreenTitle(
-                            text = dialogState.gameName,
-                            fontSize = listFontSize,
-                            lineHeight = listLineHeight
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        List(
-                            items = dialogState.options,
-                            selectedIndex = dialogState.selectedOption
-                        ) { index, option ->
-                            PillRowText(
-                                label = option,
-                                isSelected = dialogState.selectedOption == index,
-                                fontSize = listFontSize,
-                                lineHeight = listLineHeight,
-                                verticalPadding = listVerticalPadding
-                            )
-                        }
-                    }
-                    BottomBar(
-                        modifier = Modifier.align(Alignment.BottomCenter),
-                        leftItems = listOf("B" to stringResource(R.string.label_back)),
-                        rightItems = emptyList()
-                    )
-                }
-            }
-        }
-        is DialogState.RenameInput -> {
-            KeyboardOverlay(
-                text = dialogState.currentName,
-                cursorPos = dialogState.cursorPos,
-                keyRow = dialogState.keyRow,
-                keyCol = dialogState.keyCol,
-                caps = dialogState.caps,
-                symbols = dialogState.symbols
-            )
-        }
-        else -> {
+    if (dialogState.isFullScreen) {
+        DialogOverlay(
+            dialogState = dialogState,
+            backgroundImagePath = backgroundImagePath,
+            backgroundTint = backgroundTint,
+            listFontSize = listFontSize,
+            listLineHeight = listLineHeight,
+            listVerticalPadding = listVerticalPadding
+        )
+        return
+    }
+
     ScreenBackground(backgroundImagePath = backgroundImagePath, backgroundTint = backgroundTint) {
         Box(
             modifier = Modifier
@@ -143,8 +100,6 @@ fun SystemListScreen(
                 leftItems = listOf("X" to stringResource(R.string.label_settings)),
                 rightItems = rightItems
             )
-        }
-    }
         }
     }
 }
