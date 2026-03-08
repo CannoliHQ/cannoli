@@ -65,6 +65,8 @@
     <string name="value_none">None</string>
 
     <!-- Dialogs -->
+    <string name="empty_list">%1$s is empty</string>
+
     <string name="dialog_rename">Rename</string>
     <string name="dialog_delete_confirm">Delete \"%1$s\"?</string>
     <string name="dialog_add_to_collection">Add to Collection</string>

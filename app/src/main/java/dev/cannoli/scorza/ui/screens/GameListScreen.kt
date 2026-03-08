@@ -120,6 +120,21 @@ fun GameListScreen(
                         lineHeight = listLineHeight
                     )
                     Spacer(modifier = Modifier.height(8.dp))
+                    if (state.games.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = stringResource(R.string.empty_list, state.breadcrumb),
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontSize = listFontSize,
+                                    lineHeight = listLineHeight
+                                ),
+                                color = LocalCannoliColors.current.text
+                            )
+                        }
+                    } else {
                     List(
                         items = state.games,
                         selectedIndex = state.selectedIndex,
@@ -140,6 +155,7 @@ fun GameListScreen(
                             showReorderIcon = state.reorderMode && state.selectedIndex == index,
                             checkState = if (state.multiSelectMode) index in state.checkedIndices else null
                         )
+                    }
                     }
                 }
 
@@ -172,7 +188,9 @@ fun GameListScreen(
             } else {
                 stringResource(R.string.label_play)
             }
-            val rightItems = if (state.multiSelectMode) {
+            val rightItems = if (state.games.isEmpty()) {
+                emptyList()
+            } else if (state.multiSelectMode) {
                 listOf("A" to actionLabel, "▶" to stringResource(R.string.label_confirm))
             } else {
                 listOf("A" to actionLabel)
