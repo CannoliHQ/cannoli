@@ -88,6 +88,7 @@ class SettingsViewModel(
 
     private val allCategories = listOf(
         Category("appearance", R.string.settings_appearance),
+        Category("content", R.string.settings_content),
         Category("display", R.string.settings_display),
         Category("status_bar", R.string.settings_status_bar),
         Category("input", R.string.settings_input),
@@ -196,6 +197,7 @@ class SettingsViewModel(
             }
             "swap_start_select" -> settings.swapStartSelect = !settings.swapStartSelect
             "platform_switching" -> settings.platformSwitching = !settings.platformSwitching
+            "show_empty" -> settings.showEmpty = !settings.showEmpty
             "show_wifi" -> settings.showWifi = !settings.showWifi
             "show_bluetooth" -> settings.showBluetooth = !settings.showBluetooth
             "show_battery" -> settings.showBattery = !settings.showBattery
@@ -298,6 +300,7 @@ class SettingsViewModel(
         "show_bluetooth" to settings.showBluetooth,
         "show_clock" to settings.showClock,
         "show_battery" to settings.showBattery,
+        "show_empty" to settings.showEmpty,
         "show_tools" to settings.showTools,
         "show_ports" to settings.showPorts,
         "sd_root" to settings.sdCardRoot,
@@ -322,6 +325,7 @@ class SettingsViewModel(
         (snap["show_bluetooth"] as? Boolean)?.let { settings.showBluetooth = it }
         (snap["show_clock"] as? Boolean)?.let { settings.showClock = it }
         (snap["show_battery"] as? Boolean)?.let { settings.showBattery = it }
+        (snap["show_empty"] as? Boolean)?.let { settings.showEmpty = it }
         (snap["show_tools"] as? Boolean)?.let { settings.showTools = it }
         (snap["show_ports"] as? Boolean)?.let { settings.showPorts = it }
         (snap["sd_root"] as? String)?.let { settings.sdCardRoot = it }
@@ -343,19 +347,22 @@ class SettingsViewModel(
                 add(SettingsItem("bg_tint", R.string.setting_bg_tint, valueText = if (tintVal == 0) null else "$tintVal%", valueRes = if (tintVal == 0) R.string.value_off else null))
             }
         }
-        "display" -> buildList {
-            add(SettingsItem("text_size", R.string.setting_text_size, valueText = settings.textSize.name.lowercase().replaceFirstChar { it.uppercase() }))
-            add(SettingsItem("box_art", R.string.setting_box_art, valueRes = onOff(settings.boxArtEnabled)))
-            add(SettingsItem("scroll_speed", R.string.setting_scroll_speed, valueText = settings.scrollSpeed.name.lowercase().replaceFirstChar { it.uppercase() }))
-            add(SettingsItem("show_tools", R.string.setting_show_tools, valueRes = showHide(settings.showTools)))
-            if (settings.showTools) {
-                add(SettingsItem("manage_tools", R.string.setting_manage_tools, isEditable = true))
-            }
+        "content" -> buildList {
+            add(SettingsItem("show_empty", R.string.setting_show_empty, valueRes = showHide(settings.showEmpty)))
             add(SettingsItem("show_ports", R.string.setting_show_ports, valueRes = showHide(settings.showPorts)))
             if (settings.showPorts) {
                 add(SettingsItem("manage_ports", R.string.setting_manage_ports, isEditable = true))
             }
+            add(SettingsItem("show_tools", R.string.setting_show_tools, valueRes = showHide(settings.showTools)))
+            if (settings.showTools) {
+                add(SettingsItem("manage_tools", R.string.setting_manage_tools, isEditable = true))
+            }
         }
+        "display" -> listOf(
+            SettingsItem("text_size", R.string.setting_text_size, valueText = settings.textSize.name.lowercase().replaceFirstChar { it.uppercase() }),
+            SettingsItem("box_art", R.string.setting_box_art, valueRes = onOff(settings.boxArtEnabled)),
+            SettingsItem("scroll_speed", R.string.setting_scroll_speed, valueText = settings.scrollSpeed.name.lowercase().replaceFirstChar { it.uppercase() })
+        )
         "status_bar" -> listOf(
             SettingsItem("show_battery", R.string.setting_battery, valueRes = showHide(settings.showBattery)),
             SettingsItem("show_bluetooth", R.string.setting_bluetooth, valueRes = showHide(settings.showBluetooth)),

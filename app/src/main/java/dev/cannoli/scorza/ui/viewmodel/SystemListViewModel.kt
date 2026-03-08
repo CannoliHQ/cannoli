@@ -41,7 +41,7 @@ class SystemListViewModel(
     var pageSize: Int = 10
     var firstVisibleIndex: Int = 0
 
-    fun scan(showTools: Boolean = false, showPorts: Boolean = false, toolsName: String = "Tools", portsName: String = "Ports") {
+    fun scan(showTools: Boolean = false, showPorts: Boolean = false, showEmpty: Boolean = false, toolsName: String = "Tools", portsName: String = "Ports") {
         val prev = _state.value
         val prevItemCount = prev.items.size
         val prevSelectedIndex = prev.selectedIndex
@@ -67,7 +67,8 @@ class SystemListViewModel(
             }
 
             val reorderableItems = mutableListOf<ListItem>()
-            platforms.forEach { reorderableItems.add(ListItem.PlatformItem(it)) }
+            val visiblePlatforms = if (showEmpty) platforms else platforms.filter { it.gameCount > 0 }
+            visiblePlatforms.forEach { reorderableItems.add(ListItem.PlatformItem(it)) }
             if (showPorts && ports.isNotEmpty()) {
                 reorderableItems.add(ListItem.PortsFolder(portsName, ports.size))
             }
@@ -196,10 +197,10 @@ class SystemListViewModel(
         _state.value = current.copy(reorderMode = false, reorderOriginalIndex = -1)
     }
 
-    fun cancelReorder(showTools: Boolean = false, showPorts: Boolean = false, toolsName: String = "Tools", portsName: String = "Ports") {
+    fun cancelReorder(showTools: Boolean = false, showPorts: Boolean = false, showEmpty: Boolean = false, toolsName: String = "Tools", portsName: String = "Ports") {
         val current = _state.value
         if (!current.reorderMode) return
-        scan(showTools, showPorts, toolsName, portsName)
+        scan(showTools, showPorts, showEmpty, toolsName, portsName)
     }
 
     fun enterMultiSelect() {

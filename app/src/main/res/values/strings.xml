@@ -24,6 +24,7 @@
 
     <!-- Settings categories -->
     <string name="settings_appearance">Appearance</string>
+    <string name="settings_content">Content</string>
     <string name="settings_display">Display</string>
     <string name="settings_status_bar">Status Bar</string>
     <string name="settings_input">Input</string>
@@ -41,6 +42,7 @@
     <string name="setting_button_layout">Button Layout</string>
     <string name="setting_swap_start_select">Swap Start / Select</string>
     <string name="setting_platform_switching">L1 / R1 Platform Switch</string>
+    <string name="setting_show_empty">Empty Platforms</string>
     <string name="setting_scroll_speed">Scroll Speed</string>
     <string name="setting_show_tools">Tools</string>
     <string name="setting_show_ports">Ports</string>

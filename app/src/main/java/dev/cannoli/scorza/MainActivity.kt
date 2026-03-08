@@ -599,7 +599,7 @@ class MainActivity : ComponentActivity() {
                 DialogState.None -> when (currentScreen()) {
                     Screen.SYSTEM_LIST -> {
                         if (systemListViewModel.isMultiSelectMode()) systemListViewModel.cancelMultiSelect()
-                        else if (systemListViewModel.isReorderMode()) systemListViewModel.cancelReorder(showTools = settings.showTools, showPorts = settings.showPorts, toolsName = settings.toolsName, portsName = settings.portsName)
+                        else if (systemListViewModel.isReorderMode()) systemListViewModel.cancelReorder(showTools = settings.showTools, showPorts = settings.showPorts, showEmpty = settings.showEmpty, toolsName = settings.toolsName, portsName = settings.portsName)
                     }
                     Screen.GAME_LIST -> {
                         if (gameListViewModel.isMultiSelectMode()) {
@@ -926,6 +926,7 @@ class MainActivity : ComponentActivity() {
         systemListViewModel.scan(
             showTools = settings.showTools,
             showPorts = settings.showPorts,
+            showEmpty = settings.showEmpty,
             toolsName = settings.toolsName,
             portsName = settings.portsName
         )
