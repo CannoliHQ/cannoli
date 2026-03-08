@@ -228,7 +228,7 @@ private fun ListDialogScreen(
             Column(
                 modifier = Modifier
                     .then(if (fullWidth) Modifier.fillMaxSize() else Modifier.fillMaxWidth(0.65f))
-                    .padding(top = 4.dp, bottom = 48.dp)
+                    .padding(bottom = 48.dp)
             ) {
                 ScreenTitle(
                     text = title,

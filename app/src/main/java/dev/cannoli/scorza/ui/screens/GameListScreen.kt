@@ -107,7 +107,7 @@ fun GameListScreen(
             Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(top = 4.dp, bottom = 48.dp)
+                    .padding(bottom = 48.dp)
             ) {
                 Column(
                     modifier = Modifier

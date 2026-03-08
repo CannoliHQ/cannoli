@@ -14,6 +14,7 @@ import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -31,6 +32,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.ui.theme.LocalCannoliColors
@@ -58,7 +62,9 @@ private const val ICON_BAT_CHARGE_100 = "\uDB80\uDC85" // 󰂅 nf-md-battery_cha
 @Composable
 fun StatusBar(
     showBatteryPercentage: Boolean = false,
-    use24hTime: Boolean = false
+    use24hTime: Boolean = false,
+    lineHeight: TextUnit = 32.sp,
+    verticalPadding: Dp = 4.dp
 ) {
     val context = LocalContext.current
 
@@ -171,11 +177,14 @@ fun StatusBar(
         color = colors.highlightText
     )
 
+    val minHeight = with(LocalDensity.current) { lineHeight.toDp() } + verticalPadding * 2
+
     Row(
         modifier = Modifier
+            .defaultMinSize(minHeight = minHeight)
             .clip(RoundedCornerShape(50))
             .background(colors.highlight)
-            .padding(horizontal = 10.dp, vertical = 5.dp),
+            .padding(horizontal = pillInternalH, vertical = verticalPadding),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
