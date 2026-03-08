@@ -50,10 +50,6 @@ class SettingsRepository(context: Context) {
         get() = TimeFormat.fromString(prefs.getString(KEY_TIME_FORMAT, null))
         set(value) = prefs.edit().putString(KEY_TIME_FORMAT, value.name).apply()
 
-    var batteryPercentage: Boolean
-        get() = prefs.getBoolean(KEY_BATTERY_PCT, false)
-        set(value) = prefs.edit().putBoolean(KEY_BATTERY_PCT, value).apply()
-
     var backgroundImagePath: String?
         get() = prefs.getString(KEY_BG_IMAGE, null)
         set(value) = prefs.edit().putString(KEY_BG_IMAGE, value).apply()

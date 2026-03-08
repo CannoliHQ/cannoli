@@ -131,7 +131,6 @@ fun AppNavGraph(
                 .padding(20.dp)
         ) {
             StatusBar(
-                showBatteryPercentage = appSettings.showBatteryPct,
                 use24hTime = appSettings.use24h,
                 lineHeight = listLineHeight,
                 verticalPadding = listVerticalPadding

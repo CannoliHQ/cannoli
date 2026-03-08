@@ -43,7 +43,6 @@ class SettingsViewModel(
     }
 
     data class AppSettings(
-        val showBatteryPct: Boolean = false,
         val use24h: Boolean = false,
         val backgroundImagePath: String? = null,
         val backgroundTint: Int = 0,
@@ -65,7 +64,6 @@ class SettingsViewModel(
     val appSettings: StateFlow<AppSettings> = _appSettings
 
     private fun readAppSettings() = AppSettings(
-        showBatteryPct = settings.batteryPercentage,
         use24h = settings.timeFormat == TimeFormat.TWENTY_FOUR_HOUR,
         backgroundImagePath = settings.backgroundImagePath,
         backgroundTint = settings.backgroundTint,
@@ -169,7 +167,6 @@ class SettingsViewModel(
             "time_format" -> {
                 settings.timeFormat = if (settings.timeFormat == TimeFormat.TWELVE_HOUR) TimeFormat.TWENTY_FOUR_HOUR else TimeFormat.TWELVE_HOUR
             }
-            "battery_pct" -> settings.batteryPercentage = !settings.batteryPercentage
             "bg_image" -> cycleBackgroundImage(direction)
             "bg_tint" -> {
                 val cur = settings.backgroundTint
@@ -270,7 +267,6 @@ class SettingsViewModel(
         "text_size" to settings.textSize,
         "scroll_speed" to settings.scrollSpeed,
         "time_format" to settings.timeFormat,
-        "battery_pct" to settings.batteryPercentage,
         "bg_image" to settings.backgroundImagePath,
         "bg_tint" to settings.backgroundTint,
         "color_highlight" to settings.colorHighlight,
@@ -291,7 +287,6 @@ class SettingsViewModel(
         (snap["text_size"] as? TextSize)?.let { settings.textSize = it }
         (snap["scroll_speed"] as? ScrollSpeed)?.let { settings.scrollSpeed = it }
         (snap["time_format"] as? TimeFormat)?.let { settings.timeFormat = it }
-        (snap["battery_pct"] as? Boolean)?.let { settings.batteryPercentage = it }
         settings.backgroundImagePath = snap["bg_image"] as? String
         (snap["bg_tint"] as? Int)?.let { settings.backgroundTint = it }
         (snap["color_highlight"] as? String)?.let { settings.colorHighlight = it }
@@ -334,8 +329,7 @@ class SettingsViewModel(
             }
         }
         "status_bar" -> listOf(
-            SettingsItem("time_format", R.string.setting_time_format, valueText = if (settings.timeFormat == TimeFormat.TWELVE_HOUR) "12h" else "24h"),
-            SettingsItem("battery_pct", R.string.setting_battery_pct, valueRes = onOff(settings.batteryPercentage))
+            SettingsItem("time_format", R.string.setting_time_format, valueText = if (settings.timeFormat == TimeFormat.TWELVE_HOUR) "12h" else "24h")
         )
         "input" -> listOf(
             SettingsItem("button_layout", R.string.setting_button_layout, valueText = settings.buttonLayout.name.lowercase().replaceFirstChar { it.uppercase() }),

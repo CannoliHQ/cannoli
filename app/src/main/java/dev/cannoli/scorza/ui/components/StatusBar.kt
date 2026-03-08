@@ -12,10 +12,15 @@ import android.net.NetworkRequest
 import android.os.BatteryManager
 import android.os.Build
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -48,20 +53,9 @@ import java.util.TimerTask
 
 private const val ICON_BLUETOOTH = "\uDB80\uDCAF"   // 󰂯 nf-md-bluetooth
 private const val ICON_WIFI = "\uDB81\uDDA9"         // 󰖩 nf-md-wifi
-private const val ICON_BAT_0 = "\uDB80\uDC7A"        // 󰁺 nf-md-battery_10
-private const val ICON_BAT_25 = "\uDB80\uDC7C"       // 󰁼 nf-md-battery_30
-private const val ICON_BAT_50 = "\uDB80\uDC7E"       // 󰁾 nf-md-battery_50
-private const val ICON_BAT_75 = "\uDB80\uDC80"       // 󰂀 nf-md-battery_70
-private const val ICON_BAT_100 = "\uDB80\uDC79"      // 󰁹 nf-md-battery
-private const val ICON_BAT_CHARGE_0 = "\uDB82\uDC9C"  // 󰢜 nf-md-battery_charging_10
-private const val ICON_BAT_CHARGE_25 = "\uDB80\uDC87" // 󰂇 nf-md-battery_charging_30
-private const val ICON_BAT_CHARGE_50 = "\uDB82\uDC9D" // 󰢝 nf-md-battery_charging_50
-private const val ICON_BAT_CHARGE_75 = "\uDB82\uDC9E" // 󰢞 nf-md-battery_charging_70
-private const val ICON_BAT_CHARGE_100 = "\uDB80\uDC85" // 󰂅 nf-md-battery_charging_100
 
 @Composable
 fun StatusBar(
-    showBatteryPercentage: Boolean = false,
     use24hTime: Boolean = false,
     lineHeight: TextUnit = 32.sp,
     verticalPadding: Dp = 4.dp
@@ -143,24 +137,6 @@ fun StatusBar(
         SimpleDateFormat("h:mm a", Locale.getDefault()).format(rawTime)
     }
 
-    val batteryIcon = if (isCharging) {
-        when {
-            batteryLevel >= 90 -> ICON_BAT_CHARGE_100
-            batteryLevel >= 60 -> ICON_BAT_CHARGE_75
-            batteryLevel >= 40 -> ICON_BAT_CHARGE_50
-            batteryLevel >= 15 -> ICON_BAT_CHARGE_25
-            else -> ICON_BAT_CHARGE_0
-        }
-    } else {
-        when {
-            batteryLevel >= 90 -> ICON_BAT_100
-            batteryLevel >= 60 -> ICON_BAT_75
-            batteryLevel >= 40 -> ICON_BAT_50
-            batteryLevel >= 15 -> ICON_BAT_25
-            else -> ICON_BAT_0
-        }
-    }
-
     val colors = LocalCannoliColors.current
 
     val iconStyle = TextStyle(
@@ -196,11 +172,64 @@ fun StatusBar(
             Text(text = ICON_WIFI, style = iconStyle)
         }
 
-        if (showBatteryPercentage) {
-            Text(text = "$batteryLevel% $timeText", style = textStyle)
-        } else {
-            Text(text = batteryIcon, style = iconStyle)
-            Text(text = timeText, style = textStyle)
+        BatteryGauge(
+            level = batteryLevel,
+            isCharging = isCharging,
+            textColor = colors.highlightText
+        )
+        Text(text = timeText, style = textStyle)
+    }
+}
+
+@Composable
+private fun BatteryGauge(
+    level: Int,
+    isCharging: Boolean,
+    textColor: Color
+) {
+    val bodyHeight = 14.dp
+    val bodyWidth = 30.dp
+    val tipWidth = 3.dp
+    val tipHeight = 7.dp
+    val borderWidth = 1.5.dp
+    val cornerRadius = 3.dp
+    val fillFraction = (level / 100f).coerceIn(0f, 1f)
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .width(bodyWidth)
+                .height(bodyHeight)
+                .border(borderWidth, textColor, RoundedCornerShape(cornerRadius)),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Box(
+                modifier = Modifier
+                    .padding(2.dp)
+                    .fillMaxHeight()
+                    .width((bodyWidth - 4.dp) * fillFraction)
+                    .background(textColor, RoundedCornerShape(1.5.dp))
+            )
+            Text(
+                text = "$level%",
+                style = TextStyle(
+                    fontFamily = dev.cannoli.scorza.ui.theme.MPlus1Code,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 8.sp,
+                    color = LocalCannoliColors.current.highlight
+                ),
+                modifier = Modifier.align(Alignment.Center)
+            )
         }
+        Box(
+            modifier = Modifier
+                .width(tipWidth)
+                .height(tipHeight)
+                .padding(start = 0.5.dp)
+                .background(
+                    textColor,
+                    RoundedCornerShape(topEnd = 2.dp, bottomEnd = 2.dp)
+                )
+        )
     }
 }
