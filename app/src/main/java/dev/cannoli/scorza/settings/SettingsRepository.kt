@@ -78,6 +78,10 @@ class SettingsRepository(context: Context) {
         get() = prefs.getBoolean(KEY_SHOW_BATTERY, true)
         set(value) = prefs.edit().putBoolean(KEY_SHOW_BATTERY, value).apply()
 
+    var showEmpty: Boolean
+        get() = prefs.getBoolean(KEY_SHOW_EMPTY, false)
+        set(value) = prefs.edit().putBoolean(KEY_SHOW_EMPTY, value).apply()
+
     var showTools: Boolean
         get() = prefs.getBoolean(KEY_SHOW_TOOLS, false)
         set(value) = prefs.edit().putBoolean(KEY_SHOW_TOOLS, value).apply()
@@ -137,6 +141,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_COLOR_HIGHLIGHT_TEXT = "color_highlight_text"
         private const val KEY_COLOR_ACCENT = "color_accent"
         private const val KEY_PLATFORM_SWITCHING = "platform_switching"
+        private const val KEY_SHOW_EMPTY = "show_empty"
         private const val KEY_SHOW_WIFI = "show_wifi"
         private const val KEY_SHOW_BLUETOOTH = "show_bluetooth"
         private const val KEY_SHOW_CLOCK = "show_clock"
