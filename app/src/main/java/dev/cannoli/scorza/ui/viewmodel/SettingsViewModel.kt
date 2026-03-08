@@ -46,7 +46,7 @@ class SettingsViewModel(
         val use24h: Boolean = false,
         val backgroundImagePath: String? = null,
         val backgroundTint: Int = 0,
-        val textSize: TextSize = TextSize.MEDIUM,
+        val textSize: TextSize = TextSize.DEFAULT,
         val boxArtEnabled: Boolean = true,
         val scrollSpeed: ScrollSpeed = ScrollSpeed.NORMAL,
         val colorHighlight: Color = Color.White,
