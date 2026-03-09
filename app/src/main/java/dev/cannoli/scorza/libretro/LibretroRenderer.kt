@@ -79,7 +79,7 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
         uniform vec2 uOutputSize;
         void main() {
             vec4 color = texture2D(uTexture, vTexCoord);
-            float line = mod(floor(vTexCoord.y * uOutputSize.y), 2.0);
+            float line = mod(floor(vTexCoord.y * uSourceSize.y), 2.0);
             float dim = 1.0 - line * 0.25;
             gl_FragColor = vec4(color.rgb * dim, color.a);
         }
@@ -93,8 +93,8 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
         uniform vec2 uOutputSize;
         void main() {
             vec4 color = texture2D(uTexture, vTexCoord);
-            float lineX = mod(floor(vTexCoord.x * uOutputSize.x), 2.0);
-            float lineY = mod(floor(vTexCoord.y * uOutputSize.y), 2.0);
+            float lineX = mod(floor(vTexCoord.x * uSourceSize.x), 2.0);
+            float lineY = mod(floor(vTexCoord.y * uSourceSize.y), 2.0);
             float dim = 1.0 - max(lineX, lineY) * 0.2;
             gl_FragColor = vec4(color.rgb * dim, color.a);
         }
@@ -126,6 +126,9 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_NEAREST)
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
+
+        shaderDirty = true
+        sharpnessDirty = true
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
