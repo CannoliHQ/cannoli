@@ -11,6 +11,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
@@ -32,22 +33,33 @@ class LibretroActivity : ComponentActivity() {
     private lateinit var renderer: LibretroRenderer
     private lateinit var input: LibretroInput
     private lateinit var slotManager: SaveSlotManager
+    private lateinit var overrideManager: OverrideManager
     private var audio: LibretroAudio? = null
     private var glSurfaceView: GLSurfaceView? = null
 
     private val inputMask = AtomicInteger(0)
-    private var menuVisible by mutableStateOf(false)
-    private var menuSelectedIndex by mutableIntStateOf(0)
+    private val screenStack = mutableStateListOf<IGMScreen>()
+
     private var selectedSlotIndex by mutableIntStateOf(0)
     private var slotThumbnail by mutableStateOf<Bitmap?>(null)
     private var slotExists by mutableStateOf(false)
     private var slotOccupied by mutableStateOf(emptyList<Boolean>())
-    private var settingsVisible by mutableStateOf(false)
-    private var settingsSelectedIndex by mutableIntStateOf(0)
-    private var controlsVisible by mutableStateOf(false)
-    private var controlsSelectedIndex by mutableIntStateOf(0)
-    private var controlsListeningIndex by mutableIntStateOf(-1)
     private var cleaned = false
+
+    private var scalingMode by mutableStateOf(ScalingMode.CORE_REPORTED)
+    private var screenEffect by mutableStateOf(ScreenEffect.NONE)
+    private var sharpness by mutableStateOf(Sharpness.SHARP)
+    private var debugHud by mutableStateOf(false)
+    private var maxFfSpeed by mutableIntStateOf(4)
+
+    private var coreOptions by mutableStateOf(emptyList<LibretroRunner.CoreOption>())
+    private var shortcuts by mutableStateOf(mapOf<ShortcutAction, Set<Int>>())
+    private val shortcutChordKeys = mutableSetOf<Int>()
+    private var coreInfoText by mutableStateOf("")
+
+    private var audioSampleRate = 0
+    private var fastForwarding by mutableStateOf(false)
+    private var holdingFf = false
 
     private enum class UndoType { SAVE, LOAD }
     private var undoType by mutableStateOf<UndoType?>(null)
@@ -65,6 +77,8 @@ class LibretroActivity : ComponentActivity() {
     private var stateBasePath: String = ""
     private var systemDir: String = ""
     private var saveDir: String = ""
+    private var platformTag: String = ""
+    private var cannoliRoot: String = ""
     private var showWifi = true
     private var showBluetooth = true
     private var showClock = true
@@ -72,10 +86,24 @@ class LibretroActivity : ComponentActivity() {
     private var use24h = false
 
     private val currentSlot get() = slotManager.slots[selectedSlotIndex]
+    private val currentScreen get() = screenStack.lastOrNull()
+
+    companion object {
+        private val FF_SPEEDS = listOf(2, 3, 4, 6, 8)
+    }
+
+    private fun push(screen: IGMScreen) { screenStack.add(screen) }
+
+    private fun pop() {
+        if (screenStack.isNotEmpty()) screenStack.removeAt(screenStack.lastIndex)
+    }
+
+    private fun replaceTop(screen: IGMScreen) {
+        if (screenStack.isNotEmpty()) screenStack[screenStack.lastIndex] = screen
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         goFullscreen()
 
         gameTitle = intent.getStringExtra("game_title") ?: ""
@@ -85,6 +113,8 @@ class LibretroActivity : ComponentActivity() {
         stateBasePath = intent.getStringExtra("state_path") ?: ""
         systemDir = intent.getStringExtra("system_dir") ?: ""
         saveDir = intent.getStringExtra("save_dir") ?: ""
+        platformTag = intent.getStringExtra("platform_tag") ?: ""
+        cannoliRoot = intent.getStringExtra("cannoli_root") ?: ""
         showWifi = intent.getBooleanExtra("show_wifi", true)
         showBluetooth = intent.getBooleanExtra("show_bluetooth", true)
         showClock = intent.getBooleanExtra("show_clock", true)
@@ -92,35 +122,37 @@ class LibretroActivity : ComponentActivity() {
         use24h = intent.getBooleanExtra("use_24h", false)
 
         slotManager = SaveSlotManager(stateBasePath)
-
-        val inputPrefs = getSharedPreferences("libretro_controls", MODE_PRIVATE)
-        input = LibretroInput(inputPrefs)
+        input = LibretroInput()
 
         runner = LibretroRunner()
-
         val internalCore = copyCoreToCacheIfNeeded(corePath)
-        if (internalCore == null || !runner.loadCore(internalCore)) {
-            finish()
-            return
-        }
-
+        if (internalCore == null || !runner.loadCore(internalCore)) { finish(); return }
         runner.init(systemDir, saveDir)
+        val avInfo = runner.loadGame(romPath) ?: run { runner.deinit(); finish(); return }
 
-        val avInfo = runner.loadGame(romPath) ?: run {
-            runner.deinit()
-            finish()
-            return
-        }
+        val (coreName, coreVersion) = runner.getSystemInfo()
+        coreInfoText = if (coreVersion.isNotEmpty()) "$coreName $coreVersion" else coreName
+        coreOptions = runner.getCoreOptions()
 
-        if (sramPath.isNotEmpty() && File(sramPath).exists()) {
-            runner.loadSRAM(sramPath)
-        }
+        val coreBaseName = File(corePath).nameWithoutExtension
+        val gameBaseName = if (romPath.isNotEmpty()) File(romPath).nameWithoutExtension else ""
+        overrideManager = OverrideManager(cannoliRoot, coreBaseName, platformTag, gameBaseName)
+        loadOverrides()
 
+        if (sramPath.isNotEmpty() && File(sramPath).exists()) runner.loadSRAM(sramPath)
+
+        audioSampleRate = avInfo.sampleRate
         audio = LibretroAudio(avInfo.sampleRate)
         runner.setAudioCallback(audio!!)
         audio!!.start()
 
-        renderer = LibretroRenderer(runner)
+        renderer = LibretroRenderer(runner).also {
+            it.coreAspectRatio = runner.getAspectRatio()
+            it.scalingMode = scalingMode
+            it.sharpness = sharpness
+            it.screenEffect = screenEffect
+            it.debugHud = debugHud
+        }
 
         val glView = GLSurfaceView(this).apply {
             setEGLContextClientVersion(2)
@@ -139,11 +171,11 @@ class LibretroActivity : ComponentActivity() {
         setContent {
             CannoliTheme {
                 CompositionLocalProvider(LocalCannoliColors provides colors) {
+                    val screen = currentScreen
                     LibretroScreen(
                         glSurfaceView = glView,
                         gameTitle = gameTitle,
-                        menuVisible = menuVisible,
-                        menuSelectedIndex = menuSelectedIndex,
+                        screen = screen,
                         selectedSlot = currentSlot,
                         slotThumbnail = slotThumbnail,
                         slotExists = slotExists,
@@ -153,13 +185,13 @@ class LibretroActivity : ComponentActivity() {
                             UndoType.LOAD -> "Undo Load"
                             null -> null
                         },
-                        onMenuAction = ::handleMenuAction,
-                        settingsVisible = settingsVisible,
-                        settingsSelectedIndex = settingsSelectedIndex,
-                        controlsVisible = controlsVisible,
-                        controlsSelectedIndex = controlsSelectedIndex,
-                        controlsListeningIndex = controlsListeningIndex,
+                        settingsItems = if (screen is IGMScreen.Menu) emptyList() else buildSettingsItems(),
+                        coreInfo = coreInfoText,
                         input = input,
+                        debugHud = debugHud,
+                        renderer = renderer,
+                        runner = runner,
+                        audioSampleRate = audioSampleRate,
                         showWifi = showWifi,
                         showBluetooth = showBluetooth,
                         showClock = showClock,
@@ -173,72 +205,118 @@ class LibretroActivity : ComponentActivity() {
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                when {
-                    controlsVisible -> closeControls()
-                    settingsVisible -> closeSettings()
-                    menuVisible -> closeMenu()
-                    else -> openMenu()
-                }
+                if (screenStack.isEmpty()) openMenu() else pop()
+                if (screenStack.isEmpty()) renderer.paused = false
             }
         })
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
+    // --- Input ---
+
+    private val pressedKeys = mutableSetOf<Int>()
+
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
-        if (controlsVisible) return handleControlsInput(keyCode)
-        if (settingsVisible) return handleSettingsInput(keyCode)
-        if (menuVisible) return handleMenuInput(keyCode)
-
-        if (keyCode == KeyEvent.KEYCODE_BACK) {
-            openMenu()
-            return true
+        val screen = currentScreen ?: return handleGameplayInput(keyCode, event)
+        return when (screen) {
+            is IGMScreen.Menu -> handleMenuInput(screen, keyCode)
+            is IGMScreen.Settings -> handleCategoryInput(screen, keyCode)
+            is IGMScreen.Frontend -> handleFrontendInput(screen, keyCode)
+            is IGMScreen.Emulator -> handleEmulatorInput(screen, keyCode)
+            is IGMScreen.Controls -> handleControlsInput(screen, keyCode)
+            is IGMScreen.Shortcuts -> handleShortcutsInput(screen, keyCode)
+            is IGMScreen.SaveSettings -> handleSaveSettingsInput(screen, keyCode)
         }
-
-        val mask = input.keyCodeToRetroMask(keyCode) ?: return super.onKeyDown(keyCode, event)
-        inputMask.updateAndGet { it or mask }
-        runner.setInput(inputMask.get())
-        return true
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
-        if (controlsVisible || settingsVisible || menuVisible) return true
+        if (screenStack.isNotEmpty()) return true
+        pressedKeys.remove(keyCode)
+
+        if (holdingFf) {
+            val holdChord = shortcuts[ShortcutAction.HOLD_FF]
+            if (holdChord != null && !pressedKeys.containsAll(holdChord)) {
+                holdingFf = false
+                fastForwarding = false
+                showOsd("Fast Forward Off")
+            }
+        }
+
         val mask = input.keyCodeToRetroMask(keyCode) ?: return super.onKeyUp(keyCode, event)
         inputMask.updateAndGet { it and mask.inv() }
         runner.setInput(inputMask.get())
         return true
     }
 
+    private fun handleGameplayInput(keyCode: Int, event: KeyEvent): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_BACK) { openMenu(); return true }
+        pressedKeys.add(keyCode)
+        checkShortcuts()
+        val mask = input.keyCodeToRetroMask(keyCode) ?: return super.onKeyDown(keyCode, event)
+        inputMask.updateAndGet { it or mask }
+        runner.setInput(inputMask.get())
+        return true
+    }
+
+    private fun checkShortcuts() {
+        for ((action, chord) in shortcuts) {
+            if (chord.isEmpty() || !pressedKeys.containsAll(chord)) continue
+            when (action) {
+                ShortcutAction.SAVE_STATE -> {
+                    if (stateBasePath.isNotEmpty()) {
+                        slotManager.saveState(runner, currentSlot)
+                        showOsd("Saved to ${currentSlot.label}")
+                    }
+                }
+                ShortcutAction.LOAD_STATE -> {
+                    if (stateBasePath.isNotEmpty() && slotManager.stateExists(currentSlot)) {
+                        slotManager.loadState(runner, currentSlot)
+                        showOsd("Loaded ${currentSlot.label}")
+                    }
+                }
+                ShortcutAction.RESET_GAME -> { runner.reset(); showOsd("Reset") }
+                ShortcutAction.SAVE_AND_QUIT -> {
+                    if (stateBasePath.isNotEmpty()) slotManager.saveState(runner, currentSlot)
+                    quit()
+                }
+                ShortcutAction.CYCLE_SCALING -> {
+                    val modes = ScalingMode.entries
+                    scalingMode = modes[(scalingMode.ordinal + 1) % modes.size]
+                    renderer.scalingMode = scalingMode
+                    showOsd("Scaling: ${scalingLabel()}")
+                }
+                ShortcutAction.CYCLE_EFFECT -> {
+                    val effects = ScreenEffect.entries
+                    screenEffect = effects[(screenEffect.ordinal + 1) % effects.size]
+                    renderer.screenEffect = screenEffect
+                    showOsd("Effect: ${effectLabel()}")
+                }
+                ShortcutAction.TOGGLE_FF -> {
+                    fastForwarding = !fastForwarding
+                    showOsd(if (fastForwarding) "Fast Forward On" else "Fast Forward Off")
+                }
+                ShortcutAction.HOLD_FF -> {
+                    if (!holdingFf) { holdingFf = true; fastForwarding = true; showOsd("Fast Forward On") }
+                }
+            }
+            pressedKeys.clear()
+            break
+        }
+    }
+
+    // --- Menu screen ---
+
     private fun openMenu() {
-        menuVisible = true
-        menuSelectedIndex = 0
+        screenStack.clear()
+        push(IGMScreen.Menu())
         renderer.paused = true
         refreshSlotInfo()
     }
 
-    private fun closeMenu() {
-        menuVisible = false
+    private fun closeAll() {
+        screenStack.clear()
         renderer.paused = false
-    }
-
-    private fun openSettings() {
-        settingsVisible = true
-        settingsSelectedIndex = 0
-    }
-
-    private fun closeSettings() {
-        settingsVisible = false
-    }
-
-    private fun openControls() {
-        controlsVisible = true
-        controlsSelectedIndex = 0
-        controlsListeningIndex = -1
-    }
-
-    private fun closeControls() {
-        controlsListeningIndex = -1
-        controlsVisible = false
     }
 
     private fun refreshSlotInfo() {
@@ -254,115 +332,36 @@ class LibretroActivity : ComponentActivity() {
         refreshSlotInfo()
     }
 
-    private fun handleMenuInput(keyCode: Int): Boolean {
+    private fun handleMenuInput(screen: IGMScreen.Menu, keyCode: Int): Boolean {
         val options = InGameMenu.OPTIONS
-        val onSlotRow = menuSelectedIndex == InGameMenu.SAVE_STATE || menuSelectedIndex == InGameMenu.LOAD_STATE
-
+        val onSlotRow = screen.selectedIndex == InGameMenu.SAVE_STATE || screen.selectedIndex == InGameMenu.LOAD_STATE
         return when (keyCode) {
             KeyEvent.KEYCODE_DPAD_UP -> {
-                menuSelectedIndex = ((menuSelectedIndex - 1) + options.size) % options.size
-                if (menuSelectedIndex == InGameMenu.SAVE_STATE || menuSelectedIndex == InGameMenu.LOAD_STATE) {
-                    refreshSlotInfo()
-                }
+                val idx = ((screen.selectedIndex - 1) + options.size) % options.size
+                replaceTop(screen.copy(selectedIndex = idx))
+                if (idx == InGameMenu.SAVE_STATE || idx == InGameMenu.LOAD_STATE) refreshSlotInfo()
                 true
             }
             KeyEvent.KEYCODE_DPAD_DOWN -> {
-                menuSelectedIndex = (menuSelectedIndex + 1) % options.size
-                if (menuSelectedIndex == InGameMenu.SAVE_STATE || menuSelectedIndex == InGameMenu.LOAD_STATE) {
-                    refreshSlotInfo()
-                }
+                val idx = (screen.selectedIndex + 1) % options.size
+                replaceTop(screen.copy(selectedIndex = idx))
+                if (idx == InGameMenu.SAVE_STATE || idx == InGameMenu.LOAD_STATE) refreshSlotInfo()
                 true
             }
-            KeyEvent.KEYCODE_DPAD_LEFT -> {
-                if (onSlotRow) cycleSlot(-1)
-                true
-            }
-            KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                if (onSlotRow) cycleSlot(1)
-                true
-            }
+            KeyEvent.KEYCODE_DPAD_LEFT -> { if (onSlotRow) cycleSlot(-1); true }
+            KeyEvent.KEYCODE_DPAD_RIGHT -> { if (onSlotRow) cycleSlot(1); true }
             KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
-                handleMenuAction(menuSelectedIndex)
-                true
+                handleMenuAction(screen.selectedIndex); true
             }
-            KeyEvent.KEYCODE_BUTTON_X -> {
-                if (undoType != null) performUndo()
-                true
-            }
-            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> {
-                closeMenu()
-                true
-            }
-            else -> true
-        }
-    }
-
-    private fun handleSettingsInput(keyCode: Int): Boolean {
-        val options = IGMSettings.OPTIONS
-        return when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_UP -> {
-                settingsSelectedIndex = ((settingsSelectedIndex - 1) + options.size) % options.size
-                true
-            }
-            KeyEvent.KEYCODE_DPAD_DOWN -> {
-                settingsSelectedIndex = (settingsSelectedIndex + 1) % options.size
-                true
-            }
-            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
-                when (settingsSelectedIndex) {
-                    IGMSettings.CONTROLS -> openControls()
-                }
-                true
-            }
-            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> {
-                closeSettings()
-                true
-            }
-            else -> true
-        }
-    }
-
-    private fun handleControlsInput(keyCode: Int): Boolean {
-        if (controlsListeningIndex >= 0) {
-            if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_BUTTON_B) {
-                controlsListeningIndex = -1
-                return true
-            }
-            val button = input.buttons[controlsListeningIndex]
-            input.assign(button, keyCode)
-            controlsListeningIndex = -1
-            return true
-        }
-
-        val count = input.buttons.size
-        return when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_UP -> {
-                controlsSelectedIndex = ((controlsSelectedIndex - 1) + count) % count
-                true
-            }
-            KeyEvent.KEYCODE_DPAD_DOWN -> {
-                controlsSelectedIndex = (controlsSelectedIndex + 1) % count
-                true
-            }
-            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
-                controlsListeningIndex = controlsSelectedIndex
-                true
-            }
-            KeyEvent.KEYCODE_BUTTON_X -> {
-                input.resetDefaults()
-                true
-            }
-            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> {
-                closeControls()
-                true
-            }
+            KeyEvent.KEYCODE_BUTTON_X -> { if (undoType != null) performUndo(); true }
+            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { closeAll(); true }
             else -> true
         }
     }
 
     private fun handleMenuAction(index: Int) {
         when (index) {
-            InGameMenu.RESUME -> closeMenu()
+            InGameMenu.RESUME -> closeAll()
             InGameMenu.SAVE_STATE -> {
                 if (stateBasePath.isNotEmpty()) {
                     val slot = currentSlot
@@ -376,7 +375,7 @@ class LibretroActivity : ComponentActivity() {
                     refreshSlotInfo()
                     showOsd("Saved to ${slot.label}")
                 }
-                closeMenu()
+                closeAll()
             }
             InGameMenu.LOAD_STATE -> {
                 if (stateBasePath.isNotEmpty() && slotManager.stateExists(currentSlot)) {
@@ -388,16 +387,323 @@ class LibretroActivity : ComponentActivity() {
                     slotManager.loadState(runner, slot)
                     showOsd("Loaded ${slot.label}")
                 }
-                closeMenu()
+                closeAll()
             }
-            InGameMenu.SETTINGS -> openSettings()
-            InGameMenu.RESET -> {
-                runner.reset()
-                closeMenu()
+            InGameMenu.SETTINGS -> {
+                coreOptions = runner.getCoreOptions()
+                push(IGMScreen.Settings())
             }
+            InGameMenu.RESET -> { runner.reset(); closeAll() }
             InGameMenu.QUIT -> quit()
         }
     }
+
+    // --- Settings category screen ---
+
+    private fun handleCategoryInput(screen: IGMScreen.Settings, keyCode: Int): Boolean {
+        val count = IGMSettings.CATEGORIES.size
+        return when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_UP -> {
+                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
+            }
+            KeyEvent.KEYCODE_DPAD_DOWN -> {
+                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
+            }
+            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+                when (screen.selectedIndex) {
+                    IGMSettings.FRONTEND -> push(IGMScreen.Frontend())
+                    IGMSettings.EMULATOR -> push(IGMScreen.Emulator())
+                    IGMSettings.CONTROLS -> push(IGMScreen.Controls())
+                    IGMSettings.SHORTCUTS -> push(IGMScreen.Shortcuts())
+                    IGMSettings.SAVE_SETTINGS -> push(IGMScreen.SaveSettings())
+                }
+                true
+            }
+            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
+            else -> true
+        }
+    }
+
+    // --- Frontend ---
+
+    private fun scalingLabel() = when (scalingMode) {
+        ScalingMode.CORE_REPORTED -> "Core Reported"
+        ScalingMode.INTEGER -> "Integer"
+        ScalingMode.FULLSCREEN -> "Fullscreen"
+    }
+
+    private fun effectLabel() = when (screenEffect) {
+        ScreenEffect.NONE -> "None"
+        ScreenEffect.SCANLINE -> "Scanline"
+        ScreenEffect.GRID -> "Grid"
+    }
+
+    private fun sharpnessLabel() = when (sharpness) {
+        Sharpness.SHARP -> "Sharp"
+        Sharpness.CRISP -> "Crisp"
+        Sharpness.SOFT -> "Soft"
+    }
+
+    private fun handleFrontendInput(screen: IGMScreen.Frontend, keyCode: Int): Boolean {
+        val count = 5
+        return when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_UP -> {
+                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
+            }
+            KeyEvent.KEYCODE_DPAD_DOWN -> {
+                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
+            }
+            KeyEvent.KEYCODE_DPAD_LEFT -> { cycleFrontendValue(screen.selectedIndex, -1); true }
+            KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_BUTTON_A,
+            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+                cycleFrontendValue(screen.selectedIndex, 1); true
+            }
+            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
+            else -> true
+        }
+    }
+
+    private fun cycleFrontendValue(index: Int, direction: Int) {
+        when (index) {
+            0 -> {
+                val modes = ScalingMode.entries
+                scalingMode = modes[(scalingMode.ordinal + direction + modes.size) % modes.size]
+                renderer.scalingMode = scalingMode
+            }
+            1 -> {
+                val effects = ScreenEffect.entries
+                screenEffect = effects[(screenEffect.ordinal + direction + effects.size) % effects.size]
+                renderer.screenEffect = screenEffect
+            }
+            2 -> {
+                val vals = Sharpness.entries
+                sharpness = vals[(sharpness.ordinal + direction + vals.size) % vals.size]
+                renderer.sharpness = sharpness
+            }
+            3 -> {
+                debugHud = !debugHud
+                renderer.debugHud = debugHud
+            }
+            4 -> {
+                val idx = FF_SPEEDS.indexOf(maxFfSpeed).coerceAtLeast(0)
+                maxFfSpeed = FF_SPEEDS[(idx + direction + FF_SPEEDS.size) % FF_SPEEDS.size]
+            }
+        }
+    }
+
+    // --- Emulator ---
+
+    private fun handleEmulatorInput(screen: IGMScreen.Emulator, keyCode: Int): Boolean {
+        if (coreOptions.isEmpty()) {
+            return if (keyCode == KeyEvent.KEYCODE_BUTTON_B || keyCode == KeyEvent.KEYCODE_BACK) { pop(); true } else true
+        }
+        val count = coreOptions.size
+        return when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_UP -> {
+                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
+            }
+            KeyEvent.KEYCODE_DPAD_DOWN -> {
+                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
+            }
+            KeyEvent.KEYCODE_DPAD_LEFT -> { cycleEmulatorValue(screen.selectedIndex, -1); true }
+            KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_BUTTON_A,
+            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+                cycleEmulatorValue(screen.selectedIndex, 1); true
+            }
+            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
+            else -> true
+        }
+    }
+
+    private fun cycleEmulatorValue(index: Int, direction: Int) {
+        val opt = coreOptions.getOrNull(index) ?: return
+        if (opt.values.isEmpty()) return
+        val curIdx = opt.values.indexOf(opt.selected).coerceAtLeast(0)
+        val newVal = opt.values[(curIdx + direction + opt.values.size) % opt.values.size]
+        runner.setCoreOption(opt.key, newVal)
+        coreOptions = runner.getCoreOptions()
+    }
+
+    // --- Controls ---
+
+    private fun handleControlsInput(screen: IGMScreen.Controls, keyCode: Int): Boolean {
+        if (screen.listeningIndex >= 0) {
+            if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_BUTTON_B) {
+                replaceTop(screen.copy(listeningIndex = -1))
+                return true
+            }
+            input.assign(input.buttons[screen.listeningIndex], keyCode)
+            replaceTop(screen.copy(listeningIndex = -1))
+            return true
+        }
+        val count = input.buttons.size
+        return when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_UP -> {
+                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
+            }
+            KeyEvent.KEYCODE_DPAD_DOWN -> {
+                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
+            }
+            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+                replaceTop(screen.copy(listeningIndex = screen.selectedIndex)); true
+            }
+            KeyEvent.KEYCODE_BUTTON_X -> { input.resetDefaults(); true }
+            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
+            else -> true
+        }
+    }
+
+    // --- Shortcuts ---
+
+    private fun handleShortcutsInput(screen: IGMScreen.Shortcuts, keyCode: Int): Boolean {
+        if (screen.listeningIndex >= 0) {
+            if (keyCode == KeyEvent.KEYCODE_BUTTON_B || keyCode == KeyEvent.KEYCODE_BACK) {
+                if (shortcutChordKeys.isEmpty()) {
+                    replaceTop(screen.copy(listeningIndex = -1))
+                } else {
+                    val action = ShortcutAction.entries[screen.listeningIndex]
+                    shortcuts = shortcuts + (action to shortcutChordKeys.toSet())
+                    shortcutChordKeys.clear()
+                    replaceTop(screen.copy(listeningIndex = -1))
+                }
+                return true
+            }
+            if (keyCode == KeyEvent.KEYCODE_BUTTON_X) {
+                val action = ShortcutAction.entries[screen.listeningIndex]
+                shortcuts = shortcuts + (action to emptySet())
+                shortcutChordKeys.clear()
+                replaceTop(screen.copy(listeningIndex = -1))
+                return true
+            }
+            shortcutChordKeys.add(keyCode)
+            return true
+        }
+        val count = ShortcutAction.entries.size
+        return when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_UP -> {
+                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
+            }
+            KeyEvent.KEYCODE_DPAD_DOWN -> {
+                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
+            }
+            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+                shortcutChordKeys.clear()
+                replaceTop(screen.copy(listeningIndex = screen.selectedIndex))
+                true
+            }
+            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
+            else -> true
+        }
+    }
+
+    // --- Save Settings ---
+
+    private fun handleSaveSettingsInput(screen: IGMScreen.SaveSettings, keyCode: Int): Boolean {
+        val count = 3
+        return when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_UP -> {
+                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
+            }
+            KeyEvent.KEYCODE_DPAD_DOWN -> {
+                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
+            }
+            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+                saveToScope(screen.selectedIndex)
+                showOsd(when (screen.selectedIndex) {
+                    0 -> "Saved globally"
+                    1 -> "Saved for $platformTag"
+                    else -> "Saved for this game"
+                })
+                pop()
+                true
+            }
+            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
+            else -> true
+        }
+    }
+
+    // --- Settings item builders ---
+
+    private fun buildSettingsItems(): List<IGMSettingsItem> = when (currentScreen) {
+        is IGMScreen.Settings -> IGMSettings.CATEGORIES.map { IGMSettingsItem(it) }
+        is IGMScreen.Frontend -> listOf(
+            IGMSettingsItem("Screen Scaling", scalingLabel()),
+            IGMSettingsItem("Screen Effect", effectLabel()),
+            IGMSettingsItem("Screen Sharpness", sharpnessLabel()),
+            IGMSettingsItem("Debug HUD", if (debugHud) "On" else "Off"),
+            IGMSettingsItem("Max FF Speed", "${maxFfSpeed}x")
+        )
+        is IGMScreen.Emulator -> {
+            if (coreOptions.isEmpty()) listOf(IGMSettingsItem("No options available"))
+            else coreOptions.map { IGMSettingsItem(it.desc, it.selected) }
+        }
+        is IGMScreen.Shortcuts -> ShortcutAction.entries.map { action ->
+            val chord = shortcuts[action]
+            val label = if (chord.isNullOrEmpty()) "None"
+            else chord.joinToString(" + ") { LibretroInput.keyCodeName(it) }
+            IGMSettingsItem(action.label, label)
+        }
+        is IGMScreen.SaveSettings -> listOf(
+            IGMSettingsItem("Save for all games"),
+            IGMSettingsItem("Save for $platformTag"),
+            IGMSettingsItem("Save for this game")
+        )
+        else -> emptyList()
+    }
+
+    // --- Settings persistence ---
+
+    private fun buildCurrentSettings(): OverrideManager.Settings {
+        val controlMap = mutableMapOf<String, Int>()
+        for (btn in input.buttons) {
+            val keyCode = input.getKeyCodeFor(btn)
+            if (keyCode != btn.defaultKeyCode) controlMap[btn.prefKey] = keyCode
+        }
+        val optionMap = mutableMapOf<String, String>()
+        for (opt in coreOptions) optionMap[opt.key] = opt.selected
+
+        return OverrideManager.Settings(
+            scalingMode = scalingMode,
+            screenEffect = screenEffect,
+            sharpness = sharpness,
+            debugHud = debugHud,
+            maxFfSpeed = maxFfSpeed,
+            controls = controlMap,
+            shortcuts = shortcuts,
+            coreOptions = optionMap
+        )
+    }
+
+    private fun saveToScope(scopeIndex: Int) {
+        val settings = buildCurrentSettings()
+        when (scopeIndex) {
+            0 -> overrideManager.saveGlobal(settings)
+            1 -> overrideManager.saveCore(settings)
+            2 -> overrideManager.saveGame(settings)
+        }
+    }
+
+    private fun loadOverrides() {
+        val settings = overrideManager.load()
+        scalingMode = settings.scalingMode
+        screenEffect = settings.screenEffect
+        sharpness = settings.sharpness
+        debugHud = settings.debugHud
+        maxFfSpeed = settings.maxFfSpeed
+        shortcuts = settings.shortcuts
+
+        for ((key, keyCode) in settings.controls) {
+            val btn = input.buttons.find { it.prefKey == key } ?: continue
+            input.assign(btn, keyCode)
+        }
+
+        for ((key, value) in settings.coreOptions) {
+            runner.setCoreOption(key, value)
+        }
+        coreOptions = runner.getCoreOptions()
+    }
+
+    // --- OSD / Undo ---
 
     private fun showOsd(message: String) {
         osdHandler.removeCallbacks(clearOsdRunnable)
@@ -424,7 +730,7 @@ class LibretroActivity : ComponentActivity() {
         clearUndo()
         refreshSlotInfo()
         showOsd(label)
-        closeMenu()
+        closeAll()
     }
 
     private fun clearUndo() {
@@ -434,42 +740,27 @@ class LibretroActivity : ComponentActivity() {
         slotManager.clearUndoCache()
     }
 
+    // --- Lifecycle ---
+
     private fun cleanup() {
         if (cleaned) return
         cleaned = true
-        if (sramPath.isNotEmpty()) {
-            File(sramPath).parentFile?.mkdirs()
-            runner.saveSRAM(sramPath)
-        }
+        if (sramPath.isNotEmpty()) { File(sramPath).parentFile?.mkdirs(); runner.saveSRAM(sramPath) }
         audio?.stop()
         runner.unloadGame()
         runner.deinit()
     }
 
-    private fun quit() {
-        cleanup()
-        finish()
-    }
+    private fun quit() { cleanup(); finish() }
 
     override fun onPause() {
         super.onPause()
         glSurfaceView?.onPause()
-        if (!cleaned && sramPath.isNotEmpty()) {
-            File(sramPath).parentFile?.mkdirs()
-            runner.saveSRAM(sramPath)
-        }
+        if (!cleaned && sramPath.isNotEmpty()) { File(sramPath).parentFile?.mkdirs(); runner.saveSRAM(sramPath) }
     }
 
-    override fun onResume() {
-        super.onResume()
-        glSurfaceView?.onResume()
-        goFullscreen()
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        cleanup()
-    }
+    override fun onResume() { super.onResume(); glSurfaceView?.onResume(); goFullscreen() }
+    override fun onDestroy() { super.onDestroy(); cleanup() }
 
     private fun copyCoreToCacheIfNeeded(externalPath: String): String? {
         val src = File(externalPath)

@@ -1,9 +1,8 @@
 package dev.cannoli.scorza.libretro
 
-import android.content.SharedPreferences
 import android.view.KeyEvent
 
-class LibretroInput(private val prefs: SharedPreferences) {
+class LibretroInput {
 
     data class ButtonDef(val retroMask: Int, val label: String, val prefKey: String, val defaultKeyCode: Int)
 
@@ -22,16 +21,17 @@ class LibretroInput(private val prefs: SharedPreferences) {
         ButtonDef(RETRO_RIGHT, "Right", "btn_right", KeyEvent.KEYCODE_DPAD_RIGHT),
     )
 
+    private val assignments = mutableMapOf<String, Int>()
     private val keyToRetro = mutableMapOf<Int, Int>()
 
     init {
-        reload()
+        rebuildMap()
     }
 
-    fun reload() {
+    private fun rebuildMap() {
         keyToRetro.clear()
         for (btn in buttons) {
-            val keyCode = prefs.getInt(btn.prefKey, btn.defaultKeyCode)
+            val keyCode = assignments[btn.prefKey] ?: btn.defaultKeyCode
             keyToRetro[keyCode] = btn.retroMask
         }
     }
@@ -39,21 +39,17 @@ class LibretroInput(private val prefs: SharedPreferences) {
     fun keyCodeToRetroMask(keyCode: Int): Int? = keyToRetro[keyCode]
 
     fun getKeyCodeFor(button: ButtonDef): Int {
-        return prefs.getInt(button.prefKey, button.defaultKeyCode)
+        return assignments[button.prefKey] ?: button.defaultKeyCode
     }
 
     fun assign(button: ButtonDef, keyCode: Int) {
-        prefs.edit().putInt(button.prefKey, keyCode).apply()
-        reload()
+        assignments[button.prefKey] = keyCode
+        rebuildMap()
     }
 
     fun resetDefaults() {
-        val editor = prefs.edit()
-        for (btn in buttons) {
-            editor.remove(btn.prefKey)
-        }
-        editor.apply()
-        reload()
+        assignments.clear()
+        rebuildMap()
     }
 
     companion object {
