@@ -56,6 +56,33 @@ class LibretroRunner {
     fun deinit() = nativeDeinit()
     fun reset() = nativeReset()
 
+    fun getSystemInfo(): Pair<String, String> {
+        val arr = nativeGetSystemInfo()
+        return (arr[0] ?: "") to (arr[1] ?: "")
+    }
+
+    fun getAspectRatio(): Float = nativeGetAspectRatio()
+
+    data class CoreOption(val key: String, val desc: String, val values: List<String>, val selected: String)
+
+    fun getCoreOptions(): List<CoreOption> {
+        val arr = nativeGetCoreOptions()
+        val result = mutableListOf<CoreOption>()
+        var i = 0
+        while (i + 3 < arr.size) {
+            result.add(CoreOption(
+                key = arr[i],
+                desc = arr[i + 1],
+                values = arr[i + 2].split('|').filter { it.isNotEmpty() },
+                selected = arr[i + 3]
+            ))
+            i += 4
+        }
+        return result
+    }
+
+    fun setCoreOption(key: String, value: String) = nativeSetCoreOption(key, value)
+
     private external fun nativeLoadCore(corePath: String): Boolean
     private external fun nativeInit(systemDir: String, saveDir: String)
     private external fun nativeSetAudioCallback(audio: LibretroAudio)
@@ -75,4 +102,8 @@ class LibretroRunner {
     private external fun nativeUnloadGame()
     private external fun nativeDeinit()
     private external fun nativeReset()
+    private external fun nativeGetSystemInfo(): Array<String>
+    private external fun nativeGetAspectRatio(): Float
+    private external fun nativeGetCoreOptions(): Array<String>
+    private external fun nativeSetCoreOption(key: String, value: String)
 }
