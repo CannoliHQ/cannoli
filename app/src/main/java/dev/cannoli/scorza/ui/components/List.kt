@@ -19,7 +19,7 @@ fun <T> List(
     itemHeight: Dp = Dp.Unspecified,
     scrollTarget: Int = 0,
     listState: LazyListState = rememberLazyListState(initialFirstVisibleItemIndex = scrollTarget),
-    onVisibleRangeChanged: ((firstVisible: Int, visibleCount: Int) -> Unit)? = null,
+    onVisibleRangeChanged: ((firstVisible: Int, visibleCount: Int, isViewportFull: Boolean) -> Unit)? = null,
     itemContent: @Composable (index: Int, item: T) -> Unit
 ) {
     ListScrollEffect(listState, selectedIndex, items.size, scrollTarget, onVisibleRangeChanged)

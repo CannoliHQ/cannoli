@@ -66,7 +66,8 @@ fun GameListScreen(
     listLineHeight: TextUnit = 32.sp,
     listVerticalPadding: Dp = 8.dp,
     scrollSpeed: ScrollSpeed = ScrollSpeed.NORMAL,
-    dialogState: DialogState = DialogState.None
+    dialogState: DialogState = DialogState.None,
+    onVisibleRangeChanged: (Int, Int, Boolean) -> Unit = { _, _, _ -> }
 ) {
     val state by viewModel.state.collectAsState()
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
@@ -137,9 +138,9 @@ fun GameListScreen(
                         selectedIndex = state.selectedIndex,
                         itemHeight = itemHeight,
                         scrollTarget = state.scrollTarget,
-                        onVisibleRangeChanged = { first, count ->
+                        onVisibleRangeChanged = { first, count, full ->
                             viewModel.firstVisibleIndex = first
-                            viewModel.pageSize = count
+                            onVisibleRangeChanged(first, count, full)
                         }
                     ) { index, game ->
                         GameRow(
