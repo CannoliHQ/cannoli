@@ -122,31 +122,27 @@ class SystemListViewModel(
 
     fun pageJump(delta: Int) {
         val current = _state.value
-        val selectableIndices = current.items.indices.filter { current.items[it] !is ListItem.Divider }
-        if (selectableIndices.isEmpty()) return
-
-        val currentPos = selectableIndices.indexOf(current.selectedIndex)
-        val lastItemIndex = selectableIndices.last()
+        if (current.items.isEmpty()) return
+        val lastIndex = current.items.lastIndex
 
         if (delta > 0) {
             val lastVisible = firstVisibleIndex + pageSize - 1
-            if (lastVisible >= lastItemIndex) {
-                if (current.selectedIndex < lastItemIndex) {
-                    _state.value = current.copy(selectedIndex = lastItemIndex)
+            if (lastVisible >= lastIndex) {
+                if (current.selectedIndex < lastIndex) {
+                    _state.value = current.copy(selectedIndex = lastIndex)
                 }
             } else {
-                val targetPos = (if (currentPos == -1) 0 else currentPos + delta).coerceAtMost(selectableIndices.lastIndex)
-                _state.value = current.copy(selectedIndex = selectableIndices[targetPos])
+                val newFirst = (firstVisibleIndex + pageSize).coerceAtMost(lastIndex)
+                _state.value = current.copy(selectedIndex = newFirst)
             }
         } else {
-            val firstItemIndex = selectableIndices.first()
-            if (firstVisibleIndex <= firstItemIndex) {
-                if (current.selectedIndex > firstItemIndex) {
-                    _state.value = current.copy(selectedIndex = firstItemIndex)
+            if (firstVisibleIndex <= 0) {
+                if (current.selectedIndex > 0) {
+                    _state.value = current.copy(selectedIndex = 0)
                 }
             } else {
-                val targetPos = (if (currentPos == -1) 0 else currentPos + delta).coerceAtLeast(0)
-                _state.value = current.copy(selectedIndex = selectableIndices[targetPos])
+                val newFirst = (firstVisibleIndex + delta).coerceAtLeast(0)
+                _state.value = current.copy(selectedIndex = newFirst)
             }
         }
     }

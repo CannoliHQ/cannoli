@@ -100,9 +100,24 @@ class MainActivity : ComponentActivity() {
 
     private fun screenPageJump(screen: LauncherScreen, itemCount: Int, selectedIndex: Int, direction: Int) {
         if (itemCount == 0) return
-        val jump = lastVisibleCount.coerceAtLeast(1) * direction
-        val newIdx = (selectedIndex + jump).coerceIn(0, itemCount - 1)
-        if (newIdx == selectedIndex) return
+        val lastIndex = itemCount - 1
+        val page = lastVisibleCount.coerceAtLeast(1)
+
+        val newIdx = if (direction > 0) {
+            val lastVisible = lastFirstVisibleIndex + page - 1
+            if (lastVisible >= lastIndex) {
+                if (selectedIndex < lastIndex) lastIndex else return
+            } else {
+                (lastFirstVisibleIndex + page).coerceAtMost(lastIndex)
+            }
+        } else {
+            if (lastFirstVisibleIndex <= 0) {
+                if (selectedIndex > 0) 0 else return
+            } else {
+                (lastFirstVisibleIndex - page).coerceAtLeast(0)
+            }
+        }
+
         screenStack[screenStack.lastIndex] = when (screen) {
             is LauncherScreen.CoreMapping -> screen.copy(selectedIndex = newIdx)
             is LauncherScreen.CorePicker -> screen.copy(selectedIndex = newIdx)

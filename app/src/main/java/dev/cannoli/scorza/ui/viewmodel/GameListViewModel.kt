@@ -212,9 +212,8 @@ class GameListViewModel(
                     _state.value = current.copy(selectedIndex = lastIndex)
                 }
             } else {
-                _state.value = current.copy(
-                    selectedIndex = (current.selectedIndex + delta).coerceAtMost(lastIndex)
-                )
+                val newFirst = (firstVisibleIndex + pageSize).coerceAtMost(lastIndex)
+                _state.value = current.copy(selectedIndex = newFirst)
             }
         } else {
             if (firstVisibleIndex <= 0) {
@@ -222,9 +221,8 @@ class GameListViewModel(
                     _state.value = current.copy(selectedIndex = 0)
                 }
             } else {
-                _state.value = current.copy(
-                    selectedIndex = (current.selectedIndex + delta).coerceAtLeast(0)
-                )
+                val newFirst = (firstVisibleIndex + delta).coerceAtLeast(0)
+                _state.value = current.copy(selectedIndex = newFirst)
             }
         }
     }
