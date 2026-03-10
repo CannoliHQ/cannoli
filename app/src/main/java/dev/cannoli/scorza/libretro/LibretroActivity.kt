@@ -58,6 +58,8 @@ class LibretroActivity : ComponentActivity() {
     private val shortcutChordKeys = mutableSetOf<Int>()
     private var coreInfoText by mutableStateOf("")
 
+    private var settingsSnapshot: OverrideManager.Settings? = null
+
     private var diskCount by mutableIntStateOf(0)
     private var currentDiskIndex by mutableIntStateOf(0)
     private var diskLabels = emptyList<String>()
@@ -65,6 +67,12 @@ class LibretroActivity : ComponentActivity() {
     private var audioSampleRate = 0
     private var fastForwarding by mutableStateOf(false)
     private var holdingFf = false
+
+    private fun setFastForward(enabled: Boolean) {
+        fastForwarding = enabled
+        renderer.fastForwardFrames = if (enabled) maxFfSpeed else 0
+        audio?.muted = enabled
+    }
 
     private enum class UndoType { SAVE, LOAD }
     private var undoType by mutableStateOf<UndoType?>(null)
@@ -220,7 +228,8 @@ class LibretroActivity : ComponentActivity() {
                         showClock = showClock,
                         showBattery = showBattery,
                         use24h = use24h,
-                        osdMessage = osdMessage
+                        osdMessage = osdMessage,
+                        fastForwarding = fastForwarding
                     )
                 }
             }
@@ -250,19 +259,22 @@ class LibretroActivity : ComponentActivity() {
             is IGMScreen.EmulatorCategory -> handleEmulatorCategoryInput(screen, keyCode)
             is IGMScreen.Controls -> handleControlsInput(screen, keyCode)
             is IGMScreen.Shortcuts -> handleShortcutsInput(screen, keyCode)
-            is IGMScreen.SaveSettings -> handleSaveSettingsInput(screen, keyCode)
+            is IGMScreen.SavePrompt -> handleSavePromptInput(screen, keyCode)
         }
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
-        if (screenStack.isNotEmpty()) return true
+        if (screenStack.isNotEmpty()) {
+            handleShortcutKeyUp(keyCode)
+            return true
+        }
         pressedKeys.remove(keyCode)
 
         if (holdingFf) {
             val holdChord = shortcuts[ShortcutAction.HOLD_FF]
             if (holdChord != null && !pressedKeys.containsAll(holdChord)) {
                 holdingFf = false
-                fastForwarding = false
+                setFastForward(false)
                 showOsd("Fast Forward Off")
             }
         }
@@ -275,8 +287,8 @@ class LibretroActivity : ComponentActivity() {
 
     private fun handleGameplayInput(keyCode: Int, event: KeyEvent): Boolean {
         if (keyCode == KeyEvent.KEYCODE_BACK) { openMenu(); return true }
-        pressedKeys.add(keyCode)
-        checkShortcuts()
+        val isNewPress = pressedKeys.add(keyCode)
+        if (isNewPress) checkShortcuts()
         val mask = input.keyCodeToRetroMask(keyCode) ?: return super.onKeyDown(keyCode, event)
         inputMask.updateAndGet { it or mask }
         runner.setInput(inputMask.get())
@@ -317,14 +329,16 @@ class LibretroActivity : ComponentActivity() {
                     showOsd("Effect: ${effectLabel()}")
                 }
                 ShortcutAction.TOGGLE_FF -> {
-                    fastForwarding = !fastForwarding
+                    setFastForward(!fastForwarding)
                     showOsd(if (fastForwarding) "Fast Forward On" else "Fast Forward Off")
                 }
                 ShortcutAction.HOLD_FF -> {
-                    if (!holdingFf) { holdingFf = true; fastForwarding = true; showOsd("Fast Forward On") }
+                    if (!holdingFf) { holdingFf = true; setFastForward(true); showOsd("Fast Forward On") }
                 }
             }
             pressedKeys.clear()
+            inputMask.set(0)
+            runner.setInput(0)
             break
         }
     }
@@ -438,6 +452,7 @@ class LibretroActivity : ComponentActivity() {
             }
             menu.settingsIndex -> {
                 coreOptions = runner.getCoreOptions()
+                settingsSnapshot = buildCurrentSettings()
                 push(IGMScreen.Settings())
             }
             menu.resetIndex -> { runner.reset(); closeAll() }
@@ -466,11 +481,17 @@ class LibretroActivity : ComponentActivity() {
                     }
                     IGMSettings.CONTROLS -> push(IGMScreen.Controls())
                     IGMSettings.SHORTCUTS -> push(IGMScreen.Shortcuts())
-                    IGMSettings.SAVE_SETTINGS -> push(IGMScreen.SaveSettings())
                 }
                 true
             }
-            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
+            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> {
+                if (settingsSnapshot != null && buildCurrentSettings() != settingsSnapshot) {
+                    push(IGMScreen.SavePrompt())
+                } else {
+                    pop()
+                }
+                true
+            }
             else -> true
         }
     }
@@ -505,10 +526,7 @@ class LibretroActivity : ComponentActivity() {
                 replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
             }
             KeyEvent.KEYCODE_DPAD_LEFT -> { cycleFrontendValue(screen.selectedIndex, -1); true }
-            KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_BUTTON_A,
-            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
-                cycleFrontendValue(screen.selectedIndex, 1); true
-            }
+            KeyEvent.KEYCODE_DPAD_RIGHT -> { cycleFrontendValue(screen.selectedIndex, 1); true }
             KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
             else -> true
         }
@@ -538,6 +556,7 @@ class LibretroActivity : ComponentActivity() {
             4 -> {
                 val idx = FF_SPEEDS.indexOf(maxFfSpeed).coerceAtLeast(0)
                 maxFfSpeed = FF_SPEEDS[(idx + direction + FF_SPEEDS.size) % FF_SPEEDS.size]
+                if (fastForwarding) renderer.fastForwardFrames = maxFfSpeed
             }
         }
     }
@@ -580,8 +599,8 @@ class LibretroActivity : ComponentActivity() {
                 }
                 KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
                     val usedCategories = coreCategories.filter { cat -> coreOptions.any { it.category == cat.key } }
-                    val catKey = usedCategories.getOrNull(screen.selectedIndex)?.key ?: ""
-                    push(IGMScreen.EmulatorCategory(categoryKey = catKey))
+                    val cat = usedCategories.getOrNull(screen.selectedIndex)
+                    push(IGMScreen.EmulatorCategory(categoryKey = cat?.key ?: "", categoryTitle = cat?.desc ?: ""))
                     true
                 }
                 KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
@@ -680,27 +699,44 @@ class LibretroActivity : ComponentActivity() {
 
     // --- Shortcuts ---
 
+    private val shortcutCountdownHandler = Handler(Looper.getMainLooper())
+    private val SHORTCUT_HOLD_MS = 1500
+    private val SHORTCUT_TICK_MS = 100L
+
+    private val shortcutCountdownRunnable = object : Runnable {
+        override fun run() {
+            val screen = currentScreen as? IGMScreen.Shortcuts ?: return
+            if (!screen.listening) return
+            val newMs = screen.countdownMs + SHORTCUT_TICK_MS.toInt()
+            if (newMs >= SHORTCUT_HOLD_MS) {
+                val action = ShortcutAction.entries[screen.selectedIndex]
+                shortcuts = shortcuts + (action to screen.heldKeys)
+                replaceTop(screen.copy(listening = false, heldKeys = emptySet(), countdownMs = 0))
+            } else {
+                replaceTop(screen.copy(countdownMs = newMs))
+                shortcutCountdownHandler.postDelayed(this, SHORTCUT_TICK_MS)
+            }
+        }
+    }
+
+    private fun cancelShortcutListening() {
+        shortcutCountdownHandler.removeCallbacks(shortcutCountdownRunnable)
+        val screen = currentScreen as? IGMScreen.Shortcuts ?: return
+        if (screen.listening) replaceTop(screen.copy(listening = false, heldKeys = emptySet(), countdownMs = 0))
+    }
+
+    private fun handleShortcutKeyUp(keyCode: Int) {
+        val screen = currentScreen as? IGMScreen.Shortcuts ?: return
+        if (screen.listening && screen.heldKeys.contains(keyCode)) cancelShortcutListening()
+    }
+
     private fun handleShortcutsInput(screen: IGMScreen.Shortcuts, keyCode: Int): Boolean {
-        if (screen.listeningIndex >= 0) {
-            if (keyCode == KeyEvent.KEYCODE_BUTTON_B || keyCode == KeyEvent.KEYCODE_BACK) {
-                if (shortcutChordKeys.isEmpty()) {
-                    replaceTop(screen.copy(listeningIndex = -1))
-                } else {
-                    val action = ShortcutAction.entries[screen.listeningIndex]
-                    shortcuts = shortcuts + (action to shortcutChordKeys.toSet())
-                    shortcutChordKeys.clear()
-                    replaceTop(screen.copy(listeningIndex = -1))
-                }
-                return true
-            }
-            if (keyCode == KeyEvent.KEYCODE_BUTTON_X) {
-                val action = ShortcutAction.entries[screen.listeningIndex]
-                shortcuts = shortcuts + (action to emptySet())
-                shortcutChordKeys.clear()
-                replaceTop(screen.copy(listeningIndex = -1))
-                return true
-            }
-            shortcutChordKeys.add(keyCode)
+        if (screen.listening) {
+            if (screen.heldKeys.contains(keyCode)) return true
+            val newKeys = screen.heldKeys + keyCode
+            replaceTop(screen.copy(heldKeys = newKeys, countdownMs = 0))
+            shortcutCountdownHandler.removeCallbacks(shortcutCountdownRunnable)
+            shortcutCountdownHandler.postDelayed(shortcutCountdownRunnable, SHORTCUT_TICK_MS)
             return true
         }
         val count = ShortcutAction.entries.size
@@ -712,8 +748,12 @@ class LibretroActivity : ComponentActivity() {
                 replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
             }
             KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
-                shortcutChordKeys.clear()
-                replaceTop(screen.copy(listeningIndex = screen.selectedIndex))
+                replaceTop(screen.copy(listening = true, heldKeys = emptySet(), countdownMs = 0))
+                true
+            }
+            KeyEvent.KEYCODE_BUTTON_X -> {
+                val action = ShortcutAction.entries[screen.selectedIndex]
+                shortcuts = shortcuts + (action to emptySet())
                 true
             }
             KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
@@ -721,10 +761,10 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
-    // --- Save Settings ---
+    // --- Save Prompt ---
 
-    private fun handleSaveSettingsInput(screen: IGMScreen.SaveSettings, keyCode: Int): Boolean {
-        val count = 3
+    private fun handleSavePromptInput(screen: IGMScreen.SavePrompt, keyCode: Int): Boolean {
+        val count = 4
         return when (keyCode) {
             KeyEvent.KEYCODE_DPAD_UP -> {
                 replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
@@ -733,16 +773,21 @@ class LibretroActivity : ComponentActivity() {
                 replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
             }
             KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
-                saveToScope(screen.selectedIndex)
-                showOsd(when (screen.selectedIndex) {
-                    0 -> "Saved globally"
-                    1 -> "Saved for $platformName ($platformTag)"
-                    else -> "Saved for this game"
-                })
-                pop()
+                when (screen.selectedIndex) {
+                    0 -> { saveToScope(0); showOsd("Saved globally") }
+                    1 -> { saveToScope(1); showOsd("Saved for $platformName ($platformTag)") }
+                    2 -> { saveToScope(2); showOsd("Saved for this game") }
+                    3 -> showOsd("Changes discarded")
+                }
+                settingsSnapshot = null
+                pop(); pop()
                 true
             }
-            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
+            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> {
+                settingsSnapshot = null
+                pop(); pop()
+                true
+            }
             else -> true
         }
     }
@@ -787,10 +832,11 @@ class LibretroActivity : ComponentActivity() {
             else chord.joinToString(" + ") { LibretroInput.keyCodeName(it) }
             IGMSettingsItem(action.label, label)
         }
-        is IGMScreen.SaveSettings -> listOf(
+        is IGMScreen.SavePrompt -> listOf(
             IGMSettingsItem("Save for all games"),
             IGMSettingsItem("Save for $platformName ($platformTag)"),
-            IGMSettingsItem("Save for this game")
+            IGMSettingsItem("Save for this game"),
+            IGMSettingsItem("Discard changes")
         )
         else -> emptyList()
     }

@@ -37,6 +37,7 @@ data class IGMSettingsItem(
 
 @Composable
 fun IGMSettingsScreen(
+    title: String,
     items: kotlin.collections.List<IGMSettingsItem>,
     selectedIndex: Int,
     coreInfo: String,
@@ -83,7 +84,7 @@ fun IGMSettingsScreen(
                         .padding(bottom = 48.dp)
                 ) {
                     ScreenTitle(
-                        text = "Settings",
+                        text = title,
                         fontSize = fontSize,
                         lineHeight = lineHeight
                     )

@@ -15,6 +15,7 @@ enum class ScreenEffect { NONE, SCANLINE, GRID }
 class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Renderer {
 
     @Volatile var paused = false
+    @Volatile var fastForwardFrames = 0
     @Volatile var scalingMode = ScalingMode.CORE_REPORTED
     @Volatile var coreAspectRatio = 0f
     @Volatile var debugHud = false
@@ -139,6 +140,10 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
     override fun onDrawFrame(gl: GL10?) {
         if (!paused) {
             runner.run()
+            val extraFrames = fastForwardFrames
+            if (extraFrames > 0) {
+                for (i in 1 until extraFrames) runner.run()
+            }
         }
 
         val w = runner.getFrameWidth()
