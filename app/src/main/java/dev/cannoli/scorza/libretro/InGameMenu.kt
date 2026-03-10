@@ -74,9 +74,8 @@ object IGMSettings {
     const val EMULATOR = 1
     const val CONTROLS = 2
     const val SHORTCUTS = 3
-    const val SAVE_SETTINGS = 4
 
-    val CATEGORIES = listOf("Frontend", "Emulator", "Controls", "Shortcuts", "Save Settings")
+    val CATEGORIES = listOf("Frontend", "Emulator", "Controls", "Shortcuts")
 }
 
 enum class ShortcutAction(val label: String) {

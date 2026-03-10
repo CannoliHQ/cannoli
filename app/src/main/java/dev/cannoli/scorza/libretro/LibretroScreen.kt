@@ -3,14 +3,20 @@ package dev.cannoli.scorza.libretro
 import android.graphics.Bitmap
 import android.opengl.GLSurfaceView
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
@@ -43,7 +49,8 @@ fun LibretroScreen(
     showClock: Boolean,
     showBattery: Boolean,
     use24h: Boolean,
-    osdMessage: String?
+    osdMessage: String?,
+    fastForwarding: Boolean
 ) {
     val overlayVisible = screen != null
     val showDescription = when (screen) {
@@ -78,18 +85,29 @@ fun LibretroScreen(
             )
             is IGMScreen.Settings, is IGMScreen.Frontend, is IGMScreen.Emulator,
             is IGMScreen.EmulatorCategory, is IGMScreen.Shortcuts,
-            is IGMScreen.SaveSettings -> {
+            is IGMScreen.SavePrompt -> {
                 val description = if (showDescription) {
                     settingsItems.getOrNull(screen.selectedIndex)?.hint
                 } else null
                 val isOptionList = screen is IGMScreen.EmulatorCategory ||
                     (screen is IGMScreen.Emulator && settingsItems.all { it.value != null })
-                val bottomBarRight = if (isOptionList) {
-                    listOf("A" to "INFO", "←→" to "CHANGE")
-                } else {
-                    listOf("←→" to "CHANGE", "A" to "SELECT")
+                val bottomBarRight = when {
+                    isOptionList -> listOf("A" to "INFO", "←→" to "CHANGE")
+                    screen is IGMScreen.Shortcuts -> listOf("X" to "CLEAR", "A" to "SET")
+                    screen is IGMScreen.Frontend -> listOf("←→" to "CHANGE")
+                    else -> listOf("A" to "SELECT")
+                }
+                val title = when (screen) {
+                    is IGMScreen.Settings -> "Settings"
+                    is IGMScreen.Frontend -> "Frontend"
+                    is IGMScreen.Emulator -> "Emulator"
+                    is IGMScreen.EmulatorCategory -> screen.categoryTitle.ifEmpty { "Emulator" }
+                    is IGMScreen.Shortcuts -> "Shortcuts"
+                    is IGMScreen.SavePrompt -> "Save Changes"
+                    else -> "Settings"
                 }
                 IGMSettingsScreen(
+                    title = title,
                     items = settingsItems,
                     selectedIndex = screen.selectedIndex,
                     coreInfo = coreInfo,
@@ -98,6 +116,58 @@ fun LibretroScreen(
                 )
             }
             null -> {}
+        }
+
+        if (screen is IGMScreen.Shortcuts && screen.listening) {
+            val colors = LocalCannoliColors.current
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.92f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth(0.7f)
+                ) {
+                    val actionName = settingsItems.getOrNull(screen.selectedIndex)?.label ?: ""
+                    Text(
+                        text = actionName,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontSize = 16.sp,
+                            color = colors.text.copy(alpha = 0.6f)
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = if (screen.heldKeys.isEmpty()) "Hold buttons..."
+                        else screen.heldKeys.joinToString(" + ") { LibretroInput.keyCodeName(it) },
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontSize = 24.sp,
+                            color = colors.text
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    if (screen.heldKeys.isNotEmpty()) {
+                        val progress = (screen.countdownMs / 1500f).coerceIn(0f, 1f)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(0.5f)
+                                .height(8.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(colors.text.copy(alpha = 0.2f))
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(progress)
+                                    .height(8.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(colors.highlight)
+                            )
+                        }
+                    }
+                }
+            }
         }
 
         if (debugHud && !overlayVisible) {
@@ -115,12 +185,30 @@ fun LibretroScreen(
             }
         }
 
+        if (fastForwarding && !overlayVisible && osdMessage == null) {
+            val colors = LocalCannoliColors.current
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 20.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(colors.highlight)
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    text = "▶▶",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+                    color = colors.highlightText
+                )
+            }
+        }
+
         if (osdMessage != null) {
             val colors = LocalCannoliColors.current
             Box(
                 modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 20.dp)
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 20.dp)
                     .clip(RoundedCornerShape(50))
                     .background(colors.highlight)
                     .padding(horizontal = 16.dp, vertical = 6.dp)

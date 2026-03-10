@@ -6,6 +6,8 @@ import android.media.AudioTrack
 
 class LibretroAudio(sampleRate: Int) {
 
+    @Volatile var muted = false
+
     private val bufferSize = AudioTrack.getMinBufferSize(
         sampleRate,
         AudioFormat.CHANNEL_OUT_STEREO,
@@ -33,6 +35,6 @@ class LibretroAudio(sampleRate: Int) {
 
     @Suppress("unused") // Called from JNI
     fun writeSamples(samples: ShortArray, count: Int) {
-        track.write(samples, 0, count)
+        if (!muted) track.write(samples, 0, count)
     }
 }

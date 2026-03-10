@@ -69,6 +69,8 @@ class LibretroInput {
         fun keyCodeName(keyCode: Int): String = KeyEvent.keyCodeToString(keyCode)
             .removePrefix("KEYCODE_")
             .replace("BUTTON_", "")
-            .replace("DPAD_", "D-Pad ")
+            .split("_")
+            .joinToString(" ") { word -> word.lowercase().replaceFirstChar { it.uppercase() } }
+            .replace("Dpad ", "D-Pad ")
     }
 }
