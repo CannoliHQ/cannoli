@@ -68,6 +68,11 @@ static std::vector<CoreOption> g_core_options;
 static std::map<std::string, std::string> g_option_overrides;
 static bool g_options_dirty = false;
 
+// Disk control
+static struct retro_disk_control_callback g_disk_control = {0};
+static bool g_has_disk_control = false;
+static const char *(*g_get_image_label)(unsigned index) = nullptr;
+
 // --- Libretro callbacks ---
 
 static void core_log(enum retro_log_level level, const char *fmt, ...) {
@@ -183,6 +188,30 @@ static bool environment_cb(unsigned cmd, void *data) {
 
         case RETRO_ENVIRONMENT_SET_SUPPORT_NO_GAME:
             return true;
+
+        case RETRO_ENVIRONMENT_SET_DISK_CONTROL_INTERFACE: {
+            auto *cb = (struct retro_disk_control_callback *)data;
+            g_disk_control = *cb;
+            g_has_disk_control = true;
+            g_get_image_label = nullptr;
+            LOGI("Disk control interface set");
+            return true;
+        }
+
+        case RETRO_ENVIRONMENT_SET_DISK_CONTROL_EXT_INTERFACE: {
+            auto *cb = (struct retro_disk_control_ext_callback *)data;
+            g_disk_control.set_eject_state = cb->set_eject_state;
+            g_disk_control.get_eject_state = cb->get_eject_state;
+            g_disk_control.get_image_index = cb->get_image_index;
+            g_disk_control.set_image_index = cb->set_image_index;
+            g_disk_control.get_num_images = cb->get_num_images;
+            g_disk_control.replace_image_index = cb->replace_image_index;
+            g_disk_control.add_image_index = cb->add_image_index;
+            g_has_disk_control = true;
+            g_get_image_label = cb->get_image_label;
+            LOGI("Disk control ext interface set");
+            return true;
+        }
 
         case RETRO_ENVIRONMENT_GET_LANGUAGE:
             *(unsigned *)data = 0; // RETRO_LANGUAGE_ENGLISH
@@ -578,6 +607,9 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeDeinit(JNIEnv *env, jobjec
     g_frame_width = 0;
     g_frame_height = 0;
     g_frame_ready = false;
+    memset(&g_disk_control, 0, sizeof(g_disk_control));
+    g_has_disk_control = false;
+    g_get_image_label = nullptr;
 }
 
 JNIEXPORT void JNICALL
@@ -638,6 +670,36 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeGetAspectRatio(JNIEnv *, j
         ar = (float)av_info.geometry.base_width / (float)av_info.geometry.base_height;
     }
     return ar;
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeGetDiskCount(JNIEnv *, jobject) {
+    if (!g_has_disk_control || !g_disk_control.get_num_images) return 0;
+    return (jint)g_disk_control.get_num_images();
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeGetDiskIndex(JNIEnv *, jobject) {
+    if (!g_has_disk_control || !g_disk_control.get_image_index) return 0;
+    return (jint)g_disk_control.get_image_index();
+}
+
+JNIEXPORT jboolean JNICALL
+Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeSetDiskIndex(JNIEnv *, jobject, jint index) {
+    if (!g_has_disk_control || !g_disk_control.set_eject_state || !g_disk_control.set_image_index) return JNI_FALSE;
+    g_disk_control.set_eject_state(true);
+    bool ok = g_disk_control.set_image_index((unsigned)index);
+    g_disk_control.set_eject_state(false);
+    return ok ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT jstring JNICALL
+Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeGetDiskLabel(JNIEnv *env, jobject, jint index) {
+    if (g_get_image_label) {
+        const char *label = g_get_image_label((unsigned)index);
+        if (label && label[0]) return env->NewStringUTF(label);
+    }
+    return nullptr;
 }
 
 } // extern "C"

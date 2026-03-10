@@ -57,6 +57,10 @@ class LibretroActivity : ComponentActivity() {
     private val shortcutChordKeys = mutableSetOf<Int>()
     private var coreInfoText by mutableStateOf("")
 
+    private var diskCount by mutableIntStateOf(0)
+    private var currentDiskIndex by mutableIntStateOf(0)
+    private var diskLabels = emptyList<String>()
+
     private var audioSampleRate = 0
     private var fastForwarding by mutableStateOf(false)
     private var holdingFf = false
@@ -78,6 +82,7 @@ class LibretroActivity : ComponentActivity() {
     private var systemDir: String = ""
     private var saveDir: String = ""
     private var platformTag: String = ""
+    private var platformName: String = ""
     private var cannoliRoot: String = ""
     private var showWifi = true
     private var showBluetooth = true
@@ -87,6 +92,20 @@ class LibretroActivity : ComponentActivity() {
 
     private val currentSlot get() = slotManager.slots[selectedSlotIndex]
     private val currentScreen get() = screenStack.lastOrNull()
+    private val hasDiscs get() = diskCount > 1
+
+    private fun diskLabel(index: Int): String =
+        diskLabels.getOrNull(index)?.takeIf { it.isNotEmpty() } ?: "Disc ${index + 1}"
+
+    private fun menuOptions() = InGameMenuOptions(hasDiscs, diskLabel(currentDiskIndex))
+
+    private fun refreshDiskInfo() {
+        diskCount = runner.getDiskCount()
+        currentDiskIndex = runner.getDiskIndex()
+        if (diskCount > 1) {
+            diskLabels = (0 until diskCount).map { runner.getDiskLabel(it) ?: "" }
+        }
+    }
 
     companion object {
         private val FF_SPEEDS = listOf(2, 3, 4, 6, 8)
@@ -114,6 +133,7 @@ class LibretroActivity : ComponentActivity() {
         systemDir = intent.getStringExtra("system_dir") ?: ""
         saveDir = intent.getStringExtra("save_dir") ?: ""
         platformTag = intent.getStringExtra("platform_tag") ?: ""
+        platformName = intent.getStringExtra("platform_name") ?: platformTag
         cannoliRoot = intent.getStringExtra("cannoli_root") ?: ""
         showWifi = intent.getBooleanExtra("show_wifi", true)
         showBluetooth = intent.getBooleanExtra("show_bluetooth", true)
@@ -176,6 +196,7 @@ class LibretroActivity : ComponentActivity() {
                         glSurfaceView = glView,
                         gameTitle = gameTitle,
                         screen = screen,
+                        menuOptions = menuOptions(),
                         selectedSlot = currentSlot,
                         slotThumbnail = slotThumbnail,
                         slotExists = slotExists,
@@ -312,6 +333,7 @@ class LibretroActivity : ComponentActivity() {
         push(IGMScreen.Menu())
         renderer.paused = true
         refreshSlotInfo()
+        refreshDiskInfo()
     }
 
     private fun closeAll() {
@@ -332,26 +354,48 @@ class LibretroActivity : ComponentActivity() {
         refreshSlotInfo()
     }
 
+    private fun cycleDisc(direction: Int) {
+        val newIndex = ((currentDiskIndex + direction) + diskCount) % diskCount
+        if (newIndex != currentDiskIndex && runner.setDiskIndex(newIndex)) {
+            currentDiskIndex = newIndex
+            showOsd("Switched to ${diskLabel(currentDiskIndex)}")
+        }
+    }
+
     private fun handleMenuInput(screen: IGMScreen.Menu, keyCode: Int): Boolean {
-        val options = InGameMenu.OPTIONS
-        val onSlotRow = screen.selectedIndex == InGameMenu.SAVE_STATE || screen.selectedIndex == InGameMenu.LOAD_STATE
+        val menu = menuOptions()
+        val options = menu.options
+        val onSlotRow = screen.selectedIndex == menu.saveStateIndex || screen.selectedIndex == menu.loadStateIndex
+        val onDiscRow = screen.selectedIndex == menu.switchDiscIndex
         return when (keyCode) {
             KeyEvent.KEYCODE_DPAD_UP -> {
                 val idx = ((screen.selectedIndex - 1) + options.size) % options.size
                 replaceTop(screen.copy(selectedIndex = idx))
-                if (idx == InGameMenu.SAVE_STATE || idx == InGameMenu.LOAD_STATE) refreshSlotInfo()
+                if (idx == menu.saveStateIndex || idx == menu.loadStateIndex) refreshSlotInfo()
                 true
             }
             KeyEvent.KEYCODE_DPAD_DOWN -> {
                 val idx = (screen.selectedIndex + 1) % options.size
                 replaceTop(screen.copy(selectedIndex = idx))
-                if (idx == InGameMenu.SAVE_STATE || idx == InGameMenu.LOAD_STATE) refreshSlotInfo()
+                if (idx == menu.saveStateIndex || idx == menu.loadStateIndex) refreshSlotInfo()
                 true
             }
-            KeyEvent.KEYCODE_DPAD_LEFT -> { if (onSlotRow) cycleSlot(-1); true }
-            KeyEvent.KEYCODE_DPAD_RIGHT -> { if (onSlotRow) cycleSlot(1); true }
+            KeyEvent.KEYCODE_DPAD_LEFT -> {
+                when {
+                    onSlotRow -> cycleSlot(-1)
+                    onDiscRow -> cycleDisc(-1)
+                }
+                true
+            }
+            KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                when {
+                    onSlotRow -> cycleSlot(1)
+                    onDiscRow -> cycleDisc(1)
+                }
+                true
+            }
             KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
-                handleMenuAction(screen.selectedIndex); true
+                handleMenuAction(menu, screen.selectedIndex); true
             }
             KeyEvent.KEYCODE_BUTTON_X -> { if (undoType != null) performUndo(); true }
             KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { closeAll(); true }
@@ -359,10 +403,10 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
-    private fun handleMenuAction(index: Int) {
+    private fun handleMenuAction(menu: InGameMenuOptions, index: Int) {
         when (index) {
-            InGameMenu.RESUME -> closeAll()
-            InGameMenu.SAVE_STATE -> {
+            menu.resumeIndex -> closeAll()
+            menu.saveStateIndex -> {
                 if (stateBasePath.isNotEmpty()) {
                     val slot = currentSlot
                     if (slot.index != 0) {
@@ -377,7 +421,7 @@ class LibretroActivity : ComponentActivity() {
                 }
                 closeAll()
             }
-            InGameMenu.LOAD_STATE -> {
+            menu.loadStateIndex -> {
                 if (stateBasePath.isNotEmpty() && slotManager.stateExists(currentSlot)) {
                     val slot = currentSlot
                     slotManager.cacheForUndoLoad(runner)
@@ -389,12 +433,12 @@ class LibretroActivity : ComponentActivity() {
                 }
                 closeAll()
             }
-            InGameMenu.SETTINGS -> {
+            menu.settingsIndex -> {
                 coreOptions = runner.getCoreOptions()
                 push(IGMScreen.Settings())
             }
-            InGameMenu.RESET -> { runner.reset(); closeAll() }
-            InGameMenu.QUIT -> quit()
+            menu.resetIndex -> { runner.reset(); closeAll() }
+            menu.quitIndex -> quit()
         }
     }
 
@@ -611,7 +655,7 @@ class LibretroActivity : ComponentActivity() {
                 saveToScope(screen.selectedIndex)
                 showOsd(when (screen.selectedIndex) {
                     0 -> "Saved globally"
-                    1 -> "Saved for $platformTag"
+                    1 -> "Saved for $platformName ($platformTag)"
                     else -> "Saved for this game"
                 })
                 pop()
@@ -645,7 +689,7 @@ class LibretroActivity : ComponentActivity() {
         }
         is IGMScreen.SaveSettings -> listOf(
             IGMSettingsItem("Save for all games"),
-            IGMSettingsItem("Save for $platformTag"),
+            IGMSettingsItem("Save for $platformName ($platformTag)"),
             IGMSettingsItem("Save for this game")
         )
         else -> emptyList()

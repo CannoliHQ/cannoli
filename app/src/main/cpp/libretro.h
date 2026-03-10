@@ -58,6 +58,8 @@ extern "C" {
 #define RETRO_ENVIRONMENT_GET_LANGUAGE           39
 #define RETRO_ENVIRONMENT_SET_MEMORY_MAPS        36
 #define RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2    67
+#define RETRO_ENVIRONMENT_SET_DISK_CONTROL_INTERFACE     13
+#define RETRO_ENVIRONMENT_SET_DISK_CONTROL_EXT_INTERFACE 65
 
 // Log levels
 enum retro_log_level {
@@ -168,6 +170,30 @@ typedef bool (*retro_load_game_t)(const struct retro_game_info *game);
 typedef void (*retro_unload_game_t)(void);
 typedef void *(*retro_get_memory_data_t)(unsigned id);
 typedef size_t (*retro_get_memory_size_t)(unsigned id);
+
+// Disk control interface
+struct retro_disk_control_callback {
+    bool (*set_eject_state)(bool ejected);
+    bool (*get_eject_state)(void);
+    unsigned (*get_image_index)(void);
+    bool (*set_image_index)(unsigned index);
+    unsigned (*get_num_images)(void);
+    bool (*replace_image_index)(unsigned index, const struct retro_game_info *info);
+    bool (*add_image_index)(void);
+};
+
+struct retro_disk_control_ext_callback {
+    bool (*set_eject_state)(bool ejected);
+    bool (*get_eject_state)(void);
+    unsigned (*get_image_index)(void);
+    bool (*set_image_index)(unsigned index);
+    unsigned (*get_num_images)(void);
+    bool (*replace_image_index)(unsigned index, const struct retro_game_info *info);
+    bool (*add_image_index)(void);
+    bool (*set_initial_image)(unsigned index, const char *path);
+    const char *(*get_image_path)(unsigned index);
+    const char *(*get_image_label)(unsigned index);
+};
 
 #ifdef __cplusplus
 }

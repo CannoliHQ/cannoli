@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.ui.components.BottomBar
 import dev.cannoli.scorza.ui.components.List
+import dev.cannoli.scorza.ui.components.PillRowKeyValue
 import dev.cannoli.scorza.ui.components.PillRowText
 import dev.cannoli.scorza.ui.components.ScreenBackground
 import dev.cannoli.scorza.ui.components.ScreenTitle
@@ -42,15 +43,30 @@ import dev.cannoli.scorza.ui.components.screenPadding
 import dev.cannoli.scorza.ui.theme.GrayText
 import dev.cannoli.scorza.ui.theme.LocalCannoliColors
 
-object InGameMenu {
-    const val RESUME = 0
-    const val SAVE_STATE = 1
-    const val LOAD_STATE = 2
-    const val SETTINGS = 3
-    const val RESET = 4
-    const val QUIT = 5
+class InGameMenuOptions(hasDiscs: Boolean, val discLabel: String) {
+    val options: List<String>
+    val resumeIndex = 0
+    val saveStateIndex = 1
+    val loadStateIndex = 2
+    val settingsIndex = 3
+    val switchDiscIndex: Int
+    val resetIndex: Int
+    val quitIndex: Int
 
-    val OPTIONS = listOf("Resume", "Save State", "Load State", "Settings", "Reset", "Quit")
+    init {
+        val list = mutableListOf("Resume", "Save State", "Load State", "Settings")
+        if (hasDiscs) {
+            switchDiscIndex = list.size
+            list.add("Switch Disc")
+        } else {
+            switchDiscIndex = -1
+        }
+        resetIndex = list.size
+        list.add("Reset")
+        quitIndex = list.size
+        list.add("Quit")
+        options = list
+    }
 }
 
 object IGMSettings {
@@ -81,6 +97,7 @@ private val verticalPadding = 8.dp
 @Composable
 fun InGameMenu(
     gameTitle: String,
+    menuOptions: InGameMenuOptions,
     selectedIndex: Int,
     selectedSlot: SaveSlotManager.Slot,
     slotThumbnail: Bitmap?,
@@ -90,7 +107,8 @@ fun InGameMenu(
     onAction: (Int) -> Unit
 ) {
     val itemHeight = pillItemHeight(lineHeight, verticalPadding)
-    val showThumbnail = selectedIndex == InGameMenu.SAVE_STATE || selectedIndex == InGameMenu.LOAD_STATE
+    val showThumbnail = selectedIndex == menuOptions.saveStateIndex || selectedIndex == menuOptions.loadStateIndex
+    val onDiscRow = selectedIndex == menuOptions.switchDiscIndex
 
     ScreenBackground(backgroundImagePath = null) {
         Box(
@@ -116,17 +134,28 @@ fun InGameMenu(
                             .then(if (showThumbnail) Modifier.fillMaxWidth(0.5f) else Modifier.fillMaxWidth())
                     ) {
                         List(
-                            items = InGameMenu.OPTIONS,
+                            items = menuOptions.options,
                             selectedIndex = selectedIndex,
                             itemHeight = itemHeight
                         ) { index, option ->
-                            PillRowText(
-                                label = option,
-                                isSelected = index == selectedIndex,
-                                fontSize = fontSize,
-                                lineHeight = lineHeight,
-                                verticalPadding = verticalPadding
-                            )
+                            if (index == menuOptions.switchDiscIndex) {
+                                PillRowKeyValue(
+                                    label = option,
+                                    value = menuOptions.discLabel,
+                                    isSelected = index == selectedIndex,
+                                    fontSize = fontSize,
+                                    lineHeight = lineHeight,
+                                    verticalPadding = verticalPadding
+                                )
+                            } else {
+                                PillRowText(
+                                    label = option,
+                                    isSelected = index == selectedIndex,
+                                    fontSize = fontSize,
+                                    lineHeight = lineHeight,
+                                    verticalPadding = verticalPadding
+                                )
+                            }
                         }
                     }
 
@@ -152,10 +181,10 @@ fun InGameMenu(
                 add("B" to "BACK")
                 if (undoLabel != null) add("X" to undoLabel.uppercase())
             }
-            val rightItems = if (showThumbnail) {
-                listOf("◀▶" to "SLOT", "A" to "SELECT")
-            } else {
-                listOf("A" to "SELECT")
+            val rightItems = when {
+                showThumbnail -> listOf("◀▶" to "SLOT", "A" to "SELECT")
+                onDiscRow -> listOf("◀▶" to "DISC", "A" to "SELECT")
+                else -> listOf("A" to "SELECT")
             }
 
             BottomBar(

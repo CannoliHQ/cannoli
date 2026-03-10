@@ -83,6 +83,11 @@ class LibretroRunner {
 
     fun setCoreOption(key: String, value: String) = nativeSetCoreOption(key, value)
 
+    fun getDiskCount(): Int = nativeGetDiskCount()
+    fun getDiskIndex(): Int = nativeGetDiskIndex()
+    fun setDiskIndex(index: Int): Boolean = nativeSetDiskIndex(index)
+    fun getDiskLabel(index: Int): String? = nativeGetDiskLabel(index)
+
     private external fun nativeLoadCore(corePath: String): Boolean
     private external fun nativeInit(systemDir: String, saveDir: String)
     private external fun nativeSetAudioCallback(audio: LibretroAudio)
@@ -106,4 +111,8 @@ class LibretroRunner {
     private external fun nativeGetAspectRatio(): Float
     private external fun nativeGetCoreOptions(): Array<String>
     private external fun nativeSetCoreOption(key: String, value: String)
+    private external fun nativeGetDiskCount(): Int
+    private external fun nativeGetDiskIndex(): Int
+    private external fun nativeSetDiskIndex(index: Int): Boolean
+    private external fun nativeGetDiskLabel(index: Int): String?
 }
