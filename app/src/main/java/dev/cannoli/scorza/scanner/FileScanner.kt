@@ -18,17 +18,20 @@ class FileScanner(
     private val portsDir get() = File(cannoliRoot, "Config/Launch Scripts/Ports")
 
     private val artCache = mutableMapOf<String, Map<String, File>>()
+    private val discRegex = Regex("""\s*\((Disc|Disk)\s*\d+\)|\s*\(CD\d+\)""", RegexOption.IGNORE_CASE)
 
     fun scanPlatforms(): List<Platform> {
         if (!romsDir.exists()) return emptyList()
 
         val tagDirs = romsDir.listFiles { f -> f.isDirectory } ?: return emptyList()
 
-        return tagDirs.map { dir ->
-            val tag = dir.name
-            val gameCount = countGames(dir)
-            platformResolver.resolvePlatform(tag, romsDir, gameCount)
-        }.sortedNatural { it.displayName }
+        return tagDirs
+            .filter { platformResolver.isKnownTag(it.name) }
+            .map { dir ->
+                val tag = dir.name
+                val gameCount = countGames(dir)
+                platformResolver.resolvePlatform(tag, romsDir, gameCount)
+            }.sortedNatural { it.displayName }
     }
 
     fun scanGames(tag: String, subfolder: String? = null): List<Game> {
@@ -42,43 +45,118 @@ class FileScanner(
 
         val emuLaunch = platformResolver.getEmuLaunch(tag, romsDir)
         val coreName = platformResolver.getCoreName(tag)
+        val appPackage = platformResolver.getAppPackage(tag)
 
         val files = baseDir.listFiles() ?: return emptyList()
 
-        return files
+        fun resolveTarget(isSubfolder: Boolean): LaunchTarget = when {
+            isSubfolder -> LaunchTarget.RetroArch
+            emuLaunch != null -> emuLaunch
+            appPackage != null -> LaunchTarget.ApkLaunch(appPackage)
+            coreName != null -> LaunchTarget.RetroArch
+            else -> LaunchTarget.RetroArch
+        }
+
+        val rawGames = files
             .filter { it.name != ".emu_launch" }
             .mapNotNull { file ->
-                val m3uFile = if (file.isDirectory) {
-                    File(file, "${file.name}.m3u").takeIf { it.exists() }
-                } else null
-                val isGameDir = m3uFile != null
-
-                if (file.isDirectory && !isGameDir) {
-                    val hasChildren = file.listFiles()?.any { it.name != ".emu_launch" } == true
-                    if (!hasChildren) return@mapNotNull null
+                if (file.isDirectory) {
+                    val dirLaunch = findDirLaunchFile(file)
+                    if (dirLaunch != null) {
+                        Game(
+                            file = dirLaunch.file,
+                            displayName = file.name,
+                            platformTag = tag,
+                            artFile = findArt(tag, file.name),
+                            launchTarget = resolveTarget(false),
+                            discFiles = dirLaunch.discFiles
+                        )
+                    } else {
+                        val hasChildren = file.listFiles()?.any { it.name != ".emu_launch" } == true
+                        if (!hasChildren) return@mapNotNull null
+                        Game(
+                            file = file,
+                            displayName = file.name,
+                            platformTag = tag,
+                            isSubfolder = true,
+                            artFile = findArt(tag, file.name),
+                            launchTarget = resolveTarget(true)
+                        )
+                    }
+                } else {
+                    Game(
+                        file = file,
+                        displayName = file.nameWithoutExtension,
+                        platformTag = tag,
+                        artFile = findArt(tag, file.nameWithoutExtension),
+                        launchTarget = resolveTarget(false)
+                    )
                 }
-
-                val launchFile = m3uFile ?: file
-                val displayName = if (file.isDirectory) file.name else file.nameWithoutExtension
-                val artFile = findArt(tag, displayName)
-
-                val target = when {
-                    file.isDirectory && !isGameDir -> LaunchTarget.RetroArch
-                    emuLaunch != null -> emuLaunch
-                    coreName != null -> LaunchTarget.RetroArch
-                    else -> LaunchTarget.RetroArch
-                }
-
-                Game(
-                    file = if (isGameDir) launchFile else file,
-                    displayName = displayName,
-                    platformTag = tag,
-                    isSubfolder = file.isDirectory && !isGameDir,
-                    artFile = artFile,
-                    launchTarget = target
-                )
             }
+
+        val looseM3uNames = rawGames
+            .filter { !it.isSubfolder && it.file.extension.equals("m3u", ignoreCase = true) }
+            .map { it.file.nameWithoutExtension }
+            .toSet()
+
+        val (discCandidates, others) = rawGames.partition {
+            !it.isSubfolder && discRegex.containsMatchIn(it.displayName)
+        }
+
+        val discGroups = discCandidates.groupBy { it.displayName.replace(discRegex, "").trim() }
+
+        val grouped = discGroups.flatMap { (baseName, games) ->
+            if (games.size <= 1) return@flatMap games
+
+            val existingM3u = others.find {
+                it.file.extension.equals("m3u", ignoreCase = true) &&
+                    it.file.nameWithoutExtension == baseName
+            }
+            if (existingM3u != null) {
+                return@flatMap listOf(existingM3u)
+            }
+
+            val sorted = games.sortedBy { it.file.name }
+            listOf(sorted.first().copy(
+                displayName = baseName,
+                artFile = findArt(tag, baseName),
+                discFiles = sorted.map { it.file }
+            ))
+        }
+
+        val discFileSet = discGroups.values
+            .filter { it.size > 1 }
+            .flatten()
+            .map { it.file.absolutePath }
+            .toSet()
+        val coveredByM3u = discGroups
+            .filter { (baseName, games) ->
+                games.size > 1 && looseM3uNames.contains(baseName)
+            }
+            .values.flatten().map { it.file.absolutePath }.toSet()
+
+        val filtered = others.filter {
+            it.file.absolutePath !in discFileSet && it.file.absolutePath !in coveredByM3u
+        }
+
+        return (filtered + grouped)
             .sortedWith(compareBy<Game> { !it.isSubfolder }.thenBy(dev.cannoli.scorza.util.NaturalSort) { it.displayName })
+    }
+
+    private data class DirLaunch(val file: File, val discFiles: List<File>? = null)
+
+    private fun findDirLaunchFile(dir: File): DirLaunch? {
+        File(dir, "${dir.name}.m3u").takeIf { it.exists() }?.let { return DirLaunch(it) }
+        File(dir, "${dir.name}.cue").takeIf { it.exists() }?.let { return DirLaunch(it) }
+        dir.listFiles()?.firstOrNull { it.extension.equals("cue", ignoreCase = true) }
+            ?.let { return DirLaunch(it) }
+        val children = dir.listFiles()?.filter { it.isFile } ?: return null
+        val discFiles = children.filter { discRegex.containsMatchIn(it.nameWithoutExtension) }
+        if (discFiles.size > 1) {
+            val sorted = discFiles.sortedBy { it.name }
+            return DirLaunch(sorted.first(), sorted)
+        }
+        return null
     }
 
     fun scanCollections(): List<Collection> {
@@ -118,9 +196,11 @@ class FileScanner(
                 val artFile = findArt(tag, displayName)
                 val emuLaunch = platformResolver.getEmuLaunch(tag, romsDir)
                 val coreName = platformResolver.getCoreName(tag)
+                val appPackage = platformResolver.getAppPackage(tag)
 
                 val target = when {
                     emuLaunch != null -> emuLaunch
+                    appPackage != null -> LaunchTarget.ApkLaunch(appPackage)
                     coreName != null -> LaunchTarget.RetroArch
                     else -> LaunchTarget.RetroArch
                 }
@@ -184,7 +264,13 @@ class FileScanner(
     }
 
     fun deleteGame(game: Game) {
-        game.file.delete()
+        if (game.discFiles != null) {
+            game.discFiles.forEach { it.delete() }
+        } else if (game.file.isDirectory) {
+            game.file.deleteRecursively()
+        } else {
+            game.file.delete()
+        }
     }
 
     fun scanApkLaunches(dir: File): List<LaunchTarget.ApkLaunch> {
@@ -271,7 +357,16 @@ class FileScanner(
 
     private fun countGames(dir: File): Int {
         val files = dir.listFiles() ?: return 0
-        return files.count { it.name != ".emu_launch" }
+        val visible = files.filter { it.name != ".emu_launch" }
+        val discFiles = visible.filter { !it.isDirectory && discRegex.containsMatchIn(it.nameWithoutExtension) }
+        val discGroupCount = discFiles
+            .groupBy { it.nameWithoutExtension.replace(discRegex, "").trim() }
+            .count { it.value.size > 1 }
+        val discFileCount = discFiles.count { f ->
+            val base = f.nameWithoutExtension.replace(discRegex, "").trim()
+            discFiles.count { it.nameWithoutExtension.replace(discRegex, "").trim() == base } > 1
+        }
+        return visible.size - discFileCount + discGroupCount
     }
 
     private fun findArt(tag: String, gameName: String): File? {
