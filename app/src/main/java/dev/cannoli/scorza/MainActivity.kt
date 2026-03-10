@@ -40,8 +40,6 @@ import dev.cannoli.scorza.ui.components.KEY_SHIFT
 import dev.cannoli.scorza.ui.components.KEY_SPACE
 import dev.cannoli.scorza.ui.components.KEY_SYMBOLS
 import dev.cannoli.scorza.ui.components.getKeyboardRows
-import dev.cannoli.scorza.ui.components.lastFirstVisibleIndex
-import dev.cannoli.scorza.ui.components.lastVisibleCount
 import dev.cannoli.scorza.ui.screens.ColorEntry
 import dev.cannoli.scorza.ui.screens.CoreMappingEntry
 import dev.cannoli.scorza.ui.screens.CorePickerOption
@@ -82,6 +80,8 @@ class MainActivity : ComponentActivity() {
     private val dialogState = MutableStateFlow<DialogState>(DialogState.None)
     private val ioScope = CoroutineScope(Dispatchers.IO)
     @Volatile private var navigating = false
+    private var currentFirstVisible = 0
+    private var currentPageSize = 10
 
     private fun pushScreen(new: LauncherScreen) {
         val current = screenStack.last()
@@ -90,41 +90,69 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun saveScrollPosition(screen: LauncherScreen): LauncherScreen = when (screen) {
-        is LauncherScreen.CoreMapping -> screen.copy(scrollTarget = lastFirstVisibleIndex)
-        is LauncherScreen.CorePicker -> screen.copy(scrollTarget = lastFirstVisibleIndex)
-        is LauncherScreen.ColorList -> screen.copy(scrollTarget = lastFirstVisibleIndex)
-        is LauncherScreen.CollectionPicker -> screen.copy(scrollTarget = lastFirstVisibleIndex)
-        is LauncherScreen.AppPicker -> screen.copy(scrollTarget = lastFirstVisibleIndex)
+        is LauncherScreen.CoreMapping -> screen.copy(scrollTarget = currentFirstVisible)
+        is LauncherScreen.CorePicker -> screen.copy(scrollTarget = currentFirstVisible)
+        is LauncherScreen.ColorList -> screen.copy(scrollTarget = currentFirstVisible)
+        is LauncherScreen.CollectionPicker -> screen.copy(scrollTarget = currentFirstVisible)
+        is LauncherScreen.AppPicker -> screen.copy(scrollTarget = currentFirstVisible)
         else -> screen
     }
 
-    private fun screenPageJump(screen: LauncherScreen, itemCount: Int, selectedIndex: Int, direction: Int) {
+    private fun pageJump(direction: Int) {
+        val page = currentPageSize.coerceAtLeast(1)
+
+        val screen = screenStack.last()
+        val (itemCount, selectedIndex) = when (screen) {
+            LauncherScreen.SystemList -> systemListViewModel.state.value.let { it.items.size to it.selectedIndex }
+            LauncherScreen.GameList -> gameListViewModel.state.value.let { it.games.size to it.selectedIndex }
+            LauncherScreen.Settings -> settingsViewModel.state.value.let { it.categories.size to it.categoryIndex }
+            is LauncherScreen.CoreMapping -> screen.mappings.size to screen.selectedIndex
+            is LauncherScreen.CorePicker -> screen.cores.size to screen.selectedIndex
+            is LauncherScreen.ColorList -> screen.colors.size to screen.selectedIndex
+            is LauncherScreen.CollectionPicker -> screen.collections.size to screen.selectedIndex
+            is LauncherScreen.AppPicker -> screen.apps.size to screen.selectedIndex
+        }
+
         if (itemCount == 0) return
         val lastIndex = itemCount - 1
-        val page = lastVisibleCount.coerceAtLeast(1)
 
-        val newIdx = if (direction > 0) {
-            val lastVisible = lastFirstVisibleIndex + page - 1
+        val newIdx: Int
+        val newScroll: Int
+
+        if (direction > 0) {
+            val lastVisible = currentFirstVisible + page - 1
             if (lastVisible >= lastIndex) {
-                if (selectedIndex < lastIndex) lastIndex else return
+                if (selectedIndex >= lastIndex) return
+                newIdx = lastIndex
+                newScroll = currentFirstVisible
             } else {
-                (lastFirstVisibleIndex + page).coerceAtMost(lastIndex)
+                newIdx = (currentFirstVisible + page).coerceAtMost(lastIndex)
+                newScroll = newIdx
             }
         } else {
-            if (lastFirstVisibleIndex <= 0) {
-                if (selectedIndex > 0) 0 else return
+            if (currentFirstVisible <= 0) {
+                if (selectedIndex <= 0) return
+                newIdx = 0
+                newScroll = 0
             } else {
-                (lastFirstVisibleIndex - page).coerceAtLeast(0)
+                newIdx = (currentFirstVisible - page).coerceAtLeast(0)
+                newScroll = newIdx
             }
         }
 
-        screenStack[screenStack.lastIndex] = when (screen) {
-            is LauncherScreen.CoreMapping -> screen.copy(selectedIndex = newIdx)
-            is LauncherScreen.CorePicker -> screen.copy(selectedIndex = newIdx)
-            is LauncherScreen.ColorList -> screen.copy(selectedIndex = newIdx)
-            is LauncherScreen.CollectionPicker -> screen.copy(selectedIndex = newIdx)
-            is LauncherScreen.AppPicker -> screen.copy(selectedIndex = newIdx)
-            else -> screen
+        applyPageJump(screen, newIdx, newScroll)
+    }
+
+    private fun applyPageJump(screen: LauncherScreen, newIdx: Int, newScroll: Int) {
+        when (screen) {
+            LauncherScreen.SystemList -> systemListViewModel.jumpToIndex(newIdx, newScroll)
+            LauncherScreen.GameList -> gameListViewModel.jumpToIndex(newIdx, newScroll)
+            LauncherScreen.Settings -> settingsViewModel.setCategoryIndex(newIdx)
+            is LauncherScreen.CoreMapping -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
+            is LauncherScreen.CorePicker -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
+            is LauncherScreen.ColorList -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
+            is LauncherScreen.CollectionPicker -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
+            is LauncherScreen.AppPicker -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
         }
     }
 
@@ -275,7 +303,11 @@ class MainActivity : ComponentActivity() {
                         systemListViewModel = systemListViewModel,
                         gameListViewModel = gameListViewModel,
                         settingsViewModel = settingsViewModel,
-                        dialogState = dialogState
+                        dialogState = dialogState,
+                        onVisibleRangeChanged = { first, count, full ->
+                            currentFirstVisible = first
+                            if (full) currentPageSize = count
+                        }
                     )
                 }
             }
@@ -453,15 +485,11 @@ class MainActivity : ComponentActivity() {
                     val newCol = if (col <= 0) rowSize - 1 else col - 1
                     dialogState.value = ds.copy(selectedIndex = curRow * rowSize + newCol)
                 }
-                DialogState.None -> when (val screen = screenStack.last()) {
-                    LauncherScreen.SystemList -> if (!systemListViewModel.isReorderMode()) systemListViewModel.pageJump(-systemListViewModel.pageSize)
-                    LauncherScreen.GameList -> if (!gameListViewModel.isReorderMode()) gameListViewModel.pageJump(-gameListViewModel.pageSize)
-                    LauncherScreen.Settings -> if (settingsViewModel.state.value.inSubList) settingsViewModel.cycleSelected(-1)
-                    is LauncherScreen.CoreMapping -> screenPageJump(screen, screen.mappings.size, screen.selectedIndex, -1)
-                    is LauncherScreen.CorePicker -> screenPageJump(screen, screen.cores.size, screen.selectedIndex, -1)
-                    is LauncherScreen.ColorList -> screenPageJump(screen, screen.colors.size, screen.selectedIndex, -1)
-                    is LauncherScreen.CollectionPicker -> screenPageJump(screen, screen.collections.size, screen.selectedIndex, -1)
-                    is LauncherScreen.AppPicker -> screenPageJump(screen, screen.apps.size, screen.selectedIndex, -1)
+                DialogState.None -> when (screenStack.last()) {
+                    LauncherScreen.SystemList -> if (!systemListViewModel.isReorderMode()) pageJump(-1)
+                    LauncherScreen.GameList -> if (!gameListViewModel.isReorderMode()) pageJump(-1)
+                    LauncherScreen.Settings -> if (settingsViewModel.state.value.inSubList) settingsViewModel.cycleSelected(-1) else pageJump(-1)
+                    else -> pageJump(-1)
                 }
                 else -> {}
             }
@@ -489,15 +517,11 @@ class MainActivity : ComponentActivity() {
                     val newCol = if (col >= rowSize - 1) 0 else col + 1
                     dialogState.value = ds.copy(selectedIndex = curRow * rowSize + newCol)
                 }
-                DialogState.None -> when (val screen = screenStack.last()) {
-                    LauncherScreen.SystemList -> if (!systemListViewModel.isReorderMode()) systemListViewModel.pageJump(systemListViewModel.pageSize)
-                    LauncherScreen.GameList -> if (!gameListViewModel.isReorderMode()) gameListViewModel.pageJump(gameListViewModel.pageSize)
-                    LauncherScreen.Settings -> if (settingsViewModel.state.value.inSubList) settingsViewModel.cycleSelected(1)
-                    is LauncherScreen.CoreMapping -> screenPageJump(screen, screen.mappings.size, screen.selectedIndex, 1)
-                    is LauncherScreen.CorePicker -> screenPageJump(screen, screen.cores.size, screen.selectedIndex, 1)
-                    is LauncherScreen.ColorList -> screenPageJump(screen, screen.colors.size, screen.selectedIndex, 1)
-                    is LauncherScreen.CollectionPicker -> screenPageJump(screen, screen.collections.size, screen.selectedIndex, 1)
-                    is LauncherScreen.AppPicker -> screenPageJump(screen, screen.apps.size, screen.selectedIndex, 1)
+                DialogState.None -> when (screenStack.last()) {
+                    LauncherScreen.SystemList -> if (!systemListViewModel.isReorderMode()) pageJump(1)
+                    LauncherScreen.GameList -> if (!gameListViewModel.isReorderMode()) pageJump(1)
+                    LauncherScreen.Settings -> if (settingsViewModel.state.value.inSubList) settingsViewModel.cycleSelected(1) else pageJump(1)
+                    else -> pageJump(1)
                 }
                 else -> {}
             }

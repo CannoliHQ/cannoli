@@ -36,7 +36,8 @@ fun SettingsScreen(
     listFontSize: TextUnit = 22.sp,
     listLineHeight: TextUnit = 32.sp,
     listVerticalPadding: Dp = 8.dp,
-    dialogState: DialogState = DialogState.None
+    dialogState: DialogState = DialogState.None,
+    onVisibleRangeChanged: (Int, Int, Boolean) -> Unit = { _, _, _ -> }
 ) {
     val state by viewModel.state.collectAsState()
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
@@ -77,7 +78,8 @@ fun SettingsScreen(
                 List(
                     items = state.items,
                     selectedIndex = state.selectedIndex,
-                    itemHeight = itemHeight
+                    itemHeight = itemHeight,
+                    onVisibleRangeChanged = onVisibleRangeChanged
                 ) { index, item ->
                     PillRowKeyValue(
                         label = stringResource(item.labelRes),
@@ -124,7 +126,8 @@ fun SettingsScreen(
                 List(
                     items = state.categories,
                     selectedIndex = state.categoryIndex,
-                    itemHeight = itemHeight
+                    itemHeight = itemHeight,
+                    onVisibleRangeChanged = onVisibleRangeChanged
                 ) { index, category ->
                     PillRowText(
                         label = stringResource(category.labelRes),

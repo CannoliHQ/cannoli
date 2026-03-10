@@ -36,7 +36,6 @@ class GameListViewModel(
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state
 
-    var pageSize: Int = 10
     var firstVisibleIndex: Int = 0
 
     private val breadcrumbStack = mutableListOf<String>()
@@ -200,31 +199,8 @@ class GameListViewModel(
         _state.value = current.copy(selectedIndex = newIndex)
     }
 
-    fun pageJump(delta: Int) {
-        val current = _state.value
-        if (current.games.isEmpty()) return
-        val lastIndex = current.games.lastIndex
-
-        if (delta > 0) {
-            val lastVisible = firstVisibleIndex + pageSize - 1
-            if (lastVisible >= lastIndex) {
-                if (current.selectedIndex < lastIndex) {
-                    _state.value = current.copy(selectedIndex = lastIndex)
-                }
-            } else {
-                val newFirst = (firstVisibleIndex + pageSize).coerceAtMost(lastIndex)
-                _state.value = current.copy(selectedIndex = newFirst)
-            }
-        } else {
-            if (firstVisibleIndex <= 0) {
-                if (current.selectedIndex > 0) {
-                    _state.value = current.copy(selectedIndex = 0)
-                }
-            } else {
-                val newFirst = (firstVisibleIndex + delta).coerceAtLeast(0)
-                _state.value = current.copy(selectedIndex = newFirst)
-            }
-        }
+    fun jumpToIndex(index: Int, scrollTarget: Int) {
+        _state.value = _state.value.copy(selectedIndex = index, scrollTarget = scrollTarget)
     }
 
     fun getSelectedGame(): Game? {

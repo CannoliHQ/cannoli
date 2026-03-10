@@ -127,6 +127,10 @@ class SettingsViewModel(
         }
     }
 
+    fun setCategoryIndex(index: Int) {
+        _state.value = _state.value.copy(categoryIndex = index)
+    }
+
     fun enterCategory(): Boolean {
         val current = _state.value
         if (current.inSubList) return false

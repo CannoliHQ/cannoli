@@ -57,7 +57,8 @@ fun AppNavGraph(
     systemListViewModel: SystemListViewModel,
     gameListViewModel: GameListViewModel,
     settingsViewModel: SettingsViewModel,
-    dialogState: StateFlow<DialogState>
+    dialogState: StateFlow<DialogState>,
+    onVisibleRangeChanged: (firstVisible: Int, visibleCount: Int, isViewportFull: Boolean) -> Unit = { _, _, _ -> }
 ) {
     val dialog by dialogState.collectAsState()
     val appSettings by settingsViewModel.appSettings.collectAsState()
@@ -94,7 +95,8 @@ fun AppNavGraph(
                 listFontSize = listFontSize,
                 listLineHeight = listLineHeight,
                 listVerticalPadding = listVerticalPadding,
-                dialogState = dialog
+                dialogState = dialog,
+                onVisibleRangeChanged = onVisibleRangeChanged
             )
             is LauncherScreen.GameList -> GameListScreen(
                 viewModel = gameListViewModel,
@@ -104,7 +106,8 @@ fun AppNavGraph(
                 listLineHeight = listLineHeight,
                 listVerticalPadding = listVerticalPadding,
                 scrollSpeed = appSettings.scrollSpeed,
-                dialogState = dialog
+                dialogState = dialog,
+                onVisibleRangeChanged = onVisibleRangeChanged
             )
             is LauncherScreen.Settings -> SettingsScreen(
                 viewModel = settingsViewModel,
@@ -113,7 +116,8 @@ fun AppNavGraph(
                 listFontSize = listFontSize,
                 listLineHeight = listLineHeight,
                 listVerticalPadding = listVerticalPadding,
-                dialogState = dialog
+                dialogState = dialog,
+                onVisibleRangeChanged = onVisibleRangeChanged
             )
             is LauncherScreen.CoreMapping -> {
                 ListDialogScreen(
@@ -129,7 +133,8 @@ fun AppNavGraph(
                         items = currentScreen.mappings,
                         selectedIndex = currentScreen.selectedIndex,
                         itemHeight = itemHeight,
-                        scrollTarget = currentScreen.scrollTarget
+                        scrollTarget = currentScreen.scrollTarget,
+                        onVisibleRangeChanged = onVisibleRangeChanged
                     ) { index, entry ->
                         val value = if (entry.runnerLabel.isNotEmpty())
                             "${entry.coreDisplayName} (${entry.runnerLabel})"
@@ -167,7 +172,8 @@ fun AppNavGraph(
                             items = currentScreen.cores,
                             selectedIndex = currentScreen.selectedIndex,
                             itemHeight = itemHeight,
-                            scrollTarget = currentScreen.scrollTarget
+                            scrollTarget = currentScreen.scrollTarget,
+                            onVisibleRangeChanged = onVisibleRangeChanged
                         ) { index, option ->
                             PillRowText(
                                 label = "${option.displayName} (${option.runnerLabel})",
@@ -194,7 +200,8 @@ fun AppNavGraph(
                         items = currentScreen.colors,
                         selectedIndex = currentScreen.selectedIndex,
                         itemHeight = itemHeight,
-                        scrollTarget = currentScreen.scrollTarget
+                        scrollTarget = currentScreen.scrollTarget,
+                        onVisibleRangeChanged = onVisibleRangeChanged
                     ) { index, entry ->
                         PillRowKeyValue(
                             label = entry.label,
@@ -241,7 +248,8 @@ fun AppNavGraph(
                             items = currentScreen.collections,
                             selectedIndex = currentScreen.selectedIndex,
                             itemHeight = itemHeight,
-                            scrollTarget = currentScreen.scrollTarget
+                            scrollTarget = currentScreen.scrollTarget,
+                            onVisibleRangeChanged = onVisibleRangeChanged
                         ) { index, collection ->
                             PillRowText(
                                 label = collection,
@@ -284,7 +292,8 @@ fun AppNavGraph(
                         items = currentScreen.apps,
                         selectedIndex = currentScreen.selectedIndex,
                         itemHeight = itemHeight,
-                        scrollTarget = currentScreen.scrollTarget
+                        scrollTarget = currentScreen.scrollTarget,
+                        onVisibleRangeChanged = onVisibleRangeChanged
                     ) { index, app ->
                         PillRowText(
                             label = app,
