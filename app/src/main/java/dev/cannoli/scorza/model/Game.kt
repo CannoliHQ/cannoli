@@ -8,5 +8,6 @@ data class Game(
     val platformTag: String,
     val isSubfolder: Boolean = false,
     val artFile: File? = null,
-    val launchTarget: LaunchTarget = LaunchTarget.RetroArch
+    val launchTarget: LaunchTarget = LaunchTarget.RetroArch,
+    val discFiles: List<File>? = null
 )
