@@ -1,0 +1,241 @@
+{
+  "GB": {
+    "name": "Game Boy",
+    "core": "gambatte_libretro"
+  },
+  "GBC": {
+    "name": "Game Boy Color",
+    "core": "gambatte_libretro"
+  },
+  "GBA": {
+    "name": "Game Boy Advance",
+    "core": "mgba_libretro",
+    "retroarch": [
+      "gpsp_libretro"
+    ]
+  },
+  "NES": {
+    "name": "Nintendo Entertainment System",
+    "core": "nestopia_libretro",
+    "retroarch": [
+      "fceumm_libretro"
+    ]
+  },
+  "FDS": {
+    "name": "Famicom Disk System",
+    "core": "nestopia_libretro"
+  },
+  "SNES": {
+    "name": "Super Nintendo Entertainment System",
+    "core": "snes9x_libretro"
+  },
+  "N64": {
+    "name": "Nintendo 64",
+    "core": "mupen64plus_next_libretro"
+  },
+  "NDS": {
+    "name": "Nintendo DS",
+    "core": "melonds_libretro"
+  },
+  
+  "GG": {
+    "name": "Game Gear",
+    "core": "genesis_plus_gx_libretro"
+  },
+  "SMS": {
+    "name": "Master System",
+    "core": "genesis_plus_gx_libretro"
+  },
+  "MD": {
+    "name": "Sega Genesis",
+    "core": "genesis_plus_gx_libretro",
+    "retroarch": [
+      "picodrive_libretro"
+    ]
+  },
+  "MEGADRIVE": {
+    "name": "Sega Genesis",
+    "core": "genesis_plus_gx_libretro",
+    "retroarch": [
+      "picodrive_libretro"
+    ]
+  },
+  "SG1000": {
+    "name": "Sega SG-1000",
+    "core": "genesis_plus_gx_libretro"
+  },
+  "32X": {
+    "name": "Sega 32X",
+    "core": "picodrive_libretro"
+  },
+  "SEGACD": {
+    "name": "Sega CD",
+    "core": "genesis_plus_gx_libretro",
+    "retroarch": [
+      "picodrive_libretro"
+    ]
+  },
+  "SATURN": {
+    "name": "Sega Saturn",
+    "core": "mednafen_saturn_libretro"
+  },
+  
+  "PS": {
+    "name": "PlayStation",
+    "core": "swanstation_libretro",
+    "retroarch": [
+      "pcsx_rearmed_libretro"
+    ]
+  },
+  "PSP": {
+    "name": "PSP",
+    "core": "ppsspp_libretro"
+  },
+  "DC": {
+    "name": "Dreamcast",
+    "core": "flycast_libretro"
+  },
+  "LYNX": {
+    "name": "Atari Lynx",
+    "core": "mednafen_lynx_libretro"
+  },
+  "JAGUAR": {
+    "name": "Atari Jaguar",
+    "core": "virtualjaguar_libretro"
+  },
+  "ATARI2600": {
+    "name": "Atari 2600",
+    "core": "stella_libretro"
+  },
+  "ATARI5200": {
+    "name": "Atari 5200",
+    "core": "atari800_libretro"
+  },
+  "ATARI7800": {
+    "name": "Atari 7800",
+    "core": "prosystem_libretro"
+  },
+  "PCE": {
+    "name": "PC Engine",
+    "core": "mednafen_pce_libretro"
+  },
+  "PCFX": {
+    "name": "PC-FX",
+    "core": "mednafen_pcfx_libretro"
+  },
+  "NGP": {
+    "name": "Neo Geo Pocket",
+    "core": "mednafen_ngp_libretro"
+  },
+  "NGPC": {
+    "name": "Neo Geo Pocket Color",
+    "core": "mednafen_ngp_libretro"
+  },
+  "WS": {
+    "name": "WonderSwan",
+    "core": "mednafen_wswan_libretro"
+  },
+  "WSC": {
+    "name": "WonderSwan Color",
+    "core": "mednafen_wswan_libretro"
+  },
+  
+  "NEOGEO": {
+    "name": "Neo Geo",
+    "core": "fbneo_libretro"
+  },
+  "MAME": {
+    "name": "Arcade (MAME)",
+    "core": "mame2003_plus_libretro"
+  },
+  "FBN": {
+    "name": "Arcade (FBNeo)",
+    "core": "fbneo_libretro"
+  },
+  "VIRTUALBOY": {
+    "name": "Virtual Boy",
+    "core": "mednafen_vb_libretro"
+  },
+  "POKEMINI": {
+    "name": "Pokemon Mini",
+    "core": "pokemini_libretro"
+  },
+  
+  "COLECOVISION": {
+    "name": "ColecoVision",
+    "core": "bluemsx_libretro"
+  },
+  "VECTREX": {
+    "name": "Vectrex",
+    "core": "vecx_libretro"
+  },
+  "INTELLIVISION": {
+    "name": "Intellivision",
+    "core": "freeintv_libretro"
+  },
+  "SUPERGRAFX": {
+    "name": "PC Engine SuperGrafx",
+    "core": "mednafen_pce_libretro"
+  },
+  
+  "DOS": {
+    "name": "DOS",
+    "core": "dosbox_pure_libretro"
+  },
+  "SCUMMVM": {
+    "name": "ScummVM",
+    "core": "scummvm_libretro"
+  },
+  "AMOR": {
+    "name": "Amiga",
+    "core": "puae_libretro"
+  },
+  "AMIGA500": {
+    "name": "Amiga 500",
+    "core": "puae_libretro"
+  },
+  "AMIGA1200": {
+    "name": "Amiga 1200",
+    "core": "puae_libretro"
+  },
+  
+  "PS2": {
+    "name": "PlayStation 2",
+    "app": [
+      "xyz.aethersx2.android"
+    ]
+  },
+  "GC": {
+    "name": "GameCube",
+    "app": [
+      "org.dolphinemu.dolphinemu"
+    ]
+  },
+  "WII": {
+    "name": "Wii",
+    "app": [
+      "org.dolphinemu.dolphinemu"
+    ]
+  },
+  "3DS": {
+    "name": "Nintendo 3DS",
+    "app": [
+      "org.citra_emu.citra"
+    ]
+  },
+  "WIIU": {
+    "name": "Wii U"
+  },
+  "VITA": {
+    "name": "PS Vita"
+  },
+  "PSVITA": {
+    "name": "PS Vita"
+  },
+  "PS3": {
+    "name": "PlayStation 3"
+  },
+  "NSW": {
+    "name": "Nintendo Switch"
+  }
+}
