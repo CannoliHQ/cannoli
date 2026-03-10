@@ -25,6 +25,7 @@ fun LibretroScreen(
     glSurfaceView: GLSurfaceView,
     gameTitle: String,
     screen: IGMScreen?,
+    menuOptions: InGameMenuOptions,
     selectedSlot: SaveSlotManager.Slot,
     slotThumbnail: Bitmap?,
     slotExists: Boolean,
@@ -56,6 +57,7 @@ fun LibretroScreen(
         when (screen) {
             is IGMScreen.Menu -> InGameMenu(
                 gameTitle = gameTitle,
+                menuOptions = menuOptions,
                 selectedIndex = screen.selectedIndex,
                 selectedSlot = selectedSlot,
                 slotThumbnail = slotThumbnail,
