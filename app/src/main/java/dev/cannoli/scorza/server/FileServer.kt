@@ -2,9 +2,7 @@ package dev.cannoli.scorza.server
 
 import android.content.res.AssetManager
 import android.util.Base64
-import java.io.BufferedReader
 import java.io.File
-import java.io.InputStreamReader
 import java.io.OutputStream
 import java.net.ServerSocket
 import java.net.Socket
@@ -14,7 +12,7 @@ import kotlin.concurrent.thread
 class FileServer(
     private val cannoliRoot: File,
     private val assets: AssetManager,
-    private val port: Int = 9090
+    private val port: Int = 1091
 ) {
     private var serverSocket: ServerSocket? = null
     @Volatile private var running = false
@@ -47,12 +45,24 @@ class FileServer(
 
     val isRunning: Boolean get() = running
 
+    private fun readLine(input: java.io.InputStream): String? {
+        val sb = StringBuilder()
+        while (true) {
+            val b = input.read()
+            if (b == -1) return if (sb.isEmpty()) null else sb.toString()
+            if (b == '\n'.code) {
+                if (sb.isNotEmpty() && sb.last() == '\r') sb.deleteCharAt(sb.length - 1)
+                return sb.toString()
+            }
+            sb.append(b.toChar())
+        }
+    }
+
     private fun handleClient(client: Socket) {
         try {
             client.soTimeout = 30_000
             val input = client.getInputStream()
-            val reader = BufferedReader(InputStreamReader(input))
-            val requestLine = reader.readLine() ?: return
+            val requestLine = readLine(input) ?: return
             val parts = requestLine.split(" ")
             if (parts.size < 3) return
 
@@ -61,7 +71,7 @@ class FileServer(
 
             val headers = mutableMapOf<String, String>()
             while (true) {
-                val line = reader.readLine() ?: break
+                val line = readLine(input) ?: break
                 if (line.isEmpty()) break
                 val colonIdx = line.indexOf(':')
                 if (colonIdx > 0) {
