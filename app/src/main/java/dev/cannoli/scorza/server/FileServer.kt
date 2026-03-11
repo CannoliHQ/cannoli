@@ -301,7 +301,7 @@ class FileServer(
             append("HTTP/1.1 401 Unauthorized\r\n")
             append("Content-Type: application/json\r\n")
             append("Content-Length: ${body.size}\r\n")
-            append("WWW-Authenticate: Basic realm=\"Cannoli Kitchen\"\r\n")
+
             append("Access-Control-Allow-Origin: *\r\n")
             append("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS\r\n")
             append("Access-Control-Allow-Headers: Content-Type, Authorization\r\n")
