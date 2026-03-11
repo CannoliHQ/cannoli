@@ -53,6 +53,7 @@ import java.util.TimerTask
 
 private const val ICON_BLUETOOTH = "\uDB80\uDCAF"   // 󰂯 nf-md-bluetooth
 private const val ICON_WIFI = "\uDB81\uDDA9"         // 󰖩 nf-md-wifi
+private const val ICON_KITCHEN = "\uDB86\uDDA3"      // 󱦣 nf-md-silverware_spoon
 
 @Composable
 fun StatusBar(
@@ -61,6 +62,7 @@ fun StatusBar(
     showBluetooth: Boolean = true,
     showClock: Boolean = true,
     showBattery: Boolean = true,
+    showKitchen: Boolean = false,
     lineHeight: TextUnit = 32.sp,
     verticalPadding: Dp = 4.dp
 ) {
@@ -168,6 +170,10 @@ fun StatusBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
+        if (showKitchen) {
+            Text(text = ICON_KITCHEN, style = iconStyle)
+        }
+
         if (showBluetooth && hasBluetooth) {
             Text(text = ICON_BLUETOOTH, style = iconStyle)
         }
