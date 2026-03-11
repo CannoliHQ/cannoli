@@ -23,6 +23,8 @@ fun ScreenTitle(
             lineHeight = lineHeight * 1.2f
         ),
         color = LocalCannoliColors.current.text,
+        maxLines = 1,
+        softWrap = false,
         modifier = Modifier.padding(start = pillInternalH)
     )
 }

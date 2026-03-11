@@ -104,77 +104,78 @@ fun GameListScreen(
                 .padding(screenPadding)
         ) {
             val showArt = selectedArt != null
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(bottom = 48.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .then(if (showArt) Modifier.fillMaxWidth(0.6f) else Modifier.fillMaxWidth())
-                ) {
-                    ScreenTitle(
-                        text = state.breadcrumb,
-                        fontSize = listFontSize,
-                        lineHeight = listLineHeight
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    if (state.games.isEmpty()) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = stringResource(R.string.empty_list, state.breadcrumb),
-                                style = MaterialTheme.typography.bodyLarge.copy(
-                                    fontSize = listFontSize,
-                                    lineHeight = listLineHeight
-                                ),
-                                color = LocalCannoliColors.current.text
-                            )
-                        }
-                    } else {
-                    List(
-                        items = state.games,
-                        selectedIndex = state.selectedIndex,
-                        itemHeight = itemHeight,
-                        scrollTarget = state.scrollTarget,
-                        onVisibleRangeChanged = { first, count, full ->
-                            viewModel.firstVisibleIndex = first
-                            onVisibleRangeChanged(first, count, full)
-                        }
-                    ) { index, game ->
-                        GameRow(
-                            game = game,
-                            isSelected = state.selectedIndex == index,
-                            fontSize = listFontSize,
-                            lineHeight = listLineHeight,
-                            verticalPadding = listVerticalPadding,
-                            scrollSpeed = scrollSpeed,
-                            showReorderIcon = state.reorderMode && state.selectedIndex == index,
-                            checkState = if (state.multiSelectMode) index in state.checkedIndices else null
-                        )
-                    }
-                    }
-                }
-
-                if (showArt) {
+                ScreenTitle(
+                    text = state.breadcrumb,
+                    fontSize = listFontSize,
+                    lineHeight = listLineHeight
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                if (state.games.isEmpty()) {
                     Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .fillMaxWidth()
-                            .padding(start = 16.dp),
+                        modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Image(
-                            bitmap = selectedArt!!,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp)),
-                            contentScale = ContentScale.Fit
+                        Text(
+                            text = stringResource(R.string.empty_list, state.breadcrumb),
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontSize = listFontSize,
+                                lineHeight = listLineHeight
+                            ),
+                            color = LocalCannoliColors.current.text
                         )
+                    }
+                } else {
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .then(if (showArt) Modifier.fillMaxWidth(0.6f) else Modifier.fillMaxWidth())
+                        ) {
+                            List(
+                                items = state.games,
+                                selectedIndex = state.selectedIndex,
+                                itemHeight = itemHeight,
+                                scrollTarget = state.scrollTarget,
+                                onVisibleRangeChanged = { first, count, full ->
+                                    viewModel.firstVisibleIndex = first
+                                    onVisibleRangeChanged(first, count, full)
+                                }
+                            ) { index, game ->
+                                GameRow(
+                                    game = game,
+                                    isSelected = state.selectedIndex == index,
+                                    fontSize = listFontSize,
+                                    lineHeight = listLineHeight,
+                                    verticalPadding = listVerticalPadding,
+                                    scrollSpeed = scrollSpeed,
+                                    showReorderIcon = state.reorderMode && state.selectedIndex == index,
+                                    checkState = if (state.multiSelectMode && !game.isSubfolder) index in state.checkedIndices else null
+                                )
+                            }
+                        }
+                        if (showArt) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .fillMaxWidth()
+                                    .padding(start = 16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Image(
+                                    bitmap = selectedArt!!,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp)),
+                                    contentScale = ContentScale.Fit
+                                )
+                            }
+                        }
                     }
                 }
             }
