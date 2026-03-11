@@ -198,14 +198,6 @@
     "name": "Amiga",
     "core": "puae_libretro"
   },
-  "AMIGA500": {
-    "name": "Amiga 500",
-    "core": "puae_libretro"
-  },
-  "AMIGA1200": {
-    "name": "Amiga 1200",
-    "core": "puae_libretro"
-  },
   
   "PS2": {
     "name": "PlayStation 2",
