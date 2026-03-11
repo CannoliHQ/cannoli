@@ -92,17 +92,6 @@ fun KitchenOverlay(url: String, pin: String) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Text(
-                text = "Passcode",
-                style = TextStyle(
-                    fontFamily = MPlus1Code,
-                    fontSize = 14.sp,
-                    color = GrayText
-                )
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -133,14 +122,15 @@ fun KitchenOverlay(url: String, pin: String) {
                 .align(Alignment.BottomCenter)
                 .padding(horizontal = screenPadding, vertical = 16.dp),
             leftItems = listOf("B" to "BACK"),
-            rightItems = emptyList()
+            rightItems = listOf("X" to "STOP")
         )
     }
 }
 
 private fun generateQrBitmap(content: String, size: Int): Bitmap? {
     return try {
-        val matrix = QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, size, size)
+        val hints = mapOf(com.google.zxing.EncodeHintType.MARGIN to 0)
+        val matrix = QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, size, size, hints)
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         for (x in 0 until size) {
             for (y in 0 until size) {
