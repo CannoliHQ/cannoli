@@ -1,9 +1,14 @@
 package dev.cannoli.scorza.ui.screens
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -22,6 +27,7 @@ import dev.cannoli.scorza.ui.components.PillRowText
 import dev.cannoli.scorza.ui.components.ScreenBackground
 import dev.cannoli.scorza.ui.components.pillItemHeight
 import dev.cannoli.scorza.ui.components.screenPadding
+import dev.cannoli.scorza.ui.theme.LocalCannoliColors
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel.ListItem
 
@@ -57,6 +63,23 @@ fun SystemListScreen(
                 .fillMaxSize()
                 .padding(screenPadding)
         ) {
+            if (state.items.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = 48.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No content found. Go add some!",
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontSize = listFontSize,
+                            lineHeight = listLineHeight
+                        ),
+                        color = LocalCannoliColors.current.text
+                    )
+                }
+            } else {
             List(
                 items = state.items,
                 selectedIndex = state.selectedIndex,
@@ -93,8 +116,11 @@ fun SystemListScreen(
                     )
                 }
             }
+            }
 
-            val rightItems = if (state.multiSelectMode) {
+            val rightItems = if (state.items.isEmpty()) {
+                listOf("Y" to "KITCHEN")
+            } else if (state.multiSelectMode) {
                 listOf("A" to stringResource(R.string.label_toggle), "▶" to stringResource(R.string.label_confirm))
             } else {
                 listOf("A" to stringResource(R.string.label_select))
