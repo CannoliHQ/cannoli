@@ -40,7 +40,8 @@ fun SystemListScreen(
     listLineHeight: TextUnit = 32.sp,
     listVerticalPadding: Dp = 8.dp,
     dialogState: DialogState = DialogState.None,
-    onVisibleRangeChanged: (Int, Int, Boolean) -> Unit = { _, _, _ -> }
+    onVisibleRangeChanged: (Int, Int, Boolean) -> Unit = { _, _, _ -> },
+    kitchenRunning: Boolean = false
 ) {
     val state by viewModel.state.collectAsState()
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
@@ -122,6 +123,8 @@ fun SystemListScreen(
                 listOf("Y" to "KITCHEN")
             } else if (state.multiSelectMode) {
                 listOf("A" to stringResource(R.string.label_toggle), "▶" to stringResource(R.string.label_confirm))
+            } else if (kitchenRunning) {
+                listOf("Y" to "KITCHEN", "A" to stringResource(R.string.label_select))
             } else {
                 listOf("A" to stringResource(R.string.label_select))
             }

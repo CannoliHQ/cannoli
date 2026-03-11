@@ -97,7 +97,8 @@ fun AppNavGraph(
                 listLineHeight = listLineHeight,
                 listVerticalPadding = listVerticalPadding,
                 dialogState = dialog,
-                onVisibleRangeChanged = onVisibleRangeChanged
+                onVisibleRangeChanged = onVisibleRangeChanged,
+                kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning
             )
             is LauncherScreen.GameList -> {
                 GameListScreen(
