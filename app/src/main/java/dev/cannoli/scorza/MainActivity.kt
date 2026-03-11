@@ -52,6 +52,7 @@ import dev.cannoli.scorza.ui.theme.COLOR_PRESETS
 import dev.cannoli.scorza.ui.theme.CannoliTheme
 import dev.cannoli.scorza.ui.theme.colorToArgbLong
 import dev.cannoli.scorza.ui.theme.hexToColor
+import dev.cannoli.scorza.ui.screens.SetupScreen
 import dev.cannoli.scorza.ui.theme.initFonts
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
@@ -86,6 +87,10 @@ class MainActivity : ComponentActivity() {
     @Volatile private var navigating = false
     private var currentFirstVisible = 0
     private var currentPageSize = 10
+    private var inSetup by mutableStateOf(false)
+    private var setupSelectedIndex by mutableStateOf(0)
+    private var setupVolumeIndex by mutableStateOf(0)
+    private var setupVolumes = listOf<Pair<String, String>>()
 
     private fun pushScreen(new: LauncherScreen) {
         val current = screenStack.last()
@@ -200,7 +205,7 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) {
         if (hasStoragePermission()) {
-            initializeApp()
+            afterPermissionGranted()
         }
     }
 
@@ -223,7 +228,7 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { grants ->
         if (grants.values.all { it }) {
-            initializeApp()
+            afterPermissionGranted()
         }
     }
 
@@ -236,10 +241,56 @@ class MainActivity : ComponentActivity() {
         initFonts(assets)
 
         if (hasStoragePermission()) {
-            initializeApp()
+            afterPermissionGranted()
         } else {
             requestStoragePermission()
         }
+    }
+
+    private fun afterPermissionGranted() {
+        if (settings.setupCompleted || File(settings.sdCardRoot).exists()) {
+            settings.setupCompleted = true
+            initializeApp()
+        } else {
+            showSetupScreen()
+        }
+    }
+
+    private fun detectStorageVolumes(): List<Pair<String, String>> {
+        val volumes = mutableListOf("Internal Storage" to "/storage/emulated/0/")
+        val storageDir = File("/storage")
+        if (storageDir.exists()) {
+            storageDir.listFiles()?.forEach { dir ->
+                if (dir.name != "emulated" && dir.name != "self" && dir.isDirectory && dir.canRead()) {
+                    volumes.add("SD Card" to dir.absolutePath + "/")
+                }
+            }
+        }
+        return volumes
+    }
+
+    private fun showSetupScreen() {
+        inSetup = true
+        setupVolumes = detectStorageVolumes()
+        setupVolumeIndex = 0
+        setupSelectedIndex = 0
+        setContent {
+            CannoliTheme {
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    SetupScreen(
+                        storageLabel = setupVolumes[setupVolumeIndex].first,
+                        selectedIndex = setupSelectedIndex
+                    )
+                }
+            }
+        }
+    }
+
+    private fun completeSetup() {
+        inSetup = false
+        settings.sdCardRoot = setupVolumes[setupVolumeIndex].second + "Cannoli/"
+        settings.setupCompleted = true
+        initializeApp()
     }
 
     override fun onResume() {
@@ -248,6 +299,11 @@ class MainActivity : ComponentActivity() {
         if (::systemListViewModel.isInitialized) {
             rescanSystemList()
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        dev.cannoli.scorza.server.KitchenManager.stop()
     }
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
@@ -265,10 +321,35 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (inSetup) {
+            handleSetupInput(keyCode)
+            return true
+        }
         if (::inputHandler.isInitialized && inputHandler.handleKeyEvent(event)) {
             return true
         }
         return super.onKeyDown(keyCode, event)
+    }
+
+    private fun handleSetupInput(keyCode: Int) {
+        when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_UP -> setupSelectedIndex = 0
+            KeyEvent.KEYCODE_DPAD_DOWN -> setupSelectedIndex = 1
+            KeyEvent.KEYCODE_DPAD_LEFT -> {
+                if (setupSelectedIndex == 0 && setupVolumes.size > 1) {
+                    setupVolumeIndex = (setupVolumeIndex - 1 + setupVolumes.size) % setupVolumes.size
+                }
+            }
+            KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                if (setupSelectedIndex == 0 && setupVolumes.size > 1) {
+                    setupVolumeIndex = (setupVolumeIndex + 1) % setupVolumes.size
+                }
+            }
+            KeyEvent.KEYCODE_BUTTON_A -> {
+                if (setupSelectedIndex == 1) completeSetup()
+            }
+            KeyEvent.KEYCODE_BUTTON_B -> finishAffinity()
+        }
     }
 
     private fun extractBundledCores(): String {
@@ -305,7 +386,11 @@ class MainActivity : ComponentActivity() {
 
         systemListViewModel = SystemListViewModel(scanner)
         gameListViewModel = GameListViewModel(scanner, platformResolver)
-        settingsViewModel = SettingsViewModel(settings, root)
+        settingsViewModel = SettingsViewModel(
+            settings, root,
+            onKitchenToggle = { toggleKitchen(root) },
+            isKitchenRunning = { dev.cannoli.scorza.server.KitchenManager.isRunning }
+        )
         atomicRename = AtomicRename(root)
 
         retroArchLauncher = RetroArchLauncher(this, settings.retroArchPackage, root.absolutePath)
@@ -762,7 +847,8 @@ class MainActivity : ComponentActivity() {
                 is DialogState.LaunchError -> {
                     dialogState.value = DialogState.None
                 }
-                DialogState.About -> {
+                DialogState.About,
+                is DialogState.Kitchen -> {
                     dialogState.value = DialogState.None
                 }
                 DialogState.None -> when (val screen = screenStack.last()) {
@@ -1290,6 +1376,20 @@ class MainActivity : ComponentActivity() {
                 dialogState.value = DialogState.LaunchError(result.message)
             }
             LaunchResult.Success -> {}
+        }
+    }
+
+    private fun toggleKitchen(root: File) {
+        val km = dev.cannoli.scorza.server.KitchenManager
+        km.toggle(root, assets)
+        if (km.isRunning) {
+            val wifiManager = applicationContext.getSystemService(android.content.Context.WIFI_SERVICE) as? android.net.wifi.WifiManager
+            dialogState.value = DialogState.Kitchen(
+                url = km.getUrl(wifiManager),
+                pin = km.pin
+            )
+        } else {
+            dialogState.value = DialogState.None
         }
     }
 
