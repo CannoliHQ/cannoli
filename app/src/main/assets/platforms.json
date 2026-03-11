@@ -38,7 +38,10 @@
   },
   "NDS": {
     "name": "Nintendo DS",
-    "core": "melonds_libretro"
+    "core": "melonds_libretro",
+    "app": [
+      "me.magnum.melonds"
+    ]
   },
   
   "GG": {
@@ -50,13 +53,6 @@
     "core": "genesis_plus_gx_libretro"
   },
   "MD": {
-    "name": "Sega Genesis",
-    "core": "genesis_plus_gx_libretro",
-    "retroarch": [
-      "picodrive_libretro"
-    ]
-  },
-  "MEGADRIVE": {
     "name": "Sega Genesis",
     "core": "genesis_plus_gx_libretro",
     "retroarch": [
@@ -198,7 +194,7 @@
     "name": "ScummVM",
     "core": "scummvm_libretro"
   },
-  "AMOR": {
+  "AMIGA": {
     "name": "Amiga",
     "core": "puae_libretro"
   },
@@ -236,18 +232,27 @@
     ]
   },
   "WIIU": {
-    "name": "Wii U"
-  },
-  "VITA": {
-    "name": "PS Vita"
+    "name": "Wii U",
+    "app": [
+      "info.cemu.cemu"
+    ]
   },
   "PSVITA": {
-    "name": "PS Vita"
+    "name": "PS Vita",
+    "app": [
+      "org.vita3k.emulator"
+    ]
   },
   "PS3": {
-    "name": "PlayStation 3"
+    "name": "PlayStation 3",
+    "app": [
+      "aenu.aps3e"
+    ]
   },
   "NSW": {
-    "name": "Nintendo Switch"
+    "name": "Nintendo Switch",
+    "app": [
+      "org.citron.citron_emu"
+    ]
   }
 }
