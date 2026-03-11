@@ -62,6 +62,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 class MainActivity : ComponentActivity() {
@@ -969,7 +970,12 @@ class MainActivity : ComponentActivity() {
                                     gameName = game.displayName,
                                     options = listOf("Rename", "Delete")
                                 )
-                            } else if (!game.isSubfolder) {
+                            } else if (game.isSubfolder) {
+                                dialogState.value = DialogState.ContextMenu(
+                                    gameName = game.displayName,
+                                    options = listOf("Rename", "Delete")
+                                )
+                            } else {
                                 dialogState.value = DialogState.ContextMenu(
                                     gameName = game.displayName,
                                     options = buildGameContextOptions(game)
@@ -1079,15 +1085,17 @@ class MainActivity : ComponentActivity() {
                     dialogState.value = DialogState.None
                 }
                 DialogState.None -> {
-                    if (screenStack.last() == LauncherScreen.SystemList && systemListViewModel.state.value.items.isEmpty()) {
-                        val root = File(settings.sdCardRoot)
+                    if (screenStack.last() == LauncherScreen.SystemList) {
                         val km = dev.cannoli.scorza.server.KitchenManager
-                        if (!km.isRunning) km.toggle(root, assets)
-                        val wifiManager = applicationContext.getSystemService(android.content.Context.WIFI_SERVICE) as? android.net.wifi.WifiManager
-                        dialogState.value = DialogState.Kitchen(
-                            url = km.getUrl(wifiManager),
-                            pin = km.pin
-                        )
+                        if (km.isRunning || systemListViewModel.state.value.items.isEmpty()) {
+                            val root = File(settings.sdCardRoot)
+                            if (!km.isRunning) km.toggle(root, assets)
+                            val wifiManager = applicationContext.getSystemService(android.content.Context.WIFI_SERVICE) as? android.net.wifi.WifiManager
+                            dialogState.value = DialogState.Kitchen(
+                                url = km.getUrl(wifiManager),
+                                pin = km.pin
+                            )
+                        }
                     }
                 }
                 else -> {}
@@ -1190,6 +1198,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun rescanSystemList() {
+        scanner.invalidateArtCache()
         systemListViewModel.scan(
             showTools = settings.showTools,
             showPorts = settings.showPorts,
@@ -1823,7 +1832,16 @@ class MainActivity : ComponentActivity() {
 
         restoreContextMenu()
         ioScope.launch {
-            atomicRename.rename(game.file, newName, game.platformTag)
+            if (game.isSubfolder) {
+                val newDir = File(game.file.parentFile, newName)
+                val ok = game.file.renameTo(newDir)
+                val msg = if (ok) null else "Failed to rename directory"
+                withContext(Dispatchers.Main) {
+                    if (msg != null) dialogState.value = DialogState.RenameResult(false, msg)
+                }
+            } else {
+                atomicRename.rename(game.file, newName, game.platformTag)
+            }
             gameListViewModel.reload()
         }
     }
