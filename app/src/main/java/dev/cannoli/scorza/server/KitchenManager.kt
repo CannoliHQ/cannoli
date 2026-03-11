@@ -28,7 +28,7 @@ object KitchenManager {
 
     fun getUrl(wifiManager: WifiManager?): String {
         val ip = getWifiIp(wifiManager)
-        return "http://$ip:9090"
+        return "http://$ip:1091"
     }
 
     private fun getWifiIp(wifiManager: WifiManager?): String {

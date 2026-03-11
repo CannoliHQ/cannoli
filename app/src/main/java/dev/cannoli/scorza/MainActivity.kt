@@ -386,11 +386,7 @@ class MainActivity : ComponentActivity() {
 
         systemListViewModel = SystemListViewModel(scanner)
         gameListViewModel = GameListViewModel(scanner, platformResolver)
-        settingsViewModel = SettingsViewModel(
-            settings, root,
-            onKitchenToggle = { toggleKitchen(root) },
-            isKitchenRunning = { dev.cannoli.scorza.server.KitchenManager.isRunning }
-        )
+        settingsViewModel = SettingsViewModel(settings, root)
         atomicRename = AtomicRename(root)
 
         retroArchLauncher = RetroArchLauncher(this, settings.retroArchPackage, root.absolutePath)
@@ -730,6 +726,15 @@ class MainActivity : ComponentActivity() {
                             val cat = settingsViewModel.state.value.categories.getOrNull(settingsViewModel.state.value.categoryIndex)
                             if (cat?.key == "about") {
                                 dialogState.value = DialogState.About
+                            } else if (cat?.key == "kitchen") {
+                                val root = File(settings.sdCardRoot)
+                                val km = dev.cannoli.scorza.server.KitchenManager
+                                if (!km.isRunning) km.toggle(root, assets)
+                                val wifiManager = applicationContext.getSystemService(android.content.Context.WIFI_SERVICE) as? android.net.wifi.WifiManager
+                                dialogState.value = DialogState.Kitchen(
+                                    url = km.getUrl(wifiManager),
+                                    pin = km.pin
+                                )
                             } else {
                                 settingsViewModel.enterCategory()
                             }
@@ -1025,6 +1030,10 @@ class MainActivity : ComponentActivity() {
                 is DialogState.CollectionRenameInput -> {
                     ds.withInsertedChar(" ")?.let { dialogState.value = it }
                 }
+                is DialogState.Kitchen -> {
+                    dev.cannoli.scorza.server.KitchenManager.stop()
+                    dialogState.value = DialogState.None
+                }
                 is DialogState.ColorPicker -> {
                     val currentHex = settingsViewModel.getColorHex(ds.settingKey).removePrefix("#")
                     dialogState.value = DialogState.HexColorInput(
@@ -1068,6 +1077,18 @@ class MainActivity : ComponentActivity() {
                 }
                 is DialogState.NewCollectionInput -> {
                     dialogState.value = DialogState.None
+                }
+                DialogState.None -> {
+                    if (screenStack.last() == LauncherScreen.SystemList && systemListViewModel.state.value.items.isEmpty()) {
+                        val root = File(settings.sdCardRoot)
+                        val km = dev.cannoli.scorza.server.KitchenManager
+                        if (!km.isRunning) km.toggle(root, assets)
+                        val wifiManager = applicationContext.getSystemService(android.content.Context.WIFI_SERVICE) as? android.net.wifi.WifiManager
+                        dialogState.value = DialogState.Kitchen(
+                            url = km.getUrl(wifiManager),
+                            pin = km.pin
+                        )
+                    }
                 }
                 else -> {}
             }
@@ -1376,20 +1397,6 @@ class MainActivity : ComponentActivity() {
                 dialogState.value = DialogState.LaunchError(result.message)
             }
             LaunchResult.Success -> {}
-        }
-    }
-
-    private fun toggleKitchen(root: File) {
-        val km = dev.cannoli.scorza.server.KitchenManager
-        km.toggle(root, assets)
-        if (km.isRunning) {
-            val wifiManager = applicationContext.getSystemService(android.content.Context.WIFI_SERVICE) as? android.net.wifi.WifiManager
-            dialogState.value = DialogState.Kitchen(
-                url = km.getUrl(wifiManager),
-                pin = km.pin
-            )
-        } else {
-            dialogState.value = DialogState.None
         }
     }
 
