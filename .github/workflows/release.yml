@@ -1,0 +1,75 @@
+name: Build Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Branch to build from
+        required: true
+        default: main
+      message:
+        description: Release notes
+        required: true
+      prerelease:
+        description: Mark as pre-release
+        type: boolean
+        default: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r27c
+
+      - name: Decode keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/release.keystore
+
+      - name: Build release APK
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: |
+          ./gradlew assembleRelease \
+            -Pandroid.injected.signing.store.file=${{ github.workspace }}/app/release.keystore \
+            -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
+            -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
+            -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
+
+      - name: Get version info
+        id: version
+        run: |
+          VERSION_NAME=$(grep 'versionName' app/build.gradle.kts | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "tag=v${VERSION_NAME}-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "apk_name=cannoli-${VERSION_NAME}-${SHORT_SHA}.apk" >> "$GITHUB_OUTPUT"
+
+      - name: Rename APK
+        run: |
+          mv app/build/outputs/apk/release/app-release.apk \
+             app/build/outputs/apk/release/${{ steps.version.outputs.apk_name }}
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          body: ${{ inputs.message }}
+          prerelease: ${{ inputs.prerelease }}
+          target_commitish: ${{ inputs.branch }}
+          files: app/build/outputs/apk/release/${{ steps.version.outputs.apk_name }}
