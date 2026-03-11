@@ -87,11 +87,6 @@ class FileServer(
                 return
             }
 
-            if (!checkAuth(headers)) {
-                sendUnauthorized(output)
-                return
-            }
-
             val segments = rawPath.removePrefix("/").split("/")
                 .map { URLDecoder.decode(it, "UTF-8") }
 
@@ -101,39 +96,42 @@ class FileServer(
                 return
             }
 
+            if (!checkAuth(headers)) {
+                sendUnauthorized(output)
+                return
+            }
+
             val apiSegments = segments.drop(1)
             val resource = apiSegments.firstOrNull() ?: ""
 
             when {
                 method == "GET" && resource == "info" -> handleInfo(output)
                 method == "GET" && resource == "tags" -> handleTags(output)
-                resource in TAGGED_RESOURCES -> {
-                    val dir = RESOURCE_DIRS[resource]!!
-                    val tag = apiSegments.getOrNull(1)
-                    if (tag.isNullOrBlank()) {
-                        sendJson(output, 400, """{"error":"tag required"}""")
-                        return
-                    }
-                    val targetDir = File(cannoliRoot, "$dir/$tag")
+                resource in RESOURCE_DIRS -> {
+                    val baseDir = RESOURCE_DIRS[resource]!!
+                    val subpath = apiSegments.drop(1).joinToString("/")
+                    val displayPath = if (subpath.isEmpty()) baseDir else "$baseDir/$subpath"
+                    val targetDir = File(cannoliRoot, displayPath)
                     when (method) {
-                        "GET" -> handleList(output, targetDir, "$dir/$tag")
+                        "GET" -> handleList(output, targetDir, displayPath)
                         "POST" -> {
                             val contentLength = headers["content-length"]?.toIntOrNull() ?: 0
                             val contentType = headers["content-type"] ?: ""
                             handleUpload(output, targetDir, contentType, contentLength, input)
                         }
-                        else -> sendJson(output, 405, """{"error":"method not allowed"}""")
-                    }
-                }
-                resource in FLAT_RESOURCES -> {
-                    val dir = RESOURCE_DIRS[resource]!!
-                    val targetDir = File(cannoliRoot, dir)
-                    when (method) {
-                        "GET" -> handleList(output, targetDir, dir)
-                        "POST" -> {
-                            val contentLength = headers["content-length"]?.toIntOrNull() ?: 0
-                            val contentType = headers["content-type"] ?: ""
-                            handleUpload(output, targetDir, contentType, contentLength, input)
+                        "PUT" -> {
+                            if (subpath.isEmpty()) {
+                                sendJson(output, 400, """{"error":"path required"}""")
+                            } else {
+                                handleMkdir(output, targetDir)
+                            }
+                        }
+                        "DELETE" -> {
+                            if (subpath.isEmpty()) {
+                                sendJson(output, 400, """{"error":"path required"}""")
+                            } else {
+                                handleDelete(output, targetDir.parentFile ?: targetDir, targetDir.name)
+                            }
                         }
                         else -> sendJson(output, 405, """{"error":"method not allowed"}""")
                     }
@@ -179,6 +177,37 @@ class FileServer(
             """{"name":"$name","type":"$type","size":$size}"""
         }
         sendJson(output, 200, """{"path":"${escapeJson(displayPath)}","entries":[$items]}""")
+    }
+
+    private fun handleMkdir(output: OutputStream, dir: File) {
+        if (!isSecure(dir)) {
+            sendJson(output, 403, """{"error":"forbidden"}""")
+            return
+        }
+        if (dir.exists()) {
+            sendJson(output, 200, """{"ok":true,"existed":true}""")
+        } else if (dir.mkdirs()) {
+            sendJson(output, 201, """{"ok":true}""")
+        } else {
+            sendJson(output, 500, """{"error":"mkdir failed"}""")
+        }
+    }
+
+    private fun handleDelete(output: OutputStream, dir: File, filename: String) {
+        val file = File(dir, sanitizeFilename(filename))
+        if (!isSecure(file)) {
+            sendJson(output, 403, """{"error":"forbidden"}""")
+            return
+        }
+        if (!file.exists()) {
+            sendJson(output, 404, """{"error":"not found"}""")
+            return
+        }
+        if (file.delete()) {
+            sendJson(output, 200, """{"ok":true}""")
+        } else {
+            sendJson(output, 500, """{"error":"delete failed"}""")
+        }
     }
 
     private fun handleUpload(
@@ -230,7 +259,8 @@ class FileServer(
             if (headerEnd < 0) continue
             val partHeaders = part.substring(0, headerEnd)
             val filenameMatch = Regex("""filename="([^"]+)"""").find(partHeaders) ?: continue
-            val filename = sanitizeFilename(filenameMatch.groupValues[1])
+            val rawName = filenameMatch.groupValues[1]
+            val filename = sanitizeFilename(String(rawName.toByteArray(Charsets.ISO_8859_1), Charsets.UTF_8))
             val fileData = part.substring(headerEnd + 4).let {
                 if (it.endsWith("\r\n")) it.dropLast(2) else it
             }
@@ -273,7 +303,7 @@ class FileServer(
             append("Content-Length: ${body.size}\r\n")
             append("WWW-Authenticate: Basic realm=\"Cannoli Kitchen\"\r\n")
             append("Access-Control-Allow-Origin: *\r\n")
-            append("Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n")
+            append("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS\r\n")
             append("Access-Control-Allow-Headers: Content-Type, Authorization\r\n")
             append("Connection: close\r\n")
             append("\r\n")
@@ -310,7 +340,7 @@ class FileServer(
 
     private fun sendCors(output: OutputStream, status: Int, contentType: String, body: ByteArray) {
         val statusText = when (status) {
-            200 -> "OK"; 204 -> "No Content"; 400 -> "Bad Request"
+            200 -> "OK"; 201 -> "Created"; 204 -> "No Content"; 400 -> "Bad Request"
             403 -> "Forbidden"; 404 -> "Not Found"; 405 -> "Method Not Allowed"
             else -> "OK"
         }
@@ -319,7 +349,7 @@ class FileServer(
             append("Content-Type: $contentType\r\n")
             append("Content-Length: ${body.size}\r\n")
             append("Access-Control-Allow-Origin: *\r\n")
-            append("Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n")
+            append("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS\r\n")
             append("Access-Control-Allow-Headers: Content-Type, Authorization\r\n")
             append("Connection: close\r\n")
             append("\r\n")
@@ -339,8 +369,6 @@ class FileServer(
     }
 
     companion object {
-        private val TAGGED_RESOURCES = setOf("roms", "art", "saves", "states")
-        private val FLAT_RESOURCES = setOf("bios", "wallpapers")
         private val RESOURCE_DIRS = mapOf(
             "roms" to "Roms",
             "art" to "Art",
