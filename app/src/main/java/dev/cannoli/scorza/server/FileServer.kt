@@ -61,13 +61,22 @@ class FileServer(
     private fun handleClient(client: Socket) {
         try {
             client.soTimeout = 30_000
+            client.receiveBufferSize = 262144
             val input = client.getInputStream()
             val requestLine = readLine(input) ?: return
             val parts = requestLine.split(" ")
             if (parts.size < 3) return
 
             val method = parts[0]
-            val rawPath = parts[1].split("?", limit = 2)[0]
+            val urlParts = parts[1].split("?", limit = 2)
+            val rawPath = urlParts[0]
+            val queryString = if (urlParts.size > 1) urlParts[1] else ""
+            val queryParams = queryString.split("&")
+                .filter { it.contains("=") }
+                .associate {
+                    val (k, v) = it.split("=", limit = 2)
+                    URLDecoder.decode(k, "UTF-8") to URLDecoder.decode(v, "UTF-8")
+                }
 
             val headers = mutableMapOf<String, String>()
             while (true) {
@@ -107,6 +116,15 @@ class FileServer(
             when {
                 method == "GET" && resource == "info" -> handleInfo(output)
                 method == "GET" && resource == "tags" -> handleTags(output)
+                resource == "slots" -> {
+                    val slotSegments = apiSegments.drop(1)
+                    handleSlots(method, slotSegments, queryParams, headers, input, output)
+                }
+                resource == "artwork" -> {
+                    if (method != "GET") { sendJson(output, 405, """{"error":"method not allowed"}"""); return }
+                    val artSegments = apiSegments.drop(1)
+                    handleArtwork(artSegments, output)
+                }
                 resource in RESOURCE_DIRS -> {
                     val baseDir = RESOURCE_DIRS[resource]!!
                     val subpath = apiSegments.drop(1).joinToString("/")
@@ -131,6 +149,24 @@ class FileServer(
                                 sendJson(output, 400, """{"error":"path required"}""")
                             } else {
                                 handleDelete(output, targetDir.parentFile ?: targetDir, targetDir.name)
+                            }
+                        }
+                        "PATCH" -> {
+                            if (subpath.isEmpty()) {
+                                sendJson(output, 400, """{"error":"path required"}""")
+                            } else {
+                                val contentLength = headers["content-length"]?.toIntOrNull() ?: 0
+                                val body = if (contentLength > 0) {
+                                    val bytes = ByteArray(contentLength)
+                                    var read = 0
+                                    while (read < contentLength) {
+                                        val n = input.read(bytes, read, contentLength - read)
+                                        if (n <= 0) break
+                                        read += n
+                                    }
+                                    String(bytes, 0, read)
+                                } else ""
+                                handleMove(output, baseDir, subpath, body)
                             }
                         }
                         else -> sendJson(output, 405, """{"error":"method not allowed"}""")
@@ -210,6 +246,265 @@ class FileServer(
         }
     }
 
+    private fun handleMove(output: OutputStream, baseDir: String, subpath: String, body: String) {
+        val to = try {
+            org.json.JSONObject(body).optString("to", "")
+        } catch (_: Exception) { "" }
+        if (to.isEmpty()) {
+            sendJson(output, 400, """{"error":"missing 'to' field"}""")
+            return
+        }
+
+        val srcRoot = subpath.substringBefore("/", "")
+        val dstRoot = to.substringBefore("/", "")
+        if (srcRoot.isEmpty() || dstRoot.isEmpty() || !srcRoot.equals(dstRoot, ignoreCase = true)) {
+            sendJson(output, 403, """{"error":"moves must stay within the same subdirectory"}""")
+            return
+        }
+
+        val src = File(cannoliRoot, "$baseDir/$subpath")
+        val dst = File(cannoliRoot, "$baseDir/$to")
+
+        if (!isSecure(src) || !isSecure(dst)) {
+            sendJson(output, 403, """{"error":"forbidden"}""")
+            return
+        }
+        if (!src.exists()) {
+            sendJson(output, 404, """{"error":"source not found"}""")
+            return
+        }
+        if (dst.exists()) {
+            sendJson(output, 409, """{"error":"destination already exists"}""")
+            return
+        }
+
+        dst.parentFile?.mkdirs()
+        if (src.renameTo(dst)) {
+            sendJson(output, 200, """{"ok":true}""")
+        } else {
+            sendJson(output, 500, """{"error":"move failed"}""")
+        }
+    }
+
+    private fun handleSlots(
+        method: String,
+        segments: List<String>,
+        query: Map<String, String>,
+        headers: Map<String, String>,
+        input: java.io.InputStream,
+        output: OutputStream
+    ) {
+        val statesDir = File(cannoliRoot, "Save States")
+        when (segments.size) {
+            0 -> {
+                if (method != "GET") { sendJson(output, 405, """{"error":"method not allowed"}"""); return }
+                val tags = statesDir.listFiles { f -> f.isDirectory }
+                    ?.filter { dir -> dir.listFiles { f -> f.isDirectory }?.isNotEmpty() == true }
+                    ?.map { it.name }?.sorted() ?: emptyList()
+                val json = tags.joinToString(",") { "\"${escapeJson(it)}\"" }
+                sendJson(output, 200, """{"platforms":[$json]}""")
+            }
+            1 -> {
+                if (method != "GET") { sendJson(output, 405, """{"error":"method not allowed"}"""); return }
+                val platformDir = File(statesDir, segments[0])
+                if (!isSecure(platformDir) || !platformDir.isDirectory) {
+                    sendJson(output, 404, """{"error":"not found"}"""); return
+                }
+                val games = platformDir.listFiles { f -> f.isDirectory }
+                    ?.map { it.name }?.sorted() ?: emptyList()
+                val json = games.joinToString(",") { "\"${escapeJson(it)}\"" }
+                sendJson(output, 200, """{"platform":"${escapeJson(segments[0])}","games":[$json]}""")
+            }
+            2 -> {
+                val platformTag = segments[0]
+                val romName = segments[1]
+                val gameDir = File(statesDir, "$platformTag/$romName")
+                if (!isSecure(gameDir)) { sendJson(output, 403, """{"error":"forbidden"}"""); return }
+                when (method) {
+                    "GET" -> handleSlotsList(output, gameDir, romName)
+                    "POST" -> {
+                        val slot = query["slot"]?.toIntOrNull()
+                        if (slot == null || slot < 0 || slot > 10) {
+                            sendJson(output, 400, """{"error":"slot param required (0-10)"}"""); return
+                        }
+                        val contentLength = headers["content-length"]?.toIntOrNull() ?: 0
+                        val contentType = headers["content-type"] ?: ""
+                        handleSlotUpload(output, gameDir, romName, slot, contentType, contentLength, input)
+                    }
+                    "DELETE" -> {
+                        val slot = query["slot"]?.toIntOrNull()
+                        if (slot == null || slot < 0 || slot > 10) {
+                            sendJson(output, 400, """{"error":"slot param required (0-10)"}"""); return
+                        }
+                        handleSlotDelete(output, gameDir, romName, slot)
+                    }
+                    else -> sendJson(output, 405, """{"error":"method not allowed"}""")
+                }
+            }
+            3 -> {
+                if (method != "GET") { sendJson(output, 405, """{"error":"method not allowed"}"""); return }
+                val platformTag = segments[0]
+                val romName = segments[1]
+                val action = segments[2]
+                if (action == "thumbnail") {
+                    val slot = query["slot"]?.toIntOrNull()
+                    if (slot == null || slot < 0 || slot > 10) {
+                        sendJson(output, 400, """{"error":"slot param required (0-10)"}"""); return
+                    }
+                    val gameDir = File(statesDir, "$platformTag/$romName")
+                    val thumbFile = File(gameDir, "$romName.state.$slot.png")
+                    if (!isSecure(thumbFile) || !thumbFile.exists()) {
+                        sendJson(output, 404, """{"error":"not found"}"""); return
+                    }
+                    sendFile(output, thumbFile, "image/png")
+                } else {
+                    sendJson(output, 404, """{"error":"not found"}""")
+                }
+            }
+            else -> sendJson(output, 404, """{"error":"not found"}""")
+        }
+    }
+
+    private fun handleSlotsList(output: OutputStream, gameDir: File, romName: String) {
+        val slots = (0..10).map { n ->
+            val stateFile = File(gameDir, "$romName.state.$n")
+            val thumbFile = File(gameDir, "$romName.state.$n.png")
+            val label = if (n == 0) "Auto" else "Slot ${n - 1}"
+            val exists = stateFile.exists()
+            val size = if (exists) stateFile.length() else 0
+            val modified = if (exists) stateFile.lastModified() else 0
+            val hasThumb = thumbFile.exists()
+            """{"slot":$n,"label":"$label","exists":$exists,"size":$size,"modified":$modified,"thumbnail":$hasThumb}"""
+        }
+        sendJson(output, 200, """{"game":"${escapeJson(romName)}","slots":[${slots.joinToString(",")}]}""")
+    }
+
+    private fun handleSlotUpload(
+        output: OutputStream,
+        gameDir: File,
+        romName: String,
+        slot: Int,
+        contentType: String,
+        contentLength: Int,
+        input: java.io.InputStream
+    ) {
+        if (!isSecure(gameDir)) { sendJson(output, 403, """{"error":"forbidden"}"""); return }
+        gameDir.mkdirs()
+        val destFile = File(gameDir, "$romName.state.$slot")
+
+        if (contentType.startsWith("multipart/form-data")) {
+            val boundary = contentType.substringAfter("boundary=", "").trim()
+            if (boundary.isEmpty()) {
+                sendJson(output, 400, """{"error":"missing boundary"}"""); return
+            }
+            val boundaryBytes = "--$boundary".toByteArray()
+            val stream = MultipartStream(input, contentLength)
+            stream.skipToBoundary(boundaryBytes)
+            if (!stream.isEndBoundary(boundaryBytes)) {
+                val headerBlock = stream.readHeaderBlock()
+                destFile.outputStream().use { fos ->
+                    stream.streamBodyToBoundary(boundaryBytes, fos)
+                }
+            }
+        } else {
+            destFile.outputStream().use { fos ->
+                val bos = java.io.BufferedOutputStream(fos, 262144)
+                val buf = ByteArray(262144)
+                var remaining = contentLength
+                while (remaining > 0) {
+                    val n = input.read(buf, 0, minOf(buf.size, remaining))
+                    if (n <= 0) break
+                    bos.write(buf, 0, n)
+                    remaining -= n
+                }
+                bos.flush()
+            }
+        }
+
+        sendJson(output, 200, """{"ok":true,"slot":$slot,"file":"${escapeJson(destFile.name)}"}""")
+    }
+
+    private fun handleSlotDelete(output: OutputStream, gameDir: File, romName: String, slot: Int) {
+        val stateFile = File(gameDir, "$romName.state.$slot")
+        val thumbFile = File(gameDir, "$romName.state.$slot.png")
+        if (!isSecure(stateFile)) { sendJson(output, 403, """{"error":"forbidden"}"""); return }
+        if (!stateFile.exists()) { sendJson(output, 404, """{"error":"not found"}"""); return }
+        stateFile.delete()
+        thumbFile.delete()
+        sendJson(output, 200, """{"ok":true}""")
+    }
+
+    private fun handleArtwork(segments: List<String>, output: OutputStream) {
+        val artDir = File(cannoliRoot, "Art")
+        when (segments.size) {
+            0 -> {
+                val tags = artDir.listFiles { f -> f.isDirectory }
+                    ?.filter { dir -> dir.listFiles { f -> f.isFile }?.isNotEmpty() == true }
+                    ?.map { it.name }?.sorted() ?: emptyList()
+                val json = tags.joinToString(",") { "\"${escapeJson(it)}\"" }
+                sendJson(output, 200, """{"platforms":[$json]}""")
+            }
+            1 -> {
+                val platformDir = File(artDir, segments[0])
+                if (!isSecure(platformDir) || !platformDir.isDirectory) {
+                    sendJson(output, 404, """{"error":"not found"}"""); return
+                }
+                val files = platformDir.listFiles { f -> f.isFile }
+                    ?.sortedBy { it.name.lowercase() } ?: emptyList()
+                val items = files.joinToString(",") { f ->
+                    """{"name":"${escapeJson(f.nameWithoutExtension)}","file":"${escapeJson(f.name)}","size":${f.length()}}"""
+                }
+                sendJson(output, 200, """{"platform":"${escapeJson(segments[0])}","art":[$items]}""")
+            }
+            2 -> {
+                val platformDir = File(artDir, segments[0])
+                if (!isSecure(platformDir) || !platformDir.isDirectory) {
+                    sendJson(output, 404, """{"error":"not found"}"""); return
+                }
+                val gameName = segments[1]
+                val artFile = platformDir.listFiles { f -> f.isFile && f.nameWithoutExtension == gameName }
+                    ?.firstOrNull()
+                if (artFile == null || !isSecure(artFile)) {
+                    sendJson(output, 404, """{"error":"not found"}"""); return
+                }
+                val mime = when (artFile.extension.lowercase()) {
+                    "png" -> "image/png"
+                    "jpg", "jpeg" -> "image/jpeg"
+                    "webp" -> "image/webp"
+                    "gif" -> "image/gif"
+                    "bmp" -> "image/bmp"
+                    else -> "application/octet-stream"
+                }
+                sendFile(output, artFile, mime)
+            }
+            else -> sendJson(output, 404, """{"error":"not found"}""")
+        }
+    }
+
+    private fun sendFile(output: OutputStream, file: File, contentType: String) {
+        val size = file.length()
+        val header = buildString {
+            append("HTTP/1.1 200 OK\r\n")
+            append("Content-Type: $contentType\r\n")
+            append("Content-Length: $size\r\n")
+            append("Access-Control-Allow-Origin: *\r\n")
+            append("Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS\r\n")
+            append("Access-Control-Allow-Headers: Content-Type, Authorization\r\n")
+            append("Connection: close\r\n")
+            append("\r\n")
+        }
+        output.write(header.toByteArray())
+        file.inputStream().use { fis ->
+            val buf = ByteArray(65536)
+            while (true) {
+                val n = fis.read(buf)
+                if (n <= 0) break
+                output.write(buf, 0, n)
+            }
+        }
+        output.flush()
+    }
+
     private fun handleUpload(
         output: OutputStream,
         destDir: File,
@@ -242,33 +537,156 @@ class FileServer(
         contentLength: Int,
         input: java.io.InputStream
     ) {
-        val fullBoundary = "--$boundary"
+        val boundaryBytes = "--$boundary".toByteArray()
         val uploaded = mutableListOf<String>()
-        val buf = ByteArray(contentLength.coerceAtMost(256 * 1024 * 1024))
-        var totalRead = 0
-        while (totalRead < contentLength) {
-            val read = input.read(buf, totalRead, minOf(buf.size - totalRead, contentLength - totalRead))
-            if (read <= 0) break
-            totalRead += read
-        }
-        val body = String(buf, 0, totalRead, Charsets.ISO_8859_1)
-        val parts = body.split(fullBoundary).drop(1)
-        for (part in parts) {
-            if (part.startsWith("--")) break
-            val headerEnd = part.indexOf("\r\n\r\n")
-            if (headerEnd < 0) continue
-            val partHeaders = part.substring(0, headerEnd)
-            val filenameMatch = Regex("""filename="([^"]+)"""").find(partHeaders) ?: continue
-            val rawName = filenameMatch.groupValues[1]
-            val filename = sanitizeFilename(String(rawName.toByteArray(Charsets.ISO_8859_1), Charsets.UTF_8))
-            val fileData = part.substring(headerEnd + 4).let {
-                if (it.endsWith("\r\n")) it.dropLast(2) else it
+        val stream = MultipartStream(input, contentLength)
+
+        stream.skipToBoundary(boundaryBytes)
+        while (!stream.isEndBoundary(boundaryBytes)) {
+            val headerBlock = stream.readHeaderBlock()
+            val filenameMatch = Regex("""filename="([^"]+)"""").find(headerBlock)
+            if (filenameMatch == null) {
+                stream.skipToBoundary(boundaryBytes)
+                continue
             }
-            File(destDir, filename).writeBytes(fileData.toByteArray(Charsets.ISO_8859_1))
+            val rawName = filenameMatch.groupValues[1]
+            val filename = sanitizeFilename(rawName)
+            val dest = File(destDir, filename)
+            dest.outputStream().use { fos ->
+                stream.streamBodyToBoundary(boundaryBytes, fos)
+            }
             uploaded.add(filename)
         }
+
         val files = uploaded.joinToString(",") { "\"${escapeJson(it)}\"" }
         sendJson(output, 200, """{"ok":true,"files":[$files]}""")
+    }
+
+    private class MultipartStream(
+        private val input: java.io.InputStream,
+        private val totalLength: Int
+    ) {
+        private val buf = ByteArray(262144 + 256)
+        private var pos = 0
+        private var len = 0
+        private var totalRead = 0
+        var lastBoundaryLine = ""
+            private set
+
+        private fun compact() {
+            if (pos > 0) {
+                val remaining = len - pos
+                if (remaining > 0) System.arraycopy(buf, pos, buf, 0, remaining)
+                len = remaining
+                pos = 0
+            }
+        }
+
+        private fun fillAtLeast(needed: Int): Boolean {
+            while (len - pos < needed) {
+                compact()
+                if (totalRead >= totalLength) return len - pos > 0
+                val space = buf.size - len
+                if (space <= 0) return len - pos > 0
+                val toRead = minOf(space, totalLength - totalRead)
+                val n = input.read(buf, len, toRead)
+                if (n <= 0) return len - pos > 0
+                len += n
+                totalRead += n
+            }
+            return true
+        }
+
+        fun readLine(): String? {
+            val sb = StringBuilder()
+            while (true) {
+                if (!fillAtLeast(1)) return if (sb.isEmpty()) null else sb.toString()
+                val start = pos
+                while (pos < len) {
+                    if (buf[pos] == '\n'.code.toByte()) {
+                        sb.append(String(buf, start, pos - start, Charsets.UTF_8))
+                        pos++
+                        if (sb.isNotEmpty() && sb.last() == '\r') sb.deleteCharAt(sb.length - 1)
+                        return sb.toString()
+                    }
+                    pos++
+                }
+                sb.append(String(buf, start, pos - start, Charsets.UTF_8))
+            }
+        }
+
+        fun skipToBoundary(boundaryBytes: ByteArray) {
+            val marker = String(boundaryBytes, Charsets.UTF_8)
+            while (true) {
+                val line = readLine() ?: break
+                if (line.startsWith(marker)) {
+                    lastBoundaryLine = line
+                    return
+                }
+            }
+            lastBoundaryLine = ""
+        }
+
+        fun isEndBoundary(boundaryBytes: ByteArray): Boolean {
+            return lastBoundaryLine == String(boundaryBytes, Charsets.UTF_8) + "--" || lastBoundaryLine.isEmpty()
+        }
+
+        fun readHeaderBlock(): String {
+            val sb = StringBuilder()
+            while (true) {
+                val line = readLine() ?: break
+                if (line.isEmpty()) break
+                sb.appendLine(line)
+            }
+            return sb.toString()
+        }
+
+        fun streamBodyToBoundary(boundaryBytes: ByteArray, out: java.io.OutputStream) {
+            val marker = byteArrayOf(0x0D, 0x0A) + boundaryBytes
+            val mLen = marker.size
+            val bos = java.io.BufferedOutputStream(out, 262144)
+
+            while (true) {
+                if (!fillAtLeast(mLen)) {
+                    val avail = len - pos
+                    if (avail > 0) bos.write(buf, pos, avail)
+                    pos = len
+                    bos.flush()
+                    lastBoundaryLine = ""
+                    return
+                }
+
+                val avail = len - pos
+                val searchEnd = pos + avail - mLen
+                var found = -1
+                var i = pos
+                outer@ while (i <= searchEnd) {
+                    if (buf[i] == marker[0]) {
+                        for (j in 1 until mLen) {
+                            if (buf[i + j] != marker[j]) { i++; continue@outer }
+                        }
+                        found = i
+                        break
+                    }
+                    i++
+                }
+
+                if (found >= 0) {
+                    if (found > pos) bos.write(buf, pos, found - pos)
+                    bos.flush()
+                    pos = found + mLen
+                    val rest = readLine() ?: ""
+                    lastBoundaryLine = String(boundaryBytes, Charsets.UTF_8) + rest
+                    return
+                }
+
+                val safeEnd = len - (mLen - 1)
+                if (safeEnd > pos) {
+                    bos.write(buf, pos, safeEnd - pos)
+                    pos = safeEnd
+                }
+            }
+        }
     }
 
     private fun serveStatic(output: OutputStream, endpoint: String) {
@@ -303,7 +721,7 @@ class FileServer(
             append("Content-Length: ${body.size}\r\n")
 
             append("Access-Control-Allow-Origin: *\r\n")
-            append("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS\r\n")
+            append("Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS\r\n")
             append("Access-Control-Allow-Headers: Content-Type, Authorization\r\n")
             append("Connection: close\r\n")
             append("\r\n")
@@ -318,7 +736,8 @@ class FileServer(
     }
 
     private fun sanitizeFilename(name: String): String {
-        return name.replace(Regex("[/\\\\]"), "_").trim()
+        return java.text.Normalizer.normalize(name, java.text.Normalizer.Form.NFC)
+            .replace(Regex("[/\\\\]"), "_").trim()
     }
 
     private fun mimeForPath(path: String): String = when {
@@ -341,7 +760,7 @@ class FileServer(
     private fun sendCors(output: OutputStream, status: Int, contentType: String, body: ByteArray) {
         val statusText = when (status) {
             200 -> "OK"; 201 -> "Created"; 204 -> "No Content"; 400 -> "Bad Request"
-            403 -> "Forbidden"; 404 -> "Not Found"; 405 -> "Method Not Allowed"
+            403 -> "Forbidden"; 404 -> "Not Found"; 405 -> "Method Not Allowed"; 409 -> "Conflict"
             else -> "OK"
         }
         val header = buildString {
@@ -349,7 +768,7 @@ class FileServer(
             append("Content-Type: $contentType\r\n")
             append("Content-Length: ${body.size}\r\n")
             append("Access-Control-Allow-Origin: *\r\n")
-            append("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS\r\n")
+            append("Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS\r\n")
             append("Access-Control-Allow-Headers: Content-Type, Authorization\r\n")
             append("Connection: close\r\n")
             append("\r\n")
