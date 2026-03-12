@@ -189,14 +189,21 @@ fun GameListScreen(
             } else {
                 stringResource(R.string.label_play)
             }
+            val showFavHint = !state.games.isEmpty() && !state.multiSelectMode &&
+                !state.isCollectionsList && selectedGame?.isSubfolder != true
             val rightItems = if (state.games.isEmpty()) {
                 emptyList()
             } else if (state.multiSelectMode) {
                 listOf("A" to actionLabel, "▶" to stringResource(R.string.label_confirm))
-            } else if (hasResumeState) {
-                listOf("X" to "RESUME", "A" to actionLabel)
             } else {
-                listOf("A" to actionLabel)
+                buildList {
+                    if (showFavHint) {
+                        val isFav = selectedGame?.displayName?.startsWith("★") == true
+                        add("Y" to if (isFav) "UNFAVORITE" else "FAVORITE")
+                    }
+                    if (hasResumeState) add("X" to "RESUME")
+                    add("A" to actionLabel)
+                }
             }
             BottomBar(
                 modifier = Modifier.align(Alignment.BottomCenter),
