@@ -299,6 +299,10 @@ class MainActivity : ComponentActivity() {
         hideSystemUI()
         if (::systemListViewModel.isInitialized) {
             rescanSystemList()
+            if (screenStack.lastOrNull() is LauncherScreen.GameList) {
+                gameListViewModel.reload()
+                scanResumableGames()
+            }
         }
     }
 
