@@ -46,6 +46,7 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
     private var frameCount = 0
     private var totalFrameCount = 0
     private var fpsTimestamp = 0L
+    private var startTimeNanos = 0L
 
     var onFrameRendered: (() -> Unit)? = null
 
@@ -78,6 +79,7 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         GLES20.glClearColor(0f, 0f, 0f, 1f)
         fpsTimestamp = System.nanoTime()
+        startTimeNanos = System.nanoTime()
 
         val vertices = floatArrayOf(-1f, -1f, 1f, -1f, -1f, 1f, 1f, 1f)
         vertexBuffer = ByteBuffer.allocateDirect(vertices.size * 4)
@@ -232,7 +234,7 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
         viewportHeight = vpH
 
         if (screenEffect == ScreenEffect.CRT) {
-            drawCrt(w, h, vpX, vpY, vpW, vpH)
+            drawCrt(w, h, vpX, vpY, vpW, vpH, totalFrameCount)
         } else {
             drawSimple(w, h, vpX, vpY, vpW, vpH)
         }
@@ -297,7 +299,12 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
     }
 
-    private fun drawCrt(w: Int, h: Int, vpX: Int, vpY: Int, vpW: Int, vpH: Int) {
+    private fun sweepTime(): Float {
+        val elapsedSec = (System.nanoTime() - startTimeNanos) / 1_000_000_000f
+        return elapsedSec * 60f
+    }
+
+    private fun drawCrt(w: Int, h: Int, vpX: Int, vpY: Int, vpW: Int, vpH: Int, bootFrameCount: Int) {
         ensureCrtFbos(w, h)
 
         // Blit: copy game frame into FBO with Y-flip
@@ -360,7 +367,8 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
         GLES20.glUniform1f(GLES20.glGetUniformLocation(programCrt, "uSweep"), crtSweep)
         GLES20.glUniform1f(GLES20.glGetUniformLocation(programCrt, "uBrightness"), crtBrightness)
         GLES20.glUniform1f(GLES20.glGetUniformLocation(programCrt, "uNoise"), crtNoise)
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programCrt, "uFrameCount"), totalFrameCount.toFloat())
+        val frameVal = if (bootFrameCount < 112) bootFrameCount.toFloat() else sweepTime()
+        GLES20.glUniform1f(GLES20.glGetUniformLocation(programCrt, "uFrameCount"), frameVal)
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
         unbindQuadAttribs(programCrt)
 
