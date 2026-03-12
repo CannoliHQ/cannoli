@@ -856,7 +856,7 @@ class MainActivity : ComponentActivity() {
                     dialogState.value = DialogState.None
                 }
                 is DialogState.RenameResult -> {
-                    restoreContextMenu()
+                    dialogState.value = DialogState.None
                 }
                 is DialogState.MissingCore,
                 is DialogState.MissingApp,
@@ -1820,11 +1820,13 @@ class MainActivity : ComponentActivity() {
         val game = gameListViewModel.getSelectedGame() ?: return
         val newName = state.currentName.trim()
         if (newName.isEmpty() || newName == game.displayName) {
-            restoreContextMenu()
+            pendingContextReturn = null
+            dialogState.value = DialogState.None
             return
         }
 
-        restoreContextMenu()
+        pendingContextReturn = null
+        dialogState.value = DialogState.None
         ioScope.launch {
             if (game.isSubfolder) {
                 val newDir = File(game.file.parentFile, newName)
