@@ -208,6 +208,27 @@ class GameListViewModel(
         return current.games.getOrNull(current.selectedIndex)
     }
 
+    fun toggleFavorite(onDone: () -> Unit = {}) {
+        val current = _state.value
+        val game = current.games.getOrNull(current.selectedIndex) ?: return
+        if (game.isSubfolder || current.isCollectionsList) return
+        val path = game.file.absolutePath
+        val isFav = game.displayName.startsWith("★")
+        val oldIndex = current.selectedIndex
+        viewModelScope.launch(Dispatchers.IO) {
+            if (isFav) scanner.removeFromCollection("Favorites", path)
+            else scanner.addToCollection("Favorites", path)
+            val newGames = if (current.isCollection && current.collectionName != null) {
+                scanner.scanCollectionGames(current.collectionName)
+            } else {
+                scanner.scanGames(current.platformTag, current.subfolderPath)
+            }
+            val newIndex = oldIndex.coerceAtMost(newGames.lastIndex.coerceAtLeast(0))
+            _state.value = current.copy(games = newGames, selectedIndex = newIndex, scrollTarget = -1)
+            withContext(Dispatchers.Main) { onDone() }
+        }
+    }
+
     fun enterMultiSelect() {
         val current = _state.value
         if (current.reorderMode || current.multiSelectMode) return

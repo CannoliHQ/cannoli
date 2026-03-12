@@ -957,7 +957,7 @@ class MainActivity : ComponentActivity() {
                                 if (glState.isCollection && glState.collectionName != null) {
                                     options.add("Remove from Collection")
                                 }
-                                options.addAll(listOf("Add to Favorites", "Manage Collections", "Delete"))
+                                options.addAll(listOf("Manage Collections", "Delete"))
                                 gameListViewModel.confirmMultiSelect()
                                 dialogState.value = DialogState.BulkContextMenu(
                                     gamePaths = paths,
@@ -1095,17 +1095,26 @@ class MainActivity : ComponentActivity() {
                     dialogState.value = DialogState.None
                 }
                 DialogState.None -> {
-                    if (screenStack.last() == LauncherScreen.SystemList) {
-                        val km = dev.cannoli.scorza.server.KitchenManager
-                        if (km.isRunning || systemListViewModel.state.value.items.isEmpty()) {
-                            val root = File(settings.sdCardRoot)
-                            if (!km.isRunning) km.toggle(root, assets)
-                            val wifiManager = applicationContext.getSystemService(android.content.Context.WIFI_SERVICE) as? android.net.wifi.WifiManager
-                            dialogState.value = DialogState.Kitchen(
-                                url = km.getUrl(wifiManager),
-                                pin = km.pin
-                            )
+                    when (screenStack.last()) {
+                        LauncherScreen.SystemList -> {
+                            val km = dev.cannoli.scorza.server.KitchenManager
+                            if (km.isRunning || systemListViewModel.state.value.items.isEmpty()) {
+                                val root = File(settings.sdCardRoot)
+                                if (!km.isRunning) km.toggle(root, assets)
+                                val wifiManager = applicationContext.getSystemService(android.content.Context.WIFI_SERVICE) as? android.net.wifi.WifiManager
+                                dialogState.value = DialogState.Kitchen(
+                                    url = km.getUrl(wifiManager),
+                                    pin = km.pin
+                                )
+                            }
                         }
+                        LauncherScreen.GameList -> {
+                            val glState = gameListViewModel.state.value
+                            if (!glState.isCollectionsList && !glState.multiSelectMode && !glState.reorderMode) {
+                                gameListViewModel.toggleFavorite { rescanSystemList() }
+                            }
+                        }
+                        else -> {}
                     }
                 }
                 else -> {}
@@ -1562,9 +1571,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun buildGameContextOptions(game: dev.cannoli.scorza.model.Game): List<String> {
-        val isFav = scanner.isInCollection("Favorites", game.file.absolutePath)
-        val favOption = if (isFav) "Remove from Favorites" else "Add to Favorites"
-        return listOf(favOption, "Manage Collections", "Emulator Override", "Rename", "Delete")
+        return listOf("Manage Collections", "Emulator Override", "Rename", "Delete")
     }
 
     private fun onContextMenuConfirm(state: DialogState.ContextMenu) {
@@ -1608,20 +1615,6 @@ class MainActivity : ComponentActivity() {
             }
             "Manage Collections" -> {
                 openCollectionManager(listOf(game.file.absolutePath), game.displayName)
-            }
-            "Add to Favorites" -> {
-                ioScope.launch {
-                    scanner.addToCollection("Favorites", game.file.absolutePath)
-                    rescanSystemList()
-                }
-                dialogState.value = DialogState.None
-            }
-            "Remove from Favorites" -> {
-                ioScope.launch {
-                    scanner.removeFromCollection("Favorites", game.file.absolutePath)
-                    rescanSystemList()
-                }
-                dialogState.value = DialogState.None
             }
             "Emulator Override" -> {
                 val tag = game.platformTag
@@ -1735,15 +1728,6 @@ class MainActivity : ComponentActivity() {
     private fun onBulkContextMenuConfirm(state: DialogState.BulkContextMenu) {
         pendingContextReturn = ContextReturn.Bulk(state.gamePaths, state.options)
         when (state.options[state.selectedOption]) {
-            "Add to Favorites" -> {
-                ioScope.launch {
-                    state.gamePaths.forEach { path ->
-                        scanner.addToCollection("Favorites", path)
-                    }
-                    rescanSystemList()
-                }
-                restoreContextMenu()
-            }
             "Manage Collections" -> {
                 openCollectionManager(state.gamePaths, "${state.gamePaths.size} Selected")
             }

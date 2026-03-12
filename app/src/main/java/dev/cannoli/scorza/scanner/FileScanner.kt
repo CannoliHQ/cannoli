@@ -140,9 +140,17 @@ class FileScanner(
             it.file.absolutePath !in discFileSet && it.file.absolutePath !in coveredByM3u
         }
 
-        return stripTags(
-            (filtered + grouped)
-                .sortedWith(compareBy<Game> { !it.isSubfolder }.thenBy(dev.cannoli.scorza.util.NaturalSort) { it.displayName })
+        val favPaths = getFavoritePaths()
+        val all = stripTags(filtered + grouped)
+        val starred = all.map { game ->
+            if (!game.isSubfolder && game.file.absolutePath in favPaths)
+                game.copy(displayName = "★ ${game.displayName}")
+            else game
+        }
+        return starred.sortedWith(
+            compareBy<Game> { !it.isSubfolder }
+                .thenBy { !it.displayName.startsWith("★") }
+                .thenBy(dev.cannoli.scorza.util.NaturalSort) { it.displayName.removePrefix("★ ") }
         )
     }
 
@@ -232,7 +240,17 @@ class FileScanner(
                     launchTarget = target
                 )
             }
-            .sortedNatural { it.displayName }
+            .let { games ->
+                val favPaths = getFavoritePaths()
+                games.map { game ->
+                    if (game.file.absolutePath in favPaths)
+                        game.copy(displayName = "★ ${game.displayName}")
+                    else game
+                }.sortedWith(
+                    compareBy<Game> { !it.displayName.startsWith("★") }
+                        .thenBy(dev.cannoli.scorza.util.NaturalSort) { it.displayName.removePrefix("★ ") }
+                )
+            }
     }
 
     fun addToCollection(collectionName: String, romPath: String) {
@@ -255,6 +273,12 @@ class FileScanner(
         val collFile = File(collectionsDir, "$collectionName.txt")
         if (!collFile.exists()) return false
         return collFile.readLines().any { it.trim() == romPath }
+    }
+
+    fun getFavoritePaths(): Set<String> {
+        val collFile = File(collectionsDir, "Favorites.txt")
+        if (!collFile.exists()) return emptySet()
+        return collFile.readLines().map { it.trim() }.filter { it.isNotEmpty() }.toSet()
     }
 
     fun createCollection(name: String) {
