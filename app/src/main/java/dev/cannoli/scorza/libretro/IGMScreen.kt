@@ -12,4 +12,5 @@ sealed class IGMScreen {
     data class Controls(override val selectedIndex: Int = 0, val listeningIndex: Int = -1) : IGMScreen()
     data class Shortcuts(override val selectedIndex: Int = 0, val listening: Boolean = false, val heldKeys: Set<Int> = emptySet(), val countdownMs: Int = 0) : IGMScreen()
     data class SavePrompt(override val selectedIndex: Int = 0) : IGMScreen()
+    data class Info(override val selectedIndex: Int = 0) : IGMScreen()
 }
