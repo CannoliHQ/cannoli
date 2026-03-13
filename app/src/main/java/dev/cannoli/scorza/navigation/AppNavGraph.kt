@@ -9,12 +9,27 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import dev.cannoli.scorza.R
+import dev.cannoli.scorza.libretro.ControlsScreen
+import dev.cannoli.scorza.libretro.LibretroInput
+import dev.cannoli.scorza.libretro.ShortcutAction
 import dev.cannoli.scorza.settings.TextSize
 import dev.cannoli.scorza.ui.components.DialogOverlay
 import dev.cannoli.scorza.ui.components.List
@@ -22,6 +37,7 @@ import dev.cannoli.scorza.ui.components.ListDialogScreen
 import dev.cannoli.scorza.ui.components.MessageOverlay
 import dev.cannoli.scorza.ui.components.PillRowKeyValue
 import dev.cannoli.scorza.ui.components.PillRowText
+import dev.cannoli.scorza.ui.components.LocalStatusBarLeftEdge
 import dev.cannoli.scorza.ui.components.StatusBar
 import dev.cannoli.scorza.ui.components.pillItemHeight
 import dev.cannoli.scorza.ui.screens.ColorEntry
@@ -49,6 +65,8 @@ sealed class LauncherScreen {
     data class ColorList(val colors: List<ColorEntry>, val selectedIndex: Int = 0, val scrollTarget: Int = 0) : LauncherScreen()
     data class CollectionPicker(val gamePaths: List<String>, val title: String, val collections: List<String>, val selectedIndex: Int = 0, val checkedIndices: Set<Int> = emptySet(), val initialChecked: Set<Int> = emptySet(), val scrollTarget: Int = 0) : LauncherScreen()
     data class AppPicker(val type: String, val title: String, val apps: List<String>, val packages: List<String>, val selectedIndex: Int = 0, val checkedIndices: Set<Int> = emptySet(), val initialChecked: Set<Int> = emptySet(), val scrollTarget: Int = 0) : LauncherScreen()
+    data class ControlBinding(val selectedIndex: Int = 0, val scrollTarget: Int = 0, val controls: Map<String, Int> = emptyMap(), val listeningIndex: Int = -1) : LauncherScreen()
+    data class ShortcutBinding(val selectedIndex: Int = 0, val scrollTarget: Int = 0, val shortcuts: Map<dev.cannoli.scorza.libretro.ShortcutAction, Set<Int>> = emptyMap(), val listening: Boolean = false, val heldKeys: Set<Int> = emptySet(), val countdownMs: Int = 0) : LauncherScreen()
 }
 
 @Composable
@@ -85,8 +103,9 @@ fun AppNavGraph(
     )
 
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
+    val statusBarLeftEdge = remember { mutableIntStateOf(Int.MAX_VALUE) }
 
-    CompositionLocalProvider(LocalCannoliColors provides cannoliColors) {
+    CompositionLocalProvider(LocalCannoliColors provides cannoliColors, LocalStatusBarLeftEdge provides statusBarLeftEdge) {
     Box(modifier = Modifier.fillMaxSize()) {
         when (currentScreen) {
             is LauncherScreen.SystemList -> SystemListScreen(
@@ -108,7 +127,6 @@ fun AppNavGraph(
                     listFontSize = listFontSize,
                     listLineHeight = listLineHeight,
                     listVerticalPadding = listVerticalPadding,
-                    scrollSpeed = appSettings.scrollSpeed,
                     dialogState = dialog,
                     onVisibleRangeChanged = onVisibleRangeChanged,
                     resumableGames = resumableGames
@@ -324,6 +342,103 @@ fun AppNavGraph(
                     }
                 }
             }
+            is LauncherScreen.ControlBinding -> {
+                val tempInput = LibretroInput()
+                for ((key, keyCode) in currentScreen.controls) {
+                    val btn = tempInput.buttons.find { it.prefKey == key } ?: continue
+                    tempInput.assign(btn, keyCode)
+                }
+                ControlsScreen(
+                    input = tempInput,
+                    selectedIndex = currentScreen.selectedIndex,
+                    listeningIndex = currentScreen.listeningIndex,
+                    title = "Button Mapping"
+                )
+            }
+            is LauncherScreen.ShortcutBinding -> {
+                ListDialogScreen(
+                    backgroundImagePath = appSettings.backgroundImagePath,
+                    backgroundTint = appSettings.backgroundTint,
+                    title = "Shortcuts",
+
+                    listFontSize = listFontSize,
+                    listLineHeight = listLineHeight,
+                    fullWidth = true,
+                    rightBottomItems = if (currentScreen.listening) listOf("" to "HOLD BUTTONS...")
+                        else listOf("X" to "CLEAR", "A" to "SET")
+                ) {
+                    List(
+                        items = ShortcutAction.entries.toList(),
+                        selectedIndex = currentScreen.selectedIndex,
+                        itemHeight = itemHeight,
+                        scrollTarget = currentScreen.scrollTarget,
+                        onVisibleRangeChanged = onVisibleRangeChanged
+                    ) { index, action ->
+                        val chord = currentScreen.shortcuts[action]
+                        val value = if (chord.isNullOrEmpty()) "None"
+                        else chord.joinToString(" + ") { LibretroInput.keyCodeName(it) }
+                        PillRowKeyValue(
+                            label = action.label,
+                            value = value,
+                            isSelected = currentScreen.selectedIndex == index,
+                            fontSize = listFontSize,
+                            lineHeight = listLineHeight,
+                            verticalPadding = listVerticalPadding
+                        )
+                    }
+                }
+                if (currentScreen.listening) {
+                    val colors = LocalCannoliColors.current
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.92f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxWidth(0.7f)
+                        ) {
+                            val actionName = ShortcutAction.entries.getOrNull(currentScreen.selectedIndex)?.label ?: ""
+                            Text(
+                                text = actionName,
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontSize = 16.sp,
+                                    color = colors.text.copy(alpha = 0.6f)
+                                )
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = if (currentScreen.heldKeys.isEmpty()) "Hold buttons..."
+                                else currentScreen.heldKeys.joinToString(" + ") { LibretroInput.keyCodeName(it) },
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontSize = 24.sp,
+                                    color = colors.text
+                                )
+                            )
+                            Spacer(modifier = Modifier.height(24.dp))
+                            if (currentScreen.heldKeys.isNotEmpty()) {
+                                val progress = (currentScreen.countdownMs / 1500f).coerceIn(0f, 1f)
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth(0.5f)
+                                        .height(8.dp)
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(colors.text.copy(alpha = 0.2f))
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth(progress)
+                                            .height(8.dp)
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(colors.highlight)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         val kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning
@@ -333,6 +448,9 @@ fun AppNavGraph(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(20.dp)
+                .onGloballyPositioned { coords ->
+                    statusBarLeftEdge.intValue = coords.positionInWindow().x.toInt()
+                }
         ) {
             StatusBar(
                 use24hTime = appSettings.use24h,

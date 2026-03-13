@@ -4,8 +4,6 @@ import androidx.annotation.StringRes
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import dev.cannoli.scorza.R
-import dev.cannoli.scorza.settings.ButtonLayout
-import dev.cannoli.scorza.settings.ScrollSpeed
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.settings.TextSize
 import dev.cannoli.scorza.settings.TimeFormat
@@ -47,7 +45,6 @@ class SettingsViewModel(
         val backgroundImagePath: String? = null,
         val backgroundTint: Int = 0,
         val textSize: TextSize = TextSize.DEFAULT,
-        val scrollSpeed: ScrollSpeed = ScrollSpeed.NORMAL,
         val colorHighlight: Color = Color.White,
         val colorText: Color = Color.White,
         val colorHighlightText: Color = Color.Black,
@@ -71,7 +68,6 @@ class SettingsViewModel(
         backgroundImagePath = settings.backgroundImagePath,
         backgroundTint = settings.backgroundTint,
         textSize = settings.textSize,
-        scrollSpeed = settings.scrollSpeed,
         colorHighlight = hexToColor(settings.colorHighlight) ?: Color.White,
         colorText = hexToColor(settings.colorText) ?: Color.White,
         colorHighlightText = hexToColor(settings.colorHighlightText) ?: Color.Black,
@@ -162,18 +158,10 @@ class SettingsViewModel(
         val item = current.items.getOrNull(current.selectedIndex) ?: return
 
         when (item.key) {
-            "button_layout" -> {
-                settings.buttonLayout = if (settings.buttonLayout == ButtonLayout.XBOX) ButtonLayout.NINTENDO else ButtonLayout.XBOX
-            }
             "text_size" -> {
                 val entries = TextSize.entries
                 val cur = entries.indexOf(settings.textSize)
                 settings.textSize = entries[((cur + direction) % entries.size + entries.size) % entries.size]
-            }
-            "scroll_speed" -> {
-                val entries = ScrollSpeed.entries
-                val cur = entries.indexOf(settings.scrollSpeed)
-                settings.scrollSpeed = entries[((cur + direction) % entries.size + entries.size) % entries.size]
             }
             "show_clock" -> {
                 if (!settings.showClock) {
@@ -197,7 +185,6 @@ class SettingsViewModel(
                     else -> next
                 }
             }
-            "swap_start_select" -> settings.swapStartSelect = !settings.swapStartSelect
             "platform_switching" -> settings.platformSwitching = !settings.platformSwitching
             "show_empty" -> settings.showEmpty = !settings.showEmpty
             "show_wifi" -> settings.showWifi = !settings.showWifi
@@ -305,9 +292,7 @@ class SettingsViewModel(
     }
 
     private fun captureSettings(): Map<String, Any?> = mapOf(
-        "button_layout" to settings.buttonLayout,
         "text_size" to settings.textSize,
-        "scroll_speed" to settings.scrollSpeed,
         "time_format" to settings.timeFormat,
         "bg_image" to settings.backgroundImagePath,
         "bg_tint" to settings.backgroundTint,
@@ -329,9 +314,7 @@ class SettingsViewModel(
     )
 
     private fun restoreSettings(snap: Map<String, Any?>) {
-        (snap["button_layout"] as? ButtonLayout)?.let { settings.buttonLayout = it }
         (snap["text_size"] as? TextSize)?.let { settings.textSize = it }
-        (snap["scroll_speed"] as? ScrollSpeed)?.let { settings.scrollSpeed = it }
         (snap["time_format"] as? TimeFormat)?.let { settings.timeFormat = it }
         settings.backgroundImagePath = snap["bg_image"] as? String
         (snap["bg_tint"] as? Int)?.let { settings.backgroundTint = it }
@@ -364,7 +347,6 @@ class SettingsViewModel(
             }
             add(SettingsItem("colors", R.string.setting_colors, isEditable = true))
             add(SettingsItem("text_size", R.string.setting_text_size, valueText = settings.textSize.name.lowercase().replaceFirstChar { it.uppercase() }))
-            add(SettingsItem("scroll_speed", R.string.setting_scroll_speed, valueText = settings.scrollSpeed.name.lowercase().replaceFirstChar { it.uppercase() }))
         }
         "content" -> buildList {
             add(SettingsItem("show_empty", R.string.setting_show_empty, valueRes = showHide(settings.showEmpty)))
@@ -390,8 +372,8 @@ class SettingsViewModel(
             SettingsItem("show_wifi", R.string.setting_wifi, valueRes = showHide(settings.showWifi))
         )
         "input" -> listOf(
-            SettingsItem("button_layout", R.string.setting_button_layout, valueText = settings.buttonLayout.name.lowercase().replaceFirstChar { it.uppercase() }),
-            SettingsItem("swap_start_select", R.string.setting_swap_start_select, valueRes = onOff(settings.swapStartSelect)),
+            SettingsItem("controls", R.string.setting_controls, isEditable = true),
+            SettingsItem("shortcuts", R.string.setting_shortcuts, isEditable = true),
             SettingsItem("platform_switching", R.string.setting_platform_switching, valueRes = onOff(settings.platformSwitching))
         )
         "kitchen" -> emptyList()

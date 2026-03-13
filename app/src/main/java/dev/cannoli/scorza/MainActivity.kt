@@ -24,6 +24,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import android.os.Handler
+import android.os.Looper
 import dev.cannoli.scorza.input.InputHandler
 import dev.cannoli.scorza.launcher.ApkLauncher
 import dev.cannoli.scorza.launcher.EmuLauncher
@@ -32,6 +34,8 @@ import dev.cannoli.scorza.launcher.RetroArchLauncher
 import dev.cannoli.scorza.model.LaunchTarget
 import dev.cannoli.scorza.navigation.AppNavGraph
 import dev.cannoli.scorza.navigation.LauncherScreen
+import dev.cannoli.scorza.libretro.LibretroInput
+import dev.cannoli.scorza.libretro.ShortcutAction
 import dev.cannoli.scorza.scanner.FileScanner
 import dev.cannoli.scorza.scanner.PlatformResolver
 import dev.cannoli.scorza.settings.SettingsRepository
@@ -48,6 +52,8 @@ import dev.cannoli.scorza.ui.screens.CoreMappingEntry
 import dev.cannoli.scorza.ui.screens.CorePickerOption
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.screens.KeyboardInputState
+import dev.cannoli.scorza.util.IniParser
+import dev.cannoli.scorza.util.IniWriter
 import dev.cannoli.scorza.ui.theme.COLOR_PRESETS
 import dev.cannoli.scorza.ui.theme.CannoliTheme
 import dev.cannoli.scorza.ui.theme.colorToArgbLong
@@ -93,6 +99,70 @@ class MainActivity : ComponentActivity() {
     private var setupVolumeIndex by mutableStateOf(0)
     private var setupVolumes = listOf<Pair<String, String>>()
 
+    private val shortcutCountdownHandler = Handler(Looper.getMainLooper())
+    private val SHORTCUT_HOLD_MS = 1500
+    private val SHORTCUT_TICK_MS = 100L
+
+    private val shortcutCountdownRunnable = object : Runnable {
+        override fun run() {
+            val screen = screenStack.lastOrNull() as? LauncherScreen.ShortcutBinding ?: return
+            if (!screen.listening) return
+            val newMs = screen.countdownMs + SHORTCUT_TICK_MS.toInt()
+            if (newMs >= SHORTCUT_HOLD_MS) {
+                val action = ShortcutAction.entries[screen.selectedIndex]
+                screenStack[screenStack.lastIndex] = screen.copy(
+                    shortcuts = screen.shortcuts + (action to screen.heldKeys),
+                    listening = false, heldKeys = emptySet(), countdownMs = 0
+                )
+            } else {
+                screenStack[screenStack.lastIndex] = screen.copy(countdownMs = newMs)
+                shortcutCountdownHandler.postDelayed(this, SHORTCUT_TICK_MS)
+            }
+        }
+    }
+
+    private fun cancelShortcutListening() {
+        shortcutCountdownHandler.removeCallbacks(shortcutCountdownRunnable)
+        val screen = screenStack.lastOrNull() as? LauncherScreen.ShortcutBinding ?: return
+        if (screen.listening) {
+            screenStack[screenStack.lastIndex] = screen.copy(listening = false, heldKeys = emptySet(), countdownMs = 0)
+        }
+    }
+
+    private fun globalIniFile() = File(settings.sdCardRoot, "Config/Overrides/global.ini")
+
+    private fun readGlobalControls(): Map<String, Int> {
+        val ini = IniParser.parse(globalIniFile())
+        val map = mutableMapOf<String, Int>()
+        for ((key, value) in ini.getSection("controls")) {
+            value.toIntOrNull()?.let { map[key] = it }
+        }
+        return map
+    }
+
+    private fun readGlobalShortcuts(): Map<ShortcutAction, Set<Int>> {
+        val ini = IniParser.parse(globalIniFile())
+        val map = mutableMapOf<ShortcutAction, Set<Int>>()
+        for ((key, value) in ini.getSection("shortcuts")) {
+            val action = try { ShortcutAction.valueOf(key) } catch (_: Exception) { continue }
+            val chord = if (value.isEmpty()) emptySet()
+            else value.split(",").mapNotNull { it.toIntOrNull() }.toSet()
+            map[action] = chord
+        }
+        return map
+    }
+
+    private fun saveGlobalControls(controls: Map<String, Int>) {
+        IniWriter.mergeWrite(globalIniFile(), "controls", controls.mapValues { it.value.toString() })
+    }
+
+    private fun saveGlobalShortcuts(shortcuts: Map<ShortcutAction, Set<Int>>) {
+        IniWriter.mergeWrite(
+            globalIniFile(), "shortcuts",
+            shortcuts.mapKeys { it.key.name }.mapValues { it.value.joinToString(",") }
+        )
+    }
+
     private fun pushScreen(new: LauncherScreen) {
         val current = screenStack.last()
         screenStack[screenStack.lastIndex] = saveScrollPosition(current)
@@ -105,6 +175,8 @@ class MainActivity : ComponentActivity() {
         is LauncherScreen.ColorList -> screen.copy(scrollTarget = currentFirstVisible)
         is LauncherScreen.CollectionPicker -> screen.copy(scrollTarget = currentFirstVisible)
         is LauncherScreen.AppPicker -> screen.copy(scrollTarget = currentFirstVisible)
+        is LauncherScreen.ControlBinding -> screen.copy(scrollTarget = currentFirstVisible)
+        is LauncherScreen.ShortcutBinding -> screen.copy(scrollTarget = currentFirstVisible)
         else -> screen
     }
 
@@ -121,6 +193,8 @@ class MainActivity : ComponentActivity() {
             is LauncherScreen.ColorList -> screen.colors.size to screen.selectedIndex
             is LauncherScreen.CollectionPicker -> screen.collections.size to screen.selectedIndex
             is LauncherScreen.AppPicker -> screen.apps.size to screen.selectedIndex
+            is LauncherScreen.ControlBinding -> LibretroInput().buttons.size to screen.selectedIndex
+            is LauncherScreen.ShortcutBinding -> ShortcutAction.entries.size to screen.selectedIndex
         }
 
         if (itemCount == 0) return
@@ -163,6 +237,8 @@ class MainActivity : ComponentActivity() {
             is LauncherScreen.ColorList -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
             is LauncherScreen.CollectionPicker -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
             is LauncherScreen.AppPicker -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
+            is LauncherScreen.ControlBinding -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
+            is LauncherScreen.ShortcutBinding -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
         }
     }
 
@@ -330,10 +406,49 @@ class MainActivity : ComponentActivity() {
             handleSetupInput(keyCode)
             return true
         }
+        if (handleBindingKeyDown(keyCode)) return true
         if (::inputHandler.isInitialized && inputHandler.handleKeyEvent(event)) {
             return true
         }
         return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        val screen = screenStack.lastOrNull()
+        if (screen is LauncherScreen.ShortcutBinding && screen.listening && screen.heldKeys.contains(keyCode)) {
+            cancelShortcutListening()
+            return true
+        }
+        return super.onKeyUp(keyCode, event)
+    }
+
+    private fun handleBindingKeyDown(keyCode: Int): Boolean {
+        val screen = screenStack.lastOrNull() ?: return false
+        when (screen) {
+            is LauncherScreen.ControlBinding -> {
+                if (screen.listeningIndex < 0) return false
+                if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_BUTTON_B) {
+                    screenStack[screenStack.lastIndex] = screen.copy(listeningIndex = -1)
+                    return true
+                }
+                val btn = LibretroInput().buttons[screen.listeningIndex]
+                screenStack[screenStack.lastIndex] = screen.copy(
+                    controls = screen.controls + (btn.prefKey to keyCode),
+                    listeningIndex = -1
+                )
+                return true
+            }
+            is LauncherScreen.ShortcutBinding -> {
+                if (!screen.listening) return false
+                if (screen.heldKeys.contains(keyCode)) return true
+                val newKeys = screen.heldKeys + keyCode
+                screenStack[screenStack.lastIndex] = screen.copy(heldKeys = newKeys, countdownMs = 0)
+                shortcutCountdownHandler.removeCallbacks(shortcutCountdownRunnable)
+                shortcutCountdownHandler.postDelayed(shortcutCountdownRunnable, SHORTCUT_TICK_MS)
+                return true
+            }
+            else -> return false
+        }
     }
 
     private fun handleSetupInput(keyCode: Int) {
@@ -406,7 +521,7 @@ class MainActivity : ComponentActivity() {
 
         onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                inputHandler.onBack()
+                // swallow — back button/gesture does nothing in the launcher
             }
         })
 
@@ -502,6 +617,18 @@ class MainActivity : ComponentActivity() {
                             screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx)
                         }
                     }
+                    is LauncherScreen.ControlBinding -> {
+                        val count = LibretroInput().buttons.size
+                        val newIdx = if (screen.selectedIndex <= 0) count - 1 else screen.selectedIndex - 1
+                        screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx)
+                    }
+                    is LauncherScreen.ShortcutBinding -> {
+                        if (!screen.listening) {
+                            val count = ShortcutAction.entries.size
+                            val newIdx = if (screen.selectedIndex <= 0) count - 1 else screen.selectedIndex - 1
+                            screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx)
+                        }
+                    }
                 }
                 else -> {}
             }
@@ -573,6 +700,18 @@ class MainActivity : ComponentActivity() {
                     is LauncherScreen.CollectionPicker -> {
                         if (screen.collections.isNotEmpty()) {
                             val newIdx = if (screen.selectedIndex >= screen.collections.lastIndex) 0 else screen.selectedIndex + 1
+                            screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx)
+                        }
+                    }
+                    is LauncherScreen.ControlBinding -> {
+                        val count = LibretroInput().buttons.size
+                        val newIdx = if (screen.selectedIndex >= count - 1) 0 else screen.selectedIndex + 1
+                        screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx)
+                    }
+                    is LauncherScreen.ShortcutBinding -> {
+                        if (!screen.listening) {
+                            val count = ShortcutAction.entries.size
+                            val newIdx = if (screen.selectedIndex >= count - 1) 0 else screen.selectedIndex + 1
                             screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx)
                         }
                     }
@@ -762,6 +901,10 @@ class MainActivity : ComponentActivity() {
                                 val idx = entries.indexOfFirst { it.key == key }.coerceAtLeast(0)
                                 screenStack.add(LauncherScreen.ColorList(colors = entries, selectedIndex = idx))
                                 openColorPicker(key)
+                            } else if (key == "controls") {
+                                pushScreen(LauncherScreen.ControlBinding(controls = readGlobalControls()))
+                            } else if (key == "shortcuts") {
+                                pushScreen(LauncherScreen.ShortcutBinding(shortcuts = readGlobalShortcuts()))
                             } else if (key == "core_mapping") {
                                 screenStack.add(LauncherScreen.CoreMapping(
                                     mappings = platformResolver.getDetailedMappings(packageManager)
@@ -822,6 +965,18 @@ class MainActivity : ComponentActivity() {
                             screen.checkedIndices + screen.selectedIndex
                         }
                         screenStack[screenStack.lastIndex] = screen.copy(checkedIndices = newChecked)
+                    }
+                    is LauncherScreen.ControlBinding -> {
+                        if (screen.listeningIndex < 0) {
+                            screenStack[screenStack.lastIndex] = screen.copy(listeningIndex = screen.selectedIndex)
+                        }
+                    }
+                    is LauncherScreen.ShortcutBinding -> {
+                        if (!screen.listening) {
+                            screenStack[screenStack.lastIndex] = screen.copy(
+                                listening = true, heldKeys = emptySet(), countdownMs = 0
+                            )
+                        }
                     }
                 }
                 else -> {}
@@ -925,6 +1080,15 @@ class MainActivity : ComponentActivity() {
                     }
                     is LauncherScreen.CollectionPicker -> {
                         onCollectionPickerConfirm(screen)
+                    }
+                    is LauncherScreen.ControlBinding -> {
+                        saveGlobalControls(screen.controls)
+                        screenStack.removeAt(screenStack.lastIndex)
+                    }
+                    is LauncherScreen.ShortcutBinding -> {
+                        cancelShortcutListening()
+                        saveGlobalShortcuts(screen.shortcuts)
+                        screenStack.removeAt(screenStack.lastIndex)
                     }
                 }
             }
@@ -1078,6 +1242,17 @@ class MainActivity : ComponentActivity() {
                     }
                     is LauncherScreen.CollectionPicker -> {
                         dialogState.value = DialogState.NewCollectionInput(gamePaths = screen.gamePaths)
+                    }
+                    is LauncherScreen.ControlBinding -> {
+                        screenStack[screenStack.lastIndex] = screen.copy(controls = emptyMap())
+                    }
+                    is LauncherScreen.ShortcutBinding -> {
+                        if (!screen.listening) {
+                            val action = ShortcutAction.entries[screen.selectedIndex]
+                            screenStack[screenStack.lastIndex] = screen.copy(
+                                shortcuts = screen.shortcuts + (action to emptySet())
+                            )
+                        }
                     }
                     else -> {}
                 }
@@ -1844,20 +2019,53 @@ class MainActivity : ComponentActivity() {
 
     private fun switchPlatform(delta: Int) {
         if (navigating) return
-        val tags = systemListViewModel.getPlatformTags()
-        if (tags.isEmpty()) return
+        val items = systemListViewModel.getNavigableItems()
+        if (items.size < 2) return
 
-        val currentTag = gameListViewModel.state.value.platformTag
-        val currentIndex = tags.indexOf(currentTag)
+        val gs = gameListViewModel.state.value
+        val currentIndex = items.indexOfFirst { item ->
+            when {
+                gs.isCollectionsList -> item is SystemListViewModel.ListItem.CollectionsFolder
+                gs.isCollection && gs.collectionName == "Favorites" -> item is SystemListViewModel.ListItem.FavoritesItem
+                gs.platformTag == "tools" -> item is SystemListViewModel.ListItem.ToolsFolder
+                gs.platformTag == "ports" -> item is SystemListViewModel.ListItem.PortsFolder
+                gs.platformTag.isNotEmpty() -> item is SystemListViewModel.ListItem.PlatformItem && item.platform.tag == gs.platformTag
+                else -> false
+            }
+        }
         if (currentIndex == -1) return
 
-        val newIndex = (currentIndex + delta).mod(tags.size)
-
-        val newTag = tags[newIndex]
+        val newIndex = (currentIndex + delta).mod(items.size)
         navigating = true
-        gameListViewModel.loadPlatform(newTag) {
-            scanResumableGames()
-            navigating = false
+        when (val target = items[newIndex]) {
+            is SystemListViewModel.ListItem.FavoritesItem -> {
+                gameListViewModel.loadCollection("Favorites") {
+                    scanResumableGames()
+                    navigating = false
+                }
+            }
+            is SystemListViewModel.ListItem.CollectionsFolder -> {
+                gameListViewModel.loadCollectionsList {
+                    navigating = false
+                }
+            }
+            is SystemListViewModel.ListItem.PlatformItem -> {
+                gameListViewModel.loadPlatform(target.platform.tag) {
+                    scanResumableGames()
+                    navigating = false
+                }
+            }
+            is SystemListViewModel.ListItem.ToolsFolder -> {
+                gameListViewModel.loadApkList("tools", target.name) {
+                    navigating = false
+                }
+            }
+            is SystemListViewModel.ListItem.PortsFolder -> {
+                gameListViewModel.loadApkList("ports", target.name) {
+                    navigating = false
+                }
+            }
+            else -> { navigating = false }
         }
     }
 
