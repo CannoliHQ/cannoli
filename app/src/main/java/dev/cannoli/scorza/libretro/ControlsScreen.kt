@@ -28,7 +28,8 @@ private val verticalPadding = 8.dp
 fun ControlsScreen(
     input: LibretroInput,
     selectedIndex: Int,
-    listeningIndex: Int
+    listeningIndex: Int,
+    title: String = "Controls"
 ) {
     val itemHeight = pillItemHeight(lineHeight, verticalPadding)
 
@@ -44,7 +45,7 @@ fun ControlsScreen(
                     .padding(bottom = 48.dp)
             ) {
                 ScreenTitle(
-                    text = "Controls",
+                    text = title,
                     fontSize = fontSize,
                     lineHeight = lineHeight
                 )
