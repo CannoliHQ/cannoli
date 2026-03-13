@@ -31,6 +31,7 @@ import dev.cannoli.scorza.libretro.ControlsScreen
 import dev.cannoli.scorza.libretro.LibretroInput
 import dev.cannoli.scorza.libretro.ShortcutAction
 import dev.cannoli.scorza.settings.TextSize
+import dev.cannoli.scorza.ui.components.CreditsOverlay
 import dev.cannoli.scorza.ui.components.DialogOverlay
 import dev.cannoli.scorza.ui.components.List
 import dev.cannoli.scorza.ui.components.ListDialogScreen
@@ -67,6 +68,7 @@ sealed class LauncherScreen {
     data class AppPicker(val type: String, val title: String, val apps: List<String>, val packages: List<String>, val selectedIndex: Int = 0, val checkedIndices: Set<Int> = emptySet(), val initialChecked: Set<Int> = emptySet(), val scrollTarget: Int = 0) : LauncherScreen()
     data class ControlBinding(val selectedIndex: Int = 0, val scrollTarget: Int = 0, val controls: Map<String, Int> = emptyMap(), val listeningIndex: Int = -1) : LauncherScreen()
     data class ShortcutBinding(val selectedIndex: Int = 0, val scrollTarget: Int = 0, val shortcuts: Map<dev.cannoli.scorza.libretro.ShortcutAction, Set<Int>> = emptyMap(), val listening: Boolean = false, val heldKeys: Set<Int> = emptySet(), val countdownMs: Int = 0) : LauncherScreen()
+    data class Credits(val selectedIndex: Int = 0, val scrollTarget: Int = 0) : LauncherScreen()
 }
 
 @Composable
@@ -435,6 +437,18 @@ fun AppNavGraph(
                         }
                     }
                 }
+            }
+            is LauncherScreen.Credits -> {
+                CreditsOverlay(
+                    selectedIndex = currentScreen.selectedIndex,
+                    scrollTarget = currentScreen.scrollTarget,
+                    backgroundImagePath = appSettings.backgroundImagePath,
+                    backgroundTint = appSettings.backgroundTint,
+                    listFontSize = listFontSize,
+                    listLineHeight = listLineHeight,
+                    listVerticalPadding = listVerticalPadding,
+                    onVisibleRangeChanged = onVisibleRangeChanged
+                )
             }
         }
 

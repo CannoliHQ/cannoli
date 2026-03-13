@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -84,5 +85,12 @@ fun AboutOverlay() {
                 )
             )
         }
+        BottomBar(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(screenPadding),
+            leftItems = listOf("B" to "BACK"),
+            rightItems = listOf("X" to "CREDITS")
+        )
     }
 }
