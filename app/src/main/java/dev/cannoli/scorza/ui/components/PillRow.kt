@@ -16,6 +16,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.foundation.ScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -39,10 +40,23 @@ fun pillItemHeight(lineHeight: TextUnit, verticalPadding: Dp): Dp {
     return with(LocalDensity.current) { lineHeight.toDp() } + verticalPadding * 2 + 4.dp
 }
 
-/**
- * A row that highlights with a pill when selected.
- * Use the content slot for custom inner content (e.g. marquee text).
- */
+@Composable
+fun MarqueeEffect(scrollState: ScrollState, active: Boolean, key: Any = active, initialDelayMs: Long = 600) {
+    LaunchedEffect(key) {
+        scrollState.scrollTo(0)
+        if (!active) return@LaunchedEffect
+        delay(initialDelayMs)
+        while (true) {
+            val max = scrollState.maxValue
+            if (max <= 0) break
+            val duration = (max * 4).coerceIn(500, 8000)
+            scrollState.animateScrollTo(max, animationSpec = tween(durationMillis = duration, easing = LinearEasing))
+            delay(800)
+            scrollState.animateScrollTo(0, animationSpec = tween(durationMillis = duration, easing = LinearEasing))
+            delay(800)
+        }
+    }
+}
 @Composable
 fun PillRow(
     isSelected: Boolean,
@@ -140,27 +154,7 @@ fun PillRowKeyValue(
     )
 
     val scrollState = rememberScrollState()
-    LaunchedEffect(isSelected) {
-        scrollState.scrollTo(0)
-        if (isSelected) {
-            delay(600)
-            while (true) {
-                val max = scrollState.maxValue
-                if (max <= 0) break
-                val duration = (max * 4).coerceIn(500, 8000)
-                scrollState.animateScrollTo(
-                    max,
-                    animationSpec = tween(durationMillis = duration, easing = LinearEasing)
-                )
-                delay(800)
-                scrollState.animateScrollTo(
-                    0,
-                    animationSpec = tween(durationMillis = duration, easing = LinearEasing)
-                )
-                delay(800)
-            }
-        }
-    }
+    MarqueeEffect(scrollState, isSelected)
 
     val labelColor = if (isSelected) colors.highlightText else colors.text
     val valueColor = if (isSelected) colors.highlightText.copy(alpha = 0.5f) else GrayText

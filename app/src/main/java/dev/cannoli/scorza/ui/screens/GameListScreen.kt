@@ -1,8 +1,6 @@
 package dev.cannoli.scorza.ui.screens
 
 import android.graphics.BitmapFactory
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
@@ -20,7 +18,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -41,6 +38,7 @@ import dev.cannoli.scorza.ui.components.BottomBar
 import dev.cannoli.scorza.ui.components.ConfirmOverlay
 import dev.cannoli.scorza.ui.components.DialogOverlay
 import dev.cannoli.scorza.ui.components.List
+import dev.cannoli.scorza.ui.components.MarqueeEffect
 import dev.cannoli.scorza.ui.components.MessageOverlay
 import dev.cannoli.scorza.ui.components.LaunchErrorDialog
 import dev.cannoli.scorza.ui.components.MissingAppDialog
@@ -54,7 +52,6 @@ import dev.cannoli.scorza.ui.components.screenPadding
 import dev.cannoli.scorza.ui.theme.GrayText
 import dev.cannoli.scorza.ui.theme.LocalCannoliColors
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
-import kotlinx.coroutines.delay
 
 @Composable
 fun GameListScreen(
@@ -250,30 +247,7 @@ private fun GameRow(
         lineHeight = lineHeight
     )
     val scrollState = rememberScrollState()
-
-    val pxPerMs = 4
-
-    LaunchedEffect(isSelected) {
-        scrollState.scrollTo(0)
-        if (isSelected) {
-            delay(600)
-            while (true) {
-                val max = scrollState.maxValue
-                if (max <= 0) break
-                val duration = (max * pxPerMs).coerceIn(500, 8000)
-                scrollState.animateScrollTo(
-                    max,
-                    animationSpec = tween(durationMillis = duration, easing = LinearEasing)
-                )
-                delay(800)
-                scrollState.animateScrollTo(
-                    0,
-                    animationSpec = tween(durationMillis = duration, easing = LinearEasing)
-                )
-                delay(800)
-            }
-        }
-    }
+    MarqueeEffect(scrollState, isSelected)
 
     val colors = LocalCannoliColors.current
     PillRow(isSelected = isSelected, verticalPadding = verticalPadding) {
