@@ -135,6 +135,9 @@ class SystemListViewModel(
     fun getPlatformTags(): List<String> =
         _state.value.items.filterIsInstance<ListItem.PlatformItem>().map { it.platform.tag }
 
+    fun getNavigableItems(): List<ListItem> =
+        _state.value.items.filter { it !is ListItem.Divider }
+
     fun enterReorderMode() {
         val current = _state.value
         val item = current.items.getOrNull(current.selectedIndex) ?: return
