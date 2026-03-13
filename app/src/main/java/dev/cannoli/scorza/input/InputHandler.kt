@@ -54,11 +54,11 @@ class InputHandler(
 
             KeyEvent.KEYCODE_BACK -> true
 
-            KeyEvent.KEYCODE_BUTTON_START,
-            KeyEvent.KEYCODE_MENU -> {
+            KeyEvent.KEYCODE_BUTTON_START -> {
                 if (getSwapStartSelect()) onSelect() else onStart()
                 true
             }
+            KeyEvent.KEYCODE_MENU -> true
             KeyEvent.KEYCODE_BUTTON_L1 -> { onL1(); true }
             KeyEvent.KEYCODE_BUTTON_R1 -> { onR1(); true }
             KeyEvent.KEYCODE_BUTTON_L2 -> { onL2(); true }
