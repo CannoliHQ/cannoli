@@ -29,9 +29,12 @@ fun ControlsScreen(
     input: LibretroInput,
     selectedIndex: Int,
     listeningIndex: Int,
+    useGlobalControls: Boolean? = null,
     title: String = "Controls"
 ) {
     val itemHeight = pillItemHeight(lineHeight, verticalPadding)
+    val hasToggle = useGlobalControls != null
+    val buttonOffset = if (hasToggle) 1 else 0
 
     ScreenBackground(backgroundImagePath = null) {
         Box(
@@ -50,12 +53,22 @@ fun ControlsScreen(
                     lineHeight = lineHeight
                 )
                 Spacer(modifier = Modifier.height(8.dp))
+                if (hasToggle) {
+                    PillRowKeyValue(
+                        label = "Use Global Controls",
+                        value = if (useGlobalControls == true) "On" else "Off",
+                        isSelected = selectedIndex == 0,
+                        fontSize = fontSize,
+                        lineHeight = lineHeight,
+                        verticalPadding = verticalPadding
+                    )
+                }
                 List(
                     items = input.buttons,
-                    selectedIndex = selectedIndex,
+                    selectedIndex = selectedIndex - buttonOffset,
                     itemHeight = itemHeight
                 ) { index, button ->
-                    val value = if (index == listeningIndex) {
+                    val value = if (index + buttonOffset == listeningIndex) {
                         "..."
                     } else {
                         LibretroInput.keyCodeName(input.getKeyCodeFor(button))
@@ -63,7 +76,7 @@ fun ControlsScreen(
                     PillRowKeyValue(
                         label = button.label,
                         value = value,
-                        isSelected = index == selectedIndex,
+                        isSelected = index == selectedIndex - buttonOffset,
                         fontSize = fontSize,
                         lineHeight = lineHeight,
                         verticalPadding = verticalPadding
@@ -71,9 +84,17 @@ fun ControlsScreen(
                 }
             }
 
-            val bottomLeft = listOf("B" to "BACK", "X" to "RESET ALL")
+            val bottomLeft = if (useGlobalControls == true) {
+                listOf("B" to "BACK")
+            } else {
+                listOf("B" to "BACK", "X" to "RESET ALL")
+            }
             val bottomRight = if (listeningIndex >= 0) {
                 listOf("" to "PRESS A BUTTON...")
+            } else if (hasToggle && selectedIndex == 0) {
+                listOf("A" to "TOGGLE")
+            } else if (useGlobalControls == true) {
+                emptyList()
             } else {
                 listOf("A" to "REMAP")
             }
