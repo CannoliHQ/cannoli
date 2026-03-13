@@ -29,6 +29,7 @@ class OverrideManager(
         var crtSweep: Float = 1.0f,
         var crtBrightness: Float = 1.0f,
         var crtNoise: Float = 0.15f,
+        var useGlobalControls: Boolean = false,
         var controls: Map<String, Int> = emptyMap(),
         var shortcuts: Map<ShortcutAction, Set<Int>> = emptyMap(),
         var coreOptions: Map<String, String> = emptyMap()
@@ -41,7 +42,16 @@ class OverrideManager(
             coreFile.exists() -> applyFile(coreFile, settings, loadOptions = true)
             else -> applyFile(globalFile, settings, loadOptions = false)
         }
+        if (settings.useGlobalControls) {
+            settings.controls = loadGlobalControls()
+        }
         return settings
+    }
+
+    fun loadGlobalControls(): Map<String, Int> {
+        val s = Settings()
+        applyFile(globalFile, s, loadOptions = false)
+        return s.controls
     }
 
     fun saveCore(settings: Settings) {
@@ -75,7 +85,9 @@ class OverrideManager(
         }
 
         ini.getSection("controls").let { s ->
-            if (s.isNotEmpty()) {
+            if (s["use_global_controls"] == "true") {
+                settings.useGlobalControls = true
+            } else if (s.isNotEmpty()) {
                 val merged = settings.controls.toMutableMap()
                 for ((key, value) in s) {
                     value.toIntOrNull()?.let { merged[key] = it }
@@ -127,7 +139,11 @@ class OverrideManager(
             "crt_noise" to settings.crtNoise.toString()
         )
 
-        sections["controls"] = settings.controls.mapValues { it.value.toString() }
+        sections["controls"] = if (settings.useGlobalControls) {
+            mapOf("use_global_controls" to "true")
+        } else {
+            settings.controls.mapValues { it.value.toString() }
+        }
 
         sections["shortcuts"] = settings.shortcuts.mapKeys { it.key.name }
             .mapValues { it.value.joinToString(",") }

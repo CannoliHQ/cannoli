@@ -51,6 +51,7 @@ fun LibretroScreen(
     settingsItems: List<IGMSettingsItem>,
     coreInfo: String,
     input: LibretroInput,
+    useGlobalControls: Boolean,
     debugHud: Boolean,
     renderer: LibretroRenderer,
     runner: LibretroRunner,
@@ -130,7 +131,8 @@ fun LibretroScreen(
             is IGMScreen.Controls -> ControlsScreen(
                 input = input,
                 selectedIndex = screen.selectedIndex,
-                listeningIndex = screen.listeningIndex
+                listeningIndex = screen.listeningIndex,
+                useGlobalControls = useGlobalControls
             )
             is IGMScreen.Settings, is IGMScreen.Frontend, is IGMScreen.CrtSettings,
             is IGMScreen.Emulator, is IGMScreen.EmulatorCategory,

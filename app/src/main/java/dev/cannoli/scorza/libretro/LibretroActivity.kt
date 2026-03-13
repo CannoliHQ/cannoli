@@ -63,6 +63,7 @@ class LibretroActivity : ComponentActivity() {
 
     private var coreOptions by mutableStateOf(emptyList<LibretroRunner.CoreOption>())
     private var coreCategories by mutableStateOf(emptyList<LibretroRunner.CoreOptionCategory>())
+    private var useGlobalControls by mutableStateOf(false)
     private var shortcuts by mutableStateOf(mapOf<ShortcutAction, Set<Int>>())
     private val shortcutChordKeys = mutableSetOf<Int>()
     private var coreInfoText by mutableStateOf("")
@@ -83,7 +84,7 @@ class LibretroActivity : ComponentActivity() {
         audio?.muted = enabled
     }
 
-    private enum class UndoType { SAVE, LOAD }
+    private enum class UndoType { SAVE, LOAD, RESET }
     private var undoType by mutableStateOf<UndoType?>(null)
     private var undoSlot: SaveSlotManager.Slot? = null
     private val undoHandler = Handler(Looper.getMainLooper())
@@ -240,11 +241,13 @@ class LibretroActivity : ComponentActivity() {
                         undoLabel = when (undoType) {
                             UndoType.SAVE -> "Undo Save"
                             UndoType.LOAD -> "Undo Load"
+                            UndoType.RESET -> "Undo Reset"
                             null -> null
                         },
                         settingsItems = if (screen is IGMScreen.Menu) emptyList() else buildSettingsItems(),
                         coreInfo = coreInfoText,
                         input = input,
+                        useGlobalControls = useGlobalControls,
                         debugHud = debugHud,
                         renderer = renderer,
                         runner = runner,
@@ -346,7 +349,16 @@ class LibretroActivity : ComponentActivity() {
                         showOsd("Loaded ${currentSlot.label}")
                     }
                 }
-                ShortcutAction.RESET_GAME -> { runner.reset(); showOsd("Reset") }
+                ShortcutAction.RESET_GAME -> {
+                    if (stateBasePath.isNotEmpty()) {
+                        slotManager.cacheForUndoLoad(runner)
+                        undoType = UndoType.RESET
+                        undoSlot = null
+                        startUndoTimer(30_000)
+                    }
+                    runner.reset()
+                    showOsd("Reset")
+                }
                 ShortcutAction.SAVE_AND_QUIT -> {
                     if (stateBasePath.isNotEmpty()) slotManager.saveState(runner, currentSlot)
                     quit()
@@ -513,7 +525,16 @@ class LibretroActivity : ComponentActivity() {
                 settingsSnapshot = buildCurrentSettings()
                 push(IGMScreen.Settings())
             }
-            menu.resetIndex -> { runner.reset(); closeAll() }
+            menu.resetIndex -> {
+                if (stateBasePath.isNotEmpty()) {
+                    slotManager.cacheForUndoLoad(runner)
+                    undoType = UndoType.RESET
+                    undoSlot = null
+                    startUndoTimer(30_000)
+                }
+                runner.reset()
+                closeAll()
+            }
             menu.infoIndex -> push(IGMScreen.Info())
             menu.quitIndex -> quit()
         }
@@ -781,11 +802,12 @@ class LibretroActivity : ComponentActivity() {
                 replaceTop(screen.copy(listeningIndex = -1))
                 return true
             }
-            input.assign(input.buttons[screen.listeningIndex], keyCode)
+            val buttonIndex = screen.listeningIndex - 1
+            input.assign(input.buttons[buttonIndex], keyCode)
             replaceTop(screen.copy(listeningIndex = -1))
             return true
         }
-        val count = input.buttons.size
+        val count = input.buttons.size + 1
         return when (keyCode) {
             KeyEvent.KEYCODE_DPAD_UP -> {
                 replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
@@ -794,32 +816,51 @@ class LibretroActivity : ComponentActivity() {
                 replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
             }
             KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
-                replaceTop(screen.copy(listeningIndex = screen.selectedIndex)); true
+                if (screen.selectedIndex == 0) {
+                    toggleGlobalControls()
+                } else if (!useGlobalControls) {
+                    replaceTop(screen.copy(listeningIndex = screen.selectedIndex))
+                }
+                true
             }
-            KeyEvent.KEYCODE_BUTTON_X -> { input.resetDefaults(); true }
+            KeyEvent.KEYCODE_BUTTON_X -> {
+                if (!useGlobalControls) input.resetDefaults()
+                true
+            }
             KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
             else -> true
+        }
+    }
+
+    private fun toggleGlobalControls() {
+        useGlobalControls = !useGlobalControls
+        if (useGlobalControls) {
+            input.resetDefaults()
+            for ((key, keyCode) in overrideManager.loadGlobalControls()) {
+                val btn = input.buttons.find { it.prefKey == key } ?: continue
+                input.assign(btn, keyCode)
+            }
         }
     }
 
     // --- Shortcuts ---
 
     private val shortcutCountdownHandler = Handler(Looper.getMainLooper())
-    private val SHORTCUT_HOLD_MS = 1500
-    private val SHORTCUT_TICK_MS = 100L
+    private val shortcutHoldMs = 1500
+    private val shortcutTickMs = 100L
 
     private val shortcutCountdownRunnable = object : Runnable {
         override fun run() {
             val screen = currentScreen as? IGMScreen.Shortcuts ?: return
             if (!screen.listening) return
-            val newMs = screen.countdownMs + SHORTCUT_TICK_MS.toInt()
-            if (newMs >= SHORTCUT_HOLD_MS) {
+            val newMs = screen.countdownMs + shortcutTickMs.toInt()
+            if (newMs >= shortcutHoldMs) {
                 val action = ShortcutAction.entries[screen.selectedIndex]
                 shortcuts = shortcuts + (action to screen.heldKeys)
                 replaceTop(screen.copy(listening = false, heldKeys = emptySet(), countdownMs = 0))
             } else {
                 replaceTop(screen.copy(countdownMs = newMs))
-                shortcutCountdownHandler.postDelayed(this, SHORTCUT_TICK_MS)
+                shortcutCountdownHandler.postDelayed(this, shortcutTickMs)
             }
         }
     }
@@ -841,7 +882,7 @@ class LibretroActivity : ComponentActivity() {
             val newKeys = screen.heldKeys + keyCode
             replaceTop(screen.copy(heldKeys = newKeys, countdownMs = 0))
             shortcutCountdownHandler.removeCallbacks(shortcutCountdownRunnable)
-            shortcutCountdownHandler.postDelayed(shortcutCountdownRunnable, SHORTCUT_TICK_MS)
+            shortcutCountdownHandler.postDelayed(shortcutCountdownRunnable, shortcutTickMs)
             return true
         }
         val count = ShortcutAction.entries.size
@@ -979,6 +1020,7 @@ class LibretroActivity : ComponentActivity() {
             crtSweep = crtSweep,
             crtBrightness = crtBrightness,
             crtNoise = crtNoise,
+            useGlobalControls = useGlobalControls,
             controls = controlMap,
             shortcuts = shortcuts,
             coreOptions = optionMap
@@ -1008,6 +1050,7 @@ class LibretroActivity : ComponentActivity() {
         crtSweep = settings.crtSweep
         crtBrightness = settings.crtBrightness
         crtNoise = settings.crtNoise
+        useGlobalControls = settings.useGlobalControls
         shortcuts = settings.shortcuts
 
         for ((key, keyCode) in settings.controls) {
@@ -1029,21 +1072,21 @@ class LibretroActivity : ComponentActivity() {
         osdHandler.postDelayed(clearOsdRunnable, 3000)
     }
 
-    private fun startUndoTimer() {
+    private fun startUndoTimer(durationMs: Long = 60_000) {
         undoHandler.removeCallbacks(clearUndoRunnable)
-        undoHandler.postDelayed(clearUndoRunnable, 60_000)
+        undoHandler.postDelayed(clearUndoRunnable, durationMs)
     }
 
     private fun performUndo() {
-        val label = when (undoType) {
+        val type = undoType ?: return
+        val label = when (type) {
             UndoType.SAVE -> "Undo Save"
             UndoType.LOAD -> "Undo Load"
-            null -> return
+            UndoType.RESET -> "Undo Reset"
         }
-        when (undoType) {
+        when (type) {
             UndoType.SAVE -> undoSlot?.let { slotManager.performUndoSave(it) }
-            UndoType.LOAD -> slotManager.performUndoLoad(runner)
-            null -> return
+            UndoType.LOAD, UndoType.RESET -> slotManager.performUndoLoad(runner)
         }
         clearUndo()
         refreshSlotInfo()
