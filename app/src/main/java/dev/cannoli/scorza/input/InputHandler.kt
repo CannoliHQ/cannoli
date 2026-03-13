@@ -52,7 +52,7 @@ class InputHandler(
                 true
             }
 
-            KeyEvent.KEYCODE_BACK -> { onBack(); true }
+            KeyEvent.KEYCODE_BACK -> true
 
             KeyEvent.KEYCODE_BUTTON_START,
             KeyEvent.KEYCODE_MENU -> {
