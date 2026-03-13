@@ -89,7 +89,7 @@ fun ScreenTitle(
                 }
             },
             modifier = Modifier
-                .padding(start = (pillInternalH - 4.dp))
+                .padding(start = (pillInternalH - 8.dp))
                 .horizontalScroll(scrollState)
         )
     }
