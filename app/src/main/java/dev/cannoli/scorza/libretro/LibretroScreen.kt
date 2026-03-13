@@ -24,9 +24,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import dev.cannoli.scorza.ui.components.BottomBar
+import dev.cannoli.scorza.ui.components.ScreenBackground
+import dev.cannoli.scorza.ui.components.ScreenTitle
 import dev.cannoli.scorza.ui.components.StatusBar
 import dev.cannoli.scorza.ui.components.screenPadding
 import dev.cannoli.scorza.ui.theme.LocalCannoliColors
+
+data class GameInfo(
+    val coreName: String,
+    val romPath: String,
+    val savePath: String?,
+    val rootPrefix: String = ""
+)
 
 @Composable
 fun LibretroScreen(
@@ -52,7 +61,8 @@ fun LibretroScreen(
     showBattery: Boolean,
     use24h: Boolean,
     osdMessage: String?,
-    fastForwarding: Boolean
+    fastForwarding: Boolean,
+    gameInfo: GameInfo = GameInfo("", "", null)
 ) {
     val overlayVisible = screen != null
     val showDescription = when (screen) {
@@ -155,6 +165,47 @@ fun LibretroScreen(
                     description = description,
                     bottomBarRight = bottomBarRight
                 )
+            }
+            is IGMScreen.Info -> {
+                val colors = LocalCannoliColors.current
+                fun stripRoot(path: String): String {
+                    if (gameInfo.rootPrefix.isNotEmpty() && path.startsWith(gameInfo.rootPrefix)) {
+                        return path.removePrefix(gameInfo.rootPrefix).removePrefix("/")
+                    }
+                    return path
+                }
+                ScreenBackground(backgroundImagePath = null) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(screenPadding)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(bottom = 48.dp)
+                        ) {
+                            ScreenTitle(
+                                text = gameTitle,
+                                fontSize = 22.sp,
+                                lineHeight = 32.sp
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            InfoRow("Core", gameInfo.coreName)
+                            Spacer(modifier = Modifier.height(12.dp))
+                            InfoRow("ROM", stripRoot(gameInfo.romPath))
+                            if (gameInfo.savePath != null) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                InfoRow("Save", stripRoot(gameInfo.savePath))
+                            }
+                        }
+                        BottomBar(
+                            modifier = Modifier.align(Alignment.BottomCenter),
+                            leftItems = listOf("B" to "BACK"),
+                            rightItems = emptyList()
+                        )
+                    }
+                }
             }
             null -> {}
         }
@@ -278,5 +329,26 @@ fun LibretroScreen(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun InfoRow(label: String, value: String) {
+    val colors = LocalCannoliColors.current
+    Column {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontSize = 14.sp,
+                color = colors.text.copy(alpha = 0.5f)
+            )
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontSize = 18.sp,
+                color = Color.White
+            )
+        )
     }
 }

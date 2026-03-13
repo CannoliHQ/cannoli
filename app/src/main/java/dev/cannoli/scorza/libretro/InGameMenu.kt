@@ -51,6 +51,7 @@ class InGameMenuOptions(hasDiscs: Boolean, val discLabel: String) {
     val settingsIndex = 3
     val switchDiscIndex: Int
     val resetIndex: Int
+    val infoIndex: Int
     val quitIndex: Int
 
     init {
@@ -63,6 +64,8 @@ class InGameMenuOptions(hasDiscs: Boolean, val discLabel: String) {
         }
         resetIndex = list.size
         list.add("Reset")
+        infoIndex = list.size
+        list.add("Info")
         quitIndex = list.size
         list.add("Quit")
         options = list
