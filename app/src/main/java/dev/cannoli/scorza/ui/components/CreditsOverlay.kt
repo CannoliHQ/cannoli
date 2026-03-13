@@ -9,6 +9,8 @@ data class CreditEntry(val name: String, val detail: String)
 val CREDITS: List<CreditEntry> = listOf(
     CreditEntry("Shaun Inman", "MinUI — Inspiration"),
     CreditEntry("M+ Fonts Project", "M PLUS 1 Code — OFL"),
+    CreditEntry("Nerd Fonts", "NerdSymbols — OFL"),
+    CreditEntry("ZXing", "QR Code Library — Apache 2.0"),
     CreditEntry("Atari800", "GPLv2"),
     CreditEntry("Beetle NeoPop", "GPLv2"),
     CreditEntry("Beetle PCE FAST", "GPLv2"),
@@ -34,6 +36,8 @@ val CREDITS: List<CreditEntry> = listOf(
     CreditEntry("SwanStation", "GPLv3"),
     CreditEntry("vecx", "GPLv3"),
     CreditEntry("Virtual Jaguar", "GPLv3"),
+    CreditEntry("lcd3x by Gigaherz", "Shader — Public domain"),
+    CreditEntry("zfast_crt_geo by Greg Hogan", "Shader — GPLv2"),
 )
 
 @Composable
@@ -44,7 +48,8 @@ fun CreditsOverlay(
     backgroundTint: Int,
     listFontSize: TextUnit,
     listLineHeight: TextUnit,
-    listVerticalPadding: Dp
+    listVerticalPadding: Dp,
+    onVisibleRangeChanged: ((Int, Int, Boolean) -> Unit)? = null
 ) {
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
     ListDialogScreen(
@@ -60,7 +65,8 @@ fun CreditsOverlay(
             items = CREDITS,
             selectedIndex = selectedIndex,
             scrollTarget = scrollTarget,
-            itemHeight = itemHeight
+            itemHeight = itemHeight,
+            onVisibleRangeChanged = onVisibleRangeChanged
         ) { index, entry ->
             PillRowKeyValue(
                 label = entry.name,

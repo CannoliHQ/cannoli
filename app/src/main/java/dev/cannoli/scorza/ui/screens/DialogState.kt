@@ -33,6 +33,61 @@ sealed interface DialogState {
     data class Kitchen(val url: String, val pin: String) : DialogState
 }
 
+fun DialogState.asKeyboardState(): KeyboardInputState? = this as? KeyboardInputState
+
+fun DialogState.withKeyboard(row: Int, col: Int): DialogState = when (this) {
+    is DialogState.RenameInput -> copy(keyRow = row, keyCol = col)
+    is DialogState.NewCollectionInput -> copy(keyRow = row, keyCol = col)
+    is DialogState.CollectionRenameInput -> copy(keyRow = row, keyCol = col)
+    else -> this
+}
+
+fun DialogState.withCursor(pos: Int): DialogState = when (this) {
+    is DialogState.RenameInput -> copy(cursorPos = pos)
+    is DialogState.NewCollectionInput -> copy(cursorPos = pos)
+    is DialogState.CollectionRenameInput -> copy(cursorPos = pos)
+    else -> this
+}
+
+fun DialogState.withCaps(caps: Boolean): DialogState = when (this) {
+    is DialogState.RenameInput -> copy(caps = caps)
+    is DialogState.NewCollectionInput -> copy(caps = caps)
+    is DialogState.CollectionRenameInput -> copy(caps = caps)
+    else -> this
+}
+
+fun DialogState.withNameAndCursor(name: String, pos: Int): DialogState = when (this) {
+    is DialogState.RenameInput -> copy(currentName = name, cursorPos = pos)
+    is DialogState.NewCollectionInput -> copy(currentName = name, cursorPos = pos)
+    is DialogState.CollectionRenameInput -> copy(currentName = name, cursorPos = pos)
+    else -> this
+}
+
+fun DialogState.withMenuDelta(delta: Int): DialogState? = when (this) {
+    is DialogState.ContextMenu -> {
+        val newIdx = (selectedOption + delta).mod(options.size)
+        copy(selectedOption = newIdx)
+    }
+    is DialogState.BulkContextMenu -> {
+        val newIdx = (selectedOption + delta).mod(options.size)
+        copy(selectedOption = newIdx)
+    }
+    else -> null
+}
+
+fun DialogState.withBackspace(): DialogState? {
+    val ks = asKeyboardState() ?: return null
+    if (ks.cursorPos <= 0) return null
+    val newName = ks.currentName.removeRange(ks.cursorPos - 1, ks.cursorPos)
+    return withNameAndCursor(newName, ks.cursorPos - 1)
+}
+
+fun DialogState.withInsertedChar(char: String): DialogState? {
+    val ks = asKeyboardState() ?: return null
+    val newName = ks.currentName.substring(0, ks.cursorPos) + char + ks.currentName.substring(ks.cursorPos)
+    return withNameAndCursor(newName, ks.cursorPos + 1)
+}
+
 val DialogState.isFullScreen: Boolean
     get() = when (this) {
         is DialogState.ContextMenu,
