@@ -362,7 +362,8 @@ class LibretroActivity : ComponentActivity() {
                     showOsd("Reset")
                 }
                 ShortcutAction.SAVE_AND_QUIT -> {
-                    if (stateBasePath.isNotEmpty()) slotManager.saveState(runner, currentSlot)
+                    renderer.paused = true
+                    if (stateBasePath.isNotEmpty()) slotManager.saveState(runner, slotManager.slots[0])
                     quit()
                 }
                 ShortcutAction.CYCLE_SCALING -> {
