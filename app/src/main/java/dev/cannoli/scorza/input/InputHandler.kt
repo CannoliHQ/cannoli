@@ -5,7 +5,8 @@ import dev.cannoli.scorza.settings.ButtonLayout
 
 class InputHandler(
     private val getButtonLayout: () -> ButtonLayout,
-    private val getSwapStartSelect: () -> Boolean = { false }
+    private val getSwapStartSelect: () -> Boolean = { false },
+    private val getButtonMappings: () -> Map<String, Int> = { emptyMap() }
 ) {
 
     var onUp: () -> Unit = {}
@@ -26,48 +27,65 @@ class InputHandler(
     fun handleKeyEvent(event: KeyEvent): Boolean {
         if (event.action != KeyEvent.ACTION_DOWN && event.action != KeyEvent.ACTION_MULTIPLE) return false
 
-        return when (event.keyCode) {
-            KeyEvent.KEYCODE_DPAD_UP -> { onUp(); true }
-            KeyEvent.KEYCODE_DPAD_DOWN -> { onDown(); true }
-            KeyEvent.KEYCODE_DPAD_LEFT -> { onLeft(); true }
-            KeyEvent.KEYCODE_DPAD_RIGHT -> { onRight(); true }
+        val button = resolveButton(event.keyCode)
+        if (button != null) return dispatchButton(button)
 
+        return when (event.keyCode) {
             KeyEvent.KEYCODE_DPAD_CENTER,
             KeyEvent.KEYCODE_ENTER -> { onConfirm(); true }
-
-            KeyEvent.KEYCODE_BUTTON_A -> {
-                if (getButtonLayout() == ButtonLayout.XBOX) onConfirm() else onBack()
-                true
-            }
-            KeyEvent.KEYCODE_BUTTON_B -> {
-                if (getButtonLayout() == ButtonLayout.XBOX) onBack() else onConfirm()
-                true
-            }
-
-            KeyEvent.KEYCODE_BUTTON_X -> { onX(); true }
-            KeyEvent.KEYCODE_BUTTON_Y -> { onY(); true }
-
-            KeyEvent.KEYCODE_BUTTON_SELECT -> {
-                if (getSwapStartSelect()) onStart() else onSelect()
-                true
-            }
-
             KeyEvent.KEYCODE_BACK -> true
-
-            KeyEvent.KEYCODE_BUTTON_START -> {
-                if (getSwapStartSelect()) onSelect() else onStart()
-                true
-            }
             KeyEvent.KEYCODE_MENU -> true
-            KeyEvent.KEYCODE_BUTTON_L1 -> { onL1(); true }
-            KeyEvent.KEYCODE_BUTTON_R1 -> { onR1(); true }
             KeyEvent.KEYCODE_BUTTON_L2 -> { onL2(); true }
             KeyEvent.KEYCODE_BUTTON_R2 -> { onR2(); true }
-
             KeyEvent.KEYCODE_DEL,
             KeyEvent.KEYCODE_ESCAPE -> { onBack(); true }
-
             else -> false
         }
+    }
+
+    private fun resolveButton(keyCode: Int): String? {
+        val mappings = getButtonMappings()
+        if (mappings.isNotEmpty()) {
+            for ((prefKey, mapped) in mappings) {
+                if (mapped == keyCode) return prefKey
+            }
+        }
+        return DEFAULT_KEY_MAP[keyCode]
+    }
+
+    private fun dispatchButton(button: String): Boolean {
+        when (button) {
+            "btn_up" -> onUp()
+            "btn_down" -> onDown()
+            "btn_left" -> onLeft()
+            "btn_right" -> onRight()
+            "btn_a" -> if (getButtonLayout() == ButtonLayout.XBOX) onConfirm() else onBack()
+            "btn_b" -> if (getButtonLayout() == ButtonLayout.XBOX) onBack() else onConfirm()
+            "btn_x" -> onX()
+            "btn_y" -> onY()
+            "btn_select" -> if (getSwapStartSelect()) onStart() else onSelect()
+            "btn_start" -> if (getSwapStartSelect()) onSelect() else onStart()
+            "btn_l" -> onL1()
+            "btn_r" -> onR1()
+            else -> return false
+        }
+        return true
+    }
+
+    companion object {
+        private val DEFAULT_KEY_MAP = mapOf(
+            KeyEvent.KEYCODE_BUTTON_A to "btn_a",
+            KeyEvent.KEYCODE_BUTTON_B to "btn_b",
+            KeyEvent.KEYCODE_BUTTON_X to "btn_x",
+            KeyEvent.KEYCODE_BUTTON_Y to "btn_y",
+            KeyEvent.KEYCODE_BUTTON_L1 to "btn_l",
+            KeyEvent.KEYCODE_BUTTON_R1 to "btn_r",
+            KeyEvent.KEYCODE_BUTTON_START to "btn_start",
+            KeyEvent.KEYCODE_BUTTON_SELECT to "btn_select",
+            KeyEvent.KEYCODE_DPAD_UP to "btn_up",
+            KeyEvent.KEYCODE_DPAD_DOWN to "btn_down",
+            KeyEvent.KEYCODE_DPAD_LEFT to "btn_left",
+            KeyEvent.KEYCODE_DPAD_RIGHT to "btn_right",
+        )
     }
 }

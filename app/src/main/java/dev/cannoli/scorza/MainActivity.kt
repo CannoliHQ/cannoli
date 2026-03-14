@@ -134,6 +134,23 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val controlListenTimeoutMs = 3000
+    private val controlListenTickMs = 100L
+
+    private val controlListenRunnable = object : Runnable {
+        override fun run() {
+            val screen = screenStack.lastOrNull() as? LauncherScreen.ControlBinding ?: return
+            if (screen.listeningIndex < 0) return
+            val newMs = screen.listenCountdownMs + controlListenTickMs.toInt()
+            if (newMs >= controlListenTimeoutMs) {
+                screenStack[screenStack.lastIndex] = screen.copy(listeningIndex = -1, listenCountdownMs = 0)
+            } else {
+                screenStack[screenStack.lastIndex] = screen.copy(listenCountdownMs = newMs)
+                shortcutCountdownHandler.postDelayed(this, controlListenTickMs)
+            }
+        }
+    }
+
     private lateinit var globalOverrides: GlobalOverridesManager
     private lateinit var launchManager: LaunchManager
 
@@ -289,6 +306,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+
         hideSystemUI()
 
         settings = SettingsRepository(this)
@@ -373,6 +391,10 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
     }
 
+    override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
+        return super.dispatchGenericMotionEvent(event)
+    }
+
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.keyCode == KeyEvent.KEYCODE_BACK) return true
         return super.dispatchKeyEvent(event)
@@ -383,7 +405,9 @@ class MainActivity : ComponentActivity() {
             handleSetupInput(keyCode)
             return true
         }
-        if (handleBindingKeyDown(keyCode)) return true
+        if (handleBindingKeyDown(keyCode)) {
+            return true
+        }
         if (::inputHandler.isInitialized && inputHandler.handleKeyEvent(event)) {
             return true
         }
@@ -404,14 +428,11 @@ class MainActivity : ComponentActivity() {
         when (screen) {
             is LauncherScreen.ControlBinding -> {
                 if (screen.listeningIndex < 0) return false
-                if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_BUTTON_B) {
-                    screenStack[screenStack.lastIndex] = screen.copy(listeningIndex = -1)
-                    return true
-                }
+                shortcutCountdownHandler.removeCallbacks(controlListenRunnable)
                 val btn = controlButtons[screen.listeningIndex]
                 screenStack[screenStack.lastIndex] = screen.copy(
                     controls = screen.controls + (btn.prefKey to keyCode),
-                    listeningIndex = -1
+                    listeningIndex = -1, listenCountdownMs = 0
                 )
                 return true
             }
@@ -477,7 +498,8 @@ class MainActivity : ComponentActivity() {
 
         inputHandler = InputHandler(
             getButtonLayout = { settings.buttonLayout },
-            getSwapStartSelect = { settings.swapStartSelect }
+            getSwapStartSelect = { settings.swapStartSelect },
+            getButtonMappings = { globalOverrides.readControls() }
         )
         wireInput()
 
@@ -935,7 +957,8 @@ class MainActivity : ComponentActivity() {
                     }
                     is LauncherScreen.ControlBinding -> {
                         if (screen.listeningIndex < 0) {
-                            screenStack[screenStack.lastIndex] = screen.copy(listeningIndex = screen.selectedIndex)
+                            screenStack[screenStack.lastIndex] = screen.copy(listeningIndex = screen.selectedIndex, listenCountdownMs = 0)
+                            shortcutCountdownHandler.postDelayed(controlListenRunnable, controlListenTickMs)
                         }
                     }
                     is LauncherScreen.ShortcutBinding -> {
@@ -1775,6 +1798,7 @@ class MainActivity : ComponentActivity() {
             } else {
                 atomicRename.rename(game.file, newName, game.platformTag)
             }
+            scanner.invalidateArtCache()
             gameListViewModel.reload()
         }
     }
