@@ -247,14 +247,11 @@ private fun GameRow(
         lineHeight = lineHeight
     )
     val scrollState = rememberScrollState()
-    MarqueeEffect(scrollState, isSelected)
+    MarqueeEffect(scrollState, isSelected, key = game.displayName to isSelected)
 
     val colors = LocalCannoliColors.current
     PillRow(isSelected = isSelected, verticalPadding = verticalPadding) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.horizontalScroll(scrollState)
-        ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             if (checkState != null) {
                 Text(
                     text = if (checkState) "☑" else "☐",
@@ -271,21 +268,28 @@ private fun GameRow(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
             }
-            if (game.isSubfolder) {
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .horizontalScroll(scrollState),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (game.isSubfolder) {
+                    Text(
+                        text = "/",
+                        style = textStyle,
+                        color = if (isSelected) colors.highlightText else GrayText
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
                 Text(
-                    text = "/",
+                    text = game.displayName,
                     style = textStyle,
-                    color = if (isSelected) colors.highlightText else GrayText
+                    color = if (isSelected) colors.highlightText else colors.text,
+                    maxLines = 1,
+                    softWrap = false
                 )
-                Spacer(modifier = Modifier.width(4.dp))
             }
-            Text(
-                text = game.displayName,
-                style = textStyle,
-                color = if (isSelected) colors.highlightText else colors.text,
-                maxLines = 1,
-                softWrap = false
-            )
         }
     }
 }

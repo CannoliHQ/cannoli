@@ -165,39 +165,38 @@ Don't like AI? I don't care. I build this for fun, and you didn't pay shit for i
 
 # Credits and Licenses
 
-| Name                        | Detail                       |
-|-----------------------------|------------------------------|
-| Shaun Inman                 | MinUI — Inspiration          |
-| M+ Fonts Project            | M PLUS 1 Code — OFL          |
-| Nerd Fonts                  | NerdSymbols — OFL            |
-| ZXing                       | QR Code Library — Apache 2.0 |
-| Atari800                    | GPLv2                        |
-| Beetle NeoPop               | GPLv2                        |
-| Beetle PCE FAST             | GPLv2                        |
-| Beetle PC-FX                | GPLv2                        |
-| Beetle VB                   | GPLv2                        |
-| Beetle Wonderswan           | GPLv2                        |
-| blueMSX                     | GPLv2                        |
-| DOSBox-Pure                 | GPLv2                        |
-| FCEUmm                      | GPLv2                        |
-| FreeIntv                    | GPLv3                        |
-| Gambatte                    | GPLv2                        |
-| Genesis Plus GX             | Non-commercial               |
-| Handy                       | Zlib                         |
-| mGBA                        | MPLv2.0                      |
-| Mupen64Plus-Next            | GPLv2                        |
-| Nestopia                    | GPLv2                        |
-| PCSX ReARMed                | GPLv2                        |
-| PicoDrive                   | MAME                         |
-| PokeMini                    | GPLv3                        |
-| ProSystem                   | GPLv2                        |
-| Snes9x                      | Non-commercial               |
-| Stella                      | GPLv2                        |
-| SwanStation                 | GPLv3                        |
-| vecx                        | GPLv3                        |
-| Virtual Jaguar              | GPLv3                        |
-| lcd3x by Gigaherz           | Shader — Public domain       |
-| zfast_crt_geo by Greg Hogan | Shader — GPLv2               |
+| Name                        | What            | License        |
+|-----------------------------|-----------------|----------------|
+| M+ Fonts Project            | M PLUS 1 Code   | OFL            |
+| Nerd Fonts                  | NerdSymbols     | OFL            |
+| ZXing                       | QR Code Library | Apache 2.0     |
+| Atari800                    | Core            | GPLv2          |
+| Beetle NeoPop               | Core            | GPLv2          |
+| Beetle PCE FAST             | Core            | GPLv2          |
+| Beetle PC-FX                | Core            | GPLv2          |
+| Beetle VB                   | Core            | GPLv2          |
+| Beetle Wonderswan           | Core            | GPLv2          |
+| blueMSX                     | Core            | GPLv2          |
+| DOSBox-Pure                 | Core            | GPLv2          |
+| FCEUmm                      | Core            | GPLv2          |
+| FreeIntv                    | Core            | GPLv3          |
+| Gambatte                    | Core            | GPLv2          |
+| Genesis Plus GX             | Core            | Non-commercial |
+| Handy                       | Core            | Zlib           |
+| mGBA                        | Core            | MPLv2.0        |
+| Mupen64Plus-Next            | Core            | GPLv2          |
+| Nestopia                    | Core            | GPLv2          |
+| PCSX ReARMed                | Core            | GPLv2          |
+| PicoDrive                   | Core            | MAME           |
+| PokeMini                    | Core            | GPLv3          |
+| ProSystem                   | Core            | GPLv2          |
+| Snes9x                      | Core            | Non-commercial |
+| Stella                      | Core            | GPLv2          |
+| SwanStation                 | Core            | GPLv3          |
+| vecx                        | Core            | GPLv3          |
+| Virtual Jaguar              | Core            | GPLv3          |
+| lcd3x by Gigaherz           | Shader          | Public domain  |
+| zfast_crt_geo by Greg Hogan | Shader          | GPLv2          |
 
 ---
 
