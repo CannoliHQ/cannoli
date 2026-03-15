@@ -58,6 +58,7 @@ class LibretroActivity : ComponentActivity() {
     private var crtVignette by mutableStateOf(0.85f)
     private var crtGlow by mutableStateOf(0.25f)
     private var crtSweep by mutableStateOf(1.0f)
+    private var crtSweepBright by mutableStateOf(0.35f)
     private var crtBrightness by mutableStateOf(1.0f)
     private var crtNoise by mutableStateOf(0.15f)
 
@@ -71,6 +72,7 @@ class LibretroActivity : ComponentActivity() {
 
     private var frontendSnapshot: OverrideManager.Settings? = null
     private var platformBaseline: OverrideManager.Settings? = null
+    private var globalControls = emptyMap<String, Int>()
 
     private var diskCount by mutableIntStateOf(0)
     private var currentDiskIndex by mutableIntStateOf(0)
@@ -209,6 +211,7 @@ class LibretroActivity : ComponentActivity() {
             it.crtVignette = crtVignette
             it.crtGlow = crtGlow
             it.crtSweep = crtSweep
+            it.crtSweepBright = crtSweepBright
             it.crtBrightness = crtBrightness
             it.crtNoise = crtNoise
         }
@@ -288,18 +291,19 @@ class LibretroActivity : ComponentActivity() {
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
         val screen = currentScreen ?: return handleGameplayInput(keyCode, event)
+        val resolved = resolveGlobal(keyCode)
         return when (screen) {
-            is IGMScreen.Menu -> handleMenuInput(screen, keyCode)
-            is IGMScreen.Settings -> handleCategoryInput(screen, keyCode)
-            is IGMScreen.Frontend -> handleFrontendInput(screen, keyCode)
-            is IGMScreen.CrtSettings -> handleCrtSettingsInput(screen, keyCode)
-            is IGMScreen.Emulator -> handleEmulatorInput(screen, keyCode)
-            is IGMScreen.EmulatorCategory -> handleEmulatorCategoryInput(screen, keyCode)
-            is IGMScreen.Controls -> handleControlsInput(screen, keyCode)
-            is IGMScreen.Shortcuts -> handleShortcutsInput(screen, keyCode)
-            is IGMScreen.SavePrompt -> handleSavePromptInput(screen, keyCode)
+            is IGMScreen.Menu -> handleMenuInput(screen, resolved)
+            is IGMScreen.Settings -> handleCategoryInput(screen, resolved)
+            is IGMScreen.Frontend -> handleFrontendInput(screen, resolved)
+            is IGMScreen.CrtSettings -> handleCrtSettingsInput(screen, resolved)
+            is IGMScreen.Emulator -> handleEmulatorInput(screen, resolved)
+            is IGMScreen.EmulatorCategory -> handleEmulatorCategoryInput(screen, resolved)
+            is IGMScreen.Controls -> handleControlsInput(screen, keyCode, resolved)
+            is IGMScreen.Shortcuts -> handleShortcutsInput(screen, keyCode, resolved)
+            is IGMScreen.SavePrompt -> handleSavePromptInput(screen, resolved)
             is IGMScreen.Info -> {
-                if (keyCode == KeyEvent.KEYCODE_BUTTON_B || keyCode == KeyEvent.KEYCODE_BUTTON_A) { pop(); true } else true
+                if (resolved == KeyEvent.KEYCODE_BUTTON_B || resolved == KeyEvent.KEYCODE_BUTTON_A) { pop(); true } else true
             }
         }
     }
@@ -325,8 +329,17 @@ class LibretroActivity : ComponentActivity() {
         return true
     }
 
+    private fun resolveGlobal(keyCode: Int): Int {
+        for (btn in input.buttons) {
+            val assigned = globalControls[btn.prefKey] ?: btn.defaultKeyCode
+            if (assigned == keyCode) return btn.defaultKeyCode
+        }
+        return keyCode
+    }
+
     private fun handleGameplayInput(keyCode: Int, event: KeyEvent): Boolean {
-        if (keyCode == KeyEvent.KEYCODE_BACK) { openMenu(); return true }
+        val menuCode = globalControls["btn_menu"] ?: KeyEvent.KEYCODE_BUTTON_MODE
+        if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == menuCode) { openMenu(); return true }
         val isNewPress = pressedKeys.add(keyCode)
         if (isNewPress) checkShortcuts()
         val mask = input.keyCodeToRetroMask(keyCode) ?: return super.onKeyDown(keyCode, event)
@@ -652,7 +665,7 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun handleCrtSettingsInput(screen: IGMScreen.CrtSettings, keyCode: Int): Boolean {
-        val count = 8
+        val count = 9
         return when (keyCode) {
             KeyEvent.KEYCODE_DPAD_UP -> {
                 replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
@@ -675,8 +688,9 @@ class LibretroActivity : ComponentActivity() {
             3 -> { crtVignette = cycleFloat(crtVignette, direction, 0f, 2f, 0.05f); renderer.crtVignette = crtVignette }
             4 -> { crtGlow = cycleFloat(crtGlow, direction, 0f, 1f, 0.05f); renderer.crtGlow = crtGlow }
             5 -> { crtSweep = cycleFloat(crtSweep, direction, 0f, 1f, 0.05f); renderer.crtSweep = crtSweep }
-            6 -> { crtBrightness = cycleFloat(crtBrightness, direction, 0.5f, 1.5f, 0.05f); renderer.crtBrightness = crtBrightness }
-            7 -> { crtNoise = cycleFloat(crtNoise, direction, 0f, 1f, 0.05f); renderer.crtNoise = crtNoise }
+            6 -> { crtSweepBright = cycleFloat(crtSweepBright, direction, 0f, 1f, 0.05f); renderer.crtSweepBright = crtSweepBright }
+            7 -> { crtBrightness = cycleFloat(crtBrightness, direction, 0.5f, 1.5f, 0.05f); renderer.crtBrightness = crtBrightness }
+            8 -> { crtNoise = cycleFloat(crtNoise, direction, 0f, 1f, 0.05f); renderer.crtNoise = crtNoise }
         }
     }
 
@@ -817,11 +831,11 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
-    private fun handleControlsInput(screen: IGMScreen.Controls, keyCode: Int): Boolean {
+    private fun handleControlsInput(screen: IGMScreen.Controls, rawKeyCode: Int, keyCode: Int): Boolean {
         if (screen.listeningIndex >= 0) {
             shortcutCountdownHandler.removeCallbacks(controlListenRunnable)
             val buttonIndex = screen.listeningIndex - 1
-            input.assign(input.buttons[buttonIndex], keyCode)
+            input.assign(input.buttons[buttonIndex], rawKeyCode)
             replaceTop(screen.copy(listeningIndex = -1, listenCountdownMs = 0))
             saveCurrentControls()
             return true
@@ -912,10 +926,10 @@ class LibretroActivity : ComponentActivity() {
         if (screen.listening && screen.heldKeys.contains(keyCode)) cancelShortcutListening()
     }
 
-    private fun handleShortcutsInput(screen: IGMScreen.Shortcuts, keyCode: Int): Boolean {
+    private fun handleShortcutsInput(screen: IGMScreen.Shortcuts, rawKeyCode: Int, keyCode: Int): Boolean {
         if (screen.listening) {
-            if (screen.heldKeys.contains(keyCode)) return true
-            val newKeys = screen.heldKeys + keyCode
+            if (screen.heldKeys.contains(rawKeyCode)) return true
+            val newKeys = screen.heldKeys + rawKeyCode
             replaceTop(screen.copy(heldKeys = newKeys, countdownMs = 0))
             shortcutCountdownHandler.removeCallbacks(shortcutCountdownRunnable)
             shortcutCountdownHandler.postDelayed(shortcutCountdownRunnable, shortcutTickMs)
@@ -1019,6 +1033,7 @@ class LibretroActivity : ComponentActivity() {
             IGMSettingsItem("Vignette", "%d%%".format((crtVignette * 100).toInt())),
             IGMSettingsItem("Glow", "%d%%".format((crtGlow * 100).toInt())),
             IGMSettingsItem("Sweep", "%d%%".format((crtSweep * 100).toInt())),
+            IGMSettingsItem("Sweep Brightness", "%d%%".format((crtSweepBright * 100).toInt())),
             IGMSettingsItem("Brightness", "%d%%".format((crtBrightness * 100).toInt())),
             IGMSettingsItem("Noise", "%d%%".format((crtNoise * 100).toInt()))
         )
@@ -1080,6 +1095,7 @@ class LibretroActivity : ComponentActivity() {
             crtVignette = crtVignette,
             crtGlow = crtGlow,
             crtSweep = crtSweep,
+            crtSweepBright = crtSweepBright,
             crtBrightness = crtBrightness,
             crtNoise = crtNoise,
             coreOptions = optionMap
@@ -1117,6 +1133,7 @@ class LibretroActivity : ComponentActivity() {
         crtVignette = settings.crtVignette
         crtGlow = settings.crtGlow
         crtSweep = settings.crtSweep
+        crtSweepBright = settings.crtSweepBright
         crtBrightness = settings.crtBrightness
         crtNoise = settings.crtNoise
         controlSource = settings.controlSource
@@ -1133,6 +1150,7 @@ class LibretroActivity : ComponentActivity() {
         }
         coreOptions = runner.getCoreOptions()
         platformBaseline = overrideManager.loadPlatformBaseline()
+        globalControls = overrideManager.loadControlsForSource(OverrideSource.GLOBAL)
     }
 
     // --- OSD / Undo ---
