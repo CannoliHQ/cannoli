@@ -21,8 +21,11 @@ class InputHandler(
     var onR1: () -> Unit = {}
     var onL2: () -> Unit = {}
     var onR2: () -> Unit = {}
+    var onL3: () -> Unit = {}
+    var onR3: () -> Unit = {}
     var onX: () -> Unit = {}
     var onY: () -> Unit = {}
+    var onMenu: () -> Unit = {}
 
     fun handleKeyEvent(event: KeyEvent): Boolean {
         if (event.action != KeyEvent.ACTION_DOWN && event.action != KeyEvent.ACTION_MULTIPLE) return false
@@ -34,9 +37,6 @@ class InputHandler(
             KeyEvent.KEYCODE_DPAD_CENTER,
             KeyEvent.KEYCODE_ENTER -> { onConfirm(); true }
             KeyEvent.KEYCODE_BACK -> true
-            KeyEvent.KEYCODE_MENU -> true
-            KeyEvent.KEYCODE_BUTTON_L2 -> { onL2(); true }
-            KeyEvent.KEYCODE_BUTTON_R2 -> { onR2(); true }
             KeyEvent.KEYCODE_DEL,
             KeyEvent.KEYCODE_ESCAPE -> { onBack(); true }
             else -> false
@@ -67,6 +67,11 @@ class InputHandler(
             "btn_start" -> if (getSwapStartSelect()) onSelect() else onStart()
             "btn_l" -> onL1()
             "btn_r" -> onR1()
+            "btn_l2" -> onL2()
+            "btn_r2" -> onR2()
+            "btn_l3" -> onL3()
+            "btn_r3" -> onR3()
+            "btn_menu" -> onMenu()
             else -> return false
         }
         return true
@@ -80,8 +85,13 @@ class InputHandler(
             KeyEvent.KEYCODE_BUTTON_Y to "btn_y",
             KeyEvent.KEYCODE_BUTTON_L1 to "btn_l",
             KeyEvent.KEYCODE_BUTTON_R1 to "btn_r",
+            KeyEvent.KEYCODE_BUTTON_L2 to "btn_l2",
+            KeyEvent.KEYCODE_BUTTON_R2 to "btn_r2",
+            KeyEvent.KEYCODE_BUTTON_THUMBL to "btn_l3",
+            KeyEvent.KEYCODE_BUTTON_THUMBR to "btn_r3",
             KeyEvent.KEYCODE_BUTTON_START to "btn_start",
             KeyEvent.KEYCODE_BUTTON_SELECT to "btn_select",
+            KeyEvent.KEYCODE_BUTTON_MODE to "btn_menu",
             KeyEvent.KEYCODE_DPAD_UP to "btn_up",
             KeyEvent.KEYCODE_DPAD_DOWN to "btn_down",
             KeyEvent.KEYCODE_DPAD_LEFT to "btn_left",
