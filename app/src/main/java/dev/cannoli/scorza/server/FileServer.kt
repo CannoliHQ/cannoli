@@ -28,8 +28,17 @@ class FileServer(
         running = true
         threadPool = Executors.newFixedThreadPool(4)
         thread(isDaemon = true, name = "FileServer") {
-            val socket = ServerSocket(port)
-            serverSocket = socket
+            var socket: ServerSocket? = null
+            for (attempt in 1..3) {
+                try {
+                    socket = ServerSocket(port)
+                    break
+                } catch (_: java.net.BindException) {
+                    if (attempt == 3) { running = false; return@thread }
+                    Thread.sleep(500)
+                }
+            }
+            serverSocket = socket!!
             while (running) {
                 try {
                     val client = socket.accept()
@@ -90,7 +99,7 @@ class FileServer(
                 if (line.isEmpty()) break
                 val colonIdx = line.indexOf(':')
                 if (colonIdx > 0) {
-                    headers[line.substring(0, colonIdx).trim().lowercase()] =
+                    headers[line.substring(0, colonIdx).trim().lowercase(java.util.Locale.ROOT)] =
                         line.substring(colonIdx + 1).trim()
                 }
             }
@@ -210,7 +219,7 @@ class FileServer(
             return
         }
         val entries = dir.listFiles()
-            ?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name.lowercase() })
+            ?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name.lowercase(java.util.Locale.ROOT) })
             ?: emptyList()
         val items = entries.joinToString(",") { f ->
             val name = escapeJson(f.name)
@@ -236,7 +245,7 @@ class FileServer(
     }
 
     private fun handleDelete(output: OutputStream, dir: File, filename: String) {
-        val file = File(dir, sanitizeFilename(filename))
+        val file = File(dir, filename)
         if (!isSecure(file)) {
             sendJson(output, 403, """{"error":"forbidden"}""")
             return
@@ -245,7 +254,8 @@ class FileServer(
             sendJson(output, 404, """{"error":"not found"}""")
             return
         }
-        if (file.delete()) {
+        val ok = if (file.isDirectory) file.deleteRecursively() else file.delete()
+        if (ok) {
             sendJson(output, 200, """{"ok":true}""")
         } else {
             sendJson(output, 500, """{"error":"delete failed"}""")
@@ -407,7 +417,7 @@ class FileServer(
             val stream = MultipartStream(input, contentLength)
             stream.skipToBoundary(boundaryBytes)
             if (!stream.isEndBoundary(boundaryBytes)) {
-                val headerBlock = stream.readHeaderBlock()
+                stream.readHeaderBlock()
                 destFile.outputStream().use { fos ->
                     stream.streamBodyToBoundary(boundaryBytes, fos)
                 }
@@ -456,7 +466,7 @@ class FileServer(
                     sendJson(output, 404, """{"error":"not found"}"""); return
                 }
                 val files = platformDir.listFiles { f -> f.isFile }
-                    ?.sortedBy { it.name.lowercase() } ?: emptyList()
+                    ?.sortedBy { it.name.lowercase(java.util.Locale.ROOT) } ?: emptyList()
                 val items = files.joinToString(",") { f ->
                     """{"name":"${escapeJson(f.nameWithoutExtension)}","file":"${escapeJson(f.name)}","size":${f.length()}}"""
                 }
@@ -473,7 +483,7 @@ class FileServer(
                 if (artFile == null || !isSecure(artFile)) {
                     sendJson(output, 404, """{"error":"not found"}"""); return
                 }
-                val mime = when (artFile.extension.lowercase()) {
+                val mime = when (artFile.extension.lowercase(java.util.Locale.ROOT)) {
                     "png" -> "image/png"
                     "jpg", "jpeg" -> "image/jpeg"
                     "webp" -> "image/webp"
@@ -550,7 +560,7 @@ class FileServer(
         stream.skipToBoundary(boundaryBytes)
         while (!stream.isEndBoundary(boundaryBytes)) {
             val headerBlock = stream.readHeaderBlock()
-            val filenameMatch = Regex("""filename="([^"]+)"""").find(headerBlock)
+            val filenameMatch = FILENAME_REGEX.find(headerBlock)
             if (filenameMatch == null) {
                 stream.skipToBoundary(boundaryBytes)
                 continue
@@ -738,6 +748,7 @@ class FileServer(
     }
 
     private fun isSecure(file: File): Boolean {
+        if (java.nio.file.Files.isSymbolicLink(file.toPath())) return false
         return file.canonicalPath.startsWith(cannoliRoot.canonicalPath)
     }
 
@@ -807,6 +818,7 @@ class FileServer(
     }
 
     companion object {
+        private val FILENAME_REGEX = Regex("""filename="([^"]+)"""")
         private val RESOURCE_DIRS = mapOf(
             "roms" to "Roms",
             "art" to "Art",

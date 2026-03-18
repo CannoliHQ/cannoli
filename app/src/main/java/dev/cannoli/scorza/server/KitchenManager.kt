@@ -1,7 +1,6 @@
 package dev.cannoli.scorza.server
 
 import android.content.res.AssetManager
-import android.net.wifi.WifiManager
 import java.io.File
 
 object KitchenManager {
@@ -26,20 +25,21 @@ object KitchenManager {
         server?.stop()
     }
 
-    fun getUrl(wifiManager: WifiManager?): String {
-        val ip = getWifiIp(wifiManager)
+    fun getUrl(): String {
+        val ip = getWifiIp()
         return "http://$ip:1091"
     }
 
-    private fun getWifiIp(wifiManager: WifiManager?): String {
-        val wifiInfo = wifiManager?.connectionInfo
-        val ipInt = wifiInfo?.ipAddress ?: 0
-        if (ipInt == 0) return "?.?.?.?"
-        return "%d.%d.%d.%d".format(
-            ipInt and 0xff,
-            ipInt shr 8 and 0xff,
-            ipInt shr 16 and 0xff,
-            ipInt shr 24 and 0xff
-        )
+    private fun getWifiIp(): String {
+        try {
+            for (intf in java.net.NetworkInterface.getNetworkInterfaces()) {
+                if (!intf.isUp || intf.isLoopback) continue
+                for (addr in intf.inetAddresses) {
+                    if (addr.isLoopbackAddress || addr is java.net.Inet6Address) continue
+                    return addr.hostAddress ?: continue
+                }
+            }
+        } catch (_: Exception) { }
+        return "?.?.?.?"
     }
 }
