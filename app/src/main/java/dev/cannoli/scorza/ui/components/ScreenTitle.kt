@@ -39,10 +39,10 @@ fun ScreenTitle(
     MarqueeEffect(scrollState, active = true, key = text, initialDelayMs = 800)
 
     val scaledFontSizeSp = fontSize.value * 1.3f
-    var adjustedFontSizeSp by remember(text, scaledFontSizeSp, statusBarLeftPx) {
+    var adjustedFontSizeSp by remember(text, scaledFontSizeSp) {
         mutableStateOf(scaledFontSizeSp)
     }
-    var fontSettled by remember(text, scaledFontSizeSp, statusBarLeftPx) {
+    var fontSettled by remember(text, scaledFontSizeSp) {
         mutableStateOf(false)
     }
 

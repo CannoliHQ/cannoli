@@ -77,7 +77,15 @@ fun GameListScreen(
         value = if (artPath != null) {
             withContext(Dispatchers.IO) {
                 try {
-                    BitmapFactory.decodeFile(artPath)?.asImageBitmap()
+                    val opts = BitmapFactory.Options()
+                    opts.inJustDecodeBounds = true
+                    BitmapFactory.decodeFile(artPath, opts)
+                    val maxDim = 512
+                    var sampleSize = 1
+                    while (opts.outWidth / sampleSize > maxDim || opts.outHeight / sampleSize > maxDim) sampleSize *= 2
+                    opts.inJustDecodeBounds = false
+                    opts.inSampleSize = sampleSize
+                    BitmapFactory.decodeFile(artPath, opts)?.asImageBitmap()
                 } catch (_: Exception) { null }
             }
         } else null

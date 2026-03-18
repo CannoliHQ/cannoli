@@ -99,6 +99,10 @@ fun KeyboardOverlay(
 
     LaunchedEffect(cursorPos, text) {
         cursorVisible = true
+        val clamped = cursorPos.coerceIn(0, text.length)
+        val target = if (text.isEmpty()) 0
+        else (scrollState.maxValue * clamped / (text.length + 1).coerceAtLeast(1))
+        scrollState.scrollTo(target.coerceAtLeast(0))
     }
 
     val safeCursor = cursorPos.coerceIn(0, text.length)
@@ -106,13 +110,6 @@ fun KeyboardOverlay(
     val afterCursor = text.substring(safeCursor)
     val cursorChar = if (cursorVisible) "|" else " "
     val displayText = "$beforeCursor$cursorChar$afterCursor"
-
-    LaunchedEffect(cursorPos, text) {
-        val clamped = cursorPos.coerceIn(0, text.length)
-        val target = if (text.isEmpty()) 0
-        else (scrollState.maxValue * clamped / (text.length + 1).coerceAtLeast(1))
-        scrollState.scrollTo(target.coerceAtLeast(0))
-    }
 
     Box(
         modifier = Modifier

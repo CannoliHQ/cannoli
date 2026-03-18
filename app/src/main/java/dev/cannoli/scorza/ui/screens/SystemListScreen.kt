@@ -89,7 +89,6 @@ fun SystemListScreen(
                         is ListItem.CollectionItem -> "col:${item.name}"
                         is ListItem.ToolsFolder -> "tools"
                         is ListItem.PortsFolder -> "ports"
-                        is ListItem.Divider -> "div:${item.label}"
                     }
                 }
             ) { index, item ->
@@ -100,28 +99,21 @@ fun SystemListScreen(
                     is ListItem.CollectionItem -> item.name
                     is ListItem.ToolsFolder -> item.name
                     is ListItem.PortsFolder -> item.name
-                    is ListItem.Divider -> null
                 }
-                if (label != null) {
-                    val showReorder = state.reorderMode && state.selectedIndex == index && (item is ListItem.PlatformItem || item is ListItem.ToolsFolder || item is ListItem.PortsFolder)
-                    val check = if (state.multiSelectMode) index in state.checkedIndices else null
-                    PillRowText(
-                        label = label,
-                        isSelected = state.selectedIndex == index,
-                        fontSize = listFontSize,
-                        lineHeight = listLineHeight,
-                        verticalPadding = listVerticalPadding,
-                        showReorderIcon = showReorder,
-                        checkState = check
-                    )
-                }
+                val showReorder = state.reorderMode && state.selectedIndex == index && (item is ListItem.PlatformItem || item is ListItem.ToolsFolder || item is ListItem.PortsFolder)
+                PillRowText(
+                    label = label,
+                    isSelected = state.selectedIndex == index,
+                    fontSize = listFontSize,
+                    lineHeight = listLineHeight,
+                    verticalPadding = listVerticalPadding,
+                    showReorderIcon = showReorder
+                )
             }
             }
 
             val rightItems = if (state.items.isEmpty()) {
                 listOf("Y" to "KITCHEN")
-            } else if (state.multiSelectMode) {
-                listOf("A" to stringResource(R.string.label_toggle), "▶" to stringResource(R.string.label_confirm))
             } else if (kitchenRunning) {
                 listOf("Y" to "KITCHEN", "A" to stringResource(R.string.label_select))
             } else {
