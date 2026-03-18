@@ -2,6 +2,8 @@ package dev.cannoli.scorza.ui.theme
 
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import kotlin.math.roundToInt
+import kotlin.math.roundToLong
 
 val Black = Color(0xFF000000)
 val White = Color(0xFFFFFFFF)
@@ -39,9 +41,9 @@ val COLOR_PRESETS = listOf(
 )
 
 fun colorToHex(color: Color): String {
-    val r = (color.red * 255).toInt()
-    val g = (color.green * 255).toInt()
-    val b = (color.blue * 255).toInt()
+    val r = (color.red * 255).roundToInt()
+    val g = (color.green * 255).roundToInt()
+    val b = (color.blue * 255).roundToInt()
     return "#%02X%02X%02X".format(r, g, b)
 }
 
@@ -56,8 +58,8 @@ fun hexToColor(hex: String): Color? {
 }
 
 fun colorToArgbLong(color: Color): Long {
-    val r = (color.red * 255).toLong()
-    val g = (color.green * 255).toLong()
-    val b = (color.blue * 255).toLong()
+    val r = (color.red * 255).roundToLong()
+    val g = (color.green * 255).roundToLong()
+    val b = (color.blue * 255).roundToLong()
     return (0xFFL shl 24) or (r shl 16) or (g shl 8) or b
 }
