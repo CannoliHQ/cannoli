@@ -35,6 +35,10 @@ class AtomicRename(private val cannoliRoot: File) {
             findMatchingFiles(File(statesDir, platformTag), oldBaseName).forEach { state ->
                 state.copyTo(File(backupTagDir, "states_${state.name}"), overwrite = true)
             }
+            val stateSubDir = File(File(statesDir, platformTag), oldBaseName)
+            if (stateSubDir.isDirectory) {
+                stateSubDir.copyRecursively(File(backupTagDir, "statedir_$oldBaseName"), overwrite = true)
+            }
         } catch (e: Exception) {
             backupTagDir.deleteRecursively()
             return RenameResult(false, "Backup failed: ${e.message}")
@@ -57,7 +61,12 @@ class AtomicRename(private val cannoliRoot: File) {
                 val newName = state.name.replaceFirst(oldBaseName, newBaseName)
                 state.renameTo(File(state.parentFile, newName))
             }
+            val stateSubDir = File(File(statesDir, platformTag), oldBaseName)
+            if (stateSubDir.isDirectory) {
+                stateSubDir.renameTo(File(File(statesDir, platformTag), newBaseName))
+            }
             updateCollectionReferences(romFile.absolutePath, newRomFile.absolutePath)
+            updateMapFile(romDir, romFile.name, "$newBaseName.$extension")
         } catch (e: Exception) {
             try {
                 rollback(backupTagDir, romFile, platformTag, oldBaseName)
@@ -75,6 +84,12 @@ class AtomicRename(private val cannoliRoot: File) {
                 backup.name.startsWith("saves_") -> {
                     val origName = backup.name.removePrefix("saves_")
                     backup.copyTo(File(File(savesDir, tag), origName), overwrite = true)
+                }
+                backup.name.startsWith("statedir_") -> {
+                    val origName = backup.name.removePrefix("statedir_")
+                    val targetDir = File(File(statesDir, tag), origName)
+                    targetDir.deleteRecursively()
+                    backup.copyRecursively(targetDir, overwrite = true)
                 }
                 backup.name.startsWith("states_") -> {
                     val origName = backup.name.removePrefix("states_")
@@ -108,6 +123,19 @@ class AtomicRename(private val cannoliRoot: File) {
         return dir.listFiles()?.filter {
             it.nameWithoutExtension == baseName || it.nameWithoutExtension.startsWith("$baseName.")
         } ?: emptyList()
+    }
+
+    private fun updateMapFile(romDir: File, oldFileName: String, newFileName: String) {
+        val mapFile = File(romDir, "map.txt")
+        if (!mapFile.exists()) return
+        try {
+            val lines = mapFile.readLines()
+            val updated = lines.map { line ->
+                if (line.startsWith("$oldFileName\t")) "$newFileName\t${line.substringAfter('\t')}"
+                else line
+            }
+            if (updated != lines) mapFile.writeText(updated.joinToString("\n") + "\n")
+        } catch (_: java.io.IOException) { }
     }
 
     private fun updateCollectionReferences(oldPath: String, newPath: String) {
