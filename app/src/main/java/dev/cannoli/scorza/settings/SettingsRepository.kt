@@ -177,6 +177,30 @@ class SettingsRepository(context: Context) {
         get() = jsonRead { optString(KEY_COLOR_ACCENT, "#FFFFFF") }
         set(value) = jsonWrite { put(KEY_COLOR_ACCENT, value) }
 
+    var rommUrl: String
+        get() = jsonRead { optString(KEY_ROMM_URL, "") }
+        set(value) = jsonWrite { if (value.isEmpty()) remove(KEY_ROMM_URL) else put(KEY_ROMM_URL, value) }
+
+    var rommToken: String
+        get() = jsonRead { optString(KEY_ROMM_TOKEN, "") }
+        set(value) = jsonWrite { if (value.isEmpty()) remove(KEY_ROMM_TOKEN) else put(KEY_ROMM_TOKEN, value) }
+
+    var rommDeviceId: String
+        get() = jsonRead { optString(KEY_ROMM_DEVICE_ID, "") }
+        set(value) = jsonWrite { if (value.isEmpty()) remove(KEY_ROMM_DEVICE_ID) else put(KEY_ROMM_DEVICE_ID, value) }
+
+    var rommSaveSync: Boolean
+        get() = jsonRead { optBoolean(KEY_ROMM_SAVE_SYNC, false) }
+        set(value) = jsonWrite { put(KEY_ROMM_SAVE_SYNC, value) }
+
+    val rommConfigured: Boolean get() = rommUrl.isNotEmpty() && rommToken.isNotEmpty()
+
+    fun clearRomm() {
+        rommUrl = ""
+        rommToken = ""
+        rommDeviceId = ""
+    }
+
     companion object {
         const val DEFAULT_ROOT = "/storage/emulated/0/Cannoli/"
         const val DEFAULT_RA_PACKAGE = "com.retroarch.aarch64"
@@ -209,6 +233,10 @@ class SettingsRepository(context: Context) {
         private const val KEY_SHOW_PORTS = "show_ports"
         private const val KEY_TOOLS_NAME = "tools_name"
         private const val KEY_PORTS_NAME = "ports_name"
+        private const val KEY_ROMM_URL = "romm_url"
+        private const val KEY_ROMM_TOKEN = "romm_token"
+        private const val KEY_ROMM_DEVICE_ID = "romm_device_id"
+        private const val KEY_ROMM_SAVE_SYNC = "romm_save_sync"
     }
 }
 

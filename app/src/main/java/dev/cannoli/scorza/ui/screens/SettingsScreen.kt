@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.ui.components.BottomBar
 import dev.cannoli.scorza.ui.components.DialogOverlay
+import dev.cannoli.scorza.ui.components.MessageOverlay
 import dev.cannoli.scorza.ui.components.List
 import dev.cannoli.scorza.ui.components.PillRowKeyValue
 import dev.cannoli.scorza.ui.components.PillRowText
@@ -136,6 +137,10 @@ fun SettingsScreen(
             )
         }
     }
+    }
+
+    if (dialogState is DialogState.RommMessage) {
+        MessageOverlay(message = (dialogState as DialogState.RommMessage).message)
     }
 
     if (dialogState.isFullScreen) {

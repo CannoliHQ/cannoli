@@ -89,6 +89,7 @@ class SettingsViewModel(
         Category("content", R.string.settings_content),
         Category("status_bar", R.string.settings_status_bar),
         Category("input", R.string.settings_input),
+        Category("romm", R.string.settings_romm),
         Category("kitchen", R.string.settings_kitchen),
         Category("advanced", R.string.settings_advanced),
         Category("about", R.string.settings_about)
@@ -223,6 +224,7 @@ class SettingsViewModel(
             "show_battery" -> settings.showBattery = !settings.showBattery
             "show_tools" -> settings.showTools = !settings.showTools
             "show_ports" -> settings.showPorts = !settings.showPorts
+            "romm_save_sync" -> settings.rommSaveSync = !settings.rommSaveSync
             "ra_package" -> {
                 val pkgs = installedRaPackages
                 if (pkgs.size > 1) {
@@ -416,6 +418,22 @@ class SettingsViewModel(
             SettingsItem("shortcuts", R.string.setting_shortcuts, isEditable = true),
             SettingsItem("platform_switching", R.string.setting_platform_switching, valueRes = onOff(settings.platformSwitching))
         )
+        "romm" -> buildList {
+            if (settings.rommConfigured) {
+                add(SettingsItem("romm_status", R.string.setting_romm_status, valueText = "Connected"))
+                add(SettingsItem("romm_url", R.string.setting_romm_url, valueText = settings.rommUrl))
+                add(SettingsItem("romm_save_sync", R.string.setting_romm_save_sync, valueRes = onOff(settings.rommSaveSync)))
+                add(SettingsItem("romm_disconnect", R.string.setting_romm_disconnect, isEditable = true))
+            } else {
+                add(SettingsItem("romm_url", R.string.setting_romm_url,
+                    valueText = settings.rommUrl.ifEmpty { null },
+                    valueRes = if (settings.rommUrl.isEmpty()) R.string.value_none else null,
+                    isEditable = true))
+                if (settings.rommUrl.isNotEmpty()) {
+                    add(SettingsItem("romm_pin", R.string.setting_romm_pin, isEditable = true))
+                }
+            }
+        }
         "kitchen" -> emptyList()
         "advanced" -> listOf(
             SettingsItem("core_mapping", R.string.setting_core_mapping, isEditable = true),

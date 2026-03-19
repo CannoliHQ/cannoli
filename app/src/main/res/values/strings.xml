@@ -32,6 +32,7 @@
     <string name="settings_advanced">Advanced</string>
     <string name="settings_about">About</string>
     <string name="settings_kitchen">Nonna\'s Kitchen</string>
+    <string name="settings_romm">RomM</string>
 
     <!-- Settings items -->
     <string name="setting_colors">Colors</string>
@@ -63,6 +64,12 @@
     <string name="setting_sd_root">Emulation Root</string>
     <string name="setting_ra_package">RetroArch Package</string>
     <string name="setting_kitchen_toggle">File Server</string>
+    <string name="setting_romm_url">Server URL</string>
+    <string name="setting_romm_pin">Enter Pin Code</string>
+    <string name="setting_romm_status">Status</string>
+    <string name="setting_romm_user">User</string>
+    <string name="setting_romm_disconnect">Disconnect</string>
+    <string name="setting_romm_save_sync">Save Sync</string>
 
     <!-- Setting values -->
     <string name="value_on">On</string>
