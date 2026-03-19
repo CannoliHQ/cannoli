@@ -20,6 +20,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -98,6 +99,7 @@ class MainActivity : ComponentActivity() {
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val controlButtons = LibretroInput().buttons
     private val controlButtonCount = controlButtons.size
+    private var saveSyncManager: dev.cannoli.scorza.romm.SaveSyncManager? = null
     @Volatile private var navigating = false
     private var currentFirstVisible = 0
     private var currentPageSize = 10
@@ -376,10 +378,12 @@ class MainActivity : ComponentActivity() {
                 scanResumableGames()
             }
         }
+        saveSyncManager?.scanForChanges()
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        saveSyncManager?.stop()
         settings.shutdown()
         ioScope.cancel()
         dev.cannoli.scorza.server.KitchenManager.stop()
@@ -489,6 +493,7 @@ class MainActivity : ComponentActivity() {
         atomicRename = AtomicRename(root)
 
         globalOverrides = GlobalOverridesManager { settings.sdCardRoot }
+        initSaveSync()
 
         inputHandler = InputHandler(
             getButtonLayout = { settings.buttonLayout },
@@ -509,6 +514,8 @@ class MainActivity : ComponentActivity() {
         rescanSystemList()
 
         setContent {
+            val currentSyncStatus = saveSyncManager?.syncState?.collectAsState()?.value?.status
+                ?: dev.cannoli.scorza.romm.SyncStatus.IDLE
             CannoliTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     AppNavGraph(
@@ -521,7 +528,8 @@ class MainActivity : ComponentActivity() {
                             currentFirstVisible = first
                             if (full) currentPageSize = count
                         },
-                        resumableGames = resumableGames
+                        resumableGames = resumableGames,
+                        syncStatus = currentSyncStatus
                     )
                 }
             }
@@ -540,7 +548,9 @@ class MainActivity : ComponentActivity() {
                 }
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput -> {
+                is DialogState.CollectionRenameInput,
+                is DialogState.RommUrlInput,
+                is DialogState.RommPinInput -> {
                     val ks = ds.asKeyboardState()!!
                     val rows = getKeyboardRows(ks.caps, ks.symbols)
                     val newRow = if (ks.keyRow <= 0) rows.lastIndex else ks.keyRow - 1
@@ -600,7 +610,9 @@ class MainActivity : ComponentActivity() {
                 }
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput -> {
+                is DialogState.CollectionRenameInput,
+                is DialogState.RommUrlInput,
+                is DialogState.RommPinInput -> {
                     val ks = ds.asKeyboardState()!!
                     val rows = getKeyboardRows(ks.caps, ks.symbols)
                     val newRow = if (ks.keyRow >= rows.lastIndex) 0 else ks.keyRow + 1
@@ -656,7 +668,9 @@ class MainActivity : ComponentActivity() {
             when (val ds = dialogState.value) {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput -> {
+                is DialogState.CollectionRenameInput,
+                is DialogState.RommUrlInput,
+                is DialogState.RommPinInput -> {
                     val ks = ds.asKeyboardState()!!
                     val rows = getKeyboardRows(ks.caps, ks.symbols)
                     val rowSize = rows[ks.keyRow.coerceIn(0, rows.lastIndex)].size
@@ -688,7 +702,9 @@ class MainActivity : ComponentActivity() {
             when (val ds = dialogState.value) {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput -> {
+                is DialogState.CollectionRenameInput,
+                is DialogState.RommUrlInput,
+                is DialogState.RommPinInput -> {
                     val ks = ds.asKeyboardState()!!
                     val rows = getKeyboardRows(ks.caps, ks.symbols)
                     val rowSize = rows[ks.keyRow.coerceIn(0, rows.lastIndex)].size
@@ -738,6 +754,18 @@ class MainActivity : ComponentActivity() {
                     onShift = { dialogState.value = ds.copy(caps = !ds.caps) },
                     onSymbols = { dialogState.value = ds.copy(symbols = !ds.symbols) },
                     onEnter = { onCollectionRenameConfirm(ds) }
+                )
+                is DialogState.RommUrlInput -> handleKeyboardConfirm(ds.caps, ds.symbols, ds.keyRow, ds.keyCol, ds.currentName, ds.cursorPos,
+                    onChar = { name, pos -> dialogState.value = ds.copy(currentName = name, cursorPos = pos) },
+                    onShift = { dialogState.value = ds.copy(caps = !ds.caps) },
+                    onSymbols = { dialogState.value = ds.copy(symbols = !ds.symbols) },
+                    onEnter = { onRommUrlConfirm(ds) }
+                )
+                is DialogState.RommPinInput -> handleKeyboardConfirm(ds.caps, ds.symbols, ds.keyRow, ds.keyCol, ds.currentName, ds.cursorPos,
+                    onChar = { name, pos -> dialogState.value = ds.copy(currentName = name, cursorPos = pos) },
+                    onShift = { dialogState.value = ds.copy(caps = !ds.caps) },
+                    onSymbols = { dialogState.value = ds.copy(symbols = !ds.symbols) },
+                    onEnter = { onRommPinConfirm(ds) }
                 )
                 is DialogState.ColorPicker -> {
                     val idx = ds.selectedRow * COLOR_GRID_COLS + ds.selectedCol
@@ -832,6 +860,23 @@ class MainActivity : ComponentActivity() {
                                 ))
                                 "manage_tools" -> openAppPicker("tools")
                                 "manage_ports" -> openAppPicker("ports")
+                                "romm_url" -> {
+                                    val current = settings.rommUrl
+                                    dialogState.value = DialogState.RommUrlInput(
+                                        currentName = current.ifEmpty { "http://" },
+                                        cursorPos = current.ifEmpty { "http://" }.length
+                                    )
+                                }
+                                "romm_pin" -> {
+                                    dialogState.value = DialogState.RommPinInput()
+                                }
+                                "romm_disconnect" -> {
+                                    settings.clearRomm()
+                                    settingsViewModel.save()
+                                    val catKey = settingsViewModel.state.value.activeCategory
+                                    if (catKey != null) settingsViewModel.exitSubList()
+                                    settingsViewModel.enterCategory()
+                                }
                                 null -> {}
                                 else -> {
                                     if (key.startsWith("color_")) {
@@ -919,7 +964,9 @@ class MainActivity : ComponentActivity() {
             when (val ds = dialogState.value) {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput -> {
+                is DialogState.CollectionRenameInput,
+                is DialogState.RommUrlInput,
+                is DialogState.RommPinInput -> {
                     ds.withBackspace()?.let { dialogState.value = it }
                 }
                 is DialogState.ColorPicker -> {
@@ -948,6 +995,9 @@ class MainActivity : ComponentActivity() {
                 is DialogState.MissingCore,
                 is DialogState.MissingApp,
                 is DialogState.LaunchError -> {
+                    dialogState.value = DialogState.None
+                }
+                is DialogState.RommMessage -> {
                     dialogState.value = DialogState.None
                 }
                 DialogState.About,
@@ -1033,6 +1083,8 @@ class MainActivity : ComponentActivity() {
                 is DialogState.RenameInput -> onRenameConfirm(ds)
                 is DialogState.NewCollectionInput -> onNewCollectionConfirm(ds)
                 is DialogState.CollectionRenameInput -> onCollectionRenameConfirm(ds)
+                is DialogState.RommUrlInput -> onRommUrlConfirm(ds)
+                is DialogState.RommPinInput -> onRommPinConfirm(ds)
                 DialogState.None -> when (currentScreen) {
                     LauncherScreen.SystemList -> {
                         if (systemListViewModel.isReorderMode()) {
@@ -1089,7 +1141,9 @@ class MainActivity : ComponentActivity() {
             when (val ds = dialogState.value) {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput -> {
+                is DialogState.CollectionRenameInput,
+                is DialogState.RommUrlInput,
+                is DialogState.RommPinInput -> {
                     val ks = ds.asKeyboardState()!!
                     dialogState.value = ds.withCaps(!ks.caps)
                 }
@@ -1127,7 +1181,9 @@ class MainActivity : ComponentActivity() {
             when (val ds = dialogState.value) {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput -> {
+                is DialogState.CollectionRenameInput,
+                is DialogState.RommUrlInput,
+                is DialogState.RommPinInput -> {
                     ds.withInsertedChar(" ")?.let { dialogState.value = it }
                 }
                 DialogState.About -> {
@@ -1198,6 +1254,8 @@ class MainActivity : ComponentActivity() {
                                     url = km.getUrl(),
                                     pin = km.pin
                                 )
+                            } else if (settings.rommConfigured) {
+                                // TODO: open RomM browse screen
                             }
                         }
                         LauncherScreen.GameList -> {
@@ -1217,7 +1275,9 @@ class MainActivity : ComponentActivity() {
             when (val ds = dialogState.value) {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput -> {
+                is DialogState.CollectionRenameInput,
+                is DialogState.RommUrlInput,
+                is DialogState.RommPinInput -> {
                     val ks = ds.asKeyboardState()!!
                     if (ks.cursorPos > 0) dialogState.value = ds.withCursor(ks.cursorPos - 1)
                 }
@@ -1230,7 +1290,9 @@ class MainActivity : ComponentActivity() {
             when (val ds = dialogState.value) {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput -> {
+                is DialogState.CollectionRenameInput,
+                is DialogState.RommUrlInput,
+                is DialogState.RommPinInput -> {
                     val ks = ds.asKeyboardState()!!
                     if (ks.cursorPos < ks.currentName.length) dialogState.value = ds.withCursor(ks.cursorPos + 1)
                 }
@@ -1254,7 +1316,9 @@ class MainActivity : ComponentActivity() {
             when (val ds = dialogState.value) {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput -> {
+                is DialogState.CollectionRenameInput,
+                is DialogState.RommUrlInput,
+                is DialogState.RommPinInput -> {
                     val ks = ds.asKeyboardState()!!
                     dialogState.value = ds.withCursor(ks.currentName.length)
                 }
@@ -1443,6 +1507,10 @@ class MainActivity : ComponentActivity() {
         if (game.isSubfolder) {
             gameListViewModel.enterSubfolder(game.file.name)
             return
+        }
+
+        saveSyncManager?.syncOnLaunch(game.platformTag, game.file.nameWithoutExtension) { conflictFile ->
+            // TODO: show conflict dialog (remote save newer)
         }
 
         val errorDialog = launchManager.launchGame(game)
@@ -1785,6 +1853,65 @@ class MainActivity : ComponentActivity() {
             }
             scanner.invalidateArtCache()
             gameListViewModel.reload()
+        }
+    }
+
+    private fun initSaveSync() {
+        if (!settings.rommConfigured || !settings.rommSaveSync) return
+        val root = File(settings.sdCardRoot)
+        val client = dev.cannoli.scorza.romm.RommClient(
+            settings.rommUrl,
+            dev.cannoli.scorza.romm.RommClient.bearerAuthHeader(settings.rommToken)
+        )
+        saveSyncManager = dev.cannoli.scorza.romm.SaveSyncManager(root, client, settings.rommDeviceId)
+        saveSyncManager?.start()
+    }
+
+    private fun onRommUrlConfirm(state: DialogState.RommUrlInput) {
+        val url = state.currentName.trim().trimEnd('/')
+        if (url.isEmpty()) { dialogState.value = DialogState.None; return }
+        settings.rommUrl = url
+        dialogState.value = DialogState.None
+        settingsViewModel.save()
+        val catKey = settingsViewModel.state.value.activeCategory
+        if (catKey != null) { settingsViewModel.exitSubList(); settingsViewModel.enterCategory() }
+    }
+
+    private fun onRommPinConfirm(state: DialogState.RommPinInput) {
+        val code = state.currentName.trim()
+        if (code.isEmpty()) { dialogState.value = DialogState.None; return }
+        dialogState.value = DialogState.None
+        ioScope.launch {
+            try {
+                val client = dev.cannoli.scorza.romm.RommClient(settings.rommUrl)
+                val token = client.exchangeToken(code)
+                settings.rommToken = token.rawToken
+                client.setAuth(dev.cannoli.scorza.romm.RommClient.bearerAuthHeader(token.rawToken))
+                if (settings.rommDeviceId.isEmpty()) {
+                    val device = client.registerDevice(
+                        name = android.os.Build.MODEL,
+                        platform = "Android",
+                        clientVersion = try {
+                            packageManager.getPackageInfo(packageName, 0).versionName ?: "1.0"
+                        } catch (_: Exception) { "1.0" }
+                    )
+                    settings.rommDeviceId = device.id
+                }
+                withContext(Dispatchers.Main) {
+                    settingsViewModel.save()
+                    val catKey = settingsViewModel.state.value.activeCategory
+                    if (catKey != null) { settingsViewModel.exitSubList(); settingsViewModel.enterCategory() }
+                }
+            } catch (e: Exception) {
+                val msg = when {
+                    e is dev.cannoli.scorza.romm.ApiException && e.statusCode == 401 -> "Invalid pin code"
+                    e is dev.cannoli.scorza.romm.ApiException && e.statusCode == 404 -> "Pin code expired or not found"
+                    else -> "Connection failed: ${e.message}"
+                }
+                withContext(Dispatchers.Main) {
+                    dialogState.value = DialogState.RommMessage(msg)
+                }
+            }
         }
     }
 

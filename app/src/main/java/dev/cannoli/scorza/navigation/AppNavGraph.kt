@@ -79,7 +79,8 @@ fun AppNavGraph(
     settingsViewModel: SettingsViewModel,
     dialogState: StateFlow<DialogState>,
     onVisibleRangeChanged: (firstVisible: Int, visibleCount: Int, isViewportFull: Boolean) -> Unit = { _, _, _ -> },
-    resumableGames: Set<String> = emptySet()
+    resumableGames: Set<String> = emptySet(),
+    syncStatus: dev.cannoli.scorza.romm.SyncStatus = dev.cannoli.scorza.romm.SyncStatus.IDLE
 ) {
     val dialog by dialogState.collectAsState()
     val appSettings by settingsViewModel.appSettings.collectAsState()
@@ -457,8 +458,14 @@ fun AppNavGraph(
         }
 
         val kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning
-        val statusBarVisible = dialog !is DialogState.About && dialog !is DialogState.Kitchen && currentScreen !is LauncherScreen.Credits && (kitchenRunning || appSettings.showWifi || appSettings.showBluetooth || appSettings.showClock || appSettings.showBattery)
-        if (statusBarVisible) {
+        val statusBarHidden = dialog is DialogState.About || dialog is DialogState.Kitchen || currentScreen is LauncherScreen.Credits
+        val hasStatusContent = kitchenRunning
+            || syncStatus != dev.cannoli.scorza.romm.SyncStatus.IDLE
+            || appSettings.showWifi
+            || appSettings.showBluetooth
+            || appSettings.showClock
+            || appSettings.showBattery
+        if (!statusBarHidden && hasStatusContent) {
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
@@ -474,6 +481,7 @@ fun AppNavGraph(
                 showClock = appSettings.showClock,
                 showBattery = appSettings.showBattery,
                 showKitchen = kitchenRunning,
+                syncStatus = syncStatus,
                 lineHeight = listLineHeight,
                 verticalPadding = listVerticalPadding
             )

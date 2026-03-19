@@ -54,6 +54,9 @@ import kotlinx.coroutines.delay
 private const val ICON_BLUETOOTH = "\uDB80\uDCAF"   // 󰂯 nf-md-bluetooth
 private const val ICON_WIFI = "\uDB81\uDDA9"         // 󰖩 nf-md-wifi
 private const val ICON_KITCHEN = "\uDB81\uDC8B"      // 󰒋 nf-md-server
+private const val ICON_CLOUD_CHECK = "\uDB80\uDE3C"  // 󰈼 nf-md-cloud_check
+private const val ICON_CLOUD_SYNC = "\uDB82\uDE37"   // 󰸷 nf-md-cloud_sync
+private const val ICON_CLOUD_ALERT = "\uDB80\uDE3A"  // 󰈺 nf-md-cloud_alert
 
 @Composable
 fun StatusBar(
@@ -63,6 +66,7 @@ fun StatusBar(
     showClock: Boolean = true,
     showBattery: Boolean = true,
     showKitchen: Boolean = false,
+    syncStatus: dev.cannoli.scorza.romm.SyncStatus = dev.cannoli.scorza.romm.SyncStatus.IDLE,
     lineHeight: TextUnit = 32.sp,
     verticalPadding: Dp = 4.dp
 ) {
@@ -174,6 +178,14 @@ fun StatusBar(
     ) {
         if (showKitchen) {
             Text(text = ICON_KITCHEN, style = iconStyle)
+        }
+
+        when (syncStatus) {
+            dev.cannoli.scorza.romm.SyncStatus.SYNCING -> Text(text = ICON_CLOUD_SYNC, style = iconStyle)
+            dev.cannoli.scorza.romm.SyncStatus.UP_TO_DATE -> Text(text = ICON_CLOUD_CHECK, style = iconStyle)
+            dev.cannoli.scorza.romm.SyncStatus.CONFLICT,
+            dev.cannoli.scorza.romm.SyncStatus.ERROR -> Text(text = ICON_CLOUD_ALERT, style = iconStyle)
+            dev.cannoli.scorza.romm.SyncStatus.IDLE -> {}
         }
 
         if (showBluetooth && hasBluetooth) {
