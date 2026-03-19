@@ -116,7 +116,9 @@ There is a stigma against vibe-coded projects and rightfully so.
 
 My personal opinion is that it is only a problem for mission-critical stuff and when it is not disclosed.
 
-My promise to you is I will disclose how AI was used in each project. You can find this detailed disclosure in [AI_DISCLOSURE.md](AI_DISCLOSURE.md)
+My promise to you is I will disclose how AI was used in each project.
+
+You can find this detailed disclosure in [AI_DISCLOSURE.md](AI_DISCLOSURE.md)
 
 ---
 
