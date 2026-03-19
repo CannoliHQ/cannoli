@@ -166,9 +166,9 @@ class PlatformResolver(
         saveCoreMappings()
     }
 
-    fun isKnownTag(tag: String): Boolean = tag in defaultPlatformNames
+    fun isKnownTag(tag: String): Boolean = tag in defaultPlatformNames || tag in ini.getSection("platforms")
 
-    fun getAllTags(): Set<String> = defaultPlatformNames.keys
+    fun getAllTags(): Set<String> = defaultPlatformNames.keys + ini.getSection("platforms").keys
 
     fun getAppPackage(tag: String): String? = userApps[tag] ?: defaultApps[tag]?.firstOrNull()
 
