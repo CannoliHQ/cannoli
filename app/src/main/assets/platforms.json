@@ -202,7 +202,7 @@
   "PS2": {
     "name": "PlayStation 2",
     "app": [
-      "xyz.aethersx2.android"
+      "xyz.nethersx2.android"
     ]
   },
   "GC": {
@@ -220,7 +220,7 @@
   "3DS": {
     "name": "Nintendo 3DS",
     "app": [
-      "org.citra_emu.citra"
+      "org.azahar_emu.azahar"
     ]
   },
   "WIIU": {
