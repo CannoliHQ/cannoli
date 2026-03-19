@@ -94,9 +94,7 @@ fun DialogOverlay(
             )
         }
 
-        is DialogState.RenameInput,
-        is DialogState.NewCollectionInput,
-        is DialogState.CollectionRenameInput -> {
+        is KeyboardInputState -> {
             val ks = dialogState as KeyboardInputState
             KeyboardOverlay(
                 text = ks.currentName,

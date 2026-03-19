@@ -224,6 +224,8 @@ class SettingsViewModel(
             "show_battery" -> settings.showBattery = !settings.showBattery
             "show_tools" -> settings.showTools = !settings.showTools
             "show_ports" -> settings.showPorts = !settings.showPorts
+            "romm_protocol" -> settings.rommProtocol = if (settings.rommProtocol == "http") "https" else "http"
+            "romm_verify_ssl" -> settings.rommVerifySsl = !settings.rommVerifySsl
             "romm_save_sync" -> settings.rommSaveSync = !settings.rommSaveSync
             "ra_package" -> {
                 val pkgs = installedRaPackages
@@ -421,15 +423,23 @@ class SettingsViewModel(
         "romm" -> buildList {
             if (settings.rommConfigured) {
                 add(SettingsItem("romm_status", R.string.setting_romm_status, valueText = "Connected"))
-                add(SettingsItem("romm_url", R.string.setting_romm_url, valueText = settings.rommUrl))
+                add(SettingsItem("romm_host", R.string.setting_romm_host, valueText = settings.rommUrl))
                 add(SettingsItem("romm_save_sync", R.string.setting_romm_save_sync, valueRes = onOff(settings.rommSaveSync)))
                 add(SettingsItem("romm_disconnect", R.string.setting_romm_disconnect, isEditable = true))
             } else {
-                add(SettingsItem("romm_url", R.string.setting_romm_url,
-                    valueText = settings.rommUrl.ifEmpty { null },
-                    valueRes = if (settings.rommUrl.isEmpty()) R.string.value_none else null,
+                add(SettingsItem("romm_protocol", R.string.setting_romm_protocol, valueText = settings.rommProtocol.uppercase()))
+                add(SettingsItem("romm_host", R.string.setting_romm_host,
+                    valueText = settings.rommHost.ifEmpty { null },
+                    valueRes = if (settings.rommHost.isEmpty()) R.string.value_none else null,
                     isEditable = true))
-                if (settings.rommUrl.isNotEmpty()) {
+                add(SettingsItem("romm_port", R.string.setting_romm_port,
+                    valueText = if (settings.rommPort > 0) settings.rommPort.toString() else null,
+                    valueRes = if (settings.rommPort == 0) R.string.value_none else null,
+                    isEditable = true))
+                if (settings.rommProtocol == "https") {
+                    add(SettingsItem("romm_verify_ssl", R.string.setting_romm_verify_ssl, valueRes = onOff(settings.rommVerifySsl)))
+                }
+                if (settings.rommHost.isNotEmpty()) {
                     add(SettingsItem("romm_pin", R.string.setting_romm_pin, isEditable = true))
                 }
             }

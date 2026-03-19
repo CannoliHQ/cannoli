@@ -29,7 +29,8 @@ sealed interface DialogState {
     data class CollectionCreated(val collectionName: String) : DialogState
     data class ColorPicker(val settingKey: String, val currentColor: Long, val selectedRow: Int = 0, val selectedCol: Int = 0) : DialogState
     data class HexColorInput(val settingKey: String, val currentHex: String = "", val selectedIndex: Int = 0) : DialogState
-    data class RommUrlInput(override val currentName: String = "", override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
+    data class RommHostInput(override val currentName: String = "", override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
+    data class RommPortInput(override val currentName: String = "", override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
     data class RommPinInput(override val currentName: String = "", override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
     data class RommMessage(val message: String) : DialogState
     data object About : DialogState
@@ -42,7 +43,8 @@ fun DialogState.withKeyboard(row: Int, col: Int): DialogState = when (this) {
     is DialogState.RenameInput -> copy(keyRow = row, keyCol = col)
     is DialogState.NewCollectionInput -> copy(keyRow = row, keyCol = col)
     is DialogState.CollectionRenameInput -> copy(keyRow = row, keyCol = col)
-    is DialogState.RommUrlInput -> copy(keyRow = row, keyCol = col)
+    is DialogState.RommHostInput -> copy(keyRow = row, keyCol = col)
+    is DialogState.RommPortInput -> copy(keyRow = row, keyCol = col)
     is DialogState.RommPinInput -> copy(keyRow = row, keyCol = col)
     else -> this
 }
@@ -51,7 +53,8 @@ fun DialogState.withCursor(pos: Int): DialogState = when (this) {
     is DialogState.RenameInput -> copy(cursorPos = pos)
     is DialogState.NewCollectionInput -> copy(cursorPos = pos)
     is DialogState.CollectionRenameInput -> copy(cursorPos = pos)
-    is DialogState.RommUrlInput -> copy(cursorPos = pos)
+    is DialogState.RommHostInput -> copy(cursorPos = pos)
+    is DialogState.RommPortInput -> copy(cursorPos = pos)
     is DialogState.RommPinInput -> copy(cursorPos = pos)
     else -> this
 }
@@ -60,7 +63,8 @@ fun DialogState.withCaps(caps: Boolean): DialogState = when (this) {
     is DialogState.RenameInput -> copy(caps = caps)
     is DialogState.NewCollectionInput -> copy(caps = caps)
     is DialogState.CollectionRenameInput -> copy(caps = caps)
-    is DialogState.RommUrlInput -> copy(caps = caps)
+    is DialogState.RommHostInput -> copy(caps = caps)
+    is DialogState.RommPortInput -> copy(caps = caps)
     is DialogState.RommPinInput -> copy(caps = caps)
     else -> this
 }
@@ -69,7 +73,8 @@ fun DialogState.withNameAndCursor(name: String, pos: Int): DialogState = when (t
     is DialogState.RenameInput -> copy(currentName = name, cursorPos = pos)
     is DialogState.NewCollectionInput -> copy(currentName = name, cursorPos = pos)
     is DialogState.CollectionRenameInput -> copy(currentName = name, cursorPos = pos)
-    is DialogState.RommUrlInput -> copy(currentName = name, cursorPos = pos)
+    is DialogState.RommHostInput -> copy(currentName = name, cursorPos = pos)
+    is DialogState.RommPortInput -> copy(currentName = name, cursorPos = pos)
     is DialogState.RommPinInput -> copy(currentName = name, cursorPos = pos)
     else -> this
 }
@@ -108,7 +113,8 @@ val DialogState.isFullScreen: Boolean
         is DialogState.RenameInput,
         is DialogState.NewCollectionInput,
         is DialogState.CollectionRenameInput,
-        is DialogState.RommUrlInput,
+        is DialogState.RommHostInput,
+        is DialogState.RommPortInput,
         is DialogState.RommPinInput,
         is DialogState.About,
         is DialogState.Kitchen -> true

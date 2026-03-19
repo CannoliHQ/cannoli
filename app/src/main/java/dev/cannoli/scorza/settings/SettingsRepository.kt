@@ -177,9 +177,21 @@ class SettingsRepository(context: Context) {
         get() = jsonRead { optString(KEY_COLOR_ACCENT, "#FFFFFF") }
         set(value) = jsonWrite { put(KEY_COLOR_ACCENT, value) }
 
-    var rommUrl: String
-        get() = jsonRead { optString(KEY_ROMM_URL, "") }
-        set(value) = jsonWrite { if (value.isEmpty()) remove(KEY_ROMM_URL) else put(KEY_ROMM_URL, value) }
+    var rommProtocol: String
+        get() = jsonRead { optString(KEY_ROMM_PROTOCOL, "http") }
+        set(value) = jsonWrite { put(KEY_ROMM_PROTOCOL, value) }
+
+    var rommHost: String
+        get() = jsonRead { optString(KEY_ROMM_HOST, "") }
+        set(value) = jsonWrite { if (value.isEmpty()) remove(KEY_ROMM_HOST) else put(KEY_ROMM_HOST, value) }
+
+    var rommPort: Int
+        get() = jsonRead { optInt(KEY_ROMM_PORT, 0) }
+        set(value) = jsonWrite { if (value == 0) remove(KEY_ROMM_PORT) else put(KEY_ROMM_PORT, value) }
+
+    var rommVerifySsl: Boolean
+        get() = jsonRead { optBoolean(KEY_ROMM_VERIFY_SSL, true) }
+        set(value) = jsonWrite { put(KEY_ROMM_VERIFY_SSL, value) }
 
     var rommToken: String
         get() = jsonRead { optString(KEY_ROMM_TOKEN, "") }
@@ -193,10 +205,16 @@ class SettingsRepository(context: Context) {
         get() = jsonRead { optBoolean(KEY_ROMM_SAVE_SYNC, false) }
         set(value) = jsonWrite { put(KEY_ROMM_SAVE_SYNC, value) }
 
-    val rommConfigured: Boolean get() = rommUrl.isNotEmpty() && rommToken.isNotEmpty()
+    val rommConfigured: Boolean get() = rommHost.isNotEmpty() && rommToken.isNotEmpty()
+
+    val rommUrl: String get() {
+        val base = "$rommProtocol://$rommHost"
+        return if (rommPort > 0) "$base:$rommPort" else base
+    }
 
     fun clearRomm() {
-        rommUrl = ""
+        rommHost = ""
+        rommPort = 0
         rommToken = ""
         rommDeviceId = ""
     }
@@ -233,7 +251,10 @@ class SettingsRepository(context: Context) {
         private const val KEY_SHOW_PORTS = "show_ports"
         private const val KEY_TOOLS_NAME = "tools_name"
         private const val KEY_PORTS_NAME = "ports_name"
-        private const val KEY_ROMM_URL = "romm_url"
+        private const val KEY_ROMM_PROTOCOL = "romm_protocol"
+        private const val KEY_ROMM_HOST = "romm_host"
+        private const val KEY_ROMM_PORT = "romm_port"
+        private const val KEY_ROMM_VERIFY_SSL = "romm_verify_ssl"
         private const val KEY_ROMM_TOKEN = "romm_token"
         private const val KEY_ROMM_DEVICE_ID = "romm_device_id"
         private const val KEY_ROMM_SAVE_SYNC = "romm_save_sync"

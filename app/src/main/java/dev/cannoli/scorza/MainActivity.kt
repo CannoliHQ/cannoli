@@ -549,7 +549,8 @@ class MainActivity : ComponentActivity() {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
                 is DialogState.CollectionRenameInput,
-                is DialogState.RommUrlInput,
+                is DialogState.RommHostInput,
+                is DialogState.RommPortInput,
                 is DialogState.RommPinInput -> {
                     val ks = ds.asKeyboardState()!!
                     val rows = getKeyboardRows(ks.caps, ks.symbols)
@@ -611,7 +612,8 @@ class MainActivity : ComponentActivity() {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
                 is DialogState.CollectionRenameInput,
-                is DialogState.RommUrlInput,
+                is DialogState.RommHostInput,
+                is DialogState.RommPortInput,
                 is DialogState.RommPinInput -> {
                     val ks = ds.asKeyboardState()!!
                     val rows = getKeyboardRows(ks.caps, ks.symbols)
@@ -669,7 +671,8 @@ class MainActivity : ComponentActivity() {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
                 is DialogState.CollectionRenameInput,
-                is DialogState.RommUrlInput,
+                is DialogState.RommHostInput,
+                is DialogState.RommPortInput,
                 is DialogState.RommPinInput -> {
                     val ks = ds.asKeyboardState()!!
                     val rows = getKeyboardRows(ks.caps, ks.symbols)
@@ -703,7 +706,8 @@ class MainActivity : ComponentActivity() {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
                 is DialogState.CollectionRenameInput,
-                is DialogState.RommUrlInput,
+                is DialogState.RommHostInput,
+                is DialogState.RommPortInput,
                 is DialogState.RommPinInput -> {
                     val ks = ds.asKeyboardState()!!
                     val rows = getKeyboardRows(ks.caps, ks.symbols)
@@ -755,11 +759,17 @@ class MainActivity : ComponentActivity() {
                     onSymbols = { dialogState.value = ds.copy(symbols = !ds.symbols) },
                     onEnter = { onCollectionRenameConfirm(ds) }
                 )
-                is DialogState.RommUrlInput -> handleKeyboardConfirm(ds.caps, ds.symbols, ds.keyRow, ds.keyCol, ds.currentName, ds.cursorPos,
+                is DialogState.RommHostInput -> handleKeyboardConfirm(ds.caps, ds.symbols, ds.keyRow, ds.keyCol, ds.currentName, ds.cursorPos,
                     onChar = { name, pos -> dialogState.value = ds.copy(currentName = name, cursorPos = pos) },
                     onShift = { dialogState.value = ds.copy(caps = !ds.caps) },
                     onSymbols = { dialogState.value = ds.copy(symbols = !ds.symbols) },
-                    onEnter = { onRommUrlConfirm(ds) }
+                    onEnter = { onRommHostConfirm(ds) }
+                )
+                is DialogState.RommPortInput -> handleKeyboardConfirm(ds.caps, ds.symbols, ds.keyRow, ds.keyCol, ds.currentName, ds.cursorPos,
+                    onChar = { name, pos -> dialogState.value = ds.copy(currentName = name, cursorPos = pos) },
+                    onShift = { dialogState.value = ds.copy(caps = !ds.caps) },
+                    onSymbols = { dialogState.value = ds.copy(symbols = !ds.symbols) },
+                    onEnter = { onRommPortConfirm(ds) }
                 )
                 is DialogState.RommPinInput -> handleKeyboardConfirm(ds.caps, ds.symbols, ds.keyRow, ds.keyCol, ds.currentName, ds.cursorPos,
                     onChar = { name, pos -> dialogState.value = ds.copy(currentName = name, cursorPos = pos) },
@@ -860,11 +870,18 @@ class MainActivity : ComponentActivity() {
                                 ))
                                 "manage_tools" -> openAppPicker("tools")
                                 "manage_ports" -> openAppPicker("ports")
-                                "romm_url" -> {
-                                    val current = settings.rommUrl
-                                    dialogState.value = DialogState.RommUrlInput(
-                                        currentName = current.ifEmpty { "http://" },
-                                        cursorPos = current.ifEmpty { "http://" }.length
+                                "romm_host" -> {
+                                    val current = settings.rommHost
+                                    dialogState.value = DialogState.RommHostInput(
+                                        currentName = current,
+                                        cursorPos = current.length
+                                    )
+                                }
+                                "romm_port" -> {
+                                    val current = if (settings.rommPort > 0) settings.rommPort.toString() else ""
+                                    dialogState.value = DialogState.RommPortInput(
+                                        currentName = current,
+                                        cursorPos = current.length
                                     )
                                 }
                                 "romm_pin" -> {
@@ -965,7 +982,8 @@ class MainActivity : ComponentActivity() {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
                 is DialogState.CollectionRenameInput,
-                is DialogState.RommUrlInput,
+                is DialogState.RommHostInput,
+                is DialogState.RommPortInput,
                 is DialogState.RommPinInput -> {
                     ds.withBackspace()?.let { dialogState.value = it }
                 }
@@ -1083,7 +1101,8 @@ class MainActivity : ComponentActivity() {
                 is DialogState.RenameInput -> onRenameConfirm(ds)
                 is DialogState.NewCollectionInput -> onNewCollectionConfirm(ds)
                 is DialogState.CollectionRenameInput -> onCollectionRenameConfirm(ds)
-                is DialogState.RommUrlInput -> onRommUrlConfirm(ds)
+                is DialogState.RommHostInput -> onRommHostConfirm(ds)
+                is DialogState.RommPortInput -> onRommPortConfirm(ds)
                 is DialogState.RommPinInput -> onRommPinConfirm(ds)
                 DialogState.None -> when (currentScreen) {
                     LauncherScreen.SystemList -> {
@@ -1142,7 +1161,8 @@ class MainActivity : ComponentActivity() {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
                 is DialogState.CollectionRenameInput,
-                is DialogState.RommUrlInput,
+                is DialogState.RommHostInput,
+                is DialogState.RommPortInput,
                 is DialogState.RommPinInput -> {
                     val ks = ds.asKeyboardState()!!
                     dialogState.value = ds.withCaps(!ks.caps)
@@ -1182,7 +1202,8 @@ class MainActivity : ComponentActivity() {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
                 is DialogState.CollectionRenameInput,
-                is DialogState.RommUrlInput,
+                is DialogState.RommHostInput,
+                is DialogState.RommPortInput,
                 is DialogState.RommPinInput -> {
                     ds.withInsertedChar(" ")?.let { dialogState.value = it }
                 }
@@ -1276,7 +1297,8 @@ class MainActivity : ComponentActivity() {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
                 is DialogState.CollectionRenameInput,
-                is DialogState.RommUrlInput,
+                is DialogState.RommHostInput,
+                is DialogState.RommPortInput,
                 is DialogState.RommPinInput -> {
                     val ks = ds.asKeyboardState()!!
                     if (ks.cursorPos > 0) dialogState.value = ds.withCursor(ks.cursorPos - 1)
@@ -1291,7 +1313,8 @@ class MainActivity : ComponentActivity() {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
                 is DialogState.CollectionRenameInput,
-                is DialogState.RommUrlInput,
+                is DialogState.RommHostInput,
+                is DialogState.RommPortInput,
                 is DialogState.RommPinInput -> {
                     val ks = ds.asKeyboardState()!!
                     if (ks.cursorPos < ks.currentName.length) dialogState.value = ds.withCursor(ks.cursorPos + 1)
@@ -1317,7 +1340,8 @@ class MainActivity : ComponentActivity() {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
                 is DialogState.CollectionRenameInput,
-                is DialogState.RommUrlInput,
+                is DialogState.RommHostInput,
+                is DialogState.RommPortInput,
                 is DialogState.RommPinInput -> {
                     val ks = ds.asKeyboardState()!!
                     dialogState.value = ds.withCursor(ks.currentName.length)
@@ -1867,10 +1891,18 @@ class MainActivity : ComponentActivity() {
         saveSyncManager?.start()
     }
 
-    private fun onRommUrlConfirm(state: DialogState.RommUrlInput) {
-        val url = state.currentName.trim().trimEnd('/')
-        if (url.isEmpty()) { dialogState.value = DialogState.None; return }
-        settings.rommUrl = url
+    private fun onRommHostConfirm(state: DialogState.RommHostInput) {
+        val host = state.currentName.trim().trimEnd('/')
+        if (host.isEmpty()) { dialogState.value = DialogState.None; return }
+        settings.rommHost = host
+        dialogState.value = DialogState.None
+        settingsViewModel.save()
+        val catKey = settingsViewModel.state.value.activeCategory
+        if (catKey != null) { settingsViewModel.exitSubList(); settingsViewModel.enterCategory() }
+    }
+
+    private fun onRommPortConfirm(state: DialogState.RommPortInput) {
+        settings.rommPort = state.currentName.trim().toIntOrNull() ?: 0
         dialogState.value = DialogState.None
         settingsViewModel.save()
         val catKey = settingsViewModel.state.value.activeCategory
