@@ -29,12 +29,8 @@ Here is what I built:
 
 Documentation is written completely by me and will never be outsourced to the clankers.
 
-Claude did help with grammar and as a sounding board to point out when I wasn't making any sense.
-
-You can decide if these two statements are opposed or not.
-
 I consider Claude just another tool and have been upfront about its usage out of respect to you.
 
 You can decide how that impacts your desire to use this project.
 
-Don't like AI? I don't care. I build this for fun, and you didn't pay shit for it. Take it for what it is.
+Don't like AI? I don't care. I built this for fun, and you didn't pay shit for it. Take it for what it is.
