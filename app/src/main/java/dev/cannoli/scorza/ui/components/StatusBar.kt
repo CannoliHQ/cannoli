@@ -54,9 +54,9 @@ import kotlinx.coroutines.delay
 private const val ICON_BLUETOOTH = "\uDB80\uDCAF"   // 󰂯 nf-md-bluetooth
 private const val ICON_WIFI = "\uDB81\uDDA9"         // 󰖩 nf-md-wifi
 private const val ICON_KITCHEN = "\uDB81\uDC8B"      // 󰒋 nf-md-server
-private const val ICON_CLOUD_CHECK = "\uDB80\uDE3C"  // 󰈼 nf-md-cloud_check
-private const val ICON_CLOUD_SYNC = "\uDB82\uDE37"   // 󰸷 nf-md-cloud_sync
-private const val ICON_CLOUD_ALERT = "\uDB80\uDE3A"  // 󰈺 nf-md-cloud_alert
+private const val ICON_CLOUD_CHECK = "\uDB80\uDD60"  // 󰅠 nf-md-cloud_check U+F0160
+private const val ICON_CLOUD_SYNC = "\uDB81\uDE3F"   // 󰘿 nf-md-cloud_sync U+F063F
+private const val ICON_CLOUD_ALERT = "\uDB82\uDDE0"  // 󰧠 nf-md-cloud_alert U+F09E0
 
 @Composable
 fun StatusBar(

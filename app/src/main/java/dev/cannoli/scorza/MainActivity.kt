@@ -99,7 +99,7 @@ class MainActivity : ComponentActivity() {
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val controlButtons = LibretroInput().buttons
     private val controlButtonCount = controlButtons.size
-    private var saveSyncManager: dev.cannoli.scorza.romm.SaveSyncManager? = null
+    private var saveSyncManager by mutableStateOf<dev.cannoli.scorza.romm.SaveSyncManager?>(null)
     @Volatile private var navigating = false
     private var currentFirstVisible = 0
     private var currentPageSize = 10
@@ -489,7 +489,9 @@ class MainActivity : ComponentActivity() {
 
         systemListViewModel = SystemListViewModel(scanner)
         gameListViewModel = GameListViewModel(scanner, platformResolver)
-        settingsViewModel = SettingsViewModel(settings, root, packageManager)
+        settingsViewModel = SettingsViewModel(settings, root, packageManager,
+            syncMessage = { saveSyncManager?.syncState?.value?.message ?: "" }
+        )
         atomicRename = AtomicRename(root)
 
         globalOverrides = GlobalOverridesManager { settings.sdCardRoot }
@@ -1046,9 +1048,11 @@ class MainActivity : ComponentActivity() {
                     }
                     LauncherScreen.Settings -> {
                         if (settingsViewModel.state.value.inSubList) {
+                            val wasRomm = settingsViewModel.state.value.activeCategory == "romm"
                             settingsViewModel.save()
                             settingsViewModel.exitSubList()
                             rescanSystemList()
+                            if (wasRomm) initSaveSync()
                         } else {
                             settingsViewModel.cancel()
                             screenStack.removeAt(screenStack.lastIndex)
@@ -1533,12 +1537,19 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        saveSyncManager?.syncOnLaunch(game.platformTag, game.file.nameWithoutExtension) { conflictFile ->
-            // TODO: show conflict dialog (remote save newer)
+        val sync = saveSyncManager
+        if (sync != null) {
+            sync.syncOnLaunch(game.platformTag, game.file.nameWithoutExtension,
+                onDone = {
+                    val errorDialog = launchManager.launchGame(game)
+                    if (errorDialog != null) dialogState.value = errorDialog
+                },
+                onConflict = {}
+            )
+        } else {
+            val errorDialog = launchManager.launchGame(game)
+            if (errorDialog != null) dialogState.value = errorDialog
         }
-
-        val errorDialog = launchManager.launchGame(game)
-        if (errorDialog != null) dialogState.value = errorDialog
     }
 
     private fun scanResumableGames() {
@@ -1881,14 +1892,19 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun initSaveSync() {
+        android.util.Log.w("SaveSync", "initSaveSync: configured=${settings.rommConfigured} syncEnabled=${settings.rommSaveSync}")
+        saveSyncManager?.stop()
+        saveSyncManager = null
         if (!settings.rommConfigured || !settings.rommSaveSync) return
         val root = File(settings.sdCardRoot)
         val client = dev.cannoli.scorza.romm.RommClient(
             settings.rommUrl,
-            dev.cannoli.scorza.romm.RommClient.bearerAuthHeader(settings.rommToken)
+            dev.cannoli.scorza.romm.RommClient.bearerAuthHeader(settings.rommToken),
+            timeoutMs = 10_000
         )
-        saveSyncManager = dev.cannoli.scorza.romm.SaveSyncManager(root, client, settings.rommDeviceId)
-        saveSyncManager?.start()
+        val manager = dev.cannoli.scorza.romm.SaveSyncManager(root, client, settings.rommDeviceId)
+        saveSyncManager = manager
+        manager.fullSync()
     }
 
     private fun onRommHostConfirm(state: DialogState.RommHostInput) {

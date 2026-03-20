@@ -95,6 +95,31 @@ class RommClient(
         return parseRom(json)
     }
 
+    fun getRomsUpdatedAfter(query: GetRomsQuery, updatedAfter: String): PaginatedRoms {
+        val params = buildMap {
+            if (query.platformId > 0) put("platform_id", query.platformId.toString())
+            if (query.search.isNotEmpty()) put("search", query.search)
+            if (query.limit > 0) put("limit", query.limit.toString())
+            if (query.offset > 0) put("offset", query.offset.toString())
+            if (query.orderBy.isNotEmpty()) put("order_by", query.orderBy)
+            if (query.orderDir.isNotEmpty()) put("order_dir", query.orderDir)
+            put("updated_after", updatedAfter)
+        }
+        val json = get(Endpoints.ROMS, params)
+        val items = json.getJSONArray("items")
+        return PaginatedRoms(
+            items = (0 until items.length()).map { parseRom(items.getJSONObject(it)) },
+            total = json.getInt("total"),
+            limit = json.getInt("limit"),
+            offset = json.getInt("offset")
+        )
+    }
+
+    fun getRomIdentifiers(): List<Int> {
+        val arr = getArray("/api/roms/identifiers")
+        return (0 until arr.length()).map { arr.getInt(it) }
+    }
+
     fun downloadRom(romId: Int): ByteArray {
         return getRaw("${Endpoints.ROMS_DOWNLOAD}?rom_ids=$romId")
     }
@@ -159,6 +184,20 @@ class RommClient(
             val obj = arr.getJSONObject(it)
             RommDevice(id = obj.getString("id"), name = obj.getString("name"))
         }
+    }
+
+    // --- Config ---
+
+    fun getPlatformsBinding(): Map<String, String> {
+        return try {
+            val json = get(Endpoints.CONFIG)
+            val binding = json.optJSONObject("PLATFORMS_BINDING") ?: return emptyMap()
+            val result = mutableMapOf<String, String>()
+            for (key in binding.keys()) {
+                result[key] = binding.getString(key)
+            }
+            result
+        } catch (_: Exception) { emptyMap() }
     }
 
     // --- Firmware ---
@@ -287,6 +326,7 @@ class RommClient(
             "?" + params.entries.joinToString("&") { "${it.key}=${java.net.URLEncoder.encode(it.value, "UTF-8")}" }
         } else ""
         val url = URL("$baseUrl$path$query")
+        android.util.Log.w("RommClient", "$method $url")
         val conn = (url.openConnection() as HttpURLConnection).apply {
             requestMethod = method
             connectTimeout = timeoutMs

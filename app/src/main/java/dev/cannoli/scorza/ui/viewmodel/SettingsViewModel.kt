@@ -17,7 +17,8 @@ import kotlinx.coroutines.flow.update
 class SettingsViewModel(
     private val settings: SettingsRepository,
     private val cannoliRoot: java.io.File? = null,
-    private val packageManager: PackageManager? = null
+    private val packageManager: PackageManager? = null,
+    var syncMessage: () -> String = { "" }
 ) : ViewModel() {
 
     data class SettingsItem(
@@ -425,6 +426,10 @@ class SettingsViewModel(
                 add(SettingsItem("romm_status", R.string.setting_romm_status, valueText = "Connected"))
                 add(SettingsItem("romm_host", R.string.setting_romm_host, valueText = settings.rommUrl))
                 add(SettingsItem("romm_save_sync", R.string.setting_romm_save_sync, valueRes = onOff(settings.rommSaveSync)))
+                val msg = syncMessage()
+                if (settings.rommSaveSync && msg.isNotEmpty()) {
+                    add(SettingsItem("romm_sync_status", R.string.setting_romm_status, valueText = msg))
+                }
                 add(SettingsItem("romm_disconnect", R.string.setting_romm_disconnect, isEditable = true))
             } else {
                 add(SettingsItem("romm_protocol", R.string.setting_romm_protocol, valueText = settings.rommProtocol.uppercase()))
