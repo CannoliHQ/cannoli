@@ -8,7 +8,11 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -36,6 +40,7 @@ class LibretroActivity : ComponentActivity() {
     private lateinit var overrideManager: OverrideManager
     private var audio: LibretroAudio? = null
     private var glSurfaceView: GLSurfaceView? = null
+    private var loading by mutableStateOf(true)
 
     private val inputMask = AtomicInteger(0)
     private val screenStack = mutableStateListOf<IGMScreen>()
@@ -172,61 +177,6 @@ class LibretroActivity : ComponentActivity() {
         if (intent.getBooleanExtra("swap_start_select", false)) input.swapStartSelect()
 
         runner = LibretroRunner()
-        if (!runner.loadCore(corePath)) { finish(); return }
-        runner.init(systemDir, saveDir)
-        val avInfo = runner.loadGame(romPath) ?: run { runner.deinit(); finish(); return }
-
-        val (coreName, coreVersion) = runner.getSystemInfo()
-        coreInfoText = if (coreVersion.isNotEmpty()) "$coreName $coreVersion" else coreName
-        coreOptions = runner.getCoreOptions()
-        coreCategories = runner.getCoreCategories()
-
-        val coreBaseName = File(corePath).nameWithoutExtension
-        val gameBaseName = if (romPath.isNotEmpty()) File(romPath).nameWithoutExtension else ""
-        overrideManager = OverrideManager(cannoliRoot, platformTag, gameBaseName, coreBaseName)
-        loadOverrides()
-        scanOverlayImages()
-
-        if (sramPath.isNotEmpty() && File(sramPath).exists()) runner.loadSRAM(sramPath)
-
-        val resumeSlot = intent.getIntExtra("resume_slot", -1)
-        if (resumeSlot >= 0) {
-            val slot = slotManager.slots.getOrNull(resumeSlot)
-            if (slot != null && slotManager.stateExists(slot)) {
-                slotManager.loadState(runner, slot)
-                selectedSlotIndex = resumeSlot
-            }
-        }
-
-        audioSampleRate = avInfo.sampleRate
-        audio = LibretroAudio(avInfo.sampleRate)
-        runner.setAudioCallback(audio!!)
-        audio!!.start()
-
-        renderer = LibretroRenderer(runner).also {
-            it.coreAspectRatio = runner.getAspectRatio()
-            it.scalingMode = scalingMode
-            it.sharpness = sharpness
-            it.screenEffect = screenEffect
-            it.debugHud = debugHud
-            it.crtCurvature = crtCurvature
-            it.crtScanline = crtScanline
-            it.crtMaskDark = crtMaskDark
-            it.crtVignette = crtVignette
-            it.crtGlow = crtGlow
-            it.crtSweep = crtSweep
-            it.crtSweepBright = crtSweepBright
-            it.crtBrightness = crtBrightness
-            it.crtNoise = crtNoise
-            it.overlayPath = resolveOverlayPath()
-        }
-
-        val glView = GLSurfaceView(this).apply {
-            setEGLContextClientVersion(2)
-            setRenderer(renderer)
-            renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
-        }
-        glSurfaceView = glView
 
         val colors = CannoliColors(
             highlight = hexToColor(intent.getStringExtra("color_highlight") ?: "#FFFFFF") ?: Color.White,
@@ -238,54 +188,118 @@ class LibretroActivity : ComponentActivity() {
         setContent {
             CannoliTheme {
                 CompositionLocalProvider(LocalCannoliColors provides colors) {
-                    val screen = currentScreen
-                    LibretroScreen(
-                        glSurfaceView = glView,
-                        gameTitle = gameTitle,
-                        screen = screen,
-                        menuOptions = menuOptions(),
-                        selectedSlot = currentSlot,
-                        slotThumbnail = slotThumbnail,
-                        slotExists = slotExists,
-                        slotOccupied = slotOccupied,
-                        undoLabel = when (undoType) {
-                            UndoType.SAVE -> "Undo Save"
-                            UndoType.LOAD -> "Undo Load"
-                            UndoType.RESET -> "Undo Reset"
-                            null -> null
-                        },
-                        settingsItems = if (screen is IGMScreen.Menu) emptyList() else buildSettingsItems(),
-                        coreInfo = coreInfoText,
-                        input = input,
-                        controlSource = controlSource,
-                        debugHud = debugHud,
-                        renderer = renderer,
-                        runner = runner,
-                        audioSampleRate = audioSampleRate,
-                        showWifi = showWifi,
-                        showBluetooth = showBluetooth,
-                        showClock = showClock,
-                        showBattery = showBattery,
-                        use24h = use24h,
-                        osdMessage = osdMessage,
-                        fastForwarding = fastForwarding,
-                        gameInfo = GameInfo(
-                            coreName = coreInfoText,
-                            romPath = romPath,
-                            savePath = sramPath.takeIf { java.io.File(it).exists() },
-                            rootPrefix = cannoliRoot
+                    if (loading) {
+                        Box(modifier = Modifier.fillMaxSize().background(Color.Black))
+                    } else {
+                        val screen = currentScreen
+                        LibretroScreen(
+                            glSurfaceView = glSurfaceView!!,
+                            gameTitle = gameTitle,
+                            screen = screen,
+                            menuOptions = menuOptions(),
+                            selectedSlot = currentSlot,
+                            slotThumbnail = slotThumbnail,
+                            slotExists = slotExists,
+                            slotOccupied = slotOccupied,
+                            undoLabel = when (undoType) {
+                                UndoType.SAVE -> "Undo Save"
+                                UndoType.LOAD -> "Undo Load"
+                                UndoType.RESET -> "Undo Reset"
+                                null -> null
+                            },
+                            settingsItems = if (screen is IGMScreen.Menu) emptyList() else buildSettingsItems(),
+                            coreInfo = coreInfoText,
+                            input = input,
+                            controlSource = controlSource,
+                            debugHud = debugHud,
+                            renderer = renderer,
+                            runner = runner,
+                            audioSampleRate = audioSampleRate,
+                            showWifi = showWifi,
+                            showBluetooth = showBluetooth,
+                            showClock = showClock,
+                            showBattery = showBattery,
+                            use24h = use24h,
+                            osdMessage = osdMessage,
+                            fastForwarding = fastForwarding,
+                            gameInfo = GameInfo(
+                                coreName = coreInfoText,
+                                romPath = romPath,
+                                savePath = sramPath.takeIf { java.io.File(it).exists() },
+                                rootPrefix = cannoliRoot
+                            )
                         )
-                    )
+                    }
                 }
             }
         }
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
+                if (loading) return
                 if (screenStack.isEmpty()) openMenu() else pop()
                 if (screenStack.isEmpty()) renderer.paused = false
             }
         })
+
+        val resumeSlot = intent.getIntExtra("resume_slot", -1)
+        Thread {
+            if (!runner.loadCore(corePath)) { runOnUiThread { finish() }; return@Thread }
+            runner.init(systemDir, saveDir)
+            val avInfo = runner.loadGame(romPath)
+            if (avInfo == null) { runner.deinit(); runOnUiThread { finish() }; return@Thread }
+            if (sramPath.isNotEmpty() && File(sramPath).exists()) runner.loadSRAM(sramPath)
+            if (resumeSlot >= 0) {
+                val slot = slotManager.slots.getOrNull(resumeSlot)
+                if (slot != null && slotManager.stateExists(slot)) {
+                    slotManager.loadState(runner, slot)
+                    runOnUiThread { selectedSlotIndex = resumeSlot }
+                }
+            }
+            runOnUiThread {
+                val (coreName, coreVersion) = runner.getSystemInfo()
+                coreInfoText = if (coreVersion.isNotEmpty()) "$coreName $coreVersion" else coreName
+                coreOptions = runner.getCoreOptions()
+                coreCategories = runner.getCoreCategories()
+
+                val coreBaseName = File(corePath).nameWithoutExtension
+                val gameBaseName = if (romPath.isNotEmpty()) File(romPath).nameWithoutExtension else ""
+                overrideManager = OverrideManager(cannoliRoot, platformTag, gameBaseName, coreBaseName)
+                loadOverrides()
+                scanOverlayImages()
+
+                audioSampleRate = avInfo.sampleRate
+                audio = LibretroAudio(avInfo.sampleRate)
+                runner.setAudioCallback(audio!!)
+                audio!!.start()
+
+                renderer = LibretroRenderer(runner).also {
+                    it.coreAspectRatio = runner.getAspectRatio()
+                    it.scalingMode = scalingMode
+                    it.sharpness = sharpness
+                    it.screenEffect = screenEffect
+                    it.debugHud = debugHud
+                    it.crtCurvature = crtCurvature
+                    it.crtScanline = crtScanline
+                    it.crtMaskDark = crtMaskDark
+                    it.crtVignette = crtVignette
+                    it.crtGlow = crtGlow
+                    it.crtSweep = crtSweep
+                    it.crtSweepBright = crtSweepBright
+                    it.crtBrightness = crtBrightness
+                    it.crtNoise = crtNoise
+                    it.overlayPath = resolveOverlayPath()
+                }
+
+                glSurfaceView = GLSurfaceView(this).apply {
+                    setEGLContextClientVersion(2)
+                    setRenderer(renderer)
+                    renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
+                }
+
+                loading = false
+            }
+        }.start()
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
@@ -295,6 +309,7 @@ class LibretroActivity : ComponentActivity() {
     private val pressedKeys = mutableSetOf<Int>()
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (loading) return true
         val screen = currentScreen ?: return handleGameplayInput(keyCode, event)
         val resolved = resolveGlobal(keyCode)
         return when (screen) {
@@ -314,6 +329,7 @@ class LibretroActivity : ComponentActivity() {
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        if (loading) return true
         if (screenStack.isNotEmpty()) {
             handleShortcutKeyUp(keyCode)
             return true
@@ -1233,7 +1249,7 @@ class LibretroActivity : ComponentActivity() {
     // --- Lifecycle ---
 
     private fun cleanup() {
-        if (cleaned) return
+        if (cleaned || loading) return
         cleaned = true
         if (sramPath.isNotEmpty()) { File(sramPath).parentFile?.mkdirs(); runner.saveSRAM(sramPath) }
         audio?.stop()
@@ -1246,7 +1262,7 @@ class LibretroActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         glSurfaceView?.onPause()
-        if (!cleaned && sramPath.isNotEmpty()) { File(sramPath).parentFile?.mkdirs(); runner.saveSRAM(sramPath) }
+        if (!loading && !cleaned && sramPath.isNotEmpty()) { File(sramPath).parentFile?.mkdirs(); runner.saveSRAM(sramPath) }
     }
 
     override fun onResume() { super.onResume(); glSurfaceView?.onResume(); goFullscreen() }
