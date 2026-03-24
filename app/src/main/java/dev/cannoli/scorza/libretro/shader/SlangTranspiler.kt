@@ -102,6 +102,8 @@ object SlangTranspiler {
         return uniforms.toString().trimEnd()
     }
 
+    fun resolveIncludesPublic(source: String, basePath: String): String = resolveIncludes(source, basePath)
+
     private fun resolveIncludes(source: String, basePath: String): String {
         val sb = StringBuilder()
         for (line in source.lines()) {
@@ -142,8 +144,14 @@ object SlangTranspiler {
         } catch (_: Exception) { }
     }
 
+    fun compileToSpirv(source: String, isVertex: Boolean, basePath: String? = null): ByteArray? {
+        val resolved = basePath?.let { resolveIncludes(source, it) } ?: source
+        return nativeCompileToSpirv(resolved, isVertex)
+    }
+
     fun getLastError(): String? = nativeGetLastError()
 
     private external fun nativeTranspile(source: String, isVertex: Boolean): String?
+    private external fun nativeCompileToSpirv(source: String, isVertex: Boolean): ByteArray?
     private external fun nativeGetLastError(): String?
 }

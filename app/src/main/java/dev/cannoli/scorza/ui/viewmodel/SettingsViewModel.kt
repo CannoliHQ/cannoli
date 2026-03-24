@@ -109,6 +109,7 @@ class SettingsViewModel(
         val colorText: String,
         val colorHighlightText: String,
         val colorAccent: String,
+        val graphicsBackend: String,
         val swapStartSelect: Boolean,
         val platformSwitching: Boolean,
         val showWifi: Boolean,
@@ -223,6 +224,11 @@ class SettingsViewModel(
             "show_battery" -> settings.showBattery = !settings.showBattery
             "show_tools" -> settings.showTools = !settings.showTools
             "show_ports" -> settings.showPorts = !settings.showPorts
+            "graphics_backend" -> {
+                val backends = listOf("GLES", "VULKAN")
+                val cur = backends.indexOf(settings.graphicsBackend).coerceAtLeast(0)
+                settings.graphicsBackend = backends[((cur + direction) % backends.size + backends.size) % backends.size]
+            }
             "ra_package" -> {
                 val pkgs = installedRaPackages
                 if (pkgs.size > 1) {
@@ -336,6 +342,7 @@ class SettingsViewModel(
         colorText = settings.colorText,
         colorHighlightText = settings.colorHighlightText,
         colorAccent = settings.colorAccent,
+        graphicsBackend = settings.graphicsBackend,
         swapStartSelect = settings.swapStartSelect,
         platformSwitching = settings.platformSwitching,
         showWifi = settings.showWifi,
@@ -360,6 +367,7 @@ class SettingsViewModel(
         settings.colorText = snap.colorText
         settings.colorHighlightText = snap.colorHighlightText
         settings.colorAccent = snap.colorAccent
+        settings.graphicsBackend = snap.graphicsBackend
         settings.swapStartSelect = snap.swapStartSelect
         settings.platformSwitching = snap.platformSwitching
         settings.showWifi = snap.showWifi
@@ -418,6 +426,11 @@ class SettingsViewModel(
         )
         "kitchen" -> emptyList()
         "advanced" -> listOf(
+            SettingsItem("graphics_backend", R.string.setting_graphics_backend, valueText = when (settings.graphicsBackend) {
+                "VULKAN" -> "Vulkan"
+                "AUTO" -> "Auto"
+                else -> "OpenGL ES"
+            }),
             SettingsItem("core_mapping", R.string.setting_core_mapping, isEditable = true),
             SettingsItem("sd_root", R.string.setting_sd_root, valueText = settings.sdCardRoot, isEditable = true),
             SettingsItem("ra_package", R.string.setting_ra_package, valueText = settings.retroArchPackage)

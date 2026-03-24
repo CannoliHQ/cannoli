@@ -53,6 +53,8 @@ public:
 
 private:
     bool createInstance();
+    void recreateSwapchain();
+    void drawOverlayInline(VkCommandBuffer cmd);
     bool createSurface(ANativeWindow *window);
     bool selectPhysicalDevice();
     bool createDevice();
@@ -98,6 +100,11 @@ private:
     VkDescriptorSet overlayDescSet_ = VK_NULL_HANDLE;
     bool overlayLoaded_ = false;
 
+    VkBuffer mvpBuffer_ = VK_NULL_HANDLE;
+    VkDeviceMemory mvpMemory_ = VK_NULL_HANDLE;
+    VkBuffer vertexBuffer_ = VK_NULL_HANDLE;
+    VkDeviceMemory vertexMemory_ = VK_NULL_HANDLE;
+
     VkImage frameImage_ = VK_NULL_HANDLE;
     VkDeviceMemory frameMemory_ = VK_NULL_HANDLE;
     VkImageView frameView_ = VK_NULL_HANDLE;
@@ -136,6 +143,7 @@ private:
     int vpX_ = 0, vpY_ = 0, vpW_ = 0, vpH_ = 0;
     float fps_ = 0;
     int frameCount_ = 0;
+    uint32_t totalFrames_ = 0;
     uint64_t fpsTimestamp_ = 0;
 
     std::map<std::string, float> params_;

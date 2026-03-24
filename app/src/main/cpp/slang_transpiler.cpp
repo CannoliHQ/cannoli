@@ -84,6 +84,53 @@ Java_dev_cannoli_scorza_libretro_shader_SlangTranspiler_nativeTranspile(
     return env->NewStringUTF(result.c_str());
 }
 
+JNIEXPORT jobject JNICALL
+Java_dev_cannoli_scorza_libretro_shader_SlangTranspiler_nativeCompileToSpirv(
+    JNIEnv *env, jobject, jstring jsource, jboolean isVertex)
+{
+    ensureInit();
+    const char *src = env->GetStringUTFChars(jsource, nullptr);
+    std::string source(src);
+    env->ReleaseStringUTFChars(jsource, src);
+
+    EShLanguage stage = isVertex ? EShLangVertex : EShLangFragment;
+    glslang::TShader shader(stage);
+    const char *sources[] = { source.c_str() };
+    shader.setStrings(sources, 1);
+    shader.setEnvInput(glslang::EShSourceGlsl, stage, glslang::EShClientVulkan, 100);
+    shader.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_0);
+    shader.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
+
+    const TBuiltInResource *resources = GetDefaultResources();
+    if (!shader.parse(resources, 100, false, EShMsgVulkanRules)) {
+        g_last_error = shader.getInfoLog();
+        LOGE("SPIR-V parse error: %s", g_last_error.c_str());
+        return nullptr;
+    }
+
+    glslang::TProgram program;
+    program.addShader(&shader);
+    if (!program.link(EShMsgVulkanRules)) {
+        g_last_error = program.getInfoLog();
+        LOGE("SPIR-V link error: %s", g_last_error.c_str());
+        return nullptr;
+    }
+
+    std::vector<uint32_t> spirv;
+    glslang::GlslangToSpv(*program.getIntermediate(stage), spirv);
+    if (spirv.empty()) {
+        g_last_error = "SPIR-V generation produced empty output";
+        return nullptr;
+    }
+
+    size_t byteSize = spirv.size() * sizeof(uint32_t);
+    jobject buffer = env->NewDirectByteBuffer(spirv.data(), byteSize);
+    // Must copy since spirv goes out of scope
+    jbyteArray arr = env->NewByteArray(byteSize);
+    env->SetByteArrayRegion(arr, 0, byteSize, (jbyte*)spirv.data());
+    return arr;
+}
+
 JNIEXPORT jstring JNICALL
 Java_dev_cannoli_scorza_libretro_shader_SlangTranspiler_nativeGetLastError(
     JNIEnv *env, jobject)

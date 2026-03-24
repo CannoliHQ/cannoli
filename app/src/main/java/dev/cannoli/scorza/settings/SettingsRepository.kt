@@ -116,6 +116,10 @@ class SettingsRepository(context: Context) {
         get() = jsonRead { optBoolean(KEY_SWAP_START_SELECT, false) }
         set(value) = jsonWrite { put(KEY_SWAP_START_SELECT, value) }
 
+    var graphicsBackend: String
+        get() = jsonRead { optString(KEY_GRAPHICS_BACKEND, "GLES") }
+        set(value) = jsonWrite { put(KEY_GRAPHICS_BACKEND, value) }
+
     var platformSwitching: Boolean
         get() = jsonRead { optBoolean(KEY_PLATFORM_SWITCHING, false) }
         set(value) = jsonWrite { put(KEY_PLATFORM_SWITCHING, value) }
@@ -208,6 +212,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_SHOW_PORTS = "show_ports"
         private const val KEY_TOOLS_NAME = "tools_name"
         private const val KEY_PORTS_NAME = "ports_name"
+        private const val KEY_GRAPHICS_BACKEND = "graphics_backend"
     }
 }
 

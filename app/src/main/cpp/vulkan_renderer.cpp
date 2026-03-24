@@ -488,8 +488,9 @@ void VulkanRenderer::updateFrameTexture() {
 }
 
 void VulkanRenderer::renderFrame() {
-    FrameBuffer *fb = pfnGetFrameBuffer();
+    if (swapchain_ == VK_NULL_HANDLE || swapchainFramebuffers_.empty()) return;
 
+    FrameBuffer *fb = pfnGetFrameBuffer();
     if (!fb || fb->width == 0) return;
 
     vkWaitForFences(device_, 1, &inFlightFence_, VK_TRUE, UINT64_MAX);
@@ -500,9 +501,11 @@ void VulkanRenderer::renderFrame() {
 
     uint32_t imageIndex;
     VkResult result = vkAcquireNextImageKHR(device_, swapchain_, UINT64_MAX, imageAvailableSemaphore_, VK_NULL_HANDLE, &imageIndex);
-    if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+    if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+        recreateSwapchain();
         return;
     }
+    if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) return;
 
     // Compute viewport
     int sw = swapchainExtent_.width, sh = swapchainExtent_.height;
@@ -547,18 +550,35 @@ void VulkanRenderer::renderFrame() {
             push.s[0] = (float)frameWidth_; push.s[1] = (float)frameHeight_;
         }
         push.s[2] = 1.0f / push.s[0]; push.s[3] = 1.0f / push.s[1];
-        push.fc = (uint32_t)frameCount_;
+        push.fc = totalFrames_;
         const char *pn[] = {"curvature","scanline","mask_dark","vignette","glow_strength","sweep","sweep_bright","crt_brightness","noise_amount"};
         float pd[] = {1.7f,0.75f,0.3f,0.85f,0.25f,1.0f,0.35f,1.0f,0.15f};
         for (int i = 0; i < 9; i++) { auto it = params_.find(pn[i]); push.p[i] = (it != params_.end()) ? it->second : pd[i]; }
 
-        // Update last pass descriptors
+        // Update last pass descriptors: 0=UBO, 2=Source, 3=Original
+        VkDescriptorBufferInfo uboInfo{mvpBuffer_, 0, 64};
         VkDescriptorImageInfo srcInfo{frameSampler_, (passes_.size() > 1) ? passes_[passes_.size()-2].view : frameView_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
         VkDescriptorImageInfo origInfo{frameSampler_, frameView_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
-        VkWriteDescriptorSet writes[2]{};
-        writes[0] = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr, lastPass.descriptorSet, 0, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &srcInfo, nullptr, nullptr};
-        writes[1] = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr, lastPass.descriptorSet, 1, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &origInfo, nullptr, nullptr};
-        vkUpdateDescriptorSets(device_, 2, writes, 0, nullptr);
+        VkWriteDescriptorSet writes[3]{};
+        writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[0].dstSet = lastPass.descriptorSet;
+        writes[0].dstBinding = 0;
+        writes[0].descriptorCount = 1;
+        writes[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writes[0].pBufferInfo = &uboInfo;
+        writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[1].dstSet = lastPass.descriptorSet;
+        writes[1].dstBinding = 2;
+        writes[1].descriptorCount = 1;
+        writes[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        writes[1].pImageInfo = &srcInfo;
+        writes[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[2].dstSet = lastPass.descriptorSet;
+        writes[2].dstBinding = 3;
+        writes[2].descriptorCount = 1;
+        writes[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        writes[2].pImageInfo = &origInfo;
+        vkUpdateDescriptorSets(device_, 3, writes, 0, nullptr);
 
         VkClearValue clear = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
         VkRenderPassBeginInfo rpBegin{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
@@ -573,11 +593,14 @@ void VulkanRenderer::renderFrame() {
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, multiPassPipelineLayout_, 0, 1, &lastPass.descriptorSet, 0, nullptr);
         vkCmdPushConstants(cmd, multiPassPipelineLayout_, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push), &push);
 
+        VkDeviceSize offset = 0;
+        vkCmdBindVertexBuffers(cmd, 0, 1, &vertexBuffer_, &offset);
         VkViewport viewport{(float)vpX_, (float)vpY_, (float)vpW_, (float)vpH_, 0.0f, 1.0f};
         vkCmdSetViewport(cmd, 0, 1, &viewport);
         VkRect2D scissor{{vpX_, vpY_}, {(uint32_t)vpW_, (uint32_t)vpH_}};
         vkCmdSetScissor(cmd, 0, 1, &scissor);
         vkCmdDraw(cmd, 3, 1, 0, 0);
+        drawOverlayInline(cmd);
         vkCmdEndRenderPass(cmd);
     } else {
         // Passthrough
@@ -598,27 +621,10 @@ void VulkanRenderer::renderFrame() {
         VkRect2D scissor{{vpX_, vpY_}, {(uint32_t)vpW_, (uint32_t)vpH_}};
         vkCmdSetScissor(cmd, 0, 1, &scissor);
         vkCmdDraw(cmd, 3, 1, 0, 0);
+        drawOverlayInline(cmd);
         vkCmdEndRenderPass(cmd);
     }
 
-    // Overlay pass
-    if (overlayLoaded_ && overlayPipeline_ && overlayRenderPass_) {
-        VkRenderPassBeginInfo ovlBegin{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
-        ovlBegin.renderPass = overlayRenderPass_;
-        ovlBegin.framebuffer = swapchainFramebuffers_[imageIndex];
-        ovlBegin.renderArea.extent = swapchainExtent_;
-
-        vkCmdBeginRenderPass(cmd, &ovlBegin, VK_SUBPASS_CONTENTS_INLINE);
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, overlayPipeline_);
-        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout_, 0, 1, &overlayDescSet_, 0, nullptr);
-
-        VkViewport fullVp{0, 0, (float)swapchainExtent_.width, (float)swapchainExtent_.height, 0, 1};
-        vkCmdSetViewport(cmd, 0, 1, &fullVp);
-        VkRect2D fullSc{{0, 0}, swapchainExtent_};
-        vkCmdSetScissor(cmd, 0, 1, &fullSc);
-        vkCmdDraw(cmd, 3, 1, 0, 0);
-        vkCmdEndRenderPass(cmd);
-    }
 
     vkEndCommandBuffer(cmd);
 
@@ -643,6 +649,7 @@ void VulkanRenderer::renderFrame() {
 
     // FPS tracking
     frameCount_++;
+    totalFrames_++;
     uint64_t now = nowNanos();
     uint64_t elapsed = now - fpsTimestamp_;
     if (elapsed >= 1000000000ULL) {
@@ -664,11 +671,14 @@ bool VulkanRenderer::createDescriptorPool() {
     layoutInfo.pBindings = &binding;
     vkCreateDescriptorSetLayout(device_, &layoutInfo, nullptr, &descriptorSetLayout_);
 
-    VkDescriptorPoolSize poolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 16};
+    VkDescriptorPoolSize poolSizes[] = {
+        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 32},
+        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 16}
+    };
     VkDescriptorPoolCreateInfo poolInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
-    poolInfo.maxSets = 16;
-    poolInfo.poolSizeCount = 1;
-    poolInfo.pPoolSizes = &poolSize;
+    poolInfo.maxSets = 32;
+    poolInfo.poolSizeCount = 2;
+    poolInfo.pPoolSizes = poolSizes;
     vkCreateDescriptorPool(device_, &poolInfo, nullptr, &descriptorPool_);
 
     VkDescriptorSetAllocateInfo allocInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
@@ -821,11 +831,51 @@ VkShaderModule VulkanRenderer::createShaderModule(const std::vector<uint32_t> &s
 void VulkanRenderer::surfaceChanged(int width, int height) {
     surfaceWidth_ = width;
     surfaceHeight_ = height;
-    // TODO: recreate swapchain
+}
+
+void VulkanRenderer::recreateSwapchain() {
+    if (device_ == VK_NULL_HANDLE || surface_ == VK_NULL_HANDLE) return;
+    if (surfaceWidth_ <= 0 || surfaceHeight_ <= 0) return;
+    vkDeviceWaitIdle(device_);
+
+    for (auto fb : swapchainFramebuffers_) vkDestroyFramebuffer(device_, fb, nullptr);
+    for (auto iv : swapchainViews_) vkDestroyImageView(device_, iv, nullptr);
+    swapchainFramebuffers_.clear();
+    swapchainViews_.clear();
+
+    VkSwapchainKHR oldSwapchain = swapchain_;
+    if (!createSwapchain()) {
+        LOGE("Failed to recreate swapchain");
+        return;
+    }
+    if (oldSwapchain != VK_NULL_HANDLE) vkDestroySwapchainKHR(device_, oldSwapchain, nullptr);
+
+    swapchainFramebuffers_.resize(swapchainViews_.size());
+    for (size_t i = 0; i < swapchainViews_.size(); i++) {
+        VkFramebufferCreateInfo fbInfo{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
+        fbInfo.renderPass = renderPass_;
+        fbInfo.attachmentCount = 1;
+        fbInfo.pAttachments = &swapchainViews_[i];
+        fbInfo.width = swapchainExtent_.width;
+        fbInfo.height = swapchainExtent_.height;
+        fbInfo.layers = 1;
+        vkCreateFramebuffer(device_, &fbInfo, nullptr, &swapchainFramebuffers_[i]);
+    }
 }
 
 void VulkanRenderer::setParameter(const std::string &name, float value) {
     params_[name] = value;
+}
+
+void VulkanRenderer::drawOverlayInline(VkCommandBuffer cmd) {
+    if (!overlayLoaded_ || !overlayPipeline_) return;
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, overlayPipeline_);
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout_, 0, 1, &overlayDescSet_, 0, nullptr);
+    VkViewport vp{0, 0, (float)swapchainExtent_.width, (float)swapchainExtent_.height, 0, 1};
+    vkCmdSetViewport(cmd, 0, 1, &vp);
+    VkRect2D sc{{0, 0}, swapchainExtent_};
+    vkCmdSetScissor(cmd, 0, 1, &sc);
+    vkCmdDraw(cmd, 3, 1, 0, 0);
 }
 
 void VulkanRenderer::setScaling(int mode, float coreAspect, int sharpness) {
@@ -935,7 +985,7 @@ void VulkanRenderer::loadOverlay(const uint8_t *pixels, int width, int height) {
         pInfo.pColorBlendState = &colorBlend;
         pInfo.pDynamicState = &dynamicState;
         pInfo.layout = pipelineLayout_;
-        pInfo.renderPass = overlayRenderPass_;
+        pInfo.renderPass = renderPass_;
         vkCreateGraphicsPipelines(device_, VK_NULL_HANDLE, 1, &pInfo, nullptr, &overlayPipeline_);
 
         vkDestroyShaderModule(device_, vertModule, nullptr);
@@ -1100,22 +1150,67 @@ bool VulkanRenderer::createIntermediateRenderPass() {
 }
 
 bool VulkanRenderer::createMultiPassLayouts() {
-    // Descriptor layout: binding 0 = Source (previous pass), binding 1 = Original
-    VkDescriptorSetLayoutBinding bindings[2]{};
+    // Match shader bindings: 0=UBO(MVP), 2=Source sampler, 3=Original sampler
+    VkDescriptorSetLayoutBinding bindings[3]{};
     bindings[0].binding = 0;
-    bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     bindings[0].descriptorCount = 1;
-    bindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-    bindings[1].binding = 1;
+    bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    bindings[1].binding = 2;
     bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     bindings[1].descriptorCount = 1;
     bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    bindings[2].binding = 3;
+    bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    bindings[2].descriptorCount = 1;
+    bindings[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
     VkDescriptorSetLayoutCreateInfo layoutInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
-    layoutInfo.bindingCount = 2;
+    layoutInfo.bindingCount = 3;
     layoutInfo.pBindings = bindings;
     if (vkCreateDescriptorSetLayout(device_, &layoutInfo, nullptr, &multiPassDescLayout_) != VK_SUCCESS)
         return false;
+
+    // Create MVP UBO (identity matrix, never changes)
+    float identity[16] = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
+    VkBufferCreateInfo uboBufInfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+    uboBufInfo.size = sizeof(identity);
+    uboBufInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    vkCreateBuffer(device_, &uboBufInfo, nullptr, &mvpBuffer_);
+    VkMemoryRequirements uboReq;
+    vkGetBufferMemoryRequirements(device_, mvpBuffer_, &uboReq);
+    VkMemoryAllocateInfo uboAlloc{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
+    uboAlloc.allocationSize = uboReq.size;
+    uboAlloc.memoryTypeIndex = findMemoryType(uboReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    vkAllocateMemory(device_, &uboAlloc, nullptr, &mvpMemory_);
+    vkBindBufferMemory(device_, mvpBuffer_, mvpMemory_, 0);
+    void *mapped;
+    vkMapMemory(device_, mvpMemory_, 0, sizeof(identity), 0, &mapped);
+    memcpy(mapped, identity, sizeof(identity));
+    vkUnmapMemory(device_, mvpMemory_);
+
+    // Fullscreen triangle vertex buffer: Position(vec4) + TexCoord(vec2) interleaved
+    struct Vertex { float pos[4]; float tc[2]; };
+    Vertex verts[3] = {
+        {{-1, -1, 0, 1}, {0, 0}},
+        {{ 3, -1, 0, 1}, {2, 0}},
+        {{-1,  3, 0, 1}, {0, 2}}
+    };
+    VkBufferCreateInfo vbInfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+    vbInfo.size = sizeof(verts);
+    vbInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    vkCreateBuffer(device_, &vbInfo, nullptr, &vertexBuffer_);
+    VkMemoryRequirements vbReq;
+    vkGetBufferMemoryRequirements(device_, vertexBuffer_, &vbReq);
+    VkMemoryAllocateInfo vbAlloc{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
+    vbAlloc.allocationSize = vbReq.size;
+    vbAlloc.memoryTypeIndex = findMemoryType(vbReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    vkAllocateMemory(device_, &vbAlloc, nullptr, &vertexMemory_);
+    vkBindBufferMemory(device_, vertexBuffer_, vertexMemory_, 0);
+    void *vbMapped;
+    vkMapMemory(device_, vertexMemory_, 0, sizeof(verts), 0, &vbMapped);
+    memcpy(vbMapped, verts, sizeof(verts));
+    vkUnmapMemory(device_, vertexMemory_);
 
     // Push constant range for sizes + params
     VkPushConstantRange pushRange{};
@@ -1142,7 +1237,16 @@ bool VulkanRenderer::createPassPipeline(VkPassResources &pass) {
     stages[1].module = pass.fragModule;
     stages[1].pName = "main";
 
+    VkVertexInputBindingDescription vbBinding{0, 24, VK_VERTEX_INPUT_RATE_VERTEX};
+    VkVertexInputAttributeDescription vbAttribs[2] = {
+        {0, 0, VK_FORMAT_R32G32B32A32_SFLOAT, 0},
+        {1, 0, VK_FORMAT_R32G32_SFLOAT, 16}
+    };
     VkPipelineVertexInputStateCreateInfo vertexInput{VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
+    vertexInput.vertexBindingDescriptionCount = 1;
+    vertexInput.pVertexBindingDescriptions = &vbBinding;
+    vertexInput.vertexAttributeDescriptionCount = 2;
+    vertexInput.pVertexAttributeDescriptions = vbAttribs;
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
     inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 
@@ -1329,7 +1433,7 @@ void VulkanRenderer::renderMultiPass() {
     push.originalSize[1] = (float)frameHeight_;
     push.originalSize[2] = 1.0f / frameWidth_;
     push.originalSize[3] = 1.0f / frameHeight_;
-    push.frameCount = (uint32_t)frameCount_;
+    push.frameCount = totalFrames_;
 
     const char *paramNames[] = {"curvature", "scanline", "mask_dark", "vignette", "glow_strength", "sweep", "sweep_bright", "crt_brightness", "noise_amount"};
     float paramDefaults[] = {1.7f, 0.75f, 0.3f, 0.85f, 0.25f, 1.0f, 0.35f, 1.0f, 0.15f};
@@ -1365,35 +1469,36 @@ void VulkanRenderer::renderMultiPass() {
         push.outputSize[2] = 1.0f / push.outputSize[0];
         push.outputSize[3] = 1.0f / push.outputSize[1];
 
-        // Update descriptor: binding 0 = Source (previous pass or frame), binding 1 = Original
+        // Update descriptors: binding 0=UBO(MVP), 2=Source, 3=Original
+        VkDescriptorBufferInfo uboInfo{mvpBuffer_, 0, 64};
+
         VkDescriptorImageInfo sourceInfo{};
-        sourceInfo.sampler = frameSampler_; // TODO: per-pass sampler
+        sourceInfo.sampler = frameSampler_;
         sourceInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        if (i == 0) {
-            sourceInfo.imageView = frameView_;
-        } else {
-            sourceInfo.imageView = passes_[i-1].view;
-        }
+        sourceInfo.imageView = (i == 0) ? frameView_ : passes_[i-1].view;
 
-        VkDescriptorImageInfo origInfo{};
-        origInfo.sampler = frameSampler_;
-        origInfo.imageView = frameView_;
-        origInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        VkDescriptorImageInfo origInfo{frameSampler_, frameView_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
 
-        VkWriteDescriptorSet writes[2]{};
+        VkWriteDescriptorSet writes[3]{};
         writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         writes[0].dstSet = pass.descriptorSet;
         writes[0].dstBinding = 0;
         writes[0].descriptorCount = 1;
-        writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        writes[0].pImageInfo = &sourceInfo;
+        writes[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writes[0].pBufferInfo = &uboInfo;
         writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         writes[1].dstSet = pass.descriptorSet;
-        writes[1].dstBinding = 1;
+        writes[1].dstBinding = 2;
         writes[1].descriptorCount = 1;
         writes[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        writes[1].pImageInfo = &origInfo;
-        vkUpdateDescriptorSets(device_, 2, writes, 0, nullptr);
+        writes[1].pImageInfo = &sourceInfo;
+        writes[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[2].dstSet = pass.descriptorSet;
+        writes[2].dstBinding = 3;
+        writes[2].descriptorCount = 1;
+        writes[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        writes[2].pImageInfo = &origInfo;
+        vkUpdateDescriptorSets(device_, 3, writes, 0, nullptr);
 
         // Begin render pass
         VkClearValue clear = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
@@ -1420,6 +1525,8 @@ void VulkanRenderer::renderMultiPass() {
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, multiPassPipelineLayout_, 0, 1, &pass.descriptorSet, 0, nullptr);
         vkCmdPushConstants(cmd, multiPassPipelineLayout_, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push), &push);
 
+        VkDeviceSize offset = 0;
+        vkCmdBindVertexBuffers(cmd, 0, 1, &vertexBuffer_, &offset);
         VkViewport vp{0, 0, (float)pass.width, (float)pass.height, 0, 1};
         vkCmdSetViewport(cmd, 0, 1, &vp);
         VkRect2D sc{{0, 0}, {pass.width, pass.height}};
@@ -1443,6 +1550,8 @@ void VulkanRenderer::destroy() {
     if (intermediateRenderPass_) vkDestroyRenderPass(device_, intermediateRenderPass_, nullptr);
     if (multiPassDescLayout_) vkDestroyDescriptorSetLayout(device_, multiPassDescLayout_, nullptr);
     if (multiPassPipelineLayout_) vkDestroyPipelineLayout(device_, multiPassPipelineLayout_, nullptr);
+    if (mvpBuffer_) { vkDestroyBuffer(device_, mvpBuffer_, nullptr); vkFreeMemory(device_, mvpMemory_, nullptr); }
+    if (vertexBuffer_) { vkDestroyBuffer(device_, vertexBuffer_, nullptr); vkFreeMemory(device_, vertexMemory_, nullptr); }
 
     if (frameImage_) {
         vkDestroyImageView(device_, frameView_, nullptr);
