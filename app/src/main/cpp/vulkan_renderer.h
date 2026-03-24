@@ -43,6 +43,8 @@ public:
 
     void setParameter(const std::string &name, float value);
     void setScaling(int mode, float coreAspect, int sharpness);
+    void loadOverlay(const uint8_t *pixels, int width, int height);
+    void unloadOverlay();
     void renderFrame();
 
     float getFps() const { return fps_; }
@@ -84,8 +86,17 @@ private:
     VkExtent2D swapchainExtent_ = {0, 0};
 
     VkRenderPass renderPass_ = VK_NULL_HANDLE;
+    VkRenderPass overlayRenderPass_ = VK_NULL_HANDLE;
     VkPipelineLayout pipelineLayout_ = VK_NULL_HANDLE;
     VkPipeline passthroughPipeline_ = VK_NULL_HANDLE;
+    VkPipeline overlayPipeline_ = VK_NULL_HANDLE;
+
+    VkImage overlayImage_ = VK_NULL_HANDLE;
+    VkDeviceMemory overlayMemory_ = VK_NULL_HANDLE;
+    VkImageView overlayView_ = VK_NULL_HANDLE;
+    VkSampler overlaySampler_ = VK_NULL_HANDLE;
+    VkDescriptorSet overlayDescSet_ = VK_NULL_HANDLE;
+    bool overlayLoaded_ = false;
 
     VkImage frameImage_ = VK_NULL_HANDLE;
     VkDeviceMemory frameMemory_ = VK_NULL_HANDLE;

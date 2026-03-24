@@ -85,4 +85,19 @@ Java_dev_cannoli_scorza_libretro_VulkanBackend_nativeGetViewportHeight(JNIEnv *,
     return g_renderer ? g_renderer->getViewportHeight() : 0;
 }
 
+JNIEXPORT void JNICALL
+Java_dev_cannoli_scorza_libretro_VulkanBackend_nativeLoadOverlay(
+    JNIEnv *env, jobject, jobject buffer, jint width, jint height)
+{
+    if (!g_renderer) return;
+    auto *pixels = (uint8_t *)env->GetDirectBufferAddress(buffer);
+    if (pixels) g_renderer->loadOverlay(pixels, width, height);
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_scorza_libretro_VulkanBackend_nativeUnloadOverlay(JNIEnv *, jobject)
+{
+    if (g_renderer) g_renderer->unloadOverlay();
+}
+
 }

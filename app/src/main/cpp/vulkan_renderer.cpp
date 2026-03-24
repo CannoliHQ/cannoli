@@ -601,6 +601,25 @@ void VulkanRenderer::renderFrame() {
         vkCmdEndRenderPass(cmd);
     }
 
+    // Overlay pass
+    if (overlayLoaded_ && overlayPipeline_ && overlayRenderPass_) {
+        VkRenderPassBeginInfo ovlBegin{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+        ovlBegin.renderPass = overlayRenderPass_;
+        ovlBegin.framebuffer = swapchainFramebuffers_[imageIndex];
+        ovlBegin.renderArea.extent = swapchainExtent_;
+
+        vkCmdBeginRenderPass(cmd, &ovlBegin, VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, overlayPipeline_);
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout_, 0, 1, &overlayDescSet_, 0, nullptr);
+
+        VkViewport fullVp{0, 0, (float)swapchainExtent_.width, (float)swapchainExtent_.height, 0, 1};
+        vkCmdSetViewport(cmd, 0, 1, &fullVp);
+        VkRect2D fullSc{{0, 0}, swapchainExtent_};
+        vkCmdSetScissor(cmd, 0, 1, &fullSc);
+        vkCmdDraw(cmd, 3, 1, 0, 0);
+        vkCmdEndRenderPass(cmd);
+    }
+
     vkEndCommandBuffer(cmd);
 
     VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -813,6 +832,246 @@ void VulkanRenderer::setScaling(int mode, float coreAspect, int sharpness) {
     scalingMode_ = mode;
     coreAspect_ = coreAspect;
     sharpness_ = sharpness;
+}
+
+void VulkanRenderer::loadOverlay(const uint8_t *pixels, int width, int height) {
+    unloadOverlay();
+
+    // Create overlay render pass (LOAD existing content, draw on top)
+    if (overlayRenderPass_ == VK_NULL_HANDLE) {
+        VkAttachmentDescription att{};
+        att.format = swapchainFormat_;
+        att.samples = VK_SAMPLE_COUNT_1_BIT;
+        att.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+        att.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        att.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        att.initialLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        att.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+        VkAttachmentReference ref{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+        VkSubpassDescription sub{};
+        sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        sub.colorAttachmentCount = 1;
+        sub.pColorAttachments = &ref;
+
+        VkSubpassDependency dep{};
+        dep.srcSubpass = VK_SUBPASS_EXTERNAL;
+        dep.dstSubpass = 0;
+        dep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dep.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        dep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+        VkRenderPassCreateInfo rpInfo{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
+        rpInfo.attachmentCount = 1;
+        rpInfo.pAttachments = &att;
+        rpInfo.subpassCount = 1;
+        rpInfo.pSubpasses = &sub;
+        rpInfo.dependencyCount = 1;
+        rpInfo.pDependencies = &dep;
+        vkCreateRenderPass(device_, &rpInfo, nullptr, &overlayRenderPass_);
+    }
+
+    // Create overlay pipeline with alpha blending
+    if (overlayPipeline_ == VK_NULL_HANDLE) {
+        VkShaderModule vertModule = createShaderModule(
+            std::vector<uint32_t>(passthrough_vert_spv, passthrough_vert_spv + sizeof(passthrough_vert_spv)/4));
+        VkShaderModule fragModule = createShaderModule(
+            std::vector<uint32_t>(passthrough_frag_spv, passthrough_frag_spv + sizeof(passthrough_frag_spv)/4));
+
+        VkPipelineShaderStageCreateInfo stages[2]{};
+        stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+        stages[0].module = vertModule;
+        stages[0].pName = "main";
+        stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+        stages[1].module = fragModule;
+        stages[1].pName = "main";
+
+        VkPipelineVertexInputStateCreateInfo vertexInput{VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
+        VkPipelineInputAssemblyStateCreateInfo inputAssembly{VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
+        inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+
+        VkPipelineViewportStateCreateInfo viewportState{VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
+        viewportState.viewportCount = 1;
+        viewportState.scissorCount = 1;
+
+        VkDynamicState dynStates[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+        VkPipelineDynamicStateCreateInfo dynamicState{VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO};
+        dynamicState.dynamicStateCount = 2;
+        dynamicState.pDynamicStates = dynStates;
+
+        VkPipelineRasterizationStateCreateInfo rasterizer{VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
+        rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+        rasterizer.lineWidth = 1.0f;
+        rasterizer.cullMode = VK_CULL_MODE_NONE;
+
+        VkPipelineMultisampleStateCreateInfo ms{VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
+        ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+        VkPipelineColorBlendAttachmentState blendAtt{};
+        blendAtt.blendEnable = VK_TRUE;
+        blendAtt.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        blendAtt.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        blendAtt.colorBlendOp = VK_BLEND_OP_ADD;
+        blendAtt.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        blendAtt.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        blendAtt.alphaBlendOp = VK_BLEND_OP_ADD;
+        blendAtt.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        VkPipelineColorBlendStateCreateInfo colorBlend{VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
+        colorBlend.attachmentCount = 1;
+        colorBlend.pAttachments = &blendAtt;
+
+        VkGraphicsPipelineCreateInfo pInfo{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
+        pInfo.stageCount = 2;
+        pInfo.pStages = stages;
+        pInfo.pVertexInputState = &vertexInput;
+        pInfo.pInputAssemblyState = &inputAssembly;
+        pInfo.pViewportState = &viewportState;
+        pInfo.pRasterizationState = &rasterizer;
+        pInfo.pMultisampleState = &ms;
+        pInfo.pColorBlendState = &colorBlend;
+        pInfo.pDynamicState = &dynamicState;
+        pInfo.layout = pipelineLayout_;
+        pInfo.renderPass = overlayRenderPass_;
+        vkCreateGraphicsPipelines(device_, VK_NULL_HANDLE, 1, &pInfo, nullptr, &overlayPipeline_);
+
+        vkDestroyShaderModule(device_, vertModule, nullptr);
+        vkDestroyShaderModule(device_, fragModule, nullptr);
+    }
+
+    // Create overlay image
+    VkImageCreateInfo imgInfo{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
+    imgInfo.imageType = VK_IMAGE_TYPE_2D;
+    imgInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+    imgInfo.extent = {(uint32_t)width, (uint32_t)height, 1};
+    imgInfo.mipLevels = 1;
+    imgInfo.arrayLayers = 1;
+    imgInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    imgInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+    imgInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    imgInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    vkCreateImage(device_, &imgInfo, nullptr, &overlayImage_);
+
+    VkMemoryRequirements memReq;
+    vkGetImageMemoryRequirements(device_, overlayImage_, &memReq);
+    VkMemoryAllocateInfo allocInfo{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
+    allocInfo.allocationSize = memReq.size;
+    allocInfo.memoryTypeIndex = findMemoryType(memReq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    vkAllocateMemory(device_, &allocInfo, nullptr, &overlayMemory_);
+    vkBindImageMemory(device_, overlayImage_, overlayMemory_, 0);
+
+    VkImageViewCreateInfo viewInfo{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+    viewInfo.image = overlayImage_;
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+    viewInfo.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+    vkCreateImageView(device_, &viewInfo, nullptr, &overlayView_);
+
+    VkSamplerCreateInfo samplerInfo{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+    samplerInfo.magFilter = VK_FILTER_LINEAR;
+    samplerInfo.minFilter = VK_FILTER_LINEAR;
+    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    vkCreateSampler(device_, &samplerInfo, nullptr, &overlaySampler_);
+
+    // Upload via staging buffer (reuse frame staging if big enough, else temp)
+    size_t dataSize = width * height * 4;
+    VkBuffer stageBuf;
+    VkDeviceMemory stageMem;
+    VkBufferCreateInfo bufInfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+    bufInfo.size = dataSize;
+    bufInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    vkCreateBuffer(device_, &bufInfo, nullptr, &stageBuf);
+    VkMemoryRequirements bufReq;
+    vkGetBufferMemoryRequirements(device_, stageBuf, &bufReq);
+    VkMemoryAllocateInfo bufAlloc{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
+    bufAlloc.allocationSize = bufReq.size;
+    bufAlloc.memoryTypeIndex = findMemoryType(bufReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    vkAllocateMemory(device_, &bufAlloc, nullptr, &stageMem);
+    vkBindBufferMemory(device_, stageBuf, stageMem, 0);
+
+    void *mapped;
+    vkMapMemory(device_, stageMem, 0, dataSize, 0, &mapped);
+    memcpy(mapped, pixels, dataSize);
+    vkUnmapMemory(device_, stageMem);
+
+    // Copy to image
+    VkCommandBuffer cmd;
+    VkCommandBufferAllocateInfo cmdAlloc{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+    cmdAlloc.commandPool = commandPool_;
+    cmdAlloc.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    cmdAlloc.commandBufferCount = 1;
+    vkAllocateCommandBuffers(device_, &cmdAlloc, &cmd);
+
+    VkCommandBufferBeginInfo begin{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+    begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(cmd, &begin);
+
+    VkImageMemoryBarrier barrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+    barrier.image = overlayImage_;
+    barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    barrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+    VkBufferImageCopy region{};
+    region.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+    region.imageExtent = {(uint32_t)width, (uint32_t)height, 1};
+    vkCmdCopyBufferToImage(cmd, stageBuf, overlayImage_, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+    barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+    vkEndCommandBuffer(cmd);
+    VkSubmitInfo submit{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    submit.commandBufferCount = 1;
+    submit.pCommandBuffers = &cmd;
+    vkQueueSubmit(graphicsQueue_, 1, &submit, VK_NULL_HANDLE);
+    vkQueueWaitIdle(graphicsQueue_);
+    vkFreeCommandBuffers(device_, commandPool_, 1, &cmd);
+    vkDestroyBuffer(device_, stageBuf, nullptr);
+    vkFreeMemory(device_, stageMem, nullptr);
+
+    // Allocate descriptor set for overlay
+    VkDescriptorSetAllocateInfo dsAlloc{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
+    dsAlloc.descriptorPool = descriptorPool_;
+    dsAlloc.descriptorSetCount = 1;
+    dsAlloc.pSetLayouts = &descriptorSetLayout_;
+    vkAllocateDescriptorSets(device_, &dsAlloc, &overlayDescSet_);
+
+    VkDescriptorImageInfo descInfo{overlaySampler_, overlayView_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+    VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+    write.dstSet = overlayDescSet_;
+    write.dstBinding = 0;
+    write.descriptorCount = 1;
+    write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    write.pImageInfo = &descInfo;
+    vkUpdateDescriptorSets(device_, 1, &write, 0, nullptr);
+
+    overlayLoaded_ = true;
+    LOGI("Overlay loaded: %dx%d", width, height);
+}
+
+void VulkanRenderer::unloadOverlay() {
+    if (!overlayLoaded_) return;
+    vkDeviceWaitIdle(device_);
+    if (overlayView_) vkDestroyImageView(device_, overlayView_, nullptr);
+    if (overlayImage_) vkDestroyImage(device_, overlayImage_, nullptr);
+    if (overlayMemory_) vkFreeMemory(device_, overlayMemory_, nullptr);
+    if (overlaySampler_) vkDestroySampler(device_, overlaySampler_, nullptr);
+    overlayImage_ = VK_NULL_HANDLE;
+    overlayView_ = VK_NULL_HANDLE;
+    overlayMemory_ = VK_NULL_HANDLE;
+    overlaySampler_ = VK_NULL_HANDLE;
+    overlayLoaded_ = false;
 }
 
 bool VulkanRenderer::createIntermediateRenderPass() {
@@ -1176,6 +1435,14 @@ void VulkanRenderer::renderMultiPass() {
 void VulkanRenderer::destroy() {
     if (device_ == VK_NULL_HANDLE) return;
     vkDeviceWaitIdle(device_);
+
+    unloadOverlay();
+    unloadPreset();
+    if (overlayPipeline_) vkDestroyPipeline(device_, overlayPipeline_, nullptr);
+    if (overlayRenderPass_) vkDestroyRenderPass(device_, overlayRenderPass_, nullptr);
+    if (intermediateRenderPass_) vkDestroyRenderPass(device_, intermediateRenderPass_, nullptr);
+    if (multiPassDescLayout_) vkDestroyDescriptorSetLayout(device_, multiPassDescLayout_, nullptr);
+    if (multiPassPipelineLayout_) vkDestroyPipelineLayout(device_, multiPassPipelineLayout_, nullptr);
 
     if (frameImage_) {
         vkDestroyImageView(device_, frameView_, nullptr);

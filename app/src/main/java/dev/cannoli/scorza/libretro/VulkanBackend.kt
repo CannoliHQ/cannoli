@@ -1,8 +1,11 @@
 package dev.cannoli.scorza.libretro
 
+import android.graphics.BitmapFactory
 import android.os.Handler
 import android.os.HandlerThread
 import android.view.Surface
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 
@@ -30,6 +33,7 @@ class VulkanBackend(private val runner: LibretroRunner) : GraphicsBackend, Surfa
         set(value) { field = value; pushScaling() }
     @Volatile override var screenEffect = ScreenEffect.NONE
     @Volatile override var overlayPath: String? = null
+        set(value) { field = value; loadOverlayImage(value) }
     @Volatile override var shaderPresetPath: String? = null
     override var onFrameRendered: (() -> Unit)? = null
 
@@ -38,6 +42,22 @@ class VulkanBackend(private val runner: LibretroRunner) : GraphicsBackend, Surfa
     @Volatile override var frameTimeMs = 0f; private set
     @Volatile override var viewportWidth = 0; private set
     @Volatile override var viewportHeight = 0; private set
+
+    private fun loadOverlayImage(path: String?) {
+        renderHandler?.post {
+            if (path.isNullOrEmpty()) {
+                nativeUnloadOverlay()
+                return@post
+            }
+            val bitmap = try { BitmapFactory.decodeFile(path) } catch (_: Exception) { null }
+            if (bitmap == null) { nativeUnloadOverlay(); return@post }
+            val buf = ByteBuffer.allocateDirect(bitmap.width * bitmap.height * 4).order(ByteOrder.nativeOrder())
+            bitmap.copyPixelsToBuffer(buf)
+            buf.position(0)
+            nativeLoadOverlay(buf, bitmap.width, bitmap.height)
+            bitmap.recycle()
+        }
+    }
 
     private fun pushScaling() {
         renderHandler?.post {
@@ -128,4 +148,6 @@ class VulkanBackend(private val runner: LibretroRunner) : GraphicsBackend, Surfa
     private external fun nativeSetScaling(mode: Int, coreAspect: Float, sharpness: Int)
     private external fun nativeGetViewportWidth(): Int
     private external fun nativeGetViewportHeight(): Int
+    private external fun nativeLoadOverlay(buffer: ByteBuffer, width: Int, height: Int)
+    private external fun nativeUnloadOverlay()
 }
