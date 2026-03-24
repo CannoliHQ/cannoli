@@ -105,11 +105,6 @@ class GameListViewModel(
         return true
     }
 
-    private fun buildCollectionBreadcrumb(collectionName: String): String {
-        if (collectionStack.isEmpty()) return collectionName
-        return (collectionStack.map { it.first } + collectionName).joinToString(" \u203A ")
-    }
-
     private fun loadCollectionInternal(collectionName: String, onReady: () -> Unit = {}) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -124,7 +119,7 @@ class GameListViewModel(
                     )
                 }
                 _state.value = State(
-                    breadcrumb = buildCollectionBreadcrumb(collectionName),
+                    breadcrumb = collectionName,
                     games = childItems + games,
                     selectedIndex = 0,
                     isLoading = false,
