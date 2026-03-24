@@ -42,6 +42,7 @@ class OverrideManager(
         var crtSweepBright: Float = 0.35f,
         var crtBrightness: Float = 1.0f,
         var crtNoise: Float = 0.15f,
+        var shaderPreset: String = "",
         var overlay: String = "",
         var controlSource: OverrideSource = OverrideSource.GLOBAL,
         var shortcutSource: OverrideSource = OverrideSource.GLOBAL,
@@ -64,6 +65,7 @@ class OverrideManager(
             crtSweepBright == other.crtSweepBright &&
             crtBrightness == other.crtBrightness &&
             crtNoise == other.crtNoise &&
+            shaderPreset == other.shaderPreset &&
             overlay == other.overlay &&
             coreOptions == other.coreOptions
     }
@@ -194,6 +196,7 @@ class OverrideManager(
         s["crt_sweep_bright"]?.toFloatOrNull()?.let { settings.crtSweepBright = it }
         s["crt_brightness"]?.toFloatOrNull()?.let { settings.crtBrightness = it }
         s["crt_noise"]?.toFloatOrNull()?.let { settings.crtNoise = it }
+        s["shader_preset"]?.let { settings.shaderPreset = it }
         s["overlay"]?.let { settings.overlay = it }
     }
 
@@ -249,6 +252,7 @@ class OverrideManager(
         "crt_sweep_bright" to settings.crtSweepBright.toString(),
         "crt_brightness" to settings.crtBrightness.toString(),
         "crt_noise" to settings.crtNoise.toString(),
+        "shader_preset" to settings.shaderPreset,
         "overlay" to settings.overlay
     )
 
@@ -268,6 +272,7 @@ class OverrideManager(
         if (settings.crtSweepBright != baseline.crtSweepBright) delta["crt_sweep_bright"] = settings.crtSweepBright.toString()
         if (settings.crtBrightness != baseline.crtBrightness) delta["crt_brightness"] = settings.crtBrightness.toString()
         if (settings.crtNoise != baseline.crtNoise) delta["crt_noise"] = settings.crtNoise.toString()
+        if (settings.shaderPreset != baseline.shaderPreset) delta["shader_preset"] = settings.shaderPreset
         if (settings.overlay != baseline.overlay) delta["overlay"] = settings.overlay
         return delta
     }
