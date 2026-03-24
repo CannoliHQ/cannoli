@@ -285,17 +285,36 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun uriToPath(uri: android.net.Uri): String? {
+        return uri.path?.let { raw ->
+            val prefix = "/tree/primary:"
+            if (raw.startsWith(prefix)) {
+                "/storage/emulated/0/" + raw.removePrefix(prefix)
+            } else {
+                val match = Regex("^/tree/([A-Fa-f0-9-]+):(.*)$").find(raw)
+                if (match != null) "/storage/${match.groupValues[1]}/${match.groupValues[2]}"
+                else raw
+            }
+        }?.let { if (it.endsWith("/")) it else "$it/" }
+    }
+
     private val folderPickerLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
         if (uri != null) {
-            val path = uri.path?.let { raw ->
-                val prefix = "/tree/primary:"
-                if (raw.startsWith(prefix)) "/storage/emulated/0/" + raw.removePrefix(prefix)
-                else raw
-            }
-            if (path != null) {
-                settings.sdCardRoot = if (path.endsWith("/")) path else "$path/"
+            uriToPath(uri)?.let { settings.sdCardRoot = it }
+        }
+    }
+
+    private val setupFolderPickerLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) {
+            uriToPath(uri)?.let { path ->
+                inSetup = false
+                settings.sdCardRoot = path
+                settings.setupCompleted = true
+                initializeApp()
             }
         }
     }
@@ -324,12 +343,29 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun afterPermissionGranted() {
-        if (settings.setupCompleted || File(settings.sdCardRoot).exists()) {
-            settings.setupCompleted = true
+        if (settings.setupCompleted) {
             initializeApp()
         } else {
-            showSetupScreen()
+            val detected = detectExistingCannoli()
+            if (detected != null) {
+                settings.sdCardRoot = detected
+                settings.setupCompleted = true
+                initializeApp()
+            } else {
+                showSetupScreen()
+            }
         }
+    }
+
+    private fun detectExistingCannoli(): String? {
+        val volumes = detectStorageVolumes()
+        for ((_, path) in volumes.reversed()) {
+            val cannoli = File(path, "Cannoli")
+            if (cannoli.exists() && cannoli.isDirectory) {
+                return cannoli.absolutePath + "/"
+            }
+        }
+        return null
     }
 
     private fun detectStorageVolumes(): List<Pair<String, String>> {
@@ -448,8 +484,8 @@ class MainActivity : ComponentActivity() {
 
     private fun handleSetupInput(keyCode: Int) {
         when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_UP -> setupSelectedIndex = 0
-            KeyEvent.KEYCODE_DPAD_DOWN -> setupSelectedIndex = 1
+            KeyEvent.KEYCODE_DPAD_UP -> setupSelectedIndex = (setupSelectedIndex - 1).coerceAtLeast(0)
+            KeyEvent.KEYCODE_DPAD_DOWN -> setupSelectedIndex = (setupSelectedIndex + 1).coerceAtMost(2)
             KeyEvent.KEYCODE_DPAD_LEFT -> {
                 if (setupSelectedIndex == 0 && setupVolumes.size > 1) {
                     setupVolumeIndex = (setupVolumeIndex - 1 + setupVolumes.size) % setupVolumes.size
@@ -461,7 +497,10 @@ class MainActivity : ComponentActivity() {
                 }
             }
             KeyEvent.KEYCODE_BUTTON_A -> {
-                if (setupSelectedIndex == 1) completeSetup()
+                when (setupSelectedIndex) {
+                    1 -> setupFolderPickerLauncher.launch(null)
+                    2 -> completeSetup()
+                }
             }
             KeyEvent.KEYCODE_BUTTON_B -> finishAffinity()
         }
