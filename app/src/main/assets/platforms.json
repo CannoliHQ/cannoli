@@ -84,6 +84,9 @@
     "core": "swanstation_libretro",
     "retroarch": [
       "pcsx_rearmed_libretro"
+    ],
+    "app": [
+      "org.duckstation.duckstation"
     ]
   },
   "PSP": {
