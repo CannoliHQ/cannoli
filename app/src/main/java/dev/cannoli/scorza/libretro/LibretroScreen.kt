@@ -53,7 +53,7 @@ fun LibretroScreen(
     input: LibretroInput,
     controlSource: OverrideSource,
     debugHud: Boolean,
-    renderer: LibretroRenderer,
+    renderer: GraphicsBackend,
     runner: LibretroRunner,
     audioSampleRate: Int,
     showWifi: Boolean,

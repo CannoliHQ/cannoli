@@ -18,24 +18,24 @@ enum class ScalingMode { CORE_REPORTED, INTEGER, FULLSCREEN }
 enum class Sharpness { SHARP, CRISP, SOFT }
 enum class ScreenEffect { NONE, SHADER }
 
-class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Renderer {
+class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Renderer, GraphicsBackend {
 
-    @Volatile var paused = false
-    @Volatile var fastForwardFrames = 0
-    @Volatile var scalingMode = ScalingMode.CORE_REPORTED
-    @Volatile var coreAspectRatio = 0f
-    @Volatile var debugHud = false
+    @Volatile override var paused = false
+    @Volatile override var fastForwardFrames = 0
+    @Volatile override var scalingMode = ScalingMode.CORE_REPORTED
+    @Volatile override var coreAspectRatio = 0f
+    @Volatile override var debugHud = false
 
-    @Volatile var sharpness = Sharpness.SHARP
+    @Volatile override var sharpness = Sharpness.SHARP
         set(value) { field = value; sharpnessDirty = true }
 
-    @Volatile var screenEffect = ScreenEffect.NONE
+    @Volatile override var screenEffect = ScreenEffect.NONE
         set(value) { field = value; shaderDirty = true }
 
-    @Volatile var overlayPath: String? = null
+    @Volatile override var overlayPath: String? = null
         set(value) { field = value; overlayDirty = true }
 
-    @Volatile var shaderPresetPath: String? = null
+    @Volatile override var shaderPresetPath: String? = null
         set(value) { field = value; pipelineDirty = true }
 
     @Volatile private var sharpnessDirty = false
@@ -46,26 +46,26 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
     private var overlayTextureId = 0
     private var overlayLoaded = false
 
-    @Volatile var fps = 0f; private set
-    @Volatile var frameTimeMs = 0f; private set
-    @Volatile var viewportWidth = 0; private set
-    @Volatile var viewportHeight = 0; private set
+    @Volatile override var fps = 0f; private set
+    @Volatile override var frameTimeMs = 0f; private set
+    @Volatile override var viewportWidth = 0; private set
+    @Volatile override var viewportHeight = 0; private set
 
     private var frameCount = 0
     private var fpsTimestamp = 0L
 
     private val shaderParamOverrides = mutableMapOf<String, Float>()
 
-    fun setShaderParameter(id: String, value: Float) {
+    override fun setShaderParameter(id: String, value: Float) {
         shaderParamOverrides[id] = value
         pipeline?.parameters?.set(id, value)
     }
 
-    fun clearShaderParamOverrides() {
+    override fun clearShaderParamOverrides() {
         shaderParamOverrides.clear()
     }
 
-    var onFrameRendered: (() -> Unit)? = null
+    override var onFrameRendered: (() -> Unit)? = null
 
     private var textureId = 0
     private var programNone = 0
