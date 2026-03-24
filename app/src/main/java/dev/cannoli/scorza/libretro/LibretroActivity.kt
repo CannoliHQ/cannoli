@@ -37,7 +37,7 @@ import java.util.concurrent.atomic.AtomicInteger
 class LibretroActivity : ComponentActivity() {
 
     private lateinit var runner: LibretroRunner
-    private lateinit var renderer: LibretroRenderer
+    private lateinit var renderer: GraphicsBackend
     private lateinit var input: LibretroInput
     private lateinit var slotManager: SaveSlotManager
     private lateinit var overrideManager: OverrideManager
@@ -281,7 +281,7 @@ class LibretroActivity : ComponentActivity() {
                 val shaderCacheDir = File(cacheDir, "shader_cache")
                 ShaderPipeline.cacheDir = shaderCacheDir
                 SlangTranspiler.cacheDir = shaderCacheDir
-                renderer = LibretroRenderer(runner).also {
+                val glesBackend = LibretroRenderer(runner).also {
                     it.coreAspectRatio = runner.getAspectRatio()
                     it.scalingMode = scalingMode
                     it.sharpness = sharpness
@@ -290,10 +290,11 @@ class LibretroActivity : ComponentActivity() {
                     it.overlayPath = resolveOverlayPath()
                     it.shaderPresetPath = resolveShaderPresetPath()
                 }
+                renderer = glesBackend
 
                 glSurfaceView = GLSurfaceView(this).apply {
                     setEGLContextClientVersion(3)
-                    setRenderer(renderer)
+                    setRenderer(glesBackend)
                     renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
                 }
 
