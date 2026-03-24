@@ -1,26 +1,38 @@
-// Kawase blur kernel — distance 1
-#if defined(VERTEX)
-attribute vec2 VertexCoord;
-attribute vec2 TexCoord;
-varying vec2 vTexCoord;
-void main() {
-    gl_Position = vec4(VertexCoord, 0.0, 1.0);
-    vTexCoord = TexCoord;
-}
-#elif defined(FRAGMENT)
-precision mediump float;
-varying vec2 vTexCoord;
-uniform sampler2D Texture;
-uniform vec2 TextureSize;
+#version 450
+
+layout(push_constant) uniform Push {
+    vec4 SourceSize;
+    vec4 OriginalSize;
+    vec4 OutputSize;
+    uint FrameCount;
+} params;
+
+layout(std140, set = 0, binding = 0) uniform UBO {
+    mat4 MVP;
+} global;
+
+#pragma stage vertex
+layout(location = 0) in vec4 Position;
+layout(location = 1) in vec2 TexCoord;
+layout(location = 0) out vec2 vTexCoord;
 
 void main() {
-    vec2 texelSize = 1.0 / TextureSize;
-    vec2 step1 = 1.5 * texelSize;
-    vec4 color = texture2D(Texture, vTexCoord + step1) * 0.25;
-    color += texture2D(Texture, vTexCoord - step1) * 0.25;
-    vec2 step2 = vec2(step1.x, -step1.y);
-    color += texture2D(Texture, vTexCoord + step2) * 0.25;
-    color += texture2D(Texture, vTexCoord - step2) * 0.25;
-    gl_FragColor = color;
+    gl_Position = global.MVP * Position;
+    vTexCoord = TexCoord;
 }
-#endif
+
+#pragma stage fragment
+layout(location = 0) in vec2 vTexCoord;
+layout(location = 0) out vec4 FragColor;
+layout(set = 0, binding = 2) uniform sampler2D Source;
+
+void main() {
+    vec2 texelSize = params.SourceSize.zw;
+    vec2 step1 = 1.5 * texelSize;
+    vec4 color = texture(Source, vTexCoord + step1) * 0.25;
+    color += texture(Source, vTexCoord - step1) * 0.25;
+    vec2 step2 = vec2(step1.x, -step1.y);
+    color += texture(Source, vTexCoord + step2) * 0.25;
+    color += texture(Source, vTexCoord - step2) * 0.25;
+    FragColor = color;
+}

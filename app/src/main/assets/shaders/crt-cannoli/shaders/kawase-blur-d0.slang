@@ -1,28 +1,40 @@
-// Kawase blur kernel — 4-tap diamond pattern
-// Based on Shadertoy by Kubuxu: https://www.shadertoy.com/view/Xl3XW7
+#version 450
 
-#if defined(VERTEX)
-attribute vec2 VertexCoord;
-attribute vec2 TexCoord;
-varying vec2 vTexCoord;
+// Kawase blur kernel — 4-tap diamond, distance 0
+
+layout(push_constant) uniform Push {
+    vec4 SourceSize;
+    vec4 OriginalSize;
+    vec4 OutputSize;
+    uint FrameCount;
+} params;
+
+layout(std140, set = 0, binding = 0) uniform UBO {
+    mat4 MVP;
+} global;
+
+#pragma stage vertex
+layout(location = 0) in vec4 Position;
+layout(location = 1) in vec2 TexCoord;
+layout(location = 0) out vec2 vTexCoord;
+
 void main() {
-    gl_Position = vec4(VertexCoord, 0.0, 1.0);
+    gl_Position = global.MVP * Position;
     vTexCoord = TexCoord;
 }
-#elif defined(FRAGMENT)
-precision mediump float;
-varying vec2 vTexCoord;
-uniform sampler2D Texture;
-uniform vec2 TextureSize;
+
+#pragma stage fragment
+layout(location = 0) in vec2 vTexCoord;
+layout(location = 0) out vec4 FragColor;
+layout(set = 0, binding = 2) uniform sampler2D Source;
 
 void main() {
-    vec2 texelSize = 1.0 / TextureSize;
+    vec2 texelSize = params.SourceSize.zw;
     vec2 step1 = 0.5 * texelSize;
-    vec4 color = texture2D(Texture, vTexCoord + step1) * 0.25;
-    color += texture2D(Texture, vTexCoord - step1) * 0.25;
+    vec4 color = texture(Source, vTexCoord + step1) * 0.25;
+    color += texture(Source, vTexCoord - step1) * 0.25;
     vec2 step2 = vec2(step1.x, -step1.y);
-    color += texture2D(Texture, vTexCoord + step2) * 0.25;
-    color += texture2D(Texture, vTexCoord - step2) * 0.25;
-    gl_FragColor = color;
+    color += texture(Source, vTexCoord + step2) * 0.25;
+    color += texture(Source, vTexCoord - step2) * 0.25;
+    FragColor = color;
 }
-#endif
