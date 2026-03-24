@@ -100,4 +100,51 @@ Java_dev_cannoli_scorza_libretro_VulkanBackend_nativeUnloadOverlay(JNIEnv *, job
     if (g_renderer) g_renderer->unloadOverlay();
 }
 
+// passData: array of byte arrays [vertSpirv0, fragSpirv0, vertSpirv1, fragSpirv1, ...]
+// configData: int array [scaleType0, filterLinear0, needsOriginal0, scaleType1, ...]
+// scales: float array [scaleX0, scaleY0, scaleX1, scaleY1, ...]
+JNIEXPORT jboolean JNICALL
+Java_dev_cannoli_scorza_libretro_VulkanBackend_nativeLoadPreset(
+    JNIEnv *env, jobject, jobjectArray passData, jintArray configData, jfloatArray scales, jint passCount)
+{
+    if (!g_renderer || passCount <= 0) return JNI_FALSE;
+
+    jint *config = env->GetIntArrayElements(configData, nullptr);
+    jfloat *sc = env->GetFloatArrayElements(scales, nullptr);
+
+    std::vector<VkPassConfig> passes(passCount);
+    for (int i = 0; i < passCount; i++) {
+        auto vertArr = (jbyteArray)env->GetObjectArrayElement(passData, i * 2);
+        auto fragArr = (jbyteArray)env->GetObjectArrayElement(passData, i * 2 + 1);
+
+        jsize vertLen = env->GetArrayLength(vertArr);
+        jsize fragLen = env->GetArrayLength(fragArr);
+        jbyte *vertBytes = env->GetByteArrayElements(vertArr, nullptr);
+        jbyte *fragBytes = env->GetByteArrayElements(fragArr, nullptr);
+
+        passes[i].vertSpirv.assign((uint32_t*)vertBytes, (uint32_t*)(vertBytes + vertLen));
+        passes[i].fragSpirv.assign((uint32_t*)fragBytes, (uint32_t*)(fragBytes + fragLen));
+
+        env->ReleaseByteArrayElements(vertArr, vertBytes, JNI_ABORT);
+        env->ReleaseByteArrayElements(fragArr, fragBytes, JNI_ABORT);
+
+        passes[i].scaleType = config[i * 3];
+        passes[i].filterLinear = config[i * 3 + 1] != 0;
+        passes[i].needsOriginal = config[i * 3 + 2] != 0;
+        passes[i].scaleX = sc[i * 2];
+        passes[i].scaleY = sc[i * 2 + 1];
+    }
+
+    env->ReleaseIntArrayElements(configData, config, JNI_ABORT);
+    env->ReleaseFloatArrayElements(scales, sc, JNI_ABORT);
+
+    return g_renderer->loadPreset(passes) ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_scorza_libretro_VulkanBackend_nativeUnloadPreset(JNIEnv *, jobject)
+{
+    if (g_renderer) g_renderer->unloadPreset();
+}
+
 }

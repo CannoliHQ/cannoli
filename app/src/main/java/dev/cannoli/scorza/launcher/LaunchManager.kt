@@ -203,6 +203,7 @@ class LaunchManager(
             putExtra("show_battery", settings.showBattery)
             putExtra("use_24h", settings.timeFormat == TimeFormat.TWENTY_FOUR_HOUR)
             putExtra("swap_start_select", settings.swapStartSelect)
+            putExtra("graphics_backend", settings.graphicsBackend)
             if (resumeSlot >= 0) putExtra("resume_slot", resumeSlot)
         }
         context.startActivity(intent)

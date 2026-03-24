@@ -59,6 +59,7 @@
     <string name="setting_color_text">Text</string>
     <string name="setting_color_highlight_text">Highlight Text</string>
     <string name="setting_color_accent">Accent</string>
+    <string name="setting_graphics_backend">Renderer</string>
     <string name="setting_core_mapping">Core Mapping</string>
     <string name="setting_sd_root">Emulation Root</string>
     <string name="setting_ra_package">RetroArch Package</string>
