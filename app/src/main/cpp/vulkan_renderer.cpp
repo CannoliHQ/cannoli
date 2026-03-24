@@ -520,6 +520,39 @@ void VulkanRenderer::renderFrame() {
     vkCmdBeginRenderPass(cmd, &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, passthroughPipeline_);
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout_, 0, 1, &descriptorSet_, 0, nullptr);
+
+    // Compute viewport with aspect ratio
+    int sw = swapchainExtent_.width, sh = swapchainExtent_.height;
+    float gameAspect;
+    if (scalingMode_ == 2) { // fullscreen
+        gameAspect = (float)sw / sh;
+    } else {
+        gameAspect = (coreAspect_ > 0) ? coreAspect_ : (float)frameWidth_ / frameHeight_;
+    }
+    float screenAspect = (float)sw / sh;
+
+    if (scalingMode_ == 1) { // integer
+        int scaleX = sw / frameWidth_;
+        int scaleY = sh / frameHeight_;
+        int scale = (scaleX < scaleY ? scaleX : scaleY);
+        if (scale < 1) scale = 1;
+        vpW_ = frameWidth_ * scale;
+        vpH_ = frameHeight_ * scale;
+    } else if (gameAspect > screenAspect) {
+        vpW_ = sw;
+        vpH_ = (int)(sw / gameAspect);
+    } else {
+        vpW_ = (int)(sh * gameAspect);
+        vpH_ = sh;
+    }
+    vpX_ = (sw - vpW_) / 2;
+    vpY_ = (sh - vpH_) / 2;
+
+    VkViewport viewport{(float)vpX_, (float)vpY_, (float)vpW_, (float)vpH_, 0.0f, 1.0f};
+    vkCmdSetViewport(cmd, 0, 1, &viewport);
+    VkRect2D scissor{{vpX_, vpY_}, {(uint32_t)vpW_, (uint32_t)vpH_}};
+    vkCmdSetScissor(cmd, 0, 1, &scissor);
+
     vkCmdDraw(cmd, 3, 1, 0, 0);
     vkCmdEndRenderPass(cmd);
     vkEndCommandBuffer(cmd);
@@ -612,13 +645,14 @@ bool VulkanRenderer::createPassthroughPipeline() {
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
     inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 
-    VkViewport viewport{0, 0, (float)swapchainExtent_.width, (float)swapchainExtent_.height, 0, 1};
-    VkRect2D scissor{{0, 0}, swapchainExtent_};
     VkPipelineViewportStateCreateInfo viewportState{VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
     viewportState.viewportCount = 1;
-    viewportState.pViewports = &viewport;
     viewportState.scissorCount = 1;
-    viewportState.pScissors = &scissor;
+
+    VkDynamicState dynStates[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+    VkPipelineDynamicStateCreateInfo dynamicState{VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO};
+    dynamicState.dynamicStateCount = 2;
+    dynamicState.pDynamicStates = dynStates;
 
     VkPipelineRasterizationStateCreateInfo rasterizer{VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
     rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
@@ -648,6 +682,7 @@ bool VulkanRenderer::createPassthroughPipeline() {
     pipelineInfo.pRasterizationState = &rasterizer;
     pipelineInfo.pMultisampleState = &multisampling;
     pipelineInfo.pColorBlendState = &colorBlend;
+    pipelineInfo.pDynamicState = &dynamicState;
     pipelineInfo.layout = pipelineLayout_;
     pipelineInfo.renderPass = renderPass_;
 
@@ -726,6 +761,12 @@ void VulkanRenderer::surfaceChanged(int width, int height) {
 
 void VulkanRenderer::setParameter(const std::string &name, float value) {
     params_[name] = value;
+}
+
+void VulkanRenderer::setScaling(int mode, float coreAspect, int sharpness) {
+    scalingMode_ = mode;
+    coreAspect_ = coreAspect;
+    sharpness_ = sharpness;
 }
 
 bool VulkanRenderer::loadPreset(const std::vector<std::vector<uint32_t>> &spirvModules,

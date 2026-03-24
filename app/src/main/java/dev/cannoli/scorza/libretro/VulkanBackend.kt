@@ -22,9 +22,12 @@ class VulkanBackend(private val runner: LibretroRunner) : GraphicsBackend, Surfa
     @Volatile override var paused = false
     @Volatile override var fastForwardFrames = 0
     @Volatile override var scalingMode = ScalingMode.CORE_REPORTED
+        set(value) { field = value; pushScaling() }
     @Volatile override var coreAspectRatio = 0f
+        set(value) { field = value; pushScaling() }
     @Volatile override var debugHud = false
     @Volatile override var sharpness = Sharpness.SHARP
+        set(value) { field = value; pushScaling() }
     @Volatile override var screenEffect = ScreenEffect.NONE
     @Volatile override var overlayPath: String? = null
     @Volatile override var shaderPresetPath: String? = null
@@ -35,6 +38,12 @@ class VulkanBackend(private val runner: LibretroRunner) : GraphicsBackend, Surfa
     @Volatile override var frameTimeMs = 0f; private set
     @Volatile override var viewportWidth = 0; private set
     @Volatile override var viewportHeight = 0; private set
+
+    private fun pushScaling() {
+        renderHandler?.post {
+            nativeSetScaling(scalingMode.ordinal, coreAspectRatio, sharpness.ordinal)
+        }
+    }
 
     private val shaderParamOverrides = mutableMapOf<String, Float>()
     private var renderThread: HandlerThread? = null
@@ -61,6 +70,7 @@ class VulkanBackend(private val runner: LibretroRunner) : GraphicsBackend, Surfa
         renderHandler?.post {
             initialized = nativeInit(holder.surface)
             if (initialized) {
+                nativeSetScaling(scalingMode.ordinal, coreAspectRatio, sharpness.ordinal)
                 running = true
                 postRenderFrame()
             }
@@ -101,6 +111,8 @@ class VulkanBackend(private val runner: LibretroRunner) : GraphicsBackend, Surfa
 
             nativeRenderFrame()
             fps = nativeGetFps()
+            viewportWidth = nativeGetViewportWidth()
+            viewportHeight = nativeGetViewportHeight()
             onFrameRendered?.invoke()
 
             if (running) postRenderFrame()
@@ -113,4 +125,7 @@ class VulkanBackend(private val runner: LibretroRunner) : GraphicsBackend, Surfa
     private external fun nativeDestroy()
     private external fun nativeGetFps(): Float
     private external fun nativeSetParam(name: String, value: Float)
+    private external fun nativeSetScaling(mode: Int, coreAspect: Float, sharpness: Int)
+    private external fun nativeGetViewportWidth(): Int
+    private external fun nativeGetViewportHeight(): Int
 }
