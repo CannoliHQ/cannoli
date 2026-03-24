@@ -88,7 +88,6 @@ class SettingsRepository(context: Context) {
         get() = prefs.getString(KEY_SD_ROOT, DEFAULT_ROOT) ?: DEFAULT_ROOT
         set(value) {
             prefs.edit().putString(KEY_SD_ROOT, value).apply()
-            flush()
             settingsFile = File(value, "Config/settings.json")
             loadFromDisk()
         }

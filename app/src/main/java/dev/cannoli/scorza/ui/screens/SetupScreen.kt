@@ -65,7 +65,7 @@ fun SetupScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Choose where you want to store all the ricotta.",
+                text = "Select where to create your Cannoli folder.",
                 style = MaterialTheme.typography.bodyMedium.copy(
                     fontSize = 16.sp
                 ),
@@ -87,8 +87,18 @@ fun SetupScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 PillRowText(
-                    label = "Continue",
+                    label = "Browse",
                     isSelected = selectedIndex == 1,
+                    fontSize = fontSize,
+                    lineHeight = lineHeight,
+                    verticalPadding = verticalPadding
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                PillRowText(
+                    label = "Continue",
+                    isSelected = selectedIndex == 2,
                     fontSize = fontSize,
                     lineHeight = lineHeight,
                     verticalPadding = verticalPadding
