@@ -44,6 +44,7 @@ class GameListViewModel(
     private val indexStack = mutableListOf<Pair<Int, Int>>() // selectedIndex to firstVisibleIndex
     private var collectionsListSaved: Pair<Int, Int> = 0 to 0
     private var collectionsListItemCount: Int = 0
+    private val collectionStack = mutableListOf<Triple<String, Int, Int>>() // name, selectedIndex, firstVisibleIndex
 
     fun saveCollectionsPosition() {
         val current = _state.value
@@ -82,12 +83,49 @@ class GameListViewModel(
         }
         breadcrumbStack.clear()
         indexStack.clear()
+        collectionStack.clear()
+        loadCollectionInternal(collectionName, onReady)
+    }
+
+    fun enterChildCollection(childName: String, onReady: () -> Unit = {}) {
+        val current = _state.value
+        if (current.isCollection && current.collectionName != null) {
+            collectionStack.add(Triple(current.collectionName, current.selectedIndex, firstVisibleIndex))
+        }
+        loadCollectionInternal(childName, onReady)
+    }
+
+    fun exitChildCollection(onReady: () -> Unit = {}): Boolean {
+        if (collectionStack.isEmpty()) return false
+        val (parentName, parentIndex, parentScroll) = collectionStack.removeAt(collectionStack.lastIndex)
+        loadCollectionInternal(parentName) {
+            _state.update { it.copy(selectedIndex = parentIndex, scrollTarget = parentScroll) }
+            onReady()
+        }
+        return true
+    }
+
+    private fun buildCollectionBreadcrumb(collectionName: String): String {
+        if (collectionStack.isEmpty()) return collectionName
+        return (collectionStack.map { it.first } + collectionName).joinToString(" \u203A ")
+    }
+
+    private fun loadCollectionInternal(collectionName: String, onReady: () -> Unit = {}) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val games = scanner.scanCollectionGames(collectionName)
+                val childNames = scanner.getChildCollections(collectionName)
+                val childItems = childNames.map { name ->
+                    Game(
+                        file = java.io.File(name),
+                        displayName = "/$name",
+                        platformTag = "",
+                        isChildCollection = true
+                    )
+                }
                 _state.value = State(
-                    breadcrumb = collectionName,
-                    games = games,
+                    breadcrumb = buildCollectionBreadcrumb(collectionName),
+                    games = childItems + games,
                     selectedIndex = 0,
                     isLoading = false,
                     isCollection = true,
@@ -129,9 +167,10 @@ class GameListViewModel(
     fun loadCollectionsList(restoreIndex: Boolean = false, onReady: () -> Unit = {}) {
         breadcrumbStack.clear()
         indexStack.clear()
+        collectionStack.clear()
         viewModelScope.launch(Dispatchers.IO) {
             val allNames = scanner.getCollectionNames()
-                .filter { !it.equals("Favorites", ignoreCase = true) }
+                .filter { !it.equals("Favorites", ignoreCase = true) && scanner.isTopLevelCollection(it) }
             val scanned = scanner.scanCollections()
                 .filter { !it.name.equals("Favorites", ignoreCase = true) }
                 .associateBy { it.name }
@@ -187,7 +226,7 @@ class GameListViewModel(
             collectionsListItemCount = prevCount
             loadCollectionsList(restoreIndex = true)
         } else if (current.isCollection && current.collectionName != null) {
-            loadCollection(current.collectionName) {
+            loadCollectionInternal(current.collectionName) {
                 val s = _state.value
                 if (s.games.size == prevCount && prevCount > 0) {
                     _state.value = s.copy(
@@ -250,7 +289,7 @@ class GameListViewModel(
     fun toggleFavorite(onDone: () -> Unit = {}) {
         val current = _state.value
         val game = current.games.getOrNull(current.selectedIndex) ?: return
-        if (game.isSubfolder || current.isCollectionsList || current.platformTag in listOf("tools", "ports")) return
+        if (game.isSubfolder || game.isChildCollection || current.isCollectionsList || current.platformTag in listOf("tools", "ports")) return
         val path = game.file.absolutePath
         val isFav = game.displayName.startsWith("★") ||
             (current.isCollection && current.collectionName == "Favorites")
@@ -274,7 +313,7 @@ class GameListViewModel(
         _state.update { current ->
             if (current.reorderMode || current.multiSelectMode) return@update current
             val game = current.games.getOrNull(current.selectedIndex)
-            val initial = if (game != null && !game.isSubfolder) setOf(current.selectedIndex) else emptySet()
+            val initial = if (game != null && !game.isSubfolder && !game.isChildCollection) setOf(current.selectedIndex) else emptySet()
             current.copy(multiSelectMode = true, checkedIndices = initial)
         }
     }
@@ -286,7 +325,7 @@ class GameListViewModel(
             if (!current.multiSelectMode) return@update current
             val idx = current.selectedIndex
             val game = current.games.getOrNull(idx) ?: return@update current
-            if (game.isSubfolder) return@update current
+            if (game.isSubfolder || game.isChildCollection) return@update current
             val newChecked = if (idx in current.checkedIndices) current.checkedIndices - idx else current.checkedIndices + idx
             current.copy(checkedIndices = newChecked)
         }

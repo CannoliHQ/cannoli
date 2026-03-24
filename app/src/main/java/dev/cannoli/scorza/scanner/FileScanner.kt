@@ -367,13 +367,16 @@ class FileScanner(
 
     fun deleteCollection(name: String) {
         File(collectionsDir, "$name.txt").delete()
+        removeFromCollectionParents(name)
     }
 
     fun renameCollection(oldName: String, newName: String): Boolean {
         val oldFile = File(collectionsDir, "$oldName.txt")
         val newFile = File(collectionsDir, "$newName.txt")
         if (oldFile.exists() && !newFile.exists()) {
-            return oldFile.renameTo(newFile)
+            val renamed = oldFile.renameTo(newFile)
+            if (renamed) renameInCollectionParents(oldName, newName)
+            return renamed
         }
         return false
     }
@@ -567,5 +570,123 @@ class FileScanner(
     fun saveCollectionOrder(names: List<String>) {
         configDir.mkdirs()
         File(configDir, "collection_order.txt").writeText(names.joinToString("\n") + "\n")
+    }
+
+    private val collectionParentsFile = File(configDir, "collection_parents.txt")
+
+    fun loadCollectionParents(): Map<String, Set<String>> {
+        if (!collectionParentsFile.exists()) return emptyMap()
+        return try {
+            collectionParentsFile.readLines()
+                .map { it.trim() }
+                .filter { it.isNotEmpty() && '=' in it }
+                .associate { line ->
+                    val (child, parentsStr) = line.split('=', limit = 2)
+                    child.trim() to parentsStr.split(',').map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+                }
+                .filterValues { it.isNotEmpty() }
+        } catch (_: IOException) { emptyMap() }
+    }
+
+    private fun saveCollectionParents(map: Map<String, Set<String>>) {
+        configDir.mkdirs()
+        val filtered = map.filterValues { it.isNotEmpty() }
+        if (filtered.isEmpty()) {
+            collectionParentsFile.delete()
+            return
+        }
+        collectionParentsFile.writeText(
+            filtered.entries.joinToString("\n") { (child, parents) ->
+                "$child=${parents.joinToString(",")}"
+            } + "\n"
+        )
+    }
+
+    fun getCollectionParents(childName: String): Set<String> {
+        return loadCollectionParents()[childName] ?: emptySet()
+    }
+
+    fun setCollectionParents(childName: String, parents: Set<String>) {
+        val map = loadCollectionParents().toMutableMap()
+        if (parents.isEmpty()) map.remove(childName) else map[childName] = parents
+        saveCollectionParents(map)
+    }
+
+    fun getChildCollections(parentName: String): List<String> {
+        val allParents = loadCollectionParents()
+        return allParents.entries
+            .filter { parentName in it.value }
+            .map { it.key }
+            .sortedNatural { it }
+    }
+
+    fun isTopLevelCollection(name: String): Boolean {
+        return getCollectionParents(name).isEmpty()
+    }
+
+    fun getDescendants(name: String): Set<String> {
+        val allParents = loadCollectionParents()
+        val result = mutableSetOf<String>()
+        val queue = ArrayDeque<String>()
+        queue.add(name)
+        while (queue.isNotEmpty()) {
+            val current = queue.removeFirst()
+            val children = allParents.entries
+                .filter { current in it.value }
+                .map { it.key }
+            for (child in children) {
+                if (result.add(child)) queue.add(child)
+            }
+        }
+        return result
+    }
+
+    fun getAncestors(name: String): Set<String> {
+        val allParents = loadCollectionParents()
+        val result = mutableSetOf<String>()
+        val queue = ArrayDeque<String>()
+        queue.add(name)
+        while (queue.isNotEmpty()) {
+            val current = queue.removeFirst()
+            val parents = allParents[current] ?: emptySet()
+            for (parent in parents) {
+                if (result.add(parent)) queue.add(parent)
+            }
+        }
+        return result
+    }
+
+    fun setChildCollections(parentName: String, children: Set<String>) {
+        val map = loadCollectionParents().toMutableMap()
+        val currentChildren = map.entries
+            .filter { parentName in it.value }
+            .map { it.key }
+            .toSet()
+        for (removed in currentChildren - children) {
+            val parents = map[removed]?.minus(parentName) ?: emptySet()
+            if (parents.isEmpty()) map.remove(removed) else map[removed] = parents
+        }
+        for (added in children - currentChildren) {
+            map[added] = (map[added] ?: emptySet()) + parentName
+        }
+        saveCollectionParents(map)
+    }
+
+    private fun removeFromCollectionParents(name: String) {
+        val map = loadCollectionParents().toMutableMap()
+        map.remove(name)
+        val updated = map.mapValues { (_, parents) -> parents - name }
+        saveCollectionParents(updated)
+    }
+
+    private fun renameInCollectionParents(oldName: String, newName: String) {
+        val map = loadCollectionParents()
+        val updated = mutableMapOf<String, Set<String>>()
+        for ((child, parents) in map) {
+            val newChild = if (child == oldName) newName else child
+            val newParents = if (oldName in parents) (parents - oldName) + newName else parents
+            updated[newChild] = newParents
+        }
+        saveCollectionParents(updated)
     }
 }

@@ -167,6 +167,7 @@ class MainActivity : ComponentActivity() {
         is LauncherScreen.CorePicker -> screen.copy(scrollTarget = currentFirstVisible)
         is LauncherScreen.ColorList -> screen.copy(scrollTarget = currentFirstVisible)
         is LauncherScreen.CollectionPicker -> screen.copy(scrollTarget = currentFirstVisible)
+        is LauncherScreen.ChildPicker -> screen.copy(scrollTarget = currentFirstVisible)
         is LauncherScreen.AppPicker -> screen.copy(scrollTarget = currentFirstVisible)
         is LauncherScreen.ControlBinding -> screen.copy(scrollTarget = currentFirstVisible)
         is LauncherScreen.ShortcutBinding -> screen.copy(scrollTarget = currentFirstVisible)
@@ -186,6 +187,7 @@ class MainActivity : ComponentActivity() {
             is LauncherScreen.CorePicker -> screen.cores.size to screen.selectedIndex
             is LauncherScreen.ColorList -> screen.colors.size to screen.selectedIndex
             is LauncherScreen.CollectionPicker -> screen.collections.size to screen.selectedIndex
+            is LauncherScreen.ChildPicker -> screen.collections.size to screen.selectedIndex
             is LauncherScreen.AppPicker -> screen.apps.size to screen.selectedIndex
             is LauncherScreen.ControlBinding -> controlButtonCount to screen.selectedIndex
             is LauncherScreen.ShortcutBinding -> ShortcutAction.entries.size to screen.selectedIndex
@@ -231,6 +233,7 @@ class MainActivity : ComponentActivity() {
             is LauncherScreen.CorePicker -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
             is LauncherScreen.ColorList -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
             is LauncherScreen.CollectionPicker -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
+            is LauncherScreen.ChildPicker -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
             is LauncherScreen.AppPicker -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
             is LauncherScreen.ControlBinding -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
             is LauncherScreen.ShortcutBinding -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
@@ -581,6 +584,8 @@ class MainActivity : ComponentActivity() {
                         screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, -1, screen.colors.size))
                     is LauncherScreen.CollectionPicker -> if (screen.collections.isNotEmpty())
                         screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, -1, screen.collections.size))
+                    is LauncherScreen.ChildPicker -> if (screen.collections.isNotEmpty())
+                        screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, -1, screen.collections.size))
                     is LauncherScreen.ControlBinding ->
                         screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, -1, controlButtonCount))
                     is LauncherScreen.ShortcutBinding -> if (!screen.listening)
@@ -640,6 +645,8 @@ class MainActivity : ComponentActivity() {
                     is LauncherScreen.ColorList -> if (screen.colors.isNotEmpty())
                         screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, 1, screen.colors.size))
                     is LauncherScreen.CollectionPicker -> if (screen.collections.isNotEmpty())
+                        screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, 1, screen.collections.size))
+                    is LauncherScreen.ChildPicker -> if (screen.collections.isNotEmpty())
                         screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, 1, screen.collections.size))
                     is LauncherScreen.ControlBinding ->
                         screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, 1, controlButtonCount))
@@ -776,20 +783,27 @@ class MainActivity : ComponentActivity() {
                 }
                 is DialogState.DeleteCollectionConfirm -> {
                     val name = ds.collectionName
+                    val glState = gameListViewModel.state.value
+                    val deletingFromParent = glState.isCollection && !glState.isCollectionsList
                     pendingContextReturn = null
                     dialogState.value = DialogState.None
-                    gameListViewModel.saveCollectionsPosition()
+                    if (!deletingFromParent) gameListViewModel.saveCollectionsPosition()
                     ioScope.launch {
                         scanner.deleteCollection(name)
-                        val remaining = scanner.scanCollections()
-                            .filter { !it.name.equals("Favorites", ignoreCase = true) && it.entries.isNotEmpty() }
-                        if (remaining.isEmpty()) {
-                            withContext(Dispatchers.Main) {
-                                screenStack.removeAt(screenStack.lastIndex)
-                                rescanSystemList()
-                            }
+                        if (deletingFromParent) {
+                            gameListViewModel.reload()
+                            rescanSystemList()
                         } else {
-                            gameListViewModel.loadCollectionsList(restoreIndex = true)
+                            val remaining = scanner.scanCollections()
+                                .filter { !it.name.equals("Favorites", ignoreCase = true) && it.entries.isNotEmpty() }
+                            if (remaining.isEmpty()) {
+                                withContext(Dispatchers.Main) {
+                                    screenStack.removeAt(screenStack.lastIndex)
+                                    rescanSystemList()
+                                }
+                            } else {
+                                gameListViewModel.loadCollectionsList(restoreIndex = true)
+                            }
                         }
                     }
                 }
@@ -888,6 +902,16 @@ class MainActivity : ComponentActivity() {
                             screenStack[screenStack.lastIndex] = screen.copy(checkedIndices = newChecked)
                         }
                     }
+                    is LauncherScreen.ChildPicker -> {
+                        if (screen.collections.isNotEmpty()) {
+                            val newChecked = if (screen.selectedIndex in screen.checkedIndices) {
+                                screen.checkedIndices - screen.selectedIndex
+                            } else {
+                                screen.checkedIndices + screen.selectedIndex
+                            }
+                            screenStack[screenStack.lastIndex] = screen.copy(checkedIndices = newChecked)
+                        }
+                    }
                     is LauncherScreen.AppPicker -> {
                         val newChecked = if (screen.selectedIndex in screen.checkedIndices) {
                             screen.checkedIndices - screen.selectedIndex
@@ -966,7 +990,9 @@ class MainActivity : ComponentActivity() {
                         } else if (!navigating) {
                             val glState = gameListViewModel.state.value
                             if (!gameListViewModel.exitSubfolder()) {
-                                if (glState.isCollection && glState.collectionName != null
+                                if (gameListViewModel.exitChildCollection()) {
+                                    // navigated back to parent collection
+                                } else if (glState.isCollection && glState.collectionName != null
                                     && !glState.collectionName.equals("Favorites", ignoreCase = true)) {
                                     gameListViewModel.loadCollectionsList(restoreIndex = true)
                                 } else {
@@ -1011,6 +1037,9 @@ class MainActivity : ComponentActivity() {
                     }
                     is LauncherScreen.CollectionPicker -> {
                         onCollectionPickerConfirm(screen)
+                    }
+                    is LauncherScreen.ChildPicker -> {
+                        onChildPickerConfirm(screen)
                     }
                     is LauncherScreen.ControlBinding -> {
                         globalOverrides.saveControls(screen.controls)
@@ -1071,8 +1100,9 @@ class MainActivity : ComponentActivity() {
                         } else {
                         val game = gameListViewModel.getSelectedGame()
                         if (game != null) {
+                            val menuName = if (game.isChildCollection) game.displayName.removePrefix("/") else game.displayName
                             dialogState.value = DialogState.ContextMenu(
-                                gameName = game.displayName,
+                                gameName = menuName,
                                 options = buildGameContextOptions(game, glState)
                             )
                         }
@@ -1153,7 +1183,7 @@ class MainActivity : ComponentActivity() {
                     }
                     LauncherScreen.GameList -> {
                         val game = gameListViewModel.getSelectedGame()
-                        if (game != null && !game.isSubfolder && !gameListViewModel.state.value.isCollectionsList) {
+                        if (game != null && !game.isSubfolder && !game.isChildCollection && !gameListViewModel.state.value.isCollectionsList) {
                             launchManager.resumeGame(game)
                         }
                     }
@@ -1440,6 +1470,15 @@ class MainActivity : ComponentActivity() {
             return
         }
 
+        if (game.isChildCollection) {
+            navigating = true
+            val childName = game.displayName.removePrefix("/")
+            gameListViewModel.enterChildCollection(childName) {
+                navigating = false
+            }
+            return
+        }
+
         if (game.isSubfolder) {
             gameListViewModel.enterSubfolder(game.file.name)
             return
@@ -1490,7 +1529,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun buildGameContextOptions(game: dev.cannoli.scorza.model.Game, glState: dev.cannoli.scorza.ui.viewmodel.GameListViewModel.State): List<String> {
-        if (glState.isCollectionsList || game.isSubfolder) return listOf(MENU_RENAME, MENU_DELETE)
+        if (glState.isCollectionsList || game.isChildCollection) return listOf(MENU_RENAME, MENU_CHILD_COLLECTIONS, MENU_DELETE)
+        if (game.isSubfolder) return listOf(MENU_RENAME, MENU_DELETE)
         return buildList {
             addAll(gameContextOptions)
             if (game.artFile != null) {
@@ -1508,6 +1548,7 @@ class MainActivity : ComponentActivity() {
         private const val MENU_MANAGE_COLLECTIONS = "Manage Collections"
         private const val MENU_EMULATOR_OVERRIDE = "Emulator Override"
         private const val MENU_REMOVE_FROM_COLLECTION = "Remove from Collection"
+        private const val MENU_CHILD_COLLECTIONS = "Child Collections"
     }
 
     private val gameContextOptions = listOf(MENU_MANAGE_COLLECTIONS, MENU_EMULATOR_OVERRIDE, MENU_RENAME, MENU_DELETE_GAME)
@@ -1530,11 +1571,12 @@ class MainActivity : ComponentActivity() {
         pendingContextReturn = ContextReturn.Single(state.gameName, state.options)
         when (state.options[state.selectedOption]) {
             MENU_RENAME -> {
-                if (glState.isCollectionsList) {
+                if (glState.isCollectionsList || game.isChildCollection) {
+                    val collName = if (game.isChildCollection) game.displayName.removePrefix("/") else game.displayName
                     dialogState.value = DialogState.CollectionRenameInput(
-                        oldName = game.displayName,
-                        currentName = game.displayName,
-                        cursorPos = game.displayName.length
+                        oldName = collName,
+                        currentName = collName,
+                        cursorPos = collName.length
                     )
                 } else {
                     val name = game.displayName.removePrefix("★ ")
@@ -1546,14 +1588,19 @@ class MainActivity : ComponentActivity() {
                 }
             }
             MENU_DELETE, MENU_DELETE_GAME -> {
-                if (glState.isCollectionsList) {
-                    dialogState.value = DialogState.DeleteCollectionConfirm(collectionName = game.displayName)
+                if (glState.isCollectionsList || game.isChildCollection) {
+                    val collName = if (game.isChildCollection) game.displayName.removePrefix("/") else game.displayName
+                    dialogState.value = DialogState.DeleteCollectionConfirm(collectionName = collName)
                 } else {
                     dialogState.value = DialogState.DeleteConfirm(gameName = game.displayName)
                 }
             }
             MENU_MANAGE_COLLECTIONS -> {
                 openCollectionManager(listOf(game.file.absolutePath), game.displayName)
+            }
+            MENU_CHILD_COLLECTIONS -> {
+                val collName = if (game.isChildCollection) game.displayName.removePrefix("/") else game.displayName
+                openChildPicker(collName)
             }
             MENU_DELETE_ART -> {
                 pendingContextReturn = null
@@ -1682,6 +1729,38 @@ class MainActivity : ComponentActivity() {
         ))
     }
 
+    private fun openChildPicker(collectionName: String) {
+        val allNames = scanner.getCollectionNames()
+            .filter { !it.equals("Favorites", ignoreCase = true) }
+        val ancestors = scanner.getAncestors(collectionName)
+        val available = allNames.filter { it != collectionName && it !in ancestors }
+        val currentChildren = scanner.getChildCollections(collectionName).toSet()
+        val initialChecked = available.indices
+            .filter { available[it] in currentChildren }
+            .toSet()
+        dialogState.value = DialogState.None
+        screenStack.add(LauncherScreen.ChildPicker(
+            collectionName = collectionName,
+            collections = available,
+            selectedIndex = 0,
+            checkedIndices = initialChecked,
+            initialChecked = initialChecked
+        ))
+    }
+
+    private fun onChildPickerConfirm(screen: LauncherScreen.ChildPicker) {
+        val selected = screen.checkedIndices
+            .mapNotNull { screen.collections.getOrNull(it) }
+            .toSet()
+        ioScope.launch {
+            scanner.setChildCollections(screen.collectionName, selected)
+            gameListViewModel.reload()
+            rescanSystemList()
+        }
+        screenStack.removeAt(screenStack.lastIndex)
+        restoreContextMenu()
+    }
+
     private fun onBulkContextMenuConfirm(state: DialogState.BulkContextMenu) {
         pendingContextReturn = ContextReturn.Bulk(state.gamePaths, state.options)
         when (state.options[state.selectedOption]) {
@@ -1745,10 +1824,16 @@ class MainActivity : ComponentActivity() {
             restoreContextMenu()
             return
         }
+        val glState = gameListViewModel.state.value
+        val renamingFromParent = glState.isCollection && !glState.isCollectionsList
         dialogState.value = DialogState.None
         ioScope.launch {
             scanner.renameCollection(state.oldName, newName)
-            gameListViewModel.loadCollectionsList(restoreIndex = true)
+            if (renamingFromParent) {
+                gameListViewModel.reload()
+            } else {
+                gameListViewModel.loadCollectionsList(restoreIndex = true)
+            }
         }
     }
 
@@ -1797,7 +1882,8 @@ class MainActivity : ComponentActivity() {
         val currentIndex = items.indexOfFirst { item ->
             when {
                 gs.isCollectionsList -> item is SystemListViewModel.ListItem.CollectionsFolder
-                gs.isCollection && gs.collectionName == "Favorites" -> item is SystemListViewModel.ListItem.FavoritesItem
+                gs.isCollection && gs.collectionName.equals("Favorites", ignoreCase = true) -> item is SystemListViewModel.ListItem.FavoritesItem
+                gs.isCollection -> item is SystemListViewModel.ListItem.CollectionsFolder
                 gs.platformTag == "tools" -> item is SystemListViewModel.ListItem.ToolsFolder
                 gs.platformTag == "ports" -> item is SystemListViewModel.ListItem.PortsFolder
                 gs.platformTag.isNotEmpty() -> item is SystemListViewModel.ListItem.PlatformItem && item.platform.tag == gs.platformTag

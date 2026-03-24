@@ -9,5 +9,6 @@ data class Game(
     val isSubfolder: Boolean = false,
     val artFile: File? = null,
     val launchTarget: LaunchTarget = LaunchTarget.RetroArch,
-    val discFiles: List<File>? = null
+    val discFiles: List<File>? = null,
+    val isChildCollection: Boolean = false
 )
