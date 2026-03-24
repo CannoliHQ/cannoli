@@ -26,9 +26,12 @@ public:
     void unloadPreset();
 
     void setParameter(const std::string &name, float value);
+    void setScaling(int mode, float coreAspect, int sharpness);
     void renderFrame();
 
     float getFps() const { return fps_; }
+    int getViewportWidth() const { return vpW_; }
+    int getViewportHeight() const { return vpH_; }
 
 private:
     bool createInstance();
@@ -88,6 +91,10 @@ private:
     VkFence inFlightFence_ = VK_NULL_HANDLE;
 
     int surfaceWidth_ = 0, surfaceHeight_ = 0;
+    int scalingMode_ = 0; // 0=core, 1=integer, 2=fullscreen
+    float coreAspect_ = 0;
+    int sharpness_ = 0;
+    int vpX_ = 0, vpY_ = 0, vpW_ = 0, vpH_ = 0;
     float fps_ = 0;
     int frameCount_ = 0;
     uint64_t fpsTimestamp_ = 0;

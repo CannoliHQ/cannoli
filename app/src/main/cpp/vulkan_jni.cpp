@@ -66,4 +66,23 @@ Java_dev_cannoli_scorza_libretro_VulkanBackend_nativeSetParam(
     env->ReleaseStringUTFChars(jname, name);
 }
 
+JNIEXPORT void JNICALL
+Java_dev_cannoli_scorza_libretro_VulkanBackend_nativeSetScaling(
+    JNIEnv *, jobject, jint mode, jfloat coreAspect, jint sharpness)
+{
+    if (g_renderer) g_renderer->setScaling(mode, coreAspect, sharpness);
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_cannoli_scorza_libretro_VulkanBackend_nativeGetViewportWidth(JNIEnv *, jobject)
+{
+    return g_renderer ? g_renderer->getViewportWidth() : 0;
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_cannoli_scorza_libretro_VulkanBackend_nativeGetViewportHeight(JNIEnv *, jobject)
+{
+    return g_renderer ? g_renderer->getViewportHeight() : 0;
+}
+
 }
