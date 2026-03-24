@@ -66,6 +66,7 @@ sealed class LauncherScreen {
     data class ColorList(val colors: List<ColorEntry>, val selectedIndex: Int = 0, val scrollTarget: Int = 0) : LauncherScreen()
     data class CollectionPicker(val gamePaths: List<String>, val title: String, val collections: List<String>, val selectedIndex: Int = 0, val checkedIndices: Set<Int> = emptySet(), val initialChecked: Set<Int> = emptySet(), val scrollTarget: Int = 0) : LauncherScreen()
     data class AppPicker(val type: String, val title: String, val apps: List<String>, val packages: List<String>, val selectedIndex: Int = 0, val checkedIndices: Set<Int> = emptySet(), val initialChecked: Set<Int> = emptySet(), val scrollTarget: Int = 0) : LauncherScreen()
+    data class ChildPicker(val collectionName: String, val collections: List<String>, val selectedIndex: Int = 0, val checkedIndices: Set<Int> = emptySet(), val initialChecked: Set<Int> = emptySet(), val scrollTarget: Int = 0) : LauncherScreen()
     data class ControlBinding(val selectedIndex: Int = 0, val scrollTarget: Int = 0, val controls: Map<String, Int> = emptyMap(), val listeningIndex: Int = -1, val listenCountdownMs: Int = 0) : LauncherScreen()
     data class ShortcutBinding(val selectedIndex: Int = 0, val scrollTarget: Int = 0, val shortcuts: Map<dev.cannoli.scorza.libretro.ShortcutAction, Set<Int>> = emptyMap(), val listening: Boolean = false, val heldKeys: Set<Int> = emptySet(), val countdownMs: Int = 0) : LauncherScreen()
     data class Credits(val selectedIndex: Int = 0, val scrollTarget: Int = 0) : LauncherScreen()
@@ -310,6 +311,42 @@ fun AppNavGraph(
                     val d = dialog
                     if (d is DialogState.CollectionCreated) {
                         MessageOverlay(message = "${d.collectionName} Created")
+                    }
+                }
+            }
+            is LauncherScreen.ChildPicker -> {
+                ListDialogScreen(
+                    backgroundImagePath = appSettings.backgroundImagePath,
+                    backgroundTint = appSettings.backgroundTint,
+                    title = "Child Collections",
+                    listFontSize = listFontSize,
+                    listLineHeight = listLineHeight,
+                    rightBottomItems = emptyList()
+                ) {
+                    if (currentScreen.collections.isEmpty()) {
+                        Text(
+                            text = "No collections",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = GrayText,
+                            modifier = Modifier.padding(start = 14.dp)
+                        )
+                    } else {
+                        List(
+                            items = currentScreen.collections,
+                            selectedIndex = currentScreen.selectedIndex,
+                            itemHeight = itemHeight,
+                            scrollTarget = currentScreen.scrollTarget,
+                            onVisibleRangeChanged = onVisibleRangeChanged
+                        ) { index, collection ->
+                            PillRowText(
+                                label = collection,
+                                isSelected = currentScreen.selectedIndex == index,
+                                fontSize = listFontSize,
+                                lineHeight = listLineHeight,
+                                verticalPadding = listVerticalPadding,
+                                checkState = index in currentScreen.checkedIndices
+                            )
+                        }
                     }
                 }
             }
