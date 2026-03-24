@@ -4,6 +4,10 @@ import android.graphics.BitmapFactory
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.opengl.GLUtils
+import android.util.Log
+import dev.cannoli.scorza.libretro.shader.PresetParser
+import dev.cannoli.scorza.libretro.shader.ShaderPipeline
+import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
@@ -12,7 +16,7 @@ import javax.microedition.khronos.opengles.GL10
 
 enum class ScalingMode { CORE_REPORTED, INTEGER, FULLSCREEN }
 enum class Sharpness { SHARP, CRISP, SOFT }
-enum class ScreenEffect { NONE, LCD, CRT }
+enum class ScreenEffect { NONE, SHADER }
 
 class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Renderer {
 
@@ -28,22 +32,17 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
     @Volatile var screenEffect = ScreenEffect.NONE
         set(value) { field = value; shaderDirty = true }
 
-    @Volatile var crtCurvature = 1.7f
-    @Volatile var crtScanline = 0.75f
-    @Volatile var crtMaskDark = 0.3f
-    @Volatile var crtVignette = 0.85f
-    @Volatile var crtGlow = 0.25f
-    @Volatile var crtSweep = 1.0f
-    @Volatile var crtSweepBright = 0.35f
-    @Volatile var crtBrightness = 1.0f
-    @Volatile var crtNoise = 0.15f
-
     @Volatile var overlayPath: String? = null
         set(value) { field = value; overlayDirty = true }
+
+    @Volatile var shaderPresetPath: String? = null
+        set(value) { field = value; pipelineDirty = true }
 
     @Volatile private var sharpnessDirty = false
     @Volatile private var shaderDirty = false
     @Volatile private var overlayDirty = false
+    @Volatile private var pipelineDirty = false
+    private var pipeline: ShaderPipeline? = null
     private var overlayTextureId = 0
     private var overlayLoaded = false
 
@@ -54,33 +53,23 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
 
     private var frameCount = 0
     private var fpsTimestamp = 0L
-    private var startTimeNanos = 0L
-    private var sweepAccumNanos = 0L
-    private var sweepLastNanos = 0L
+
+    private val shaderParamOverrides = mutableMapOf<String, Float>()
+
+    fun setShaderParameter(id: String, value: Float) {
+        shaderParamOverrides[id] = value
+        pipeline?.parameters?.set(id, value)
+    }
 
     var onFrameRendered: (() -> Unit)? = null
 
     private var textureId = 0
     private var programNone = 0
-
-    private var programLcd = 0
-    private var programKawase = 0
-    private var programCrt = 0
-    private var activeProgramId = 0
     private var frameBuffer: ByteBuffer? = null
     private var lastWidth = 0
     private var lastHeight = 0
     private var surfaceWidth = 0
     private var surfaceHeight = 0
-
-    private var fboBlit = 0
-    private var texBlit = 0
-    private var fboBlurA = 0
-    private var texBlurA = 0
-    private var fboBlurB = 0
-    private var texBlurB = 0
-    private var crtFboW = 0
-    private var crtFboH = 0
 
     private lateinit var vertexBuffer: FloatBuffer
     private lateinit var texCoordBuffer: FloatBuffer
@@ -89,9 +78,6 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         GLES20.glClearColor(0f, 0f, 0f, 1f)
         fpsTimestamp = System.nanoTime()
-        val now = System.nanoTime()
-        startTimeNanos = now
-        sweepLastNanos = now
 
         val vertices = floatArrayOf(-1f, -1f, 1f, -1f, -1f, 1f, 1f, 1f)
         vertexBuffer = ByteBuffer.allocateDirect(vertices.size * 4)
@@ -106,11 +92,6 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
             .order(ByteOrder.nativeOrder()).asFloatBuffer().put(fboTexCoords).also { it.position(0) }
 
         programNone = createProgram(Shaders.vertex, Shaders.passthrough)
-
-        programLcd = createProgram(Shaders.vertex, Shaders.lcd)
-        programKawase = createProgram(Shaders.vertex, Shaders.kawaseBlur)
-        programCrt = createProgram(Shaders.vertex, Shaders.crtComposite)
-        activeProgramId = programNone
 
         val texIds = IntArray(1)
         GLES20.glGenTextures(1, texIds, 0)
@@ -134,12 +115,14 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
         overlayLoaded = false
 
-        crtFboW = 0
-        crtFboH = 0
+        pipeline?.destroy()
+        pipeline = null
+        ShaderPipeline.invalidateSharedProgram()
 
         shaderDirty = true
         sharpnessDirty = true
         overlayDirty = true
+        pipelineDirty = true
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
@@ -159,11 +142,7 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
         val w = runner.getFrameWidth()
         val h = runner.getFrameHeight()
         if (w == 0 || h == 0) {
-            if (screenEffect == ScreenEffect.CRT && elapsedSeconds() < 1.867f) {
-                drawCrtBoot()
-            } else {
-                GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
-            }
+            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
             frameCount++
             val now = System.nanoTime()
             val elapsed = now - fpsTimestamp
@@ -219,11 +198,12 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
 
         if (shaderDirty) {
             shaderDirty = false
-            activeProgramId = when (screenEffect) {
-                ScreenEffect.NONE -> programNone
-                ScreenEffect.LCD -> programLcd
-                ScreenEffect.CRT -> programCrt
-            }
+            if (screenEffect != ScreenEffect.NONE) pipelineDirty = true
+        }
+
+        if (pipelineDirty) {
+            pipelineDirty = false
+            loadPipeline()
         }
 
         if (overlayDirty) {
@@ -259,22 +239,22 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
         viewportWidth = vpW
         viewportHeight = vpH
 
-        if (screenEffect == ScreenEffect.CRT) {
-            drawCrt(w, h, vpX, vpY, vpW, vpH)
+        if (screenEffect != ScreenEffect.NONE && pipeline != null) {
+            pipeline!!.render(textureId, w, h, vpX, vpY, vpW, vpH,
+                texCoordBuffer, fboTexCoordBuffer, vertexBuffer)
         } else {
             drawSimple(w, h, vpX, vpY, vpW, vpH)
         }
-
         if (overlayLoaded) drawOverlay()
 
         frameCount++
-        val now = System.nanoTime()
-        val elapsed = now - fpsTimestamp
+        val fpsNow = System.nanoTime()
+        val elapsed = fpsNow - fpsTimestamp
         if (elapsed >= 1_000_000_000L) {
             fps = frameCount * 1_000_000_000f / elapsed
             frameTimeMs = elapsed / (frameCount * 1_000_000f)
             frameCount = 0
-            fpsTimestamp = now
+            fpsTimestamp = fpsNow
         }
 
         onFrameRendered?.invoke()
@@ -283,136 +263,36 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
     private fun drawSimple(w: Int, h: Int, vpX: Int, vpY: Int, vpW: Int, vpH: Int) {
         GLES20.glViewport(vpX, vpY, vpW, vpH)
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
-        GLES20.glUseProgram(activeProgramId)
-        bindQuadAttribs(activeProgramId)
-
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId)
-        GLES20.glUniform1i(GLES20.glGetUniformLocation(activeProgramId, "uTexture"), 0)
-
-        val srcLoc = GLES20.glGetUniformLocation(activeProgramId, "uSourceSize")
-        if (srcLoc >= 0) GLES20.glUniform2f(srcLoc, w.toFloat(), h.toFloat())
-        val outLoc = GLES20.glGetUniformLocation(activeProgramId, "uOutputSize")
-        if (outLoc >= 0) GLES20.glUniform2f(outLoc, vpW.toFloat(), vpH.toFloat())
-
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
-        unbindQuadAttribs(activeProgramId)
-    }
-
-    private fun drawCrtBoot() {
-        GLES20.glViewport(0, 0, surfaceWidth, surfaceHeight)
-        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
-        GLES20.glUseProgram(programCrt)
-        bindQuadAttribs(programCrt, fboTexCoordBuffer)
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId)
-        GLES20.glUniform1i(GLES20.glGetUniformLocation(programCrt, "uTexture"), 0)
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE1)
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId)
-        GLES20.glUniform1i(GLES20.glGetUniformLocation(programCrt, "uGlowTex"), 1)
-        GLES20.glUniform2f(GLES20.glGetUniformLocation(programCrt, "uSourceSize"), 256f, 224f)
-        GLES20.glUniform2f(GLES20.glGetUniformLocation(programCrt, "uOutputSize"), surfaceWidth.toFloat(), surfaceHeight.toFloat())
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programCrt, "uCurvature"), crtCurvature)
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programCrt, "uScanline"), crtScanline)
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programCrt, "uMaskDark"), crtMaskDark)
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programCrt, "uVignette"), crtVignette)
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programCrt, "uGlow"), crtGlow)
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programCrt, "uSweep"), crtSweep)
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programCrt, "uSweepBright"), crtSweepBright)
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programCrt, "uBrightness"), crtBrightness)
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programCrt, "uNoise"), crtNoise)
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programCrt, "uTime"), elapsedSeconds())
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programCrt, "uSweepPhase"), sweepPhase())
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
-        unbindQuadAttribs(programCrt)
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
-    }
-
-    private val SWEEP_CYCLE_NANOS = 8_000_000_000L
-
-    private fun elapsedSeconds(): Float =
-        (System.nanoTime() - startTimeNanos) / 1_000_000_000f
-
-    private fun sweepPhase(): Float {
-        val now = System.nanoTime()
-        if (!paused) {
-            sweepAccumNanos += now - sweepLastNanos
-            sweepAccumNanos %= SWEEP_CYCLE_NANOS
-        }
-        sweepLastNanos = now
-        return 1f - sweepAccumNanos.toFloat() / SWEEP_CYCLE_NANOS
-    }
-
-    private fun drawCrt(w: Int, h: Int, vpX: Int, vpY: Int, vpW: Int, vpH: Int) {
-        ensureCrtFbos(w, h)
-
-        // Blit: copy game frame into FBO with Y-flip
-        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fboBlit)
-        GLES20.glViewport(0, 0, w, h)
         GLES20.glUseProgram(programNone)
-        bindQuadAttribs(programNone, texCoordBuffer)
+        bindQuadAttribs(programNone)
+
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId)
         GLES20.glUniform1i(GLES20.glGetUniformLocation(programNone, "uTexture"), 0)
+
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
         unbindQuadAttribs(programNone)
+    }
 
-        // Kawase blur passes: blit → A → B → A → B
-        val kawaseDistances = floatArrayOf(0f, 1f, 2f, 3f)
-        val texelW = 1f / w
-        val texelH = 1f / h
-        var readTex = texBlit
-        val targets = arrayOf(
-            fboBlurA to texBlurA,
-            fboBlurB to texBlurB,
-            fboBlurA to texBlurA,
-            fboBlurB to texBlurB
-        )
-        for (i in kawaseDistances.indices) {
-            val (targetFbo, _) = targets[i]
-            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, targetFbo)
-            GLES20.glViewport(0, 0, w, h)
-            GLES20.glUseProgram(programKawase)
-            bindQuadAttribs(programKawase, fboTexCoordBuffer)
-            GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, readTex)
-            GLES20.glUniform1i(GLES20.glGetUniformLocation(programKawase, "uTexture"), 0)
-            GLES20.glUniform2f(GLES20.glGetUniformLocation(programKawase, "uTexelSize"), texelW, texelH)
-            GLES20.glUniform1f(GLES20.glGetUniformLocation(programKawase, "uDistance"), kawaseDistances[i])
-            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
-            unbindQuadAttribs(programKawase)
-            readTex = targets[i].second
+    private fun loadPipeline() {
+        pipeline?.destroy()
+        pipeline = null
+        val path = shaderPresetPath
+        if (path.isNullOrEmpty() || screenEffect == ScreenEffect.NONE) return
+        val file = File(path)
+        val preset = PresetParser.parse(file)
+        if (preset == null) {
+            Log.w("LibretroRenderer", "Failed to parse shader preset: $path")
+            return
         }
-
-        // CRT composite: sharp frame + glow → screen
-        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
-        GLES20.glViewport(vpX, vpY, vpW, vpH)
-        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
-        GLES20.glUseProgram(programCrt)
-        bindQuadAttribs(programCrt, fboTexCoordBuffer)
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texBlit)
-        GLES20.glUniform1i(GLES20.glGetUniformLocation(programCrt, "uTexture"), 0)
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE1)
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texBlurB)
-        GLES20.glUniform1i(GLES20.glGetUniformLocation(programCrt, "uGlowTex"), 1)
-        GLES20.glUniform2f(GLES20.glGetUniformLocation(programCrt, "uSourceSize"), w.toFloat(), h.toFloat())
-        GLES20.glUniform2f(GLES20.glGetUniformLocation(programCrt, "uOutputSize"), vpW.toFloat(), vpH.toFloat())
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programCrt, "uCurvature"), crtCurvature)
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programCrt, "uScanline"), crtScanline)
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programCrt, "uMaskDark"), crtMaskDark)
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programCrt, "uVignette"), crtVignette)
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programCrt, "uGlow"), crtGlow)
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programCrt, "uSweep"), crtSweep)
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programCrt, "uSweepBright"), crtSweepBright)
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programCrt, "uBrightness"), crtBrightness)
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programCrt, "uNoise"), crtNoise)
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programCrt, "uTime"), elapsedSeconds())
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programCrt, "uSweepPhase"), sweepPhase())
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
-        unbindQuadAttribs(programCrt)
-
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
+        pipeline = ShaderPipeline.compile(preset)
+        if (pipeline == null) {
+            Log.w("LibretroRenderer", "Failed to compile shader pipeline: $path")
+        } else {
+            for ((key, value) in shaderParamOverrides) {
+                pipeline!!.parameters[key] = value
+            }
+        }
     }
 
     private fun loadOverlayTexture() {
@@ -452,59 +332,6 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
     private fun unbindQuadAttribs(program: Int) {
         GLES20.glDisableVertexAttribArray(GLES20.glGetAttribLocation(program, "aPosition"))
         GLES20.glDisableVertexAttribArray(GLES20.glGetAttribLocation(program, "aTexCoord"))
-    }
-
-    private fun ensureCrtFbos(w: Int, h: Int) {
-        if (crtFboW == w && crtFboH == h) return
-        destroyCrtFbos()
-
-        val blit = createFbo(w, h)
-        fboBlit = blit.first
-        texBlit = blit.second
-        val blurA = createFbo(w, h)
-        fboBlurA = blurA.first
-        texBlurA = blurA.second
-        val blurB = createFbo(w, h)
-        fboBlurB = blurB.first
-        texBlurB = blurB.second
-
-        crtFboW = w
-        crtFboH = h
-        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
-    }
-
-    private fun createFbo(w: Int, h: Int): Pair<Int, Int> {
-        val texIds = IntArray(1)
-        GLES20.glGenTextures(1, texIds, 0)
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texIds[0])
-        GLES20.glTexImage2D(
-            GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA,
-            w, h, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null
-        )
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
-
-        val fboIds = IntArray(1)
-        GLES20.glGenFramebuffers(1, fboIds, 0)
-        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fboIds[0])
-        GLES20.glFramebufferTexture2D(
-            GLES20.GL_FRAMEBUFFER, GLES20.GL_COLOR_ATTACHMENT0,
-            GLES20.GL_TEXTURE_2D, texIds[0], 0
-        )
-
-        return fboIds[0] to texIds[0]
-    }
-
-    private fun destroyCrtFbos() {
-        if (crtFboW == 0) return
-        val allFbos = intArrayOf(fboBlit, fboBlurA, fboBlurB)
-        val allTexs = intArrayOf(texBlit, texBlurA, texBlurB)
-        GLES20.glDeleteFramebuffers(allFbos.size, allFbos, 0)
-        GLES20.glDeleteTextures(allTexs.size, allTexs, 0)
-        crtFboW = 0
-        crtFboH = 0
     }
 
     private fun createProgram(vertexSource: String, fragmentSource: String): Int {
