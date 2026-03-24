@@ -403,11 +403,8 @@ class LibretroActivity : ComponentActivity() {
                     showOsd("Scaling: ${scalingLabel()}")
                 }
                 ShortcutAction.CYCLE_EFFECT -> {
-                    val effects = ScreenEffect.entries
-                    screenEffect = effects[(screenEffect.ordinal + 1) % effects.size]
-                    renderer.screenEffect = screenEffect
-                    renderer.shaderPresetPath = resolveShaderPresetPath()
-                    showOsd("Effect: ${effectLabel()}")
+                    cycleShader(1)
+                    showOsd("Shader: ${shaderLabel()}")
                 }
                 ShortcutAction.TOGGLE_FF -> {
                     setFastForward(!fastForwarding)
@@ -619,10 +616,9 @@ class LibretroActivity : ComponentActivity() {
         ScalingMode.FULLSCREEN -> "Fullscreen"
     }
 
-    private fun effectLabel() = when (screenEffect) {
-        ScreenEffect.NONE -> "None"
-        ScreenEffect.SHADER -> "Shader"
-    }
+    private fun shaderLabel(): String =
+        if (screenEffect == ScreenEffect.NONE || shaderPreset.isEmpty()) "Off"
+        else File(shaderPreset).nameWithoutExtension
 
     private fun sharpnessLabel() = when (sharpness) {
         Sharpness.SHARP -> "Sharp"
@@ -680,24 +676,6 @@ class LibretroActivity : ComponentActivity() {
         if (shaderPreset.isEmpty()) null
         else File(cannoliRoot, "Shaders/$shaderPreset").absolutePath
 
-    private fun shaderPresetLabel(): String =
-        if (shaderPreset.isEmpty()) "None"
-        else File(shaderPreset).nameWithoutExtension
-
-    private fun cycleShaderPreset(direction: Int) {
-        if (shaderPresets.isEmpty()) { shaderPreset = ""; return }
-        val currentIndex = shaderPresets.indexOf(shaderPreset)
-        val newIndex = if (currentIndex == -1) {
-            if (direction > 0) 0 else shaderPresets.lastIndex
-        } else {
-            val raw = currentIndex + direction
-            if (raw < 0 || raw >= shaderPresets.size) -1 else raw
-        }
-        shaderPreset = if (newIndex < 0) "" else shaderPresets[newIndex]
-        renderer.shaderPresetPath = resolveShaderPresetPath()
-        refreshShaderParams()
-    }
-
     private fun refreshShaderParams() {
         val path = resolveShaderPresetPath()
         if (path.isNullOrEmpty()) { shaderParams = emptyList(); return }
@@ -733,9 +711,8 @@ class LibretroActivity : ComponentActivity() {
             KeyEvent.KEYCODE_DPAD_LEFT -> { cycleFrontendValue(screen.selectedIndex, -1); true }
             KeyEvent.KEYCODE_DPAD_RIGHT -> { cycleFrontendValue(screen.selectedIndex, 1); true }
             KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
-                val subIdx = frontendSubScreenIndex()
-                if (subIdx >= 0 && screen.selectedIndex == subIdx) {
-                    if (screenEffect == ScreenEffect.SHADER) push(IGMScreen.ShaderSettings())
+                if (frontendHasShaderSettings() && screen.selectedIndex == 3) {
+                    push(IGMScreen.ShaderSettings())
                 }
                 true
             }
@@ -744,25 +721,13 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
-    private fun frontendHasSubScreen() = screenEffect == ScreenEffect.SHADER
-    private fun frontendHasPresetRow() = screenEffect == ScreenEffect.SHADER
-    private fun frontendSubScreenIndex() = if (frontendHasSubScreen()) (if (frontendHasPresetRow()) 4 else 3) else -1
-    private fun frontendItemCount(): Int {
-        var count = 6
-        if (frontendHasSubScreen()) count++
-        if (frontendHasPresetRow()) count++
-        return count
-    }
+    private fun frontendHasShaderSettings() =
+        screenEffect == ScreenEffect.SHADER && shaderPreset.isNotEmpty()
+    private fun frontendItemCount() = if (frontendHasShaderSettings()) 7 else 6
 
     private fun cycleFrontendValue(index: Int, direction: Int) {
-        // Row layout:
-        // 0: Scaling, 1: Sharpness, 2: Effect
-        // 3: Shader Preset (if SHADER)
-        // 3 or 4: CRT Settings / Shader Settings (sub-screen, no cycling)
-        // next: Overlay, Debug HUD, Max FF Speed
-        val presetRow = if (frontendHasPresetRow()) 3 else -1
-        val subRow = frontendSubScreenIndex()
-        val base = if (frontendHasPresetRow()) 5 else if (frontendHasSubScreen()) 4 else 3
+        val settingsRow = if (frontendHasShaderSettings()) 3 else -1
+        val base = if (frontendHasShaderSettings()) 4 else 3
         when (index) {
             0 -> {
                 val modes = ScalingMode.entries
@@ -778,19 +743,33 @@ class LibretroActivity : ComponentActivity() {
                     renderer.scalingMode = scalingMode
                 }
             }
-            2 -> {
-                val effects = ScreenEffect.entries
-                screenEffect = effects[(screenEffect.ordinal + direction + effects.size) % effects.size]
-                renderer.screenEffect = screenEffect
-                renderer.shaderPresetPath = resolveShaderPresetPath()
-                if (screenEffect == ScreenEffect.SHADER) refreshShaderParams()
-            }
-            presetRow -> cycleShaderPreset(direction)
-            subRow -> {}
+            2 -> cycleShader(direction)
+            settingsRow -> {}
             base -> cycleOverlay(direction)
             base + 1 -> { debugHud = !debugHud; renderer.debugHud = debugHud }
             base + 2 -> { cycleFfSpeed(direction) }
         }
+    }
+
+    private fun cycleShader(direction: Int) {
+        if (shaderPresets.isEmpty()) {
+            screenEffect = ScreenEffect.NONE
+            shaderPreset = ""
+        } else {
+            val currentIndex = if (screenEffect == ScreenEffect.NONE) -1
+                else shaderPresets.indexOf(shaderPreset)
+            val newIndex = currentIndex + direction
+            if (newIndex < 0 || newIndex >= shaderPresets.size) {
+                screenEffect = ScreenEffect.NONE
+                shaderPreset = ""
+            } else {
+                screenEffect = ScreenEffect.SHADER
+                shaderPreset = shaderPresets[newIndex]
+            }
+        }
+        renderer.screenEffect = screenEffect
+        renderer.shaderPresetPath = resolveShaderPresetPath()
+        refreshShaderParams()
     }
 
     private fun handleShaderSettingsInput(screen: IGMScreen.ShaderSettings, keyCode: Int): Boolean {
@@ -1147,9 +1126,8 @@ class LibretroActivity : ComponentActivity() {
         is IGMScreen.Frontend -> buildList {
             add(IGMSettingsItem("Screen Scaling", scalingLabel()))
             add(IGMSettingsItem("Screen Sharpness", sharpnessLabel()))
-            add(IGMSettingsItem("Screen Effect", effectLabel()))
-            if (screenEffect == ScreenEffect.SHADER) {
-                add(IGMSettingsItem("Shader Preset", shaderPresetLabel()))
+            add(IGMSettingsItem("Shader", shaderLabel()))
+            if (screenEffect == ScreenEffect.SHADER && shaderPreset.isNotEmpty()) {
                 add(IGMSettingsItem("Shader Settings"))
             }
             add(IGMSettingsItem("Overlay", overlayLabel()))
