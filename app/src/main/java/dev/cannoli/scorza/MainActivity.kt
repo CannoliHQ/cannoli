@@ -54,6 +54,7 @@ import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.screens.asKeyboardState
 import dev.cannoli.scorza.ui.screens.withBackspace
 import dev.cannoli.scorza.ui.screens.withCaps
+import dev.cannoli.scorza.ui.screens.withSymbols
 import dev.cannoli.scorza.ui.screens.withCursor
 import dev.cannoli.scorza.ui.screens.withInsertedChar
 import dev.cannoli.scorza.ui.screens.withKeyboard
@@ -1176,7 +1177,12 @@ class MainActivity : ComponentActivity() {
                 is DialogState.NewCollectionInput,
                 is DialogState.CollectionRenameInput -> {
                     val ks = ds.asKeyboardState()!!
-                    dialogState.value = ds.withCaps(!ks.caps)
+                    val (newCaps, newSymbols) = when {
+                        ks.symbols -> false to false
+                        ks.caps -> false to true
+                        else -> true to false
+                    }
+                    dialogState.value = ds.withCaps(newCaps).withSymbols(newSymbols)
                 }
                 DialogState.None -> when (currentScreen) {
                     LauncherScreen.SystemList -> {
@@ -1188,13 +1194,13 @@ class MainActivity : ComponentActivity() {
                     }
                     LauncherScreen.GameList -> {
                         val glState = gameListViewModel.state.value
-                        if (glState.isCollectionsList) {
+                        if (glState.isCollectionsList || gameListViewModel.hasChildCollections()) {
                             if (gameListViewModel.isReorderMode()) {
                                 gameListViewModel.confirmReorder()
                             } else {
                                 gameListViewModel.enterReorderMode()
                             }
-                        } else if (!glState.isCollectionsList && glState.subfolderPath == null && glState.platformTag != "tools" && glState.platformTag != "ports") {
+                        } else if (glState.subfolderPath == null && glState.platformTag != "tools" && glState.platformTag != "ports") {
                             if (gameListViewModel.isMultiSelectMode()) {
                                 gameListViewModel.confirmMultiSelect()
                             } else {
@@ -1238,9 +1244,14 @@ class MainActivity : ComponentActivity() {
                         screenStack.add(LauncherScreen.Settings)
                     }
                     LauncherScreen.GameList -> {
-                        val game = gameListViewModel.getSelectedGame()
-                        if (game != null && !game.isSubfolder && !game.isChildCollection && !gameListViewModel.state.value.isCollectionsList) {
-                            launchManager.resumeGame(game)
+                        val glState = gameListViewModel.state.value
+                        if (glState.isCollectionsList) {
+                            dialogState.value = DialogState.NewCollectionInput(gamePaths = emptyList())
+                        } else {
+                            val game = gameListViewModel.getSelectedGame()
+                            if (game != null && !game.isSubfolder && !game.isChildCollection) {
+                                launchManager.resumeGame(game)
+                            }
                         }
                     }
                     is LauncherScreen.CollectionPicker -> {
