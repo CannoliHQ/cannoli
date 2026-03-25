@@ -17,6 +17,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 
+private var cachedPath: String? = null
+private var cachedBitmap: ImageBitmap? = null
+
 @Composable
 fun ScreenBackground(
     backgroundImagePath: String?,
@@ -29,12 +32,22 @@ fun ScreenBackground(
         Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = backgroundAlpha)))
 
         if (backgroundImagePath != null) {
-            val bitmap by produceState<ImageBitmap?>(null, backgroundImagePath) {
+            val bitmap by produceState(
+                initialValue = if (backgroundImagePath == cachedPath) cachedBitmap else null,
+                backgroundImagePath
+            ) {
+                if (backgroundImagePath == cachedPath && cachedBitmap != null) {
+                    value = cachedBitmap
+                    return@produceState
+                }
                 value = withContext(Dispatchers.IO) {
                     try {
                         val file = File(backgroundImagePath)
                         if (file.exists()) {
-                            BitmapFactory.decodeFile(file.absolutePath)?.asImageBitmap()
+                            BitmapFactory.decodeFile(file.absolutePath)?.asImageBitmap()?.also {
+                                cachedPath = backgroundImagePath
+                                cachedBitmap = it
+                            }
                         } else null
                     } catch (_: Exception) {
                         null
