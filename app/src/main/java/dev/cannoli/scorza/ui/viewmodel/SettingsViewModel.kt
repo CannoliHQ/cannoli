@@ -20,6 +20,8 @@ class SettingsViewModel(
     private val packageManager: PackageManager? = null
 ) : ViewModel() {
 
+    val isTelevision = packageManager?.hasSystemFeature(PackageManager.FEATURE_LEANBACK) == true
+
     data class SettingsItem(
         val key: String,
         @param:StringRes val labelRes: Int,
@@ -79,7 +81,7 @@ class SettingsViewModel(
         showWifi = settings.showWifi,
         showBluetooth = settings.showBluetooth,
         showClock = settings.showClock,
-        showBattery = settings.showBattery,
+        showBattery = settings.showBattery && !isTelevision,
         showTools = settings.showTools,
         showPorts = settings.showPorts
     )
@@ -96,8 +98,7 @@ class SettingsViewModel(
 
     private val installedRaPackages: List<String> by lazy {
         val pm = packageManager ?: return@lazy listOf(settings.retroArchPackage)
-        val installed = SettingsRepository.KNOWN_RA_PACKAGES.filter { pm.isPackageInstalled(it) }
-        installed.ifEmpty { listOf(settings.retroArchPackage) }
+        SettingsRepository.KNOWN_RA_PACKAGES.filter { pm.isPackageInstalled(it) }
     }
 
     private data class SettingsSnapshot(
@@ -231,7 +232,7 @@ class SettingsViewModel(
             }
             "ra_package" -> {
                 val pkgs = installedRaPackages
-                if (pkgs.size > 1) {
+                if (pkgs.isNotEmpty()) {
                     val cur = pkgs.indexOf(settings.retroArchPackage).coerceAtLeast(0)
                     settings.retroArchPackage = pkgs[((cur + direction) % pkgs.size + pkgs.size) % pkgs.size]
                 }
@@ -413,12 +414,12 @@ class SettingsViewModel(
             SettingsItem("color_highlight_text", R.string.setting_color_highlight_text, valueText = settings.colorHighlightText.uppercase(), isEditable = true, swatchColor = hexToColor(settings.colorHighlightText)),
             SettingsItem("color_accent", R.string.setting_color_accent, valueText = settings.colorAccent.uppercase(), isEditable = true, swatchColor = hexToColor(settings.colorAccent))
         )
-        "status_bar" -> listOf(
-            SettingsItem("show_battery", R.string.setting_battery, valueRes = showHide(settings.showBattery)),
-            SettingsItem("show_bluetooth", R.string.setting_bluetooth, valueRes = showHide(settings.showBluetooth)),
-            SettingsItem("show_clock", R.string.setting_clock, valueText = if (!settings.showClock) null else if (settings.timeFormat == TimeFormat.TWELVE_HOUR) "12h" else "24h", valueRes = if (!settings.showClock) R.string.value_hide else null),
-            SettingsItem("show_wifi", R.string.setting_wifi, valueRes = showHide(settings.showWifi))
-        )
+        "status_bar" -> buildList {
+            if (!isTelevision) add(SettingsItem("show_battery", R.string.setting_battery, valueRes = showHide(settings.showBattery)))
+            add(SettingsItem("show_bluetooth", R.string.setting_bluetooth, valueRes = showHide(settings.showBluetooth)))
+            add(SettingsItem("show_clock", R.string.setting_clock, valueText = if (!settings.showClock) null else if (settings.timeFormat == TimeFormat.TWELVE_HOUR) "12h" else "24h", valueRes = if (!settings.showClock) R.string.value_hide else null))
+            add(SettingsItem("show_wifi", R.string.setting_wifi, valueRes = showHide(settings.showWifi)))
+        }
         "input" -> listOf(
             SettingsItem("controls", R.string.setting_controls, isEditable = true),
             SettingsItem("shortcuts", R.string.setting_shortcuts, isEditable = true),
@@ -428,7 +429,7 @@ class SettingsViewModel(
         "advanced" -> listOf(
             SettingsItem("core_mapping", R.string.setting_core_mapping, isEditable = true),
             SettingsItem("sd_root", R.string.setting_sd_root, valueText = settings.sdCardRoot, isEditable = true),
-            SettingsItem("ra_package", R.string.setting_ra_package, valueText = settings.retroArchPackage)
+            SettingsItem("ra_package", R.string.setting_ra_package, valueText = if (installedRaPackages.isEmpty()) "Not Installed" else settings.retroArchPackage, isEditable = installedRaPackages.size < 2)
         )
         else -> emptyList()
     }
