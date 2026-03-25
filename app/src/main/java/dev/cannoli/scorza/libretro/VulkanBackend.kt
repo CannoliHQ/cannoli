@@ -3,6 +3,7 @@ package dev.cannoli.scorza.libretro
 import android.graphics.BitmapFactory
 import android.os.Handler
 import android.os.HandlerThread
+import android.util.Log
 import android.view.Surface
 import android.view.SurfaceHolder
 import android.view.SurfaceView
@@ -10,6 +11,7 @@ import dev.cannoli.scorza.libretro.shader.PresetParser
 import dev.cannoli.scorza.libretro.shader.SlangTranspiler
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.concurrent.ConcurrentHashMap
 
 class VulkanBackend(private val runner: LibretroRunner) : GraphicsBackend, SurfaceHolder.Callback {
 
@@ -19,9 +21,9 @@ class VulkanBackend(private val runner: LibretroRunner) : GraphicsBackend, Surfa
         }
 
         fun isAvailable(): Boolean = try {
-            System.loadLibrary("vulkan_renderer")
+            Class.forName("dev.cannoli.scorza.libretro.VulkanBackend")
             true
-        } catch (_: UnsatisfiedLinkError) { false }
+        } catch (_: Throwable) { false }
     }
 
     var debugPath: String? = null
@@ -42,7 +44,7 @@ class VulkanBackend(private val runner: LibretroRunner) : GraphicsBackend, Surfa
         set(value) { field = value; loadOverlayImage(value) }
     @Volatile override var shaderPresetPath: String? = null
         set(value) { field = value; loadShaderPreset(value) }
-    override var onFrameRendered: (() -> Unit)? = null
+    @Volatile override var onFrameRendered: (() -> Unit)? = null
 
     override val backendName = "Vulkan"
     @Volatile override var fps = 0f; private set
@@ -56,62 +58,59 @@ class VulkanBackend(private val runner: LibretroRunner) : GraphicsBackend, Surfa
             return
         }
         renderHandler?.post {
-            try {
-            // Stop render loop during swap
             val wasRunning = running
             running = false
             vkWaitIdle()
             nativeUnloadPreset()
-            if (path.isNullOrEmpty() || screenEffect == ScreenEffect.NONE) {
-                if (wasRunning) { running = true; renderLoopGen++; postRenderFrame() }
-                return@post
-            }
-            val singlePath = path.split("|").firstOrNull { it.isNotEmpty() }
-            if (singlePath == null) {
-                if (wasRunning) { running = true; renderLoopGen++; postRenderFrame() }
-                return@post
-            }
+            try {
+                if (!path.isNullOrEmpty() && screenEffect != ScreenEffect.NONE) {
+                    val singlePath = path.split("|").firstOrNull { it.isNotEmpty() }
+                    if (singlePath != null) {
+                        val file = java.io.File(singlePath)
+                        val preset = PresetParser.parse(file)
+                        if (preset != null) {
+                            val spirvData = mutableListOf<ByteArray>()
+                            val configData = mutableListOf<Int>()
+                            val scaleData = mutableListOf<Float>()
+                            var ok = true
 
-            val file = java.io.File(singlePath)
-            val preset = PresetParser.parse(file) ?: return@post
+                            for (pass in preset.passes) {
+                                val shaderFile = java.io.File(preset.basePath, pass.shaderPath)
+                                if (!shaderFile.exists()) { ok = false; break }
+                                val source = shaderFile.readText()
+                                if (!SlangTranspiler.isVulkanGLSL(source)) { ok = false; break }
 
-            val spirvData = mutableListOf<ByteArray>()
-            val configData = mutableListOf<Int>()
-            val scaleData = mutableListOf<Float>()
+                                val (rawVs, rawFs) = SlangTranspiler.splitSlangStages(source)
+                                val basePath = shaderFile.parent
+                                val resolvedVs = basePath?.let { SlangTranspiler.resolveIncludesPublic(rawVs, it) } ?: rawVs
+                                val resolvedFs = basePath?.let { SlangTranspiler.resolveIncludesPublic(rawFs, it) } ?: rawFs
 
-            for (pass in preset.passes) {
-                val shaderFile = java.io.File(preset.basePath, pass.shaderPath)
-                if (!shaderFile.exists()) return@post
-                val source = shaderFile.readText()
-                if (!SlangTranspiler.isVulkanGLSL(source)) return@post
+                                val vertSpirv = SlangTranspiler.compileToSpirv(resolvedVs, isVertex = true)
+                                val fragSpirv = SlangTranspiler.compileToSpirv(resolvedFs, isVertex = false)
+                                if (vertSpirv == null || fragSpirv == null) { ok = false; break }
 
-                val (rawVs, rawFs) = SlangTranspiler.splitSlangStages(source)
-                val basePath = shaderFile.parent
-                val resolvedVs = basePath?.let { SlangTranspiler.resolveIncludesPublic(rawVs, it) } ?: rawVs
-                val resolvedFs = basePath?.let { SlangTranspiler.resolveIncludesPublic(rawFs, it) } ?: rawFs
+                                spirvData.add(vertSpirv)
+                                spirvData.add(fragSpirv)
+                                configData.add(pass.scaleType.ordinal)
+                                configData.add(if (pass.filterLinear) 1 else 0)
+                                configData.add(if (source.contains("Original") || source.contains("OrigTexture")) 1 else 0)
+                                scaleData.add(pass.scaleX)
+                                scaleData.add(pass.scaleY)
+                            }
 
-                val vertSpirv = SlangTranspiler.compileToSpirv(resolvedVs, isVertex = true) ?: return@post
-                val fragSpirv = SlangTranspiler.compileToSpirv(resolvedFs, isVertex = false) ?: return@post
-
-                spirvData.add(vertSpirv)
-                spirvData.add(fragSpirv)
-                configData.add(pass.scaleType.ordinal)
-                configData.add(if (pass.filterLinear) 1 else 0)
-                configData.add(if (source.contains("Original") || source.contains("OrigTexture")) 1 else 0)
-                scaleData.add(pass.scaleX)
-                scaleData.add(pass.scaleY)
-            }
-
-            nativeLoadPreset(
-                spirvData.toTypedArray(),
-                configData.toIntArray(),
-                scaleData.toFloatArray(),
-                preset.passes.size
-            )
+                            if (ok) {
+                                nativeLoadPreset(
+                                    spirvData.toTypedArray(),
+                                    configData.toIntArray(),
+                                    scaleData.toFloatArray(),
+                                    preset.passes.size
+                                )
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) { Log.e("VulkanBackend", "Shader preset load failed", e) }
             if (wasRunning) { running = true; renderLoopGen++; postRenderFrame() }
-            } catch (_: Exception) {
-                if (!running && initialized) { running = true; renderLoopGen++; postRenderFrame() }
-            }
         }
     }
 
@@ -141,7 +140,9 @@ class VulkanBackend(private val runner: LibretroRunner) : GraphicsBackend, Surfa
         }
     }
 
-    private val shaderParamOverrides = mutableMapOf<String, Float>()
+    private var lastFrameNanos = 0L
+
+    private val shaderParamOverrides = ConcurrentHashMap<String, Float>()
     private var renderThread: HandlerThread? = null
     private var renderHandler: Handler? = null
     private var initialized = false
@@ -195,7 +196,7 @@ class VulkanBackend(private val runner: LibretroRunner) : GraphicsBackend, Surfa
             }
         }
         renderThread?.quitSafely()
-        renderThread?.join()
+        renderThread?.join(3000)
         renderThread = null
         renderHandler = null
     }
@@ -212,6 +213,9 @@ class VulkanBackend(private val runner: LibretroRunner) : GraphicsBackend, Surfa
             }
 
             nativeRenderFrame()
+            val now = System.nanoTime()
+            if (lastFrameNanos != 0L) frameTimeMs = (now - lastFrameNanos) / 1_000_000f
+            lastFrameNanos = now
             fps = nativeGetFps()
             viewportWidth = nativeGetViewportWidth()
             viewportHeight = nativeGetViewportHeight()

@@ -93,7 +93,6 @@ private:
     std::string cachePath_;
 
     VkRenderPass renderPass_ = VK_NULL_HANDLE;
-    VkRenderPass overlayRenderPass_ = VK_NULL_HANDLE;
     VkPipelineLayout pipelineLayout_ = VK_NULL_HANDLE;
     VkPipeline passthroughPipeline_ = VK_NULL_HANDLE;
     VkPipeline overlayPipeline_ = VK_NULL_HANDLE;

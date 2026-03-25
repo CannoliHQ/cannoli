@@ -147,12 +147,6 @@ class OverrideManager(
         return s.shortcuts
     }
 
-    fun hasGameOverrides(): Boolean {
-        if (!gameFile.exists()) return false
-        val ini = IniParser.parse(gameFile)
-        return ini.getSection("frontend").isNotEmpty() || ini.getSection("options").isNotEmpty()
-    }
-
     private fun sourceFile(source: OverrideSource): File = when (source) {
         OverrideSource.GLOBAL -> globalFile
         OverrideSource.PLATFORM -> platformFile

@@ -11,6 +11,7 @@ import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
+import java.util.concurrent.ConcurrentHashMap
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
@@ -56,7 +57,7 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
     private var frameCount = 0
     private var fpsTimestamp = 0L
 
-    private val shaderParamOverrides = mutableMapOf<String, Float>()
+    private val shaderParamOverrides = ConcurrentHashMap<String, Float>()
 
     override fun setShaderParameter(id: String, value: Float) {
         shaderParamOverrides[id] = value
@@ -67,7 +68,7 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
         shaderParamOverrides.clear()
     }
 
-    override var onFrameRendered: (() -> Unit)? = null
+    @Volatile override var onFrameRendered: (() -> Unit)? = null
 
     private var textureId = 0
     private var programNone = 0
@@ -149,15 +150,7 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
         val h = runner.getFrameHeight()
         if (w == 0 || h == 0) {
             GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
-            frameCount++
-            val now = System.nanoTime()
-            val elapsed = now - fpsTimestamp
-            if (elapsed >= 1_000_000_000L) {
-                fps = frameCount * 1_000_000_000f / elapsed
-                frameTimeMs = elapsed / (frameCount * 1_000_000f)
-                frameCount = 0
-                fpsTimestamp = now
-            }
+            tickFps()
             onFrameRendered?.invoke()
             return
         }
@@ -217,6 +210,13 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
             loadOverlayTexture()
         }
 
+        if (surfaceWidth == 0 || surfaceHeight == 0) {
+            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+            tickFps()
+            onFrameRendered?.invoke()
+            return
+        }
+
         val gameAspect = when (scalingMode) {
             ScalingMode.FULLSCREEN -> surfaceWidth.toFloat() / surfaceHeight.toFloat()
             ScalingMode.CORE_REPORTED -> if (coreAspectRatio > 0f) coreAspectRatio else w.toFloat() / h.toFloat()
@@ -253,17 +253,20 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
         }
         if (overlayLoaded) drawOverlay()
 
+        tickFps()
+        onFrameRendered?.invoke()
+    }
+
+    private fun tickFps() {
         frameCount++
-        val fpsNow = System.nanoTime()
-        val elapsed = fpsNow - fpsTimestamp
+        val now = System.nanoTime()
+        val elapsed = now - fpsTimestamp
         if (elapsed >= 1_000_000_000L) {
             fps = frameCount * 1_000_000_000f / elapsed
             frameTimeMs = elapsed / (frameCount * 1_000_000f)
             frameCount = 0
-            fpsTimestamp = fpsNow
+            fpsTimestamp = now
         }
-
-        onFrameRendered?.invoke()
     }
 
     private fun drawSimple(w: Int, h: Int, vpX: Int, vpY: Int, vpW: Int, vpH: Int) {
@@ -336,11 +339,22 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
 
     private fun createProgram(vertexSource: String, fragmentSource: String): Int {
         val vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, vertexSource)
+        if (vertexShader == 0) return 0
         val fragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentSource)
+        if (fragmentShader == 0) { GLES20.glDeleteShader(vertexShader); return 0 }
         val program = GLES20.glCreateProgram()
         GLES20.glAttachShader(program, vertexShader)
         GLES20.glAttachShader(program, fragmentShader)
         GLES20.glLinkProgram(program)
+        GLES20.glDeleteShader(vertexShader)
+        GLES20.glDeleteShader(fragmentShader)
+        val status = IntArray(1)
+        GLES20.glGetProgramiv(program, GLES20.GL_LINK_STATUS, status, 0)
+        if (status[0] == 0) {
+            Log.e("LibretroRenderer", "Program link error: ${GLES20.glGetProgramInfoLog(program)}")
+            GLES20.glDeleteProgram(program)
+            return 0
+        }
         return program
     }
 
@@ -348,6 +362,14 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
         val shader = GLES20.glCreateShader(type)
         GLES20.glShaderSource(shader, shaderCode)
         GLES20.glCompileShader(shader)
+        val status = IntArray(1)
+        GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, status, 0)
+        if (status[0] == 0) {
+            val typeName = if (type == GLES20.GL_VERTEX_SHADER) "vertex" else "fragment"
+            Log.e("LibretroRenderer", "Shader compile error ($typeName): ${GLES20.glGetShaderInfoLog(shader)}")
+            GLES20.glDeleteShader(shader)
+            return 0
+        }
         return shader
     }
 }

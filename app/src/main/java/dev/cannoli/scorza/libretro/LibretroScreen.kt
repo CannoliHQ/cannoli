@@ -89,8 +89,7 @@ fun LibretroScreen(
                     slotThumbnail = slotThumbnail,
                     slotExists = slotExists,
                     slotOccupied = slotOccupied,
-                    undoLabel = undoLabel,
-                    onAction = {}
+                    undoLabel = undoLabel
                 )
                 if (screen.confirmDeleteSlot) {
                     Box(

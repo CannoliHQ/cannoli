@@ -106,8 +106,7 @@ fun InGameMenu(
     slotThumbnail: Bitmap?,
     slotExists: Boolean,
     slotOccupied: List<Boolean>,
-    undoLabel: String?,
-    onAction: (Int) -> Unit
+    undoLabel: String?
 ) {
     val itemHeight = pillItemHeight(lineHeight, verticalPadding)
     val showThumbnail = selectedIndex == menuOptions.saveStateIndex || selectedIndex == menuOptions.loadStateIndex

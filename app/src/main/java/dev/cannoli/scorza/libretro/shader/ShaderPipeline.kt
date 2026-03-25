@@ -10,6 +10,7 @@ import java.security.MessageDigest
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
+import java.util.concurrent.ConcurrentHashMap
 
 class ShaderPipeline private constructor(
     private val preset: ShaderPreset,
@@ -19,11 +20,13 @@ class ShaderPipeline private constructor(
     private val sourceFbo: Int,
     private val sourceTexture: Int,
     private val lutTextures: Map<String, Int>,
-    val parameters: MutableMap<String, Float>
+    val parameters: ConcurrentHashMap<String, Float>
 ) {
     private var frameCount = 0
     private var fboWidth = 0
     private var fboHeight = 0
+    private var fboVpW = 0
+    private var fboVpH = 0
 
     fun render(
         gameTexture: Int,
@@ -113,7 +116,7 @@ class ShaderPipeline private constructor(
                     GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, passTextures[j])
                     setUniform1i(program, alias, texUnit)
                     val pw = passOutputW(j, frameW, vpW)
-                    val ph = passOutputH(j, frameW, vpH)
+                    val ph = passOutputH(j, frameH, vpH)
                     setUniform2f(program, "${alias}Size", pw.toFloat(), ph.toFloat())
                     setUniform2f(program, "${alias}TextureSize", pw.toFloat(), ph.toFloat())
                     texUnit++
@@ -167,17 +170,22 @@ class ShaderPipeline private constructor(
     }
 
     private fun destroyFbos() {
-        if (fboWidth == 0) return
-        val allFbos = passFbos.toList() + sourceFbo
-        val allTexs = passTextures.toList() + sourceTexture
-        GLES20.glDeleteFramebuffers(allFbos.size, allFbos.toIntArray(), 0)
-        GLES20.glDeleteTextures(allTexs.size, allTexs.toIntArray(), 0)
+        val fboArray = IntArray(passFbos.size + 1)
+        val texArray = IntArray(passTextures.size + 1)
+        passFbos.copyInto(fboArray)
+        fboArray[passFbos.size] = sourceFbo
+        passTextures.copyInto(texArray)
+        texArray[passTextures.size] = sourceTexture
+        GLES20.glDeleteFramebuffers(fboArray.size, fboArray, 0)
+        GLES20.glDeleteTextures(texArray.size, texArray, 0)
         fboWidth = 0
         fboHeight = 0
+        fboVpW = 0
+        fboVpH = 0
     }
 
     private fun ensureFbos(frameW: Int, frameH: Int, vpW: Int, vpH: Int) {
-        if (fboWidth == frameW && fboHeight == frameH) return
+        if (fboWidth == frameW && fboHeight == frameH && fboVpW == vpW && fboVpH == vpH) return
         recreateFbo(sourceFbo, sourceTexture, frameW, frameH, true, false)
 
         for (i in preset.passes.indices) {
@@ -188,7 +196,8 @@ class ShaderPipeline private constructor(
         }
         fboWidth = frameW
         fboHeight = frameH
-        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
+        fboVpW = vpW
+        fboVpH = vpH
     }
 
     private fun passOutputW(passIndex: Int, frameW: Int, vpW: Int): Int {
@@ -323,7 +332,7 @@ class ShaderPipeline private constructor(
                 if (texId != 0) lutTextures[name] = texId
             }
 
-            val paramValues = mutableMapOf<String, Float>()
+            val paramValues = ConcurrentHashMap<String, Float>()
             for ((key, def) in preset.parameters) {
                 paramValues[key] = def.default
             }
@@ -347,7 +356,7 @@ class ShaderPipeline private constructor(
             return "precision mediump float;\n$fragment"
         }
 
-        var cacheDir: File? = null
+        @Volatile var cacheDir: File? = null
 
         private fun compileProgram(vertexSrc: String, fragmentSrc: String): Int {
             val cached = loadCachedBinary(vertexSrc, fragmentSrc)

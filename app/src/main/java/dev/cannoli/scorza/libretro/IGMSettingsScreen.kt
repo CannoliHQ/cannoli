@@ -38,11 +38,11 @@ data class IGMSettingsItem(
 @Composable
 fun IGMSettingsScreen(
     title: String,
-    items: kotlin.collections.List<IGMSettingsItem>,
+    items: List<IGMSettingsItem>,
     selectedIndex: Int,
     coreInfo: String,
     description: String? = null,
-    bottomBarRight: kotlin.collections.List<Pair<String, String>> = listOf("←→" to "CHANGE", "A" to "SELECT")
+    bottomBarRight: List<Pair<String, String>> = listOf("←→" to "CHANGE", "A" to "SELECT")
 ) {
     val itemHeight = pillItemHeight(lineHeight, verticalPadding)
     val colors = LocalCannoliColors.current

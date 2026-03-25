@@ -1,4 +1,5 @@
 #include <jni.h>
+#include <cstring>
 #include <android/native_window_jni.h>
 #include "vulkan_renderer.h"
 
@@ -127,8 +128,10 @@ Java_dev_cannoli_scorza_libretro_VulkanBackend_nativeLoadPreset(
         jbyte *vertBytes = env->GetByteArrayElements(vertArr, nullptr);
         jbyte *fragBytes = env->GetByteArrayElements(fragArr, nullptr);
 
-        passes[i].vertSpirv.assign((uint32_t*)vertBytes, (uint32_t*)(vertBytes + vertLen));
-        passes[i].fragSpirv.assign((uint32_t*)fragBytes, (uint32_t*)(fragBytes + fragLen));
+        passes[i].vertSpirv.resize(vertLen / 4);
+        memcpy(passes[i].vertSpirv.data(), vertBytes, vertLen);
+        passes[i].fragSpirv.resize(fragLen / 4);
+        memcpy(passes[i].fragSpirv.data(), fragBytes, fragLen);
 
         env->ReleaseByteArrayElements(vertArr, vertBytes, JNI_ABORT);
         env->ReleaseByteArrayElements(fragArr, fragBytes, JNI_ABORT);
