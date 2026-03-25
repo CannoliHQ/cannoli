@@ -14,7 +14,7 @@ object PresetParser {
         return parsePreset(presetFile)
     }
 
-    fun parseStandalone(shaderFile: File): ShaderPreset? {
+    private fun parseStandalone(shaderFile: File): ShaderPreset? {
         if (!shaderFile.exists()) return null
         val basePath = shaderFile.parentFile?.absolutePath ?: return null
         val source = shaderFile.readText()
@@ -109,7 +109,6 @@ object PresetParser {
 
         val scaleTypeStr = props["scale_type$index"]?.unquote()?.lowercase()
         val scaleTypeX = props["scale_type_x$index"]?.unquote()?.lowercase() ?: scaleTypeStr
-        val scaleTypeY = props["scale_type_y$index"]?.unquote()?.lowercase() ?: scaleTypeStr
         val scaleType = parseScaleType(scaleTypeX ?: scaleTypeStr)
 
         val scaleX = props["scale_x$index"]?.toFloatOrNull()
@@ -140,7 +139,14 @@ object PresetParser {
             val eq = trimmed.indexOf('=')
             if (eq < 0) continue
             val key = trimmed.substring(0, eq).trim()
-            val value = trimmed.substring(eq + 1).trim()
+            var value = trimmed.substring(eq + 1).trim()
+            if (value.startsWith("\"")) {
+                val closeQuote = value.indexOf('"', 1)
+                if (closeQuote > 0) value = value.substring(0, closeQuote + 1)
+            } else {
+                val commentIdx = value.indexOf('#')
+                if (commentIdx >= 0) value = value.substring(0, commentIdx).trim()
+            }
             map[key] = value
         }
         return map

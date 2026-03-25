@@ -124,8 +124,6 @@ Java_dev_cannoli_scorza_libretro_shader_SlangTranspiler_nativeCompileToSpirv(
     }
 
     size_t byteSize = spirv.size() * sizeof(uint32_t);
-    jobject buffer = env->NewDirectByteBuffer(spirv.data(), byteSize);
-    // Must copy since spirv goes out of scope
     jbyteArray arr = env->NewByteArray(byteSize);
     env->SetByteArrayRegion(arr, 0, byteSize, (jbyte*)spirv.data());
     return arr;

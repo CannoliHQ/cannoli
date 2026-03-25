@@ -251,6 +251,7 @@ bool VulkanRenderer::createSwapchain() {
     swapInfo.imageExtent = swapchainExtent_;
     swapInfo.imageArrayLayers = 1;
     swapInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    swapInfo.oldSwapchain = swapchain_;
     swapInfo.preTransform = (caps.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)
         ? VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR : caps.currentTransform;
     // Pick a supported compositeAlpha
@@ -447,11 +448,11 @@ void VulkanRenderer::updateFrameTexture() {
     uint8_t *dst = (uint8_t *)stagingMapped_;
     unsigned h = fb->height;
 
-    if (fb->pixel_format == 1) { // XRGB8888
+    if (fb->pixel_format == 1) { // XRGB8888 — bridge already converted to RGBA
         for (unsigned y = 0; y < h; y++) {
             memcpy(dst + (h - 1 - y) * rowBytes, fb->data + y * fb->pitch, rowBytes);
         }
-    } else { // RGB565 - expand to RGBA
+    } else { // RGB565 — expand to RGBA (R8G8B8A8 byte order)
         for (unsigned y = 0; y < h; y++) {
             const uint16_t *src16 = (const uint16_t *)(fb->data + y * fb->pitch);
             uint32_t *dst32 = (uint32_t *)(dst + (h - 1 - y) * rowBytes);
@@ -460,7 +461,7 @@ void VulkanRenderer::updateFrameTexture() {
                 uint32_t r = (px >> 11) & 0x1F;
                 uint32_t g = (px >> 5) & 0x3F;
                 uint32_t b = px & 0x1F;
-                dst32[x] = 0xFF000000 | ((b << 3) << 16) | ((g << 2) << 8) | (r << 3);
+                dst32[x] = (r << 3) | ((g << 2) << 8) | ((b << 3) << 16) | 0xFF000000;
             }
         }
     }
@@ -513,7 +514,6 @@ void VulkanRenderer::renderFrame() {
     if (!fb || fb->width == 0) return;
 
     vkWaitForFences(device_, 1, &inFlightFence_, VK_TRUE, UINT64_MAX);
-    vkResetFences(device_, 1, &inFlightFence_);
 
     updateFrameTexture();
     if (frameImage_ == VK_NULL_HANDLE) return;
@@ -525,6 +525,8 @@ void VulkanRenderer::renderFrame() {
         return;
     }
     if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) return;
+
+    vkResetFences(device_, 1, &inFlightFence_);
 
     // Compute viewport
     int sw = swapchainExtent_.width, sh = swapchainExtent_.height;
@@ -695,6 +697,7 @@ bool VulkanRenderer::createDescriptorPool() {
         {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 16}
     };
     VkDescriptorPoolCreateInfo poolInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
+    poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
     poolInfo.maxSets = 32;
     poolInfo.poolSizeCount = 2;
     poolInfo.pPoolSizes = poolSizes;
@@ -804,7 +807,8 @@ uint32_t VulkanRenderer::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFla
         if ((typeFilter & (1 << i)) && (memProps.memoryTypes[i].propertyFlags & properties) == properties)
             return i;
     }
-    return 0;
+    LOGE("findMemoryType: no suitable memory type found (filter=0x%x, props=0x%x)", typeFilter, properties);
+    return UINT32_MAX;
 }
 
 bool VulkanRenderer::transitionImageLayout(VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout) {
@@ -905,42 +909,6 @@ void VulkanRenderer::setScaling(int mode, float coreAspect, int sharpness) {
 
 void VulkanRenderer::loadOverlay(const uint8_t *pixels, int width, int height) {
     unloadOverlay();
-
-    // Create overlay render pass (LOAD existing content, draw on top)
-    if (overlayRenderPass_ == VK_NULL_HANDLE) {
-        VkAttachmentDescription att{};
-        att.format = swapchainFormat_;
-        att.samples = VK_SAMPLE_COUNT_1_BIT;
-        att.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-        att.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        att.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        att.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        att.initialLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-        att.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-        VkAttachmentReference ref{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
-        VkSubpassDescription sub{};
-        sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        sub.colorAttachmentCount = 1;
-        sub.pColorAttachments = &ref;
-
-        VkSubpassDependency dep{};
-        dep.srcSubpass = VK_SUBPASS_EXTERNAL;
-        dep.dstSubpass = 0;
-        dep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dep.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        dep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-        VkRenderPassCreateInfo rpInfo{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
-        rpInfo.attachmentCount = 1;
-        rpInfo.pAttachments = &att;
-        rpInfo.subpassCount = 1;
-        rpInfo.pSubpasses = &sub;
-        rpInfo.dependencyCount = 1;
-        rpInfo.pDependencies = &dep;
-        vkCreateRenderPass(device_, &rpInfo, nullptr, &overlayRenderPass_);
-    }
 
     // Create overlay pipeline with alpha blending
     if (overlayPipeline_ == VK_NULL_HANDLE) {
@@ -1132,6 +1100,7 @@ void VulkanRenderer::loadOverlay(const uint8_t *pixels, int width, int height) {
 void VulkanRenderer::unloadOverlay() {
     if (!overlayLoaded_) return;
     vkDeviceWaitIdle(device_);
+    if (overlayDescSet_) { vkFreeDescriptorSets(device_, descriptorPool_, 1, &overlayDescSet_); overlayDescSet_ = VK_NULL_HANDLE; }
     if (overlayView_) vkDestroyImageView(device_, overlayView_, nullptr);
     if (overlayImage_) vkDestroyImage(device_, overlayImage_, nullptr);
     if (overlayMemory_) vkFreeMemory(device_, overlayMemory_, nullptr);
@@ -1400,6 +1369,7 @@ void VulkanRenderer::unloadPreset() {
     if (!presetLoaded_) return;
     vkDeviceWaitIdle(device_);
     for (auto &pass : passes_) {
+        if (pass.descriptorSet) vkFreeDescriptorSets(device_, descriptorPool_, 1, &pass.descriptorSet);
         if (pass.pipeline) vkDestroyPipeline(device_, pass.pipeline, nullptr);
         if (pass.vertModule) vkDestroyShaderModule(device_, pass.vertModule, nullptr);
         if (pass.fragModule) vkDestroyShaderModule(device_, pass.fragModule, nullptr);
@@ -1578,7 +1548,6 @@ void VulkanRenderer::destroy() {
     unloadOverlay();
     unloadPreset();
     if (overlayPipeline_) vkDestroyPipeline(device_, overlayPipeline_, nullptr);
-    if (overlayRenderPass_) vkDestroyRenderPass(device_, overlayRenderPass_, nullptr);
     if (intermediateRenderPass_) vkDestroyRenderPass(device_, intermediateRenderPass_, nullptr);
     if (multiPassDescLayout_) vkDestroyDescriptorSetLayout(device_, multiPassDescLayout_, nullptr);
     if (multiPassPipelineLayout_) vkDestroyPipelineLayout(device_, multiPassPipelineLayout_, nullptr);

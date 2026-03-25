@@ -12,7 +12,7 @@ object SlangTranspiler {
         System.loadLibrary("slang_transpiler")
     }
 
-    var cacheDir: File? = null
+    @Volatile var cacheDir: File? = null
 
     fun isVulkanGLSL(source: String): Boolean =
         source.contains("#version 450") || source.contains("layout(push_constant)")
@@ -42,7 +42,7 @@ object SlangTranspiler {
         val cached = loadFromCache(cacheKey)
         if (cached != null) return cached
 
-        val resolved = basePath?.let { resolveIncludes(source, it) } ?: source
+        val resolved = basePath?.let { resolveIncludes(source, it, mutableSetOf()) } ?: source
         val raw = nativeTranspile(resolved, isVertex)
         if (raw == null) {
             Log.e(TAG, "Transpilation failed: ${nativeGetLastError()}")
@@ -68,18 +68,19 @@ object SlangTranspiler {
         for (match in layoutUboPattern.findAll(source)) {
             val instanceName = match.groupValues[3]
             val body = match.groupValues[2]
-            result = result.replace(match.value, flattenBlock(body, instanceName))
+            result = result.replaceFirst(match.value, flattenBlock(body, instanceName))
             result = result.replace("${instanceName}.", "${instanceName}_")
         }
 
-        for (match in structPattern.findAll(result)) {
+        var snapshot = result
+        for (match in structPattern.findAll(snapshot)) {
             val structName = match.groupValues[1]
             val body = match.groupValues[2]
             val uniformPattern = Regex("""uniform\s+$structName\s+(\w+)\s*;""")
             val uniformMatch = uniformPattern.find(result) ?: continue
             val instanceName = uniformMatch.groupValues[1]
-            result = result.replace(match.value, "")
-            result = result.replace(uniformMatch.value, flattenBlock(body, instanceName))
+            result = result.replaceFirst(match.value, "")
+            result = result.replaceFirst(uniformMatch.value, flattenBlock(body, instanceName))
             result = result.replace("${instanceName}.", "${instanceName}_")
         }
 
@@ -102,9 +103,9 @@ object SlangTranspiler {
         return uniforms.toString().trimEnd()
     }
 
-    fun resolveIncludesPublic(source: String, basePath: String): String = resolveIncludes(source, basePath)
+    fun resolveIncludesPublic(source: String, basePath: String): String = resolveIncludes(source, basePath, mutableSetOf())
 
-    private fun resolveIncludes(source: String, basePath: String): String {
+    private fun resolveIncludes(source: String, basePath: String, visited: MutableSet<String>): String {
         val sb = StringBuilder()
         for (line in source.lines()) {
             val trimmed = line.trim()
@@ -112,8 +113,9 @@ object SlangTranspiler {
                 val path = trimmed.substringAfter('"').substringBefore('"')
                 if (path.isNotEmpty()) {
                     val file = File(basePath, path)
-                    if (file.exists()) {
-                        sb.appendLine(resolveIncludes(file.readText(), file.parent ?: basePath))
+                    val canonical = try { file.canonicalPath } catch (_: Exception) { file.absolutePath }
+                    if (file.exists() && visited.add(canonical)) {
+                        sb.appendLine(resolveIncludes(file.readText(), file.parent ?: basePath, visited))
                         continue
                     }
                 }
@@ -145,7 +147,7 @@ object SlangTranspiler {
     }
 
     fun compileToSpirv(source: String, isVertex: Boolean, basePath: String? = null): ByteArray? {
-        val resolved = basePath?.let { resolveIncludes(source, it) } ?: source
+        val resolved = basePath?.let { resolveIncludes(source, it, mutableSetOf()) } ?: source
         return nativeCompileToSpirv(resolved, isVertex)
     }
 

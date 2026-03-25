@@ -55,7 +55,6 @@ class LibretroActivity : ComponentActivity() {
     private var slotOccupied by mutableStateOf(emptyList<Boolean>())
     private var cleaned = false
 
-    private var graphicsBackendPref = GraphicsBackendPref.GLES
     private var scalingMode by mutableStateOf(ScalingMode.CORE_REPORTED)
     private var screenEffect by mutableStateOf(ScreenEffect.NONE)
     private var sharpness by mutableStateOf(Sharpness.SHARP)
@@ -180,8 +179,6 @@ class LibretroActivity : ComponentActivity() {
         slotManager = SaveSlotManager(stateBasePath)
         input = LibretroInput()
         if (intent.getBooleanExtra("swap_start_select", false)) input.swapStartSelect()
-        graphicsBackendPref = try { GraphicsBackendPref.valueOf(intent.getStringExtra("graphics_backend") ?: "GLES") } catch (_: Exception) { GraphicsBackendPref.GLES }
-
         runner = LibretroRunner()
 
         val colors = CannoliColors(
@@ -295,18 +292,16 @@ class LibretroActivity : ComponentActivity() {
                     backend.shaderPresetPath = resolveShaderPresetPath()
                 }
 
-                if (true) { // Vulkan disabled — GLES only
-                    val glesBackend = LibretroRenderer(runner)
-                    configureBackend(glesBackend)
-                    renderer = glesBackend
+                val glesBackend = LibretroRenderer(runner)
+                configureBackend(glesBackend)
+                renderer = glesBackend
 
-                    glSurfaceView = GLSurfaceView(this).apply {
-                        setEGLContextClientVersion(3)
-                        setRenderer(glesBackend)
-                        renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
-                    }
-                    gameView = glSurfaceView
+                glSurfaceView = GLSurfaceView(this).apply {
+                    setEGLContextClientVersion(3)
+                    setRenderer(glesBackend)
+                    renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
                 }
+                gameView = glSurfaceView
 
                 loading = false
             }
