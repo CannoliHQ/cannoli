@@ -60,6 +60,7 @@ class LibretroActivity : ComponentActivity() {
     private var sharpness by mutableStateOf(Sharpness.SHARP)
     private var debugHud by mutableStateOf(false)
     private var maxFfSpeed by mutableIntStateOf(4)
+    private var lowLatency by mutableStateOf(false)
 
     private var overlay by mutableStateOf("")
     private var overlayImages = emptyList<String>()
@@ -290,6 +291,7 @@ class LibretroActivity : ComponentActivity() {
                     backend.debugHud = debugHud
                     backend.overlayPath = resolveOverlayPath()
                     backend.shaderPresetPath = resolveShaderPresetPath()
+                    backend.lowLatency = lowLatency
                 }
 
                 val glesBackend = LibretroRenderer(runner)
@@ -304,6 +306,7 @@ class LibretroActivity : ComponentActivity() {
                 gameView = glSurfaceView
 
                 loading = false
+                runOnUiThread { applyLowLatency() }
             }
         }.start()
 
@@ -727,7 +730,7 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
-    private fun frontendItemCount() = 5
+    private fun frontendItemCount() = 6
 
     private fun cycleFrontendValue(index: Int, direction: Int) {
         when (index) {
@@ -747,7 +750,14 @@ class LibretroActivity : ComponentActivity() {
             }
             2 -> cycleOverlay(direction)
             3 -> { debugHud = !debugHud; renderer.debugHud = debugHud }
-            4 -> { cycleFfSpeed(direction) }
+            4 -> { lowLatency = !lowLatency; applyLowLatency() }
+            5 -> { cycleFfSpeed(direction) }
+        }
+    }
+
+    private fun applyLowLatency() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            window.setPreferMinimalPostProcessing(lowLatency)
         }
     }
 
@@ -1163,6 +1173,7 @@ class LibretroActivity : ComponentActivity() {
             add(IGMSettingsItem("Screen Sharpness", sharpnessLabel()))
             add(IGMSettingsItem("Overlay", overlayLabel()))
             add(IGMSettingsItem("Debug HUD", if (debugHud) "On" else "Off"))
+            add(IGMSettingsItem("Low Latency", if (lowLatency) "On" else "Off"))
             add(IGMSettingsItem("Max FF Speed", "${maxFfSpeed}x"))
         }
         is IGMScreen.ShaderStack -> buildList {
@@ -1229,6 +1240,7 @@ class LibretroActivity : ComponentActivity() {
             sharpness = sharpness,
             debugHud = debugHud,
             maxFfSpeed = maxFfSpeed,
+            lowLatency = lowLatency,
             shaderPreset = shaderPreset,
             overlay = overlay,
             coreOptions = optionMap
@@ -1260,6 +1272,7 @@ class LibretroActivity : ComponentActivity() {
         sharpness = settings.sharpness
         debugHud = settings.debugHud
         maxFfSpeed = settings.maxFfSpeed
+        lowLatency = settings.lowLatency
         shaderPreset = settings.shaderPreset
         overlay = settings.overlay
         controlSource = settings.controlSource
