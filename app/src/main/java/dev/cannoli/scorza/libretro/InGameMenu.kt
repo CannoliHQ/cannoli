@@ -74,13 +74,13 @@ class InGameMenuOptions(hasDiscs: Boolean, val discLabel: String) {
 }
 
 object IGMSettings {
-    const val DISPLAY = 0
-    const val SHADERS = 1
-    const val EMULATOR = 2
-    const val CONTROLS = 3
-    const val SHORTCUTS = 4
+    const val VIDEO = 0
+    const val EMULATOR = 1
+    const val CONTROLS = 2
+    const val SHORTCUTS = 3
+    const val ADVANCED = 4
 
-    val CATEGORIES = listOf("Display", "Shaders", "Emulator", "Controls", "Shortcuts")
+    val CATEGORIES = listOf("Video", "Emulator", "Controls", "Shortcuts", "Advanced")
 }
 
 enum class ShortcutAction(val label: String) {

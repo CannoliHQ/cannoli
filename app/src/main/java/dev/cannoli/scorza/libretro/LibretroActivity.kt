@@ -324,8 +324,8 @@ class LibretroActivity : ComponentActivity() {
         return when (screen) {
             is IGMScreen.Menu -> handleMenuInput(screen, resolved)
             is IGMScreen.Settings -> handleCategoryInput(screen, resolved)
-            is IGMScreen.Frontend -> handleFrontendInput(screen, resolved)
-            is IGMScreen.ShaderStack -> handleShaderStackInput(screen, resolved)
+            is IGMScreen.Video -> handleVideoInput(screen, resolved)
+            is IGMScreen.Advanced -> handleAdvancedInput(screen, resolved)
             is IGMScreen.ShaderSettings -> handleShaderSettingsInput(screen, resolved)
             is IGMScreen.Emulator -> handleEmulatorInput(screen, resolved)
             is IGMScreen.EmulatorCategory -> handleEmulatorCategoryInput(screen, resolved)
@@ -601,8 +601,7 @@ class LibretroActivity : ComponentActivity() {
             }
             KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
                 when (screen.selectedIndex) {
-                    IGMSettings.DISPLAY -> push(IGMScreen.Frontend())
-                    IGMSettings.SHADERS -> push(IGMScreen.ShaderStack())
+                    IGMSettings.VIDEO -> push(IGMScreen.Video())
                     IGMSettings.EMULATOR -> {
                         coreOptions = runner.getCoreOptions()
                         coreCategories = runner.getCoreCategories()
@@ -610,6 +609,7 @@ class LibretroActivity : ComponentActivity() {
                     }
                     IGMSettings.CONTROLS -> push(IGMScreen.Controls())
                     IGMSettings.SHORTCUTS -> push(IGMScreen.Shortcuts())
+                    IGMSettings.ADVANCED -> push(IGMScreen.Advanced())
                 }
                 true
             }
@@ -713,8 +713,9 @@ class LibretroActivity : ComponentActivity() {
         renderer.overlayPath = resolveOverlayPath()
     }
 
-    private fun handleFrontendInput(screen: IGMScreen.Frontend, keyCode: Int): Boolean {
-        val count = frontendItemCount()
+    private fun handleVideoInput(screen: IGMScreen.Video, keyCode: Int): Boolean {
+        val hasParams = shaderParams.isNotEmpty()
+        val count = if (hasParams) 5 else 4
         return when (keyCode) {
             KeyEvent.KEYCODE_DPAD_UP -> {
                 replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
@@ -722,17 +723,22 @@ class LibretroActivity : ComponentActivity() {
             KeyEvent.KEYCODE_DPAD_DOWN -> {
                 replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
             }
-            KeyEvent.KEYCODE_DPAD_LEFT -> { cycleFrontendValue(screen.selectedIndex, -1); true }
-            KeyEvent.KEYCODE_DPAD_RIGHT -> { cycleFrontendValue(screen.selectedIndex, 1); true }
-            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> true
+            KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                val dir = if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) 1 else -1
+                cycleVideoValue(screen.selectedIndex, dir, hasParams)
+                true
+            }
+            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+                val shaderSettingsIdx = if (hasParams) 3 else -1
+                if (screen.selectedIndex == shaderSettingsIdx) push(IGMScreen.ShaderSettings())
+                true
+            }
             KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
             else -> true
         }
     }
 
-    private fun frontendItemCount() = 6
-
-    private fun cycleFrontendValue(index: Int, direction: Int) {
+    private fun cycleVideoValue(index: Int, direction: Int, hasParams: Boolean) {
         when (index) {
             0 -> {
                 val modes = ScalingMode.entries
@@ -748,10 +754,36 @@ class LibretroActivity : ComponentActivity() {
                     renderer.scalingMode = scalingMode
                 }
             }
-            2 -> cycleOverlay(direction)
-            3 -> { debugHud = !debugHud; renderer.debugHud = debugHud }
-            4 -> { lowLatency = !lowLatency; applyLowLatency() }
-            5 -> { cycleFfSpeed(direction) }
+            2 -> cycleShader(direction)
+            3 -> if (!hasParams) cycleOverlay(direction)
+            4 -> cycleOverlay(direction)
+        }
+    }
+
+    private fun handleAdvancedInput(screen: IGMScreen.Advanced, keyCode: Int): Boolean {
+        val count = 3
+        return when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_UP -> {
+                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
+            }
+            KeyEvent.KEYCODE_DPAD_DOWN -> {
+                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
+            }
+            KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                val dir = if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) 1 else -1
+                cycleAdvancedValue(screen.selectedIndex, dir)
+                true
+            }
+            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
+            else -> true
+        }
+    }
+
+    private fun cycleAdvancedValue(index: Int, direction: Int) {
+        when (index) {
+            0 -> { lowLatency = !lowLatency; renderer.lowLatency = lowLatency; applyLowLatency() }
+            1 -> { cycleFfSpeed(direction) }
+            2 -> { debugHud = !debugHud; renderer.debugHud = debugHud }
         }
     }
 
@@ -786,32 +818,6 @@ class LibretroActivity : ComponentActivity() {
         renderer.screenEffect = screenEffect
         renderer.shaderPresetPath = resolveShaderPresetPath()
         refreshShaderParams()
-    }
-
-    private fun handleShaderStackInput(screen: IGMScreen.ShaderStack, keyCode: Int): Boolean {
-        val hasParams = shaderParams.isNotEmpty()
-        val count = if (hasParams) 2 else 1
-        return when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_UP -> {
-                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
-            }
-            KeyEvent.KEYCODE_DPAD_DOWN -> {
-                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
-            }
-            KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                if (screen.selectedIndex == 0) {
-                    val dir = if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) 1 else -1
-                    cycleShader(dir)
-                }
-                true
-            }
-            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
-                if (screen.selectedIndex == 1 && hasParams) push(IGMScreen.ShaderSettings())
-                true
-            }
-            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
-            else -> true
-        }
     }
 
     private fun handleShaderSettingsInput(screen: IGMScreen.ShaderSettings, keyCode: Int): Boolean {
@@ -1168,20 +1174,20 @@ class LibretroActivity : ComponentActivity() {
 
     private fun buildSettingsItems(): List<IGMSettingsItem> = when (val screen = currentScreen) {
         is IGMScreen.Settings -> IGMSettings.CATEGORIES.map { IGMSettingsItem(it) }
-        is IGMScreen.Frontend -> buildList {
+        is IGMScreen.Video -> buildList {
             add(IGMSettingsItem("Screen Scaling", scalingLabel()))
             add(IGMSettingsItem("Screen Sharpness", sharpnessLabel()))
-            add(IGMSettingsItem("Overlay", overlayLabel()))
-            add(IGMSettingsItem("Debug HUD", if (debugHud) "On" else "Off"))
-            add(IGMSettingsItem("Low Latency", if (lowLatency) "On" else "Off"))
-            add(IGMSettingsItem("Max FF Speed", "${maxFfSpeed}x"))
-        }
-        is IGMScreen.ShaderStack -> buildList {
-            val label = if (screenEffect == ScreenEffect.NONE || shaderPreset.isEmpty()) "Off"
+            val shaderLabel = if (screenEffect == ScreenEffect.NONE || shaderPreset.isEmpty()) "Off"
                 else File(shaderPreset).nameWithoutExtension
-            add(IGMSettingsItem("Shader", label))
+            add(IGMSettingsItem("Shader", shaderLabel))
             if (shaderParams.isNotEmpty()) add(IGMSettingsItem("Shader Settings"))
+            add(IGMSettingsItem("Overlay", overlayLabel()))
         }
+        is IGMScreen.Advanced -> listOf(
+            IGMSettingsItem("Low Latency", if (lowLatency) "On" else "Off"),
+            IGMSettingsItem("Max FF Speed", "${maxFfSpeed}x"),
+            IGMSettingsItem("Debug HUD", if (debugHud) "On" else "Off")
+        )
         is IGMScreen.ShaderSettings -> {
             if (shaderParams.isEmpty()) listOf(IGMSettingsItem("No parameters"))
             else shaderParams.map { p ->
