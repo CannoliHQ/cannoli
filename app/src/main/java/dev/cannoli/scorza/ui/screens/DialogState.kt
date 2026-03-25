@@ -56,6 +56,13 @@ fun DialogState.withCaps(caps: Boolean): DialogState = when (this) {
     else -> this
 }
 
+fun DialogState.withSymbols(symbols: Boolean): DialogState = when (this) {
+    is DialogState.RenameInput -> copy(symbols = symbols)
+    is DialogState.NewCollectionInput -> copy(symbols = symbols)
+    is DialogState.CollectionRenameInput -> copy(symbols = symbols)
+    else -> this
+}
+
 fun DialogState.withNameAndCursor(name: String, pos: Int): DialogState = when (this) {
     is DialogState.RenameInput -> copy(currentName = name, cursorPos = pos)
     is DialogState.NewCollectionInput -> copy(currentName = name, cursorPos = pos)

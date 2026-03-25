@@ -119,7 +119,7 @@ fun KeyboardOverlay(
         Column(
             modifier = Modifier
                 .align(Alignment.Center)
-                .padding(horizontal = 32.dp),
+                .padding(horizontal = screenPadding),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Box(
@@ -152,7 +152,7 @@ fun KeyboardOverlay(
                         Box(
                             modifier = Modifier
                                 .padding(2.dp)
-                                .height(40.dp)
+                                .height(48.dp)
                                 .fillMaxWidth(0.7f)
                                 .clip(RoundedCornerShape(6.dp))
                                 .background(if (isSelected) HIGHLIGHT_COLOR else KEY_BG),
@@ -179,7 +179,7 @@ fun KeyboardOverlay(
                             Box(
                                 modifier = Modifier
                                     .padding(2.dp)
-                                    .size(40.dp)
+                                    .size(48.dp)
                                     .clip(RoundedCornerShape(6.dp))
                                     .background(
                                         when {
@@ -205,20 +205,17 @@ fun KeyboardOverlay(
             }
         }
 
-        Box(
+        BottomBar(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 20.dp)
-        ) {
-            BottomBar(
-                leftItems = listOf(
-                    "Y" to stringResource(R.string.label_cancel)
-                ),
-                rightItems = listOf(
-                    "\uDB81\uDC0A" to stringResource(R.string.label_confirm)
-                )
+                .padding(horizontal = screenPadding, vertical = 16.dp),
+            leftItems = listOf(
+                "Y" to stringResource(R.string.label_cancel)
+            ),
+            rightItems = listOf(
+                "\uDB81\uDC0A" to stringResource(R.string.label_confirm)
             )
-        }
+        )
     }
 }
 
