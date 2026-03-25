@@ -34,6 +34,7 @@ class OverrideManager(
         var sharpness: Sharpness = Sharpness.SHARP,
         var debugHud: Boolean = false,
         var maxFfSpeed: Int = 4,
+        var lowLatency: Boolean = false,
         var crtCurvature: Float = 1.7f,
         var crtScanline: Float = 0.75f,
         var crtMaskDark: Float = 0.3f,
@@ -58,6 +59,7 @@ class OverrideManager(
             sharpness == other.sharpness &&
             debugHud == other.debugHud &&
             maxFfSpeed == other.maxFfSpeed &&
+            lowLatency == other.lowLatency &&
             crtCurvature == other.crtCurvature &&
             crtScanline == other.crtScanline &&
             crtMaskDark == other.crtMaskDark &&
@@ -184,6 +186,7 @@ class OverrideManager(
         s["sharpness"]?.let { v -> enumSafe<Sharpness>(v)?.let { settings.sharpness = it } }
         s["debug_hud"]?.let { settings.debugHud = it == "true" }
         s["max_ff_speed"]?.let { v -> v.toIntOrNull()?.let { settings.maxFfSpeed = it } }
+        s["low_latency"]?.let { settings.lowLatency = it == "true" }
         s["crt_curvature"]?.toFloatOrNull()?.let { settings.crtCurvature = it }
         s["crt_scanline"]?.toFloatOrNull()?.let { settings.crtScanline = it }
         s["crt_mask_dark"]?.toFloatOrNull()?.let { settings.crtMaskDark = it }
@@ -241,6 +244,7 @@ class OverrideManager(
         "sharpness" to settings.sharpness.name,
         "debug_hud" to settings.debugHud.toString(),
         "max_ff_speed" to settings.maxFfSpeed.toString(),
+        "low_latency" to settings.lowLatency.toString(),
         "crt_curvature" to settings.crtCurvature.toString(),
         "crt_scanline" to settings.crtScanline.toString(),
         "crt_mask_dark" to settings.crtMaskDark.toString(),
@@ -262,6 +266,7 @@ class OverrideManager(
         if (settings.sharpness != baseline.sharpness) delta["sharpness"] = settings.sharpness.name
         if (settings.debugHud != baseline.debugHud) delta["debug_hud"] = settings.debugHud.toString()
         if (settings.maxFfSpeed != baseline.maxFfSpeed) delta["max_ff_speed"] = settings.maxFfSpeed.toString()
+        if (settings.lowLatency != baseline.lowLatency) delta["low_latency"] = settings.lowLatency.toString()
         if (settings.crtCurvature != baseline.crtCurvature) delta["crt_curvature"] = settings.crtCurvature.toString()
         if (settings.crtScanline != baseline.crtScanline) delta["crt_scanline"] = settings.crtScanline.toString()
         if (settings.crtMaskDark != baseline.crtMaskDark) delta["crt_mask_dark"] = settings.crtMaskDark.toString()

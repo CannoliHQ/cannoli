@@ -10,6 +10,7 @@ interface GraphicsBackend {
     var screenEffect: ScreenEffect
     var overlayPath: String?
     var shaderPresetPath: String?
+    var lowLatency: Boolean
     var onFrameRendered: (() -> Unit)?
 
     val backendName: String

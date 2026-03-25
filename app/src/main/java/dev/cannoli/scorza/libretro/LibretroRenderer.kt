@@ -40,6 +40,8 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
     @Volatile override var shaderPresetPath: String? = null
         set(value) { field = value; pipelineDirty = true }
 
+    @Volatile override var lowLatency = false
+
     @Volatile private var sharpnessDirty = false
     @Volatile private var shaderDirty = false
     @Volatile private var overlayDirty = false
@@ -209,6 +211,7 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
             overlayDirty = false
             loadOverlayTexture()
         }
+
 
         if (surfaceWidth == 0 || surfaceHeight == 0) {
             GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
