@@ -87,18 +87,8 @@ fun SetupScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 PillRowText(
-                    label = "Browse",
-                    isSelected = selectedIndex == 1,
-                    fontSize = fontSize,
-                    lineHeight = lineHeight,
-                    verticalPadding = verticalPadding
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                PillRowText(
                     label = "Continue",
-                    isSelected = selectedIndex == 2,
+                    isSelected = selectedIndex == 1,
                     fontSize = fontSize,
                     lineHeight = lineHeight,
                     verticalPadding = verticalPadding
@@ -111,7 +101,7 @@ fun SetupScreen(
                 .align(Alignment.BottomCenter)
                 .padding(horizontal = screenPadding, vertical = 16.dp),
             leftItems = listOf("B" to "QUIT"),
-            rightItems = listOf("←→" to "CHANGE", "A" to "SELECT")
+            rightItems = if (selectedIndex == 0) listOf("←→" to "CHANGE") else listOf("A" to "SELECT")
         )
     }
 }

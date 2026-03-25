@@ -36,7 +36,8 @@ import dev.cannoli.scorza.ui.theme.MPlus1Code
 
 @Composable
 fun KitchenOverlay(url: String, pin: String) {
-    val qrBitmap = remember(url) { generateQrBitmap(url, 256) }
+    val qrUrl = remember(url, pin) { "$url?host=${java.net.URLEncoder.encode(pin, "UTF-8")}" }
+    val qrBitmap = remember(qrUrl) { generateQrBitmap(qrUrl, 256) }
 
     Box(
         modifier = Modifier

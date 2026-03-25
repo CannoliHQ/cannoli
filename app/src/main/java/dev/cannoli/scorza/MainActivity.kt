@@ -485,7 +485,7 @@ class MainActivity : ComponentActivity() {
     private fun handleSetupInput(keyCode: Int) {
         when (keyCode) {
             KeyEvent.KEYCODE_DPAD_UP -> setupSelectedIndex = (setupSelectedIndex - 1).coerceAtLeast(0)
-            KeyEvent.KEYCODE_DPAD_DOWN -> setupSelectedIndex = (setupSelectedIndex + 1).coerceAtMost(2)
+            KeyEvent.KEYCODE_DPAD_DOWN -> setupSelectedIndex = (setupSelectedIndex + 1).coerceAtMost(1)
             KeyEvent.KEYCODE_DPAD_LEFT -> {
                 if (setupSelectedIndex == 0 && setupVolumes.size > 1) {
                     setupVolumeIndex = (setupVolumeIndex - 1 + setupVolumes.size) % setupVolumes.size
@@ -497,10 +497,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
             KeyEvent.KEYCODE_BUTTON_A -> {
-                when (setupSelectedIndex) {
-                    1 -> setupFolderPickerLauncher.launch(null)
-                    2 -> completeSetup()
-                }
+                if (setupSelectedIndex == 1) completeSetup()
             }
             KeyEvent.KEYCODE_BUTTON_B -> finishAffinity()
         }
@@ -1016,6 +1013,7 @@ class MainActivity : ComponentActivity() {
                 DialogState.About,
                 is DialogState.Kitchen -> {
                     dialogState.value = DialogState.None
+                    rescanSystemList()
                 }
                 DialogState.None -> when (val screen = currentScreen) {
                     LauncherScreen.SystemList -> {
@@ -1206,6 +1204,7 @@ class MainActivity : ComponentActivity() {
                 is DialogState.Kitchen -> {
                     dev.cannoli.scorza.server.KitchenManager.stop()
                     dialogState.value = DialogState.None
+                    rescanSystemList()
                 }
                 is DialogState.ColorPicker -> {
                     val currentHex = settingsViewModel.getColorHex(ds.settingKey).removePrefix("#")
