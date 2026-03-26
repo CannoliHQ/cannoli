@@ -1944,7 +1944,7 @@ class MainActivity : ComponentActivity() {
     private fun onRenameConfirm(state: DialogState.RenameInput) {
         if (state.gameName == "ra_username") {
             settings.raUsername = state.currentName.trim()
-            settingsViewModel.load()
+            settingsViewModel.refreshSubList()
             dialogState.value = DialogState.None
             return
         }
@@ -1956,11 +1956,10 @@ class MainActivity : ComponentActivity() {
                         if (success && token != null) {
                             settings.raUsername = nameOrError
                             settings.raToken = token
-                            android.widget.Toast.makeText(this@MainActivity, "Logged in as $nameOrError", android.widget.Toast.LENGTH_SHORT).show()
+                            dialogState.value = DialogState.RAAccount(username = nameOrError)
                         } else {
-                            android.widget.Toast.makeText(this@MainActivity, "Login failed: $nameOrError", android.widget.Toast.LENGTH_SHORT).show()
+                            dialogState.value = DialogState.CollectionCreated("Login failed")
                         }
-                        settingsViewModel.load()
                         loginPollHandler.removeCallbacks(loginPollRunnable)
                         loginManager?.destroy()
                         loginManager = null
@@ -1970,9 +1969,8 @@ class MainActivity : ComponentActivity() {
                 ra.loginWithPassword(settings.raUsername, password)
                 loginManager = ra
                 loginPollHandler.postDelayed(loginPollRunnable, 100)
-                android.widget.Toast.makeText(this, "Logging in...", android.widget.Toast.LENGTH_SHORT).show()
             }
-            dialogState.value = DialogState.None
+            dialogState.value = if (password.isNotEmpty()) DialogState.CollectionCreated("Logging in...") else DialogState.None
             return
         }
         if (currentScreen == LauncherScreen.SystemList) {
