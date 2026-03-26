@@ -54,7 +54,7 @@ object SlangTranspiler {
     }
 
     private val layoutUboPattern = Regex(
-        """layout\(std140\)\s+uniform\s+(\w+)\s*\{([^}]+)\}\s*(\w+)\s*;""",
+        """layout\([^)]*std140[^)]*\)\s+uniform\s+(\w+)\s*\{([^}]+)\}\s*(\w+)\s*;""",
         RegexOption.DOT_MATCHES_ALL
     )
     private val structPattern = Regex(

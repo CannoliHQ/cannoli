@@ -35,7 +35,8 @@ class ShaderPipeline private constructor(
         texCoordBuffer: FloatBuffer,
         fboTexCoordBuffer: FloatBuffer,
         vertexBuffer: FloatBuffer,
-        targetFramebuffer: Int = 0
+        targetFramebuffer: Int = 0,
+        paused: Boolean = false
     ) {
         if (preset.passes.isEmpty()) return
         ensureFbos(frameW, frameH, vpW, vpH)
@@ -52,7 +53,7 @@ class ShaderPipeline private constructor(
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
         unbindQuad(passthroughProgram)
 
-        frameCount++
+        if (!paused) frameCount++
 
         for (i in preset.passes.indices) {
             val pass = preset.passes[i]
@@ -131,7 +132,7 @@ class ShaderPipeline private constructor(
             setUniform2f(program, "OrigInputSize", frameW.toFloat(), frameH.toFloat())
 
             // Slang push_constant convention (vec4: xy = size, zw = 1/size)
-            for (prefix in arrayOf("params.", "params_")) {
+            for (prefix in arrayOf("params.", "params_", "global_", "global.")) {
                 setUniform4f(program, "${prefix}SourceSize", inputW.toFloat(), inputH.toFloat(), 1f / inputW, 1f / inputH)
                 setUniform4f(program, "${prefix}OriginalSize", frameW.toFloat(), frameH.toFloat(), 1f / frameW, 1f / frameH)
                 setUniform4f(program, "${prefix}OutputSize", outW.toFloat(), outH.toFloat(), 1f / outW, 1f / outH)
@@ -305,7 +306,8 @@ class ShaderPipeline private constructor(
                     fs = splitFs ?: prepared
                 }
 
-                val program = compileProgram(vs, ensurePrecision(fs))
+                val precFs = ensurePrecision(fs)
+                val program = compileProgram(vs, precFs)
                 if (program == 0) {
                     cleanup(passPrograms)
                     return null

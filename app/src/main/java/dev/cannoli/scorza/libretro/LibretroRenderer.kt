@@ -250,7 +250,7 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
 
         if (screenEffect != ScreenEffect.NONE && pipeline != null) {
             pipeline!!.render(textureId, w, h, vpX, vpY, vpW, vpH,
-                texCoordBuffer, fboTexCoordBuffer, vertexBuffer)
+                texCoordBuffer, fboTexCoordBuffer, vertexBuffer, paused = paused)
         } else {
             drawSimple(w, h, vpX, vpY, vpW, vpH)
         }

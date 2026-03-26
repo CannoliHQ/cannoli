@@ -1,8 +1,8 @@
 #version 450
 
-// CRT composite based on zfast_crt_geo by SoltanGris42 (Greg Hogan)
-// S-Video color blending variant
-// Glow compositing via kawase blur screen blend
+// Cannoli CRT — hybrid shader
+// CRT base: EasyMode by EasyMode (GPL)
+// Curvature, sweep, vignette, glow, noise: Cannoli
 
 layout(push_constant) uniform Push {
     vec4 SourceSize;
@@ -10,24 +10,40 @@ layout(push_constant) uniform Push {
     vec4 OutputSize;
     uint FrameCount;
     float curvature;
-    float scanline;
-    float mask_dark;
+    float scanline_strength;
+    float mask_strength;
+    float mask_size;
+    float mask_dot_width;
+    float mask_dot_height;
+    float mask_stagger;
+    float sharpness_h;
+    float sharpness_v;
+    float gamma_input;
+    float gamma_output;
+    float bright_boost;
     float vignette;
     float glow_strength;
     float sweep;
     float sweep_bright;
-    float crt_brightness;
     float noise_amount;
 } params;
 
 #pragma parameter curvature "Curvature" 1.7 0.0 2.0 0.1
-#pragma parameter scanline "Scanlines" 0.75 0.0 1.0 0.05
-#pragma parameter mask_dark "Mask" 0.3 0.0 0.5 0.05
-#pragma parameter vignette "Vignette" 0.85 0.0 2.0 0.05
+#pragma parameter scanline_strength "Scanlines" 0.75 0.0 1.0 0.05
+#pragma parameter mask_strength "Mask Strength" 0.3 0.0 1.0 0.01
+#pragma parameter mask_size "Mask Size" 1.0 1.0 100.0 1.0
+#pragma parameter mask_dot_width "Mask Dot Width" 1.0 1.0 100.0 1.0
+#pragma parameter mask_dot_height "Mask Dot Height" 1.0 1.0 100.0 1.0
+#pragma parameter mask_stagger "Mask Stagger" 0.0 0.0 100.0 1.0
+#pragma parameter sharpness_h "Sharpness Horizontal" 0.5 0.0 1.0 0.05
+#pragma parameter sharpness_v "Sharpness Vertical" 1.0 0.0 1.0 0.05
+#pragma parameter gamma_input "Gamma Input" 2.0 0.1 5.0 0.1
+#pragma parameter gamma_output "Gamma Output" 1.8 0.1 5.0 0.1
+#pragma parameter bright_boost "Brightness" 1.2 1.0 2.0 0.01
+#pragma parameter vignette "Vignette" 0.5 0.0 2.0 0.05
 #pragma parameter glow_strength "Glow" 0.25 0.0 1.0 0.05
 #pragma parameter sweep "Sweep" 1.0 0.0 1.0 0.05
 #pragma parameter sweep_bright "Sweep Brightness" 0.35 0.0 1.0 0.05
-#pragma parameter crt_brightness "Brightness" 1.0 0.5 1.5 0.05
 #pragma parameter noise_amount "Noise" 0.15 0.0 1.0 0.05
 
 layout(std140, set = 0, binding = 0) uniform UBO {
@@ -50,15 +66,9 @@ layout(location = 0) out vec4 FragColor;
 layout(set = 0, binding = 2) uniform sampler2D Source;
 layout(set = 0, binding = 3) uniform sampler2D Original;
 
-#define curvature params.curvature
-#define scanline params.scanline
-#define mask_dark params.mask_dark
-#define vignette params.vignette
-#define glow_strength params.glow_strength
-#define sweep params.sweep
-#define sweep_bright params.sweep_bright
-#define crt_brightness params.crt_brightness
-#define noise_amount params.noise_amount
+#define FIX(c) max(abs(c), 1e-5)
+#define PI 3.141592653589
+#define TEX2D(c) texture(Original, c)
 
 vec2 Warp(vec2 pos) {
     pos = pos * 2.0 - 1.0;
@@ -67,73 +77,94 @@ vec2 Warp(vec2 pos) {
     return pos * 0.5 + 0.5;
 }
 
+float curve_distance(float x, float sharp) {
+    float x_step = step(0.5, x);
+    float curve = 0.5 - sqrt(0.25 - (x - x_step) * (x - x_step)) * sign(0.5 - x);
+    return mix(x, curve, sharp);
+}
+
+mat4x4 get_color_matrix(vec2 co, vec2 dx) {
+    return mat4x4(TEX2D(co - dx), TEX2D(co), TEX2D(co + dx), TEX2D(co + 2.0 * dx));
+}
+
+vec3 filter_lanczos(vec4 coeffs, mat4x4 color_matrix) {
+    vec4 col = color_matrix * coeffs;
+    vec4 sample_min = min(color_matrix[1], color_matrix[2]);
+    vec4 sample_max = max(color_matrix[1], color_matrix[2]);
+    col = clamp(col, sample_min, sample_max);
+    return col.rgb;
+}
+
 float rand(vec2 co) {
     return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
-vec3 inv_gamma(vec3 col, vec3 power) {
-    vec3 cir = col - 1.0;
-    cir *= cir;
-    return mix(sqrt(col), sqrt(1.0 - cir), power);
-}
-
 void main() {
-    vec2 xy = mix(vTexCoord, Warp(vTexCoord), curvature);
+    vec2 xy = mix(vTexCoord, Warp(vTexCoord), params.curvature);
 
     if (xy.x < 0.0 || xy.x > 1.0 || xy.y < 0.0 || xy.y > 1.0) {
         FragColor = vec4(0.0, 0.0, 0.0, 1.0);
         return;
     }
 
-    vec2 InputSize = params.OriginalSize.xy;
-    vec2 OutputSize = params.OutputSize.xy;
+    vec2 dx = vec2(params.OriginalSize.z, 0.0);
+    vec2 dy = vec2(0.0, params.OriginalSize.w);
+    vec2 pix_co = xy * params.OriginalSize.xy - vec2(0.5);
+    vec2 tex_co = (floor(pix_co) + vec2(0.5)) * params.OriginalSize.zw;
+    vec2 dist = fract(pix_co);
 
-    // S-Video: 3-tap chroma convergence
-    vec2 bxy = vec2(0.7, -0.3) / (InputSize * 2.0);
-    vec2 s1 = texture(Original, vec2(xy.x + bxy.x, xy.y - bxy.y)).rg;
-    vec3 s2 = texture(Original, xy).rgb;
-    vec2 s3 = texture(Original, vec2(xy.x - bxy.x, xy.y + bxy.y)).gb;
-    vec3 colour = vec3(s1.r * 0.5, s1.g * 0.25 + s3.r * 0.25, s3.g * 0.5) + 0.5 * s2;
+    float curve_x = curve_distance(dist.x, params.sharpness_h * params.sharpness_h);
+    vec4 coeffs = PI * vec4(1.0 + curve_x, curve_x, 1.0 - curve_x, 2.0 - curve_x);
+    coeffs = FIX(coeffs);
+    coeffs = 2.0 * sin(coeffs) * sin(coeffs * 0.5) / (coeffs * coeffs);
+    coeffs /= dot(coeffs, vec4(1.0));
 
-    float ratio = xy.y * InputSize.y;
-    float f = ratio - (floor(ratio) + 0.5);
-    float Y = f * f;
-    float scanW = 1.5 - scanline * (Y - Y * Y);
+    vec3 col = filter_lanczos(coeffs, get_color_matrix(tex_co, dx));
+    vec3 col2 = filter_lanczos(coeffs, get_color_matrix(tex_co + dy, dx));
+    col = mix(col, col2, curve_distance(dist.y, params.sharpness_v));
+    col = pow(col, vec3(params.gamma_input));
 
-    float MSCL = OutputSize.y > 1499.0 ? 0.3333 : 0.5;
-    float whichmask = floor(vTexCoord.x * OutputSize.x) * -MSCL;
-    float mask = 1.0 + float(fract(whichmask) < MSCL) * -mask_dark;
+    float luma = dot(vec3(0.2126, 0.7152, 0.0722), col);
+    float bright = (max(col.r, max(col.g, col.b)) + luma) * 0.5;
+    float scan_beam = clamp(bright * 1.5, 1.0, 1.5);
+    float scan_weight = 1.0 - pow(cos(xy.y * 2.0 * PI * params.OriginalSize.y) * 0.5 + 0.5, scan_beam) * params.scanline_strength;
 
-    float luma = dot(colour, vec3(0.26667));
-    colour *= mix(scanW * mask, 1.0, luma);
-    colour = max(colour * colour * vec3(1.04, 1.01, 0.93), 0.0);
+    float mask = 1.0 - params.mask_strength;
+    vec2 mod_fac = floor(xy * params.OutputSize.xy * params.OriginalSize.xy / (params.OriginalSize.xy * vec2(params.mask_size, params.mask_dot_height * params.mask_size)));
+    int dot_no = int(mod((mod_fac.x + mod(mod_fac.y, 2.0) * params.mask_stagger) / params.mask_dot_width, 3.0));
+    vec3 mask_weight;
+    if      (dot_no == 0) mask_weight = vec3(1.0,  mask, mask);
+    else if (dot_no == 1) mask_weight = vec3(mask, 1.0,  mask);
+    else                  mask_weight = vec3(mask, mask, 1.0);
 
-    float vigE = 0.08 + 0.12 * vignette;
+    col *= vec3(scan_weight);
+    col = mix(col, col * vec3(1.0 / scan_weight), bright * 0.35);
+    col *= mask_weight;
+    col = pow(col, vec3(1.0 / params.gamma_output));
+
+    float vigE = 0.08 + 0.12 * params.vignette;
     float vx = smoothstep(0.0, vigE, xy.x) * smoothstep(1.0, 1.0 - vigE, xy.x);
     float vy = smoothstep(0.0, vigE, xy.y) * smoothstep(1.0, 1.0 - vigE, xy.y);
-    colour *= mix(1.0, vx * vy, vignette);
+    col *= mix(1.0, vx * vy, params.vignette);
 
     float sweepPhase = 1.0 - mod(float(params.FrameCount), 480.0) / 480.0;
     float band = smoothstep(0.04, 0.0, abs(xy.y - sweepPhase));
-    colour *= 1.0 + band * sweep_bright * sweep;
-
-    float pwr = 1.0 / ((-0.0325 * scanline + 1.0) * (-0.311 * mask_dark + 1.0)) - 1.2;
-    colour = inv_gamma(clamp(colour, 0.0, 1.0), vec3(pwr));
+    col *= 1.0 + band * params.sweep_bright * params.sweep;
 
     vec3 glow = texture(Source, xy).rgb;
-    colour = 1.0 - (1.0 - colour) * (1.0 - glow * glow_strength);
+    col = 1.0 - (1.0 - col) * (1.0 - glow * params.glow_strength);
 
-    if (curvature > 0.01) {
+    if (params.curvature > 0.01) {
         vec2 corn = min(xy, 1.0 - xy);
         corn.x = 0.0001 / corn.x;
         if (corn.y <= corn.x || corn.x < 0.0001)
-            colour = vec3(0.0);
+            col = vec3(0.0);
     }
 
     float ntime = fract(float(params.FrameCount)) * 1000.0;
-    vec2 seed = floor(vTexCoord * OutputSize) + vec2(ntime, ntime * 1.7);
-    float n = (rand(seed) - 0.5) * 0.2 * noise_amount;
-    colour += vec3(n);
+    vec2 seed = floor(vTexCoord * params.OutputSize.xy) + vec2(ntime, ntime * 1.7);
+    float n = (rand(seed) - 0.5) * 0.2 * params.noise_amount;
+    col += vec3(n);
 
-    FragColor = vec4(colour * crt_brightness, 1.0);
+    FragColor = vec4(col * params.bright_boost, 1.0);
 }

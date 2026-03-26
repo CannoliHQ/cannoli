@@ -3,6 +3,10 @@ project(cannoli_native)
 
 find_library(log-lib log)
 
+# Copy libretro.h into rcheevos include so rc_libretro.c can find it via <libretro.h>
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/libretro.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/rcheevos/include/libretro.h COPYONLY)
+
 # --- rcheevos (RetroAchievements client library) ---
 file(GLOB RCHEEVOS_SRC
     third_party/rcheevos/src/rcheevos/*.c
