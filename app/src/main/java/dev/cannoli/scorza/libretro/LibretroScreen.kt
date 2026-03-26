@@ -241,18 +241,6 @@ fun LibretroScreen(
             }
             is IGMScreen.AchievementDetail -> {
                 val ach = screen.achievement
-                val badgeBitmap = if (ach.badgeUrl.isNotEmpty()) {
-                    androidx.compose.runtime.produceState<android.graphics.Bitmap?>(null, ach.badgeUrl) {
-                        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                            try {
-                                val conn = java.net.URL(ach.badgeUrl).openConnection()
-                                conn.connectTimeout = 5000
-                                conn.inputStream.use { android.graphics.BitmapFactory.decodeStream(it) }
-                            } catch (_: Exception) { null }
-                        }
-                    }.value
-                } else null
-
                 val unlockText = if (ach.unlocked && ach.unlockTime > 0) {
                     val date = java.text.SimpleDateFormat("MMM d, yyyy", java.util.Locale.getDefault())
                         .format(java.util.Date(ach.unlockTime * 1000))
@@ -271,15 +259,6 @@ fun LibretroScreen(
                             verticalArrangement = Arrangement.Center,
                             modifier = Modifier.fillMaxWidth(0.8f)
                         ) {
-                            if (badgeBitmap != null) {
-                                androidx.compose.foundation.Image(
-                                    bitmap = badgeBitmap.asImageBitmap(),
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .height(96.dp)
-                                        .padding(bottom = 12.dp)
-                                )
-                            }
                             Text(
                                 text = ach.title,
                                 style = TextStyle(

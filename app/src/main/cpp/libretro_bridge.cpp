@@ -295,17 +295,12 @@ static bool environment_cb(unsigned cmd, void *data) {
                 mmap->num_descriptors * sizeof(struct retro_memory_descriptor));
             g_memory_map.descriptors = g_memory_descriptors;
             g_memory_map.num_descriptors = g_memory_descriptor_count;
-            LOGE("Memory map set: %u descriptors", g_memory_descriptor_count);
-            for (unsigned i = 0; i < g_memory_descriptor_count; i++) {
-                const struct retro_memory_descriptor *d = &g_memory_descriptors[i];
-                LOGE("  desc[%u]: ptr=%p start=0x%zx len=0x%zx select=0x%zx disconnect=0x%zx offset=0x%zx",
-                    i, d->ptr, d->start, d->len, d->select, d->disconnect, d->offset);
-            }
+            LOGI("Memory map set: %u descriptors", g_memory_descriptor_count);
             return true;
         }
 
         default:
-            LOGE("Unhandled env cmd: %u", cmd);
+            LOGI("Unhandled env cmd: %u", cmd);
             return false;
     }
 }
