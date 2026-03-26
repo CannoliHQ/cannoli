@@ -36,6 +36,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.branch }}
+          submodules: recursive
 
       - name: Download libretro cores
         run: |
