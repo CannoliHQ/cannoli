@@ -177,6 +177,13 @@ class SettingsViewModel(
         return true
     }
 
+    fun refreshSubList() {
+        val current = _state.value
+        val cat = current.activeCategory ?: return
+        val items = buildItemsForCategory(cat)
+        _state.update { it.copy(items = items) }
+    }
+
     fun exitSubList(): Boolean {
         val current = _state.value
         if (!current.inSubList) return false
