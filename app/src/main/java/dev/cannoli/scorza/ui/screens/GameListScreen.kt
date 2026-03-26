@@ -165,7 +165,7 @@ fun GameListScreen(
                                     bitmap = selectedArt ?: return@Box,
                                     contentDescription = null,
                                     modifier = Modifier
-                                        .fillMaxWidth()
+                                        .fillMaxSize()
                                         .clip(RoundedCornerShape(8.dp)),
                                     contentScale = ContentScale.Fit
                                 )
