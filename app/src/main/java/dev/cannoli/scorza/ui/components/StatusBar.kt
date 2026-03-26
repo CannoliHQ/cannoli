@@ -51,8 +51,11 @@ import java.util.Locale
 import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.delay
 
-private const val ICON_BLUETOOTH = "\uDB80\uDCAF"   // 󰂯 nf-md-bluetooth
-private const val ICON_WIFI = "\uDB81\uDDA9"         // 󰖩 nf-md-wifi
+private const val ICON_BLUETOOTH = "\uDB80\uDCAF"   // nf-md-bluetooth
+private const val ICON_BLUETOOTH_OFF = "\uDB80\uDCB2" // nf-md-bluetooth_off
+private const val ICON_WIFI = "\uDB81\uDDA9"         // nf-md-wifi
+private const val ICON_WIFI_OFF = "\uDB81\uDDAA"     // nf-md-wifi_off
+private const val ICON_VPN = "\uDB82\uDFC4"          // nf-md-shield_key
 private const val ICON_KITCHEN = "\uDB81\uDC8B"      // 󰒋 nf-md-server
 
 @Composable
@@ -60,6 +63,7 @@ fun StatusBar(
     use24hTime: Boolean = false,
     showWifi: Boolean = true,
     showBluetooth: Boolean = true,
+    showVpn: Boolean = false,
     showClock: Boolean = true,
     showBattery: Boolean = true,
     showKitchen: Boolean = false,
@@ -70,7 +74,9 @@ fun StatusBar(
 
     var batteryLevel by remember { mutableIntStateOf(0) }
     var isCharging by remember { mutableStateOf(false) }
-    var hasWifi by remember { mutableStateOf(false) }
+    var wifiConnected by remember { mutableStateOf(false) }
+    var wifiEnabled by remember { mutableStateOf(true) }
+    var hasVpn by remember { mutableStateOf(false) }
     var hasBluetooth by remember { mutableStateOf(false) }
     var rawTime by remember { mutableStateOf(Date()) }
 
@@ -101,21 +107,31 @@ fun StatusBar(
         var networkCallback: ConnectivityManager.NetworkCallback? = null
         try {
             if (cm != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                fun checkWifi() {
-                    val net = cm.activeNetwork
-                    val caps = if (net != null) cm.getNetworkCapabilities(net) else null
-                    hasWifi = caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+                fun updateNetState(caps: NetworkCapabilities?) {
+                    wifiConnected = caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+                    hasVpn = caps?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true
                 }
-                checkWifi()
+                val net = cm.activeNetwork
+                updateNetState(if (net != null) cm.getNetworkCapabilities(net) else null)
+                val wm = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? android.net.wifi.WifiManager
+                wifiEnabled = wm?.isWifiEnabled == true
                 networkCallback = object : ConnectivityManager.NetworkCallback() {
-                    override fun onAvailable(network: Network) { checkWifi() }
-                    override fun onLost(network: Network) { checkWifi() }
-                    override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) { checkWifi() }
+                    override fun onAvailable(network: Network) {
+                        updateNetState(cm.getNetworkCapabilities(network))
+                        wifiEnabled = wm?.isWifiEnabled == true
+                    }
+                    override fun onLost(network: Network) {
+                        updateNetState(null)
+                        wifiEnabled = wm?.isWifiEnabled == true
+                    }
+                    override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
+                        updateNetState(caps)
+                    }
                 }
                 cm.registerDefaultNetworkCallback(networkCallback!!)
             }
         } catch (_: SecurityException) {
-            hasWifi = false
+            wifiConnected = false
         }
 
         val btReceiver = object : BroadcastReceiver() {
@@ -176,12 +192,17 @@ fun StatusBar(
             Text(text = ICON_KITCHEN, style = iconStyle)
         }
 
-        if (showBluetooth && hasBluetooth) {
-            Text(text = ICON_BLUETOOTH, style = iconStyle)
+        if (showBluetooth) {
+            Text(text = if (hasBluetooth) ICON_BLUETOOTH else ICON_BLUETOOTH_OFF, style = iconStyle)
         }
 
-        if (showWifi && hasWifi) {
-            Text(text = ICON_WIFI, style = iconStyle)
+        if (showWifi) {
+            val wifiIcon = when { wifiConnected -> ICON_WIFI; !wifiEnabled -> ICON_WIFI_OFF; else -> null }
+            if (wifiIcon != null) Text(text = wifiIcon, style = iconStyle)
+        }
+
+        if (showVpn && hasVpn) {
+            Text(text = ICON_VPN, style = iconStyle)
         }
 
         if (showBattery) {

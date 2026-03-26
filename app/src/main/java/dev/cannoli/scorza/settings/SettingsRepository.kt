@@ -132,6 +132,10 @@ class SettingsRepository(context: Context) {
         get() = jsonRead { optBoolean(KEY_SHOW_BLUETOOTH, true) }
         set(value) = jsonWrite { put(KEY_SHOW_BLUETOOTH, value) }
 
+    var showVpn: Boolean
+        get() = jsonRead { optBoolean(KEY_SHOW_VPN, false) }
+        set(value) = jsonWrite { put(KEY_SHOW_VPN, value) }
+
     var showClock: Boolean
         get() = jsonRead { optBoolean(KEY_SHOW_CLOCK, true) }
         set(value) = jsonWrite { put(KEY_SHOW_CLOCK, value) }
@@ -214,6 +218,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_SHOW_EMPTY = "show_empty"
         private const val KEY_SHOW_WIFI = "show_wifi"
         private const val KEY_SHOW_BLUETOOTH = "show_bluetooth"
+        private const val KEY_SHOW_VPN = "show_vpn"
         private const val KEY_SHOW_CLOCK = "show_clock"
         private const val KEY_SHOW_BATTERY = "show_battery"
         private const val KEY_SHOW_TOOLS = "show_tools"
