@@ -40,6 +40,7 @@
     <string name="setting_text_size">Text Size</string>
     <string name="setting_bg_image">Background Image</string>
     <string name="setting_wifi">Wi-Fi</string>
+    <string name="setting_vpn">VPN</string>
     <string name="setting_bluetooth">Bluetooth</string>
     <string name="setting_clock">Clock</string>
     <string name="setting_battery">Battery</string>

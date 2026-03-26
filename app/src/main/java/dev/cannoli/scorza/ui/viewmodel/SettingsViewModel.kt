@@ -59,6 +59,7 @@ class SettingsViewModel(
         val colorAccent: Color = Color.White,
         val showWifi: Boolean = true,
         val showBluetooth: Boolean = true,
+        val showVpn: Boolean = false,
         val showClock: Boolean = true,
         val showBattery: Boolean = true,
         val showTools: Boolean = false,
@@ -82,6 +83,7 @@ class SettingsViewModel(
         colorAccent = hexToColor(settings.colorAccent) ?: Color.White,
         showWifi = settings.showWifi,
         showBluetooth = settings.showBluetooth,
+        showVpn = settings.showVpn,
         showClock = settings.showClock,
         showBattery = settings.showBattery && !isTelevision,
         showTools = settings.showTools,
@@ -118,6 +120,7 @@ class SettingsViewModel(
         val platformSwitching: Boolean,
         val showWifi: Boolean,
         val showBluetooth: Boolean,
+        val showVpn: Boolean,
         val showClock: Boolean,
         val showBattery: Boolean,
         val showEmpty: Boolean,
@@ -232,6 +235,7 @@ class SettingsViewModel(
             "show_empty" -> settings.showEmpty = !settings.showEmpty
             "show_wifi" -> settings.showWifi = !settings.showWifi
             "show_bluetooth" -> settings.showBluetooth = !settings.showBluetooth
+            "show_vpn" -> settings.showVpn = !settings.showVpn
             "show_battery" -> settings.showBattery = !settings.showBattery
             "show_tools" -> settings.showTools = !settings.showTools
             "show_ports" -> settings.showPorts = !settings.showPorts
@@ -358,6 +362,7 @@ class SettingsViewModel(
         platformSwitching = settings.platformSwitching,
         showWifi = settings.showWifi,
         showBluetooth = settings.showBluetooth,
+        showVpn = settings.showVpn,
         showClock = settings.showClock,
         showBattery = settings.showBattery,
         showEmpty = settings.showEmpty,
@@ -383,6 +388,7 @@ class SettingsViewModel(
         settings.platformSwitching = snap.platformSwitching
         settings.showWifi = snap.showWifi
         settings.showBluetooth = snap.showBluetooth
+        settings.showVpn = snap.showVpn
         settings.showClock = snap.showClock
         settings.showBattery = snap.showBattery
         settings.showEmpty = snap.showEmpty
@@ -429,6 +435,7 @@ class SettingsViewModel(
             add(SettingsItem("show_bluetooth", R.string.setting_bluetooth, valueRes = showHide(settings.showBluetooth)))
             add(SettingsItem("show_clock", R.string.setting_clock, valueText = if (!settings.showClock) null else if (settings.timeFormat == TimeFormat.TWELVE_HOUR) "12h" else "24h", valueRes = if (!settings.showClock) R.string.value_hide else null))
             add(SettingsItem("show_wifi", R.string.setting_wifi, valueRes = showHide(settings.showWifi)))
+            add(SettingsItem("show_vpn", R.string.setting_vpn, valueRes = showHide(settings.showVpn)))
         }
         "input" -> listOf(
             SettingsItem("controls", R.string.setting_controls, isEditable = true),

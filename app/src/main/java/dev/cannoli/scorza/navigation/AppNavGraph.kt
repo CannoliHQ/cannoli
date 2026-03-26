@@ -494,7 +494,7 @@ fun AppNavGraph(
         }
 
         val kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning
-        val statusBarVisible = dialog !is DialogState.About && dialog !is DialogState.Kitchen && currentScreen !is LauncherScreen.Credits && (kitchenRunning || appSettings.showWifi || appSettings.showBluetooth || appSettings.showClock || appSettings.showBattery)
+        val statusBarVisible = dialog !is DialogState.About && dialog !is DialogState.Kitchen && currentScreen !is LauncherScreen.Credits && (kitchenRunning || appSettings.showWifi || appSettings.showBluetooth || appSettings.showVpn || appSettings.showClock || appSettings.showBattery)
         if (statusBarVisible) {
         Box(
             modifier = Modifier
@@ -508,6 +508,7 @@ fun AppNavGraph(
                 use24hTime = appSettings.use24h,
                 showWifi = appSettings.showWifi,
                 showBluetooth = appSettings.showBluetooth,
+                showVpn = appSettings.showVpn,
                 showClock = appSettings.showClock,
                 showBattery = appSettings.showBattery,
                 showKitchen = kitchenRunning,
