@@ -13,15 +13,9 @@ import androidx.compose.ui.unit.sp
 lateinit var MPlus1Code: FontFamily
     private set
 
-lateinit var NerdSymbols: FontFamily
-    private set
-
 fun initFonts(assets: AssetManager) {
     val typeface = Typeface.createFromAsset(assets, "fonts/MPlus-1c-NerdFont-Bold.ttf")
     MPlus1Code = FontFamily(ComposeTypeface(typeface))
-
-    val nerdTypeface = Typeface.createFromAsset(assets, "fonts/NerdSymbols.ttf")
-    NerdSymbols = FontFamily(ComposeTypeface(nerdTypeface))
 }
 
 fun buildTypography(): Typography {
