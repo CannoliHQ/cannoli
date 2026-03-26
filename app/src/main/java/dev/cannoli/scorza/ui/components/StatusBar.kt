@@ -43,7 +43,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.ui.theme.LocalCannoliColors
-import dev.cannoli.scorza.ui.theme.NerdSymbols
+import dev.cannoli.scorza.ui.theme.MPlus1Code
 import dev.cannoli.scorza.ui.theme.MPlus1Code
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -148,7 +148,7 @@ fun StatusBar(
     val colors = LocalCannoliColors.current
 
     val iconStyle = TextStyle(
-        fontFamily = NerdSymbols,
+        fontFamily = MPlus1Code,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
         color = colors.highlightText
