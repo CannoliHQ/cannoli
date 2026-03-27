@@ -499,6 +499,7 @@ class ShaderPipeline private constructor(
         private fun loadLutTexture(file: File, ref: TextureRef): Int {
             if (!file.exists()) return 0
             val bitmap = try { BitmapFactory.decodeFile(file.absolutePath) } catch (_: Exception) { return 0 }
+                ?: return 0
             val texIds = IntArray(1)
             GLES20.glGenTextures(1, texIds, 0)
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texIds[0])

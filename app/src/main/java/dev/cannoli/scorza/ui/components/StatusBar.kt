@@ -44,7 +44,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.ui.theme.LocalCannoliColors
 import dev.cannoli.scorza.ui.theme.MPlus1Code
-import dev.cannoli.scorza.ui.theme.MPlus1Code
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -155,11 +154,10 @@ fun StatusBar(
         }
     }
 
-    val timeText = if (use24hTime) {
-        SimpleDateFormat("HH:mm", Locale.getDefault()).format(rawTime)
-    } else {
-        SimpleDateFormat("h:mm a", Locale.getDefault()).format(rawTime)
+    val timeFormat = remember(use24hTime) {
+        SimpleDateFormat(if (use24hTime) "HH:mm" else "h:mm a", Locale.getDefault())
     }
+    val timeText = timeFormat.format(rawTime)
 
     val colors = LocalCannoliColors.current
 
