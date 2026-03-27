@@ -39,7 +39,8 @@ data class GameInfo(
     val coreName: String,
     val romPath: String,
     val savePath: String?,
-    val rootPrefix: String = ""
+    val rootPrefix: String = "",
+    val originalRomPath: String? = null
 )
 
 @Composable
@@ -204,7 +205,13 @@ fun LibretroScreen(
                             Spacer(modifier = Modifier.height(16.dp))
                             InfoRow("Core", gameInfo.coreName)
                             Spacer(modifier = Modifier.height(12.dp))
-                            InfoRow("ROM", stripRoot(gameInfo.romPath))
+                            if (gameInfo.originalRomPath != null) {
+                                InfoRow("ROM", stripRoot(gameInfo.originalRomPath))
+                                Spacer(modifier = Modifier.height(12.dp))
+                                InfoRow("Extracted", stripRoot(gameInfo.romPath))
+                            } else {
+                                InfoRow("ROM", stripRoot(gameInfo.romPath))
+                            }
                             if (gameInfo.savePath != null) {
                                 Spacer(modifier = Modifier.height(12.dp))
                                 InfoRow("Save", stripRoot(gameInfo.savePath))
