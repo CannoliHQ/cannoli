@@ -96,7 +96,7 @@ enum class ShortcutAction(val label: String) {
     RESET_GAME("Reset Game"),
     SAVE_AND_QUIT("Save and Quit"),
     CYCLE_SCALING("Cycle Scaling"),
-    CYCLE_EFFECT("Cycle Effect"),
+    CYCLE_EFFECT("Cycle Shader"),
     TOGGLE_FF("Toggle Fast Forward"),
     HOLD_FF("Hold Fast Forward")
 }
@@ -187,7 +187,7 @@ fun InGameMenu(
                 }
             }
 
-            val canDeleteSlot = showThumbnail && selectedSlot.index != 0 && slotExists
+            val canDeleteSlot = showThumbnail && slotExists
             val leftItems = buildList {
                 add("B" to "BACK")
                 if (undoLabel != null) add("X" to undoLabel.uppercase())
