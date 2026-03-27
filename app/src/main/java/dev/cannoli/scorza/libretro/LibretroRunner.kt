@@ -40,6 +40,7 @@ class LibretroRunner {
 
     fun setInput(mask: Int) = nativeSetInput(mask)
 
+    fun getRotation(): Int = nativeGetRotation()
     fun getPixelFormat(): Int = nativeGetPixelFormat()
     fun getFrameWidth(): Int = nativeGetFrameWidth()
     fun getFrameHeight(): Int = nativeGetFrameHeight()
@@ -121,6 +122,7 @@ class LibretroRunner {
     private external fun nativeLoadGame(romPath: String): IntArray?
     private external fun nativeRun()
     private external fun nativeSetInput(mask: Int)
+    private external fun nativeGetRotation(): Int
     private external fun nativeGetPixelFormat(): Int
     private external fun nativeGetFrameWidth(): Int
     private external fun nativeGetFrameHeight(): Int

@@ -137,7 +137,7 @@ class SaveSlotManager(private val stateBasePath: String) {
         runner.copyLastFrame(buf)
         buf.position(0)
 
-        val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        var bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val pixels = IntArray(w * h)
 
         if (pixelFormat == LibretroRunner.PIXEL_FORMAT_XRGB8888) {
@@ -159,6 +159,15 @@ class SaveSlotManager(private val stateBasePath: String) {
         }
 
         bitmap.setPixels(pixels, 0, w, 0, 0, w, h)
+
+        val rotation = runner.getRotation()
+        if (rotation != 0) {
+            val matrix = android.graphics.Matrix()
+            matrix.postRotate(-rotation * 90f)
+            val rotated = Bitmap.createBitmap(bitmap, 0, 0, w, h, matrix, false)
+            bitmap.recycle()
+            bitmap = rotated
+        }
 
         try {
             File(path).outputStream().use { out ->

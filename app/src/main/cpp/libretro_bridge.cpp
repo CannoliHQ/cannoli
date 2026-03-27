@@ -108,9 +108,15 @@ static void core_log(enum retro_log_level level, const char *fmt, ...) {
     va_end(args);
 }
 
+static unsigned g_rotation = 0;
+
 static bool environment_cb(unsigned cmd, void *data) {
     cmd &= ~0x10000U; /* strip RETRO_ENVIRONMENT_EXPERIMENTAL flag */
     switch (cmd) {
+        case 1: /* RETRO_ENVIRONMENT_SET_ROTATION */
+            g_rotation = *(const unsigned *)data & 3;
+            return true;
+
         case RETRO_ENVIRONMENT_GET_OVERSCAN:
             *(bool *)data = true;
             return true;
@@ -555,6 +561,11 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeRun(JNIEnv *, jobject) {
 JNIEXPORT void JNICALL
 Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeSetInput(JNIEnv *, jobject, jint mask) {
     g_input_state = (int16_t)mask;
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeGetRotation(JNIEnv *, jobject) {
+    return (jint)g_rotation;
 }
 
 JNIEXPORT jint JNICALL
