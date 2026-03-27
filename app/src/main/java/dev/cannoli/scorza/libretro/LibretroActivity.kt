@@ -283,7 +283,7 @@ class LibretroActivity : ComponentActivity() {
                 scanShaderPresets()
 
                 audioSampleRate = avInfo.sampleRate
-                audio = LibretroAudio(avInfo.sampleRate)
+                audio = LibretroAudio(avInfo.sampleRate, lowLatency)
                 runner.setAudioCallback(audio!!)
                 audio!!.start()
 
@@ -857,6 +857,7 @@ class LibretroActivity : ComponentActivity() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
             window.setPreferMinimalPostProcessing(lowLatency)
         }
+        audio?.setLowLatency(lowLatency)
     }
 
     private fun cycleShader(direction: Int) {
