@@ -578,7 +578,7 @@ class LibretroActivity : ComponentActivity() {
             }
             KeyEvent.KEYCODE_BUTTON_X -> { if (undoType != null) performUndo(); true }
             KeyEvent.KEYCODE_BUTTON_Y -> {
-                if (onSlotRow && currentSlot.index != 0 && slotExists) {
+                if (onSlotRow && slotExists) {
                     replaceTop(screen.copy(confirmDeleteSlot = true))
                 }
                 true
@@ -1490,6 +1490,7 @@ class LibretroActivity : ComponentActivity() {
         audio?.stop()
         runner.unloadGame()
         runner.deinit()
+        File(cacheDir, "rom_cache").deleteRecursively()
     }
 
     private fun quit() { isRunning = false; cleanup(); finish() }
