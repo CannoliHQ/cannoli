@@ -86,9 +86,6 @@ fun PillRow(
     }
 }
 
-/**
- * Simple pill row with a text label.
- */
 @Composable
 fun PillRowText(
     label: String,
@@ -132,9 +129,6 @@ fun PillRowText(
     }
 }
 
-/**
- * Pill row with a label and a trailing value (for settings).
- */
 @Composable
 fun PillRowKeyValue(
     label: String,
