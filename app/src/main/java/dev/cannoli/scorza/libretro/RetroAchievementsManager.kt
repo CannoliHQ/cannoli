@@ -2,9 +2,11 @@ package dev.cannoli.scorza.libretro
 
 import android.os.Handler
 import android.os.Looper
+import java.io.IOException
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.Collections
 import java.util.concurrent.Executors
 
 class RetroAchievementsManager(
@@ -64,14 +66,17 @@ class RetroAchievementsManager(
     val username: String get() = nativeGetUsername()
 
     private var cachedAchievements: List<Achievement>? = null
-    val pendingSyncIds = mutableSetOf<Int>()
-    val localUnlocks = mutableSetOf<Int>()
+    val pendingSyncIds: MutableSet<Int> = Collections.synchronizedSet(mutableSetOf())
+    val localUnlocks: MutableSet<Int> = Collections.synchronizedSet(mutableSetOf())
 
     private fun syncPending() {
         if (pendingSyncIds.isEmpty() || !nativeIsLoggedIn()) return
-        val toSync = pendingSyncIds.toSet()
+        val toSync: Set<Int>
+        synchronized(pendingSyncIds) {
+            toSync = pendingSyncIds.toSet()
+            pendingSyncIds.clear()
+        }
         val count = toSync.size
-        pendingSyncIds.clear()
         savePendingSync()
         cachedAchievements = null
         httpExecutor.execute {
@@ -111,7 +116,7 @@ class RetroAchievementsManager(
                         pendingSyncIds.add(it)
                         localUnlocks.add(it)
                     }
-                } catch (_: Exception) {}
+                } catch (_: IOException) {}
             }
         }
     }
@@ -120,9 +125,11 @@ class RetroAchievementsManager(
         pendingSyncFile?.let { file ->
             try {
                 file.parentFile?.mkdirs()
-                if (pendingSyncIds.isEmpty()) file.delete()
-                else file.writeText(pendingSyncIds.joinToString("\n"))
-            } catch (_: Exception) {}
+                synchronized(pendingSyncIds) {
+                    if (pendingSyncIds.isEmpty()) file.delete()
+                    else file.writeText(pendingSyncIds.joinToString("\n"))
+                }
+            } catch (_: IOException) {}
         }
     }
     @Volatile var isOffline = false
@@ -173,27 +180,28 @@ class RetroAchievementsManager(
         if (postData == null) return null
         val cacheable = postData.contains("r=achievementsets") || postData.contains("r=login2") || postData.contains("r=startsession")
         if (!cacheable) return null
-        return postData.replace(Regex("[&?](t|u)=[^&]+"), "")
+        return postData.replace(CACHE_KEY_STRIP_REGEX, "")
             .hashCode().toUInt().toString(16)
     }
 
     private fun readCache(key: String): String? {
         val file = java.io.File(cacheDir ?: return null, "ra_$key.json")
-        return if (file.exists()) try { file.readText() } catch (_: Exception) { null } else null
+        return if (file.exists()) try { file.readText() } catch (_: IOException) { null } else null
     }
 
     private fun writeCache(key: String, body: String) {
         val dir = cacheDir ?: return
         dir.mkdirs()
-        try { java.io.File(dir, "ra_$key.json").writeText(body) } catch (_: Exception) {}
+        try { java.io.File(dir, "ra_$key.json").writeText(body) } catch (_: IOException) {}
     }
 
     @Suppress("unused")
     private fun onServerCall(url: String, postData: String?, requestPtr: Long) {
         httpExecutor.execute {
             val key = cacheKey(postData)
+            var conn: HttpURLConnection? = null
             try {
-                val conn = URL(url).openConnection() as HttpURLConnection
+                conn = URL(url).openConnection() as HttpURLConnection
                 conn.connectTimeout = 10_000
                 conn.readTimeout = 10_000
                 if (postData != null) {
@@ -205,14 +213,13 @@ class RetroAchievementsManager(
                 val status = conn.responseCode
                 val body = try {
                     conn.inputStream.bufferedReader().readText()
-                } catch (_: Exception) {
+                } catch (_: IOException) {
                     conn.errorStream?.bufferedReader()?.readText() ?: ""
                 }
-                conn.disconnect()
                 if (key != null && status == 200 && body.isNotEmpty()) writeCache(key, body)
                 isOffline = false
                 nativeHttpResponse(requestPtr, body, status)
-            } catch (e: Exception) {
+            } catch (_: IOException) {
                 val cached = if (key != null) readCache(key) else null
                 if (cached != null) {
                     isOffline = true
@@ -221,6 +228,8 @@ class RetroAchievementsManager(
                     isOffline = true
                     nativeHttpResponse(requestPtr, "", RC_SERVER_ERROR)
                 }
+            } finally {
+                conn?.disconnect()
             }
         }
     }
@@ -272,6 +281,7 @@ class RetroAchievementsManager(
         }
 
         private const val RC_SERVER_ERROR = 503
+        private val CACHE_KEY_STRIP_REGEX = Regex("[&?](t|u)=[^&]+")
 
         val CONSOLE_MAP = mapOf(
             "NES" to 7, "SNES" to 3, "GB" to 4, "GBC" to 6, "GBA" to 5,

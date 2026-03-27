@@ -84,7 +84,6 @@ static uint32_t ra_read_memory(uint32_t address, uint8_t *buffer, uint32_t num_b
     (void)client;
     if (!g_memory_initialized) return 0;
     return rc_libretro_memory_read(&g_memory_regions, address, buffer, num_bytes);
-    return num_bytes;
 }
 
 static void ra_server_call(const rc_api_request_t *request,
@@ -129,6 +128,13 @@ static void ra_server_call(const rc_api_request_t *request,
 
     /* Store callback info for later response */
     QueuedResponse *qr = (QueuedResponse *)calloc(1, sizeof(QueuedResponse));
+    if (!qr) {
+        rc_api_server_response_t response;
+        memset(&response, 0, sizeof(response));
+        response.http_status_code = RC_API_SERVER_RESPONSE_CLIENT_ERROR;
+        callback(&response, callback_data);
+        return;
+    }
     qr->callback = callback;
     qr->callback_data = callback_data;
 
@@ -142,6 +148,16 @@ static void ra_server_call(const rc_api_request_t *request,
     }
 
     jstring jUrl = (*env)->NewStringUTF(env, request->url);
+    if (!jUrl) {
+        /* OOM — deliver error response to avoid stalling rcheevos */
+        rc_api_server_response_t response;
+        memset(&response, 0, sizeof(response));
+        response.http_status_code = RC_API_SERVER_RESPONSE_CLIENT_ERROR;
+        callback(&response, callback_data);
+        free(qr);
+        if (attached) (*g_jvm)->DetachCurrentThread(g_jvm);
+        return;
+    }
     jstring jPost = request->post_data ? (*env)->NewStringUTF(env, request->post_data) : NULL;
 
     (*env)->CallVoidMethod(env, g_manager, g_onServerCall, jUrl, jPost, (jlong)(uintptr_t)qr);
@@ -204,6 +220,7 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeInit(JNIEnv *env
     g_onServerCall = (*env)->GetMethodID(env, cls, "onServerCall", "(Ljava/lang/String;Ljava/lang/String;J)V");
     g_onEvent = (*env)->GetMethodID(env, cls, "onAchievementEvent", "(IILjava/lang/String;Ljava/lang/String;I)V");
     g_onLoginResult = (*env)->GetMethodID(env, cls, "onLoginResult", "(ZLjava/lang/String;Ljava/lang/String;)V");
+    (*env)->DeleteLocalRef(env, cls);
 
     g_client = rc_client_create(ra_read_memory, ra_server_call);
     rc_client_enable_logging(g_client, RC_CLIENT_LOG_LEVEL_INFO, ra_log);
@@ -284,6 +301,11 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeLoginWithToken(J
     if (!g_client) return;
     const char *user = (*env)->GetStringUTFChars(env, username, NULL);
     const char *tok = (*env)->GetStringUTFChars(env, token, NULL);
+    if (!user || !tok) {
+        if (user) (*env)->ReleaseStringUTFChars(env, username, user);
+        if (tok) (*env)->ReleaseStringUTFChars(env, token, tok);
+        return;
+    }
     rc_client_begin_login_with_token(g_client, user, tok, ra_login_callback, NULL);
     (*env)->ReleaseStringUTFChars(env, username, user);
     (*env)->ReleaseStringUTFChars(env, token, tok);
@@ -296,6 +318,11 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeLoginWithPasswor
     if (!g_client) return;
     const char *user = (*env)->GetStringUTFChars(env, username, NULL);
     const char *pass = (*env)->GetStringUTFChars(env, password, NULL);
+    if (!user || !pass) {
+        if (user) (*env)->ReleaseStringUTFChars(env, username, user);
+        if (pass) (*env)->ReleaseStringUTFChars(env, password, pass);
+        return;
+    }
     rc_client_begin_login_with_password(g_client, user, pass, ra_login_callback, NULL);
     (*env)->ReleaseStringUTFChars(env, username, user);
     (*env)->ReleaseStringUTFChars(env, password, pass);
@@ -317,6 +344,7 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeLoadGame(JNIEnv 
     (void)thiz;
     if (!g_client) return;
     const char *path = (*env)->GetStringUTFChars(env, romPath, NULL);
+    if (!path) return;
     free(g_pending_rom_path);
     g_pending_rom_path = strdup(path);
     g_pending_console_id = (uint32_t)consoleId;
@@ -393,13 +421,14 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeHttpResponse(JNI
     QueuedResponse *qr = (QueuedResponse *)(uintptr_t)requestPtr;
     if (!qr) return;
 
-    const char *bodyStr = body ? (*env)->GetStringUTFChars(env, body, NULL) : "";
-    size_t len = strlen(bodyStr);
+    const char *bodyStr = body ? (*env)->GetStringUTFChars(env, body, NULL) : NULL;
+    const char *src = bodyStr ? bodyStr : "";
+    size_t len = strlen(src);
     qr->body = (char *)malloc(len + 1);
-    memcpy(qr->body, bodyStr, len + 1);
+    memcpy(qr->body, src, len + 1);
     qr->body_len = len;
     qr->http_status = httpStatus;
-    if (body) (*env)->ReleaseStringUTFChars(env, body, bodyStr);
+    if (bodyStr) (*env)->ReleaseStringUTFChars(env, body, bodyStr);
 
     pthread_mutex_lock(&g_queue_mutex);
     qr->next = NULL;
@@ -422,6 +451,7 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeGetAchievementDa
 
     size_t cap = 4096;
     char *buf = (char *)malloc(cap);
+    if (!buf) { rc_client_destroy_achievement_list(list); return (*env)->NewStringUTF(env, ""); }
     size_t pos = 0;
 
     for (uint32_t b = 0; b < list->num_buckets; b++) {
@@ -433,7 +463,12 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeGetAchievementDa
                            ach->state == RC_CLIENT_ACHIEVEMENT_STATE_UNLOCKED ? 1 : 0;
             if (!softcore && (ach->unlocked & RC_CLIENT_ACHIEVEMENT_UNLOCKED_HARDCORE)) continue;
 
-            if (pos + 512 > cap) { cap *= 2; buf = (char *)realloc(buf, cap); }
+            if (pos + 512 > cap) {
+                cap *= 2;
+                char *newbuf = (char *)realloc(buf, cap);
+                if (!newbuf) { free(buf); rc_client_destroy_achievement_list(list); return (*env)->NewStringUTF(env, ""); }
+                buf = newbuf;
+            }
             pos += snprintf(buf + pos, cap - pos, "%u|%s|%s|%u|%d|%d|%ld\n",
                 ach->id,
                 ach->title ? ach->title : "",
