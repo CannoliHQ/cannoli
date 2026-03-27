@@ -112,6 +112,7 @@ class LibretroActivity : ComponentActivity() {
     private var gameTitle: String = ""
     private var corePath: String = ""
     private var romPath: String = ""
+    private var originalRomPath: String? = null
     private var sramPath: String = ""
     private var stateBasePath: String = ""
     private var systemDir: String = ""
@@ -172,6 +173,7 @@ class LibretroActivity : ComponentActivity() {
         gameTitle = (intent.getStringExtra("game_title") ?: "").removePrefix("★ ")
         corePath = intent.getStringExtra("core_path") ?: run { finish(); return }
         romPath = intent.getStringExtra("rom_path") ?: run { finish(); return }
+        originalRomPath = intent.getStringExtra("original_rom_path")
         sramPath = intent.getStringExtra("sram_path") ?: ""
         stateBasePath = intent.getStringExtra("state_path") ?: ""
         systemDir = intent.getStringExtra("system_dir") ?: ""
@@ -238,7 +240,8 @@ class LibretroActivity : ComponentActivity() {
                                 coreName = coreInfoText,
                                 romPath = romPath,
                                 savePath = sramPath.takeIf { java.io.File(it).exists() },
-                                rootPrefix = cannoliRoot
+                                rootPrefix = cannoliRoot,
+                                originalRomPath = originalRomPath
                             )
                         )
                     }
