@@ -746,7 +746,7 @@ class LibretroActivity : ComponentActivity() {
         val dir = File(cannoliRoot, "Shaders")
         val exts = setOf("glslp", "slangp")
         shaderPresets = dir.walk()
-            .filter { it.isFile && it.extension.lowercase() in exts }
+            .filter { it.isFile && it.extension.lowercase(java.util.Locale.ROOT) in exts }
             .map { it.relativeTo(dir).path }
             .sorted()
             .toList()

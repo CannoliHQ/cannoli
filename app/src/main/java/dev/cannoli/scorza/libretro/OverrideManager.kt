@@ -228,7 +228,7 @@ class OverrideManager(
         if (s.isNotEmpty()) {
             val map = mutableMapOf<ShortcutAction, Set<Int>>()
             for ((key, value) in s) {
-                val action = try { ShortcutAction.valueOf(key) } catch (_: Exception) { continue }
+                val action = try { ShortcutAction.valueOf(key) } catch (_: IllegalArgumentException) { continue }
                 val chord = if (value.isEmpty()) emptySet()
                 else value.split(",").mapNotNull { it.toIntOrNull() }.toSet()
                 map[action] = chord
@@ -282,6 +282,6 @@ class OverrideManager(
     }
 
     private inline fun <reified T : Enum<T>> enumSafe(value: String): T? {
-        return try { enumValueOf<T>(value) } catch (_: Exception) { null }
+        return try { enumValueOf<T>(value) } catch (_: IllegalArgumentException) { null }
     }
 }
