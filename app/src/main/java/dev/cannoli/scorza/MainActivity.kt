@@ -268,16 +268,24 @@ class MainActivity : ComponentActivity() {
         if (cp is LauncherScreen.CollectionPicker) {
             val allCollections = scanner.getCollectionNames()
                 .filter { !it.equals("Favorites", ignoreCase = true) }
+                .sortedWith(dev.cannoli.scorza.util.NaturalSort)
             val alreadyIn = if (cp.gamePaths.size == 1) {
                 scanner.getCollectionsContaining(cp.gamePaths[0])
-            } else emptySet()
-            val initialChecked = allCollections.indices
+            } else {
+                cp.gamePaths.map { scanner.getCollectionsContaining(it) }
+                    .reduceOrNull { acc, set -> acc intersect set } ?: emptySet()
+            }
+            val newInitialChecked = allCollections.indices
                 .filter { allCollections[it] in alreadyIn }
+                .toSet()
+            val oldCheckedNames = cp.checkedIndices.mapNotNull { cp.collections.getOrNull(it) }.toSet()
+            val newCheckedIndices = allCollections.indices
+                .filter { allCollections[it] in oldCheckedNames || allCollections[it] in alreadyIn }
                 .toSet()
             screenStack[screenStack.lastIndex] = cp.copy(
                 collections = allCollections,
-                checkedIndices = initialChecked,
-                initialChecked = initialChecked
+                checkedIndices = newCheckedIndices,
+                initialChecked = newInitialChecked
             )
         }
     }
@@ -1189,7 +1197,10 @@ class MainActivity : ComponentActivity() {
                                 .filter { !it.isSubfolder }
                             if (checkedGames.isNotEmpty()) {
                                 val paths = checkedGames.map { it.file.absolutePath }
+                                val favPaths = scanner.getFavoritePaths()
+                                val allFav = paths.all { it in favPaths }
                                 val options = mutableListOf<String>()
+                                options.add(if (allFav) MENU_REMOVE_FAVORITE else MENU_ADD_FAVORITE)
                                 if (glState.isCollection && glState.collectionName != null) {
                                     options.add(MENU_REMOVE_FROM_COLLECTION)
                                 }
@@ -1358,12 +1369,7 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
-                        LauncherScreen.GameList -> {
-                            val glState = gameListViewModel.state.value
-                            if (!glState.isCollectionsList && !glState.multiSelectMode && !glState.reorderMode) {
-                                gameListViewModel.toggleFavorite { rescanSystemList() }
-                            }
-                        }
+                        LauncherScreen.GameList -> {}
                         else -> {}
                     }
                 }
@@ -1659,7 +1665,10 @@ class MainActivity : ComponentActivity() {
     private fun buildGameContextOptions(game: dev.cannoli.scorza.model.Game, glState: dev.cannoli.scorza.ui.viewmodel.GameListViewModel.State): List<String> {
         if (glState.isCollectionsList || game.isChildCollection) return listOf(MENU_RENAME, MENU_CHILD_COLLECTIONS, MENU_DELETE)
         if (game.isSubfolder) return listOf(MENU_RENAME, MENU_DELETE)
+        val isFav = game.displayName.startsWith("★") ||
+            (glState.isCollection && glState.collectionName == "Favorites")
         return buildList {
+            add(if (isFav) MENU_REMOVE_FAVORITE else MENU_ADD_FAVORITE)
             addAll(gameContextOptions)
             if (game.artFile != null) {
                 val idx = indexOf(MENU_DELETE_GAME)
@@ -1678,6 +1687,8 @@ class MainActivity : ComponentActivity() {
         private const val MENU_REMOVE_FROM_COLLECTION = "Remove from Collection"
         private const val MENU_CHILD_COLLECTIONS = "Child Collections"
         private const val MENU_RA_GAME_ID = "RA Game ID"
+        private const val MENU_ADD_FAVORITE = "Add to Favorites"
+        private const val MENU_REMOVE_FAVORITE = "Remove from Favorites"
     }
 
     private val gameContextOptions = listOf(MENU_MANAGE_COLLECTIONS, MENU_EMULATOR_OVERRIDE, MENU_RA_GAME_ID, MENU_RENAME, MENU_DELETE_GAME)
@@ -1745,6 +1756,11 @@ class MainActivity : ComponentActivity() {
                     currentName = current,
                     cursorPos = current.length
                 )
+            }
+            MENU_ADD_FAVORITE, MENU_REMOVE_FAVORITE -> {
+                pendingContextReturn = null
+                gameListViewModel.toggleFavorite { rescanSystemList() }
+                dialogState.value = DialogState.None
             }
             MENU_EMULATOR_OVERRIDE -> {
                 val tag = game.platformTag
@@ -1846,6 +1862,7 @@ class MainActivity : ComponentActivity() {
     private fun openCollectionManager(gamePaths: List<String>, title: String) {
         val allCollections = scanner.getCollectionNames()
             .filter { !it.equals("Favorites", ignoreCase = true) }
+            .sortedWith(dev.cannoli.scorza.util.NaturalSort)
         val alreadyIn = if (gamePaths.size == 1) {
             scanner.getCollectionsContaining(gamePaths[0])
         } else {
@@ -1901,6 +1918,28 @@ class MainActivity : ComponentActivity() {
     private fun onBulkContextMenuConfirm(state: DialogState.BulkContextMenu) {
         pendingContextReturn = ContextReturn.Bulk(state.gamePaths, state.options)
         when (state.options[state.selectedOption]) {
+            MENU_ADD_FAVORITE -> {
+                pendingContextReturn = null
+                ioScope.launch {
+                    state.gamePaths.forEach { path ->
+                        scanner.addToCollection("Favorites", path)
+                    }
+                    gameListViewModel.reload()
+                    rescanSystemList()
+                }
+                dialogState.value = DialogState.None
+            }
+            MENU_REMOVE_FAVORITE -> {
+                pendingContextReturn = null
+                ioScope.launch {
+                    state.gamePaths.forEach { path ->
+                        scanner.removeFromCollection("Favorites", path)
+                    }
+                    gameListViewModel.reload()
+                    rescanSystemList()
+                }
+                dialogState.value = DialogState.None
+            }
             MENU_MANAGE_COLLECTIONS -> {
                 openCollectionManager(state.gamePaths, "${state.gamePaths.size} Selected")
             }
@@ -1944,6 +1983,7 @@ class MainActivity : ComponentActivity() {
             dialogState.value = DialogState.None
             return
         }
+        dialogState.value = DialogState.None
         ioScope.launch {
             scanner.createCollection(name)
             state.gamePaths.forEach { path ->
@@ -1951,8 +1991,8 @@ class MainActivity : ComponentActivity() {
             }
             gameListViewModel.reload()
             rescanSystemList()
+            runOnUiThread { refreshCollectionPickerOnStack() }
         }
-        dialogState.value = DialogState.CollectionCreated(collectionName = name)
     }
 
     private fun onCollectionRenameConfirm(state: DialogState.CollectionRenameInput) {
