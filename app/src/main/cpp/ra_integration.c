@@ -414,6 +414,22 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeGetUsername(JNIE
     return (*env)->NewStringUTF(env, user ? user->display_name : "");
 }
 
+JNIEXPORT jint JNICALL
+Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeGetGameId(JNIEnv *env, jobject thiz) {
+    (void)env; (void)thiz;
+    if (!g_client || !rc_client_is_game_loaded(g_client)) return 0;
+    const rc_client_game_t *game = rc_client_get_game_info(g_client);
+    return game ? (jint)game->id : 0;
+}
+
+JNIEXPORT jstring JNICALL
+Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeGetGameTitle(JNIEnv *env, jobject thiz) {
+    (void)thiz;
+    if (!g_client || !rc_client_is_game_loaded(g_client)) return (*env)->NewStringUTF(env, "");
+    const rc_client_game_t *game = rc_client_get_game_info(g_client);
+    return (*env)->NewStringUTF(env, (game && game->title) ? game->title : "");
+}
+
 JNIEXPORT void JNICALL
 Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeHttpResponse(JNIEnv *env, jobject thiz,
         jlong requestPtr, jstring body, jint httpStatus) {
