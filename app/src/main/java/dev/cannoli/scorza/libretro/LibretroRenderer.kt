@@ -83,6 +83,13 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
     private lateinit var vertexBuffer: FloatBuffer
     private lateinit var texCoordBuffer: FloatBuffer
     private lateinit var fboTexCoordBuffer: FloatBuffer
+    private var lastRotation = -1
+    private val rotatedTexCoords = arrayOf(
+        floatArrayOf(0f, 1f, 1f, 1f, 0f, 0f, 1f, 0f),   // 0°
+        floatArrayOf(0f, 0f, 0f, 1f, 1f, 0f, 1f, 1f),   // 90° CCW
+        floatArrayOf(1f, 0f, 0f, 0f, 1f, 1f, 0f, 1f),   // 180°
+        floatArrayOf(1f, 1f, 1f, 0f, 0f, 1f, 0f, 0f)    // 270° CCW
+    )
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         GLES20.glClearColor(0f, 0f, 0f, 1f)
@@ -219,21 +226,35 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
             return
         }
 
+        val rotation = runner.getRotation()
+        if (rotation != lastRotation) {
+            lastRotation = rotation
+            val coords = rotatedTexCoords[rotation and 3]
+            texCoordBuffer.clear()
+            texCoordBuffer.put(coords)
+            texCoordBuffer.position(0)
+        }
+        val rotated = rotation == 1 || rotation == 3
         val gameAspect = when (scalingMode) {
             ScalingMode.FULLSCREEN -> surfaceWidth.toFloat() / surfaceHeight.toFloat()
-            ScalingMode.CORE_REPORTED -> if (coreAspectRatio > 0f) coreAspectRatio else w.toFloat() / h.toFloat()
-            ScalingMode.INTEGER -> w.toFloat() / h.toFloat()
+            ScalingMode.CORE_REPORTED -> {
+                val base = if (coreAspectRatio > 0f) coreAspectRatio else w.toFloat() / h.toFloat()
+                if (rotated) 1f / base else base
+            }
+            ScalingMode.INTEGER -> if (rotated) h.toFloat() / w.toFloat() else w.toFloat() / h.toFloat()
         }
         val screenAspect = surfaceWidth.toFloat() / surfaceHeight.toFloat()
 
         var vpW: Int
         var vpH: Int
         if (scalingMode == ScalingMode.INTEGER) {
-            val scaleX = surfaceWidth / w
-            val scaleY = surfaceHeight / h
+            val dimW = if (rotated) h else w
+            val dimH = if (rotated) w else h
+            val scaleX = surfaceWidth / dimW
+            val scaleY = surfaceHeight / dimH
             val scale = maxOf(1, minOf(scaleX, scaleY))
-            vpW = w * scale
-            vpH = h * scale
+            vpW = dimW * scale
+            vpH = dimH * scale
         } else if (gameAspect > screenAspect) {
             vpW = surfaceWidth
             vpH = (surfaceWidth / gameAspect).toInt()
