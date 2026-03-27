@@ -58,7 +58,6 @@ object ArchiveExtractor {
             }
             if (largest == null) return null
             val outFile = File(outDir, File(largest.name).name)
-            // Re-open and stream to the target entry
             SevenZFile.builder().setFile(archive).get().use { sz ->
                 var e = sz.nextEntry
                 while (e != null) {
