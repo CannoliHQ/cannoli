@@ -64,6 +64,12 @@ class RetroAchievementsManager(
 
     val isLoggedIn: Boolean get() = nativeIsLoggedIn()
     val username: String get() = nativeGetUsername()
+    val gameId: Int get() = nativeGetGameId()
+    val gameTitle: String get() = nativeGetGameTitle()
+    val isOnline: Boolean get() {
+        val cm = context?.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return false
+        return cm.activeNetwork != null
+    }
 
     private var cachedAchievements: List<Achievement>? = null
     val pendingSyncIds: MutableSet<Int> = Collections.synchronizedSet(mutableSetOf())
@@ -271,6 +277,8 @@ class RetroAchievementsManager(
     private external fun nativeReset()
     private external fun nativeIsLoggedIn(): Boolean
     private external fun nativeGetUsername(): String
+    private external fun nativeGetGameId(): Int
+    private external fun nativeGetGameTitle(): String
     private external fun nativeHttpResponse(requestPtr: Long, body: String, httpStatus: Int)
     private external fun nativeGetAchievementData(): String
     private external fun nativeManualUnlock(achievementId: Int)

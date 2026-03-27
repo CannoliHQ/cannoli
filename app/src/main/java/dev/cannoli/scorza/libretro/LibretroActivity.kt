@@ -242,7 +242,21 @@ class LibretroActivity : ComponentActivity() {
                                 romPath = romPath,
                                 savePath = sramPath.takeIf { java.io.File(it).exists() },
                                 rootPrefix = cannoliRoot,
-                                originalRomPath = originalRomPath
+                                originalRomPath = originalRomPath,
+                                rendererName = renderer.backendName,
+                                raStatus = raManager?.let { ra ->
+                                    if (ra.isLoggedIn) {
+                                        val status = if (ra.isOnline) "Online" else "Offline"
+                                        "${ra.username} ($status)"
+                                    } else null
+                                },
+                                raGameId = raManager?.let { ra ->
+                                    val id = ra.gameId
+                                    if (id > 0) {
+                                        val title = ra.gameTitle
+                                        if (title.isNotEmpty()) "$id — $title" else "$id"
+                                    } else null
+                                }
                             )
                         )
                     }

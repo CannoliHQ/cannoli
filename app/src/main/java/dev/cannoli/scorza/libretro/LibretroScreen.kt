@@ -4,6 +4,8 @@ import android.graphics.Bitmap
 import android.opengl.GLSurfaceView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -20,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.unit.dp
@@ -47,7 +50,10 @@ data class GameInfo(
     val romPath: String,
     val savePath: String?,
     val rootPrefix: String = "",
-    val originalRomPath: String? = null
+    val originalRomPath: String? = null,
+    val rendererName: String = "",
+    val raStatus: String? = null,
+    val raGameId: String? = null
 )
 
 @Composable
@@ -212,19 +218,38 @@ fun LibretroScreen(
                                 lineHeight = 32.sp
                             )
                             val infoModifier = Modifier.padding(start = pillInternalH)
-                            Spacer(modifier = Modifier.height(16.dp))
-                            InfoRow("Core", gameInfo.coreName, infoModifier)
-                            Spacer(modifier = Modifier.height(12.dp))
-                            if (gameInfo.originalRomPath != null) {
-                                InfoRow("ROM", stripRoot(gameInfo.originalRomPath), infoModifier)
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clipToBounds()
+                                    .verticalScroll(rememberScrollState())
+                            ) {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                InfoRow("Core", gameInfo.coreName, infoModifier)
                                 Spacer(modifier = Modifier.height(12.dp))
-                                InfoRow("Extracted", stripRoot(gameInfo.romPath), infoModifier)
-                            } else {
-                                InfoRow("ROM", stripRoot(gameInfo.romPath), infoModifier)
-                            }
-                            if (gameInfo.savePath != null) {
-                                Spacer(modifier = Modifier.height(12.dp))
-                                InfoRow("Save", stripRoot(gameInfo.savePath), infoModifier)
+                                if (gameInfo.originalRomPath != null) {
+                                    InfoRow("ROM", stripRoot(gameInfo.originalRomPath), infoModifier)
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    InfoRow("Extracted", stripRoot(gameInfo.romPath), infoModifier)
+                                } else {
+                                    InfoRow("ROM", stripRoot(gameInfo.romPath), infoModifier)
+                                }
+                                if (gameInfo.savePath != null) {
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    InfoRow("Save", stripRoot(gameInfo.savePath), infoModifier)
+                                }
+                                if (gameInfo.rendererName.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    InfoRow("Renderer", gameInfo.rendererName, infoModifier)
+                                }
+                                if (gameInfo.raStatus != null) {
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    InfoRow("RetroAchievements", gameInfo.raStatus, infoModifier)
+                                }
+                                if (gameInfo.raGameId != null) {
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    InfoRow("Game ID", gameInfo.raGameId, infoModifier)
+                                }
                             }
                         }
                         BottomBar(
