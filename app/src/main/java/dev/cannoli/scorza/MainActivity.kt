@@ -556,7 +556,7 @@ class MainActivity : ComponentActivity() {
 
         scanner = FileScanner(root, platformResolver)
         scanner.ensureDirectories()
-        launchManager.ensureRetroArchConfig(root)
+        launchManager.syncRetroArchConfig(root)
 
         systemListViewModel = SystemListViewModel(scanner)
         gameListViewModel = GameListViewModel(scanner, platformResolver)

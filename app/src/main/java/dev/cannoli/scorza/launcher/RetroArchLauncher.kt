@@ -10,13 +10,12 @@ class RetroArchLauncher(
     private val context: Context,
     private val getRetroArchPackage: () -> String
 ) {
-    fun launch(romFile: File, coreName: String): LaunchResult {
+    fun launch(romFile: File, coreName: String, configPath: String? = null): LaunchResult {
         val retroArchPackage = getRetroArchPackage()
         if (!context.isPackageInstalled(retroArchPackage)) {
             return LaunchResult.AppNotInstalled(retroArchPackage)
         }
 
-        // TODO: re-enable passing a config file to RetroArch once config management is implemented
         val intent = Intent().apply {
             component = ComponentName(
                 retroArchPackage,
@@ -24,6 +23,7 @@ class RetroArchLauncher(
             )
             putExtra("LIBRETRO", "/data/data/$retroArchPackage/cores/${coreName}_android.so")
             putExtra("ROM", romFile.absolutePath)
+            if (configPath != null) putExtra("CONFIGFILE", configPath)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
 
