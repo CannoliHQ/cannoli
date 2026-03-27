@@ -12,6 +12,7 @@ import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.settings.TimeFormat
 import dev.cannoli.scorza.ui.screens.DialogState
 import java.io.File
+import java.security.MessageDigest
 import java.text.Normalizer
 
 class LaunchManager(
@@ -22,22 +23,86 @@ class LaunchManager(
     private val emuLauncher: EmuLauncher,
     private val apkLauncher: ApkLauncher,
 ) {
+    private var raConfigPath: String? = null
 
-    fun ensureRetroArchConfig(root: File) {
-        val configFile = File(root, "Config/retroarch.cfg")
-        if (configFile.exists()) return
-        configFile.parentFile?.mkdirs()
-        val rootPath = root.absolutePath
-        configFile.writeText(
-            """
-            savefile_directory = "$rootPath/Saves"
-            savestate_directory = "$rootPath/Save States"
-            system_directory = "$rootPath/BIOS"
-            sort_savefiles_by_content_enable = "true"
-            sort_savestates_by_content_enable = "true"
-            """.trimIndent() + "\n"
-        )
+    fun syncRetroArchConfig(root: File) {
+        val configDir = File(root, "Config")
+        configDir.mkdirs()
+        val localConfig = File(configDir, "retroarch.cfg")
+        val hashFile = File(configDir, ".ra_config_hash")
+
+        val raPackage = settings.retroArchPackage
+        val sourceConfig = File("/storage/emulated/0/Android/data/$raPackage/files/retroarch.cfg")
+
+        if (!sourceConfig.exists()) {
+            if (!localConfig.exists()) {
+                localConfig.writeText(buildMinimalConfig(root.absolutePath))
+            }
+            raConfigPath = localConfig.absolutePath
+            return
+        }
+
+        val sourceBytes = try { sourceConfig.readBytes() } catch (_: Exception) {
+            if (!localConfig.exists()) localConfig.writeText(buildMinimalConfig(root.absolutePath))
+            raConfigPath = localConfig.absolutePath
+            return
+        }
+        val sourceHash = sha256(sourceBytes + "${settings.raUsername}:${settings.raToken}".toByteArray())
+        val storedHash = if (hashFile.exists()) try { hashFile.readText().trim() } catch (_: Exception) { "" } else ""
+
+        if (sourceHash != storedHash || !localConfig.exists()) {
+            val patched = patchRetroArchConfig(String(sourceBytes), root.absolutePath)
+            localConfig.writeText(patched)
+            hashFile.writeText(sourceHash)
+        }
+
+        raConfigPath = localConfig.absolutePath
     }
+
+    private fun buildMinimalConfig(rootPath: String) = buildString {
+        appendLine("savefile_directory = \"$rootPath/Saves\"")
+        appendLine("savestate_directory = \"$rootPath/Save States\"")
+        appendLine("system_directory = \"$rootPath/BIOS\"")
+        appendLine("sort_savefiles_by_content_enable = \"true\"")
+        appendLine("sort_savestates_by_content_enable = \"true\"")
+        appendLine("config_save_on_exit = \"false\"")
+    }
+
+    private fun patchRetroArchConfig(source: String, rootPath: String): String {
+        val overrides = mutableMapOf(
+            "savefile_directory" to "$rootPath/Saves",
+            "savestate_directory" to "$rootPath/Save States",
+            "system_directory" to "$rootPath/BIOS",
+            "screenshot_directory" to "$rootPath/Media/Screenshots",
+            "recording_output_directory" to "$rootPath/Media/Recordings",
+            "sort_savefiles_by_content_enable" to "true",
+            "sort_savestates_by_content_enable" to "true",
+            "config_save_on_exit" to "false",
+        )
+        val raUser = settings.raUsername
+        val raToken = settings.raToken
+        if (raUser.isNotEmpty() && raToken.isNotEmpty()) {
+            overrides["cheevos_enable"] = "true"
+            overrides["cheevos_username"] = raUser
+            overrides["cheevos_token"] = raToken
+        }
+        val applied = mutableSetOf<String>()
+        val lines = source.lines().map { line ->
+            val trimmed = line.trimStart()
+            val key = trimmed.substringBefore('=').trim().removePrefix("# ")
+            if (key in overrides) {
+                applied.add(key)
+                "$key = \"${overrides[key]}\""
+            } else line
+        }.toMutableList()
+        for ((key, value) in overrides) {
+            if (key !in applied) lines.add("$key = \"$value\"")
+        }
+        return lines.joinToString("\n")
+    }
+
+    private fun sha256(bytes: ByteArray): String =
+        MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
 
     fun createTempM3u(game: Game): File {
         val m3uDir = File(context.cacheDir, "m3u")
@@ -125,7 +190,8 @@ class LaunchManager(
                                 return null
                             }
                         }
-                        retroArchLauncher.launch(launchFile, core)
+                        syncRetroArchConfig(File(settings.sdCardRoot))
+                        retroArchLauncher.launch(launchFile, core, raConfigPath)
                     } else {
                         LaunchResult.CoreNotInstalled("unknown")
                     }
