@@ -212,7 +212,6 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
             loadOverlayTexture()
         }
 
-
         if (surfaceWidth == 0 || surfaceHeight == 0) {
             GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
             tickFps()
