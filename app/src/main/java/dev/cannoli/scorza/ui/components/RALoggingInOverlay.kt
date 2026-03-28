@@ -11,9 +11,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import dev.cannoli.scorza.R
 import dev.cannoli.scorza.ui.theme.MPlus1Code
 
 @Composable
@@ -29,7 +31,7 @@ fun RALoggingInOverlay(message: String) {
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "RetroAchievements",
+                text = stringResource(R.string.ra_title),
                 style = TextStyle(
                     fontFamily = MPlus1Code,
                     fontWeight = FontWeight.Bold,
@@ -50,7 +52,7 @@ fun RALoggingInOverlay(message: String) {
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(screenPadding),
-            leftItems = listOf("B" to "BACK"),
+            leftItems = listOf("B" to stringResource(R.string.label_back)),
             rightItems = emptyList()
         )
     }

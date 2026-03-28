@@ -563,7 +563,7 @@ class MainActivity : ComponentActivity() {
         launchManager.syncRetroArchConfig(root)
 
         systemListViewModel = SystemListViewModel(scanner)
-        gameListViewModel = GameListViewModel(scanner, platformResolver)
+        gameListViewModel = GameListViewModel(scanner, platformResolver, resources)
         settingsViewModel = SettingsViewModel(settings, root, packageManager)
         atomicRename = AtomicRename(root)
 

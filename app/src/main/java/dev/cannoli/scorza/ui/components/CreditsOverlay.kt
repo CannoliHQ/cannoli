@@ -1,8 +1,10 @@
 package dev.cannoli.scorza.ui.components
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
+import dev.cannoli.scorza.R
 
 data class CreditEntry(val name: String, val detail: String)
 
@@ -55,7 +57,7 @@ fun CreditsOverlay(
     ListDialogScreen(
         backgroundImagePath = backgroundImagePath,
         backgroundTint = backgroundTint,
-        title = "Credits and Licenses",
+        title = stringResource(R.string.credits_title),
         listFontSize = listFontSize,
         listLineHeight = listLineHeight,
         fullWidth = true,

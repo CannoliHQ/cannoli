@@ -2,6 +2,7 @@ package dev.cannoli.scorza.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.cannoli.scorza.R
 import dev.cannoli.scorza.model.Game
 import dev.cannoli.scorza.scanner.FileScanner
 import dev.cannoli.scorza.scanner.PlatformResolver
@@ -14,7 +15,8 @@ import kotlinx.coroutines.withContext
 
 class GameListViewModel(
     private val scanner: FileScanner,
-    private val platformResolver: PlatformResolver
+    private val platformResolver: PlatformResolver,
+    private val resources: android.content.res.Resources
 ) : ViewModel() {
 
     data class State(
@@ -200,7 +202,7 @@ class GameListViewModel(
                 0 to 0
             }
             _state.value = State(
-                breadcrumb = "Collections",
+                breadcrumb = resources.getString(R.string.label_collections),
                 games = games,
                 selectedIndex = idx,
                 scrollTarget = scroll,

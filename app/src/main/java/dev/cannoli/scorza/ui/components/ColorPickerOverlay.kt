@@ -111,7 +111,7 @@ fun ColorPickerOverlay(
             BottomBar(
                 leftItems = listOf("B" to stringResource(R.string.label_back)),
                 rightItems = listOf(
-                    "X" to "HEX",
+                    "X" to stringResource(R.string.label_hex),
                     "A" to stringResource(R.string.label_select)
                 )
             )

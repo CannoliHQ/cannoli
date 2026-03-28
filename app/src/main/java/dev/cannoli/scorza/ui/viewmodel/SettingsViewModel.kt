@@ -310,17 +310,17 @@ class SettingsViewModel(
 
     fun getColorEntries(): List<dev.cannoli.scorza.ui.screens.ColorEntry> {
         val names = mapOf(
-            "color_text" to "Text",
-            "color_highlight" to "Highlight",
-            "color_highlight_text" to "Highlight Text",
-            "color_accent" to "Accent"
+            "color_text" to R.string.setting_color_text,
+            "color_highlight" to R.string.setting_color_highlight,
+            "color_highlight_text" to R.string.setting_color_highlight_text,
+            "color_accent" to R.string.setting_color_accent
         )
-        return names.map { (key, label) ->
+        return names.map { (key, labelRes) ->
             val hex = getColorHex(key)
             val color = hexToColor(hex)
             dev.cannoli.scorza.ui.screens.ColorEntry(
                 key = key,
-                label = label,
+                labelRes = labelRes,
                 hex = hex,
                 color = dev.cannoli.scorza.ui.theme.colorToArgbLong(color ?: androidx.compose.ui.graphics.Color.White)
             )
@@ -408,7 +408,10 @@ class SettingsViewModel(
                 add(SettingsItem("bg_tint", R.string.setting_bg_tint, valueText = if (tintVal == 0) null else "$tintVal%", valueRes = if (tintVal == 0) R.string.value_off else null))
             }
             add(SettingsItem("colors", R.string.setting_colors, isEditable = true))
-            add(SettingsItem("text_size", R.string.setting_text_size, valueText = settings.textSize.name.lowercase(java.util.Locale.ROOT).replaceFirstChar { it.uppercase() }))
+            add(SettingsItem("text_size", R.string.setting_text_size, valueRes = when (settings.textSize) {
+                TextSize.COMPACT -> R.string.text_size_compact
+                TextSize.DEFAULT -> R.string.text_size_default
+            }))
         }
         "content" -> buildList {
             add(SettingsItem("show_empty", R.string.setting_show_empty, valueRes = showHide(settings.showEmpty)))
@@ -430,7 +433,7 @@ class SettingsViewModel(
         "status_bar" -> buildList {
             if (!isTelevision) add(SettingsItem("show_battery", R.string.setting_battery, valueRes = showHide(settings.showBattery)))
             add(SettingsItem("show_bluetooth", R.string.setting_bluetooth, valueRes = showHide(settings.showBluetooth)))
-            add(SettingsItem("show_clock", R.string.setting_clock, valueText = if (!settings.showClock) null else if (settings.timeFormat == TimeFormat.TWELVE_HOUR) "12h" else "24h", valueRes = if (!settings.showClock) R.string.value_hide else null))
+            add(SettingsItem("show_clock", R.string.setting_clock, valueRes = if (!settings.showClock) R.string.value_hide else if (settings.timeFormat == TimeFormat.TWELVE_HOUR) R.string.value_12h else R.string.value_24h))
             add(SettingsItem("show_wifi", R.string.setting_wifi, valueRes = showHide(settings.showWifi)))
             add(SettingsItem("show_vpn", R.string.setting_vpn, valueRes = showHide(settings.showVpn)))
         }
@@ -441,8 +444,8 @@ class SettingsViewModel(
         )
         "kitchen" -> emptyList()
         "retroachievements" -> buildList {
-            add(SettingsItem("ra_username", R.string.setting_ra_username, valueText = settings.raUsername.ifEmpty { "Not set" }, isEditable = true))
-            add(SettingsItem("ra_password", R.string.setting_ra_password, valueText = if (raPassword.isEmpty()) "Not set" else "●".repeat(raPassword.length), isEditable = true))
+            add(SettingsItem("ra_username", R.string.setting_ra_username, valueText = settings.raUsername.ifEmpty { null }, valueRes = if (settings.raUsername.isEmpty()) R.string.value_not_set else null, isEditable = true))
+            add(SettingsItem("ra_password", R.string.setting_ra_password, valueText = if (raPassword.isEmpty()) null else "●".repeat(raPassword.length), valueRes = if (raPassword.isEmpty()) R.string.value_not_set else null, isEditable = true))
             if (settings.raUsername.isNotEmpty() && raPassword.isNotEmpty()) {
                 add(SettingsItem("ra_login", R.string.setting_ra_login, isEditable = true))
             }
@@ -450,7 +453,7 @@ class SettingsViewModel(
         "advanced" -> listOf(
             SettingsItem("core_mapping", R.string.setting_core_mapping, isEditable = true),
             SettingsItem("sd_root", R.string.setting_sd_root, valueText = settings.sdCardRoot, isEditable = true),
-            SettingsItem("ra_package", R.string.setting_ra_package, valueText = if (installedRaPackages.isEmpty()) "Not Installed" else settings.retroArchPackage, isEditable = installedRaPackages.size < 2)
+            SettingsItem("ra_package", R.string.setting_ra_package, valueText = if (installedRaPackages.isEmpty()) null else settings.retroArchPackage, valueRes = if (installedRaPackages.isEmpty()) R.string.value_not_installed else null, isEditable = installedRaPackages.size < 2)
         )
         else -> emptyList()
     }

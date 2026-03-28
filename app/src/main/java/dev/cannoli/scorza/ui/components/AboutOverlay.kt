@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -44,7 +45,7 @@ fun AboutOverlay() {
             )
 
             Text(
-                text = "Cannoli",
+                text = stringResource(R.string.about_title),
                 style = TextStyle(
                     fontFamily = MPlus1Code,
                     fontWeight = FontWeight.Bold,
@@ -54,7 +55,7 @@ fun AboutOverlay() {
             )
 
             Text(
-                text = "A frontend with just the right amount of filling!",
+                text = stringResource(R.string.about_description),
                 style = TextStyle(
                     fontFamily = MPlus1Code,
                     fontSize = 16.sp,
@@ -77,7 +78,7 @@ fun AboutOverlay() {
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "cannoli.dev",
+                text = stringResource(R.string.about_website),
                 style = TextStyle(
                     fontFamily = MPlus1Code,
                     fontSize = 18.sp,
@@ -89,8 +90,8 @@ fun AboutOverlay() {
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(screenPadding),
-            leftItems = listOf("B" to "BACK"),
-            rightItems = listOf("X" to "CREDITS")
+            leftItems = listOf("B" to stringResource(R.string.label_back)),
+            rightItems = listOf("X" to stringResource(R.string.label_credits))
         )
     }
 }

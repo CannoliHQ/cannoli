@@ -15,6 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import dev.cannoli.scorza.R
 import dev.cannoli.scorza.ui.components.BottomBar
 import dev.cannoli.scorza.ui.components.List
 import dev.cannoli.scorza.ui.components.PillRowKeyValue
@@ -43,9 +45,11 @@ fun IGMSettingsScreen(
     selectedIndex: Int,
     coreInfo: String = "",
     description: String? = null,
-    bottomBarLeft: List<Pair<String, String>> = listOf("B" to "BACK"),
-    bottomBarRight: List<Pair<String, String>> = listOf("←→" to "CHANGE", "A" to "SELECT")
+    bottomBarLeft: List<Pair<String, String>> = emptyList(),
+    bottomBarRight: List<Pair<String, String>> = emptyList()
 ) {
+    val resolvedLeft = bottomBarLeft.ifEmpty { listOf("B" to stringResource(R.string.label_back)) }
+    val resolvedRight = bottomBarRight.ifEmpty { listOf("←→" to stringResource(R.string.label_change), "A" to stringResource(R.string.label_select)) }
     val itemHeight = pillItemHeight(lineHeight, verticalPadding)
     val colors = LocalCannoliColors.current
 
@@ -131,8 +135,8 @@ fun IGMSettingsScreen(
 
             BottomBar(
                 modifier = Modifier.align(Alignment.BottomCenter),
-                leftItems = bottomBarLeft,
-                rightItems = if (description != null) emptyList() else bottomBarRight
+                leftItems = resolvedLeft,
+                rightItems = if (description != null) emptyList() else resolvedRight
             )
         }
     }

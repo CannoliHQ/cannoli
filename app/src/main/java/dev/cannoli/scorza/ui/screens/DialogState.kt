@@ -11,7 +11,7 @@ interface KeyboardInputState {
 
 data class CoreMappingEntry(val tag: String, val platformName: String, val coreDisplayName: String, val runnerLabel: String)
 data class CorePickerOption(val coreId: String, val displayName: String, val runnerLabel: String, val appPackage: String? = null)
-data class ColorEntry(val key: String, val label: String, val hex: String, val color: Long)
+data class ColorEntry(val key: String, @androidx.annotation.StringRes val labelRes: Int, val hex: String, val color: Long)
 
 sealed interface DialogState {
     data object None : DialogState
