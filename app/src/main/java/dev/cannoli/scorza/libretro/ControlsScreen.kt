@@ -10,8 +10,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.annotation.StringRes
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.cannoli.scorza.R
 import dev.cannoli.scorza.input.ProfileManager
 import dev.cannoli.scorza.ui.components.BottomBar
 import dev.cannoli.scorza.ui.components.List
@@ -34,10 +37,10 @@ fun ControlsScreen(
     listenCountdownMs: Int = 0,
     profileName: String? = null,
     dirty: Boolean = false,
-    title: String = "Controls"
+    @StringRes titleRes: Int = R.string.title_controls
 ) {
     val itemHeight = pillItemHeight(lineHeight, verticalPadding)
-    val screenTitle = profileName ?: title
+    val screenTitle = profileName ?: stringResource(titleRes)
 
     ScreenBackground(backgroundImagePath = null, backgroundAlpha = 0.85f) {
         Box(
@@ -83,14 +86,14 @@ fun ControlsScreen(
             val bottomLeft = if (listeningIndex >= 0) {
                 emptyList()
             } else if (dirty) {
-                listOf("B" to "BACK", "X" to "RESET ALL")
+                listOf("B" to stringResource(R.string.label_back), "X" to stringResource(R.string.label_reset_all))
             } else {
-                listOf("B" to "BACK")
+                listOf("B" to stringResource(R.string.label_back))
             }
             val bottomRight = if (listeningIndex >= 0) {
-                listOf("" to "PRESS A BUTTON... $remainingSec")
+                listOf("" to stringResource(R.string.igm_press_button, remainingSec))
             } else {
-                listOf("A" to "REMAP")
+                listOf("A" to stringResource(R.string.label_remap))
             }
 
             BottomBar(

@@ -187,7 +187,7 @@ fun AppNavGraph(
                 ) {
                     if (currentScreen.cores.isEmpty()) {
                         Text(
-                            text = "No compatible cores found",
+                            text = stringResource(R.string.no_compatible_cores),
                             style = MaterialTheme.typography.bodyLarge,
                             color = GrayText,
                             modifier = Modifier.padding(start = 14.dp)
@@ -205,7 +205,7 @@ fun AppNavGraph(
                             if (index == currentScreen.activeIndex) {
                                 PillRowKeyValue(
                                     label = label,
-                                    value = "Current",
+                                    value = stringResource(R.string.value_current),
                                     isSelected = currentScreen.selectedIndex == index,
                                     fontSize = listFontSize,
                                     lineHeight = listLineHeight,
@@ -242,7 +242,7 @@ fun AppNavGraph(
                         onVisibleRangeChanged = onVisibleRangeChanged
                     ) { index, entry ->
                         PillRowKeyValue(
-                            label = entry.label,
+                            label = stringResource(entry.labelRes),
                             value = entry.hex.uppercase(),
                             isSelected = currentScreen.selectedIndex == index,
                             fontSize = listFontSize,
@@ -276,7 +276,7 @@ fun AppNavGraph(
                 ) {
                     if (currentScreen.collections.isEmpty()) {
                         Text(
-                            text = "No collections",
+                            text = stringResource(R.string.no_collections),
                             style = MaterialTheme.typography.bodyLarge,
                             color = GrayText,
                             modifier = Modifier.padding(start = 14.dp)
@@ -312,7 +312,7 @@ fun AppNavGraph(
                 } else {
                     val d = dialog
                     if (d is DialogState.CollectionCreated) {
-                        MessageOverlay(message = "${d.collectionName} Created")
+                        MessageOverlay(message = stringResource(R.string.collection_created, d.collectionName))
                     }
                 }
             }
@@ -320,14 +320,14 @@ fun AppNavGraph(
                 ListDialogScreen(
                     backgroundImagePath = appSettings.backgroundImagePath,
                     backgroundTint = appSettings.backgroundTint,
-                    title = "Child Collections",
+                    title = stringResource(R.string.title_child_collections),
                     listFontSize = listFontSize,
                     listLineHeight = listLineHeight,
                     rightBottomItems = emptyList()
                 ) {
                     if (currentScreen.collections.isEmpty()) {
                         Text(
-                            text = "No collections",
+                            text = stringResource(R.string.no_collections),
                             style = MaterialTheme.typography.bodyLarge,
                             color = GrayText,
                             modifier = Modifier.padding(start = 14.dp)
@@ -384,13 +384,13 @@ fun AppNavGraph(
                 val isDeletable = currentScreen.profiles.getOrNull(currentScreen.selectedIndex)?.let {
                     it != dev.cannoli.scorza.input.ProfileManager.DEFAULT
                 } ?: false
-                val leftItems = if (isDeletable) listOf("B" to "BACK", "X" to "DELETE") else listOf("B" to "BACK")
-                val rightItems = if (isDeletable) listOf("START" to "RENAME", "Y" to "NEW", "A" to "EDIT")
-                    else listOf("Y" to "NEW", "A" to "EDIT")
+                val leftItems = if (isDeletable) listOf("B" to stringResource(R.string.label_back), "X" to stringResource(R.string.label_delete)) else listOf("B" to stringResource(R.string.label_back))
+                val rightItems = if (isDeletable) listOf("START" to stringResource(R.string.label_rename), "Y" to stringResource(R.string.label_new), "A" to stringResource(R.string.label_edit))
+                    else listOf("Y" to stringResource(R.string.label_new), "A" to stringResource(R.string.label_edit))
                 ListDialogScreen(
                     backgroundImagePath = appSettings.backgroundImagePath,
                     backgroundTint = appSettings.backgroundTint,
-                    title = "Profiles",
+                    title = stringResource(R.string.title_profiles),
                     listFontSize = listFontSize,
                     listLineHeight = listLineHeight,
                     rightBottomItems = rightItems
@@ -412,7 +412,7 @@ fun AppNavGraph(
                     }
                 }
                 if (dialog is DialogState.DeleteProfileConfirm) {
-                    ConfirmOverlay(message = "Delete profile \"${(dialog as DialogState.DeleteProfileConfirm).profileName}\"?")
+                    ConfirmOverlay(message = stringResource(R.string.dialog_delete_profile, (dialog as DialogState.DeleteProfileConfirm).profileName))
                 }
                 if (dialog.isFullScreen) {
                     DialogOverlay(
@@ -439,20 +439,20 @@ fun AppNavGraph(
                     selectedIndex = currentScreen.selectedIndex,
                     listeningIndex = currentScreen.listeningIndex,
                     listenCountdownMs = currentScreen.listenCountdownMs,
-                    title = "Button Mapping"
+                    titleRes = R.string.title_button_mapping
                 )
             }
             is LauncherScreen.ShortcutBinding -> {
                 ListDialogScreen(
                     backgroundImagePath = appSettings.backgroundImagePath,
                     backgroundTint = appSettings.backgroundTint,
-                    title = "Shortcuts",
+                    title = stringResource(R.string.title_shortcuts),
 
                     listFontSize = listFontSize,
                     listLineHeight = listLineHeight,
                     fullWidth = true,
-                    rightBottomItems = if (currentScreen.listening) listOf("" to "HOLD BUTTONS...")
-                        else listOf("X" to "CLEAR", "A" to "SET")
+                    rightBottomItems = if (currentScreen.listening) listOf("" to stringResource(R.string.label_hold_buttons))
+                        else listOf("X" to stringResource(R.string.label_clear), "A" to stringResource(R.string.label_set))
                 ) {
                     List(
                         items = ShortcutAction.entries.toList(),
@@ -462,7 +462,7 @@ fun AppNavGraph(
                         onVisibleRangeChanged = onVisibleRangeChanged
                     ) { index, action ->
                         val chord = currentScreen.shortcuts[action]
-                        val value = if (chord.isNullOrEmpty()) "None"
+                        val value = if (chord.isNullOrEmpty()) stringResource(R.string.value_none)
                         else chord.joinToString(" + ") { LibretroInput.keyCodeName(it) }
                         PillRowKeyValue(
                             label = action.label,
@@ -496,7 +496,7 @@ fun AppNavGraph(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = if (currentScreen.heldKeys.isEmpty()) "Hold buttons..."
+                                text = if (currentScreen.heldKeys.isEmpty()) stringResource(R.string.shortcut_hold_prompt)
                                 else currentScreen.heldKeys.joinToString(" + ") { LibretroInput.keyCodeName(it) },
                                 style = MaterialTheme.typography.bodyLarge.copy(
                                     fontSize = 24.sp,

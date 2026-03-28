@@ -71,7 +71,7 @@ fun DialogOverlay(
             ListDialogScreen(
                 backgroundImagePath = backgroundImagePath,
                 backgroundTint = backgroundTint,
-                title = "${dialogState.gamePaths.size} Selected",
+                title = stringResource(R.string.selected_count, dialogState.gamePaths.size),
                 listFontSize = listFontSize,
                 listLineHeight = listLineHeight,
                 rightBottomItems = emptyList()

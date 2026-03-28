@@ -99,6 +99,114 @@
     <string name="context_delete">Delete</string>
     <string name="context_add_to_collection">Add To Collection</string>
 
+    <!-- Setup screen -->
+    <string name="setup_welcome">Welcome to Cannoli!</string>
+    <string name="setup_description">Select where to create your Cannoli folder.</string>
+    <string name="setup_storage">Storage</string>
+    <string name="setup_continue">Continue</string>
+    <string name="label_quit">QUIT</string>
+
+    <!-- System list -->
+    <string name="empty_content">No content found. Go add some!</string>
+    <string name="label_favorites">Favorites</string>
+    <string name="label_collections">Collections</string>
+
+    <!-- Bottom bar labels (additional) -->
+    <string name="label_stop">STOP</string>
+    <string name="label_credits">CREDITS</string>
+    <string name="label_logout">LOGOUT</string>
+    <string name="label_hex">HEX</string>
+    <string name="label_edit">EDIT</string>
+    <string name="label_rename">RENAME</string>
+    <string name="label_set">SET</string>
+    <string name="label_clear">CLEAR</string>
+    <string name="label_kitchen">KITCHEN</string>
+    <string name="label_hold_buttons">HOLD BUTTONS…</string>
+
+    <!-- Formatted strings -->
+    <string name="collection_created">%1$s Created</string>
+    <string name="selected_count">%1$d Selected</string>
+    <string name="battery_level">%1$d%%</string>
+
+    <!-- About -->
+    <string name="about_title">Cannoli</string>
+    <string name="about_description">A frontend with just the right amount of filling!</string>
+    <string name="about_website">cannoli.dev</string>
+
+    <!-- Kitchen -->
+    <string name="kitchen_title">Nonna\'s Kitchen</string>
+
+    <!-- RetroAchievements -->
+    <string name="ra_title">RetroAchievements</string>
+    <string name="ra_logged_in_as">Logged in as</string>
+
+    <!-- Credits -->
+    <string name="credits_title">Credits and Licenses</string>
+
+    <!-- Setting values (additional) -->
+    <string name="value_12h">12h</string>
+    <string name="value_24h">24h</string>
+    <string name="value_not_set">Not set</string>
+    <string name="value_not_installed">Not Installed</string>
+    <string name="text_size_compact">Compact</string>
+    <string name="text_size_default">Default</string>
+
+    <!-- Core picker / nav -->
+    <string name="no_compatible_cores">No compatible cores found</string>
+    <string name="value_current">Current</string>
+    <string name="no_collections">No collections</string>
+    <string name="title_child_collections">Child Collections</string>
+    <string name="title_profiles">Profiles</string>
+    <string name="title_button_mapping">Button Mapping</string>
+    <string name="title_shortcuts">Shortcuts</string>
+    <string name="shortcut_hold_prompt">Hold buttons…</string>
+    <string name="dialog_delete_profile">Delete profile \"%1$s\"?</string>
+
+    <!-- IGM bottom bar labels -->
+    <string name="label_confirm_delete">CONFIRM DELETE</string>
+    <string name="label_info">INFO</string>
+    <string name="label_details">DETAILS</string>
+    <string name="label_all">ALL</string>
+    <string name="label_unlocked">UNLOCKED</string>
+    <string name="label_reset_all">RESET ALL</string>
+    <string name="label_remap">REMAP</string>
+
+    <!-- IGM screen titles -->
+    <string name="igm_settings">Settings</string>
+    <string name="igm_video">Video</string>
+    <string name="igm_advanced">Advanced</string>
+    <string name="igm_shader_settings">Shader Settings</string>
+    <string name="igm_emulator">Emulator</string>
+    <string name="igm_save_changes">Save Changes</string>
+    <string name="title_controls">Controls</string>
+    <string name="title_guide">Guide</string>
+
+    <!-- IGM info labels -->
+    <string name="info_core">Core</string>
+    <string name="info_rom">ROM</string>
+    <string name="info_extracted">Extracted</string>
+    <string name="info_save">Save</string>
+    <string name="info_renderer">Renderer</string>
+    <string name="info_game_id">Game ID</string>
+
+    <!-- IGM dialogs -->
+    <string name="igm_delete_slot">Delete %1$s?</string>
+    <string name="igm_delete_profile">Delete Profile?</string>
+    <string name="value_active">Active</string>
+    <string name="igm_press_button">PRESS A BUTTON… %1$d</string>
+
+    <!-- Achievements -->
+    <string name="ach_title">Achievements (%1$d/%2$d)</string>
+    <string name="ach_points_short">%1$dpts</string>
+    <string name="ach_points">%1$d points</string>
+    <string name="ach_unlocked_pending">Unlocked \u2022 Pending Sync</string>
+    <string name="ach_unlocked_date">Unlocked %1$s</string>
+    <string name="ach_unlocked">Unlocked</string>
+    <string name="ach_locked">Locked</string>
+
+    <!-- Guide -->
+    <string name="guide_page">%1$d / %2$d</string>
+
     <!-- Accessibility -->
     <string name="accessibility_service_description">Intercepts Home and Select buttons on controllers so they work correctly in Cannoli.</string>
 </resources>

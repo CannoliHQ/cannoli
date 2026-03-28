@@ -192,7 +192,7 @@ fun GameListScreen(
             } else {
                 buildList {
                     if (state.isCollectionsList) add("X" to stringResource(R.string.label_new))
-                    else if (hasResumeState) add("X" to "RESUME")
+                    else if (hasResumeState) add("X" to stringResource(R.string.label_resume))
                     add("A" to actionLabel)
                 }
             }
@@ -211,7 +211,7 @@ fun GameListScreen(
                     }
                 )
                 is DialogState.CollectionCreated -> MessageOverlay(
-                    message = "${dialogState.collectionName} Created"
+                    message = stringResource(R.string.collection_created, dialogState.collectionName)
                 )
                 else -> {}
             }

@@ -60,7 +60,7 @@ fun SystemListScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "No content found. Go add some!",
+                        text = stringResource(R.string.empty_content),
                         style = MaterialTheme.typography.bodyLarge.copy(
                             fontSize = listFontSize,
                             lineHeight = listLineHeight
@@ -94,8 +94,8 @@ fun SystemListScreen(
                 }
             ) { index, item ->
                 val label = when (item) {
-                    is ListItem.FavoritesItem -> "Favorites"
-                    is ListItem.CollectionsFolder -> "Collections"
+                    is ListItem.FavoritesItem -> stringResource(R.string.label_favorites)
+                    is ListItem.CollectionsFolder -> stringResource(R.string.label_collections)
                     is ListItem.PlatformItem -> item.platform.displayName
                     is ListItem.CollectionItem -> item.name
                     is ListItem.ToolsFolder -> item.name
@@ -114,9 +114,9 @@ fun SystemListScreen(
             }
 
             val rightItems = if (state.items.isEmpty()) {
-                listOf("Y" to "KITCHEN")
+                listOf("Y" to stringResource(R.string.label_kitchen))
             } else if (kitchenRunning) {
-                listOf("Y" to "KITCHEN", "A" to stringResource(R.string.label_select))
+                listOf("Y" to stringResource(R.string.label_kitchen), "A" to stringResource(R.string.label_select))
             } else {
                 listOf("A" to stringResource(R.string.label_select))
             }

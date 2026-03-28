@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
@@ -54,7 +55,7 @@ fun SetupScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Welcome to Cannoli!",
+                text = stringResource(R.string.setup_welcome),
                 style = MaterialTheme.typography.bodyLarge.copy(
                     fontSize = 28.sp,
                     lineHeight = 36.sp
@@ -65,7 +66,7 @@ fun SetupScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Select where to create your Cannoli folder.",
+                text = stringResource(R.string.setup_description),
                 style = MaterialTheme.typography.bodyMedium.copy(
                     fontSize = 16.sp
                 ),
@@ -76,7 +77,7 @@ fun SetupScreen(
 
             Column(modifier = Modifier.fillMaxSize()) {
                 PillRowKeyValue(
-                    label = "Storage",
+                    label = stringResource(R.string.setup_storage),
                     value = storageLabel,
                     isSelected = selectedIndex == 0,
                     fontSize = fontSize,
@@ -87,7 +88,7 @@ fun SetupScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 PillRowText(
-                    label = "Continue",
+                    label = stringResource(R.string.setup_continue),
                     isSelected = selectedIndex == 1,
                     fontSize = fontSize,
                     lineHeight = lineHeight,
@@ -100,8 +101,8 @@ fun SetupScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(horizontal = screenPadding, vertical = 16.dp),
-            leftItems = listOf("B" to "QUIT"),
-            rightItems = if (selectedIndex == 0) listOf("←→" to "CHANGE") else listOf("A" to "SELECT")
+            leftItems = listOf("B" to stringResource(R.string.label_quit)),
+            rightItems = if (selectedIndex == 0) listOf("←→" to stringResource(R.string.label_change)) else listOf("A" to stringResource(R.string.label_select))
         )
     }
 }
