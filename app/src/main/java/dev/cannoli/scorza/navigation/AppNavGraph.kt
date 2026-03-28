@@ -31,6 +31,7 @@ import dev.cannoli.scorza.libretro.ControlsScreen
 import dev.cannoli.scorza.libretro.LibretroInput
 import dev.cannoli.scorza.libretro.ShortcutAction
 import dev.cannoli.scorza.settings.TextSize
+import dev.cannoli.scorza.ui.components.ConfirmOverlay
 import dev.cannoli.scorza.ui.components.CreditsOverlay
 import dev.cannoli.scorza.ui.components.DialogOverlay
 import dev.cannoli.scorza.ui.components.List
@@ -67,7 +68,8 @@ sealed class LauncherScreen {
     data class CollectionPicker(val gamePaths: List<String>, val title: String, val collections: List<String>, val selectedIndex: Int = 0, val checkedIndices: Set<Int> = emptySet(), val initialChecked: Set<Int> = emptySet(), val scrollTarget: Int = 0) : LauncherScreen()
     data class AppPicker(val type: String, val title: String, val apps: List<String>, val packages: List<String>, val selectedIndex: Int = 0, val checkedIndices: Set<Int> = emptySet(), val initialChecked: Set<Int> = emptySet(), val scrollTarget: Int = 0) : LauncherScreen()
     data class ChildPicker(val collectionName: String, val collections: List<String>, val selectedIndex: Int = 0, val checkedIndices: Set<Int> = emptySet(), val initialChecked: Set<Int> = emptySet(), val scrollTarget: Int = 0) : LauncherScreen()
-    data class ControlBinding(val selectedIndex: Int = 0, val scrollTarget: Int = 0, val controls: Map<String, Int> = emptyMap(), val listeningIndex: Int = -1, val listenCountdownMs: Int = 0) : LauncherScreen()
+    data class ProfileList(val profiles: List<String> = emptyList(), val selectedIndex: Int = 0, val scrollTarget: Int = 0) : LauncherScreen()
+    data class ControlBinding(val selectedIndex: Int = 0, val scrollTarget: Int = 0, val controls: Map<String, Int> = emptyMap(), val listeningIndex: Int = -1, val listenCountdownMs: Int = 0, val profileName: String = "Default") : LauncherScreen()
     data class ShortcutBinding(val selectedIndex: Int = 0, val scrollTarget: Int = 0, val shortcuts: Map<dev.cannoli.scorza.libretro.ShortcutAction, Set<Int>> = emptyMap(), val listening: Boolean = false, val heldKeys: Set<Int> = emptySet(), val countdownMs: Int = 0) : LauncherScreen()
     data class Credits(val selectedIndex: Int = 0, val scrollTarget: Int = 0) : LauncherScreen()
 }
@@ -376,6 +378,51 @@ fun AppNavGraph(
                             checkState = index in currentScreen.checkedIndices
                         )
                     }
+                }
+            }
+            is LauncherScreen.ProfileList -> {
+                val isDeletable = currentScreen.profiles.getOrNull(currentScreen.selectedIndex)?.let {
+                    it != dev.cannoli.scorza.input.ProfileManager.DEFAULT
+                } ?: false
+                val leftItems = if (isDeletable) listOf("B" to "BACK", "X" to "DELETE") else listOf("B" to "BACK")
+                val rightItems = if (isDeletable) listOf("START" to "RENAME", "Y" to "NEW", "A" to "EDIT")
+                    else listOf("Y" to "NEW", "A" to "EDIT")
+                ListDialogScreen(
+                    backgroundImagePath = appSettings.backgroundImagePath,
+                    backgroundTint = appSettings.backgroundTint,
+                    title = "Profiles",
+                    listFontSize = listFontSize,
+                    listLineHeight = listLineHeight,
+                    rightBottomItems = rightItems
+                ) {
+                    List(
+                        items = currentScreen.profiles,
+                        selectedIndex = currentScreen.selectedIndex,
+                        itemHeight = itemHeight,
+                        scrollTarget = currentScreen.scrollTarget,
+                        onVisibleRangeChanged = onVisibleRangeChanged
+                    ) { index, name ->
+                        PillRowText(
+                            label = name,
+                            isSelected = currentScreen.selectedIndex == index,
+                            fontSize = listFontSize,
+                            lineHeight = listLineHeight,
+                            verticalPadding = listVerticalPadding
+                        )
+                    }
+                }
+                if (dialog is DialogState.DeleteProfileConfirm) {
+                    ConfirmOverlay(message = "Delete profile \"${(dialog as DialogState.DeleteProfileConfirm).profileName}\"?")
+                }
+                if (dialog.isFullScreen) {
+                    DialogOverlay(
+                        dialogState = dialog,
+                        backgroundImagePath = appSettings.backgroundImagePath,
+                        backgroundTint = appSettings.backgroundTint,
+                        listFontSize = listFontSize,
+                        listLineHeight = listLineHeight,
+                        listVerticalPadding = listVerticalPadding
+                    )
                 }
             }
             is LauncherScreen.ControlBinding -> {

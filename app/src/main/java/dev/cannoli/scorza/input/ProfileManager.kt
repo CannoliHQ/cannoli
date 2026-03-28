@@ -1,0 +1,192 @@
+package dev.cannoli.scorza.input
+
+import dev.cannoli.scorza.util.IniData
+import dev.cannoli.scorza.util.IniParser
+import dev.cannoli.scorza.util.IniWriter
+import java.io.File
+
+class ProfileManager(private val cannoliRoot: String) {
+
+    private val profilesDir get() = File(cannoliRoot, "Config/Profiles")
+
+    private fun profileFile(name: String) = File(profilesDir, "$name.ini")
+
+    private fun platformFile(platformTag: String) =
+        File(cannoliRoot, "Config/Overrides/systems/$platformTag.ini")
+
+    private fun gameFile(platformTag: String, gameBaseName: String) =
+        File(cannoliRoot, "Config/Overrides/Games/$platformTag/$gameBaseName.ini")
+
+    fun ensureDefault() {
+        val f = profileFile(DEFAULT)
+        if (!f.exists()) {
+            f.parentFile?.mkdirs()
+            f.writeText("")
+        }
+    }
+
+    fun listProfiles(): List<String> {
+        val dir = profilesDir
+        if (!dir.isDirectory) return listOf(DEFAULT)
+        val names = dir.listFiles()
+            ?.filter { it.extension.equals("ini", ignoreCase = true) }
+            ?.map { it.nameWithoutExtension }
+            ?.sorted()
+            ?: return listOf(DEFAULT)
+        val result = mutableListOf(DEFAULT)
+        for (n in names) {
+            if (!n.equals(DEFAULT, ignoreCase = true)) result.add(n)
+        }
+        if (result[0] != DEFAULT) result.add(0, DEFAULT)
+        return result
+    }
+
+    fun readControls(profileName: String): Map<String, Int> {
+        val ini = IniParser.parse(profileFile(profileName))
+        val map = mutableMapOf<String, Int>()
+        for ((key, value) in ini.getSection("controls")) {
+            value.toIntOrNull()?.let { map[key] = it }
+        }
+        return map
+    }
+
+    fun saveControls(profileName: String, controls: Map<String, Int>) {
+        IniWriter.mergeWrite(
+            profileFile(profileName), "controls",
+            controls.mapValues { it.value.toString() }
+        )
+    }
+
+    fun createProfile(name: String, copyFrom: Map<String, Int> = emptyMap()): Boolean {
+        if (name.isBlank() || name.equals(DEFAULT, ignoreCase = true)) return false
+        val f = profileFile(name)
+        if (f.exists()) return false
+        f.parentFile?.mkdirs()
+        if (copyFrom.isNotEmpty()) {
+            saveControls(name, copyFrom)
+        } else {
+            f.writeText("")
+        }
+        return true
+    }
+
+    fun deleteProfile(name: String): Boolean {
+        if (name.equals(DEFAULT, ignoreCase = true)) return false
+        return profileFile(name).delete()
+    }
+
+    fun profileExists(name: String): Boolean = profileFile(name).exists()
+
+    fun resolveProfile(platformTag: String, gameBaseName: String): String {
+        val gameMeta = IniParser.parse(gameFile(platformTag, gameBaseName)).getSection("meta")
+        gameMeta["profile"]?.let { if (profileExists(it)) return it }
+
+        val platformMeta = IniParser.parse(platformFile(platformTag)).getSection("meta")
+        platformMeta["profile"]?.let { if (profileExists(it)) return it }
+
+        return DEFAULT
+    }
+
+    fun saveProfileSelection(platformTag: String, gameBaseName: String, profileName: String) {
+        val file = gameFile(platformTag, gameBaseName)
+        if (profileName == DEFAULT) {
+            if (!file.exists()) return
+            val ini = IniParser.parse(file)
+            val meta = ini.getSection("meta").toMutableMap()
+            meta.remove("profile")
+            val sections = ini.sections.toMutableMap()
+            if (meta.isEmpty()) sections.remove("meta") else sections["meta"] = meta
+            if (sections.any { it.value.isNotEmpty() }) IniWriter.write(file, sections)
+            else file.delete()
+        } else {
+            IniWriter.mergeWrite(file, "meta", mapOf("profile" to profileName))
+        }
+    }
+
+    fun migrate() {
+        if (profileFile(DEFAULT).exists()) return
+
+        profilesDir.mkdirs()
+        val globalFile = File(cannoliRoot, "Config/Overrides/global.ini")
+        val globalIni = IniParser.parse(globalFile)
+        val globalControls = globalIni.getSection("controls")
+
+        if (globalControls.isNotEmpty()) {
+            IniWriter.write(profileFile(DEFAULT), mapOf("controls" to globalControls))
+            val stripped = globalIni.sections.toMutableMap()
+            stripped.remove("controls")
+            if (stripped.any { it.value.isNotEmpty() }) IniWriter.write(globalFile, stripped)
+            else if (globalFile.exists()) globalFile.writeText("")
+        } else {
+            profileFile(DEFAULT).writeText("")
+        }
+
+        val systemsDir = File(cannoliRoot, "Config/Overrides/systems")
+        systemsDir.listFiles()?.filter { it.extension == "ini" }?.forEach { file ->
+            val ini = IniParser.parse(file)
+            val controls = ini.getSection("controls")
+            if (controls.isNotEmpty()) {
+                val platformName = file.nameWithoutExtension
+                val profName = uniqueProfileName(platformName)
+                IniWriter.write(profileFile(profName), mapOf("controls" to controls))
+                val sections = ini.sections.toMutableMap()
+                sections.remove("controls")
+                val meta = (sections["meta"] ?: emptyMap()).toMutableMap()
+                meta.remove("control_source")
+                meta["profile"] = profName
+                sections["meta"] = meta
+                IniWriter.write(file, sections)
+            } else {
+                stripControlSource(file, ini)
+            }
+        }
+
+        val gamesDir = File(cannoliRoot, "Config/Overrides/Games")
+        gamesDir.listFiles()?.forEach { platformDir ->
+            platformDir.listFiles()?.filter { it.extension == "ini" }?.forEach { file ->
+                val ini = IniParser.parse(file)
+                val controls = ini.getSection("controls")
+                val meta = ini.getSection("meta")
+                if (controls.isNotEmpty() && meta["control_source"] == "GAME") {
+                    val gameName = file.nameWithoutExtension
+                    val profName = uniqueProfileName(gameName)
+                    IniWriter.write(profileFile(profName), mapOf("controls" to controls))
+                    val sections = ini.sections.toMutableMap()
+                    sections.remove("controls")
+                    val newMeta = (sections["meta"] ?: emptyMap()).toMutableMap()
+                    newMeta.remove("control_source")
+                    newMeta["profile"] = profName
+                    sections["meta"] = newMeta
+                    IniWriter.write(file, sections)
+                } else {
+                    stripControlSource(file, ini)
+                }
+            }
+        }
+
+        val controllersDir = File(cannoliRoot, "Config/Controllers")
+        if (controllersDir.isDirectory) controllersDir.deleteRecursively()
+    }
+
+    private fun stripControlSource(file: File, ini: IniData) {
+        val meta = ini.getSection("meta").toMutableMap()
+        if ("control_source" !in meta) return
+        meta.remove("control_source")
+        val sections = ini.sections.toMutableMap()
+        sections.remove("controls")
+        if (meta.isEmpty()) sections.remove("meta") else sections["meta"] = meta
+        if (sections.any { it.value.isNotEmpty() }) IniWriter.write(file, sections)
+        else file.delete()
+    }
+
+    private fun uniqueProfileName(base: String): String {
+        if (!profileFile(base).exists()) return base
+        var i = 2
+        while (profileFile("${base}_$i").exists()) i++
+        return "${base}_$i"
+    }
+
+    companion object {
+        const val DEFAULT = "Default"
+    }
+}

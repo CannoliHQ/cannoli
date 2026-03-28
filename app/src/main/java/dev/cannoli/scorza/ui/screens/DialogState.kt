@@ -33,6 +33,8 @@ sealed interface DialogState {
     data class Kitchen(val url: String, val pin: String) : DialogState
     data class RAAccount(val username: String, val score: Int = 0) : DialogState
     data class RALoggingIn(val message: String = "Logging in...") : DialogState
+    data class ProfileNameInput(val isNew: Boolean, val originalName: String = "", override val currentName: String = "", override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
+    data class DeleteProfileConfirm(val profileName: String) : DialogState
 }
 
 fun DialogState.asKeyboardState(): KeyboardInputState? = this as? KeyboardInputState
@@ -41,6 +43,7 @@ fun DialogState.withKeyboard(row: Int, col: Int): DialogState = when (this) {
     is DialogState.RenameInput -> copy(keyRow = row, keyCol = col)
     is DialogState.NewCollectionInput -> copy(keyRow = row, keyCol = col)
     is DialogState.CollectionRenameInput -> copy(keyRow = row, keyCol = col)
+    is DialogState.ProfileNameInput -> copy(keyRow = row, keyCol = col)
     else -> this
 }
 
@@ -48,6 +51,7 @@ fun DialogState.withCursor(pos: Int): DialogState = when (this) {
     is DialogState.RenameInput -> copy(cursorPos = pos)
     is DialogState.NewCollectionInput -> copy(cursorPos = pos)
     is DialogState.CollectionRenameInput -> copy(cursorPos = pos)
+    is DialogState.ProfileNameInput -> copy(cursorPos = pos)
     else -> this
 }
 
@@ -55,6 +59,7 @@ fun DialogState.withCaps(caps: Boolean): DialogState = when (this) {
     is DialogState.RenameInput -> copy(caps = caps)
     is DialogState.NewCollectionInput -> copy(caps = caps)
     is DialogState.CollectionRenameInput -> copy(caps = caps)
+    is DialogState.ProfileNameInput -> copy(caps = caps)
     else -> this
 }
 
@@ -62,6 +67,7 @@ fun DialogState.withSymbols(symbols: Boolean): DialogState = when (this) {
     is DialogState.RenameInput -> copy(symbols = symbols)
     is DialogState.NewCollectionInput -> copy(symbols = symbols)
     is DialogState.CollectionRenameInput -> copy(symbols = symbols)
+    is DialogState.ProfileNameInput -> copy(symbols = symbols)
     else -> this
 }
 
@@ -69,6 +75,7 @@ fun DialogState.withNameAndCursor(name: String, pos: Int): DialogState = when (t
     is DialogState.RenameInput -> copy(currentName = name, cursorPos = pos)
     is DialogState.NewCollectionInput -> copy(currentName = name, cursorPos = pos)
     is DialogState.CollectionRenameInput -> copy(currentName = name, cursorPos = pos)
+    is DialogState.ProfileNameInput -> copy(currentName = name, cursorPos = pos)
     else -> this
 }
 
@@ -106,6 +113,7 @@ val DialogState.isFullScreen: Boolean
         is DialogState.RenameInput,
         is DialogState.NewCollectionInput,
         is DialogState.CollectionRenameInput,
+        is DialogState.ProfileNameInput,
         is DialogState.About,
         is DialogState.Kitchen,
         is DialogState.RAAccount,

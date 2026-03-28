@@ -41,8 +41,9 @@ fun IGMSettingsScreen(
     title: String,
     items: List<IGMSettingsItem>,
     selectedIndex: Int,
-    coreInfo: String,
+    coreInfo: String = "",
     description: String? = null,
+    bottomBarLeft: List<Pair<String, String>> = listOf("B" to "BACK"),
     bottomBarRight: List<Pair<String, String>> = listOf("←→" to "CHANGE", "A" to "SELECT")
 ) {
     val itemHeight = pillItemHeight(lineHeight, verticalPadding)
@@ -130,7 +131,7 @@ fun IGMSettingsScreen(
 
             BottomBar(
                 modifier = Modifier.align(Alignment.BottomCenter),
-                leftItems = listOf("B" to "BACK"),
+                leftItems = bottomBarLeft,
                 rightItems = if (description != null) emptyList() else bottomBarRight
             )
         }

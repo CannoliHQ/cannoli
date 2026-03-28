@@ -70,8 +70,8 @@ fun LibretroScreen(
     settingsItems: List<IGMSettingsItem>,
     coreInfo: String,
     input: LibretroInput,
-    controlSource: OverrideSource,
-    controllerLabel: String? = null,
+    profileName: String = "",
+    profileNames: List<String> = emptyList(),
     debugHud: Boolean,
     renderer: GraphicsBackend,
     runner: LibretroRunner,
@@ -149,14 +149,48 @@ fun LibretroScreen(
                     }
                 }
             }
-            is IGMScreen.Controls -> ControlsScreen(
+            is IGMScreen.Controls -> {
+                val items = profileNames.map { name ->
+                    IGMSettingsItem(
+                        label = name,
+                        value = if (name == profileName) "Active" else null
+                    )
+                }
+                val isDeletable = profileNames.getOrNull(screen.selectedIndex)?.let {
+                    it != dev.cannoli.scorza.input.ProfileManager.DEFAULT
+                } ?: false
+                val left = if (screen.confirmingDelete) listOf("B" to "CANCEL")
+                    else if (isDeletable) listOf("B" to "BACK", "X" to "DELETE")
+                    else listOf("B" to "BACK")
+                val right = if (screen.confirmingDelete) listOf("A" to "CONFIRM DELETE")
+                    else if (isDeletable) listOf("START" to "RENAME", "Y" to "NEW", "A" to "SELECT")
+                    else listOf("Y" to "NEW", "A" to "SELECT")
+                IGMSettingsScreen(
+                    title = if (screen.confirmingDelete) "Delete Profile?" else "Controls",
+                    items = items,
+                    selectedIndex = screen.selectedIndex,
+                    bottomBarLeft = left,
+                    bottomBarRight = right
+                )
+            }
+            is IGMScreen.ControlEdit -> ControlsScreen(
                 input = input,
                 selectedIndex = screen.selectedIndex,
                 listeningIndex = screen.listeningIndex,
                 listenCountdownMs = screen.listenCountdownMs,
-                controlSource = controlSource,
-                controllerLabel = controllerLabel
+                profileName = profileName,
+                dirty = screen.dirty
             )
+            is IGMScreen.ProfileName -> {
+                dev.cannoli.scorza.ui.components.KeyboardOverlay(
+                    text = screen.name,
+                    cursorPos = screen.cursorPos,
+                    keyRow = screen.keyRow,
+                    keyCol = screen.keyCol,
+                    caps = screen.caps,
+                    symbols = screen.symbols
+                )
+            }
             is IGMScreen.Settings, is IGMScreen.Video, is IGMScreen.Advanced,
             is IGMScreen.ShaderSettings,
             is IGMScreen.Emulator, is IGMScreen.EmulatorCategory,
