@@ -435,7 +435,7 @@ class SettingsViewModel(
             add(SettingsItem("show_vpn", R.string.setting_vpn, valueRes = showHide(settings.showVpn)))
         }
         "input" -> listOf(
-            SettingsItem("controls", R.string.setting_controls, isEditable = true),
+            SettingsItem("profiles", R.string.setting_profiles, isEditable = true),
             SettingsItem("shortcuts", R.string.setting_shortcuts, isEditable = true),
             SettingsItem("platform_switching", R.string.setting_platform_switching, valueRes = onOff(settings.platformSwitching))
         )

@@ -166,6 +166,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private lateinit var globalOverrides: GlobalOverridesManager
+    private lateinit var profileManager: dev.cannoli.scorza.input.ProfileManager
     private lateinit var launchManager: LaunchManager
 
     private fun pushScreen(new: LauncherScreen) {
@@ -181,6 +182,7 @@ class MainActivity : ComponentActivity() {
         is LauncherScreen.CollectionPicker -> screen.copy(scrollTarget = currentFirstVisible)
         is LauncherScreen.ChildPicker -> screen.copy(scrollTarget = currentFirstVisible)
         is LauncherScreen.AppPicker -> screen.copy(scrollTarget = currentFirstVisible)
+        is LauncherScreen.ProfileList -> screen.copy(scrollTarget = currentFirstVisible)
         is LauncherScreen.ControlBinding -> screen.copy(scrollTarget = currentFirstVisible)
         is LauncherScreen.ShortcutBinding -> screen.copy(scrollTarget = currentFirstVisible)
         is LauncherScreen.Credits -> screen.copy(scrollTarget = currentFirstVisible)
@@ -201,6 +203,7 @@ class MainActivity : ComponentActivity() {
             is LauncherScreen.CollectionPicker -> screen.collections.size to screen.selectedIndex
             is LauncherScreen.ChildPicker -> screen.collections.size to screen.selectedIndex
             is LauncherScreen.AppPicker -> screen.apps.size to screen.selectedIndex
+            is LauncherScreen.ProfileList -> screen.profiles.size to screen.selectedIndex
             is LauncherScreen.ControlBinding -> controlButtonCount to screen.selectedIndex
             is LauncherScreen.ShortcutBinding -> ShortcutAction.entries.size to screen.selectedIndex
             is LauncherScreen.Credits -> CREDITS.size to screen.selectedIndex
@@ -247,6 +250,7 @@ class MainActivity : ComponentActivity() {
             is LauncherScreen.CollectionPicker -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
             is LauncherScreen.ChildPicker -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
             is LauncherScreen.AppPicker -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
+            is LauncherScreen.ProfileList -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
             is LauncherScreen.ControlBinding -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
             is LauncherScreen.ShortcutBinding -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
             is LauncherScreen.Credits -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
@@ -564,11 +568,14 @@ class MainActivity : ComponentActivity() {
         atomicRename = AtomicRename(root)
 
         globalOverrides = GlobalOverridesManager { settings.sdCardRoot }
+        profileManager = dev.cannoli.scorza.input.ProfileManager(settings.sdCardRoot)
+        profileManager.migrate()
+        profileManager.ensureDefault()
 
         inputHandler = InputHandler(
             getButtonMappings = {
                 (screenStack.lastOrNull() as? LauncherScreen.ControlBinding)?.controls
-                    ?: globalOverrides.readControls()
+                    ?: profileManager.readControls(dev.cannoli.scorza.input.ProfileManager.DEFAULT)
             }
         )
         wireInput()
@@ -656,6 +663,8 @@ class MainActivity : ComponentActivity() {
                         screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, -1, screen.collections.size))
                     is LauncherScreen.ChildPicker -> if (screen.collections.isNotEmpty())
                         screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, -1, screen.collections.size))
+                    is LauncherScreen.ProfileList -> if (screen.profiles.isNotEmpty())
+                        screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, -1, screen.profiles.size))
                     is LauncherScreen.ControlBinding ->
                         screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, -1, controlButtonCount))
                     is LauncherScreen.ShortcutBinding -> if (!screen.listening)
@@ -718,6 +727,8 @@ class MainActivity : ComponentActivity() {
                         screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, 1, screen.collections.size))
                     is LauncherScreen.ChildPicker -> if (screen.collections.isNotEmpty())
                         screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, 1, screen.collections.size))
+                    is LauncherScreen.ProfileList -> if (screen.profiles.isNotEmpty())
+                        screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, 1, screen.profiles.size))
                     is LauncherScreen.ControlBinding ->
                         screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, 1, controlButtonCount))
                     is LauncherScreen.ShortcutBinding -> if (!screen.listening)
@@ -816,6 +827,24 @@ class MainActivity : ComponentActivity() {
                     onSymbols = { dialogState.value = ds.copy(symbols = !ds.symbols) },
                     onEnter = { onCollectionRenameConfirm(ds) }
                 )
+                is DialogState.ProfileNameInput -> handleKeyboardConfirm(ds.caps, ds.symbols, ds.keyRow, ds.keyCol, ds.currentName, ds.cursorPos,
+                    onChar = { name, pos -> dialogState.value = ds.copy(currentName = name, cursorPos = pos) },
+                    onShift = { dialogState.value = ds.copy(caps = !ds.caps) },
+                    onSymbols = { dialogState.value = ds.copy(symbols = !ds.symbols) },
+                    onEnter = { onProfileNameConfirm(ds) }
+                )
+                is DialogState.DeleteProfileConfirm -> {
+                    profileManager.deleteProfile(ds.profileName)
+                    val updated = profileManager.listProfiles()
+                    val screen = currentScreen as? LauncherScreen.ProfileList
+                    if (screen != null) {
+                        screenStack[screenStack.lastIndex] = screen.copy(
+                            profiles = updated,
+                            selectedIndex = screen.selectedIndex.coerceAtMost(updated.lastIndex)
+                        )
+                    }
+                    dialogState.value = DialogState.None
+                }
                 is DialogState.ColorPicker -> {
                     val idx = ds.selectedRow * COLOR_GRID_COLS + ds.selectedCol
                     val preset = COLOR_PRESETS.getOrNull(idx)
@@ -911,7 +940,8 @@ class MainActivity : ComponentActivity() {
                                 "colors" -> screenStack.add(LauncherScreen.ColorList(
                                     colors = settingsViewModel.getColorEntries()
                                 ))
-                                "controls" -> pushScreen(LauncherScreen.ControlBinding(controls = globalOverrides.readControls()))
+                                "profiles" -> pushScreen(LauncherScreen.ProfileList(profiles = profileManager.listProfiles()))
+                                "controls" -> pushScreen(LauncherScreen.ControlBinding(controls = profileManager.readControls(dev.cannoli.scorza.input.ProfileManager.DEFAULT)))
                                 "shortcuts" -> pushScreen(LauncherScreen.ShortcutBinding(shortcuts = globalOverrides.readShortcuts()))
                                 "core_mapping" -> screenStack.add(LauncherScreen.CoreMapping(
                                     mappings = platformResolver.getDetailedMappings(packageManager)
@@ -1029,6 +1059,15 @@ class MainActivity : ComponentActivity() {
                         }
                         screenStack[screenStack.lastIndex] = screen.copy(checkedIndices = newChecked)
                     }
+                    is LauncherScreen.ProfileList -> {
+                        val name = screen.profiles.getOrNull(screen.selectedIndex)
+                        if (name != null) {
+                            pushScreen(LauncherScreen.ControlBinding(
+                                controls = profileManager.readControls(name),
+                                profileName = name
+                            ))
+                        }
+                    }
                     is LauncherScreen.ControlBinding -> {
                         if (screen.listeningIndex < 0) {
                             screenStack[screenStack.lastIndex] = screen.copy(listeningIndex = screen.selectedIndex, listenCountdownMs = 0)
@@ -1052,7 +1091,8 @@ class MainActivity : ComponentActivity() {
             when (val ds = dialogState.value) {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput -> {
+                is DialogState.CollectionRenameInput,
+                is DialogState.ProfileNameInput -> {
                     ds.withBackspace()?.let { dialogState.value = it }
                 }
                 is DialogState.ColorPicker -> {
@@ -1070,6 +1110,9 @@ class MainActivity : ComponentActivity() {
                 is DialogState.DeleteConfirm,
                 is DialogState.DeleteCollectionConfirm -> {
                     restoreContextMenu()
+                }
+                is DialogState.DeleteProfileConfirm -> {
+                    dialogState.value = DialogState.None
                 }
                 is DialogState.CollectionCreated -> {
                     refreshCollectionPickerOnStack()
@@ -1158,9 +1201,16 @@ class MainActivity : ComponentActivity() {
                     is LauncherScreen.ChildPicker -> {
                         onChildPickerConfirm(screen)
                     }
-                    is LauncherScreen.ControlBinding -> {
-                        globalOverrides.saveControls(screen.controls)
+                    is LauncherScreen.ProfileList -> {
                         screenStack.removeAt(screenStack.lastIndex)
+                    }
+                    is LauncherScreen.ControlBinding -> {
+                        profileManager.saveControls(screen.profileName, screen.controls)
+                        screenStack.removeAt(screenStack.lastIndex)
+                        val prev = screenStack.lastOrNull()
+                        if (prev is LauncherScreen.ProfileList) {
+                            screenStack[screenStack.lastIndex] = prev.copy(profiles = profileManager.listProfiles())
+                        }
                     }
                     is LauncherScreen.ShortcutBinding -> {
                         cancelShortcutListening()
@@ -1179,6 +1229,7 @@ class MainActivity : ComponentActivity() {
                 is DialogState.RenameInput -> onRenameConfirm(ds)
                 is DialogState.NewCollectionInput -> onNewCollectionConfirm(ds)
                 is DialogState.CollectionRenameInput -> onCollectionRenameConfirm(ds)
+                is DialogState.ProfileNameInput -> onProfileNameConfirm(ds)
                 DialogState.None -> when (currentScreen) {
                     LauncherScreen.SystemList -> {
                         if (systemListViewModel.isReorderMode()) {
@@ -1227,6 +1278,18 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         }
+                        }
+                    }
+                    is LauncherScreen.ProfileList -> {
+                        val pl = currentScreen as LauncherScreen.ProfileList
+                        val name = pl.profiles.getOrNull(pl.selectedIndex)
+                        if (name != null && name != dev.cannoli.scorza.input.ProfileManager.DEFAULT) {
+                            dialogState.value = DialogState.ProfileNameInput(
+                                isNew = false,
+                                originalName = name,
+                                currentName = name,
+                                cursorPos = name.length
+                            )
                         }
                     }
                     else -> {}
@@ -1327,6 +1390,12 @@ class MainActivity : ComponentActivity() {
                     is LauncherScreen.CollectionPicker -> {
                         dialogState.value = DialogState.NewCollectionInput(gamePaths = screen.gamePaths)
                     }
+                    is LauncherScreen.ProfileList -> {
+                        val name = screen.profiles.getOrNull(screen.selectedIndex)
+                        if (name != null && name != dev.cannoli.scorza.input.ProfileManager.DEFAULT) {
+                            dialogState.value = DialogState.DeleteProfileConfirm(name)
+                        }
+                    }
                     is LauncherScreen.ControlBinding -> {
                         screenStack[screenStack.lastIndex] = screen.copy(controls = emptyMap())
                     }
@@ -1368,6 +1437,9 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                         LauncherScreen.GameList -> {}
+                        is LauncherScreen.ProfileList -> {
+                            dialogState.value = DialogState.ProfileNameInput(isNew = true)
+                        }
                         else -> {}
                     }
                 }
@@ -2037,6 +2109,37 @@ class MainActivity : ComponentActivity() {
                 gameListViewModel.loadCollectionsList(restoreIndex = true)
             }
         }
+    }
+
+    private fun onProfileNameConfirm(state: DialogState.ProfileNameInput) {
+        val name = state.currentName.trim()
+        if (name.isBlank() || name.equals(dev.cannoli.scorza.input.ProfileManager.DEFAULT, ignoreCase = true)) {
+            dialogState.value = DialogState.None
+            return
+        }
+        if (state.isNew) {
+            if (!profileManager.createProfile(name)) {
+                dialogState.value = DialogState.None
+                return
+            }
+        } else {
+            val file = java.io.File(settings.sdCardRoot, "Config/Profiles/${state.originalName}.ini")
+            val dest = java.io.File(settings.sdCardRoot, "Config/Profiles/$name.ini")
+            if (dest.exists() && name != state.originalName) {
+                dialogState.value = DialogState.None
+                return
+            }
+            file.renameTo(dest)
+        }
+        val updated = profileManager.listProfiles()
+        val screen = currentScreen as? LauncherScreen.ProfileList
+        if (screen != null) {
+            screenStack[screenStack.lastIndex] = screen.copy(
+                profiles = updated,
+                selectedIndex = updated.indexOf(name).coerceAtLeast(0)
+            )
+        }
+        dialogState.value = DialogState.None
     }
 
     private fun onRenameConfirm(state: DialogState.RenameInput) {

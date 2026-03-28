@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.cannoli.scorza.input.ProfileManager
 import dev.cannoli.scorza.ui.components.BottomBar
 import dev.cannoli.scorza.ui.components.List
 import dev.cannoli.scorza.ui.components.PillRowKeyValue
@@ -31,17 +32,12 @@ fun ControlsScreen(
     listeningIndex: Int,
     listenTimeoutMs: Int = 3000,
     listenCountdownMs: Int = 0,
-    controlSource: OverrideSource? = null,
-    controllerLabel: String? = null,
+    profileName: String? = null,
+    dirty: Boolean = false,
     title: String = "Controls"
 ) {
     val itemHeight = pillItemHeight(lineHeight, verticalPadding)
-    val hasControllerRow = controllerLabel != null
-    val hasSourceRow = controlSource != null
-    var headerRows = 0
-    if (hasControllerRow) headerRows++
-    if (hasSourceRow) headerRows++
-    val buttonOffset = headerRows
+    val screenTitle = profileName ?: title
 
     ScreenBackground(backgroundImagePath = null, backgroundAlpha = 0.85f) {
         Box(
@@ -55,43 +51,17 @@ fun ControlsScreen(
                     .padding(bottom = 48.dp)
             ) {
                 ScreenTitle(
-                    text = title,
+                    text = screenTitle,
                     fontSize = fontSize,
                     lineHeight = lineHeight
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                if (hasControllerRow) {
-                    PillRowKeyValue(
-                        label = "Controller",
-                        value = controllerLabel!!,
-                        isSelected = selectedIndex == 0,
-                        fontSize = fontSize,
-                        lineHeight = lineHeight,
-                        verticalPadding = verticalPadding
-                    )
-                }
-                if (hasSourceRow) {
-                    val sourceIndex = if (hasControllerRow) 1 else 0
-                    val sourceLabel = when (controlSource!!) {
-                        OverrideSource.GLOBAL -> "Global"
-                        OverrideSource.PLATFORM -> "Platform"
-                        OverrideSource.GAME -> "Game"
-                    }
-                    PillRowKeyValue(
-                        label = "Source",
-                        value = sourceLabel,
-                        isSelected = selectedIndex == sourceIndex,
-                        fontSize = fontSize,
-                        lineHeight = lineHeight,
-                        verticalPadding = verticalPadding
-                    )
-                }
                 List(
                     items = input.buttons,
-                    selectedIndex = selectedIndex - buttonOffset,
+                    selectedIndex = selectedIndex,
                     itemHeight = itemHeight
                 ) { index, button ->
-                    val value = if (index + buttonOffset == listeningIndex) {
+                    val value = if (index == listeningIndex) {
                         "..."
                     } else {
                         LibretroInput.keyCodeName(input.getKeyCodeFor(button))
@@ -99,7 +69,7 @@ fun ControlsScreen(
                     PillRowKeyValue(
                         label = button.label,
                         value = value,
-                        isSelected = index == selectedIndex - buttonOffset,
+                        isSelected = index == selectedIndex,
                         fontSize = fontSize,
                         lineHeight = lineHeight,
                         verticalPadding = verticalPadding
@@ -112,14 +82,13 @@ fun ControlsScreen(
             } else 0
             val bottomLeft = if (listeningIndex >= 0) {
                 emptyList()
-            } else {
+            } else if (dirty) {
                 listOf("B" to "BACK", "X" to "RESET ALL")
+            } else {
+                listOf("B" to "BACK")
             }
-            val isOnHeaderRow = selectedIndex < buttonOffset
             val bottomRight = if (listeningIndex >= 0) {
                 listOf("" to "PRESS A BUTTON... $remainingSec")
-            } else if (isOnHeaderRow) {
-                listOf("←→" to "CHANGE")
             } else {
                 listOf("A" to "REMAP")
             }

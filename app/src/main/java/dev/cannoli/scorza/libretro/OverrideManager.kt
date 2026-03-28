@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.libretro
 
+import dev.cannoli.scorza.input.ProfileManager
 import dev.cannoli.scorza.util.IniParser
 import dev.cannoli.scorza.util.IniWriter
 import java.io.File
@@ -46,7 +47,7 @@ class OverrideManager(
         var crtNoise: Float = 0.15f,
         var shaderPreset: String = "",
         var overlay: String = "",
-        var controlSource: OverrideSource = OverrideSource.GLOBAL,
+        var profileName: String = ProfileManager.DEFAULT,
         var shortcutSource: OverrideSource = OverrideSource.GLOBAL,
         var controls: Map<String, Int> = emptyMap(),
         var shortcuts: Map<ShortcutAction, Set<Int>> = emptyMap(),
@@ -74,14 +75,15 @@ class OverrideManager(
             coreOptions == other.coreOptions
     }
 
-    fun load(): Settings {
+    fun load(profileManager: ProfileManager): Settings {
         val settings = Settings()
         applyFrontend(platformFile, settings)
         applyOptions(platformFile, settings)
         applyFrontend(gameFile, settings)
         applyOptions(gameFile, settings)
-        resolveSourcePreferences(settings)
-        loadControlsFrom(sourceFile(settings.controlSource), settings)
+        settings.profileName = profileManager.resolveProfile(platformTag, gameBaseName)
+        settings.controls = profileManager.readControls(settings.profileName)
+        resolveShortcutSource(settings)
         loadShortcutsFrom(sourceFile(settings.shortcutSource), settings)
         return settings
     }
@@ -118,16 +120,8 @@ class OverrideManager(
         else if (gameFile.exists()) gameFile.delete()
     }
 
-    fun saveControlSource(source: OverrideSource) {
-        IniWriter.mergeWrite(gameFile, "meta", mapOf("control_source" to source.name))
-    }
-
     fun saveShortcutSource(source: OverrideSource) {
         IniWriter.mergeWrite(gameFile, "meta", mapOf("shortcut_source" to source.name))
-    }
-
-    fun saveControls(source: OverrideSource, controls: Map<String, Int>) {
-        IniWriter.mergeWrite(sourceFile(source), "controls", controls.mapValues { it.value.toString() })
     }
 
     fun saveShortcuts(source: OverrideSource, shortcuts: Map<ShortcutAction, Set<Int>>) {
@@ -135,12 +129,6 @@ class OverrideManager(
             sourceFile(source), "shortcuts",
             shortcuts.mapKeys { it.key.name }.mapValues { it.value.joinToString(",") }
         )
-    }
-
-    fun loadControlsForSource(source: OverrideSource): Map<String, Int> {
-        val s = Settings()
-        loadControlsFrom(sourceFile(source), s)
-        return s.controls
     }
 
     fun loadShortcutsForSource(source: OverrideSource): Map<ShortcutAction, Set<Int>> {
@@ -155,26 +143,13 @@ class OverrideManager(
         OverrideSource.GAME -> gameFile
     }
 
-    private fun resolveSourcePreferences(settings: Settings) {
+    private fun resolveShortcutSource(settings: Settings) {
         val gameMeta = if (gameFile.exists()) IniParser.parse(gameFile).getSection("meta") else emptyMap()
         val platformMeta = if (platformFile.exists()) IniParser.parse(platformFile).getSection("meta") else emptyMap()
-
-        settings.controlSource = gameMeta["control_source"]?.let { enumSafe<OverrideSource>(it) }
-            ?: platformMeta["control_source"]?.let { enumSafe<OverrideSource>(it) }
-            ?: legacyGlobalControlsFallback()
 
         settings.shortcutSource = gameMeta["shortcut_source"]?.let { enumSafe<OverrideSource>(it) }
             ?: platformMeta["shortcut_source"]?.let { enumSafe<OverrideSource>(it) }
             ?: OverrideSource.GLOBAL
-    }
-
-    private fun legacyGlobalControlsFallback(): OverrideSource {
-        for (file in listOf(gameFile, platformFile)) {
-            if (!file.exists()) continue
-            val controls = IniParser.parse(file).getSection("controls")
-            if (controls["use_global_controls"] == "true") return OverrideSource.GLOBAL
-        }
-        return OverrideSource.GLOBAL
     }
 
     private fun applyFrontend(file: File, settings: Settings) {
@@ -207,18 +182,6 @@ class OverrideManager(
             val merged = settings.coreOptions.toMutableMap()
             merged.putAll(s)
             settings.coreOptions = merged
-        }
-    }
-
-    private fun loadControlsFrom(file: File, settings: Settings) {
-        if (!file.exists()) return
-        val s = IniParser.parse(file).getSection("controls")
-        if (s.isNotEmpty()) {
-            val map = mutableMapOf<String, Int>()
-            for ((key, value) in s) {
-                value.toIntOrNull()?.let { map[key] = it }
-            }
-            if (map.isNotEmpty()) settings.controls = map
         }
     }
 

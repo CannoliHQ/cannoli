@@ -11,9 +11,7 @@ data class ControllerIdentity(
 )
 
 class ControllerManager(
-    private val maxPorts: Int = LibretroRunner.MAX_PORTS,
-    private val configStore: ControllerConfigStore? = null,
-    private val defaultControls: () -> Map<String, Int> = { emptyMap() }
+    private val maxPorts: Int = LibretroRunner.MAX_PORTS
 ) : InputManager.InputDeviceListener {
 
     val slots = arrayOfNulls<ControllerIdentity>(maxPorts)
@@ -67,7 +65,6 @@ class ControllerManager(
             val identity = ControllerIdentity(descriptor, device.name)
             slots[existingPort] = identity
             deviceToPort[deviceId] = existingPort
-            loadControlsForPort(existingPort, descriptor)
             onDeviceConnected?.invoke(existingPort, identity)
             return existingPort
         }
@@ -77,24 +74,11 @@ class ControllerManager(
         slots[port] = identity
         deviceToPort[deviceId] = port
         descriptorToPort[descriptor] = port
-        loadControlsForPort(port, descriptor)
         onDeviceConnected?.invoke(port, identity)
         return port
     }
 
     private fun nextAvailablePort(): Int? = (0 until maxPorts).firstOrNull { slots[it] == null }
-
-    private fun loadControlsForPort(port: Int, descriptor: String) {
-        val portInput = portInputs[port]
-        portInput.resetDefaults()
-        val controls = configStore?.let {
-            if (it.hasConfig(descriptor)) it.readControls(descriptor) else null
-        } ?: defaultControls()
-        for (btn in portInput.buttons) {
-            val keyCode = controls[btn.prefKey] ?: continue
-            portInput.assign(btn, keyCode)
-        }
-    }
 
     fun removeDevice(deviceId: Int): Int? {
         val port = deviceToPort.remove(deviceId) ?: return null

@@ -3,8 +3,8 @@ package dev.cannoli.scorza.libretro
 import android.content.Context
 import android.hardware.input.InputManager
 import dev.cannoli.scorza.input.CannoliAccessibilityService
-import dev.cannoli.scorza.input.ControllerConfigStore
 import dev.cannoli.scorza.input.ControllerManager
+import dev.cannoli.scorza.input.ProfileManager
 import android.graphics.Bitmap
 import android.opengl.GLSurfaceView
 import android.os.Bundle
@@ -44,7 +44,7 @@ class LibretroActivity : ComponentActivity() {
     private lateinit var renderer: GraphicsBackend
     private lateinit var input: LibretroInput
     private lateinit var controllerManager: ControllerManager
-    private lateinit var controllerConfigStore: ControllerConfigStore
+    private lateinit var profileManager: ProfileManager
     private lateinit var slotManager: SaveSlotManager
     private lateinit var overrideManager: OverrideManager
     private var audio: LibretroAudio? = null
@@ -76,7 +76,8 @@ class LibretroActivity : ComponentActivity() {
 
     private var coreOptions by mutableStateOf(emptyList<LibretroRunner.CoreOption>())
     private var coreCategories by mutableStateOf(emptyList<LibretroRunner.CoreOptionCategory>())
-    private var controlSource by mutableStateOf(OverrideSource.GLOBAL)
+    private var currentProfileName by mutableStateOf(ProfileManager.DEFAULT)
+    private var profileNames by mutableStateOf(listOf(ProfileManager.DEFAULT))
     private var controlsSnapshot: Map<String, Int> = emptyMap()
     private var shortcutSource by mutableStateOf(OverrideSource.GLOBAL)
     private var shortcuts by mutableStateOf(mapOf<ShortcutAction, Set<Int>>())
@@ -86,8 +87,7 @@ class LibretroActivity : ComponentActivity() {
     private var frontendSnapshot: OverrideManager.Settings? = null
     private var shaderParamsDirty = false
     private var platformBaseline: OverrideManager.Settings? = null
-    private var globalControls = emptyMap<String, Int>()
-    private var editingPort by mutableIntStateOf(0)
+    private var defaultProfileControls = emptyMap<String, Int>()
 
     private var diskCount by mutableIntStateOf(0)
     private var currentDiskIndex by mutableIntStateOf(0)
@@ -123,6 +123,7 @@ class LibretroActivity : ComponentActivity() {
     private var systemDir: String = ""
     private var saveDir: String = ""
     private var platformTag: String = ""
+    private var gameBaseName: String = ""
     private var platformName: String = ""
     private var cannoliRoot: String = ""
     private var showWifi = true
@@ -194,11 +195,9 @@ class LibretroActivity : ComponentActivity() {
         use24h = intent.getBooleanExtra("use_24h", false)
 
         slotManager = SaveSlotManager(stateBasePath)
-        controllerConfigStore = ControllerConfigStore(cannoliRoot)
-        controllerManager = ControllerManager(
-            configStore = controllerConfigStore,
-            defaultControls = { globalControls }
-        )
+        profileManager = ProfileManager(cannoliRoot)
+        profileManager.ensureDefault()
+        controllerManager = ControllerManager()
         controllerManager.onDeviceDisconnected = { port -> onControllerDisconnected(port) }
         controllerManager.onDeviceConnected = { port, _ ->
             if (::runner.isInitialized) runner.setControllerPortDevice(port, LibretroRunner.DEVICE_JOYPAD)
@@ -241,9 +240,9 @@ class LibretroActivity : ComponentActivity() {
                             },
                             settingsItems = if (screen is IGMScreen.Menu) emptyList() else buildSettingsItems(),
                             coreInfo = coreInfoText,
-                            input = controllerManager.portInputs[editingPort],
-                            controlSource = controlSource,
-                            controllerLabel = if (controllerManager.connectedPortCount > 1) "P${editingPort + 1}" else null,
+                            input = controllerManager.portInputs[0],
+                            profileName = currentProfileName,
+                            profileNames = profileNames,
                             debugHud = debugHud,
                             renderer = renderer,
                             runner = runner,
@@ -311,7 +310,7 @@ class LibretroActivity : ComponentActivity() {
                 coreCategories = runner.getCoreCategories()
 
                 val coreBaseName = File(corePath).nameWithoutExtension
-                val gameBaseName = if (romPath.isNotEmpty()) File(romPath).nameWithoutExtension else ""
+                gameBaseName = if (romPath.isNotEmpty()) File(romPath).nameWithoutExtension else ""
                 overrideManager = OverrideManager(cannoliRoot, platformTag, gameBaseName, coreBaseName)
                 loadOverrides()
                 for (p in 0 until LibretroRunner.MAX_PORTS) {
@@ -489,7 +488,9 @@ class LibretroActivity : ComponentActivity() {
             is IGMScreen.ShaderSettings -> handleShaderSettingsInput(screen, resolved)
             is IGMScreen.Emulator -> handleEmulatorInput(screen, resolved)
             is IGMScreen.EmulatorCategory -> handleEmulatorCategoryInput(screen, resolved)
-            is IGMScreen.Controls -> handleControlsInput(screen, keyCode, resolved)
+            is IGMScreen.Controls -> handleProfilePickerInput(screen, resolved)
+            is IGMScreen.ControlEdit -> handleControlEditInput(screen, keyCode, resolved)
+            is IGMScreen.ProfileName -> handleProfileNameInput(screen, resolved)
             is IGMScreen.Shortcuts -> handleShortcutsInput(screen, keyCode, resolved)
             is IGMScreen.SavePrompt -> handleSavePromptInput(screen, resolved)
             is IGMScreen.Info -> {
@@ -527,14 +528,14 @@ class LibretroActivity : ComponentActivity() {
 
     private fun resolveGlobal(keyCode: Int): Int {
         for (btn in input.buttons) {
-            val assigned = globalControls[btn.prefKey] ?: btn.defaultKeyCode
+            val assigned = defaultProfileControls[btn.prefKey] ?: btn.defaultKeyCode
             if (assigned == keyCode) return btn.defaultKeyCode
         }
         return keyCode
     }
 
     private fun handleGameplayInput(keyCode: Int, event: KeyEvent): Boolean {
-        val menuCode = globalControls["btn_menu"] ?: KeyEvent.KEYCODE_BUTTON_MODE
+        val menuCode = defaultProfileControls["btn_menu"] ?: KeyEvent.KEYCODE_BUTTON_MODE
         if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_MENU || keyCode == menuCode) { openMenu(); return true }
         val port = controllerManager.getPortForDeviceId(event.deviceId) ?: 0
         val portKeys = controllerManager.portPressedKeys[port]
@@ -813,10 +814,7 @@ class LibretroActivity : ComponentActivity() {
                         push(IGMScreen.Emulator())
                     }
                     IGMSettings.CONTROLS -> {
-                        editingPort = 0
-                        val inp = editingInput
-                        controlsSnapshot = inp.buttons.associate { it.prefKey to inp.getKeyCodeFor(it) }
-                        push(IGMScreen.Controls())
+                        push(IGMScreen.Controls(selectedIndex = profileNames.indexOf(currentProfileName).coerceAtLeast(0)))
                     }
                     IGMSettings.SHORTCUTS -> push(IGMScreen.Shortcuts())
                     IGMSettings.ADVANCED -> push(IGMScreen.Advanced())
@@ -1254,7 +1252,7 @@ class LibretroActivity : ComponentActivity() {
 
     private val controlListenRunnable = object : Runnable {
         override fun run() {
-            val screen = currentScreen as? IGMScreen.Controls ?: return
+            val screen = currentScreen as? IGMScreen.ControlEdit ?: return
             if (screen.listeningIndex < 0) return
             val newMs = screen.listenCountdownMs + controlListenTickMs.toInt()
             if (newMs >= controlListenTimeoutMs) {
@@ -1266,30 +1264,77 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
-    private val editingInput: LibretroInput get() = controllerManager.portInputs[editingPort]
-    private val hasControllerRow: Boolean get() = controllerManager.connectedPortCount > 1
-
-    private fun controlsHeaderRows(): Int {
-        var n = 1
-        if (hasControllerRow) n++
-        return n
+    private fun handleProfilePickerInput(screen: IGMScreen.Controls, keyCode: Int): Boolean {
+        if (screen.confirmingDelete) {
+            return when (keyCode) {
+                KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+                    val name = profileNames.getOrNull(screen.selectedIndex)
+                    if (name != null && name != ProfileManager.DEFAULT) {
+                        profileManager.deleteProfile(name)
+                        profileNames = profileManager.listProfiles()
+                        if (currentProfileName == name) {
+                            currentProfileName = ProfileManager.DEFAULT
+                            profileManager.saveProfileSelection(platformTag, gameBaseName, currentProfileName)
+                            applyProfileToAllPorts(profileManager.readControls(currentProfileName))
+                        }
+                    }
+                    replaceTop(IGMScreen.Controls(selectedIndex = screen.selectedIndex.coerceAtMost(profileNames.lastIndex)))
+                    true
+                }
+                else -> { replaceTop(screen.copy(confirmingDelete = false)); true }
+            }
+        }
+        val count = profileNames.size
+        return when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_UP -> {
+                if (count > 0) replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
+            }
+            KeyEvent.KEYCODE_DPAD_DOWN -> {
+                if (count > 0) replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
+            }
+            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+                val name = profileNames.getOrNull(screen.selectedIndex) ?: return true
+                currentProfileName = name
+                profileManager.saveProfileSelection(platformTag, gameBaseName, name)
+                applyProfileToAllPorts(profileManager.readControls(name))
+                val inp = controllerManager.portInputs[0]
+                controlsSnapshot = inp.buttons.associate { it.prefKey to inp.getKeyCodeFor(it) }
+                push(IGMScreen.ControlEdit())
+                true
+            }
+            KeyEvent.KEYCODE_BUTTON_X -> {
+                val name = profileNames.getOrNull(screen.selectedIndex)
+                if (name != null && name != ProfileManager.DEFAULT) {
+                    replaceTop(screen.copy(confirmingDelete = true))
+                }
+                true
+            }
+            KeyEvent.KEYCODE_BUTTON_Y -> {
+                push(IGMScreen.ProfileName(isNew = true))
+                true
+            }
+            KeyEvent.KEYCODE_BUTTON_START -> {
+                val name = profileNames.getOrNull(screen.selectedIndex)
+                if (name != null && name != ProfileManager.DEFAULT) {
+                    push(IGMScreen.ProfileName(name = name, cursorPos = name.length, isNew = false, originalName = name))
+                }
+                true
+            }
+            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
+            else -> true
+        }
     }
 
-    private fun controllerRowIndex(): Int = 0
-    private fun sourceRowIndex(): Int = if (hasControllerRow) 1 else 0
-
-    private fun handleControlsInput(screen: IGMScreen.Controls, rawKeyCode: Int, keyCode: Int): Boolean {
-        val headerRows = controlsHeaderRows()
-        val inp = editingInput
+    private fun handleControlEditInput(screen: IGMScreen.ControlEdit, rawKeyCode: Int, keyCode: Int): Boolean {
+        val inp = controllerManager.portInputs[0]
         if (screen.listeningIndex >= 0) {
             shortcutCountdownHandler.removeCallbacks(controlListenRunnable)
-            val buttonIndex = screen.listeningIndex - headerRows
-            inp.assign(inp.buttons[buttonIndex], rawKeyCode)
-            replaceTop(screen.copy(listeningIndex = -1, listenCountdownMs = 0))
-            saveControlsForPort(editingPort)
+            inp.assign(inp.buttons[screen.listeningIndex], rawKeyCode)
+            saveCurrentProfile()
+            replaceTop(screen.copy(listeningIndex = -1, listenCountdownMs = 0, dirty = true))
             return true
         }
-        val count = inp.buttons.size + headerRows
+        val count = inp.buttons.size
         return when (keyCode) {
             KeyEvent.KEYCODE_DPAD_UP -> {
                 replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
@@ -1297,77 +1342,109 @@ class LibretroActivity : ComponentActivity() {
             KeyEvent.KEYCODE_DPAD_DOWN -> {
                 replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
             }
-            KeyEvent.KEYCODE_DPAD_LEFT -> {
-                when (screen.selectedIndex) {
-                    controllerRowIndex() -> if (hasControllerRow) cycleEditingPort(-1)
-                    sourceRowIndex() -> cycleControlSource(-1)
-                }
-                true
-            }
-            KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                when (screen.selectedIndex) {
-                    controllerRowIndex() -> if (hasControllerRow) cycleEditingPort(1)
-                    sourceRowIndex() -> cycleControlSource(1)
-                }
-                true
-            }
             KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
-                when {
-                    hasControllerRow && screen.selectedIndex == controllerRowIndex() -> cycleEditingPort(1)
-                    screen.selectedIndex == sourceRowIndex() -> cycleControlSource(1)
-                    else -> {
-                        replaceTop(screen.copy(listeningIndex = screen.selectedIndex, listenCountdownMs = 0))
-                        shortcutCountdownHandler.postDelayed(controlListenRunnable, controlListenTickMs)
-                    }
-                }
+                replaceTop(screen.copy(listeningIndex = screen.selectedIndex, listenCountdownMs = 0))
+                shortcutCountdownHandler.postDelayed(controlListenRunnable, controlListenTickMs)
                 true
             }
             KeyEvent.KEYCODE_BUTTON_X -> {
-                inp.resetDefaults()
-                for ((key, kc) in controlsSnapshot) {
-                    val btn = inp.buttons.find { it.prefKey == key } ?: continue
-                    inp.assign(btn, kc)
+                if (screen.dirty) {
+                    inp.resetDefaults()
+                    for ((key, kc) in controlsSnapshot) {
+                        val btn = inp.buttons.find { it.prefKey == key } ?: continue
+                        inp.assign(btn, kc)
+                    }
+                    saveCurrentProfile()
+                    replaceTop(IGMScreen.ControlEdit(selectedIndex = screen.selectedIndex))
                 }
-                saveControlsForPort(editingPort)
-                screenStack.removeAt(screenStack.lastIndex)
-                screenStack.add(IGMScreen.Controls(selectedIndex = screen.selectedIndex, port = editingPort))
                 true
             }
-            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { editingPort = 0; pop(); true }
+            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
             else -> true
         }
     }
 
-    private fun cycleEditingPort(direction: Int) {
-        val ports = (0 until LibretroRunner.MAX_PORTS).filter { controllerManager.slots[it] != null }
-        if (ports.size < 2) return
-        val currentIdx = ports.indexOf(editingPort)
-        val nextIdx = ((currentIdx + direction) + ports.size) % ports.size
-        editingPort = ports[nextIdx]
-        val inp = editingInput
-        controlsSnapshot = inp.buttons.associate { it.prefKey to inp.getKeyCodeFor(it) }
-    }
-
-    private fun saveControlsForPort(port: Int) {
-        val inp = controllerManager.portInputs[port]
-        val controlMap = mutableMapOf<String, Int>()
-        for (btn in inp.buttons) controlMap[btn.prefKey] = inp.getKeyCodeFor(btn)
-        if (port == 0) overrideManager.saveControls(controlSource, controlMap)
-        val identity = controllerManager.slots[port]
-        if (identity != null) {
-            controllerConfigStore.saveControls(identity.descriptor, identity.name, controlMap)
+    private fun handleProfileNameInput(screen: IGMScreen.ProfileName, keyCode: Int): Boolean {
+        val rows = dev.cannoli.scorza.ui.components.getKeyboardRows(screen.caps, screen.symbols)
+        val maxRow = rows.lastIndex
+        val maxCol = rows[screen.keyRow.coerceIn(0, maxRow)].lastIndex
+        return when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_UP -> {
+                val newRow = if (screen.keyRow <= 0) maxRow else screen.keyRow - 1
+                replaceTop(screen.copy(keyRow = newRow, keyCol = screen.keyCol.coerceAtMost(rows[newRow].lastIndex))); true
+            }
+            KeyEvent.KEYCODE_DPAD_DOWN -> {
+                val newRow = if (screen.keyRow >= maxRow) 0 else screen.keyRow + 1
+                replaceTop(screen.copy(keyRow = newRow, keyCol = screen.keyCol.coerceAtMost(rows[newRow].lastIndex))); true
+            }
+            KeyEvent.KEYCODE_DPAD_LEFT -> {
+                replaceTop(screen.copy(keyCol = if (screen.keyCol <= 0) maxCol else screen.keyCol - 1)); true
+            }
+            KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                replaceTop(screen.copy(keyCol = if (screen.keyCol >= maxCol) 0 else screen.keyCol + 1)); true
+            }
+            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+                dev.cannoli.scorza.ui.components.handleKeyboardConfirm(
+                    screen.caps, screen.symbols, screen.keyRow, screen.keyCol,
+                    screen.name, screen.cursorPos,
+                    onChar = { newName, newPos -> replaceTop(screen.copy(name = newName, cursorPos = newPos)) },
+                    onShift = { replaceTop(screen.copy(caps = !screen.caps)) },
+                    onSymbols = { replaceTop(screen.copy(symbols = !screen.symbols)) },
+                    onEnter = { finishProfileName(screen) }
+                )
+                true
+            }
+            KeyEvent.KEYCODE_BUTTON_L1 -> {
+                if (screen.cursorPos > 0) replaceTop(screen.copy(cursorPos = screen.cursorPos - 1)); true
+            }
+            KeyEvent.KEYCODE_BUTTON_R1 -> {
+                if (screen.cursorPos < screen.name.length) replaceTop(screen.copy(cursorPos = screen.cursorPos + 1)); true
+            }
+            KeyEvent.KEYCODE_BUTTON_START -> { finishProfileName(screen); true }
+            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
+            else -> true
         }
     }
 
-    private fun cycleControlSource(direction: Int) {
-        val sources = OverrideSource.entries
-        controlSource = sources[(controlSource.ordinal + direction + sources.size) % sources.size]
-        overrideManager.saveControlSource(controlSource)
-        val inp = editingInput
-        inp.resetDefaults()
-        for ((key, kc) in overrideManager.loadControlsForSource(controlSource)) {
-            val btn = inp.buttons.find { it.prefKey == key } ?: continue
-            inp.assign(btn, kc)
+    private fun finishProfileName(screen: IGMScreen.ProfileName) {
+        val name = screen.name.trim()
+        if (name.isBlank() || name.equals(ProfileManager.DEFAULT, ignoreCase = true)) { pop(); return }
+        if (screen.isNew) {
+            val currentControls = mutableMapOf<String, Int>()
+            val inp = controllerManager.portInputs[0]
+            for (btn in inp.buttons) currentControls[btn.prefKey] = inp.getKeyCodeFor(btn)
+            if (!profileManager.createProfile(name, currentControls)) { pop(); return }
+        } else {
+            val file = java.io.File(cannoliRoot, "Config/Profiles/${screen.originalName}.ini")
+            val dest = java.io.File(cannoliRoot, "Config/Profiles/$name.ini")
+            if (dest.exists() && name != screen.originalName) { pop(); return }
+            file.renameTo(dest)
+            if (currentProfileName == screen.originalName) currentProfileName = name
+        }
+        profileNames = profileManager.listProfiles()
+        pop()
+        val controlsScreen = screenStack.lastOrNull() as? IGMScreen.Controls
+        if (controlsScreen != null) {
+            replaceTop(controlsScreen.copy(selectedIndex = profileNames.indexOf(name).coerceAtLeast(0)))
+        }
+    }
+
+    private fun saveCurrentProfile() {
+        val inp = controllerManager.portInputs[0]
+        val controlMap = mutableMapOf<String, Int>()
+        for (btn in inp.buttons) controlMap[btn.prefKey] = inp.getKeyCodeFor(btn)
+        profileManager.saveControls(currentProfileName, controlMap)
+        applyProfileToAllPorts(controlMap)
+    }
+
+    private fun applyProfileToAllPorts(controls: Map<String, Int>) {
+        for (p in 0 until LibretroRunner.MAX_PORTS) {
+            val portInput = controllerManager.portInputs[p]
+            portInput.resetDefaults()
+            for ((key, keyCode) in controls) {
+                val btn = portInput.buttons.find { it.prefKey == key } ?: continue
+                portInput.assign(btn, keyCode)
+            }
         }
     }
 
@@ -1596,7 +1673,7 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun loadOverrides() {
-        val settings = overrideManager.load()
+        val settings = overrideManager.load(profileManager)
         scalingMode = settings.scalingMode
         screenEffect = settings.screenEffect
         sharpness = settings.sharpness
@@ -1605,21 +1682,19 @@ class LibretroActivity : ComponentActivity() {
         lowLatency = settings.lowLatency
         shaderPreset = settings.shaderPreset
         overlay = settings.overlay
-        controlSource = settings.controlSource
+        currentProfileName = settings.profileName
+        profileNames = profileManager.listProfiles()
         shortcutSource = settings.shortcutSource
         shortcuts = settings.shortcuts
 
-        for ((key, keyCode) in settings.controls) {
-            val btn = input.buttons.find { it.prefKey == key } ?: continue
-            input.assign(btn, keyCode)
-        }
+        applyProfileToAllPorts(settings.controls)
+        defaultProfileControls = profileManager.readControls(ProfileManager.DEFAULT)
 
         for ((key, value) in settings.coreOptions) {
             runner.setCoreOption(key, value)
         }
         coreOptions = runner.getCoreOptions()
         platformBaseline = overrideManager.loadPlatformBaseline()
-        globalControls = overrideManager.loadControlsForSource(OverrideSource.GLOBAL)
     }
 
     // --- OSD / Undo ---
