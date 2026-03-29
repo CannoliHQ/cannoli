@@ -105,7 +105,8 @@ enum class ShortcutAction(val label: String) {
     CYCLE_SCALING("Cycle Scaling"),
     CYCLE_EFFECT("Cycle Shader"),
     TOGGLE_FF("Toggle Fast Forward"),
-    HOLD_FF("Hold Fast Forward")
+    HOLD_FF("Hold Fast Forward"),
+    OPEN_GUIDE("Open Guide")
 }
 
 private val fontSize = 22.sp
