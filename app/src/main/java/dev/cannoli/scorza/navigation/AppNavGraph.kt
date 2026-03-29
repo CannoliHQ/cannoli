@@ -62,7 +62,7 @@ sealed class LauncherScreen {
     data object SystemList : LauncherScreen()
     data object GameList : LauncherScreen()
     data object Settings : LauncherScreen()
-    data class CoreMapping(val mappings: List<CoreMappingEntry>, val selectedIndex: Int = 0, val scrollTarget: Int = 0) : LauncherScreen()
+    data class CoreMapping(val mappings: List<CoreMappingEntry>, val allMappings: List<CoreMappingEntry> = mappings, val selectedIndex: Int = 0, val scrollTarget: Int = 0, val filter: Int = 0) : LauncherScreen()
     data class CorePicker(val tag: String, val platformName: String, val cores: List<CorePickerOption>, val selectedIndex: Int = 0, val gamePath: String? = null, val scrollTarget: Int = 0, val activeIndex: Int = 0) : LauncherScreen()
     data class ColorList(val colors: List<ColorEntry>, val selectedIndex: Int = 0, val scrollTarget: Int = 0) : LauncherScreen()
     data class CollectionPicker(val gamePaths: List<String>, val title: String, val collections: List<String>, val selectedIndex: Int = 0, val checkedIndices: Set<Int> = emptySet(), val initialChecked: Set<Int> = emptySet(), val scrollTarget: Int = 0) : LauncherScreen()
@@ -72,6 +72,7 @@ sealed class LauncherScreen {
     data class ControlBinding(val selectedIndex: Int = 0, val scrollTarget: Int = 0, val controls: Map<String, Int> = emptyMap(), val listeningIndex: Int = -1, val listenCountdownMs: Int = 0, val profileName: String = "Default") : LauncherScreen()
     data class ShortcutBinding(val selectedIndex: Int = 0, val scrollTarget: Int = 0, val shortcuts: Map<dev.cannoli.scorza.libretro.ShortcutAction, Set<Int>> = emptyMap(), val listening: Boolean = false, val heldKeys: Set<Int> = emptySet(), val countdownMs: Int = 0) : LauncherScreen()
     data class Credits(val selectedIndex: Int = 0, val scrollTarget: Int = 0) : LauncherScreen()
+    data class InstalledCores(val cores: List<String> = emptyList(), val loading: Boolean = true, val selectedIndex: Int = 0, val scrollTarget: Int = 0) : LauncherScreen()
 }
 
 @Composable
@@ -145,6 +146,14 @@ fun AppNavGraph(
                 onVisibleRangeChanged = onVisibleRangeChanged
             )
             is LauncherScreen.CoreMapping -> {
+                val filterLabel = when (currentScreen.filter) {
+                    1 -> "MISSING"
+                    2 -> "INTERNAL"
+                    3 -> "EXTERNAL"
+                    else -> "ALL"
+                }
+                val selected = currentScreen.mappings.getOrNull(currentScreen.selectedIndex)
+                val canSelect = selected != null && selected.coreDisplayName != "Missing" && selected.coreDisplayName != "None"
                 ListDialogScreen(
                     backgroundImagePath = appSettings.backgroundImagePath,
                     backgroundTint = appSettings.backgroundTint,
@@ -152,7 +161,10 @@ fun AppNavGraph(
                     listFontSize = listFontSize,
                     listLineHeight = listLineHeight,
                     fullWidth = true,
-                    rightBottomItems = listOf("A" to stringResource(R.string.label_select))
+                    rightBottomItems = buildList {
+                        if (canSelect) add("A" to stringResource(R.string.label_select))
+                        add("Y" to filterLabel)
+                    }
                 ) {
                     List(
                         items = currentScreen.mappings,
@@ -516,6 +528,44 @@ fun AppNavGraph(
                                     )
                                 }
                             }
+                        }
+                    }
+                }
+            }
+            is LauncherScreen.InstalledCores -> {
+                ListDialogScreen(
+                    backgroundImagePath = appSettings.backgroundImagePath,
+                    backgroundTint = appSettings.backgroundTint,
+                    title = stringResource(R.string.title_installed_cores),
+                    listFontSize = listFontSize,
+                    listLineHeight = listLineHeight,
+                    fullWidth = true,
+                    rightBottomItems = emptyList()
+                ) {
+                    if (currentScreen.loading) {
+                        // wait for broadcast response
+                    } else if (currentScreen.cores.isEmpty()) {
+                        Text(
+                            text = stringResource(R.string.installed_cores_none),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = GrayText,
+                            modifier = Modifier.padding(start = 14.dp)
+                        )
+                    } else {
+                        List(
+                            items = currentScreen.cores,
+                            selectedIndex = currentScreen.selectedIndex,
+                            itemHeight = itemHeight,
+                            scrollTarget = currentScreen.scrollTarget,
+                            onVisibleRangeChanged = onVisibleRangeChanged
+                        ) { index, core ->
+                            PillRowText(
+                                label = core,
+                                isSelected = currentScreen.selectedIndex == index,
+                                fontSize = listFontSize,
+                                lineHeight = listLineHeight,
+                                verticalPadding = listVerticalPadding
+                            )
                         }
                     }
                 }
