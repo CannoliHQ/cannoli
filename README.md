@@ -47,42 +47,55 @@ Since purchasing a Retroid Pocket Classic I've been yearning for MinUI's simplic
 
 # Credits and Licenses
 
-| Name                        | What            | License        |
-|-----------------------------|-----------------|----------------|
-| M+ Fonts Project            | M PLUS 1 Code   | OFL            |
-| Nerd Fonts                  | NerdSymbols     | OFL            |
-| ZXing                       | QR Code Library | Apache 2.0     |
-| EasyMode                    | crt-easymode    | GPL            |
-| Themaister                  | sharp-bilinear  | Public domain  |
-| hunterk                     | scanline-fract  | Public domain  |
-| SoltanGris42 / metallic77   | zfast-crt       | GPLv2          |
-| SoltanGris42                | zfast-lcd       | GPLv2          |
-| Gigaherz                    | lcd3x           | Public domain  |
-| Atari800                    | Core            | GPLv2          |
-| Beetle NeoPop               | Core            | GPLv2          |
-| Beetle PCE FAST             | Core            | GPLv2          |
-| Beetle PC-FX                | Core            | GPLv2          |
-| Beetle VB                   | Core            | GPLv2          |
-| Beetle Wonderswan           | Core            | GPLv2          |
-| blueMSX                     | Core            | GPLv2          |
-| DOSBox-Pure                 | Core            | GPLv2          |
-| FCEUmm                      | Core            | GPLv2          |
-| FreeIntv                    | Core            | GPLv3          |
-| Gambatte                    | Core            | GPLv2          |
-| Genesis Plus GX             | Core            | Non-commercial |
-| Handy                       | Core            | Zlib           |
-| mGBA                        | Core            | MPLv2.0        |
-| Mupen64Plus-Next            | Core            | GPLv2          |
-| Nestopia                    | Core            | GPLv2          |
-| PCSX ReARMed                | Core            | GPLv2          |
-| PicoDrive                   | Core            | MAME           |
-| PokeMini                    | Core            | GPLv3          |
-| ProSystem                   | Core            | GPLv2          |
-| Snes9x                      | Core            | Non-commercial |
-| Stella                      | Core            | GPLv2          |
-| SwanStation                 | Core            | GPLv3          |
-| vecx                        | Core            | GPLv3          |
-| Virtual Jaguar              | Core            | GPLv3          |
+Full license texts are available in the [licenses/](licenses/) directory.
+
+### Cores
+
+| Name                    | What               | License        |
+|-------------------------|--------------------|----------------|
+| FBNeo                   | Neo Geo / Arcade   | Non-commercial |
+| Gambatte                | Game Boy / Color   | GPLv2          |
+| Genesis Plus GX         | Genesis / SMS / GG | Non-commercial |
+| Handy                   | Atari Lynx         | Zlib           |
+| MAME 2003-Plus          | Arcade             | MAME           |
+| Mednafen Neo Geo Pocket | NGP / NGPC         | GPLv2          |
+| Mednafen PCE FAST       | PC Engine          | GPLv2          |
+| Mednafen Virtual Boy    | Virtual Boy        | GPLv2          |
+| Mednafen WonderSwan     | WonderSwan / Color | GPLv2          |
+| mGBA                    | GBA                | MPLv2.0        |
+| Mupen64Plus-Next        | Nintendo 64        | GPLv2          |
+| Nestopia                | NES / FDS          | GPLv2          |
+| PCSX ReARMed            | PlayStation        | GPLv2          |
+| PokeMini                | Pokémon Mini       | GPLv3          |
+| ProSystem               | Atari 7800         | GPLv2          |
+| Snes9x                  | SNES               | Non-commercial |
+| Stella                  | Atari 2600         | GPLv2          |
+| SwanStation             | PlayStation        | GPLv3          |
+
+### Shaders
+
+| Name                     | What           | License       |
+|--------------------------|----------------|---------------|
+| EasyMode                 | crt-easymode   | GPL           |
+| Themaister               | sharp-bilinear | Public domain |
+| hunterk                  | scanline-fract | Public domain |
+| SoltanGris42 / metallic77 | zfast-crt    | GPLv2         |
+| SoltanGris42             | zfast-lcd      | GPLv2         |
+| Gigaherz                 | lcd3x          | Public domain |
+
+### Libraries
+
+| Name                      | What            | License    |
+|---------------------------|-----------------|------------|
+| ZXing                     | QR Code         | Apache 2.0 |
+| PdfiumAndroid (io.legere) | PDF Renderer    | Apache 2.0 |
+
+### Fonts
+
+| Name             | What          | License |
+|------------------|---------------|---------|
+| M+ Fonts Project | M PLUS 1 Code | OFL     |
+| Nerd Fonts       | NerdSymbols   | OFL     |
 
 ---
 
