@@ -24,9 +24,8 @@
     <string name="settings_title">Settings</string>
 
     <!-- Settings categories -->
-    <string name="settings_appearance">Appearance</string>
-    <string name="settings_content">Content</string>
     <string name="settings_display">Display</string>
+    <string name="settings_content">Content</string>
     <string name="settings_status_bar">Status Bar</string>
     <string name="settings_input">Input</string>
     <string name="settings_advanced">Advanced</string>
@@ -38,6 +37,7 @@
     <string name="setting_colors">Colors</string>
     <string name="setting_box_art">Box Art</string>
     <string name="setting_text_size">Text Size</string>
+    <string name="setting_auto_lock">Auto Lock</string>
     <string name="setting_bg_image">Background Image</string>
     <string name="setting_wifi">Wi-Fi</string>
     <string name="setting_vpn">VPN</string>
@@ -62,7 +62,7 @@
     <string name="setting_color_accent">Accent</string>
     <string name="setting_graphics_backend">Renderer</string>
     <string name="setting_core_mapping">Core Mapping</string>
-    <string name="setting_sd_root">Emulation Root</string>
+    <string name="setting_sd_root">Cannoli Root</string>
     <string name="setting_ra_package">RetroArch Package</string>
     <string name="setting_ra_username">Username</string>
     <string name="setting_ra_password">Password</string>
@@ -150,6 +150,12 @@
     <string name="value_not_installed">Not Installed</string>
     <string name="text_size_compact">Compact</string>
     <string name="text_size_default">Default</string>
+    <string name="value_never">Never</string>
+    <string name="value_1m">1 min</string>
+    <string name="value_2m">2 min</string>
+    <string name="value_5m">5 min</string>
+    <string name="value_10m">10 min</string>
+    <string name="value_30m">30 min</string>
 
     <!-- Core picker / nav -->
     <string name="no_compatible_cores">No compatible cores found</string>
@@ -159,7 +165,7 @@
     <string name="title_profiles">Profiles</string>
     <string name="title_button_mapping">Button Mapping</string>
     <string name="title_shortcuts">Shortcuts</string>
-    <string name="shortcut_hold_prompt">Hold buttons…</string>
+    <string name="shortcut_hold_prompt">Hold buttons...</string>
     <string name="dialog_delete_profile">Delete profile \"%1$s\"?</string>
 
     <!-- IGM bottom bar labels -->
