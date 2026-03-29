@@ -29,6 +29,7 @@ class SettingsViewModel(
         @param:StringRes val valueRes: Int? = null,
         val valueText: String? = null,
         val isEditable: Boolean = false,
+        val canCycle: Boolean = true,
         val swatchColor: Color? = null
     )
 
@@ -106,9 +107,9 @@ class SettingsViewModel(
         Category("about", R.string.settings_about)
     )
 
-    private val installedRaPackages: List<String> by lazy {
-        val pm = packageManager ?: return@lazy listOf(settings.retroArchPackage)
-        SettingsRepository.KNOWN_RA_PACKAGES.filter { pm.isPackageInstalled(it) }
+    private fun detectInstalledRaPackages(): List<String> {
+        val pm = packageManager ?: return listOf(settings.retroArchPackage)
+        return SettingsRepository.KNOWN_RA_PACKAGES.filter { pm.isPackageInstalled(it) }
     }
 
     private data class SettingsSnapshot(
@@ -271,7 +272,7 @@ class SettingsViewModel(
                 settings.graphicsBackend = backends[((cur + direction) % backends.size + backends.size) % backends.size]
             }
             "ra_package" -> {
-                val pkgs = installedRaPackages
+                val pkgs = detectInstalledRaPackages()
                 if (pkgs.isNotEmpty()) {
                     val cur = pkgs.indexOf(settings.retroArchPackage).coerceAtLeast(0)
                     settings.retroArchPackage = pkgs[((cur + direction) % pkgs.size + pkgs.size) % pkgs.size]
@@ -487,11 +488,18 @@ class SettingsViewModel(
                 add(SettingsItem("ra_login", R.string.setting_ra_login, isEditable = true))
             }
         }
-        "advanced" -> listOf(
-            SettingsItem("sd_root", R.string.setting_sd_root, valueText = settings.sdCardRoot, isEditable = true),
-            SettingsItem("core_mapping", R.string.setting_core_mapping, isEditable = true),
-            SettingsItem("ra_package", R.string.setting_ra_package, valueText = if (installedRaPackages.isEmpty()) null else settings.retroArchPackage, valueRes = if (installedRaPackages.isEmpty()) R.string.value_not_installed else null, isEditable = installedRaPackages.size < 2)
-        )
+        "advanced" -> buildList {
+            add(SettingsItem("sd_root", R.string.setting_sd_root, valueText = settings.sdCardRoot, isEditable = true))
+            add(SettingsItem("core_mapping", R.string.setting_core_mapping, isEditable = true))
+            val pkgs = detectInstalledRaPackages()
+            if (pkgs.isNotEmpty() && settings.retroArchPackage !in pkgs) {
+                settings.retroArchPackage = pkgs.first()
+            }
+            add(SettingsItem("ra_package", R.string.setting_ra_package, valueText = if (pkgs.isEmpty()) null else settings.retroArchPackage, valueRes = if (pkgs.isEmpty()) R.string.value_none_installed else null, canCycle = pkgs.size > 1))
+            if (pkgs.isNotEmpty()) {
+                add(SettingsItem("installed_cores", R.string.setting_installed_cores, isEditable = true))
+            }
+        }
         else -> emptyList()
     }
 }

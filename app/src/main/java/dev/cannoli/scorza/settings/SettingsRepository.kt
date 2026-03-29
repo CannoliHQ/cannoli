@@ -24,9 +24,6 @@ class SettingsRepository(context: Context) {
     private inline fun jsonWrite(block: JSONObject.() -> Unit) { synchronized(jsonLock) { json.block() }; scheduleSave() }
 
     init {
-        if (prefs.getString(KEY_RA_PACKAGE, null) == "com.retroarch") {
-            prefs.edit().putString(KEY_RA_PACKAGE, DEFAULT_RA_PACKAGE).apply()
-        }
         loadFromDisk()
         migrateFromPrefs()
     }
@@ -190,12 +187,22 @@ class SettingsRepository(context: Context) {
 
     companion object {
         const val DEFAULT_ROOT = "/storage/emulated/0/Cannoli/"
-        const val DEFAULT_RA_PACKAGE = "com.retroarch.aarch64"
+        const val DEFAULT_RA_PACKAGE = "dev.cannoli.ricotta.aarch64"
         val KNOWN_RA_PACKAGES = listOf(
+            "dev.cannoli.ricotta.aarch64",
+            "dev.cannoli.ricotta",
             "com.retroarch.aarch64",
-            "com.retroarch",
-            "com.retroarch.ra32"
+            "com.retroarch"
         )
+
+        private val RA_PACKAGE_LABELS = mapOf(
+            "dev.cannoli.ricotta.aarch64" to "RicottaArch",
+            "dev.cannoli.ricotta" to "RicottaArch",
+            "com.retroarch.aarch64" to "RetroArch",
+            "com.retroarch" to "RetroArch"
+        )
+
+        fun getPackageLabel(pkg: String): String = RA_PACKAGE_LABELS[pkg] ?: pkg
 
         private const val KEY_SETUP_COMPLETED = "setup_completed"
         private const val KEY_SD_ROOT = "sd_root"
