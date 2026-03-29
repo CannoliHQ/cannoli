@@ -40,7 +40,7 @@ class InputHandler(
         }
     }
 
-    private fun resolveButton(keyCode: Int): String? {
+    fun resolveButton(keyCode: Int): String? {
         val mappings = getButtonMappings()
         if (mappings.isNotEmpty()) {
             for ((prefKey, mapped) in mappings) {

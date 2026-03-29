@@ -53,6 +53,7 @@ import dev.cannoli.scorza.ui.screens.ColorEntry
 import dev.cannoli.scorza.ui.screens.CoreMappingEntry
 import dev.cannoli.scorza.ui.screens.CorePickerOption
 import dev.cannoli.scorza.ui.screens.DialogState
+import dev.cannoli.scorza.ui.screens.KeyboardInputState
 import dev.cannoli.scorza.ui.screens.asKeyboardState
 import dev.cannoli.scorza.ui.screens.withBackspace
 import dev.cannoli.scorza.ui.screens.withCaps
@@ -106,6 +107,19 @@ class MainActivity : ComponentActivity() {
     private val autoLockHandler = Handler(Looper.getMainLooper())
     private val autoLockRunnable = Runnable {
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    }
+    private val selectHoldHandler = Handler(Looper.getMainLooper())
+    private var selectDown = false
+    private var selectHeld = false
+    private var capsBeforeSymbols = false
+    private val selectHoldRunnable = Runnable {
+        selectHeld = true
+        val ds = dialogState.value
+        if (ds is KeyboardInputState) {
+            val ks = ds.asKeyboardState()!!
+            if (!ks.symbols) capsBeforeSymbols = ks.caps
+            dialogState.value = ds.withCaps(false).withSymbols(!ks.symbols)
+        }
     }
     @Volatile private var navigating = false
     private var loginManager: RetroAchievementsManager? = null
@@ -503,6 +517,21 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        if (::inputHandler.isInitialized && inputHandler.resolveButton(keyCode) == "btn_select") {
+            selectHoldHandler.removeCallbacks(selectHoldRunnable)
+            if (!selectHeld && dialogState.value is KeyboardInputState) {
+                val ds = dialogState.value
+                val ks = ds.asKeyboardState()!!
+                if (ks.symbols) {
+                    dialogState.value = ds.withCaps(capsBeforeSymbols).withSymbols(false)
+                } else {
+                    dialogState.value = ds.withCaps(!ks.caps)
+                }
+            }
+            selectDown = false
+            selectHeld = false
+            return true
+        }
         val screen = screenStack.lastOrNull()
         if (screen is LauncherScreen.ShortcutBinding && screen.listening && screen.heldKeys.contains(keyCode)) {
             cancelShortcutListening()
@@ -1322,13 +1351,11 @@ class MainActivity : ComponentActivity() {
                 is DialogState.NewCollectionInput,
                 is DialogState.CollectionRenameInput,
                 is DialogState.ProfileNameInput -> {
-                    val ks = ds.asKeyboardState()!!
-                    val (newCaps, newSymbols) = when {
-                        ks.symbols -> false to false
-                        ks.caps -> false to true
-                        else -> true to false
+                    if (!selectDown) {
+                        selectDown = true
+                        selectHeld = false
+                        selectHoldHandler.postDelayed(selectHoldRunnable, 400)
                     }
-                    dialogState.value = ds.withCaps(newCaps).withSymbols(newSymbols)
                 }
                 DialogState.None -> when (currentScreen) {
                     LauncherScreen.SystemList -> {
