@@ -62,6 +62,9 @@
     <string name="setting_color_accent">Accent</string>
     <string name="setting_graphics_backend">Renderer</string>
     <string name="setting_core_mapping">Core Mapping</string>
+    <string name="setting_installed_cores">RetroArch Installed Cores</string>
+    <string name="title_installed_cores">RetroArch Installed Cores</string>
+    <string name="installed_cores_none">No cores found</string>
     <string name="setting_sd_root">Cannoli Root</string>
     <string name="setting_ra_package">RetroArch Package</string>
     <string name="setting_ra_username">Username</string>
@@ -148,6 +151,7 @@
     <string name="value_24h">24h</string>
     <string name="value_not_set">Not set</string>
     <string name="value_not_installed">Not Installed</string>
+    <string name="value_none_installed">None Installed</string>
     <string name="text_size_compact">Compact</string>
     <string name="text_size_default">Default</string>
     <string name="value_never">Never</string>

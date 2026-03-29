@@ -85,10 +85,11 @@ fun SettingsScreen(
             val selectedItem = state.items.getOrNull(state.selectedIndex)
             val isColorItem = selectedItem?.key?.startsWith("color_") == true
             val isEditableItem = selectedItem?.isEditable == true
-            val leftItems = if (isEditableItem) {
-                listOf("B" to stringResource(R.string.label_back))
-            } else {
+            val showChange = !isEditableItem && selectedItem?.canCycle != false
+            val leftItems = if (showChange) {
                 listOf("B" to stringResource(R.string.label_back), "◀▶" to stringResource(R.string.label_change))
+            } else {
+                listOf("B" to stringResource(R.string.label_back))
             }
             val rightItems = if (isColorItem) {
                 listOf("A" to stringResource(R.string.label_select))
