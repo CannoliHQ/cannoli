@@ -18,14 +18,26 @@ class InstalledCoreService(private val context: Context) {
     var installedCores: Map<String, Set<String>> = emptyMap()
         private set
 
+    @Volatile
+    var unresponsivePackages: Set<String> = emptySet()
+        private set
+
+    @Volatile
+    var cacheReady: Boolean = false
+        private set
+
     suspend fun queryAllPackages() {
         val result = mutableMapOf<String, Set<String>>()
+        val unresponsive = mutableSetOf<String>()
         for (pkg in SettingsRepository.KNOWN_RA_PACKAGES) {
             if (!context.isPackageInstalled(pkg)) continue
             val cores = queryPackage(pkg)
             if (cores.isNotEmpty()) result[pkg] = cores
+            else unresponsive.add(pkg)
         }
         installedCores = result
+        unresponsivePackages = unresponsive
+        cacheReady = true
     }
 
     private suspend fun queryPackage(pkg: String, timeoutMs: Long = 3000L): Set<String> =

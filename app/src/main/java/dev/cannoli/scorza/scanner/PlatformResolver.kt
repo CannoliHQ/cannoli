@@ -113,6 +113,32 @@ class PlatformResolver(
         loadCoreMappings()
     }
 
+    fun purgeStaleRaMappings(installedRaCores: Map<String, Set<String>>): Boolean {
+        var changed = false
+        for (tag in userPackages.keys.toList()) {
+            val pkg = userPackages[tag] ?: continue
+            val coreId = getCoreMapping(tag)
+            val cores = installedRaCores[pkg]
+            if (cores == null || coreId !in cores) {
+                userRunners.remove(tag)
+                userPackages.remove(tag)
+                changed = true
+            }
+        }
+        val staleOverrides = gameOverrides.entries.filter { (_, ov) ->
+            val pkg = ov.raPackage ?: return@filter false
+            val cores = installedRaCores[pkg]
+            val coreId = ov.coreId ?: return@filter false
+            cores == null || coreId !in cores
+        }.map { it.key }
+        for (path in staleOverrides) {
+            gameOverrides.remove(path)
+            changed = true
+        }
+        if (changed) saveCoreMappings()
+        return changed
+    }
+
     fun saveCoreMappings() {
         val json = JSONObject()
         val cores = JSONObject()
@@ -225,22 +251,24 @@ class PlatformResolver(
         return coreInfo?.getDisplayName(coreId) ?: coreId
     }
 
-    fun getRunnerLabel(tag: String, coreId: String): String {
+    fun getRunnerLabel(tag: String, coreId: String, installedRaCores: Map<String, Set<String>> = emptyMap()): String {
         val romsDir = File(cannoliRoot, "Roms")
         if (File(romsDir, "$tag/.emu_launch").exists()) return "External"
         val override = userRunners[tag]
         if (override == "App") return "Standalone"
         if (override != null) return override
-        if (nativeLibDir != null && File(nativeLibDir, "${coreId}_android.so").exists()) return "Internal"
         val pkg = userPackages[tag]
         if (pkg != null) return InstalledCoreService.getPackageLabel(pkg)
+        if (installedRaCores.any { it.value.contains(coreId) }) return "RetroArch"
+        if (nativeLibDir != null && File(nativeLibDir, "${coreId}_android.so").exists()) return "Internal"
         return "RetroArch"
     }
 
     fun getDetailedMappings(
         pm: PackageManager? = null,
         installedRaCores: Map<String, Set<String>> = emptyMap(),
-        embeddedCoresDir: String? = null
+        embeddedCoresDir: String? = null,
+        unresponsivePackages: Set<String> = emptySet()
     ): List<dev.cannoli.scorza.ui.screens.CoreMappingEntry> {
         val tags = (defaultCores.keys + defaultApps.keys + userCores.keys + userApps.keys)
         return tags.map { tag ->
@@ -266,48 +294,48 @@ class PlatformResolver(
                     coreDisplayName = "None", runnerLabel = ""
                 )
             } else {
-                val runner = getRunnerLabel(tag, coreId)
-                val present = isCorePresent(tag, coreId, runner, installedRaCores, embeddedCoresDir)
-                if (present) {
-                    dev.cannoli.scorza.ui.screens.CoreMappingEntry(
-                        tag = tag, platformName = getDisplayName(tag),
-                        coreDisplayName = getCoreDisplayName(coreId), runnerLabel = runner
-                    )
-                } else {
-                    dev.cannoli.scorza.ui.screens.CoreMappingEntry(
-                        tag = tag, platformName = getDisplayName(tag),
-                        coreDisplayName = "Missing", runnerLabel = ""
-                    )
-                }
+                val runner = getRunnerLabel(tag, coreId, installedRaCores)
+                val status = coreStatus(tag, coreId, runner, installedRaCores, embeddedCoresDir, unresponsivePackages)
+                dev.cannoli.scorza.ui.screens.CoreMappingEntry(
+                    tag = tag, platformName = getDisplayName(tag),
+                    coreDisplayName = if (status == "Missing") "Missing" else getCoreDisplayName(coreId),
+                    runnerLabel = if (status == "Present") runner else status
+                )
             }
         }.sortedNatural { it.platformName }
     }
 
-    private fun isCorePresent(
+    private fun coreStatus(
         tag: String, coreId: String, runner: String,
         installedRaCores: Map<String, Set<String>>,
-        embeddedCoresDir: String?
-    ): Boolean {
+        embeddedCoresDir: String?,
+        unresponsivePackages: Set<String>
+    ): String {
         if (runner == "Internal") {
-            val dir = embeddedCoresDir ?: nativeLibDir ?: return false
-            return File(dir, "${coreId}_android.so").exists()
+            val dir = embeddedCoresDir ?: nativeLibDir ?: return "Missing"
+            return if (File(dir, "${coreId}_android.so").exists()) "Present" else "Missing"
         }
-        if (runner == "External") return true
-        // RetroArch / RicottaArch — check specific package first, then any package
+        if (runner == "External") return "Present"
         val pkg = userPackages[tag]
-        if (pkg != null) return installedRaCores[pkg]?.contains(coreId) == true
-        return installedRaCores.any { it.value.contains(coreId) }
+        if (pkg != null) {
+            if (installedRaCores[pkg]?.contains(coreId) == true) return "Present"
+            if (pkg in unresponsivePackages) return "Unknown"
+            return "Missing"
+        }
+        if (installedRaCores.any { it.value.contains(coreId) }) return "Present"
+        if (unresponsivePackages.isNotEmpty()) return "Unknown"
+        return "Missing"
     }
 
     fun getCorePickerOptions(
         tag: String,
         pm: PackageManager? = null,
         installedRaCores: Map<String, Set<String>> = emptyMap(),
-        embeddedCoresDir: String? = null
+        embeddedCoresDir: String? = null,
+        unresponsivePackages: Set<String> = emptySet()
     ): List<dev.cannoli.scorza.ui.screens.CorePickerOption> {
         val options = mutableListOf<dev.cannoli.scorza.ui.screens.CorePickerOption>()
 
-        // Gather all candidate core IDs from core info files + platform defaults
         val candidateCoreIds = mutableSetOf<String>()
         defaultCores[tag]?.let { candidateCoreIds.add(it) }
         defaultRetroArchCores[tag]?.forEach { candidateCoreIds.add(it) }
@@ -316,7 +344,6 @@ class PlatformResolver(
         for (coreId in candidateCoreIds) {
             val displayName = getCoreDisplayName(coreId)
 
-            // Check embedded/internal cores
             val checkDir = embeddedCoresDir ?: nativeLibDir
             if (checkDir != null && File(checkDir, "${coreId}_android.so").exists()) {
                 options.add(dev.cannoli.scorza.ui.screens.CorePickerOption(
@@ -324,7 +351,6 @@ class PlatformResolver(
                 ))
             }
 
-            // Check each RA package for this core
             for ((pkg, cores) in installedRaCores) {
                 if (coreId in cores) {
                     options.add(dev.cannoli.scorza.ui.screens.CorePickerOption(
@@ -334,9 +360,18 @@ class PlatformResolver(
                     ))
                 }
             }
+
+            for (pkg in unresponsivePackages) {
+                if (installedRaCores.containsKey(pkg)) continue
+                val label = InstalledCoreService.getPackageLabel(pkg)
+                options.add(dev.cannoli.scorza.ui.screens.CorePickerOption(
+                    coreId = coreId, displayName = displayName,
+                    runnerLabel = "$label (Unknown)",
+                    raPackage = pkg
+                ))
+            }
         }
 
-        // Standalone app options
         val appPackages = getAppOptions(tag)
         for (pkg in appPackages) {
             val appName = pm?.let { resolveAppLabel(it, pkg) } ?: pkg

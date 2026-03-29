@@ -615,7 +615,12 @@ class MainActivity : ComponentActivity() {
 
         scanner = FileScanner(root, platformResolver)
         scanner.ensureDirectories()
+        launchManager.syncRetroArchAssets(root)
         launchManager.syncRetroArchConfig(root)
+        ioScope.launch {
+            installedCoreService.queryAllPackages()
+            platformResolver.purgeStaleRaMappings(installedCoreService.installedCores)
+        }
 
         systemListViewModel = SystemListViewModel(scanner)
         gameListViewModel = GameListViewModel(scanner, platformResolver, resources)
@@ -1008,13 +1013,13 @@ class MainActivity : ComponentActivity() {
                                 "controls" -> pushScreen(LauncherScreen.ControlBinding(controls = profileManager.readControls(dev.cannoli.scorza.input.ProfileManager.DEFAULT)))
                                 "shortcuts" -> pushScreen(LauncherScreen.ShortcutBinding(shortcuts = globalOverrides.readShortcuts()))
                                 "core_mapping" -> {
-                                    val initial = platformResolver.getDetailedMappings(packageManager, installedCoreService.installedCores, LaunchManager.extractBundledCores(this@MainActivity))
+                                    val initial = platformResolver.getDetailedMappings(packageManager, installedCoreService.installedCores, LaunchManager.extractBundledCores(this@MainActivity), installedCoreService.unresponsivePackages)
                                     screenStack.add(LauncherScreen.CoreMapping(mappings = initial, allMappings = initial))
                                     ioScope.launch {
                                         installedCoreService.queryAllPackages()
                                         withContext(Dispatchers.Main) {
                                             val cm = screenStack.lastOrNull() as? LauncherScreen.CoreMapping ?: return@withContext
-                                            val all = platformResolver.getDetailedMappings(packageManager, installedCoreService.installedCores, LaunchManager.extractBundledCores(this@MainActivity))
+                                            val all = platformResolver.getDetailedMappings(packageManager, installedCoreService.installedCores, LaunchManager.extractBundledCores(this@MainActivity), installedCoreService.unresponsivePackages)
                                             screenStack[screenStack.lastIndex] = cm.copy(mappings = filterCoreMappings(all, cm.filter), allMappings = all)
                                         }
                                     }
@@ -1085,7 +1090,8 @@ class MainActivity : ComponentActivity() {
                             val options = platformResolver.getCorePickerOptions(
                                 entry.tag, packageManager,
                                 installedRaCores = installedCoreService.installedCores,
-                                embeddedCoresDir = bundledCoresDir
+                                embeddedCoresDir = bundledCoresDir,
+                                unresponsivePackages = installedCoreService.unresponsivePackages
                             )
                             val currentCore = platformResolver.getCoreMapping(entry.tag)
                             val currentApp = platformResolver.getAppPackage(entry.tag)
@@ -1260,7 +1266,7 @@ class MainActivity : ComponentActivity() {
                         } else {
                             val cm = screenStack.lastOrNull()
                             if (cm is LauncherScreen.CoreMapping) {
-                                val all = platformResolver.getDetailedMappings(packageManager, installedCoreService.installedCores, LaunchManager.extractBundledCores(this@MainActivity))
+                                val all = platformResolver.getDetailedMappings(packageManager, installedCoreService.installedCores, LaunchManager.extractBundledCores(this@MainActivity), installedCoreService.unresponsivePackages)
                                 val filtered = filterCoreMappings(all, cm.filter)
                                 val idx = filtered.indexOfFirst { it.tag == screen.tag }.coerceAtLeast(0)
                                 screenStack[screenStack.lastIndex] = cm.copy(mappings = filtered, allMappings = all, selectedIndex = idx)
@@ -1813,7 +1819,7 @@ class MainActivity : ComponentActivity() {
             screenStack.removeAt(screenStack.lastIndex)
             val cm = screenStack.lastOrNull()
             if (cm is LauncherScreen.CoreMapping) {
-                val all = platformResolver.getDetailedMappings(packageManager, installedCoreService.installedCores, LaunchManager.extractBundledCores(this@MainActivity))
+                val all = platformResolver.getDetailedMappings(packageManager, installedCoreService.installedCores, LaunchManager.extractBundledCores(this@MainActivity), installedCoreService.unresponsivePackages)
                 val filtered = filterCoreMappings(all, cm.filter)
                 val idx = filtered.indexOfFirst { it.tag == screen.tag }.coerceAtLeast(0)
                 screenStack[screenStack.lastIndex] = cm.copy(mappings = filtered, allMappings = all, selectedIndex = idx)
@@ -1832,7 +1838,8 @@ class MainActivity : ComponentActivity() {
                 if (item == MENU_EMULATOR_OVERRIDE) {
                     val bundledCoresDir = LaunchManager.extractBundledCores(this@MainActivity)
                     val options = platformResolver.getCorePickerOptions(game.platformTag, packageManager,
-                        installedRaCores = installedCoreService.installedCores, embeddedCoresDir = bundledCoresDir)
+                        installedRaCores = installedCoreService.installedCores, embeddedCoresDir = bundledCoresDir,
+                        unresponsivePackages = installedCoreService.unresponsivePackages)
                     val override = platformResolver.getGameOverride(game.file.absolutePath)
                     if (override != null) {
                         val match = if (override.appPackage != null) {
@@ -1963,7 +1970,8 @@ class MainActivity : ComponentActivity() {
                 val tag = game.platformTag
                 val bundledCoresDir2 = LaunchManager.extractBundledCores(this@MainActivity)
                 val options = platformResolver.getCorePickerOptions(tag, packageManager,
-                    installedRaCores = installedCoreService.installedCores, embeddedCoresDir = bundledCoresDir2)
+                    installedRaCores = installedCoreService.installedCores, embeddedCoresDir = bundledCoresDir2,
+                    unresponsivePackages = installedCoreService.unresponsivePackages)
                 val platformCoreId = platformResolver.getCoreMapping(tag)
                 val platformCoreName = options.firstOrNull { it.coreId == platformCoreId }?.displayName ?: platformCoreId
                 val defaultLabel = if (platformCoreName.isNotEmpty()) "Platform Setting ($platformCoreName)" else "Platform Setting"
@@ -2369,7 +2377,8 @@ class MainActivity : ComponentActivity() {
 
     private fun queryInstalledCores() {
         unregisterCoreQueryReceiver()
-        pushScreen(LauncherScreen.InstalledCores())
+        val pkgLabel = SettingsRepository.getPackageLabel(settings.retroArchPackage)
+        pushScreen(LauncherScreen.InstalledCores(title = "$pkgLabel Installed Cores"))
 
         ioScope.launch {
             installedCoreService.queryAllPackages()
@@ -2395,9 +2404,9 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun filterCoreMappings(all: List<dev.cannoli.scorza.ui.screens.CoreMappingEntry>, filter: Int): List<dev.cannoli.scorza.ui.screens.CoreMappingEntry> = when (filter) {
-        1 -> all.filter { it.coreDisplayName == "Missing" || it.coreDisplayName == "None" }
+        1 -> all.filter { it.coreDisplayName == "Missing" || it.coreDisplayName == "None" || it.runnerLabel == "Unknown" }
         2 -> all.filter { it.runnerLabel == "Internal" }
-        3 -> all.filter { it.runnerLabel != "Internal" && it.coreDisplayName != "Missing" && it.coreDisplayName != "None" }
+        3 -> all.filter { it.runnerLabel != "Internal" && it.coreDisplayName != "Missing" && it.coreDisplayName != "None" && it.runnerLabel != "Unknown" }
         else -> all
     }
 
