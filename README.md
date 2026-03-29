@@ -47,7 +47,7 @@ Since purchasing a Retroid Pocket Classic I've been yearning for MinUI's simplic
 
 # Credits and Licenses
 
-Full license texts are available in the [licenses/](licenses/) directory.
+Full license texts are available in the [licenses](licenses/) directory.
 
 ### Cores
 
