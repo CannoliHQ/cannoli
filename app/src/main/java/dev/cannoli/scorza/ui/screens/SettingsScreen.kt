@@ -70,15 +70,26 @@ fun SettingsScreen(
                     onVisibleRangeChanged = onVisibleRangeChanged,
                     key = { _, item -> item.key }
                 ) { index, item ->
-                    PillRowKeyValue(
-                        label = stringResource(item.labelRes),
-                        value = item.valueText ?: item.valueRes?.let { stringResource(it) } ?: "",
-                        isSelected = state.selectedIndex == index,
-                        fontSize = listFontSize,
-                        lineHeight = listLineHeight,
-                        verticalPadding = listVerticalPadding,
-                        swatchColor = item.swatchColor
-                    )
+                    val hasValue = item.valueText != null || item.valueRes != null || item.swatchColor != null
+                    if (hasValue) {
+                        PillRowKeyValue(
+                            label = item.labelText ?: stringResource(item.labelRes),
+                            value = item.valueText ?: item.valueRes?.let { stringResource(it) } ?: "",
+                            isSelected = state.selectedIndex == index,
+                            fontSize = listFontSize,
+                            lineHeight = listLineHeight,
+                            verticalPadding = listVerticalPadding,
+                            swatchColor = item.swatchColor
+                        )
+                    } else {
+                        PillRowText(
+                            label = item.labelText ?: stringResource(item.labelRes),
+                            isSelected = state.selectedIndex == index,
+                            fontSize = listFontSize,
+                            lineHeight = listLineHeight,
+                            verticalPadding = listVerticalPadding
+                        )
+                    }
                 }
             }
 
