@@ -16,10 +16,7 @@
   },
   "NES": {
     "name": "Nintendo Entertainment System",
-    "core": "nestopia_libretro",
-    "retroarch": [
-      "fceumm_libretro"
-    ]
+    "core": "nestopia_libretro"
   },
   "FDS": {
     "name": "Famicom Disk System",
@@ -31,10 +28,7 @@
   },
   "N64": {
     "name": "Nintendo 64",
-    "core": "mupen64plus_next_gles3_libretro",
-    "retroarch": [
-      "mupen64plus_next_libretro"
-    ]
+    "core": "mupen64plus_next_gles3_libretro"
   },
   "NDS": {
     "name": "Nintendo DS",
@@ -54,10 +48,7 @@
   },
   "MD": {
     "name": "Sega Genesis",
-    "core": "genesis_plus_gx_libretro",
-    "retroarch": [
-      "picodrive_libretro"
-    ]
+    "core": "genesis_plus_gx_libretro"
   },
   "SG1000": {
     "name": "Sega SG-1000",
@@ -69,10 +60,7 @@
   },
   "SEGACD": {
     "name": "Sega CD",
-    "core": "genesis_plus_gx_libretro",
-    "retroarch": [
-      "picodrive_libretro"
-    ]
+    "core": "genesis_plus_gx_libretro"
   },
   "SATURN": {
     "name": "Sega Saturn",
@@ -99,10 +87,7 @@
   },
   "LYNX": {
     "name": "Atari Lynx",
-    "core": "handy_libretro",
-    "retroarch": [
-      "mednafen_lynx_libretro"
-    ]
+    "core": "handy_libretro"
   },
   "JAGUAR": {
     "name": "Atari Jaguar",
@@ -122,10 +107,7 @@
   },
   "PCE": {
     "name": "PC Engine",
-    "core": "mednafen_pce_fast_libretro",
-    "retroarch": [
-      "mednafen_pce_libretro"
-    ]
+    "core": "mednafen_pce_fast_libretro"
   },
   "PCFX": {
     "name": "PC-FX",
@@ -186,10 +168,7 @@
   },
   "SUPERGRAFX": {
     "name": "PC Engine SuperGrafx",
-    "core": "mednafen_pce_fast_libretro",
-    "retroarch": [
-      "mednafen_pce_libretro"
-    ]
+    "core": "mednafen_pce_fast_libretro"
   },
   
   "DOS": {

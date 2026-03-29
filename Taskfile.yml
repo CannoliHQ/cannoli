@@ -9,23 +9,24 @@ tasks:
     desc: Fetch bundled libretro cores for arm64-v8a and armeabi-v7a
     vars:
       CORES:
-        - fceumm
-        - nestopia
-        - snes9x
+        - fbneo
         - gambatte
-        - mgba
         - genesis_plus_gx
-        - pcsx_rearmed
-        - swanstation
-        - mupen64plus_next_gles3
-        - stella
-        - prosystem
         - handy
+        - mame2003_plus
         - mednafen_ngp
         - mednafen_pce_fast
-        - mednafen_wswan
         - mednafen_vb
+        - mednafen_wswan
+        - mgba
+        - mupen64plus_next_gles3
+        - nestopia
+        - pcsx_rearmed
         - pokemini
+        - prosystem
+        - snes9x
+        - stella
+        - swanstation
     cmds:
       - mkdir -p {{.CORES_DIR}}/arm64-v8a {{.CORES_DIR}}/armeabi-v7a
       - for:
