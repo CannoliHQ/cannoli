@@ -715,7 +715,13 @@ class FileServer(
             val body = assets.open("kitchen/$path").readBytes()
             sendCors(output, 200, mimeForPath(path), body)
         } catch (_: Exception) {
-            sendCors(output, 404, "text/plain", "not found".toByteArray())
+            // SPA fallback: serve index.html for routes that don't match a static asset
+            try {
+                val body = assets.open("kitchen/index.html").readBytes()
+                sendCors(output, 200, "text/html", body)
+            } catch (_: Exception) {
+                sendCors(output, 404, "text/plain", "not found".toByteArray())
+            }
         }
     }
 
@@ -828,7 +834,8 @@ class FileServer(
             "saves" to "Saves",
             "states" to "Save States",
             "bios" to "BIOS",
-            "wallpapers" to "Wallpapers"
+            "wallpapers" to "Wallpapers",
+            "guides" to "Guides"
         )
     }
 }
