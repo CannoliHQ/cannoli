@@ -26,6 +26,7 @@ class SettingsViewModel(
     data class SettingsItem(
         val key: String,
         @param:StringRes val labelRes: Int,
+        val labelText: String? = null,
         @param:StringRes val valueRes: Int? = null,
         val valueText: String? = null,
         val isEditable: Boolean = false,
@@ -497,7 +498,8 @@ class SettingsViewModel(
             }
             add(SettingsItem("ra_package", R.string.setting_ra_package, valueText = if (pkgs.isEmpty()) null else settings.retroArchPackage, valueRes = if (pkgs.isEmpty()) R.string.value_none_installed else null, canCycle = pkgs.size > 1))
             if (pkgs.isNotEmpty()) {
-                add(SettingsItem("installed_cores", R.string.setting_installed_cores, isEditable = true))
+                val pkgLabel = SettingsRepository.getPackageLabel(settings.retroArchPackage)
+                add(SettingsItem("installed_cores", R.string.setting_installed_cores, labelText = "$pkgLabel Installed Cores", isEditable = true))
             }
         }
         else -> emptyList()
