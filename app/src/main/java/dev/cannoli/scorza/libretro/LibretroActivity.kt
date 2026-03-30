@@ -130,11 +130,6 @@ class LibretroActivity : ComponentActivity() {
     private var gameBaseName: String = ""
     private var platformName: String = ""
     private var cannoliRoot: String = ""
-    private var showWifi = true
-    private var showBluetooth = true
-    private var showClock = true
-    private var showBattery = true
-    private var use24h = false
     private var autoLockMs = 300_000L
 
     private val currentSlot get() = slotManager.slots[selectedSlotIndex]
@@ -205,11 +200,6 @@ class LibretroActivity : ComponentActivity() {
         platformTag = intent.getStringExtra("platform_tag") ?: ""
         platformName = intent.getStringExtra("platform_name") ?: platformTag
         cannoliRoot = intent.getStringExtra("cannoli_root") ?: ""
-        showWifi = intent.getBooleanExtra("show_wifi", true)
-        showBluetooth = intent.getBooleanExtra("show_bluetooth", true)
-        showClock = intent.getBooleanExtra("show_clock", true)
-        showBattery = intent.getBooleanExtra("show_battery", true)
-        use24h = intent.getBooleanExtra("use_24h", false)
         autoLockMs = intent.getLongExtra("auto_lock_ms", 300_000L)
 
         slotManager = SaveSlotManager(stateBasePath)
@@ -266,11 +256,6 @@ class LibretroActivity : ComponentActivity() {
                             renderer = renderer,
                             runner = runner,
                             audioSampleRate = audioSampleRate,
-                            showWifi = showWifi,
-                            showBluetooth = showBluetooth,
-                            showClock = showClock,
-                            showBattery = showBattery,
-                            use24h = use24h,
                             osdMessage = osdMessage,
                             fastForwarding = fastForwarding,
                             guideFiles = guideFiles,
