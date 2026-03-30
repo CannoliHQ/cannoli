@@ -25,7 +25,8 @@ fun DialogOverlay(
     backgroundTint: Int,
     listFontSize: TextUnit,
     listLineHeight: TextUnit,
-    listVerticalPadding: Dp
+    listVerticalPadding: Dp,
+    showCheckUpdate: Boolean = true
 ) {
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
     when (dialogState) {
@@ -123,7 +124,7 @@ fun DialogOverlay(
         }
 
         DialogState.About -> {
-            AboutOverlay()
+            AboutOverlay(showCheckUpdate = showCheckUpdate)
         }
 
         is DialogState.Kitchen -> {

@@ -27,7 +27,7 @@ import dev.cannoli.scorza.R
 import dev.cannoli.scorza.ui.theme.MPlus1Code
 
 @Composable
-fun AboutOverlay() {
+fun AboutOverlay(showCheckUpdate: Boolean = true) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -91,7 +91,10 @@ fun AboutOverlay() {
                 .align(Alignment.BottomCenter)
                 .padding(screenPadding),
             leftItems = listOf("B" to stringResource(R.string.label_back)),
-            rightItems = listOf("X" to stringResource(R.string.label_credits))
+            rightItems = buildList {
+                if (showCheckUpdate) add("Y" to stringResource(R.string.label_check_update))
+                add("X" to stringResource(R.string.label_credits))
+            }
         )
     }
 }
