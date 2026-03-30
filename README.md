@@ -51,51 +51,51 @@ Full license texts are available in the [licenses](licenses/) directory.
 
 ### Cores
 
-| Name                    | What               | License        |
-|-------------------------|--------------------|----------------|
-| FBNeo                   | Neo Geo / Arcade   | Non-commercial |
-| Gambatte                | Game Boy / Color   | GPLv2          |
-| Genesis Plus GX         | Genesis / SMS / GG | Non-commercial |
-| Handy                   | Atari Lynx         | Zlib           |
-| MAME 2003-Plus          | Arcade             | MAME           |
-| Mednafen Neo Geo Pocket | NGP / NGPC         | GPLv2          |
-| Mednafen PCE FAST       | PC Engine          | GPLv2          |
-| Mednafen Virtual Boy    | Virtual Boy        | GPLv2          |
-| Mednafen WonderSwan     | WonderSwan / Color | GPLv2          |
-| mGBA                    | GBA                | MPLv2.0        |
-| Mupen64Plus-Next        | Nintendo 64        | GPLv2          |
-| Nestopia                | NES / FDS          | GPLv2          |
-| PCSX ReARMed            | PlayStation        | GPLv2          |
-| PokeMini                | Pokémon Mini       | GPLv3          |
-| ProSystem               | Atari 7800         | GPLv2          |
-| Snes9x                  | SNES               | Non-commercial |
-| Stella                  | Atari 2600         | GPLv2          |
-| SwanStation             | PlayStation        | GPLv3          |
+| Name                | License        |
+|---------------------|----------------|
+| FBNeo               | Non-commercial |
+| Gambatte            | GPLv2          |
+| Genesis Plus GX     | Non-commercial |
+| Handy               | Zlib           |
+| MAME 2003-Plus      | MAME           |
+| Mednafen NGP        | GPLv2          |
+| Mednafen PCE FAST   | GPLv2          |
+| Mednafen VB         | GPLv2          |
+| Mednafen WonderSwan | GPLv2          |
+| mGBA                | MPLv2.0        |
+| Mupen64Plus-Next    | GPLv2          |
+| Nestopia            | GPLv2          |
+| PCSX ReARMed        | GPLv2          |
+| PokeMini            | GPLv3          |
+| ProSystem           | GPLv2          |
+| Snes9x              | Non-commercial |
+| Stella              | GPLv2          |
+| SwanStation         | GPLv3          |
 
 ### Shaders
 
-| Name                     | What           | License       |
-|--------------------------|----------------|---------------|
-| EasyMode                 | crt-easymode   | GPL           |
-| Themaister               | sharp-bilinear | Public domain |
-| hunterk                  | scanline-fract | Public domain |
-| SoltanGris42 / metallic77 | zfast-crt    | GPLv2         |
-| SoltanGris42             | zfast-lcd      | GPLv2         |
-| Gigaherz                 | lcd3x          | Public domain |
+| Name           | License       |
+|----------------|---------------|
+| crt-easymode   | GPL           |
+| sharp-bilinear | Public domain |
+| scanline-fract | Public domain |
+| zfast-crt      | GPLv2         |
+| zfast-lcd      | GPLv2         |
+| lcd3x          | Public domain |
 
 ### Libraries
 
-| Name                      | What            | License    |
-|---------------------------|-----------------|------------|
-| ZXing                     | QR Code         | Apache 2.0 |
-| PdfiumAndroid (io.legere) | PDF Renderer    | Apache 2.0 |
+| Name                      | License    |
+|---------------------------|------------|
+| ZXing                     | Apache 2.0 |
+| PdfiumAndroid (io.legere) | Apache 2.0 |
 
 ### Fonts
 
-| Name             | What          | License |
-|------------------|---------------|---------|
-| M+ Fonts Project | M PLUS 1 Code | OFL     |
-| Nerd Fonts       | NerdSymbols   | OFL     |
+| Name             | License |
+|------------------|---------|
+| M+ Fonts Project | OFL     |
+| Nerd Fonts       | OFL     |
 
 ---
 

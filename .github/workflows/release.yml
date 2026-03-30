@@ -21,10 +21,9 @@ on:
 env:
   BUILDBOT: https://buildbot.libretro.com/nightly/android/latest
   CORES: >-
-    atari800 bluemsx dosbox_pure fceumm freeintv gambatte genesis_plus_gx
-    handy mednafen_ngp mednafen_pce_fast mednafen_pcfx mednafen_vb
-    mednafen_wswan mgba mupen64plus_next_gles3 nestopia pcsx_rearmed
-    picodrive pokemini prosystem snes9x stella swanstation vecx virtualjaguar
+    fbneo gambatte genesis_plus_gx handy mame2003_plus mednafen_ngp
+    mednafen_pce_fast mednafen_vb mednafen_wswan mgba mupen64plus_next_gles3
+    nestopia pcsx_rearmed pokemini prosystem snes9x stella swanstation
 
 jobs:
   build:
