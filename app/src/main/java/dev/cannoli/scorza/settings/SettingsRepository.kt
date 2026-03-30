@@ -185,6 +185,34 @@ class SettingsRepository(context: Context) {
         get() = jsonRead { optString(KEY_RA_TOKEN, "") }
         set(value) = jsonWrite { if (value.isEmpty()) remove(KEY_RA_TOKEN) else put(KEY_RA_TOKEN, value) }
 
+    var releaseChannel: String
+        get() = jsonRead { optString(KEY_RELEASE_CHANNEL, "STABLE") }
+        set(value) = jsonWrite { put(KEY_RELEASE_CHANNEL, value) }
+
+    var lastUpdateCheck: Long
+        get() = jsonRead { optLong(KEY_LAST_UPDATE_CHECK, 0L) }
+        set(value) = jsonWrite { put(KEY_LAST_UPDATE_CHECK, value) }
+
+    var cachedUpdateVersion: String
+        get() = jsonRead { optString(KEY_CACHED_UPDATE_VERSION, "") }
+        set(value) = jsonWrite { if (value.isEmpty()) remove(KEY_CACHED_UPDATE_VERSION) else put(KEY_CACHED_UPDATE_VERSION, value) }
+
+    var cachedUpdateCode: Int
+        get() = jsonRead { optInt(KEY_CACHED_UPDATE_CODE, 0) }
+        set(value) = jsonWrite { if (value == 0) remove(KEY_CACHED_UPDATE_CODE) else put(KEY_CACHED_UPDATE_CODE, value) }
+
+    var cachedUpdateTag: String
+        get() = jsonRead { optString(KEY_CACHED_UPDATE_TAG, "") }
+        set(value) = jsonWrite { if (value.isEmpty()) remove(KEY_CACHED_UPDATE_TAG) else put(KEY_CACHED_UPDATE_TAG, value) }
+
+    var cachedUpdateApk: String
+        get() = jsonRead { optString(KEY_CACHED_UPDATE_APK, "") }
+        set(value) = jsonWrite { if (value.isEmpty()) remove(KEY_CACHED_UPDATE_APK) else put(KEY_CACHED_UPDATE_APK, value) }
+
+    var cachedUpdateChangelog: String
+        get() = jsonRead { optString(KEY_CACHED_UPDATE_CHANGELOG, "") }
+        set(value) = jsonWrite { if (value.isEmpty()) remove(KEY_CACHED_UPDATE_CHANGELOG) else put(KEY_CACHED_UPDATE_CHANGELOG, value) }
+
     companion object {
         const val DEFAULT_ROOT = "/storage/emulated/0/Cannoli/"
         const val DEFAULT_RA_PACKAGE = "dev.cannoli.ricotta.aarch64"
@@ -230,6 +258,13 @@ class SettingsRepository(context: Context) {
         private const val KEY_GRAPHICS_BACKEND = "graphics_backend"
         private const val KEY_RA_USERNAME = "ra_username"
         private const val KEY_RA_TOKEN = "ra_token"
+        private const val KEY_RELEASE_CHANNEL = "release_channel"
+        private const val KEY_LAST_UPDATE_CHECK = "last_update_check"
+        private const val KEY_CACHED_UPDATE_VERSION = "cached_update_version"
+        private const val KEY_CACHED_UPDATE_CODE = "cached_update_code"
+        private const val KEY_CACHED_UPDATE_TAG = "cached_update_tag"
+        private const val KEY_CACHED_UPDATE_APK = "cached_update_apk"
+        private const val KEY_CACHED_UPDATE_CHANGELOG = "cached_update_changelog"
     }
 }
 
