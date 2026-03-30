@@ -448,7 +448,12 @@ class FileScanner(
         }
     }
 
-    fun ensureDirectories() {
+    fun directoryCount(): Int {
+        val tags = platformResolver.getAllTags().size
+        return 18 + (tags * 6)
+    }
+
+    fun ensureDirectories(onProgress: (() -> Unit)? = null) {
         listOf(
             romsDir, artDir, collectionsDir,
             File(cannoliRoot, "BIOS"),
@@ -465,15 +470,15 @@ class FileScanner(
             File(cannoliRoot, "Guides"),
             File(cannoliRoot, "Wallpapers"),
             toolsDir, portsDir
-        ).forEach { it.mkdirs() }
+        ).forEach { it.mkdirs(); onProgress?.invoke() }
 
         for (tag in platformResolver.getAllTags()) {
-            File(romsDir, tag).mkdirs()
-            File(artDir, tag).mkdirs()
-            File(cannoliRoot, "BIOS/$tag").mkdirs()
-            File(cannoliRoot, "Saves/$tag").mkdirs()
-            File(cannoliRoot, "Save States/$tag").mkdirs()
-            File(cannoliRoot, "Guides/$tag").mkdirs()
+            File(romsDir, tag).mkdirs(); onProgress?.invoke()
+            File(artDir, tag).mkdirs(); onProgress?.invoke()
+            File(cannoliRoot, "BIOS/$tag").mkdirs(); onProgress?.invoke()
+            File(cannoliRoot, "Saves/$tag").mkdirs(); onProgress?.invoke()
+            File(cannoliRoot, "Save States/$tag").mkdirs(); onProgress?.invoke()
+            File(cannoliRoot, "Guides/$tag").mkdirs(); onProgress?.invoke()
         }
     }
 
