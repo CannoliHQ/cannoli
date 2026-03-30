@@ -50,3 +50,8 @@ tasks:
     desc: Remove all downloaded cores
     cmds:
       - rm -rf {{.CORES_DIR}}
+
+  credits:sync:
+    desc: Sync credits.json to CreditsOverlay.kt, README.md, and taskfile.yml
+    cmds:
+      - python3 scripts/sync_credits.py
