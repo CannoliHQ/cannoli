@@ -38,6 +38,8 @@ fun SettingsScreen(
     listVerticalPadding: Dp = 8.dp,
     dialogState: DialogState = DialogState.None,
     showCheckUpdate: Boolean = true,
+    downloadProgress: Float = 0f,
+    downloadError: String? = null,
     onVisibleRangeChanged: (Int, Int, Boolean) -> Unit = { _, _, _ -> }
 ) {
     val state by viewModel.state.collectAsState()
@@ -170,7 +172,9 @@ fun SettingsScreen(
             listFontSize = listFontSize,
             listLineHeight = listLineHeight,
             listVerticalPadding = listVerticalPadding,
-            showCheckUpdate = showCheckUpdate
+            showCheckUpdate = showCheckUpdate,
+            downloadProgress = downloadProgress,
+            downloadError = downloadError
         )
     }
 }

@@ -26,7 +26,9 @@ fun DialogOverlay(
     listFontSize: TextUnit,
     listLineHeight: TextUnit,
     listVerticalPadding: Dp,
-    showCheckUpdate: Boolean = true
+    showCheckUpdate: Boolean = true,
+    downloadProgress: Float = 0f,
+    downloadError: String? = null
 ) {
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
     when (dialogState) {
@@ -137,6 +139,15 @@ fun DialogOverlay(
 
         is DialogState.RALoggingIn -> {
             RALoggingInOverlay(message = dialogState.message)
+        }
+
+        is DialogState.UpdateDownload -> {
+            UpdateDownloadOverlay(
+                versionName = dialogState.versionName,
+                changelog = dialogState.changelog,
+                progress = downloadProgress,
+                error = downloadError
+            )
         }
 
         else -> {}

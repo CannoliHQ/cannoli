@@ -35,6 +35,7 @@ sealed interface DialogState {
     data class RALoggingIn(val message: String = "Logging in...") : DialogState
     data class ProfileNameInput(val isNew: Boolean, val originalName: String = "", override val currentName: String = "", override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
     data class DeleteProfileConfirm(val profileName: String) : DialogState
+    data class UpdateDownload(val versionName: String, val changelog: String) : DialogState
 }
 
 fun DialogState.asKeyboardState(): KeyboardInputState? = this as? KeyboardInputState
@@ -117,6 +118,7 @@ val DialogState.isFullScreen: Boolean
         is DialogState.About,
         is DialogState.Kitchen,
         is DialogState.RAAccount,
-        is DialogState.RALoggingIn -> true
+        is DialogState.RALoggingIn,
+        is DialogState.UpdateDownload -> true
         else -> false
     }

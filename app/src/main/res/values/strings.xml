@@ -175,6 +175,11 @@
     <string name="shortcut_hold_prompt">Hold buttons...</string>
     <string name="dialog_delete_profile">Delete profile \"%1$s\"?</string>
 
+    <!-- Update download -->
+    <string name="update_downloading">Downloading…</string>
+    <string name="update_installing">Installing…</string>
+    <string name="update_retry">RETRY</string>
+
     <!-- IGM bottom bar labels -->
     <string name="label_confirm_delete">CONFIRM DELETE</string>
     <string name="label_info">INFO</string>
