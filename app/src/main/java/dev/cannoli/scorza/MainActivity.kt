@@ -24,6 +24,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -94,6 +95,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var systemListViewModel: SystemListViewModel
     private lateinit var gameListViewModel: GameListViewModel
     private lateinit var settingsViewModel: SettingsViewModel
+    private lateinit var updateManager: dev.cannoli.scorza.updater.UpdateManager
 
     private lateinit var retroArchLauncher: RetroArchLauncher
     private lateinit var emuLauncher: EmuLauncher
@@ -719,6 +721,18 @@ class MainActivity : ComponentActivity() {
         systemListViewModel = SystemListViewModel(scanner)
         gameListViewModel = GameListViewModel(scanner, platformResolver, resources)
         settingsViewModel = SettingsViewModel(settings, root, packageManager)
+        updateManager = dev.cannoli.scorza.updater.UpdateManager(this, settings)
+
+        ioScope.launch {
+            updateManager.updateAvailable.collect { info ->
+                settingsViewModel.updateInfo = info
+            }
+        }
+
+        if (updateManager.shouldAutoCheck()) {
+            ioScope.launch { updateManager.checkForUpdate() }
+        }
+
         atomicRename = AtomicRename(root)
 
         globalOverrides = GlobalOverridesManager { settings.sdCardRoot }
@@ -745,6 +759,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             CannoliTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
+                    val updateInfo by updateManager.updateAvailable.collectAsState()
+                    val dlProgress by updateManager.downloadProgress.collectAsState()
+                    val dlError by updateManager.downloadError.collectAsState()
                     AppNavGraph(
                         currentScreen = currentScreen,
                         systemListViewModel = systemListViewModel,
@@ -755,7 +772,11 @@ class MainActivity : ComponentActivity() {
                             currentFirstVisible = first
                             if (full) currentPageSize = count
                         },
-                        resumableGames = resumableGames
+                        resumableGames = resumableGames,
+                        updateAvailable = updateInfo != null,
+                        downloadProgress = dlProgress,
+                        downloadError = dlError,
+                        showCheckUpdate = updateInfo == null
                     )
                 }
             }
@@ -926,7 +947,14 @@ class MainActivity : ComponentActivity() {
                 DialogState.None -> when (currentScreen) {
                     LauncherScreen.SystemList -> if (!systemListViewModel.isReorderMode()) pageJump(-1)
                     LauncherScreen.GameList -> if (!gameListViewModel.isReorderMode()) pageJump(-1)
-                    LauncherScreen.Settings -> if (settingsViewModel.state.value.inSubList) settingsViewModel.cycleSelected(-1) else pageJump(-1)
+                    LauncherScreen.Settings -> {
+                        if (settingsViewModel.state.value.inSubList) {
+                            settingsViewModel.cycleSelected(-1)
+                            if (settingsViewModel.getSelectedItem()?.key == "release_channel") {
+                                ioScope.launch { updateManager.checkForUpdate() }
+                            }
+                        } else pageJump(-1)
+                    }
                     else -> pageJump(-1)
                 }
                 else -> {}
@@ -959,7 +987,14 @@ class MainActivity : ComponentActivity() {
                 DialogState.None -> when (currentScreen) {
                     LauncherScreen.SystemList -> if (!systemListViewModel.isReorderMode()) pageJump(1)
                     LauncherScreen.GameList -> if (!gameListViewModel.isReorderMode()) pageJump(1)
-                    LauncherScreen.Settings -> if (settingsViewModel.state.value.inSubList) settingsViewModel.cycleSelected(1) else pageJump(1)
+                    LauncherScreen.Settings -> {
+                        if (settingsViewModel.state.value.inSubList) {
+                            settingsViewModel.cycleSelected(1)
+                            if (settingsViewModel.getSelectedItem()?.key == "release_channel") {
+                                ioScope.launch { updateManager.checkForUpdate() }
+                            }
+                        } else pageJump(1)
+                    }
                     else -> pageJump(1)
                 }
                 else -> {}
@@ -1068,6 +1103,13 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+                is DialogState.UpdateDownload -> {
+                    val info = updateManager.updateAvailable.value
+                    if (info != null) {
+                        updateManager.clearError()
+                        ioScope.launch { updateManager.downloadAndInstall(info) }
+                    }
+                }
                 DialogState.None -> when (val screen = currentScreen) {
                     LauncherScreen.SystemList -> {
                         if (systemListViewModel.isReorderMode()) systemListViewModel.confirmReorder()
@@ -1081,7 +1123,13 @@ class MainActivity : ComponentActivity() {
                     LauncherScreen.Settings -> {
                         if (!settingsViewModel.state.value.inSubList) {
                             val cat = settingsViewModel.state.value.categories.getOrNull(settingsViewModel.state.value.categoryIndex)
-                            if (cat?.key == "about") {
+                            if (cat?.key == "install_update") {
+                                val info = updateManager.updateAvailable.value
+                                if (info != null) {
+                                    dialogState.value = DialogState.UpdateDownload(info.versionName, info.changelog)
+                                    ioScope.launch { updateManager.downloadAndInstall(info) }
+                                }
+                            } else if (cat?.key == "about") {
                                 dialogState.value = DialogState.About
                             } else if (cat?.key == "retroachievements" && settings.raToken.isNotEmpty()) {
                                 dialogState.value = DialogState.RAAccount(username = settings.raUsername)
@@ -1305,6 +1353,11 @@ class MainActivity : ComponentActivity() {
                 is DialogState.MissingCore,
                 is DialogState.MissingApp,
                 is DialogState.LaunchError -> {
+                    dialogState.value = DialogState.None
+                }
+                is DialogState.UpdateDownload -> {
+                    updateManager.cancelDownload()
+                    updateManager.clearError()
                     dialogState.value = DialogState.None
                 }
                 DialogState.About,
@@ -1601,6 +1654,17 @@ class MainActivity : ComponentActivity() {
                 is DialogState.NewCollectionInput,
                 is DialogState.ProfileNameInput -> {
                     dialogState.value = DialogState.None
+                }
+                DialogState.About -> {
+                    ioScope.launch {
+                        val result = updateManager.checkForUpdate()
+                        withContext(Dispatchers.Main) {
+                            if (result != null) {
+                                dialogState.value = DialogState.UpdateDownload(result.versionName, result.changelog)
+                                launch(Dispatchers.IO) { updateManager.downloadAndInstall(result) }
+                            }
+                        }
+                    }
                 }
                 DialogState.None -> {
                     when (currentScreen) {
