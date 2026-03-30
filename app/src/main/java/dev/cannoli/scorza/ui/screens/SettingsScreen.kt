@@ -37,6 +37,7 @@ fun SettingsScreen(
     listLineHeight: TextUnit = 32.sp,
     listVerticalPadding: Dp = 8.dp,
     dialogState: DialogState = DialogState.None,
+    showCheckUpdate: Boolean = true,
     onVisibleRangeChanged: (Int, Int, Boolean) -> Unit = { _, _, _ -> }
 ) {
     val state by viewModel.state.collectAsState()
@@ -168,7 +169,8 @@ fun SettingsScreen(
             backgroundTint = backgroundTint,
             listFontSize = listFontSize,
             listLineHeight = listLineHeight,
-            listVerticalPadding = listVerticalPadding
+            listVerticalPadding = listVerticalPadding,
+            showCheckUpdate = showCheckUpdate
         )
     }
 }
