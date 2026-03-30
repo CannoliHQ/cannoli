@@ -41,6 +41,12 @@ class SettingsViewModel(
 
     var raPassword: String = ""
 
+    var updateInfo: dev.cannoli.scorza.updater.UpdateInfo? = null
+        set(value) {
+            field = value
+            reloadCategories()
+        }
+
     data class State(
         val categories: List<Category> = emptyList(),
         val categoryIndex: Int = 0,
@@ -135,15 +141,29 @@ class SettingsViewModel(
         val sdRoot: String,
         val raPackage: String,
         val toolsName: String,
-        val portsName: String
+        val portsName: String,
+        val releaseChannel: String
     )
 
     private var snapshot: SettingsSnapshot? = null
 
     fun load() {
         snapshot = captureSettings()
-        _state.value = State(categories = allCategories, categoryIndex = 0)
+        _state.value = State(categories = buildCategoryList(), categoryIndex = 0)
         _appSettings.value = readAppSettings()
+    }
+
+    private fun reloadCategories() {
+        val current = _state.value
+        if (current.inSubList) return
+        _state.update { it.copy(categories = buildCategoryList()) }
+    }
+
+    private fun buildCategoryList(): List<Category> = buildList {
+        if (updateInfo != null) {
+            add(Category("install_update", R.string.settings_install_update))
+        }
+        addAll(allCategories)
     }
 
     fun save() {
@@ -279,6 +299,11 @@ class SettingsViewModel(
                     settings.retroArchPackage = pkgs[((cur + direction) % pkgs.size + pkgs.size) % pkgs.size]
                 }
             }
+            "release_channel" -> {
+                val channels = dev.cannoli.scorza.updater.ReleaseChannel.entries
+                val cur = channels.indexOfFirst { it.name == settings.releaseChannel }.coerceAtLeast(0)
+                settings.releaseChannel = channels[((cur + direction) % channels.size + channels.size) % channels.size].name
+            }
         }
 
         val catKey = current.activeCategory ?: return
@@ -398,7 +423,8 @@ class SettingsViewModel(
         sdRoot = settings.sdCardRoot,
         raPackage = settings.retroArchPackage,
         toolsName = settings.toolsName,
-        portsName = settings.portsName
+        portsName = settings.portsName,
+        releaseChannel = settings.releaseChannel
     )
 
     private fun restoreSettings(snap: SettingsSnapshot) {
@@ -424,6 +450,7 @@ class SettingsViewModel(
         settings.retroArchPackage = snap.raPackage
         settings.toolsName = snap.toolsName
         settings.portsName = snap.portsName
+        settings.releaseChannel = snap.releaseChannel
     }
 
     private fun onOff(value: Boolean) = if (value) R.string.value_on else R.string.value_off
@@ -501,6 +528,11 @@ class SettingsViewModel(
                 val pkgLabel = SettingsRepository.getPackageLabel(settings.retroArchPackage)
                 add(SettingsItem("installed_cores", R.string.setting_installed_cores, labelText = "$pkgLabel Installed Cores", isEditable = true))
             }
+            add(SettingsItem(
+                "release_channel",
+                R.string.settings_release_channel,
+                valueText = dev.cannoli.scorza.updater.ReleaseChannel.fromString(settings.releaseChannel).label
+            ))
         }
         else -> emptyList()
     }
