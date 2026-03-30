@@ -70,6 +70,7 @@ import dev.cannoli.scorza.ui.theme.COLOR_PRESETS
 import dev.cannoli.scorza.ui.theme.CannoliTheme
 import dev.cannoli.scorza.ui.theme.colorToArgbLong
 import dev.cannoli.scorza.ui.theme.hexToColor
+import dev.cannoli.scorza.ui.screens.InstallingScreen
 import dev.cannoli.scorza.ui.screens.SetupScreen
 import dev.cannoli.scorza.ui.theme.initFonts
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
@@ -366,7 +367,7 @@ class MainActivity : ComponentActivity() {
                 inSetup = false
                 settings.sdCardRoot = path
                 settings.setupCompleted = true
-                initializeApp()
+                showInstallingScreen()
             }
         }
     }
@@ -454,7 +455,89 @@ class MainActivity : ComponentActivity() {
         inSetup = false
         settings.sdCardRoot = setupVolumes[setupVolumeIndex].second + "Cannoli/"
         settings.setupCompleted = true
-        initializeApp()
+        showInstallingScreen()
+    }
+
+    private var installingFinished = false
+
+    private fun showInstallingScreen() {
+        var progress by mutableStateOf(0f)
+        var statusLabel by mutableStateOf("Kneading the dough...")
+        var finished by mutableStateOf(false)
+        installingFinished = false
+
+        val labels = listOf(
+            "Kneading the dough...",
+            "Rolling the shells...",
+            "Heating the oil...",
+            "Frying the shells...",
+            "Making the filling...",
+            "Piping the rigott..."
+        )
+
+        setContent {
+            CannoliTheme {
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    InstallingScreen(
+                        progress = progress,
+                        statusLabel = statusLabel,
+                        finished = finished
+                    )
+                }
+            }
+        }
+
+        ioScope.launch {
+            val root = File(settings.sdCardRoot)
+
+            // pre-load platform info to count total operations
+            val coreInfo = dev.cannoli.scorza.scanner.CoreInfoRepository(assets)
+            coreInfo.load()
+            val bundledCoresDir = LaunchManager.extractBundledCores(this@MainActivity)
+            platformResolver = PlatformResolver(root, assets, coreInfo, bundledCoresDir)
+            platformResolver.load()
+
+            val scanner = FileScanner(root, platformResolver)
+            // overhead steps: launchers(3) + installedCoreService(1) + launchManager(1) + syncAssets(1) + syncConfig(1)
+            val overhead = 7
+            val totalSteps = scanner.directoryCount() + overhead
+            var completed = 0
+
+            fun step() {
+                completed++
+                val p = completed.toFloat() / totalSteps
+                val labelIndex = (p * labels.size).toInt().coerceIn(0, labels.lastIndex)
+                progress = p
+                statusLabel = labels[labelIndex]
+            }
+
+            scanner.ensureDirectories { step() }
+
+            retroArchLauncher = RetroArchLauncher(this@MainActivity) { settings.retroArchPackage }; step()
+            emuLauncher = EmuLauncher(this@MainActivity); step()
+            apkLauncher = ApkLauncher(this@MainActivity); step()
+            installedCoreService = InstalledCoreService(this@MainActivity); step()
+            val lm = LaunchManager(this@MainActivity, settings, platformResolver, retroArchLauncher, emuLauncher, apkLauncher, installedCoreService); step()
+            lm.syncRetroArchAssets(root); step()
+            lm.syncRetroArchConfig(root); step()
+
+            this@MainActivity.scanner = scanner
+            launchManager = lm
+
+            withContext(Dispatchers.Main) {
+                progress = 1f
+                statusLabel = "Cannoli is now ready to be garnished!"
+                finished = true
+                installingFinished = true
+            }
+        }
+    }
+
+    private fun handleInstallingInput(keyCode: Int) {
+        if (keyCode == KeyEvent.KEYCODE_BUTTON_A && installingFinished) {
+            installingFinished = false
+            finishInitializeApp()
+        }
     }
 
     override fun onResume() {
@@ -513,6 +596,10 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (installingFinished) {
+            handleInstallingInput(keyCode)
+            return true
+        }
         if (inSetup) {
             handleSetupInput(keyCode)
             return true
@@ -617,6 +704,13 @@ class MainActivity : ComponentActivity() {
         scanner.ensureDirectories()
         launchManager.syncRetroArchAssets(root)
         launchManager.syncRetroArchConfig(root)
+
+        finishInitializeApp()
+    }
+
+    private fun finishInitializeApp() {
+        val root = File(settings.sdCardRoot)
+
         ioScope.launch {
             installedCoreService.queryAllPackages()
             platformResolver.purgeStaleRaMappings(installedCoreService.installedCores)
