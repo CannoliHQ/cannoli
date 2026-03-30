@@ -44,6 +44,7 @@ import dev.cannoli.scorza.ui.components.LocalStatusBarLeftEdge
 import dev.cannoli.scorza.ui.components.ScreenTitle
 import dev.cannoli.scorza.ui.components.StatusBar
 import dev.cannoli.scorza.ui.components.pillInternalH
+import androidx.compose.ui.platform.LocalContext
 import dev.cannoli.scorza.ui.components.screenPadding
 import dev.cannoli.scorza.ui.theme.LocalCannoliColors
 
@@ -78,11 +79,6 @@ fun LibretroScreen(
     renderer: GraphicsBackend,
     runner: LibretroRunner,
     audioSampleRate: Int,
-    showWifi: Boolean,
-    showBluetooth: Boolean,
-    showClock: Boolean,
-    showBattery: Boolean,
-    use24h: Boolean,
     osdMessage: String?,
     fastForwarding: Boolean,
     guideFiles: List<GuideFile> = emptyList(),
@@ -103,7 +99,9 @@ fun LibretroScreen(
         else -> false
     }
     val isGuideScreen = screen is IGMScreen.Guide
-    val statusBarEnabled = (showWifi || showBluetooth || showClock || showBattery) && !showDescription && !isGuideScreen
+    val context = LocalContext.current
+    val settings = remember { dev.cannoli.scorza.settings.SettingsRepository(context) }
+    val statusBarEnabled = (settings.showWifi || settings.showBluetooth || settings.showClock || settings.showBattery || settings.showVpn) && !showDescription && !isGuideScreen
     val statusBarLeftEdge = remember { mutableIntStateOf(Int.MAX_VALUE) }
 
     CompositionLocalProvider(LocalStatusBarLeftEdge provides statusBarLeftEdge) {
@@ -551,13 +549,7 @@ fun LibretroScreen(
                         statusBarLeftEdge.intValue = coords.positionInWindow().x.toInt()
                     }
             ) {
-                StatusBar(
-                    use24hTime = use24h,
-                    showWifi = showWifi,
-                    showBluetooth = showBluetooth,
-                    showClock = showClock,
-                    showBattery = showBattery
-                )
+                StatusBar()
             }
         }
     }

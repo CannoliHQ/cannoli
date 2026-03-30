@@ -8,7 +8,6 @@ import android.content.IntentFilter
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
-import android.net.NetworkRequest
 import android.os.BatteryManager
 import android.os.Build
 import androidx.compose.foundation.background
@@ -25,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -35,43 +35,48 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
+import dev.cannoli.scorza.server.KitchenManager
+import dev.cannoli.scorza.settings.SettingsRepository
+import dev.cannoli.scorza.settings.TextSize
+import dev.cannoli.scorza.settings.TimeFormat
 import dev.cannoli.scorza.ui.theme.LocalCannoliColors
 import dev.cannoli.scorza.ui.theme.MPlus1Code
+import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import androidx.compose.runtime.LaunchedEffect
-import kotlinx.coroutines.delay
 
-private const val ICON_BLUETOOTH = "\uDB80\uDCAF"   // nf-md-bluetooth
-private const val ICON_BLUETOOTH_OFF = "\uDB80\uDCB2" // nf-md-bluetooth_off
-private const val ICON_WIFI = "\uDB81\uDDA9"         // nf-md-wifi
-private const val ICON_WIFI_OFF = "\uDB81\uDDAA"     // nf-md-wifi_off
-private const val ICON_VPN = "\uDB82\uDFC4"          // nf-md-shield_key
-private const val ICON_KITCHEN = "\uDB81\uDC8B"      // 󰒋 nf-md-server
+private const val ICON_BLUETOOTH = "\uDB80\uDCAF"
+private const val ICON_BLUETOOTH_OFF = "\uDB80\uDCB2"
+private const val ICON_WIFI = "\uDB81\uDDA9"
+private const val ICON_WIFI_OFF = "\uDB81\uDDAA"
+private const val ICON_VPN = "\uDB82\uDFC4"
+private const val ICON_KITCHEN = "\uDB81\uDC8B"
 
 @Composable
-fun StatusBar(
-    use24hTime: Boolean = false,
-    showWifi: Boolean = true,
-    showBluetooth: Boolean = true,
-    showVpn: Boolean = false,
-    showClock: Boolean = true,
-    showBattery: Boolean = true,
-    showKitchen: Boolean = false,
-    lineHeight: TextUnit = 32.sp,
-    verticalPadding: Dp = 4.dp
-) {
+fun StatusBar() {
     val context = LocalContext.current
+    val settings = remember { SettingsRepository(context) }
+
+    val showWifi = settings.showWifi
+    val showBluetooth = settings.showBluetooth
+    val showVpn = settings.showVpn
+    val showClock = settings.showClock
+    val showBattery = settings.showBattery
+    val showKitchen = KitchenManager.isRunning
+    val use24hTime = settings.timeFormat == TimeFormat.TWENTY_FOUR_HOUR
+    val lineHeight = when (settings.textSize) {
+        TextSize.COMPACT -> 22.sp
+        TextSize.DEFAULT -> 32.sp
+    }
+    val verticalPadding = 4.dp
 
     var batteryLevel by remember { mutableIntStateOf(0) }
     var isCharging by remember { mutableStateOf(false) }
@@ -250,7 +255,7 @@ private fun BatteryGauge(
             Text(
                 text = stringResource(R.string.battery_level, level),
                 style = TextStyle(
-                    fontFamily = dev.cannoli.scorza.ui.theme.MPlus1Code,
+                    fontFamily = MPlus1Code,
                     fontWeight = FontWeight.Bold,
                     fontSize = 8.sp,
                     color = LocalCannoliColors.current.highlight
