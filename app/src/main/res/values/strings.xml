@@ -32,6 +32,8 @@
     <string name="settings_retroachievements">RetroAchievements</string>
     <string name="settings_about">About</string>
     <string name="settings_kitchen">Nonna\'s Kitchen</string>
+    <string name="settings_install_update">Install Update</string>
+    <string name="settings_release_channel">Release Channel</string>
 
     <!-- Settings items -->
     <string name="setting_colors">Colors</string>

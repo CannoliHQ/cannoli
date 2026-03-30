@@ -131,13 +131,24 @@ fun SettingsScreen(
                     onVisibleRangeChanged = onVisibleRangeChanged,
                     key = { _, category -> category.key }
                 ) { index, category ->
-                    PillRowText(
-                        label = stringResource(category.labelRes),
-                        isSelected = state.categoryIndex == index,
-                        fontSize = listFontSize,
-                        lineHeight = listLineHeight,
-                        verticalPadding = listVerticalPadding
-                    )
+                    if (category.key == "install_update") {
+                        PillRowKeyValue(
+                            label = stringResource(category.labelRes),
+                            value = viewModel.updateInfo?.versionName ?: "",
+                            isSelected = state.categoryIndex == index,
+                            fontSize = listFontSize,
+                            lineHeight = listLineHeight,
+                            verticalPadding = listVerticalPadding
+                        )
+                    } else {
+                        PillRowText(
+                            label = stringResource(category.labelRes),
+                            isSelected = state.categoryIndex == index,
+                            fontSize = listFontSize,
+                            lineHeight = listLineHeight,
+                            verticalPadding = listVerticalPadding
+                        )
+                    }
                 }
             }
 
