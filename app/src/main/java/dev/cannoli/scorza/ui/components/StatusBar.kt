@@ -59,9 +59,10 @@ private const val ICON_WIFI = "\uDB81\uDDA9"
 private const val ICON_WIFI_OFF = "\uDB81\uDDAA"
 private const val ICON_VPN = "\uDB82\uDFC4"
 private const val ICON_KITCHEN = "\uDB81\uDC8B"
+private const val ICON_UPDATE = "\uDB81\uDEB2"
 
 @Composable
-fun StatusBar() {
+fun StatusBar(updateAvailable: Boolean = false) {
     val context = LocalContext.current
     val settings = remember { SettingsRepository(context) }
 
@@ -193,6 +194,10 @@ fun StatusBar() {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
+        if (updateAvailable) {
+            Text(text = ICON_UPDATE, style = iconStyle)
+        }
+
         if (showKitchen) {
             Text(text = ICON_KITCHEN, style = iconStyle)
         }
