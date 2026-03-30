@@ -385,6 +385,7 @@ class LaunchManager(
             val versionFile = File(coresDir, ".version")
             val currentVersion = File(context.applicationInfo.sourceDir).lastModified().toString()
             if (versionFile.exists() && versionFile.readText() == currentVersion) return coresDir.absolutePath
+            val extracted = mutableSetOf<String>()
             java.util.zip.ZipFile(context.applicationInfo.sourceDir).use { apkZip ->
                 val abi = android.os.Build.SUPPORTED_ABIS.firstOrNull() ?: "arm64-v8a"
                 val prefix = "lib/$abi/"
@@ -393,7 +394,11 @@ class LaunchManager(
                     val name = entry.name.removePrefix(prefix)
                     val dst = File(coresDir, name)
                     apkZip.getInputStream(entry).use { inp -> dst.outputStream().use { inp.copyTo(it) } }
+                    extracted.add(name)
                 }
+            }
+            coresDir.listFiles()?.forEach { f ->
+                if (f.name.endsWith("_libretro_android.so") && f.name !in extracted) f.delete()
             }
             versionFile.writeText(currentVersion)
             return coresDir.absolutePath

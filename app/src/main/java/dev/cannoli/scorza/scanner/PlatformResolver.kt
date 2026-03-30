@@ -107,6 +107,19 @@ class PlatformResolver(
                 }
             }
         } catch (_: java.io.IOException) {} catch (_: org.json.JSONException) {}
+        migrateStaleInternalRunners()
+    }
+
+    private fun migrateStaleInternalRunners() {
+        var dirty = false
+        for ((tag, runner) in userRunners.toMap()) {
+            if (runner != "Internal") continue
+            if (defaultCores.containsKey(tag)) continue
+            userRunners.remove(tag)
+            userCores.remove(tag)
+            dirty = true
+        }
+        if (dirty) saveCoreMappings()
     }
 
     fun reloadCoreMappings() {
@@ -179,11 +192,12 @@ class PlatformResolver(
     }
 
     fun getCoreMapping(tag: String): String {
-        return userCores[tag] ?: defaultCores[tag] ?: ""
+        return userCores[tag] ?: defaultCores[tag] ?: defaultRetroArchCores[tag]?.firstOrNull() ?: ""
     }
 
     fun setCoreMapping(tag: String, core: String, runner: String? = null, raPackage: String? = null) {
-        if (core.isBlank() || core == defaultCores[tag]) {
+        val defaultCore = defaultCores[tag] ?: defaultRetroArchCores[tag]?.firstOrNull()
+        if (core.isBlank() || core == defaultCore) {
             userCores.remove(tag)
         } else {
             userCores[tag] = core
@@ -259,8 +273,8 @@ class PlatformResolver(
         if (override != null) return override
         val pkg = userPackages[tag]
         if (pkg != null) return InstalledCoreService.getPackageLabel(pkg)
-        if (installedRaCores.any { it.value.contains(coreId) }) return "RetroArch"
         if (nativeLibDir != null && File(nativeLibDir, "${coreId}_android.so").exists()) return "Internal"
+        if (installedRaCores.any { it.value.contains(coreId) }) return "RetroArch"
         return "RetroArch"
     }
 
@@ -270,7 +284,7 @@ class PlatformResolver(
         embeddedCoresDir: String? = null,
         unresponsivePackages: Set<String> = emptySet()
     ): List<dev.cannoli.scorza.ui.screens.CoreMappingEntry> {
-        val tags = (defaultCores.keys + defaultApps.keys + userCores.keys + userApps.keys)
+        val tags = (defaultCores.keys + defaultRetroArchCores.keys + defaultApps.keys + userCores.keys + userApps.keys)
         return tags.map { tag ->
             val app = getAppPackage(tag)
             val coreId = getCoreMapping(tag)
@@ -427,6 +441,7 @@ class PlatformResolver(
         return userCores[tag]
             ?: ini.get("cores", tag)
             ?: defaultCores[tag]
+            ?: defaultRetroArchCores[tag]?.firstOrNull()
     }
 
     fun getEmuLaunch(tag: String, romsDir: File): LaunchTarget.EmuLaunch? {
