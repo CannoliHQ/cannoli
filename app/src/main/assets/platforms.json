@@ -32,7 +32,9 @@
   },
   "NDS": {
     "name": "Nintendo DS",
-    "core": "melonds_libretro",
+    "retroarch": [
+      "melonds_libretro"
+    ],
     "app": [
       "me.magnum.melonds"
     ]
@@ -56,7 +58,9 @@
   },
   "32X": {
     "name": "Sega 32X",
-    "core": "picodrive_libretro"
+    "retroarch": [
+      "picodrive_libretro"
+    ]
   },
   "SEGACD": {
     "name": "Sega CD",
@@ -64,7 +68,9 @@
   },
   "SATURN": {
     "name": "Sega Saturn",
-    "core": "mednafen_saturn_libretro"
+    "retroarch": [
+      "mednafen_saturn_libretro"
+    ]
   },
   
   "PS": {
@@ -79,11 +85,15 @@
   },
   "PSP": {
     "name": "PSP",
-    "core": "ppsspp_libretro"
+    "retroarch": [
+      "ppsspp_libretro"
+    ]
   },
   "DC": {
     "name": "Dreamcast",
-    "core": "flycast_libretro"
+    "retroarch": [
+      "flycast_libretro"
+    ]
   },
   "LYNX": {
     "name": "Atari Lynx",
@@ -91,7 +101,9 @@
   },
   "JAGUAR": {
     "name": "Atari Jaguar",
-    "core": "virtualjaguar_libretro"
+    "retroarch": [
+      "virtualjaguar_libretro"
+    ]
   },
   "ATARI2600": {
     "name": "Atari 2600",
@@ -99,7 +111,9 @@
   },
   "ATARI5200": {
     "name": "Atari 5200",
-    "core": "atari800_libretro"
+    "retroarch": [
+      "atari800_libretro"
+    ]
   },
   "ATARI7800": {
     "name": "Atari 7800",
@@ -111,7 +125,9 @@
   },
   "PCFX": {
     "name": "PC-FX",
-    "core": "mednafen_pcfx_libretro"
+    "retroarch": [
+      "mednafen_pcfx_libretro"
+    ]
   },
   "NGP": {
     "name": "Neo Geo Pocket",
@@ -156,15 +172,21 @@
   
   "COLECOVISION": {
     "name": "ColecoVision",
-    "core": "bluemsx_libretro"
+    "retroarch": [
+      "bluemsx_libretro"
+    ]
   },
   "VECTREX": {
     "name": "Vectrex",
-    "core": "vecx_libretro"
+    "retroarch": [
+      "vecx_libretro"
+    ]
   },
   "INTELLIVISION": {
     "name": "Intellivision",
-    "core": "freeintv_libretro"
+    "retroarch": [
+      "freeintv_libretro"
+    ]
   },
   "SUPERGRAFX": {
     "name": "PC Engine SuperGrafx",
@@ -173,15 +195,21 @@
   
   "DOS": {
     "name": "DOS",
-    "core": "dosbox_pure_libretro"
+    "retroarch": [
+      "dosbox_pure_libretro"
+    ]
   },
   "SCUMMVM": {
     "name": "ScummVM",
-    "core": "scummvm_libretro"
+    "retroarch": [
+      "scummvm_libretro"
+    ]
   },
   "AMIGA": {
     "name": "Amiga",
-    "core": "puae_libretro"
+    "retroarch": [
+      "puae_libretro"
+    ]
   },
   
   "PS2": {
