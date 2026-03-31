@@ -1,0 +1,85 @@
+name: Publish Update Manifest
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Gather release info
+        id: info
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          VERSION="${TAG#v}"
+
+          if [[ "$VERSION" == *"-test"* ]]; then
+            CHANNEL="test"
+          elif [[ "$VERSION" == *"-beta"* ]]; then
+            CHANNEL="beta"
+          else
+            CHANNEL="stable"
+          fi
+
+          VERSION_CODE=$(grep -oP 'versionCode = \K\d+' app/build.gradle.kts)
+
+          APK=$(gh release view "$TAG" --json assets \
+            -q '.assets[] | select(.name | startswith("cannoli-") and endswith(".apk")) | .name')
+          if [[ -z "$APK" ]]; then
+            echo "::error::No cannoli-*.apk asset found in release $TAG"
+            exit 1
+          fi
+
+          gh release view "$TAG" --json body -q '.body' > /tmp/changelog.txt
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "apk=$APK" >> "$GITHUB_OUTPUT"
+
+      - name: Build site
+        run: |
+          mkdir -p _site
+
+          curl -sf "https://update.cannoli.dev/versions.json" -o _site/versions.json 2>/dev/null || echo '{}' > _site/versions.json
+
+          jq --arg ch "${{ steps.info.outputs.channel }}" \
+             --arg vn "${{ steps.info.outputs.version }}" \
+             --argjson vc ${{ steps.info.outputs.version_code }} \
+             --arg tag "${{ steps.info.outputs.tag }}" \
+             --arg apk "${{ steps.info.outputs.apk }}" \
+             --rawfile cl /tmp/changelog.txt \
+             '.[$ch] = {versionName: $vn, versionCode: $vc, tag: $tag, apk: $apk, changelog: ($cl | rtrimstr("\n"))}' \
+             _site/versions.json > _site/versions.tmp && mv _site/versions.tmp _site/versions.json
+
+          cp CNAME _site/
+
+          cat _site/versions.json
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - uses: actions/deploy-pages@v4
+        id: deploy
