@@ -22,6 +22,8 @@ class FileScanner(
     @Volatile private var favoritesCache: Set<String>? = null
     private val artCache = java.util.concurrent.ConcurrentHashMap<String, Map<String, File>>()
     private val mapCache = java.util.concurrent.ConcurrentHashMap<String, Map<String, String>>()
+    private val gameCountCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, Int>>()
+    private val gameCountCacheFile = File(cannoliRoot, "Config/.game_counts")
     private val discRegex = Regex("""\s*\((Disc|Disk)\s*\d+\)|\s*\(CD\d+\)""", RegexOption.IGNORE_CASE)
     private val tagRegex = Regex("""\s*(\([^)]*\)|\[[^\]]*\])""")
 
@@ -519,6 +521,11 @@ class FileScanner(
     }
 
     private fun countGames(dir: File): Int {
+        val key = dir.absolutePath
+        val modified = dir.lastModified()
+        val cached = gameCountCache[key]
+        if (cached != null && cached.first == modified) return cached.second
+
         val files = dir.listFiles() ?: return 0
         val visible = files.filter { it.name != ".emu_launch" && it.name != "map.txt" }
         val m3uNames = visible
@@ -532,7 +539,9 @@ class FileScanner(
         val uncoveredGroups = multiDiscGroups - coveredByM3u.keys
         val discFileCount = uncoveredGroups.values.sumOf { it.size }
         val coveredDiscCount = coveredByM3u.values.sumOf { it.size }
-        return visible.size - discFileCount + uncoveredGroups.size - coveredDiscCount
+        val count = visible.size - discFileCount + uncoveredGroups.size - coveredDiscCount
+        gameCountCache[key] = modified to count
+        return count
     }
 
     private fun findArt(tag: String, gameName: String): File? {

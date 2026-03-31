@@ -1,6 +1,7 @@
 package dev.cannoli.scorza.scanner
 
 import android.content.res.AssetManager
+import java.io.File
 
 data class CoreInfo(
     val id: String,
@@ -8,7 +9,7 @@ data class CoreInfo(
     val databases: List<String>
 )
 
-class CoreInfoRepository(private val assets: AssetManager) {
+class CoreInfoRepository(private val assets: AssetManager, private val cacheDir: File? = null, private val apkLastModified: Long = 0L) {
 
     @Volatile private var cores = listOf<CoreInfo>()
     @Volatile private var coreById = mapOf<String, CoreInfo>()
@@ -60,6 +61,13 @@ class CoreInfoRepository(private val assets: AssetManager) {
     )
 
     fun load() {
+        val cached = loadFromCache()
+        if (cached != null) {
+            cores = cached
+            coreById = cached.associateBy { it.id }
+            return
+        }
+
         val result = mutableListOf<CoreInfo>()
         val files = try { assets.list("core_info") ?: emptyArray() } catch (_: Exception) { emptyArray() }
         for (filename in files) {
@@ -87,6 +95,32 @@ class CoreInfoRepository(private val assets: AssetManager) {
         }
         cores = result
         coreById = result.associateBy { it.id }
+        saveToCache(result)
+    }
+
+    private fun loadFromCache(): List<CoreInfo>? {
+        val dir = cacheDir ?: return null
+        val versionFile = File(dir, ".core_info_version")
+        val cacheFile = File(dir, "core_info.cache")
+        if (!versionFile.exists() || !cacheFile.exists()) return null
+        if (versionFile.readText().trim() != apkLastModified.toString()) return null
+        return try {
+            cacheFile.readLines().mapNotNull { line ->
+                val parts = line.split('\t', limit = 3)
+                if (parts.size == 3) CoreInfo(parts[0], parts[1], parts[2].split('|')) else null
+            }
+        } catch (_: Exception) { null }
+    }
+
+    private fun saveToCache(cores: List<CoreInfo>) {
+        val dir = cacheDir ?: return
+        dir.mkdirs()
+        try {
+            File(dir, "core_info.cache").writeText(
+                cores.joinToString("\n") { "${it.id}\t${it.displayName}\t${it.databases.joinToString("|")}" }
+            )
+            File(dir, ".core_info_version").writeText(apkLastModified.toString())
+        } catch (_: Exception) {}
     }
 
     fun getDisplayName(coreId: String): String {
