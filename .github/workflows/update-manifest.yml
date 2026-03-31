@@ -53,7 +53,8 @@ jobs:
             CHANNEL="stable"
           fi
 
-          VERSION_CODE=$(grep -oP 'versionCode = \K\d+' app/build.gradle.kts)
+          IFS='.-' read -r MAJOR MINOR PATCH _ <<< "$VERSION"
+          VERSION_CODE=$(( ${MAJOR:-0} * 10000 + ${MINOR:-0} * 100 + ${PATCH:-0} ))
 
           APK=$(gh release view "$TAG" --json assets \
             -q '.assets[] | select(.name | startswith("cannoli-") and endswith(".apk")) | .name')
