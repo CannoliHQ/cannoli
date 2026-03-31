@@ -6,7 +6,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.launcher.isPackageInstalled
-import dev.cannoli.scorza.settings.AutoLockTimeout
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.settings.TextSize
 import dev.cannoli.scorza.settings.TimeFormat
@@ -75,8 +74,7 @@ class SettingsViewModel(
         val showClock: Boolean = true,
         val showBattery: Boolean = true,
         val showTools: Boolean = false,
-        val showPorts: Boolean = false,
-        val autoLockTimeout: AutoLockTimeout = AutoLockTimeout.FIVE_MIN
+        val showPorts: Boolean = false
     )
 
     private val _state = MutableStateFlow(State())
@@ -100,8 +98,7 @@ class SettingsViewModel(
         showClock = settings.showClock,
         showBattery = settings.showBattery && !isTelevision,
         showTools = settings.showTools,
-        showPorts = settings.showPorts,
-        autoLockTimeout = settings.autoLockTimeout
+        showPorts = settings.showPorts
     )
 
     private val allCategories = listOf(
@@ -273,11 +270,6 @@ class SettingsViewModel(
                     next < 0 -> 90
                     else -> next
                 }
-            }
-            "auto_lock" -> {
-                val entries = AutoLockTimeout.entries
-                val cur = entries.indexOf(settings.autoLockTimeout).coerceAtLeast(0)
-                settings.autoLockTimeout = entries[((cur + direction) % entries.size + entries.size) % entries.size]
             }
             "platform_switching" -> settings.platformSwitching = !settings.platformSwitching
             "show_empty" -> settings.showEmpty = !settings.showEmpty
@@ -455,18 +447,8 @@ class SettingsViewModel(
 
     private fun onOff(value: Boolean) = if (value) R.string.value_on else R.string.value_off
     private fun showHide(value: Boolean) = if (value) R.string.value_show else R.string.value_hide
-    private fun autoLockLabel(t: AutoLockTimeout) = when (t) {
-        AutoLockTimeout.ONE_MIN -> R.string.value_1m
-        AutoLockTimeout.TWO_MIN -> R.string.value_2m
-        AutoLockTimeout.FIVE_MIN -> R.string.value_5m
-        AutoLockTimeout.TEN_MIN -> R.string.value_10m
-        AutoLockTimeout.THIRTY_MIN -> R.string.value_30m
-        AutoLockTimeout.NEVER -> R.string.value_never
-    }
-
     private fun buildItemsForCategory(categoryKey: String): List<SettingsItem> = when (categoryKey) {
         "display" -> buildList {
-            add(SettingsItem("auto_lock", R.string.setting_auto_lock, valueRes = autoLockLabel(settings.autoLockTimeout)))
             add(SettingsItem("bg_image", R.string.setting_bg_image, valueText = settings.backgroundImagePath?.let { java.io.File(it).name }, valueRes = if (settings.backgroundImagePath == null) R.string.value_none else null))
             if (settings.backgroundImagePath != null) {
                 val tintVal = settings.backgroundTint
@@ -533,6 +515,7 @@ class SettingsViewModel(
                 R.string.settings_release_channel,
                 valueText = dev.cannoli.scorza.updater.ReleaseChannel.fromString(settings.releaseChannel).label
             ))
+            add(SettingsItem("rebuild_cache", R.string.setting_rebuild_cache, isEditable = true))
         }
         else -> emptyList()
     }
