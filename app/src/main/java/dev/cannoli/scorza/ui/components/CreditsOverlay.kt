@@ -9,7 +9,8 @@ import dev.cannoli.scorza.R
 data class CreditEntry(val name: String, val detail: String)
 
 val CREDITS: List<CreditEntry> = listOf(
-    CreditEntry("Shaun Inman", "MinUI — Inspiration"),
+    CreditEntry("Hallie", "My beautiful wife who makes me better in every way"),
+    CreditEntry("Shaun Inman", "MinUI"),
     CreditEntry("M+ Fonts Project", "M PLUS 1 Code — OFL"),
     CreditEntry("Nerd Fonts", "NerdSymbols — OFL"),
     CreditEntry("Apache Commons Compress", "Archive Extraction — Apache 2.0"),
