@@ -24,6 +24,7 @@ class ProfileManager(private val cannoliRoot: String) {
                 f.writeText("")
             }
         }
+        profileFile("Default").delete()
     }
 
     fun listProfiles(): List<String> {
