@@ -22,18 +22,22 @@ import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.ui.components.BottomBar
 import dev.cannoli.scorza.ui.components.PillRowKeyValue
-import dev.cannoli.scorza.ui.components.PillRowText
 import dev.cannoli.scorza.ui.components.screenPadding
 import dev.cannoli.scorza.ui.theme.GrayText
 
 @Composable
 fun SetupScreen(
     storageLabel: String,
-    selectedIndex: Int
+    selectedIndex: Int,
+    isCustom: Boolean = false,
+    customPath: String? = null,
+    continueEnabled: Boolean = true
 ) {
     val fontSize = 22.sp
     val lineHeight = 32.sp
     val verticalPadding = 4.dp
+
+    val folderIndex = if (isCustom) 1 else -1
 
     Box(
         modifier = Modifier
@@ -85,16 +89,28 @@ fun SetupScreen(
                     verticalPadding = verticalPadding
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                if (isCustom) {
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                PillRowText(
-                    label = stringResource(R.string.setup_continue),
-                    isSelected = selectedIndex == 1,
-                    fontSize = fontSize,
-                    lineHeight = lineHeight,
-                    verticalPadding = verticalPadding
-                )
+                    PillRowKeyValue(
+                        label = "Folder",
+                        value = customPath ?: "Not selected",
+                        isSelected = selectedIndex == folderIndex,
+                        fontSize = fontSize,
+                        lineHeight = lineHeight,
+                        verticalPadding = verticalPadding
+                    )
+                }
             }
+        }
+
+        val rightItems = mutableListOf<Pair<String, String>>()
+        when (selectedIndex) {
+            0 -> rightItems.add("←→" to stringResource(R.string.label_change))
+            folderIndex -> rightItems.add("A" to stringResource(R.string.label_select))
+        }
+        if (continueEnabled) {
+            rightItems.add("Start" to "Confirm")
         }
 
         BottomBar(
@@ -102,7 +118,7 @@ fun SetupScreen(
                 .align(Alignment.BottomCenter)
                 .padding(horizontal = screenPadding, vertical = 16.dp),
             leftItems = listOf("B" to stringResource(R.string.label_quit)),
-            rightItems = if (selectedIndex == 0) listOf("←→" to stringResource(R.string.label_change)) else listOf("A" to stringResource(R.string.label_select))
+            rightItems = rightItems
         )
     }
 }

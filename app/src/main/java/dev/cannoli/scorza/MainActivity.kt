@@ -145,6 +145,7 @@ class MainActivity : ComponentActivity() {
     private var setupSelectedIndex by mutableStateOf(0)
     private var setupVolumeIndex by mutableStateOf(0)
     private var setupVolumes = listOf<Pair<String, String>>()
+    private var setupCustomPath by mutableStateOf<String?>(null)
 
     private val shortcutCountdownHandler = Handler(Looper.getMainLooper())
     private val shortcutHoldMs = 1500
@@ -366,10 +367,7 @@ class MainActivity : ComponentActivity() {
     ) { uri ->
         if (uri != null) {
             uriToPath(uri)?.let { path ->
-                inSetup = false
-                settings.sdCardRoot = path
-                settings.setupCompleted = true
-                showInstallingScreen()
+                setupCustomPath = if (path.endsWith("/")) path else "$path/"
             }
         }
     }
@@ -400,6 +398,9 @@ class MainActivity : ComponentActivity() {
     private fun afterPermissionGranted() {
         if (settings.setupCompleted) {
             initializeApp()
+        } else if (File(settings.sdCardRoot, "Config/settings.json").exists()) {
+            settings.setupCompleted = true
+            initializeApp()
         } else {
             val detected = detectExistingCannoli()
             if (detected != null) {
@@ -416,7 +417,7 @@ class MainActivity : ComponentActivity() {
         val volumes = detectStorageVolumes()
         for ((_, path) in volumes.reversed()) {
             val cannoli = File(path, "Cannoli")
-            if (cannoli.exists() && cannoli.isDirectory) {
+            if (cannoli.exists() && cannoli.isDirectory && File(cannoli, "Config/settings.json").exists()) {
                 return cannoli.absolutePath + "/"
             }
         }
@@ -438,25 +439,33 @@ class MainActivity : ComponentActivity() {
 
     private fun showSetupScreen() {
         inSetup = true
-        setupVolumes = detectStorageVolumes()
+        setupVolumes = detectStorageVolumes() + ("Custom" to "")
         setupVolumeIndex = 0
         setupSelectedIndex = 0
+        setupCustomPath = null
         setContent {
             CannoliTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
+                    val isCustom = setupVolumes[setupVolumeIndex].first == "Custom"
+                    val continueEnabled = !isCustom || setupCustomPath != null
                     SetupScreen(
                         storageLabel = setupVolumes[setupVolumeIndex].first,
-                        selectedIndex = setupSelectedIndex
+                        selectedIndex = setupSelectedIndex,
+                        isCustom = isCustom,
+                        customPath = setupCustomPath,
+                        continueEnabled = continueEnabled
                     )
                 }
             }
         }
     }
 
+    private var pendingSetupRoot: String? = null
+
     private fun completeSetup() {
         inSetup = false
-        settings.sdCardRoot = setupVolumes[setupVolumeIndex].second + "Cannoli/"
-        settings.setupCompleted = true
+        val isCustom = setupVolumes[setupVolumeIndex].first == "Custom"
+        pendingSetupRoot = if (isCustom) setupCustomPath!! else setupVolumes[setupVolumeIndex].second + "Cannoli/"
         showInstallingScreen()
     }
 
@@ -490,10 +499,10 @@ class MainActivity : ComponentActivity() {
         }
 
         ioScope.launch {
-            val root = File(settings.sdCardRoot)
+            val root = File(pendingSetupRoot!!)
 
             // pre-load platform info to count total operations
-            val coreInfo = dev.cannoli.scorza.scanner.CoreInfoRepository(assets)
+            val coreInfo = dev.cannoli.scorza.scanner.CoreInfoRepository(assets, filesDir, File(applicationInfo.sourceDir).lastModified())
             coreInfo.load()
             val bundledCoresDir = LaunchManager.extractBundledCores(this@MainActivity)
             platformResolver = PlatformResolver(root, assets, coreInfo, bundledCoresDir)
@@ -538,6 +547,9 @@ class MainActivity : ComponentActivity() {
     private fun handleInstallingInput(keyCode: Int) {
         if (keyCode == KeyEvent.KEYCODE_BUTTON_A && installingFinished) {
             installingFinished = false
+            settings.sdCardRoot = pendingSetupRoot!!
+            settings.setupCompleted = true
+            pendingSetupRoot = null
             finishInitializeApp()
         }
     }
@@ -666,21 +678,31 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleSetupInput(keyCode: Int) {
+        val isCustom = setupVolumes[setupVolumeIndex].first == "Custom"
+        val maxIndex = if (isCustom) 1 else 0
+        val folderIndex = if (isCustom) 1 else -1
+        val continueEnabled = !isCustom || setupCustomPath != null
+
         when (keyCode) {
             KeyEvent.KEYCODE_DPAD_UP -> setupSelectedIndex = (setupSelectedIndex - 1).coerceAtLeast(0)
-            KeyEvent.KEYCODE_DPAD_DOWN -> setupSelectedIndex = (setupSelectedIndex + 1).coerceAtMost(1)
+            KeyEvent.KEYCODE_DPAD_DOWN -> setupSelectedIndex = (setupSelectedIndex + 1).coerceAtMost(maxIndex)
             KeyEvent.KEYCODE_DPAD_LEFT -> {
                 if (setupSelectedIndex == 0 && setupVolumes.size > 1) {
                     setupVolumeIndex = (setupVolumeIndex - 1 + setupVolumes.size) % setupVolumes.size
+                    setupCustomPath = null
                 }
             }
             KeyEvent.KEYCODE_DPAD_RIGHT -> {
                 if (setupSelectedIndex == 0 && setupVolumes.size > 1) {
                     setupVolumeIndex = (setupVolumeIndex + 1) % setupVolumes.size
+                    setupCustomPath = null
                 }
             }
             KeyEvent.KEYCODE_BUTTON_A -> {
-                if (setupSelectedIndex == 1) completeSetup()
+                if (setupSelectedIndex == folderIndex) setupFolderPickerLauncher.launch(null)
+            }
+            KeyEvent.KEYCODE_BUTTON_START -> {
+                if (continueEnabled) completeSetup()
             }
             KeyEvent.KEYCODE_BUTTON_B -> finishAffinity()
         }
@@ -693,7 +715,7 @@ class MainActivity : ComponentActivity() {
         emuLauncher = EmuLauncher(this)
         apkLauncher = ApkLauncher(this)
 
-        val coreInfo = dev.cannoli.scorza.scanner.CoreInfoRepository(assets)
+        val coreInfo = dev.cannoli.scorza.scanner.CoreInfoRepository(assets, filesDir, File(applicationInfo.sourceDir).lastModified())
         coreInfo.load()
         val bundledCoresDir = LaunchManager.extractBundledCores(this)
         platformResolver = PlatformResolver(root, assets, coreInfo, bundledCoresDir)
@@ -703,9 +725,10 @@ class MainActivity : ComponentActivity() {
         launchManager = LaunchManager(this, settings, platformResolver, retroArchLauncher, emuLauncher, apkLauncher, installedCoreService)
 
         scanner = FileScanner(root, platformResolver)
-        scanner.ensureDirectories()
         launchManager.syncRetroArchAssets(root)
         launchManager.syncRetroArchConfig(root)
+
+        ioScope.launch { scanner.ensureDirectories() }
 
         finishInitializeApp()
     }
@@ -775,8 +798,7 @@ class MainActivity : ComponentActivity() {
                         resumableGames = resumableGames,
                         updateAvailable = updateInfo != null,
                         downloadProgress = dlProgress,
-                        downloadError = dlError,
-                        showCheckUpdate = updateInfo == null
+                        downloadError = dlError
                     )
                 }
             }
@@ -1130,7 +1152,22 @@ class MainActivity : ComponentActivity() {
                                     ioScope.launch { updateManager.downloadAndInstall(info) }
                                 }
                             } else if (cat?.key == "about") {
-                                dialogState.value = DialogState.About
+                                dialogState.value = DialogState.About()
+                                if (updateManager.updateAvailable.value == null && updateManager.isOnline()) {
+                                    ioScope.launch {
+                                        val result = updateManager.checkForUpdate()
+                                        withContext(Dispatchers.Main) {
+                                            if (dialogState.value is DialogState.About) {
+                                                if (result != null) {
+                                                    settingsViewModel.updateInfo = result
+                                                    dialogState.value = DialogState.About(statusMessage = getString(R.string.update_available))
+                                                } else {
+                                                    dialogState.value = DialogState.About(statusMessage = getString(R.string.update_up_to_date))
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             } else if (cat?.key == "retroachievements" && settings.raToken.isNotEmpty()) {
                                 dialogState.value = DialogState.RAAccount(username = settings.raUsername)
                             } else if (cat?.key == "kitchen") {
@@ -1359,7 +1396,7 @@ class MainActivity : ComponentActivity() {
                     updateManager.clearError()
                     dialogState.value = DialogState.None
                 }
-                DialogState.About,
+                is DialogState.About,
                 is DialogState.Kitchen -> {
                     dialogState.value = DialogState.None
                     rescanSystemList()
@@ -1584,7 +1621,7 @@ class MainActivity : ComponentActivity() {
                 is DialogState.ProfileNameInput -> {
                     ds.withInsertedChar(" ")?.let { dialogState.value = it }
                 }
-                DialogState.About -> {
+                is DialogState.About -> {
                     dialogState.value = DialogState.None
                     screenStack.add(LauncherScreen.Credits())
                 }
@@ -1654,17 +1691,7 @@ class MainActivity : ComponentActivity() {
                 is DialogState.ProfileNameInput -> {
                     dialogState.value = DialogState.None
                 }
-                DialogState.About -> {
-                    ioScope.launch {
-                        val result = updateManager.checkForUpdate()
-                        withContext(Dispatchers.Main) {
-                            if (result != null) {
-                                dialogState.value = DialogState.UpdateDownload(result.versionName, result.changelog)
-                                launch(Dispatchers.IO) { updateManager.downloadAndInstall(result) }
-                            }
-                        }
-                    }
-                }
+                is DialogState.About -> {}
                 DialogState.None -> {
                     when (currentScreen) {
                         LauncherScreen.SystemList -> {
