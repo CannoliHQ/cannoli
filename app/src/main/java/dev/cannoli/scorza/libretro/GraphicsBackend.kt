@@ -11,6 +11,7 @@ interface GraphicsBackend {
     var overlayPath: String?
     var shaderPresetPath: String?
     var lowLatency: Boolean
+    var coreTargetFps: Double
     var onFrameRendered: (() -> Unit)?
 
     val backendName: String
