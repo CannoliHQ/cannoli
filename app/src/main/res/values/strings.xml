@@ -39,7 +39,6 @@
     <string name="setting_colors">Colors</string>
     <string name="setting_box_art">Box Art</string>
     <string name="setting_text_size">Text Size</string>
-    <string name="setting_auto_lock">Auto Lock</string>
     <string name="setting_bg_image">Background Image</string>
     <string name="setting_wifi">Wi-Fi</string>
     <string name="setting_vpn">VPN</string>
@@ -69,6 +68,7 @@
     <string name="installed_cores_none">No cores found</string>
     <string name="setting_sd_root">Cannoli Root</string>
     <string name="setting_ra_package">RetroArch Package</string>
+    <string name="setting_rebuild_cache">Rebuild Cache</string>
     <string name="setting_ra_username">Username</string>
     <string name="setting_ra_password">Password</string>
     <string name="setting_ra_login">Login</string>
@@ -157,12 +157,6 @@
     <string name="value_none_installed">None Installed</string>
     <string name="text_size_compact">Compact</string>
     <string name="text_size_default">Default</string>
-    <string name="value_never">Never</string>
-    <string name="value_1m">1 min</string>
-    <string name="value_2m">2 min</string>
-    <string name="value_5m">5 min</string>
-    <string name="value_10m">10 min</string>
-    <string name="value_30m">30 min</string>
 
     <!-- Core picker / nav -->
     <string name="no_compatible_cores">No compatible cores found</string>
@@ -226,7 +220,4 @@
 
     <!-- Guide -->
     <string name="guide_page">%1$d / %2$d</string>
-
-    <!-- Accessibility -->
-    <string name="accessibility_service_description">Intercepts Home and Select buttons on controllers so they work correctly in Cannoli.</string>
 </resources>
