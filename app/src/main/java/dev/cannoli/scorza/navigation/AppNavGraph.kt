@@ -87,8 +87,7 @@ fun AppNavGraph(
     resumableGames: Set<String> = emptySet(),
     updateAvailable: Boolean = false,
     downloadProgress: Float = 0f,
-    downloadError: String? = null,
-    showCheckUpdate: Boolean = true
+    downloadError: String? = null
 ) {
     val dialog by dialogState.collectAsState()
     val appSettings by settingsViewModel.appSettings.collectAsState()
@@ -148,7 +147,6 @@ fun AppNavGraph(
                 listLineHeight = listLineHeight,
                 listVerticalPadding = listVerticalPadding,
                 dialogState = dialog,
-                showCheckUpdate = showCheckUpdate,
                 downloadProgress = downloadProgress,
                 downloadError = downloadError,
                 onVisibleRangeChanged = onVisibleRangeChanged

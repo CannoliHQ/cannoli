@@ -159,7 +159,7 @@ class UpdateManager(
         context.startActivity(intent)
     }
 
-    private fun isOnline(): Boolean {
+    fun isOnline(): Boolean {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             val net = cm.activeNetwork ?: return false

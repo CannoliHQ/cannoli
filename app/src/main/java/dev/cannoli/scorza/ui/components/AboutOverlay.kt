@@ -27,7 +27,7 @@ import dev.cannoli.scorza.R
 import dev.cannoli.scorza.ui.theme.MPlus1Code
 
 @Composable
-fun AboutOverlay(showCheckUpdate: Boolean = true) {
+fun AboutOverlay(statusMessage: String? = null) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -85,16 +85,25 @@ fun AboutOverlay(showCheckUpdate: Boolean = true) {
                     color = Color.White
                 )
             )
+
+            if (statusMessage != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = statusMessage,
+                    style = TextStyle(
+                        fontFamily = MPlus1Code,
+                        fontSize = 14.sp,
+                        color = Color(0xFF90EE90)
+                    )
+                )
+            }
         }
         BottomBar(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(screenPadding),
             leftItems = listOf("B" to stringResource(R.string.label_back)),
-            rightItems = buildList {
-                if (showCheckUpdate) add("Y" to stringResource(R.string.label_check_update))
-                add("X" to stringResource(R.string.label_credits))
-            }
+            rightItems = listOf("X" to stringResource(R.string.label_credits))
         )
     }
 }
