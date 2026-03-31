@@ -1874,7 +1874,12 @@ class LibretroActivity : ComponentActivity() {
         File(cacheDir, "rom_cache").deleteRecursively()
     }
 
-    private fun quit() { isRunning = false; cleanup(); finish() }
+    private fun quit() {
+        isRunning = false
+        if (stateBasePath.isNotEmpty()) { File("$stateBasePath.auto").delete() }
+        cleanup()
+        finish()
+    }
 
     override fun onPause() {
         super.onPause()
