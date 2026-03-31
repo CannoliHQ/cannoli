@@ -58,6 +58,7 @@ class LibretroActivity : ComponentActivity() {
     private var slotExists by mutableStateOf(false)
     private var slotOccupied by mutableStateOf(emptyList<Boolean>())
     private var cleaned = false
+    private var autoSavedOnStop = false
 
     private var scalingMode by mutableStateOf(ScalingMode.CORE_REPORTED)
     private var screenEffect by mutableStateOf(ScreenEffect.NONE)
@@ -1881,9 +1882,20 @@ class LibretroActivity : ComponentActivity() {
         if (!loading && !cleaned && sramPath.isNotEmpty()) { File(sramPath).parentFile?.mkdirs(); runner.saveSRAM(sramPath) }
     }
 
+    override fun onStop() {
+        super.onStop()
+        if (!loading && !cleaned && stateBasePath.isNotEmpty() && !autoSavedOnStop) {
+            File("$stateBasePath.auto").parentFile?.mkdirs()
+            runner.saveState("$stateBasePath.auto")
+            autoSavedOnStop = true
+        }
+    }
+
     override fun onResume() {
         super.onResume(); glSurfaceView?.onResume(); goFullscreen()
+        autoSavedOnStop = false
     }
+
     override fun onDestroy() {
         if (::controllerManager.isInitialized) {
             val inputManager = getSystemService(Context.INPUT_SERVICE) as InputManager
