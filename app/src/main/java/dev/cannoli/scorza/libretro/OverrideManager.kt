@@ -47,7 +47,7 @@ class OverrideManager(
         var crtNoise: Float = 0.15f,
         var shaderPreset: String = "",
         var overlay: String = "",
-        var profileName: String = ProfileManager.DEFAULT,
+        var profileName: String = ProfileManager.DEFAULT_GAME,
         var shortcutSource: OverrideSource = OverrideSource.GLOBAL,
         var controls: Map<String, Int> = emptyMap(),
         var shortcuts: Map<ShortcutAction, Set<Int>> = emptyMap(),
