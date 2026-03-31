@@ -27,6 +27,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import dev.cannoli.scorza.R
+import dev.cannoli.scorza.input.ProfileManager
 import dev.cannoli.scorza.libretro.ControlsScreen
 import dev.cannoli.scorza.libretro.LibretroInput
 import dev.cannoli.scorza.libretro.ShortcutAction
@@ -69,7 +70,7 @@ sealed class LauncherScreen {
     data class AppPicker(val type: String, val title: String, val apps: List<String>, val packages: List<String>, val selectedIndex: Int = 0, val checkedIndices: Set<Int> = emptySet(), val initialChecked: Set<Int> = emptySet(), val scrollTarget: Int = 0) : LauncherScreen()
     data class ChildPicker(val collectionName: String, val collections: List<String>, val selectedIndex: Int = 0, val checkedIndices: Set<Int> = emptySet(), val initialChecked: Set<Int> = emptySet(), val scrollTarget: Int = 0) : LauncherScreen()
     data class ProfileList(val profiles: List<String> = emptyList(), val selectedIndex: Int = 0, val scrollTarget: Int = 0) : LauncherScreen()
-    data class ControlBinding(val selectedIndex: Int = 0, val scrollTarget: Int = 0, val controls: Map<String, Int> = emptyMap(), val listeningIndex: Int = -1, val listenCountdownMs: Int = 0, val profileName: String = "Default") : LauncherScreen()
+    data class ControlBinding(val selectedIndex: Int = 0, val scrollTarget: Int = 0, val controls: Map<String, Int> = emptyMap(), val listeningIndex: Int = -1, val listenCountdownMs: Int = 0, val profileName: String = ProfileManager.DEFAULT_GAME) : LauncherScreen()
     data class ShortcutBinding(val selectedIndex: Int = 0, val scrollTarget: Int = 0, val shortcuts: Map<dev.cannoli.scorza.libretro.ShortcutAction, Set<Int>> = emptyMap(), val listening: Boolean = false, val heldKeys: Set<Int> = emptySet(), val countdownMs: Int = 0) : LauncherScreen()
     data class Credits(val selectedIndex: Int = 0, val scrollTarget: Int = 0) : LauncherScreen()
     data class InstalledCores(val cores: List<String> = emptyList(), val loading: Boolean = true, val selectedIndex: Int = 0, val scrollTarget: Int = 0, val title: String? = null) : LauncherScreen()

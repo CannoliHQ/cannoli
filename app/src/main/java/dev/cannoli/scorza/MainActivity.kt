@@ -737,13 +737,13 @@ class MainActivity : ComponentActivity() {
 
         globalOverrides = GlobalOverridesManager { settings.sdCardRoot }
         profileManager = dev.cannoli.scorza.input.ProfileManager(settings.sdCardRoot)
-        profileManager.ensureDefault()
+        profileManager.ensureDefaults()
 
         inputHandler = InputHandler(
             getButtonMappings = {
                 val screen = screenStack.lastOrNull() as? LauncherScreen.ControlBinding
-                if (screen != null && screen.profileName == dev.cannoli.scorza.input.ProfileManager.DEFAULT) screen.controls
-                else profileManager.readControls(dev.cannoli.scorza.input.ProfileManager.DEFAULT)
+                if (screen != null && screen.profileName == dev.cannoli.scorza.input.ProfileManager.NAVIGATION) screen.controls
+                else profileManager.readControls(dev.cannoli.scorza.input.ProfileManager.NAVIGATION)
             }
         )
         wireInput()
@@ -1152,7 +1152,6 @@ class MainActivity : ComponentActivity() {
                                     colors = settingsViewModel.getColorEntries()
                                 ))
                                 "profiles" -> pushScreen(LauncherScreen.ProfileList(profiles = profileManager.listProfiles()))
-                                "controls" -> pushScreen(LauncherScreen.ControlBinding(controls = profileManager.readControls(dev.cannoli.scorza.input.ProfileManager.DEFAULT)))
                                 "shortcuts" -> pushScreen(LauncherScreen.ShortcutBinding(shortcuts = globalOverrides.readShortcuts()))
                                 "core_mapping" -> {
                                     val initial = platformResolver.getDetailedMappings(packageManager, installedCoreService.installedCores, LaunchManager.extractBundledCores(this@MainActivity), installedCoreService.unresponsivePackages)
@@ -1522,7 +1521,7 @@ class MainActivity : ComponentActivity() {
                     is LauncherScreen.ProfileList -> {
                         val pl = currentScreen as LauncherScreen.ProfileList
                         val name = pl.profiles.getOrNull(pl.selectedIndex)
-                        if (name != null && name != dev.cannoli.scorza.input.ProfileManager.DEFAULT) {
+                        if (name != null && !dev.cannoli.scorza.input.ProfileManager.isProtected(name)) {
                             dialogState.value = DialogState.ContextMenu(
                                 gameName = name,
                                 options = listOf("Rename", "Delete")
@@ -2388,7 +2387,7 @@ class MainActivity : ComponentActivity() {
 
     private fun onProfileNameConfirm(state: DialogState.ProfileNameInput) {
         val name = state.currentName.trim()
-        if (name.isBlank() || name.equals(dev.cannoli.scorza.input.ProfileManager.DEFAULT, ignoreCase = true)) {
+        if (name.isBlank() || dev.cannoli.scorza.input.ProfileManager.isProtected(name)) {
             dialogState.value = DialogState.None
             return
         }
