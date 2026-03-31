@@ -1594,7 +1594,9 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun applyProfileToAllPorts(controls: Map<String, Int>) {
+        controllerManager.resetAllInput()
         for (p in 0 until LibretroRunner.MAX_PORTS) {
+            runner.setInput(p, 0)
             val portInput = controllerManager.portInputs[p]
             portInput.resetDefaults()
             for ((key, keyCode) in controls) {
