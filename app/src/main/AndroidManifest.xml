@@ -50,6 +50,9 @@
 
         <activity
             android:name=".libretro.LibretroActivity"
+            android:taskAffinity="dev.cannoli.scorza.game"
+            android:launchMode="singleTask"
+            android:excludeFromRecents="true"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:theme="@style/Theme.Cannoli" />
 
