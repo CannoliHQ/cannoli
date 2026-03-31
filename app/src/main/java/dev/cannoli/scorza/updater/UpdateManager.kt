@@ -63,7 +63,7 @@ class UpdateManager(
     fun shouldAutoCheck(): Boolean {
         if (!isOnline()) return false
         val elapsed = System.currentTimeMillis() - settings.lastUpdateCheck
-        return elapsed > 24 * 60 * 60 * 1000L
+        return elapsed > 2 * 60 * 60 * 1000L
     }
 
     suspend fun checkForUpdate(): UpdateInfo? = withContext(Dispatchers.IO) {
