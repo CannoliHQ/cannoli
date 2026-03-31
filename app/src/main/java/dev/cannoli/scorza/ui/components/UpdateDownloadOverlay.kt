@@ -103,10 +103,12 @@ fun UpdateDownloadOverlay(
                     progress = { progress.coerceAtLeast(0f) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(RoundedCornerShape(4.dp)),
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp)),
                     color = Color.White,
-                    trackColor = Color.White.copy(alpha = 0.2f)
+                    trackColor = Color(0xFF333333),
+                    gapSize = 0.dp,
+                    drawStopIndicator = {}
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
