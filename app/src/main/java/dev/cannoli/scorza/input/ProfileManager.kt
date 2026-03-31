@@ -16,28 +16,30 @@ class ProfileManager(private val cannoliRoot: String) {
     private fun gameFile(platformTag: String, gameBaseName: String) =
         File(cannoliRoot, "Config/Overrides/Games/$platformTag/$gameBaseName.ini")
 
-    fun ensureDefault() {
-        val f = profileFile(DEFAULT)
-        if (!f.exists()) {
-            f.parentFile?.mkdirs()
-            f.writeText("")
+    fun ensureDefaults() {
+        for (name in listOf(NAVIGATION, DEFAULT_GAME)) {
+            val f = profileFile(name)
+            if (!f.exists()) {
+                f.parentFile?.mkdirs()
+                f.writeText("")
+            }
         }
     }
 
     fun listProfiles(): List<String> {
         val dir = profilesDir
-        if (!dir.isDirectory) return listOf(DEFAULT)
+        if (!dir.isDirectory) return listOf(NAVIGATION, DEFAULT_GAME)
         val names = dir.listFiles()
             ?.filter { it.extension.equals("ini", ignoreCase = true) }
             ?.map { it.nameWithoutExtension }
             ?.sorted()
-            ?: return listOf(DEFAULT)
-        val result = mutableListOf(DEFAULT)
-        for (n in names) {
-            if (!n.equals(DEFAULT, ignoreCase = true)) result.add(n)
-        }
-        if (result[0] != DEFAULT) result.add(0, DEFAULT)
-        return result
+            ?: return listOf(NAVIGATION, DEFAULT_GAME)
+        val custom = names.filter { it !in PROTECTED }
+        return listOf(NAVIGATION, DEFAULT_GAME) + custom
+    }
+
+    fun listGameProfiles(): List<String> {
+        return listProfiles().filter { it != NAVIGATION }
     }
 
     fun readControls(profileName: String): Map<String, Int> {
@@ -57,7 +59,7 @@ class ProfileManager(private val cannoliRoot: String) {
     }
 
     fun createProfile(name: String, copyFrom: Map<String, Int> = emptyMap()): Boolean {
-        if (name.isBlank() || name.equals(DEFAULT, ignoreCase = true)) return false
+        if (name.isBlank() || PROTECTED.any { name.equals(it, ignoreCase = true) }) return false
         val f = profileFile(name)
         if (f.exists()) return false
         f.parentFile?.mkdirs()
@@ -70,7 +72,7 @@ class ProfileManager(private val cannoliRoot: String) {
     }
 
     fun deleteProfile(name: String): Boolean {
-        if (name.equals(DEFAULT, ignoreCase = true)) return false
+        if (isProtected(name)) return false
         return profileFile(name).delete()
     }
 
@@ -83,12 +85,12 @@ class ProfileManager(private val cannoliRoot: String) {
         val platformMeta = IniParser.parse(platformFile(platformTag)).getSection("meta")
         platformMeta["profile"]?.let { if (profileExists(it)) return it }
 
-        return DEFAULT
+        return DEFAULT_GAME
     }
 
     fun saveProfileSelection(platformTag: String, gameBaseName: String, profileName: String) {
         val file = gameFile(platformTag, gameBaseName)
-        if (profileName == DEFAULT) {
+        if (profileName == DEFAULT_GAME) {
             if (!file.exists()) return
             val ini = IniParser.parse(file)
             val meta = ini.getSection("meta").toMutableMap()
@@ -110,6 +112,10 @@ class ProfileManager(private val cannoliRoot: String) {
     }
 
     companion object {
-        const val DEFAULT = "Default"
+        const val NAVIGATION = "Cannoli Navigation"
+        const val DEFAULT_GAME = "Default Controls"
+        val PROTECTED = setOf(NAVIGATION, DEFAULT_GAME)
+
+        fun isProtected(name: String): Boolean = name in PROTECTED
     }
 }
