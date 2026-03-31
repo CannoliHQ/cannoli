@@ -36,7 +36,6 @@ fun ControlsScreen(
     listenTimeoutMs: Int = 3000,
     listenCountdownMs: Int = 0,
     profileName: String? = null,
-    dirty: Boolean = false,
     @StringRes titleRes: Int = R.string.title_controls
 ) {
     val itemHeight = pillItemHeight(lineHeight, verticalPadding)
@@ -85,8 +84,6 @@ fun ControlsScreen(
             } else 0
             val bottomLeft = if (listeningIndex >= 0) {
                 emptyList()
-            } else if (dirty) {
-                listOf("B" to stringResource(R.string.label_back), "X" to stringResource(R.string.label_reset_all))
             } else {
                 listOf("B" to stringResource(R.string.label_back))
             }
