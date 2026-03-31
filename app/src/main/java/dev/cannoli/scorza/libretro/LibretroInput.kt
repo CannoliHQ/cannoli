@@ -38,6 +38,7 @@ class LibretroInput {
         for (btn in buttons) {
             if (btn.retroMask == 0) continue
             val keyCode = assignments[btn.prefKey] ?: btn.defaultKeyCode
+            if (keyCode == UNMAPPED) continue
             keyToRetro[keyCode] = btn.retroMask
         }
     }
@@ -49,6 +50,11 @@ class LibretroInput {
     }
 
     fun assign(button: ButtonDef, keyCode: Int) {
+        for (btn in buttons) {
+            if (btn.prefKey == button.prefKey) continue
+            val current = assignments[btn.prefKey] ?: btn.defaultKeyCode
+            if (current == keyCode) assignments[btn.prefKey] = UNMAPPED
+        }
         assignments[button.prefKey] = keyCode
         rebuildMap()
     }
@@ -59,6 +65,7 @@ class LibretroInput {
     }
 
     companion object {
+        const val UNMAPPED     = -1
         const val RETRO_B      = 1 shl 0
         const val RETRO_Y      = 1 shl 1
         const val RETRO_SELECT = 1 shl 2
@@ -76,11 +83,14 @@ class LibretroInput {
         const val RETRO_L3     = 1 shl 14
         const val RETRO_R3     = 1 shl 15
 
-        fun keyCodeName(keyCode: Int): String = KeyEvent.keyCodeToString(keyCode)
-            .removePrefix("KEYCODE_")
-            .replace("BUTTON_", "")
-            .split("_")
-            .joinToString(" ") { word -> word.lowercase(java.util.Locale.ROOT).replaceFirstChar { it.uppercase() } }
-            .replace("Dpad ", "D-Pad ")
+        fun keyCodeName(keyCode: Int): String {
+            if (keyCode == UNMAPPED) return "UNMAPPED"
+            return KeyEvent.keyCodeToString(keyCode)
+                .removePrefix("KEYCODE_")
+                .replace("BUTTON_", "")
+                .split("_")
+                .joinToString(" ") { word -> word.lowercase(java.util.Locale.ROOT).replaceFirstChar { it.uppercase() } }
+                .replace("Dpad ", "D-Pad ")
+        }
     }
 }

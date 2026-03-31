@@ -194,8 +194,7 @@ fun LibretroScreen(
                 selectedIndex = screen.selectedIndex,
                 listeningIndex = screen.listeningIndex,
                 listenCountdownMs = screen.listenCountdownMs,
-                profileName = profileName,
-                dirty = screen.dirty
+                profileName = profileName
             )
             is IGMScreen.ProfileName -> {
                 dev.cannoli.scorza.ui.components.KeyboardOverlay(

@@ -2,7 +2,6 @@ package dev.cannoli.scorza.libretro
 
 import android.content.Context
 import android.hardware.input.InputManager
-import dev.cannoli.scorza.input.CannoliAccessibilityService
 import dev.cannoli.scorza.input.ControllerManager
 import dev.cannoli.scorza.input.ProfileManager
 import android.graphics.Bitmap
@@ -78,7 +77,6 @@ class LibretroActivity : ComponentActivity() {
     private var coreCategories by mutableStateOf(emptyList<LibretroRunner.CoreOptionCategory>())
     private var currentProfileName by mutableStateOf(ProfileManager.DEFAULT_GAME)
     private var profileNames by mutableStateOf(listOf(ProfileManager.DEFAULT_GAME))
-    private var controlsSnapshot: Map<String, Int> = emptyMap()
     private var shortcutSource by mutableStateOf(OverrideSource.GLOBAL)
     private var shortcuts by mutableStateOf(mapOf<ShortcutAction, Set<Int>>())
     private val shortcutChordKeys = mutableSetOf<Int>()
@@ -113,11 +111,6 @@ class LibretroActivity : ComponentActivity() {
     private var osdMessage by mutableStateOf<String?>(null)
     private val osdHandler = Handler(Looper.getMainLooper())
     private val clearOsdRunnable = Runnable { osdMessage = null }
-    private val autoLockHandler = Handler(Looper.getMainLooper())
-    private val autoLockRunnable = Runnable {
-        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-    }
-
     private var gameTitle: String = ""
     private var corePath: String = ""
     private var romPath: String = ""
@@ -130,7 +123,6 @@ class LibretroActivity : ComponentActivity() {
     private var gameBaseName: String = ""
     private var platformName: String = ""
     private var cannoliRoot: String = ""
-    private var autoLockMs = 300_000L
 
     private val currentSlot get() = slotManager.slots[selectedSlotIndex]
     private val currentScreen get() = screenStack.lastOrNull()
@@ -200,8 +192,6 @@ class LibretroActivity : ComponentActivity() {
         platformTag = intent.getStringExtra("platform_tag") ?: ""
         platformName = intent.getStringExtra("platform_name") ?: platformTag
         cannoliRoot = intent.getStringExtra("cannoli_root") ?: ""
-        autoLockMs = intent.getLongExtra("auto_lock_ms", 300_000L)
-
         slotManager = SaveSlotManager(stateBasePath)
         guideManager = GuideManager(cannoliRoot, platformTag, gameTitle)
         profileManager = ProfileManager(cannoliRoot)
@@ -499,7 +489,6 @@ class LibretroActivity : ComponentActivity() {
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
         if (loading) return true
-        if (screenStack.isNotEmpty()) resetAutoLock()
         val screen = currentScreen ?: return handleGameplayInput(keyCode, event)
         val resolved = resolveGlobal(keyCode)
         return when (screen) {
@@ -648,14 +637,6 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
-    private fun resetAutoLock() {
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        autoLockHandler.removeCallbacks(autoLockRunnable)
-        if (screenStack.isNotEmpty() && autoLockMs > 0) {
-            autoLockHandler.postDelayed(autoLockRunnable, autoLockMs)
-        }
-    }
-
     // --- Menu screen ---
 
     private fun openMenu() {
@@ -668,7 +649,6 @@ class LibretroActivity : ComponentActivity() {
         renderer.paused = true
         refreshSlotInfo()
         refreshDiskInfo()
-        resetAutoLock()
     }
 
     private fun closeAll() {
@@ -679,7 +659,6 @@ class LibretroActivity : ComponentActivity() {
         controllerManager.resetAllInput()
         for (p in 0 until LibretroRunner.MAX_PORTS) runner.setInput(p, 0)
         renderer.paused = false
-        resetAutoLock()
     }
 
     private fun onControllerDisconnected(port: Int) {
@@ -1461,8 +1440,6 @@ class LibretroActivity : ComponentActivity() {
                 currentProfileName = name
                 profileManager.saveProfileSelection(platformTag, gameBaseName, name)
                 applyProfileToAllPorts(profileManager.readControls(name))
-                val inp = controllerManager.portInputs[0]
-                controlsSnapshot = inp.buttons.associate { it.prefKey to inp.getKeyCodeFor(it) }
                 push(IGMScreen.ControlEdit())
                 true
             }
@@ -1488,7 +1465,7 @@ class LibretroActivity : ComponentActivity() {
             shortcutCountdownHandler.removeCallbacks(controlListenRunnable)
             inp.assign(inp.buttons[screen.listeningIndex], rawKeyCode)
             saveCurrentProfile()
-            replaceTop(screen.copy(listeningIndex = -1, listenCountdownMs = 0, dirty = true))
+            replaceTop(screen.copy(listeningIndex = -1, listenCountdownMs = 0))
             return true
         }
         val count = inp.buttons.size
@@ -1502,18 +1479,6 @@ class LibretroActivity : ComponentActivity() {
             KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
                 replaceTop(screen.copy(listeningIndex = screen.selectedIndex, listenCountdownMs = 0))
                 shortcutCountdownHandler.postDelayed(controlListenRunnable, controlListenTickMs)
-                true
-            }
-            KeyEvent.KEYCODE_BUTTON_X -> {
-                if (screen.dirty) {
-                    inp.resetDefaults()
-                    for ((key, kc) in controlsSnapshot) {
-                        val btn = inp.buttons.find { it.prefKey == key } ?: continue
-                        inp.assign(btn, kc)
-                    }
-                    saveCurrentProfile()
-                    replaceTop(IGMScreen.ControlEdit(selectedIndex = screen.selectedIndex))
-                }
                 true
             }
             KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
@@ -1912,22 +1877,12 @@ class LibretroActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
-        CannoliAccessibilityService.onHomeKey = null
-        CannoliAccessibilityService.onMenuKey = null
         glSurfaceView?.onPause()
         if (!loading && !cleaned && sramPath.isNotEmpty()) { File(sramPath).parentFile?.mkdirs(); runner.saveSRAM(sramPath) }
     }
 
     override fun onResume() {
         super.onResume(); glSurfaceView?.onResume(); goFullscreen()
-        CannoliAccessibilityService.onHomeKey = { runOnUiThread { openMenu() } }
-        CannoliAccessibilityService.onMenuKey = { action ->
-            runOnUiThread {
-                val event = KeyEvent(action, KeyEvent.KEYCODE_BUTTON_SELECT)
-                if (action == KeyEvent.ACTION_DOWN) onKeyDown(KeyEvent.KEYCODE_BUTTON_SELECT, event)
-                else if (action == KeyEvent.ACTION_UP) onKeyUp(KeyEvent.KEYCODE_BUTTON_SELECT, event)
-            }
-        }
     }
     override fun onDestroy() {
         if (::controllerManager.isInitialized) {
