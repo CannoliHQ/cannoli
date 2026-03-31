@@ -357,7 +357,6 @@ class LaunchManager(
             putExtra("color_text", settings.colorText)
             putExtra("color_highlight_text", settings.colorHighlightText)
             putExtra("color_accent", settings.colorAccent)
-            putExtra("auto_lock_ms", settings.autoLockTimeout.millis)
             putExtra("graphics_backend", settings.graphicsBackend)
             putExtra("ra_username", settings.raUsername)
             putExtra("ra_token", settings.raToken)
