@@ -23,7 +23,7 @@ def sync_credits_overlay(credits):
 
     entries = []
     for item in credits["inspiration"]:
-        entries.append(f'    CreditEntry("{item["name"]}", "{item["detail"]} \u2014 Inspiration")')
+        entries.append(f'    CreditEntry("{item["name"]}", "{item["detail"]}")')
     for item in credits["fonts"]:
         entries.append(f'    CreditEntry("{item["name"]}", "{item["what"]} \u2014 {item["license"]}")')
     for item in credits["libraries"]:
