@@ -24,6 +24,7 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
 
     @Volatile override var paused = false
     @Volatile override var fastForwardFrames = 0
+    @Volatile override var coreTargetFps = 60.0
     @Volatile override var scalingMode = ScalingMode.CORE_REPORTED
     @Volatile override var coreAspectRatio = 0f
     @Volatile override var debugHud = false
@@ -58,6 +59,8 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
 
     private var frameCount = 0
     private var fpsTimestamp = 0L
+    private var lastDrawNanos = 0L
+    private var frameAccumulatorNs = 0L
 
     private val shaderParamOverrides = ConcurrentHashMap<String, Float>()
 
@@ -148,10 +151,22 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
 
     override fun onDrawFrame(gl: GL10?) {
         if (!paused) {
-            runner.run()
-            val extraFrames = fastForwardFrames
-            if (extraFrames > 0) {
-                for (i in 1 until extraFrames) runner.run()
+            val now = System.nanoTime()
+            val delta = if (lastDrawNanos == 0L) 0L else now - lastDrawNanos
+            lastDrawNanos = now
+
+            val extra = fastForwardFrames
+            if (extra > 0) {
+                runner.run()
+                for (i in 1 until extra) runner.run()
+            } else {
+                val frameDurationNs = (1_000_000_000.0 / coreTargetFps).toLong()
+                frameAccumulatorNs += delta
+                if (frameAccumulatorNs > frameDurationNs * 2) frameAccumulatorNs = frameDurationNs * 2
+                while (frameAccumulatorNs >= frameDurationNs) {
+                    runner.run()
+                    frameAccumulatorNs -= frameDurationNs
+                }
             }
         }
 

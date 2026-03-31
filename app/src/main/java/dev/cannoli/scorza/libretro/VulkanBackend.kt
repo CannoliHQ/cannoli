@@ -44,6 +44,7 @@ class VulkanBackend(private val runner: LibretroRunner) : GraphicsBackend, Surfa
         set(value) { field = value; loadOverlayImage(value) }
     @Volatile override var shaderPresetPath: String? = null
         set(value) { field = value; loadShaderPreset(value) }
+    @Volatile override var coreTargetFps = 60.0
     @Volatile override var lowLatency = false
         set(value) {
             field = value
