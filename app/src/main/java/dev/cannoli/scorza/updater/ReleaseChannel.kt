@@ -5,6 +5,8 @@ enum class ReleaseChannel(val key: String, val label: String) {
     BETA("beta", "Beta"),
     TEST("test", "Test");
 
+    fun visibleChannels(): List<ReleaseChannel> = entries.filter { it.ordinal <= ordinal }
+
     companion object {
         fun fromString(value: String?): ReleaseChannel =
             entries.firstOrNull { it.name == value } ?: STABLE

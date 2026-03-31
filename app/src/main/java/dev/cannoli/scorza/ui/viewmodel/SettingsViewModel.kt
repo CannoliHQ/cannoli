@@ -515,7 +515,6 @@ class SettingsViewModel(
                 R.string.settings_release_channel,
                 valueText = dev.cannoli.scorza.updater.ReleaseChannel.fromString(settings.releaseChannel).label
             ))
-            add(SettingsItem("rebuild_cache", R.string.setting_rebuild_cache, isEditable = true))
         }
         else -> emptyList()
     }

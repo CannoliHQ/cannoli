@@ -78,6 +78,14 @@ jobs:
       - name: Decode keystore
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/release.keystore
 
+      - name: Compute version code and patch build.gradle.kts
+        run: |
+          IFS='.-' read -r MAJOR MINOR PATCH _ <<< "${{ inputs.version }}"
+          VERSION_CODE=$(( ${MAJOR:-0} * 10000 + ${MINOR:-0} * 100 + ${PATCH:-0} ))
+          sed -i "s/versionCode = [0-9]*/versionCode = $VERSION_CODE/" app/build.gradle.kts
+          sed -i "s/versionName = \"[^\"]*\"/versionName = \"${{ inputs.version }}\"/" app/build.gradle.kts
+          echo "versionCode=$VERSION_CODE, versionName=${{ inputs.version }}"
+
       - name: Build release APK
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
@@ -87,14 +95,6 @@ jobs:
             -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
             -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
             -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
-
-      - name: Compute version code and patch build.gradle.kts
-        run: |
-          IFS='.-' read -r MAJOR MINOR PATCH _ <<< "${{ inputs.version }}"
-          VERSION_CODE=$(( ${MAJOR:-0} * 10000 + ${MINOR:-0} * 100 + ${PATCH:-0} ))
-          sed -i "s/versionCode = [0-9]*/versionCode = $VERSION_CODE/" app/build.gradle.kts
-          sed -i "s/versionName = \"[^\"]*\"/versionName = \"${{ inputs.version }}\"/" app/build.gradle.kts
-          echo "versionCode=$VERSION_CODE, versionName=${{ inputs.version }}"
 
       - name: Get version info
         id: version

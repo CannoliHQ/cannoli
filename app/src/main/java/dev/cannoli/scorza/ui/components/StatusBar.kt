@@ -59,7 +59,7 @@ private const val ICON_WIFI = "\uDB81\uDDA9"
 private const val ICON_WIFI_OFF = "\uDB81\uDDAA"
 private const val ICON_VPN = "\uDB82\uDFC4"
 private const val ICON_KITCHEN = "\uDB81\uDC8B"
-private const val ICON_UPDATE = "\uDB81\uDEB2"
+private const val ICON_UPDATE = "\uDB81\uDEB0"
 
 @Composable
 fun StatusBar(updateAvailable: Boolean = false) {

@@ -70,21 +70,21 @@ class UpdateManager(
         try {
             val channel = ReleaseChannel.fromString(settings.releaseChannel)
             val json = fetchJson("https://update.cannoli.dev/versions.json")
-            val channelObj = json.optJSONObject(channel.key) ?: run {
-                settings.lastUpdateCheck = System.currentTimeMillis()
-                cacheUpdate(null)
-                _updateAvailable.value = null
-                return@withContext null
+            val candidates = channel.visibleChannels().mapNotNull { ch ->
+                val obj = json.optJSONObject(ch.key) ?: return@mapNotNull null
+                UpdateInfo(
+                    versionName = obj.getString("versionName"),
+                    versionCode = obj.getInt("versionCode"),
+                    tag = obj.getString("tag"),
+                    apk = obj.getString("apk"),
+                    changelog = obj.optString("changelog", "")
+                )
             }
-            val info = UpdateInfo(
-                versionName = channelObj.getString("versionName"),
-                versionCode = channelObj.getInt("versionCode"),
-                tag = channelObj.getString("tag"),
-                apk = channelObj.getString("apk"),
-                changelog = channelObj.optString("changelog", "")
-            )
             settings.lastUpdateCheck = System.currentTimeMillis()
-            val result = if (info.versionCode > BuildConfig.VERSION_CODE) info else null
+            val best = candidates
+                .filter { it.versionCode > BuildConfig.VERSION_CODE }
+                .maxByOrNull { it.versionCode }
+            val result = best
             cacheUpdate(result)
             _updateAvailable.value = result
             result
