@@ -80,25 +80,7 @@ fun UpdateDownloadOverlay(
                         textAlign = TextAlign.Center
                     )
                 )
-            } else if (progress >= 1f) {
-                Text(
-                    text = stringResource(R.string.update_installing),
-                    style = TextStyle(
-                        fontFamily = MPlus1Code,
-                        fontSize = 16.sp,
-                        color = Color.White
-                    )
-                )
             } else {
-                Text(
-                    text = stringResource(R.string.update_downloading),
-                    style = TextStyle(
-                        fontFamily = MPlus1Code,
-                        fontSize = 16.sp,
-                        color = Color.White
-                    )
-                )
-                Spacer(modifier = Modifier.height(12.dp))
                 LinearProgressIndicator(
                     progress = { progress.coerceAtLeast(0f) },
                     modifier = Modifier
