@@ -179,6 +179,8 @@
     <string name="update_downloading">Downloading…</string>
     <string name="update_installing">Installing…</string>
     <string name="update_retry">RETRY</string>
+    <string name="update_up_to_date">You\'re on the latest version.</string>
+    <string name="update_available">A new version is available.</string>
 
     <!-- IGM bottom bar labels -->
     <string name="label_confirm_delete">CONFIRM DELETE</string>

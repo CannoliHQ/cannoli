@@ -26,7 +26,6 @@ fun DialogOverlay(
     listFontSize: TextUnit,
     listLineHeight: TextUnit,
     listVerticalPadding: Dp,
-    showCheckUpdate: Boolean = true,
     downloadProgress: Float = 0f,
     downloadError: String? = null
 ) {
@@ -125,8 +124,8 @@ fun DialogOverlay(
             )
         }
 
-        DialogState.About -> {
-            AboutOverlay(showCheckUpdate = showCheckUpdate)
+        is DialogState.About -> {
+            AboutOverlay(statusMessage = dialogState.statusMessage)
         }
 
         is DialogState.Kitchen -> {
