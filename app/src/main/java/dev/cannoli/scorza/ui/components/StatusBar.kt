@@ -70,7 +70,8 @@ fun StatusBar(updateAvailable: Boolean = false) {
     val showBluetooth = settings.showBluetooth
     val showVpn = settings.showVpn
     val showClock = settings.showClock
-    val showBattery = settings.showBattery
+    val isTelevision = context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK)
+    val showBattery = settings.showBattery && !isTelevision
     val showKitchen = KitchenManager.isRunning
     val use24hTime = settings.timeFormat == TimeFormat.TWENTY_FOUR_HOUR
     val lineHeight = when (settings.textSize) {
