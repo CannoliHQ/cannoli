@@ -22,23 +22,41 @@ class FileScanner(
     @Volatile private var favoritesCache: Set<String>? = null
     private val artCache = java.util.concurrent.ConcurrentHashMap<String, Map<String, File>>()
     private val mapCache = java.util.concurrent.ConcurrentHashMap<String, Map<String, String>>()
-    private val gameCountCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, Int>>()
-    private val gameCountCacheFile = File(cannoliRoot, "Config/.game_counts")
     private val discRegex = Regex("""\s*\((Disc|Disk)\s*\d+\)|\s*\(CD\d+\)""", RegexOption.IGNORE_CASE)
     private val tagRegex = Regex("""\s*(\([^)]*\)|\[[^\]]*\])""")
+
+    private val scanCache = ScanCache(cannoliRoot)
+    val dirTimestamps = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
     fun scanPlatforms(): List<Platform> {
         if (!romsDir.exists()) return emptyList()
 
         val tagDirs = romsDir.listFiles { f -> f.isDirectory } ?: return emptyList()
+        val knownDirs = tagDirs.filter { platformResolver.isKnownTag(it.name) }
+        val platformCache = scanCache.loadPlatformCache()
+        val newEntries = mutableMapOf<String, CachedPlatformEntry>()
+        var anyStale = false
 
-        val all = tagDirs
-            .filter { platformResolver.isKnownTag(it.name) }
-            .map { dir ->
-                val tag = dir.name
-                val gameCount = countGames(dir)
-                platformResolver.resolvePlatform(tag, romsDir, gameCount)
+        val all = knownDirs.map { dir ->
+            val tag = dir.name
+            val dirMod = dir.lastModified()
+            dirTimestamps[tag] = dirMod
+
+            val cached = platformCache?.get(tag)
+            val hasGames = if (cached != null && cached.lastModified == dirMod) {
+                cached.hasGames
+            } else {
+                anyStale = true
+                val files = dir.listFiles()
+                files?.any { it.name != ".emu_launch" && it.name != "map.txt" } ?: false
             }
+            newEntries[tag] = CachedPlatformEntry(dirMod, hasGames)
+            platformResolver.resolvePlatform(tag, romsDir, if (hasGames) 1 else 0)
+        }
+
+        if (anyStale || platformCache == null) {
+            scanCache.savePlatformCache(newEntries)
+        }
 
         return all.groupBy { it.displayName }.map { (_, group) ->
             if (group.size == 1) group[0]
@@ -70,6 +88,14 @@ class FileScanner(
         }
 
         if (!baseDir.exists()) return emptyList()
+
+        if (subfolder == null) {
+            val dirMod = dirTimestamps[tag] ?: baseDir.lastModified()
+            val cached = scanCache.loadGameCache(tag)
+            if (cached != null && cached.dirLastModified == dirMod) {
+                return reconstructGames(tag, cached)
+            }
+        }
 
         val emuLaunch = platformResolver.getEmuLaunch(tag, romsDir)
         val coreName = platformResolver.getCoreName(tag)
@@ -172,9 +198,26 @@ class FileScanner(
         }
 
         val nameMap = parseMapFile(baseDir)
-        val favPaths = getFavoritePaths()
         val all = applyMap(stripTags(filtered + grouped), nameMap)
-        val starred = all.map { game ->
+
+        if (subfolder == null) {
+            val dirMod = dirTimestamps[tag] ?: baseDir.lastModified()
+            scanCache.saveGameCache(tag, dirMod, all.map { game ->
+                CachedGameEntry(
+                    path = game.file.absolutePath,
+                    displayName = game.displayName,
+                    isSubfolder = game.isSubfolder,
+                    discPaths = game.discFiles?.map { it.absolutePath } ?: emptyList()
+                )
+            })
+        }
+
+        return applyFavoritesAndSort(all)
+    }
+
+    private fun applyFavoritesAndSort(games: List<Game>): List<Game> {
+        val favPaths = getFavoritePaths()
+        val starred = games.map { game ->
             if (!game.isSubfolder && game.file.absolutePath in favPaths)
                 game.copy(displayName = "★ ${game.displayName}")
             else game
@@ -184,6 +227,33 @@ class FileScanner(
                 .thenBy { !it.displayName.startsWith("★") }
                 .thenBy(dev.cannoli.scorza.util.NaturalSort) { it.displayName.removePrefix("★ ") }
         )
+    }
+
+    private fun reconstructGames(tag: String, cached: CachedGameList): List<Game> {
+        val emuLaunch = platformResolver.getEmuLaunch(tag, romsDir)
+        val coreName = platformResolver.getCoreName(tag)
+        val appPackage = platformResolver.getAppPackage(tag)
+
+        fun resolveTarget(isSubfolder: Boolean): LaunchTarget = when {
+            isSubfolder -> LaunchTarget.RetroArch
+            emuLaunch != null -> emuLaunch
+            coreName != null -> LaunchTarget.RetroArch
+            appPackage != null -> LaunchTarget.ApkLaunch(appPackage)
+            else -> LaunchTarget.RetroArch
+        }
+
+        val games = cached.games.map { entry ->
+            Game(
+                file = File(entry.path),
+                displayName = entry.displayName,
+                platformTag = tag,
+                isSubfolder = entry.isSubfolder,
+                artFile = findArt(tag, entry.displayName),
+                launchTarget = resolveTarget(entry.isSubfolder),
+                discFiles = if (entry.discPaths.isNotEmpty()) entry.discPaths.map { File(it) } else null
+            )
+        }
+        return applyFavoritesAndSort(games)
     }
 
     private data class DirLaunch(val file: File, val discFiles: List<File>? = null)
@@ -450,11 +520,6 @@ class FileScanner(
         }
     }
 
-    fun directoryCount(): Int {
-        val tags = platformResolver.getAllTags().size
-        return 18 + (tags * 6)
-    }
-
     fun ensureDirectories(onProgress: (() -> Unit)? = null) {
         listOf(
             romsDir, artDir, collectionsDir,
@@ -520,30 +585,6 @@ class FileScanner(
         return relative.substringBefore('/')
     }
 
-    private fun countGames(dir: File): Int {
-        val key = dir.absolutePath
-        val modified = dir.lastModified()
-        val cached = gameCountCache[key]
-        if (cached != null && cached.first == modified) return cached.second
-
-        val files = dir.listFiles() ?: return 0
-        val visible = files.filter { it.name != ".emu_launch" && it.name != "map.txt" }
-        val m3uNames = visible
-            .filter { !it.isDirectory && it.extension.equals("m3u", ignoreCase = true) }
-            .map { it.nameWithoutExtension }
-            .toSet()
-        val discFiles = visible.filter { !it.isDirectory && discRegex.containsMatchIn(it.nameWithoutExtension) }
-        val groups = discFiles.groupBy { it.nameWithoutExtension.replace(discRegex, "").trim() }
-        val multiDiscGroups = groups.filter { it.value.size > 1 }
-        val coveredByM3u = multiDiscGroups.filter { it.key in m3uNames }
-        val uncoveredGroups = multiDiscGroups - coveredByM3u.keys
-        val discFileCount = uncoveredGroups.values.sumOf { it.size }
-        val coveredDiscCount = coveredByM3u.values.sumOf { it.size }
-        val count = visible.size - discFileCount + uncoveredGroups.size - coveredDiscCount
-        gameCountCache[key] = modified to count
-        return count
-    }
-
     private fun findArt(tag: String, gameName: String): File? {
         val lookup = artCache.getOrPut(tag) {
             val artTagDir = File(artDir, tag)
@@ -559,10 +600,29 @@ class FileScanner(
         return lookup[gameName]
     }
 
-    fun invalidateArtCache() {
+    fun invalidateFavorites() {
+        favoritesCache = null
+    }
+
+    fun invalidateArtForTag(tag: String) {
+        artCache.remove(tag)
+    }
+
+    fun invalidateMapForDir(path: String) {
+        mapCache.remove(path)
+    }
+
+    fun invalidateGameCacheForTag(tag: String) {
+        scanCache.invalidatePlatform(tag)
+        dirTimestamps.remove(tag)
+    }
+
+    fun invalidateAllCaches() {
         artCache.clear()
         mapCache.clear()
         favoritesCache = null
+        dirTimestamps.clear()
+        scanCache.invalidateAll()
     }
 
     private val configDir = File(cannoliRoot, "Config")

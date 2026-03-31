@@ -31,7 +31,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import android.os.Handler
 import android.os.Looper
-import dev.cannoli.scorza.input.CannoliAccessibilityService
 import dev.cannoli.scorza.input.InputHandler
 import dev.cannoli.scorza.launcher.ApkLauncher
 import dev.cannoli.scorza.launcher.EmuLauncher
@@ -112,10 +111,6 @@ class MainActivity : ComponentActivity() {
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val controlButtons = LibretroInput().buttons
     private val controlButtonCount = controlButtons.size
-    private val autoLockHandler = Handler(Looper.getMainLooper())
-    private val autoLockRunnable = Runnable {
-        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-    }
     private val selectHoldHandler = Handler(Looper.getMainLooper())
     private var selectDown = false
     private var selectHeld = false
@@ -511,7 +506,8 @@ class MainActivity : ComponentActivity() {
             val scanner = FileScanner(root, platformResolver)
             // overhead steps: launchers(3) + installedCoreService(1) + launchManager(1) + syncAssets(1) + syncConfig(1)
             val overhead = 7
-            val totalSteps = scanner.directoryCount() + overhead
+            val dirCount = 18 + (platformResolver.getAllTags().size * 6)
+            val totalSteps = dirCount + overhead
             var completed = 0
 
             fun step() {
@@ -557,17 +553,11 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         hideSystemUI()
-        if (::settingsViewModel.isInitialized) resetAutoLock()
         if (LibretroActivity.isRunning) {
             val intent = Intent(this, LibretroActivity::class.java)
             intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
             startActivity(intent)
             return
-        }
-        if (::inputHandler.isInitialized) {
-            CannoliAccessibilityService.onMenuKey = { action ->
-                if (action == KeyEvent.ACTION_DOWN) runOnUiThread { inputHandler.onSelect() }
-            }
         }
         if (::systemListViewModel.isInitialized) {
             rescanSystemList()
@@ -580,8 +570,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
-        autoLockHandler.removeCallbacks(autoLockRunnable)
-        CannoliAccessibilityService.onMenuKey = null
     }
 
     override fun onDestroy() {
@@ -592,20 +580,12 @@ class MainActivity : ComponentActivity() {
         dev.cannoli.scorza.server.KitchenManager.stop()
     }
 
-    private fun resetAutoLock() {
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        autoLockHandler.removeCallbacks(autoLockRunnable)
-        val millis = settingsViewModel.appSettings.value.autoLockTimeout.millis
-        if (millis > 0) autoLockHandler.postDelayed(autoLockRunnable, millis)
-    }
-
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
         return true
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.keyCode == KeyEvent.KEYCODE_BACK) return true
-        if (event.action == KeyEvent.ACTION_DOWN && ::settingsViewModel.isInitialized) resetAutoLock()
         return super.dispatchKeyEvent(event)
     }
 
@@ -1203,6 +1183,10 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                                 "installed_cores" -> queryInstalledCores()
+                                "rebuild_cache" -> {
+                                    scanner.invalidateAllCaches()
+                                    rescanSystemList()
+                                }
                                 "manage_tools" -> openAppPicker("tools")
                                 "manage_ports" -> openAppPicker("ports")
                                 "ra_username" -> {
@@ -1823,7 +1807,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun rescanSystemList() {
-        scanner.invalidateArtCache()
+        scanner.invalidateFavorites()
         systemListViewModel.scan(
             showTools = settings.showTools,
             showPorts = settings.showPorts,
@@ -2133,7 +2117,7 @@ class MainActivity : ComponentActivity() {
             selected == MENU_DELETE_ART -> {
                 pendingContextReturn = null
                 game.artFile?.delete()
-                scanner.invalidateArtCache()
+                scanner.invalidateArtForTag(game.platformTag)
                 gameListViewModel.reload()
                 dialogState.value = DialogState.None
             }
@@ -2352,10 +2336,13 @@ class MainActivity : ComponentActivity() {
                 pendingContextReturn = null
                 val games = gameListViewModel.state.value.games
                 val pathSet = state.gamePaths.toSet()
+                val tagsToInvalidate = mutableSetOf<String>()
                 games.filter { it.file.absolutePath in pathSet }
-                    .mapNotNull { it.artFile }
-                    .forEach { it.delete() }
-                scanner.invalidateArtCache()
+                    .forEach { g ->
+                        g.artFile?.delete()
+                        tagsToInvalidate.add(g.platformTag)
+                    }
+                tagsToInvalidate.forEach { scanner.invalidateArtForTag(it) }
                 gameListViewModel.reload()
                 dialogState.value = DialogState.None
             }
@@ -2493,7 +2480,9 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
-            scanner.invalidateArtCache()
+            scanner.invalidateArtForTag(game.platformTag)
+            scanner.invalidateMapForDir(game.file.parent ?: "")
+            scanner.invalidateGameCacheForTag(game.platformTag)
             gameListViewModel.reload()
         }
     }
