@@ -76,8 +76,8 @@ class LibretroActivity : ComponentActivity() {
 
     private var coreOptions by mutableStateOf(emptyList<LibretroRunner.CoreOption>())
     private var coreCategories by mutableStateOf(emptyList<LibretroRunner.CoreOptionCategory>())
-    private var currentProfileName by mutableStateOf(ProfileManager.DEFAULT)
-    private var profileNames by mutableStateOf(listOf(ProfileManager.DEFAULT))
+    private var currentProfileName by mutableStateOf(ProfileManager.DEFAULT_GAME)
+    private var profileNames by mutableStateOf(listOf(ProfileManager.DEFAULT_GAME))
     private var controlsSnapshot: Map<String, Int> = emptyMap()
     private var shortcutSource by mutableStateOf(OverrideSource.GLOBAL)
     private var shortcuts by mutableStateOf(mapOf<ShortcutAction, Set<Int>>())
@@ -205,7 +205,7 @@ class LibretroActivity : ComponentActivity() {
         slotManager = SaveSlotManager(stateBasePath)
         guideManager = GuideManager(cannoliRoot, platformTag, gameTitle)
         profileManager = ProfileManager(cannoliRoot)
-        profileManager.ensureDefault()
+        profileManager.ensureDefaults()
         controllerManager = ControllerManager()
         controllerManager.onDeviceDisconnected = { port -> onControllerDisconnected(port) }
         controllerManager.onDeviceConnected = { port, _ ->
@@ -1427,9 +1427,9 @@ class LibretroActivity : ComponentActivity() {
                         }
                         1 -> {
                             profileManager.deleteProfile(name)
-                            profileNames = profileManager.listProfiles()
+                            profileNames = profileManager.listGameProfiles()
                             if (currentProfileName == name) {
-                                currentProfileName = ProfileManager.DEFAULT
+                                currentProfileName = ProfileManager.DEFAULT_GAME
                                 profileManager.saveProfileSelection(platformTag, gameBaseName, currentProfileName)
                             }
                             replaceTop(IGMScreen.Controls(selectedIndex = screen.selectedIndex.coerceAtMost(profileNames.lastIndex)))
@@ -1471,7 +1471,7 @@ class LibretroActivity : ComponentActivity() {
             }
             KeyEvent.KEYCODE_BUTTON_START -> {
                 val name = profileNames.getOrNull(screen.selectedIndex)
-                if (name != null && name != ProfileManager.DEFAULT) {
+                if (name != null && !ProfileManager.isProtected(name)) {
                     replaceTop(screen.copy(menuOpen = true, menuIndex = 0))
                 }
                 true
@@ -1564,7 +1564,7 @@ class LibretroActivity : ComponentActivity() {
 
     private fun finishProfileName(screen: IGMScreen.ProfileName) {
         val name = screen.name.trim()
-        if (name.isBlank() || name.equals(ProfileManager.DEFAULT, ignoreCase = true)) { pop(); return }
+        if (name.isBlank() || ProfileManager.isProtected(name)) { pop(); return }
         if (screen.isNew) {
             val currentControls = mutableMapOf<String, Int>()
             val inp = controllerManager.portInputs[0]
@@ -1577,7 +1577,7 @@ class LibretroActivity : ComponentActivity() {
             file.renameTo(dest)
             if (currentProfileName == screen.originalName) currentProfileName = name
         }
-        profileNames = profileManager.listProfiles()
+        profileNames = profileManager.listGameProfiles()
         pop()
         val controlsScreen = screenStack.lastOrNull() as? IGMScreen.Controls
         if (controlsScreen != null) {
@@ -1841,12 +1841,12 @@ class LibretroActivity : ComponentActivity() {
         shaderPreset = settings.shaderPreset
         overlay = settings.overlay
         currentProfileName = settings.profileName
-        profileNames = profileManager.listProfiles()
+        profileNames = profileManager.listGameProfiles()
         shortcutSource = settings.shortcutSource
         shortcuts = settings.shortcuts
 
         applyProfileToAllPorts(settings.controls)
-        defaultProfileControls = profileManager.readControls(ProfileManager.DEFAULT)
+        defaultProfileControls = profileManager.readControls(ProfileManager.NAVIGATION)
 
         for ((key, value) in settings.coreOptions) {
             runner.setCoreOption(key, value)
