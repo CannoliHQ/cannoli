@@ -1,9 +1,11 @@
 package dev.cannoli.scorza.input
 
+import android.content.Context
 import android.hardware.input.InputManager
 import android.view.InputDevice
 import dev.cannoli.scorza.libretro.LibretroInput
 import dev.cannoli.scorza.libretro.LibretroRunner
+import org.json.JSONObject
 
 data class ControllerIdentity(
     val descriptor: String,
@@ -22,11 +24,33 @@ class ControllerManager(
     private val deviceToPort = mutableMapOf<Int, Int>()
     private val descriptorToPort = mutableMapOf<String, Int>()
     private val startupDeviceIds = mutableSetOf<Int>()
+    private var blacklistedVendors = emptySet<Int>()
+    private var blacklistedPrefixes = emptyList<String>()
 
     var onDeviceDisconnected: ((port: Int) -> Unit)? = null
     var onDeviceConnected: ((port: Int, identity: ControllerIdentity) -> Unit)? = null
 
     val connectedPortCount: Int get() = slots.count { it != null }
+
+    fun loadBlacklist(context: Context) {
+        try {
+            val json = JSONObject(context.assets.open("controller_blacklist.json").bufferedReader().readText())
+            val vendors = json.optJSONArray("vendors")
+            if (vendors != null) {
+                blacklistedVendors = (0 until vendors.length()).map { vendors.getJSONObject(it).getInt("id") }.toSet()
+            }
+            val prefixes = json.optJSONArray("name_prefixes")
+            if (prefixes != null) {
+                blacklistedPrefixes = (0 until prefixes.length()).map { prefixes.getString(it) }
+            }
+        } catch (_: Exception) {}
+    }
+
+    private fun isBlacklisted(device: InputDevice): Boolean {
+        if (device.vendorId in blacklistedVendors) return true
+        val name = device.name
+        return blacklistedPrefixes.any { name.startsWith(it, ignoreCase = true) }
+    }
 
     fun initialize() {
         val ids = InputDevice.getDeviceIds()
@@ -36,6 +60,7 @@ class ControllerManager(
             val device = InputDevice.getDevice(id) ?: continue
             if (!isGameController(device)) continue
             startupDeviceIds.add(id)
+            if (isBlacklisted(device)) continue
             if (isFullController(device)) fullControllers.add(id to device)
             else subDevices.add(id)
         }
@@ -58,6 +83,7 @@ class ControllerManager(
         deviceToPort[deviceId]?.let { return it }
 
         val device = InputDevice.getDevice(deviceId) ?: return -1
+        if (isBlacklisted(device)) return -1
         val descriptor = device.descriptor
 
         val existingPort = descriptorToPort[descriptor]

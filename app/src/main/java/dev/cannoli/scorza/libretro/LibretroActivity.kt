@@ -207,6 +207,7 @@ class LibretroActivity : ComponentActivity() {
         profileManager = ProfileManager(cannoliRoot)
         profileManager.ensureDefaults()
         controllerManager = ControllerManager()
+        controllerManager.loadBlacklist(this)
         controllerManager.onDeviceDisconnected = { port -> onControllerDisconnected(port) }
         controllerManager.onDeviceConnected = { port, _ ->
             if (::runner.isInitialized) runner.setControllerPortDevice(port, LibretroRunner.DEVICE_JOYPAD)
