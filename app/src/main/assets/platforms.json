@@ -75,10 +75,7 @@
   
   "PS": {
     "name": "PlayStation",
-    "core": "swanstation_libretro",
-    "retroarch": [
-      "pcsx_rearmed_libretro"
-    ],
+    "core": "pcsx_rearmed_libretro",
     "app": [
       "org.duckstation.duckstation"
     ]
