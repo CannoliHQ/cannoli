@@ -1133,21 +1133,6 @@ class MainActivity : ComponentActivity() {
                                 }
                             } else if (cat?.key == "about") {
                                 dialogState.value = DialogState.About()
-                                if (updateManager.updateAvailable.value == null && updateManager.isOnline()) {
-                                    ioScope.launch {
-                                        val result = updateManager.checkForUpdate()
-                                        withContext(Dispatchers.Main) {
-                                            if (dialogState.value is DialogState.About) {
-                                                if (result != null) {
-                                                    settingsViewModel.updateInfo = result
-                                                    dialogState.value = DialogState.About(statusMessage = getString(R.string.update_available))
-                                                } else {
-                                                    dialogState.value = DialogState.About(statusMessage = getString(R.string.update_up_to_date))
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
                             } else if (cat?.key == "retroachievements" && settings.raToken.isNotEmpty()) {
                                 dialogState.value = DialogState.RAAccount(username = settings.raUsername)
                             } else if (cat?.key == "kitchen") {
@@ -1632,6 +1617,9 @@ class MainActivity : ComponentActivity() {
                         systemListViewModel.savePosition()
                         settingsViewModel.load()
                         screenStack.add(LauncherScreen.Settings)
+                        if (updateManager.isOnline()) {
+                            ioScope.launch { updateManager.checkForUpdate() }
+                        }
                     }
                     LauncherScreen.GameList -> {
                         val glState = gameListViewModel.state.value
