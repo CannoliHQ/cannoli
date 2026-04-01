@@ -495,13 +495,13 @@ class SettingsViewModel(
                 add(SettingsItem("bg_tint", R.string.setting_bg_tint, valueText = if (tintVal == 0) null else "$tintVal%", valueRes = if (tintVal == 0) R.string.value_off else null))
             }
             add(SettingsItem("colors", R.string.setting_colors, isEditable = true))
-            add(SettingsItem("status_bar", R.string.settings_status_bar, isEditable = true))
+            val currentFont = fontOptions.firstOrNull { it.key == settings.font } ?: fontOptions.first()
+            add(SettingsItem("font", R.string.setting_font, valueText = currentFont.label))
             add(SettingsItem("text_size", R.string.setting_text_size, valueRes = when (settings.textSize) {
                 TextSize.COMPACT -> R.string.text_size_compact
                 TextSize.DEFAULT -> R.string.text_size_default
             }))
-            val currentFont = fontOptions.firstOrNull { it.key == settings.font } ?: fontOptions.first()
-            add(SettingsItem("font", R.string.setting_font, valueText = currentFont.label))
+            add(SettingsItem("status_bar", R.string.settings_status_bar, isEditable = true))
         }
         "content" -> buildList {
             add(SettingsItem("show_empty", R.string.setting_show_empty, valueRes = showHide(settings.showEmpty)))
@@ -524,9 +524,9 @@ class SettingsViewModel(
             if (!isTelevision) add(SettingsItem("show_battery", R.string.setting_battery, valueRes = showHide(settings.showBattery)))
             add(SettingsItem("show_bluetooth", R.string.setting_bluetooth, valueRes = showHide(settings.showBluetooth)))
             add(SettingsItem("show_clock", R.string.setting_clock, valueRes = if (!settings.showClock) R.string.value_hide else if (settings.timeFormat == TimeFormat.TWELVE_HOUR) R.string.value_12h else R.string.value_24h))
-            add(SettingsItem("show_wifi", R.string.setting_wifi, valueRes = showHide(settings.showWifi)))
-            add(SettingsItem("show_vpn", R.string.setting_vpn, valueRes = showHide(settings.showVpn)))
             add(SettingsItem("show_update", R.string.setting_updater, valueRes = showHide(settings.showUpdate)))
+            add(SettingsItem("show_vpn", R.string.setting_vpn, valueRes = showHide(settings.showVpn)))
+            add(SettingsItem("show_wifi", R.string.setting_wifi, valueRes = showHide(settings.showWifi)))
         }
         "input" -> listOf(
             SettingsItem("profiles", R.string.setting_profiles, isEditable = true),
