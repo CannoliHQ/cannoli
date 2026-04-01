@@ -137,7 +137,8 @@ fun AppNavGraph(
                     listVerticalPadding = listVerticalPadding,
                     dialogState = dialog,
                     onVisibleRangeChanged = onVisibleRangeChanged,
-                    resumableGames = resumableGames
+                    resumableGames = resumableGames,
+                    swapPlayResume = appSettings.swapPlayResume
                 )
             }
             is LauncherScreen.Settings -> SettingsScreen(
@@ -406,7 +407,7 @@ fun AppNavGraph(
                     title = stringResource(R.string.title_profiles),
                     listFontSize = listFontSize,
                     listLineHeight = listLineHeight,
-                    rightBottomItems = listOf("Y" to stringResource(R.string.label_new), "A" to stringResource(R.string.label_edit))
+                    rightBottomItems = listOf("X" to stringResource(R.string.label_new), "A" to stringResource(R.string.label_edit))
                 ) {
                     List(
                         items = currentScreen.profiles,

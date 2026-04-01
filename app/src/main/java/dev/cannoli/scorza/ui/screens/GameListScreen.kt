@@ -66,7 +66,8 @@ fun GameListScreen(
     listVerticalPadding: Dp = 8.dp,
     dialogState: DialogState = DialogState.None,
     onVisibleRangeChanged: (Int, Int, Boolean) -> Unit = { _, _, _ -> },
-    resumableGames: Set<String> = emptySet()
+    resumableGames: Set<String> = emptySet(),
+    swapPlayResume: Boolean = false
 ) {
     val state by viewModel.state.collectAsState()
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
@@ -186,15 +187,18 @@ fun GameListScreen(
             } else {
                 stringResource(R.string.label_play)
             }
+            val resumeLabel = stringResource(R.string.label_resume)
             val rightItems = if (state.games.isEmpty()) {
                 if (state.isCollectionsList) listOf("X" to stringResource(R.string.label_new))
                 else emptyList()
             } else if (state.multiSelectMode) {
                 listOf("A" to actionLabel, "▶" to stringResource(R.string.label_confirm))
+            } else if (hasResumeState && swapPlayResume) {
+                listOf("X" to actionLabel, "A" to resumeLabel)
             } else {
                 buildList {
                     if (state.isCollectionsList) add("X" to stringResource(R.string.label_new))
-                    else if (hasResumeState) add("X" to stringResource(R.string.label_resume))
+                    else if (hasResumeState) add("X" to resumeLabel)
                     add("A" to actionLabel)
                 }
             }

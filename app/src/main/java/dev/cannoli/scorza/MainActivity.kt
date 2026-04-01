@@ -154,8 +154,10 @@ class MainActivity : ComponentActivity() {
             val newMs = screen.countdownMs + shortcutTickMs.toInt()
             if (newMs >= shortcutHoldMs) {
                 val action = ShortcutAction.entries.getOrNull(screen.selectedIndex) ?: return
+                val chord = screen.heldKeys
+                val cleared = screen.shortcuts.filterValues { it != chord }
                 screenStack[screenStack.lastIndex] = screen.copy(
-                    shortcuts = screen.shortcuts + (action to screen.heldKeys),
+                    shortcuts = cleared + (action to chord),
                     listening = false, heldKeys = emptySet(), countdownMs = 0
                 )
             } else {
@@ -615,6 +617,10 @@ class MainActivity : ComponentActivity() {
             return true
         }
         if (handleBindingKeyDown(keyCode)) {
+            return true
+        }
+        val screen = screenStack.lastOrNull()
+        if (event.repeatCount > 0 && screen is LauncherScreen.ShortcutBinding && !screen.listening) {
             return true
         }
         if (::inputHandler.isInitialized && inputHandler.handleKeyEvent(event)) {
@@ -1679,12 +1685,20 @@ class MainActivity : ComponentActivity() {
                         } else {
                             val game = gameListViewModel.getSelectedGame()
                             if (game != null && !game.isSubfolder && !game.isChildCollection) {
-                                launchManager.resumeGame(game)
+                                if (settings.swapPlayResume) {
+                                    val errorDialog = launchManager.launchGame(game)
+                                    if (errorDialog != null) dialogState.value = errorDialog
+                                } else {
+                                    launchManager.resumeGame(game)
+                                }
                             }
                         }
                     }
                     is LauncherScreen.CollectionPicker -> {
                         dialogState.value = DialogState.NewCollectionInput(gamePaths = screen.gamePaths)
+                    }
+                    is LauncherScreen.ProfileList -> {
+                        dialogState.value = DialogState.ProfileNameInput(isNew = true)
                     }
                     is LauncherScreen.ControlBinding -> {
                         if (screen.listeningIndex < 0) {
@@ -1746,9 +1760,6 @@ class MainActivity : ComponentActivity() {
                                 mappings = filterCoreMappings(screen.allMappings, newFilter),
                                 filter = newFilter, selectedIndex = 0, scrollTarget = 0
                             )
-                        }
-                        is LauncherScreen.ProfileList -> {
-                            dialogState.value = DialogState.ProfileNameInput(isNew = true)
                         }
                         else -> {}
                     }
@@ -2001,8 +2012,12 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        val errorDialog = launchManager.launchGame(game)
-        if (errorDialog != null) dialogState.value = errorDialog
+        if (settings.swapPlayResume) {
+            launchManager.resumeGame(game)
+        } else {
+            val errorDialog = launchManager.launchGame(game)
+            if (errorDialog != null) dialogState.value = errorDialog
+        }
     }
 
     private fun scanResumableGames() {

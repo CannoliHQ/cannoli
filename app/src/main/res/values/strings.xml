@@ -53,6 +53,7 @@
     <string name="setting_controls">Button Mapping</string>
     <string name="setting_shortcuts">Shortcuts</string>
     <string name="setting_platform_switching">L1 / R1 Switches Platform</string>
+    <string name="setting_swap_play_resume">Swap Play and Resume</string>
     <string name="setting_show_empty">Empty Platforms</string>
     <string name="setting_scroll_speed">Marquee Speed</string>
     <string name="setting_show_tools">Tools</string>
@@ -132,7 +133,7 @@
     <string name="label_set">SET</string>
     <string name="label_clear">CLEAR</string>
     <string name="label_kitchen">KITCHEN</string>
-    <string name="label_hold_buttons">HOLD BUTTONS…</string>
+    <string name="label_hold_buttons">HOLD ONE OR MORE BUTTONS…</string>
 
     <!-- Formatted strings -->
     <string name="collection_created">%1$s Created</string>
@@ -171,7 +172,7 @@
     <string name="title_profiles">Profiles</string>
     <string name="title_button_mapping">Button Mapping</string>
     <string name="title_shortcuts">Shortcuts</string>
-    <string name="shortcut_hold_prompt">Hold buttons...</string>
+    <string name="shortcut_hold_prompt">Hold one or more buttons...</string>
     <string name="dialog_delete_profile">Delete profile \"%1$s\"?</string>
 
     <!-- Update download -->
