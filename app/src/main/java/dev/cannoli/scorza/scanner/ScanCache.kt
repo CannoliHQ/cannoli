@@ -6,7 +6,7 @@ import java.io.File
 
 data class CachedPlatformEntry(val lastModified: Long, val hasGames: Boolean)
 data class CachedGameEntry(val path: String, val displayName: String, val artName: String, val isSubfolder: Boolean, val discPaths: List<String>)
-data class CachedGameList(val dirLastModified: Long, val games: List<CachedGameEntry>)
+data class CachedGameList(val dirLastModified: Long, val artDirLastModified: Long, val games: List<CachedGameEntry>)
 
 class ScanCache(private val cannoliRoot: File) {
 
@@ -44,6 +44,7 @@ class ScanCache(private val cannoliRoot: File) {
         return try {
             val json = JSONObject(file.readText())
             val dirMod = json.getLong("lastModified")
+            val artDirMod = json.optLong("artLastModified", 0)
             val arr = json.getJSONArray("games")
             val games = (0 until arr.length()).map { i ->
                 val g = arr.getJSONObject(i)
@@ -51,13 +52,14 @@ class ScanCache(private val cannoliRoot: File) {
                 val discPaths = if (discArr != null) (0 until discArr.length()).map { discArr.getString(it) } else emptyList()
                 CachedGameEntry(g.getString("path"), g.getString("displayName"), g.optString("artName", g.getString("displayName")), g.getBoolean("isSubfolder"), discPaths)
             }
-            CachedGameList(dirMod, games)
+            CachedGameList(dirMod, artDirMod, games)
         } catch (_: Exception) { null }
     }
 
-    fun saveGameCache(tag: String, dirLastModified: Long, games: List<CachedGameEntry>) {
+    fun saveGameCache(tag: String, dirLastModified: Long, artDirLastModified: Long, games: List<CachedGameEntry>) {
         val json = JSONObject()
         json.put("lastModified", dirLastModified)
+        json.put("artLastModified", artDirLastModified)
         val arr = JSONArray()
         for (g in games) {
             arr.put(JSONObject().apply {

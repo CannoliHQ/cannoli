@@ -105,7 +105,8 @@ class SettingsViewModel(
         val showBattery: Boolean = true,
         val showUpdate: Boolean = true,
         val showTools: Boolean = false,
-        val showPorts: Boolean = false
+        val showPorts: Boolean = false,
+        val swapPlayResume: Boolean = false
     )
 
     private val _state = MutableStateFlow(State())
@@ -132,7 +133,8 @@ class SettingsViewModel(
         showBattery = settings.showBattery && !isTelevision,
         showUpdate = settings.showUpdate,
         showTools = settings.showTools,
-        showPorts = settings.showPorts
+        showPorts = settings.showPorts,
+        swapPlayResume = settings.swapPlayResume
     )
 
     private val allCategories = listOf(
@@ -163,6 +165,7 @@ class SettingsViewModel(
         val colorAccent: String,
         val graphicsBackend: String,
         val platformSwitching: Boolean,
+        val swapPlayResume: Boolean,
         val showWifi: Boolean,
         val showBluetooth: Boolean,
         val showVpn: Boolean,
@@ -313,6 +316,7 @@ class SettingsViewModel(
                 }
             }
             "platform_switching" -> settings.platformSwitching = !settings.platformSwitching
+            "swap_play_resume" -> settings.swapPlayResume = !settings.swapPlayResume
             "show_empty" -> settings.showEmpty = !settings.showEmpty
             "show_wifi" -> settings.showWifi = !settings.showWifi
             "show_bluetooth" -> settings.showBluetooth = !settings.showBluetooth
@@ -454,6 +458,7 @@ class SettingsViewModel(
         colorAccent = settings.colorAccent,
         graphicsBackend = settings.graphicsBackend,
         platformSwitching = settings.platformSwitching,
+        swapPlayResume = settings.swapPlayResume,
         showWifi = settings.showWifi,
         showBluetooth = settings.showBluetooth,
         showVpn = settings.showVpn,
@@ -483,6 +488,7 @@ class SettingsViewModel(
         settings.colorAccent = snap.colorAccent
         settings.graphicsBackend = snap.graphicsBackend
         settings.platformSwitching = snap.platformSwitching
+        settings.swapPlayResume = snap.swapPlayResume
         settings.showWifi = snap.showWifi
         settings.showBluetooth = snap.showBluetooth
         settings.showVpn = snap.showVpn
@@ -546,7 +552,8 @@ class SettingsViewModel(
         "input" -> listOf(
             SettingsItem("profiles", R.string.setting_profiles, isEditable = true),
             SettingsItem("shortcuts", R.string.setting_shortcuts, isEditable = true),
-            SettingsItem("platform_switching", R.string.setting_platform_switching, valueRes = onOff(settings.platformSwitching))
+            SettingsItem("platform_switching", R.string.setting_platform_switching, valueRes = onOff(settings.platformSwitching)),
+            SettingsItem("swap_play_resume", R.string.setting_swap_play_resume, valueRes = onOff(settings.swapPlayResume))
         )
         "kitchen" -> emptyList()
         "retroachievements" -> buildList {

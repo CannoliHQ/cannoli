@@ -138,6 +138,7 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
         pipeline = null
         ShaderPipeline.invalidateSharedProgram()
 
+        lastRotation = -1
         shaderDirty = true
         sharpnessDirty = true
         overlayDirty = true

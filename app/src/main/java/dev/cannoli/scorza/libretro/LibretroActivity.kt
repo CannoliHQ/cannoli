@@ -535,7 +535,10 @@ class LibretroActivity : ComponentActivity() {
         val isGamepad = source and android.view.InputDevice.SOURCE_GAMEPAD == android.view.InputDevice.SOURCE_GAMEPAD ||
                 source and android.view.InputDevice.SOURCE_JOYSTICK == android.view.InputDevice.SOURCE_JOYSTICK
         if (isGamepad || event.keyCode == KeyEvent.KEYCODE_MENU) {
-            if (currentScreen is IGMScreen.Guide && event.repeatCount > 0) return true
+            if (event.repeatCount > 0) {
+                val cs = currentScreen
+                if (cs is IGMScreen.Guide || (cs is IGMScreen.Shortcuts && !cs.listening)) return true
+            }
             when (event.action) {
                 KeyEvent.ACTION_DOWN -> onKeyDown(event.keyCode, event)
                 KeyEvent.ACTION_UP -> onKeyUp(event.keyCode, event)
@@ -1494,15 +1497,15 @@ class LibretroActivity : ComponentActivity() {
                 true
             }
             KeyEvent.KEYCODE_BUTTON_X -> {
+                push(IGMScreen.ProfileName(isNew = true))
+                true
+            }
+            KeyEvent.KEYCODE_BUTTON_Y -> {
                 val name = profileNames.getOrNull(screen.selectedIndex) ?: return true
                 currentProfileName = name
                 profileManager.saveProfileSelection(platformTag, gameBaseName, name)
                 applyProfileToAllPorts(profileManager.readControls(name))
                 push(IGMScreen.ControlEdit())
-                true
-            }
-            KeyEvent.KEYCODE_BUTTON_Y -> {
-                push(IGMScreen.ProfileName(isNew = true))
                 true
             }
             KeyEvent.KEYCODE_BUTTON_START -> {
@@ -1545,7 +1548,7 @@ class LibretroActivity : ComponentActivity() {
                     if (btn != null && btn.prefKey != "btn_menu" && inp.getKeyCodeFor(btn) != LibretroInput.UNMAPPED) {
                         inp.unmap(btn)
                         saveCurrentProfile()
-                        replaceTop(screen.copy())
+                        replaceTop(screen.copy(revision = screen.revision + 1))
                     }
                 }
                 true
@@ -1655,7 +1658,9 @@ class LibretroActivity : ComponentActivity() {
             val newMs = screen.countdownMs + shortcutTickMs.toInt()
             if (newMs >= shortcutHoldMs) {
                 val action = ShortcutAction.entries[screen.selectedIndex - 1]
-                shortcuts = shortcuts + (action to screen.heldKeys)
+                val chord = screen.heldKeys
+                val cleared = shortcuts.filterValues { it != chord }
+                shortcuts = cleared + (action to chord)
                 saveCurrentShortcuts()
                 replaceTop(screen.copy(listening = false, heldKeys = emptySet(), countdownMs = 0))
             } else {
