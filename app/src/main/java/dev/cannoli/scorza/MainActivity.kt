@@ -1687,7 +1687,17 @@ class MainActivity : ComponentActivity() {
                         dialogState.value = DialogState.NewCollectionInput(gamePaths = screen.gamePaths)
                     }
                     is LauncherScreen.ControlBinding -> {
-                        screenStack[screenStack.lastIndex] = screen.copy(controls = emptyMap())
+                        if (screen.listeningIndex < 0) {
+                            val btn = controlButtons.getOrNull(screen.selectedIndex)
+                            if (btn != null && btn.prefKey != "btn_menu") {
+                                val currentKeyCode = screen.controls[btn.prefKey] ?: btn.defaultKeyCode
+                                if (currentKeyCode != LibretroInput.UNMAPPED) {
+                                    screenStack[screenStack.lastIndex] = screen.copy(
+                                        controls = screen.controls + (btn.prefKey to LibretroInput.UNMAPPED)
+                                    )
+                                }
+                            }
+                        }
                     }
                     is LauncherScreen.ShortcutBinding -> {
                         if (!screen.listening) {
