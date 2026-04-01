@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.launcher
 
+import android.app.ActivityOptions
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -364,7 +365,8 @@ class LaunchManager(
             }
             if (resumeSlot >= 0) putExtra("resume_slot", resumeSlot)
         }
-        context.startActivity(intent)
+        val opts = ActivityOptions.makeCustomAnimation(context, 0, 0).toBundle()
+        context.startActivity(intent, opts)
     }
 
     private fun normalizedRomName(game: Game): String =

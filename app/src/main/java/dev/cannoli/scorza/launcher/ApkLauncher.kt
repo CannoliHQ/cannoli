@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.launcher
 
+import android.app.ActivityOptions
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -15,7 +16,8 @@ class ApkLauncher(private val context: Context) {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
         return try {
-            context.startActivity(intent)
+            val opts = ActivityOptions.makeCustomAnimation(context, 0, 0).toBundle()
+            context.startActivity(intent, opts)
             LaunchResult.Success
         } catch (e: Exception) {
             LaunchResult.Error(e.message ?: "Failed to launch app")
@@ -39,8 +41,10 @@ class ApkLauncher(private val context: Context) {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
 
+        val opts = ActivityOptions.makeCustomAnimation(context, 0, 0).toBundle()
+
         return try {
-            context.startActivity(viewIntent)
+            context.startActivity(viewIntent, opts)
             LaunchResult.Success
         } catch (_: Exception) {
             val launchIntent = context.packageManager.getLaunchIntentForPackage(packageName)
@@ -50,7 +54,7 @@ class ApkLauncher(private val context: Context) {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
             try {
-                context.startActivity(launchIntent)
+                context.startActivity(launchIntent, opts)
                 LaunchResult.Success
             } catch (e: Exception) {
                 LaunchResult.Error(e.message ?: "Failed to launch emulator")
