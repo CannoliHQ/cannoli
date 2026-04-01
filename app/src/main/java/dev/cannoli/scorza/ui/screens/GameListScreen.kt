@@ -24,6 +24,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -80,7 +81,7 @@ fun GameListScreen(
                     val opts = BitmapFactory.Options()
                     opts.inJustDecodeBounds = true
                     BitmapFactory.decodeFile(artPath, opts)
-                    val maxDim = 512
+                    val maxDim = 1024
                     var sampleSize = 1
                     while (opts.outWidth / sampleSize > maxDim || opts.outHeight / sampleSize > maxDim) sampleSize *= 2
                     opts.inJustDecodeBounds = false
@@ -167,7 +168,8 @@ fun GameListScreen(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .clip(RoundedCornerShape(8.dp)),
-                                    contentScale = ContentScale.Fit
+                                    contentScale = ContentScale.Fit,
+                                    filterQuality = FilterQuality.High
                                 )
                             }
                         }
