@@ -10,9 +10,10 @@ import java.io.IOException
 
 class FileScanner(
     private val cannoliRoot: File,
-    private val platformResolver: PlatformResolver
+    private val platformResolver: PlatformResolver,
+    romsDir: File? = null
 ) {
-    private val romsDir = File(cannoliRoot, "Roms")
+    private val romsDir = romsDir ?: File(cannoliRoot, "Roms")
     private val artDir = File(cannoliRoot, "Art")
     private val collectionsDir = File(cannoliRoot, "Collections")
     private val toolsDir = File(cannoliRoot, "Config/Launch Scripts/Tools")
@@ -91,8 +92,9 @@ class FileScanner(
 
         if (subfolder == null) {
             val dirMod = dirTimestamps[tag] ?: baseDir.lastModified()
+            val artDirMod = File(artDir, tag).let { if (it.exists()) it.lastModified() else 0L }
             val cached = scanCache.loadGameCache(tag)
-            if (cached != null && cached.dirLastModified == dirMod) {
+            if (cached != null && cached.dirLastModified == dirMod && cached.artDirLastModified == artDirMod) {
                 dev.cannoli.scorza.util.DebugLog.write("scanGames($tag): cache hit, ${cached.games.size} games")
                 return reconstructGames(tag, cached)
             }
@@ -204,7 +206,8 @@ class FileScanner(
 
         if (subfolder == null) {
             val dirMod = dirTimestamps[tag] ?: baseDir.lastModified()
-            scanCache.saveGameCache(tag, dirMod, all.map { game ->
+            val artDirMod = File(artDir, tag).let { if (it.exists()) it.lastModified() else 0L }
+            scanCache.saveGameCache(tag, dirMod, artDirMod, all.map { game ->
                 val artName = when {
                     game.artFile != null -> game.artFile.nameWithoutExtension
                     game.isSubfolder -> game.file.name

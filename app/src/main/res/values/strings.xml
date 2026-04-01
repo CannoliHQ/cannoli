@@ -70,6 +70,7 @@
     <string name="title_installed_cores">%s Installed Cores</string>
     <string name="installed_cores_none">No cores found</string>
     <string name="setting_sd_root">Cannoli Root</string>
+    <string name="setting_rom_directory">ROM Directory</string>
     <string name="setting_ra_package">RetroArch Package</string>
     <string name="setting_rebuild_cache">Rebuild Cache</string>
     <string name="setting_ra_username">Username</string>
@@ -85,6 +86,7 @@
     <string name="value_show">Show</string>
     <string name="value_hide">Hide</string>
     <string name="value_none">None</string>
+    <string name="value_cannoli_root">Cannoli Root</string>
 
     <!-- Dialogs -->
     <string name="empty_list">%1$s is empty</string>
@@ -176,6 +178,7 @@
     <string name="update_downloading">Downloading…</string>
     <string name="update_installing">Installing…</string>
     <string name="update_retry">RETRY</string>
+    <string name="restart_required">Restart required to apply changes.</string>
     <string name="update_up_to_date">You\'re on the latest version.</string>
     <string name="update_available">A new version is available.</string>
 

@@ -104,8 +104,11 @@ fun SettingsScreen(
             } else {
                 listOf("B" to stringResource(R.string.label_back))
             }
+            val showClear = selectedItem?.key == "rom_directory" && selectedItem.valueText != null
             val rightItems = if (isColorItem) {
                 listOf("A" to stringResource(R.string.label_select))
+            } else if (showClear) {
+                listOf("X" to stringResource(R.string.label_clear))
             } else {
                 emptyList()
             }

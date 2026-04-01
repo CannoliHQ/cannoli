@@ -36,6 +36,7 @@ sealed interface DialogState {
     data class ProfileNameInput(val isNew: Boolean, val originalName: String = "", override val currentName: String = "", override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
     data class DeleteProfileConfirm(val profileName: String) : DialogState
     data class UpdateDownload(val versionName: String, val changelog: String) : DialogState
+    data object RestartRequired : DialogState
 }
 
 fun DialogState.asKeyboardState(): KeyboardInputState? = this as? KeyboardInputState
@@ -119,6 +120,7 @@ val DialogState.isFullScreen: Boolean
         is DialogState.Kitchen,
         is DialogState.RAAccount,
         is DialogState.RALoggingIn,
-        is DialogState.UpdateDownload -> true
+        is DialogState.UpdateDownload,
+        is DialogState.RestartRequired -> true
         else -> false
     }
