@@ -330,6 +330,12 @@ class LibretroActivity : ComponentActivity() {
         Thread {
             if (!runner.loadCore(corePath)) { runOnUiThread { finish() }; return@Thread }
             runner.init(systemDir, saveDir)
+            val coreBaseName = File(corePath).nameWithoutExtension
+            gameBaseName = if (romPath.isNotEmpty()) File(romPath).nameWithoutExtension else ""
+            overrideManager = OverrideManager(cannoliRoot, platformTag, gameBaseName, coreBaseName)
+            for ((key, value) in overrideManager.loadCoreOptions()) {
+                runner.setCoreOption(key, value)
+            }
             val avInfo = runner.loadGame(romPath)
             if (avInfo == null) { runner.deinit(); runOnUiThread { finish() }; return@Thread }
             if (sramPath.isNotEmpty() && File(sramPath).exists()) runner.loadSRAM(sramPath)
@@ -346,9 +352,6 @@ class LibretroActivity : ComponentActivity() {
                 coreOptions = runner.getCoreOptions()
                 coreCategories = runner.getCoreCategories()
 
-                val coreBaseName = File(corePath).nameWithoutExtension
-                gameBaseName = if (romPath.isNotEmpty()) File(romPath).nameWithoutExtension else ""
-                overrideManager = OverrideManager(cannoliRoot, platformTag, gameBaseName, coreBaseName)
                 loadOverrides()
                 for (p in 0 until LibretroRunner.MAX_PORTS) {
                     if (controllerManager.slots[p] != null) runner.setControllerPortDevice(p, LibretroRunner.DEVICE_JOYPAD)
@@ -381,10 +384,19 @@ class LibretroActivity : ComponentActivity() {
                 val glesBackend = LibretroRenderer(runner)
                 configureBackend(glesBackend)
                 var startupCountdown = 35
+                var verticalReinitPhase = 0
+                val verticalToggle = prepareVerticalModeReinit()
                 glesBackend.onFrameRendered = {
                     if (startupCountdown > 0 && --startupCountdown == 0) {
                         audio?.muted = false
                         runOnUiThread { revealed = true }
+                    }
+                    if (verticalToggle != null) {
+                        when (verticalReinitPhase) {
+                            3 -> { verticalToggle.first(); verticalReinitPhase++ }
+                            28 -> { verticalToggle.second(); verticalReinitPhase++ }
+                            else -> if (verticalReinitPhase < 29) verticalReinitPhase++
+                        }
                     }
                 }
                 renderer = glesBackend
@@ -1522,6 +1534,17 @@ class LibretroActivity : ComponentActivity() {
                 shortcutCountdownHandler.postDelayed(controlListenRunnable, controlListenTickMs)
                 true
             }
+            KeyEvent.KEYCODE_BUTTON_X -> {
+                if (screen.listeningIndex < 0) {
+                    val btn = inp.buttons.getOrNull(screen.selectedIndex)
+                    if (btn != null && btn.prefKey != "btn_menu" && inp.getKeyCodeFor(btn) != LibretroInput.UNMAPPED) {
+                        inp.unmap(btn)
+                        saveCurrentProfile()
+                        replaceTop(screen.copy())
+                    }
+                }
+                true
+            }
             KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
             else -> true
         }
@@ -1860,6 +1883,18 @@ class LibretroActivity : ComponentActivity() {
         }
         coreOptions = runner.getCoreOptions()
         platformBaseline = overrideManager.loadPlatformBaseline()
+    }
+
+    private fun prepareVerticalModeReinit(): Pair<() -> Unit, () -> Unit>? {
+        val opts = runner.getCoreOptions()
+        val vertOpt = opts.find { "vertical" in it.desc.lowercase() } ?: return null
+        if (vertOpt.values.size < 2) return null
+        val original = vertOpt.selected
+        val alt = vertOpt.values.first { it.value != original }.value
+        return Pair(
+            { runner.setCoreOption(vertOpt.key, alt) },
+            { runner.setCoreOption(vertOpt.key, original) }
+        )
     }
 
     // --- OSD / Undo ---
