@@ -190,6 +190,7 @@
     <string name="label_unlocked">UNLOCKED</string>
     <string name="label_reset_all">RESET ALL</string>
     <string name="label_remap">REMAP</string>
+    <string name="label_unmap">UNMAP</string>
 
     <!-- IGM screen titles -->
     <string name="igm_settings">Settings</string>

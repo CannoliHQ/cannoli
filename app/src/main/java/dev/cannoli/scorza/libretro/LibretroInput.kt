@@ -59,6 +59,11 @@ class LibretroInput {
         rebuildMap()
     }
 
+    fun unmap(button: ButtonDef) {
+        assignments[button.prefKey] = UNMAPPED
+        rebuildMap()
+    }
+
     fun resetDefaults() {
         assignments.clear()
         rebuildMap()
