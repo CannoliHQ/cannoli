@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.ui.components.ScreenBackground
 import dev.cannoli.scorza.ui.theme.LocalCannoliColors
-import dev.cannoli.scorza.ui.theme.MPlus1Code
+import dev.cannoli.scorza.ui.theme.LocalCannoliFont
 import kotlinx.coroutines.delay
 import java.io.File
 
@@ -84,7 +84,7 @@ fun GuideScreen(
                 Text(
                     text = stringResource(R.string.guide_page, page + 1, pageCount),
                     style = TextStyle(
-                        fontFamily = MPlus1Code,
+                        fontFamily = LocalCannoliFont.current,
                         fontSize = 13.sp,
                         color = colors.text.copy(alpha = 0.5f)
                     ),

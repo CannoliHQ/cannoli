@@ -25,13 +25,13 @@ def sync_credits_overlay(credits):
     for item in credits["inspiration"]:
         entries.append(f'    CreditEntry("{item["name"]}", "{item["detail"]}")')
     for item in credits["fonts"]:
-        entries.append(f'    CreditEntry("{item["name"]}", "{item["what"]} \u2014 {item["license"]}")')
+        entries.append(f'    CreditEntry("{item["name"]}", "{item["license"]}")')
     for item in credits["libraries"]:
-        entries.append(f'    CreditEntry("{item["name"]}", "{item["what"]} \u2014 {item["license"]}")')
+        entries.append(f'    CreditEntry("{item["name"]}", "{item["license"]}")')
     for item in credits["cores"]:
         entries.append(f'    CreditEntry("{item["name"]}", "{item["license"]}")')
     for item in credits["shaders"]:
-        entries.append(f'    CreditEntry("{item["shader"]} by {item["name"]}", "Shader \u2014 {item["license"]}")')
+        entries.append(f'    CreditEntry("{item["shader"]} by {item["name"]}", "{item["license"]}")')
 
     block = ",\n".join(entries) + ","
 

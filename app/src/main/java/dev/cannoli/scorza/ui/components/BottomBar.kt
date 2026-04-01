@@ -18,7 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.ui.theme.LocalCannoliColors
-import dev.cannoli.scorza.ui.theme.MPlus1Code
+import dev.cannoli.scorza.ui.theme.LocalCannoliFont
 
 @Composable
 fun LegendPill(button: String, label: String) {
@@ -44,7 +44,7 @@ fun LegendPill(button: String, label: String) {
             Text(
                 text = button,
                 style = TextStyle(
-                    fontFamily = MPlus1Code,
+                    fontFamily = LocalCannoliFont.current,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
                     color = accent
@@ -55,6 +55,7 @@ fun LegendPill(button: String, label: String) {
         Text(
             text = label,
             style = TextStyle(
+                fontFamily = LocalCannoliFont.current,
                 fontWeight = FontWeight.Bold,
                 fontSize = 12.sp,
                 color = accent

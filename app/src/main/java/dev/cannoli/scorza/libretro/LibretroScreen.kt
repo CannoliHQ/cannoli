@@ -33,7 +33,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.ui.theme.GrayText
-import dev.cannoli.scorza.ui.theme.MPlus1Code
+import dev.cannoli.scorza.ui.theme.LocalCannoliFont
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -388,7 +388,7 @@ fun LibretroScreen(
                             Text(
                                 text = ach.title,
                                 style = TextStyle(
-                                    fontFamily = MPlus1Code,
+                                    fontFamily = LocalCannoliFont.current,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 24.sp,
                                     color = Color.White,
@@ -399,7 +399,7 @@ fun LibretroScreen(
                             Text(
                                 text = unlockText,
                                 style = TextStyle(
-                                    fontFamily = MPlus1Code,
+                                    fontFamily = LocalCannoliFont.current,
                                     fontSize = 16.sp,
                                     color = Color.White
                                 )
@@ -408,7 +408,7 @@ fun LibretroScreen(
                             Text(
                                 text = stringResource(R.string.ach_points, ach.points),
                                 style = TextStyle(
-                                    fontFamily = MPlus1Code,
+                                    fontFamily = LocalCannoliFont.current,
                                     fontSize = 16.sp,
                                     color = Color.White
                                 )
@@ -417,7 +417,7 @@ fun LibretroScreen(
                             Text(
                                 text = ach.description,
                                 style = TextStyle(
-                                    fontFamily = MPlus1Code,
+                                    fontFamily = LocalCannoliFont.current,
                                     fontSize = 18.sp,
                                     color = Color.White,
                                     textAlign = TextAlign.Center
@@ -548,7 +548,15 @@ fun LibretroScreen(
                         statusBarLeftEdge.intValue = coords.positionInWindow().x.toInt()
                     }
             ) {
-                StatusBar()
+                StatusBar(
+                    showWifi = settings.showWifi,
+                    showBluetooth = settings.showBluetooth,
+                    showVpn = settings.showVpn,
+                    showClock = settings.showClock,
+                    showBattery = settings.showBattery && !context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK),
+                    use24hTime = settings.timeFormat == dev.cannoli.scorza.settings.TimeFormat.TWENTY_FOUR_HOUR,
+                    textSize = settings.textSize
+                )
             }
         }
     }

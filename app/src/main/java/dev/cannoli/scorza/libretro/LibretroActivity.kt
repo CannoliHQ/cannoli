@@ -29,10 +29,13 @@ import androidx.core.view.WindowInsetsControllerCompat
 import dev.cannoli.scorza.libretro.shader.PresetParser
 import dev.cannoli.scorza.libretro.shader.ShaderPipeline
 import dev.cannoli.scorza.libretro.shader.SlangTranspiler
+import dev.cannoli.scorza.ui.theme.BPReplay
 import dev.cannoli.scorza.ui.theme.CannoliColors
 import dev.cannoli.scorza.ui.theme.CannoliTheme
 import dev.cannoli.scorza.ui.theme.LocalCannoliColors
+import dev.cannoli.scorza.ui.theme.MPlus1Code
 import dev.cannoli.scorza.ui.theme.hexToColor
+import dev.cannoli.scorza.util.FontNameParser
 import android.os.Handler
 import android.os.Looper
 import java.io.File
@@ -219,8 +222,25 @@ class LibretroActivity : ComponentActivity() {
             accent = hexToColor(intent.getStringExtra("color_accent") ?: "#FFFFFF") ?: Color.White
         )
 
+        val fontFamily = run {
+            val fontKey = intent.getStringExtra("font") ?: "default"
+            when (fontKey) {
+                "default" -> MPlus1Code
+                "the_og" -> BPReplay
+                else -> {
+                    val fontFile = File(cannoliRoot, "Config/Fonts/$fontKey")
+                    if (fontFile.exists()) {
+                        try {
+                            val typeface = android.graphics.Typeface.createFromFile(fontFile)
+                            androidx.compose.ui.text.font.FontFamily(androidx.compose.ui.text.font.Typeface(typeface))
+                        } catch (_: Exception) { MPlus1Code }
+                    } else MPlus1Code
+                }
+            }
+        }
+
         setContent {
-            CannoliTheme {
+            CannoliTheme(fontFamily = fontFamily) {
                 CompositionLocalProvider(LocalCannoliColors provides colors) {
                     if (loading) {
                         Box(modifier = Modifier.fillMaxSize().background(Color.Black))

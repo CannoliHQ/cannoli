@@ -43,9 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.server.KitchenManager
-import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.settings.TextSize
-import dev.cannoli.scorza.settings.TimeFormat
 import dev.cannoli.scorza.ui.theme.LocalCannoliColors
 import dev.cannoli.scorza.ui.theme.MPlus1Code
 import kotlinx.coroutines.delay
@@ -62,19 +60,20 @@ private const val ICON_KITCHEN = "\uDB81\uDC8B"
 private const val ICON_UPDATE = "\uDB81\uDEB0"
 
 @Composable
-fun StatusBar(updateAvailable: Boolean = false) {
+fun StatusBar(
+    updateAvailable: Boolean = false,
+    showWifi: Boolean = true,
+    showBluetooth: Boolean = true,
+    showVpn: Boolean = false,
+    showClock: Boolean = true,
+    showBattery: Boolean = true,
+    showUpdate: Boolean = true,
+    use24hTime: Boolean = false,
+    textSize: TextSize = TextSize.DEFAULT
+) {
     val context = LocalContext.current
-    val settings = remember { SettingsRepository(context) }
-
-    val showWifi = settings.showWifi
-    val showBluetooth = settings.showBluetooth
-    val showVpn = settings.showVpn
-    val showClock = settings.showClock
-    val isTelevision = context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK)
-    val showBattery = settings.showBattery && !isTelevision
     val showKitchen = KitchenManager.isRunning
-    val use24hTime = settings.timeFormat == TimeFormat.TWENTY_FOUR_HOUR
-    val lineHeight = when (settings.textSize) {
+    val lineHeight = when (textSize) {
         TextSize.COMPACT -> 22.sp
         TextSize.DEFAULT -> 32.sp
     }
@@ -195,7 +194,7 @@ fun StatusBar(updateAvailable: Boolean = false) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        if (updateAvailable) {
+        if (updateAvailable && showUpdate) {
             Text(text = ICON_UPDATE, style = iconStyle)
         }
 

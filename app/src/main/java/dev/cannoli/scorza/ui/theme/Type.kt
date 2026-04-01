@@ -13,40 +13,45 @@ import androidx.compose.ui.unit.sp
 lateinit var MPlus1Code: FontFamily
     private set
 
+lateinit var BPReplay: FontFamily
+    private set
+
 fun initFonts(assets: AssetManager) {
-    val typeface = Typeface.createFromAsset(assets, "fonts/MPlus-1c-NerdFont-Bold.ttf")
-    MPlus1Code = FontFamily(ComposeTypeface(typeface))
+    val mplus = Typeface.createFromAsset(assets, "fonts/MPlus-1c-NerdFont-Bold.ttf")
+    MPlus1Code = FontFamily(ComposeTypeface(mplus))
+    val bp = Typeface.createFromAsset(assets, "fonts/BPreplayBold-unhinted.otf")
+    BPReplay = FontFamily(ComposeTypeface(bp))
 }
 
-fun buildTypography(): Typography {
+fun buildTypography(fontFamily: FontFamily = MPlus1Code): Typography {
     return Typography(
         headlineLarge = TextStyle(
-            fontFamily = MPlus1Code,
+            fontFamily = fontFamily,
             fontWeight = FontWeight.Black,
             fontSize = 28.sp,
             color = Color.White
         ),
         titleLarge = TextStyle(
-            fontFamily = MPlus1Code,
+            fontFamily = fontFamily,
             fontWeight = FontWeight.Black,
             fontSize = 24.sp,
             color = Color.White
         ),
         bodyLarge = TextStyle(
-            fontFamily = MPlus1Code,
+            fontFamily = fontFamily,
             fontWeight = FontWeight.Black,
             fontSize = 22.sp,
             lineHeight = 32.sp,
             color = Color.White
         ),
         bodyMedium = TextStyle(
-            fontFamily = MPlus1Code,
+            fontFamily = fontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 16.sp,
             color = Color.White
         ),
         labelSmall = TextStyle(
-            fontFamily = MPlus1Code,
+            fontFamily = fontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 14.sp,
             color = Color.White

@@ -24,7 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
-import dev.cannoli.scorza.ui.theme.MPlus1Code
+import dev.cannoli.scorza.ui.theme.LocalCannoliFont
 
 @Composable
 fun UpdateDownloadOverlay(
@@ -48,7 +48,7 @@ fun UpdateDownloadOverlay(
             Text(
                 text = "v$versionName",
                 style = TextStyle(
-                    fontFamily = MPlus1Code,
+                    fontFamily = LocalCannoliFont.current,
                     fontWeight = FontWeight.Bold,
                     fontSize = 28.sp,
                     color = Color.White
@@ -61,7 +61,7 @@ fun UpdateDownloadOverlay(
                 Text(
                     text = changelog,
                     style = TextStyle(
-                        fontFamily = MPlus1Code,
+                        fontFamily = LocalCannoliFont.current,
                         fontSize = 16.sp,
                         color = Color.White,
                         textAlign = TextAlign.Center
@@ -74,7 +74,7 @@ fun UpdateDownloadOverlay(
                 Text(
                     text = error,
                     style = TextStyle(
-                        fontFamily = MPlus1Code,
+                        fontFamily = LocalCannoliFont.current,
                         fontSize = 16.sp,
                         color = Color(0xFFFF6B6B),
                         textAlign = TextAlign.Center
@@ -96,7 +96,7 @@ fun UpdateDownloadOverlay(
                 Text(
                     text = "${(progress * 100).toInt()}%",
                     style = TextStyle(
-                        fontFamily = MPlus1Code,
+                        fontFamily = LocalCannoliFont.current,
                         fontSize = 14.sp,
                         color = Color.White
                     )

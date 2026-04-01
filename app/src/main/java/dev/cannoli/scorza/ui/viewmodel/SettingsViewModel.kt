@@ -3,13 +3,18 @@ package dev.cannoli.scorza.ui.viewmodel
 import android.content.pm.PackageManager
 import androidx.annotation.StringRes
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.lifecycle.ViewModel
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.launcher.isPackageInstalled
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.settings.TextSize
 import dev.cannoli.scorza.settings.TimeFormat
+import dev.cannoli.scorza.ui.theme.BPReplay
+import dev.cannoli.scorza.ui.theme.MPlus1Code
 import dev.cannoli.scorza.ui.theme.hexToColor
+import dev.cannoli.scorza.util.FontNameParser
+import dev.cannoli.scorza.util.sortedNatural
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -21,6 +26,29 @@ class SettingsViewModel(
 ) : ViewModel() {
 
     val isTelevision = packageManager?.hasSystemFeature(PackageManager.FEATURE_LEANBACK) == true
+
+    data class FontOption(val key: String, val label: String, val fontFamily: FontFamily)
+
+    private val fontOptions: List<FontOption> = buildList {
+        add(FontOption("default", "Default", MPlus1Code))
+        add(FontOption("the_og", "The OG", BPReplay))
+        val fontsDir = cannoliRoot?.let { java.io.File(it, "Config/Fonts") }
+        val exts = setOf("ttf", "otf")
+        val customFiles = fontsDir?.listFiles()
+            ?.filter { it.isFile && it.extension.lowercase(java.util.Locale.ROOT) in exts }
+            ?: emptyList()
+        for (file in customFiles.sortedNatural { it.name }) {
+            val typeface = try { android.graphics.Typeface.createFromFile(file) } catch (_: Exception) { null } ?: continue
+            val family = FontFamily(androidx.compose.ui.text.font.Typeface(typeface))
+            val label = FontNameParser.getFamilyName(file) ?: file.nameWithoutExtension
+            add(FontOption(file.name, label, family))
+        }
+    }
+
+    private fun resolveFont(): FontFamily {
+        val key = settings.font
+        return fontOptions.firstOrNull { it.key == key }?.fontFamily ?: MPlus1Code
+    }
 
     data class SettingsItem(
         val key: String,
@@ -64,6 +92,7 @@ class SettingsViewModel(
         val backgroundImagePath: String? = null,
         val backgroundTint: Int = 0,
         val textSize: TextSize = TextSize.DEFAULT,
+        val fontFamily: FontFamily = MPlus1Code,
         val colorHighlight: Color = Color.White,
         val colorText: Color = Color.White,
         val colorHighlightText: Color = Color.Black,
@@ -73,6 +102,7 @@ class SettingsViewModel(
         val showVpn: Boolean = false,
         val showClock: Boolean = true,
         val showBattery: Boolean = true,
+        val showUpdate: Boolean = true,
         val showTools: Boolean = false,
         val showPorts: Boolean = false
     )
@@ -88,6 +118,7 @@ class SettingsViewModel(
         backgroundImagePath = settings.backgroundImagePath,
         backgroundTint = settings.backgroundTint,
         textSize = settings.textSize,
+        fontFamily = resolveFont(),
         colorHighlight = hexToColor(settings.colorHighlight) ?: Color.White,
         colorText = hexToColor(settings.colorText) ?: Color.White,
         colorHighlightText = hexToColor(settings.colorHighlightText) ?: Color.Black,
@@ -97,6 +128,7 @@ class SettingsViewModel(
         showVpn = settings.showVpn,
         showClock = settings.showClock,
         showBattery = settings.showBattery && !isTelevision,
+        showUpdate = settings.showUpdate,
         showTools = settings.showTools,
         showPorts = settings.showPorts
     )
@@ -118,6 +150,7 @@ class SettingsViewModel(
 
     private data class SettingsSnapshot(
         val textSize: TextSize,
+        val font: String,
         val timeFormat: TimeFormat,
         val bgImage: String?,
         val bgTint: Int,
@@ -249,6 +282,10 @@ class SettingsViewModel(
                 val cur = entries.indexOf(settings.textSize).coerceAtLeast(0)
                 settings.textSize = entries[((cur + direction) % entries.size + entries.size) % entries.size]
             }
+            "font" -> {
+                val cur = fontOptions.indexOfFirst { it.key == settings.font }.coerceAtLeast(0)
+                settings.font = fontOptions[((cur + direction) % fontOptions.size + fontOptions.size) % fontOptions.size].key
+            }
             "show_clock" -> {
                 if (!settings.showClock) {
                     settings.showClock = true
@@ -277,6 +314,7 @@ class SettingsViewModel(
             "show_bluetooth" -> settings.showBluetooth = !settings.showBluetooth
             "show_vpn" -> settings.showVpn = !settings.showVpn
             "show_battery" -> settings.showBattery = !settings.showBattery
+            "show_update" -> settings.showUpdate = !settings.showUpdate
             "show_tools" -> settings.showTools = !settings.showTools
             "show_ports" -> settings.showPorts = !settings.showPorts
             "graphics_backend" -> {
@@ -395,6 +433,7 @@ class SettingsViewModel(
 
     private fun captureSettings() = SettingsSnapshot(
         textSize = settings.textSize,
+        font = settings.font,
         timeFormat = settings.timeFormat,
         bgImage = settings.backgroundImagePath,
         bgTint = settings.backgroundTint,
@@ -421,6 +460,7 @@ class SettingsViewModel(
 
     private fun restoreSettings(snap: SettingsSnapshot) {
         settings.textSize = snap.textSize
+        settings.font = snap.font
         settings.timeFormat = snap.timeFormat
         settings.backgroundImagePath = snap.bgImage
         settings.backgroundTint = snap.bgTint
@@ -460,6 +500,8 @@ class SettingsViewModel(
                 TextSize.COMPACT -> R.string.text_size_compact
                 TextSize.DEFAULT -> R.string.text_size_default
             }))
+            val currentFont = fontOptions.firstOrNull { it.key == settings.font } ?: fontOptions.first()
+            add(SettingsItem("font", R.string.setting_font, valueText = currentFont.label))
         }
         "content" -> buildList {
             add(SettingsItem("show_empty", R.string.setting_show_empty, valueRes = showHide(settings.showEmpty)))
@@ -484,6 +526,7 @@ class SettingsViewModel(
             add(SettingsItem("show_clock", R.string.setting_clock, valueRes = if (!settings.showClock) R.string.value_hide else if (settings.timeFormat == TimeFormat.TWELVE_HOUR) R.string.value_12h else R.string.value_24h))
             add(SettingsItem("show_wifi", R.string.setting_wifi, valueRes = showHide(settings.showWifi)))
             add(SettingsItem("show_vpn", R.string.setting_vpn, valueRes = showHide(settings.showVpn)))
+            add(SettingsItem("show_update", R.string.setting_updater, valueRes = showHide(settings.showUpdate)))
         }
         "input" -> listOf(
             SettingsItem("profiles", R.string.setting_profiles, isEditable = true),

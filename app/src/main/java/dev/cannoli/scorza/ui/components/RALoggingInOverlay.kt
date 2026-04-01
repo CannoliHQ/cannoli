@@ -16,7 +16,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
-import dev.cannoli.scorza.ui.theme.MPlus1Code
+import dev.cannoli.scorza.ui.theme.LocalCannoliFont
 
 @Composable
 fun RALoggingInOverlay(message: String) {
@@ -33,7 +33,7 @@ fun RALoggingInOverlay(message: String) {
             Text(
                 text = stringResource(R.string.ra_title),
                 style = TextStyle(
-                    fontFamily = MPlus1Code,
+                    fontFamily = LocalCannoliFont.current,
                     fontWeight = FontWeight.Bold,
                     fontSize = 28.sp,
                     color = Color.White
@@ -42,7 +42,7 @@ fun RALoggingInOverlay(message: String) {
             Text(
                 text = message,
                 style = TextStyle(
-                    fontFamily = MPlus1Code,
+                    fontFamily = LocalCannoliFont.current,
                     fontSize = 18.sp,
                     color = Color.White.copy(alpha = 0.7f)
                 )

@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.BuildConfig
 import dev.cannoli.scorza.R
-import dev.cannoli.scorza.ui.theme.MPlus1Code
+import dev.cannoli.scorza.ui.theme.LocalCannoliFont
 
 @Composable
 fun AboutOverlay(statusMessage: String? = null) {
@@ -47,7 +47,7 @@ fun AboutOverlay(statusMessage: String? = null) {
             Text(
                 text = stringResource(R.string.about_title),
                 style = TextStyle(
-                    fontFamily = MPlus1Code,
+                    fontFamily = LocalCannoliFont.current,
                     fontWeight = FontWeight.Bold,
                     fontSize = 32.sp,
                     color = Color.White
@@ -57,7 +57,7 @@ fun AboutOverlay(statusMessage: String? = null) {
             Text(
                 text = stringResource(R.string.about_description),
                 style = TextStyle(
-                    fontFamily = MPlus1Code,
+                    fontFamily = LocalCannoliFont.current,
                     fontSize = 16.sp,
                     color = Color.White,
                     textAlign = TextAlign.Center
@@ -69,7 +69,7 @@ fun AboutOverlay(statusMessage: String? = null) {
             Text(
                 text = "v${BuildConfig.VERSION_NAME}  •  ${BuildConfig.BUILD_DATE}  •  ${BuildConfig.GIT_HASH}",
                 style = TextStyle(
-                    fontFamily = MPlus1Code,
+                    fontFamily = LocalCannoliFont.current,
                     fontSize = 18.sp,
                     color = Color.White
                 )
@@ -80,7 +80,7 @@ fun AboutOverlay(statusMessage: String? = null) {
             Text(
                 text = stringResource(R.string.about_website),
                 style = TextStyle(
-                    fontFamily = MPlus1Code,
+                    fontFamily = LocalCannoliFont.current,
                     fontSize = 18.sp,
                     color = Color.White
                 )
@@ -91,7 +91,7 @@ fun AboutOverlay(statusMessage: String? = null) {
                 Text(
                     text = statusMessage,
                     style = TextStyle(
-                        fontFamily = MPlus1Code,
+                        fontFamily = LocalCannoliFont.current,
                         fontSize = 14.sp,
                         color = Color(0xFF90EE90)
                     )

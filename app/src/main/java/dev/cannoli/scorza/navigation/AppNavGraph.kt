@@ -590,7 +590,7 @@ fun AppNavGraph(
             }
         }
 
-        val statusBarVisible = dialog !is DialogState.About && dialog !is DialogState.Kitchen && currentScreen !is LauncherScreen.Credits && (dev.cannoli.scorza.server.KitchenManager.isRunning || appSettings.showWifi || appSettings.showBluetooth || appSettings.showVpn || appSettings.showClock || appSettings.showBattery)
+        val statusBarVisible = dialog !is DialogState.About && dialog !is DialogState.Kitchen && currentScreen !is LauncherScreen.Credits && (dev.cannoli.scorza.server.KitchenManager.isRunning || appSettings.showWifi || appSettings.showBluetooth || appSettings.showVpn || appSettings.showClock || appSettings.showBattery || (updateAvailable && appSettings.showUpdate))
         if (statusBarVisible) {
         Box(
             modifier = Modifier
@@ -600,7 +600,17 @@ fun AppNavGraph(
                     statusBarLeftEdge.intValue = coords.positionInWindow().x.toInt()
                 }
         ) {
-            StatusBar(updateAvailable = updateAvailable)
+            StatusBar(
+                updateAvailable = updateAvailable,
+                showWifi = appSettings.showWifi,
+                showBluetooth = appSettings.showBluetooth,
+                showVpn = appSettings.showVpn,
+                showClock = appSettings.showClock,
+                showBattery = appSettings.showBattery,
+                showUpdate = appSettings.showUpdate,
+                use24hTime = appSettings.use24h,
+                textSize = appSettings.textSize
+            )
         }
         }
     }

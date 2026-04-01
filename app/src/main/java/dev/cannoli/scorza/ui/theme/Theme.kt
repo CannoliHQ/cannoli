@@ -3,6 +3,8 @@ package dev.cannoli.scorza.ui.theme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.text.font.FontFamily
 
 private val CannoliColorScheme = darkColorScheme(
     primary = White,
@@ -16,10 +18,12 @@ private val CannoliColorScheme = darkColorScheme(
 )
 
 @Composable
-fun CannoliTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = CannoliColorScheme,
-        typography = buildTypography(),
-        content = content
-    )
+fun CannoliTheme(fontFamily: FontFamily = MPlus1Code, content: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalCannoliFont provides fontFamily) {
+        MaterialTheme(
+            colorScheme = CannoliColorScheme,
+            typography = buildTypography(fontFamily),
+            content = content
+        )
+    }
 }
