@@ -12,3 +12,4 @@
 | Roms folder can be split from Cannoli Root in Advanced         | [#12](https://github.com/CannoliHQ/cannoli/issues/12)                                                        |
 | Hack for vertical FBN games to display top-up                  | [#32](https://github.com/CannoliHQ/cannoli/issues/32), [#19](https://github.com/CannoliHQ/cannoli/issues/19) |
 | Flip Play and Resume Option                                    | [#35](https://github.com/CannoliHQ/cannoli/issues/35)                                                        |
+| Unmap buttons for shortcuts                                    | [#31](https://github.com/CannoliHQ/cannoli/issues/31)                                                        |
