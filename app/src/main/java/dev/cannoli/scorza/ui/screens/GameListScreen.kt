@@ -226,7 +226,10 @@ fun GameListScreen(
 
     when (dialogState) {
         is DialogState.MissingCore -> MissingCoreDialog(dialogState.coreName)
-        is DialogState.MissingApp -> MissingAppDialog(dialogState.appName)
+        is DialogState.MissingApp -> MissingAppDialog(
+            appName = dialogState.appName,
+            showRemove = state.platformTag == "tools" || state.platformTag == "ports"
+        )
         is DialogState.LaunchError -> LaunchErrorDialog(dialogState.message)
         is DialogState.DeleteConfirm -> ConfirmOverlay(
             message = stringResource(R.string.dialog_delete_confirm, dialogState.gameName)

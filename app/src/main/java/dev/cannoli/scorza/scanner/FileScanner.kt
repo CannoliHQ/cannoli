@@ -524,6 +524,12 @@ class FileScanner(
     val tools: File get() = toolsDir
     val ports: File get() = portsDir
 
+    fun removeApkLaunch(type: String, displayName: String) {
+        val dir = if (type == "tools") toolsDir else portsDir
+        val safeName = displayName.replace(Regex("[/\\\\:*?\"<>|]"), "_")
+        File(dir, "$safeName.apk_launch").delete()
+    }
+
     fun syncApkLaunches(dir: File, selected: List<Pair<String, String>>) {
         dir.mkdirs()
         dir.listFiles { f -> f.extension == "apk_launch" }?.forEach { it.delete() }
