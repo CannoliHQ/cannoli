@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.ui.theme.LocalCannoliColors
 import dev.cannoli.scorza.ui.theme.LocalCannoliFont
+import dev.cannoli.scorza.ui.theme.MPlus1Code
 
 @Composable
 fun LegendPill(button: String, label: String) {
@@ -41,10 +42,11 @@ fun LegendPill(button: String, label: String) {
                 .padding(horizontal = 10.dp, vertical = 4.dp),
             contentAlignment = Alignment.Center
         ) {
+            val isArrow = button.any { it in "◀▶←→" }
             Text(
                 text = button,
                 style = TextStyle(
-                    fontFamily = LocalCannoliFont.current,
+                    fontFamily = if (isArrow) MPlus1Code else LocalCannoliFont.current,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
                     color = accent

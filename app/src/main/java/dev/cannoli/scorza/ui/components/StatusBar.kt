@@ -45,6 +45,7 @@ import dev.cannoli.scorza.R
 import dev.cannoli.scorza.server.KitchenManager
 import dev.cannoli.scorza.settings.TextSize
 import dev.cannoli.scorza.ui.theme.LocalCannoliColors
+import dev.cannoli.scorza.ui.theme.LocalCannoliFont
 import dev.cannoli.scorza.ui.theme.MPlus1Code
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
@@ -177,7 +178,7 @@ fun StatusBar(
     )
 
     val textStyle = TextStyle(
-        fontFamily = MPlus1Code,
+        fontFamily = LocalCannoliFont.current,
         fontWeight = FontWeight.Bold,
         fontSize = 12.sp,
         color = colors.highlightText
