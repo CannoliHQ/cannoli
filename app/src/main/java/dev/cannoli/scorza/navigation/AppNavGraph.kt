@@ -53,6 +53,7 @@ import dev.cannoli.scorza.ui.screens.isFullScreen
 import dev.cannoli.scorza.ui.theme.CannoliColors
 import dev.cannoli.scorza.ui.theme.GrayText
 import dev.cannoli.scorza.ui.theme.LocalCannoliColors
+import dev.cannoli.scorza.ui.theme.LocalScaleFactor
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
@@ -105,7 +106,9 @@ fun AppNavGraph(
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
     val statusBarLeftEdge = remember { mutableIntStateOf(Int.MAX_VALUE) }
 
-    CompositionLocalProvider(LocalCannoliColors provides cannoliColors, LocalStatusBarLeftEdge provides statusBarLeftEdge) {
+    val scaleFactor = appSettings.textSize.sp / 22f
+
+    CompositionLocalProvider(LocalCannoliColors provides cannoliColors, LocalStatusBarLeftEdge provides statusBarLeftEdge, LocalScaleFactor provides scaleFactor) {
     Box(modifier = Modifier.fillMaxSize()) {
         when (currentScreen) {
             is LauncherScreen.SystemList -> SystemListScreen(

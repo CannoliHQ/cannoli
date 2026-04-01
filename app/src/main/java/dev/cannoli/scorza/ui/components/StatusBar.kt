@@ -46,6 +46,7 @@ import dev.cannoli.scorza.server.KitchenManager
 import dev.cannoli.scorza.settings.TextSize
 import dev.cannoli.scorza.ui.theme.LocalCannoliColors
 import dev.cannoli.scorza.ui.theme.LocalCannoliFont
+import dev.cannoli.scorza.ui.theme.LocalScaleFactor
 import dev.cannoli.scorza.ui.theme.MPlus1Code
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
@@ -76,7 +77,7 @@ fun StatusBar(
     val showKitchen = KitchenManager.isRunning
     val lineHeight = (textSize.sp + 10).sp
     val verticalPadding = 4.dp
-    val scaleFactor = textSize.sp / 22f
+    val scaleFactor = LocalScaleFactor.current
 
     var batteryLevel by remember { mutableIntStateOf(0) }
     var isCharging by remember { mutableStateOf(false) }

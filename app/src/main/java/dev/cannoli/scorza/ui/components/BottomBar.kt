@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.ui.theme.LocalCannoliColors
 import dev.cannoli.scorza.ui.theme.LocalCannoliFont
+import dev.cannoli.scorza.ui.theme.LocalScaleFactor
 import dev.cannoli.scorza.ui.theme.MPlus1Code
 
 @Composable
@@ -26,20 +27,21 @@ fun LegendPill(button: String, label: String) {
     val accent = LocalCannoliColors.current.accent
     val outerPill = accent.copy(alpha = 0.15f)
     val innerPill = accent.copy(alpha = 0.30f)
+    val sf = LocalScaleFactor.current
 
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(50))
             .background(outerPill)
-            .padding(start = 5.dp, end = 14.dp, top = 6.dp, bottom = 6.dp),
+            .padding(start = (5 * sf).dp, end = (14 * sf).dp, top = (6 * sf).dp, bottom = (6 * sf).dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy((8 * sf).dp)
     ) {
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(50))
                 .background(innerPill)
-                .padding(horizontal = 10.dp, vertical = 4.dp),
+                .padding(horizontal = (10 * sf).dp, vertical = (4 * sf).dp),
             contentAlignment = Alignment.Center
         ) {
             val isArrow = button.any { it in "◀▶←→" }
@@ -48,7 +50,7 @@ fun LegendPill(button: String, label: String) {
                 style = TextStyle(
                     fontFamily = if (isArrow) MPlus1Code else LocalCannoliFont.current,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
+                    fontSize = (14 * sf).sp,
                     color = accent
                 )
             )
@@ -59,7 +61,7 @@ fun LegendPill(button: String, label: String) {
             style = TextStyle(
                 fontFamily = LocalCannoliFont.current,
                 fontWeight = FontWeight.Bold,
-                fontSize = 12.sp,
+                fontSize = (12 * sf).sp,
                 color = accent
             )
         )
@@ -72,12 +74,13 @@ fun BottomBar(
     leftItems: List<Pair<String, String>>,
     rightItems: List<Pair<String, String>>
 ) {
+    val sf = LocalScaleFactor.current
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy((8 * sf).dp)) {
             leftItems.forEach { (button, label) ->
                 LegendPill(button = button, label = label)
             }
@@ -85,7 +88,7 @@ fun BottomBar(
 
         Spacer(modifier = Modifier.weight(1f))
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy((8 * sf).dp)) {
             rightItems.forEach { (button, label) ->
                 LegendPill(button = button, label = label)
             }
