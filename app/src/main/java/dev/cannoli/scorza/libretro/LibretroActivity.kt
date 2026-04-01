@@ -1898,7 +1898,6 @@ class LibretroActivity : ComponentActivity() {
 
     private fun quit() {
         isRunning = false
-        if (stateBasePath.isNotEmpty()) { File("$stateBasePath.auto").delete() }
         if (cannoliRoot.isNotEmpty()) File(cannoliRoot, "Config/quick_resume.txt").delete()
         cleanup()
         finish()
