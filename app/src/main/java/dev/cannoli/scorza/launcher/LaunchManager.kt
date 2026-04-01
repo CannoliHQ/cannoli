@@ -338,7 +338,6 @@ class LaunchManager(
         saveDir.mkdirs()
 
         val intent = Intent(context, LibretroActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             putExtra("game_title", game.displayName)
             putExtra("core_path", corePath)
             putExtra("rom_path", game.file.absolutePath)
