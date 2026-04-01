@@ -92,6 +92,7 @@ class SettingsViewModel(
         val backgroundImagePath: String? = null,
         val backgroundTint: Int = 0,
         val textSize: TextSize = TextSize.DEFAULT,
+
         val fontFamily: FontFamily = MPlus1Code,
         val title: String = "",
         val colorHighlight: Color = Color.White,
@@ -521,10 +522,7 @@ class SettingsViewModel(
             val currentFont = fontOptions.firstOrNull { it.key == settings.font } ?: fontOptions.first()
             add(SettingsItem("font", R.string.setting_font, valueText = currentFont.label))
             add(SettingsItem("status_bar", R.string.settings_status_bar, isEditable = true))
-            add(SettingsItem("text_size", R.string.setting_text_size, valueRes = when (settings.textSize) {
-                TextSize.COMPACT -> R.string.text_size_compact
-                TextSize.DEFAULT -> R.string.text_size_default
-            }))
+            add(SettingsItem("text_size", R.string.setting_text_size, valueText = "${settings.textSize.sp}sp"))
             add(SettingsItem("title", R.string.setting_title, valueText = settings.title.ifEmpty { null }, valueRes = if (settings.title.isEmpty()) R.string.value_none else null, isEditable = true))
         }
         "content" -> buildList {

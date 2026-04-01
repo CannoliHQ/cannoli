@@ -74,11 +74,9 @@ fun StatusBar(
 ) {
     val context = LocalContext.current
     val showKitchen = KitchenManager.isRunning
-    val lineHeight = when (textSize) {
-        TextSize.COMPACT -> 22.sp
-        TextSize.DEFAULT -> 32.sp
-    }
+    val lineHeight = (textSize.sp + 10).sp
     val verticalPadding = 4.dp
+    val scaleFactor = textSize.sp / 22f
 
     var batteryLevel by remember { mutableIntStateOf(0) }
     var isCharging by remember { mutableStateOf(false) }
@@ -173,14 +171,14 @@ fun StatusBar(
     val iconStyle = TextStyle(
         fontFamily = MPlus1Code,
         fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
+        fontSize = (16 * scaleFactor).sp,
         color = colors.highlightText
     )
 
     val textStyle = TextStyle(
         fontFamily = LocalCannoliFont.current,
         fontWeight = FontWeight.Bold,
-        fontSize = 12.sp,
+        fontSize = (12 * scaleFactor).sp,
         color = colors.highlightText
     )
 
@@ -193,7 +191,7 @@ fun StatusBar(
             .background(colors.highlight)
             .padding(horizontal = pillInternalH, vertical = verticalPadding),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        horizontalArrangement = Arrangement.spacedBy((6 * scaleFactor).dp)
     ) {
         if (updateAvailable && showUpdate) {
             Text(text = ICON_UPDATE, style = iconStyle)
@@ -220,7 +218,8 @@ fun StatusBar(
             BatteryGauge(
                 level = batteryLevel,
                 isCharging = isCharging,
-                textColor = colors.highlightText
+                textColor = colors.highlightText,
+                scaleFactor = scaleFactor
             )
         }
         if (showClock) {
@@ -233,14 +232,15 @@ fun StatusBar(
 private fun BatteryGauge(
     level: Int,
     isCharging: Boolean,
-    textColor: Color
+    textColor: Color,
+    scaleFactor: Float = 1f
 ) {
-    val bodyHeight = 14.dp
-    val bodyWidth = 30.dp
-    val tipWidth = 3.dp
-    val tipHeight = 7.dp
-    val borderWidth = 1.5.dp
-    val cornerRadius = 3.dp
+    val bodyHeight = (14 * scaleFactor).dp
+    val bodyWidth = (30 * scaleFactor).dp
+    val tipWidth = (3 * scaleFactor).dp
+    val tipHeight = (7 * scaleFactor).dp
+    val borderWidth = (1.5f * scaleFactor).dp
+    val cornerRadius = (3 * scaleFactor).dp
     val fillFraction = (level / 100f).coerceIn(0f, 1f)
 
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -251,19 +251,20 @@ private fun BatteryGauge(
                 .border(borderWidth, textColor, RoundedCornerShape(cornerRadius)),
             contentAlignment = Alignment.CenterStart
         ) {
+            val innerPad = (2 * scaleFactor).dp
             Box(
                 modifier = Modifier
-                    .padding(2.dp)
+                    .padding(innerPad)
                     .fillMaxHeight()
-                    .width((bodyWidth - 4.dp) * fillFraction)
-                    .background(textColor, RoundedCornerShape(1.5.dp))
+                    .width((bodyWidth - innerPad * 2) * fillFraction)
+                    .background(textColor, RoundedCornerShape((1.5f * scaleFactor).dp))
             )
             Text(
                 text = stringResource(R.string.battery_level, level),
                 style = TextStyle(
                     fontFamily = MPlus1Code,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 8.sp,
+                    fontSize = (8 * scaleFactor).sp,
                     color = LocalCannoliColors.current.highlight
                 ),
                 modifier = Modifier.align(Alignment.Center)
@@ -273,10 +274,10 @@ private fun BatteryGauge(
             modifier = Modifier
                 .width(tipWidth)
                 .height(tipHeight)
-                .padding(start = 0.5.dp)
+                .padding(start = (0.5f * scaleFactor).dp)
                 .background(
                     textColor,
-                    RoundedCornerShape(topEnd = 2.dp, bottomEnd = 2.dp)
+                    RoundedCornerShape(topEnd = (2 * scaleFactor).dp, bottomEnd = (2 * scaleFactor).dp)
                 )
         )
     }
