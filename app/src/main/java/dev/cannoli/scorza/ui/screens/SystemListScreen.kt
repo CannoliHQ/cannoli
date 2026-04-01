@@ -25,6 +25,7 @@ import dev.cannoli.scorza.ui.components.DialogOverlay
 import dev.cannoli.scorza.ui.components.List
 import dev.cannoli.scorza.ui.components.PillRowText
 import dev.cannoli.scorza.ui.components.ScreenBackground
+import dev.cannoli.scorza.ui.components.ScreenTitle
 import dev.cannoli.scorza.ui.components.pillItemHeight
 import dev.cannoli.scorza.ui.components.screenPadding
 import dev.cannoli.scorza.ui.theme.LocalCannoliColors
@@ -41,7 +42,8 @@ fun SystemListScreen(
     listVerticalPadding: Dp = 8.dp,
     dialogState: DialogState = DialogState.None,
     onVisibleRangeChanged: (Int, Int, Boolean) -> Unit = { _, _, _ -> },
-    kitchenRunning: Boolean = false
+    kitchenRunning: Boolean = false,
+    title: String = ""
 ) {
     val state by viewModel.state.collectAsState()
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
@@ -52,11 +54,22 @@ fun SystemListScreen(
                 .fillMaxSize()
                 .padding(screenPadding)
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = 48.dp)
+            ) {
+            if (title.isNotEmpty()) {
+                ScreenTitle(
+                    text = title,
+                    fontSize = listFontSize,
+                    lineHeight = listLineHeight
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
             if (state.items.isEmpty()) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(bottom = 48.dp),
+                    modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -79,9 +92,7 @@ fun SystemListScreen(
                     viewModel.firstVisibleIndex = first
                     onVisibleRangeChanged(first, count, full)
                 },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 48.dp),
+                modifier = Modifier.fillMaxWidth(),
                 key = if (state.reorderMode) null else { _, item ->
                     when (item) {
                         is ListItem.FavoritesItem -> "favorites"
@@ -110,6 +121,7 @@ fun SystemListScreen(
                     verticalPadding = listVerticalPadding,
                     showReorderIcon = showReorder
                 )
+            }
             }
             }
 

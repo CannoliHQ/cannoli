@@ -8,3 +8,4 @@
 - Resume appears / works with any save slot, not just auto. Resolves #28
 - By popular request, the OG font from MinUI was bundled. It is not the default. Resolves #15
 - You can load additional custom fonts into `Cannoli Root/Config/Fonts`. Go nuts. Resolves #15
+- User defined main menu title Resolves #29

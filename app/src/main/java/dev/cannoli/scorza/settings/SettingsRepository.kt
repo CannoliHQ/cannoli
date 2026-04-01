@@ -101,6 +101,10 @@ class SettingsRepository(context: Context) {
         get() = jsonRead { optString(KEY_FONT, "default") }
         set(value) = jsonWrite { put(KEY_FONT, value) }
 
+    var title: String
+        get() = jsonRead { optString(KEY_TITLE, "") }
+        set(value) = jsonWrite { if (value.isEmpty()) remove(KEY_TITLE) else put(KEY_TITLE, value) }
+
     var timeFormat: TimeFormat
         get() = TimeFormat.fromString(jsonRead { optString(KEY_TIME_FORMAT, null) })
         set(value) = jsonWrite { put(KEY_TIME_FORMAT, value.name) }
@@ -241,6 +245,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_RA_PACKAGE = "ra_package"
         private const val KEY_TEXT_SIZE = "text_size"
         private const val KEY_FONT = "font"
+        private const val KEY_TITLE = "title"
         private const val KEY_TIME_FORMAT = "time_format"
         private const val KEY_BG_IMAGE = "bg_image"
         private const val KEY_BG_TINT = "bg_tint"
