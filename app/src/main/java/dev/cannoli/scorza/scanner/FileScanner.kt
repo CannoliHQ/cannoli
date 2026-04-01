@@ -683,6 +683,28 @@ class FileScanner(
         File(configDir, "collection_order.txt").writeText(names.joinToString("\n") + "\n")
     }
 
+    fun loadToolOrder(): List<String> {
+        val file = File(configDir, "tool_order.txt")
+        if (!file.exists()) return emptyList()
+        return file.readLines().map { it.trim() }.filter { it.isNotEmpty() }
+    }
+
+    fun saveToolOrder(names: List<String>) {
+        configDir.mkdirs()
+        File(configDir, "tool_order.txt").writeText(names.joinToString("\n") + "\n")
+    }
+
+    fun loadPortOrder(): List<String> {
+        val file = File(configDir, "port_order.txt")
+        if (!file.exists()) return emptyList()
+        return file.readLines().map { it.trim() }.filter { it.isNotEmpty() }
+    }
+
+    fun savePortOrder(names: List<String>) {
+        configDir.mkdirs()
+        File(configDir, "port_order.txt").writeText(names.joinToString("\n") + "\n")
+    }
+
     private val collectionParentsFile = File(configDir, "collection_parents.txt")
 
     fun loadCollectionParents(): Map<String, Set<String>> {

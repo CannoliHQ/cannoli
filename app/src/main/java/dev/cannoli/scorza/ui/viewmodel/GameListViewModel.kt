@@ -148,10 +148,12 @@ class GameListViewModel(
                         launchTarget = launch
                     )
                 }
+                val order = if (type == "tools") scanner.loadToolOrder() else scanner.loadPortOrder()
+                val ordered = applyCustomOrder(games, order)
                 _state.value = State(
                     platformTag = type,
                     breadcrumb = displayName,
-                    games = games,
+                    games = ordered,
                     selectedIndex = 0,
                     isLoading = false
                 )
@@ -342,7 +344,8 @@ class GameListViewModel(
 
     fun enterReorderMode() {
         _state.update { current ->
-            val canReorder = current.isCollectionsList || (current.isCollection && current.games.any { it.isChildCollection })
+            val isApkList = current.platformTag == "tools" || current.platformTag == "ports"
+            val canReorder = current.isCollectionsList || isApkList || (current.isCollection && current.games.any { it.isChildCollection })
             if (!canReorder || current.games.isEmpty()) return@update current
             current.copy(reorderMode = true, reorderOriginalIndex = current.selectedIndex)
         }
@@ -357,7 +360,8 @@ class GameListViewModel(
             if (idx <= 0) return@update current
             val item = current.games[idx]
             val target = current.games[idx - 1]
-            if (item.isChildCollection != target.isChildCollection) return@update current
+            val isApkList = current.platformTag == "tools" || current.platformTag == "ports"
+            if (!isApkList && item.isChildCollection != target.isChildCollection) return@update current
             val games = current.games.toMutableList()
             games[idx] = target; games[idx - 1] = item
             current.copy(games = games, selectedIndex = idx - 1)
@@ -371,7 +375,8 @@ class GameListViewModel(
             if (idx >= current.games.lastIndex) return@update current
             val item = current.games[idx]
             val target = current.games[idx + 1]
-            if (item.isChildCollection != target.isChildCollection) return@update current
+            val isApkList = current.platformTag == "tools" || current.platformTag == "ports"
+            if (!isApkList && item.isChildCollection != target.isChildCollection) return@update current
             val games = current.games.toMutableList()
             games[idx] = target; games[idx + 1] = item
             current.copy(games = games, selectedIndex = idx + 1)
@@ -384,6 +389,12 @@ class GameListViewModel(
         if (current.isCollectionsList) {
             val names = current.games.map { it.displayName }
             viewModelScope.launch(Dispatchers.IO) { scanner.saveCollectionOrder(names) }
+        } else if (current.platformTag == "tools") {
+            val names = current.games.map { it.displayName }
+            viewModelScope.launch(Dispatchers.IO) { scanner.saveToolOrder(names) }
+        } else if (current.platformTag == "ports") {
+            val names = current.games.map { it.displayName }
+            viewModelScope.launch(Dispatchers.IO) { scanner.savePortOrder(names) }
         } else if (current.isCollection && current.collectionName != null) {
             val childNames = current.games.filter { it.isChildCollection }.map { it.displayName.removePrefix("/") }
             viewModelScope.launch(Dispatchers.IO) { scanner.saveChildOrder(current.collectionName, childNames) }
@@ -396,9 +407,19 @@ class GameListViewModel(
         if (!current.reorderMode) return
         if (current.isCollectionsList) {
             loadCollectionsList()
+        } else if (current.platformTag == "tools" || current.platformTag == "ports") {
+            loadApkList(current.platformTag, current.breadcrumb)
         } else if (current.isCollection && current.collectionName != null) {
             loadCollectionInternal(current.collectionName)
         }
+    }
+
+    private fun applyCustomOrder(games: List<Game>, order: List<String>): List<Game> {
+        if (order.isEmpty()) return games
+        val byName = games.associateBy { it.displayName }
+        val ordered = order.mapNotNull { byName[it] }
+        val remaining = games.filter { it.displayName !in order }
+        return ordered + remaining
     }
 
     private fun loadGames(tags: List<String>, subfolder: String?, preserveIndex: Int = 0, preserveScroll: Int = 0, prevCount: Int = -1) {
