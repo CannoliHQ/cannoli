@@ -93,6 +93,7 @@ class SettingsViewModel(
         val backgroundTint: Int = 0,
         val textSize: TextSize = TextSize.DEFAULT,
         val fontFamily: FontFamily = MPlus1Code,
+        val title: String = "",
         val colorHighlight: Color = Color.White,
         val colorText: Color = Color.White,
         val colorHighlightText: Color = Color.Black,
@@ -119,6 +120,7 @@ class SettingsViewModel(
         backgroundTint = settings.backgroundTint,
         textSize = settings.textSize,
         fontFamily = resolveFont(),
+        title = settings.title,
         colorHighlight = hexToColor(settings.colorHighlight) ?: Color.White,
         colorText = hexToColor(settings.colorText) ?: Color.White,
         colorHighlightText = hexToColor(settings.colorHighlightText) ?: Color.Black,
@@ -151,6 +153,7 @@ class SettingsViewModel(
     private data class SettingsSnapshot(
         val textSize: TextSize,
         val font: String,
+        val title: String,
         val timeFormat: TimeFormat,
         val bgImage: String?,
         val bgTint: Int,
@@ -434,6 +437,7 @@ class SettingsViewModel(
     private fun captureSettings() = SettingsSnapshot(
         textSize = settings.textSize,
         font = settings.font,
+        title = settings.title,
         timeFormat = settings.timeFormat,
         bgImage = settings.backgroundImagePath,
         bgTint = settings.backgroundTint,
@@ -461,6 +465,7 @@ class SettingsViewModel(
     private fun restoreSettings(snap: SettingsSnapshot) {
         settings.textSize = snap.textSize
         settings.font = snap.font
+        settings.title = snap.title
         settings.timeFormat = snap.timeFormat
         settings.backgroundImagePath = snap.bgImage
         settings.backgroundTint = snap.bgTint
@@ -497,11 +502,12 @@ class SettingsViewModel(
             add(SettingsItem("colors", R.string.setting_colors, isEditable = true))
             val currentFont = fontOptions.firstOrNull { it.key == settings.font } ?: fontOptions.first()
             add(SettingsItem("font", R.string.setting_font, valueText = currentFont.label))
+            add(SettingsItem("status_bar", R.string.settings_status_bar, isEditable = true))
             add(SettingsItem("text_size", R.string.setting_text_size, valueRes = when (settings.textSize) {
                 TextSize.COMPACT -> R.string.text_size_compact
                 TextSize.DEFAULT -> R.string.text_size_default
             }))
-            add(SettingsItem("status_bar", R.string.settings_status_bar, isEditable = true))
+            add(SettingsItem("title", R.string.setting_title, valueText = settings.title.ifEmpty { null }, valueRes = if (settings.title.isEmpty()) R.string.value_none else null, isEditable = true))
         }
         "content" -> buildList {
             add(SettingsItem("show_empty", R.string.setting_show_empty, valueRes = showHide(settings.showEmpty)))

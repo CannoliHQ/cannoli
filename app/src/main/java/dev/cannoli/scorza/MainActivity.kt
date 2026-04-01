@@ -2448,6 +2448,13 @@ class MainActivity : ComponentActivity() {
             dialogState.value = DialogState.None
             return
         }
+        if (state.gameName == "title") {
+            settings.title = state.currentName.trim()
+            settingsViewModel.refreshSubList()
+            settingsViewModel.load()
+            dialogState.value = DialogState.None
+            return
+        }
         if (state.gameName.startsWith("ra_game_id:")) {
             val romPath = state.gameName.removePrefix("ra_game_id:")
             val gameId = state.currentName.trim().toIntOrNull()

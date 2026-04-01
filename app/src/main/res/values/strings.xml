@@ -40,6 +40,7 @@
     <string name="setting_box_art">Box Art</string>
     <string name="setting_text_size">Text Size</string>
     <string name="setting_font">Font</string>
+    <string name="setting_title">Title</string>
     <string name="setting_bg_image">Background Image</string>
     <string name="setting_wifi">Wi-Fi</string>
     <string name="setting_vpn">VPN</string>
