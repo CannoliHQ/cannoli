@@ -555,7 +555,7 @@ class MainActivity : ComponentActivity() {
         hideSystemUI()
         if (LibretroActivity.isRunning) {
             val intent = Intent(this, LibretroActivity::class.java)
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
             startActivity(intent)
             return
         }

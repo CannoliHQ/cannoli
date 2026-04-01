@@ -179,7 +179,9 @@ class LibretroActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (savedInstanceState != null) { finish(); return }
         isRunning = true
+        window.setBackgroundDrawableResource(android.R.color.black)
         goFullscreen()
 
         gameTitle = (intent.getStringExtra("game_title") ?: "").removePrefix("★ ")
@@ -1902,6 +1904,7 @@ class LibretroActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        isRunning = false
         if (::controllerManager.isInitialized) {
             val inputManager = getSystemService(Context.INPUT_SERVICE) as InputManager
             inputManager.unregisterInputDeviceListener(controllerManager)
