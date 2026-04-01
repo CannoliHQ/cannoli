@@ -36,7 +36,8 @@ fun ControlsScreen(
     listenTimeoutMs: Int = 3000,
     listenCountdownMs: Int = 0,
     profileName: String? = null,
-    @StringRes titleRes: Int = R.string.title_controls
+    @StringRes titleRes: Int = R.string.title_controls,
+    canUnmapSelected: Boolean = false
 ) {
     val itemHeight = pillItemHeight(lineHeight, verticalPadding)
     val screenTitle = profileName ?: stringResource(titleRes)
@@ -90,7 +91,10 @@ fun ControlsScreen(
             val bottomRight = if (listeningIndex >= 0) {
                 listOf("" to stringResource(R.string.igm_press_button, remainingSec))
             } else {
-                listOf("A" to stringResource(R.string.label_remap))
+                buildList {
+                    if (canUnmapSelected) add("X" to stringResource(R.string.label_unmap))
+                    add("A" to stringResource(R.string.label_remap))
+                }
             }
 
             BottomBar(

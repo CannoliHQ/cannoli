@@ -189,13 +189,20 @@ fun LibretroScreen(
                     )
                 }
             }
-            is IGMScreen.ControlEdit -> ControlsScreen(
-                input = input,
-                selectedIndex = screen.selectedIndex,
-                listeningIndex = screen.listeningIndex,
-                listenCountdownMs = screen.listenCountdownMs,
-                profileName = profileName
-            )
+            is IGMScreen.ControlEdit -> {
+                val selectedBtn = input.buttons.getOrNull(screen.selectedIndex)
+                val canUnmap = selectedBtn != null
+                        && selectedBtn.prefKey != "btn_menu"
+                        && input.getKeyCodeFor(selectedBtn) != LibretroInput.UNMAPPED
+                ControlsScreen(
+                    input = input,
+                    selectedIndex = screen.selectedIndex,
+                    listeningIndex = screen.listeningIndex,
+                    listenCountdownMs = screen.listenCountdownMs,
+                    profileName = profileName,
+                    canUnmapSelected = canUnmap
+                )
+            }
             is IGMScreen.ProfileName -> {
                 dev.cannoli.scorza.ui.components.KeyboardOverlay(
                     text = screen.name,

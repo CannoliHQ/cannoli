@@ -447,12 +447,18 @@ fun AppNavGraph(
                         }
                     }
                 }
+                val selectedBtn = tempInput.buttons.getOrNull(currentScreen.selectedIndex)
+                val canUnmap = selectedBtn != null
+                        && selectedBtn.prefKey != "btn_menu"
+                        && tempInput.getKeyCodeFor(selectedBtn) != LibretroInput.UNMAPPED
+                        && currentScreen.listeningIndex < 0
                 ControlsScreen(
                     input = tempInput,
                     selectedIndex = currentScreen.selectedIndex,
                     listeningIndex = currentScreen.listeningIndex,
                     listenCountdownMs = currentScreen.listenCountdownMs,
-                    titleRes = R.string.title_button_mapping
+                    titleRes = R.string.title_button_mapping,
+                    canUnmapSelected = canUnmap
                 )
             }
             is LauncherScreen.ShortcutBinding -> {
