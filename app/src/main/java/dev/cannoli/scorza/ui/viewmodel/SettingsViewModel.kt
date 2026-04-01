@@ -197,10 +197,10 @@ class SettingsViewModel(
     }
 
     private fun buildCategoryList(): List<Category> = buildList {
+        addAll(allCategories)
         if (updateInfo != null) {
             add(Category("install_update", R.string.settings_install_update))
         }
-        addAll(allCategories)
     }
 
     fun save() {
