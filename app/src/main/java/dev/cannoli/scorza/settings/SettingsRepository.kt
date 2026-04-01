@@ -293,11 +293,15 @@ class SettingsRepository(context: Context) {
     }
 }
 
-enum class TextSize {
-    COMPACT, DEFAULT;
+enum class TextSize(val sp: Int) {
+    SP16(16), SP18(18), SP20(20), SP22(22), SP24(24), SP26(26), SP28(28), SP30(30);
     companion object {
-        fun fromString(value: String?): TextSize =
-            entries.firstOrNull { it.name == value } ?: DEFAULT
+        val DEFAULT = SP22
+        fun fromString(value: String?): TextSize = when (value) {
+            "COMPACT" -> SP16
+            "DEFAULT" -> SP22
+            else -> entries.firstOrNull { it.name == value } ?: DEFAULT
+        }
     }
 }
 

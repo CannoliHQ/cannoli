@@ -31,7 +31,6 @@ import dev.cannoli.scorza.input.ProfileManager
 import dev.cannoli.scorza.libretro.ControlsScreen
 import dev.cannoli.scorza.libretro.LibretroInput
 import dev.cannoli.scorza.libretro.ShortcutAction
-import dev.cannoli.scorza.settings.TextSize
 import dev.cannoli.scorza.ui.components.ConfirmOverlay
 import dev.cannoli.scorza.ui.components.CreditsOverlay
 import dev.cannoli.scorza.ui.components.DialogOverlay
@@ -92,14 +91,8 @@ fun AppNavGraph(
     val dialog by dialogState.collectAsState()
     val appSettings by settingsViewModel.appSettings.collectAsState()
 
-    val listFontSize = when (appSettings.textSize) {
-        TextSize.COMPACT -> 16.sp
-        TextSize.DEFAULT -> 22.sp
-    }
-    val listLineHeight = when (appSettings.textSize) {
-        TextSize.COMPACT -> 22.sp
-        TextSize.DEFAULT -> 32.sp
-    }
+    val listFontSize = appSettings.textSize.sp.sp
+    val listLineHeight = (appSettings.textSize.sp + 10).sp
     val listVerticalPadding = 4.dp
 
     val cannoliColors = CannoliColors(
