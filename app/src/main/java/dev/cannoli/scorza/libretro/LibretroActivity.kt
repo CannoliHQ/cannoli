@@ -1885,6 +1885,7 @@ class LibretroActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
+        if (!loading && !cleaned && screenStack.isEmpty()) openMenu()
         glSurfaceView?.onPause()
         if (!loading && !cleaned && sramPath.isNotEmpty()) { File(sramPath).parentFile?.mkdirs(); runner.saveSRAM(sramPath) }
     }
