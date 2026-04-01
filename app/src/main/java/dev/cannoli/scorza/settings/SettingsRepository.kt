@@ -129,6 +129,10 @@ class SettingsRepository(context: Context) {
         get() = jsonRead { optBoolean(KEY_SWAP_PLAY_RESUME, false) }
         set(value) = jsonWrite { put(KEY_SWAP_PLAY_RESUME, value) }
 
+    var mainMenuQuit: Boolean
+        get() = jsonRead { optBoolean(KEY_MAIN_MENU_QUIT, false) }
+        set(value) = jsonWrite { put(KEY_MAIN_MENU_QUIT, value) }
+
     var showWifi: Boolean
         get() = jsonRead { optBoolean(KEY_SHOW_WIFI, true) }
         set(value) = jsonWrite { put(KEY_SHOW_WIFI, value) }
@@ -264,6 +268,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_COLOR_ACCENT = "color_accent"
         private const val KEY_PLATFORM_SWITCHING = "platform_switching"
         private const val KEY_SWAP_PLAY_RESUME = "swap_play_resume"
+        private const val KEY_MAIN_MENU_QUIT = "main_menu_quit"
         private const val KEY_SHOW_EMPTY = "show_empty"
         private const val KEY_SHOW_WIFI = "show_wifi"
         private const val KEY_SHOW_BLUETOOTH = "show_bluetooth"

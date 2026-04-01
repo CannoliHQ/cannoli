@@ -106,7 +106,8 @@ class SettingsViewModel(
         val showUpdate: Boolean = true,
         val showTools: Boolean = false,
         val showPorts: Boolean = false,
-        val swapPlayResume: Boolean = false
+        val swapPlayResume: Boolean = false,
+        val mainMenuQuit: Boolean = false
     )
 
     private val _state = MutableStateFlow(State())
@@ -134,7 +135,8 @@ class SettingsViewModel(
         showUpdate = settings.showUpdate,
         showTools = settings.showTools,
         showPorts = settings.showPorts,
-        swapPlayResume = settings.swapPlayResume
+        swapPlayResume = settings.swapPlayResume,
+        mainMenuQuit = settings.mainMenuQuit
     )
 
     private val allCategories = listOf(
@@ -325,6 +327,7 @@ class SettingsViewModel(
             "show_update" -> settings.showUpdate = !settings.showUpdate
             "show_tools" -> settings.showTools = !settings.showTools
             "show_ports" -> settings.showPorts = !settings.showPorts
+            "main_menu_quit" -> settings.mainMenuQuit = !settings.mainMenuQuit
             "graphics_backend" -> {
                 val backends = listOf("GLES", "VULKAN")
                 val cur = backends.indexOf(settings.graphicsBackend).coerceAtLeast(0)
@@ -568,6 +571,7 @@ class SettingsViewModel(
             val romDir = settings.romDirectory
             add(SettingsItem("rom_directory", R.string.setting_rom_directory, valueText = romDir.ifEmpty { null }, valueRes = if (romDir.isEmpty()) R.string.value_cannoli_root else null, isEditable = true, canCycle = false))
             add(SettingsItem("core_mapping", R.string.setting_core_mapping, isEditable = true))
+            add(SettingsItem("main_menu_quit", R.string.setting_main_menu_quit, valueRes = onOff(settings.mainMenuQuit)))
             val pkgs = detectInstalledRaPackages()
             if (pkgs.isNotEmpty() && settings.retroArchPackage !in pkgs) {
                 settings.retroArchPackage = pkgs.first()

@@ -125,7 +125,8 @@ fun AppNavGraph(
                 dialogState = dialog,
                 onVisibleRangeChanged = onVisibleRangeChanged,
                 kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
-                title = appSettings.title
+                title = appSettings.title,
+                mainMenuQuit = appSettings.mainMenuQuit
             )
             is LauncherScreen.GameList -> {
                 GameListScreen(

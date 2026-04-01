@@ -43,7 +43,8 @@ fun SystemListScreen(
     dialogState: DialogState = DialogState.None,
     onVisibleRangeChanged: (Int, Int, Boolean) -> Unit = { _, _, _ -> },
     kitchenRunning: Boolean = false,
-    title: String = ""
+    title: String = "",
+    mainMenuQuit: Boolean = false
 ) {
     val state by viewModel.state.collectAsState()
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
@@ -132,9 +133,13 @@ fun SystemListScreen(
             } else {
                 listOf("A" to stringResource(R.string.label_select))
             }
+            val leftItems = buildList {
+                if (mainMenuQuit) add("B" to stringResource(R.string.label_quit))
+                add("X" to stringResource(R.string.label_settings))
+            }
             BottomBar(
                 modifier = Modifier.align(Alignment.BottomCenter),
-                leftItems = listOf("X" to stringResource(R.string.label_settings)),
+                leftItems = leftItems,
                 rightItems = rightItems
             )
         }
