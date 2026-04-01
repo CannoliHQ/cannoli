@@ -128,7 +128,7 @@ class CoreInfoRepository(private val assets: AssetManager, private val cacheDir:
     }
 
     fun getCoresForTag(tag: String): List<CoreInfo> {
-        val dbs = tagToDatabases[tag] ?: return emptyList()
+        val dbs = tagToDatabases[tag.uppercase()] ?: return emptyList()
         return cores.filter { core -> core.databases.any { it in dbs } }
             .sortedBy { it.displayName }
     }

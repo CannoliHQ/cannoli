@@ -192,11 +192,12 @@ class PlatformResolver(
     }
 
     fun getCoreMapping(tag: String): String {
-        return userCores[tag] ?: defaultCores[tag] ?: defaultRetroArchCores[tag]?.firstOrNull() ?: ""
+        val upper = tag.uppercase()
+        return userCores[tag] ?: defaultCores[upper] ?: defaultRetroArchCores[upper]?.firstOrNull() ?: ""
     }
 
     fun setCoreMapping(tag: String, core: String, runner: String? = null, raPackage: String? = null) {
-        val defaultCore = defaultCores[tag] ?: defaultRetroArchCores[tag]?.firstOrNull()
+        val defaultCore = defaultCores[tag.uppercase()] ?: defaultRetroArchCores[tag.uppercase()]?.firstOrNull()
         if (core.isBlank() || core == defaultCore) {
             userCores.remove(tag)
         } else {
@@ -230,15 +231,18 @@ class PlatformResolver(
         saveCoreMappings()
     }
 
-    fun isKnownTag(tag: String): Boolean = tag in defaultPlatformNames || tag in ini.getSection("platforms")
+    fun isKnownTag(tag: String): Boolean {
+        val upper = tag.uppercase()
+        return upper in defaultPlatformNames || upper in ini.getSection("platforms")
+    }
 
-    fun isArcade(tag: String): Boolean = tag in arcadePlatforms
+    fun isArcade(tag: String): Boolean = tag.uppercase() in arcadePlatforms
 
     fun getAllTags(): Set<String> = defaultPlatformNames.keys + ini.getSection("platforms").keys
 
-    fun getAppPackage(tag: String): String? = userApps[tag] ?: defaultApps[tag]?.firstOrNull()
+    fun getAppPackage(tag: String): String? = userApps[tag] ?: defaultApps[tag.uppercase()]?.firstOrNull()
 
-    fun getAppOptions(tag: String): List<String> = defaultApps[tag] ?: emptyList()
+    fun getAppOptions(tag: String): List<String> = defaultApps[tag.uppercase()] ?: emptyList()
 
     fun setAppMapping(tag: String, appPackage: String?) {
         if (appPackage == null) {
@@ -351,8 +355,9 @@ class PlatformResolver(
         val options = mutableListOf<dev.cannoli.scorza.ui.screens.CorePickerOption>()
 
         val candidateCoreIds = mutableSetOf<String>()
-        defaultCores[tag]?.let { candidateCoreIds.add(it) }
-        defaultRetroArchCores[tag]?.forEach { candidateCoreIds.add(it) }
+        val upper = tag.uppercase()
+        defaultCores[upper]?.let { candidateCoreIds.add(it) }
+        defaultRetroArchCores[upper]?.forEach { candidateCoreIds.add(it) }
         coreInfo?.getCoresForTag(tag)?.forEach { candidateCoreIds.add(it.id) }
 
         for (coreId in candidateCoreIds) {
@@ -407,15 +412,16 @@ class PlatformResolver(
     }
 
     fun getDisplayName(tag: String): String {
-        return ini.get("platforms", tag)
-            ?: defaultPlatformNames[tag]
+        val upper = tag.uppercase()
+        return ini.get("platforms", upper)
+            ?: defaultPlatformNames[upper]
             ?: tag
     }
 
     fun setDisplayName(tag: String, name: String) {
         val configFile = File(cannoliRoot, "Config/platforms.ini")
         val currentNames = ini.getSection("platforms").toMutableMap()
-        val defaultName = defaultPlatformNames[tag]
+        val defaultName = defaultPlatformNames[tag.uppercase()]
         if (name == defaultName || name == tag) {
             currentNames.remove(tag)
         } else {
@@ -438,10 +444,11 @@ class PlatformResolver(
     }
 
     fun getCoreName(tag: String): String? {
+        val upper = tag.uppercase()
         return userCores[tag]
-            ?: ini.get("cores", tag)
-            ?: defaultCores[tag]
-            ?: defaultRetroArchCores[tag]?.firstOrNull()
+            ?: ini.get("cores", upper)
+            ?: defaultCores[upper]
+            ?: defaultRetroArchCores[upper]?.firstOrNull()
     }
 
     fun getEmuLaunch(tag: String, romsDir: File): LaunchTarget.EmuLaunch? {
