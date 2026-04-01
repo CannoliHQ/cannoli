@@ -97,6 +97,10 @@ class SettingsRepository(context: Context) {
         get() = TextSize.fromString(jsonRead { optString(KEY_TEXT_SIZE, null) })
         set(value) = jsonWrite { put(KEY_TEXT_SIZE, value.name) }
 
+    var font: String
+        get() = jsonRead { optString(KEY_FONT, "default") }
+        set(value) = jsonWrite { put(KEY_FONT, value) }
+
     var timeFormat: TimeFormat
         get() = TimeFormat.fromString(jsonRead { optString(KEY_TIME_FORMAT, null) })
         set(value) = jsonWrite { put(KEY_TIME_FORMAT, value.name) }
@@ -132,6 +136,10 @@ class SettingsRepository(context: Context) {
     var showBattery: Boolean
         get() = jsonRead { optBoolean(KEY_SHOW_BATTERY, true) }
         set(value) = jsonWrite { put(KEY_SHOW_BATTERY, value) }
+
+    var showUpdate: Boolean
+        get() = jsonRead { optBoolean(KEY_SHOW_UPDATE, true) }
+        set(value) = jsonWrite { put(KEY_SHOW_UPDATE, value) }
 
     var showEmpty: Boolean
         get() = jsonRead { optBoolean(KEY_SHOW_EMPTY, false) }
@@ -232,6 +240,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_SD_ROOT = "sd_root"
         private const val KEY_RA_PACKAGE = "ra_package"
         private const val KEY_TEXT_SIZE = "text_size"
+        private const val KEY_FONT = "font"
         private const val KEY_TIME_FORMAT = "time_format"
         private const val KEY_BG_IMAGE = "bg_image"
         private const val KEY_BG_TINT = "bg_tint"
@@ -246,6 +255,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_SHOW_VPN = "show_vpn"
         private const val KEY_SHOW_CLOCK = "show_clock"
         private const val KEY_SHOW_BATTERY = "show_battery"
+        private const val KEY_SHOW_UPDATE = "show_update"
         private const val KEY_SHOW_TOOLS = "show_tools"
         private const val KEY_SHOW_PORTS = "show_ports"
         private const val KEY_TOOLS_NAME = "tools_name"

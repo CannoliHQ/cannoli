@@ -39,12 +39,14 @@
     <string name="setting_colors">Colors</string>
     <string name="setting_box_art">Box Art</string>
     <string name="setting_text_size">Text Size</string>
+    <string name="setting_font">Font</string>
     <string name="setting_bg_image">Background Image</string>
     <string name="setting_wifi">Wi-Fi</string>
     <string name="setting_vpn">VPN</string>
     <string name="setting_bluetooth">Bluetooth</string>
     <string name="setting_clock">Clock</string>
     <string name="setting_battery">Battery</string>
+    <string name="setting_updater">Updater</string>
     <string name="setting_time_format">Time Format</string>
     <string name="setting_profiles">Profiles</string>
     <string name="setting_controls">Button Mapping</string>

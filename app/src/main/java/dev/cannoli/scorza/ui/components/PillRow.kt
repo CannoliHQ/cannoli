@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.ui.theme.GrayText
 import dev.cannoli.scorza.ui.theme.LocalCannoliColors
+import dev.cannoli.scorza.ui.theme.MPlus1Code
 
 val screenPadding = 20.dp
 val pillInternalH = 14.dp
@@ -102,12 +103,14 @@ fun PillRowText(
         lineHeight = lineHeight
     )
 
+    val iconStyle = textStyle.copy(fontFamily = MPlus1Code)
+
     PillRow(isSelected = isSelected, verticalPadding = verticalPadding) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (checkState != null) {
                 Text(
                     text = if (checkState) "☑" else "☐",
-                    style = textStyle,
+                    style = iconStyle,
                     color = if (isSelected) colors.highlightText else colors.text
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -115,7 +118,7 @@ fun PillRowText(
             if (showReorderIcon) {
                 Text(
                     text = "↕",
-                    style = textStyle,
+                    style = iconStyle,
                     color = if (isSelected) colors.highlightText else colors.text
                 )
                 Spacer(modifier = Modifier.width(8.dp))

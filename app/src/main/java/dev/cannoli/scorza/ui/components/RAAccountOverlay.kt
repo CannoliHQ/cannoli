@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.ui.theme.GrayText
-import dev.cannoli.scorza.ui.theme.MPlus1Code
+import dev.cannoli.scorza.ui.theme.LocalCannoliFont
 
 @Composable
 fun RAAccountOverlay(username: String) {
@@ -37,7 +37,7 @@ fun RAAccountOverlay(username: String) {
             Text(
                 text = stringResource(R.string.ra_title),
                 style = TextStyle(
-                    fontFamily = MPlus1Code,
+                    fontFamily = LocalCannoliFont.current,
                     fontWeight = FontWeight.Bold,
                     fontSize = 28.sp,
                     color = Color.White
@@ -49,7 +49,7 @@ fun RAAccountOverlay(username: String) {
             Text(
                 text = stringResource(R.string.ra_logged_in_as),
                 style = TextStyle(
-                    fontFamily = MPlus1Code,
+                    fontFamily = LocalCannoliFont.current,
                     fontSize = 16.sp,
                     color = GrayText
                 )
@@ -58,7 +58,7 @@ fun RAAccountOverlay(username: String) {
             Text(
                 text = username,
                 style = TextStyle(
-                    fontFamily = MPlus1Code,
+                    fontFamily = LocalCannoliFont.current,
                     fontWeight = FontWeight.Bold,
                     fontSize = 24.sp,
                     color = Color.White

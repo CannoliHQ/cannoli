@@ -97,6 +97,7 @@ Full license texts are available in the [licenses](licenses/) directory.
 | Name             | License |
 |------------------|---------|
 | M+ Fonts Project | OFL     |
+| BPreplay         | OFL     |
 | Nerd Fonts       | OFL     |
 
 ---

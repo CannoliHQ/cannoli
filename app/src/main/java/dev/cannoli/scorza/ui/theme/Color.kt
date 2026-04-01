@@ -2,6 +2,7 @@ package dev.cannoli.scorza.ui.theme
 
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
@@ -18,6 +19,7 @@ data class CannoliColors(
 )
 
 val LocalCannoliColors = staticCompositionLocalOf { CannoliColors() }
+val LocalCannoliFont = staticCompositionLocalOf<FontFamily> { FontFamily.Default }
 
 data class ColorPreset(val name: String, val color: Long)
 

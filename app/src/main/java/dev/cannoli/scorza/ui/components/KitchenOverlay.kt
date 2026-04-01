@@ -33,7 +33,7 @@ import com.google.zxing.qrcode.QRCodeWriter
 
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.ui.theme.GrayText
-import dev.cannoli.scorza.ui.theme.MPlus1Code
+import dev.cannoli.scorza.ui.theme.LocalCannoliFont
 
 @Composable
 fun KitchenOverlay(url: String, pin: String) {
@@ -53,7 +53,7 @@ fun KitchenOverlay(url: String, pin: String) {
             Text(
                 text = stringResource(R.string.kitchen_title),
                 style = TextStyle(
-                    fontFamily = MPlus1Code,
+                    fontFamily = LocalCannoliFont.current,
                     fontWeight = FontWeight.Bold,
                     fontSize = 28.sp,
                     color = Color.White
@@ -77,7 +77,7 @@ fun KitchenOverlay(url: String, pin: String) {
             Text(
                 text = url,
                 style = TextStyle(
-                    fontFamily = MPlus1Code,
+                    fontFamily = LocalCannoliFont.current,
                     fontSize = 18.sp,
                     color = Color.White,
                     textAlign = TextAlign.Center
@@ -100,7 +100,7 @@ fun KitchenOverlay(url: String, pin: String) {
                         Text(
                             text = char.toString(),
                             style = TextStyle(
-                                fontFamily = MPlus1Code,
+                                fontFamily = LocalCannoliFont.current,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 24.sp,
                                 color = Color.White
