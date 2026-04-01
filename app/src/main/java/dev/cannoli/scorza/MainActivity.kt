@@ -1434,6 +1434,7 @@ class MainActivity : ComponentActivity() {
                 DialogState.None -> when (val screen = currentScreen) {
                     LauncherScreen.SystemList -> {
                         if (systemListViewModel.isReorderMode()) systemListViewModel.cancelReorder(showTools = settings.showTools, showPorts = settings.showPorts, showEmpty = settings.showEmpty, toolsName = settings.toolsName, portsName = settings.portsName)
+                        else if (settings.mainMenuQuit) finishAffinity()
                     }
                     LauncherScreen.GameList -> {
                         if (gameListViewModel.isMultiSelectMode()) {
