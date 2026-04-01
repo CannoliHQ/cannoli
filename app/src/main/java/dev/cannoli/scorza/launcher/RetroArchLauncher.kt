@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.launcher
 
+import android.app.ActivityOptions
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -28,7 +29,8 @@ class RetroArchLauncher(
         }
 
         return try {
-            context.startActivity(intent)
+            val opts = ActivityOptions.makeCustomAnimation(context, 0, 0).toBundle()
+            context.startActivity(intent, opts)
             LaunchResult.Success
         } catch (e: Exception) {
             LaunchResult.Error(e.message ?: "Failed to launch RetroArch")

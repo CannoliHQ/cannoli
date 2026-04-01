@@ -1,6 +1,7 @@
 package dev.cannoli.scorza
 
 import android.Manifest
+import android.app.ActivityOptions
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -568,13 +569,16 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @Suppress("DEPRECATION")
     override fun onResume() {
         super.onResume()
+        overridePendingTransition(0, 0)
         hideSystemUI()
         if (LibretroActivity.isRunning) {
             val intent = Intent(this, LibretroActivity::class.java)
             intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-            startActivity(intent)
+            val opts = ActivityOptions.makeCustomAnimation(this, 0, 0).toBundle()
+            startActivity(intent, opts)
             return
         }
         if (::systemListViewModel.isInitialized) {
@@ -1155,7 +1159,8 @@ class MainActivity : ComponentActivity() {
                     val intent = packageManager.getLaunchIntentForPackage(packageName)
                     if (intent != null) {
                         intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                        startActivity(intent)
+                        val opts = ActivityOptions.makeCustomAnimation(this, 0, 0).toBundle()
+                        startActivity(intent, opts)
                         Runtime.getRuntime().exit(0)
                     }
                 }

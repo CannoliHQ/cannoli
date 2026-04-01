@@ -1959,6 +1959,12 @@ class LibretroActivity : ComponentActivity() {
         File(cacheDir, "rom_cache").deleteRecursively()
     }
 
+    @Suppress("DEPRECATION")
+    override fun finish() {
+        super.finish()
+        overridePendingTransition(0, 0)
+    }
+
     private fun quit() {
         isRunning = false
         if (cannoliRoot.isNotEmpty()) File(cannoliRoot, "Config/quick_resume.txt").delete()
@@ -1987,8 +1993,9 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
+    @Suppress("DEPRECATION")
     override fun onResume() {
-        super.onResume(); glSurfaceView?.onResume(); goFullscreen()
+        super.onResume(); overridePendingTransition(0, 0); glSurfaceView?.onResume(); goFullscreen()
         if (autoSavedOnStop && cannoliRoot.isNotEmpty()) File(cannoliRoot, "Config/quick_resume.txt").delete()
         autoSavedOnStop = false
     }
