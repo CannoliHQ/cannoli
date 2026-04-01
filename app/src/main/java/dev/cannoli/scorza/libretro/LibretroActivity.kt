@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -53,6 +54,7 @@ class LibretroActivity : ComponentActivity() {
     private var glSurfaceView: GLSurfaceView? = null
     private var gameView: android.view.View? = null
     private var loading by mutableStateOf(true)
+    private var revealed by mutableStateOf(false)
 
     private val screenStack = mutableStateListOf<IGMScreen>()
 
@@ -244,6 +246,14 @@ class LibretroActivity : ComponentActivity() {
                 CompositionLocalProvider(LocalCannoliColors provides colors) {
                     if (loading) {
                         Box(modifier = Modifier.fillMaxSize().background(Color.Black))
+                    } else if (!revealed) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            AndroidView(
+                                factory = { gameView!! },
+                                modifier = Modifier.fillMaxSize()
+                            )
+                            Box(modifier = Modifier.fillMaxSize().background(Color.Black))
+                        }
                     } else {
                         val screen = currentScreen
                         LibretroScreen(
@@ -350,6 +360,7 @@ class LibretroActivity : ComponentActivity() {
                 audioSampleRate = avInfo.sampleRate
                 audio = LibretroAudio(avInfo.sampleRate, lowLatency)
                 runner.setAudioCallback(audio!!)
+                audio!!.muted = true
                 audio!!.start()
 
                 val shaderCacheDir = File(cacheDir, "shader_cache")
@@ -369,6 +380,13 @@ class LibretroActivity : ComponentActivity() {
 
                 val glesBackend = LibretroRenderer(runner)
                 configureBackend(glesBackend)
+                var startupCountdown = 35
+                glesBackend.onFrameRendered = {
+                    if (startupCountdown > 0 && --startupCountdown == 0) {
+                        audio?.muted = false
+                        runOnUiThread { revealed = true }
+                    }
+                }
                 renderer = glesBackend
 
                 glSurfaceView = GLSurfaceView(this).apply {
