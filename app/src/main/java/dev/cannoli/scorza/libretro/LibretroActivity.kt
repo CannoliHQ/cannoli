@@ -384,6 +384,11 @@ class LibretroActivity : ComponentActivity() {
                 val glesBackend = LibretroRenderer(runner)
                 configureBackend(glesBackend)
                 var startupCountdown = 35
+                // HACK: FBNeo has a bug where vertical arcade games initialize with wrong
+                // framebuffer orientation despite reporting correct rotation. Toggling the
+                // vertical-mode option off→on→off forces FBNeo to reinitialize its video
+                // pipeline correctly. Done during hidden startup frames so the user never
+                // sees the intermediate state. Remove when FBNeo fixes this upstream.
                 var verticalReinitPhase = 0
                 val verticalToggle = prepareVerticalModeReinit()
                 glesBackend.onFrameRendered = {
@@ -393,9 +398,9 @@ class LibretroActivity : ComponentActivity() {
                     }
                     if (verticalToggle != null) {
                         when (verticalReinitPhase) {
-                            3 -> { verticalToggle.first(); verticalReinitPhase++ }
-                            28 -> { verticalToggle.second(); verticalReinitPhase++ }
-                            else -> if (verticalReinitPhase < 29) verticalReinitPhase++
+                            5 -> { verticalToggle.first(); verticalReinitPhase++ }
+                            125 -> { verticalToggle.second(); verticalReinitPhase++ }
+                            else -> if (verticalReinitPhase < 126) verticalReinitPhase++
                         }
                     }
                 }
