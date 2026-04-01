@@ -1617,13 +1617,14 @@ class MainActivity : ComponentActivity() {
                     }
                     LauncherScreen.GameList -> {
                         val glState = gameListViewModel.state.value
-                        if (glState.isCollectionsList || gameListViewModel.hasChildCollections()) {
+                        val isApkList = glState.platformTag == "tools" || glState.platformTag == "ports"
+                        if (glState.isCollectionsList || isApkList || gameListViewModel.hasChildCollections()) {
                             if (gameListViewModel.isReorderMode()) {
                                 gameListViewModel.confirmReorder()
                             } else {
                                 gameListViewModel.enterReorderMode()
                             }
-                        } else if (glState.subfolderPath == null && glState.platformTag != "tools" && glState.platformTag != "ports") {
+                        } else if (glState.subfolderPath == null && !isApkList) {
                             if (gameListViewModel.isMultiSelectMode()) {
                                 gameListViewModel.confirmMultiSelect()
                             } else {
