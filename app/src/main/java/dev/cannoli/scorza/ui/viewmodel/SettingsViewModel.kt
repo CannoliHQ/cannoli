@@ -172,6 +172,7 @@ class SettingsViewModel(
         val showTools: Boolean,
         val showPorts: Boolean,
         val sdRoot: String,
+        val romDirectory: String,
         val raPackage: String,
         val toolsName: String,
         val portsName: String,
@@ -395,6 +396,12 @@ class SettingsViewModel(
         settings.backgroundImagePath = if (newIndex < 0) null else images[newIndex].absolutePath
     }
 
+    fun clearRomDirectory() {
+        settings.romDirectory = ""
+        val catKey = _state.value.activeCategory ?: return
+        _state.update { it.copy(items = buildItemsForCategory(catKey)) }
+    }
+
     fun getColorEntries(): List<dev.cannoli.scorza.ui.screens.ColorEntry> {
         val names = mapOf(
             "color_text" to R.string.setting_color_text,
@@ -456,6 +463,7 @@ class SettingsViewModel(
         showTools = settings.showTools,
         showPorts = settings.showPorts,
         sdRoot = settings.sdCardRoot,
+        romDirectory = settings.romDirectory,
         raPackage = settings.retroArchPackage,
         toolsName = settings.toolsName,
         portsName = settings.portsName,
@@ -484,6 +492,7 @@ class SettingsViewModel(
         settings.showTools = snap.showTools
         settings.showPorts = snap.showPorts
         settings.sdCardRoot = snap.sdRoot
+        settings.romDirectory = snap.romDirectory
         settings.retroArchPackage = snap.raPackage
         settings.toolsName = snap.toolsName
         settings.portsName = snap.portsName
@@ -549,6 +558,8 @@ class SettingsViewModel(
         }
         "advanced" -> buildList {
             add(SettingsItem("sd_root", R.string.setting_sd_root, valueText = settings.sdCardRoot, isEditable = true))
+            val romDir = settings.romDirectory
+            add(SettingsItem("rom_directory", R.string.setting_rom_directory, valueText = romDir.ifEmpty { null }, valueRes = if (romDir.isEmpty()) R.string.value_cannoli_root else null, isEditable = true, canCycle = false))
             add(SettingsItem("core_mapping", R.string.setting_core_mapping, isEditable = true))
             val pkgs = detectInstalledRaPackages()
             if (pkgs.isNotEmpty() && settings.retroArchPackage !in pkgs) {

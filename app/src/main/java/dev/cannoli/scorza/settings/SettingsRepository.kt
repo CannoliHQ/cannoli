@@ -89,6 +89,10 @@ class SettingsRepository(context: Context) {
             loadFromDisk()
         }
 
+    var romDirectory: String
+        get() = jsonRead { optString(KEY_ROM_DIRECTORY, "") }
+        set(value) = jsonWrite { if (value.isEmpty()) remove(KEY_ROM_DIRECTORY) else put(KEY_ROM_DIRECTORY, value) }
+
     var retroArchPackage: String
         get() = jsonRead { optString(KEY_RA_PACKAGE, DEFAULT_RA_PACKAGE) }
         set(value) = jsonWrite { put(KEY_RA_PACKAGE, value) }
@@ -242,6 +246,7 @@ class SettingsRepository(context: Context) {
 
         private const val KEY_SETUP_COMPLETED = "setup_completed"
         private const val KEY_SD_ROOT = "sd_root"
+        private const val KEY_ROM_DIRECTORY = "rom_directory"
         private const val KEY_RA_PACKAGE = "ra_package"
         private const val KEY_TEXT_SIZE = "text_size"
         private const val KEY_FONT = "font"

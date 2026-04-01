@@ -354,7 +354,22 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
         if (uri != null) {
-            uriToPath(uri)?.let { settings.sdCardRoot = it }
+            uriToPath(uri)?.let {
+                settings.sdCardRoot = it
+                dialogState.value = DialogState.RestartRequired
+            }
+        }
+    }
+
+    private val romDirPickerLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) {
+            uriToPath(uri)?.let {
+                settings.romDirectory = it
+                scanner.invalidateAllCaches()
+                dialogState.value = DialogState.RestartRequired
+            }
         }
     }
 
@@ -706,7 +721,8 @@ class MainActivity : ComponentActivity() {
         installedCoreService = InstalledCoreService(this)
         launchManager = LaunchManager(this, settings, platformResolver, retroArchLauncher, emuLauncher, apkLauncher, installedCoreService)
 
-        scanner = FileScanner(root, platformResolver)
+        val romDir = settings.romDirectory.takeIf { it.isNotEmpty() }?.let { File(it) }
+        scanner = FileScanner(root, platformResolver, romDir)
         launchManager.syncRetroArchAssets(root)
         launchManager.syncRetroArchConfig(root)
 
@@ -1129,6 +1145,14 @@ class MainActivity : ComponentActivity() {
                         ioScope.launch { updateManager.downloadAndInstall(info) }
                     }
                 }
+                is DialogState.RestartRequired -> {
+                    val intent = packageManager.getLaunchIntentForPackage(packageName)
+                    if (intent != null) {
+                        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                        startActivity(intent)
+                        Runtime.getRuntime().exit(0)
+                    }
+                }
                 DialogState.None -> when (val screen = currentScreen) {
                     LauncherScreen.SystemList -> {
                         if (systemListViewModel.isReorderMode()) systemListViewModel.confirmReorder()
@@ -1167,6 +1191,7 @@ class MainActivity : ComponentActivity() {
                             when (val key = settingsViewModel.enterSelected()) {
                                 "status_bar" -> settingsViewModel.enterSubCategory("status_bar", R.string.settings_status_bar)
                                 "sd_root" -> folderPickerLauncher.launch(null)
+                                "rom_directory" -> romDirPickerLauncher.launch(null)
                                 "colors" -> screenStack.add(LauncherScreen.ColorList(
                                     colors = settingsViewModel.getColorEntries()
                                 ))
@@ -1394,6 +1419,7 @@ class MainActivity : ComponentActivity() {
                 is DialogState.RALoggingIn -> {
                     dialogState.value = DialogState.None
                 }
+                is DialogState.RestartRequired -> {}
                 DialogState.None -> when (val screen = currentScreen) {
                     LauncherScreen.SystemList -> {
                         if (systemListViewModel.isReorderMode()) systemListViewModel.cancelReorder(showTools = settings.showTools, showPorts = settings.showPorts, showEmpty = settings.showEmpty, toolsName = settings.toolsName, portsName = settings.portsName)
@@ -1636,6 +1662,14 @@ class MainActivity : ComponentActivity() {
                         screenStack.add(LauncherScreen.Settings)
                         if (updateManager.isOnline()) {
                             ioScope.launch { updateManager.checkForUpdate() }
+                        }
+                    }
+                    LauncherScreen.Settings -> {
+                        val item = settingsViewModel.getSelectedItem()
+                        if (item?.key == "rom_directory" && settings.romDirectory.isNotEmpty()) {
+                            settingsViewModel.clearRomDirectory()
+                            scanner.invalidateAllCaches()
+                            dialogState.value = DialogState.RestartRequired
                         }
                     }
                     LauncherScreen.GameList -> {

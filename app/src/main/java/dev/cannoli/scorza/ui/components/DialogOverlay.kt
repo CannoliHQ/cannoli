@@ -149,6 +149,10 @@ fun DialogOverlay(
             )
         }
 
+        is DialogState.RestartRequired -> {
+            RestartOverlay(message = stringResource(R.string.restart_required))
+        }
+
         else -> {}
     }
 }
