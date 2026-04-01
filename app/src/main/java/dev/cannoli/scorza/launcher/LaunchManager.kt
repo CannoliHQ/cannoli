@@ -199,17 +199,21 @@ class LaunchManager(
             ?.index
     }
 
-    private fun hasAutoState(game: Game): Boolean {
+    private fun hasSaveState(game: Game): Boolean {
         val cannoliRoot = File(settings.sdCardRoot)
         val romName = normalizedRomName(game)
-        return File(cannoliRoot, "Save States/${game.platformTag}/$romName/$romName.state.auto").exists()
+        val stateDir = File(cannoliRoot, "Save States/${game.platformTag}/$romName")
+        if (!stateDir.exists()) return false
+        return stateDir.listFiles()?.any {
+            it.name.startsWith("$romName.state") && !it.name.endsWith(".png")
+        } ?: false
     }
 
     fun findResumableGames(games: List<Game>): Set<String> {
         val result = mutableSetOf<String>()
         for (game in games) {
             if (game.isSubfolder) continue
-            if (!hasAutoState(game)) continue
+            if (!hasSaveState(game)) continue
             val target = game.launchTarget
             if (target is LaunchTarget.RetroArch || target is LaunchTarget.Embedded || getEmbeddedCorePath(game) != null) {
                 result.add(game.file.absolutePath)
