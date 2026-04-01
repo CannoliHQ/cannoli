@@ -88,6 +88,13 @@ class OverrideManager(
         return settings
     }
 
+    fun loadCoreOptions(): Map<String, String> {
+        val settings = Settings()
+        applyOptions(platformFile, settings)
+        applyOptions(gameFile, settings)
+        return settings.coreOptions
+    }
+
     fun loadPlatformBaseline(): Settings {
         val settings = Settings()
         applyFrontend(platformFile, settings)

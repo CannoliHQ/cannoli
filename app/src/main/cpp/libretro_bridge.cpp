@@ -483,6 +483,10 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeInit(JNIEnv *env, jobject,
     env->ReleaseStringUTFChars(systemDir, sys);
     env->ReleaseStringUTFChars(saveDir, sav);
 
+    g_rotation = 0;
+    g_option_overrides.clear();
+    g_options_dirty = false;
+
     core.set_environment(environment_cb);
     core.set_video_refresh(video_refresh_cb);
     core.set_audio_sample(audio_sample_cb);
@@ -532,6 +536,9 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeLoadGame(JNIEnv *env, jobj
         LOGE("retro_load_game failed");
         return nullptr;
     }
+
+    if (!g_option_overrides.empty())
+        g_options_dirty = true;
 
     struct retro_system_av_info av_info;
     core.get_system_av_info(&av_info);
