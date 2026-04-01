@@ -9,3 +9,4 @@
 - By popular request, the OG font from MinUI was bundled. It is not the default. Resolves #15
 - You can load additional custom fonts into `Cannoli Root/Config/Fonts`. Go nuts. Resolves #15
 - User defined main menu title Resolves #29
+- Roms folder can now be split off from Cannoli Root in Advanced Resolves #12
