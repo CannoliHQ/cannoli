@@ -1685,10 +1685,11 @@ class MainActivity : ComponentActivity() {
                         } else {
                             val game = gameListViewModel.getSelectedGame()
                             if (game != null && !game.isSubfolder && !game.isChildCollection) {
-                                if (settings.swapPlayResume) {
+                                val isResumable = resumableGames.contains(game.file.absolutePath)
+                                if (isResumable && settings.swapPlayResume) {
                                     val errorDialog = launchManager.launchGame(game)
                                     if (errorDialog != null) dialogState.value = errorDialog
-                                } else {
+                                } else if (isResumable) {
                                     launchManager.resumeGame(game)
                                 }
                             }
@@ -2012,7 +2013,8 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        if (settings.swapPlayResume) {
+        val isResumable = resumableGames.contains(game.file.absolutePath)
+        if (isResumable && settings.swapPlayResume) {
             launchManager.resumeGame(game)
         } else {
             val errorDialog = launchManager.launchGame(game)
