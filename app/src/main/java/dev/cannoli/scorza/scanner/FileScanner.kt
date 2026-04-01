@@ -31,7 +31,7 @@ class FileScanner(
     fun scanPlatforms(): List<Platform> {
         if (!romsDir.exists()) return emptyList()
 
-        val tagDirs = romsDir.listFiles { f -> f.isDirectory } ?: return emptyList()
+        val tagDirs = romsDir.listFiles { f -> f.isDirectory && !f.name.startsWith(".") } ?: return emptyList()
         val knownDirs = tagDirs.filter { platformResolver.isKnownTag(it.name) }
         val platformCache = scanCache.loadPlatformCache()
         val newEntries = mutableMapOf<String, CachedPlatformEntry>()
@@ -48,7 +48,7 @@ class FileScanner(
             } else {
                 anyStale = true
                 val files = dir.listFiles()
-                files?.any { it.name != ".emu_launch" && it.name != "map.txt" } ?: false
+                files?.any { !it.name.startsWith(".") && it.name != "map.txt" } ?: false
             }
             newEntries[tag] = CachedPlatformEntry(dirMod, hasGames)
             platformResolver.resolvePlatform(tag, romsDir, if (hasGames) 1 else 0)
@@ -93,8 +93,10 @@ class FileScanner(
             val dirMod = dirTimestamps[tag] ?: baseDir.lastModified()
             val cached = scanCache.loadGameCache(tag)
             if (cached != null && cached.dirLastModified == dirMod) {
+                dev.cannoli.scorza.util.DebugLog.write("scanGames($tag): cache hit, ${cached.games.size} games")
                 return reconstructGames(tag, cached)
             }
+            dev.cannoli.scorza.util.DebugLog.write("scanGames($tag): cache miss, doing full scan")
         }
 
         val emuLaunch = platformResolver.getEmuLaunch(tag, romsDir)
@@ -112,7 +114,7 @@ class FileScanner(
         }
 
         val rawGames = files
-            .filter { it.name != ".emu_launch" && it.name != "map.txt" }
+            .filter { !it.name.startsWith(".") && it.name != "map.txt" }
             .mapNotNull { file ->
                 if (file.isDirectory) {
                     val dirLaunch = findDirLaunchFile(file)
@@ -126,7 +128,7 @@ class FileScanner(
                             discFiles = dirLaunch.discFiles
                         )
                     } else {
-                        val hasChildren = file.listFiles()?.any { it.name != ".emu_launch" } == true
+                        val hasChildren = file.listFiles()?.any { !it.name.startsWith(".") } == true
                         if (!hasChildren) return@mapNotNull null
                         Game(
                             file = file,
@@ -203,9 +205,17 @@ class FileScanner(
         if (subfolder == null) {
             val dirMod = dirTimestamps[tag] ?: baseDir.lastModified()
             scanCache.saveGameCache(tag, dirMod, all.map { game ->
+                val artName = when {
+                    game.artFile != null -> game.artFile.nameWithoutExtension
+                    game.isSubfolder -> game.file.name
+                    game.discFiles != null && !game.file.extension.equals("m3u", ignoreCase = true) ->
+                        game.file.nameWithoutExtension.replace(discRegex, "").trim()
+                    else -> game.file.nameWithoutExtension
+                }
                 CachedGameEntry(
                     path = game.file.absolutePath,
                     displayName = game.displayName,
+                    artName = artName,
                     isSubfolder = game.isSubfolder,
                     discPaths = game.discFiles?.map { it.absolutePath } ?: emptyList()
                 )
@@ -248,7 +258,7 @@ class FileScanner(
                 displayName = entry.displayName,
                 platformTag = tag,
                 isSubfolder = entry.isSubfolder,
-                artFile = findArt(tag, entry.displayName),
+                artFile = findArt(tag, entry.artName),
                 launchTarget = resolveTarget(entry.isSubfolder),
                 discFiles = if (entry.discPaths.isNotEmpty()) entry.discPaths.map { File(it) } else null
             )

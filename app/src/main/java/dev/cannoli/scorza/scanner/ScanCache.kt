@@ -5,7 +5,7 @@ import org.json.JSONObject
 import java.io.File
 
 data class CachedPlatformEntry(val lastModified: Long, val hasGames: Boolean)
-data class CachedGameEntry(val path: String, val displayName: String, val isSubfolder: Boolean, val discPaths: List<String>)
+data class CachedGameEntry(val path: String, val displayName: String, val artName: String, val isSubfolder: Boolean, val discPaths: List<String>)
 data class CachedGameList(val dirLastModified: Long, val games: List<CachedGameEntry>)
 
 class ScanCache(private val cannoliRoot: File) {
@@ -49,7 +49,7 @@ class ScanCache(private val cannoliRoot: File) {
                 val g = arr.getJSONObject(i)
                 val discArr = g.optJSONArray("discPaths")
                 val discPaths = if (discArr != null) (0 until discArr.length()).map { discArr.getString(it) } else emptyList()
-                CachedGameEntry(g.getString("path"), g.getString("displayName"), g.getBoolean("isSubfolder"), discPaths)
+                CachedGameEntry(g.getString("path"), g.getString("displayName"), g.optString("artName", g.getString("displayName")), g.getBoolean("isSubfolder"), discPaths)
             }
             CachedGameList(dirMod, games)
         } catch (_: Exception) { null }
@@ -63,6 +63,7 @@ class ScanCache(private val cannoliRoot: File) {
             arr.put(JSONObject().apply {
                 put("path", g.path)
                 put("displayName", g.displayName)
+                put("artName", g.artName)
                 put("isSubfolder", g.isSubfolder)
                 if (g.discPaths.isNotEmpty()) {
                     put("discPaths", JSONArray(g.discPaths))

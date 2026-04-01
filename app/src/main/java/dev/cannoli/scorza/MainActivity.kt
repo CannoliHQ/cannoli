@@ -691,6 +691,7 @@ class MainActivity : ComponentActivity() {
 
     private fun initializeApp() {
         val root = File(settings.sdCardRoot)
+        dev.cannoli.scorza.util.DebugLog.init(root.absolutePath)
 
         retroArchLauncher = RetroArchLauncher(this) { settings.retroArchPackage }
         emuLauncher = EmuLauncher(this)
@@ -775,7 +776,8 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            CannoliTheme {
+            val appFont by settingsViewModel.appSettings.collectAsState()
+            CannoliTheme(fontFamily = appFont.fontFamily) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val updateInfo by updateManager.updateAvailable.collectAsState()
                     val dlProgress by updateManager.downloadProgress.collectAsState()
