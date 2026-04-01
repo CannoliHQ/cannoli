@@ -194,6 +194,7 @@ fun LibretroScreen(
                 val canUnmap = selectedBtn != null
                         && selectedBtn.prefKey != "btn_menu"
                         && input.getKeyCodeFor(selectedBtn) != LibretroInput.UNMAPPED
+                        && screen.listeningIndex < 0
                 ControlsScreen(
                     input = input,
                     selectedIndex = screen.selectedIndex,
