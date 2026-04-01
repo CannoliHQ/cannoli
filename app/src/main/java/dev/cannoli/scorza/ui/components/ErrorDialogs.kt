@@ -32,9 +32,18 @@ fun MissingCoreDialog(coreName: String) {
 }
 
 @Composable
-fun MissingAppDialog(appName: String) {
+fun MissingAppDialog(appName: String, showRemove: Boolean = false) {
     OverlayScrim(
-        bottomBar = { LegendPill(button = "B", label = stringResource(R.string.label_close)) }
+        bottomBar = {
+            if (showRemove) {
+                BottomBar(
+                    leftItems = listOf("B" to stringResource(R.string.label_close)),
+                    rightItems = listOf("A" to stringResource(R.string.label_remove))
+                )
+            } else {
+                LegendPill(button = "B", label = stringResource(R.string.label_close))
+            }
+        }
     ) {
         Text(
             text = stringResource(R.string.dialog_title_missing_app),

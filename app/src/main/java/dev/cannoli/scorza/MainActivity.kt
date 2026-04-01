@@ -1122,6 +1122,20 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+                is DialogState.MissingApp -> {
+                    val glState = gameListViewModel.state.value
+                    if (glState.platformTag == "tools" || glState.platformTag == "ports") {
+                        val game = gameListViewModel.getSelectedGame()
+                        if (game != null) {
+                            dialogState.value = DialogState.None
+                            ioScope.launch {
+                                scanner.removeApkLaunch(glState.platformTag, game.displayName)
+                                gameListViewModel.reload()
+                                rescanSystemList()
+                            }
+                        }
+                    }
+                }
                 is DialogState.DeleteCollectionConfirm -> {
                     val name = ds.collectionName
                     val glState = gameListViewModel.state.value
@@ -1566,7 +1580,13 @@ class MainActivity : ComponentActivity() {
                         } else {
                         val glState = gameListViewModel.state.value
                         if (glState.platformTag == "tools" || glState.platformTag == "ports") {
-                            // No context menu for tools/ports
+                            val game = gameListViewModel.getSelectedGame()
+                            if (game != null) {
+                                dialogState.value = DialogState.ContextMenu(
+                                    gameName = game.displayName,
+                                    options = listOf(MENU_REMOVE)
+                                )
+                            }
                         } else {
                         val game = gameListViewModel.getSelectedGame()
                         if (game != null) {
@@ -2117,6 +2137,7 @@ class MainActivity : ComponentActivity() {
         private const val MENU_RA_GAME_ID = "RA Game ID"
         private const val MENU_ADD_FAVORITE = "Add To Favorites"
         private const val MENU_REMOVE_FAVORITE = "Remove From Favorites"
+        private const val MENU_REMOVE = "Remove Shortcut"
     }
 
     private val gameContextOptions = listOf(MENU_MANAGE_COLLECTIONS, MENU_EMULATOR_OVERRIDE, MENU_RA_GAME_ID, MENU_RENAME, MENU_DELETE_GAME)
@@ -2201,6 +2222,15 @@ class MainActivity : ComponentActivity() {
                     currentName = current,
                     cursorPos = current.length
                 )
+            }
+            selected == MENU_REMOVE -> {
+                pendingContextReturn = null
+                ioScope.launch {
+                    scanner.removeApkLaunch(glState.platformTag, game.displayName)
+                    gameListViewModel.reload()
+                    rescanSystemList()
+                }
+                dialogState.value = DialogState.None
             }
             selected == MENU_ADD_FAVORITE || selected == MENU_REMOVE_FAVORITE -> {
                 pendingContextReturn = null

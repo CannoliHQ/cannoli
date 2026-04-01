@@ -12,6 +12,7 @@
     <string name="label_change">CHANGE</string>
     <string name="label_sleep">SLEEP</string>
     <string name="label_close">CLOSE</string>
+    <string name="label_remove">REMOVE SHORTCUT</string>
     <string name="label_delete">DELETE</string>
     <string name="label_add">ADD</string>
     <string name="label_confirm">CONFIRM</string>
@@ -101,7 +102,7 @@
     <string name="dialog_missing_app">%1$s is not installed.</string>
     <string name="dialog_launch_error">%1$s</string>
     <string name="dialog_title_missing_core">Missing core</string>
-    <string name="dialog_title_missing_app">Missing app</string>
+    <string name="dialog_title_missing_app">Missing App</string>
     <string name="dialog_title_launch_error">Launch failed</string>
     <string name="dialog_rename_success">Renamed successfully</string>
     <string name="dialog_rename_failed">Rename failed: %1$s</string>
