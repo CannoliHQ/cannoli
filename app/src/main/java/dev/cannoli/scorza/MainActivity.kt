@@ -73,6 +73,7 @@ import dev.cannoli.scorza.ui.theme.hexToColor
 import dev.cannoli.scorza.ui.screens.InstallingScreen
 import dev.cannoli.scorza.ui.screens.SetupScreen
 import dev.cannoli.scorza.ui.theme.initFonts
+import dev.cannoli.scorza.model.Game
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
@@ -758,6 +759,20 @@ class MainActivity : ComponentActivity() {
         })
 
         rescanSystemList()
+
+        val quickResume = File(root, "Config/quick_resume.txt")
+        if (quickResume.exists()) {
+            val lines = try { quickResume.readLines() } catch (_: Exception) { emptyList() }
+            quickResume.delete()
+            if (lines.size >= 2) {
+                val romFile = File(lines[0])
+                val tag = lines[1]
+                if (romFile.exists()) {
+                    val game = Game(romFile, romFile.nameWithoutExtension, tag)
+                    launchManager.resumeGame(game)
+                }
+            }
+        }
 
         setContent {
             CannoliTheme {
