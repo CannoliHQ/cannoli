@@ -60,6 +60,7 @@ private const val ICON_WIFI_OFF = "\uDB81\uDDAA"
 private const val ICON_VPN = "\uDB82\uDFC4"
 private const val ICON_KITCHEN = "\uDB81\uDC8B"
 private const val ICON_UPDATE = "\uDB81\uDEB0"
+private const val ICON_CHARGING = "\uDB85\uDC0B"
 
 @Composable
 fun StatusBar(
@@ -242,33 +243,30 @@ private fun BatteryGauge(
     val tipHeight = (7 * scaleFactor).dp
     val borderWidth = (1.5f * scaleFactor).dp
     val cornerRadius = (3 * scaleFactor).dp
-    val fillFraction = (level / 100f).coerceIn(0f, 1f)
-
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
                 .width(bodyWidth)
                 .height(bodyHeight)
                 .border(borderWidth, textColor, RoundedCornerShape(cornerRadius)),
-            contentAlignment = Alignment.CenterStart
+            contentAlignment = Alignment.Center
         ) {
-            val innerPad = (2 * scaleFactor).dp
             Box(
                 modifier = Modifier
-                    .padding(innerPad)
+                    .padding(borderWidth)
                     .fillMaxHeight()
-                    .width((bodyWidth - innerPad * 2) * fillFraction)
+                    .width(bodyWidth - borderWidth * 2)
                     .background(textColor, RoundedCornerShape((1.5f * scaleFactor).dp))
             )
             Text(
-                text = stringResource(R.string.battery_level, level),
+                text = if (isCharging) ICON_CHARGING + stringResource(R.string.battery_level, level)
+                    else stringResource(R.string.battery_level, level),
                 style = TextStyle(
                     fontFamily = MPlus1Code,
                     fontWeight = FontWeight.Bold,
                     fontSize = (8 * scaleFactor).sp,
                     color = LocalCannoliColors.current.highlight
-                ),
-                modifier = Modifier.align(Alignment.Center)
+                )
             )
         }
         Box(
