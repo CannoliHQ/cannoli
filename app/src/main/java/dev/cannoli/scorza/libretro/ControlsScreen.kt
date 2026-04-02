@@ -23,6 +23,7 @@ import dev.cannoli.scorza.ui.components.PillRowKeyValue
 import dev.cannoli.scorza.ui.components.ScreenBackground
 import dev.cannoli.scorza.ui.components.ScreenTitle
 import dev.cannoli.scorza.ui.components.pillItemHeight
+import dev.cannoli.scorza.settings.ButtonLabelSet
 import dev.cannoli.scorza.ui.components.screenPadding
 
 private val verticalPadding = 8.dp
@@ -38,7 +39,8 @@ fun ControlsScreen(
     @StringRes titleRes: Int = R.string.title_controls,
     canUnmapSelected: Boolean = false,
     fontSize: TextUnit = 22.sp,
-    lineHeight: TextUnit = 32.sp
+    lineHeight: TextUnit = 32.sp,
+    buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER
 ) {
     val itemHeight = pillItemHeight(lineHeight, verticalPadding)
     val screenTitle = profileName ?: stringResource(titleRes)
@@ -87,14 +89,14 @@ fun ControlsScreen(
             val bottomLeft = if (listeningIndex >= 0) {
                 emptyList()
             } else {
-                listOf("B" to stringResource(R.string.label_back))
+                listOf(buttonLabelSet.back to stringResource(R.string.label_back))
             }
             val bottomRight = if (listeningIndex >= 0) {
                 listOf("" to stringResource(R.string.igm_press_button, remainingSec))
             } else {
                 buildList {
-                    if (canUnmapSelected) add("X" to stringResource(R.string.label_unmap))
-                    add("A" to stringResource(R.string.label_remap))
+                    if (canUnmapSelected) add(buttonLabelSet.x to stringResource(R.string.label_unmap))
+                    add(buttonLabelSet.confirm to stringResource(R.string.label_remap))
                 }
             }
 

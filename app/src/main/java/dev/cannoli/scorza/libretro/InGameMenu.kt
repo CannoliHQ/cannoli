@@ -42,6 +42,7 @@ import dev.cannoli.scorza.ui.components.ScreenBackground
 import dev.cannoli.scorza.ui.components.ScreenTitle
 import dev.cannoli.scorza.ui.components.pillItemHeight
 import dev.cannoli.scorza.ui.components.screenPadding
+import dev.cannoli.scorza.settings.ButtonLabelSet
 import dev.cannoli.scorza.ui.theme.GrayText
 
 
@@ -123,7 +124,8 @@ fun InGameMenu(
     slotOccupied: List<Boolean>,
     undoLabel: String?,
     fontSize: TextUnit = 22.sp,
-    lineHeight: TextUnit = 32.sp
+    lineHeight: TextUnit = 32.sp,
+    buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER
 ) {
     val itemHeight = pillItemHeight(lineHeight, verticalPadding)
     val showThumbnail = selectedIndex == menuOptions.saveStateIndex || selectedIndex == menuOptions.loadStateIndex
@@ -198,15 +200,15 @@ fun InGameMenu(
 
             val canDeleteSlot = showThumbnail && slotExists
             val leftItems = buildList {
-                add("B" to "BACK")
-                if (undoLabel != null) add("X" to undoLabel.uppercase())
-                if (canDeleteSlot) add("Y" to "DELETE")
+                add(buttonLabelSet.back to "BACK")
+                if (undoLabel != null) add(buttonLabelSet.x to undoLabel.uppercase())
+                if (canDeleteSlot) add(buttonLabelSet.y to "DELETE")
             }
             val rightItems = when {
-                selectedIndex == menuOptions.saveStateIndex -> listOf("◀▶" to "SLOT", "A" to "SAVE")
-                selectedIndex == menuOptions.loadStateIndex -> listOf("◀▶" to "SLOT", "A" to "LOAD")
-                onDiscRow -> listOf("◀▶" to "DISC", "A" to "SELECT")
-                else -> listOf("A" to "SELECT")
+                selectedIndex == menuOptions.saveStateIndex -> listOf("◀▶" to "SLOT", buttonLabelSet.confirm to "SAVE")
+                selectedIndex == menuOptions.loadStateIndex -> listOf("◀▶" to "SLOT", buttonLabelSet.confirm to "LOAD")
+                onDiscRow -> listOf("◀▶" to "DISC", buttonLabelSet.confirm to "SELECT")
+                else -> listOf(buttonLabelSet.confirm to "SELECT")
             }
 
             BottomBar(

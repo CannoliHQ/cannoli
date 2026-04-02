@@ -27,6 +27,7 @@ import dev.cannoli.scorza.ui.components.ScreenTitle
 import dev.cannoli.scorza.ui.components.pillInternalH
 import dev.cannoli.scorza.ui.components.pillItemHeight
 import dev.cannoli.scorza.ui.components.screenPadding
+import dev.cannoli.scorza.settings.ButtonLabelSet
 import dev.cannoli.scorza.ui.theme.LocalCannoliColors
 
 private val verticalPadding = 8.dp
@@ -47,10 +48,11 @@ fun IGMSettingsScreen(
     bottomBarLeft: List<Pair<String, String>> = emptyList(),
     bottomBarRight: List<Pair<String, String>> = emptyList(),
     fontSize: TextUnit = 22.sp,
-    lineHeight: TextUnit = 32.sp
+    lineHeight: TextUnit = 32.sp,
+    buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER
 ) {
-    val resolvedLeft = bottomBarLeft.ifEmpty { listOf("B" to stringResource(R.string.label_back)) }
-    val resolvedRight = bottomBarRight.ifEmpty { listOf("←→" to stringResource(R.string.label_change), "A" to stringResource(R.string.label_select)) }
+    val resolvedLeft = bottomBarLeft.ifEmpty { listOf(buttonLabelSet.back to stringResource(R.string.label_back)) }
+    val resolvedRight = bottomBarRight.ifEmpty { listOf("←→" to stringResource(R.string.label_change), buttonLabelSet.confirm to stringResource(R.string.label_select)) }
     val itemHeight = pillItemHeight(lineHeight, verticalPadding)
     val colors = LocalCannoliColors.current
 
