@@ -49,6 +49,8 @@ import dev.cannoli.scorza.scanner.FileScanner
 import dev.cannoli.scorza.scanner.OrderingManager
 import dev.cannoli.scorza.scanner.PlatformResolver
 import dev.cannoli.scorza.scanner.RecentlyPlayedManager
+import androidx.lifecycle.lifecycleScope
+import dev.cannoli.scorza.settings.ButtonLabelSet
 import dev.cannoli.scorza.settings.GlobalOverridesManager
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.components.COLOR_GRID_COLS
@@ -819,6 +821,12 @@ class MainActivity : ComponentActivity() {
             }
         )
         wireInput()
+
+        lifecycleScope.launch {
+            settingsViewModel.appSettings.collect { appSettings ->
+                inputHandler.swapConfirmBack = appSettings.buttonLabelSet != ButtonLabelSet.PLUMBER
+            }
+        }
 
         onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
