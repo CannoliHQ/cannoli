@@ -140,16 +140,21 @@ class GameListViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val entries = if (type == "tools") scanner.scanTools() else scanner.scanPorts()
-                val games = entries.map { (name, launch) ->
+                val games = entries.map { (file, name, launch) ->
                     Game(
-                        file = java.io.File(name),
+                        file = file,
                         displayName = name,
                         platformTag = type,
                         launchTarget = launch
                     )
                 }
+                val favPaths = scanner.getFavoritePaths()
+                val starred = games.map { game ->
+                    if (game.file.absolutePath in favPaths) game.copy(displayName = "★ ${game.displayName}") else game
+                }
                 val order = if (type == "tools") scanner.loadToolOrder() else scanner.loadPortOrder()
-                val ordered = applyCustomOrder(games, order)
+                val ordered = applyCustomOrder(starred, order)
+                    .sortedBy { !it.displayName.startsWith("★") }
                 _state.value = State(
                     platformTag = type,
                     breadcrumb = displayName,
@@ -288,7 +293,7 @@ class GameListViewModel(
     fun toggleFavorite(onDone: () -> Unit = {}) {
         val current = _state.value
         val game = current.games.getOrNull(current.selectedIndex) ?: return
-        if (game.isSubfolder || game.isChildCollection || current.isCollectionsList || current.platformTag in listOf("tools", "ports")) return
+        if (game.isSubfolder || game.isChildCollection || current.isCollectionsList) return
         val path = game.file.absolutePath
         val isFav = game.displayName.startsWith("★") ||
             (current.isCollection && current.collectionName == "Favorites")
@@ -298,6 +303,15 @@ class GameListViewModel(
             else scanner.addToCollection("Favorites", path)
             val newGames = if (current.isCollection && current.collectionName != null) {
                 scanner.scanCollectionGames(current.collectionName)
+            } else if (current.platformTag == "tools" || current.platformTag == "ports") {
+                val entries = if (current.platformTag == "tools") scanner.scanTools() else scanner.scanPorts()
+                val favPaths = scanner.getFavoritePaths()
+                val games = entries.map { (file, name, launch) ->
+                    val starred = if (file.absolutePath in favPaths) "★ $name" else name
+                    Game(file = file, displayName = starred, platformTag = current.platformTag, launchTarget = launch)
+                }
+                val order = if (current.platformTag == "tools") scanner.loadToolOrder() else scanner.loadPortOrder()
+                applyCustomOrder(games, order).sortedBy { !it.displayName.startsWith("★") }
             } else {
                 scanner.scanGames(current.platformTags, current.subfolderPath)
             }

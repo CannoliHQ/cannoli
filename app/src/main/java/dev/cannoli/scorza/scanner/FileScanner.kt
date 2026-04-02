@@ -356,28 +356,43 @@ class FileScanner(
             .map { File(it) }
             .filter { it.exists() && it.isFile }
             .map { file ->
-                val tag = resolvePlatformTag(file)
-                val rawName = file.nameWithoutExtension
-                val displayName = rawName.replace(discRegex, "").trim().ifEmpty { rawName }
-                val artFile = findArt(tag, displayName)
-                val emuLaunch = platformResolver.getEmuLaunch(tag, romsDir)
-                val coreName = platformResolver.getCoreName(tag)
-                val appPackage = platformResolver.getAppPackage(tag)
+                if (file.extension == "apk_launch") {
+                    val pkg = try { file.readText().trim() } catch (_: IOException) { "" }
+                    val tag = when {
+                        file.absolutePath.startsWith(toolsDir.absolutePath + "/") -> "tools"
+                        file.absolutePath.startsWith(portsDir.absolutePath + "/") -> "ports"
+                        else -> file.parentFile?.name ?: ""
+                    }
+                    Game(
+                        file = file,
+                        displayName = file.nameWithoutExtension,
+                        platformTag = tag,
+                        launchTarget = if (pkg.isNotEmpty()) LaunchTarget.ApkLaunch(pkg) else LaunchTarget.RetroArch
+                    )
+                } else {
+                    val tag = resolvePlatformTag(file)
+                    val rawName = file.nameWithoutExtension
+                    val displayName = rawName.replace(discRegex, "").trim().ifEmpty { rawName }
+                    val artFile = findArt(tag, displayName)
+                    val emuLaunch = platformResolver.getEmuLaunch(tag, romsDir)
+                    val coreName = platformResolver.getCoreName(tag)
+                    val appPackage = platformResolver.getAppPackage(tag)
 
-                val target = when {
-                    emuLaunch != null -> emuLaunch
-                    coreName != null -> LaunchTarget.RetroArch
-                    appPackage != null -> LaunchTarget.ApkLaunch(appPackage)
-                    else -> LaunchTarget.RetroArch
+                    val target = when {
+                        emuLaunch != null -> emuLaunch
+                        coreName != null -> LaunchTarget.RetroArch
+                        appPackage != null -> LaunchTarget.ApkLaunch(appPackage)
+                        else -> LaunchTarget.RetroArch
+                    }
+
+                    Game(
+                        file = file,
+                        displayName = displayName,
+                        platformTag = tag,
+                        artFile = artFile,
+                        launchTarget = target
+                    )
                 }
-
-                Game(
-                    file = file,
-                    displayName = displayName,
-                    platformTag = tag,
-                    artFile = artFile,
-                    launchTarget = target
-                )
             }
             .let(::stripTags)
             .map { game ->
@@ -513,11 +528,11 @@ class FileScanner(
         }
     }
 
-    fun scanTools(): List<Pair<String, LaunchTarget.ApkLaunch>> {
+    fun scanTools(): List<Triple<File, String, LaunchTarget.ApkLaunch>> {
         return scanApkLaunchesWithNames(toolsDir)
     }
 
-    fun scanPorts(): List<Pair<String, LaunchTarget.ApkLaunch>> {
+    fun scanPorts(): List<Triple<File, String, LaunchTarget.ApkLaunch>> {
         return scanApkLaunchesWithNames(portsDir)
     }
 
@@ -568,7 +583,7 @@ class FileScanner(
         }
     }
 
-    private fun scanApkLaunchesWithNames(dir: File): List<Pair<String, LaunchTarget.ApkLaunch>> {
+    private fun scanApkLaunchesWithNames(dir: File): List<Triple<File, String, LaunchTarget.ApkLaunch>> {
         if (!dir.exists()) return emptyList()
 
         val files = dir.listFiles { f -> f.extension == "apk_launch" } ?: return emptyList()
@@ -578,9 +593,9 @@ class FileScanner(
                 file.readText().trim()
             } catch (_: IOException) { return@mapNotNull null }
             if (pkg.isNotEmpty()) {
-                file.nameWithoutExtension to LaunchTarget.ApkLaunch(pkg)
+                Triple(file, file.nameWithoutExtension, LaunchTarget.ApkLaunch(pkg))
             } else null
-        }.sortedNatural { it.first }
+        }.sortedNatural { it.second }
     }
 
     fun getCollectionsContaining(romPath: String): Set<String> {
