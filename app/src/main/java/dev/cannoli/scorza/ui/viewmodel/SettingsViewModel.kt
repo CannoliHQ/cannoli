@@ -10,6 +10,7 @@ import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.isPackageInstalled
 import dev.cannoli.scorza.settings.ArtScale
 import dev.cannoli.scorza.settings.SettingsRepository
+import dev.cannoli.scorza.settings.ButtonLabelSet
 import dev.cannoli.scorza.settings.TextSize
 import dev.cannoli.scorza.settings.TimeFormat
 import dev.cannoli.scorza.ui.theme.BPReplay
@@ -120,7 +121,8 @@ class SettingsViewModel(
         val mainMenuQuit: Boolean = false,
         val retroArchDiyMode: Boolean = true,
         val artWidth: Int = 40,
-        val artScale: ArtScale = ArtScale.DEFAULT
+        val artScale: ArtScale = ArtScale.DEFAULT,
+        val buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER
     )
 
     private val _state = MutableStateFlow(State())
@@ -151,7 +153,8 @@ class SettingsViewModel(
         mainMenuQuit = settings.mainMenuQuit,
         retroArchDiyMode = settings.retroArchDiyMode,
         artWidth = settings.artWidth,
-        artScale = settings.artScale
+        artScale = settings.artScale,
+        buttonLabelSet = settings.buttonLabelSet
     )
 
     private val allCategories = listOf(
@@ -305,6 +308,11 @@ class SettingsViewModel(
                 val entries = TextSize.entries
                 val cur = entries.indexOf(settings.textSize).coerceAtLeast(0)
                 settings.textSize = entries[((cur + direction) % entries.size + entries.size) % entries.size]
+            }
+            "button_labels" -> {
+                val entries = ButtonLabelSet.entries
+                val cur = entries.indexOf(settings.buttonLabelSet).coerceAtLeast(0)
+                settings.buttonLabelSet = entries[((cur + direction) % entries.size + entries.size) % entries.size]
             }
             "font" -> {
                 val cur = fontOptions.indexOfFirst { it.key == settings.font }.coerceAtLeast(0)
@@ -593,6 +601,7 @@ class SettingsViewModel(
         "input" -> listOf(
             SettingsItem("profiles", R.string.setting_profiles, isEditable = true),
             SettingsItem("shortcuts", R.string.setting_shortcuts, isEditable = true),
+            SettingsItem("button_labels", R.string.setting_button_labels, valueText = settings.buttonLabelSet.name.lowercase().replaceFirstChar { it.uppercase() }),
             SettingsItem("platform_switching", R.string.setting_platform_switching, valueRes = onOff(settings.platformSwitching)),
             SettingsItem("swap_play_resume", R.string.setting_swap_play_resume, valueRes = onOff(settings.swapPlayResume)),
             SettingsItem("main_menu_quit", R.string.setting_main_menu_quit, valueRes = onOff(settings.mainMenuQuit))

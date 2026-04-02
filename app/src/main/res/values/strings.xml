@@ -55,6 +55,7 @@
     <string name="setting_profiles">Profiles</string>
     <string name="setting_controls">Button Mapping</string>
     <string name="setting_shortcuts">Shortcuts</string>
+    <string name="setting_button_labels">Button Labels</string>
     <string name="setting_platform_switching">L1 / R1 Switches Platform</string>
     <string name="setting_swap_play_resume">Swap Play and Resume</string>
     <string name="setting_main_menu_quit">Main Menu Quit</string>
