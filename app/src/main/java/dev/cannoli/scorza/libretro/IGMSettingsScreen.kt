@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
@@ -28,8 +29,6 @@ import dev.cannoli.scorza.ui.components.pillItemHeight
 import dev.cannoli.scorza.ui.components.screenPadding
 import dev.cannoli.scorza.ui.theme.LocalCannoliColors
 
-private val fontSize = 22.sp
-private val lineHeight = 32.sp
 private val verticalPadding = 8.dp
 
 data class IGMSettingsItem(
@@ -46,7 +45,9 @@ fun IGMSettingsScreen(
     coreInfo: String = "",
     description: String? = null,
     bottomBarLeft: List<Pair<String, String>> = emptyList(),
-    bottomBarRight: List<Pair<String, String>> = emptyList()
+    bottomBarRight: List<Pair<String, String>> = emptyList(),
+    fontSize: TextUnit = 22.sp,
+    lineHeight: TextUnit = 32.sp
 ) {
     val resolvedLeft = bottomBarLeft.ifEmpty { listOf("B" to stringResource(R.string.label_back)) }
     val resolvedRight = bottomBarRight.ifEmpty { listOf("←→" to stringResource(R.string.label_change), "A" to stringResource(R.string.label_select)) }
