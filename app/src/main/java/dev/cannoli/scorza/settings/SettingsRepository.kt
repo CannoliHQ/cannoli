@@ -296,10 +296,10 @@ class SettingsRepository(context: Context) {
 enum class TextSize(val sp: Int) {
     SP16(16), SP18(18), SP20(20), SP22(22), SP24(24), SP26(26), SP28(28), SP30(30);
     companion object {
-        val DEFAULT = SP22
+        val DEFAULT = SP24
         fun fromString(value: String?): TextSize = when (value) {
             "COMPACT" -> SP16
-            "DEFAULT" -> SP22
+            "DEFAULT" -> SP24
             else -> entries.firstOrNull { it.name == value } ?: DEFAULT
         }
     }
