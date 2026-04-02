@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import kotlinx.coroutines.delay
+import androidx.compose.foundation.layout.height
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -62,25 +63,33 @@ fun MarqueeEffect(scrollState: ScrollState, active: Boolean, key: Any = active, 
 fun PillRow(
     isSelected: Boolean,
     verticalPadding: Dp = 8.dp,
+    lineHeight: TextUnit = TextUnit.Unspecified,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
     val colors = LocalCannoliColors.current
+    val heightMod = if (lineHeight != TextUnit.Unspecified) {
+        Modifier.height(pillItemHeight(lineHeight, verticalPadding))
+    } else Modifier
     if (isSelected) {
         Box(
             modifier = modifier
+                .then(heightMod)
                 .padding(vertical = 2.dp)
                 .clip(RoundedCornerShape(50))
                 .background(colors.highlight)
-                .padding(horizontal = pillInternalH, vertical = verticalPadding)
+                .padding(horizontal = pillInternalH, vertical = verticalPadding),
+            contentAlignment = Alignment.CenterStart
         ) {
             content()
         }
     } else {
         Box(
             modifier = modifier
+                .then(heightMod)
                 .padding(vertical = 2.dp)
-                .padding(horizontal = pillInternalH, vertical = verticalPadding)
+                .padding(horizontal = pillInternalH, vertical = verticalPadding),
+            contentAlignment = Alignment.CenterStart
         ) {
             content()
         }
@@ -105,7 +114,7 @@ fun PillRowText(
 
     val iconStyle = textStyle.copy(fontFamily = MPlus1Code)
 
-    PillRow(isSelected = isSelected, verticalPadding = verticalPadding) {
+    PillRow(isSelected = isSelected, verticalPadding = verticalPadding, lineHeight = lineHeight) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (checkState != null) {
                 Text(
@@ -158,7 +167,7 @@ fun PillRowKeyValue(
     val valueColor = if (isSelected) colors.highlightText.copy(alpha = 0.5f) else GrayText
     val borderColor = if (isSelected) colors.highlightText.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.3f)
 
-    PillRow(isSelected = isSelected, verticalPadding = verticalPadding, modifier = Modifier.fillMaxWidth()) {
+    PillRow(isSelected = isSelected, verticalPadding = verticalPadding, lineHeight = lineHeight, modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically

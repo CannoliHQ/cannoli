@@ -270,7 +270,7 @@ private fun GameRow(
     MarqueeEffect(scrollState, isSelected, key = game.displayName to isSelected)
 
     val colors = LocalCannoliColors.current
-    PillRow(isSelected = isSelected, verticalPadding = verticalPadding) {
+    PillRow(isSelected = isSelected, verticalPadding = verticalPadding, lineHeight = lineHeight) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (checkState != null) {
                 Text(
