@@ -33,6 +33,7 @@ import dev.cannoli.scorza.ui.components.ScreenTitle
 import dev.cannoli.scorza.ui.components.pillItemHeight
 import dev.cannoli.scorza.ui.components.screenPadding
 import dev.cannoli.scorza.ui.theme.LocalCannoliColors
+import dev.cannoli.scorza.settings.ButtonLabelSet
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel.ListItem
 
@@ -48,7 +49,8 @@ fun SystemListScreen(
     onVisibleRangeChanged: (Int, Int, Boolean) -> Unit = { _, _, _ -> },
     kitchenRunning: Boolean = false,
     title: String = "",
-    mainMenuQuit: Boolean = false
+    mainMenuQuit: Boolean = false,
+    buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER
 ) {
     val state by viewModel.state.collectAsState()
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
@@ -145,15 +147,15 @@ fun SystemListScreen(
             }
 
             val rightItems = if (state.items.isEmpty()) {
-                listOf("Y" to stringResource(R.string.label_kitchen))
+                listOf(buttonLabelSet.y to stringResource(R.string.label_kitchen))
             } else if (kitchenRunning) {
-                listOf("Y" to stringResource(R.string.label_kitchen), "A" to stringResource(R.string.label_select))
+                listOf(buttonLabelSet.y to stringResource(R.string.label_kitchen), buttonLabelSet.confirm to stringResource(R.string.label_select))
             } else {
-                listOf("A" to stringResource(R.string.label_select))
+                listOf(buttonLabelSet.confirm to stringResource(R.string.label_select))
             }
             val leftItems = buildList {
-                if (mainMenuQuit) add("B" to stringResource(R.string.label_quit))
-                add("X" to stringResource(R.string.label_settings))
+                if (mainMenuQuit) add(buttonLabelSet.back to stringResource(R.string.label_quit))
+                add(buttonLabelSet.x to stringResource(R.string.label_settings))
             }
             BottomBar(
                 modifier = Modifier.align(Alignment.BottomCenter),
@@ -175,7 +177,8 @@ fun SystemListScreen(
             backgroundTint = backgroundTint,
             listFontSize = listFontSize,
             listLineHeight = listLineHeight,
-            listVerticalPadding = listVerticalPadding
+            listVerticalPadding = listVerticalPadding,
+            buttonLabelSet = buttonLabelSet
         )
     }
 }

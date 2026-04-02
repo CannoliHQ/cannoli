@@ -26,6 +26,7 @@ import dev.cannoli.scorza.ui.components.ScreenBackground
 import dev.cannoli.scorza.ui.components.ScreenTitle
 import dev.cannoli.scorza.ui.components.pillItemHeight
 import dev.cannoli.scorza.ui.components.screenPadding
+import dev.cannoli.scorza.settings.ButtonLabelSet
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 
 @Composable
@@ -40,7 +41,8 @@ fun SettingsScreen(
     downloadProgress: Float = 0f,
     downloadError: String? = null,
     updateAvailable: Boolean = false,
-    onVisibleRangeChanged: (Int, Int, Boolean) -> Unit = { _, _, _ -> }
+    onVisibleRangeChanged: (Int, Int, Boolean) -> Unit = { _, _, _ -> },
+    buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER
 ) {
     val state by viewModel.state.collectAsState()
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
@@ -101,15 +103,15 @@ fun SettingsScreen(
             val isEditableItem = selectedItem?.isEditable == true
             val showChange = !isEditableItem && selectedItem?.canCycle != false
             val leftItems = if (showChange) {
-                listOf("B" to stringResource(R.string.label_back), "◀▶" to stringResource(R.string.label_change))
+                listOf(buttonLabelSet.back to stringResource(R.string.label_back), "◀▶" to stringResource(R.string.label_change))
             } else {
-                listOf("B" to stringResource(R.string.label_back))
+                listOf(buttonLabelSet.back to stringResource(R.string.label_back))
             }
             val showClear = selectedItem?.key == "rom_directory" && selectedItem.valueText != null
             val rightItems = if (isColorItem) {
-                listOf("A" to stringResource(R.string.label_select))
+                listOf(buttonLabelSet.confirm to stringResource(R.string.label_select))
             } else if (showClear) {
-                listOf("X" to stringResource(R.string.label_clear))
+                listOf(buttonLabelSet.x to stringResource(R.string.label_clear))
             } else {
                 emptyList()
             }
@@ -149,8 +151,8 @@ fun SettingsScreen(
 
             BottomBar(
                 modifier = Modifier.align(Alignment.BottomCenter),
-                leftItems = listOf("B" to stringResource(R.string.label_back)),
-                rightItems = listOf("A" to stringResource(R.string.label_select))
+                leftItems = listOf(buttonLabelSet.back to stringResource(R.string.label_back)),
+                rightItems = listOf(buttonLabelSet.confirm to stringResource(R.string.label_select))
             )
         }
     }
@@ -166,7 +168,8 @@ fun SettingsScreen(
             listVerticalPadding = listVerticalPadding,
             downloadProgress = downloadProgress,
             downloadError = downloadError,
-            updateAvailable = updateAvailable
+            updateAvailable = updateAvailable,
+            buttonLabelSet = buttonLabelSet
         )
     }
 }

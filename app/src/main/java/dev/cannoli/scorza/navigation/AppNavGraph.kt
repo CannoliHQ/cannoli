@@ -55,6 +55,7 @@ import dev.cannoli.scorza.ui.theme.CannoliColors
 import dev.cannoli.scorza.ui.theme.GrayText
 import dev.cannoli.scorza.ui.theme.LocalCannoliColors
 import dev.cannoli.scorza.ui.theme.LocalScaleFactor
+import dev.cannoli.scorza.settings.ButtonLabelSet
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
@@ -97,6 +98,8 @@ fun AppNavGraph(
     val listLineHeight = (appSettings.textSize.sp + 10).sp
     val listVerticalPadding = 4.dp
 
+    val labels = appSettings.buttonLabelSet
+
     val cannoliColors = CannoliColors(
         highlight = appSettings.colorHighlight,
         text = appSettings.colorText,
@@ -125,7 +128,8 @@ fun AppNavGraph(
                     onVisibleRangeChanged = onVisibleRangeChanged,
                     kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
                     title = appSettings.title,
-                    mainMenuQuit = appSettings.mainMenuQuit
+                    mainMenuQuit = appSettings.mainMenuQuit,
+                    buttonLabelSet = labels
                 )
             }
             is LauncherScreen.GameList -> {
@@ -141,7 +145,8 @@ fun AppNavGraph(
                     resumableGames = resumableGames,
                     swapPlayResume = appSettings.swapPlayResume,
                     artWidth = appSettings.artWidth,
-                    artScale = appSettings.artScale
+                    artScale = appSettings.artScale,
+                    buttonLabelSet = labels
                 )
             }
             is LauncherScreen.Settings -> SettingsScreen(
@@ -155,7 +160,8 @@ fun AppNavGraph(
                 downloadProgress = downloadProgress,
                 downloadError = downloadError,
                 updateAvailable = updateAvailable,
-                onVisibleRangeChanged = onVisibleRangeChanged
+                onVisibleRangeChanged = onVisibleRangeChanged,
+                buttonLabelSet = labels
             )
             is LauncherScreen.CoreMapping -> {
                 val filterLabel = when (currentScreen.filter) {
@@ -174,9 +180,10 @@ fun AppNavGraph(
                     listLineHeight = listLineHeight,
                     fullWidth = true,
                     rightBottomItems = buildList {
-                        if (canSelect) add("A" to stringResource(R.string.label_select))
-                        add("Y" to filterLabel)
-                    }
+                        if (canSelect) add(labels.confirm to stringResource(R.string.label_select))
+                        add(labels.y to filterLabel)
+                    },
+                    buttonLabelSet = labels
                 ) {
                     List(
                         items = currentScreen.mappings,
@@ -207,7 +214,8 @@ fun AppNavGraph(
                     listFontSize = listFontSize,
                     listLineHeight = listLineHeight,
                     fullWidth = true,
-                    rightBottomItems = listOf("A" to stringResource(R.string.label_select))
+                    rightBottomItems = listOf(labels.confirm to stringResource(R.string.label_select)),
+                    buttonLabelSet = labels
                 ) {
                     if (currentScreen.cores.isEmpty()) {
                         Text(
@@ -256,7 +264,8 @@ fun AppNavGraph(
                     listFontSize = listFontSize,
                     listLineHeight = listLineHeight,
                     fullWidth = true,
-                    rightBottomItems = listOf("A" to stringResource(R.string.label_select))
+                    rightBottomItems = listOf(labels.confirm to stringResource(R.string.label_select)),
+                    buttonLabelSet = labels
                 ) {
                     List(
                         items = currentScreen.colors,
@@ -283,7 +292,8 @@ fun AppNavGraph(
                         backgroundTint = appSettings.backgroundTint,
                         listFontSize = listFontSize,
                         listLineHeight = listLineHeight,
-                        listVerticalPadding = listVerticalPadding
+                        listVerticalPadding = listVerticalPadding,
+                        buttonLabelSet = labels
                     )
                 }
             }
@@ -295,9 +305,10 @@ fun AppNavGraph(
                     listFontSize = listFontSize,
                     listLineHeight = listLineHeight,
                     leftBottomItems = listOf(
-                        "Y" to stringResource(R.string.label_new)
+                        labels.y to stringResource(R.string.label_new)
                     ),
-                    rightBottomItems = emptyList()
+                    rightBottomItems = emptyList(),
+                    buttonLabelSet = labels
                 ) {
                     if (currentScreen.collections.isEmpty()) {
                         Text(
@@ -332,7 +343,8 @@ fun AppNavGraph(
                         backgroundTint = appSettings.backgroundTint,
                         listFontSize = listFontSize,
                         listLineHeight = listLineHeight,
-                        listVerticalPadding = listVerticalPadding
+                        listVerticalPadding = listVerticalPadding,
+                        buttonLabelSet = labels
                     )
                 } else {
                     val d = dialog
@@ -348,7 +360,8 @@ fun AppNavGraph(
                     title = stringResource(R.string.title_child_collections),
                     listFontSize = listFontSize,
                     listLineHeight = listLineHeight,
-                    rightBottomItems = emptyList()
+                    rightBottomItems = emptyList(),
+                    buttonLabelSet = labels
                 ) {
                     if (currentScreen.collections.isEmpty()) {
                         Text(
@@ -385,7 +398,8 @@ fun AppNavGraph(
                     listFontSize = listFontSize,
                     listLineHeight = listLineHeight,
                     fullWidth = true,
-                    rightBottomItems = emptyList()
+                    rightBottomItems = emptyList(),
+                    buttonLabelSet = labels
                 ) {
                     List(
                         items = currentScreen.apps,
@@ -412,7 +426,8 @@ fun AppNavGraph(
                     title = stringResource(R.string.title_profiles),
                     listFontSize = listFontSize,
                     listLineHeight = listLineHeight,
-                    rightBottomItems = listOf("X" to stringResource(R.string.label_new), "A" to stringResource(R.string.label_edit))
+                    rightBottomItems = listOf(labels.x to stringResource(R.string.label_new), labels.confirm to stringResource(R.string.label_edit)),
+                    buttonLabelSet = labels
                 ) {
                     List(
                         items = currentScreen.profiles,
@@ -440,7 +455,8 @@ fun AppNavGraph(
                         backgroundTint = appSettings.backgroundTint,
                         listFontSize = listFontSize,
                         listLineHeight = listLineHeight,
-                        listVerticalPadding = listVerticalPadding
+                        listVerticalPadding = listVerticalPadding,
+                        buttonLabelSet = labels
                     )
                 }
             }
@@ -477,7 +493,8 @@ fun AppNavGraph(
                     listLineHeight = listLineHeight,
                     fullWidth = true,
                     rightBottomItems = if (currentScreen.listening) listOf("" to stringResource(R.string.label_hold_buttons))
-                        else listOf("X" to stringResource(R.string.label_clear), "A" to stringResource(R.string.label_set))
+                        else listOf(labels.x to stringResource(R.string.label_clear), labels.confirm to stringResource(R.string.label_set)),
+                    buttonLabelSet = labels
                 ) {
                     List(
                         items = ShortcutAction.entries.toList(),
@@ -559,7 +576,8 @@ fun AppNavGraph(
                     listFontSize = listFontSize,
                     listLineHeight = listLineHeight,
                     fullWidth = true,
-                    rightBottomItems = emptyList()
+                    rightBottomItems = emptyList(),
+                    buttonLabelSet = labels
                 ) {
                     if (currentScreen.loading) {
                         // wait for broadcast response
