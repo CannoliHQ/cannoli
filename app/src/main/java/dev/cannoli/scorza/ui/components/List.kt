@@ -28,9 +28,7 @@ fun <T> List(
 
     val listModifier = if (itemHeight != Dp.Unspecified) {
         modifier.layout { measurable, constraints ->
-            val itemPx = listState.layoutInfo.visibleItemsInfo
-                .firstOrNull { it.size > 0 }?.size
-                ?: itemHeight.roundToPx()
+            val itemPx = itemHeight.roundToPx()
             val fullItems = constraints.maxHeight / itemPx
             val heightPx = fullItems * itemPx
             val placeable = measurable.measure(
