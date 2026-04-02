@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.ui.components.BottomBar
@@ -109,8 +110,6 @@ enum class ShortcutAction(val label: String) {
     OPEN_GUIDE("Open Guide")
 }
 
-private val fontSize = 22.sp
-private val lineHeight = 32.sp
 private val verticalPadding = 8.dp
 
 @Composable
@@ -122,7 +121,9 @@ fun InGameMenu(
     slotThumbnail: Bitmap?,
     slotExists: Boolean,
     slotOccupied: List<Boolean>,
-    undoLabel: String?
+    undoLabel: String?,
+    fontSize: TextUnit = 22.sp,
+    lineHeight: TextUnit = 32.sp
 ) {
     val itemHeight = pillItemHeight(lineHeight, verticalPadding)
     val showThumbnail = selectedIndex == menuOptions.saveStateIndex || selectedIndex == menuOptions.loadStateIndex

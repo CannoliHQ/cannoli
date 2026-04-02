@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.annotation.StringRes
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
@@ -24,8 +25,6 @@ import dev.cannoli.scorza.ui.components.ScreenTitle
 import dev.cannoli.scorza.ui.components.pillItemHeight
 import dev.cannoli.scorza.ui.components.screenPadding
 
-private val fontSize = 22.sp
-private val lineHeight = 32.sp
 private val verticalPadding = 8.dp
 
 @Composable
@@ -37,7 +36,9 @@ fun ControlsScreen(
     listenCountdownMs: Int = 0,
     profileName: String? = null,
     @StringRes titleRes: Int = R.string.title_controls,
-    canUnmapSelected: Boolean = false
+    canUnmapSelected: Boolean = false,
+    fontSize: TextUnit = 22.sp,
+    lineHeight: TextUnit = 32.sp
 ) {
     val itemHeight = pillItemHeight(lineHeight, verticalPadding)
     val screenTitle = profileName ?: stringResource(titleRes)

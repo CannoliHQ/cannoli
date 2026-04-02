@@ -47,6 +47,7 @@ import dev.cannoli.scorza.ui.components.pillInternalH
 import androidx.compose.ui.platform.LocalContext
 import dev.cannoli.scorza.ui.components.screenPadding
 import dev.cannoli.scorza.ui.theme.LocalCannoliColors
+import dev.cannoli.scorza.ui.theme.LocalScaleFactor
 
 data class GameInfo(
     val coreName: String,
@@ -101,10 +102,13 @@ fun LibretroScreen(
     val isGuideScreen = screen is IGMScreen.Guide
     val context = LocalContext.current
     val settings = remember { dev.cannoli.scorza.settings.SettingsRepository(context) }
+    val igmFontSize = settings.textSize.sp.sp
+    val igmLineHeight = (settings.textSize.sp + 10).sp
+    val igmScaleFactor = settings.textSize.sp / 22f
     val statusBarEnabled = (settings.showWifi || settings.showBluetooth || settings.showClock || settings.showBattery || settings.showVpn) && !showDescription && !isGuideScreen
     val statusBarLeftEdge = remember { mutableIntStateOf(Int.MAX_VALUE) }
 
-    CompositionLocalProvider(LocalStatusBarLeftEdge provides statusBarLeftEdge) {
+    CompositionLocalProvider(LocalStatusBarLeftEdge provides statusBarLeftEdge, LocalScaleFactor provides igmScaleFactor) {
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(
             factory = { glSurfaceView },
@@ -121,7 +125,9 @@ fun LibretroScreen(
                     slotThumbnail = slotThumbnail,
                     slotExists = slotExists,
                     slotOccupied = slotOccupied,
-                    undoLabel = undoLabel
+                    undoLabel = undoLabel,
+                    fontSize = igmFontSize,
+                    lineHeight = igmLineHeight
                 )
                 if (screen.confirmDeleteSlot) {
                     Box(
@@ -171,7 +177,9 @@ fun LibretroScreen(
                         items = menuItems,
                         selectedIndex = screen.menuIndex,
                         bottomBarLeft = listOf("B" to stringResource(R.string.label_cancel)),
-                        bottomBarRight = listOf("A" to stringResource(R.string.label_select))
+                        bottomBarRight = listOf("A" to stringResource(R.string.label_select)),
+                        fontSize = igmFontSize,
+                        lineHeight = igmLineHeight
                     )
                 } else {
                     val items = profileNames.map { name ->
@@ -185,7 +193,9 @@ fun LibretroScreen(
                         items = items,
                         selectedIndex = screen.selectedIndex,
                         bottomBarLeft = listOf("B" to stringResource(R.string.label_back), "X" to stringResource(R.string.label_new)),
-                        bottomBarRight = listOf("Y" to stringResource(R.string.label_edit), "A" to stringResource(R.string.label_select))
+                        bottomBarRight = listOf("Y" to stringResource(R.string.label_edit), "A" to stringResource(R.string.label_select)),
+                        fontSize = igmFontSize,
+                        lineHeight = igmLineHeight
                     )
                 }
             }
@@ -201,7 +211,9 @@ fun LibretroScreen(
                     listeningIndex = screen.listeningIndex,
                     listenCountdownMs = screen.listenCountdownMs,
                     profileName = profileName,
-                    canUnmapSelected = canUnmap
+                    canUnmapSelected = canUnmap,
+                    fontSize = igmFontSize,
+                    lineHeight = igmLineHeight
                 )
             }
             is IGMScreen.ProfileName -> {
@@ -252,7 +264,9 @@ fun LibretroScreen(
                     selectedIndex = screen.selectedIndex,
                     coreInfo = coreInfo,
                     description = description,
-                    bottomBarRight = bottomBarRight
+                    bottomBarRight = bottomBarRight,
+                    fontSize = igmFontSize,
+                    lineHeight = igmLineHeight
                 )
             }
             is IGMScreen.Info -> {
@@ -276,8 +290,8 @@ fun LibretroScreen(
                         ) {
                             ScreenTitle(
                                 text = gameTitle,
-                                fontSize = 22.sp,
-                                lineHeight = 32.sp
+                                fontSize = igmFontSize,
+                                lineHeight = igmLineHeight
                             )
                             val infoModifier = Modifier.padding(start = pillInternalH)
                             Column(
@@ -326,7 +340,9 @@ fun LibretroScreen(
                 IGMSettingsScreen(
                     title = stringResource(R.string.title_guide),
                     items = guideFiles.map { IGMSettingsItem(it.name) },
-                    selectedIndex = screen.selectedIndex
+                    selectedIndex = screen.selectedIndex,
+                    fontSize = igmFontSize,
+                    lineHeight = igmLineHeight
                 )
             }
             is IGMScreen.Guide -> {
@@ -368,7 +384,9 @@ fun LibretroScreen(
                     },
                     selectedIndex = screen.selectedIndex.coerceAtMost((filtered.size - 1).coerceAtLeast(0)),
                     coreInfo = screen.status,
-                    bottomBarRight = listOf("Y" to filterLabel, "A" to stringResource(R.string.label_details))
+                    bottomBarRight = listOf("Y" to filterLabel, "A" to stringResource(R.string.label_details)),
+                    fontSize = igmFontSize,
+                    lineHeight = igmLineHeight
                 )
             }
             is IGMScreen.AchievementDetail -> {
