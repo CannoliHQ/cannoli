@@ -139,6 +139,7 @@ class MainActivity : ComponentActivity() {
     private var currentFirstVisible = 0
     private var currentPageSize = 10
     private var inSetup by mutableStateOf(false)
+    private var coldStart = true
     private var setupSelectedIndex by mutableStateOf(0)
     private var setupVolumeIndex by mutableStateOf(0)
     private var setupVolumes = listOf<Pair<String, String>>()
@@ -572,7 +573,8 @@ class MainActivity : ComponentActivity() {
     @Suppress("DEPRECATION")
     override fun onResume() {
         super.onResume()
-        overridePendingTransition(0, 0)
+        if (!coldStart) overridePendingTransition(0, 0)
+        coldStart = false
         hideSystemUI()
         if (LibretroActivity.isRunning) {
             val intent = Intent(this, LibretroActivity::class.java)
@@ -751,7 +753,7 @@ class MainActivity : ComponentActivity() {
 
         systemListViewModel = SystemListViewModel(scanner)
         gameListViewModel = GameListViewModel(scanner, platformResolver, resources)
-        settingsViewModel = SettingsViewModel(settings, root, packageManager)
+        settingsViewModel = SettingsViewModel(settings, root, packageManager, packageName)
         updateManager = dev.cannoli.scorza.updater.UpdateManager(this, settings)
 
         ioScope.launch {
@@ -1234,6 +1236,7 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 }
+                                "set_default_launcher" -> startActivity(android.content.Intent(android.provider.Settings.ACTION_HOME_SETTINGS))
                                 "installed_cores" -> queryInstalledCores()
                                 "rebuild_cache" -> {
                                     scanner.invalidateAllCaches()
@@ -1579,15 +1582,6 @@ class MainActivity : ComponentActivity() {
                             gameListViewModel.confirmReorder()
                         } else {
                         val glState = gameListViewModel.state.value
-                        if (glState.platformTag == "tools" || glState.platformTag == "ports") {
-                            val game = gameListViewModel.getSelectedGame()
-                            if (game != null) {
-                                dialogState.value = DialogState.ContextMenu(
-                                    gameName = game.displayName,
-                                    options = listOf(MENU_REMOVE)
-                                )
-                            }
-                        } else {
                         val game = gameListViewModel.getSelectedGame()
                         if (game != null) {
                             val menuName = game.displayName.removePrefix("★ ").let { if (game.isChildCollection) it.removePrefix("/") else it }
@@ -1595,7 +1589,6 @@ class MainActivity : ComponentActivity() {
                                 gameName = menuName,
                                 options = buildGameContextOptions(game, glState)
                             )
-                        }
                         }
                         }
                     }
@@ -1644,7 +1637,7 @@ class MainActivity : ComponentActivity() {
                             } else {
                                 gameListViewModel.enterReorderMode()
                             }
-                        } else if (glState.subfolderPath == null && !isApkList) {
+                        } else if (glState.subfolderPath == null) {
                             if (gameListViewModel.isMultiSelectMode()) {
                                 gameListViewModel.confirmMultiSelect()
                             } else {
@@ -2091,36 +2084,42 @@ class MainActivity : ComponentActivity() {
     private fun buildGameContextOptions(game: dev.cannoli.scorza.model.Game, glState: dev.cannoli.scorza.ui.viewmodel.GameListViewModel.State): List<String> {
         if (glState.isCollectionsList || game.isChildCollection) return listOf(MENU_RENAME, MENU_CHILD_COLLECTIONS, MENU_DELETE)
         if (game.isSubfolder) return listOf(MENU_RENAME, MENU_DELETE)
+        val isApk = game.platformTag == "tools" || game.platformTag == "ports"
         val isFav = game.displayName.startsWith("★") ||
             (glState.isCollection && glState.collectionName == "Favorites")
         return buildList {
             add(if (isFav) MENU_REMOVE_FAVORITE else MENU_ADD_FAVORITE)
-            addAll(gameContextOptions.map { item ->
-                if (item == MENU_EMULATOR_OVERRIDE) {
-                    val bundledCoresDir = LaunchManager.extractBundledCores(this@MainActivity)
-                    val options = platformResolver.getCorePickerOptions(game.platformTag, packageManager,
-                        installedRaCores = installedCoreService.installedCores, embeddedCoresDir = bundledCoresDir,
-                        unresponsivePackages = installedCoreService.unresponsivePackages)
-                    val override = platformResolver.getGameOverride(game.file.absolutePath)
-                    if (override != null) {
-                        val match = if (override.appPackage != null) {
-                            options.firstOrNull { it.appPackage == override.appPackage }
+            if (isApk) {
+                add(MENU_MANAGE_COLLECTIONS)
+                add(MENU_REMOVE)
+            } else {
+                addAll(gameContextOptions.map { item ->
+                    if (item == MENU_EMULATOR_OVERRIDE) {
+                        val bundledCoresDir = LaunchManager.extractBundledCores(this@MainActivity)
+                        val options = platformResolver.getCorePickerOptions(game.platformTag, packageManager,
+                            installedRaCores = installedCoreService.installedCores, embeddedCoresDir = bundledCoresDir,
+                            unresponsivePackages = installedCoreService.unresponsivePackages)
+                        val override = platformResolver.getGameOverride(game.file.absolutePath)
+                        if (override != null) {
+                            val match = if (override.appPackage != null) {
+                                options.firstOrNull { it.appPackage == override.appPackage }
+                            } else {
+                                options.firstOrNull { it.coreId == override.coreId && (override.runner == null || it.runnerLabel == override.runner) }
+                            }
+                            if (match != null) {
+                                val desc = if (match.appPackage != null) match.displayName
+                                    else "${match.runnerLabel} (${match.displayName})"
+                                "$MENU_EMULATOR_OVERRIDE\t$desc"
+                            } else item
                         } else {
-                            options.firstOrNull { it.coreId == override.coreId && (override.runner == null || it.runnerLabel == override.runner) }
+                            "$MENU_EMULATOR_OVERRIDE\tPlatform Default"
                         }
-                        if (match != null) {
-                            val desc = if (match.appPackage != null) match.displayName
-                                else "${match.runnerLabel} (${match.displayName})"
-                            "$MENU_EMULATOR_OVERRIDE\t$desc"
-                        } else item
-                    } else {
-                        "$MENU_EMULATOR_OVERRIDE\tPlatform Default"
-                    }
-                } else item
-            })
-            if (game.artFile != null) {
-                val idx = indexOf(MENU_DELETE_GAME)
-                if (idx >= 0) add(idx, MENU_DELETE_ART) else add(MENU_DELETE_ART)
+                    } else item
+                })
+                if (game.artFile != null) {
+                    val idx = indexOf(MENU_DELETE_GAME)
+                    if (idx >= 0) add(idx, MENU_DELETE_ART) else add(MENU_DELETE_ART)
+                }
             }
         }
     }

@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.ui.viewmodel
 
+import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.annotation.StringRes
 import androidx.compose.ui.graphics.Color
@@ -22,10 +23,18 @@ import kotlinx.coroutines.flow.update
 class SettingsViewModel(
     private val settings: SettingsRepository,
     private val cannoliRoot: java.io.File? = null,
-    private val packageManager: PackageManager? = null
+    private val packageManager: PackageManager? = null,
+    private val appPackageName: String? = null
 ) : ViewModel() {
 
     val isTelevision = packageManager?.hasSystemFeature(PackageManager.FEATURE_LEANBACK) == true
+
+    private fun isDefaultLauncher(): Boolean {
+        val pm = packageManager ?: return false
+        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+        val resolved = pm.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
+        return resolved?.activityInfo?.packageName == appPackageName
+    }
 
     data class FontOption(val key: String, val label: String, val fontFamily: FontFamily)
 
@@ -584,6 +593,9 @@ class SettingsViewModel(
                 R.string.settings_release_channel,
                 valueText = dev.cannoli.scorza.updater.ReleaseChannel.fromString(settings.releaseChannel).label
             ))
+            if (!isTelevision && !isDefaultLauncher()) {
+                add(SettingsItem("set_default_launcher", R.string.setting_set_default_launcher, isEditable = true))
+            }
         }
         else -> emptyList()
     }

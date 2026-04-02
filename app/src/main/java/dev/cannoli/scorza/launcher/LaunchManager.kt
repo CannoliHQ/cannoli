@@ -278,7 +278,7 @@ class LaunchManager(
                 emuLauncher.launch(launchFile, target.packageName, target.activityName, target.action)
             }
             is LaunchTarget.ApkLaunch -> {
-                if (launchFile.exists()) {
+                if (launchFile.extension != "apk_launch" && launchFile.exists()) {
                     apkLauncher.launchWithRom(target.packageName, launchFile)
                 } else {
                     apkLauncher.launch(target.packageName)
