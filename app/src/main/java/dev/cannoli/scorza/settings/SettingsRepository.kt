@@ -129,6 +129,10 @@ class SettingsRepository(context: Context) {
         get() = jsonRead { optBoolean(KEY_SWAP_PLAY_RESUME, false) }
         set(value) = jsonWrite { put(KEY_SWAP_PLAY_RESUME, value) }
 
+    var buttonLabelSet: ButtonLabelSet
+        get() = ButtonLabelSet.fromString(jsonRead { optString(KEY_BUTTON_LABEL_SET, null) })
+        set(value) = jsonWrite { put(KEY_BUTTON_LABEL_SET, value.name) }
+
     var mainMenuQuit: Boolean
         get() = jsonRead { optBoolean(KEY_MAIN_MENU_QUIT, false) }
         set(value) = jsonWrite { put(KEY_MAIN_MENU_QUIT, value) }
@@ -306,6 +310,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_CACHED_UPDATE_TAG = "cached_update_tag"
         private const val KEY_CACHED_UPDATE_APK = "cached_update_apk"
         private const val KEY_CACHED_UPDATE_CHANGELOG = "cached_update_changelog"
+        private const val KEY_BUTTON_LABEL_SET = "button_label_set"
     }
 }
 
@@ -335,6 +340,28 @@ enum class ArtScale {
         val DEFAULT = FIT
         fun fromString(value: String?): ArtScale =
             entries.firstOrNull { it.name == value } ?: DEFAULT
+    }
+}
+
+enum class ButtonLabelSet {
+    PLUMBER, SEATTLE, SHAPES;
+
+    val confirm: String get() = when (this) {
+        PLUMBER -> "A"; SEATTLE -> "A"; SHAPES -> "✕"
+    }
+    val back: String get() = when (this) {
+        PLUMBER -> "B"; SEATTLE -> "B"; SHAPES -> "○"
+    }
+    val x: String get() = when (this) {
+        PLUMBER -> "X"; SEATTLE -> "Y"; SHAPES -> "△"
+    }
+    val y: String get() = when (this) {
+        PLUMBER -> "Y"; SEATTLE -> "X"; SHAPES -> "□"
+    }
+
+    companion object {
+        fun fromString(value: String?): ButtonLabelSet =
+            entries.firstOrNull { it.name == value } ?: PLUMBER
     }
 }
 
