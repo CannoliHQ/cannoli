@@ -37,6 +37,8 @@ import dev.cannoli.scorza.ui.theme.LocalCannoliColors
 import dev.cannoli.scorza.ui.theme.MPlus1Code
 import dev.cannoli.scorza.ui.theme.hexToColor
 import dev.cannoli.scorza.util.FontNameParser
+import dev.cannoli.scorza.settings.ButtonLabelSet
+import dev.cannoli.scorza.settings.SettingsRepository
 import android.os.Handler
 import android.os.Looper
 import androidx.lifecycle.lifecycleScope
@@ -92,6 +94,8 @@ class LibretroActivity : ComponentActivity() {
     private var shortcuts by mutableStateOf(mapOf<ShortcutAction, Set<Int>>())
     private val shortcutChordKeys = mutableSetOf<Int>()
     private var coreInfoText by mutableStateOf("")
+
+    private var buttonLabelSet = ButtonLabelSet.PLUMBER
 
     private var frontendSnapshot: OverrideManager.Settings? = null
     private var shaderParamsDirty = false
@@ -190,6 +194,7 @@ class LibretroActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (savedInstanceState != null) { finish(); return }
+        buttonLabelSet = SettingsRepository(this).buttonLabelSet
         isRunning = true
         window.setBackgroundDrawableResource(android.R.color.black)
         goFullscreen()
@@ -635,11 +640,19 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun resolveGlobal(keyCode: Int): Int {
+        var resolved = keyCode
         for (btn in input.buttons) {
             val assigned = defaultProfileControls[btn.prefKey] ?: btn.defaultKeyCode
-            if (assigned == keyCode) return btn.defaultKeyCode
+            if (assigned == keyCode) { resolved = btn.defaultKeyCode; break }
         }
-        return keyCode
+        if (buttonLabelSet != ButtonLabelSet.PLUMBER) {
+            resolved = when (resolved) {
+                KeyEvent.KEYCODE_BUTTON_A -> KeyEvent.KEYCODE_BUTTON_B
+                KeyEvent.KEYCODE_BUTTON_B -> KeyEvent.KEYCODE_BUTTON_A
+                else -> resolved
+            }
+        }
+        return resolved
     }
 
     private fun handleGameplayInput(keyCode: Int, event: KeyEvent): Boolean {
