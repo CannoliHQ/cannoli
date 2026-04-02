@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import dev.cannoli.scorza.R
+import dev.cannoli.scorza.settings.ButtonLabelSet
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.screens.KeyboardInputState
 
@@ -28,7 +29,8 @@ fun DialogOverlay(
     listVerticalPadding: Dp,
     downloadProgress: Float = 0f,
     downloadError: String? = null,
-    updateAvailable: Boolean = false
+    updateAvailable: Boolean = false,
+    buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER
 ) {
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
     when (dialogState) {
@@ -40,7 +42,8 @@ fun DialogOverlay(
                 listFontSize = listFontSize,
                 listLineHeight = listLineHeight,
                 fullWidth = dialogState.options.any { it.contains('\t') },
-                rightBottomItems = emptyList()
+                rightBottomItems = emptyList(),
+                buttonLabelSet = buttonLabelSet
             ) {
                 List(
                     items = dialogState.options,
@@ -77,7 +80,8 @@ fun DialogOverlay(
                 title = stringResource(R.string.selected_count, dialogState.gamePaths.size),
                 listFontSize = listFontSize,
                 listLineHeight = listLineHeight,
-                rightBottomItems = emptyList()
+                rightBottomItems = emptyList(),
+                buttonLabelSet = buttonLabelSet
             ) {
                 List(
                     items = dialogState.options,
@@ -99,14 +103,16 @@ fun DialogOverlay(
             ColorPickerOverlay(
                 selectedRow = dialogState.selectedRow,
                 selectedCol = dialogState.selectedCol,
-                currentColor = dialogState.currentColor
+                currentColor = dialogState.currentColor,
+                buttonLabelSet = buttonLabelSet
             )
         }
 
         is DialogState.HexColorInput -> {
             HexColorInputOverlay(
                 currentHex = dialogState.currentHex,
-                selectedIndex = dialogState.selectedIndex
+                selectedIndex = dialogState.selectedIndex,
+                buttonLabelSet = buttonLabelSet
             )
         }
 
@@ -121,24 +127,25 @@ fun DialogOverlay(
                 keyRow = ks.keyRow,
                 keyCol = ks.keyCol,
                 caps = ks.caps,
-                symbols = ks.symbols
+                symbols = ks.symbols,
+                buttonLabelSet = buttonLabelSet
             )
         }
 
         is DialogState.About -> {
-            AboutOverlay(statusMessage = dialogState.statusMessage, updateAvailable = updateAvailable)
+            AboutOverlay(statusMessage = dialogState.statusMessage, updateAvailable = updateAvailable, buttonLabelSet = buttonLabelSet)
         }
 
         is DialogState.Kitchen -> {
-            KitchenOverlay(url = dialogState.url, pin = dialogState.pin)
+            KitchenOverlay(url = dialogState.url, pin = dialogState.pin, buttonLabelSet = buttonLabelSet)
         }
 
         is DialogState.RAAccount -> {
-            RAAccountOverlay(username = dialogState.username)
+            RAAccountOverlay(username = dialogState.username, buttonLabelSet = buttonLabelSet)
         }
 
         is DialogState.RALoggingIn -> {
-            RALoggingInOverlay(message = dialogState.message)
+            RALoggingInOverlay(message = dialogState.message, buttonLabelSet = buttonLabelSet)
         }
 
         is DialogState.UpdateDownload -> {
@@ -146,12 +153,13 @@ fun DialogOverlay(
                 versionName = dialogState.versionName,
                 changelog = dialogState.changelog,
                 progress = downloadProgress,
-                error = downloadError
+                error = downloadError,
+                buttonLabelSet = buttonLabelSet
             )
         }
 
         is DialogState.RestartRequired -> {
-            RestartOverlay(message = stringResource(R.string.restart_required))
+            RestartOverlay(message = stringResource(R.string.restart_required), buttonLabelSet = buttonLabelSet)
         }
 
         else -> {}
@@ -168,6 +176,7 @@ internal fun ListDialogScreen(
     fullWidth: Boolean = false,
     leftBottomItems: List<Pair<String, String>> = emptyList(),
     rightBottomItems: List<Pair<String, String>>,
+    buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER,
     content: @Composable () -> Unit
 ) {
     ScreenBackground(backgroundImagePath = backgroundImagePath, backgroundTint = backgroundTint) {
@@ -191,7 +200,7 @@ internal fun ListDialogScreen(
             }
             BottomBar(
                 modifier = Modifier.align(Alignment.BottomCenter),
-                leftItems = listOf("B" to stringResource(R.string.label_back)) + leftBottomItems,
+                leftItems = listOf(buttonLabelSet.back to stringResource(R.string.label_back)) + leftBottomItems,
                 rightItems = rightBottomItems
             )
         }

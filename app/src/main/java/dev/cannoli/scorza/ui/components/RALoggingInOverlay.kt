@@ -16,10 +16,11 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
+import dev.cannoli.scorza.settings.ButtonLabelSet
 import dev.cannoli.scorza.ui.theme.LocalCannoliFont
 
 @Composable
-fun RALoggingInOverlay(message: String) {
+fun RALoggingInOverlay(message: String, buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -52,7 +53,7 @@ fun RALoggingInOverlay(message: String) {
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(screenPadding),
-            leftItems = listOf("B" to stringResource(R.string.label_back)),
+            leftItems = listOf(buttonLabelSet.back to stringResource(R.string.label_back)),
             rightItems = emptyList()
         )
     }

@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
+import dev.cannoli.scorza.settings.ButtonLabelSet
 import dev.cannoli.scorza.ui.theme.LocalCannoliFont
 
 @Composable
@@ -31,7 +32,8 @@ fun UpdateDownloadOverlay(
     versionName: String,
     changelog: String,
     progress: Float,
-    error: String?
+    error: String?,
+    buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER
 ) {
     Box(
         modifier = Modifier
@@ -107,8 +109,8 @@ fun UpdateDownloadOverlay(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(screenPadding),
-            leftItems = listOf("B" to stringResource(R.string.label_cancel)),
-            rightItems = if (error != null) listOf("A" to stringResource(R.string.update_retry)) else emptyList()
+            leftItems = listOf(buttonLabelSet.back to stringResource(R.string.label_cancel)),
+            rightItems = if (error != null) listOf(buttonLabelSet.confirm to stringResource(R.string.update_retry)) else emptyList()
         )
     }
 }

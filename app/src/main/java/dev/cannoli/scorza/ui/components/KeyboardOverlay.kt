@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
+import dev.cannoli.scorza.settings.ButtonLabelSet
 
 const val KEY_SHIFT = "⇧"
 const val KEY_ENTER = "↵"
@@ -81,7 +82,8 @@ fun KeyboardOverlay(
     keyRow: Int,
     keyCol: Int,
     caps: Boolean,
-    symbols: Boolean = false
+    symbols: Boolean = false,
+    buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER
 ) {
     val rows = getKeyboardRows(caps, symbols)
     val row = keyRow.coerceIn(0, rows.lastIndex)
@@ -210,7 +212,7 @@ fun KeyboardOverlay(
                 .align(Alignment.BottomCenter)
                 .padding(horizontal = screenPadding, vertical = 16.dp),
             leftItems = listOf(
-                "Y" to stringResource(R.string.label_cancel)
+                buttonLabelSet.y to stringResource(R.string.label_cancel)
             ),
             rightItems = listOf(
                 "\uDB81\uDC0A" to stringResource(R.string.label_confirm)

@@ -10,12 +10,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.cannoli.scorza.R
+import dev.cannoli.scorza.settings.ButtonLabelSet
 import dev.cannoli.scorza.ui.theme.GrayText
 
 @Composable
-fun MissingCoreDialog(coreName: String) {
+fun MissingCoreDialog(coreName: String, buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER) {
     OverlayScrim(
-        bottomBar = { LegendPill(button = "B", label = stringResource(R.string.label_close)) }
+        bottomBar = { LegendPill(button = buttonLabelSet.back, label = stringResource(R.string.label_close)) }
     ) {
         Text(
             text = stringResource(R.string.dialog_title_missing_core),
@@ -32,16 +33,16 @@ fun MissingCoreDialog(coreName: String) {
 }
 
 @Composable
-fun MissingAppDialog(appName: String, showRemove: Boolean = false) {
+fun MissingAppDialog(appName: String, showRemove: Boolean = false, buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER) {
     OverlayScrim(
         bottomBar = {
             if (showRemove) {
                 BottomBar(
-                    leftItems = listOf("B" to stringResource(R.string.label_close)),
-                    rightItems = listOf("A" to stringResource(R.string.label_remove))
+                    leftItems = listOf(buttonLabelSet.back to stringResource(R.string.label_close)),
+                    rightItems = listOf(buttonLabelSet.confirm to stringResource(R.string.label_remove))
                 )
             } else {
-                LegendPill(button = "B", label = stringResource(R.string.label_close))
+                LegendPill(button = buttonLabelSet.back, label = stringResource(R.string.label_close))
             }
         }
     ) {
@@ -60,9 +61,9 @@ fun MissingAppDialog(appName: String, showRemove: Boolean = false) {
 }
 
 @Composable
-fun LaunchErrorDialog(message: String) {
+fun LaunchErrorDialog(message: String, buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER) {
     OverlayScrim(
-        bottomBar = { LegendPill(button = "B", label = stringResource(R.string.label_close)) }
+        bottomBar = { LegendPill(button = buttonLabelSet.back, label = stringResource(R.string.label_close)) }
     ) {
         Text(
             text = stringResource(R.string.dialog_title_launch_error),
