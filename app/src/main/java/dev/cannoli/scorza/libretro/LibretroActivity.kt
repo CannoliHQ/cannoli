@@ -39,6 +39,9 @@ import dev.cannoli.scorza.ui.theme.hexToColor
 import dev.cannoli.scorza.util.FontNameParser
 import android.os.Handler
 import android.os.Looper
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 class LibretroActivity : ComponentActivity() {
@@ -329,8 +332,9 @@ class LibretroActivity : ComponentActivity() {
         })
 
         val resumeSlot = intent.getIntExtra("resume_slot", -1)
-        Thread {
-            if (!runner.loadCore(corePath)) { runOnUiThread { finish() }; return@Thread }
+        val activity = this
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            if (!runner.loadCore(corePath)) { withContext(kotlinx.coroutines.Dispatchers.Main) { finish() }; return@launch }
             runner.init(systemDir, saveDir)
             val coreBaseName = File(corePath).nameWithoutExtension
             gameBaseName = if (romPath.isNotEmpty()) File(romPath).nameWithoutExtension else ""
@@ -339,16 +343,16 @@ class LibretroActivity : ComponentActivity() {
                 runner.setCoreOption(key, value)
             }
             val avInfo = runner.loadGame(romPath)
-            if (avInfo == null) { runner.deinit(); runOnUiThread { finish() }; return@Thread }
+            if (avInfo == null) { runner.deinit(); withContext(kotlinx.coroutines.Dispatchers.Main) { finish() }; return@launch }
             if (sramPath.isNotEmpty() && File(sramPath).exists()) runner.loadSRAM(sramPath)
             if (resumeSlot >= 0) {
                 val slot = slotManager.slots.getOrNull(resumeSlot)
                 if (slot != null && slotManager.stateExists(slot)) {
                     slotManager.loadState(runner, slot)
-                    runOnUiThread { selectedSlotIndex = resumeSlot }
+                    withContext(kotlinx.coroutines.Dispatchers.Main) { selectedSlotIndex = resumeSlot }
                 }
             }
-            runOnUiThread {
+            withContext(kotlinx.coroutines.Dispatchers.Main) {
                 val (coreName, coreVersion) = runner.getSystemInfo()
                 coreInfoText = if (coreVersion.isNotEmpty()) "$coreName $coreVersion" else coreName
                 coreOptions = runner.getCoreOptions()
@@ -419,7 +423,7 @@ class LibretroActivity : ComponentActivity() {
                 }
                 renderer = glesBackend
 
-                glSurfaceView = GLSurfaceView(this).apply {
+                glSurfaceView = GLSurfaceView(activity).apply {
                     setEGLContextClientVersion(3)
                     setRenderer(glesBackend)
                     renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
@@ -435,7 +439,7 @@ class LibretroActivity : ComponentActivity() {
                 if (consoleId != null && raUser.isNotEmpty() && raToken.isNotEmpty()) {
                     val raGameIdOverride = intent.getIntExtra("ra_game_id", 0)
                     val ra = RetroAchievementsManager(
-                        context = this,
+                        context = activity,
                         cacheDir = java.io.File(cacheDir, "ra_cache"),
                         onEvent = { _, title, _, _ ->
                             raHasAchievements = true
@@ -453,7 +457,7 @@ class LibretroActivity : ComponentActivity() {
                     raManager = ra
                 }
             }
-        }.start()
+        }
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
