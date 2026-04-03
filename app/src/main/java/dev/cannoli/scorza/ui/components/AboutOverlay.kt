@@ -27,7 +27,7 @@ import dev.cannoli.scorza.R
 import dev.cannoli.scorza.ui.theme.LocalCannoliFont
 
 @Composable
-fun AboutOverlay(statusMessage: String? = null) {
+fun AboutOverlay(statusMessage: String? = null, updateAvailable: Boolean = false) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -103,7 +103,10 @@ fun AboutOverlay(statusMessage: String? = null) {
                 .align(Alignment.BottomCenter)
                 .padding(screenPadding),
             leftItems = listOf("B" to stringResource(R.string.label_back)),
-            rightItems = listOf("X" to stringResource(R.string.label_credits))
+            rightItems = buildList {
+                if (updateAvailable) add("Y" to stringResource(R.string.label_update))
+                add("X" to stringResource(R.string.label_credits))
+            }
         )
     }
 }

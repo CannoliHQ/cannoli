@@ -151,6 +151,7 @@ fun AppNavGraph(
                 dialogState = dialog,
                 downloadProgress = downloadProgress,
                 downloadError = downloadError,
+                updateAvailable = updateAvailable,
                 onVisibleRangeChanged = onVisibleRangeChanged
             )
             is LauncherScreen.CoreMapping -> {
@@ -598,7 +599,7 @@ fun AppNavGraph(
             }
         }
 
-        val statusBarVisible = dialog !is DialogState.About && dialog !is DialogState.Kitchen && currentScreen !is LauncherScreen.Credits && (dev.cannoli.scorza.server.KitchenManager.isRunning || appSettings.showWifi || appSettings.showBluetooth || appSettings.showVpn || appSettings.showClock || appSettings.showBattery || (updateAvailable && appSettings.showUpdate))
+        val statusBarVisible = dialog !is DialogState.About && dialog !is DialogState.Kitchen && dialog !is DialogState.UpdateDownload && currentScreen !is LauncherScreen.Credits && (dev.cannoli.scorza.server.KitchenManager.isRunning || appSettings.showWifi || appSettings.showBluetooth || appSettings.showVpn || appSettings.showClock || appSettings.showBattery || (updateAvailable && appSettings.showUpdate))
         if (statusBarVisible) {
         Box(
             modifier = Modifier

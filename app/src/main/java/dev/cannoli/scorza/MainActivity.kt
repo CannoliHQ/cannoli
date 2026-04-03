@@ -1198,13 +1198,7 @@ class MainActivity : ComponentActivity() {
                     LauncherScreen.Settings -> {
                         if (!settingsViewModel.state.value.inSubList) {
                             val cat = settingsViewModel.state.value.categories.getOrNull(settingsViewModel.state.value.categoryIndex)
-                            if (cat?.key == "install_update") {
-                                val info = updateManager.updateAvailable.value
-                                if (info != null) {
-                                    dialogState.value = DialogState.UpdateDownload(info.versionName, info.changelog)
-                                    ioScope.launch { updateManager.downloadAndInstall(info) }
-                                }
-                            } else if (cat?.key == "about") {
+                            if (cat?.key == "about") {
                                 dialogState.value = DialogState.About()
                             } else if (cat?.key == "retroachievements" && settings.raToken.isNotEmpty()) {
                                 dialogState.value = DialogState.RAAccount(username = settings.raUsername)
@@ -1439,7 +1433,7 @@ class MainActivity : ComponentActivity() {
                 is DialogState.UpdateDownload -> {
                     updateManager.cancelDownload()
                     updateManager.clearError()
-                    dialogState.value = DialogState.None
+                    dialogState.value = DialogState.About()
                 }
                 is DialogState.About,
                 is DialogState.Kitchen -> {
@@ -1765,7 +1759,13 @@ class MainActivity : ComponentActivity() {
                 is DialogState.ProfileNameInput -> {
                     dialogState.value = DialogState.None
                 }
-                is DialogState.About -> {}
+                is DialogState.About -> {
+                    val info = updateManager.updateAvailable.value
+                    if (info != null) {
+                        dialogState.value = DialogState.UpdateDownload(info.versionName, info.changelog)
+                        ioScope.launch { updateManager.downloadAndInstall(info) }
+                    }
+                }
                 DialogState.None -> {
                     when (currentScreen) {
                         LauncherScreen.SystemList -> {
