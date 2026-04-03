@@ -1,12 +1,13 @@
 package dev.cannoli.scorza.ui.viewmodel
 
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.model.Game
 import dev.cannoli.scorza.scanner.FileScanner
 import dev.cannoli.scorza.scanner.PlatformResolver
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -17,7 +18,8 @@ class GameListViewModel(
     private val scanner: FileScanner,
     private val platformResolver: PlatformResolver,
     private val resources: android.content.res.Resources
-) : ViewModel() {
+) {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     data class State(
         val platformTag: String = "",
@@ -59,7 +61,7 @@ class GameListViewModel(
     fun loadPlatform(tag: String, tags: List<String> = listOf(tag), onReady: () -> Unit = {}) {
         breadcrumbStack.clear()
         indexStack.clear()
-        viewModelScope.launch(Dispatchers.IO) {
+        scope.launch(Dispatchers.IO) {
             try {
                 val games = scanner.scanGames(tags, null)
                 val displayName = platformResolver.getDisplayName(tag)
@@ -108,7 +110,7 @@ class GameListViewModel(
     }
 
     private fun loadCollectionInternal(collectionName: String, onReady: () -> Unit = {}) {
-        viewModelScope.launch(Dispatchers.IO) {
+        scope.launch(Dispatchers.IO) {
             try {
                 val games = scanner.scanCollectionGames(collectionName)
                 val childNames = scanner.getChildCollections(collectionName)
@@ -137,7 +139,7 @@ class GameListViewModel(
     fun loadApkList(type: String, displayName: String, onReady: () -> Unit = {}) {
         breadcrumbStack.clear()
         indexStack.clear()
-        viewModelScope.launch(Dispatchers.IO) {
+        scope.launch(Dispatchers.IO) {
             try {
                 val entries = if (type == "tools") scanner.scanTools() else scanner.scanPorts()
                 val games = entries.map { (file, name, launch) ->
@@ -172,7 +174,7 @@ class GameListViewModel(
         breadcrumbStack.clear()
         indexStack.clear()
         collectionStack.clear()
-        viewModelScope.launch(Dispatchers.IO) {
+        scope.launch(Dispatchers.IO) {
             val allNames = scanner.getCollectionNames()
                 .filter { !it.equals("Favorites", ignoreCase = true) && scanner.isTopLevelCollection(it) }
             val scanned = scanner.scanCollections()
@@ -298,7 +300,7 @@ class GameListViewModel(
         val isFav = game.displayName.startsWith("★") ||
             (current.isCollection && current.collectionName == "Favorites")
         val oldIndex = current.selectedIndex
-        viewModelScope.launch(Dispatchers.IO) {
+        scope.launch(Dispatchers.IO) {
             if (isFav) scanner.removeFromCollection("Favorites", path)
             else scanner.addToCollection("Favorites", path)
             val newGames = if (current.isCollection && current.collectionName != null) {
@@ -402,16 +404,16 @@ class GameListViewModel(
         if (!current.reorderMode) return
         if (current.isCollectionsList) {
             val names = current.games.map { it.displayName }
-            viewModelScope.launch(Dispatchers.IO) { scanner.saveCollectionOrder(names) }
+            scope.launch(Dispatchers.IO) { scanner.saveCollectionOrder(names) }
         } else if (current.platformTag == "tools") {
             val names = current.games.map { it.displayName }
-            viewModelScope.launch(Dispatchers.IO) { scanner.saveToolOrder(names) }
+            scope.launch(Dispatchers.IO) { scanner.saveToolOrder(names) }
         } else if (current.platformTag == "ports") {
             val names = current.games.map { it.displayName }
-            viewModelScope.launch(Dispatchers.IO) { scanner.savePortOrder(names) }
+            scope.launch(Dispatchers.IO) { scanner.savePortOrder(names) }
         } else if (current.isCollection && current.collectionName != null) {
             val childNames = current.games.filter { it.isChildCollection }.map { it.displayName.removePrefix("/") }
-            viewModelScope.launch(Dispatchers.IO) { scanner.saveChildOrder(current.collectionName, childNames) }
+            scope.launch(Dispatchers.IO) { scanner.saveChildOrder(current.collectionName, childNames) }
         }
         _state.update { it.copy(reorderMode = false, reorderOriginalIndex = -1) }
     }
@@ -438,7 +440,7 @@ class GameListViewModel(
 
     private fun loadGames(tags: List<String>, subfolder: String?, preserveIndex: Int = 0, preserveScroll: Int = 0, prevCount: Int = -1) {
         val tag = tags.first()
-        viewModelScope.launch(Dispatchers.IO) {
+        scope.launch(Dispatchers.IO) {
             val games = scanner.scanGames(tags, subfolder)
             val displayName = platformResolver.getDisplayName(tag)
 
@@ -469,4 +471,6 @@ class GameListViewModel(
             )
         }
     }
+
+    fun close() { scope.cancel() }
 }

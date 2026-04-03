@@ -1,10 +1,11 @@
 package dev.cannoli.scorza.ui.viewmodel
 
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import dev.cannoli.scorza.model.Platform
 import dev.cannoli.scorza.scanner.FileScanner
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -12,7 +13,8 @@ import kotlinx.coroutines.launch
 
 class SystemListViewModel(
     private val scanner: FileScanner
-) : ViewModel() {
+) {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     sealed class ListItem {
         data class FavoritesItem(val count: Int) : ListItem()
@@ -51,7 +53,7 @@ class SystemListViewModel(
         val prevSelectedIndex = restored?.first ?: prev.selectedIndex
         val prevFirstVisible = restored?.second ?: firstVisibleIndex
 
-        viewModelScope.launch(Dispatchers.IO) {
+        scope.launch(Dispatchers.IO) {
             val platforms = scanner.scanPlatforms()
             val collections = scanner.scanCollections().map { it.name to it.entries.size }
             val tools = scanner.scanTools()
@@ -172,7 +174,7 @@ class SystemListViewModel(
         val current = _state.value
         if (!current.reorderMode) return
         val tags = current.items.mapNotNull { it.orderTag() }
-        viewModelScope.launch(Dispatchers.IO) {
+        scope.launch(Dispatchers.IO) {
             scanner.savePlatformOrder(tags)
         }
         _state.update { it.copy(reorderMode = false, reorderOriginalIndex = -1) }
@@ -203,6 +205,8 @@ class SystemListViewModel(
         val remaining = items.filter { it.orderTag() !in order }
         return ordered + remaining
     }
+
+    fun close() { scope.cancel() }
 
     companion object {
         const val TAG_TOOLS = "__tools__"

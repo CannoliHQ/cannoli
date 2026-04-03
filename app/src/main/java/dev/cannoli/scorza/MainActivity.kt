@@ -601,6 +601,8 @@ class MainActivity : ComponentActivity() {
         unregisterCoreQueryReceiver()
         settings.shutdown()
         ioScope.cancel()
+        if (::systemListViewModel.isInitialized) systemListViewModel.close()
+        if (::gameListViewModel.isInitialized) gameListViewModel.close()
         dev.cannoli.scorza.server.KitchenManager.stop()
     }
 
