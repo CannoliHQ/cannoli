@@ -81,6 +81,8 @@ class LibretroActivity : ComponentActivity() {
 
     private var coreOptions by mutableStateOf(emptyList<LibretroRunner.CoreOption>())
     private var coreCategories by mutableStateOf(emptyList<LibretroRunner.CoreOptionCategory>())
+    private var controllerTypes by mutableStateOf(emptyList<LibretroRunner.ControllerType>())
+    private var controllerTypeIndex by mutableIntStateOf(0)
     private var currentProfileName by mutableStateOf(ProfileManager.DEFAULT_GAME)
     private var profileNames by mutableStateOf(listOf(ProfileManager.DEFAULT_GAME))
     private var shortcutSource by mutableStateOf(OverrideSource.GLOBAL)
@@ -353,8 +355,19 @@ class LibretroActivity : ComponentActivity() {
                 coreCategories = runner.getCoreCategories()
 
                 loadOverrides()
-                for (p in 0 until LibretroRunner.MAX_PORTS) {
-                    if (controllerManager.slots[p] != null) runner.setControllerPortDevice(p, LibretroRunner.DEVICE_JOYPAD)
+                controllerTypes = runner.getControllerTypes(0)
+                val savedTypeId = overrideManager.load(profileManager).controllerTypeId
+                val savedIdx = if (savedTypeId >= 0) controllerTypes.indexOfFirst { it.id == savedTypeId } else -1
+                if (savedIdx >= 0) {
+                    controllerTypeIndex = savedIdx
+                    applyForceAnalog(savedTypeId > 1)
+                    for (p in 0 until LibretroRunner.MAX_PORTS) {
+                        if (controllerManager.slots[p] != null) runner.setControllerPortDevice(p, savedTypeId)
+                    }
+                } else {
+                    for (p in 0 until LibretroRunner.MAX_PORTS) {
+                        if (controllerManager.slots[p] != null) runner.setControllerPortDevice(p, LibretroRunner.DEVICE_JOYPAD)
+                    }
                 }
                 scanOverlayImages()
                 copyBundledShaders()
@@ -517,16 +530,26 @@ class LibretroActivity : ComponentActivity() {
 
         val stickX = event.getAxisValue(android.view.MotionEvent.AXIS_X)
         val stickY = event.getAxisValue(android.view.MotionEvent.AXIS_Y)
-        if (stickX < -0.5f) axes = axes or (portInput.keyCodeToRetroMask(KeyEvent.KEYCODE_DPAD_LEFT) ?: LibretroInput.RETRO_LEFT)
-        if (stickX > 0.5f) axes = axes or (portInput.keyCodeToRetroMask(KeyEvent.KEYCODE_DPAD_RIGHT) ?: LibretroInput.RETRO_RIGHT)
-        if (stickY < -0.5f) axes = axes or (portInput.keyCodeToRetroMask(KeyEvent.KEYCODE_DPAD_UP) ?: LibretroInput.RETRO_UP)
-        if (stickY > 0.5f) axes = axes or (portInput.keyCodeToRetroMask(KeyEvent.KEYCODE_DPAD_DOWN) ?: LibretroInput.RETRO_DOWN)
+        val analogMode = controllerTypes.getOrNull(controllerTypeIndex)?.let { it.id > 1 } == true
+        if (!analogMode) {
+            if (stickX < -0.5f) axes = axes or (portInput.keyCodeToRetroMask(KeyEvent.KEYCODE_DPAD_LEFT) ?: LibretroInput.RETRO_LEFT)
+            if (stickX > 0.5f) axes = axes or (portInput.keyCodeToRetroMask(KeyEvent.KEYCODE_DPAD_RIGHT) ?: LibretroInput.RETRO_RIGHT)
+            if (stickY < -0.5f) axes = axes or (portInput.keyCodeToRetroMask(KeyEvent.KEYCODE_DPAD_UP) ?: LibretroInput.RETRO_UP)
+            if (stickY > 0.5f) axes = axes or (portInput.keyCodeToRetroMask(KeyEvent.KEYCODE_DPAD_DOWN) ?: LibretroInput.RETRO_DOWN)
+        }
 
         if (event.getAxisValue(android.view.MotionEvent.AXIS_LTRIGGER) > 0.5f) axes = axes or LibretroInput.RETRO_L2
         if (event.getAxisValue(android.view.MotionEvent.AXIS_RTRIGGER) > 0.5f) axes = axes or LibretroInput.RETRO_R2
 
         controllerManager.portInputMasks[port] = (controllerManager.portInputMasks[port] and axisMask.inv()) or axes
         runner.setInput(port, controllerManager.portInputMasks[port])
+
+        runner.setAnalog(port, 0, (stickX * 32767).toInt().coerceIn(-32768, 32767),
+            (stickY * 32767).toInt().coerceIn(-32768, 32767))
+        val rStickX = event.getAxisValue(android.view.MotionEvent.AXIS_Z)
+        val rStickY = event.getAxisValue(android.view.MotionEvent.AXIS_RZ)
+        runner.setAnalog(port, 1, (rStickX * 32767).toInt().coerceIn(-32768, 32767),
+            (rStickY * 32767).toInt().coerceIn(-32768, 32767))
         return true
     }
 
@@ -1067,7 +1090,7 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun handleAdvancedInput(screen: IGMScreen.Advanced, keyCode: Int): Boolean {
-        val count = 3
+        val count = if (controllerTypes.size > 1) 4 else 3
         return when (keyCode) {
             KeyEvent.KEYCODE_DPAD_UP -> {
                 replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
@@ -1086,11 +1109,31 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun cycleAdvancedValue(index: Int, direction: Int) {
+        val offset = if (controllerTypes.size > 1) 1 else 0
         when (index) {
-            0 -> { lowLatency = !lowLatency; renderer.lowLatency = lowLatency; applyLowLatency() }
-            1 -> { cycleFfSpeed(direction) }
-            2 -> { debugHud = !debugHud; renderer.debugHud = debugHud }
+            0 -> if (offset == 1) {
+                val newIdx = ((controllerTypeIndex + direction) + controllerTypes.size) % controllerTypes.size
+                controllerTypeIndex = newIdx
+                val ct = controllerTypes[newIdx]
+                applyForceAnalog(ct.id > 1)
+                runner.setControllerPortDevice(0, ct.id)
+            } else {
+                lowLatency = !lowLatency; renderer.lowLatency = lowLatency; applyLowLatency()
+            }
+            offset -> { lowLatency = !lowLatency; renderer.lowLatency = lowLatency; applyLowLatency() }
+            offset + 1 -> { cycleFfSpeed(direction) }
+            offset + 2 -> { debugHud = !debugHud; renderer.debugHud = debugHud }
         }
+    }
+
+    private fun applyForceAnalog(enable: Boolean) {
+        val key = coreOptions.find {
+            val k = it.key.lowercase()
+            "analog" in k && ("force" in k || "auto" in k)
+        }?.key ?: return
+        val value = if (enable) "true" else "false"
+        runner.setCoreOption(key, value)
+        coreOptions = runner.getCoreOptions()
     }
 
     private fun applyLowLatency() {
@@ -1782,11 +1825,13 @@ class LibretroActivity : ComponentActivity() {
             if (shaderParams.isNotEmpty()) add(IGMSettingsItem("Shader Settings"))
             add(IGMSettingsItem("Overlay", overlayLabel()))
         }
-        is IGMScreen.Advanced -> listOf(
-            IGMSettingsItem("Low Latency", if (lowLatency) "On" else "Off"),
-            IGMSettingsItem("Max FF Speed", "${maxFfSpeed}x"),
-            IGMSettingsItem("Debug HUD", if (debugHud) "On" else "Off")
-        )
+        is IGMScreen.Advanced -> buildList {
+            if (controllerTypes.size > 1)
+                add(IGMSettingsItem("Controller Type", controllerTypes.getOrNull(controllerTypeIndex)?.desc ?: "Standard"))
+            add(IGMSettingsItem("Low Latency", if (lowLatency) "On" else "Off"))
+            add(IGMSettingsItem("Max FF Speed", "${maxFfSpeed}x"))
+            add(IGMSettingsItem("Debug HUD", if (debugHud) "On" else "Off"))
+        }
         is IGMScreen.ShaderSettings -> {
             if (shaderParams.isEmpty()) listOf(IGMSettingsItem("No parameters"))
             else shaderParams.map { p ->
@@ -1848,6 +1893,7 @@ class LibretroActivity : ComponentActivity() {
             lowLatency = lowLatency,
             shaderPreset = shaderPreset,
             overlay = overlay,
+            controllerTypeId = controllerTypes.getOrNull(controllerTypeIndex)?.id ?: -1,
             coreOptions = optionMap
         )
     }
