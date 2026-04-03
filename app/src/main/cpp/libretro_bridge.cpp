@@ -541,19 +541,26 @@ JNIEXPORT jintArray JNICALL
 Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeLoadGame(JNIEnv *env, jobject, jstring romPath) {
     const char *path = env->GetStringUTFChars(romPath, nullptr);
 
-    FILE *f = fopen(path, "rb");
-    if (!f) {
-        LOGE("Failed to open ROM: %s", path);
-        env->ReleaseStringUTFChars(romPath, path);
-        return nullptr;
-    }
+    struct retro_system_info sys_info = {0};
+    core.get_system_info(&sys_info);
 
-    fseek(f, 0, SEEK_END);
-    long size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    void *rom_data = malloc(size);
-    fread(rom_data, 1, size, f);
-    fclose(f);
+    void *rom_data = nullptr;
+    long size = 0;
+
+    if (!sys_info.need_fullpath) {
+        FILE *f = fopen(path, "rb");
+        if (!f) {
+            LOGE("Failed to open ROM: %s", path);
+            env->ReleaseStringUTFChars(romPath, path);
+            return nullptr;
+        }
+        fseek(f, 0, SEEK_END);
+        size = ftell(f);
+        fseek(f, 0, SEEK_SET);
+        rom_data = malloc(size);
+        fread(rom_data, 1, size, f);
+        fclose(f);
+    }
 
     struct retro_game_info game_info = {0};
     game_info.path = path;
