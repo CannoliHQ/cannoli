@@ -19,7 +19,6 @@ tasks:
         - mednafen_vb
         - mednafen_wswan
         - mgba
-        - mupen64plus_next_gles3
         - nestopia
         - pcsx_rearmed
         - pokemini

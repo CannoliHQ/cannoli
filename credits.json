@@ -25,7 +25,6 @@
     { "name": "Mednafen VB", "id": "mednafen_vb", "what": "Virtual Boy", "license": "GPLv2" },
     { "name": "Mednafen WonderSwan", "id": "mednafen_wswan", "what": "WonderSwan / Color", "license": "GPLv2" },
     { "name": "mGBA", "id": "mgba", "what": "GBA", "license": "MPLv2.0" },
-    { "name": "Mupen64Plus-Next", "id": "mupen64plus_next_gles3", "what": "Nintendo 64", "license": "GPLv2" },
     { "name": "Nestopia", "id": "nestopia", "what": "NES / FDS", "license": "GPLv2" },
     { "name": "PCSX ReARMed", "id": "pcsx_rearmed", "what": "PlayStation", "license": "GPLv2" },
     { "name": "PokeMini", "id": "pokemini", "what": "Pokémon Mini", "license": "GPLv3" },
