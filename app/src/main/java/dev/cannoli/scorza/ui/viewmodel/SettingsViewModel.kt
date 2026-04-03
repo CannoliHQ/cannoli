@@ -116,7 +116,9 @@ class SettingsViewModel(
         val showTools: Boolean = false,
         val showPorts: Boolean = false,
         val swapPlayResume: Boolean = false,
-        val mainMenuQuit: Boolean = false
+        val mainMenuQuit: Boolean = false,
+        val retroArchDiyMode: Boolean = true,
+        val artWidth: Int = 40
     )
 
     private val _state = MutableStateFlow(State())
@@ -145,7 +147,9 @@ class SettingsViewModel(
         showTools = settings.showTools,
         showPorts = settings.showPorts,
         swapPlayResume = settings.swapPlayResume,
-        mainMenuQuit = settings.mainMenuQuit
+        mainMenuQuit = settings.mainMenuQuit,
+        retroArchDiyMode = settings.retroArchDiyMode,
+        artWidth = settings.artWidth
     )
 
     private val allCategories = listOf(
@@ -190,7 +194,9 @@ class SettingsViewModel(
         val raPackage: String,
         val toolsName: String,
         val portsName: String,
-        val releaseChannel: String
+        val releaseChannel: String,
+        val artWidth: Int,
+        val retroArchDiyMode: Boolean
     )
 
     private var snapshot: SettingsSnapshot? = null
@@ -316,6 +322,11 @@ class SettingsViewModel(
                     settings.showClock = false
                 }
             }
+            "art_width" -> {
+                val steps = (35..65 step 5) + 0
+                val cur = steps.indexOf(settings.artWidth).coerceAtLeast(0)
+                settings.artWidth = steps[((cur + direction) % steps.size + steps.size) % steps.size]
+            }
             "bg_image" -> cycleBackgroundImage(direction)
             "bg_tint" -> {
                 val cur = settings.backgroundTint
@@ -337,6 +348,7 @@ class SettingsViewModel(
             "show_tools" -> settings.showTools = !settings.showTools
             "show_ports" -> settings.showPorts = !settings.showPorts
             "main_menu_quit" -> settings.mainMenuQuit = !settings.mainMenuQuit
+            "retroarch_diy_mode" -> settings.retroArchDiyMode = !settings.retroArchDiyMode
             "graphics_backend" -> {
                 val backends = listOf("GLES", "VULKAN")
                 val cur = backends.indexOf(settings.graphicsBackend).coerceAtLeast(0)
@@ -484,7 +496,9 @@ class SettingsViewModel(
         raPackage = settings.retroArchPackage,
         toolsName = settings.toolsName,
         portsName = settings.portsName,
-        releaseChannel = settings.releaseChannel
+        releaseChannel = settings.releaseChannel,
+        artWidth = settings.artWidth,
+        retroArchDiyMode = settings.retroArchDiyMode
     )
 
     private fun restoreSettings(snap: SettingsSnapshot) {
@@ -515,12 +529,16 @@ class SettingsViewModel(
         settings.toolsName = snap.toolsName
         settings.portsName = snap.portsName
         settings.releaseChannel = snap.releaseChannel
+        settings.artWidth = snap.artWidth
+        settings.retroArchDiyMode = snap.retroArchDiyMode
     }
 
     private fun onOff(value: Boolean) = if (value) R.string.value_on else R.string.value_off
     private fun showHide(value: Boolean) = if (value) R.string.value_show else R.string.value_hide
     private fun buildItemsForCategory(categoryKey: String): List<SettingsItem> = when (categoryKey) {
         "display" -> buildList {
+            val artW = settings.artWidth
+            add(SettingsItem("art_width", R.string.setting_art_width, valueText = if (artW == 0) null else "$artW%", valueRes = if (artW == 0) R.string.value_off else null))
             add(SettingsItem("bg_image", R.string.setting_bg_image, valueText = settings.backgroundImagePath?.let { java.io.File(it).name }, valueRes = if (settings.backgroundImagePath == null) R.string.value_none else null))
             if (settings.backgroundImagePath != null) {
                 val tintVal = settings.backgroundTint

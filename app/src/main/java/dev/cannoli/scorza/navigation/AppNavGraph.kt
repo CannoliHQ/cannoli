@@ -137,7 +137,8 @@ fun AppNavGraph(
                     dialogState = dialog,
                     onVisibleRangeChanged = onVisibleRangeChanged,
                     resumableGames = resumableGames,
-                    swapPlayResume = appSettings.swapPlayResume
+                    swapPlayResume = appSettings.swapPlayResume,
+                    artWidth = appSettings.artWidth
                 )
             }
             is LauncherScreen.Settings -> SettingsScreen(
