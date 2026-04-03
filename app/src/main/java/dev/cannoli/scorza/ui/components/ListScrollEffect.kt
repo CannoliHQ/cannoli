@@ -39,7 +39,7 @@ fun ListScrollEffect(
     }
 
     LaunchedEffect(selectedIndex, itemCount) {
-        if (itemCount == 0 || reorderMode) return@LaunchedEffect
+        if (itemCount == 0) return@LaunchedEffect
         if (listState.layoutInfo.visibleItemsInfo.isEmpty()) return@LaunchedEffect
 
         val index = selectedIndex.coerceAtLeast(0)
