@@ -153,9 +153,7 @@ class ControllerManager(
 
         fun isFullController(device: InputDevice): Boolean {
             if (device.vendorId == 0 && device.productId == 0) return false
-            val sources = device.sources
-            return sources and InputDevice.SOURCE_GAMEPAD == InputDevice.SOURCE_GAMEPAD ||
-                    sources and InputDevice.SOURCE_JOYSTICK == InputDevice.SOURCE_JOYSTICK
+             return device.sources and InputDevice.SOURCE_GAMEPAD == InputDevice.SOURCE_GAMEPAD
         }
     }
 }
