@@ -111,19 +111,21 @@ fun AppNavGraph(
     CompositionLocalProvider(LocalCannoliColors provides cannoliColors, LocalStatusBarLeftEdge provides statusBarLeftEdge, LocalScaleFactor provides scaleFactor) {
     Box(modifier = Modifier.fillMaxSize()) {
         when (currentScreen) {
-            is LauncherScreen.SystemList -> SystemListScreen(
-                viewModel = systemListViewModel,
-                backgroundImagePath = appSettings.backgroundImagePath,
-                backgroundTint = appSettings.backgroundTint,
-                listFontSize = listFontSize,
-                listLineHeight = listLineHeight,
-                listVerticalPadding = listVerticalPadding,
-                dialogState = dialog,
-                onVisibleRangeChanged = onVisibleRangeChanged,
-                kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
-                title = appSettings.title,
-                mainMenuQuit = appSettings.mainMenuQuit
-            )
+            is LauncherScreen.SystemList -> {
+                SystemListScreen(
+                    viewModel = systemListViewModel,
+                    backgroundImagePath = appSettings.backgroundImagePath,
+                    backgroundTint = appSettings.backgroundTint,
+                    listFontSize = listFontSize,
+                    listLineHeight = listLineHeight,
+                    listVerticalPadding = listVerticalPadding,
+                    dialogState = dialog,
+                    onVisibleRangeChanged = onVisibleRangeChanged,
+                    kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
+                    title = appSettings.title,
+                    mainMenuQuit = appSettings.mainMenuQuit
+                )
+            }
             is LauncherScreen.GameList -> {
                 GameListScreen(
                     viewModel = gameListViewModel,
