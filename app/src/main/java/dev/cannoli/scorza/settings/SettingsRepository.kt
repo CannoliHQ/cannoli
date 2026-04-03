@@ -133,6 +133,10 @@ class SettingsRepository(context: Context) {
         get() = jsonRead { optBoolean(KEY_MAIN_MENU_QUIT, false) }
         set(value) = jsonWrite { put(KEY_MAIN_MENU_QUIT, value) }
 
+    var retroArchDiyMode: Boolean
+        get() = jsonRead { optBoolean(KEY_RETROARCH_DIY_MODE, true) }
+        set(value) = jsonWrite { put(KEY_RETROARCH_DIY_MODE, value) }
+
     var showWifi: Boolean
         get() = jsonRead { optBoolean(KEY_SHOW_WIFI, true) }
         set(value) = jsonWrite { put(KEY_SHOW_WIFI, value) }
@@ -176,6 +180,10 @@ class SettingsRepository(context: Context) {
     var portsName: String
         get() = jsonRead { optString(KEY_PORTS_NAME, "Ports").ifEmpty { "Ports" } }
         set(value) = jsonWrite { if (value == "Ports") remove(KEY_PORTS_NAME) else put(KEY_PORTS_NAME, value) }
+
+    var artWidth: Int
+        get() = jsonRead { optInt(KEY_ART_WIDTH, 40) }
+        set(value) = jsonWrite { put(KEY_ART_WIDTH, value) }
 
     var backgroundTint: Int
         get() = jsonRead { optInt(KEY_BG_TINT, 0) }
@@ -261,6 +269,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_TITLE = "title"
         private const val KEY_TIME_FORMAT = "time_format"
         private const val KEY_BG_IMAGE = "bg_image"
+        private const val KEY_ART_WIDTH = "art_width"
         private const val KEY_BG_TINT = "bg_tint"
         private const val KEY_COLOR_HIGHLIGHT = "color_highlight"
         private const val KEY_COLOR_TEXT = "color_text"
@@ -269,6 +278,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_PLATFORM_SWITCHING = "platform_switching"
         private const val KEY_SWAP_PLAY_RESUME = "swap_play_resume"
         private const val KEY_MAIN_MENU_QUIT = "main_menu_quit"
+        private const val KEY_RETROARCH_DIY_MODE = "retroarch_diy_mode"
         private const val KEY_SHOW_EMPTY = "show_empty"
         private const val KEY_SHOW_WIFI = "show_wifi"
         private const val KEY_SHOW_BLUETOOTH = "show_bluetooth"
