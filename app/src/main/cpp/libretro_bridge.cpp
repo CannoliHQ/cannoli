@@ -6,6 +6,7 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <mutex>
 #include <android/log.h>
 #include <zlib.h>
 #include "libretro.h"
@@ -47,6 +48,7 @@ static int16_t g_analog_state[MAX_PORTS][2][2] = {{{0}}}; // [port][stick][axis]
 static unsigned g_pixel_format = RETRO_PIXEL_FORMAT_0RGB1555;
 
 // Frame buffer written by video callback, read by renderer
+static std::mutex g_frame_mutex;
 static uint8_t *g_frame_buf = nullptr;
 static unsigned g_frame_width = 0;
 static unsigned g_frame_height = 0;
@@ -340,6 +342,8 @@ static void video_refresh_cb(const void *data, unsigned width, unsigned height, 
 
     size_t bpp = (g_pixel_format == RETRO_PIXEL_FORMAT_XRGB8888) ? 4 : 2;
     size_t needed = width * height * bpp;
+
+    std::lock_guard<std::mutex> lock(g_frame_mutex);
 
     if (!g_frame_buf || g_frame_width != width || g_frame_height != height) {
         free(g_frame_buf);
@@ -664,6 +668,7 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeHasNewFrame(JNIEnv *, jobj
 
 JNIEXPORT void JNICALL
 Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeCopyFrame(JNIEnv *env, jobject, jobject buffer) {
+    std::lock_guard<std::mutex> lock(g_frame_mutex);
     if (!g_frame_buf || !g_frame_ready) return;
     void *dst = env->GetDirectBufferAddress(buffer);
     if (!dst) return;
@@ -675,6 +680,7 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeCopyFrame(JNIEnv *env, job
 
 JNIEXPORT void JNICALL
 Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeCopyLastFrame(JNIEnv *env, jobject, jobject buffer) {
+    std::lock_guard<std::mutex> lock(g_frame_mutex);
     if (!g_frame_buf) return;
     void *dst = env->GetDirectBufferAddress(buffer);
     if (!dst) return;
@@ -848,11 +854,14 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeDeinit(JNIEnv *env, jobjec
         env->DeleteGlobalRef(g_audio_obj);
         g_audio_obj = nullptr;
     }
-    free(g_frame_buf);
-    g_frame_buf = nullptr;
-    g_frame_width = 0;
-    g_frame_height = 0;
-    g_frame_ready = false;
+    {
+        std::lock_guard<std::mutex> lock(g_frame_mutex);
+        free(g_frame_buf);
+        g_frame_buf = nullptr;
+        g_frame_width = 0;
+        g_frame_height = 0;
+        g_frame_ready = false;
+    }
     memset(&g_disk_control, 0, sizeof(g_disk_control));
     g_has_disk_control = false;
     g_get_image_label = nullptr;
@@ -1003,6 +1012,7 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeGetDiskLabel(JNIEnv *env, 
 static FrameBuffer g_shared_frame;
 
 extern "C" FrameBuffer *getFrameBuffer() {
+    g_frame_mutex.lock();
     g_shared_frame.data = g_frame_buf;
     g_shared_frame.width = g_frame_width;
     g_shared_frame.height = g_frame_height;
@@ -1014,6 +1024,7 @@ extern "C" FrameBuffer *getFrameBuffer() {
 
 extern "C" void markFrameConsumed() {
     g_frame_ready = false;
+    g_frame_mutex.unlock();
 }
 
 extern "C" const struct retro_memory_map *bridge_get_memory_map(void) {
