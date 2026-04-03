@@ -108,6 +108,7 @@ class ControllerManager(
 
     fun removeDevice(deviceId: Int): Int? {
         val port = deviceToPort.remove(deviceId) ?: return null
+        slots[port] = null
         portInputMasks[port] = 0
         portPressedKeys[port].clear()
         onDeviceDisconnected?.invoke(port)
