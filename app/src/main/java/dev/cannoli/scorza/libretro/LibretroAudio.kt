@@ -63,6 +63,15 @@ class LibretroAudio(private val sampleRate: Int, lowLatency: Boolean = false) {
 
     @Suppress("unused") // Called from JNI
     fun writeSamples(samples: ShortArray, count: Int) {
-        if (!muted) track.write(samples, 0, count)
+        if (muted) {
+            silence.let { buf ->
+                val needed = count.coerceAtMost(buf.size)
+                track.write(buf, 0, needed)
+            }
+        } else {
+            track.write(samples, 0, count)
+        }
     }
+
+    private val silence = ShortArray(4096)
 }
