@@ -119,6 +119,7 @@
     <string name="setup_storage">Storage</string>
     <string name="setup_continue">Continue</string>
     <string name="label_quit">QUIT</string>
+    <string name="dialog_quit_confirm">Are you sure you want to quit?</string>
 
     <!-- System list -->
     <string name="empty_content">No content found. Go add some!</string>

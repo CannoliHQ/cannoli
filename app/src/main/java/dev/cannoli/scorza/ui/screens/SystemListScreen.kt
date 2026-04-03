@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.ui.components.BottomBar
+import dev.cannoli.scorza.ui.components.ConfirmOverlay
 import dev.cannoli.scorza.ui.components.DialogOverlay
 import dev.cannoli.scorza.ui.components.List
 import dev.cannoli.scorza.ui.components.PillRowText
@@ -143,6 +144,10 @@ fun SystemListScreen(
                 rightItems = rightItems
             )
         }
+    }
+
+    if (dialogState is DialogState.QuitConfirm) {
+        ConfirmOverlay(message = stringResource(R.string.dialog_quit_confirm), confirmLabel = stringResource(R.string.label_quit))
     }
 
     if (dialogState.isFullScreen) {

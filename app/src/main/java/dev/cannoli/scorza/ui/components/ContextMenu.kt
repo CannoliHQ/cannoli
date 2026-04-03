@@ -46,7 +46,7 @@ fun OverlayScrim(
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 20.dp)
+                .padding(start = screenPadding, end = screenPadding, bottom = screenPadding)
         ) {
             bottomBar()
         }

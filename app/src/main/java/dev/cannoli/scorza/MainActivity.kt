@@ -1077,6 +1077,9 @@ class MainActivity : ComponentActivity() {
                     onSymbols = { dialogState.value = ds.copy(symbols = !ds.symbols) },
                     onEnter = { onProfileNameConfirm(ds) }
                 )
+                is DialogState.QuitConfirm -> {
+                    finishAffinity()
+                }
                 is DialogState.DeleteProfileConfirm -> {
                     profileManager.deleteProfile(ds.profileName)
                     val updated = profileManager.listProfiles()
@@ -1415,7 +1418,8 @@ class MainActivity : ComponentActivity() {
                 is DialogState.DeleteCollectionConfirm -> {
                     restoreContextMenu()
                 }
-                is DialogState.DeleteProfileConfirm -> {
+                is DialogState.DeleteProfileConfirm,
+                is DialogState.QuitConfirm -> {
                     dialogState.value = DialogState.None
                 }
                 is DialogState.CollectionCreated -> {
@@ -1451,7 +1455,7 @@ class MainActivity : ComponentActivity() {
                 DialogState.None -> when (val screen = currentScreen) {
                     LauncherScreen.SystemList -> {
                         if (systemListViewModel.isReorderMode()) systemListViewModel.cancelReorder(showTools = settings.showTools, showPorts = settings.showPorts, showEmpty = settings.showEmpty, toolsName = settings.toolsName, portsName = settings.portsName)
-                        else if (settings.mainMenuQuit) finishAffinity()
+                        else if (settings.mainMenuQuit) dialogState.value = DialogState.QuitConfirm
                     }
                     LauncherScreen.GameList -> {
                         if (gameListViewModel.isMultiSelectMode()) {
