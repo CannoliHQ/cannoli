@@ -39,6 +39,7 @@
     <!-- Settings items -->
     <string name="setting_colors">Colors</string>
     <string name="setting_box_art">Box Art</string>
+    <string name="setting_art_width">Art Width</string>
     <string name="setting_text_size">Text Size</string>
     <string name="setting_font">Font</string>
     <string name="setting_title">Title</string>
@@ -56,6 +57,7 @@
     <string name="setting_platform_switching">L1 / R1 Switches Platform</string>
     <string name="setting_swap_play_resume">Swap Play and Resume</string>
     <string name="setting_main_menu_quit">Main Menu Quit</string>
+    <string name="setting_retroarch_diy_mode">RetroArch DIY Mode</string>
     <string name="setting_set_default_launcher">Set as Default Launcher</string>
     <string name="setting_show_empty">Empty Platforms</string>
     <string name="setting_scroll_speed">Marquee Speed</string>
