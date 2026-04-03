@@ -49,30 +49,21 @@ object ArchiveExtractor {
     }
 
     private fun extract7z(archive: File, outDir: File): File? {
-        SevenZFile.builder().setFile(archive).get().use { sevenZ ->
-            var largest: org.apache.commons.compress.archivers.sevenz.SevenZArchiveEntry? = null
-            for (entry in sevenZ.entries) {
-                if (!entry.isDirectory && (largest == null || entry.size > largest.size)) {
-                    largest = entry
-                }
-            }
-            if (largest == null) return null
-            val outFile = File(outDir, File(largest.name).name)
-            SevenZFile.builder().setFile(archive).get().use { sz ->
-                var e = sz.nextEntry
-                while (e != null) {
-                    if (e.name == largest.name) {
-                        outFile.outputStream().use { out ->
-                            val buf = ByteArray(8192)
-                            var n: Int
-                            while (sz.read(buf).also { n = it } > 0) {
-                                out.write(buf, 0, n)
-                            }
+        SevenZFile.builder().setFile(archive).get().use { sz ->
+            var e = sz.nextEntry
+            while (e != null) {
+                if (!e.isDirectory) {
+                    val outFile = File(outDir, File(e.name).name)
+                    outFile.outputStream().use { out ->
+                        val buf = ByteArray(8192)
+                        var n: Int
+                        while (sz.read(buf).also { n = it } > 0) {
+                            out.write(buf, 0, n)
                         }
-                        return outFile
                     }
-                    e = sz.nextEntry
+                    return outFile
                 }
+                e = sz.nextEntry
             }
             return null
         }
