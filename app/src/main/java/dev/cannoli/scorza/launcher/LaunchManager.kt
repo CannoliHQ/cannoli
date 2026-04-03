@@ -268,7 +268,8 @@ class LaunchManager(
                             }
                         }
                         if (settings.retroArchDiyMode) {
-                            retroArchLauncher.launch(launchFile, core, targetPackage = raPackage)
+                            val raConfig = "/storage/emulated/0/Android/data/$raPackage/files/retroarch.cfg"
+                            retroArchLauncher.launch(launchFile, core, raConfig, raPackage)
                         } else {
                             syncRetroArchConfig(File(settings.sdCardRoot))
                             val launchConfig = buildGameConfig(game) ?: raConfigPath
@@ -310,7 +311,8 @@ class LaunchManager(
         val core = gameOverride?.coreId ?: platformResolver.getCoreName(game.platformTag) ?: return
         val raPackage = gameOverride?.raPackage ?: platformResolver.getPackage(game.platformTag)
         if (settings.retroArchDiyMode) {
-            retroArchLauncher.launch(launchFile, core, targetPackage = raPackage)
+            val raConfig = "/storage/emulated/0/Android/data/$raPackage/files/retroarch.cfg"
+            retroArchLauncher.launch(launchFile, core, raConfig, raPackage)
         } else {
             syncRetroArchConfig(File(settings.sdCardRoot))
             val launchConfig = buildGameConfig(game, resume = true, slot = resumeSlot) ?: raConfigPath
