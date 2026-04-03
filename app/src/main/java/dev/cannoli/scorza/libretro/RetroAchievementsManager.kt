@@ -167,10 +167,6 @@ class RetroAchievementsManager(
         cachedAchievements = null
     }
 
-    fun manualUnlock(achievementId: Int) {
-        nativeManualUnlock(achievementId)
-    }
-
     data class Achievement(
         val id: Int,
         val title: String,
