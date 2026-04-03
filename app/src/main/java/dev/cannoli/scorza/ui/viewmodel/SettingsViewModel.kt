@@ -5,7 +5,6 @@ import android.content.pm.PackageManager
 import androidx.annotation.StringRes
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
-import androidx.lifecycle.ViewModel
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.launcher.isPackageInstalled
 import dev.cannoli.scorza.settings.SettingsRepository
@@ -25,7 +24,7 @@ class SettingsViewModel(
     private val cannoliRoot: java.io.File? = null,
     private val packageManager: PackageManager? = null,
     private val appPackageName: String? = null
-) : ViewModel() {
+) {
 
     val isTelevision = packageManager?.hasSystemFeature(PackageManager.FEATURE_LEANBACK) == true
 
