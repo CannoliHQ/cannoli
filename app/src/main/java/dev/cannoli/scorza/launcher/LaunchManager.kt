@@ -217,7 +217,8 @@ class LaunchManager(
             if (game.isSubfolder) continue
             if (!hasSaveState(game)) continue
             val target = game.launchTarget
-            if (target is LaunchTarget.RetroArch || target is LaunchTarget.Embedded || getEmbeddedCorePath(game) != null) {
+            val embedded = target is LaunchTarget.Embedded || getEmbeddedCorePath(game) != null
+            if (embedded || (target is LaunchTarget.RetroArch && !settings.retroArchDiyMode)) {
                 result.add(game.file.absolutePath)
             }
         }
