@@ -596,6 +596,7 @@ class SettingsViewModel(
             add(SettingsItem("rom_directory", R.string.setting_rom_directory, valueText = romDir.ifEmpty { null }, valueRes = if (romDir.isEmpty()) R.string.value_cannoli_root else null, isEditable = true, canCycle = false))
             add(SettingsItem("core_mapping", R.string.setting_core_mapping, isEditable = true))
             add(SettingsItem("main_menu_quit", R.string.setting_main_menu_quit, valueRes = onOff(settings.mainMenuQuit)))
+            add(SettingsItem("retroarch_diy_mode", R.string.setting_retroarch_diy_mode, valueRes = onOff(settings.retroArchDiyMode)))
             val pkgs = detectInstalledRaPackages()
             if (pkgs.isNotEmpty() && settings.retroArchPackage !in pkgs) {
                 settings.retroArchPackage = pkgs.first()
