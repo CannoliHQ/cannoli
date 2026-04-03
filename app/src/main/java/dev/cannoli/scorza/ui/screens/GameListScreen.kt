@@ -67,7 +67,8 @@ fun GameListScreen(
     dialogState: DialogState = DialogState.None,
     onVisibleRangeChanged: (Int, Int, Boolean) -> Unit = { _, _, _ -> },
     resumableGames: Set<String> = emptySet(),
-    swapPlayResume: Boolean = false
+    swapPlayResume: Boolean = false,
+    artWidth: Int = 40
 ) {
     val state by viewModel.state.collectAsState()
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
@@ -99,7 +100,7 @@ fun GameListScreen(
                 .fillMaxSize()
                 .padding(screenPadding)
         ) {
-            val showArt = selectedArt != null
+            val showArt = selectedArt != null && artWidth > 0
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -130,7 +131,7 @@ fun GameListScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxHeight()
-                                .then(if (showArt) Modifier.fillMaxWidth(0.6f) else Modifier.fillMaxWidth())
+                                .then(if (showArt) Modifier.fillMaxWidth(1f - artWidth / 100f) else Modifier.fillMaxWidth())
                         ) {
                             List(
                                 items = state.games,
@@ -163,11 +164,13 @@ fun GameListScreen(
                                     .padding(start = 16.dp),
                                 contentAlignment = Alignment.Center
                             ) {
+                                val art = selectedArt ?: return@Box
+                                val isPortrait = art.height > art.width
                                 Image(
-                                    bitmap = selectedArt ?: return@Box,
+                                    bitmap = art,
                                     contentDescription = null,
                                     modifier = Modifier
-                                        .fillMaxSize()
+                                        .then(if (isPortrait) Modifier.fillMaxWidth() else Modifier.fillMaxSize())
                                         .clip(RoundedCornerShape(8.dp)),
                                     contentScale = ContentScale.Fit,
                                     filterQuality = FilterQuality.High
