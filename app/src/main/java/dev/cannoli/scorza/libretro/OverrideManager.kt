@@ -51,6 +51,7 @@ class OverrideManager(
         var shortcutSource: OverrideSource = OverrideSource.GLOBAL,
         var controls: Map<String, Int> = emptyMap(),
         var shortcuts: Map<ShortcutAction, Set<Int>> = emptyMap(),
+        var controllerTypeId: Int = -1,
         var coreOptions: Map<String, String> = emptyMap()
     ) {
         fun frontendEquals(other: Settings): Boolean =
@@ -72,6 +73,7 @@ class OverrideManager(
             crtNoise == other.crtNoise &&
             shaderPreset == other.shaderPreset &&
             overlay == other.overlay &&
+            controllerTypeId == other.controllerTypeId &&
             coreOptions == other.coreOptions
     }
 
@@ -180,6 +182,7 @@ class OverrideManager(
         s["crt_noise"]?.toFloatOrNull()?.let { settings.crtNoise = it }
         s["shader_preset"]?.let { settings.shaderPreset = it }
         s["overlay"]?.let { settings.overlay = it }
+        s["controller_type"]?.toIntOrNull()?.let { settings.controllerTypeId = it }
     }
 
     private fun applyOptions(file: File, settings: Settings) {
@@ -225,7 +228,8 @@ class OverrideManager(
         "crt_brightness" to settings.crtBrightness.toString(),
         "crt_noise" to settings.crtNoise.toString(),
         "shader_preset" to settings.shaderPreset,
-        "overlay" to settings.overlay
+        "overlay" to settings.overlay,
+        "controller_type" to settings.controllerTypeId.toString()
     )
 
     private fun buildFrontendDelta(settings: Settings, baseline: Settings): Map<String, String> {
@@ -248,6 +252,7 @@ class OverrideManager(
         if (settings.crtNoise != baseline.crtNoise) delta["crt_noise"] = settings.crtNoise.toString()
         if (settings.shaderPreset != baseline.shaderPreset) delta["shader_preset"] = settings.shaderPreset
         if (settings.overlay != baseline.overlay) delta["overlay"] = settings.overlay
+        if (settings.controllerTypeId != baseline.controllerTypeId) delta["controller_type"] = settings.controllerTypeId.toString()
         return delta
     }
 

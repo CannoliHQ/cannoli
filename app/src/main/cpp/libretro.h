@@ -19,6 +19,15 @@ extern "C" {
 // Device types
 #define RETRO_DEVICE_NONE    0
 #define RETRO_DEVICE_JOYPAD  1
+#define RETRO_DEVICE_ANALOG  5
+
+// Analog stick indices
+#define RETRO_DEVICE_INDEX_ANALOG_LEFT   0
+#define RETRO_DEVICE_INDEX_ANALOG_RIGHT  1
+
+// Analog axis IDs
+#define RETRO_DEVICE_ID_ANALOG_X  0
+#define RETRO_DEVICE_ID_ANALOG_Y  1
 
 // Joypad buttons
 #define RETRO_DEVICE_ID_JOYPAD_B      0
@@ -55,6 +64,7 @@ extern "C" {
 #define RETRO_ENVIRONMENT_GET_RUMBLE_INTERFACE   23
 #define RETRO_ENVIRONMENT_GET_LOG_INTERFACE      27
 #define RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY     31
+#define RETRO_ENVIRONMENT_SET_CONTROLLER_INFO    35
 #define RETRO_ENVIRONMENT_SET_MEMORY_MAPS        36
 
 #define RETRO_DEVICE_ID_JOYPAD_MASK  256
@@ -150,6 +160,17 @@ struct retro_game_info {
     const void *data;
     size_t size;
     const char *meta;
+};
+
+// Controller info
+struct retro_controller_description {
+    const char *desc;
+    unsigned id;
+};
+
+struct retro_controller_info {
+    const struct retro_controller_description *types;
+    unsigned num_types;
 };
 
 // Callback typedefs

@@ -42,8 +42,22 @@ class LibretroRunner {
     fun run() = nativeRun()
 
     fun setInput(port: Int, mask: Int) = nativeSetInput(port, mask)
+    fun setAnalog(port: Int, index: Int, x: Int, y: Int) = nativeSetAnalog(port, index, x, y)
 
     fun setControllerPortDevice(port: Int, device: Int) = nativeSetControllerPortDevice(port, device)
+
+    data class ControllerType(val desc: String, val id: Int)
+
+    fun getControllerTypes(port: Int): List<ControllerType> {
+        val arr = nativeGetControllerTypes(port)
+        val result = mutableListOf<ControllerType>()
+        var i = 0
+        while (i + 1 < arr.size) {
+            result.add(ControllerType(arr[i], arr[i + 1].toIntOrNull() ?: 0))
+            i += 2
+        }
+        return result
+    }
 
     fun getRotation(): Int = nativeGetRotation()
     fun getPixelFormat(): Int = nativeGetPixelFormat()
@@ -127,7 +141,9 @@ class LibretroRunner {
     private external fun nativeLoadGame(romPath: String): IntArray?
     private external fun nativeRun()
     private external fun nativeSetInput(port: Int, mask: Int)
+    private external fun nativeSetAnalog(port: Int, index: Int, x: Int, y: Int)
     private external fun nativeSetControllerPortDevice(port: Int, device: Int)
+    private external fun nativeGetControllerTypes(port: Int): Array<String>
     private external fun nativeGetRotation(): Int
     private external fun nativeGetPixelFormat(): Int
     private external fun nativeGetFrameWidth(): Int

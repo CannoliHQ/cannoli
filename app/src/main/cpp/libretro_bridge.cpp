@@ -43,6 +43,7 @@ static struct {
 // State shared with callbacks
 #define MAX_PORTS 4
 static int16_t g_input_state[MAX_PORTS] = {0};
+static int16_t g_analog_state[MAX_PORTS][2][2] = {{{0}}}; // [port][stick][axis]
 static unsigned g_pixel_format = RETRO_PIXEL_FORMAT_0RGB1555;
 
 // Frame buffer written by video callback, read by renderer
@@ -88,6 +89,13 @@ static bool g_options_dirty = false;
 static struct retro_disk_control_callback g_disk_control = {0};
 static bool g_has_disk_control = false;
 static const char *(*g_get_image_label)(unsigned index) = nullptr;
+
+// Controller info
+struct ControllerTypeInfo {
+    std::string desc;
+    unsigned id;
+};
+static std::vector<ControllerTypeInfo> g_controller_types[MAX_PORTS];
 
 // Memory map (for RetroAchievements)
 static struct retro_memory_map g_memory_map = {0};
@@ -294,6 +302,19 @@ static bool environment_cb(unsigned cmd, void *data) {
             *(unsigned *)data = 0; // RETRO_LANGUAGE_ENGLISH
             return true;
 
+        case RETRO_ENVIRONMENT_SET_CONTROLLER_INFO: {
+            auto *info = (const struct retro_controller_info *)data;
+            for (int p = 0; p < MAX_PORTS && info[p].num_types > 0; p++) {
+                g_controller_types[p].clear();
+                for (unsigned t = 0; t < info[p].num_types; t++) {
+                    const char *desc = info[p].types[t].desc;
+                    if (!desc || !desc[0]) continue;
+                    g_controller_types[p].push_back({desc, info[p].types[t].id});
+                }
+            }
+            return true;
+        }
+
         case RETRO_ENVIRONMENT_SET_MEMORY_MAPS: {
             const struct retro_memory_map *mmap = (const struct retro_memory_map *)data;
             free(g_memory_descriptors);
@@ -417,9 +438,16 @@ static void input_poll_cb(void) {
 }
 
 static int16_t input_state_cb(unsigned port, unsigned device, unsigned index, unsigned id) {
-    if (port >= MAX_PORTS || device != RETRO_DEVICE_JOYPAD) return 0;
-    if (id == RETRO_DEVICE_ID_JOYPAD_MASK) return g_input_state[port];
-    return (g_input_state[port] >> id) & 1;
+    if (port >= MAX_PORTS) return 0;
+    unsigned base = device & 0xFF;
+    if (base == RETRO_DEVICE_JOYPAD) {
+        if (id == RETRO_DEVICE_ID_JOYPAD_MASK) return g_input_state[port];
+        return (g_input_state[port] >> id) & 1;
+    }
+    if (base == RETRO_DEVICE_ANALOG && index < 2 && id < 2) {
+        return g_analog_state[port][index][id];
+    }
+    return 0;
 }
 
 // --- JNI helpers ---
@@ -572,6 +600,32 @@ JNIEXPORT void JNICALL
 Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeSetInput(JNIEnv *, jobject, jint port, jint mask) {
     if (port >= 0 && port < MAX_PORTS)
         g_input_state[port] = (int16_t)mask;
+}
+
+JNIEXPORT jobjectArray JNICALL
+Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeGetControllerTypes(JNIEnv *env, jobject, jint port) {
+    jclass strClass = env->FindClass("java/lang/String");
+    if (port < 0 || port >= MAX_PORTS || g_controller_types[port].empty()) {
+        return env->NewObjectArray(0, strClass, nullptr);
+    }
+    auto &types = g_controller_types[port];
+    int count = (int)types.size();
+    jobjectArray result = env->NewObjectArray(count * 2, strClass, nullptr);
+    for (int i = 0; i < count; i++) {
+        env->SetObjectArrayElement(result, i * 2, env->NewStringUTF(types[i].desc.c_str()));
+        char idStr[16];
+        snprintf(idStr, sizeof(idStr), "%u", types[i].id);
+        env->SetObjectArrayElement(result, i * 2 + 1, env->NewStringUTF(idStr));
+    }
+    return result;
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeSetAnalog(JNIEnv *, jobject, jint port, jint index, jint x, jint y) {
+    if (port >= 0 && port < MAX_PORTS && index >= 0 && index < 2) {
+        g_analog_state[port][index][0] = (int16_t)x;
+        g_analog_state[port][index][1] = (int16_t)y;
+    }
 }
 
 JNIEXPORT void JNICALL
@@ -802,6 +856,7 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeDeinit(JNIEnv *env, jobjec
     memset(&g_disk_control, 0, sizeof(g_disk_control));
     g_has_disk_control = false;
     g_get_image_label = nullptr;
+    for (int p = 0; p < MAX_PORTS; p++) g_controller_types[p].clear();
 }
 
 JNIEXPORT void JNICALL
@@ -853,10 +908,42 @@ JNIEXPORT void JNICALL
 Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeSetCoreOption(JNIEnv *env, jobject, jstring key, jstring value) {
     const char *k = env->GetStringUTFChars(key, nullptr);
     const char *v = env->GetStringUTFChars(value, nullptr);
-    g_option_overrides[k] = v;
+    std::string k_str(k);
+    std::string v_str(v);
+    g_option_overrides[k_str] = v_str;
     g_options_dirty = true;
     env->ReleaseStringUTFChars(key, k);
     env->ReleaseStringUTFChars(value, v);
+
+    if (!core.set_controller_port_device) return;
+
+    std::string key_lower = k_str;
+    for (auto &c : key_lower) c = tolower(c);
+    if (key_lower.find("type") == std::string::npos && key_lower.find("device") == std::string::npos) return;
+
+    int port = -1;
+    size_t pos = std::string::npos;
+    if ((pos = key_lower.find("pad")) != std::string::npos) pos += 3;
+    else if ((pos = key_lower.find("player")) != std::string::npos) pos += 6;
+    else if ((pos = key_lower.find("_p")) != std::string::npos) pos += 2;
+    else if ((pos = key_lower.find("controller")) != std::string::npos) pos += 10;
+
+    if (pos != std::string::npos && pos < key_lower.size() && key_lower[pos] >= '1' && key_lower[pos] <= '4')
+        port = key_lower[pos] - '1';
+
+    if (port < 0 || port >= MAX_PORTS) return;
+
+    std::string val_lower = v_str;
+    for (auto &c : val_lower) c = tolower(c);
+    for (auto &ct : g_controller_types[port]) {
+        std::string desc_lower = ct.desc;
+        for (auto &c : desc_lower) c = tolower(c);
+        if (desc_lower == val_lower || desc_lower.find(val_lower) != std::string::npos ||
+            val_lower.find(desc_lower) != std::string::npos) {
+            core.set_controller_port_device(port, ct.id);
+            break;
+        }
+    }
 }
 
 JNIEXPORT jobjectArray JNICALL
