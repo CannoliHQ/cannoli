@@ -266,9 +266,13 @@ class LaunchManager(
                                 return toLaunchDialog(LaunchResult.CoreNotInstalled("$core not found in $label"))
                             }
                         }
-                        syncRetroArchConfig(File(settings.sdCardRoot))
-                        val launchConfig = buildGameConfig(game) ?: raConfigPath
-                        retroArchLauncher.launch(launchFile, core, launchConfig, raPackage)
+                        if (settings.retroArchDiyMode) {
+                            retroArchLauncher.launch(launchFile, core, targetPackage = raPackage)
+                        } else {
+                            syncRetroArchConfig(File(settings.sdCardRoot))
+                            val launchConfig = buildGameConfig(game) ?: raConfigPath
+                            retroArchLauncher.launch(launchFile, core, launchConfig, raPackage)
+                        }
                     } else {
                         LaunchResult.CoreNotInstalled("unknown")
                     }
@@ -304,9 +308,13 @@ class LaunchManager(
         val gameOverride = platformResolver.getGameOverride(game.file.absolutePath)
         val core = gameOverride?.coreId ?: platformResolver.getCoreName(game.platformTag) ?: return
         val raPackage = gameOverride?.raPackage ?: platformResolver.getPackage(game.platformTag)
-        syncRetroArchConfig(File(settings.sdCardRoot))
-        val launchConfig = buildGameConfig(game, resume = true, slot = resumeSlot) ?: raConfigPath
-        retroArchLauncher.launch(launchFile, core, launchConfig, raPackage)
+        if (settings.retroArchDiyMode) {
+            retroArchLauncher.launch(launchFile, core, targetPackage = raPackage)
+        } else {
+            syncRetroArchConfig(File(settings.sdCardRoot))
+            val launchConfig = buildGameConfig(game, resume = true, slot = resumeSlot) ?: raConfigPath
+            retroArchLauncher.launch(launchFile, core, launchConfig, raPackage)
+        }
     }
 
     private fun toLaunchDialog(result: LaunchResult): DialogState? {
