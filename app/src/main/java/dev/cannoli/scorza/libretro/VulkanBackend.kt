@@ -20,10 +20,8 @@ class VulkanBackend(private val runner: LibretroRunner) : GraphicsBackend, Surfa
             System.loadLibrary("vulkan_renderer")
         }
 
-        fun isAvailable(): Boolean = try {
-            Class.forName("dev.cannoli.scorza.libretro.VulkanBackend")
-            true
-        } catch (_: Throwable) { false }
+        fun isAvailable(context: android.content.Context): Boolean =
+            context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_VULKAN_HARDWARE_LEVEL)
     }
 
     var debugPath: String? = null
