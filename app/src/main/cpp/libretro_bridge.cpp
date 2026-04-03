@@ -277,6 +277,12 @@ static bool environment_cb(unsigned cmd, void *data) {
             return true;
 
         case RETRO_ENVIRONMENT_SET_DISK_CONTROL_INTERFACE: {
+            if (!data) {
+                memset(&g_disk_control, 0, sizeof(g_disk_control));
+                g_has_disk_control = false;
+                g_get_image_label = nullptr;
+                return true;
+            }
             auto *cb = (struct retro_disk_control_callback *)data;
             g_disk_control = *cb;
             g_has_disk_control = true;
@@ -286,6 +292,12 @@ static bool environment_cb(unsigned cmd, void *data) {
         }
 
         case RETRO_ENVIRONMENT_SET_DISK_CONTROL_EXT_INTERFACE: {
+            if (!data) {
+                memset(&g_disk_control, 0, sizeof(g_disk_control));
+                g_has_disk_control = false;
+                g_get_image_label = nullptr;
+                return true;
+            }
             auto *cb = (struct retro_disk_control_ext_callback *)data;
             g_disk_control.set_eject_state = cb->set_eject_state;
             g_disk_control.get_eject_state = cb->get_eject_state;
