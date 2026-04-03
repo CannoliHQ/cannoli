@@ -498,6 +498,7 @@ class FileScanner(
         } else {
             game.file.delete()
         }
+        invalidateGameCacheForTag(game.platformTag)
         cleanCollectionPaths(paths)
     }
 
