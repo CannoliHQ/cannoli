@@ -63,7 +63,6 @@ Full license texts are available in the [licenses](licenses/) directory.
 | Mednafen VB         | GPLv2          |
 | Mednafen WonderSwan | GPLv2          |
 | mGBA                | MPLv2.0        |
-| Mupen64Plus-Next    | GPLv2          |
 | Nestopia            | GPLv2          |
 | PCSX ReARMed        | GPLv2          |
 | PokeMini            | GPLv3          |

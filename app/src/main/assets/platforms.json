@@ -28,7 +28,9 @@
   },
   "N64": {
     "name": "Nintendo 64",
-    "core": "mupen64plus_next_gles3_libretro"
+    "retroarch": [
+      "mupen64plus_next_gles3_libretro"
+    ]
   },
   "NDS": {
     "name": "Nintendo DS",

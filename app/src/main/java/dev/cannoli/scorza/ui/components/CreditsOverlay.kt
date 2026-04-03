@@ -28,7 +28,6 @@ val CREDITS: List<CreditEntry> = listOf(
     CreditEntry("Mednafen VB", "GPLv2"),
     CreditEntry("Mednafen WonderSwan", "GPLv2"),
     CreditEntry("mGBA", "MPLv2.0"),
-    CreditEntry("Mupen64Plus-Next", "GPLv2"),
     CreditEntry("Nestopia", "GPLv2"),
     CreditEntry("PCSX ReARMed", "GPLv2"),
     CreditEntry("PokeMini", "GPLv3"),
