@@ -131,6 +131,7 @@
     <!-- Bottom bar labels (additional) -->
     <string name="label_stop">STOP</string>
     <string name="label_credits">CREDITS</string>
+    <string name="label_update">UPDATE</string>
     <string name="label_check_update">CHECK FOR UPDATES</string>
     <string name="label_logout">LOGOUT</string>
     <string name="label_hex">HEX</string>

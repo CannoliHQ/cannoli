@@ -39,6 +39,7 @@ fun SettingsScreen(
     dialogState: DialogState = DialogState.None,
     downloadProgress: Float = 0f,
     downloadError: String? = null,
+    updateAvailable: Boolean = false,
     onVisibleRangeChanged: (Int, Int, Boolean) -> Unit = { _, _, _ -> }
 ) {
     val state by viewModel.state.collectAsState()
@@ -136,24 +137,13 @@ fun SettingsScreen(
                     onVisibleRangeChanged = onVisibleRangeChanged,
                     key = { _, category -> category.key }
                 ) { index, category ->
-                    if (category.key == "install_update") {
-                        PillRowKeyValue(
-                            label = stringResource(category.labelRes),
-                            value = viewModel.updateInfo?.versionName ?: "",
-                            isSelected = state.categoryIndex == index,
-                            fontSize = listFontSize,
-                            lineHeight = listLineHeight,
-                            verticalPadding = listVerticalPadding
-                        )
-                    } else {
-                        PillRowText(
-                            label = stringResource(category.labelRes),
-                            isSelected = state.categoryIndex == index,
-                            fontSize = listFontSize,
-                            lineHeight = listLineHeight,
-                            verticalPadding = listVerticalPadding
-                        )
-                    }
+                    PillRowText(
+                        label = stringResource(category.labelRes),
+                        isSelected = state.categoryIndex == index,
+                        fontSize = listFontSize,
+                        lineHeight = listLineHeight,
+                        verticalPadding = listVerticalPadding
+                    )
                 }
             }
 
@@ -175,7 +165,8 @@ fun SettingsScreen(
             listLineHeight = listLineHeight,
             listVerticalPadding = listVerticalPadding,
             downloadProgress = downloadProgress,
-            downloadError = downloadError
+            downloadError = downloadError,
+            updateAvailable = updateAvailable
         )
     }
 }

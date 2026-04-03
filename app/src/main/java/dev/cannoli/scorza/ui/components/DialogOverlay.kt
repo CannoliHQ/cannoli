@@ -27,7 +27,8 @@ fun DialogOverlay(
     listLineHeight: TextUnit,
     listVerticalPadding: Dp,
     downloadProgress: Float = 0f,
-    downloadError: String? = null
+    downloadError: String? = null,
+    updateAvailable: Boolean = false
 ) {
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
     when (dialogState) {
@@ -125,7 +126,7 @@ fun DialogOverlay(
         }
 
         is DialogState.About -> {
-            AboutOverlay(statusMessage = dialogState.statusMessage)
+            AboutOverlay(statusMessage = dialogState.statusMessage, updateAvailable = updateAvailable)
         }
 
         is DialogState.Kitchen -> {
