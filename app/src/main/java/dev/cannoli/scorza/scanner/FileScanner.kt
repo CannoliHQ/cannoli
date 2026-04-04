@@ -400,17 +400,17 @@ class FileScanner(
             }
             .let { games ->
                 if (collectionName.equals("Favorites", ignoreCase = true)) {
-                    games.sortedWith(compareBy(dev.cannoli.scorza.util.NaturalSort) { it.displayName })
+                    games
                 } else {
                     val favPaths = getFavoritePaths()
-                    games.map { game ->
+                    val tagged = games.map { game ->
                         if (game.file.absolutePath in favPaths)
                             game.copy(displayName = "★ ${game.displayName}")
                         else game
-                    }.sortedWith(
-                        compareBy<Game> { !it.displayName.startsWith("★") }
-                            .thenBy(dev.cannoli.scorza.util.NaturalSort) { it.displayName.removePrefix("★ ") }
-                    )
+                    }
+                    val favs = tagged.filter { it.displayName.startsWith("★") }
+                    val rest = tagged.filter { !it.displayName.startsWith("★") }
+                    favs + rest
                 }
             }
     }
