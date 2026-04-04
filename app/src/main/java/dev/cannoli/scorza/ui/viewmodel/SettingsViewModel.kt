@@ -7,6 +7,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.launcher.isPackageInstalled
+import dev.cannoli.scorza.settings.ArtScale
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.settings.TextSize
 import dev.cannoli.scorza.settings.TimeFormat
@@ -118,7 +119,8 @@ class SettingsViewModel(
         val swapPlayResume: Boolean = false,
         val mainMenuQuit: Boolean = false,
         val retroArchDiyMode: Boolean = true,
-        val artWidth: Int = 40
+        val artWidth: Int = 40,
+        val artScale: ArtScale = ArtScale.DEFAULT
     )
 
     private val _state = MutableStateFlow(State())
@@ -149,7 +151,8 @@ class SettingsViewModel(
         swapPlayResume = settings.swapPlayResume,
         mainMenuQuit = settings.mainMenuQuit,
         retroArchDiyMode = settings.retroArchDiyMode,
-        artWidth = settings.artWidth
+        artWidth = settings.artWidth,
+        artScale = settings.artScale
     )
 
     private val allCategories = listOf(
@@ -196,6 +199,7 @@ class SettingsViewModel(
         val portsName: String,
         val releaseChannel: String,
         val artWidth: Int,
+        val artScale: ArtScale,
         val retroArchDiyMode: Boolean
     )
 
@@ -495,6 +499,7 @@ class SettingsViewModel(
         portsName = settings.portsName,
         releaseChannel = settings.releaseChannel,
         artWidth = settings.artWidth,
+        artScale = settings.artScale,
         retroArchDiyMode = settings.retroArchDiyMode
     )
 
@@ -527,6 +532,7 @@ class SettingsViewModel(
         settings.portsName = snap.portsName
         settings.releaseChannel = snap.releaseChannel
         settings.artWidth = snap.artWidth
+        settings.artScale = snap.artScale
         settings.retroArchDiyMode = snap.retroArchDiyMode
     }
 
