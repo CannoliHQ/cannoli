@@ -437,6 +437,11 @@ class FileScanner(
         favoritesCache = null
     }
 
+    fun saveCollectionContents(collectionName: String, romPaths: List<String>) {
+        val collFile = File(collectionsDir, "$collectionName.txt")
+        collFile.writeText(romPaths.joinToString("\n") + if (romPaths.isNotEmpty()) "\n" else "")
+    }
+
     fun isInCollection(collectionName: String, romPath: String): Boolean {
         val collFile = File(collectionsDir, "$collectionName.txt")
         if (!collFile.exists()) return false
