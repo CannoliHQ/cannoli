@@ -312,24 +312,26 @@ class MainActivity : ComponentActivity() {
     private fun refreshCollectionPickerOnStack() {
         val cp = currentScreen
         if (cp is LauncherScreen.CollectionPicker) {
-            val allCollections = scanner.getCollectionNames()
-                .filter { !it.equals("Favorites", ignoreCase = true) }
-                .sortedWith(dev.cannoli.scorza.util.NaturalSort)
+            val all = scanner.scanCollections()
+                .filter { !it.stem.equals("Favorites", ignoreCase = true) }
+            val stems = all.map { it.stem }
+            val displayNames = all.map { it.displayName }
             val alreadyIn = if (cp.gamePaths.size == 1) {
                 scanner.getCollectionsContaining(cp.gamePaths[0])
             } else {
                 cp.gamePaths.map { scanner.getCollectionsContaining(it) }
                     .reduceOrNull { acc, set -> acc intersect set } ?: emptySet()
             }
-            val newInitialChecked = allCollections.indices
-                .filter { allCollections[it] in alreadyIn }
+            val newInitialChecked = stems.indices
+                .filter { stems[it] in alreadyIn }
                 .toSet()
-            val oldCheckedNames = cp.checkedIndices.mapNotNull { cp.collections.getOrNull(it) }.toSet()
-            val newCheckedIndices = allCollections.indices
-                .filter { allCollections[it] in oldCheckedNames || allCollections[it] in alreadyIn }
+            val oldCheckedStems = cp.checkedIndices.mapNotNull { cp.collections.getOrNull(it) }.toSet()
+            val newCheckedIndices = stems.indices
+                .filter { stems[it] in oldCheckedStems || stems[it] in alreadyIn }
                 .toSet()
             screenStack[screenStack.lastIndex] = cp.copy(
-                collections = allCollections,
+                collections = stems,
+                displayNames = displayNames,
                 checkedIndices = newCheckedIndices,
                 initialChecked = newInitialChecked
             )
@@ -759,6 +761,7 @@ class MainActivity : ComponentActivity() {
 
         val romDir = settings.romDirectory.takeIf { it.isNotEmpty() }?.let { File(it) }
         scanner = FileScanner(root, platformResolver, romDir)
+        scanner.migrateCollectionsToHashedNames()
         launchManager.syncRetroArchAssets(root)
         launchManager.syncRetroArchConfig(root)
 
@@ -1166,20 +1169,20 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 is DialogState.DeleteCollectionConfirm -> {
-                    val name = ds.collectionName
+                    val stem = ds.collectionStem
                     val glState = gameListViewModel.state.value
                     val deletingFromParent = glState.isCollection && !glState.isCollectionsList
                     pendingContextReturn = null
                     dialogState.value = DialogState.None
                     if (!deletingFromParent) gameListViewModel.saveCollectionsPosition()
                     ioScope.launch {
-                        scanner.deleteCollection(name)
+                        scanner.deleteCollection(stem)
                         if (deletingFromParent) {
                             gameListViewModel.reload()
                             rescanSystemList()
                         } else {
                             val remaining = scanner.scanCollections()
-                                .filter { !it.name.equals("Favorites", ignoreCase = true) }
+                                .filter { !it.stem.equals("Favorites", ignoreCase = true) }
                             if (remaining.isEmpty()) {
                                 withContext(Dispatchers.Main) {
                                     screenStack.removeAt(screenStack.lastIndex)
@@ -1739,6 +1742,8 @@ class MainActivity : ComponentActivity() {
                         val glState = gameListViewModel.state.value
                         if (glState.isCollectionsList) {
                             dialogState.value = DialogState.NewCollectionInput(gamePaths = emptyList())
+                        } else if (glState.isCollection && glState.collectionName != null) {
+                            dialogState.value = DialogState.NewCollectionInput(gamePaths = emptyList(), parentStem = glState.collectionName)
                         } else {
                             val game = gameListViewModel.getSelectedGame()
                             if (game != null && !game.isSubfolder && !game.isChildCollection) {
@@ -2056,7 +2061,7 @@ class MainActivity : ComponentActivity() {
 
         if (gameListViewModel.state.value.isCollectionsList) {
             navigating = true
-            gameListViewModel.loadCollection(game.displayName) {
+            gameListViewModel.loadCollection(game.file.nameWithoutExtension) {
                 navigating = false
             }
             return
@@ -2064,8 +2069,8 @@ class MainActivity : ComponentActivity() {
 
         if (game.isChildCollection) {
             navigating = true
-            val childName = game.displayName.removePrefix("/")
-            gameListViewModel.enterChildCollection(childName) {
+            val childStem = game.file.name
+            gameListViewModel.enterChildCollection(childStem) {
                 navigating = false
             }
             return
@@ -2220,11 +2225,12 @@ class MainActivity : ComponentActivity() {
         when {
             selected == MENU_RENAME -> {
                 if (glState.isCollectionsList || game.isChildCollection) {
-                    val collName = if (game.isChildCollection) game.displayName.removePrefix("/") else game.displayName
+                    val stem = if (game.isChildCollection) game.file.name else game.file.nameWithoutExtension
+                    val displayName = dev.cannoli.scorza.model.Collection.stemToDisplayName(stem)
                     dialogState.value = DialogState.CollectionRenameInput(
-                        oldName = collName,
-                        currentName = collName,
-                        cursorPos = collName.length
+                        oldStem = stem,
+                        currentName = displayName,
+                        cursorPos = displayName.length
                     )
                 } else {
                     val name = game.displayName.removePrefix("★ ")
@@ -2237,8 +2243,8 @@ class MainActivity : ComponentActivity() {
             }
             selected == MENU_DELETE || selected == MENU_DELETE_GAME -> {
                 if (glState.isCollectionsList || game.isChildCollection) {
-                    val collName = if (game.isChildCollection) game.displayName.removePrefix("/") else game.displayName
-                    dialogState.value = DialogState.DeleteCollectionConfirm(collectionName = collName)
+                    val stem = if (game.isChildCollection) game.file.name else game.file.nameWithoutExtension
+                    dialogState.value = DialogState.DeleteCollectionConfirm(collectionStem = stem)
                 } else {
                     dialogState.value = DialogState.DeleteConfirm(gameName = game.displayName.removePrefix("★ "))
                 }
@@ -2247,8 +2253,8 @@ class MainActivity : ComponentActivity() {
                 openCollectionManager(listOf(game.file.absolutePath), game.displayName)
             }
             selected == MENU_CHILD_COLLECTIONS -> {
-                val collName = if (game.isChildCollection) game.displayName.removePrefix("/") else game.displayName
-                openChildPicker(collName)
+                val stem = if (game.isChildCollection) game.file.name else game.file.nameWithoutExtension
+                openChildPicker(stem)
             }
             selected == MENU_DELETE_ART -> {
                 pendingContextReturn = null
@@ -2387,42 +2393,46 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun openCollectionManager(gamePaths: List<String>, title: String) {
-        val allCollections = scanner.getCollectionNames()
-            .filter { !it.equals("Favorites", ignoreCase = true) }
-            .sortedWith(dev.cannoli.scorza.util.NaturalSort)
+        val all = scanner.scanCollections()
+            .filter { !it.stem.equals("Favorites", ignoreCase = true) }
+        val stems = all.map { it.stem }
+        val displayNames = all.map { it.displayName }
         val alreadyIn = if (gamePaths.size == 1) {
             scanner.getCollectionsContaining(gamePaths[0])
         } else {
             gamePaths.map { scanner.getCollectionsContaining(it) }
                 .reduceOrNull { acc, set -> acc intersect set } ?: emptySet()
         }
-        val initialChecked = allCollections.indices
-            .filter { allCollections[it] in alreadyIn }
+        val initialChecked = stems.indices
+            .filter { stems[it] in alreadyIn }
             .toSet()
         dialogState.value = DialogState.None
         screenStack.add(LauncherScreen.CollectionPicker(
             gamePaths = gamePaths,
             title = title,
-            collections = allCollections,
+            collections = stems,
+            displayNames = displayNames,
             selectedIndex = 0,
             checkedIndices = initialChecked,
             initialChecked = initialChecked
         ))
     }
 
-    private fun openChildPicker(collectionName: String) {
-        val allNames = scanner.getCollectionNames()
+    private fun openChildPicker(collectionStem: String) {
+        val allStems = scanner.getCollectionStems()
             .filter { !it.equals("Favorites", ignoreCase = true) }
-        val ancestors = scanner.getAncestors(collectionName)
-        val available = allNames.filter { it != collectionName && it !in ancestors }
-        val currentChildren = scanner.getChildCollections(collectionName).toSet()
+        val ancestors = scanner.getAncestors(collectionStem)
+        val available = allStems.filter { it != collectionStem && it !in ancestors }
+        val displayNames = available.map { dev.cannoli.scorza.model.Collection.stemToDisplayName(it) }
+        val currentChildren = scanner.getChildCollections(collectionStem).toSet()
         val initialChecked = available.indices
             .filter { available[it] in currentChildren }
             .toSet()
         dialogState.value = DialogState.None
         screenStack.add(LauncherScreen.ChildPicker(
-            collectionName = collectionName,
+            collectionName = collectionStem,
             collections = available,
+            displayNames = displayNames,
             selectedIndex = 0,
             checkedIndices = initialChecked,
             initialChecked = initialChecked
@@ -2515,9 +2525,12 @@ class MainActivity : ComponentActivity() {
         }
         dialogState.value = DialogState.None
         ioScope.launch {
-            scanner.createCollection(name)
+            val stem = scanner.createCollection(name)
+            if (state.parentStem != null) {
+                scanner.setCollectionParent(stem, state.parentStem)
+            }
             state.gamePaths.forEach { path ->
-                scanner.addToCollection(name, path)
+                scanner.addToCollection(stem, path)
             }
             gameListViewModel.reload()
             rescanSystemList()
@@ -2527,7 +2540,7 @@ class MainActivity : ComponentActivity() {
 
     private fun onCollectionRenameConfirm(state: DialogState.CollectionRenameInput) {
         val newName = state.currentName.trim()
-        if (newName.isEmpty() || newName == state.oldName) {
+        if (newName.isEmpty() || newName == dev.cannoli.scorza.model.Collection.stemToDisplayName(state.oldStem)) {
             restoreContextMenu()
             return
         }
@@ -2535,7 +2548,7 @@ class MainActivity : ComponentActivity() {
         val renamingFromParent = glState.isCollection && !glState.isCollectionsList
         dialogState.value = DialogState.None
         ioScope.launch {
-            scanner.renameCollection(state.oldName, newName)
+            scanner.renameCollection(state.oldStem, newName)
             if (renamingFromParent) {
                 gameListViewModel.reload()
             } else {

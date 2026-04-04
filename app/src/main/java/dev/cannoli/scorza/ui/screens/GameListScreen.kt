@@ -246,7 +246,7 @@ fun GameListScreen(
             message = stringResource(R.string.dialog_delete_confirm, dialogState.gameName)
         )
         is DialogState.DeleteCollectionConfirm -> ConfirmOverlay(
-            message = stringResource(R.string.dialog_delete_confirm, dialogState.collectionName)
+            message = stringResource(R.string.dialog_delete_confirm, dev.cannoli.scorza.model.Collection.stemToDisplayName(dialogState.collectionStem))
         )
         else -> {}
     }

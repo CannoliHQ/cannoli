@@ -55,7 +55,7 @@ class SystemListViewModel(
 
         scope.launch(Dispatchers.IO) {
             val platforms = scanner.scanPlatforms()
-            val collections = scanner.scanCollections().map { it.name }
+            val collections = scanner.scanCollections().map { it.stem }
             val tools = scanner.scanTools()
             val ports = scanner.scanPorts()
 

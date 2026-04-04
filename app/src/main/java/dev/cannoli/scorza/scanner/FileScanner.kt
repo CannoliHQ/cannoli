@@ -327,12 +327,10 @@ class FileScanner(
     fun scanCollections(): List<Collection> {
         collectionsCache?.let { return it }
         if (!collectionsDir.exists()) return emptyList()
-
         val files = collectionsDir.listFiles { f -> f.extension == "txt" } ?: return emptyList()
-
         val result = files.map { file ->
-            Collection(name = file.nameWithoutExtension, file = file)
-        }.sortedNatural { it.name }
+            Collection(stem = file.nameWithoutExtension, file = file)
+        }.sortedNatural { it.displayName }
         collectionsCache = result
         return result
     }
@@ -341,8 +339,74 @@ class FileScanner(
         collectionsCache = null
     }
 
-    fun scanCollectionGames(collectionName: String): List<Game> {
-        val collFile = File(collectionsDir, "$collectionName.txt")
+    fun migrateCollectionsToHashedNames() {
+        if (!collectionsDir.exists()) return
+
+        val files = collectionsDir.listFiles { f -> f.extension == "txt" } ?: return
+        val needsMigration = files.any { file ->
+            val stem = file.nameWithoutExtension
+            if (stem.equals("Favorites", ignoreCase = true)) return@any false
+            val idx = stem.lastIndexOf('_')
+            if (idx < 0) return@any true
+            val suffix = stem.substring(idx + 1)
+            !(suffix.length == 4 && suffix.all { it in '0'..'9' || it in 'a'..'f' })
+        }
+        if (!needsMigration) return
+
+        val renameMap = mutableMapOf<String, String>()
+        val existingStems = files.map { it.nameWithoutExtension }.toMutableSet()
+
+        for (file in files) {
+            val oldStem = file.nameWithoutExtension
+            if (oldStem.equals("Favorites", ignoreCase = true)) continue
+            val idx = oldStem.lastIndexOf('_')
+            val alreadyHashed = idx >= 0 && oldStem.substring(idx + 1).let { s ->
+                s.length == 4 && s.all { it in '0'..'9' || it in 'a'..'f' }
+            }
+            if (alreadyHashed) continue
+
+            val hash = Collection.generateUniqueHash(existingStems, oldStem)
+            val newStem = "${oldStem}_$hash"
+            val newFile = File(collectionsDir, "$newStem.txt")
+            if (file.renameTo(newFile)) {
+                renameMap[oldStem] = newStem
+                existingStems.remove(oldStem)
+                existingStems.add(newStem)
+            }
+        }
+
+        if (renameMap.isEmpty()) return
+
+        if (collectionParentsFile.exists()) {
+            val lines = collectionParentsFile.readLines()
+            val updated = lines.map { line ->
+                val trimmed = line.trim()
+                if (trimmed.isEmpty() || '=' !in trimmed) return@map line
+                val (child, parent) = trimmed.split('=', limit = 2)
+                val newChild = renameMap[child.trim()] ?: child.trim()
+                val newParent = renameMap[parent.trim()] ?: parent.trim()
+                "$newChild=$newParent"
+            }
+            collectionParentsFile.writeText(updated.joinToString("\n") + "\n")
+        }
+
+        val orderFile = File(configDir, "collection_order.txt")
+        if (orderFile.exists()) {
+            val lines = orderFile.readLines()
+            val updated = lines.map { renameMap[it.trim()] ?: it.trim() }
+            orderFile.writeText(updated.joinToString("\n") + "\n")
+        }
+
+        configDir.listFiles { f -> f.name.startsWith("child_order_") && f.extension == "txt" }
+            ?.forEach { it.delete() }
+
+        invalidateCollectionsCache()
+        collectionParentsCache = null
+        childrenByParentCache = null
+    }
+
+    fun scanCollectionGames(stem: String): List<Game> {
+        val collFile = File(collectionsDir, "$stem.txt")
         if (!collFile.exists()) return emptyList()
 
         val lines = try {
@@ -399,7 +463,7 @@ class FileScanner(
                 if (mapped != null) game.copy(displayName = mapped) else game
             }
             .let { games ->
-                if (collectionName.equals("Favorites", ignoreCase = true)) {
+                if (stem.equals("Favorites", ignoreCase = true)) {
                     games
                 } else {
                     val favPaths = getFavoritePaths()
@@ -415,9 +479,9 @@ class FileScanner(
             }
     }
 
-    fun addToCollection(collectionName: String, romPath: String) {
+    fun addToCollection(stem: String, romPath: String) {
         collectionsDir.mkdirs()
-        val collFile = File(collectionsDir, "$collectionName.txt")
+        val collFile = File(collectionsDir, "$stem.txt")
         val existing = try {
             if (collFile.exists()) collFile.readLines().map { it.trim() } else emptyList()
         } catch (_: IOException) { emptyList() }
@@ -427,8 +491,8 @@ class FileScanner(
         favoritesCache = null
     }
 
-    fun removeFromCollection(collectionName: String, romPath: String) {
-        val collFile = File(collectionsDir, "$collectionName.txt")
+    fun removeFromCollection(stem: String, romPath: String) {
+        val collFile = File(collectionsDir, "$stem.txt")
         if (!collFile.exists()) return
         try {
             val remaining = collFile.readLines().map { it.trim() }.filter { it != romPath && it.isNotEmpty() }
@@ -437,13 +501,13 @@ class FileScanner(
         favoritesCache = null
     }
 
-    fun saveCollectionContents(collectionName: String, romPaths: List<String>) {
-        val collFile = File(collectionsDir, "$collectionName.txt")
+    fun saveCollectionContents(stem: String, romPaths: List<String>) {
+        val collFile = File(collectionsDir, "$stem.txt")
         collFile.writeText(romPaths.joinToString("\n") + if (romPaths.isNotEmpty()) "\n" else "")
     }
 
-    fun isInCollection(collectionName: String, romPath: String): Boolean {
-        val collFile = File(collectionsDir, "$collectionName.txt")
+    fun isInCollection(stem: String, romPath: String): Boolean {
+        val collFile = File(collectionsDir, "$stem.txt")
         if (!collFile.exists()) return false
         return try {
             collFile.readLines().any { it.trim() == romPath }
@@ -464,34 +528,41 @@ class FileScanner(
         }
     }
 
-    fun createCollection(name: String) {
+    fun createCollection(displayName: String): String {
         collectionsDir.mkdirs()
-        File(collectionsDir, "$name.txt").createNewFile()
+        val existingStems = collectionsDir.listFiles { f -> f.extension == "txt" }
+            ?.map { it.nameWithoutExtension }?.toSet() ?: emptySet()
+        val hash = Collection.generateUniqueHash(existingStems, displayName)
+        val stem = "${displayName}_$hash"
+        File(collectionsDir, "$stem.txt").createNewFile()
+        invalidateCollectionsCache()
+        return stem
+    }
+
+    fun deleteCollection(stem: String) {
+        File(collectionsDir, "$stem.txt").delete()
+        removeFromCollectionParents(stem)
         invalidateCollectionsCache()
     }
 
-    fun deleteCollection(name: String) {
-        File(collectionsDir, "$name.txt").delete()
-        removeFromCollectionParents(name)
-        invalidateCollectionsCache()
-    }
-
-    fun renameCollection(oldName: String, newName: String): Boolean {
-        val oldFile = File(collectionsDir, "$oldName.txt")
-        val newFile = File(collectionsDir, "$newName.txt")
-        if (oldFile.exists() && !newFile.exists()) {
-            val renamed = oldFile.renameTo(newFile)
-            if (renamed) {
-                renameInCollectionParents(oldName, newName)
-                invalidateCollectionsCache()
-            }
-            return renamed
+    fun renameCollection(oldStem: String, newDisplayName: String): Boolean {
+        val oldFile = File(collectionsDir, "$oldStem.txt")
+        if (!oldFile.exists()) return false
+        val idx = oldStem.lastIndexOf('_')
+        val hash = if (idx >= 0) oldStem.substring(idx + 1) else return false
+        val newStem = "${newDisplayName}_$hash"
+        val newFile = File(collectionsDir, "$newStem.txt")
+        if (newFile.exists()) return false
+        val renamed = oldFile.renameTo(newFile)
+        if (renamed) {
+            renameInCollectionParents(oldStem, newStem)
+            invalidateCollectionsCache()
         }
-        return false
+        return renamed
     }
 
-    fun getCollectionNames(): List<String> {
-        return scanCollections().map { it.name }
+    fun getCollectionStems(): List<String> {
+        return scanCollections().map { it.stem }
     }
 
     fun deleteGame(game: Game) {
@@ -733,39 +804,40 @@ class FileScanner(
     }
 
     private val collectionParentsFile = File(configDir, "collection_parents.txt")
-    @Volatile private var collectionParentsCache: Map<String, Set<String>>? = null
-    @Volatile private var childrenByParentCache: Map<String, Set<String>>? = null
+    @Volatile private var collectionParentsCache: Map<String, String>? = null
+    @Volatile private var childrenByParentCache: Map<String, List<String>>? = null
 
-    fun loadCollectionParents(): Map<String, Set<String>> {
+    fun loadCollectionParents(): Map<String, String> {
         collectionParentsCache?.let { return it }
         if (!collectionParentsFile.exists()) return emptyMap()
         return try {
-            collectionParentsFile.readLines()
+            val pairs = collectionParentsFile.readLines()
                 .map { it.trim() }
                 .filter { it.isNotEmpty() && '=' in it }
-                .associate { line ->
-                    val (child, parentsStr) = line.split('=', limit = 2)
-                    child.trim() to parentsStr.split(',').map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+                .map { line ->
+                    val (child, parent) = line.split('=', limit = 2)
+                    child.trim() to parent.trim()
                 }
-                .filterValues { it.isNotEmpty() }
-        } catch (_: IOException) { emptyMap() }
+                .filter { it.second.isNotEmpty() }
+            val map = linkedMapOf<String, String>()
+            pairs.forEach { (child, parent) -> map[child] = parent }
+            map as Map<String, String>
+        } catch (_: IOException) { emptyMap<String, String>() }
             .also {
                 collectionParentsCache = it
                 childrenByParentCache = buildChildrenIndex(it)
             }
     }
 
-    private fun buildChildrenIndex(parents: Map<String, Set<String>>): Map<String, Set<String>> {
-        val index = mutableMapOf<String, MutableSet<String>>()
-        for ((child, parentSet) in parents) {
-            for (parent in parentSet) {
-                index.getOrPut(parent) { mutableSetOf() }.add(child)
-            }
+    private fun buildChildrenIndex(parents: Map<String, String>): Map<String, List<String>> {
+        val index = mutableMapOf<String, MutableList<String>>()
+        for ((child, parent) in parents) {
+            index.getOrPut(parent) { mutableListOf() }.add(child)
         }
         return index
     }
 
-    private fun saveCollectionParents(map: Map<String, Set<String>>) {
+    private fun saveCollectionParents(map: Map<String, String>) {
         configDir.mkdirs()
         val filtered = map.filterValues { it.isNotEmpty() }
         collectionParentsCache = null
@@ -775,110 +847,104 @@ class FileScanner(
             return
         }
         collectionParentsFile.writeText(
-            filtered.entries.joinToString("\n") { (child, parents) ->
-                "$child=${parents.joinToString(",")}"
+            filtered.entries.joinToString("\n") { (child, parent) ->
+                "$child=$parent"
             } + "\n"
         )
     }
 
-    fun getCollectionParents(childName: String): Set<String> {
-        return loadCollectionParents()[childName] ?: emptySet()
+    fun getCollectionParent(childStem: String): String? {
+        return loadCollectionParents()[childStem]
     }
 
-    fun setCollectionParents(childName: String, parents: Set<String>) {
-        val map = loadCollectionParents().toMutableMap()
-        if (parents.isEmpty()) map.remove(childName) else map[childName] = parents
+    fun setCollectionParent(childStem: String, parentStem: String?) {
+        val map = linkedMapOf<String, String>()
+        map.putAll(loadCollectionParents())
+        if (parentStem == null) map.remove(childStem) else map[childStem] = parentStem
         saveCollectionParents(map)
     }
 
-    fun getChildCollections(parentName: String): List<String> {
+    fun getChildCollections(parentStem: String): List<String> {
         loadCollectionParents()
-        val children = (childrenByParentCache?.get(parentName) ?: emptySet()).toList()
-        val order = loadChildOrder(parentName)
-        if (order.isEmpty()) return children.sortedNatural { it }
-        val byName = children.toSet()
-        val ordered = order.filter { it in byName }
-        val remaining = children.filter { it !in order }.sortedNatural { it }
-        return ordered + remaining
+        return childrenByParentCache?.get(parentStem) ?: emptyList()
     }
 
-    fun loadChildOrder(parentName: String): List<String> {
-        val file = File(configDir, "child_order_$parentName.txt")
-        if (!file.exists()) return emptyList()
-        return file.readLines().map { it.trim() }.filter { it.isNotEmpty() }
+    fun reorderChildren(parentStem: String, orderedChildStems: List<String>) {
+        val map = loadCollectionParents()
+        val entries = map.entries.toMutableList()
+        val firstChildIdx = entries.indexOfFirst { it.value == parentStem }
+        entries.removeAll { it.value == parentStem }
+        val insertIdx = if (firstChildIdx >= 0) firstChildIdx.coerceAtMost(entries.size) else entries.size
+        orderedChildStems.forEachIndexed { i, stem ->
+            entries.add(insertIdx + i, java.util.AbstractMap.SimpleEntry(stem, parentStem))
+        }
+        val newMap = linkedMapOf<String, String>()
+        entries.forEach { newMap[it.key] = it.value }
+        saveCollectionParents(newMap)
     }
 
-    fun saveChildOrder(parentName: String, names: List<String>) {
-        configDir.mkdirs()
-        val file = File(configDir, "child_order_$parentName.txt")
-        if (names.isEmpty()) { file.delete(); return }
-        file.writeText(names.joinToString("\n") + "\n")
+    fun isTopLevelCollection(stem: String): Boolean {
+        return getCollectionParent(stem) == null
     }
 
-    fun isTopLevelCollection(name: String): Boolean {
-        return getCollectionParents(name).isEmpty()
-    }
-
-    fun getDescendants(name: String): Set<String> {
+    fun getDescendants(stem: String): Set<String> {
         loadCollectionParents()
         val index = childrenByParentCache ?: return emptySet()
         val result = mutableSetOf<String>()
         val queue = ArrayDeque<String>()
-        queue.add(name)
+        queue.add(stem)
         while (queue.isNotEmpty()) {
             val current = queue.removeFirst()
-            for (child in index[current] ?: emptySet()) {
+            for (child in index[current] ?: emptyList()) {
                 if (result.add(child)) queue.add(child)
             }
         }
         return result
     }
 
-    fun getAncestors(name: String): Set<String> {
+    fun getAncestors(stem: String): Set<String> {
         val allParents = loadCollectionParents()
         val result = mutableSetOf<String>()
-        val queue = ArrayDeque<String>()
-        queue.add(name)
-        while (queue.isNotEmpty()) {
-            val current = queue.removeFirst()
-            val parents = allParents[current] ?: emptySet()
-            for (parent in parents) {
-                if (result.add(parent)) queue.add(parent)
-            }
+        var current = stem
+        while (true) {
+            val parent = allParents[current] ?: break
+            if (!result.add(parent)) break
+            current = parent
         }
         return result
     }
 
-    fun setChildCollections(parentName: String, children: Set<String>) {
-        val map = loadCollectionParents().toMutableMap()
+    fun setChildCollections(parentStem: String, children: Set<String>) {
+        val map = linkedMapOf<String, String>()
+        map.putAll(loadCollectionParents())
         val currentChildren = map.entries
-            .filter { parentName in it.value }
+            .filter { it.value == parentStem }
             .map { it.key }
             .toSet()
         for (removed in currentChildren - children) {
-            val parents = map[removed]?.minus(parentName) ?: emptySet()
-            if (parents.isEmpty()) map.remove(removed) else map[removed] = parents
+            map.remove(removed)
         }
         for (added in children - currentChildren) {
-            map[added] = (map[added] ?: emptySet()) + parentName
+            map[added] = parentStem
         }
         saveCollectionParents(map)
     }
 
-    private fun removeFromCollectionParents(name: String) {
-        val map = loadCollectionParents().toMutableMap()
-        map.remove(name)
-        val updated = map.mapValues { (_, parents) -> parents - name }
-        saveCollectionParents(updated)
+    private fun removeFromCollectionParents(stem: String) {
+        val map = linkedMapOf<String, String>()
+        map.putAll(loadCollectionParents())
+        map.remove(stem)
+        map.entries.removeAll { it.value == stem }
+        saveCollectionParents(map)
     }
 
-    private fun renameInCollectionParents(oldName: String, newName: String) {
+    private fun renameInCollectionParents(oldStem: String, newStem: String) {
         val map = loadCollectionParents()
-        val updated = mutableMapOf<String, Set<String>>()
-        for ((child, parents) in map) {
-            val newChild = if (child == oldName) newName else child
-            val newParents = if (oldName in parents) (parents - oldName) + newName else parents
-            updated[newChild] = newParents
+        val updated = linkedMapOf<String, String>()
+        for ((child, parent) in map) {
+            val newChild = if (child == oldStem) newStem else child
+            val newParent = if (parent == oldStem) newStem else parent
+            updated[newChild] = newParent
         }
         saveCollectionParents(updated)
     }
