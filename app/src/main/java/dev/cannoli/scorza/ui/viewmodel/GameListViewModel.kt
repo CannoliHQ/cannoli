@@ -175,18 +175,8 @@ class GameListViewModel(
         indexStack.clear()
         collectionStack.clear()
         scope.launch(Dispatchers.IO) {
-            val allNames = scanner.getCollectionNames()
-                .filter { !it.equals("Favorites", ignoreCase = true) && scanner.isTopLevelCollection(it) }
-            val scanned = scanner.scanCollections()
-                .filter { !it.name.equals("Favorites", ignoreCase = true) }
-                .associateBy { it.name }
-            val collections = allNames.map { name ->
-                scanned[name] ?: dev.cannoli.scorza.model.Collection(
-                    name = name,
-                    file = java.io.File(name),
-                    entries = emptyList()
-                )
-            }
+            val collections = scanner.scanCollections()
+                .filter { !it.name.equals("Favorites", ignoreCase = true) && scanner.isTopLevelCollection(it.name) }
             val order = scanner.loadCollectionOrder()
             val ordered = if (order.isEmpty()) collections else {
                 val byName = collections.associateBy { it.name }

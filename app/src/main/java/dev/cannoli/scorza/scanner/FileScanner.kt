@@ -322,24 +322,23 @@ class FileScanner(
         return null
     }
 
+    @Volatile private var collectionsCache: List<Collection>? = null
+
     fun scanCollections(): List<Collection> {
+        collectionsCache?.let { return it }
         if (!collectionsDir.exists()) return emptyList()
 
         val files = collectionsDir.listFiles { f -> f.extension == "txt" } ?: return emptyList()
 
-        return files.mapNotNull { file ->
-            val lines = try {
-                file.readLines().map { it.trim() }.filter { it.isNotEmpty() }
-            } catch (_: IOException) { return@mapNotNull null }
-            val entries = lines.map { File(it) }.filter { it.exists() }
+        val result = files.map { file ->
+            Collection(name = file.nameWithoutExtension, file = file)
+        }.sortedNatural { it.name }
+        collectionsCache = result
+        return result
+    }
 
-            Collection(
-                name = file.nameWithoutExtension,
-                file = file,
-                entries = entries
-            )
-        }.filter { it.entries.isNotEmpty() }
-            .sortedNatural { it.name }
+    private fun invalidateCollectionsCache() {
+        collectionsCache = null
     }
 
     fun scanCollectionGames(collectionName: String): List<Game> {
@@ -463,11 +462,13 @@ class FileScanner(
     fun createCollection(name: String) {
         collectionsDir.mkdirs()
         File(collectionsDir, "$name.txt").createNewFile()
+        invalidateCollectionsCache()
     }
 
     fun deleteCollection(name: String) {
         File(collectionsDir, "$name.txt").delete()
         removeFromCollectionParents(name)
+        invalidateCollectionsCache()
     }
 
     fun renameCollection(oldName: String, newName: String): Boolean {
@@ -475,18 +476,17 @@ class FileScanner(
         val newFile = File(collectionsDir, "$newName.txt")
         if (oldFile.exists() && !newFile.exists()) {
             val renamed = oldFile.renameTo(newFile)
-            if (renamed) renameInCollectionParents(oldName, newName)
+            if (renamed) {
+                renameInCollectionParents(oldName, newName)
+                invalidateCollectionsCache()
+            }
             return renamed
         }
         return false
     }
 
     fun getCollectionNames(): List<String> {
-        if (!collectionsDir.exists()) return emptyList()
-        return collectionsDir.listFiles { f -> f.extension == "txt" }
-            ?.map { it.nameWithoutExtension }
-            ?.sorted()
-            ?: emptyList()
+        return scanCollections().map { it.name }
     }
 
     fun deleteGame(game: Game) {
@@ -728,8 +728,11 @@ class FileScanner(
     }
 
     private val collectionParentsFile = File(configDir, "collection_parents.txt")
+    @Volatile private var collectionParentsCache: Map<String, Set<String>>? = null
+    @Volatile private var childrenByParentCache: Map<String, Set<String>>? = null
 
     fun loadCollectionParents(): Map<String, Set<String>> {
+        collectionParentsCache?.let { return it }
         if (!collectionParentsFile.exists()) return emptyMap()
         return try {
             collectionParentsFile.readLines()
@@ -741,11 +744,27 @@ class FileScanner(
                 }
                 .filterValues { it.isNotEmpty() }
         } catch (_: IOException) { emptyMap() }
+            .also {
+                collectionParentsCache = it
+                childrenByParentCache = buildChildrenIndex(it)
+            }
+    }
+
+    private fun buildChildrenIndex(parents: Map<String, Set<String>>): Map<String, Set<String>> {
+        val index = mutableMapOf<String, MutableSet<String>>()
+        for ((child, parentSet) in parents) {
+            for (parent in parentSet) {
+                index.getOrPut(parent) { mutableSetOf() }.add(child)
+            }
+        }
+        return index
     }
 
     private fun saveCollectionParents(map: Map<String, Set<String>>) {
         configDir.mkdirs()
         val filtered = map.filterValues { it.isNotEmpty() }
+        collectionParentsCache = null
+        childrenByParentCache = null
         if (filtered.isEmpty()) {
             collectionParentsFile.delete()
             return
@@ -768,10 +787,8 @@ class FileScanner(
     }
 
     fun getChildCollections(parentName: String): List<String> {
-        val allParents = loadCollectionParents()
-        val children = allParents.entries
-            .filter { parentName in it.value }
-            .map { it.key }
+        loadCollectionParents()
+        val children = (childrenByParentCache?.get(parentName) ?: emptySet()).toList()
         val order = loadChildOrder(parentName)
         if (order.isEmpty()) return children.sortedNatural { it }
         val byName = children.toSet()
@@ -798,16 +815,14 @@ class FileScanner(
     }
 
     fun getDescendants(name: String): Set<String> {
-        val allParents = loadCollectionParents()
+        loadCollectionParents()
+        val index = childrenByParentCache ?: return emptySet()
         val result = mutableSetOf<String>()
         val queue = ArrayDeque<String>()
         queue.add(name)
         while (queue.isNotEmpty()) {
             val current = queue.removeFirst()
-            val children = allParents.entries
-                .filter { current in it.value }
-                .map { it.key }
-            for (child in children) {
+            for (child in index[current] ?: emptySet()) {
                 if (result.add(child)) queue.add(child)
             }
         }
