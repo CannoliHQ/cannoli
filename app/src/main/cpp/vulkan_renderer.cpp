@@ -541,7 +541,8 @@ void VulkanRenderer::renderFrame() {
 
     // Compute viewport
     int sw = swapchainExtent_.width, sh = swapchainExtent_.height;
-    float gameAspect = (scalingMode_ == 2) ? (float)sw / sh
+    float gameAspect = (scalingMode_ == 3) ? (float)sw / sh
+        : (scalingMode_ == 2) ? (float)frameWidth_ / frameHeight_
         : (coreAspect_ > 0) ? coreAspect_ : (float)frameWidth_ / frameHeight_;
     float screenAspect = (float)sw / sh;
 
