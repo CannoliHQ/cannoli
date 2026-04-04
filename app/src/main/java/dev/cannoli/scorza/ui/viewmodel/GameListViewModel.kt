@@ -124,7 +124,9 @@ class GameListViewModel(
                     )
                 }
                 _state.value = State(
-                    breadcrumb = Collection.stemToDisplayName(collectionStem),
+                    breadcrumb = scanner.getCollectionParent(collectionStem)?.let {
+                        Collection.childDisplayName(collectionStem, it)
+                    } ?: Collection.stemToDisplayName(collectionStem),
                     games = childItems + games,
                     selectedIndex = 0,
                     isLoading = false,

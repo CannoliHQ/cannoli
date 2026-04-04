@@ -293,9 +293,10 @@ fun AppNavGraph(
                     title = currentScreen.title,
                     listFontSize = listFontSize,
                     listLineHeight = listLineHeight,
-                    rightBottomItems = listOf(
-                        "X" to stringResource(R.string.label_new)
-                    )
+                    leftBottomItems = listOf(
+                        "Y" to stringResource(R.string.label_new)
+                    ),
+                    rightBottomItems = emptyList()
                 ) {
                     if (currentScreen.collections.isEmpty()) {
                         Text(

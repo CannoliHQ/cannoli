@@ -1740,11 +1740,7 @@ class MainActivity : ComponentActivity() {
                     }
                     LauncherScreen.GameList -> {
                         val glState = gameListViewModel.state.value
-                        if (glState.isCollectionsList) {
-                            dialogState.value = DialogState.NewCollectionInput(gamePaths = emptyList())
-                        } else if (glState.isCollection && glState.collectionName != null) {
-                            dialogState.value = DialogState.NewCollectionInput(gamePaths = emptyList(), parentStem = glState.collectionName)
-                        } else {
+                        if (!glState.isCollectionsList && !glState.isCollection) {
                             val game = gameListViewModel.getSelectedGame()
                             if (game != null && !game.isSubfolder && !game.isChildCollection) {
                                 val isResumable = resumableGames.contains(game.file.absolutePath)
@@ -1756,9 +1752,6 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         }
-                    }
-                    is LauncherScreen.CollectionPicker -> {
-                        dialogState.value = DialogState.NewCollectionInput(gamePaths = screen.gamePaths)
                     }
                     is LauncherScreen.ProfileList -> {
                         dialogState.value = DialogState.ProfileNameInput(isNew = true)
@@ -1821,7 +1814,18 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
-                        LauncherScreen.GameList -> {}
+                        LauncherScreen.GameList -> {
+                            val glState = gameListViewModel.state.value
+                            if (glState.isCollectionsList) {
+                                dialogState.value = DialogState.NewCollectionInput(gamePaths = emptyList())
+                            } else if (glState.isCollection && glState.collectionName != null) {
+                                dialogState.value = DialogState.NewCollectionInput(gamePaths = emptyList(), parentStem = glState.collectionName)
+                            }
+                        }
+                        is LauncherScreen.CollectionPicker -> {
+                            val screen = currentScreen as LauncherScreen.CollectionPicker
+                            dialogState.value = DialogState.NewCollectionInput(gamePaths = screen.gamePaths)
+                        }
                         is LauncherScreen.CoreMapping -> {
                             val screen = currentScreen as LauncherScreen.CoreMapping
                             val newFilter = (screen.filter + 1) % 4

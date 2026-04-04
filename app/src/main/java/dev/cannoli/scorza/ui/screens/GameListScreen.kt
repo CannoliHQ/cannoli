@@ -199,23 +199,26 @@ fun GameListScreen(
                 stringResource(R.string.label_play)
             }
             val resumeLabel = stringResource(R.string.label_resume)
+            val showNewButton = state.isCollectionsList || state.isCollection
+            val leftItems = buildList {
+                add("B" to stringResource(R.string.label_back))
+                if (showNewButton) add("Y" to stringResource(R.string.label_new))
+            }
             val rightItems = if (state.games.isEmpty()) {
-                if (state.isCollectionsList) listOf("X" to stringResource(R.string.label_new))
-                else emptyList()
+                emptyList()
             } else if (state.multiSelectMode) {
                 listOf("A" to actionLabel, "▶" to stringResource(R.string.label_confirm))
             } else if (hasResumeState && swapPlayResume) {
                 listOf("X" to actionLabel, "A" to resumeLabel)
             } else {
                 buildList {
-                    if (state.isCollectionsList) add("X" to stringResource(R.string.label_new))
-                    else if (hasResumeState) add("X" to resumeLabel)
+                    if (!showNewButton && hasResumeState) add("X" to resumeLabel)
                     add("A" to actionLabel)
                 }
             }
             BottomBar(
                 modifier = Modifier.align(Alignment.BottomCenter),
-                leftItems = listOf("B" to stringResource(R.string.label_back)),
+                leftItems = leftItems,
                 rightItems = rightItems
             )
 
