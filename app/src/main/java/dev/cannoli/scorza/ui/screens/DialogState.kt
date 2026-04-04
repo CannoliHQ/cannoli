@@ -22,9 +22,9 @@ sealed interface DialogState {
     data class BulkContextMenu(val gamePaths: List<String>, val selectedOption: Int = 0, val options: List<String>) : DialogState
     data class DeleteConfirm(val gameName: String, val bulkPaths: List<String>? = null) : DialogState
     data class RenameInput(val gameName: String, override val currentName: String, override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
-    data class NewCollectionInput(val gamePaths: List<String> = emptyList(), override val currentName: String = "", override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
-    data class CollectionRenameInput(val oldName: String, override val currentName: String, override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
-    data class DeleteCollectionConfirm(val collectionName: String) : DialogState
+    data class NewCollectionInput(val gamePaths: List<String> = emptyList(), val parentStem: String? = null, override val currentName: String = "", override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
+    data class CollectionRenameInput(val oldStem: String, override val currentName: String, override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
+    data class DeleteCollectionConfirm(val collectionStem: String) : DialogState
     data class RenameResult(val success: Boolean, val message: String) : DialogState
     data class CollectionCreated(val collectionName: String) : DialogState
     data class ColorPicker(val settingKey: String, val currentColor: Long, val selectedRow: Int = 0, val selectedCol: Int = 0) : DialogState

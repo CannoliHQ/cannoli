@@ -1,6 +1,7 @@
 package dev.cannoli.scorza.ui.viewmodel
 
 import dev.cannoli.scorza.R
+import dev.cannoli.scorza.model.Collection
 import dev.cannoli.scorza.model.Game
 import dev.cannoli.scorza.scanner.FileScanner
 import dev.cannoli.scorza.scanner.PlatformResolver
@@ -91,12 +92,12 @@ class GameListViewModel(
         loadCollectionInternal(collectionName, onReady)
     }
 
-    fun enterChildCollection(childName: String, onReady: () -> Unit = {}) {
+    fun enterChildCollection(childStem: String, onReady: () -> Unit = {}) {
         val current = _state.value
         if (current.isCollection && current.collectionName != null) {
             collectionStack.add(Triple(current.collectionName, current.selectedIndex, firstVisibleIndex))
         }
-        loadCollectionInternal(childName, onReady)
+        loadCollectionInternal(childStem, onReady)
     }
 
     fun exitChildCollection(onReady: () -> Unit = {}): Boolean {
@@ -109,26 +110,26 @@ class GameListViewModel(
         return true
     }
 
-    private fun loadCollectionInternal(collectionName: String, onReady: () -> Unit = {}) {
+    private fun loadCollectionInternal(collectionStem: String, onReady: () -> Unit = {}) {
         scope.launch(Dispatchers.IO) {
             try {
-                val games = scanner.scanCollectionGames(collectionName)
-                val childNames = scanner.getChildCollections(collectionName)
-                val childItems = childNames.map { name ->
+                val games = scanner.scanCollectionGames(collectionStem)
+                val childStems = scanner.getChildCollections(collectionStem)
+                val childItems = childStems.map { childStem ->
                     Game(
-                        file = java.io.File(name),
-                        displayName = "/$name",
+                        file = java.io.File(childStem),
+                        displayName = "/" + Collection.childDisplayName(childStem, collectionStem),
                         platformTag = "",
                         isChildCollection = true
                     )
                 }
                 _state.value = State(
-                    breadcrumb = collectionName,
+                    breadcrumb = Collection.stemToDisplayName(collectionStem),
                     games = childItems + games,
                     selectedIndex = 0,
                     isLoading = false,
                     isCollection = true,
-                    collectionName = collectionName
+                    collectionName = collectionStem
                 )
             } finally {
                 withContext(Dispatchers.Main) { onReady() }
@@ -176,21 +177,21 @@ class GameListViewModel(
         collectionStack.clear()
         scope.launch(Dispatchers.IO) {
             val collections = scanner.scanCollections()
-                .filter { !it.name.equals("Favorites", ignoreCase = true) && scanner.isTopLevelCollection(it.name) }
+                .filter { !it.stem.equals("Favorites", ignoreCase = true) && scanner.isTopLevelCollection(it.stem) }
             val order = scanner.loadCollectionOrder()
             val ordered = if (order.isEmpty()) collections else {
-                val byName = collections.associateBy { it.name }
-                val result = mutableListOf<dev.cannoli.scorza.model.Collection>()
-                for (name in order) {
-                    byName[name]?.let { result.add(it) }
+                val byStem = collections.associateBy { it.stem }
+                val result = mutableListOf<Collection>()
+                for (stem in order) {
+                    byStem[stem]?.let { result.add(it) }
                 }
-                result.addAll(collections.filter { it.name !in order })
+                result.addAll(collections.filter { it.stem !in order })
                 result
             }
             val games = ordered.map { coll ->
                 Game(
                     file = coll.file,
-                    displayName = coll.name,
+                    displayName = coll.displayName,
                     platformTag = ""
                 )
             }
@@ -393,8 +394,8 @@ class GameListViewModel(
         val current = _state.value
         if (!current.reorderMode) return
         if (current.isCollectionsList) {
-            val names = current.games.map { it.displayName }
-            scope.launch(Dispatchers.IO) { scanner.saveCollectionOrder(names) }
+            val stems = current.games.map { it.file.nameWithoutExtension }
+            scope.launch(Dispatchers.IO) { scanner.saveCollectionOrder(stems) }
         } else if (current.platformTag == "tools") {
             val names = current.games.map { it.displayName }
             scope.launch(Dispatchers.IO) { scanner.saveToolOrder(names) }
@@ -402,8 +403,8 @@ class GameListViewModel(
             val names = current.games.map { it.displayName }
             scope.launch(Dispatchers.IO) { scanner.savePortOrder(names) }
         } else if (current.isCollection && current.collectionName != null) {
-            val childNames = current.games.filter { it.isChildCollection }.map { it.displayName.removePrefix("/") }
-            scope.launch(Dispatchers.IO) { scanner.saveChildOrder(current.collectionName, childNames) }
+            val childStems = current.games.filter { it.isChildCollection }.map { it.file.name }
+            scope.launch(Dispatchers.IO) { scanner.reorderChildren(current.collectionName, childStems) }
         }
         _state.update { it.copy(reorderMode = false, reorderOriginalIndex = -1) }
     }
