@@ -257,6 +257,10 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
                 val base = if (coreAspectRatio > 0f) coreAspectRatio else w.toFloat() / h.toFloat()
                 if (rotated) 1f / base else base
             }
+            ScalingMode.ASPECT_SCREEN -> {
+                val base = w.toFloat() / h.toFloat()
+                if (rotated) 1f / base else base
+            }
             ScalingMode.INTEGER -> if (rotated) h.toFloat() / w.toFloat() else w.toFloat() / h.toFloat()
         }
         val screenAspect = surfaceWidth.toFloat() / surfaceHeight.toFloat()
