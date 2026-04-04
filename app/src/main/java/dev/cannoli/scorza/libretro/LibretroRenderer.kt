@@ -213,7 +213,7 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
             sharpnessDirty = false
             val filter = when (sharpness) {
                 Sharpness.SHARP -> GLES20.GL_NEAREST
-                Sharpness.CRISP, Sharpness.SOFT -> GLES20.GL_LINEAR
+                Sharpness.SOFT -> GLES20.GL_LINEAR
             }
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId)
             GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, filter)
