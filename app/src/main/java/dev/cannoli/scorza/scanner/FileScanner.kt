@@ -327,12 +327,10 @@ class FileScanner(
     fun scanCollections(): List<Collection> {
         collectionsCache?.let { return it }
         if (!collectionsDir.exists()) return emptyList()
-
         val files = collectionsDir.listFiles { f -> f.extension == "txt" } ?: return emptyList()
-
         val result = files.map { file ->
-            Collection(name = file.nameWithoutExtension, file = file)
-        }.sortedNatural { it.name }
+            Collection(stem = file.nameWithoutExtension, file = file)
+        }.sortedNatural { it.displayName }
         collectionsCache = result
         return result
     }
@@ -341,8 +339,8 @@ class FileScanner(
         collectionsCache = null
     }
 
-    fun scanCollectionGames(collectionName: String): List<Game> {
-        val collFile = File(collectionsDir, "$collectionName.txt")
+    fun scanCollectionGames(stem: String): List<Game> {
+        val collFile = File(collectionsDir, "$stem.txt")
         if (!collFile.exists()) return emptyList()
 
         val lines = try {
@@ -399,7 +397,7 @@ class FileScanner(
                 if (mapped != null) game.copy(displayName = mapped) else game
             }
             .let { games ->
-                if (collectionName.equals("Favorites", ignoreCase = true)) {
+                if (stem.equals("Favorites", ignoreCase = true)) {
                     games.sortedWith(compareBy(dev.cannoli.scorza.util.NaturalSort) { it.displayName })
                 } else {
                     val favPaths = getFavoritePaths()
@@ -415,9 +413,9 @@ class FileScanner(
             }
     }
 
-    fun addToCollection(collectionName: String, romPath: String) {
+    fun addToCollection(stem: String, romPath: String) {
         collectionsDir.mkdirs()
-        val collFile = File(collectionsDir, "$collectionName.txt")
+        val collFile = File(collectionsDir, "$stem.txt")
         val existing = try {
             if (collFile.exists()) collFile.readLines().map { it.trim() } else emptyList()
         } catch (_: IOException) { emptyList() }
@@ -427,8 +425,8 @@ class FileScanner(
         favoritesCache = null
     }
 
-    fun removeFromCollection(collectionName: String, romPath: String) {
-        val collFile = File(collectionsDir, "$collectionName.txt")
+    fun removeFromCollection(stem: String, romPath: String) {
+        val collFile = File(collectionsDir, "$stem.txt")
         if (!collFile.exists()) return
         try {
             val remaining = collFile.readLines().map { it.trim() }.filter { it != romPath && it.isNotEmpty() }
@@ -437,8 +435,8 @@ class FileScanner(
         favoritesCache = null
     }
 
-    fun isInCollection(collectionName: String, romPath: String): Boolean {
-        val collFile = File(collectionsDir, "$collectionName.txt")
+    fun isInCollection(stem: String, romPath: String): Boolean {
+        val collFile = File(collectionsDir, "$stem.txt")
         if (!collFile.exists()) return false
         return try {
             collFile.readLines().any { it.trim() == romPath }
@@ -459,34 +457,41 @@ class FileScanner(
         }
     }
 
-    fun createCollection(name: String) {
+    fun createCollection(displayName: String): String {
         collectionsDir.mkdirs()
-        File(collectionsDir, "$name.txt").createNewFile()
+        val existingStems = collectionsDir.listFiles { f -> f.extension == "txt" }
+            ?.map { it.nameWithoutExtension }?.toSet() ?: emptySet()
+        val hash = Collection.generateUniqueHash(existingStems, displayName)
+        val stem = "${displayName}_$hash"
+        File(collectionsDir, "$stem.txt").createNewFile()
+        invalidateCollectionsCache()
+        return stem
+    }
+
+    fun deleteCollection(stem: String) {
+        File(collectionsDir, "$stem.txt").delete()
+        removeFromCollectionParents(stem)
         invalidateCollectionsCache()
     }
 
-    fun deleteCollection(name: String) {
-        File(collectionsDir, "$name.txt").delete()
-        removeFromCollectionParents(name)
-        invalidateCollectionsCache()
-    }
-
-    fun renameCollection(oldName: String, newName: String): Boolean {
-        val oldFile = File(collectionsDir, "$oldName.txt")
-        val newFile = File(collectionsDir, "$newName.txt")
-        if (oldFile.exists() && !newFile.exists()) {
-            val renamed = oldFile.renameTo(newFile)
-            if (renamed) {
-                renameInCollectionParents(oldName, newName)
-                invalidateCollectionsCache()
-            }
-            return renamed
+    fun renameCollection(oldStem: String, newDisplayName: String): Boolean {
+        val oldFile = File(collectionsDir, "$oldStem.txt")
+        if (!oldFile.exists()) return false
+        val idx = oldStem.lastIndexOf('_')
+        val hash = if (idx >= 0) oldStem.substring(idx + 1) else return false
+        val newStem = "${newDisplayName}_$hash"
+        val newFile = File(collectionsDir, "$newStem.txt")
+        if (newFile.exists()) return false
+        val renamed = oldFile.renameTo(newFile)
+        if (renamed) {
+            renameInCollectionParents(oldStem, newStem)
+            invalidateCollectionsCache()
         }
-        return false
+        return renamed
     }
 
-    fun getCollectionNames(): List<String> {
-        return scanCollections().map { it.name }
+    fun getCollectionStems(): List<String> {
+        return scanCollections().map { it.stem }
     }
 
     fun deleteGame(game: Game) {
