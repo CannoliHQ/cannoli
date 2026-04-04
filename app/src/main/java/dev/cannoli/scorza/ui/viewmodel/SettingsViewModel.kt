@@ -328,6 +328,11 @@ class SettingsViewModel(
                 val cur = steps.indexOf(settings.artWidth).coerceAtLeast(0)
                 settings.artWidth = steps[((cur + direction) % steps.size + steps.size) % steps.size]
             }
+            "art_scale" -> {
+                val entries = ArtScale.entries
+                val cur = entries.indexOf(settings.artScale).coerceAtLeast(0)
+                settings.artScale = entries[((cur + direction) % entries.size + entries.size) % entries.size]
+            }
             "bg_image" -> cycleBackgroundImage(direction)
             "bg_tint" -> {
                 val cur = settings.backgroundTint
@@ -542,6 +547,13 @@ class SettingsViewModel(
         "display" -> buildList {
             val artW = settings.artWidth
             add(SettingsItem("art_width", R.string.setting_art_width, valueText = if (artW == 0) null else "$artW%", valueRes = if (artW == 0) R.string.value_off else null))
+            val artScaleRes = when (settings.artScale) {
+                ArtScale.FIT -> R.string.value_fit
+                ArtScale.ORIGINAL -> R.string.value_original
+                ArtScale.FIT_WIDTH -> R.string.value_fit_width
+                ArtScale.FIT_HEIGHT -> R.string.value_fit_height
+            }
+            add(SettingsItem("art_scale", R.string.setting_art_scale, valueRes = artScaleRes))
             add(SettingsItem("bg_image", R.string.setting_bg_image, valueText = settings.backgroundImagePath?.let { java.io.File(it).name }, valueRes = if (settings.backgroundImagePath == null) R.string.value_none else null))
             if (settings.backgroundImagePath != null) {
                 val tintVal = settings.backgroundTint

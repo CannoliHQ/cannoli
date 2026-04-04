@@ -40,6 +40,7 @@
     <string name="setting_colors">Colors</string>
     <string name="setting_box_art">Box Art</string>
     <string name="setting_art_width">Art Width</string>
+    <string name="setting_art_scale">Art Scale</string>
     <string name="setting_text_size">Text Size</string>
     <string name="setting_font">Font</string>
     <string name="setting_title">Title</string>
@@ -93,6 +94,10 @@
     <string name="value_hide">Hide</string>
     <string name="value_none">None</string>
     <string name="value_cannoli_root">Cannoli Root</string>
+    <string name="value_fit">Fit</string>
+    <string name="value_original">Original</string>
+    <string name="value_fit_width">Fit Width</string>
+    <string name="value_fit_height">Fit Height</string>
 
     <!-- Dialogs -->
     <string name="empty_list">%1$s is empty</string>
