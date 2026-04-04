@@ -964,12 +964,12 @@ class LibretroActivity : ComponentActivity() {
     private fun scalingLabel() = when (scalingMode) {
         ScalingMode.CORE_REPORTED -> "Core Reported"
         ScalingMode.INTEGER -> "Integer"
+        ScalingMode.ASPECT_SCREEN -> "Aspect Screen"
         ScalingMode.FULLSCREEN -> "Fullscreen"
     }
 
     private fun sharpnessLabel() = when (sharpness) {
         Sharpness.SHARP -> "Sharp"
-        Sharpness.CRISP -> "Crisp"
         Sharpness.SOFT -> "Soft"
     }
 
@@ -1089,10 +1089,6 @@ class LibretroActivity : ComponentActivity() {
                 val vals = Sharpness.entries
                 sharpness = vals[(sharpness.ordinal + direction + vals.size) % vals.size]
                 renderer.sharpness = sharpness
-                if (sharpness == Sharpness.CRISP) {
-                    scalingMode = ScalingMode.INTEGER
-                    renderer.scalingMode = scalingMode
-                }
             }
             2 -> cycleShader(direction)
             3 -> if (!hasParams) cycleOverlay(direction)
