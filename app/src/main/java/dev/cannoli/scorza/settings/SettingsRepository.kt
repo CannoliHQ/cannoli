@@ -185,6 +185,10 @@ class SettingsRepository(context: Context) {
         get() = jsonRead { optInt(KEY_ART_WIDTH, 40) }
         set(value) = jsonWrite { put(KEY_ART_WIDTH, value) }
 
+    var artScale: ArtScale
+        get() = ArtScale.fromString(jsonRead { optString(KEY_ART_SCALE, null) })
+        set(value) = jsonWrite { put(KEY_ART_SCALE, value.name) }
+
     var backgroundTint: Int
         get() = jsonRead { optInt(KEY_BG_TINT, 0) }
         set(value) = jsonWrite { put(KEY_BG_TINT, value.coerceIn(0, 90)) }
@@ -270,6 +274,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_TIME_FORMAT = "time_format"
         private const val KEY_BG_IMAGE = "bg_image"
         private const val KEY_ART_WIDTH = "art_width"
+        private const val KEY_ART_SCALE = "art_scale"
         private const val KEY_BG_TINT = "bg_tint"
         private const val KEY_COLOR_HIGHLIGHT = "color_highlight"
         private const val KEY_COLOR_TEXT = "color_text"
@@ -320,6 +325,15 @@ enum class TimeFormat {
     companion object {
         fun fromString(value: String?): TimeFormat =
             entries.firstOrNull { it.name == value } ?: TWELVE_HOUR
+    }
+}
+
+enum class ArtScale {
+    FIT, ORIGINAL, FIT_WIDTH, FIT_HEIGHT;
+    companion object {
+        val DEFAULT = FIT
+        fun fromString(value: String?): ArtScale =
+            entries.firstOrNull { it.name == value } ?: DEFAULT
     }
 }
 
