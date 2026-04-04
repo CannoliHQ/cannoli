@@ -529,7 +529,6 @@ class MainActivity : ComponentActivity() {
             platformResolver.load()
 
             val scanner = FileScanner(root, platformResolver)
-            scanner.migrateCollectionsToHashedNames()
             // overhead steps: launchers(3) + installedCoreService(1) + launchManager(1) + syncAssets(1) + syncConfig(1)
             val overhead = 7
             val dirCount = 18 + (platformResolver.getAllTags().size * 6)
@@ -1709,6 +1708,8 @@ class MainActivity : ComponentActivity() {
                         val glState = gameListViewModel.state.value
                         if (glState.isCollectionsList) {
                             dialogState.value = DialogState.NewCollectionInput(gamePaths = emptyList())
+                        } else if (glState.isCollection && glState.collectionName != null) {
+                            dialogState.value = DialogState.NewCollectionInput(gamePaths = emptyList(), parentStem = glState.collectionName)
                         } else {
                             val game = gameListViewModel.getSelectedGame()
                             if (game != null && !game.isSubfolder && !game.isChildCollection) {
