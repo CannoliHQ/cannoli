@@ -351,7 +351,7 @@ class GameListViewModel(
     fun enterReorderMode() {
         _state.update { current ->
             val isApkList = current.platformTag == "tools" || current.platformTag == "ports"
-            val canReorder = current.isCollectionsList || isApkList || (current.isCollection && current.games.any { it.isChildCollection })
+            val canReorder = current.isCollectionsList || isApkList || current.isCollection
             if (!canReorder || current.games.isEmpty()) return@update current
             current.copy(reorderMode = true, reorderOriginalIndex = current.selectedIndex)
         }
@@ -367,7 +367,10 @@ class GameListViewModel(
             val item = current.games[idx]
             val target = current.games[idx - 1]
             val isApkList = current.platformTag == "tools" || current.platformTag == "ports"
-            if (!isApkList && item.isChildCollection != target.isChildCollection) return@update current
+            if (!isApkList) {
+                if (item.isChildCollection != target.isChildCollection) return@update current
+                if (item.displayName.startsWith("★") != target.displayName.startsWith("★")) return@update current
+            }
             val games = current.games.toMutableList()
             games[idx] = target; games[idx - 1] = item
             current.copy(games = games, selectedIndex = idx - 1)
@@ -382,7 +385,10 @@ class GameListViewModel(
             val item = current.games[idx]
             val target = current.games[idx + 1]
             val isApkList = current.platformTag == "tools" || current.platformTag == "ports"
-            if (!isApkList && item.isChildCollection != target.isChildCollection) return@update current
+            if (!isApkList) {
+                if (item.isChildCollection != target.isChildCollection) return@update current
+                if (item.displayName.startsWith("★") != target.displayName.startsWith("★")) return@update current
+            }
             val games = current.games.toMutableList()
             games[idx] = target; games[idx + 1] = item
             current.copy(games = games, selectedIndex = idx + 1)
@@ -403,7 +409,11 @@ class GameListViewModel(
             scope.launch(Dispatchers.IO) { scanner.savePortOrder(names) }
         } else if (current.isCollection && current.collectionName != null) {
             val childNames = current.games.filter { it.isChildCollection }.map { it.displayName.removePrefix("/") }
-            scope.launch(Dispatchers.IO) { scanner.saveChildOrder(current.collectionName, childNames) }
+            val gamePaths = current.games.filter { !it.isChildCollection }.map { it.file.absolutePath }
+            scope.launch(Dispatchers.IO) {
+                scanner.saveChildOrder(current.collectionName, childNames)
+                scanner.saveCollectionContents(current.collectionName, gamePaths)
+            }
         }
         _state.update { it.copy(reorderMode = false, reorderOriginalIndex = -1) }
     }

@@ -116,6 +116,7 @@ class MainActivity : ComponentActivity() {
     private val selectHoldHandler = Handler(Looper.getMainLooper())
     private var selectDown = false
     private var selectHeld = false
+    private var selectHandled = false
     private var capsBeforeSymbols = false
     private val selectHoldRunnable = Runnable {
         selectHeld = true
@@ -124,6 +125,15 @@ class MainActivity : ComponentActivity() {
             val ks = ds.asKeyboardState()!!
             if (!ks.symbols) capsBeforeSymbols = ks.caps
             dialogState.value = ds.withCaps(false).withSymbols(!ks.symbols)
+        }
+    }
+    private val collectionSelectHoldRunnable = Runnable {
+        selectHeld = true
+        val glState = gameListViewModel.state.value
+        if (glState.isCollection && !glState.isCollectionsList && glState.subfolderPath == null) {
+            if (!gameListViewModel.isReorderMode() && !gameListViewModel.isMultiSelectMode()) {
+                gameListViewModel.enterMultiSelect()
+            }
         }
     }
     @Volatile private var navigating = false
@@ -643,6 +653,7 @@ class MainActivity : ComponentActivity() {
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
         if (::inputHandler.isInitialized && inputHandler.resolveButton(keyCode) == "btn_select") {
             selectHoldHandler.removeCallbacks(selectHoldRunnable)
+            selectHoldHandler.removeCallbacks(collectionSelectHoldRunnable)
             if (!selectHeld && dialogState.value is KeyboardInputState) {
                 val ds = dialogState.value
                 val ks = ds.asKeyboardState()!!
@@ -651,9 +662,17 @@ class MainActivity : ComponentActivity() {
                 } else {
                     dialogState.value = ds.withCaps(!ks.caps)
                 }
+            } else if (!selectHeld && !selectHandled && dialogState.value == DialogState.None
+                && currentScreen == LauncherScreen.GameList) {
+                val glState = gameListViewModel.state.value
+                if (glState.isCollection && !glState.isCollectionsList && glState.subfolderPath == null
+                    && !gameListViewModel.isReorderMode() && !gameListViewModel.isMultiSelectMode()) {
+                    gameListViewModel.enterReorderMode()
+                }
             }
             selectDown = false
             selectHeld = false
+            selectHandled = false
             return true
         }
         val screen = screenStack.lastOrNull()
@@ -1623,32 +1642,47 @@ class MainActivity : ComponentActivity() {
                         selectHoldHandler.postDelayed(selectHoldRunnable, 400)
                     }
                 }
-                DialogState.None -> when (currentScreen) {
-                    LauncherScreen.SystemList -> {
-                        if (systemListViewModel.isReorderMode()) {
-                            systemListViewModel.confirmReorder()
-                        } else {
-                            systemListViewModel.enterReorderMode()
-                        }
-                    }
-                    LauncherScreen.GameList -> {
-                        val glState = gameListViewModel.state.value
-                        val isApkList = glState.platformTag == "tools" || glState.platformTag == "ports"
-                        if (glState.isCollectionsList || isApkList || gameListViewModel.hasChildCollections()) {
-                            if (gameListViewModel.isReorderMode()) {
-                                gameListViewModel.confirmReorder()
+                DialogState.None -> if (!selectDown) {
+                    selectDown = true
+                    selectHeld = false
+                    selectHandled = false
+                    when (currentScreen) {
+                        LauncherScreen.SystemList -> {
+                            if (systemListViewModel.isReorderMode()) {
+                                systemListViewModel.confirmReorder()
                             } else {
-                                gameListViewModel.enterReorderMode()
-                            }
-                        } else if (glState.subfolderPath == null) {
-                            if (gameListViewModel.isMultiSelectMode()) {
-                                gameListViewModel.confirmMultiSelect()
-                            } else {
-                                gameListViewModel.enterMultiSelect()
+                                systemListViewModel.enterReorderMode()
                             }
                         }
+                        LauncherScreen.GameList -> {
+                            val glState = gameListViewModel.state.value
+                            val isApkList = glState.platformTag == "tools" || glState.platformTag == "ports"
+                            if (glState.isCollection && !glState.isCollectionsList && glState.subfolderPath == null) {
+                                if (gameListViewModel.isReorderMode()) {
+                                    gameListViewModel.confirmReorder()
+                                    selectHandled = true
+                                } else if (gameListViewModel.isMultiSelectMode()) {
+                                    gameListViewModel.confirmMultiSelect()
+                                    selectHandled = true
+                                } else {
+                                    selectHoldHandler.postDelayed(collectionSelectHoldRunnable, 400)
+                                }
+                            } else if (glState.isCollectionsList || isApkList) {
+                                if (gameListViewModel.isReorderMode()) {
+                                    gameListViewModel.confirmReorder()
+                                } else {
+                                    gameListViewModel.enterReorderMode()
+                                }
+                            } else if (glState.subfolderPath == null) {
+                                if (gameListViewModel.isMultiSelectMode()) {
+                                    gameListViewModel.confirmMultiSelect()
+                                } else {
+                                    gameListViewModel.enterMultiSelect()
+                                }
+                            }
+                        }
+                        else -> {}
                     }
-                    else -> {}
                 }
                 else -> {}
             }

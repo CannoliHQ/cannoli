@@ -155,7 +155,7 @@ fun GameListScreen(
                                     lineHeight = listLineHeight,
                                     verticalPadding = listVerticalPadding,
                                     showReorderIcon = state.reorderMode && state.selectedIndex == index,
-                                    checkState = if (state.multiSelectMode && !game.isSubfolder) index in state.checkedIndices else null
+                                    checkState = if (state.multiSelectMode && !game.isSubfolder && !game.isChildCollection) index in state.checkedIndices else null
                                 )
                             }
                         }
