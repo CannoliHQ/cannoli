@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.model.Game
+import dev.cannoli.scorza.settings.ArtScale
 import dev.cannoli.scorza.ui.components.BottomBar
 import dev.cannoli.scorza.ui.components.ConfirmOverlay
 import dev.cannoli.scorza.ui.components.DialogOverlay
@@ -68,7 +70,8 @@ fun GameListScreen(
     onVisibleRangeChanged: (Int, Int, Boolean) -> Unit = { _, _, _ -> },
     resumableGames: Set<String> = emptySet(),
     swapPlayResume: Boolean = false,
-    artWidth: Int = 40
+    artWidth: Int = 40,
+    artScale: ArtScale = ArtScale.FIT
 ) {
     val state by viewModel.state.collectAsState()
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
@@ -165,14 +168,19 @@ fun GameListScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 val art = selectedArt ?: return@Box
-                                val isPortrait = art.height > art.width
+                                val artModifier: Modifier
+                                val artContentScale: ContentScale
+                                when (artScale) {
+                                    ArtScale.FIT -> { artModifier = Modifier.fillMaxSize(); artContentScale = ContentScale.Fit }
+                                    ArtScale.ORIGINAL -> { artModifier = Modifier.wrapContentSize(); artContentScale = ContentScale.None }
+                                    ArtScale.FIT_WIDTH -> { artModifier = Modifier.fillMaxWidth(); artContentScale = ContentScale.FillWidth }
+                                    ArtScale.FIT_HEIGHT -> { artModifier = Modifier.fillMaxHeight(); artContentScale = ContentScale.FillHeight }
+                                }
                                 Image(
                                     bitmap = art,
                                     contentDescription = null,
-                                    modifier = Modifier
-                                        .then(if (isPortrait) Modifier.fillMaxWidth() else Modifier.fillMaxSize())
-                                        .clip(RoundedCornerShape(8.dp)),
-                                    contentScale = ContentScale.Fit,
+                                    modifier = artModifier.clip(RoundedCornerShape(8.dp)),
+                                    contentScale = artContentScale,
                                     filterQuality = FilterQuality.High
                                 )
                             }

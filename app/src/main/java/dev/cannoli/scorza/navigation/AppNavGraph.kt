@@ -28,6 +28,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.input.ProfileManager
+import dev.cannoli.scorza.settings.ArtScale
 import dev.cannoli.scorza.libretro.ControlsScreen
 import dev.cannoli.scorza.libretro.LibretroInput
 import dev.cannoli.scorza.libretro.ShortcutAction
@@ -138,7 +139,8 @@ fun AppNavGraph(
                     onVisibleRangeChanged = onVisibleRangeChanged,
                     resumableGames = resumableGames,
                     swapPlayResume = appSettings.swapPlayResume,
-                    artWidth = appSettings.artWidth
+                    artWidth = appSettings.artWidth,
+                    artScale = appSettings.artScale
                 )
             }
             is LauncherScreen.Settings -> SettingsScreen(
