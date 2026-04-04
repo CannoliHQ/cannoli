@@ -15,8 +15,8 @@ import java.util.concurrent.ConcurrentHashMap
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
-enum class ScalingMode { CORE_REPORTED, INTEGER, FULLSCREEN }
-enum class Sharpness { SHARP, CRISP, SOFT }
+enum class ScalingMode { CORE_REPORTED, INTEGER, ASPECT_SCREEN, FULLSCREEN }
+enum class Sharpness { SHARP, SOFT }
 enum class ScreenEffect { NONE, SHADER }
 enum class GraphicsBackendPref { AUTO, GLES, VULKAN }
 
