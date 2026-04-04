@@ -396,6 +396,9 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        if (android.os.Build.VERSION.SDK_INT >= 31) {
+            splashScreen.setOnExitAnimationListener { it.remove() }
+        }
         super.onCreate(savedInstanceState)
 
         hideSystemUI()
@@ -1157,7 +1160,7 @@ class MainActivity : ComponentActivity() {
                             rescanSystemList()
                         } else {
                             val remaining = scanner.scanCollections()
-                                .filter { !it.name.equals("Favorites", ignoreCase = true) && it.entries.isNotEmpty() }
+                                .filter { !it.name.equals("Favorites", ignoreCase = true) }
                             if (remaining.isEmpty()) {
                                 withContext(Dispatchers.Main) {
                                     screenStack.removeAt(screenStack.lastIndex)

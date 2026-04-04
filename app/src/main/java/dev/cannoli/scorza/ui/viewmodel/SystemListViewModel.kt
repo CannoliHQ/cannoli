@@ -17,8 +17,8 @@ class SystemListViewModel(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     sealed class ListItem {
-        data class FavoritesItem(val count: Int) : ListItem()
-        data class CollectionsFolder(val count: Int) : ListItem()
+        data object FavoritesItem : ListItem()
+        data object CollectionsFolder : ListItem()
         data class PlatformItem(val platform: Platform) : ListItem()
         data class CollectionItem(val name: String, val count: Int) : ListItem()
         data class ToolsFolder(val name: String, val count: Int) : ListItem()
@@ -55,21 +55,21 @@ class SystemListViewModel(
 
         scope.launch(Dispatchers.IO) {
             val platforms = scanner.scanPlatforms()
-            val collections = scanner.scanCollections().map { it.name to it.entries.size }
+            val collections = scanner.scanCollections().map { it.name }
             val tools = scanner.scanTools()
             val ports = scanner.scanPorts()
 
             val items = mutableListOf<ListItem>()
 
-            val favorites = collections.find { it.first.equals("Favorites", ignoreCase = true) }
-            val otherCollections = collections.filter { !it.first.equals("Favorites", ignoreCase = true) }
+            val hasFavorites = collections.any { it.equals("Favorites", ignoreCase = true) }
+            val hasOtherCollections = collections.any { !it.equals("Favorites", ignoreCase = true) }
 
-            if (favorites != null && favorites.second > 0) {
-                items.add(ListItem.FavoritesItem(favorites.second))
+            if (hasFavorites) {
+                items.add(ListItem.FavoritesItem)
             }
 
-            if (otherCollections.isNotEmpty()) {
-                items.add(ListItem.CollectionsFolder(otherCollections.size))
+            if (hasOtherCollections) {
+                items.add(ListItem.CollectionsFolder)
             }
 
             val reorderableItems = mutableListOf<ListItem>()

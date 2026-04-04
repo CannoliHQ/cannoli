@@ -599,7 +599,8 @@ fun AppNavGraph(
             }
         }
 
-        val statusBarVisible = dialog !is DialogState.About && dialog !is DialogState.Kitchen && dialog !is DialogState.UpdateDownload && currentScreen !is LauncherScreen.Credits && (dev.cannoli.scorza.server.KitchenManager.isRunning || appSettings.showWifi || appSettings.showBluetooth || appSettings.showVpn || appSettings.showClock || appSettings.showBattery || (updateAvailable && appSettings.showUpdate))
+        val systemListState by systemListViewModel.state.collectAsState()
+        val statusBarVisible = dialog !is DialogState.About && dialog !is DialogState.Kitchen && dialog !is DialogState.UpdateDownload && currentScreen !is LauncherScreen.Credits && !(currentScreen is LauncherScreen.SystemList && systemListState.isLoading) && (dev.cannoli.scorza.server.KitchenManager.isRunning || appSettings.showWifi || appSettings.showBluetooth || appSettings.showVpn || appSettings.showClock || appSettings.showBattery || (updateAvailable && appSettings.showUpdate))
         if (statusBarVisible) {
         Box(
             modifier = Modifier
