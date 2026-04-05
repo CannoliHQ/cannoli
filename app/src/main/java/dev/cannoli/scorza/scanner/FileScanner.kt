@@ -11,6 +11,7 @@ class FileScanner(
     private val cannoliRoot: File,
     private val platformResolver: PlatformResolver,
     private val collectionManager: CollectionManager,
+    private val assets: android.content.res.AssetManager,
     romsDir: File? = null
 ) {
     private val romsDir = romsDir ?: File(cannoliRoot, "Roms")
@@ -26,6 +27,9 @@ class FileScanner(
 
     private val scanCache = ScanCache(cannoliRoot)
     val dirTimestamps = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
+    private val arcadeMapFile = File(cannoliRoot, "Config/arcade_map.txt")
+    @Volatile private var arcadeMapCache: Map<String, String>? = null
 
     private val defaultIgnoreExtensions = setOf("srm", "sav")
     private val ignoreExtensionsFile = File(cannoliRoot, "Config/ignore_extensions_roms.txt")
@@ -114,6 +118,7 @@ class FileScanner(
                 dev.cannoli.scorza.util.DebugLog.write("scanGames($tag): cache hit, ${cached.games.size} games")
                 return reconstructGames(tag, cached)
             }
+            mapCache.remove(baseDir.absolutePath)
             dev.cannoli.scorza.util.DebugLog.write("scanGames($tag): cache miss, doing full scan")
         }
 
@@ -205,7 +210,7 @@ class FileScanner(
                 it.file.absolutePath !in usedM3uPaths
         }
 
-        val nameMap = parseMapFile(baseDir)
+        val nameMap = parseMapFile(baseDir, tag)
         val all = applyMap(stripTags(filtered + grouped), nameMap)
 
         if (subfolder == null) {
@@ -260,12 +265,14 @@ class FileScanner(
     }
 
     private fun reconstructGames(tag: String, cached: CachedGameList): List<Game> {
+        val nameMap = parseMapFile(File(romsDir, tag), tag)
         val games = cached.games.mapNotNull { entry ->
             val file = File(entry.path)
             if (!entry.isSubfolder && isIgnoredExtension(file)) return@mapNotNull null
+            val displayName = nameMap[file.name] ?: entry.displayName
             Game(
                 file = file,
-                displayName = entry.displayName,
+                displayName = displayName,
                 platformTag = tag,
                 isSubfolder = entry.isSubfolder,
                 artFile = findArt(tag, entry.artName),
@@ -278,17 +285,28 @@ class FileScanner(
 
     private data class DirLaunch(val file: File, val discFiles: List<File>? = null)
 
-    private fun parseMapFile(dir: File): Map<String, String> {
-        return mapCache.getOrPut(dir.absolutePath) {
-            val mapFile = File(dir, "map.txt")
-            if (!mapFile.exists()) return@getOrPut emptyMap()
-            mapFile.readLines()
-                .filter { '\t' in it }
-                .associate { line ->
-                    val (filename, displayName) = line.split('\t', limit = 2)
-                    filename.trim() to displayName.trim()
-                }
+    private fun readMapFile(file: File): Map<String, String> {
+        return file.readLines()
+            .filter { '\t' in it }
+            .associate { line ->
+                val (filename, displayName) = line.split('\t', limit = 2)
+                filename.trim() to displayName.trim()
+            }
+    }
+
+    private fun parseMapFile(dir: File, tag: String? = null): Map<String, String> {
+        val dirKey = dir.absolutePath
+        val mapFile = File(dir, "map.txt")
+        if (mapFile.exists()) {
+            mapCache[dirKey]?.let { if (it !== arcadeMapCache) return it }
+            return readMapFile(mapFile).also { mapCache[dirKey] = it }
         }
+        if (tag != null && platformResolver.isArcade(tag) && arcadeMapFile.exists()) {
+            if (arcadeMapCache == null) arcadeMapCache = readMapFile(arcadeMapFile)
+            mapCache[dirKey] = arcadeMapCache!!
+            return arcadeMapCache!!
+        }
+        return emptyMap()
     }
 
     private fun applyMap(games: List<Game>, nameMap: Map<String, String>): List<Game> {
@@ -373,7 +391,7 @@ class FileScanner(
             }
             .let(::stripTags)
             .map { game ->
-                val mapped = game.file.parentFile?.let { parseMapFile(it) }?.get(game.file.name)
+                val mapped = game.file.parentFile?.let { parseMapFile(it, game.platformTag) }?.get(game.file.name)
                 if (mapped != null) game.copy(displayName = mapped) else game
             }
             .let { games ->
@@ -423,7 +441,7 @@ class FileScanner(
                 launchTarget = resolveTarget(tag, false)
             )
         }
-        val mapped = game.file.parentFile?.let { parseMapFile(it) }?.get(game.file.name)
+        val mapped = game.file.parentFile?.let { parseMapFile(it, game.platformTag) }?.get(game.file.name)
         return if (mapped != null) game.copy(displayName = mapped) else game
     }
 
@@ -502,6 +520,14 @@ class FileScanner(
             File(cannoliRoot, "Wallpapers"),
             toolsDir, portsDir
         ).forEach { it.mkdirs(); onProgress?.invoke() }
+
+        if (!arcadeMapFile.exists()) {
+            try {
+                assets.open("arcade_map.txt").use { input ->
+                    arcadeMapFile.outputStream().use { input.copyTo(it) }
+                }
+            } catch (_: Exception) {}
+        }
 
         migrateConfigLayout()
 
@@ -601,6 +627,7 @@ class FileScanner(
     fun invalidateAllCaches() {
         artCache.clear()
         mapCache.clear()
+        arcadeMapCache = null
         dirTimestamps.clear()
         scanCache.invalidateAll()
     }
