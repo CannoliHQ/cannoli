@@ -193,16 +193,20 @@ class VulkanBackend(private val runner: LibretroRunner) : GraphicsBackend, Surfa
 
     override fun surfaceDestroyed(holder: SurfaceHolder) {
         running = false
+        val latch = java.util.concurrent.CountDownLatch(1)
         renderHandler?.post {
             if (initialized) {
                 nativeDestroy()
                 initialized = false
             }
+            latch.countDown()
         }
+        latch.await(3, java.util.concurrent.TimeUnit.SECONDS)
         renderThread?.quitSafely()
-        renderThread?.join(3000)
+        renderThread?.join(1000)
         renderThread = null
         renderHandler = null
+        surfaceViewRef = null
     }
 
     private fun postRenderFrame() {

@@ -378,7 +378,7 @@ static void video_refresh_cb(const void *data, unsigned width, unsigned height, 
                 unsigned r = (px >> 10) & 0x1F;
                 unsigned g = (px >> 5) & 0x1F;
                 unsigned b = px & 0x1F;
-                dst16[x] = (r << 11) | (g << 6) | (g >> 4) | b;
+                dst16[x] = (r << 11) | (((g << 1) | (g >> 4)) << 5) | b;
             }
             src += pitch;
             dst += row_bytes;

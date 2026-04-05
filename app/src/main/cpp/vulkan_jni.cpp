@@ -14,6 +14,11 @@ Java_dev_cannoli_scorza_libretro_VulkanBackend_nativeInit(
     ANativeWindow *window = ANativeWindow_fromSurface(env, surface);
     if (!window) return JNI_FALSE;
 
+    if (g_renderer) {
+        g_renderer->destroy();
+        delete g_renderer;
+        g_renderer = nullptr;
+    }
     g_renderer = new VulkanRenderer();
     if (jcachePath) {
         const char *cp = env->GetStringUTFChars(jcachePath, nullptr);
