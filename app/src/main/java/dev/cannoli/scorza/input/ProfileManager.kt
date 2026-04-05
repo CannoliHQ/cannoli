@@ -105,13 +105,6 @@ class ProfileManager(private val cannoliRoot: String) {
         }
     }
 
-    private fun uniqueProfileName(base: String): String {
-        if (!profileFile(base).exists()) return base
-        var i = 2
-        while (profileFile("${base}_$i").exists()) i++
-        return "${base}_$i"
-    }
-
     companion object {
         const val NAVIGATION = "Cannoli Navigation"
         const val DEFAULT_GAME = "Default Controls"

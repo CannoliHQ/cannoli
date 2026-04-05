@@ -609,10 +609,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onPause() {
-        super.onPause()
-    }
-
     override fun onDestroy() {
         super.onDestroy()
         unregisterCoreQueryReceiver()
@@ -2801,7 +2797,7 @@ class MainActivity : ComponentActivity() {
 
     private fun queryInstalledCores() {
         unregisterCoreQueryReceiver()
-        val pkgLabel = SettingsRepository.getPackageLabel(settings.retroArchPackage)
+        val pkgLabel = InstalledCoreService.getPackageLabel(settings.retroArchPackage)
         pushScreen(LauncherScreen.InstalledCores(title = "$pkgLabel Installed Cores"))
 
         ioScope.launch {

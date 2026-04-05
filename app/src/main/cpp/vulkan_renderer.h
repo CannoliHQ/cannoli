@@ -63,7 +63,6 @@ private:
     bool selectPhysicalDevice();
     bool createDevice();
     bool createSwapchain();
-    void destroySwapchain();
     bool createRenderPass();
     bool createFrameTexture(FrameBuffer *fb);
     void updateFrameTexture(FrameBuffer *fb);
