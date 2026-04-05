@@ -119,19 +119,7 @@ class FileScanner(
             dev.cannoli.scorza.util.DebugLog.write("scanGames($tag): cache miss, doing full scan")
         }
 
-        val emuLaunch = platformResolver.getEmuLaunch(tag, romsDir)
-        val coreName = platformResolver.getCoreName(tag)
-        val appPackage = platformResolver.getAppPackage(tag)
-
         val files = baseDir.listFiles() ?: return emptyList()
-
-        fun resolveTarget(isSubfolder: Boolean): LaunchTarget = when {
-            isSubfolder -> LaunchTarget.RetroArch
-            emuLaunch != null -> emuLaunch
-            coreName != null -> LaunchTarget.RetroArch
-            appPackage != null -> LaunchTarget.ApkLaunch(appPackage)
-            else -> LaunchTarget.RetroArch
-        }
 
         val rawGames = files
             .filter { !it.name.startsWith(".") && it.name != "map.txt" && !isIgnoredExtension(it) }
@@ -144,7 +132,7 @@ class FileScanner(
                             displayName = file.name,
                             platformTag = tag,
                             artFile = findArt(tag, file.name),
-                            launchTarget = resolveTarget(false),
+                            launchTarget = resolveTarget(tag, false),
                             discFiles = dirLaunch.discFiles
                         )
                     } else {
@@ -156,7 +144,7 @@ class FileScanner(
                             platformTag = tag,
                             isSubfolder = true,
                             artFile = findArt(tag, file.name),
-                            launchTarget = resolveTarget(true)
+                            launchTarget = resolveTarget(tag, true)
                         )
                     }
                 } else {
@@ -165,7 +153,7 @@ class FileScanner(
                         displayName = file.nameWithoutExtension,
                         platformTag = tag,
                         artFile = findArt(tag, file.nameWithoutExtension),
-                        launchTarget = resolveTarget(false)
+                        launchTarget = resolveTarget(tag, false)
                     )
                 }
             }
@@ -260,19 +248,20 @@ class FileScanner(
         )
     }
 
-    private fun reconstructGames(tag: String, cached: CachedGameList): List<Game> {
+    private fun resolveTarget(tag: String, isSubfolder: Boolean): LaunchTarget {
         val emuLaunch = platformResolver.getEmuLaunch(tag, romsDir)
         val coreName = platformResolver.getCoreName(tag)
         val appPackage = platformResolver.getAppPackage(tag)
-
-        fun resolveTarget(isSubfolder: Boolean): LaunchTarget = when {
+        return when {
             isSubfolder -> LaunchTarget.RetroArch
             emuLaunch != null -> emuLaunch
             coreName != null -> LaunchTarget.RetroArch
             appPackage != null -> LaunchTarget.ApkLaunch(appPackage)
             else -> LaunchTarget.RetroArch
         }
+    }
 
+    private fun reconstructGames(tag: String, cached: CachedGameList): List<Game> {
         val games = cached.games.mapNotNull { entry ->
             val file = File(entry.path)
             if (!entry.isSubfolder && isIgnoredExtension(file)) return@mapNotNull null
@@ -282,7 +271,7 @@ class FileScanner(
                 platformTag = tag,
                 isSubfolder = entry.isSubfolder,
                 artFile = findArt(tag, entry.artName),
-                launchTarget = resolveTarget(entry.isSubfolder),
+                launchTarget = resolveTarget(tag, entry.isSubfolder),
                 discFiles = if (entry.discPaths.isNotEmpty()) entry.discPaths.map { File(it) } else null
             )
         }
@@ -457,23 +446,13 @@ class FileScanner(
                     val rawName = file.nameWithoutExtension
                     val displayName = rawName.replace(discRegex, "").trim().ifEmpty { rawName }
                     val artFile = findArt(tag, displayName)
-                    val emuLaunch = platformResolver.getEmuLaunch(tag, romsDir)
-                    val coreName = platformResolver.getCoreName(tag)
-                    val appPackage = platformResolver.getAppPackage(tag)
-
-                    val target = when {
-                        emuLaunch != null -> emuLaunch
-                        coreName != null -> LaunchTarget.RetroArch
-                        appPackage != null -> LaunchTarget.ApkLaunch(appPackage)
-                        else -> LaunchTarget.RetroArch
-                    }
 
                     Game(
                         file = file,
                         displayName = displayName,
                         platformTag = tag,
                         artFile = artFile,
-                        launchTarget = target
+                        launchTarget = resolveTarget(tag, false)
                     )
                 }
             }
@@ -521,21 +500,12 @@ class FileScanner(
             val rawName = file.nameWithoutExtension
             val displayName = rawName.replace(discRegex, "").trim().ifEmpty { rawName }
             val artFile = findArt(tag, displayName)
-            val emuLaunch = platformResolver.getEmuLaunch(tag, romsDir)
-            val coreName = platformResolver.getCoreName(tag)
-            val appPackage = platformResolver.getAppPackage(tag)
-            val target = when {
-                emuLaunch != null -> emuLaunch
-                coreName != null -> LaunchTarget.RetroArch
-                appPackage != null -> LaunchTarget.ApkLaunch(appPackage)
-                else -> LaunchTarget.RetroArch
-            }
             Game(
                 file = file,
                 displayName = displayName,
                 platformTag = tag,
                 artFile = artFile,
-                launchTarget = target
+                launchTarget = resolveTarget(tag, false)
             )
         }
         val mapped = game.file.parentFile?.let { parseMapFile(it) }?.get(game.file.name)
