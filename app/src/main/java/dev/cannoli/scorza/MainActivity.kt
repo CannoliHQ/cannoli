@@ -44,8 +44,11 @@ import dev.cannoli.scorza.libretro.LibretroActivity
 import dev.cannoli.scorza.libretro.LibretroInput
 import dev.cannoli.scorza.libretro.RetroAchievementsManager
 import dev.cannoli.scorza.libretro.ShortcutAction
+import dev.cannoli.scorza.scanner.CollectionManager
 import dev.cannoli.scorza.scanner.FileScanner
+import dev.cannoli.scorza.scanner.OrderingManager
 import dev.cannoli.scorza.scanner.PlatformResolver
+import dev.cannoli.scorza.scanner.RecentlyPlayedManager
 import dev.cannoli.scorza.settings.GlobalOverridesManager
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.components.COLOR_GRID_COLS
@@ -93,6 +96,9 @@ class MainActivity : ComponentActivity() {
     private lateinit var settings: SettingsRepository
     private lateinit var platformResolver: PlatformResolver
     private lateinit var scanner: FileScanner
+    private lateinit var collectionManager: CollectionManager
+    private lateinit var recentlyPlayedManager: RecentlyPlayedManager
+    private lateinit var orderingManager: OrderingManager
     private lateinit var systemListViewModel: SystemListViewModel
     private lateinit var gameListViewModel: GameListViewModel
     private lateinit var settingsViewModel: SettingsViewModel
@@ -313,14 +319,14 @@ class MainActivity : ComponentActivity() {
     private fun refreshCollectionPickerOnStack() {
         val cp = currentScreen
         if (cp is LauncherScreen.CollectionPicker) {
-            val all = scanner.scanCollections()
+            val all = collectionManager.scanCollections()
                 .filter { !it.stem.equals("Favorites", ignoreCase = true) }
             val stems = all.map { it.stem }
             val displayNames = all.map { it.displayName }
             val alreadyIn = if (cp.gamePaths.size == 1) {
-                scanner.getCollectionsContaining(cp.gamePaths[0])
+                collectionManager.getCollectionsContaining(cp.gamePaths[0])
             } else {
-                cp.gamePaths.map { scanner.getCollectionsContaining(it) }
+                cp.gamePaths.map { collectionManager.getCollectionsContaining(it) }
                     .reduceOrNull { acc, set -> acc intersect set } ?: emptySet()
             }
             val newInitialChecked = stems.indices
@@ -539,7 +545,10 @@ class MainActivity : ComponentActivity() {
             platformResolver = PlatformResolver(root, assets, coreInfo, bundledCoresDir)
             platformResolver.load()
 
-            val scanner = FileScanner(root, platformResolver)
+            collectionManager = CollectionManager(root)
+            recentlyPlayedManager = RecentlyPlayedManager(root)
+            orderingManager = OrderingManager(root)
+            val scanner = FileScanner(root, platformResolver, collectionManager)
             scanner.loadIgnoreExtensions()
             // overhead steps: launchers(3) + installedCoreService(1) + launchManager(1) + syncAssets(1) + syncConfig(1)
             val overhead = 7
@@ -758,10 +767,13 @@ class MainActivity : ComponentActivity() {
         installedCoreService = InstalledCoreService(this)
         launchManager = LaunchManager(this, settings, platformResolver, retroArchLauncher, emuLauncher, apkLauncher, installedCoreService)
 
+        collectionManager = CollectionManager(root)
+        recentlyPlayedManager = RecentlyPlayedManager(root)
+        orderingManager = OrderingManager(root)
         val romDir = settings.romDirectory.takeIf { it.isNotEmpty() }?.let { File(it) }
-        scanner = FileScanner(root, platformResolver, romDir)
+        scanner = FileScanner(root, platformResolver, collectionManager, romDir)
         scanner.loadIgnoreExtensions()
-        scanner.migrateCollectionsToHashedNames()
+        collectionManager.migrateCollectionsToHashedNames()
         launchManager.syncRetroArchAssets(root)
         launchManager.syncRetroArchConfig(root)
 
@@ -778,8 +790,8 @@ class MainActivity : ComponentActivity() {
             platformResolver.purgeStaleRaMappings(installedCoreService.installedCores)
         }
 
-        systemListViewModel = SystemListViewModel(scanner)
-        gameListViewModel = GameListViewModel(scanner, platformResolver, resources)
+        systemListViewModel = SystemListViewModel(scanner, collectionManager, orderingManager, recentlyPlayedManager)
+        gameListViewModel = GameListViewModel(scanner, collectionManager, orderingManager, recentlyPlayedManager, platformResolver, resources)
         settingsViewModel = SettingsViewModel(settings, root, packageManager, packageName)
         updateManager = dev.cannoli.scorza.updater.UpdateManager(this, settings)
 
@@ -826,7 +838,7 @@ class MainActivity : ComponentActivity() {
                 if (romFile.exists()) {
                     val game = Game(romFile, romFile.nameWithoutExtension, tag)
                     launchManager.resumeGame(game)
-                    ioScope.launch { scanner.recordRecentlyPlayed(romFile.absolutePath) }
+                    ioScope.launch { recentlyPlayedManager.record(romFile.absolutePath) }
                 }
             }
         }
@@ -1177,12 +1189,12 @@ class MainActivity : ComponentActivity() {
                     dialogState.value = DialogState.None
                     if (!deletingFromParent) gameListViewModel.saveCollectionsPosition()
                     ioScope.launch {
-                        scanner.deleteCollection(stem)
+                        collectionManager.deleteCollection(stem)
                         if (deletingFromParent) {
                             gameListViewModel.reload()
                             rescanSystemList()
                         } else {
-                            val remaining = scanner.scanCollections()
+                            val remaining = collectionManager.scanCollections()
                                 .filter { !it.stem.equals("Favorites", ignoreCase = true) }
                             if (remaining.isEmpty()) {
                                 withContext(Dispatchers.Main) {
@@ -1588,7 +1600,7 @@ class MainActivity : ComponentActivity() {
                                 .filter { !it.isSubfolder }
                             if (checkedGames.isNotEmpty()) {
                                 val paths = checkedGames.map { it.file.absolutePath }
-                                val favPaths = scanner.getFavoritePaths()
+                                val favPaths = collectionManager.getFavoritePaths()
                                 val allFav = paths.all { it in favPaths }
                                 val isApkList = glState.platformTag == "tools" || glState.platformTag == "ports"
                                 val options = mutableListOf<String>()
@@ -1766,11 +1778,11 @@ class MainActivity : ComponentActivity() {
                                     if (errorDialog != null) {
                                         dialogState.value = errorDialog
                                     } else {
-                                        ioScope.launch { scanner.recordRecentlyPlayed(game.file.absolutePath) }
+                                        ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
                                     }
                                 } else if (isResumable) {
                                     launchManager.resumeGame(game)
-                                    ioScope.launch { scanner.recordRecentlyPlayed(game.file.absolutePath) }
+                                    ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
                                 }
                             }
                         }
@@ -1962,7 +1974,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun rescanSystemList() {
-        scanner.invalidateFavorites()
+        collectionManager.invalidateFavorites()
         systemListViewModel.scan(
             showRecentlyPlayed = settings.showRecentlyPlayed,
             showEmpty = settings.showEmpty,
@@ -2117,13 +2129,13 @@ class MainActivity : ComponentActivity() {
         val isResumable = resumableGames.contains(game.file.absolutePath)
         if (isResumable && settings.swapPlayResume) {
             launchManager.resumeGame(game)
-            ioScope.launch { scanner.recordRecentlyPlayed(game.file.absolutePath) }
+            ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
         } else {
             val errorDialog = launchManager.launchGame(game)
             if (errorDialog != null) {
                 dialogState.value = errorDialog
             } else {
-                ioScope.launch { scanner.recordRecentlyPlayed(game.file.absolutePath) }
+                ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
             }
         }
     }
@@ -2267,7 +2279,7 @@ class MainActivity : ComponentActivity() {
                 pendingContextReturn = null
                 dialogState.value = DialogState.None
                 ioScope.launch {
-                    scanner.removeFromRecentlyPlayed(game.file.absolutePath)
+                    recentlyPlayedManager.remove(game.file.absolutePath)
                     gameListViewModel.loadRecentlyPlayed()
                     rescanSystemList()
                 }
@@ -2399,8 +2411,8 @@ class MainActivity : ComponentActivity() {
         if (toAdd.isNotEmpty() || toRemove.isNotEmpty()) {
             ioScope.launch {
                 for (path in state.gamePaths) {
-                    toAdd.forEach { collName -> scanner.addToCollection(collName, path) }
-                    toRemove.forEach { collName -> scanner.removeFromCollection(collName, path) }
+                    toAdd.forEach { collName -> collectionManager.addToCollection(collName, path) }
+                    toRemove.forEach { collName -> collectionManager.removeFromCollection(collName, path) }
                 }
                 gameListViewModel.reload()
                 rescanSystemList()
@@ -2443,14 +2455,14 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun openCollectionManager(gamePaths: List<String>, title: String) {
-        val all = scanner.scanCollections()
+        val all = collectionManager.scanCollections()
             .filter { !it.stem.equals("Favorites", ignoreCase = true) }
         val stems = all.map { it.stem }
         val displayNames = all.map { it.displayName }
         val alreadyIn = if (gamePaths.size == 1) {
-            scanner.getCollectionsContaining(gamePaths[0])
+            collectionManager.getCollectionsContaining(gamePaths[0])
         } else {
-            gamePaths.map { scanner.getCollectionsContaining(it) }
+            gamePaths.map { collectionManager.getCollectionsContaining(it) }
                 .reduceOrNull { acc, set -> acc intersect set } ?: emptySet()
         }
         val initialChecked = stems.indices
@@ -2469,12 +2481,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun openChildPicker(collectionStem: String) {
-        val allStems = scanner.getCollectionStems()
+        val allStems = collectionManager.getCollectionStems()
             .filter { !it.equals("Favorites", ignoreCase = true) }
-        val ancestors = scanner.getAncestors(collectionStem)
+        val ancestors = collectionManager.getAncestors(collectionStem)
         val available = allStems.filter { it != collectionStem && it !in ancestors }
         val displayNames = available.map { dev.cannoli.scorza.model.Collection.stemToDisplayName(it) }
-        val currentChildren = scanner.getChildCollections(collectionStem).toSet()
+        val currentChildren = collectionManager.getChildCollections(collectionStem).toSet()
         val initialChecked = available.indices
             .filter { available[it] in currentChildren }
             .toSet()
@@ -2494,7 +2506,7 @@ class MainActivity : ComponentActivity() {
             .mapNotNull { screen.collections.getOrNull(it) }
             .toSet()
         ioScope.launch {
-            scanner.setChildCollections(screen.collectionName, selected)
+            collectionManager.setChildCollections(screen.collectionName, selected)
             gameListViewModel.reload()
             rescanSystemList()
         }
@@ -2509,7 +2521,7 @@ class MainActivity : ComponentActivity() {
                 pendingContextReturn = null
                 dialogState.value = DialogState.None
                 ioScope.launch {
-                    state.gamePaths.forEach { path -> scanner.removeFromRecentlyPlayed(path) }
+                    state.gamePaths.forEach { path -> recentlyPlayedManager.remove(path) }
                     gameListViewModel.loadRecentlyPlayed()
                     rescanSystemList()
                 }
@@ -2519,7 +2531,7 @@ class MainActivity : ComponentActivity() {
                 pendingContextReturn = null
                 ioScope.launch {
                     state.gamePaths.forEach { path ->
-                        scanner.addToCollection("Favorites", path)
+                        collectionManager.addToCollection("Favorites", path)
                     }
                     gameListViewModel.reload()
                     rescanSystemList()
@@ -2530,7 +2542,7 @@ class MainActivity : ComponentActivity() {
                 pendingContextReturn = null
                 ioScope.launch {
                     state.gamePaths.forEach { path ->
-                        scanner.removeFromCollection("Favorites", path)
+                        collectionManager.removeFromCollection("Favorites", path)
                     }
                     gameListViewModel.reload()
                     rescanSystemList()
@@ -2581,7 +2593,7 @@ class MainActivity : ComponentActivity() {
                 val collName = gameListViewModel.state.value.collectionName ?: return
                 ioScope.launch {
                     state.gamePaths.forEach { path ->
-                        scanner.removeFromCollection(collName, path)
+                        collectionManager.removeFromCollection(collName, path)
                     }
                     gameListViewModel.reload()
                     rescanSystemList()
@@ -2600,12 +2612,12 @@ class MainActivity : ComponentActivity() {
         }
         dialogState.value = DialogState.None
         ioScope.launch {
-            val stem = scanner.createCollection(name)
+            val stem = collectionManager.createCollection(name)
             if (state.parentStem != null) {
-                scanner.setCollectionParent(stem, state.parentStem)
+                collectionManager.setCollectionParent(stem, state.parentStem)
             }
             state.gamePaths.forEach { path ->
-                scanner.addToCollection(stem, path)
+                collectionManager.addToCollection(stem, path)
             }
             gameListViewModel.reload()
             rescanSystemList()
@@ -2623,7 +2635,7 @@ class MainActivity : ComponentActivity() {
         val renamingFromParent = glState.isCollection && !glState.isCollectionsList
         dialogState.value = DialogState.None
         ioScope.launch {
-            scanner.renameCollection(state.oldStem, newName)
+            collectionManager.renameCollection(state.oldStem, newName)
             if (renamingFromParent) {
                 gameListViewModel.reload()
             } else {

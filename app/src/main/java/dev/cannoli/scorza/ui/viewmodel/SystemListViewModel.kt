@@ -1,7 +1,10 @@
 package dev.cannoli.scorza.ui.viewmodel
 
 import dev.cannoli.scorza.model.Platform
+import dev.cannoli.scorza.scanner.CollectionManager
 import dev.cannoli.scorza.scanner.FileScanner
+import dev.cannoli.scorza.scanner.OrderingManager
+import dev.cannoli.scorza.scanner.RecentlyPlayedManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -12,7 +15,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class SystemListViewModel(
-    private val scanner: FileScanner
+    private val scanner: FileScanner,
+    private val collectionManager: CollectionManager,
+    private val orderingManager: OrderingManager,
+    private val recentlyPlayedManager: RecentlyPlayedManager
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
@@ -56,13 +62,13 @@ class SystemListViewModel(
 
         scope.launch(Dispatchers.IO) {
             val platforms = scanner.scanPlatforms()
-            val collections = scanner.scanCollections().map { it.stem }
+            val collections = collectionManager.scanCollections().map { it.stem }
             val tools = scanner.scanTools()
             val ports = scanner.scanPorts()
 
             val items = mutableListOf<ListItem>()
 
-            if (showRecentlyPlayed && scanner.hasRecentlyPlayed()) {
+            if (showRecentlyPlayed && recentlyPlayedManager.hasAny()) {
                 items.add(ListItem.RecentlyPlayedItem)
             }
 
@@ -86,7 +92,7 @@ class SystemListViewModel(
             if (tools.isNotEmpty()) {
                 reorderableItems.add(ListItem.ToolsFolder(toolsName, tools.size))
             }
-            val ordered = applyCustomOrder(reorderableItems, scanner.loadPlatformOrder())
+            val ordered = applyCustomOrder(reorderableItems, orderingManager.loadPlatformOrder())
             items.addAll(ordered)
 
             val canRestore = (restored != null || items.size == prevItemCount) && prevItemCount > 0
@@ -180,7 +186,7 @@ class SystemListViewModel(
         if (!current.reorderMode) return
         val tags = current.items.mapNotNull { it.orderTag() }
         scope.launch(Dispatchers.IO) {
-            scanner.savePlatformOrder(tags)
+            orderingManager.savePlatformOrder(tags)
         }
         _state.update { it.copy(reorderMode = false, reorderOriginalIndex = -1) }
     }

@@ -3,8 +3,11 @@ package dev.cannoli.scorza.ui.viewmodel
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.model.Collection
 import dev.cannoli.scorza.model.Game
+import dev.cannoli.scorza.scanner.CollectionManager
 import dev.cannoli.scorza.scanner.FileScanner
+import dev.cannoli.scorza.scanner.OrderingManager
 import dev.cannoli.scorza.scanner.PlatformResolver
+import dev.cannoli.scorza.scanner.RecentlyPlayedManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -17,6 +20,9 @@ import kotlinx.coroutines.withContext
 
 class GameListViewModel(
     private val scanner: FileScanner,
+    private val collectionManager: CollectionManager,
+    private val orderingManager: OrderingManager,
+    private val recentlyPlayedManager: RecentlyPlayedManager,
     private val platformResolver: PlatformResolver,
     private val resources: android.content.res.Resources
 ) {
@@ -114,7 +120,7 @@ class GameListViewModel(
         scope.launch(Dispatchers.IO) {
             try {
                 val games = scanner.scanCollectionGames(collectionStem)
-                val childStems = scanner.getChildCollections(collectionStem)
+                val childStems = collectionManager.getChildCollections(collectionStem)
                 val childItems = childStems.map { childStem ->
                     Game(
                         file = java.io.File(childStem),
@@ -124,7 +130,7 @@ class GameListViewModel(
                     )
                 }
                 _state.value = State(
-                    breadcrumb = scanner.getCollectionParent(collectionStem)?.let {
+                    breadcrumb = collectionManager.getCollectionParent(collectionStem)?.let {
                         Collection.childDisplayName(collectionStem, it)
                     } ?: Collection.stemToDisplayName(collectionStem),
                     games = childItems + games,
@@ -153,11 +159,11 @@ class GameListViewModel(
                         launchTarget = launch
                     )
                 }
-                val favPaths = scanner.getFavoritePaths()
+                val favPaths = collectionManager.getFavoritePaths()
                 val starred = games.map { game ->
                     if (game.file.absolutePath in favPaths) game.copy(displayName = "★ ${game.displayName}") else game
                 }
-                val order = if (type == "tools") scanner.loadToolOrder() else scanner.loadPortOrder()
+                val order = if (type == "tools") orderingManager.loadToolOrder() else orderingManager.loadPortOrder()
                 val ordered = applyCustomOrder(starred, order)
                     .sortedBy { !it.displayName.startsWith("★") }
                 _state.value = State(
@@ -178,7 +184,7 @@ class GameListViewModel(
         indexStack.clear()
         scope.launch(Dispatchers.IO) {
             try {
-                val paths = scanner.loadRecentlyPlayedPaths()
+                val paths = recentlyPlayedManager.load()
                 val games = paths.mapNotNull { scanner.resolveGameFromPath(it) }
 
                 val nameCount = games.groupBy { it.displayName }
@@ -207,9 +213,9 @@ class GameListViewModel(
         indexStack.clear()
         collectionStack.clear()
         scope.launch(Dispatchers.IO) {
-            val collections = scanner.scanCollections()
-                .filter { !it.stem.equals("Favorites", ignoreCase = true) && scanner.isTopLevelCollection(it.stem) }
-            val order = scanner.loadCollectionOrder()
+            val collections = collectionManager.scanCollections()
+                .filter { !it.stem.equals("Favorites", ignoreCase = true) && collectionManager.isTopLevelCollection(it.stem) }
+            val order = orderingManager.loadCollectionOrder()
             val ordered = if (order.isEmpty()) collections else {
                 val byStem = collections.associateBy { it.stem }
                 val result = mutableListOf<Collection>()
@@ -323,18 +329,18 @@ class GameListViewModel(
             (current.isCollection && current.collectionName == "Favorites")
         val oldIndex = current.selectedIndex
         scope.launch(Dispatchers.IO) {
-            if (isFav) scanner.removeFromCollection("Favorites", path)
-            else scanner.addToCollection("Favorites", path)
+            if (isFav) collectionManager.removeFromCollection("Favorites", path)
+            else collectionManager.addToCollection("Favorites", path)
             val newGames = if (current.isCollection && current.collectionName != null) {
                 scanner.scanCollectionGames(current.collectionName)
             } else if (current.platformTag == "tools" || current.platformTag == "ports") {
                 val entries = if (current.platformTag == "tools") scanner.scanTools() else scanner.scanPorts()
-                val favPaths = scanner.getFavoritePaths()
+                val favPaths = collectionManager.getFavoritePaths()
                 val games = entries.map { (file, name, launch) ->
                     val starred = if (file.absolutePath in favPaths) "★ $name" else name
                     Game(file = file, displayName = starred, platformTag = current.platformTag, launchTarget = launch)
                 }
-                val order = if (current.platformTag == "tools") scanner.loadToolOrder() else scanner.loadPortOrder()
+                val order = if (current.platformTag == "tools") orderingManager.loadToolOrder() else orderingManager.loadPortOrder()
                 applyCustomOrder(games, order).sortedBy { !it.displayName.startsWith("★") }
             } else {
                 scanner.scanGames(current.platformTags, current.subfolderPath)
@@ -432,19 +438,19 @@ class GameListViewModel(
         if (!current.reorderMode) return
         if (current.isCollectionsList) {
             val stems = current.games.map { it.file.nameWithoutExtension }
-            scope.launch(Dispatchers.IO) { scanner.saveCollectionOrder(stems) }
+            scope.launch(Dispatchers.IO) { orderingManager.saveCollectionOrder(stems) }
         } else if (current.platformTag == "tools") {
             val names = current.games.map { it.displayName }
-            scope.launch(Dispatchers.IO) { scanner.saveToolOrder(names) }
+            scope.launch(Dispatchers.IO) { orderingManager.saveToolOrder(names) }
         } else if (current.platformTag == "ports") {
             val names = current.games.map { it.displayName }
-            scope.launch(Dispatchers.IO) { scanner.savePortOrder(names) }
+            scope.launch(Dispatchers.IO) { orderingManager.savePortOrder(names) }
         } else if (current.isCollection && current.collectionName != null) {
             val childStems = current.games.filter { it.isChildCollection }.map { it.file.name }
             val gamePaths = current.games.filter { !it.isChildCollection }.map { it.file.absolutePath }
             scope.launch(Dispatchers.IO) {
-                scanner.reorderChildren(current.collectionName, childStems)
-                scanner.saveCollectionContents(current.collectionName, gamePaths)
+                collectionManager.reorderChildren(current.collectionName, childStems)
+                collectionManager.saveCollectionContents(current.collectionName, gamePaths)
             }
         }
         _state.update { it.copy(reorderMode = false, reorderOriginalIndex = -1) }
