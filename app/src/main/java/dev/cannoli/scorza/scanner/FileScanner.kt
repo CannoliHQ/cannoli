@@ -29,6 +29,24 @@ class FileScanner(
     private val scanCache = ScanCache(cannoliRoot)
     val dirTimestamps = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
+    private val defaultIgnoreExtensions = setOf("srm", "sav")
+    private val ignoreExtensionsFile = File(cannoliRoot, "Config/ignore_extensions_roms.txt")
+    @Volatile private var ignoreExtensions: Set<String> = defaultIgnoreExtensions
+
+    fun loadIgnoreExtensions() {
+        if (!ignoreExtensionsFile.exists()) {
+            ignoreExtensionsFile.parentFile?.mkdirs()
+            ignoreExtensionsFile.writeText(defaultIgnoreExtensions.joinToString("\n") { ".$it" } + "\n")
+        }
+        ignoreExtensions = ignoreExtensionsFile.readLines()
+            .map { it.trim().lowercase().removePrefix(".") }
+            .filter { it.isNotEmpty() }
+            .toSet()
+    }
+
+    private fun isIgnoredExtension(file: File): Boolean =
+        file.extension.lowercase() in ignoreExtensions
+
     fun scanPlatforms(): List<Platform> {
         if (!romsDir.exists()) return emptyList()
 
@@ -49,7 +67,7 @@ class FileScanner(
             } else {
                 anyStale = true
                 val files = dir.listFiles()
-                files?.any { !it.name.startsWith(".") && it.name != "map.txt" } ?: false
+                files?.any { !it.name.startsWith(".") && it.name != "map.txt" && !isIgnoredExtension(it) } ?: false
             }
             newEntries[tag] = CachedPlatformEntry(dirMod, hasGames)
             platformResolver.resolvePlatform(tag, romsDir, if (hasGames) 1 else 0)
@@ -116,7 +134,7 @@ class FileScanner(
         }
 
         val rawGames = files
-            .filter { !it.name.startsWith(".") && it.name != "map.txt" }
+            .filter { !it.name.startsWith(".") && it.name != "map.txt" && !isIgnoredExtension(it) }
             .mapNotNull { file ->
                 if (file.isDirectory) {
                     val dirLaunch = findDirLaunchFile(file)
@@ -255,9 +273,11 @@ class FileScanner(
             else -> LaunchTarget.RetroArch
         }
 
-        val games = cached.games.map { entry ->
+        val games = cached.games.mapNotNull { entry ->
+            val file = File(entry.path)
+            if (!entry.isSubfolder && isIgnoredExtension(file)) return@mapNotNull null
             Game(
-                file = File(entry.path),
+                file = file,
                 displayName = entry.displayName,
                 platformTag = tag,
                 isSubfolder = entry.isSubfolder,
