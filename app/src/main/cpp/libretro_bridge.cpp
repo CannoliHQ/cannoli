@@ -672,16 +672,19 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeGetPixelFormat(JNIEnv *, j
 
 JNIEXPORT jint JNICALL
 Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeGetFrameWidth(JNIEnv *, jobject) {
+    std::lock_guard<std::mutex> lock(g_frame_mutex);
     return (jint)g_frame_width;
 }
 
 JNIEXPORT jint JNICALL
 Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeGetFrameHeight(JNIEnv *, jobject) {
+    std::lock_guard<std::mutex> lock(g_frame_mutex);
     return (jint)g_frame_height;
 }
 
 JNIEXPORT jboolean JNICALL
 Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeHasNewFrame(JNIEnv *, jobject) {
+    std::lock_guard<std::mutex> lock(g_frame_mutex);
     return g_frame_ready ? JNI_TRUE : JNI_FALSE;
 }
 
