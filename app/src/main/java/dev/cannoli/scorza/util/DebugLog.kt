@@ -9,16 +9,21 @@ import java.util.Locale
 object DebugLog {
     private var writer: FileWriter? = null
     private val fmt = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
+    private val lock = Any()
 
     fun init(dir: String) {
-        val file = File(dir, "debug.log")
-        writer = FileWriter(file, false)
+        synchronized(lock) {
+            val file = File(dir, "debug.log")
+            writer = FileWriter(file, false)
+        }
         write("DebugLog initialized")
     }
 
     fun write(msg: String) {
-        val w = writer ?: return
-        w.appendLine("${fmt.format(Date())} $msg")
-        w.flush()
+        synchronized(lock) {
+            val w = writer ?: return
+            w.appendLine("${fmt.format(Date())} $msg")
+            w.flush()
+        }
     }
 }

@@ -14,6 +14,11 @@ Java_dev_cannoli_scorza_libretro_VulkanBackend_nativeInit(
     ANativeWindow *window = ANativeWindow_fromSurface(env, surface);
     if (!window) return JNI_FALSE;
 
+    if (g_renderer) {
+        g_renderer->destroy();
+        delete g_renderer;
+        g_renderer = nullptr;
+    }
     g_renderer = new VulkanRenderer();
     if (jcachePath) {
         const char *cp = env->GetStringUTFChars(jcachePath, nullptr);
@@ -67,7 +72,9 @@ JNIEXPORT void JNICALL
 Java_dev_cannoli_scorza_libretro_VulkanBackend_nativeSetParam(
     JNIEnv *env, jobject, jstring jname, jfloat value)
 {
+    if (!jname) return;
     const char *name = env->GetStringUTFChars(jname, nullptr);
+    if (!name) return;
     if (g_renderer) g_renderer->setParameter(name, value);
     env->ReleaseStringUTFChars(jname, name);
 }

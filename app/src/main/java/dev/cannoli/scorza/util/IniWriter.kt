@@ -15,7 +15,7 @@ object IniWriter {
             }
             sb.appendLine()
         }
-        file.writeText(sb.toString())
+        writeAtomic(file, sb.toString())
     }
 
     fun mergeWrite(file: File, section: String, entries: Map<String, String>) {
@@ -25,5 +25,18 @@ object IniWriter {
         sectionMap.putAll(entries)
         merged[section] = sectionMap
         write(file, merged)
+    }
+
+    private fun writeAtomic(dest: File, content: String) {
+        val tmp = File(dest.parentFile, "${dest.name}.tmp")
+        try {
+            java.io.FileOutputStream(tmp).use { fos ->
+                fos.write(content.toByteArray())
+                fos.fd.sync()
+            }
+            tmp.renameTo(dest)
+        } catch (_: Exception) {
+            tmp.delete()
+        }
     }
 }

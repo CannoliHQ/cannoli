@@ -1,5 +1,6 @@
 #pragma once
 
+#include "frame_buffer.h"
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_android.h>
 #include <android/native_window.h>
@@ -62,10 +63,9 @@ private:
     bool selectPhysicalDevice();
     bool createDevice();
     bool createSwapchain();
-    void destroySwapchain();
     bool createRenderPass();
-    bool createFrameTexture();
-    void updateFrameTexture();
+    bool createFrameTexture(FrameBuffer *fb);
+    void updateFrameTexture(FrameBuffer *fb);
     bool createFullscreenQuad();
     bool createPassthroughPipeline();
     bool createDescriptorPool();

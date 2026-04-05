@@ -378,7 +378,7 @@ static void video_refresh_cb(const void *data, unsigned width, unsigned height, 
                 unsigned r = (px >> 10) & 0x1F;
                 unsigned g = (px >> 5) & 0x1F;
                 unsigned b = px & 0x1F;
-                dst16[x] = (r << 11) | (g << 6) | (g >> 4) | b;
+                dst16[x] = (r << 11) | (((g << 1) | (g >> 4)) << 5) | b;
             }
             src += pitch;
             dst += row_bytes;
@@ -570,8 +570,14 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeLoadGame(JNIEnv *env, jobj
         size = ftell(f);
         fseek(f, 0, SEEK_SET);
         rom_data = malloc(size);
-        fread(rom_data, 1, size, f);
+        size_t read = fread(rom_data, 1, size, f);
         fclose(f);
+        if (read != (size_t)size) {
+            LOGE("nativeLoadGame: short read (%zu of %zu)", read, (size_t)size);
+            free(rom_data);
+            env->ReleaseStringUTFChars(romPath, path);
+            return nullptr;
+        }
     }
 
     struct retro_game_info game_info = {0};
@@ -672,16 +678,19 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeGetPixelFormat(JNIEnv *, j
 
 JNIEXPORT jint JNICALL
 Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeGetFrameWidth(JNIEnv *, jobject) {
+    std::lock_guard<std::mutex> lock(g_frame_mutex);
     return (jint)g_frame_width;
 }
 
 JNIEXPORT jint JNICALL
 Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeGetFrameHeight(JNIEnv *, jobject) {
+    std::lock_guard<std::mutex> lock(g_frame_mutex);
     return (jint)g_frame_height;
 }
 
 JNIEXPORT jboolean JNICALL
 Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeHasNewFrame(JNIEnv *, jobject) {
+    std::lock_guard<std::mutex> lock(g_frame_mutex);
     return g_frame_ready ? JNI_TRUE : JNI_FALSE;
 }
 
@@ -801,8 +810,13 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeLoadState(JNIEnv *env, job
     long file_size = ftell(f);
     fseek(f, 0, SEEK_SET);
     void *file_buf = malloc(file_size);
-    fread(file_buf, 1, file_size, f);
+    size_t read = fread(file_buf, 1, file_size, f);
     fclose(f);
+    if (read != (size_t)file_size) {
+        LOGE("nativeLoadState: short read (%zu of %zu)", read, (size_t)file_size);
+        free(file_buf);
+        return JNI_FALSE;
+    }
 
     const void *state_data = nullptr;
     size_t state_size = 0;

@@ -352,9 +352,8 @@ bool VulkanRenderer::createRenderPass() {
     return true;
 }
 
-bool VulkanRenderer::createFrameTexture() {
-    FrameBuffer *fb = pfnGetFrameBuffer();
-    if (!fb || fb->width == 0 || fb->height == 0) return false;
+bool VulkanRenderer::createFrameTexture(FrameBuffer *fb) {
+    if (fb->width == 0 || fb->height == 0) return false;
     frameWidth_ = fb->width;
     frameHeight_ = fb->height;
 
@@ -376,7 +375,9 @@ bool VulkanRenderer::createFrameTexture() {
     vkGetImageMemoryRequirements(device_, frameImage_, &memReq);
     VkMemoryAllocateInfo allocInfo{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
     allocInfo.allocationSize = memReq.size;
-    allocInfo.memoryTypeIndex = findMemoryType(memReq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    uint32_t frameMemType = findMemoryType(memReq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    if (frameMemType == UINT32_MAX) return false;
+    allocInfo.memoryTypeIndex = frameMemType;
     vkAllocateMemory(device_, &allocInfo, nullptr, &frameMemory_);
     vkBindImageMemory(device_, frameImage_, frameMemory_, 0);
 
@@ -409,8 +410,10 @@ bool VulkanRenderer::createFrameTexture() {
     vkGetBufferMemoryRequirements(device_, stagingBuffer_, &bufMemReq);
     VkMemoryAllocateInfo bufAllocInfo{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
     bufAllocInfo.allocationSize = bufMemReq.size;
-    bufAllocInfo.memoryTypeIndex = findMemoryType(bufMemReq.memoryTypeBits,
+    uint32_t stagingMemType = findMemoryType(bufMemReq.memoryTypeBits,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    if (stagingMemType == UINT32_MAX) return false;
+    bufAllocInfo.memoryTypeIndex = stagingMemType;
     vkAllocateMemory(device_, &bufAllocInfo, nullptr, &stagingMemory_);
     vkBindBufferMemory(device_, stagingBuffer_, stagingMemory_, 0);
     vkMapMemory(device_, stagingMemory_, 0, bufSize, 0, &stagingMapped_);
@@ -435,12 +438,8 @@ bool VulkanRenderer::createFrameTexture() {
     return true;
 }
 
-void VulkanRenderer::updateFrameTexture() {
-    FrameBuffer *fb = pfnGetFrameBuffer();
-    if (!fb || !fb->ready) return;
-
+void VulkanRenderer::updateFrameTexture(FrameBuffer *fb) {
     if (fb->width != frameWidth_ || fb->height != frameHeight_ || frameImage_ == VK_NULL_HANDLE) {
-        // Recreate if size changed
         if (frameImage_ != VK_NULL_HANDLE) {
             vkDeviceWaitIdle(device_);
             vkDestroyImageView(device_, frameView_, nullptr);
@@ -451,19 +450,18 @@ void VulkanRenderer::updateFrameTexture() {
             vkFreeMemory(device_, stagingMemory_, nullptr);
             frameImage_ = VK_NULL_HANDLE;
         }
-        createFrameTexture();
+        createFrameTexture(fb);
     }
 
-    // Copy frame data to staging buffer with Y-flip (match GLES convention)
     size_t rowBytes = fb->width * 4;
     uint8_t *dst = (uint8_t *)stagingMapped_;
     unsigned h = fb->height;
 
-    if (fb->pixel_format == 1) { // XRGB8888 — bridge already converted to RGBA
+    if (fb->pixel_format == 1) {
         for (unsigned y = 0; y < h; y++) {
             memcpy(dst + (h - 1 - y) * rowBytes, fb->data + y * fb->pitch, rowBytes);
         }
-    } else { // RGB565 — expand to RGBA (R8G8B8A8 byte order)
+    } else {
         for (unsigned y = 0; y < h; y++) {
             const uint16_t *src16 = (const uint16_t *)(fb->data + y * fb->pitch);
             uint32_t *dst32 = (uint32_t *)(dst + (h - 1 - y) * rowBytes);
@@ -476,8 +474,6 @@ void VulkanRenderer::updateFrameTexture() {
             }
         }
     }
-
-    pfnMarkFrameConsumed();
 
     // Copy staging → image
     VkCommandBuffer cmd = commandBuffers_[0];
@@ -522,11 +518,16 @@ void VulkanRenderer::renderFrame() {
     if (swapchain_ == VK_NULL_HANDLE || swapchainFramebuffers_.empty()) return;
 
     FrameBuffer *fb = pfnGetFrameBuffer();
-    if (!fb || fb->width == 0) return;
+    if (!fb || fb->width == 0) {
+        if (fb) pfnMarkFrameConsumed();
+        return;
+    }
 
     vkWaitForFences(device_, 1, &inFlightFence_, VK_TRUE, UINT64_MAX);
 
-    updateFrameTexture();
+    updateFrameTexture(fb);
+    pfnMarkFrameConsumed();
+
     if (frameImage_ == VK_NULL_HANDLE) return;
 
     uint32_t imageIndex;
@@ -1016,7 +1017,9 @@ void VulkanRenderer::loadOverlay(const uint8_t *pixels, int width, int height) {
     vkGetImageMemoryRequirements(device_, overlayImage_, &memReq);
     VkMemoryAllocateInfo allocInfo{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
     allocInfo.allocationSize = memReq.size;
-    allocInfo.memoryTypeIndex = findMemoryType(memReq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    uint32_t overlayMemType = findMemoryType(memReq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    if (overlayMemType == UINT32_MAX) return;
+    allocInfo.memoryTypeIndex = overlayMemType;
     vkAllocateMemory(device_, &allocInfo, nullptr, &overlayMemory_);
     vkBindImageMemory(device_, overlayImage_, overlayMemory_, 0);
 
@@ -1047,7 +1050,9 @@ void VulkanRenderer::loadOverlay(const uint8_t *pixels, int width, int height) {
     vkGetBufferMemoryRequirements(device_, stageBuf, &bufReq);
     VkMemoryAllocateInfo bufAlloc{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
     bufAlloc.allocationSize = bufReq.size;
-    bufAlloc.memoryTypeIndex = findMemoryType(bufReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    uint32_t stageMemType = findMemoryType(bufReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    if (stageMemType == UINT32_MAX) return;
+    bufAlloc.memoryTypeIndex = stageMemType;
     vkAllocateMemory(device_, &bufAlloc, nullptr, &stageMem);
     vkBindBufferMemory(device_, stageBuf, stageMem, 0);
 
@@ -1189,7 +1194,9 @@ bool VulkanRenderer::createMultiPassLayouts() {
     vkGetBufferMemoryRequirements(device_, mvpBuffer_, &uboReq);
     VkMemoryAllocateInfo uboAlloc{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
     uboAlloc.allocationSize = uboReq.size;
-    uboAlloc.memoryTypeIndex = findMemoryType(uboReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    uint32_t uboMemType = findMemoryType(uboReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    if (uboMemType == UINT32_MAX) return false;
+    uboAlloc.memoryTypeIndex = uboMemType;
     vkAllocateMemory(device_, &uboAlloc, nullptr, &mvpMemory_);
     vkBindBufferMemory(device_, mvpBuffer_, mvpMemory_, 0);
     void *mapped;
@@ -1212,7 +1219,9 @@ bool VulkanRenderer::createMultiPassLayouts() {
     vkGetBufferMemoryRequirements(device_, vertexBuffer_, &vbReq);
     VkMemoryAllocateInfo vbAlloc{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
     vbAlloc.allocationSize = vbReq.size;
-    vbAlloc.memoryTypeIndex = findMemoryType(vbReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    uint32_t vbMemType = findMemoryType(vbReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    if (vbMemType == UINT32_MAX) return false;
+    vbAlloc.memoryTypeIndex = vbMemType;
     vkAllocateMemory(device_, &vbAlloc, nullptr, &vertexMemory_);
     vkBindBufferMemory(device_, vertexBuffer_, vertexMemory_, 0);
     void *vbMapped;
@@ -1318,7 +1327,9 @@ bool VulkanRenderer::createPassFbo(VkPassResources &pass, uint32_t w, uint32_t h
     vkGetImageMemoryRequirements(device_, pass.image, &memReq);
     VkMemoryAllocateInfo allocInfo{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
     allocInfo.allocationSize = memReq.size;
-    allocInfo.memoryTypeIndex = findMemoryType(memReq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    uint32_t passMemType = findMemoryType(memReq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    if (passMemType == UINT32_MAX) return false;
+    allocInfo.memoryTypeIndex = passMemType;
     vkAllocateMemory(device_, &allocInfo, nullptr, &pass.memory);
     vkBindImageMemory(device_, pass.image, pass.memory, 0);
 
@@ -1601,6 +1612,22 @@ void VulkanRenderer::destroy() {
     vkDestroyDevice(device_, nullptr);
     vkDestroySurfaceKHR(instance_, surface_, nullptr);
     vkDestroyInstance(instance_, nullptr);
+
+    device_ = VK_NULL_HANDLE;
+    instance_ = VK_NULL_HANDLE;
+    surface_ = VK_NULL_HANDLE;
+    swapchain_ = VK_NULL_HANDLE;
+    renderPass_ = VK_NULL_HANDLE;
+    pipelineLayout_ = VK_NULL_HANDLE;
+    passthroughPipeline_ = VK_NULL_HANDLE;
+    descriptorSetLayout_ = VK_NULL_HANDLE;
+    descriptorPool_ = VK_NULL_HANDLE;
+    commandPool_ = VK_NULL_HANDLE;
+    inFlightFence_ = VK_NULL_HANDLE;
+    imageAvailableSemaphore_ = VK_NULL_HANDLE;
+    renderFinishedSemaphore_ = VK_NULL_HANDLE;
+    pipelineCache_ = VK_NULL_HANDLE;
+    frameImage_ = VK_NULL_HANDLE;
 
     LOGI("Vulkan renderer destroyed");
 }
