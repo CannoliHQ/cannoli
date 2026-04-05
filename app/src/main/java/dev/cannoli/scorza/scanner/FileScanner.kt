@@ -410,14 +410,14 @@ class FileScanner(
             collectionParentsFile.writeText(updated.joinToString("\n") + "\n")
         }
 
-        val orderFile = File(configDir, "collection_order.txt")
+        val orderFile = File(orderingDir, "collection_order.txt")
         if (orderFile.exists()) {
             val lines = orderFile.readLines()
             val updated = lines.map { renameMap[it.trim()] ?: it.trim() }
             orderFile.writeText(updated.joinToString("\n") + "\n")
         }
 
-        configDir.listFiles { f -> f.name.startsWith("child_order_") && f.extension == "txt" }
+        orderingDir.listFiles { f -> f.name.startsWith("child_order_") && f.extension == "txt" }
             ?.forEach { it.delete() }
 
         invalidateCollectionsCache()
@@ -703,6 +703,10 @@ class FileScanner(
             File(cannoliRoot, "Media/Screenshots"),
             File(cannoliRoot, "Media/Recordings"),
             File(cannoliRoot, "Config"),
+            File(cannoliRoot, "Config/Ordering"),
+            File(cannoliRoot, "Config/State"),
+            File(cannoliRoot, "Config/RetroArch"),
+            File(cannoliRoot, "Config/Cache"),
             File(cannoliRoot, "Config/Overrides"),
             File(cannoliRoot, "Config/Overrides/Cores"),
             File(cannoliRoot, "Config/Overrides/systems"),
@@ -713,6 +717,8 @@ class FileScanner(
             toolsDir, portsDir
         ).forEach { it.mkdirs(); onProgress?.invoke() }
 
+        migrateConfigLayout()
+
         for (tag in platformResolver.getAllTags()) {
             File(romsDir, tag).mkdirs(); onProgress?.invoke()
             File(artDir, tag).mkdirs(); onProgress?.invoke()
@@ -721,6 +727,38 @@ class FileScanner(
             File(cannoliRoot, "Save States/$tag").mkdirs(); onProgress?.invoke()
             File(cannoliRoot, "Guides/$tag").mkdirs(); onProgress?.invoke()
         }
+    }
+
+    private fun migrateConfigLayout() {
+        fun move(old: File, new: File) {
+            if (old.exists() && !new.exists()) old.renameTo(new)
+        }
+        val cfg = File(cannoliRoot, "Config")
+        val ordering = File(cfg, "Ordering")
+        val state = File(cfg, "State")
+        val ra = File(cfg, "RetroArch")
+        val cache = File(cfg, "Cache")
+
+        move(File(cfg, "platform_order.txt"), File(ordering, "platform_order.txt"))
+        move(File(cfg, "collection_order.txt"), File(ordering, "collection_order.txt"))
+        move(File(cfg, "collection_parents.txt"), File(ordering, "collection_parents.txt"))
+        move(File(cfg, "tool_order.txt"), File(ordering, "tool_order.txt"))
+        move(File(cfg, "port_order.txt"), File(ordering, "port_order.txt"))
+        cfg.listFiles { f -> f.name.startsWith("child_order_") && f.extension == "txt" }
+            ?.forEach { move(it, File(ordering, it.name)) }
+
+        move(File(cfg, "recently_played.txt"), File(state, "recently_played.txt"))
+        move(File(cfg, "quick_resume.txt"), File(state, "quick_resume.txt"))
+        move(File(cfg, "guide_positions.ini"), File(state, "guide_positions.ini"))
+
+        move(File(cfg, "retroarch.cfg"), File(ra, "retroarch.cfg"))
+        move(File(cfg, "retroarch_launch.cfg"), File(ra, "retroarch_launch.cfg"))
+        move(File(cfg, "ra_game_ids.txt"), File(ra, "ra_game_ids.txt"))
+
+        move(File(cfg, ".ra_config_hash"), File(ra, ".ra_config_hash"))
+
+        move(File(cfg, ".platform_cache.json"), File(cache, ".platform_cache.json"))
+        move(File(cfg, ".game_cache"), File(cache, ".game_cache"))
     }
 
     private fun scanApkLaunchesWithNames(dir: File): List<Triple<File, String, LaunchTarget.ApkLaunch>> {
@@ -800,24 +838,27 @@ class FileScanner(
     }
 
     private val configDir = File(cannoliRoot, "Config")
+    private val orderingDir = File(configDir, "Ordering")
+    private val stateDir = File(configDir, "State")
+    private val raDir = File(configDir, "RetroArch")
 
     fun loadPlatformOrder(): List<String> {
-        val file = File(configDir, "platform_order.txt")
+        val file = File(orderingDir, "platform_order.txt")
         if (!file.exists()) return emptyList()
         return file.readLines().map { it.trim() }.filter { it.isNotEmpty() }
     }
 
     fun savePlatformOrder(tags: List<String>) {
-        configDir.mkdirs()
-        File(configDir, "platform_order.txt").writeText(tags.joinToString("\n") + "\n")
+        orderingDir.mkdirs()
+        File(orderingDir, "platform_order.txt").writeText(tags.joinToString("\n") + "\n")
     }
 
-    private val recentlyPlayedFile = File(configDir, "recently_played.txt")
+    private val recentlyPlayedFile = File(stateDir, "recently_played.txt")
     private val recentlyPlayedLock = Any()
 
     fun recordRecentlyPlayed(romPath: String) {
         synchronized(recentlyPlayedLock) {
-            configDir.mkdirs()
+            stateDir.mkdirs()
             val existing = try {
                 if (recentlyPlayedFile.exists()) recentlyPlayedFile.readLines().map { it.trim() }.filter { it.isNotEmpty() }
                 else emptyList()
@@ -863,7 +904,7 @@ class FileScanner(
     }
 
     fun getRaGameId(romPath: String): Int? {
-        val file = File(configDir, "ra_game_ids.txt")
+        val file = File(raDir, "ra_game_ids.txt")
         if (!file.exists()) return null
         return try {
             file.readLines().firstOrNull { it.startsWith("$romPath=") }
@@ -872,8 +913,8 @@ class FileScanner(
     }
 
     fun setRaGameId(romPath: String, gameId: Int?) {
-        configDir.mkdirs()
-        val file = File(configDir, "ra_game_ids.txt")
+        raDir.mkdirs()
+        val file = File(raDir, "ra_game_ids.txt")
         val existing = try {
             if (file.exists()) file.readLines().filter { !it.startsWith("$romPath=") && it.isNotEmpty() }
             else emptyList()
@@ -884,39 +925,39 @@ class FileScanner(
     }
 
     fun loadCollectionOrder(): List<String> {
-        val file = File(configDir, "collection_order.txt")
+        val file = File(orderingDir, "collection_order.txt")
         if (!file.exists()) return emptyList()
         return file.readLines().map { it.trim() }.filter { it.isNotEmpty() }
     }
 
     fun saveCollectionOrder(names: List<String>) {
-        configDir.mkdirs()
-        File(configDir, "collection_order.txt").writeText(names.joinToString("\n") + "\n")
+        orderingDir.mkdirs()
+        File(orderingDir, "collection_order.txt").writeText(names.joinToString("\n") + "\n")
     }
 
     fun loadToolOrder(): List<String> {
-        val file = File(configDir, "tool_order.txt")
+        val file = File(orderingDir, "tool_order.txt")
         if (!file.exists()) return emptyList()
         return file.readLines().map { it.trim() }.filter { it.isNotEmpty() }
     }
 
     fun saveToolOrder(names: List<String>) {
-        configDir.mkdirs()
-        File(configDir, "tool_order.txt").writeText(names.joinToString("\n") + "\n")
+        orderingDir.mkdirs()
+        File(orderingDir, "tool_order.txt").writeText(names.joinToString("\n") + "\n")
     }
 
     fun loadPortOrder(): List<String> {
-        val file = File(configDir, "port_order.txt")
+        val file = File(orderingDir, "port_order.txt")
         if (!file.exists()) return emptyList()
         return file.readLines().map { it.trim() }.filter { it.isNotEmpty() }
     }
 
     fun savePortOrder(names: List<String>) {
-        configDir.mkdirs()
-        File(configDir, "port_order.txt").writeText(names.joinToString("\n") + "\n")
+        orderingDir.mkdirs()
+        File(orderingDir, "port_order.txt").writeText(names.joinToString("\n") + "\n")
     }
 
-    private val collectionParentsFile = File(configDir, "collection_parents.txt")
+    private val collectionParentsFile = File(orderingDir, "collection_parents.txt")
     @Volatile private var collectionParentsCache: Map<String, String>? = null
     @Volatile private var childrenByParentCache: Map<String, List<String>>? = null
 
@@ -951,7 +992,7 @@ class FileScanner(
     }
 
     private fun saveCollectionParents(map: Map<String, String>) {
-        configDir.mkdirs()
+        orderingDir.mkdirs()
         val filtered = map.filterValues { it.isNotEmpty() }
         collectionParentsCache = null
         childrenByParentCache = null

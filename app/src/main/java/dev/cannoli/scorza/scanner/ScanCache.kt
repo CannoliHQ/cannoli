@@ -10,9 +10,9 @@ data class CachedGameList(val dirLastModified: Long, val artDirLastModified: Lon
 
 class ScanCache(private val cannoliRoot: File) {
 
-    private val configDir = File(cannoliRoot, "Config")
-    private val platformCacheFile = File(configDir, ".platform_cache.json")
-    private val gameCacheDir = File(configDir, ".game_cache")
+    private val cacheDir = File(cannoliRoot, "Config/Cache")
+    private val platformCacheFile = File(cacheDir, ".platform_cache.json")
+    private val gameCacheDir = File(cacheDir, ".game_cache")
 
     fun loadPlatformCache(): Map<String, CachedPlatformEntry>? {
         if (!platformCacheFile.exists()) return null

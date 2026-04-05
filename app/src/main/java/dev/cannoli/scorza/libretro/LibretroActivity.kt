@@ -1998,7 +1998,7 @@ class LibretroActivity : ComponentActivity() {
 
     private fun quit() {
         isRunning = false
-        if (cannoliRoot.isNotEmpty()) File(cannoliRoot, "Config/quick_resume.txt").delete()
+        if (cannoliRoot.isNotEmpty()) File(cannoliRoot, "Config/State/quick_resume.txt").delete()
         cleanup()
         finish()
     }
@@ -2017,7 +2017,7 @@ class LibretroActivity : ComponentActivity() {
             runner.saveState("$stateBasePath.auto")
             autoSavedOnStop = true
             if (cannoliRoot.isNotEmpty() && romPath.isNotEmpty()) {
-                val f = File(cannoliRoot, "Config/quick_resume.txt")
+                val f = File(cannoliRoot, "Config/State/quick_resume.txt")
                 f.parentFile?.mkdirs()
                 f.writeText("$romPath\n$platformTag")
             }
@@ -2027,7 +2027,7 @@ class LibretroActivity : ComponentActivity() {
     @Suppress("DEPRECATION")
     override fun onResume() {
         super.onResume(); overridePendingTransition(0, 0); glSurfaceView?.onResume(); goFullscreen()
-        if (autoSavedOnStop && cannoliRoot.isNotEmpty()) File(cannoliRoot, "Config/quick_resume.txt").delete()
+        if (autoSavedOnStop && cannoliRoot.isNotEmpty()) File(cannoliRoot, "Config/State/quick_resume.txt").delete()
         autoSavedOnStop = false
     }
 

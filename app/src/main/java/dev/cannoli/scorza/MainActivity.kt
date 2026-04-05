@@ -820,7 +820,7 @@ class MainActivity : ComponentActivity() {
 
         rescanSystemList()
 
-        val quickResume = File(root, "Config/quick_resume.txt")
+        val quickResume = File(root, "Config/State/quick_resume.txt")
         if (quickResume.exists()) {
             val lines = try { quickResume.readLines() } catch (_: Exception) { emptyList() }
             quickResume.delete()

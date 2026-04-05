@@ -41,10 +41,10 @@ class LaunchManager(
     }
 
     fun syncRetroArchConfig(root: File) {
-        val configDir = File(root, "Config")
-        configDir.mkdirs()
-        val localConfig = File(configDir, "retroarch.cfg")
-        val hashFile = File(configDir, ".ra_config_hash")
+        val raDir = File(root, "Config/RetroArch")
+        raDir.mkdirs()
+        val localConfig = File(raDir, "retroarch.cfg")
+        val hashFile = File(raDir, ".ra_config_hash")
 
         val raPackage = settings.retroArchPackage
         val sourceConfig = File("/storage/emulated/0/Android/data/$raPackage/files/retroarch.cfg")
@@ -94,7 +94,7 @@ class LaunchManager(
             }
         }
         val patched = applyOverrides(baseConfig, gameOverrides)
-        val launchConfig = File(cannoliRoot, "Config/retroarch_launch.cfg")
+        val launchConfig = File(cannoliRoot, "Config/RetroArch/retroarch_launch.cfg")
         launchConfig.writeText(patched)
         return launchConfig.absolutePath
     }
@@ -367,7 +367,7 @@ class LaunchManager(
             putExtra("graphics_backend", settings.graphicsBackend)
             putExtra("ra_username", settings.raUsername)
             putExtra("ra_token", settings.raToken)
-            val raIdFile = File(File(settings.sdCardRoot, "Config"), "ra_game_ids.txt")
+            val raIdFile = File(File(settings.sdCardRoot, "Config/RetroArch"), "ra_game_ids.txt")
             if (raIdFile.exists()) {
                 val romAbs = game.file.absolutePath
                 raIdFile.readLines().firstOrNull { it.startsWith("$romAbs=") }

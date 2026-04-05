@@ -16,7 +16,7 @@ class GuideManager(
     private val gameTitle: String
 ) {
     private val guidesDir = File(cannoliRoot, "Guides/$platformTag/$gameTitle")
-    private val positionsFile = File(cannoliRoot, "Config/guide_positions.ini")
+    private val positionsFile = File(cannoliRoot, "Config/State/guide_positions.ini")
 
     private val supportedExtensions = mapOf(
         "pdf" to GuideType.PDF,
