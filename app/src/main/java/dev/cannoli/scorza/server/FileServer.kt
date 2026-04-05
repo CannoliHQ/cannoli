@@ -823,7 +823,8 @@ class FileServer(
 
     private fun generatePin(): String {
         val chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-        return (1..6).map { chars.random() }.joinToString("")
+        val random = java.security.SecureRandom()
+        return (1..6).map { chars[random.nextInt(chars.length)] }.joinToString("")
     }
 
     companion object {
