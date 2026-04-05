@@ -68,6 +68,7 @@
     <string name="setting_manage_tools">Manage Tools</string>
     <string name="setting_manage_ports">Manage Ports</string>
     <string name="setting_bg_tint">Background Tint</string>
+    <string name="setting_color_title">Title</string>
     <string name="setting_color_highlight">Highlight</string>
     <string name="setting_color_text">Text</string>
     <string name="setting_color_highlight_text">Highlight Text</string>

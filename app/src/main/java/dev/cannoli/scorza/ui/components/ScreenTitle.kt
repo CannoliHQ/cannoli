@@ -70,7 +70,7 @@ fun ScreenTitle(
                 fontSize = resolvedFontSize.sp,
                 lineHeight = lineHeight
             ),
-            color = LocalCannoliColors.current.text,
+            color = LocalCannoliColors.current.title,
             maxLines = 1,
             softWrap = false,
             modifier = Modifier

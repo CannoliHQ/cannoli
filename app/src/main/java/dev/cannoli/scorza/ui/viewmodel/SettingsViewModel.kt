@@ -108,6 +108,7 @@ class SettingsViewModel(
         val colorText: Color = Color.White,
         val colorHighlightText: Color = Color.Black,
         val colorAccent: Color = Color.White,
+        val colorTitle: Color = Color.White,
         val showWifi: Boolean = true,
         val showBluetooth: Boolean = true,
         val showVpn: Boolean = false,
@@ -138,6 +139,7 @@ class SettingsViewModel(
         colorText = hexToColor(settings.colorText) ?: Color.White,
         colorHighlightText = hexToColor(settings.colorHighlightText) ?: Color.Black,
         colorAccent = hexToColor(settings.colorAccent) ?: Color.White,
+        colorTitle = hexToColor(settings.colorTitle) ?: Color.White,
         showWifi = settings.showWifi,
         showBluetooth = settings.showBluetooth,
         showVpn = settings.showVpn,
@@ -177,6 +179,7 @@ class SettingsViewModel(
         val colorText: String,
         val colorHighlightText: String,
         val colorAccent: String,
+        val colorTitle: String,
         val graphicsBackend: String,
         val platformSwitching: Boolean,
         val swapPlayResume: Boolean,
@@ -432,10 +435,11 @@ class SettingsViewModel(
 
     fun getColorEntries(): List<dev.cannoli.scorza.ui.screens.ColorEntry> {
         val names = mapOf(
-            "color_text" to R.string.setting_color_text,
+            "color_accent" to R.string.setting_color_accent,
             "color_highlight" to R.string.setting_color_highlight,
             "color_highlight_text" to R.string.setting_color_highlight_text,
-            "color_accent" to R.string.setting_color_accent
+            "color_text" to R.string.setting_color_text,
+            "color_title" to R.string.setting_color_title
         )
         return names.map { (key, labelRes) ->
             val hex = getColorHex(key)
@@ -454,6 +458,7 @@ class SettingsViewModel(
         "color_text" -> settings.colorText
         "color_highlight_text" -> settings.colorHighlightText
         "color_accent" -> settings.colorAccent
+        "color_title" -> settings.colorTitle
         else -> "#FFFFFF"
     }
 
@@ -463,6 +468,7 @@ class SettingsViewModel(
             "color_text" -> settings.colorText = hex
             "color_highlight_text" -> settings.colorHighlightText = hex
             "color_accent" -> settings.colorAccent = hex
+            "color_title" -> settings.colorTitle = hex
         }
         val catKey = _state.value.activeCategory ?: return
         _state.update { it.copy(items = buildItemsForCategory(catKey)) }
@@ -480,6 +486,7 @@ class SettingsViewModel(
         colorText = settings.colorText,
         colorHighlightText = settings.colorHighlightText,
         colorAccent = settings.colorAccent,
+        colorTitle = settings.colorTitle,
         graphicsBackend = settings.graphicsBackend,
         platformSwitching = settings.platformSwitching,
         swapPlayResume = settings.swapPlayResume,
@@ -512,6 +519,7 @@ class SettingsViewModel(
         settings.colorText = snap.colorText
         settings.colorHighlightText = snap.colorHighlightText
         settings.colorAccent = snap.colorAccent
+        settings.colorTitle = snap.colorTitle
         settings.graphicsBackend = snap.graphicsBackend
         settings.platformSwitching = snap.platformSwitching
         settings.swapPlayResume = snap.swapPlayResume

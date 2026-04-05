@@ -213,6 +213,10 @@ class SettingsRepository(context: Context) {
         get() = jsonRead { optString(KEY_COLOR_ACCENT, "#FFFFFF") }
         set(value) = jsonWrite { put(KEY_COLOR_ACCENT, value) }
 
+    var colorTitle: String
+        get() = jsonRead { optString(KEY_COLOR_TITLE, "#FFFFFF") }
+        set(value) = jsonWrite { put(KEY_COLOR_TITLE, value) }
+
     var raUsername: String
         get() = jsonRead { optString(KEY_RA_USERNAME, "") }
         set(value) = jsonWrite { if (value.isEmpty()) remove(KEY_RA_USERNAME) else put(KEY_RA_USERNAME, value) }
@@ -284,6 +288,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_COLOR_TEXT = "color_text"
         private const val KEY_COLOR_HIGHLIGHT_TEXT = "color_highlight_text"
         private const val KEY_COLOR_ACCENT = "color_accent"
+        private const val KEY_COLOR_TITLE = "color_title"
         private const val KEY_PLATFORM_SWITCHING = "platform_switching"
         private const val KEY_SWAP_PLAY_RESUME = "swap_play_resume"
         private const val KEY_MAIN_MENU_QUIT = "main_menu_quit"

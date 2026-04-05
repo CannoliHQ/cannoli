@@ -15,7 +15,8 @@ data class CannoliColors(
     val highlight: Color = Color.White,
     val text: Color = Color.White,
     val highlightText: Color = Color.Black,
-    val accent: Color = Color.White
+    val accent: Color = Color.White,
+    val title: Color = Color.White
 )
 
 val LocalCannoliColors = staticCompositionLocalOf { CannoliColors() }
