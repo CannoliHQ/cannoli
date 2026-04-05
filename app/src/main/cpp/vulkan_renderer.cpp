@@ -375,7 +375,9 @@ bool VulkanRenderer::createFrameTexture(FrameBuffer *fb) {
     vkGetImageMemoryRequirements(device_, frameImage_, &memReq);
     VkMemoryAllocateInfo allocInfo{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
     allocInfo.allocationSize = memReq.size;
-    allocInfo.memoryTypeIndex = findMemoryType(memReq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    uint32_t frameMemType = findMemoryType(memReq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    if (frameMemType == UINT32_MAX) return false;
+    allocInfo.memoryTypeIndex = frameMemType;
     vkAllocateMemory(device_, &allocInfo, nullptr, &frameMemory_);
     vkBindImageMemory(device_, frameImage_, frameMemory_, 0);
 
@@ -408,8 +410,10 @@ bool VulkanRenderer::createFrameTexture(FrameBuffer *fb) {
     vkGetBufferMemoryRequirements(device_, stagingBuffer_, &bufMemReq);
     VkMemoryAllocateInfo bufAllocInfo{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
     bufAllocInfo.allocationSize = bufMemReq.size;
-    bufAllocInfo.memoryTypeIndex = findMemoryType(bufMemReq.memoryTypeBits,
+    uint32_t stagingMemType = findMemoryType(bufMemReq.memoryTypeBits,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    if (stagingMemType == UINT32_MAX) return false;
+    bufAllocInfo.memoryTypeIndex = stagingMemType;
     vkAllocateMemory(device_, &bufAllocInfo, nullptr, &stagingMemory_);
     vkBindBufferMemory(device_, stagingBuffer_, stagingMemory_, 0);
     vkMapMemory(device_, stagingMemory_, 0, bufSize, 0, &stagingMapped_);
@@ -1013,7 +1017,9 @@ void VulkanRenderer::loadOverlay(const uint8_t *pixels, int width, int height) {
     vkGetImageMemoryRequirements(device_, overlayImage_, &memReq);
     VkMemoryAllocateInfo allocInfo{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
     allocInfo.allocationSize = memReq.size;
-    allocInfo.memoryTypeIndex = findMemoryType(memReq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    uint32_t overlayMemType = findMemoryType(memReq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    if (overlayMemType == UINT32_MAX) return;
+    allocInfo.memoryTypeIndex = overlayMemType;
     vkAllocateMemory(device_, &allocInfo, nullptr, &overlayMemory_);
     vkBindImageMemory(device_, overlayImage_, overlayMemory_, 0);
 
@@ -1044,7 +1050,9 @@ void VulkanRenderer::loadOverlay(const uint8_t *pixels, int width, int height) {
     vkGetBufferMemoryRequirements(device_, stageBuf, &bufReq);
     VkMemoryAllocateInfo bufAlloc{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
     bufAlloc.allocationSize = bufReq.size;
-    bufAlloc.memoryTypeIndex = findMemoryType(bufReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    uint32_t stageMemType = findMemoryType(bufReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    if (stageMemType == UINT32_MAX) return;
+    bufAlloc.memoryTypeIndex = stageMemType;
     vkAllocateMemory(device_, &bufAlloc, nullptr, &stageMem);
     vkBindBufferMemory(device_, stageBuf, stageMem, 0);
 
@@ -1186,7 +1194,9 @@ bool VulkanRenderer::createMultiPassLayouts() {
     vkGetBufferMemoryRequirements(device_, mvpBuffer_, &uboReq);
     VkMemoryAllocateInfo uboAlloc{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
     uboAlloc.allocationSize = uboReq.size;
-    uboAlloc.memoryTypeIndex = findMemoryType(uboReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    uint32_t uboMemType = findMemoryType(uboReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    if (uboMemType == UINT32_MAX) return false;
+    uboAlloc.memoryTypeIndex = uboMemType;
     vkAllocateMemory(device_, &uboAlloc, nullptr, &mvpMemory_);
     vkBindBufferMemory(device_, mvpBuffer_, mvpMemory_, 0);
     void *mapped;
@@ -1209,7 +1219,9 @@ bool VulkanRenderer::createMultiPassLayouts() {
     vkGetBufferMemoryRequirements(device_, vertexBuffer_, &vbReq);
     VkMemoryAllocateInfo vbAlloc{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
     vbAlloc.allocationSize = vbReq.size;
-    vbAlloc.memoryTypeIndex = findMemoryType(vbReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    uint32_t vbMemType = findMemoryType(vbReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    if (vbMemType == UINT32_MAX) return false;
+    vbAlloc.memoryTypeIndex = vbMemType;
     vkAllocateMemory(device_, &vbAlloc, nullptr, &vertexMemory_);
     vkBindBufferMemory(device_, vertexBuffer_, vertexMemory_, 0);
     void *vbMapped;
@@ -1315,7 +1327,9 @@ bool VulkanRenderer::createPassFbo(VkPassResources &pass, uint32_t w, uint32_t h
     vkGetImageMemoryRequirements(device_, pass.image, &memReq);
     VkMemoryAllocateInfo allocInfo{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
     allocInfo.allocationSize = memReq.size;
-    allocInfo.memoryTypeIndex = findMemoryType(memReq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    uint32_t passMemType = findMemoryType(memReq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    if (passMemType == UINT32_MAX) return false;
+    allocInfo.memoryTypeIndex = passMemType;
     vkAllocateMemory(device_, &allocInfo, nullptr, &pass.memory);
     vkBindImageMemory(device_, pass.image, pass.memory, 0);
 
