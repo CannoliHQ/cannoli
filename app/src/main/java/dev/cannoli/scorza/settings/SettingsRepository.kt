@@ -263,15 +263,6 @@ class SettingsRepository(context: Context) {
             "com.retroarch"
         )
 
-        private val RA_PACKAGE_LABELS = mapOf(
-            "dev.cannoli.ricotta.aarch64" to "RicottaArch",
-            "dev.cannoli.ricotta" to "RicottaArch",
-            "com.retroarch.aarch64" to "RetroArch",
-            "com.retroarch" to "RetroArch"
-        )
-
-        fun getPackageLabel(pkg: String): String = RA_PACKAGE_LABELS[pkg] ?: pkg
-
         private const val KEY_SETUP_COMPLETED = "setup_completed"
         private const val KEY_SD_ROOT = "sd_root"
         private const val KEY_ROM_DIRECTORY = "rom_directory"

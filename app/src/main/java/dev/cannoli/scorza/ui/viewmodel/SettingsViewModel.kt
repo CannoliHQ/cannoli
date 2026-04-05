@@ -6,6 +6,7 @@ import androidx.annotation.StringRes
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import dev.cannoli.scorza.R
+import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.isPackageInstalled
 import dev.cannoli.scorza.settings.ArtScale
 import dev.cannoli.scorza.settings.SettingsRepository
@@ -613,7 +614,7 @@ class SettingsViewModel(
             }
             add(SettingsItem("ra_package", R.string.setting_ra_package, valueText = if (pkgs.isEmpty()) null else settings.retroArchPackage, valueRes = if (pkgs.isEmpty()) R.string.value_none_installed else null, canCycle = pkgs.size > 1))
             if (pkgs.isNotEmpty()) {
-                val pkgLabel = SettingsRepository.getPackageLabel(settings.retroArchPackage)
+                val pkgLabel = InstalledCoreService.getPackageLabel(settings.retroArchPackage)
                 add(SettingsItem("installed_cores", R.string.setting_installed_cores, labelText = "$pkgLabel Installed Cores", isEditable = true))
             }
             add(SettingsItem(
