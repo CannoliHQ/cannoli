@@ -72,7 +72,9 @@ JNIEXPORT void JNICALL
 Java_dev_cannoli_scorza_libretro_VulkanBackend_nativeSetParam(
     JNIEnv *env, jobject, jstring jname, jfloat value)
 {
+    if (!jname) return;
     const char *name = env->GetStringUTFChars(jname, nullptr);
+    if (!name) return;
     if (g_renderer) g_renderer->setParameter(name, value);
     env->ReleaseStringUTFChars(jname, name);
 }
