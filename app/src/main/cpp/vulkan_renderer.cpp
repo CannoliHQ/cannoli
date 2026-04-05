@@ -352,9 +352,8 @@ bool VulkanRenderer::createRenderPass() {
     return true;
 }
 
-bool VulkanRenderer::createFrameTexture() {
-    FrameBuffer *fb = pfnGetFrameBuffer();
-    if (!fb || fb->width == 0 || fb->height == 0) return false;
+bool VulkanRenderer::createFrameTexture(FrameBuffer *fb) {
+    if (fb->width == 0 || fb->height == 0) return false;
     frameWidth_ = fb->width;
     frameHeight_ = fb->height;
 
@@ -435,12 +434,8 @@ bool VulkanRenderer::createFrameTexture() {
     return true;
 }
 
-void VulkanRenderer::updateFrameTexture() {
-    FrameBuffer *fb = pfnGetFrameBuffer();
-    if (!fb || !fb->ready) return;
-
+void VulkanRenderer::updateFrameTexture(FrameBuffer *fb) {
     if (fb->width != frameWidth_ || fb->height != frameHeight_ || frameImage_ == VK_NULL_HANDLE) {
-        // Recreate if size changed
         if (frameImage_ != VK_NULL_HANDLE) {
             vkDeviceWaitIdle(device_);
             vkDestroyImageView(device_, frameView_, nullptr);
@@ -451,19 +446,18 @@ void VulkanRenderer::updateFrameTexture() {
             vkFreeMemory(device_, stagingMemory_, nullptr);
             frameImage_ = VK_NULL_HANDLE;
         }
-        createFrameTexture();
+        createFrameTexture(fb);
     }
 
-    // Copy frame data to staging buffer with Y-flip (match GLES convention)
     size_t rowBytes = fb->width * 4;
     uint8_t *dst = (uint8_t *)stagingMapped_;
     unsigned h = fb->height;
 
-    if (fb->pixel_format == 1) { // XRGB8888 — bridge already converted to RGBA
+    if (fb->pixel_format == 1) {
         for (unsigned y = 0; y < h; y++) {
             memcpy(dst + (h - 1 - y) * rowBytes, fb->data + y * fb->pitch, rowBytes);
         }
-    } else { // RGB565 — expand to RGBA (R8G8B8A8 byte order)
+    } else {
         for (unsigned y = 0; y < h; y++) {
             const uint16_t *src16 = (const uint16_t *)(fb->data + y * fb->pitch);
             uint32_t *dst32 = (uint32_t *)(dst + (h - 1 - y) * rowBytes);
@@ -476,8 +470,6 @@ void VulkanRenderer::updateFrameTexture() {
             }
         }
     }
-
-    pfnMarkFrameConsumed();
 
     // Copy staging → image
     VkCommandBuffer cmd = commandBuffers_[0];
@@ -522,11 +514,16 @@ void VulkanRenderer::renderFrame() {
     if (swapchain_ == VK_NULL_HANDLE || swapchainFramebuffers_.empty()) return;
 
     FrameBuffer *fb = pfnGetFrameBuffer();
-    if (!fb || fb->width == 0) return;
+    if (!fb || fb->width == 0) {
+        if (fb) pfnMarkFrameConsumed();
+        return;
+    }
 
     vkWaitForFences(device_, 1, &inFlightFence_, VK_TRUE, UINT64_MAX);
 
-    updateFrameTexture();
+    updateFrameTexture(fb);
+    pfnMarkFrameConsumed();
+
     if (frameImage_ == VK_NULL_HANDLE) return;
 
     uint32_t imageIndex;
