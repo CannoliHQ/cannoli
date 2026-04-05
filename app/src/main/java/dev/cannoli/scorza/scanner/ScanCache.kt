@@ -93,7 +93,10 @@ class ScanCache(private val cannoliRoot: File) {
         dest.parentFile?.mkdirs()
         val tmp = File(dest.parentFile, "${dest.name}.tmp")
         try {
-            tmp.writeText(content)
+            java.io.FileOutputStream(tmp).use { fos ->
+                fos.write(content.toByteArray())
+                fos.fd.sync()
+            }
             tmp.renameTo(dest)
         } catch (_: Exception) {
             tmp.delete()
