@@ -80,9 +80,6 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
     private var frameBuffer: ByteBuffer? = null
     private var lastWidth = 0
     private var lastHeight = 0
-    private var textureAllocatedWidth = 0
-    private var textureAllocatedHeight = 0
-    private var textureAllocatedFormat = -1
     private var surfaceWidth = 0
     private var surfaceHeight = 0
 
@@ -200,19 +197,15 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
 
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId)
             if (pixelFormat == LibretroRunner.PIXEL_FORMAT_XRGB8888) {
-                if (textureAllocatedWidth != w || textureAllocatedHeight != h || textureAllocatedFormat != pixelFormat) {
-                    GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, w, h, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, frameBuffer)
-                    textureAllocatedWidth = w; textureAllocatedHeight = h; textureAllocatedFormat = pixelFormat
-                } else {
-                    GLES20.glTexSubImage2D(GLES20.GL_TEXTURE_2D, 0, 0, 0, w, h, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, frameBuffer)
-                }
+                GLES20.glTexImage2D(
+                    GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA,
+                    w, h, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, frameBuffer
+                )
             } else {
-                if (textureAllocatedWidth != w || textureAllocatedHeight != h || textureAllocatedFormat != pixelFormat) {
-                    GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGB, w, h, 0, GLES20.GL_RGB, GLES20.GL_UNSIGNED_SHORT_5_6_5, frameBuffer)
-                    textureAllocatedWidth = w; textureAllocatedHeight = h; textureAllocatedFormat = pixelFormat
-                } else {
-                    GLES20.glTexSubImage2D(GLES20.GL_TEXTURE_2D, 0, 0, 0, w, h, GLES20.GL_RGB, GLES20.GL_UNSIGNED_SHORT_5_6_5, frameBuffer)
-                }
+                GLES20.glTexImage2D(
+                    GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGB,
+                    w, h, 0, GLES20.GL_RGB, GLES20.GL_UNSIGNED_SHORT_5_6_5, frameBuffer
+                )
             }
         }
 
