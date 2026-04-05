@@ -344,19 +344,19 @@ enum class ArtScale {
 }
 
 enum class ButtonLabelSet {
-    PLUMBER, SEATTLE, SHAPES;
+    PLUMBER, REDMOND, SHAPES;
 
     val confirm: String get() = when (this) {
-        PLUMBER -> "A"; SEATTLE -> "A"; SHAPES -> "✕"
+        PLUMBER -> "A"; REDMOND -> "A"; SHAPES -> "✕"
     }
     val back: String get() = when (this) {
-        PLUMBER -> "B"; SEATTLE -> "B"; SHAPES -> "○"
+        PLUMBER -> "B"; REDMOND -> "B"; SHAPES -> "○"
     }
     val x: String get() = when (this) {
-        PLUMBER -> "X"; SEATTLE -> "Y"; SHAPES -> "△"
+        PLUMBER -> "X"; REDMOND -> "Y"; SHAPES -> "△"
     }
     val y: String get() = when (this) {
-        PLUMBER -> "Y"; SEATTLE -> "X"; SHAPES -> "□"
+        PLUMBER -> "Y"; REDMOND -> "X"; SHAPES -> "□"
     }
 
     companion object {
