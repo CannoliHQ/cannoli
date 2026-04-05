@@ -1613,5 +1613,21 @@ void VulkanRenderer::destroy() {
     vkDestroySurfaceKHR(instance_, surface_, nullptr);
     vkDestroyInstance(instance_, nullptr);
 
+    device_ = VK_NULL_HANDLE;
+    instance_ = VK_NULL_HANDLE;
+    surface_ = VK_NULL_HANDLE;
+    swapchain_ = VK_NULL_HANDLE;
+    renderPass_ = VK_NULL_HANDLE;
+    pipelineLayout_ = VK_NULL_HANDLE;
+    passthroughPipeline_ = VK_NULL_HANDLE;
+    descriptorSetLayout_ = VK_NULL_HANDLE;
+    descriptorPool_ = VK_NULL_HANDLE;
+    commandPool_ = VK_NULL_HANDLE;
+    inFlightFence_ = VK_NULL_HANDLE;
+    imageAvailableSemaphore_ = VK_NULL_HANDLE;
+    renderFinishedSemaphore_ = VK_NULL_HANDLE;
+    pipelineCache_ = VK_NULL_HANDLE;
+    frameImage_ = VK_NULL_HANDLE;
+
     LOGI("Vulkan renderer destroyed");
 }
