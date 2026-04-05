@@ -130,7 +130,8 @@ class MainActivity : ComponentActivity() {
     private val collectionSelectHoldRunnable = Runnable {
         selectHeld = true
         val glState = gameListViewModel.state.value
-        if (glState.isCollection && !glState.isCollectionsList && glState.subfolderPath == null) {
+        val isApkList = glState.platformTag == "tools" || glState.platformTag == "ports"
+        if ((glState.isCollection && !glState.isCollectionsList && glState.subfolderPath == null) || isApkList) {
             if (!gameListViewModel.isReorderMode() && !gameListViewModel.isMultiSelectMode()) {
                 gameListViewModel.enterMultiSelect()
             }
@@ -667,7 +668,8 @@ class MainActivity : ComponentActivity() {
             } else if (!selectHeld && !selectHandled && dialogState.value == DialogState.None
                 && currentScreen == LauncherScreen.GameList) {
                 val glState = gameListViewModel.state.value
-                if (glState.isCollection && !glState.isCollectionsList && glState.subfolderPath == null
+                val isApkList = glState.platformTag == "tools" || glState.platformTag == "ports"
+                if (((glState.isCollection && !glState.isCollectionsList && glState.subfolderPath == null) || isApkList)
                     && !gameListViewModel.isReorderMode() && !gameListViewModel.isMultiSelectMode()) {
                     gameListViewModel.enterReorderMode()
                 }
@@ -1475,7 +1477,7 @@ class MainActivity : ComponentActivity() {
                 is DialogState.RestartRequired -> {}
                 DialogState.None -> when (val screen = currentScreen) {
                     LauncherScreen.SystemList -> {
-                        if (systemListViewModel.isReorderMode()) systemListViewModel.cancelReorder(showTools = settings.showTools, showPorts = settings.showPorts, showEmpty = settings.showEmpty, toolsName = settings.toolsName, portsName = settings.portsName)
+                        if (systemListViewModel.isReorderMode()) systemListViewModel.cancelReorder(showEmpty = settings.showEmpty, toolsName = settings.toolsName, portsName = settings.portsName)
                         else if (settings.mainMenuQuit) dialogState.value = DialogState.QuitConfirm
                     }
                     LauncherScreen.GameList -> {
@@ -1589,12 +1591,17 @@ class MainActivity : ComponentActivity() {
                                 val paths = checkedGames.map { it.file.absolutePath }
                                 val favPaths = scanner.getFavoritePaths()
                                 val allFav = paths.all { it in favPaths }
+                                val isApkList = glState.platformTag == "tools" || glState.platformTag == "ports"
                                 val options = mutableListOf<String>()
                                 options.add(if (allFav) MENU_REMOVE_FAVORITE else MENU_ADD_FAVORITE)
                                 if (glState.isCollection && glState.collectionName != null) {
                                     options.add(MENU_REMOVE_FROM_COLLECTION)
                                 }
-                                options.addAll(listOf(MENU_MANAGE_COLLECTIONS, MENU_DELETE_ART, MENU_DELETE_GAME))
+                                if (isApkList) {
+                                    options.addAll(listOf(MENU_MANAGE_COLLECTIONS, MENU_REMOVE))
+                                } else {
+                                    options.addAll(listOf(MENU_MANAGE_COLLECTIONS, MENU_DELETE_ART, MENU_DELETE_GAME))
+                                }
                                 gameListViewModel.confirmMultiSelect()
                                 dialogState.value = DialogState.BulkContextMenu(
                                     gamePaths = paths,
@@ -1670,7 +1677,17 @@ class MainActivity : ComponentActivity() {
                                 } else {
                                     selectHoldHandler.postDelayed(collectionSelectHoldRunnable, 400)
                                 }
-                            } else if (glState.isCollectionsList || isApkList) {
+                            } else if (isApkList) {
+                                if (gameListViewModel.isReorderMode()) {
+                                    gameListViewModel.confirmReorder()
+                                    selectHandled = true
+                                } else if (gameListViewModel.isMultiSelectMode()) {
+                                    gameListViewModel.confirmMultiSelect()
+                                    selectHandled = true
+                                } else {
+                                    selectHoldHandler.postDelayed(collectionSelectHoldRunnable, 400)
+                                }
+                            } else if (glState.isCollectionsList) {
                                 if (gameListViewModel.isReorderMode()) {
                                     gameListViewModel.confirmReorder()
                                 } else {
@@ -1942,8 +1959,6 @@ class MainActivity : ComponentActivity() {
     private fun rescanSystemList() {
         scanner.invalidateFavorites()
         systemListViewModel.scan(
-            showTools = settings.showTools,
-            showPorts = settings.showPorts,
             showEmpty = settings.showEmpty,
             toolsName = settings.toolsName,
             portsName = settings.portsName
@@ -2503,6 +2518,21 @@ class MainActivity : ComponentActivity() {
                     }
                 tagsToInvalidate.forEach { scanner.invalidateArtForTag(it) }
                 gameListViewModel.reload()
+                dialogState.value = DialogState.None
+            }
+            MENU_REMOVE -> {
+                pendingContextReturn = null
+                val glState = gameListViewModel.state.value
+                val pathSet = state.gamePaths.toSet()
+                ioScope.launch {
+                    glState.games.filter { it.file.absolutePath in pathSet }
+                        .forEach { g ->
+                            val name = g.displayName.removePrefix("★ ")
+                            scanner.removeApkLaunch(glState.platformTag, name)
+                        }
+                    gameListViewModel.reload()
+                    rescanSystemList()
+                }
                 dialogState.value = DialogState.None
             }
             MENU_REMOVE_FROM_COLLECTION -> {

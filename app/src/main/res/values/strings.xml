@@ -26,7 +26,7 @@
 
     <!-- Settings categories -->
     <string name="settings_display">Appearance</string>
-    <string name="settings_content">Content</string>
+    <string name="settings_library">Library</string>
     <string name="settings_status_bar">Status Bar</string>
     <string name="settings_input">Input</string>
     <string name="settings_advanced">Advanced</string>

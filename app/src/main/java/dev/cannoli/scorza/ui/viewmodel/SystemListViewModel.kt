@@ -45,7 +45,7 @@ class SystemListViewModel(
         savedPosition = _state.value.selectedIndex to firstVisibleIndex
     }
 
-    fun scan(showTools: Boolean = false, showPorts: Boolean = false, showEmpty: Boolean = false, toolsName: String = "Tools", portsName: String = "Ports") {
+    fun scan(showEmpty: Boolean = false, toolsName: String = "Tools", portsName: String = "Ports") {
         val prev = _state.value
         val prevItemCount = prev.items.size
         val restored = savedPosition
@@ -75,10 +75,10 @@ class SystemListViewModel(
             val reorderableItems = mutableListOf<ListItem>()
             val visiblePlatforms = if (showEmpty) platforms else platforms.filter { it.gameCount > 0 }
             visiblePlatforms.forEach { reorderableItems.add(ListItem.PlatformItem(it)) }
-            if (showPorts && ports.isNotEmpty()) {
+            if (ports.isNotEmpty()) {
                 reorderableItems.add(ListItem.PortsFolder(portsName, ports.size))
             }
-            if (showTools && tools.isNotEmpty()) {
+            if (tools.isNotEmpty()) {
                 reorderableItems.add(ListItem.ToolsFolder(toolsName, tools.size))
             }
             val ordered = applyCustomOrder(reorderableItems, scanner.loadPlatformOrder())
@@ -180,10 +180,10 @@ class SystemListViewModel(
         _state.update { it.copy(reorderMode = false, reorderOriginalIndex = -1) }
     }
 
-    fun cancelReorder(showTools: Boolean = false, showPorts: Boolean = false, showEmpty: Boolean = false, toolsName: String = "Tools", portsName: String = "Ports") {
+    fun cancelReorder(showEmpty: Boolean = false, toolsName: String = "Tools", portsName: String = "Ports") {
         val current = _state.value
         if (!current.reorderMode) return
-        scan(showTools, showPorts, showEmpty, toolsName, portsName)
+        scan(showEmpty, toolsName, portsName)
     }
 
     private fun ListItem.isReorderable(): Boolean = this is ListItem.PlatformItem || this is ListItem.ToolsFolder || this is ListItem.PortsFolder

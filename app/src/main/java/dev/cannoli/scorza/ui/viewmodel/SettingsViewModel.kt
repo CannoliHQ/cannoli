@@ -114,8 +114,6 @@ class SettingsViewModel(
         val showClock: Boolean = true,
         val showBattery: Boolean = true,
         val showUpdate: Boolean = true,
-        val showTools: Boolean = false,
-        val showPorts: Boolean = false,
         val swapPlayResume: Boolean = false,
         val mainMenuQuit: Boolean = false,
         val retroArchDiyMode: Boolean = true,
@@ -146,8 +144,6 @@ class SettingsViewModel(
         showClock = settings.showClock,
         showBattery = settings.showBattery && !isTelevision,
         showUpdate = settings.showUpdate,
-        showTools = settings.showTools,
-        showPorts = settings.showPorts,
         swapPlayResume = settings.swapPlayResume,
         mainMenuQuit = settings.mainMenuQuit,
         retroArchDiyMode = settings.retroArchDiyMode,
@@ -157,7 +153,7 @@ class SettingsViewModel(
 
     private val allCategories = listOf(
         Category("display", R.string.settings_display),
-        Category("content", R.string.settings_content),
+        Category("library", R.string.settings_library),
         Category("input", R.string.settings_input),
         Category("kitchen", R.string.settings_kitchen),
         Category("retroachievements", R.string.settings_retroachievements),
@@ -190,8 +186,6 @@ class SettingsViewModel(
         val showClock: Boolean,
         val showBattery: Boolean,
         val showEmpty: Boolean,
-        val showTools: Boolean,
-        val showPorts: Boolean,
         val sdRoot: String,
         val romDirectory: String,
         val raPackage: String,
@@ -351,8 +345,6 @@ class SettingsViewModel(
             "show_vpn" -> settings.showVpn = !settings.showVpn
             "show_battery" -> settings.showBattery = !settings.showBattery
             "show_update" -> settings.showUpdate = !settings.showUpdate
-            "show_tools" -> settings.showTools = !settings.showTools
-            "show_ports" -> settings.showPorts = !settings.showPorts
             "main_menu_quit" -> settings.mainMenuQuit = !settings.mainMenuQuit
             "retroarch_diy_mode" -> settings.retroArchDiyMode = !settings.retroArchDiyMode
             "graphics_backend" -> {
@@ -495,8 +487,6 @@ class SettingsViewModel(
         showClock = settings.showClock,
         showBattery = settings.showBattery,
         showEmpty = settings.showEmpty,
-        showTools = settings.showTools,
-        showPorts = settings.showPorts,
         sdRoot = settings.sdCardRoot,
         romDirectory = settings.romDirectory,
         raPackage = settings.retroArchPackage,
@@ -528,8 +518,6 @@ class SettingsViewModel(
         settings.showClock = snap.showClock
         settings.showBattery = snap.showBattery
         settings.showEmpty = snap.showEmpty
-        settings.showTools = snap.showTools
-        settings.showPorts = snap.showPorts
         settings.sdCardRoot = snap.sdRoot
         settings.romDirectory = snap.romDirectory
         settings.retroArchPackage = snap.raPackage
@@ -566,16 +554,13 @@ class SettingsViewModel(
             add(SettingsItem("text_size", R.string.setting_text_size, valueText = "${settings.textSize.sp}sp"))
             add(SettingsItem("title", R.string.setting_title, valueText = settings.title.ifEmpty { null }, valueRes = if (settings.title.isEmpty()) R.string.value_none else null, isEditable = true))
         }
-        "content" -> buildList {
+        "library" -> buildList {
             add(SettingsItem("show_empty", R.string.setting_show_empty, valueRes = showHide(settings.showEmpty)))
-            add(SettingsItem("show_ports", R.string.setting_show_ports, valueRes = showHide(settings.showPorts)))
-            if (settings.showPorts) {
-                add(SettingsItem("manage_ports", R.string.setting_manage_ports, isEditable = true))
-            }
-            add(SettingsItem("show_tools", R.string.setting_show_tools, valueRes = showHide(settings.showTools)))
-            if (settings.showTools) {
-                add(SettingsItem("manage_tools", R.string.setting_manage_tools, isEditable = true))
-            }
+            add(SettingsItem("manage_ports", R.string.setting_manage_ports, isEditable = true))
+            add(SettingsItem("manage_tools", R.string.setting_manage_tools, isEditable = true))
+            add(SettingsItem("sd_root", R.string.setting_sd_root, valueText = settings.sdCardRoot, isEditable = true))
+            val romDir = settings.romDirectory
+            add(SettingsItem("rom_directory", R.string.setting_rom_directory, valueText = romDir.ifEmpty { null }, valueRes = if (romDir.isEmpty()) R.string.value_cannoli_root else null, isEditable = true, canCycle = false))
         }
         "colors" -> listOf(
             SettingsItem("color_text", R.string.setting_color_text, valueText = settings.colorText.uppercase(), isEditable = true, swatchColor = hexToColor(settings.colorText)),
@@ -595,7 +580,8 @@ class SettingsViewModel(
             SettingsItem("profiles", R.string.setting_profiles, isEditable = true),
             SettingsItem("shortcuts", R.string.setting_shortcuts, isEditable = true),
             SettingsItem("platform_switching", R.string.setting_platform_switching, valueRes = onOff(settings.platformSwitching)),
-            SettingsItem("swap_play_resume", R.string.setting_swap_play_resume, valueRes = onOff(settings.swapPlayResume))
+            SettingsItem("swap_play_resume", R.string.setting_swap_play_resume, valueRes = onOff(settings.swapPlayResume)),
+            SettingsItem("main_menu_quit", R.string.setting_main_menu_quit, valueRes = onOff(settings.mainMenuQuit))
         )
         "kitchen" -> emptyList()
         "retroachievements" -> buildList {
@@ -606,11 +592,7 @@ class SettingsViewModel(
             }
         }
         "advanced" -> buildList {
-            add(SettingsItem("sd_root", R.string.setting_sd_root, valueText = settings.sdCardRoot, isEditable = true))
-            val romDir = settings.romDirectory
-            add(SettingsItem("rom_directory", R.string.setting_rom_directory, valueText = romDir.ifEmpty { null }, valueRes = if (romDir.isEmpty()) R.string.value_cannoli_root else null, isEditable = true, canCycle = false))
             add(SettingsItem("core_mapping", R.string.setting_core_mapping, isEditable = true))
-            add(SettingsItem("main_menu_quit", R.string.setting_main_menu_quit, valueRes = onOff(settings.mainMenuQuit)))
             add(SettingsItem("retroarch_diy_mode", R.string.setting_retroarch_diy_mode, valueRes = onOff(settings.retroArchDiyMode)))
             val pkgs = detectInstalledRaPackages()
             if (pkgs.isNotEmpty() && settings.retroArchPackage !in pkgs) {
