@@ -50,20 +50,34 @@ object ArchiveExtractor {
 
     private fun extract7z(archive: File, outDir: File): File? {
         SevenZFile.builder().setFile(archive).get().use { sz ->
+            var largestName: String? = null
+            var largestSize = -1L
             var e = sz.nextEntry
             while (e != null) {
-                if (!e.isDirectory) {
-                    val outFile = File(outDir, File(e.name).name)
-                    outFile.outputStream().use { out ->
-                        val buf = ByteArray(8192)
-                        var n: Int
-                        while (sz.read(buf).also { n = it } > 0) {
-                            out.write(buf, 0, n)
-                        }
-                    }
-                    return outFile
+                if (!e.isDirectory && e.size > largestSize) {
+                    largestSize = e.size
+                    largestName = e.name
                 }
                 e = sz.nextEntry
+            }
+            if (largestName == null) return null
+
+            SevenZFile.builder().setFile(archive).get().use { sz2 ->
+                var entry = sz2.nextEntry
+                while (entry != null) {
+                    if (entry.name == largestName) {
+                        val outFile = File(outDir, File(entry.name).name)
+                        outFile.outputStream().use { out ->
+                            val buf = ByteArray(8192)
+                            var n: Int
+                            while (sz2.read(buf).also { n = it } > 0) {
+                                out.write(buf, 0, n)
+                            }
+                        }
+                        return outFile
+                    }
+                    entry = sz2.nextEntry
+                }
             }
             return null
         }
