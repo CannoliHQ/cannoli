@@ -570,8 +570,14 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeLoadGame(JNIEnv *env, jobj
         size = ftell(f);
         fseek(f, 0, SEEK_SET);
         rom_data = malloc(size);
-        fread(rom_data, 1, size, f);
+        size_t read = fread(rom_data, 1, size, f);
         fclose(f);
+        if (read != (size_t)size) {
+            LOGE("nativeLoadGame: short read (%zu of %zu)", read, (size_t)size);
+            free(rom_data);
+            env->ReleaseStringUTFChars(romPath, path);
+            return nullptr;
+        }
     }
 
     struct retro_game_info game_info = {0};
@@ -804,8 +810,13 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeLoadState(JNIEnv *env, job
     long file_size = ftell(f);
     fseek(f, 0, SEEK_SET);
     void *file_buf = malloc(file_size);
-    fread(file_buf, 1, file_size, f);
+    size_t read = fread(file_buf, 1, file_size, f);
     fclose(f);
+    if (read != (size_t)file_size) {
+        LOGE("nativeLoadState: short read (%zu of %zu)", read, (size_t)file_size);
+        free(file_buf);
+        return JNI_FALSE;
+    }
 
     const void *state_data = nullptr;
     size_t state_size = 0;
