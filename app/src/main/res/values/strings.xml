@@ -64,6 +64,7 @@
     <string name="setting_scroll_speed">Marquee Speed</string>
     <string name="setting_show_tools">Tools</string>
     <string name="setting_show_ports">Ports</string>
+    <string name="setting_show_recently_played">Recently Played</string>
     <string name="setting_manage_tools">Manage Tools</string>
     <string name="setting_manage_ports">Manage Ports</string>
     <string name="setting_bg_tint">Background Tint</string>
@@ -130,6 +131,7 @@
 
     <!-- System list -->
     <string name="empty_content">No content found. Go add some!</string>
+    <string name="label_recently_played">Recently Played</string>
     <string name="label_favorites">Favorites</string>
     <string name="label_collections">Collections</string>
 

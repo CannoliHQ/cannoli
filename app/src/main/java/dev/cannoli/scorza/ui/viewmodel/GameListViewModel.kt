@@ -173,6 +173,35 @@ class GameListViewModel(
         }
     }
 
+    fun loadRecentlyPlayed(onReady: () -> Unit = {}) {
+        breadcrumbStack.clear()
+        indexStack.clear()
+        scope.launch(Dispatchers.IO) {
+            try {
+                val paths = scanner.loadRecentlyPlayedPaths()
+                val games = paths.mapNotNull { scanner.resolveGameFromPath(it) }
+
+                val nameCount = games.groupBy { it.displayName }
+                val disambiguated = games.map { game ->
+                    if ((nameCount[game.displayName]?.size ?: 0) > 1 && game.platformTag.isNotEmpty()) {
+                        val platName = platformResolver.getDisplayName(game.platformTag)
+                        game.copy(displayName = "${game.displayName} ($platName)")
+                    } else game
+                }
+
+                _state.value = State(
+                    platformTag = "recently_played",
+                    breadcrumb = resources.getString(R.string.label_recently_played),
+                    games = disambiguated,
+                    selectedIndex = 0,
+                    isLoading = false
+                )
+            } finally {
+                withContext(Dispatchers.Main) { onReady() }
+            }
+        }
+    }
+
     fun loadCollectionsList(restoreIndex: Boolean = false, onReady: () -> Unit = {}) {
         breadcrumbStack.clear()
         indexStack.clear()

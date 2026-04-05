@@ -173,6 +173,10 @@ class SettingsRepository(context: Context) {
         get() = jsonRead { optBoolean(KEY_SHOW_PORTS, false) }
         set(value) = jsonWrite { put(KEY_SHOW_PORTS, value) }
 
+    var showRecentlyPlayed: Boolean
+        get() = jsonRead { optBoolean(KEY_SHOW_RECENTLY_PLAYED, true) }
+        set(value) = jsonWrite { put(KEY_SHOW_RECENTLY_PLAYED, value) }
+
     var toolsName: String
         get() = jsonRead { optString(KEY_TOOLS_NAME, "Tools").ifEmpty { "Tools" } }
         set(value) = jsonWrite { if (value == "Tools") remove(KEY_TOOLS_NAME) else put(KEY_TOOLS_NAME, value) }
@@ -293,6 +297,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_SHOW_UPDATE = "show_update"
         private const val KEY_SHOW_TOOLS = "show_tools"
         private const val KEY_SHOW_PORTS = "show_ports"
+        private const val KEY_SHOW_RECENTLY_PLAYED = "show_recently_played"
         private const val KEY_TOOLS_NAME = "tools_name"
         private const val KEY_PORTS_NAME = "ports_name"
         private const val KEY_GRAPHICS_BACKEND = "graphics_backend"

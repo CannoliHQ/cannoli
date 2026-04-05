@@ -828,6 +828,7 @@ class MainActivity : ComponentActivity() {
                 if (romFile.exists()) {
                     val game = Game(romFile, romFile.nameWithoutExtension, tag)
                     launchManager.resumeGame(game)
+                    ioScope.launch { scanner.recordRecentlyPlayed(romFile.absolutePath) }
                 }
             }
         }
@@ -1477,7 +1478,7 @@ class MainActivity : ComponentActivity() {
                 is DialogState.RestartRequired -> {}
                 DialogState.None -> when (val screen = currentScreen) {
                     LauncherScreen.SystemList -> {
-                        if (systemListViewModel.isReorderMode()) systemListViewModel.cancelReorder(showEmpty = settings.showEmpty, toolsName = settings.toolsName, portsName = settings.portsName)
+                        if (systemListViewModel.isReorderMode()) systemListViewModel.cancelReorder(showRecentlyPlayed = settings.showRecentlyPlayed, showEmpty = settings.showEmpty, toolsName = settings.toolsName, portsName = settings.portsName)
                         else if (settings.mainMenuQuit) dialogState.value = DialogState.QuitConfirm
                     }
                     LauncherScreen.GameList -> {
@@ -1593,6 +1594,7 @@ class MainActivity : ComponentActivity() {
                                 val allFav = paths.all { it in favPaths }
                                 val isApkList = glState.platformTag == "tools" || glState.platformTag == "ports"
                                 val options = mutableListOf<String>()
+                                if (glState.platformTag == "recently_played") options.add(MENU_REMOVE_FROM_RECENTS)
                                 options.add(if (allFav) MENU_REMOVE_FAVORITE else MENU_ADD_FAVORITE)
                                 if (glState.isCollection && glState.collectionName != null) {
                                     options.add(MENU_REMOVE_FROM_COLLECTION)
@@ -1763,9 +1765,14 @@ class MainActivity : ComponentActivity() {
                                 val isResumable = resumableGames.contains(game.file.absolutePath)
                                 if (isResumable && settings.swapPlayResume) {
                                     val errorDialog = launchManager.launchGame(game)
-                                    if (errorDialog != null) dialogState.value = errorDialog
+                                    if (errorDialog != null) {
+                                        dialogState.value = errorDialog
+                                    } else {
+                                        ioScope.launch { scanner.recordRecentlyPlayed(game.file.absolutePath) }
+                                    }
                                 } else if (isResumable) {
                                     launchManager.resumeGame(game)
+                                    ioScope.launch { scanner.recordRecentlyPlayed(game.file.absolutePath) }
                                 }
                             }
                         }
@@ -1959,6 +1966,7 @@ class MainActivity : ComponentActivity() {
     private fun rescanSystemList() {
         scanner.invalidateFavorites()
         systemListViewModel.scan(
+            showRecentlyPlayed = settings.showRecentlyPlayed,
             showEmpty = settings.showEmpty,
             toolsName = settings.toolsName,
             portsName = settings.portsName
@@ -2025,6 +2033,14 @@ class MainActivity : ComponentActivity() {
         if (navigating) return
         systemListViewModel.savePosition()
         when (val item = systemListViewModel.getSelectedItem()) {
+            is SystemListViewModel.ListItem.RecentlyPlayedItem -> {
+                navigating = true
+                gameListViewModel.loadRecentlyPlayed {
+                    scanResumableGames()
+                    screenStack.add(LauncherScreen.GameList)
+                    navigating = false
+                }
+            }
             is SystemListViewModel.ListItem.FavoritesItem -> {
                 navigating = true
                 gameListViewModel.loadCollection("Favorites") {
@@ -2103,9 +2119,14 @@ class MainActivity : ComponentActivity() {
         val isResumable = resumableGames.contains(game.file.absolutePath)
         if (isResumable && settings.swapPlayResume) {
             launchManager.resumeGame(game)
+            ioScope.launch { scanner.recordRecentlyPlayed(game.file.absolutePath) }
         } else {
             val errorDialog = launchManager.launchGame(game)
-            if (errorDialog != null) dialogState.value = errorDialog
+            if (errorDialog != null) {
+                dialogState.value = errorDialog
+            } else {
+                ioScope.launch { scanner.recordRecentlyPlayed(game.file.absolutePath) }
+            }
         }
     }
 
@@ -2155,6 +2176,7 @@ class MainActivity : ComponentActivity() {
         val isFav = game.displayName.startsWith("★") ||
             (glState.isCollection && glState.collectionName == "Favorites")
         return buildList {
+            if (glState.platformTag == "recently_played") add(MENU_REMOVE_FROM_RECENTS)
             add(if (isFav) MENU_REMOVE_FAVORITE else MENU_ADD_FAVORITE)
             if (isApk) {
                 add(MENU_MANAGE_COLLECTIONS)
@@ -2204,6 +2226,7 @@ class MainActivity : ComponentActivity() {
         private const val MENU_ADD_FAVORITE = "Add To Favorites"
         private const val MENU_REMOVE_FAVORITE = "Remove From Favorites"
         private const val MENU_REMOVE = "Remove Shortcut"
+        private const val MENU_REMOVE_FROM_RECENTS = "Remove From Recently Played"
     }
 
     private val gameContextOptions = listOf(MENU_MANAGE_COLLECTIONS, MENU_EMULATOR_OVERRIDE, MENU_RA_GAME_ID, MENU_RENAME, MENU_DELETE_GAME)
@@ -2242,6 +2265,16 @@ class MainActivity : ComponentActivity() {
         pendingContextReturn = ContextReturn.Single(state.gameName, state.options, state.selectedOption)
         val selected = state.options[state.selectedOption]
         when {
+            selected == MENU_REMOVE_FROM_RECENTS -> {
+                pendingContextReturn = null
+                dialogState.value = DialogState.None
+                ioScope.launch {
+                    scanner.removeFromRecentlyPlayed(game.file.absolutePath)
+                    gameListViewModel.loadRecentlyPlayed()
+                    rescanSystemList()
+                }
+                return
+            }
             selected == MENU_RENAME -> {
                 if (glState.isCollectionsList || game.isChildCollection) {
                     val stem = if (game.isChildCollection) game.file.name else game.file.nameWithoutExtension
@@ -2474,6 +2507,16 @@ class MainActivity : ComponentActivity() {
     private fun onBulkContextMenuConfirm(state: DialogState.BulkContextMenu) {
         pendingContextReturn = ContextReturn.Bulk(state.gamePaths, state.options)
         when (state.options[state.selectedOption]) {
+            MENU_REMOVE_FROM_RECENTS -> {
+                pendingContextReturn = null
+                dialogState.value = DialogState.None
+                ioScope.launch {
+                    state.gamePaths.forEach { path -> scanner.removeFromRecentlyPlayed(path) }
+                    gameListViewModel.loadRecentlyPlayed()
+                    rescanSystemList()
+                }
+                return
+            }
             MENU_ADD_FAVORITE -> {
                 pendingContextReturn = null
                 ioScope.launch {
@@ -2694,6 +2737,7 @@ class MainActivity : ComponentActivity() {
         val gs = gameListViewModel.state.value
         val currentIndex = items.indexOfFirst { item ->
             when {
+                gs.platformTag == "recently_played" -> item is SystemListViewModel.ListItem.RecentlyPlayedItem
                 gs.isCollectionsList -> item is SystemListViewModel.ListItem.CollectionsFolder
                 gs.isCollection && gs.collectionName.equals("Favorites", ignoreCase = true) -> item is SystemListViewModel.ListItem.FavoritesItem
                 gs.isCollection -> item is SystemListViewModel.ListItem.CollectionsFolder
@@ -2708,6 +2752,12 @@ class MainActivity : ComponentActivity() {
         val newIndex = (currentIndex + delta).mod(items.size)
         navigating = true
         when (val target = items[newIndex]) {
+            is SystemListViewModel.ListItem.RecentlyPlayedItem -> {
+                gameListViewModel.loadRecentlyPlayed {
+                    scanResumableGames()
+                    navigating = false
+                }
+            }
             is SystemListViewModel.ListItem.FavoritesItem -> {
                 gameListViewModel.loadCollection("Favorites") {
                     scanResumableGames()

@@ -112,6 +112,7 @@ fun SystemListScreen(
                 modifier = Modifier.fillMaxWidth(),
                 key = if (state.reorderMode) null else { _, item ->
                     when (item) {
+                        is ListItem.RecentlyPlayedItem -> "recently_played"
                         is ListItem.FavoritesItem -> "favorites"
                         is ListItem.CollectionsFolder -> "collections"
                         is ListItem.PlatformItem -> item.platform.tag
@@ -122,6 +123,7 @@ fun SystemListScreen(
                 }
             ) { index, item ->
                 val label = when (item) {
+                    is ListItem.RecentlyPlayedItem -> stringResource(R.string.label_recently_played)
                     is ListItem.FavoritesItem -> stringResource(R.string.label_favorites)
                     is ListItem.CollectionsFolder -> stringResource(R.string.label_collections)
                     is ListItem.PlatformItem -> item.platform.displayName

@@ -186,6 +186,7 @@ class SettingsViewModel(
         val showClock: Boolean,
         val showBattery: Boolean,
         val showEmpty: Boolean,
+        val showRecentlyPlayed: Boolean,
         val sdRoot: String,
         val romDirectory: String,
         val raPackage: String,
@@ -340,6 +341,7 @@ class SettingsViewModel(
             "platform_switching" -> settings.platformSwitching = !settings.platformSwitching
             "swap_play_resume" -> settings.swapPlayResume = !settings.swapPlayResume
             "show_empty" -> settings.showEmpty = !settings.showEmpty
+            "show_recently_played" -> settings.showRecentlyPlayed = !settings.showRecentlyPlayed
             "show_wifi" -> settings.showWifi = !settings.showWifi
             "show_bluetooth" -> settings.showBluetooth = !settings.showBluetooth
             "show_vpn" -> settings.showVpn = !settings.showVpn
@@ -487,6 +489,7 @@ class SettingsViewModel(
         showClock = settings.showClock,
         showBattery = settings.showBattery,
         showEmpty = settings.showEmpty,
+        showRecentlyPlayed = settings.showRecentlyPlayed,
         sdRoot = settings.sdCardRoot,
         romDirectory = settings.romDirectory,
         raPackage = settings.retroArchPackage,
@@ -518,6 +521,7 @@ class SettingsViewModel(
         settings.showClock = snap.showClock
         settings.showBattery = snap.showBattery
         settings.showEmpty = snap.showEmpty
+        settings.showRecentlyPlayed = snap.showRecentlyPlayed
         settings.sdCardRoot = snap.sdRoot
         settings.romDirectory = snap.romDirectory
         settings.retroArchPackage = snap.raPackage
@@ -555,6 +559,7 @@ class SettingsViewModel(
             add(SettingsItem("title", R.string.setting_title, valueText = settings.title.ifEmpty { null }, valueRes = if (settings.title.isEmpty()) R.string.value_none else null, isEditable = true))
         }
         "library" -> buildList {
+            add(SettingsItem("show_recently_played", R.string.setting_show_recently_played, valueRes = showHide(settings.showRecentlyPlayed)))
             add(SettingsItem("show_empty", R.string.setting_show_empty, valueRes = showHide(settings.showEmpty)))
             add(SettingsItem("manage_ports", R.string.setting_manage_ports, isEditable = true))
             add(SettingsItem("manage_tools", R.string.setting_manage_tools, isEditable = true))

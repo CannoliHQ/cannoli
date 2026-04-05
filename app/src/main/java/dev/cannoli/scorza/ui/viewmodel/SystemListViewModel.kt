@@ -17,6 +17,7 @@ class SystemListViewModel(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     sealed class ListItem {
+        data object RecentlyPlayedItem : ListItem()
         data object FavoritesItem : ListItem()
         data object CollectionsFolder : ListItem()
         data class PlatformItem(val platform: Platform) : ListItem()
@@ -45,7 +46,7 @@ class SystemListViewModel(
         savedPosition = _state.value.selectedIndex to firstVisibleIndex
     }
 
-    fun scan(showEmpty: Boolean = false, toolsName: String = "Tools", portsName: String = "Ports") {
+    fun scan(showRecentlyPlayed: Boolean = true, showEmpty: Boolean = false, toolsName: String = "Tools", portsName: String = "Ports") {
         val prev = _state.value
         val prevItemCount = prev.items.size
         val restored = savedPosition
@@ -60,6 +61,10 @@ class SystemListViewModel(
             val ports = scanner.scanPorts()
 
             val items = mutableListOf<ListItem>()
+
+            if (showRecentlyPlayed && scanner.hasRecentlyPlayed()) {
+                items.add(ListItem.RecentlyPlayedItem)
+            }
 
             val hasFavorites = collections.any { it.equals("Favorites", ignoreCase = true) }
             val hasOtherCollections = collections.any { !it.equals("Favorites", ignoreCase = true) }
@@ -180,10 +185,10 @@ class SystemListViewModel(
         _state.update { it.copy(reorderMode = false, reorderOriginalIndex = -1) }
     }
 
-    fun cancelReorder(showEmpty: Boolean = false, toolsName: String = "Tools", portsName: String = "Ports") {
+    fun cancelReorder(showRecentlyPlayed: Boolean = true, showEmpty: Boolean = false, toolsName: String = "Tools", portsName: String = "Ports") {
         val current = _state.value
         if (!current.reorderMode) return
-        scan(showEmpty, toolsName, portsName)
+        scan(showRecentlyPlayed, showEmpty, toolsName, portsName)
     }
 
     private fun ListItem.isReorderable(): Boolean = this is ListItem.PlatformItem || this is ListItem.ToolsFolder || this is ListItem.PortsFolder

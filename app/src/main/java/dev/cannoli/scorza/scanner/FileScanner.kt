@@ -479,6 +479,49 @@ class FileScanner(
             }
     }
 
+    fun resolveGameFromPath(path: String): Game? {
+        val file = File(path)
+        if (!file.exists() || !file.isFile) return null
+
+        val game = if (file.extension == "apk_launch") {
+            val pkg = try { file.readText().trim() } catch (_: IOException) { "" }
+            val tag = when {
+                file.absolutePath.startsWith(toolsDir.absolutePath + "/") -> "tools"
+                file.absolutePath.startsWith(portsDir.absolutePath + "/") -> "ports"
+                else -> file.parentFile?.name ?: ""
+            }
+            Game(
+                file = file,
+                displayName = file.nameWithoutExtension,
+                platformTag = tag,
+                launchTarget = if (pkg.isNotEmpty()) LaunchTarget.ApkLaunch(pkg) else LaunchTarget.RetroArch
+            )
+        } else {
+            val tag = resolvePlatformTag(file)
+            val rawName = file.nameWithoutExtension
+            val displayName = rawName.replace(discRegex, "").trim().ifEmpty { rawName }
+            val artFile = findArt(tag, displayName)
+            val emuLaunch = platformResolver.getEmuLaunch(tag, romsDir)
+            val coreName = platformResolver.getCoreName(tag)
+            val appPackage = platformResolver.getAppPackage(tag)
+            val target = when {
+                emuLaunch != null -> emuLaunch
+                coreName != null -> LaunchTarget.RetroArch
+                appPackage != null -> LaunchTarget.ApkLaunch(appPackage)
+                else -> LaunchTarget.RetroArch
+            }
+            Game(
+                file = file,
+                displayName = displayName,
+                platformTag = tag,
+                artFile = artFile,
+                launchTarget = target
+            )
+        }
+        val mapped = game.file.parentFile?.let { parseMapFile(it) }?.get(game.file.name)
+        return if (mapped != null) game.copy(displayName = mapped) else game
+    }
+
     fun addToCollection(stem: String, romPath: String) {
         collectionsDir.mkdirs()
         val collFile = File(collectionsDir, "$stem.txt")
@@ -747,6 +790,56 @@ class FileScanner(
     fun savePlatformOrder(tags: List<String>) {
         configDir.mkdirs()
         File(configDir, "platform_order.txt").writeText(tags.joinToString("\n") + "\n")
+    }
+
+    private val recentlyPlayedFile = File(configDir, "recently_played.txt")
+    private val recentlyPlayedLock = Any()
+
+    fun recordRecentlyPlayed(romPath: String) {
+        synchronized(recentlyPlayedLock) {
+            configDir.mkdirs()
+            val existing = try {
+                if (recentlyPlayedFile.exists()) recentlyPlayedFile.readLines().map { it.trim() }.filter { it.isNotEmpty() }
+                else emptyList()
+            } catch (_: IOException) { emptyList() }
+            val updated = listOf(romPath) + existing.filter { it != romPath }
+            recentlyPlayedFile.writeText(updated.take(10).joinToString("\n") + "\n")
+        }
+    }
+
+    fun loadRecentlyPlayedPaths(): List<String> {
+        synchronized(recentlyPlayedLock) {
+            if (!recentlyPlayedFile.exists()) return emptyList()
+            return try {
+                recentlyPlayedFile.readLines().map { it.trim() }.filter { it.isNotEmpty() }.take(10)
+            } catch (_: IOException) { emptyList() }
+        }
+    }
+
+    fun removeFromRecentlyPlayed(romPath: String) {
+        synchronized(recentlyPlayedLock) {
+            if (!recentlyPlayedFile.exists()) return
+            val remaining = try {
+                recentlyPlayedFile.readLines().map { it.trim() }.filter { it.isNotEmpty() && it != romPath }
+            } catch (_: IOException) { return }
+            if (remaining.isEmpty()) recentlyPlayedFile.delete()
+            else recentlyPlayedFile.writeText(remaining.joinToString("\n") + "\n")
+        }
+    }
+
+    fun clearRecentlyPlayed() {
+        synchronized(recentlyPlayedLock) {
+            if (recentlyPlayedFile.exists()) recentlyPlayedFile.delete()
+        }
+    }
+
+    fun hasRecentlyPlayed(): Boolean {
+        synchronized(recentlyPlayedLock) {
+            if (!recentlyPlayedFile.exists()) return false
+            return try {
+                recentlyPlayedFile.readLines().any { it.trim().isNotEmpty() }
+            } catch (_: IOException) { false }
+        }
     }
 
     fun getRaGameId(romPath: String): Int? {

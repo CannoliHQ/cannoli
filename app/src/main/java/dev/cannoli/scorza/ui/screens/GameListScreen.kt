@@ -193,7 +193,7 @@ fun GameListScreen(
                 stringResource(R.string.label_toggle)
             } else if (selectedGame?.isSubfolder == true || state.isCollectionsList) {
                 stringResource(R.string.label_open)
-            } else if (state.platformTag == "tools") {
+            } else if (selectedGame?.platformTag == "tools") {
                 stringResource(R.string.label_launch)
             } else {
                 stringResource(R.string.label_play)
