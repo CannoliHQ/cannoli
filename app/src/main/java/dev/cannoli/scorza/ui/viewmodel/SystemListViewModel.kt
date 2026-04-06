@@ -5,6 +5,7 @@ import dev.cannoli.scorza.scanner.CollectionManager
 import dev.cannoli.scorza.scanner.FileScanner
 import dev.cannoli.scorza.scanner.OrderingManager
 import dev.cannoli.scorza.scanner.RecentlyPlayedManager
+import dev.cannoli.scorza.settings.ContentMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -52,7 +53,7 @@ class SystemListViewModel(
         savedPosition = _state.value.selectedIndex to firstVisibleIndex
     }
 
-    fun scan(showRecentlyPlayed: Boolean = true, showEmpty: Boolean = false, toolsName: String = "Tools", portsName: String = "Ports") {
+    fun scan(showRecentlyPlayed: Boolean = true, showEmpty: Boolean = false, contentMode: ContentMode = ContentMode.PLATFORMS, toolsName: String = "Tools", portsName: String = "Ports") {
         val prev = _state.value
         val prevItemCount = prev.items.size
         val restored = savedPosition
@@ -73,19 +74,27 @@ class SystemListViewModel(
             }
 
             val hasFavorites = collections.any { it.equals("Favorites", ignoreCase = true) }
-            val hasOtherCollections = collections.any { !it.equals("Favorites", ignoreCase = true) }
 
             if (hasFavorites) {
                 items.add(ListItem.FavoritesItem)
             }
 
-            if (hasOtherCollections) {
-                items.add(ListItem.CollectionsFolder)
-            }
-
             val reorderableItems = mutableListOf<ListItem>()
-            val visiblePlatforms = if (showEmpty) platforms else platforms.filter { it.gameCount > 0 }
-            visiblePlatforms.forEach { reorderableItems.add(ListItem.PlatformItem(it)) }
+            if (contentMode == ContentMode.PLATFORMS) {
+                val hasOtherCollections = collections.any { !it.equals("Favorites", ignoreCase = true) }
+                if (hasOtherCollections) {
+                    items.add(ListItem.CollectionsFolder)
+                }
+                val visiblePlatforms = if (showEmpty) platforms else platforms.filter { it.gameCount > 0 }
+                visiblePlatforms.forEach { reorderableItems.add(ListItem.PlatformItem(it)) }
+            } else {
+                val topLevel = collections.filter {
+                    !it.equals("Favorites", ignoreCase = true) && collectionManager.isTopLevelCollection(it)
+                }
+                topLevel.forEach { stem ->
+                    reorderableItems.add(ListItem.CollectionItem(stem, collectionManager.getGamePaths(stem).size))
+                }
+            }
             if (ports.isNotEmpty()) {
                 reorderableItems.add(ListItem.PortsFolder(portsName, ports.size))
             }
@@ -191,16 +200,17 @@ class SystemListViewModel(
         _state.update { it.copy(reorderMode = false, reorderOriginalIndex = -1) }
     }
 
-    fun cancelReorder(showRecentlyPlayed: Boolean = true, showEmpty: Boolean = false, toolsName: String = "Tools", portsName: String = "Ports") {
+    fun cancelReorder(showRecentlyPlayed: Boolean = true, showEmpty: Boolean = false, contentMode: ContentMode = ContentMode.PLATFORMS, toolsName: String = "Tools", portsName: String = "Ports") {
         val current = _state.value
         if (!current.reorderMode) return
-        scan(showRecentlyPlayed, showEmpty, toolsName, portsName)
+        scan(showRecentlyPlayed, showEmpty, contentMode, toolsName, portsName)
     }
 
-    private fun ListItem.isReorderable(): Boolean = this is ListItem.PlatformItem || this is ListItem.ToolsFolder || this is ListItem.PortsFolder
+    private fun ListItem.isReorderable(): Boolean = this is ListItem.PlatformItem || this is ListItem.ToolsFolder || this is ListItem.PortsFolder || this is ListItem.CollectionItem
 
     private fun ListItem.orderTag(): String? = when (this) {
         is ListItem.PlatformItem -> platform.tag
+        is ListItem.CollectionItem -> name
         is ListItem.ToolsFolder -> TAG_TOOLS
         is ListItem.PortsFolder -> TAG_PORTS
         else -> null
