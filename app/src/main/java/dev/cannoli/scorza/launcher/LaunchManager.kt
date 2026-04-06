@@ -261,13 +261,17 @@ class LaunchManager(
                             ?: platformResolver.getPackage(game.platformTag)
                         if (raPackage != null && installedCoreService != null) {
                             if (!context.isPackageInstalled(raPackage)) {
-                                return errorAndReset(toLaunchDialog(LaunchResult.AppNotInstalled(raPackage))!!)
+                                val appName = try {
+                                    val info = context.packageManager.getApplicationInfo(raPackage, 0)
+                                    context.packageManager.getApplicationLabel(info).toString()
+                                } catch (_: PackageManager.NameNotFoundException) { raPackage }
+                                return errorAndReset(DialogState.MissingApp(appName, raPackage))
                             }
                             if (installedCoreService.cacheReady
                                 && raPackage !in installedCoreService.unresponsivePackages
                                 && !installedCoreService.hasCoreInPackage(core, raPackage)) {
                                 val label = InstalledCoreService.getPackageLabel(raPackage)
-                                return errorAndReset(toLaunchDialog(LaunchResult.CoreNotInstalled("$core not found in $label"))!!)
+                                return errorAndReset(DialogState.MissingCore("$core not found in $label"))
                             }
                         }
                         if (settings.retroArchDiyMode) {
@@ -306,14 +310,14 @@ class LaunchManager(
         if (launching) return
         launching = true
         val resumeSlot = findMostRecentSlot(game) ?: 0
-        val launchFile = resolveLaunchFile(game) ?: return
+        val launchFile = resolveLaunchFile(game) ?: run { launching = false; return }
         val embeddedCorePath = getEmbeddedCorePath(game)
         if (embeddedCorePath != null) {
             launchEmbedded(game.copy(file = launchFile), embeddedCorePath, resumeSlot, originalRomPath = game.file.absolutePath)
             return
         }
         val gameOverride = platformResolver.getGameOverride(game.file.absolutePath)
-        val core = gameOverride?.coreId ?: platformResolver.getCoreName(game.platformTag) ?: return
+        val core = gameOverride?.coreId ?: platformResolver.getCoreName(game.platformTag) ?: run { launching = false; return }
         val raPackage = gameOverride?.raPackage ?: platformResolver.getPackage(game.platformTag)
         if (settings.retroArchDiyMode) {
             val raConfig = "/storage/emulated/0/Android/data/$raPackage/files/retroarch.cfg"
