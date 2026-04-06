@@ -62,7 +62,7 @@
     <string name="setting_retroarch_diy_mode">RetroArch DIY Mode</string>
     <string name="setting_set_default_launcher">Set as Default Launcher</string>
     <string name="setting_show_empty">Empty Platforms</string>
-    <string name="setting_content_mode">Content</string>
+    <string name="setting_content_mode">Content Mode</string>
     <string name="setting_scroll_speed">Marquee Speed</string>
     <string name="setting_show_tools">Tools</string>
     <string name="setting_show_ports">Ports</string>
@@ -98,8 +98,8 @@
     <string name="value_hide">Hide</string>
     <string name="value_none">None</string>
     <string name="value_cannoli_root">Cannoli Root</string>
-    <string name="value_platforms">Platforms</string>
-    <string name="value_collections">Collections</string>
+    <string name="value_platforms">Default</string>
+    <string name="value_collections">Collections Only</string>
     <string name="value_fit">Fit</string>
     <string name="value_original">Original</string>
     <string name="value_fit_width">Fit Width</string>

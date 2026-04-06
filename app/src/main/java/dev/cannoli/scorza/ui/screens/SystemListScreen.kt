@@ -129,11 +129,11 @@ fun SystemListScreen(
                     is ListItem.FavoritesItem -> stringResource(R.string.label_favorites)
                     is ListItem.CollectionsFolder -> stringResource(R.string.label_collections)
                     is ListItem.PlatformItem -> item.platform.displayName
-                    is ListItem.CollectionItem -> item.name
+                    is ListItem.CollectionItem -> dev.cannoli.scorza.model.Collection.stemToDisplayName(item.name)
                     is ListItem.ToolsFolder -> item.name
                     is ListItem.PortsFolder -> item.name
                 }
-                val showReorder = state.reorderMode && state.selectedIndex == index && (item is ListItem.PlatformItem || item is ListItem.ToolsFolder || item is ListItem.PortsFolder)
+                val showReorder = state.reorderMode && state.selectedIndex == index && (item is ListItem.PlatformItem || item is ListItem.ToolsFolder || item is ListItem.PortsFolder || item is ListItem.CollectionItem)
                 PillRowText(
                     label = label,
                     isSelected = state.selectedIndex == index,

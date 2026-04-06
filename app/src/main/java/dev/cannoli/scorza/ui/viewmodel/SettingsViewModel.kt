@@ -583,8 +583,8 @@ class SettingsViewModel(
             add(SettingsItem("title", R.string.setting_title, valueText = settings.title.ifEmpty { null }, valueRes = if (settings.title.isEmpty()) R.string.value_none else null, isEditable = true))
         }
         "library" -> buildList {
-            add(SettingsItem("content_mode", R.string.setting_content_mode, valueRes = if (settings.contentMode == ContentMode.PLATFORMS) R.string.value_platforms else R.string.value_collections))
             add(SettingsItem("show_recently_played", R.string.setting_show_recently_played, valueRes = showHide(settings.showRecentlyPlayed)))
+            add(SettingsItem("content_mode", R.string.setting_content_mode, valueRes = if (settings.contentMode == ContentMode.PLATFORMS) R.string.value_platforms else R.string.value_collections))
             if (settings.contentMode == ContentMode.PLATFORMS) {
                 add(SettingsItem("show_empty", R.string.setting_show_empty, valueRes = showHide(settings.showEmpty)))
             }
