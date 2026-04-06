@@ -25,6 +25,9 @@ class PlatformResolver(
     private var defaultPlatformNames = mapOf<String, String>()
     private var defaultRetroArchCores = mapOf<String, List<String>>()
     private var defaultApps = mapOf<String, List<String>>()
+    private var defaultAppActivities = mapOf<String, String>()
+    private var defaultAppActions = mapOf<String, String>()
+    private var defaultAppPathExtras = mapOf<String, String>()
     private var arcadePlatforms = setOf<String>()
 
     private fun loadPlatformsAsset() {
@@ -33,6 +36,9 @@ class PlatformResolver(
         val names = mutableMapOf<String, String>()
         val raCores = mutableMapOf<String, List<String>>()
         val apps = mutableMapOf<String, List<String>>()
+        val appActivities = mutableMapOf<String, String>()
+        val appActions = mutableMapOf<String, String>()
+        val appPathExtras = mutableMapOf<String, String>()
         val arcade = mutableSetOf<String>()
         for (tag in json.keys()) {
             val entry = json.getJSONObject(tag)
@@ -46,6 +52,9 @@ class PlatformResolver(
             } else {
                 entry.optString("app", "").takeIf { it.isNotEmpty() }?.let { apps[tag] = listOf(it) }
             }
+            entry.optString("appActivity", "").takeIf { it.isNotEmpty() }?.let { appActivities[tag] = it }
+            entry.optString("appAction", "").takeIf { it.isNotEmpty() }?.let { appActions[tag] = it }
+            entry.optString("appPathExtra", "").takeIf { it.isNotEmpty() }?.let { appPathExtras[tag] = it }
             val raArray = entry.optJSONArray("retroarch")
             if (raArray != null) {
                 val list = (0 until raArray.length()).map { raArray.getString(it) }
@@ -56,6 +65,9 @@ class PlatformResolver(
         defaultPlatformNames = names
         defaultRetroArchCores = raCores
         defaultApps = apps
+        defaultAppActivities = appActivities
+        defaultAppActions = appActions
+        defaultAppPathExtras = appPathExtras
         arcadePlatforms = arcade
     }
 
@@ -241,6 +253,12 @@ class PlatformResolver(
     fun getAllTags(): Set<String> = defaultPlatformNames.keys + ini.getSection("platforms").keys
 
     fun getAppPackage(tag: String): String? = userApps[tag] ?: defaultApps[tag.uppercase()]?.firstOrNull()
+
+    fun getAppActivity(tag: String): String? = defaultAppActivities[tag.uppercase()]
+
+    fun getAppAction(tag: String): String? = defaultAppActions[tag.uppercase()]
+
+    fun getAppPathExtra(tag: String): String? = defaultAppPathExtras[tag.uppercase()]
 
     fun getAppOptions(tag: String): List<String> = defaultApps[tag.uppercase()] ?: emptyList()
 

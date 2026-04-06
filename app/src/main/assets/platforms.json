@@ -216,8 +216,9 @@
     "app": [
       "xyz.aethersx2.android"
     ],
-    "appActivity": "xyz.aethersx2.android.MainActivity",
-    "appScheme": "file"
+    "appActivity": "xyz.aethersx2.android.EmulationActivity",
+    "appAction": "android.intent.action.MAIN",
+    "appPathExtra": "bootPath"
   },
   "GC": {
     "name": "GameCube",

@@ -1,6 +1,7 @@
 package dev.cannoli.scorza.launcher
 
 import android.app.ActivityOptions
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -24,9 +25,23 @@ class ApkLauncher(private val context: Context) {
         }
     }
 
-    fun launchWithRom(packageName: String, romFile: File): LaunchResult {
+    data class AppLaunchConfig(
+        val activityName: String? = null,
+        val action: String? = null,
+        val pathExtra: String? = null
+    )
+
+    fun launchWithRom(
+        packageName: String,
+        romFile: File,
+        config: AppLaunchConfig = AppLaunchConfig()
+    ): LaunchResult {
         if (!context.isPackageInstalled(packageName)) {
             return LaunchResult.AppNotInstalled(packageName)
+        }
+
+        if (config.pathExtra != null) {
+            return launchWithPathExtra(packageName, romFile, config)
         }
 
         val uri: Uri = FileProvider.getUriForFile(
@@ -37,7 +52,11 @@ class ApkLauncher(private val context: Context) {
 
         val viewIntent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(uri, "*/*")
-            setPackage(packageName)
+            if (config.activityName != null) {
+                component = ComponentName(packageName, config.activityName)
+            } else {
+                setPackage(packageName)
+            }
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
 
@@ -59,6 +78,31 @@ class ApkLauncher(private val context: Context) {
             } catch (e: Exception) {
                 LaunchResult.Error(e.message ?: "Failed to launch emulator")
             }
+        }
+    }
+
+    private fun launchWithPathExtra(
+        packageName: String,
+        romFile: File,
+        config: AppLaunchConfig
+    ): LaunchResult {
+        val action = config.action ?: Intent.ACTION_MAIN
+        val intent = Intent(action).apply {
+            if (config.activityName != null) {
+                component = ComponentName(packageName, config.activityName)
+            } else {
+                setPackage(packageName)
+            }
+            putExtra(config.pathExtra, romFile.absolutePath)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+
+        return try {
+            val opts = ActivityOptions.makeCustomAnimation(context, 0, 0).toBundle()
+            context.startActivity(intent, opts)
+            LaunchResult.Success
+        } catch (e: Exception) {
+            LaunchResult.Error(e.message ?: "Failed to launch emulator")
         }
     }
 }

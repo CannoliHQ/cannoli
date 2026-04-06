@@ -243,7 +243,12 @@ class LaunchManager(
                 if (runnerPref == "App" || runnerPref == "Standalone") {
                     val app = platformResolver.getAppPackage(game.platformTag)
                     if (app != null) {
-                        apkLauncher.launchWithRom(app, launchFile)
+                        val appConfig = ApkLauncher.AppLaunchConfig(
+                            activityName = platformResolver.getAppActivity(game.platformTag),
+                            action = platformResolver.getAppAction(game.platformTag),
+                            pathExtra = platformResolver.getAppPathExtra(game.platformTag)
+                        )
+                        apkLauncher.launchWithRom(app, launchFile, appConfig)
                     } else {
                         LaunchResult.CoreNotInstalled("unknown")
                     }
@@ -292,7 +297,12 @@ class LaunchManager(
             }
             is LaunchTarget.ApkLaunch -> {
                 if (launchFile.extension != "apk_launch" && launchFile.exists()) {
-                    apkLauncher.launchWithRom(target.packageName, launchFile)
+                    val appConfig = ApkLauncher.AppLaunchConfig(
+                        activityName = platformResolver.getAppActivity(game.platformTag),
+                        action = platformResolver.getAppAction(game.platformTag),
+                        pathExtra = platformResolver.getAppPathExtra(game.platformTag)
+                    )
+                    apkLauncher.launchWithRom(target.packageName, launchFile, appConfig)
                 } else {
                     apkLauncher.launch(target.packageName)
                 }
