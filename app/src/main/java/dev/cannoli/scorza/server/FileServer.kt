@@ -219,20 +219,21 @@ class FileServer(
             return
         }
         val items = if (recursive) {
-            val files = mutableListOf<File>()
+            val dirPath = dir.toPath()
+            val files = mutableListOf<Pair<String, File>>()
             val stack = ArrayDeque<File>()
             stack.add(dir)
             while (stack.isNotEmpty()) {
                 val current = stack.removeLast()
                 val children = current.listFiles() ?: continue
-                for (child in children.sortedBy { it.name.lowercase(java.util.Locale.ROOT) }) {
+                for (child in children) {
+                    if (!isSecure(child)) continue
                     if (child.isDirectory) stack.add(child)
-                    else files.add(child)
+                    else files.add(dirPath.relativize(child.toPath()).toString() to child)
                 }
             }
-            files.sortedBy { it.name.lowercase(java.util.Locale.ROOT) }
-                .joinToString(",") { f ->
-                    val relativePath = dir.toPath().relativize(f.toPath()).toString()
+            files.sortedBy { it.first.lowercase(java.util.Locale.ROOT) }
+                .joinToString(",") { (relativePath, f) ->
                     """{"name":"${escapeJson(relativePath)}","type":"file","size":${f.length()}}"""
                 }
         } else {
