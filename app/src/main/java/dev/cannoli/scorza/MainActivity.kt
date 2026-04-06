@@ -51,6 +51,7 @@ import dev.cannoli.scorza.scanner.PlatformResolver
 import dev.cannoli.scorza.scanner.RecentlyPlayedManager
 import androidx.lifecycle.lifecycleScope
 import dev.cannoli.scorza.settings.ButtonLabelSet
+import dev.cannoli.scorza.settings.ContentMode
 import dev.cannoli.scorza.settings.GlobalOverridesManager
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.components.COLOR_GRID_COLS
@@ -1214,15 +1215,22 @@ class MainActivity : ComponentActivity() {
                             gameListViewModel.reload()
                             rescanSystemList()
                         } else {
-                            val remaining = collectionManager.scanCollections()
-                                .filter { !it.stem.equals("Favorites", ignoreCase = true) }
-                            if (remaining.isEmpty()) {
+                            if (settings.contentMode == ContentMode.COLLECTIONS) {
                                 withContext(Dispatchers.Main) {
                                     screenStack.removeAt(screenStack.lastIndex)
                                     rescanSystemList()
                                 }
                             } else {
-                                gameListViewModel.loadCollectionsList(restoreIndex = true)
+                                val remaining = collectionManager.scanCollections()
+                                    .filter { !it.stem.equals("Favorites", ignoreCase = true) }
+                                if (remaining.isEmpty()) {
+                                    withContext(Dispatchers.Main) {
+                                        screenStack.removeAt(screenStack.lastIndex)
+                                        rescanSystemList()
+                                    }
+                                } else {
+                                    gameListViewModel.loadCollectionsList(restoreIndex = true)
+                                }
                             }
                         }
                     }
@@ -1508,7 +1516,7 @@ class MainActivity : ComponentActivity() {
                 is DialogState.RestartRequired -> {}
                 DialogState.None -> when (val screen = currentScreen) {
                     LauncherScreen.SystemList -> {
-                        if (systemListViewModel.isReorderMode()) systemListViewModel.cancelReorder(showRecentlyPlayed = settings.showRecentlyPlayed, showEmpty = settings.showEmpty, toolsName = settings.toolsName, portsName = settings.portsName)
+                        if (systemListViewModel.isReorderMode()) systemListViewModel.cancelReorder(showRecentlyPlayed = settings.showRecentlyPlayed, showEmpty = settings.showEmpty, contentMode = settings.contentMode, toolsName = settings.toolsName, portsName = settings.portsName)
                         else if (settings.mainMenuQuit) dialogState.value = DialogState.QuitConfirm
                     }
                     LauncherScreen.GameList -> {
@@ -1521,7 +1529,8 @@ class MainActivity : ComponentActivity() {
                             if (!gameListViewModel.exitSubfolder()) {
                                 if (gameListViewModel.exitChildCollection()) {
                                     // navigated back to parent collection
-                                } else if (glState.isCollection && glState.collectionName != null
+                                } else if (settings.contentMode == ContentMode.PLATFORMS
+                                    && glState.isCollection && glState.collectionName != null
                                     && !glState.collectionName.equals("Favorites", ignoreCase = true)) {
                                     gameListViewModel.loadCollectionsList(restoreIndex = true)
                                 } else {
@@ -1999,6 +2008,7 @@ class MainActivity : ComponentActivity() {
         systemListViewModel.scan(
             showRecentlyPlayed = settings.showRecentlyPlayed,
             showEmpty = settings.showEmpty,
+            contentMode = settings.contentMode,
             toolsName = settings.toolsName,
             portsName = settings.portsName
         )
@@ -2777,7 +2787,10 @@ class MainActivity : ComponentActivity() {
                 gs.platformTag == "recently_played" -> item is SystemListViewModel.ListItem.RecentlyPlayedItem
                 gs.isCollectionsList -> item is SystemListViewModel.ListItem.CollectionsFolder
                 gs.isCollection && gs.collectionName.equals("Favorites", ignoreCase = true) -> item is SystemListViewModel.ListItem.FavoritesItem
-                gs.isCollection -> item is SystemListViewModel.ListItem.CollectionsFolder
+                gs.isCollection && gs.collectionName != null -> {
+                    (item is SystemListViewModel.ListItem.CollectionsFolder) ||
+                    (item is SystemListViewModel.ListItem.CollectionItem && item.name == gs.collectionName)
+                }
                 gs.platformTag == "tools" -> item is SystemListViewModel.ListItem.ToolsFolder
                 gs.platformTag == "ports" -> item is SystemListViewModel.ListItem.PortsFolder
                 gs.platformTag.isNotEmpty() -> item is SystemListViewModel.ListItem.PlatformItem && item.platform.tag == gs.platformTag
@@ -2808,6 +2821,12 @@ class MainActivity : ComponentActivity() {
             }
             is SystemListViewModel.ListItem.PlatformItem -> {
                 gameListViewModel.loadPlatform(target.platform.tag, target.platform.allTags) {
+                    scanResumableGames()
+                    navigating = false
+                }
+            }
+            is SystemListViewModel.ListItem.CollectionItem -> {
+                gameListViewModel.loadCollection(target.name) {
                     scanResumableGames()
                     navigating = false
                 }
