@@ -1793,16 +1793,17 @@ class MainActivity : ComponentActivity() {
                             val game = gameListViewModel.getSelectedGame()
                             if (game != null && !game.isSubfolder && !game.isChildCollection) {
                                 val isResumable = resumableGames.contains(game.file.absolutePath)
+                                val trackRecent = glState.platformTag != "tools"
                                 if (isResumable && settings.swapPlayResume) {
                                     val errorDialog = launchManager.launchGame(game)
                                     if (errorDialog != null) {
                                         dialogState.value = errorDialog
-                                    } else {
+                                    } else if (trackRecent) {
                                         ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
                                     }
                                 } else if (isResumable) {
                                     launchManager.resumeGame(game)
-                                    ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
+                                    if (trackRecent) ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
                                 }
                             }
                         }
@@ -2147,17 +2148,21 @@ class MainActivity : ComponentActivity() {
         }
 
         val isResumable = resumableGames.contains(game.file.absolutePath)
+        val tag = gameListViewModel.state.value.platformTag
+        val trackRecent = tag != "tools"
         if (isResumable && settings.swapPlayResume) {
             launchManager.resumeGame(game)
-            ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
-            if (gameListViewModel.state.value.platformTag == "recently_played") pendingRecentlyPlayedReorder = true
+            if (trackRecent) {
+                ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
+                if (tag == "recently_played") pendingRecentlyPlayedReorder = true
+            }
         } else {
             val errorDialog = launchManager.launchGame(game)
             if (errorDialog != null) {
                 dialogState.value = errorDialog
-            } else {
+            } else if (trackRecent) {
                 ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
-                if (gameListViewModel.state.value.platformTag == "recently_played") pendingRecentlyPlayedReorder = true
+                if (tag == "recently_played") pendingRecentlyPlayedReorder = true
             }
         }
     }
