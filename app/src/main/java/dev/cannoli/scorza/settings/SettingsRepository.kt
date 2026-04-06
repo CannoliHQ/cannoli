@@ -189,6 +189,10 @@ class SettingsRepository(context: Context) {
         get() = jsonRead { optString(KEY_PORTS_NAME, "Ports").ifEmpty { "Ports" } }
         set(value) = jsonWrite { if (value == "Ports") remove(KEY_PORTS_NAME) else put(KEY_PORTS_NAME, value) }
 
+    var contentMode: ContentMode
+        get() = ContentMode.fromString(jsonRead { optString(KEY_CONTENT_MODE, null) })
+        set(value) = jsonWrite { put(KEY_CONTENT_MODE, value.name) }
+
     var artWidth: Int
         get() = jsonRead { optInt(KEY_ART_WIDTH, 40) }
         set(value) = jsonWrite { put(KEY_ART_WIDTH, value) }
@@ -311,6 +315,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_CACHED_UPDATE_APK = "cached_update_apk"
         private const val KEY_CACHED_UPDATE_CHANGELOG = "cached_update_changelog"
         private const val KEY_BUTTON_LABEL_SET = "button_label_set"
+        private const val KEY_CONTENT_MODE = "content_mode"
     }
 }
 
@@ -365,3 +370,10 @@ enum class ButtonLabelSet {
     }
 }
 
+enum class ContentMode {
+    PLATFORMS, COLLECTIONS;
+    companion object {
+        fun fromString(value: String?): ContentMode =
+            entries.firstOrNull { it.name == value } ?: PLATFORMS
+    }
+}
