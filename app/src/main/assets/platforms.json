@@ -214,8 +214,10 @@
   "PS2": {
     "name": "PlayStation 2",
     "app": [
-      "xyz.nethersx2.android"
-    ]
+      "xyz.aethersx2.android"
+    ],
+    "appActivity": "xyz.aethersx2.android.MainActivity",
+    "appScheme": "file"
   },
   "GC": {
     "name": "GameCube",
