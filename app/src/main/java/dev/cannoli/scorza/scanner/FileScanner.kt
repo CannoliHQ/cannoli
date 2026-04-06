@@ -31,23 +31,43 @@ class FileScanner(
     private val arcadeMapFile = File(cannoliRoot, "Config/arcade_map.txt")
     @Volatile private var arcadeMapCache: Map<String, String>? = null
 
-    private val defaultIgnoreExtensions = setOf("srm", "sav")
     private val ignoreExtensionsFile = File(cannoliRoot, "Config/ignore_extensions_roms.txt")
-    @Volatile private var ignoreExtensions: Set<String> = defaultIgnoreExtensions
+    @Volatile private var ignoreExtensions: Set<String> = emptySet()
+
+    private val ignoreFilesFile = File(cannoliRoot, "Config/ignore_files_roms.txt")
+    @Volatile private var ignoreFiles: Set<String> = emptySet()
+
+    private fun seedFromAsset(assetName: String, target: File) {
+        if (target.exists()) return
+        try {
+            target.parentFile?.mkdirs()
+            assets.open(assetName).use { input ->
+                target.outputStream().use { input.copyTo(it) }
+            }
+        } catch (_: Exception) {}
+    }
 
     fun loadIgnoreExtensions() {
-        if (!ignoreExtensionsFile.exists()) {
-            ignoreExtensionsFile.parentFile?.mkdirs()
-            ignoreExtensionsFile.writeText(defaultIgnoreExtensions.joinToString("\n") { ".$it" } + "\n")
-        }
+        seedFromAsset("ignore_extensions_roms.txt", ignoreExtensionsFile)
         ignoreExtensions = ignoreExtensionsFile.readLines()
             .map { it.trim().lowercase().removePrefix(".") }
             .filter { it.isNotEmpty() }
             .toSet()
     }
 
+    fun loadIgnoreFiles() {
+        seedFromAsset("ignore_files_roms.txt", ignoreFilesFile)
+        ignoreFiles = ignoreFilesFile.readLines()
+            .map { it.trim().lowercase() }
+            .filter { it.isNotEmpty() }
+            .toSet()
+    }
+
     private fun isIgnoredExtension(file: File): Boolean =
         file.extension.lowercase() in ignoreExtensions
+
+    private fun isIgnoredFile(file: File): Boolean =
+        file.name.lowercase() in ignoreFiles
 
     fun scanPlatforms(): List<Platform> {
         if (!romsDir.exists()) return emptyList()
@@ -69,7 +89,7 @@ class FileScanner(
             } else {
                 anyStale = true
                 val files = dir.listFiles()
-                files?.any { !it.name.startsWith(".") && it.name != "map.txt" && !isIgnoredExtension(it) } ?: false
+                files?.any { !it.name.startsWith(".") && !isIgnoredFile(it) && !isIgnoredExtension(it) } ?: false
             }
             newEntries[tag] = CachedPlatformEntry(dirMod, hasGames)
             platformResolver.resolvePlatform(tag, romsDir, if (hasGames) 1 else 0)
@@ -125,7 +145,7 @@ class FileScanner(
         val files = baseDir.listFiles() ?: return emptyList()
 
         val rawGames = files
-            .filter { !it.name.startsWith(".") && it.name != "map.txt" && !isIgnoredExtension(it) }
+            .filter { !it.name.startsWith(".") && !isIgnoredFile(it) && !isIgnoredExtension(it) }
             .mapNotNull { file ->
                 if (file.isDirectory) {
                     val dirLaunch = findDirLaunchFile(file)

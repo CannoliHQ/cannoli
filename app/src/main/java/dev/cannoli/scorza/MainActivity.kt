@@ -552,6 +552,7 @@ class MainActivity : ComponentActivity() {
             orderingManager = OrderingManager(root)
             val scanner = FileScanner(root, platformResolver, collectionManager, assets)
             scanner.loadIgnoreExtensions()
+            scanner.loadIgnoreFiles()
             // overhead steps: launchers(3) + installedCoreService(1) + launchManager(1) + syncAssets(1) + syncConfig(1)
             val overhead = 7
             val dirCount = 18 + (platformResolver.getAllTags().size * 6)
@@ -775,6 +776,7 @@ class MainActivity : ComponentActivity() {
         val romDir = settings.romDirectory.takeIf { it.isNotEmpty() }?.let { File(it) }
         scanner = FileScanner(root, platformResolver, collectionManager, assets, romDir)
         scanner.loadIgnoreExtensions()
+        scanner.loadIgnoreFiles()
         collectionManager.migrateCollectionsToHashedNames()
         launchManager.syncRetroArchAssets(root)
         launchManager.syncRetroArchConfig(root)
