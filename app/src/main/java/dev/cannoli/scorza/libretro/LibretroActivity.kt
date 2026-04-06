@@ -459,6 +459,7 @@ class LibretroActivity : ComponentActivity() {
                     } else {
                         ra.loadGame(romPath, consoleId)
                     }
+                    if (resumeSlot >= 0) ra.pendingReset = true
                     raManager = ra
                 }
             }

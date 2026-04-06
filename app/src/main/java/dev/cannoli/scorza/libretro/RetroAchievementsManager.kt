@@ -51,6 +51,10 @@ class RetroAchievementsManager(
     }
 
     fun doFrame() {
+        if (pendingReset && gameId > 0) {
+            pendingReset = false
+            nativeReset()
+        }
         nativeDoFrame()
     }
 
@@ -140,6 +144,7 @@ class RetroAchievementsManager(
     }
     @Volatile var isOffline = false
         private set
+    @Volatile var pendingReset = false
 
     fun getAchievements(): List<Achievement> {
         cachedAchievements?.let { return it }
