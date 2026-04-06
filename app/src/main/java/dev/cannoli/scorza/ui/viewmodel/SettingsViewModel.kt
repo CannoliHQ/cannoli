@@ -11,6 +11,7 @@ import dev.cannoli.scorza.launcher.isPackageInstalled
 import dev.cannoli.scorza.settings.ArtScale
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.settings.ButtonLabelSet
+import dev.cannoli.scorza.settings.ContentMode
 import dev.cannoli.scorza.settings.TextSize
 import dev.cannoli.scorza.settings.TimeFormat
 import dev.cannoli.scorza.ui.theme.BPReplay
@@ -194,6 +195,7 @@ class SettingsViewModel(
         val showBattery: Boolean,
         val showEmpty: Boolean,
         val showRecentlyPlayed: Boolean,
+        val contentMode: ContentMode,
         val sdRoot: String,
         val romDirectory: String,
         val raPackage: String,
@@ -352,6 +354,9 @@ class SettingsViewModel(
             }
             "platform_switching" -> settings.platformSwitching = !settings.platformSwitching
             "swap_play_resume" -> settings.swapPlayResume = !settings.swapPlayResume
+            "content_mode" -> {
+                settings.contentMode = if (settings.contentMode == ContentMode.PLATFORMS) ContentMode.COLLECTIONS else ContentMode.PLATFORMS
+            }
             "show_empty" -> settings.showEmpty = !settings.showEmpty
             "show_recently_played" -> settings.showRecentlyPlayed = !settings.showRecentlyPlayed
             "show_wifi" -> settings.showWifi = !settings.showWifi
@@ -506,6 +511,7 @@ class SettingsViewModel(
         showBattery = settings.showBattery,
         showEmpty = settings.showEmpty,
         showRecentlyPlayed = settings.showRecentlyPlayed,
+        contentMode = settings.contentMode,
         sdRoot = settings.sdCardRoot,
         romDirectory = settings.romDirectory,
         raPackage = settings.retroArchPackage,
@@ -539,6 +545,7 @@ class SettingsViewModel(
         settings.showBattery = snap.showBattery
         settings.showEmpty = snap.showEmpty
         settings.showRecentlyPlayed = snap.showRecentlyPlayed
+        settings.contentMode = snap.contentMode
         settings.sdCardRoot = snap.sdRoot
         settings.romDirectory = snap.romDirectory
         settings.retroArchPackage = snap.raPackage
@@ -576,8 +583,11 @@ class SettingsViewModel(
             add(SettingsItem("title", R.string.setting_title, valueText = settings.title.ifEmpty { null }, valueRes = if (settings.title.isEmpty()) R.string.value_none else null, isEditable = true))
         }
         "library" -> buildList {
+            add(SettingsItem("content_mode", R.string.setting_content_mode, valueRes = if (settings.contentMode == ContentMode.PLATFORMS) R.string.value_platforms else R.string.value_collections))
             add(SettingsItem("show_recently_played", R.string.setting_show_recently_played, valueRes = showHide(settings.showRecentlyPlayed)))
-            add(SettingsItem("show_empty", R.string.setting_show_empty, valueRes = showHide(settings.showEmpty)))
+            if (settings.contentMode == ContentMode.PLATFORMS) {
+                add(SettingsItem("show_empty", R.string.setting_show_empty, valueRes = showHide(settings.showEmpty)))
+            }
             add(SettingsItem("manage_ports", R.string.setting_manage_ports, isEditable = true))
             add(SettingsItem("manage_tools", R.string.setting_manage_tools, isEditable = true))
             add(SettingsItem("sd_root", R.string.setting_sd_root, valueText = settings.sdCardRoot, isEditable = true))
