@@ -148,7 +148,7 @@ class FileServer(
                     when (method) {
                         "GET" -> handleList(output, targetDir, displayPath)
                         "POST" -> {
-                            val contentLength = headers["content-length"]?.toIntOrNull() ?: 0
+                            val contentLength = headers["content-length"]?.toLongOrNull() ?: 0L
                             val contentType = headers["content-type"] ?: ""
                             handleUpload(output, targetDir, contentType, contentLength, input)
                         }
@@ -343,7 +343,7 @@ class FileServer(
                         if (slot == null || slot < 0 || slot > 10) {
                             sendJson(output, 400, """{"error":"slot param required (0-10)"}"""); return
                         }
-                        val contentLength = headers["content-length"]?.toIntOrNull() ?: 0
+                        val contentLength = headers["content-length"]?.toLongOrNull() ?: 0L
                         val contentType = headers["content-type"] ?: ""
                         handleSlotUpload(output, gameDir, romName, slot, contentType, contentLength, input)
                     }
@@ -401,7 +401,7 @@ class FileServer(
         romName: String,
         slot: Int,
         contentType: String,
-        contentLength: Int,
+        contentLength: Long,
         input: java.io.InputStream
     ) {
         if (!isSecure(gameDir)) { sendJson(output, 403, """{"error":"forbidden"}"""); return }
@@ -428,7 +428,7 @@ class FileServer(
                 val buf = ByteArray(262144)
                 var remaining = contentLength
                 while (remaining > 0) {
-                    val n = input.read(buf, 0, minOf(buf.size, remaining))
+                    val n = input.read(buf, 0, minOf(buf.size.toLong(), remaining).toInt())
                     if (n <= 0) break
                     bos.write(buf, 0, n)
                     remaining -= n
@@ -525,7 +525,7 @@ class FileServer(
         output: OutputStream,
         destDir: File,
         contentType: String,
-        contentLength: Int,
+        contentLength: Long,
         input: java.io.InputStream
     ) {
         if (!isSecure(destDir)) {
@@ -550,7 +550,7 @@ class FileServer(
         output: OutputStream,
         destDir: File,
         boundary: String,
-        contentLength: Int,
+        contentLength: Long,
         input: java.io.InputStream
     ) {
         val boundaryBytes = "--$boundary".toByteArray()
@@ -580,12 +580,12 @@ class FileServer(
 
     private class MultipartStream(
         private val input: java.io.InputStream,
-        private val totalLength: Int
+        private val totalLength: Long
     ) {
         private val buf = ByteArray(262144 + 256)
         private var pos = 0
         private var len = 0
-        private var totalRead = 0
+        private var totalRead = 0L
         var lastBoundaryLine = ""
             private set
 
@@ -604,7 +604,7 @@ class FileServer(
                 if (totalRead >= totalLength) return len - pos > 0
                 val space = buf.size - len
                 if (space <= 0) return len - pos > 0
-                val toRead = minOf(space, totalLength - totalRead)
+                val toRead = minOf(space.toLong(), totalLength - totalRead).toInt()
                 val n = input.read(buf, len, toRead)
                 if (n <= 0) return len - pos > 0
                 len += n
