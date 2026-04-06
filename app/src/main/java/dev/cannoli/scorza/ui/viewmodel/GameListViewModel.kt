@@ -250,6 +250,17 @@ class GameListViewModel(
         }
     }
 
+    fun moveSelectedToTop() {
+        val current = _state.value
+        val idx = current.selectedIndex
+        if (idx <= 0) return
+        val games = current.games.toMutableList()
+        val game = games.removeAt(idx)
+        games.add(0, game)
+        _state.value = current.copy(games = games, selectedIndex = 0, scrollTarget = 0)
+        firstVisibleIndex = 0
+    }
+
     fun reload() {
         val current = _state.value
         val preserveIndex = current.selectedIndex
@@ -279,7 +290,10 @@ class GameListViewModel(
                     scrollTarget = preserveScroll.coerceAtMost(s.games.lastIndex.coerceAtLeast(0))
                 )
             }
-        } else if (current.platformTag.isNotEmpty()) {
+        } else if (current.platformTag == "recently_played") {
+            _state.value = current.copy(games = emptyList(), isLoading = true)
+            loadRecentlyPlayed()
+        } else if (current.platformTags.isNotEmpty()) {
             loadGames(current.platformTags, current.subfolderPath, preserveIndex, preserveScroll, prevCount)
         }
     }

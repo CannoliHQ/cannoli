@@ -146,6 +146,7 @@ class MainActivity : ComponentActivity() {
         }
     }
     @Volatile private var navigating = false
+    private var pendingRecentlyPlayedReorder = false
     private var coreQueryReceiver: android.content.BroadcastReceiver? = null
     private var loginManager: RetroAchievementsManager? = null
     private val loginPollHandler = Handler(Looper.getMainLooper())
@@ -605,6 +606,7 @@ class MainActivity : ComponentActivity() {
         if (!coldStart) overridePendingTransition(0, 0)
         coldStart = false
         hideSystemUI()
+        if (::launchManager.isInitialized) launchManager.launching = false
         if (LibretroActivity.isRunning) {
             val intent = Intent(this, LibretroActivity::class.java)
             intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
@@ -618,6 +620,14 @@ class MainActivity : ComponentActivity() {
                 gameListViewModel.reload()
                 scanResumableGames()
             }
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        if (pendingRecentlyPlayedReorder) {
+            pendingRecentlyPlayedReorder = false
+            gameListViewModel.moveSelectedToTop()
         }
     }
 
@@ -2140,12 +2150,14 @@ class MainActivity : ComponentActivity() {
         if (isResumable && settings.swapPlayResume) {
             launchManager.resumeGame(game)
             ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
+            if (gameListViewModel.state.value.platformTag == "recently_played") pendingRecentlyPlayedReorder = true
         } else {
             val errorDialog = launchManager.launchGame(game)
             if (errorDialog != null) {
                 dialogState.value = errorDialog
             } else {
                 ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
+                if (gameListViewModel.state.value.platformTag == "recently_played") pendingRecentlyPlayedReorder = true
             }
         }
     }

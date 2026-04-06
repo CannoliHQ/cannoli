@@ -28,6 +28,7 @@ class LaunchManager(
     private val installedCoreService: InstalledCoreService? = null,
 ) {
     private var raConfigPath: String? = null
+    @Volatile var launching = false
 
     fun syncRetroArchAssets(root: File) {
         val fontDest = File(root, "Config/Assets/cannoli/font.ttf")
@@ -226,12 +227,14 @@ class LaunchManager(
     }
 
     fun launchGame(game: Game): DialogState? {
+        if (launching) return null
+        launching = true
         val launchFile = resolveLaunchFile(game)
-            ?: return DialogState.LaunchError("Failed to extract archive")
+            ?: return errorAndReset(DialogState.LaunchError("Failed to extract archive"))
 
         val gameOverride = platformResolver.getGameOverride(game.file.absolutePath)
         if (gameOverride?.appPackage != null) {
-            return toLaunchDialog(apkLauncher.launchWithRom(gameOverride.appPackage, launchFile))
+            return launchResultDialog(apkLauncher.launchWithRom(gameOverride.appPackage, launchFile))
         }
 
         val result = when (val target = game.launchTarget) {
@@ -258,13 +261,13 @@ class LaunchManager(
                             ?: platformResolver.getPackage(game.platformTag)
                         if (raPackage != null && installedCoreService != null) {
                             if (!context.isPackageInstalled(raPackage)) {
-                                return toLaunchDialog(LaunchResult.AppNotInstalled(raPackage))
+                                return errorAndReset(toLaunchDialog(LaunchResult.AppNotInstalled(raPackage))!!)
                             }
                             if (installedCoreService.cacheReady
                                 && raPackage !in installedCoreService.unresponsivePackages
                                 && !installedCoreService.hasCoreInPackage(core, raPackage)) {
                                 val label = InstalledCoreService.getPackageLabel(raPackage)
-                                return toLaunchDialog(LaunchResult.CoreNotInstalled("$core not found in $label"))
+                                return errorAndReset(toLaunchDialog(LaunchResult.CoreNotInstalled("$core not found in $label"))!!)
                             }
                         }
                         if (settings.retroArchDiyMode) {
@@ -296,10 +299,12 @@ class LaunchManager(
             }
         }
 
-        return toLaunchDialog(result)
+        return launchResultDialog(result)
     }
 
     fun resumeGame(game: Game) {
+        if (launching) return
+        launching = true
         val resumeSlot = findMostRecentSlot(game) ?: 0
         val launchFile = resolveLaunchFile(game) ?: return
         val embeddedCorePath = getEmbeddedCorePath(game)
@@ -318,6 +323,17 @@ class LaunchManager(
             val launchConfig = buildGameConfig(game, resume = true, slot = resumeSlot) ?: raConfigPath
             retroArchLauncher.launch(launchFile, core, launchConfig, raPackage)
         }
+    }
+
+    private fun errorAndReset(dialog: DialogState): DialogState {
+        launching = false
+        return dialog
+    }
+
+    private fun launchResultDialog(result: LaunchResult): DialogState? {
+        val dialog = toLaunchDialog(result)
+        if (dialog != null) launching = false
+        return dialog
     }
 
     private fun toLaunchDialog(result: LaunchResult): DialogState? {
