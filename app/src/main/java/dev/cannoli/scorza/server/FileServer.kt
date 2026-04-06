@@ -146,7 +146,7 @@ class FileServer(
                     val displayPath = if (subpath.isEmpty()) baseDir else "$baseDir/$subpath"
                     val targetDir = File(cannoliRoot, displayPath)
                     when (method) {
-                        "GET" -> handleList(output, targetDir, displayPath)
+                        "GET" -> handleList(output, targetDir, displayPath, queryParams["recursive"] == "true")
                         "POST" -> {
                             val contentLength = headers["content-length"]?.toLongOrNull() ?: 0L
                             val contentType = headers["content-type"] ?: ""
@@ -209,7 +209,7 @@ class FileServer(
         sendJson(output, 200, """{"tags":[$json]}""")
     }
 
-    private fun handleList(output: OutputStream, dir: File, displayPath: String) {
+    private fun handleList(output: OutputStream, dir: File, displayPath: String, recursive: Boolean = false) {
         if (!isSecure(dir)) {
             sendJson(output, 403, """{"error":"forbidden"}""")
             return
@@ -218,14 +218,33 @@ class FileServer(
             sendJson(output, 404, """{"error":"not found"}""")
             return
         }
-        val entries = dir.listFiles()
-            ?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name.lowercase(java.util.Locale.ROOT) })
-            ?: emptyList()
-        val items = entries.joinToString(",") { f ->
-            val name = escapeJson(f.name)
-            val type = if (f.isDirectory) "dir" else "file"
-            val size = if (f.isFile) f.length() else 0
-            """{"name":"$name","type":"$type","size":$size}"""
+        val items = if (recursive) {
+            val files = mutableListOf<File>()
+            val stack = ArrayDeque<File>()
+            stack.add(dir)
+            while (stack.isNotEmpty()) {
+                val current = stack.removeLast()
+                val children = current.listFiles() ?: continue
+                for (child in children.sortedBy { it.name.lowercase(java.util.Locale.ROOT) }) {
+                    if (child.isDirectory) stack.add(child)
+                    else files.add(child)
+                }
+            }
+            files.sortedBy { it.name.lowercase(java.util.Locale.ROOT) }
+                .joinToString(",") { f ->
+                    val relativePath = dir.toPath().relativize(f.toPath()).toString()
+                    """{"name":"${escapeJson(relativePath)}","type":"file","size":${f.length()}}"""
+                }
+        } else {
+            val entries = dir.listFiles()
+                ?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name.lowercase(java.util.Locale.ROOT) })
+                ?: emptyList()
+            entries.joinToString(",") { f ->
+                val name = escapeJson(f.name)
+                val type = if (f.isDirectory) "dir" else "file"
+                val size = if (f.isFile) f.length() else 0
+                """{"name":"$name","type":"$type","size":$size}"""
+            }
         }
         sendJson(output, 200, """{"path":"${escapeJson(displayPath)}","entries":[$items]}""")
     }
