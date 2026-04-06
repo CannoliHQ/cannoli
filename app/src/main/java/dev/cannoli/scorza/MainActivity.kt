@@ -2065,6 +2065,12 @@ class MainActivity : ComponentActivity() {
                 settings.portsName = newName
                 rescanSystemList()
             }
+            is SystemListViewModel.ListItem.CollectionItem -> {
+                ioScope.launch {
+                    collectionManager.renameCollection(item.name, newName)
+                    rescanSystemList()
+                }
+            }
             else -> {}
         }
         dialogState.value = DialogState.None
