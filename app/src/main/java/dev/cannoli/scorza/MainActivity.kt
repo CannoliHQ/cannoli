@@ -807,6 +807,7 @@ class MainActivity : ComponentActivity() {
 
         systemListViewModel = SystemListViewModel(scanner, collectionManager, orderingManager, recentlyPlayedManager)
         gameListViewModel = GameListViewModel(scanner, collectionManager, orderingManager, recentlyPlayedManager, platformResolver, resources)
+        gameListViewModel.showFavoriteStars = settings.contentMode != ContentMode.FIVE_GAME_HANDHELD
         settingsViewModel = SettingsViewModel(settings, root, packageManager, packageName)
         updateManager = dev.cannoli.scorza.updater.UpdateManager(this, settings)
 

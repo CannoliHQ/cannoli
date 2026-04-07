@@ -367,7 +367,7 @@ class FileScanner(
         return null
     }
 
-    fun scanCollectionGames(stem: String): List<Game> {
+    fun scanCollectionGames(stem: String, includeFavoriteStars: Boolean = true): List<Game> {
         val collFile = File(collectionsDir, "$stem.txt")
         if (!collFile.exists()) return emptyList()
 
@@ -415,7 +415,7 @@ class FileScanner(
                 if (mapped != null) game.copy(displayName = mapped) else game
             }
             .let { games ->
-                if (stem.equals("Favorites", ignoreCase = true)) {
+                if (!includeFavoriteStars || stem.equals("Favorites", ignoreCase = true)) {
                     games
                 } else {
                     val favPaths = collectionManager.getFavoritePaths()

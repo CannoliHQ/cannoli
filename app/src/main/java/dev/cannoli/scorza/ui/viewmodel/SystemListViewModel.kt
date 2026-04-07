@@ -74,7 +74,7 @@ class SystemListViewModel(
             if (contentMode == ContentMode.FIVE_GAME_HANDHELD) {
                 val fghStem = collections.firstOrNull { it.startsWith("5GH", ignoreCase = true) }
                 if (fghStem != null) {
-                    val games = scanner.scanCollectionGames(fghStem).take(5)
+                    val games = scanner.scanCollectionGames(fghStem, includeFavoriteStars = false).take(5)
                     games.forEach { items.add(ListItem.GameItem(it)) }
                 }
             } else {
@@ -222,8 +222,9 @@ class SystemListViewModel(
                     collectionManager.saveCollectionContents(fghStem, paths)
                 }
             }
-        } else {
-            val tags = current.items.mapNotNull { it.orderTag() }
+        }
+        val tags = current.items.mapNotNull { it.orderTag() }
+        if (tags.isNotEmpty()) {
             scope.launch(Dispatchers.IO) {
                 orderingManager.savePlatformOrder(tags)
             }
