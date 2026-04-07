@@ -100,6 +100,7 @@
     <string name="value_cannoli_root">Cannoli Root</string>
     <string name="value_platforms">Default</string>
     <string name="value_collections">Collections Only</string>
+    <string name="value_five_game_handheld">5 Game Handheld</string>
     <string name="value_fit">Fit</string>
     <string name="value_original">Original</string>
     <string name="value_fit_width">Fit Width</string>

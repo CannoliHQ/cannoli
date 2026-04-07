@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.ui.viewmodel
 
+import dev.cannoli.scorza.model.Game
 import dev.cannoli.scorza.model.Platform
 import dev.cannoli.scorza.scanner.CollectionManager
 import dev.cannoli.scorza.scanner.FileScanner
@@ -29,6 +30,7 @@ class SystemListViewModel(
         data object CollectionsFolder : ListItem()
         data class PlatformItem(val platform: Platform) : ListItem()
         data class CollectionItem(val name: String, val count: Int) : ListItem()
+        data class GameItem(val game: Game) : ListItem()
         data class ToolsFolder(val name: String, val count: Int) : ListItem()
         data class PortsFolder(val name: String, val count: Int) : ListItem()
     }
@@ -69,31 +71,46 @@ class SystemListViewModel(
 
             val items = mutableListOf<ListItem>()
 
-            if (showRecentlyPlayed && recentlyPlayedManager.hasAny()) {
-                items.add(ListItem.RecentlyPlayedItem)
-            }
+            if (contentMode == ContentMode.FIVE_GAME_HANDHELD) {
+                val fghStem = collections.firstOrNull { it.startsWith("5GH", ignoreCase = true) }
+                if (fghStem != null) {
+                    val games = scanner.scanCollectionGames(fghStem).take(5)
+                    games.forEach { items.add(ListItem.GameItem(it)) }
+                }
+            } else {
+                if (showRecentlyPlayed && recentlyPlayedManager.hasAny()) {
+                    items.add(ListItem.RecentlyPlayedItem)
+                }
 
-            val hasFavorites = collections.any { it.equals("Favorites", ignoreCase = true) }
+                val hasFavorites = collections.any { it.equals("Favorites", ignoreCase = true) }
 
-            if (hasFavorites) {
-                items.add(ListItem.FavoritesItem)
+                if (hasFavorites) {
+                    items.add(ListItem.FavoritesItem)
+                }
+
+                if (contentMode == ContentMode.PLATFORMS) {
+                    val hasOtherCollections = collections.any { !it.equals("Favorites", ignoreCase = true) }
+                    if (hasOtherCollections) {
+                        items.add(ListItem.CollectionsFolder)
+                    }
+                }
             }
 
             val reorderableItems = mutableListOf<ListItem>()
-            if (contentMode == ContentMode.PLATFORMS) {
-                val hasOtherCollections = collections.any { !it.equals("Favorites", ignoreCase = true) }
-                if (hasOtherCollections) {
-                    items.add(ListItem.CollectionsFolder)
+            when (contentMode) {
+                ContentMode.PLATFORMS -> {
+                    val visiblePlatforms = if (showEmpty) platforms else platforms.filter { it.gameCount > 0 }
+                    visiblePlatforms.forEach { reorderableItems.add(ListItem.PlatformItem(it)) }
                 }
-                val visiblePlatforms = if (showEmpty) platforms else platforms.filter { it.gameCount > 0 }
-                visiblePlatforms.forEach { reorderableItems.add(ListItem.PlatformItem(it)) }
-            } else {
-                val topLevel = collections.filter {
-                    !it.equals("Favorites", ignoreCase = true) && collectionManager.isTopLevelCollection(it)
+                ContentMode.COLLECTIONS -> {
+                    val topLevel = collections.filter {
+                        !it.equals("Favorites", ignoreCase = true) && collectionManager.isTopLevelCollection(it)
+                    }
+                    topLevel.forEach { stem ->
+                        reorderableItems.add(ListItem.CollectionItem(stem, collectionManager.getGamePaths(stem).size))
+                    }
                 }
-                topLevel.forEach { stem ->
-                    reorderableItems.add(ListItem.CollectionItem(stem, collectionManager.getGamePaths(stem).size))
-                }
+                ContentMode.FIVE_GAME_HANDHELD -> {}
             }
             if (ports.isNotEmpty()) {
                 reorderableItems.add(ListItem.PortsFolder(portsName, ports.size))
@@ -101,8 +118,10 @@ class SystemListViewModel(
             if (tools.isNotEmpty()) {
                 reorderableItems.add(ListItem.ToolsFolder(toolsName, tools.size))
             }
-            val ordered = applyCustomOrder(reorderableItems, orderingManager.loadPlatformOrder())
-            items.addAll(ordered)
+            if (reorderableItems.isNotEmpty()) {
+                val ordered = applyCustomOrder(reorderableItems, orderingManager.loadPlatformOrder())
+                items.addAll(ordered)
+            }
 
             val canRestore = (restored != null || items.size == prevItemCount) && prevItemCount > 0
             val (safeIndex, scrollTo) = if (canRestore) {
@@ -193,9 +212,21 @@ class SystemListViewModel(
     fun confirmReorder() {
         val current = _state.value
         if (!current.reorderMode) return
-        val tags = current.items.mapNotNull { it.orderTag() }
-        scope.launch(Dispatchers.IO) {
-            orderingManager.savePlatformOrder(tags)
+        val gameItems = current.items.filterIsInstance<ListItem.GameItem>()
+        if (gameItems.isNotEmpty()) {
+            val fghStem = collectionManager.getCollectionStems()
+                .firstOrNull { it.startsWith("5GH", ignoreCase = true) }
+            if (fghStem != null) {
+                val paths = gameItems.map { it.game.file.absolutePath }
+                scope.launch(Dispatchers.IO) {
+                    collectionManager.saveCollectionContents(fghStem, paths)
+                }
+            }
+        } else {
+            val tags = current.items.mapNotNull { it.orderTag() }
+            scope.launch(Dispatchers.IO) {
+                orderingManager.savePlatformOrder(tags)
+            }
         }
         _state.update { it.copy(reorderMode = false, reorderOriginalIndex = -1) }
     }
@@ -206,7 +237,7 @@ class SystemListViewModel(
         scan(showRecentlyPlayed, showEmpty, contentMode, toolsName, portsName)
     }
 
-    private fun ListItem.isReorderable(): Boolean = this is ListItem.PlatformItem || this is ListItem.ToolsFolder || this is ListItem.PortsFolder || this is ListItem.CollectionItem
+    private fun ListItem.isReorderable(): Boolean = this is ListItem.PlatformItem || this is ListItem.ToolsFolder || this is ListItem.PortsFolder || this is ListItem.CollectionItem || this is ListItem.GameItem
 
     private fun ListItem.orderTag(): String? = when (this) {
         is ListItem.PlatformItem -> platform.tag

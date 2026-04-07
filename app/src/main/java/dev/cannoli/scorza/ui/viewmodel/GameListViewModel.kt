@@ -28,6 +28,8 @@ class GameListViewModel(
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
+    var showFavoriteStars: Boolean = true
+
     data class State(
         val platformTag: String = "",
         val platformTags: List<String> = emptyList(),
@@ -159,10 +161,12 @@ class GameListViewModel(
                         launchTarget = launch
                     )
                 }
-                val favPaths = collectionManager.getFavoritePaths()
-                val starred = games.map { game ->
-                    if (game.file.absolutePath in favPaths) game.copy(displayName = "★ ${game.displayName}") else game
-                }
+                val starred = if (showFavoriteStars) {
+                    val favPaths = collectionManager.getFavoritePaths()
+                    games.map { game ->
+                        if (game.file.absolutePath in favPaths) game.copy(displayName = "★ ${game.displayName}") else game
+                    }
+                } else games
                 val order = if (type == "tools") orderingManager.loadToolOrder() else orderingManager.loadPortOrder()
                 val ordered = applyCustomOrder(starred, order)
                     .sortedBy { !it.displayName.startsWith("★") }
@@ -351,10 +355,12 @@ class GameListViewModel(
                 scanner.scanCollectionGames(current.collectionName)
             } else if (current.platformTag == "tools" || current.platformTag == "ports") {
                 val entries = if (current.platformTag == "tools") scanner.scanTools() else scanner.scanPorts()
-                val favPaths = collectionManager.getFavoritePaths()
                 val games = entries.map { (file, name, launch) ->
-                    val starred = if (file.absolutePath in favPaths) "★ $name" else name
-                    Game(file = file, displayName = starred, platformTag = current.platformTag, launchTarget = launch)
+                    val label = if (showFavoriteStars) {
+                        val favPaths = collectionManager.getFavoritePaths()
+                        if (file.absolutePath in favPaths) "★ $name" else name
+                    } else name
+                    Game(file = file, displayName = label, platformTag = current.platformTag, launchTarget = launch)
                 }
                 val order = if (current.platformTag == "tools") orderingManager.loadToolOrder() else orderingManager.loadPortOrder()
                 applyCustomOrder(games, order).sortedBy { !it.displayName.startsWith("★") }

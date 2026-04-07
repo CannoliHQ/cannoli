@@ -371,7 +371,7 @@ enum class ButtonLabelSet {
 }
 
 enum class ContentMode {
-    PLATFORMS, COLLECTIONS;
+    PLATFORMS, COLLECTIONS, FIVE_GAME_HANDHELD;
     companion object {
         fun fromString(value: String?): ContentMode =
             entries.firstOrNull { it.name == value } ?: PLATFORMS

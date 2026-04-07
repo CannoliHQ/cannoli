@@ -355,7 +355,9 @@ class SettingsViewModel(
             "platform_switching" -> settings.platformSwitching = !settings.platformSwitching
             "swap_play_resume" -> settings.swapPlayResume = !settings.swapPlayResume
             "content_mode" -> {
-                settings.contentMode = if (settings.contentMode == ContentMode.PLATFORMS) ContentMode.COLLECTIONS else ContentMode.PLATFORMS
+                val entries = ContentMode.entries
+                val cur = entries.indexOf(settings.contentMode).coerceAtLeast(0)
+                settings.contentMode = entries[((cur + direction) % entries.size + entries.size) % entries.size]
             }
             "show_empty" -> settings.showEmpty = !settings.showEmpty
             "show_recently_played" -> settings.showRecentlyPlayed = !settings.showRecentlyPlayed
@@ -583,8 +585,15 @@ class SettingsViewModel(
             add(SettingsItem("title", R.string.setting_title, valueText = settings.title.ifEmpty { null }, valueRes = if (settings.title.isEmpty()) R.string.value_none else null, isEditable = true))
         }
         "library" -> buildList {
-            add(SettingsItem("show_recently_played", R.string.setting_show_recently_played, valueRes = showHide(settings.showRecentlyPlayed)))
-            add(SettingsItem("content_mode", R.string.setting_content_mode, valueRes = if (settings.contentMode == ContentMode.PLATFORMS) R.string.value_platforms else R.string.value_collections))
+            val contentModeRes = when (settings.contentMode) {
+                ContentMode.PLATFORMS -> R.string.value_platforms
+                ContentMode.COLLECTIONS -> R.string.value_collections
+                ContentMode.FIVE_GAME_HANDHELD -> R.string.value_five_game_handheld
+            }
+            add(SettingsItem("content_mode", R.string.setting_content_mode, valueRes = contentModeRes))
+            if (settings.contentMode != ContentMode.FIVE_GAME_HANDHELD) {
+                add(SettingsItem("show_recently_played", R.string.setting_show_recently_played, valueRes = showHide(settings.showRecentlyPlayed)))
+            }
             if (settings.contentMode == ContentMode.PLATFORMS) {
                 add(SettingsItem("show_empty", R.string.setting_show_empty, valueRes = showHide(settings.showEmpty)))
             }

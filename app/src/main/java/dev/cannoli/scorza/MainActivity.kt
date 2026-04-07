@@ -2005,6 +2005,10 @@ class MainActivity : ComponentActivity() {
 
     private fun rescanSystemList() {
         collectionManager.invalidateFavorites()
+        gameListViewModel.showFavoriteStars = settings.contentMode != ContentMode.FIVE_GAME_HANDHELD
+        if (settings.contentMode == ContentMode.FIVE_GAME_HANDHELD) {
+            ensureFiveGameHandheldCollection()
+        }
         systemListViewModel.scan(
             showRecentlyPlayed = settings.showRecentlyPlayed,
             showEmpty = settings.showEmpty,
@@ -2012,6 +2016,13 @@ class MainActivity : ComponentActivity() {
             toolsName = settings.toolsName,
             portsName = settings.portsName
         )
+    }
+
+    private fun ensureFiveGameHandheldCollection() {
+        val stems = collectionManager.getCollectionStems()
+        if (stems.none { it.startsWith("5GH", ignoreCase = true) }) {
+            collectionManager.createCollection("5GH")
+        }
     }
 
     private fun openColorPicker(settingKey: String) {
@@ -2117,6 +2128,15 @@ class MainActivity : ComponentActivity() {
                     scanResumableGames()
                     screenStack.add(LauncherScreen.GameList)
                     navigating = false
+                }
+            }
+            is SystemListViewModel.ListItem.GameItem -> {
+                val game = item.game
+                val errorDialog = launchManager.launchGame(game)
+                if (errorDialog != null) {
+                    dialogState.value = errorDialog
+                } else {
+                    ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
                 }
             }
             is SystemListViewModel.ListItem.ToolsFolder -> {

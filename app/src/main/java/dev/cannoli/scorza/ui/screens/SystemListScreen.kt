@@ -119,6 +119,7 @@ fun SystemListScreen(
                         is ListItem.CollectionsFolder -> "collections"
                         is ListItem.PlatformItem -> item.platform.tag
                         is ListItem.CollectionItem -> "col:${item.name}"
+                        is ListItem.GameItem -> "game:${item.game.file.absolutePath}"
                         is ListItem.ToolsFolder -> "tools"
                         is ListItem.PortsFolder -> "ports"
                     }
@@ -130,10 +131,11 @@ fun SystemListScreen(
                     is ListItem.CollectionsFolder -> stringResource(R.string.label_collections)
                     is ListItem.PlatformItem -> item.platform.displayName
                     is ListItem.CollectionItem -> dev.cannoli.scorza.model.Collection.stemToDisplayName(item.name)
+                    is ListItem.GameItem -> item.game.displayName
                     is ListItem.ToolsFolder -> item.name
                     is ListItem.PortsFolder -> item.name
                 }
-                val showReorder = state.reorderMode && state.selectedIndex == index && (item is ListItem.PlatformItem || item is ListItem.ToolsFolder || item is ListItem.PortsFolder || item is ListItem.CollectionItem)
+                val showReorder = state.reorderMode && state.selectedIndex == index && (item is ListItem.PlatformItem || item is ListItem.ToolsFolder || item is ListItem.PortsFolder || item is ListItem.CollectionItem || item is ListItem.GameItem)
                 PillRowText(
                     label = label,
                     isSelected = state.selectedIndex == index,
