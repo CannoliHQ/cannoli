@@ -72,7 +72,7 @@ class SystemListViewModel(
             val items = mutableListOf<ListItem>()
 
             if (contentMode == ContentMode.FIVE_GAME_HANDHELD) {
-                val fghStem = collections.firstOrNull { it.startsWith("5GH", ignoreCase = true) }
+                val fghStem = collectionManager.findFghStem()
                 if (fghStem != null) {
                     val games = scanner.scanCollectionGames(fghStem, includeFavoriteStars = false).take(5)
                     games.forEach { items.add(ListItem.GameItem(it)) }
@@ -214,8 +214,7 @@ class SystemListViewModel(
         if (!current.reorderMode) return
         val gameItems = current.items.filterIsInstance<ListItem.GameItem>()
         if (gameItems.isNotEmpty()) {
-            val fghStem = collectionManager.getCollectionStems()
-                .firstOrNull { it.startsWith("5GH", ignoreCase = true) }
+            val fghStem = collectionManager.findFghStem()
             if (fghStem != null) {
                 val paths = gameItems.map { it.game.file.absolutePath }
                 scope.launch(Dispatchers.IO) {
@@ -224,7 +223,7 @@ class SystemListViewModel(
             }
         }
         val tags = current.items.mapNotNull { it.orderTag() }
-        if (tags.isNotEmpty()) {
+        if (tags.isNotEmpty() && gameItems.isEmpty()) {
             scope.launch(Dispatchers.IO) {
                 orderingManager.savePlatformOrder(tags)
             }
@@ -245,6 +244,7 @@ class SystemListViewModel(
         is ListItem.CollectionItem -> name
         is ListItem.ToolsFolder -> TAG_TOOLS
         is ListItem.PortsFolder -> TAG_PORTS
+        is ListItem.GameItem -> null
         else -> null
     }
 

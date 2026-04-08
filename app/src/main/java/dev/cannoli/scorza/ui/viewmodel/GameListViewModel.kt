@@ -28,7 +28,7 @@ class GameListViewModel(
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
-    var showFavoriteStars: Boolean = true
+    @Volatile var showFavoriteStars: Boolean = true
 
     data class State(
         val platformTag: String = "",
@@ -355,11 +355,9 @@ class GameListViewModel(
                 scanner.scanCollectionGames(current.collectionName)
             } else if (current.platformTag == "tools" || current.platformTag == "ports") {
                 val entries = if (current.platformTag == "tools") scanner.scanTools() else scanner.scanPorts()
+                val favPaths = if (showFavoriteStars) collectionManager.getFavoritePaths() else emptySet()
                 val games = entries.map { (file, name, launch) ->
-                    val label = if (showFavoriteStars) {
-                        val favPaths = collectionManager.getFavoritePaths()
-                        if (file.absolutePath in favPaths) "★ $name" else name
-                    } else name
+                    val label = if (showFavoriteStars && file.absolutePath in favPaths) "★ $name" else name
                     Game(file = file, displayName = label, platformTag = current.platformTag, launchTarget = launch)
                 }
                 val order = if (current.platformTag == "tools") orderingManager.loadToolOrder() else orderingManager.loadPortOrder()
