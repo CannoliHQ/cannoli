@@ -158,7 +158,7 @@ class IGMController(
             opts.loadStateIndex -> { loadState(); onClose?.invoke() }
             opts.settingsIndex -> onOpenNativeMenu?.invoke()
             opts.resetIndex -> { bridge.reset(); onClose?.invoke() }
-            opts.quitIndex -> bridge.quit()
+            opts.quitIndex -> { onClose?.invoke(); bridge.quit() }
         }
     }
 }

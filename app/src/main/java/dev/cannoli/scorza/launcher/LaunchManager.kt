@@ -281,11 +281,11 @@ class LaunchManager(
                         }
                         if (settings.retroArchDiyMode) {
                             val raConfig = "/storage/emulated/0/Android/data/$raPackage/files/retroarch.cfg"
-                            retroArchLauncher.launch(launchFile, core, raConfig, raPackage)
+                            retroArchLauncher.launch(launchFile, core, raConfig, raPackage, buildIGMExtras(game))
                         } else {
                             syncRetroArchConfig(File(settings.sdCardRoot))
                             val launchConfig = buildGameConfig(game) ?: raConfigPath
-                            retroArchLauncher.launch(launchFile, core, launchConfig, raPackage)
+                            retroArchLauncher.launch(launchFile, core, launchConfig, raPackage, buildIGMExtras(game))
                         }
                     } else {
                         LaunchResult.CoreNotInstalled("unknown")
@@ -412,6 +412,23 @@ class LaunchManager(
 
     private fun normalizedRomName(game: Game): String =
         Normalizer.normalize(game.file.nameWithoutExtension, Normalizer.Form.NFC)
+
+    private fun buildIGMExtras(game: Game): IGMExtras {
+        val cannoliRoot = File(settings.sdCardRoot)
+        val romName = normalizedRomName(game)
+        val stateBase = File(cannoliRoot, "Save States/${game.platformTag}/$romName/$romName.state")
+        return IGMExtras(
+            gameTitle = game.displayName,
+            stateBasePath = stateBase.absolutePath,
+            cannoliRoot = cannoliRoot.absolutePath,
+            platformTag = game.platformTag,
+            colorHighlight = settings.colorHighlight,
+            colorText = settings.colorText,
+            colorHighlightText = settings.colorHighlightText,
+            colorAccent = settings.colorAccent,
+            colorTitle = settings.colorTitle
+        )
+    }
 
     companion object {
         private const val CONFIG_VERSION = 5
