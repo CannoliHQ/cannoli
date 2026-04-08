@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.libretro
 
+import dev.cannoli.igm.ShortcutAction
 import dev.cannoli.scorza.input.ProfileManager
 import dev.cannoli.scorza.util.IniParser
 import dev.cannoli.scorza.util.IniWriter

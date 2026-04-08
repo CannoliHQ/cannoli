@@ -1,4 +1,4 @@
-package dev.cannoli.scorza.libretro
+package dev.cannoli.igm
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -28,12 +28,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.cannoli.scorza.R
 import dev.cannoli.igm.ui.components.ScreenBackground
 import dev.cannoli.igm.ui.theme.LocalCannoliColors
 import dev.cannoli.igm.ui.theme.LocalCannoliFont
@@ -58,7 +56,8 @@ fun GuideScreen(
     pageJumpDir: Int,
     pageCount: Int,
     textZoom: Int,
-    onScrollPosChanged: (y: Int, x: Int) -> Unit
+    onScrollPosChanged: (y: Int, x: Int) -> Unit,
+    pageLabel: String = "%d / %d"
 ) {
     val colors = LocalCannoliColors.current
     val zoomIndex = (textZoom - 1).coerceIn(0, ZOOM_SCALES.lastIndex)
@@ -82,7 +81,7 @@ fun GuideScreen(
 
             if (guideType == GuideType.PDF && pageCount > 0) {
                 Text(
-                    text = stringResource(R.string.guide_page, page + 1, pageCount),
+                    text = String.format(pageLabel, page + 1, pageCount),
                     style = TextStyle(
                         fontFamily = LocalCannoliFont.current,
                         fontSize = 13.sp,

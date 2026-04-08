@@ -1,4 +1,4 @@
-package dev.cannoli.scorza.libretro
+package dev.cannoli.igm
 
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
@@ -42,74 +42,8 @@ import dev.cannoli.igm.ui.components.ScreenBackground
 import dev.cannoli.igm.ui.components.ScreenTitle
 import dev.cannoli.igm.ui.components.pillItemHeight
 import dev.cannoli.igm.ui.components.screenPadding
-import dev.cannoli.igm.ButtonLabelSet
 import dev.cannoli.igm.ui.theme.GrayText
 
-
-class InGameMenuOptions(hasDiscs: Boolean, val discLabel: String, hasAchievements: Boolean = false, hasGuides: Boolean = false) {
-    val options: List<String>
-    val resumeIndex = 0
-    val saveStateIndex = 1
-    val loadStateIndex = 2
-    val achievementsIndex: Int
-    val guideIndex: Int
-    val settingsIndex: Int
-    val switchDiscIndex: Int
-    val resetIndex: Int
-    val quitIndex: Int
-
-    init {
-        val list = mutableListOf("Resume", "Save State", "Load State")
-        if (hasAchievements) {
-            achievementsIndex = list.size
-            list.add("Achievements")
-        } else {
-            achievementsIndex = -1
-        }
-        if (hasGuides) {
-            guideIndex = list.size
-            list.add("Guide")
-        } else {
-            guideIndex = -1
-        }
-        settingsIndex = list.size
-        list.add("Settings")
-        if (hasDiscs) {
-            switchDiscIndex = list.size
-            list.add("Switch Disc")
-        } else {
-            switchDiscIndex = -1
-        }
-        resetIndex = list.size
-        list.add("Reset")
-        quitIndex = list.size
-        list.add("Quit")
-        options = list
-    }
-}
-
-object IGMSettings {
-    const val VIDEO = 0
-    const val EMULATOR = 1
-    const val CONTROLS = 2
-    const val SHORTCUTS = 3
-    const val ADVANCED = 4
-    const val INFO = 5
-
-    val CATEGORIES = listOf("Video", "Emulator", "Controls", "Shortcuts", "Advanced", "Info")
-}
-
-enum class ShortcutAction(val label: String) {
-    SAVE_STATE("Save State"),
-    LOAD_STATE("Load State"),
-    RESET_GAME("Reset Game"),
-    SAVE_AND_QUIT("Save and Quit"),
-    CYCLE_SCALING("Cycle Scaling"),
-    CYCLE_EFFECT("Cycle Shader"),
-    TOGGLE_FF("Toggle Fast Forward"),
-    HOLD_FF("Hold Fast Forward"),
-    OPEN_GUIDE("Open Guide")
-}
 
 private val verticalPadding = 8.dp
 
@@ -121,7 +55,7 @@ fun InGameMenu(
     selectedSlot: SaveSlotManager.Slot,
     slotThumbnail: Bitmap?,
     slotExists: Boolean,
-    slotOccupied: List<Boolean>,
+    slotOccupied: kotlin.collections.List<Boolean>,
     undoLabel: String?,
     fontSize: TextUnit = 22.sp,
     lineHeight: TextUnit = 32.sp,
@@ -221,10 +155,10 @@ fun InGameMenu(
 }
 
 @Composable
-internal fun PolaroidFrame(
+fun PolaroidFrame(
     thumbnail: Bitmap?,
     selectedSlotIndex: Int,
-    slotOccupied: List<Boolean>,
+    slotOccupied: kotlin.collections.List<Boolean>,
     showIndicators: Boolean = true
 ) {
     val selectedColor = Color(0xFF4A90D9)

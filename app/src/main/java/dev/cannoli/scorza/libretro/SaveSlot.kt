@@ -2,16 +2,16 @@ package dev.cannoli.scorza.libretro
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import dev.cannoli.igm.SaveSlotManager as SharedSlotManager
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
+typealias Slot = SharedSlotManager.Slot
+
 class SaveSlotManager(private val stateBasePath: String) {
 
-    data class Slot(val index: Int, val label: String)
-
-    val slots = listOf(Slot(0, "Auto")) +
-        (0..9).map { Slot(it + 1, "Slot $it") }
+    val slots = SharedSlotManager().slots
 
     fun statePath(slot: Slot): String {
         if (slot.index == 0) return "$stateBasePath.auto"

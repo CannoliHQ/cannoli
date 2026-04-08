@@ -48,6 +48,13 @@ import androidx.compose.ui.platform.LocalContext
 import dev.cannoli.igm.ui.components.screenPadding
 import dev.cannoli.igm.ButtonLabelSet
 import dev.cannoli.igm.IGMScreen
+import dev.cannoli.igm.IGMSettingsItem
+import dev.cannoli.igm.IGMSettingsScreen
+import dev.cannoli.igm.InGameMenu
+import dev.cannoli.igm.InGameMenuOptions
+import dev.cannoli.igm.GuideScreen
+import dev.cannoli.igm.GuideType
+import dev.cannoli.igm.PolaroidFrame
 import dev.cannoli.igm.ui.theme.LocalCannoliColors
 import dev.cannoli.igm.ui.theme.LocalScaleFactor
 
@@ -68,7 +75,7 @@ fun LibretroScreen(
     gameTitle: String,
     screen: IGMScreen?,
     menuOptions: InGameMenuOptions,
-    selectedSlot: SaveSlotManager.Slot,
+    selectedSlot: Slot,
     slotThumbnail: Bitmap?,
     slotExists: Boolean,
     slotOccupied: List<Boolean>,

@@ -40,6 +40,12 @@ import dev.cannoli.scorza.util.FontNameParser
 import dev.cannoli.igm.AchievementInfo
 import dev.cannoli.igm.ButtonLabelSet
 import dev.cannoli.igm.IGMScreen
+import dev.cannoli.igm.IGMSettings
+import dev.cannoli.igm.IGMSettingsItem
+import dev.cannoli.igm.IGMSettingsScreen
+import dev.cannoli.igm.InGameMenuOptions
+import dev.cannoli.igm.ShortcutAction
+import dev.cannoli.igm.GuideType
 import dev.cannoli.scorza.settings.SettingsRepository
 import android.os.Handler
 import android.os.Looper
@@ -122,7 +128,7 @@ class LibretroActivity : ComponentActivity() {
 
     private enum class UndoType { SAVE, LOAD, RESET }
     private var undoType by mutableStateOf<UndoType?>(null)
-    private var undoSlot: SaveSlotManager.Slot? = null
+    private var undoSlot: Slot? = null
     private val undoHandler = Handler(Looper.getMainLooper())
     private val clearUndoRunnable = Runnable { clearUndo() }
     private var osdMessage by mutableStateOf<String?>(null)

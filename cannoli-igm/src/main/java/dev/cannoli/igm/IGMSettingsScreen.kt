@@ -1,4 +1,4 @@
-package dev.cannoli.scorza.libretro
+package dev.cannoli.igm
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,8 +16,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.res.stringResource
-import dev.cannoli.scorza.R
 import dev.cannoli.igm.ui.components.BottomBar
 import dev.cannoli.igm.ui.components.List
 import dev.cannoli.igm.ui.components.PillRowKeyValue
@@ -27,32 +25,28 @@ import dev.cannoli.igm.ui.components.ScreenTitle
 import dev.cannoli.igm.ui.components.pillInternalH
 import dev.cannoli.igm.ui.components.pillItemHeight
 import dev.cannoli.igm.ui.components.screenPadding
-import dev.cannoli.igm.ButtonLabelSet
 import dev.cannoli.igm.ui.theme.LocalCannoliColors
 
 private val verticalPadding = 8.dp
 
-data class IGMSettingsItem(
-    val label: String,
-    val value: String? = null,
-    val hint: String? = null
-)
-
 @Composable
 fun IGMSettingsScreen(
     title: String,
-    items: List<IGMSettingsItem>,
+    items: kotlin.collections.List<IGMSettingsItem>,
     selectedIndex: Int,
     coreInfo: String = "",
     description: String? = null,
-    bottomBarLeft: List<Pair<String, String>> = emptyList(),
-    bottomBarRight: List<Pair<String, String>> = emptyList(),
+    bottomBarLeft: kotlin.collections.List<Pair<String, String>> = emptyList(),
+    bottomBarRight: kotlin.collections.List<Pair<String, String>> = emptyList(),
     fontSize: TextUnit = 22.sp,
     lineHeight: TextUnit = 32.sp,
-    buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER
+    buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER,
+    backLabel: String = "Back",
+    changeLabel: String = "Change",
+    selectLabel: String = "Select"
 ) {
-    val resolvedLeft = bottomBarLeft.ifEmpty { listOf(buttonLabelSet.back to stringResource(R.string.label_back)) }
-    val resolvedRight = bottomBarRight.ifEmpty { listOf("←→" to stringResource(R.string.label_change), buttonLabelSet.confirm to stringResource(R.string.label_select)) }
+    val resolvedLeft = bottomBarLeft.ifEmpty { listOf(buttonLabelSet.back to backLabel) }
+    val resolvedRight = bottomBarRight.ifEmpty { listOf("←→" to changeLabel, buttonLabelSet.confirm to selectLabel) }
     val itemHeight = pillItemHeight(lineHeight, verticalPadding)
     val colors = LocalCannoliColors.current
 

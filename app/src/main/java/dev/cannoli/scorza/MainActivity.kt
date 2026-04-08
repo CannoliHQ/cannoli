@@ -43,7 +43,7 @@ import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.libretro.LibretroActivity
 import dev.cannoli.scorza.libretro.LibretroInput
 import dev.cannoli.scorza.libretro.RetroAchievementsManager
-import dev.cannoli.scorza.libretro.ShortcutAction
+import dev.cannoli.igm.ShortcutAction
 import dev.cannoli.scorza.scanner.CollectionManager
 import dev.cannoli.scorza.scanner.FileScanner
 import dev.cannoli.scorza.scanner.OrderingManager

@@ -1,10 +1,9 @@
 package dev.cannoli.scorza.libretro
 
+import dev.cannoli.igm.GuideType
 import dev.cannoli.scorza.util.IniParser
 import dev.cannoli.scorza.util.IniWriter
 import java.io.File
-
-enum class GuideType { PDF, TXT, IMAGE }
 
 data class GuideFile(val file: File, val type: GuideType) {
     val name: String get() = file.name

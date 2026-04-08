@@ -1,6 +1,6 @@
 package dev.cannoli.scorza.settings
 
-import dev.cannoli.scorza.libretro.ShortcutAction
+import dev.cannoli.igm.ShortcutAction
 import dev.cannoli.scorza.util.IniParser
 import dev.cannoli.scorza.util.IniWriter
 import java.io.File
