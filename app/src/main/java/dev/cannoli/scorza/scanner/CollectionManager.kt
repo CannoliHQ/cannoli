@@ -31,6 +31,11 @@ class CollectionManager(private val cannoliRoot: File) {
 
     fun getCollectionStems(): List<String> = scanCollections().map { it.stem }
 
+    fun findFghStem(): String? = getCollectionStems().firstOrNull {
+        val name = Collection.stemToDisplayName(it)
+        name.equals("5GH", ignoreCase = true) || name.startsWith("5GH ", ignoreCase = true)
+    }
+
     fun getGamePaths(stem: String): List<String> {
         val collFile = File(collectionsDir, "$stem.txt")
         if (!collFile.exists()) return emptyList()
