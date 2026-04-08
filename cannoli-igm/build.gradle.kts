@@ -1,7 +1,12 @@
 plugins {
-    alias(libs.plugins.android.library)
-    id("org.jetbrains.kotlin.android")
-    alias(libs.plugins.kotlin.compose)
+    id("com.android.library")
+    id("org.jetbrains.kotlin.plugin.compose")
+}
+
+// kotlin.plugin.compose includes kotlin.android in newer Kotlin/AGP but not older.
+// Apply kotlin.android if not already present.
+if (extensions.findByName("kotlin") == null) {
+    apply(plugin = "org.jetbrains.kotlin.android")
 }
 
 android {
@@ -20,9 +25,11 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+}
 
-    kotlinOptions {
-        jvmTarget = "17"
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
