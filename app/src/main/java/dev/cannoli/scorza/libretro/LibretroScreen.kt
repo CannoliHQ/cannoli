@@ -47,6 +47,7 @@ import dev.cannoli.igm.ui.components.pillInternalH
 import androidx.compose.ui.platform.LocalContext
 import dev.cannoli.igm.ui.components.screenPadding
 import dev.cannoli.igm.ButtonLabelSet
+import dev.cannoli.igm.IGMScreen
 import dev.cannoli.igm.ui.theme.LocalCannoliColors
 import dev.cannoli.igm.ui.theme.LocalScaleFactor
 

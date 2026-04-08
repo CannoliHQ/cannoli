@@ -2,6 +2,7 @@ package dev.cannoli.scorza.libretro
 
 import android.os.Handler
 import android.os.Looper
+import dev.cannoli.igm.AchievementInfo
 import java.io.IOException
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
@@ -309,3 +310,14 @@ class RetroAchievementsManager(
         )
     }
 }
+
+fun RetroAchievementsManager.Achievement.toAchievementInfo() = AchievementInfo(
+    id = id,
+    title = title,
+    description = description,
+    points = points,
+    unlocked = unlocked,
+    state = state,
+    unlockTime = unlockTime,
+    pendingSync = pendingSync
+)

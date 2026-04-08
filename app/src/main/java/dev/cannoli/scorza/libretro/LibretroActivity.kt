@@ -37,7 +37,9 @@ import dev.cannoli.igm.ui.theme.LocalCannoliColors
 import dev.cannoli.igm.ui.theme.MPlus1Code
 import dev.cannoli.igm.ui.theme.hexToColor
 import dev.cannoli.scorza.util.FontNameParser
+import dev.cannoli.igm.AchievementInfo
 import dev.cannoli.igm.ButtonLabelSet
+import dev.cannoli.igm.IGMScreen
 import dev.cannoli.scorza.settings.SettingsRepository
 import android.os.Handler
 import android.os.Looper
@@ -920,11 +922,12 @@ class LibretroActivity : ComponentActivity() {
                 val pending = ra.pendingSyncIds
                 val local = ra.localUnlocks
                 val achievements = ra.getAchievements().map {
-                    when {
+                    val ach = when {
                         it.id in pending -> it.copy(unlocked = true, pendingSync = true)
                         it.id in local -> it.copy(unlocked = true)
                         else -> it
                     }
+                    ach.toAchievementInfo()
                 }
                 push(IGMScreen.Achievements(achievements = achievements, status = ra.getStatus()))
             }
@@ -1188,7 +1191,7 @@ class LibretroActivity : ComponentActivity() {
         refreshShaderParams()
     }
 
-    private fun filteredAchievements(screen: IGMScreen.Achievements): List<RetroAchievementsManager.Achievement> = when (screen.filter) {
+    private fun filteredAchievements(screen: IGMScreen.Achievements): List<AchievementInfo> = when (screen.filter) {
         1 -> screen.achievements.filter { it.unlocked }
         else -> screen.achievements
     }
