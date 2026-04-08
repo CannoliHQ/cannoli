@@ -355,6 +355,7 @@ class MainActivity : ComponentActivity() {
         data class Bulk(val gamePaths: List<String>, val options: List<String>) : ContextReturn
     }
     private var pendingContextReturn: ContextReturn? = null
+    private var pendingFghGame: dev.cannoli.scorza.model.Game? = null
 
     private val storagePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -2021,7 +2022,7 @@ class MainActivity : ComponentActivity() {
 
     private fun ensureFiveGameHandheldCollection() {
         val stems = collectionManager.getCollectionStems()
-        if (stems.none { it.startsWith("5GH", ignoreCase = true) }) {
+        if (collectionManager.findFghStem() == null) {
             collectionManager.createCollection("5GH")
         }
     }
@@ -2043,6 +2044,20 @@ class MainActivity : ComponentActivity() {
 
     private fun onSystemListContextMenu() {
         val item = systemListViewModel.getSelectedItem() ?: return
+        if (item is SystemListViewModel.ListItem.GameItem) {
+            val game = item.game
+            pendingFghGame = game
+            val isFav = game.displayName.startsWith("★")
+            val menuName = game.displayName.removePrefix("★ ")
+            val options = buildList {
+                add(if (isFav) MENU_REMOVE_FAVORITE else MENU_ADD_FAVORITE)
+                add(MENU_MANAGE_COLLECTIONS)
+                add(MENU_EMULATOR_OVERRIDE)
+                add(MENU_DELETE_GAME)
+            }
+            dialogState.value = DialogState.ContextMenu(gameName = menuName, options = options)
+            return
+        }
         val name = when (item) {
             is SystemListViewModel.ListItem.PlatformItem -> item.platform.displayName
             is SystemListViewModel.ListItem.ToolsFolder -> item.name
@@ -2053,6 +2068,58 @@ class MainActivity : ComponentActivity() {
             gameName = name,
             options = listOf(MENU_RENAME)
         )
+    }
+
+    private fun onFghContextMenuConfirm(game: dev.cannoli.scorza.model.Game, state: DialogState.ContextMenu) {
+        val selected = state.options[state.selectedOption]
+        when {
+            selected == MENU_ADD_FAVORITE || selected == MENU_REMOVE_FAVORITE -> {
+                val path = game.file.absolutePath
+                ioScope.launch {
+                    val isFav = game.displayName.startsWith("★")
+                    if (isFav) collectionManager.removeFromCollection("Favorites", path)
+                    else collectionManager.addToCollection("Favorites", path)
+                    rescanSystemList()
+                }
+                dialogState.value = DialogState.None
+            }
+            selected == MENU_MANAGE_COLLECTIONS -> {
+                openCollectionManager(listOf(game.file.absolutePath), game.displayName.removePrefix("★ "))
+            }
+            selected == MENU_EMULATOR_OVERRIDE || selected.startsWith("$MENU_EMULATOR_OVERRIDE\t") -> {
+                val tag = game.platformTag
+                val bundledCoresDir2 = LaunchManager.extractBundledCores(this@MainActivity)
+                val options = platformResolver.getCorePickerOptions(tag, packageManager,
+                    installedRaCores = installedCoreService.installedCores, embeddedCoresDir = bundledCoresDir2,
+                    unresponsivePackages = installedCoreService.unresponsivePackages)
+                val platformCoreId = platformResolver.getCoreMapping(tag)
+                val platformCoreName = options.firstOrNull { it.coreId == platformCoreId }?.displayName ?: platformCoreId
+                val defaultLabel = if (platformCoreName.isNotEmpty()) "Platform Setting ($platformCoreName)" else "Platform Setting"
+                val defaultOption = CorePickerOption("", defaultLabel, "")
+                val allOptions = listOf(defaultOption) + options
+                val override = platformResolver.getGameOverride(game.file.absolutePath)
+                val selectedIdx = if (override?.appPackage != null) {
+                    allOptions.indexOfFirst { it.appPackage == override.appPackage }.coerceAtLeast(0)
+                } else if (override != null) {
+                    allOptions.indexOfFirst { it.coreId == override.coreId && (it.runnerLabel == override.runner || override.runner == null) }
+                        .coerceAtLeast(0)
+                } else {
+                    0
+                }
+                dialogState.value = DialogState.None
+                screenStack.add(LauncherScreen.CorePicker(
+                    tag = tag,
+                    platformName = game.displayName.removePrefix("★ "),
+                    cores = allOptions,
+                    selectedIndex = selectedIdx,
+                    gamePath = game.file.absolutePath,
+                    activeIndex = selectedIdx
+                ))
+            }
+            selected == MENU_DELETE || selected == MENU_DELETE_GAME -> {
+                dialogState.value = DialogState.DeleteConfirm(gameName = game.displayName.removePrefix("★ "))
+            }
+        }
     }
 
     private fun onSystemListRename(state: DialogState.RenameInput) {
@@ -2323,13 +2390,19 @@ class MainActivity : ComponentActivity() {
             return
         }
         if (currentScreen == LauncherScreen.SystemList) {
-            when (state.options[state.selectedOption]) {
-                MENU_RENAME -> {
-                    dialogState.value = DialogState.RenameInput(
-                        gameName = state.gameName,
-                        currentName = state.gameName,
-                        cursorPos = state.gameName.length
-                    )
+            val fghGame = pendingFghGame
+            if (fghGame != null) {
+                pendingFghGame = null
+                onFghContextMenuConfirm(fghGame, state)
+            } else {
+                when (state.options[state.selectedOption]) {
+                    MENU_RENAME -> {
+                        dialogState.value = DialogState.RenameInput(
+                            gameName = state.gameName,
+                            currentName = state.gameName,
+                            cursorPos = state.gameName.length
+                        )
+                    }
                 }
             }
             return
@@ -2457,7 +2530,9 @@ class MainActivity : ComponentActivity() {
                 withContext(Dispatchers.Main) { dialogState.value = DialogState.None }
             }
         } else {
-            val game = gameListViewModel.getSelectedGame() ?: return
+            val game = gameListViewModel.getSelectedGame()
+                ?: (systemListViewModel.getSelectedItem() as? SystemListViewModel.ListItem.GameItem)?.game
+                ?: return
             ioScope.launch {
                 scanner.deleteGame(game)
                 gameListViewModel.reload()
