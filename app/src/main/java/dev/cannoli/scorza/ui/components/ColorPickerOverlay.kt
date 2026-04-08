@@ -24,8 +24,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
-import dev.cannoli.scorza.settings.ButtonLabelSet
-import dev.cannoli.scorza.ui.theme.COLOR_PRESETS
+import dev.cannoli.igm.ButtonLabelSet
+import dev.cannoli.igm.ui.components.BottomBar
+import dev.cannoli.igm.ui.theme.COLOR_PRESETS
 
 const val COLOR_GRID_COLS = 4
 private val HIGHLIGHT_BORDER = Color(0xFF6366F1)

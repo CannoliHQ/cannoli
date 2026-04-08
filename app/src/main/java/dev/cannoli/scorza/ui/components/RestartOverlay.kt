@@ -11,8 +11,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.sp
-import dev.cannoli.scorza.settings.ButtonLabelSet
-import dev.cannoli.scorza.ui.theme.LocalCannoliFont
+import dev.cannoli.igm.ButtonLabelSet
+import dev.cannoli.igm.ui.components.BottomBar
+import dev.cannoli.igm.ui.components.screenPadding
+import dev.cannoli.igm.ui.theme.LocalCannoliFont
 
 @Composable
 fun RestartOverlay(message: String, buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER) {

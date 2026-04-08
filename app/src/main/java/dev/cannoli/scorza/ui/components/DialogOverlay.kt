@@ -15,7 +15,15 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import dev.cannoli.scorza.R
-import dev.cannoli.scorza.settings.ButtonLabelSet
+import dev.cannoli.igm.ButtonLabelSet
+import dev.cannoli.igm.ui.components.BottomBar
+import dev.cannoli.igm.ui.components.List
+import dev.cannoli.igm.ui.components.PillRowKeyValue
+import dev.cannoli.igm.ui.components.PillRowText
+import dev.cannoli.igm.ui.components.ScreenBackground
+import dev.cannoli.igm.ui.components.ScreenTitle
+import dev.cannoli.igm.ui.components.pillItemHeight
+import dev.cannoli.igm.ui.components.screenPadding
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.screens.KeyboardInputState
 

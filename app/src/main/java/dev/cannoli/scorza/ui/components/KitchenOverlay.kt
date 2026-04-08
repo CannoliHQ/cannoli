@@ -32,9 +32,11 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 
 import dev.cannoli.scorza.R
-import dev.cannoli.scorza.settings.ButtonLabelSet
-import dev.cannoli.scorza.ui.theme.GrayText
-import dev.cannoli.scorza.ui.theme.LocalCannoliFont
+import dev.cannoli.igm.ButtonLabelSet
+import dev.cannoli.igm.ui.components.BottomBar
+import dev.cannoli.igm.ui.components.screenPadding
+import dev.cannoli.igm.ui.theme.GrayText
+import dev.cannoli.igm.ui.theme.LocalCannoliFont
 
 @Composable
 fun KitchenOverlay(url: String, pin: String, buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER) {

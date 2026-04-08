@@ -34,7 +34,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
-import dev.cannoli.scorza.settings.ButtonLabelSet
+import dev.cannoli.igm.ButtonLabelSet
+import dev.cannoli.igm.ui.components.BottomBar
+import dev.cannoli.igm.ui.components.screenPadding
 
 const val KEY_SHIFT = "⇧"
 const val KEY_ENTER = "↵"

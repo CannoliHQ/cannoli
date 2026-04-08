@@ -20,11 +20,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
-import dev.cannoli.scorza.ui.components.BottomBar
-import dev.cannoli.scorza.ui.components.PillRowKeyValue
-import dev.cannoli.scorza.ui.components.screenPadding
-import dev.cannoli.scorza.settings.ButtonLabelSet
-import dev.cannoli.scorza.ui.theme.GrayText
+import dev.cannoli.igm.ui.components.BottomBar
+import dev.cannoli.igm.ui.components.PillRowKeyValue
+import dev.cannoli.igm.ui.components.screenPadding
+import dev.cannoli.igm.ButtonLabelSet
+import dev.cannoli.igm.ui.theme.GrayText
 
 @Composable
 fun SetupScreen(

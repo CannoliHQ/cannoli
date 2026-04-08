@@ -10,8 +10,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.cannoli.scorza.R
-import dev.cannoli.scorza.settings.ButtonLabelSet
-import dev.cannoli.scorza.ui.theme.GrayText
+import dev.cannoli.igm.ButtonLabelSet
+import dev.cannoli.igm.ui.components.BottomBar
+import dev.cannoli.igm.ui.components.LegendPill
+import dev.cannoli.igm.ui.theme.GrayText
 
 @Composable
 fun MissingCoreDialog(coreName: String, buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER) {

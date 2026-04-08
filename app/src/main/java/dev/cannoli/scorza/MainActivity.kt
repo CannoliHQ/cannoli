@@ -50,7 +50,7 @@ import dev.cannoli.scorza.scanner.OrderingManager
 import dev.cannoli.scorza.scanner.PlatformResolver
 import dev.cannoli.scorza.scanner.RecentlyPlayedManager
 import androidx.lifecycle.lifecycleScope
-import dev.cannoli.scorza.settings.ButtonLabelSet
+import dev.cannoli.igm.ButtonLabelSet
 import dev.cannoli.scorza.settings.ContentMode
 import dev.cannoli.scorza.settings.GlobalOverridesManager
 import dev.cannoli.scorza.settings.SettingsRepository
@@ -73,13 +73,13 @@ import dev.cannoli.scorza.ui.screens.withCursor
 import dev.cannoli.scorza.ui.screens.withInsertedChar
 import dev.cannoli.scorza.ui.screens.withKeyboard
 import dev.cannoli.scorza.ui.screens.withMenuDelta
-import dev.cannoli.scorza.ui.theme.COLOR_PRESETS
-import dev.cannoli.scorza.ui.theme.CannoliTheme
-import dev.cannoli.scorza.ui.theme.colorToArgbLong
-import dev.cannoli.scorza.ui.theme.hexToColor
+import dev.cannoli.igm.ui.theme.COLOR_PRESETS
+import dev.cannoli.igm.ui.theme.CannoliTheme
+import dev.cannoli.igm.ui.theme.colorToArgbLong
+import dev.cannoli.igm.ui.theme.hexToColor
 import dev.cannoli.scorza.ui.screens.InstallingScreen
 import dev.cannoli.scorza.ui.screens.SetupScreen
-import dev.cannoli.scorza.ui.theme.initFonts
+import dev.cannoli.igm.ui.theme.initFonts
 import dev.cannoli.scorza.model.Game
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel

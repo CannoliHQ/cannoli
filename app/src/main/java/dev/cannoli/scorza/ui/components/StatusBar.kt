@@ -44,10 +44,11 @@ import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.server.KitchenManager
 import dev.cannoli.scorza.settings.TextSize
-import dev.cannoli.scorza.ui.theme.LocalCannoliColors
-import dev.cannoli.scorza.ui.theme.LocalCannoliFont
-import dev.cannoli.scorza.ui.theme.LocalScaleFactor
-import dev.cannoli.scorza.ui.theme.MPlus1Code
+import dev.cannoli.igm.ui.components.pillInternalH
+import dev.cannoli.igm.ui.theme.LocalCannoliColors
+import dev.cannoli.igm.ui.theme.LocalCannoliFont
+import dev.cannoli.igm.ui.theme.LocalScaleFactor
+import dev.cannoli.igm.ui.theme.MPlus1Code
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date

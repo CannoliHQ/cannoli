@@ -32,23 +32,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
-import dev.cannoli.scorza.ui.theme.GrayText
-import dev.cannoli.scorza.ui.theme.LocalCannoliFont
+import dev.cannoli.igm.ui.theme.GrayText
+import dev.cannoli.igm.ui.theme.LocalCannoliFont
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.viewinterop.AndroidView
-import dev.cannoli.scorza.ui.components.BottomBar
-import dev.cannoli.scorza.ui.components.ScreenBackground
-import dev.cannoli.scorza.ui.components.LocalStatusBarLeftEdge
-import dev.cannoli.scorza.ui.components.ScreenTitle
+import dev.cannoli.igm.ui.components.BottomBar
+import dev.cannoli.igm.ui.components.ScreenBackground
+import dev.cannoli.igm.ui.components.LocalStatusBarLeftEdge
+import dev.cannoli.igm.ui.components.ScreenTitle
 import dev.cannoli.scorza.ui.components.StatusBar
-import dev.cannoli.scorza.ui.components.pillInternalH
+import dev.cannoli.igm.ui.components.pillInternalH
 import androidx.compose.ui.platform.LocalContext
-import dev.cannoli.scorza.ui.components.screenPadding
-import dev.cannoli.scorza.settings.ButtonLabelSet
-import dev.cannoli.scorza.ui.theme.LocalCannoliColors
-import dev.cannoli.scorza.ui.theme.LocalScaleFactor
+import dev.cannoli.igm.ui.components.screenPadding
+import dev.cannoli.igm.ButtonLabelSet
+import dev.cannoli.igm.ui.theme.LocalCannoliColors
+import dev.cannoli.igm.ui.theme.LocalScaleFactor
 
 data class GameInfo(
     val coreName: String,

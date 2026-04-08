@@ -18,17 +18,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import dev.cannoli.scorza.R
-import dev.cannoli.scorza.ui.components.BottomBar
-import dev.cannoli.scorza.ui.components.List
-import dev.cannoli.scorza.ui.components.PillRowKeyValue
-import dev.cannoli.scorza.ui.components.PillRowText
-import dev.cannoli.scorza.ui.components.ScreenBackground
-import dev.cannoli.scorza.ui.components.ScreenTitle
-import dev.cannoli.scorza.ui.components.pillInternalH
-import dev.cannoli.scorza.ui.components.pillItemHeight
-import dev.cannoli.scorza.ui.components.screenPadding
-import dev.cannoli.scorza.settings.ButtonLabelSet
-import dev.cannoli.scorza.ui.theme.LocalCannoliColors
+import dev.cannoli.igm.ui.components.BottomBar
+import dev.cannoli.igm.ui.components.List
+import dev.cannoli.igm.ui.components.PillRowKeyValue
+import dev.cannoli.igm.ui.components.PillRowText
+import dev.cannoli.igm.ui.components.ScreenBackground
+import dev.cannoli.igm.ui.components.ScreenTitle
+import dev.cannoli.igm.ui.components.pillInternalH
+import dev.cannoli.igm.ui.components.pillItemHeight
+import dev.cannoli.igm.ui.components.screenPadding
+import dev.cannoli.igm.ButtonLabelSet
+import dev.cannoli.igm.ui.theme.LocalCannoliColors
 
 private val verticalPadding = 8.dp
 

@@ -26,8 +26,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
-import dev.cannoli.scorza.ui.components.PillRowText
-import dev.cannoli.scorza.ui.theme.GrayText
+import dev.cannoli.igm.ui.components.PillRowText
+import dev.cannoli.igm.ui.theme.GrayText
 
 @Composable
 fun InstallingScreen(

@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.os.Handler
 import android.os.HandlerThread
+import dev.cannoli.igm.ButtonLabelSet
 import org.json.JSONObject
 import java.io.File
 
@@ -348,27 +349,6 @@ enum class ArtScale {
     }
 }
 
-enum class ButtonLabelSet {
-    PLUMBER, REDMOND, SHAPES;
-
-    val confirm: String get() = when (this) {
-        PLUMBER -> "A"; REDMOND -> "A"; SHAPES -> "✕"
-    }
-    val back: String get() = when (this) {
-        PLUMBER -> "B"; REDMOND -> "B"; SHAPES -> "○"
-    }
-    val x: String get() = when (this) {
-        PLUMBER -> "X"; REDMOND -> "Y"; SHAPES -> "△"
-    }
-    val y: String get() = when (this) {
-        PLUMBER -> "Y"; REDMOND -> "X"; SHAPES -> "□"
-    }
-
-    companion object {
-        fun fromString(value: String?): ButtonLabelSet =
-            entries.firstOrNull { it.name == value } ?: PLUMBER
-    }
-}
 
 enum class ContentMode {
     PLATFORMS, COLLECTIONS, FIVE_GAME_HANDHELD;

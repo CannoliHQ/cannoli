@@ -19,9 +19,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
-import dev.cannoli.scorza.settings.ButtonLabelSet
-import dev.cannoli.scorza.ui.theme.GrayText
-import dev.cannoli.scorza.ui.theme.LocalCannoliFont
+import dev.cannoli.igm.ButtonLabelSet
+import dev.cannoli.igm.ui.components.BottomBar
+import dev.cannoli.igm.ui.components.screenPadding
+import dev.cannoli.igm.ui.theme.GrayText
+import dev.cannoli.igm.ui.theme.LocalCannoliFont
 
 @Composable
 fun RAAccountOverlay(username: String, buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER) {
