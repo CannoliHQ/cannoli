@@ -1,0 +1,14 @@
+-- Merging decision tree log ---
+manifest
+ADDED from /Users/btk/Developer/cannoli-launcher/cannoli-igm/src/main/AndroidManifest.xml:1:1-13
+INJECTED from /Users/btk/Developer/cannoli-launcher/cannoli-igm/src/main/AndroidManifest.xml:1:1-13
+	package
+		INJECTED from /Users/btk/Developer/cannoli-launcher/cannoli-igm/src/main/AndroidManifest.xml
+uses-sdk
+INJECTED from /Users/btk/Developer/cannoli-launcher/cannoli-igm/src/main/AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from /Users/btk/Developer/cannoli-launcher/cannoli-igm/src/main/AndroidManifest.xml
+INJECTED from /Users/btk/Developer/cannoli-launcher/cannoli-igm/src/main/AndroidManifest.xml
+	android:targetSdkVersion
+		INJECTED from /Users/btk/Developer/cannoli-launcher/cannoli-igm/src/main/AndroidManifest.xml
+	android:minSdkVersion
+		INJECTED from /Users/btk/Developer/cannoli-launcher/cannoli-igm/src/main/AndroidManifest.xml
