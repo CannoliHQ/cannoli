@@ -47,6 +47,7 @@ android {
 
     buildFeatures {
         buildConfig = true
+        prefab = true
     }
 
     externalNativeBuild {
@@ -108,6 +109,7 @@ dependencies {
     implementation("org.apache.commons:commons-compress:1.27.1")
     implementation("org.tukaani:xz:1.10")
     implementation("io.legere:pdfiumandroid:1.0.35")
+    implementation("com.google.oboe:oboe:1.9.3")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.22.1)
 project(cannoli_native)
 
 find_library(log-lib log)
+find_package(oboe REQUIRED CONFIG)
 
 # Copy libretro.h into rcheevos include so rc_libretro.c can find it via <libretro.h>
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/libretro.h
@@ -24,8 +25,8 @@ target_compile_definitions(rcheevos PRIVATE RC_DISABLE_LUA)
 target_compile_definitions(rcheevos PUBLIC RC_CLIENT_SUPPORTS_HASH)
 
 # --- retro_bridge (libretro core runner) ---
-add_library(retro_bridge SHARED libretro_bridge.cpp ra_integration.c)
-target_link_libraries(retro_bridge rcheevos z ${log-lib})
+add_library(retro_bridge SHARED libretro_bridge.cpp ra_integration.c native_audio.cpp)
+target_link_libraries(retro_bridge rcheevos oboe::oboe z ${log-lib})
 target_include_directories(retro_bridge PRIVATE third_party/rcheevos/include third_party/rcheevos/src)
 
 # --- glslang (Vulkan GLSL → SPIR-V) ---
