@@ -41,8 +41,6 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
     @Volatile override var shaderPresetPath: String? = null
         set(value) { field = value; pipelineDirty = true }
 
-    @Volatile override var lowLatency = false
-
     @Volatile private var sharpnessDirty = false
     @Volatile private var shaderDirty = false
     @Volatile private var overlayDirty = false
