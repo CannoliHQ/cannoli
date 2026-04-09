@@ -11,6 +11,7 @@
 #include <zlib.h>
 #include "libretro.h"
 #include "frame_buffer.h"
+#include "native_audio.h"
 
 #define LOG_TAG "LibretroBridge"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -55,10 +56,7 @@ static unsigned g_frame_height = 0;
 static size_t g_frame_pitch = 0;
 static bool g_frame_ready = false;
 
-// Audio state
 static JavaVM *g_jvm = nullptr;
-static jobject g_audio_obj = nullptr;
-static jmethodID g_audio_write_method = nullptr;
 
 // Paths
 static char g_system_dir[512] = {0};
@@ -410,42 +408,12 @@ static void video_refresh_cb(const void *data, unsigned width, unsigned height, 
 }
 
 static void audio_sample_cb(int16_t left, int16_t right) {
-    // Single sample callback - rarely used, but handle it
     int16_t buf[2] = {left, right};
-    if (!g_audio_obj || !g_jvm) return;
-
-    JNIEnv *env = nullptr;
-    bool attached = false;
-    if (g_jvm->GetEnv((void **)&env, JNI_VERSION_1_6) != JNI_OK) {
-        g_jvm->AttachCurrentThread(&env, nullptr);
-        attached = true;
-    }
-
-    jshortArray arr = env->NewShortArray(2);
-    env->SetShortArrayRegion(arr, 0, 2, buf);
-    env->CallVoidMethod(g_audio_obj, g_audio_write_method, arr, 2);
-    env->DeleteLocalRef(arr);
-
-    if (attached) g_jvm->DetachCurrentThread();
+    nativeAudioWrite(buf, 1);
 }
 
 static size_t audio_sample_batch_cb(const int16_t *data, size_t frames) {
-    if (!g_audio_obj || !g_jvm || frames == 0) return frames;
-
-    JNIEnv *env = nullptr;
-    bool attached = false;
-    if (g_jvm->GetEnv((void **)&env, JNI_VERSION_1_6) != JNI_OK) {
-        g_jvm->AttachCurrentThread(&env, nullptr);
-        attached = true;
-    }
-
-    jint count = (jint)(frames * 2); // stereo interleaved
-    jshortArray arr = env->NewShortArray(count);
-    env->SetShortArrayRegion(arr, 0, count, data);
-    env->CallVoidMethod(g_audio_obj, g_audio_write_method, arr, count);
-    env->DeleteLocalRef(arr);
-
-    if (attached) g_jvm->DetachCurrentThread();
+    if (frames > 0) nativeAudioWrite(data, (int32_t)frames);
     return frames;
 }
 
@@ -541,12 +509,18 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeInit(JNIEnv *env, jobject,
 }
 
 JNIEXPORT void JNICALL
-Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeSetAudioCallback(JNIEnv *env, jobject,
-        jobject audioObj) {
-    if (g_audio_obj) env->DeleteGlobalRef(g_audio_obj);
-    g_audio_obj = env->NewGlobalRef(audioObj);
-    jclass cls = env->GetObjectClass(audioObj);
-    g_audio_write_method = env->GetMethodID(cls, "writeSamples", "([SI)V");
+Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeAudioInit(JNIEnv *, jobject, jint sampleRate) {
+    nativeAudioInit(sampleRate);
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeAudioStop(JNIEnv *, jobject) {
+    nativeAudioStop();
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeAudioSetMuted(JNIEnv *, jobject, jboolean muted) {
+    nativeAudioSetMuted(muted);
 }
 
 JNIEXPORT jintArray JNICALL
@@ -883,10 +857,7 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeDeinit(JNIEnv *env, jobjec
         dlclose(core.handle);
         core.handle = nullptr;
     }
-    if (g_audio_obj) {
-        env->DeleteGlobalRef(g_audio_obj);
-        g_audio_obj = nullptr;
-    }
+    nativeAudioStop();
     {
         std::lock_guard<std::mutex> lock(g_frame_mutex);
         free(g_frame_buf);
