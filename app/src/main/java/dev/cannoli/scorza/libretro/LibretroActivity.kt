@@ -63,7 +63,6 @@ class LibretroActivity : ComponentActivity() {
     private lateinit var profileManager: ProfileManager
     private lateinit var slotManager: SaveSlotManager
     private lateinit var overrideManager: OverrideManager
-    private var audio: LibretroAudio? = null
     private var glSurfaceView: GLSurfaceView? = null
     private var gameView: android.view.View? = null
     private var loading by mutableStateOf(true)
@@ -83,8 +82,6 @@ class LibretroActivity : ComponentActivity() {
     private var sharpness by mutableStateOf(Sharpness.SHARP)
     private var debugHud by mutableStateOf(false)
     private var maxFfSpeed by mutableIntStateOf(4)
-    private var lowLatency by mutableStateOf(false)
-
     private var overlay by mutableStateOf("")
     private var overlayImages = emptyList<String>()
 
@@ -123,7 +120,7 @@ class LibretroActivity : ComponentActivity() {
     private fun setFastForward(enabled: Boolean) {
         fastForwarding = enabled
         renderer.fastForwardFrames = if (enabled) maxFfSpeed else 0
-        audio?.muted = enabled
+        runner.setAudioMuted(enabled)
     }
 
     private enum class UndoType { SAVE, LOAD, RESET }
@@ -391,10 +388,8 @@ class LibretroActivity : ComponentActivity() {
                 scanShaderPresets()
 
                 audioSampleRate = avInfo.sampleRate
-                audio = LibretroAudio(avInfo.sampleRate, lowLatency)
-                runner.setAudioCallback(audio!!)
-                audio!!.muted = true
-                audio!!.start()
+                runner.initAudio(avInfo.sampleRate)
+                runner.setAudioMuted(true)
 
                 val shaderCacheDir = File(cacheDir, "shader_cache")
                 ShaderPipeline.cacheDir = shaderCacheDir
@@ -408,7 +403,6 @@ class LibretroActivity : ComponentActivity() {
                     backend.debugHud = debugHud
                     backend.overlayPath = resolveOverlayPath()
                     backend.shaderPresetPath = resolveShaderPresetPath()
-                    backend.lowLatency = lowLatency
                 }
 
                 val glesBackend = LibretroRenderer(runner)
@@ -423,7 +417,7 @@ class LibretroActivity : ComponentActivity() {
                 val verticalToggle = prepareVerticalModeReinit()
                 glesBackend.onFrameRendered = {
                     if (startupCountdown > 0 && --startupCountdown == 0) {
-                        audio?.muted = false
+                        runner.setAudioMuted(false)
                         runOnUiThread { revealed = true }
                     }
                     if (verticalToggle != null) {
@@ -444,7 +438,6 @@ class LibretroActivity : ComponentActivity() {
                 gameView = glSurfaceView
 
                 loading = false
-                runOnUiThread { applyLowLatency() }
 
                 val raUser = intent.getStringExtra("ra_username") ?: ""
                 val raToken = intent.getStringExtra("ra_token") ?: ""
@@ -1148,11 +1141,10 @@ class LibretroActivity : ComponentActivity() {
                 applyForceAnalog(ct.id > 1)
                 runner.setControllerPortDevice(0, ct.id)
             } else {
-                lowLatency = !lowLatency; renderer.lowLatency = lowLatency; applyLowLatency()
+                cycleFfSpeed(direction)
             }
-            offset -> { lowLatency = !lowLatency; renderer.lowLatency = lowLatency; applyLowLatency() }
-            offset + 1 -> { cycleFfSpeed(direction) }
-            offset + 2 -> { debugHud = !debugHud; renderer.debugHud = debugHud }
+            offset -> { cycleFfSpeed(direction) }
+            offset + 1 -> { debugHud = !debugHud; renderer.debugHud = debugHud }
         }
     }
 
@@ -1164,13 +1156,6 @@ class LibretroActivity : ComponentActivity() {
         val value = if (enable) "true" else "false"
         runner.setCoreOption(key, value)
         coreOptions = runner.getCoreOptions()
-    }
-
-    private fun applyLowLatency() {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-            window.setPreferMinimalPostProcessing(lowLatency)
-        }
-        audio?.setLowLatency(lowLatency)
     }
 
     private fun cycleShader(direction: Int) {
@@ -1836,7 +1821,6 @@ class LibretroActivity : ComponentActivity() {
         is IGMScreen.Advanced -> buildList {
             if (controllerTypes.size > 1)
                 add(IGMSettingsItem("Controller Type", controllerTypes.getOrNull(controllerTypeIndex)?.desc ?: "Standard"))
-            add(IGMSettingsItem("Low Latency", if (lowLatency) "On" else "Off"))
             add(IGMSettingsItem("Max FF Speed", "${maxFfSpeed}x"))
             add(IGMSettingsItem("Debug HUD", if (debugHud) "On" else "Off"))
         }
@@ -1898,7 +1882,6 @@ class LibretroActivity : ComponentActivity() {
             sharpness = sharpness,
             debugHud = debugHud,
             maxFfSpeed = maxFfSpeed,
-            lowLatency = lowLatency,
             shaderPreset = shaderPreset,
             overlay = overlay,
             controllerTypeId = controllerTypes.getOrNull(controllerTypeIndex)?.id ?: -1,
@@ -1931,7 +1914,6 @@ class LibretroActivity : ComponentActivity() {
         sharpness = settings.sharpness
         debugHud = settings.debugHud
         maxFfSpeed = settings.maxFfSpeed
-        lowLatency = settings.lowLatency
         shaderPreset = settings.shaderPreset
         overlay = settings.overlay
         currentProfileName = settings.profileName
@@ -2007,7 +1989,7 @@ class LibretroActivity : ComponentActivity() {
         raManager?.destroy()
         raManager = null
         if (sramPath.isNotEmpty()) { File(sramPath).parentFile?.mkdirs(); runner.saveSRAM(sramPath) }
-        audio?.stop()
+        runner.stopAudio()
         runner.unloadGame()
         runner.deinit()
         File(cacheDir, "rom_cache").deleteRecursively()
