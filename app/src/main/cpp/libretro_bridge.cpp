@@ -523,6 +523,16 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeAudioSetMuted(JNIEnv *, jo
     nativeAudioSetMuted(muted);
 }
 
+JNIEXPORT void JNICALL
+Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeAudioPause(JNIEnv *, jobject) {
+    nativeAudioPause();
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeAudioResume(JNIEnv *, jobject) {
+    nativeAudioResume();
+}
+
 JNIEXPORT jintArray JNICALL
 Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeLoadGame(JNIEnv *env, jobject, jstring romPath) {
     const char *path = env->GetStringUTFChars(romPath, nullptr);

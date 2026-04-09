@@ -337,7 +337,7 @@ class LibretroActivity : ComponentActivity() {
             override fun handleOnBackPressed() {
                 if (loading) return
                 if (screenStack.isEmpty()) openMenu() else pop()
-                if (screenStack.isEmpty()) renderer.paused = false
+                if (screenStack.isEmpty()) { renderer.paused = false; runner.resumeAudio() }
             }
         })
 
@@ -701,6 +701,7 @@ class LibretroActivity : ComponentActivity() {
                 }
                 ShortcutAction.SAVE_AND_QUIT -> {
                     renderer.paused = true
+                    runner.pauseAudio()
                     if (stateBasePath.isNotEmpty()) slotManager.saveState(runner, slotManager.slots[0])
                     quit()
                 }
@@ -726,6 +727,7 @@ class LibretroActivity : ComponentActivity() {
                     val guides = guideManager.findGuides()
                     if (guides.isNotEmpty()) {
                         renderer.paused = true
+                        runner.pauseAudio()
                         screenStack.clear()
                         guideFiles = guides
                         if (guides.size == 1) openGuide(guides[0])
@@ -750,6 +752,7 @@ class LibretroActivity : ComponentActivity() {
         screenStack.clear()
         push(IGMScreen.Menu())
         renderer.paused = true
+        runner.pauseAudio()
         refreshSlotInfo()
         refreshDiskInfo()
     }
@@ -762,6 +765,7 @@ class LibretroActivity : ComponentActivity() {
         controllerManager.resetAllInput()
         for (p in 0 until LibretroRunner.MAX_PORTS) runner.setInput(p, 0)
         renderer.paused = false
+        runner.resumeAudio()
     }
 
     private fun onControllerDisconnected(port: Int) {

@@ -30,6 +30,8 @@ class LibretroRunner {
     fun initAudio(sampleRate: Int) = nativeAudioInit(sampleRate)
     fun stopAudio() = nativeAudioStop()
     fun setAudioMuted(muted: Boolean) = nativeAudioSetMuted(muted)
+    fun pauseAudio() = nativeAudioPause()
+    fun resumeAudio() = nativeAudioResume()
 
     fun loadGame(romPath: String): SystemAvInfo? {
         val result = nativeLoadGame(romPath) ?: return null
@@ -142,6 +144,8 @@ class LibretroRunner {
     private external fun nativeAudioInit(sampleRate: Int)
     private external fun nativeAudioStop()
     private external fun nativeAudioSetMuted(muted: Boolean)
+    private external fun nativeAudioPause()
+    private external fun nativeAudioResume()
     private external fun nativeLoadGame(romPath: String): IntArray?
     private external fun nativeRun()
     private external fun nativeSetInput(port: Int, mask: Int)

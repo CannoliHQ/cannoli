@@ -41,6 +41,12 @@ android {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")
         }
 
+        externalNativeBuild {
+            cmake {
+                arguments("-DANDROID_STL=c++_shared")
+            }
+        }
+
         buildConfigField("String", "BUILD_DATE", "\"${buildDate()}\"")
         buildConfigField("String", "GIT_HASH", "\"${gitCommitHash()}\"")
     }
