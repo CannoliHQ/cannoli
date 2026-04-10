@@ -74,7 +74,7 @@ class SystemListViewModel(
             if (contentMode == ContentMode.FIVE_GAME_HANDHELD) {
                 val fghStem = collectionManager.findFghStem()
                 if (fghStem != null) {
-                    val games = scanner.scanCollectionGames(fghStem, includeFavoriteStars = false).take(5)
+                    val games = scanner.scanCollectionGames(fghStem, includeFavoriteStars = false)
                     games.forEach { items.add(ListItem.GameItem(it)) }
                 }
             } else {

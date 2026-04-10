@@ -129,6 +129,8 @@ fun AppNavGraph(
                     kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
                     title = appSettings.title,
                     mainMenuQuit = appSettings.mainMenuQuit,
+                    artWidth = appSettings.artWidth,
+                    artScale = appSettings.artScale,
                     buttonLabelSet = labels
                 )
             }
