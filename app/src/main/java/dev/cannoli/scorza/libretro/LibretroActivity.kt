@@ -369,7 +369,7 @@ class LibretroActivity : ComponentActivity() {
                 coreCategories = runner.getCoreCategories()
 
                 loadOverrides()
-                controllerTypes = runner.getControllerTypes(0)
+                controllerTypes = runner.getControllerTypes(0).filter { it.id != 0 }
                 val savedTypeId = overrideManager.load(profileManager).controllerTypeId
                 val savedIdx = if (savedTypeId >= 0) controllerTypes.indexOfFirst { it.id == savedTypeId } else -1
                 if (savedIdx >= 0) {
