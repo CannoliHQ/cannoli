@@ -262,6 +262,10 @@ class SettingsRepository(context: Context) {
         get() = jsonRead { optString(KEY_CACHED_UPDATE_CHANGELOG, "") }
         set(value) = jsonWrite { if (value.isEmpty()) remove(KEY_CACHED_UPDATE_CHANGELOG) else put(KEY_CACHED_UPDATE_CHANGELOG, value) }
 
+    var debugLogging: Boolean
+        get() = jsonRead { optBoolean(KEY_DEBUG_LOGGING, false) }
+        set(value) = jsonWrite { put(KEY_DEBUG_LOGGING, value) }
+
     companion object {
         const val DEFAULT_ROOT = "/storage/emulated/0/Cannoli/"
         const val DEFAULT_RA_PACKAGE = "dev.cannoli.ricotta.aarch64"
@@ -317,6 +321,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_CACHED_UPDATE_CHANGELOG = "cached_update_changelog"
         private const val KEY_BUTTON_LABEL_SET = "button_label_set"
         private const val KEY_CONTENT_MODE = "content_mode"
+        private const val KEY_DEBUG_LOGGING = "debug_logging"
     }
 }
 

@@ -14,9 +14,10 @@
 #include "native_audio.h"
 
 #define LOG_TAG "LibretroBridge"
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
-#define LOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+static void bridge_log(const char *level_str, int prio, const char *fmt, ...) __attribute__((format(printf, 3, 4)));
+#define LOGI(...) bridge_log("INFO",  ANDROID_LOG_INFO,  __VA_ARGS__)
+#define LOGW(...) bridge_log("WARN",  ANDROID_LOG_WARN,  __VA_ARGS__)
+#define LOGE(...) bridge_log("ERROR", ANDROID_LOG_ERROR, __VA_ARGS__)
 
 static struct {
     void *handle;
@@ -102,20 +103,59 @@ static struct retro_memory_map g_memory_map = {0};
 static struct retro_memory_descriptor *g_memory_descriptors = nullptr;
 static unsigned g_memory_descriptor_count = 0;
 
+// --- Log ring buffer (shared by bridge_log and core_log) ---
+
+static const int LOG_RING_SIZE = 64;
+static std::string g_log_ring[LOG_RING_SIZE];
+static int g_log_ring_head = 0;
+static int g_log_ring_count = 0;
+static std::mutex g_log_ring_mutex;
+
+static void ring_push(const char *level_str, const char *fmt, va_list args) {
+    char buf[512];
+    vsnprintf(buf, sizeof(buf), fmt, args);
+    size_t len = strlen(buf);
+    if (len > 0 && buf[len - 1] == '\n') buf[len - 1] = '\0';
+
+    std::lock_guard<std::mutex> lock(g_log_ring_mutex);
+    std::string entry = std::string("[") + level_str + "] " + buf;
+    g_log_ring[g_log_ring_head] = std::move(entry);
+    g_log_ring_head = (g_log_ring_head + 1) % LOG_RING_SIZE;
+    if (g_log_ring_count < LOG_RING_SIZE) g_log_ring_count++;
+}
+
+static void bridge_log(const char *level_str, int prio, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    __android_log_vprint(prio, LOG_TAG, fmt, args);
+    va_end(args);
+
+    va_list args2;
+    va_start(args2, fmt);
+    ring_push(level_str, fmt, args2);
+    va_end(args2);
+}
+
 // --- Libretro callbacks ---
 
 static void core_log(enum retro_log_level level, const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
     int prio = ANDROID_LOG_DEBUG;
+    const char *level_str = "DEBUG";
     switch (level) {
-        case RETRO_LOG_DEBUG: prio = ANDROID_LOG_DEBUG; break;
-        case RETRO_LOG_INFO:  prio = ANDROID_LOG_INFO; break;
-        case RETRO_LOG_WARN:  prio = ANDROID_LOG_WARN; break;
-        case RETRO_LOG_ERROR: prio = ANDROID_LOG_ERROR; break;
+        case RETRO_LOG_DEBUG: prio = ANDROID_LOG_DEBUG; level_str = "DEBUG"; break;
+        case RETRO_LOG_INFO:  prio = ANDROID_LOG_INFO;  level_str = "INFO";  break;
+        case RETRO_LOG_WARN:  prio = ANDROID_LOG_WARN;  level_str = "WARN";  break;
+        case RETRO_LOG_ERROR: prio = ANDROID_LOG_ERROR;  level_str = "ERROR"; break;
     }
     __android_log_vprint(prio, "LibretroCore", fmt, args);
     va_end(args);
+
+    va_list args2;
+    va_start(args2, fmt);
+    ring_push(level_str, fmt, args2);
+    va_end(args2);
 }
 
 static unsigned g_rotation = 0;
@@ -1051,4 +1091,19 @@ extern "C" void *bridge_get_memory_data(unsigned id) {
 
 extern "C" size_t bridge_get_memory_size(unsigned id) {
     return core.get_memory_size ? core.get_memory_size(id) : 0;
+}
+
+extern "C" JNIEXPORT jobjectArray JNICALL
+Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeGetCoreLogs(JNIEnv *env, jobject) {
+    std::lock_guard<std::mutex> lock(g_log_ring_mutex);
+    jclass strClass = env->FindClass("java/lang/String");
+    jobjectArray result = env->NewObjectArray(g_log_ring_count, strClass, nullptr);
+    int start = (g_log_ring_head - g_log_ring_count + LOG_RING_SIZE) % LOG_RING_SIZE;
+    for (int i = 0; i < g_log_ring_count; i++) {
+        int idx = (start + i) % LOG_RING_SIZE;
+        env->SetObjectArrayElement(result, i, env->NewStringUTF(g_log_ring[idx].c_str()));
+    }
+    g_log_ring_count = 0;
+    g_log_ring_head = 0;
+    return result;
 }

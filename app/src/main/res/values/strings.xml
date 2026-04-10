@@ -90,6 +90,7 @@
     <string name="setting_ra_logout">Logout</string>
     <string name="setting_ra_status">Logged in as</string>
     <string name="setting_kitchen_toggle">File Server</string>
+    <string name="setting_debug_logging">Debug Logging</string>
 
     <!-- Setting values -->
     <string name="value_on">On</string>

@@ -52,6 +52,7 @@ import android.os.Looper
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import dev.cannoli.scorza.util.SessionLog
 import java.io.File
 
 class LibretroActivity : ComponentActivity() {
@@ -153,6 +154,7 @@ class LibretroActivity : ComponentActivity() {
 
     @Volatile private var raHasAchievements = false
 
+    private lateinit var sessionLog: SessionLog
     private lateinit var guideManager: GuideManager
     private var guideFiles by mutableStateOf(emptyList<GuideFile>())
     private var guidePageCount by mutableIntStateOf(0)
@@ -215,6 +217,21 @@ class LibretroActivity : ComponentActivity() {
         platformTag = intent.getStringExtra("platform_tag") ?: ""
         platformName = intent.getStringExtra("platform_name") ?: platformTag
         cannoliRoot = intent.getStringExtra("cannoli_root") ?: ""
+        val coreName = File(corePath).nameWithoutExtension
+        val debugLogging = intent.getBooleanExtra("debug_logging", false)
+        sessionLog = SessionLog(
+            enabled = debugLogging,
+            cannoliRoot = cannoliRoot,
+            coreName = coreName,
+            corePath = corePath,
+            romPath = romPath,
+            graphicsBackend = intent.getStringExtra("graphics_backend") ?: "GLES"
+        )
+        sessionLog.log("onCreate started")
+        sessionLog.log("game_title=$gameTitle")
+        sessionLog.log("system_dir=$systemDir")
+        sessionLog.log("save_dir=$saveDir")
+        sessionLog.log("platform_tag=$platformTag")
         slotManager = SaveSlotManager(stateBasePath)
         guideManager = GuideManager(cannoliRoot, platformTag, gameTitle)
         profileManager = ProfileManager(cannoliRoot)
@@ -344,16 +361,40 @@ class LibretroActivity : ComponentActivity() {
         val resumeSlot = intent.getIntExtra("resume_slot", -1)
         val activity = this
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            if (!runner.loadCore(corePath)) { withContext(kotlinx.coroutines.Dispatchers.Main) { finish() }; return@launch }
+            sessionLog.log("loadCore: $corePath")
+            if (!runner.loadCore(corePath)) {
+                sessionLog.logError("loadCore FAILED for $corePath")
+                for (line in runner.getCoreLogs()) sessionLog.log("  core: $line")
+                sessionLog.close()
+                withContext(kotlinx.coroutines.Dispatchers.Main) { finish() }
+                return@launch
+            }
             runner.init(systemDir, saveDir)
+            sessionLog.log("runner.init completed")
             val coreBaseName = File(corePath).nameWithoutExtension
             gameBaseName = if (romPath.isNotEmpty()) File(romPath).nameWithoutExtension else ""
             overrideManager = OverrideManager(cannoliRoot, platformTag, gameBaseName, coreBaseName)
             for ((key, value) in overrideManager.loadCoreOptions()) {
                 runner.setCoreOption(key, value)
             }
+            val romFile = File(romPath)
+            sessionLog.log("ROM validation: exists=${romFile.exists()} readable=${romFile.canRead()} size=${romFile.length()} ext=${romFile.extension}")
+            val biosDir = File(systemDir)
+            val biosFiles = biosDir.listFiles()?.map { it.name } ?: emptyList()
+            sessionLog.log("BIOS dir ($systemDir): $biosFiles")
+            val coreOpts = runner.getCoreOptions().map { "${it.key}=${it.selected}" }
+            sessionLog.log("Core options: $coreOpts")
+            sessionLog.log("loadGame: $romPath")
             val avInfo = runner.loadGame(romPath)
-            if (avInfo == null) { runner.deinit(); withContext(kotlinx.coroutines.Dispatchers.Main) { finish() }; return@launch }
+            if (avInfo == null) {
+                sessionLog.logError("loadGame returned null for $romPath")
+                for (line in runner.getCoreLogs()) sessionLog.log("  core: $line")
+                sessionLog.close()
+                runner.deinit()
+                withContext(kotlinx.coroutines.Dispatchers.Main) { finish() }
+                return@launch
+            }
+            sessionLog.log("loadGame succeeded: fps=${avInfo.fps} sampleRate=${avInfo.sampleRate}")
             if (sramPath.isNotEmpty() && File(sramPath).exists()) runner.loadSRAM(sramPath)
             if (resumeSlot >= 0) {
                 val slot = slotManager.slots.getOrNull(resumeSlot)
@@ -436,8 +477,10 @@ class LibretroActivity : ComponentActivity() {
                     renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
                 }
                 gameView = glSurfaceView
+                sessionLog.log("renderer initialized: ${renderer.backendName}")
 
                 loading = false
+                sessionLog.log("render loop starting")
 
                 val raUser = intent.getStringExtra("ra_username") ?: ""
                 val raToken = intent.getStringExtra("ra_token") ?: ""
@@ -2014,6 +2057,7 @@ class LibretroActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
+        if (::sessionLog.isInitialized) sessionLog.log("onPause")
         if (!loading && !cleaned && screenStack.isEmpty()) openMenu()
         glSurfaceView?.onPause()
         if (!loading && !cleaned && sramPath.isNotEmpty()) { File(sramPath).parentFile?.mkdirs(); runner.saveSRAM(sramPath) }
@@ -2021,6 +2065,7 @@ class LibretroActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
+        if (::sessionLog.isInitialized) sessionLog.log("onStop")
         if (!loading && !cleaned && stateBasePath.isNotEmpty() && !autoSavedOnStop) {
             File("$stateBasePath.auto").parentFile?.mkdirs()
             runner.saveState("$stateBasePath.auto")
@@ -2036,11 +2081,16 @@ class LibretroActivity : ComponentActivity() {
     @Suppress("DEPRECATION")
     override fun onResume() {
         super.onResume(); overridePendingTransition(0, 0); glSurfaceView?.onResume(); goFullscreen()
+        if (::sessionLog.isInitialized) sessionLog.log("onResume")
         if (autoSavedOnStop && cannoliRoot.isNotEmpty()) File(cannoliRoot, "Config/State/quick_resume.txt").delete()
         autoSavedOnStop = false
     }
 
     override fun onDestroy() {
+        if (::sessionLog.isInitialized) {
+            sessionLog.log("onDestroy")
+            sessionLog.close()
+        }
         isRunning = false
         if (::controllerManager.isInitialized) {
             val inputManager = getSystemService(Context.INPUT_SERVICE) as InputManager

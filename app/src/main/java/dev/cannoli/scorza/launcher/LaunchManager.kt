@@ -395,6 +395,7 @@ class LaunchManager(
             putExtra("color_accent", settings.colorAccent)
             putExtra("font", settings.font)
             putExtra("graphics_backend", settings.graphicsBackend)
+            putExtra("debug_logging", settings.debugLogging)
             putExtra("ra_username", settings.raUsername)
             putExtra("ra_token", settings.raToken)
             val raIdFile = File(File(settings.sdCardRoot, "Config/RetroArch"), "ra_game_ids.txt")

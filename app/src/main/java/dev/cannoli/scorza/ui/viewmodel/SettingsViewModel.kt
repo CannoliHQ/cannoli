@@ -368,6 +368,7 @@ class SettingsViewModel(
             "show_update" -> settings.showUpdate = !settings.showUpdate
             "main_menu_quit" -> settings.mainMenuQuit = !settings.mainMenuQuit
             "retroarch_diy_mode" -> settings.retroArchDiyMode = !settings.retroArchDiyMode
+            "debug_logging" -> settings.debugLogging = !settings.debugLogging
             "graphics_backend" -> {
                 val backends = listOf("GLES", "VULKAN")
                 val cur = backends.indexOf(settings.graphicsBackend).coerceAtLeast(0)
@@ -653,6 +654,7 @@ class SettingsViewModel(
             if (!isTelevision && !isDefaultLauncher()) {
                 add(SettingsItem("set_default_launcher", R.string.setting_set_default_launcher, isEditable = true))
             }
+            add(SettingsItem("debug_logging", R.string.setting_debug_logging, valueRes = onOff(settings.debugLogging)))
         }
         else -> emptyList()
     }
