@@ -163,7 +163,7 @@ class RetroAchievementsManager(
                 state = parts[5].toIntOrNull() ?: 0,
                 unlockTime = parts[6].toLongOrNull() ?: 0
             )
-        }.filter { it.id > 0 && !it.title.startsWith("Warning:") }
+        }.filter { it.id > 0 && !it.title.startsWith("Warning:") && !it.title.startsWith("Unsupported") }
             .sortedBy { if (it.points == 0) 1 else 0 }
         cachedAchievements = list
         return list
@@ -254,8 +254,10 @@ class RetroAchievementsManager(
     private fun onAchievementEvent(type: Int, achievementId: Int, title: String, description: String, points: Int) {
         if (achievementId > 0) {
             localUnlocks.add(achievementId)
-            pendingSyncIds.add(achievementId)
-            savePendingSync()
+            if (isOffline) {
+                pendingSyncIds.add(achievementId)
+                savePendingSync()
+            }
         }
         cachedAchievements = null
         mainHandler.post { onEvent(type, title, description, points) }

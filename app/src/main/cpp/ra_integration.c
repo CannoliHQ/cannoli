@@ -182,6 +182,10 @@ static void ra_event_handler(const rc_client_event_t *event, rc_client_t *client
     int type = event->type;
 
     if (event->achievement) {
+        if (event->achievement->title &&
+            (strncmp(event->achievement->title, "Warning:", 8) == 0 ||
+             strncmp(event->achievement->title, "Unsupported", 11) == 0))
+            return;
         title = event->achievement->title;
         desc = event->achievement->description;
         points = event->achievement->points;
