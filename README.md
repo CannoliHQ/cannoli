@@ -18,6 +18,24 @@ Cannoli
 
 ---
 
+# What is Cannoli?
+
+Cannoli is an opinionated retro gaming setup for Android.
+
+It comes with [built-in libretro cores](https://cannoli.dev/documentation/platforms/) and can also launch RetroArch / Standalone emulators like a traditional frontend.
+
+---
+
+# What does it look like?
+
+<p align="center">
+<a href=".github/resources/screenshots/main_menu.png"><img src=".github/resources/screenshots/main_menu.png" width="30%"></a>
+<a href=".github/resources/screenshots/favorites.png"><img src=".github/resources/screenshots/favorites.png" width="30%"></a>
+<a href=".github/resources/screenshots/igm.png"><img src=".github/resources/screenshots/igm.png" width="30%"></a>
+</p>
+
+---
+
 # Why make another frontend?
 
 `¯\_(ツ)_/¯`
