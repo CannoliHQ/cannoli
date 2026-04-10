@@ -128,6 +128,11 @@
     <string name="context_delete">Delete</string>
     <string name="context_add_to_collection">Add To Collection</string>
 
+    <!-- Permission screen -->
+    <string name="permission_title">All Files Access Required</string>
+    <string name="permission_description">Cannoli needs permission to read your games, BIOS files, etc.</string>
+    <string name="permission_grant">Press any button to grant access</string>
+
     <!-- Setup screen -->
     <string name="setup_welcome">Welcome to Cannoli!</string>
     <string name="setup_description">Select where to create your Cannoli folder.</string>

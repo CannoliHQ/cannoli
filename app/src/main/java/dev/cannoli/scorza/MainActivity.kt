@@ -78,6 +78,7 @@ import dev.cannoli.igm.ui.theme.CannoliTheme
 import dev.cannoli.igm.ui.theme.colorToArgbLong
 import dev.cannoli.igm.ui.theme.hexToColor
 import dev.cannoli.scorza.ui.screens.InstallingScreen
+import dev.cannoli.scorza.ui.screens.PermissionScreen
 import dev.cannoli.scorza.ui.screens.SetupScreen
 import dev.cannoli.igm.ui.theme.initFonts
 import dev.cannoli.scorza.model.Game
@@ -159,6 +160,7 @@ class MainActivity : ComponentActivity() {
     }
     private var currentFirstVisible = 0
     private var currentPageSize = 10
+    private var permissionGranted by mutableStateOf(false)
     private var inSetup by mutableStateOf(false)
     private var coldStart = true
     private var setupSelectedIndex by mutableStateOf(0)
@@ -361,6 +363,7 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) {
         if (hasStoragePermission()) {
+            permissionGranted = true
             afterPermissionGranted()
         }
     }
@@ -415,6 +418,7 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { grants ->
         if (grants.values.all { it }) {
+            permissionGranted = true
             afterPermissionGranted()
         }
     }
@@ -431,9 +435,16 @@ class MainActivity : ComponentActivity() {
         initFonts(assets)
 
         if (hasStoragePermission()) {
+            permissionGranted = true
             afterPermissionGranted()
         } else {
-            requestStoragePermission()
+            setContent {
+                CannoliTheme {
+                    Surface(modifier = Modifier.fillMaxSize()) {
+                        PermissionScreen()
+                    }
+                }
+            }
         }
     }
 
@@ -605,6 +616,11 @@ class MainActivity : ComponentActivity() {
     @Suppress("DEPRECATION")
     override fun onResume() {
         super.onResume()
+        if (!permissionGranted && hasStoragePermission()) {
+            permissionGranted = true
+            afterPermissionGranted()
+            return
+        }
         if (!coldStart) overridePendingTransition(0, 0)
         coldStart = false
         hideSystemUI()
@@ -653,6 +669,10 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (!permissionGranted) {
+            requestStoragePermission()
+            return true
+        }
         if (installingFinished) {
             handleInstallingInput(keyCode)
             return true
