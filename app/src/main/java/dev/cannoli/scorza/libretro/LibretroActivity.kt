@@ -485,6 +485,7 @@ class LibretroActivity : ComponentActivity() {
                 val raUser = intent.getStringExtra("ra_username") ?: ""
                 val raToken = intent.getStringExtra("ra_token") ?: ""
                 val consoleId = RetroAchievementsManager.CONSOLE_MAP[platformTag]
+                sessionLog.log("RA init: user=${raUser.isNotEmpty()} token=${raToken.isNotEmpty()} consoleId=$consoleId platformTag=$platformTag")
                 if (consoleId != null && raUser.isNotEmpty() && raToken.isNotEmpty()) {
                     val raGameIdOverride = intent.getIntExtra("ra_game_id", 0)
                     val ra = RetroAchievementsManager(
@@ -498,11 +499,14 @@ class LibretroActivity : ComponentActivity() {
                     )
                     ra.init()
                     ra.loginWithToken(raUser, raToken)
+                    sessionLog.log("RA login: loggedIn=${ra.isLoggedIn} username=${ra.username} online=${ra.isOnline}")
                     if (raGameIdOverride > 0) {
                         ra.loadGameById(raGameIdOverride, consoleId)
+                        sessionLog.log("RA loadGameById: id=$raGameIdOverride consoleId=$consoleId")
                     } else {
                         ra.loadGame(romPath, consoleId)
                     }
+                    sessionLog.log("RA game: gameId=${ra.gameId} title=${ra.gameTitle}")
                     if (resumeSlot >= 0) ra.pendingReset = true
                     raManager = ra
                 }
