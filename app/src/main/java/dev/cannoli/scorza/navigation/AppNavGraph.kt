@@ -60,6 +60,9 @@ import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
 import kotlinx.coroutines.flow.StateFlow
+import dev.cannoli.scorza.ui.screens.DirectoryBrowserScreen
+
+enum class BrowsePurpose { SD_ROOT, ROM_DIRECTORY, SETUP }
 
 sealed class LauncherScreen {
     data object SystemList : LauncherScreen()
@@ -76,6 +79,13 @@ sealed class LauncherScreen {
     data class ShortcutBinding(val selectedIndex: Int = 0, val scrollTarget: Int = 0, val shortcuts: Map<ShortcutAction, Set<Int>> = emptyMap(), val listening: Boolean = false, val heldKeys: Set<Int> = emptySet(), val countdownMs: Int = 0) : LauncherScreen()
     data class Credits(val selectedIndex: Int = 0, val scrollTarget: Int = 0) : LauncherScreen()
     data class InstalledCores(val cores: List<String> = emptyList(), val loading: Boolean = true, val selectedIndex: Int = 0, val scrollTarget: Int = 0, val title: String? = null) : LauncherScreen()
+    data class DirectoryBrowser(
+        val purpose: BrowsePurpose,
+        val currentPath: String,
+        val entries: List<String> = emptyList(),
+        val selectedIndex: Int = 0,
+        val scrollTarget: Int = 0
+    ) : LauncherScreen()
 }
 
 @Composable
@@ -609,6 +619,24 @@ fun AppNavGraph(
                     }
                 }
             }
+            is LauncherScreen.DirectoryBrowser -> {
+                DirectoryBrowserScreen(
+                    currentPath = currentScreen.currentPath,
+                    entries = currentScreen.entries,
+                    selectedIndex = currentScreen.selectedIndex,
+                    scrollTarget = currentScreen.scrollTarget,
+                    backgroundImagePath = appSettings.backgroundImagePath,
+                    backgroundTint = appSettings.backgroundTint,
+                    listFontSize = listFontSize,
+                    listLineHeight = listLineHeight,
+                    listVerticalPadding = listVerticalPadding,
+                    itemHeight = itemHeight,
+                    isSelectRow = currentScreen.selectedIndex == 0,
+                    showSelectOption = currentScreen.currentPath != "/storage/",
+                    onVisibleRangeChanged = onVisibleRangeChanged,
+                    buttonLabelSet = labels
+                )
+            }
             is LauncherScreen.Credits -> {
                 CreditsOverlay(
                     selectedIndex = currentScreen.selectedIndex,
@@ -624,7 +652,7 @@ fun AppNavGraph(
         }
 
         val systemListState by systemListViewModel.state.collectAsState()
-        val statusBarVisible = dialog !is DialogState.About && dialog !is DialogState.Kitchen && dialog !is DialogState.UpdateDownload && currentScreen !is LauncherScreen.Credits && !(currentScreen is LauncherScreen.SystemList && systemListState.isLoading) && (dev.cannoli.scorza.server.KitchenManager.isRunning || appSettings.showWifi || appSettings.showBluetooth || appSettings.showVpn || appSettings.showClock || appSettings.showBattery || (updateAvailable && appSettings.showUpdate))
+        val statusBarVisible = dialog !is DialogState.About && dialog !is DialogState.Kitchen && dialog !is DialogState.UpdateDownload && currentScreen !is LauncherScreen.Credits && currentScreen !is LauncherScreen.DirectoryBrowser && !(currentScreen is LauncherScreen.SystemList && systemListState.isLoading) && (dev.cannoli.scorza.server.KitchenManager.isRunning || appSettings.showWifi || appSettings.showBluetooth || appSettings.showVpn || appSettings.showClock || appSettings.showBattery || (updateAvailable && appSettings.showUpdate))
         if (statusBarVisible) {
         Box(
             modifier = Modifier

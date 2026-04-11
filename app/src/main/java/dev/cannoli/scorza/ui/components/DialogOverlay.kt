@@ -185,6 +185,7 @@ internal fun ListDialogScreen(
     leftBottomItems: List<Pair<String, String>> = emptyList(),
     rightBottomItems: List<Pair<String, String>>,
     buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER,
+    showBackButton: Boolean = true,
     content: @Composable () -> Unit
 ) {
     ScreenBackground(backgroundImagePath = backgroundImagePath, backgroundTint = backgroundTint) {
@@ -206,9 +207,10 @@ internal fun ListDialogScreen(
                 Spacer(modifier = Modifier.height(8.dp))
                 content()
             }
+            val left = if (showBackButton) listOf(buttonLabelSet.back to stringResource(R.string.label_back)) + leftBottomItems else leftBottomItems
             BottomBar(
                 modifier = Modifier.align(Alignment.BottomCenter),
-                leftItems = listOf(buttonLabelSet.back to stringResource(R.string.label_back)) + leftBottomItems,
+                leftItems = left,
                 rightItems = rightBottomItems
             )
         }

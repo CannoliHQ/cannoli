@@ -44,6 +44,7 @@ class SettingsRepository(context: Context) {
 
     private fun saveToDisk() {
         settingsFile?.let { file ->
+            if (!setupCompleted) return
             file.parentFile?.mkdirs()
             synchronized(jsonLock) { file.writeText(json.toString(2)) }
         }

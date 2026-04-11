@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Cannoli</string>
+    <string name="app_name" translatable="false">Cannoli</string>
 
     <!-- Bottom bar labels -->
     <string name="label_back">BACK</string>
@@ -30,9 +30,9 @@
     <string name="settings_status_bar">Status Bar</string>
     <string name="settings_input">Input</string>
     <string name="settings_advanced">Advanced</string>
-    <string name="settings_retroachievements">RetroAchievements</string>
+    <string name="settings_retroachievements" translatable="false">RetroAchievements</string>
     <string name="settings_about">About</string>
-    <string name="settings_kitchen">Nonna\'s Kitchen</string>
+    <string name="settings_kitchen" translatable="false">Nonna\'s Kitchen</string>
     <string name="settings_install_update">Install Update</string>
     <string name="settings_release_channel">Release Channel</string>
 

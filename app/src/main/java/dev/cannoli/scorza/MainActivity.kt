@@ -39,6 +39,7 @@ import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.LaunchManager
 import dev.cannoli.scorza.launcher.RetroArchLauncher
 import dev.cannoli.scorza.navigation.AppNavGraph
+import dev.cannoli.scorza.navigation.BrowsePurpose
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.libretro.LibretroActivity
 import dev.cannoli.scorza.libretro.LibretroInput
@@ -77,9 +78,13 @@ import dev.cannoli.igm.ui.theme.COLOR_PRESETS
 import dev.cannoli.igm.ui.theme.CannoliTheme
 import dev.cannoli.igm.ui.theme.colorToArgbLong
 import dev.cannoli.igm.ui.theme.hexToColor
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import dev.cannoli.scorza.ui.screens.DirectoryBrowserScreen
 import dev.cannoli.scorza.ui.screens.InstallingScreen
 import dev.cannoli.scorza.ui.screens.PermissionScreen
 import dev.cannoli.scorza.ui.screens.SetupScreen
+import dev.cannoli.igm.ui.components.pillItemHeight
 import dev.cannoli.igm.ui.theme.initFonts
 import dev.cannoli.scorza.model.Game
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
@@ -167,6 +172,11 @@ class MainActivity : ComponentActivity() {
     private var setupVolumeIndex by mutableStateOf(0)
     private var setupVolumes = listOf<Pair<String, String>>()
     private var setupCustomPath by mutableStateOf<String?>(null)
+    private var inSetupBrowser = false
+    private var setupBrowserPath = "/storage/"
+    private var setupBrowserEntries = emptyList<String>()
+    private var setupBrowserIndex = 0
+    private var setupBrowserScroll = 0
 
     private val shortcutCountdownHandler = Handler(Looper.getMainLooper())
     private val shortcutHoldMs = 1500
@@ -239,6 +249,7 @@ class MainActivity : ComponentActivity() {
         is LauncherScreen.ShortcutBinding -> screen.copy(scrollTarget = currentFirstVisible)
         is LauncherScreen.Credits -> screen.copy(scrollTarget = currentFirstVisible)
         is LauncherScreen.InstalledCores -> screen.copy(scrollTarget = currentFirstVisible)
+        is LauncherScreen.DirectoryBrowser -> screen.copy(scrollTarget = currentFirstVisible)
         else -> screen
     }
 
@@ -261,6 +272,10 @@ class MainActivity : ComponentActivity() {
             is LauncherScreen.ShortcutBinding -> ShortcutAction.entries.size to screen.selectedIndex
             is LauncherScreen.Credits -> CREDITS.size to screen.selectedIndex
             is LauncherScreen.InstalledCores -> screen.cores.size to screen.selectedIndex
+            is LauncherScreen.DirectoryBrowser -> {
+                val hasSelect = screen.currentPath != "/storage/"
+                (screen.entries.size + if (hasSelect) 1 else 0) to screen.selectedIndex
+            }
         }
 
         if (itemCount == 0) return
@@ -309,6 +324,7 @@ class MainActivity : ComponentActivity() {
             is LauncherScreen.ShortcutBinding -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
             is LauncherScreen.Credits -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
             is LauncherScreen.InstalledCores -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
+            is LauncherScreen.DirectoryBrowser -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
         }
     }
 
@@ -365,52 +381,6 @@ class MainActivity : ComponentActivity() {
         if (hasStoragePermission()) {
             permissionGranted = true
             afterPermissionGranted()
-        }
-    }
-
-    private fun uriToPath(uri: android.net.Uri): String? {
-        return uri.path?.let { raw ->
-            val prefix = "/tree/primary:"
-            if (raw.startsWith(prefix)) {
-                "/storage/emulated/0/" + raw.removePrefix(prefix)
-            } else {
-                val match = Regex("^/tree/([A-Fa-f0-9-]+):(.*)$").find(raw)
-                if (match != null) "/storage/${match.groupValues[1]}/${match.groupValues[2]}"
-                else raw
-            }
-        }?.let { if (it.endsWith("/")) it else "$it/" }
-    }
-
-    private val folderPickerLauncher = registerForActivityResult(
-        ActivityResultContracts.OpenDocumentTree()
-    ) { uri ->
-        if (uri != null) {
-            uriToPath(uri)?.let {
-                settings.sdCardRoot = it
-                dialogState.value = DialogState.RestartRequired
-            }
-        }
-    }
-
-    private val romDirPickerLauncher = registerForActivityResult(
-        ActivityResultContracts.OpenDocumentTree()
-    ) { uri ->
-        if (uri != null) {
-            uriToPath(uri)?.let {
-                settings.romDirectory = it
-                scanner.invalidateAllCaches()
-                dialogState.value = DialogState.RestartRequired
-            }
-        }
-    }
-
-    private val setupFolderPickerLauncher = registerForActivityResult(
-        ActivityResultContracts.OpenDocumentTree()
-    ) { uri ->
-        if (uri != null) {
-            uriToPath(uri)?.let { path ->
-                setupCustomPath = if (path.endsWith("/")) path else "$path/"
-            }
         }
     }
 
@@ -479,23 +449,93 @@ class MainActivity : ComponentActivity() {
 
     private fun detectStorageVolumes(): List<Pair<String, String>> {
         val volumes = mutableListOf("Internal Storage" to "/storage/emulated/0/")
-        val storageDir = File("/storage")
-        if (storageDir.exists()) {
+        val sm = getSystemService(android.os.storage.StorageManager::class.java)
+        for (sv in sm.storageVolumes) {
+            if (sv.isPrimary) continue
+            val path = if (android.os.Build.VERSION.SDK_INT >= 30) {
+                sv.directory?.absolutePath
+            } else {
+                try { sv.javaClass.getMethod("getPath").invoke(sv) as? String } catch (_: Exception) { null }
+            } ?: continue
+            val label = sv.getDescription(this) ?: File(path).name
+            volumes.add(label to "$path/")
+        }
+        if (volumes.size == 1) {
+            val storageDir = File("/storage")
             storageDir.listFiles()?.forEach { dir ->
                 if (dir.name != "emulated" && dir.name != "self" && dir.isDirectory && dir.canRead()) {
-                    volumes.add("SD Card" to dir.absolutePath + "/")
+                    volumes.add(dir.name to dir.absolutePath + "/")
                 }
             }
         }
         return volumes
     }
 
-    private fun showSetupScreen() {
+    private var volumeMap: Map<String, String> = emptyMap()
+
+    private fun listDirectories(path: String): List<String> {
+        if (path == "/storage/") {
+            val volumes = detectStorageVolumes()
+            volumeMap = volumes.associate { (label, volPath) -> label to volPath }
+            return volumes.map { it.first }
+        }
+        val dir = java.io.File(path)
+        return dir.listFiles()
+            ?.filter { it.isDirectory && !it.isHidden }
+            ?.map { it.name }
+            ?.sortedWith(dev.cannoli.scorza.util.NaturalSort)
+            ?: emptyList()
+    }
+
+    private fun resolveDirectoryEntry(currentPath: String, entryName: String): String {
+        if (currentPath == "/storage/") {
+            return volumeMap[entryName] ?: "/storage/$entryName/"
+        }
+        return currentPath + entryName + "/"
+    }
+
+    private fun parentDirectory(path: String): String? {
+        val trimmed = path.trimEnd('/')
+        if (trimmed == "/storage") return null
+        if (volumeMap.values.any { it.trimEnd('/') == trimmed }) return "/storage/"
+        return if (trimmed.contains('/')) trimmed.substringBeforeLast('/') + "/" else null
+    }
+
+    private fun pushDirectoryBrowser(purpose: BrowsePurpose, startPath: String) {
+        val entries = listDirectories(startPath)
+        screenStack.add(LauncherScreen.DirectoryBrowser(
+            purpose = purpose,
+            currentPath = startPath,
+            entries = entries
+        ))
+    }
+
+    private fun onDirectoryBrowserResult(purpose: BrowsePurpose, path: String) {
+        val resolved = if (isVolumeRoot(path)) path + "Cannoli/" else path
+        when (purpose) {
+            BrowsePurpose.SD_ROOT -> {
+                settings.sdCardRoot = resolved
+                dialogState.value = DialogState.RestartRequired
+            }
+            BrowsePurpose.ROM_DIRECTORY -> {
+                settings.romDirectory = resolved
+                scanner.invalidateAllCaches()
+                dialogState.value = DialogState.RestartRequired
+            }
+            BrowsePurpose.SETUP -> {
+                setupCustomPath = if (resolved.endsWith("/")) resolved else "$resolved/"
+            }
+        }
+    }
+
+    private fun showSetupScreen(reset: Boolean = true) {
         inSetup = true
-        setupVolumes = detectStorageVolumes() + ("Custom" to "")
-        setupVolumeIndex = 0
-        setupSelectedIndex = 0
-        setupCustomPath = null
+        if (reset) {
+            setupVolumes = detectStorageVolumes() + ("Custom" to "")
+            setupVolumeIndex = 0
+            setupSelectedIndex = 0
+            setupCustomPath = null
+        }
         setContent {
             CannoliTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
@@ -755,6 +795,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleSetupInput(keyCode: Int) {
+        if (inSetupBrowser) {
+            handleSetupBrowserInput(keyCode)
+            return
+        }
         val isCustom = setupVolumes[setupVolumeIndex].first == "Custom"
         val maxIndex = if (isCustom) 1 else 0
         val folderIndex = if (isCustom) 1 else -1
@@ -776,12 +820,93 @@ class MainActivity : ComponentActivity() {
                 }
             }
             KeyEvent.KEYCODE_BUTTON_A -> {
-                if (setupSelectedIndex == folderIndex) setupFolderPickerLauncher.launch(null)
+                if (setupSelectedIndex == folderIndex) {
+                    inSetupBrowser = true
+                    setupBrowserPath = "/storage/"
+                    setupBrowserEntries = listDirectories(setupBrowserPath)
+                    setupBrowserIndex = 0
+                    setupBrowserScroll = 0
+                    showSetupBrowser()
+                }
             }
             KeyEvent.KEYCODE_BUTTON_START -> {
                 if (continueEnabled) completeSetup()
             }
             KeyEvent.KEYCODE_BUTTON_B -> finishAffinity()
+        }
+    }
+
+    private fun showSetupBrowser() {
+        setContent {
+            CannoliTheme {
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    val itemHeight = pillItemHeight(32.sp, 4.dp)
+                    DirectoryBrowserScreen(
+                        currentPath = setupBrowserPath,
+                        entries = setupBrowserEntries,
+                        selectedIndex = setupBrowserIndex,
+                        scrollTarget = setupBrowserScroll,
+                        backgroundImagePath = null,
+                        backgroundTint = 100,
+                        listFontSize = 22.sp,
+                        listLineHeight = 32.sp,
+                        listVerticalPadding = 4.dp,
+                        itemHeight = itemHeight,
+                        isSelectRow = setupBrowserIndex == 0,
+                        showSelectOption = setupBrowserPath != "/storage/",
+                        showNewFolder = false,
+                        onVisibleRangeChanged = { _, _, _ -> },
+                        buttonLabelSet = ButtonLabelSet.PLUMBER
+                    )
+                }
+            }
+        }
+    }
+
+    private fun handleSetupBrowserInput(keyCode: Int) {
+        val hasSelect = setupBrowserPath != "/storage/"
+        val count = setupBrowserEntries.size + if (hasSelect) 1 else 0
+        when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_UP -> {
+                setupBrowserIndex = (setupBrowserIndex - 1 + count) % count
+                showSetupBrowser()
+            }
+            KeyEvent.KEYCODE_DPAD_DOWN -> {
+                setupBrowserIndex = (setupBrowserIndex + 1) % count
+                showSetupBrowser()
+            }
+            KeyEvent.KEYCODE_BUTTON_A -> {
+                val hasSelect = setupBrowserPath != "/storage/"
+                val selectIndex = if (hasSelect) 0 else -1
+                if (setupBrowserIndex == selectIndex) {
+                    val selected = if (setupBrowserPath.endsWith("/")) setupBrowserPath else "$setupBrowserPath/"
+                    setupCustomPath = if (isVolumeRoot(selected)) selected + "Cannoli/" else selected
+                    inSetupBrowser = false
+                    showSetupScreen(reset = false)
+                } else {
+                    val entryIdx = setupBrowserIndex - if (hasSelect) 1 else 0
+                    val folderName = setupBrowserEntries[entryIdx]
+                    setupBrowserPath = resolveDirectoryEntry(setupBrowserPath, folderName)
+                    setupBrowserEntries = listDirectories(setupBrowserPath)
+                    setupBrowserIndex = 0
+                    setupBrowserScroll = 0
+                    showSetupBrowser()
+                }
+            }
+            KeyEvent.KEYCODE_BUTTON_B -> {
+                val parent = parentDirectory(setupBrowserPath)
+                if (parent != null) {
+                    setupBrowserPath = parent
+                    setupBrowserEntries = listDirectories(setupBrowserPath)
+                    setupBrowserIndex = 0
+                    setupBrowserScroll = 0
+                    showSetupBrowser()
+                }
+            }
+            KeyEvent.KEYCODE_BUTTON_Y -> {
+                inSetupBrowser = false
+                showSetupScreen(reset = false)
+            }
         }
     }
 
@@ -926,7 +1051,8 @@ class MainActivity : ComponentActivity() {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
                 is DialogState.CollectionRenameInput,
-                is DialogState.ProfileNameInput -> {
+                is DialogState.ProfileNameInput,
+                is DialogState.NewFolderInput -> {
                     val ks = ds.asKeyboardState()!!
                     val rows = getKeyboardRows(ks.caps, ks.symbols)
                     val newRow = if (ks.keyRow <= 0) rows.lastIndex else ks.keyRow - 1
@@ -979,6 +1105,11 @@ class MainActivity : ComponentActivity() {
                         screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, -1, CREDITS.size))
                     is LauncherScreen.InstalledCores -> if (screen.cores.isNotEmpty())
                         screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, -1, screen.cores.size))
+                    is LauncherScreen.DirectoryBrowser -> {
+                        val hasSelect = screen.currentPath != "/storage/"
+                        val count = screen.entries.size + if (hasSelect) 1 else 0
+                        if (count > 0) screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, -1, count))
+                    }
                 }
                 else -> {}
             }
@@ -993,7 +1124,8 @@ class MainActivity : ComponentActivity() {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
                 is DialogState.CollectionRenameInput,
-                is DialogState.ProfileNameInput -> {
+                is DialogState.ProfileNameInput,
+                is DialogState.NewFolderInput -> {
                     val ks = ds.asKeyboardState()!!
                     val rows = getKeyboardRows(ks.caps, ks.symbols)
                     val newRow = if (ks.keyRow >= rows.lastIndex) 0 else ks.keyRow + 1
@@ -1046,6 +1178,11 @@ class MainActivity : ComponentActivity() {
                         screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, 1, CREDITS.size))
                     is LauncherScreen.InstalledCores -> if (screen.cores.isNotEmpty())
                         screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, 1, screen.cores.size))
+                    is LauncherScreen.DirectoryBrowser -> {
+                        val hasSelect = screen.currentPath != "/storage/"
+                        val count = screen.entries.size + if (hasSelect) 1 else 0
+                        if (count > 0) screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, 1, count))
+                    }
                 }
                 else -> {}
             }
@@ -1056,7 +1193,8 @@ class MainActivity : ComponentActivity() {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
                 is DialogState.CollectionRenameInput,
-                is DialogState.ProfileNameInput -> {
+                is DialogState.ProfileNameInput,
+                is DialogState.NewFolderInput -> {
                     val ks = ds.asKeyboardState()!!
                     val rows = getKeyboardRows(ks.caps, ks.symbols)
                     val rowSize = rows[ks.keyRow.coerceIn(0, rows.lastIndex)].size
@@ -1096,7 +1234,8 @@ class MainActivity : ComponentActivity() {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
                 is DialogState.CollectionRenameInput,
-                is DialogState.ProfileNameInput -> {
+                is DialogState.ProfileNameInput,
+                is DialogState.NewFolderInput -> {
                     val ks = ds.asKeyboardState()!!
                     val rows = getKeyboardRows(ks.caps, ks.symbols)
                     val rowSize = rows[ks.keyRow.coerceIn(0, rows.lastIndex)].size
@@ -1159,6 +1298,12 @@ class MainActivity : ComponentActivity() {
                     onShift = { dialogState.value = ds.copy(caps = !ds.caps) },
                     onSymbols = { dialogState.value = ds.copy(symbols = !ds.symbols) },
                     onEnter = { onProfileNameConfirm(ds) }
+                )
+                is DialogState.NewFolderInput -> handleKeyboardConfirm(ds.caps, ds.symbols, ds.keyRow, ds.keyCol, ds.currentName, ds.cursorPos,
+                    onChar = { name, pos -> dialogState.value = ds.copy(currentName = name, cursorPos = pos) },
+                    onShift = { dialogState.value = ds.copy(caps = !ds.caps) },
+                    onSymbols = { dialogState.value = ds.copy(symbols = !ds.symbols) },
+                    onEnter = { onNewFolderConfirm(ds) }
                 )
                 is DialogState.QuitConfirm -> {
                     finishAffinity()
@@ -1304,8 +1449,11 @@ class MainActivity : ComponentActivity() {
                         } else {
                             when (val key = settingsViewModel.enterSelected()) {
                                 "status_bar" -> settingsViewModel.enterSubCategory("status_bar", R.string.settings_status_bar)
-                                "sd_root" -> folderPickerLauncher.launch(null)
-                                "rom_directory" -> romDirPickerLauncher.launch(null)
+                                "sd_root" -> pushDirectoryBrowser(BrowsePurpose.SD_ROOT, settings.sdCardRoot)
+                                "rom_directory" -> {
+                                    val startPath = settings.romDirectory.ifEmpty { settings.sdCardRoot }
+                                    pushDirectoryBrowser(BrowsePurpose.ROM_DIRECTORY, startPath)
+                                }
                                 "colors" -> screenStack.add(LauncherScreen.ColorList(
                                     colors = settingsViewModel.getColorEntries()
                                 ))
@@ -1473,6 +1621,24 @@ class MainActivity : ComponentActivity() {
                     }
                     is LauncherScreen.Credits -> {}
                     is LauncherScreen.InstalledCores -> {}
+                    is LauncherScreen.DirectoryBrowser -> {
+                        val hasSelect = screen.currentPath != "/storage/"
+                        val selectIndex = if (hasSelect) 0 else -1
+                        if (screen.selectedIndex == selectIndex) {
+                            onDirectoryBrowserResult(screen.purpose, screen.currentPath)
+                            screenStack.removeAt(screenStack.lastIndex)
+                        } else {
+                            val entryIdx = screen.selectedIndex - if (hasSelect) 1 else 0
+                            val folderName = screen.entries[entryIdx]
+                            val newPath = resolveDirectoryEntry(screen.currentPath, folderName)
+                            val newEntries = listDirectories(newPath)
+                            screenStack[screenStack.lastIndex] = LauncherScreen.DirectoryBrowser(
+                                purpose = screen.purpose,
+                                currentPath = newPath,
+                                entries = newEntries
+                            )
+                        }
+                    }
                 }
                 else -> {}
             }
@@ -1483,7 +1649,8 @@ class MainActivity : ComponentActivity() {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
                 is DialogState.CollectionRenameInput,
-                is DialogState.ProfileNameInput -> {
+                is DialogState.ProfileNameInput,
+                is DialogState.NewFolderInput -> {
                     ds.withBackspace()?.let { dialogState.value = it }
                 }
                 is DialogState.ColorPicker -> {
@@ -1625,6 +1792,17 @@ class MainActivity : ComponentActivity() {
                         unregisterCoreQueryReceiver()
                         screenStack.removeAt(screenStack.lastIndex)
                     }
+                    is LauncherScreen.DirectoryBrowser -> {
+                        val parent = parentDirectory(screen.currentPath)
+                        if (parent != null) {
+                            val newEntries = listDirectories(parent)
+                            screenStack[screenStack.lastIndex] = LauncherScreen.DirectoryBrowser(
+                                purpose = screen.purpose,
+                                currentPath = parent,
+                                entries = newEntries
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -1635,6 +1813,7 @@ class MainActivity : ComponentActivity() {
                 is DialogState.NewCollectionInput -> onNewCollectionConfirm(ds)
                 is DialogState.CollectionRenameInput -> onCollectionRenameConfirm(ds)
                 is DialogState.ProfileNameInput -> onProfileNameConfirm(ds)
+                is DialogState.NewFolderInput -> onNewFolderConfirm(ds)
                 DialogState.None -> when (currentScreen) {
                     LauncherScreen.SystemList -> {
                         if (systemListViewModel.isReorderMode()) {
@@ -1708,7 +1887,8 @@ class MainActivity : ComponentActivity() {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
                 is DialogState.CollectionRenameInput,
-                is DialogState.ProfileNameInput -> {
+                is DialogState.ProfileNameInput,
+                is DialogState.NewFolderInput -> {
                     if (!selectDown) {
                         selectDown = true
                         selectHeld = false
@@ -1776,7 +1956,8 @@ class MainActivity : ComponentActivity() {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
                 is DialogState.CollectionRenameInput,
-                is DialogState.ProfileNameInput -> {
+                is DialogState.ProfileNameInput,
+                is DialogState.NewFolderInput -> {
                     ds.withInsertedChar(" ")?.let { dialogState.value = it }
                 }
                 is DialogState.About -> {
@@ -1864,6 +2045,11 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
+                    is LauncherScreen.DirectoryBrowser -> {
+                        if (screen.currentPath != "/storage/") {
+                            dialogState.value = DialogState.NewFolderInput(parentPath = screen.currentPath)
+                        }
+                    }
                     else -> {}
                 }
                 else -> {}
@@ -1877,7 +2063,8 @@ class MainActivity : ComponentActivity() {
                     restoreContextMenu()
                 }
                 is DialogState.NewCollectionInput,
-                is DialogState.ProfileNameInput -> {
+                is DialogState.ProfileNameInput,
+                is DialogState.NewFolderInput -> {
                     dialogState.value = DialogState.None
                 }
                 is DialogState.About -> {
@@ -1920,6 +2107,9 @@ class MainActivity : ComponentActivity() {
                                 filter = newFilter, selectedIndex = 0, scrollTarget = 0
                             )
                         }
+                        is LauncherScreen.DirectoryBrowser -> {
+                            screenStack.removeAt(screenStack.lastIndex)
+                        }
                         else -> {}
                     }
                 }
@@ -1932,7 +2122,8 @@ class MainActivity : ComponentActivity() {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
                 is DialogState.CollectionRenameInput,
-                is DialogState.ProfileNameInput -> {
+                is DialogState.ProfileNameInput,
+                is DialogState.NewFolderInput -> {
                     val ks = ds.asKeyboardState()!!
                     if (ks.cursorPos > 0) dialogState.value = ds.withCursor(ks.cursorPos - 1)
                 }
@@ -1946,7 +2137,8 @@ class MainActivity : ComponentActivity() {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
                 is DialogState.CollectionRenameInput,
-                is DialogState.ProfileNameInput -> {
+                is DialogState.ProfileNameInput,
+                is DialogState.NewFolderInput -> {
                     val ks = ds.asKeyboardState()!!
                     if (ks.cursorPos < ks.currentName.length) dialogState.value = ds.withCursor(ks.cursorPos + 1)
                 }
@@ -1971,7 +2163,8 @@ class MainActivity : ComponentActivity() {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
                 is DialogState.CollectionRenameInput,
-                is DialogState.ProfileNameInput -> {
+                is DialogState.ProfileNameInput,
+                is DialogState.NewFolderInput -> {
                     val ks = ds.asKeyboardState()!!
                     dialogState.value = ds.withCursor(ks.currentName.length)
                 }
@@ -2832,6 +3025,26 @@ class MainActivity : ComponentActivity() {
             )
         }
         dialogState.value = DialogState.None
+    }
+
+    private fun onNewFolderConfirm(state: DialogState.NewFolderInput) {
+        val name = state.currentName.trim()
+        if (name.isBlank()) {
+            dialogState.value = DialogState.None
+            return
+        }
+        val newDir = java.io.File(state.parentPath, name)
+        newDir.mkdirs()
+        dialogState.value = DialogState.None
+        val screen = currentScreen
+        if (screen is LauncherScreen.DirectoryBrowser && screen.currentPath == state.parentPath) {
+            val newEntries = listDirectories(screen.currentPath)
+            screenStack[screenStack.lastIndex] = screen.copy(entries = newEntries)
+        }
+    }
+
+    private fun isVolumeRoot(path: String): Boolean {
+        return detectStorageVolumes().any { it.second == path }
     }
 
     private fun onRenameConfirm(state: DialogState.RenameInput) {
