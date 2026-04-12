@@ -651,8 +651,16 @@ class LibretroActivity : ComponentActivity() {
             if (stickY > 0.5f) axes = axes or (portInput.keyCodeToRetroMask(KeyEvent.KEYCODE_DPAD_DOWN) ?: LibretroInput.RETRO_DOWN)
         }
 
-        if (event.getAxisValue(android.view.MotionEvent.AXIS_LTRIGGER) > 0.5f) axes = axes or LibretroInput.RETRO_L2
-        if (event.getAxisValue(android.view.MotionEvent.AXIS_RTRIGGER) > 0.5f) axes = axes or LibretroInput.RETRO_R2
+        val leftTrigger = maxOf(
+            event.getAxisValue(android.view.MotionEvent.AXIS_LTRIGGER),
+            event.getAxisValue(android.view.MotionEvent.AXIS_BRAKE),
+        )
+        val rightTrigger = maxOf(
+            event.getAxisValue(android.view.MotionEvent.AXIS_RTRIGGER),
+            event.getAxisValue(android.view.MotionEvent.AXIS_GAS),
+        )
+        if (leftTrigger > 0.5f) axes = axes or LibretroInput.RETRO_L2
+        if (rightTrigger > 0.5f) axes = axes or LibretroInput.RETRO_R2
 
         controllerManager.portInputMasks[port] = (controllerManager.portInputMasks[port] and axisMask.inv()) or axes
         runner.setInput(port, controllerManager.portInputMasks[port])
