@@ -30,7 +30,8 @@ class SettingsViewModel(
     private var appPackageName: String? = null
 ) {
 
-    val isTelevision = packageManager?.hasSystemFeature(PackageManager.FEATURE_LEANBACK) == true
+    val isTelevision: Boolean
+        get() = packageManager?.hasSystemFeature(PackageManager.FEATURE_LEANBACK) == true
 
     private fun isDefaultLauncher(): Boolean {
         val pm = packageManager ?: return false
