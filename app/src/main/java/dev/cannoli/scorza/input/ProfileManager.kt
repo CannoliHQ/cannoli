@@ -54,14 +54,29 @@ class ProfileManager(private var cannoliRoot: String) {
         for ((key, value) in ini.getSection("controls")) {
             value.toIntOrNull()?.let { map[key] = it }
         }
+        if (migrateFaceButtonKeys(map)) {
+            saveControls(profileName, map)
+        }
         return map
     }
 
+    /** Rename pre-cardinal face button keys in place. Returns true if anything changed. */
+    private fun migrateFaceButtonKeys(map: MutableMap<String, Int>): Boolean {
+        var changed = false
+        for ((old, new) in FACE_BUTTON_MIGRATION) {
+            val value = map.remove(old) ?: continue
+            map.putIfAbsent(new, value)
+            changed = true
+        }
+        return changed
+    }
+
     fun saveControls(profileName: String, controls: Map<String, Int>) {
-        IniWriter.mergeWrite(
-            profileFile(profileName), "controls",
-            controls.mapValues { it.value.toString() }
-        )
+        val file = profileFile(profileName)
+        val existing = if (file.exists()) IniParser.parse(file).sections else emptyMap()
+        val merged = existing.toMutableMap()
+        merged["controls"] = controls.mapValues { it.value.toString() }
+        IniWriter.write(file, merged)
     }
 
     fun createProfile(name: String, copyFrom: Map<String, Int> = emptyMap()): Boolean {
@@ -114,6 +129,13 @@ class ProfileManager(private var cannoliRoot: String) {
         const val NAVIGATION = "Cannoli Navigation"
         const val DEFAULT_GAME = "Default Controls"
         val PROTECTED = setOf(NAVIGATION, DEFAULT_GAME)
+
+        private val FACE_BUTTON_MIGRATION = mapOf(
+            "btn_a" to "btn_south",
+            "btn_b" to "btn_east",
+            "btn_x" to "btn_west",
+            "btn_y" to "btn_north",
+        )
 
         fun isProtected(name: String): Boolean = name in PROTECTED
     }
