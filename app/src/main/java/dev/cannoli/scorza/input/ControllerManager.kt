@@ -9,7 +9,9 @@ import org.json.JSONObject
 
 data class ControllerIdentity(
     val descriptor: String,
-    val name: String
+    val name: String,
+    val vendorId: Int,
+    val productId: Int
 )
 
 class ControllerManager(
@@ -66,7 +68,7 @@ class ControllerManager(
         }
         for ((id, device) in fullControllers) {
             val port = nextAvailablePort() ?: break
-            val identity = ControllerIdentity(device.descriptor, device.name)
+            val identity = ControllerIdentity(device.descriptor, device.name, device.vendorId, device.productId)
             slots[port] = identity
             deviceToPort[id] = port
             descriptorToPort[device.descriptor] = port
@@ -75,7 +77,7 @@ class ControllerManager(
             deviceToPort[id] = 0
         }
         if (slots[0] == null && subDevices.isNotEmpty()) {
-            slots[0] = ControllerIdentity("builtin", "Built-in Controller")
+            slots[0] = ControllerIdentity("builtin", "Built-in Controller", 0, 0)
         }
     }
 
@@ -88,7 +90,7 @@ class ControllerManager(
 
         val existingPort = descriptorToPort[descriptor]
         if (existingPort != null) {
-            val identity = ControllerIdentity(descriptor, device.name)
+            val identity = ControllerIdentity(descriptor, device.name, device.vendorId, device.productId)
             slots[existingPort] = identity
             deviceToPort[deviceId] = existingPort
             onDeviceConnected?.invoke(existingPort, identity)
@@ -96,7 +98,7 @@ class ControllerManager(
         }
 
         val port = nextAvailablePort() ?: return -1
-        val identity = ControllerIdentity(descriptor, device.name)
+        val identity = ControllerIdentity(descriptor, device.name, device.vendorId, device.productId)
         slots[port] = identity
         deviceToPort[deviceId] = port
         descriptorToPort[descriptor] = port
