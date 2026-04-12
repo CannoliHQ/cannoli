@@ -49,12 +49,13 @@ class InputHandler(
 
     fun resolveButton(keyCode: Int): String? {
         val mappings = getButtonMappings()
-        if (mappings.isNotEmpty()) {
-            for ((prefKey, mapped) in mappings) {
-                if (mapped == keyCode) return prefKey
-            }
+        if (mappings.isEmpty()) return DEFAULT_KEY_MAP[keyCode]
+        for ((prefKey, mapped) in mappings) {
+            if (mapped == keyCode) return prefKey
         }
-        return DEFAULT_KEY_MAP[keyCode]
+        val defaultPrefKey = DEFAULT_KEY_MAP[keyCode] ?: return null
+        if (defaultPrefKey in mappings) return null
+        return defaultPrefKey
     }
 
     private fun dispatchButton(button: String): Boolean {
