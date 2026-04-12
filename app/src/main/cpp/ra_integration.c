@@ -237,6 +237,14 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeInit(JNIEnv *env
 JNIEXPORT void JNICALL
 Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeDestroy(JNIEnv *env, jobject thiz) {
     (void)thiz;
+    if (g_memory_initialized) {
+        rc_libretro_memory_destroy(&g_memory_regions);
+        g_memory_initialized = 0;
+    }
+    free(g_pending_rom_path);
+    g_pending_rom_path = NULL;
+    g_pending_console_id = 0;
+    g_pending_game_id = 0;
     if (g_client) {
         rc_client_destroy(g_client);
         g_client = NULL;
