@@ -28,8 +28,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Text
+import androidx.compose.ui.res.stringResource
 import dev.cannoli.igm.ui.theme.LocalCannoliColors
 import dev.cannoli.igm.ButtonLabelSet
+import dev.cannoli.scorza.R
 import dev.cannoli.scorza.ui.components.ControllerDiagram
 import dev.cannoli.scorza.ui.components.DiagramInput
 import dev.cannoli.scorza.ui.components.FaceLabels
@@ -70,6 +72,18 @@ fun InputTesterScreen(
         rightTrigger = activePortState?.rightTrigger ?: 0f,
     )
 
+    val noneText = stringResource(R.string.input_tester_none)
+    val deviceInfo = uiState.lastEventDevice
+        ?: uiState.connectedPorts.firstOrNull { it.port == uiState.activePort }
+        ?: uiState.connectedPorts.firstOrNull()
+    val deviceLabel = deviceInfo?.let {
+        stringResource(R.string.input_tester_device_format, it.port + 1, it.name, it.deviceId)
+    } ?: noneText
+    val profileLabel = stringResource(
+        R.string.input_tester_profile_label,
+        uiState.selectedProfile.ifEmpty { noneText },
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -78,11 +92,8 @@ fun InputTesterScreen(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             Header(
-                activeDevice = (uiState.lastEventDevice
-                    ?: uiState.connectedPorts.firstOrNull { it.port == uiState.activePort }
-                    ?: uiState.connectedPorts.firstOrNull())
-                    ?.let { "P${it.port + 1} • ${it.name} • dev${it.deviceId}" } ?: "—",
-                profileLabel = uiState.selectedProfile.ifEmpty { "—" },
+                activeDevice = deviceLabel,
+                profileLabel = profileLabel,
                 highlight = colors.highlight,
                 text = colors.text,
                 highlightText = colors.highlightText,
@@ -106,14 +117,14 @@ fun InputTesterScreen(
             }
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Hold Select + D-Pad ← / → to cycle profiles",
+                text = stringResource(R.string.input_tester_cycle_hint),
                 color = colors.text.copy(alpha = 0.5f),
                 fontSize = 12.sp,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
             )
             Text(
-                text = "Press any button 10 times in a row to exit",
+                text = stringResource(R.string.input_tester_exit_hint),
                 color = colors.text.copy(alpha = 0.5f),
                 fontSize = 12.sp,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -150,7 +161,7 @@ private fun Header(
                 .background(Color.White.copy(alpha = 0.08f))
                 .padding(horizontal = 12.dp, vertical = 6.dp)
         ) {
-            Text(text = "Profile: $profileLabel", color = text, fontSize = 14.sp)
+            Text(text = profileLabel, color = text, fontSize = 14.sp)
         }
     }
 }

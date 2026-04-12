@@ -775,7 +775,7 @@ class MainActivity : ComponentActivity() {
         if (screenStack.lastOrNull() is LauncherScreen.InputTester) {
             val deviceId = event.deviceId
             val port = controllerManager.getPortForDeviceId(deviceId) ?: 0
-            val name = event.device?.name ?: "unknown"
+            val name = event.device?.name ?: getString(R.string.input_tester_device_unknown)
             val leftX = event.getAxisValue(android.view.MotionEvent.AXIS_X)
             val leftY = event.getAxisValue(android.view.MotionEvent.AXIS_Y)
             val rightX = event.getAxisValue(android.view.MotionEvent.AXIS_Z)
@@ -825,7 +825,19 @@ class MainActivity : ComponentActivity() {
     private var testerProfileMap: Map<Int, String> = emptyMap()
     private val testerPressedKeycodes = mutableMapOf<Int, String?>()
     private var testerSelectHeld = false
+    private var testerStartHeld = false
     private var testerHatChordState: Int = 0
+    private val testerExitHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val testerExitRunnable = Runnable { inputTesterViewModel.requestExit() }
+
+    private fun updateTesterExitCountdown() {
+        if (testerSelectHeld && testerStartHeld) {
+            testerExitHandler.removeCallbacks(testerExitRunnable)
+            testerExitHandler.postDelayed(testerExitRunnable, 2000L)
+        } else {
+            testerExitHandler.removeCallbacks(testerExitRunnable)
+        }
+    }
 
     private fun loadTesterProfile(name: String) {
         val controls = profileManager.readControls(name)
@@ -840,6 +852,8 @@ class MainActivity : ComponentActivity() {
         loadTesterProfile(initial)
         testerPressedKeycodes.clear()
         testerSelectHeld = false
+        testerStartHeld = false
+        testerExitHandler.removeCallbacks(testerExitRunnable)
     }
 
     private fun releaseAllTesterKeys(except: Set<String> = emptySet()) {
@@ -856,13 +870,20 @@ class MainActivity : ComponentActivity() {
         val device = event.device
         val deviceId = event.deviceId
         val port = if (device != null) controllerManager.getPortForDeviceId(deviceId) ?: 0 else 0
-        val name = device?.name ?: "keyboard"
+        val name = device?.name ?: getString(R.string.input_tester_device_keyboard)
         val keyName = KeyEvent.keyCodeToString(event.keyCode).removePrefix("KEYCODE_")
         val navButton = inputHandler.resolveButton(event.keyCode)
 
         if (down) {
             val isRepeat = event.repeatCount > 0
-            if (navButton == "btn_select") testerSelectHeld = true
+            if (navButton == "btn_select" && !testerSelectHeld) {
+                testerSelectHeld = true
+                updateTesterExitCountdown()
+            }
+            if (navButton == "btn_start" && !testerStartHeld) {
+                testerStartHeld = true
+                updateTesterExitCountdown()
+            }
             if (!isRepeat && testerSelectHeld && (navButton == "btn_left" || navButton == "btn_right")) {
                 releaseAllTesterKeys(except = setOf("btn_select"))
                 val newProfile = inputTesterViewModel.cycleProfile(
@@ -876,7 +897,14 @@ class MainActivity : ComponentActivity() {
             inputTesterViewModel.onKeyDown(port, event.keyCode, keyName, deviceId, name, resolved)
             if (!isRepeat) inputTesterViewModel.setActivePort(port)
         } else {
-            if (navButton == "btn_select") testerSelectHeld = false
+            if (navButton == "btn_select" && testerSelectHeld) {
+                testerSelectHeld = false
+                updateTesterExitCountdown()
+            }
+            if (navButton == "btn_start" && testerStartHeld) {
+                testerStartHeld = false
+                updateTesterExitCountdown()
+            }
             val resolved = testerPressedKeycodes.remove(event.keyCode)
             inputTesterViewModel.onKeyUp(port, event.keyCode, keyName, deviceId, name, resolved)
         }

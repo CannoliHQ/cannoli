@@ -61,28 +61,18 @@ class InputTesterViewModelTest {
     }
 
     @Test
-    fun pressingSameButton10Times_requestsExit() {
+    fun requestExit_setsFlag() {
         val vm = vm()
-        repeat(9) {
-            vm.onKeyDown(0, 96, "BUTTON_A", 10, "Test Pad", "btn_a")
-            vm.onKeyUp(0, 96, "BUTTON_A", 10, "Test Pad", "btn_a")
-            assertFalse(vm.state.value.exitRequested)
-        }
-        vm.onKeyDown(0, 96, "BUTTON_A", 10, "Test Pad", "btn_a")
+        assertFalse(vm.state.value.exitRequested)
+        vm.requestExit()
         assertTrue(vm.state.value.exitRequested)
     }
 
     @Test
-    fun differentButtonResetsExitCounter() {
+    fun orphanKeyUp_isIgnored() {
         val vm = vm()
-        repeat(9) {
-            vm.onKeyDown(0, 96, "BUTTON_A", 10, "Test Pad", "btn_a")
-            vm.onKeyUp(0, 96, "BUTTON_A", 10, "Test Pad", "btn_a")
-        }
-        vm.onKeyDown(0, 97, "BUTTON_B", 10, "Test Pad", "btn_b")
-        vm.onKeyUp(0, 97, "BUTTON_B", 10, "Test Pad", "btn_b")
-        vm.onKeyDown(0, 96, "BUTTON_A", 10, "Test Pad", "btn_a")
-        assertFalse(vm.state.value.exitRequested)
+        vm.onKeyUp(0, 96, "BUTTON_A", 10, "Test Pad", "btn_a")
+        assertEquals(0, vm.state.value.eventLog.size)
     }
 
     @Test

@@ -92,6 +92,13 @@
     <string name="setting_kitchen_toggle">File Server</string>
     <string name="setting_debug_logging">Debug Logging</string>
     <string name="setting_input_tester">Input Tester</string>
+    <string name="input_tester_none">—</string>
+    <string name="input_tester_device_format">P%1$d • %2$s • dev%3$d</string>
+    <string name="input_tester_profile_label">Profile: %1$s</string>
+    <string name="input_tester_cycle_hint">Hold Select + D-Pad ← / → To Cycle Profiles</string>
+    <string name="input_tester_exit_hint">Hold Start + Select To Exit</string>
+    <string name="input_tester_device_keyboard">keyboard</string>
+    <string name="input_tester_device_unknown">unknown</string>
 
     <!-- Setting values -->
     <string name="value_on">On</string>

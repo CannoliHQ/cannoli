@@ -52,8 +52,6 @@ class InputTesterViewModel(
     fun reset() {
         _state.value = InputTesterUiState()
         heldKeyCodes.clear()
-        repeatKeyCode = -1
-        repeatCount = 0
     }
 
     fun setProfiles(available: List<String>, selected: String) {
@@ -80,9 +78,11 @@ class InputTesterViewModel(
         return result
     }
 
-    private var repeatKeyCode: Int = -1
-    private var repeatCount: Int = 0
     private val heldKeyCodes = mutableSetOf<Int>()
+
+    fun requestExit() {
+        _state.update { it.copy(exitRequested = true) }
+    }
 
     fun onKeyDown(
         port: Int,
@@ -94,13 +94,6 @@ class InputTesterViewModel(
     ) {
         val isFreshPress = heldKeyCodes.add(keyCode)
         val ts = now()
-        val shouldExit: Boolean
-        if (isFreshPress) {
-            if (keyCode == repeatKeyCode) repeatCount++ else { repeatKeyCode = keyCode; repeatCount = 1 }
-            shouldExit = repeatCount >= EXIT_REPEAT_COUNT
-        } else {
-            shouldExit = false
-        }
         _state.update { current ->
             val prev = current.portStates[port] ?: InputTesterState()
             val pressed = if (resolvedButton != null) prev.pressedButtons + resolvedButton else prev.pressedButtons
@@ -110,7 +103,6 @@ class InputTesterViewModel(
                 portStates = current.portStates + (port to updatedPort),
                 lastEventDevice = DeviceInfo(port, deviceId, deviceName),
                 eventLog = if (isFreshPress) (listOf(entry) + current.eventLog).take(eventLogCapacity) else current.eventLog,
-                exitRequested = current.exitRequested || shouldExit,
             )
         }
     }
@@ -123,7 +115,8 @@ class InputTesterViewModel(
         deviceName: String,
         resolvedButton: String?,
     ) {
-        heldKeyCodes.remove(keyCode)
+        val wasHeld = heldKeyCodes.remove(keyCode)
+        if (!wasHeld) return
         val ts = now()
         _state.update { current ->
             val prev = current.portStates[port] ?: InputTesterState()
@@ -228,7 +221,6 @@ class InputTesterViewModel(
     }
 
     companion object {
-        const val EXIT_REPEAT_COUNT = 10
         const val DEFAULT_EVENT_LOG_CAPACITY = 8
         private val HAT_BUTTONS = setOf("btn_up", "btn_down", "btn_left", "btn_right")
         private val TRIGGER_BUTTONS = setOf("btn_l2", "btn_r2")
