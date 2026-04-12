@@ -67,6 +67,28 @@ class LibretroActivity : ComponentActivity() {
     private lateinit var overrideManager: OverrideManager
     private var glSurfaceView: GLSurfaceView? = null
     private var gameView: android.view.View? = null
+    private var vsyncCallback: android.view.Choreographer.FrameCallback? = null
+
+    private fun startVsyncPacer() {
+        val view = glSurfaceView ?: return
+        if (vsyncCallback != null) return
+        val choreographer = android.view.Choreographer.getInstance()
+        val cb = object : android.view.Choreographer.FrameCallback {
+            override fun doFrame(frameTimeNanos: Long) {
+                if (vsyncCallback !== this) return
+                view.requestRender()
+                choreographer.postFrameCallback(this)
+            }
+        }
+        vsyncCallback = cb
+        choreographer.postFrameCallback(cb)
+    }
+
+    private fun stopVsyncPacer() {
+        val cb = vsyncCallback ?: return
+        android.view.Choreographer.getInstance().removeFrameCallback(cb)
+        vsyncCallback = null
+    }
     private var loading by mutableStateOf(true)
     private var revealed by mutableStateOf(false)
 
@@ -475,9 +497,10 @@ class LibretroActivity : ComponentActivity() {
                 glSurfaceView = GLSurfaceView(activity).apply {
                     setEGLContextClientVersion(3)
                     setRenderer(glesBackend)
-                    renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
+                    renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
                 }
                 gameView = glSurfaceView
+                startVsyncPacer()
                 sessionLog.log("renderer initialized: ${renderer.backendName}")
 
                 loading = false
@@ -2098,6 +2121,7 @@ class LibretroActivity : ComponentActivity() {
         super.onPause()
         if (::sessionLog.isInitialized) sessionLog.log("onPause")
         if (!loading && !cleaned && screenStack.isEmpty()) openMenu()
+        stopVsyncPacer()
         glSurfaceView?.onPause()
         if (!loading && !cleaned && sramPath.isNotEmpty()) { File(sramPath).parentFile?.mkdirs(); runner.saveSRAM(sramPath) }
     }
@@ -2119,7 +2143,7 @@ class LibretroActivity : ComponentActivity() {
 
     @Suppress("DEPRECATION")
     override fun onResume() {
-        super.onResume(); overridePendingTransition(0, 0); glSurfaceView?.onResume(); goFullscreen()
+        super.onResume(); overridePendingTransition(0, 0); glSurfaceView?.onResume(); startVsyncPacer(); goFullscreen()
         if (::sessionLog.isInitialized) sessionLog.log("onResume")
         if (autoSavedOnStop && cannoliRoot.isNotEmpty()) File(cannoliRoot, "Config/State/quick_resume.txt").delete()
         autoSavedOnStop = false
