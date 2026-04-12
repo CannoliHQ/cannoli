@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.input
 
+import android.view.InputDevice
 import android.view.KeyEvent
 
 class InputHandler(
@@ -30,12 +31,16 @@ class InputHandler(
         val button = resolveButton(event.keyCode)
         if (button != null) return dispatchButton(button)
 
+        val source = event.source
+        val isGamepad = source and InputDevice.SOURCE_GAMEPAD == InputDevice.SOURCE_GAMEPAD ||
+                source and InputDevice.SOURCE_JOYSTICK == InputDevice.SOURCE_JOYSTICK
+
         return when (event.keyCode) {
             KeyEvent.KEYCODE_DPAD_CENTER,
-            KeyEvent.KEYCODE_ENTER -> { onConfirm(); true }
+            KeyEvent.KEYCODE_ENTER -> if (isGamepad) false else { onConfirm(); true }
             KeyEvent.KEYCODE_BACK -> true
             KeyEvent.KEYCODE_DEL,
-            KeyEvent.KEYCODE_ESCAPE -> { onBack(); true }
+            KeyEvent.KEYCODE_ESCAPE -> if (isGamepad) false else { onBack(); true }
             else -> false
         }
     }
