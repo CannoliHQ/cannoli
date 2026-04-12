@@ -35,7 +35,6 @@ import dev.cannoli.scorza.ui.components.DiagramInput
 import dev.cannoli.scorza.ui.components.FaceLabels
 import dev.cannoli.scorza.ui.viewmodel.EventLogEntry
 import dev.cannoli.scorza.ui.viewmodel.InputTesterViewModel
-import kotlinx.coroutines.delay
 
 @Composable
 fun InputTesterScreen(
@@ -48,13 +47,6 @@ fun InputTesterScreen(
 
     DisposableEffect(Unit) {
         onDispose { viewModel.reset() }
-    }
-
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(100)
-            viewModel.tick()
-        }
     }
 
     LaunchedEffect(uiState.exitRequested) {
@@ -114,11 +106,18 @@ fun InputTesterScreen(
             }
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Press any button 10 times in a row to exit",
+                text = "Hold Select + D-Pad ← / → to cycle profiles",
                 color = colors.text.copy(alpha = 0.5f),
                 fontSize = 12.sp,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            )
+            Text(
+                text = "Press any button 10 times in a row to exit",
+                color = colors.text.copy(alpha = 0.5f),
+                fontSize = 12.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
             )
         }
     }
@@ -171,8 +170,9 @@ private fun EventLog(
         Column {
             entries.forEach { e ->
                 val color = if (e.resolvedButton == null) Color(0xFFFF5555) else textColor
+                val arrow = if (e.isDown) "↓" else "↑"
                 Text(
-                    text = "${e.keyName} (${e.keyCode})",
+                    text = "$arrow ${e.keyName} (${e.keyCode})",
                     color = color,
                     fontSize = 11.sp,
                     fontFamily = FontFamily.Monospace,

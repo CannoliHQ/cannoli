@@ -796,6 +796,26 @@ class MainActivity : ComponentActivity() {
                 leftTrigger = leftTrigger, rightTrigger = rightTrigger,
                 hatX = hatX, hatY = hatY,
             )
+
+            if (testerSelectHeld) {
+                val dir = when {
+                    hatX < -0.5f || leftX < -0.5f -> -1
+                    hatX >  0.5f || leftX >  0.5f ->  1
+                    else -> 0
+                }
+                if (dir != 0 && dir != testerHatChordState) {
+                    releaseAllTesterKeys(except = setOf("btn_select"))
+                    val newProfile = inputTesterViewModel.cycleProfile(
+                        forward = dir == 1,
+                        keepPressed = setOf("btn_select"),
+                    )
+                    loadTesterProfile(newProfile)
+                }
+                testerHatChordState = dir
+            } else {
+                testerHatChordState = 0
+            }
+
             return true
         }
 
@@ -804,7 +824,8 @@ class MainActivity : ComponentActivity() {
 
     private var testerProfileMap: Map<Int, String> = emptyMap()
     private val testerPressedKeycodes = mutableMapOf<Int, String?>()
-    private var testerStartHeld = false
+    private var testerSelectHeld = false
+    private var testerHatChordState: Int = 0
 
     private fun loadTesterProfile(name: String) {
         val controls = profileManager.readControls(name)
@@ -818,14 +839,17 @@ class MainActivity : ComponentActivity() {
         inputTesterViewModel.setProfiles(profiles, initial)
         loadTesterProfile(initial)
         testerPressedKeycodes.clear()
-        testerStartHeld = false
+        testerSelectHeld = false
     }
 
-    private fun releaseAllTesterKeys() {
-        for ((kc, resolved) in testerPressedKeycodes.toMap()) {
-            inputTesterViewModel.onKeyUp(0, kc, resolved)
+    private fun releaseAllTesterKeys(except: Set<String> = emptySet()) {
+        val snapshot = testerPressedKeycodes.toMap()
+        for ((kc, resolved) in snapshot) {
+            if (resolved in except) continue
+            val keyName = KeyEvent.keyCodeToString(kc).removePrefix("KEYCODE_")
+            inputTesterViewModel.onKeyUp(0, kc, keyName, -1, "", resolved)
+            testerPressedKeycodes.remove(kc)
         }
-        testerPressedKeycodes.clear()
     }
 
     private fun routeKeyToInputTester(event: KeyEvent, down: Boolean) {
@@ -837,19 +861,24 @@ class MainActivity : ComponentActivity() {
         val navButton = inputHandler.resolveButton(event.keyCode)
 
         if (down) {
-            if (navButton == "btn_start") testerStartHeld = true
-            if (testerStartHeld && (navButton == "btn_l" || navButton == "btn_r")) {
-                releaseAllTesterKeys()
-                val newProfile = inputTesterViewModel.cycleProfile(forward = navButton == "btn_r")
+            val isRepeat = event.repeatCount > 0
+            if (navButton == "btn_select") testerSelectHeld = true
+            if (!isRepeat && testerSelectHeld && (navButton == "btn_left" || navButton == "btn_right")) {
+                releaseAllTesterKeys(except = setOf("btn_select"))
+                val newProfile = inputTesterViewModel.cycleProfile(
+                    forward = navButton == "btn_right",
+                    keepPressed = setOf("btn_select"),
+                )
                 loadTesterProfile(newProfile)
             }
             val resolved = testerProfileMap[event.keyCode]
             testerPressedKeycodes[event.keyCode] = resolved
             inputTesterViewModel.onKeyDown(port, event.keyCode, keyName, deviceId, name, resolved)
+            if (!isRepeat) inputTesterViewModel.setActivePort(port)
         } else {
-            if (navButton == "btn_start") testerStartHeld = false
+            if (navButton == "btn_select") testerSelectHeld = false
             val resolved = testerPressedKeycodes.remove(event.keyCode)
-            inputTesterViewModel.onKeyUp(port, event.keyCode, resolved)
+            inputTesterViewModel.onKeyUp(port, event.keyCode, keyName, deviceId, name, resolved)
         }
         refreshInputTesterPorts()
     }
@@ -860,7 +889,7 @@ class MainActivity : ComponentActivity() {
             val slot = slots[i] ?: return@mapNotNull null
             dev.cannoli.scorza.ui.viewmodel.DeviceInfo(
                 port = i,
-                deviceId = -1,
+                deviceId = controllerManager.getDeviceIdForPort(i) ?: -1,
                 name = slot.name,
             )
         }

@@ -22,6 +22,7 @@ data class EventLogEntry(
     val deviceName: String,
     val resolvedButton: String?,
     val timestamp: Long,
+    val isDown: Boolean = true,
 )
 
 data class DeviceInfo(
@@ -59,7 +60,7 @@ class InputTesterViewModel(
         _state.update { it.copy(availableProfiles = available, selectedProfile = selected) }
     }
 
-    fun cycleProfile(forward: Boolean): String {
+    fun cycleProfile(forward: Boolean, keepPressed: Set<String> = emptySet()): String {
         var result = _state.value.selectedProfile
         _state.update { current ->
             val list = current.availableProfiles
@@ -69,7 +70,10 @@ class InputTesterViewModel(
             val next = list[((idx + step) + list.size) % list.size]
             result = next
             val clearedPorts = current.portStates.mapValues { (_, s) ->
-                s.copy(pressedButtons = emptySet(), firstPressedAtMs = null)
+                s.copy(
+                    pressedButtons = s.pressedButtons intersect keepPressed,
+                    firstPressedAtMs = if ((s.pressedButtons intersect keepPressed).isNotEmpty()) s.firstPressedAtMs else null,
+                )
             }
             current.copy(selectedProfile = next, portStates = clearedPorts)
         }
@@ -101,7 +105,7 @@ class InputTesterViewModel(
             val prev = current.portStates[port] ?: InputTesterState()
             val pressed = if (resolvedButton != null) prev.pressedButtons + resolvedButton else prev.pressedButtons
             val updatedPort = prev.copy(pressedButtons = pressed)
-            val entry = EventLogEntry(keyCode, keyName, deviceId, deviceName, resolvedButton, ts)
+            val entry = EventLogEntry(keyCode, keyName, deviceId, deviceName, resolvedButton, ts, isDown = true)
             current.copy(
                 portStates = current.portStates + (port to updatedPort),
                 lastEventDevice = DeviceInfo(port, deviceId, deviceName),
@@ -111,17 +115,27 @@ class InputTesterViewModel(
         }
     }
 
-    fun onKeyUp(port: Int, keyCode: Int, resolvedButton: String?) {
+    fun onKeyUp(
+        port: Int,
+        keyCode: Int,
+        keyName: String,
+        deviceId: Int,
+        deviceName: String,
+        resolvedButton: String?,
+    ) {
         heldKeyCodes.remove(keyCode)
+        val ts = now()
         _state.update { current ->
-            val prev = current.portStates[port] ?: return@update current
+            val prev = current.portStates[port] ?: InputTesterState()
             val pressed = if (resolvedButton != null) prev.pressedButtons - resolvedButton else prev.pressedButtons
             val updatedPort = prev.copy(pressedButtons = pressed)
-            current.copy(portStates = current.portStates + (port to updatedPort))
+            val entry = EventLogEntry(keyCode, keyName, deviceId, deviceName, resolvedButton, ts, isDown = false)
+            current.copy(
+                portStates = current.portStates + (port to updatedPort),
+                eventLog = (listOf(entry) + current.eventLog).take(eventLogCapacity),
+            )
         }
     }
-
-    fun tick() {}
 
     fun onMotion(
         port: Int,
@@ -206,12 +220,14 @@ class InputTesterViewModel(
         }
     }
 
-    private fun hasAnalogInput(s: InputTesterState): Boolean =
-        s.leftStick != Offset.Zero || s.rightStick != Offset.Zero ||
-                s.leftTrigger > 0f || s.rightTrigger > 0f
+    fun setActivePort(port: Int) {
+        _state.update { current ->
+            if (current.activePort == port) current
+            else current.copy(activePort = port)
+        }
+    }
 
     companion object {
-        const val HOLD_EXIT_MS = 3_000L
         const val EXIT_REPEAT_COUNT = 10
         const val DEFAULT_EVENT_LOG_CAPACITY = 8
         private val HAT_BUTTONS = setOf("btn_up", "btn_down", "btn_left", "btn_right")

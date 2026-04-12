@@ -124,6 +124,9 @@ class ControllerManager(
         return null
     }
 
+    fun getDeviceIdForPort(port: Int): Int? =
+        deviceToPort.entries.firstOrNull { it.value == port }?.key
+
     fun resetAllInput() {
         for (p in 0 until maxPorts) {
             portInputMasks[p] = 0

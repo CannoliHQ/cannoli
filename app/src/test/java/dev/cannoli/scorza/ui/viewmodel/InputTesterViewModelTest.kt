@@ -34,7 +34,7 @@ class InputTesterViewModelTest {
     fun keyUp_removesButton() {
         val vm = vm()
         vm.onKeyDown(0, 96, "BUTTON_A", 10, "Test Pad", "btn_a")
-        vm.onKeyUp(0, 96, "btn_a")
+        vm.onKeyUp(0, 96, "BUTTON_A", 10, "Test Pad", "btn_a")
         val pressed = vm.state.value.portStates[0]?.pressedButtons ?: emptySet()
         assertTrue(pressed.isEmpty())
     }
@@ -65,7 +65,7 @@ class InputTesterViewModelTest {
         val vm = vm()
         repeat(9) {
             vm.onKeyDown(0, 96, "BUTTON_A", 10, "Test Pad", "btn_a")
-            vm.onKeyUp(0, 96, "btn_a")
+            vm.onKeyUp(0, 96, "BUTTON_A", 10, "Test Pad", "btn_a")
             assertFalse(vm.state.value.exitRequested)
         }
         vm.onKeyDown(0, 96, "BUTTON_A", 10, "Test Pad", "btn_a")
@@ -77,10 +77,10 @@ class InputTesterViewModelTest {
         val vm = vm()
         repeat(9) {
             vm.onKeyDown(0, 96, "BUTTON_A", 10, "Test Pad", "btn_a")
-            vm.onKeyUp(0, 96, "btn_a")
+            vm.onKeyUp(0, 96, "BUTTON_A", 10, "Test Pad", "btn_a")
         }
         vm.onKeyDown(0, 97, "BUTTON_B", 10, "Test Pad", "btn_b")
-        vm.onKeyUp(0, 97, "btn_b")
+        vm.onKeyUp(0, 97, "BUTTON_B", 10, "Test Pad", "btn_b")
         vm.onKeyDown(0, 96, "BUTTON_A", 10, "Test Pad", "btn_a")
         assertFalse(vm.state.value.exitRequested)
     }
