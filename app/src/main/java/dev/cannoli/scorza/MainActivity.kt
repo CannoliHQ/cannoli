@@ -409,11 +409,6 @@ class MainActivity : ComponentActivity() {
         )
         wireInput()
 
-        lifecycleScope.launch {
-            settingsViewModel.appSettings.collect { appSettings ->
-                inputHandler.swapConfirmBack = appSettings.buttonLabelSet != ButtonLabelSet.PLUMBER
-            }
-        }
         onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {}
         })

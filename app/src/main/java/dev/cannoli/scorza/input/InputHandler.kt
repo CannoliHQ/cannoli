@@ -24,8 +24,6 @@ class InputHandler(
     var onY: () -> Unit = {}
     var onMenu: () -> Unit = {}
 
-    var swapConfirmBack: Boolean = false
-
     fun handleKeyEvent(event: KeyEvent): Boolean {
         if (event.action != KeyEvent.ACTION_DOWN && event.action != KeyEvent.ACTION_MULTIPLE) return false
 
@@ -58,8 +56,8 @@ class InputHandler(
             "btn_down" -> onDown()
             "btn_left" -> onLeft()
             "btn_right" -> onRight()
-            "btn_a" -> if (swapConfirmBack) onBack() else onConfirm()
-            "btn_b" -> if (swapConfirmBack) onConfirm() else onBack()
+            "btn_a" -> onConfirm()
+            "btn_b" -> onBack()
             "btn_x" -> onX()
             "btn_y" -> onY()
             "btn_select" -> onSelect()
@@ -77,7 +75,7 @@ class InputHandler(
     }
 
     companion object {
-        private val DEFAULT_KEY_MAP = mapOf(
+        val DEFAULT_KEY_MAP = mapOf(
             KeyEvent.KEYCODE_BUTTON_A to "btn_a",
             KeyEvent.KEYCODE_BUTTON_B to "btn_b",
             KeyEvent.KEYCODE_BUTTON_X to "btn_x",
