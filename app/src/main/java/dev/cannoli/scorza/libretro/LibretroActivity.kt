@@ -129,6 +129,7 @@ class LibretroActivity : ComponentActivity() {
     private var shaderParamsDirty = false
     private var platformBaseline: OverrideManager.Settings? = null
     private var defaultProfileControls = emptyMap<String, Int>()
+    private val navInputHandler = dev.cannoli.scorza.input.InputHandler { defaultProfileControls }
 
     private var diskCount by mutableIntStateOf(0)
     private var currentDiskIndex by mutableIntStateOf(0)
@@ -705,27 +706,27 @@ class LibretroActivity : ComponentActivity() {
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
         if (loading) return true
         val screen = currentScreen ?: return handleGameplayInput(keyCode, event)
-        val resolved = resolveGlobal(keyCode)
+        val button = resolveNavButton(keyCode)
         return when (screen) {
-            is IGMScreen.Menu -> handleMenuInput(screen, resolved)
-            is IGMScreen.Settings -> handleCategoryInput(screen, resolved)
-            is IGMScreen.Video -> handleVideoInput(screen, resolved)
-            is IGMScreen.Advanced -> handleAdvancedInput(screen, resolved)
-            is IGMScreen.ShaderSettings -> handleShaderSettingsInput(screen, resolved)
-            is IGMScreen.Emulator -> handleEmulatorInput(screen, resolved)
-            is IGMScreen.EmulatorCategory -> handleEmulatorCategoryInput(screen, resolved)
-            is IGMScreen.Controls -> handleProfilePickerInput(screen, resolved)
-            is IGMScreen.ControlEdit -> handleControlEditInput(screen, keyCode, resolved)
-            is IGMScreen.ProfileName -> handleProfileNameInput(screen, resolved)
-            is IGMScreen.Shortcuts -> handleShortcutsInput(screen, keyCode, resolved)
-            is IGMScreen.SavePrompt -> handleSavePromptInput(screen, resolved)
+            is IGMScreen.Menu -> handleMenuInput(screen, button)
+            is IGMScreen.Settings -> handleCategoryInput(screen, button)
+            is IGMScreen.Video -> handleVideoInput(screen, button)
+            is IGMScreen.Advanced -> handleAdvancedInput(screen, button)
+            is IGMScreen.ShaderSettings -> handleShaderSettingsInput(screen, button)
+            is IGMScreen.Emulator -> handleEmulatorInput(screen, button)
+            is IGMScreen.EmulatorCategory -> handleEmulatorCategoryInput(screen, button)
+            is IGMScreen.Controls -> handleProfilePickerInput(screen, button)
+            is IGMScreen.ControlEdit -> handleControlEditInput(screen, keyCode, button)
+            is IGMScreen.ProfileName -> handleProfileNameInput(screen, button)
+            is IGMScreen.Shortcuts -> handleShortcutsInput(screen, keyCode, button)
+            is IGMScreen.SavePrompt -> handleSavePromptInput(screen, button)
             is IGMScreen.Info -> {
-                if (resolved == KeyEvent.KEYCODE_BUTTON_B || resolved == KeyEvent.KEYCODE_BUTTON_A) { pop(); true } else true
+                if (button == "btn_east" || button == "btn_south") { pop(); true } else true
             }
-            is IGMScreen.Achievements -> handleAchievementsInput(screen, resolved)
-            is IGMScreen.AchievementDetail -> handleAchievementDetailInput(screen, resolved)
-            is IGMScreen.GuidePicker -> handleGuidePickerInput(screen, resolved)
-            is IGMScreen.Guide -> handleGuideInput(screen, resolved)
+            is IGMScreen.Achievements -> handleAchievementsInput(screen, button)
+            is IGMScreen.AchievementDetail -> handleAchievementDetailInput(screen, button)
+            is IGMScreen.GuidePicker -> handleGuidePickerInput(screen, button)
+            is IGMScreen.Guide -> handleGuideInput(screen, button)
         }
     }
 
@@ -733,10 +734,9 @@ class LibretroActivity : ComponentActivity() {
         if (loading) return true
         if (screenStack.isNotEmpty()) {
             if (currentScreen is IGMScreen.Guide) {
-                val resolved = resolveGlobal(keyCode)
-                when (resolved) {
-                    KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN -> guideScrollDir = 0
-                    KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT -> guideScrollXDir = 0
+                when (resolveNavButton(keyCode)) {
+                    "btn_up", "btn_down" -> guideScrollDir = 0
+                    "btn_left", "btn_right" -> guideScrollXDir = 0
                 }
             }
             handleShortcutKeyUp(keyCode)
@@ -761,20 +761,19 @@ class LibretroActivity : ComponentActivity() {
         return true
     }
 
-    private fun resolveGlobal(keyCode: Int): Int {
-        var resolved = keyCode
-        for (btn in input.buttons) {
-            val assigned = defaultProfileControls[btn.prefKey] ?: btn.defaultKeyCode
-            if (assigned == keyCode) { resolved = btn.defaultKeyCode; break }
+    private fun resolveNavButton(keyCode: Int): String? {
+        when (keyCode) {
+            KeyEvent.KEYCODE_BACK -> return "btn_east"
+            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> return "btn_south"
         }
-        if (confirmButton == dev.cannoli.igm.ConfirmButton.EAST) {
-            resolved = when (resolved) {
-                KeyEvent.KEYCODE_BUTTON_A -> KeyEvent.KEYCODE_BUTTON_B
-                KeyEvent.KEYCODE_BUTTON_B -> KeyEvent.KEYCODE_BUTTON_A
-                else -> resolved
+        val pref = navInputHandler.resolveButton(keyCode) ?: return null
+        return if (confirmButton == dev.cannoli.igm.ConfirmButton.EAST) {
+            when (pref) {
+                "btn_south" -> "btn_east"
+                "btn_east" -> "btn_south"
+                else -> pref
             }
-        }
-        return resolved
+        } else pref
     }
 
     private fun handleGameplayInput(keyCode: Int, event: KeyEvent): Boolean {
@@ -921,17 +920,17 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
-    private fun handleMenuInput(screen: IGMScreen.Menu, keyCode: Int): Boolean {
+    private fun handleMenuInput(screen: IGMScreen.Menu, button: String?): Boolean {
         if (screen.confirmDeleteSlot) {
-            return when (keyCode) {
-                KeyEvent.KEYCODE_BUTTON_X -> {
+            return when (button) {
+                "btn_north" -> {
                     slotManager.deleteState(currentSlot)
                     refreshSlotInfo()
                     showOsd("Deleted ${currentSlot.label}")
                     replaceTop(screen.copy(confirmDeleteSlot = false))
                     true
                 }
-                KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> {
+                "btn_east" -> {
                     replaceTop(screen.copy(confirmDeleteSlot = false))
                     true
                 }
@@ -943,44 +942,44 @@ class LibretroActivity : ComponentActivity() {
         val options = menu.options
         val onSlotRow = screen.selectedIndex == menu.saveStateIndex || screen.selectedIndex == menu.loadStateIndex
         val onDiscRow = screen.selectedIndex == menu.switchDiscIndex
-        return when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_UP -> {
+        return when (button) {
+            "btn_up" -> {
                 val idx = ((screen.selectedIndex - 1) + options.size) % options.size
                 replaceTop(screen.copy(selectedIndex = idx))
                 if (idx == menu.saveStateIndex || idx == menu.loadStateIndex) refreshSlotInfo()
                 true
             }
-            KeyEvent.KEYCODE_DPAD_DOWN -> {
+            "btn_down" -> {
                 val idx = (screen.selectedIndex + 1) % options.size
                 replaceTop(screen.copy(selectedIndex = idx))
                 if (idx == menu.saveStateIndex || idx == menu.loadStateIndex) refreshSlotInfo()
                 true
             }
-            KeyEvent.KEYCODE_DPAD_LEFT -> {
+            "btn_left" -> {
                 when {
                     onSlotRow -> cycleSlot(-1)
                     onDiscRow -> cycleDisc(-1)
                 }
                 true
             }
-            KeyEvent.KEYCODE_DPAD_RIGHT -> {
+            "btn_right" -> {
                 when {
                     onSlotRow -> cycleSlot(1)
                     onDiscRow -> cycleDisc(1)
                 }
                 true
             }
-            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+            "btn_south" -> {
                 handleMenuAction(menu, screen.selectedIndex); true
             }
-            KeyEvent.KEYCODE_BUTTON_X -> { if (undoType != null) performUndo(); true }
-            KeyEvent.KEYCODE_BUTTON_Y -> {
+            "btn_north" -> { if (undoType != null) performUndo(); true }
+            "btn_west" -> {
                 if (onSlotRow && slotExists) {
                     replaceTop(screen.copy(confirmDeleteSlot = true))
                 }
                 true
             }
-            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { closeAll(); true }
+            "btn_east" -> { closeAll(); true }
             else -> true
         }
     }
@@ -1060,16 +1059,16 @@ class LibretroActivity : ComponentActivity() {
 
     // --- Settings category screen ---
 
-    private fun handleCategoryInput(screen: IGMScreen.Settings, keyCode: Int): Boolean {
+    private fun handleCategoryInput(screen: IGMScreen.Settings, button: String?): Boolean {
         val count = IGMSettings.CATEGORIES.size
-        return when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_UP -> {
+        return when (button) {
+            "btn_up" -> {
                 replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
             }
-            KeyEvent.KEYCODE_DPAD_DOWN -> {
+            "btn_down" -> {
                 replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
             }
-            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+            "btn_south" -> {
                 when (screen.selectedIndex) {
                     IGMSettings.VIDEO -> push(IGMScreen.Video())
                     IGMSettings.EMULATOR -> {
@@ -1086,7 +1085,7 @@ class LibretroActivity : ComponentActivity() {
                 }
                 true
             }
-            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> {
+            "btn_east" -> {
                 val snap = frontendSnapshot
                 if (snap != null && (shaderParamsDirty || !buildCurrentSettings().frontendEquals(snap))) {
                     push(IGMScreen.SavePrompt())
@@ -1193,28 +1192,28 @@ class LibretroActivity : ComponentActivity() {
         renderer.overlayPath = resolveOverlayPath()
     }
 
-    private fun handleVideoInput(screen: IGMScreen.Video, keyCode: Int): Boolean {
+    private fun handleVideoInput(screen: IGMScreen.Video, button: String?): Boolean {
         val hasParams = shaderParams.isNotEmpty()
         val count = buildSettingsItems().size
         if (count == 0) return true
-        return when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_UP -> {
+        return when (button) {
+            "btn_up" -> {
                 replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
             }
-            KeyEvent.KEYCODE_DPAD_DOWN -> {
+            "btn_down" -> {
                 replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
             }
-            KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                val dir = if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) 1 else -1
+            "btn_left", "btn_right" -> {
+                val dir = if (button == "btn_right") 1 else -1
                 cycleVideoValue(screen.selectedIndex, dir, hasParams)
                 true
             }
-            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+            "btn_south" -> {
                 val shaderSettingsIdx = if (hasParams) 3 else -1
                 if (screen.selectedIndex == shaderSettingsIdx) push(IGMScreen.ShaderSettings())
                 true
             }
-            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
+            "btn_east" -> { pop(); true }
             else -> true
         }
     }
@@ -1237,22 +1236,22 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
-    private fun handleAdvancedInput(screen: IGMScreen.Advanced, keyCode: Int): Boolean {
+    private fun handleAdvancedInput(screen: IGMScreen.Advanced, button: String?): Boolean {
         val count = buildSettingsItems().size
         if (count == 0) return true
-        return when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_UP -> {
+        return when (button) {
+            "btn_up" -> {
                 replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
             }
-            KeyEvent.KEYCODE_DPAD_DOWN -> {
+            "btn_down" -> {
                 replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
             }
-            KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                val dir = if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) 1 else -1
+            "btn_left", "btn_right" -> {
+                val dir = if (button == "btn_right") 1 else -1
                 cycleAdvancedValue(screen.selectedIndex, dir)
                 true
             }
-            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
+            "btn_east" -> { pop(); true }
             else -> true
         }
     }
@@ -1313,21 +1312,21 @@ class LibretroActivity : ComponentActivity() {
         else -> screen.achievements
     }
 
-    private fun handleAchievementsInput(screen: IGMScreen.Achievements, keyCode: Int): Boolean {
+    private fun handleAchievementsInput(screen: IGMScreen.Achievements, button: String?): Boolean {
         val filtered = filteredAchievements(screen)
         val count = filtered.size
-        if (count == 0 && keyCode != KeyEvent.KEYCODE_BUTTON_Y) return when (keyCode) {
-            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
+        if (count == 0 && button != "btn_north") return when (button) {
+            "btn_east" -> { pop(); true }
             else -> true
         }
-        return when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_UP -> {
+        return when (button) {
+            "btn_up" -> {
                 replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
             }
-            KeyEvent.KEYCODE_DPAD_DOWN -> {
+            "btn_down" -> {
                 replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
             }
-            KeyEvent.KEYCODE_BUTTON_A -> {
+            "btn_south" -> {
                 var ach = filtered.getOrNull(screen.selectedIndex)
                 if (ach != null) {
                     val ra = raManager
@@ -1339,19 +1338,19 @@ class LibretroActivity : ComponentActivity() {
                 }
                 true
             }
-            KeyEvent.KEYCODE_BUTTON_Y -> {
+            "btn_north" -> {
                 val newFilter = (screen.filter + 1) % 2
                 replaceTop(screen.copy(filter = newFilter, selectedIndex = 0))
                 true
             }
-            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
+            "btn_east" -> { pop(); true }
             else -> true
         }
     }
 
-    private fun handleAchievementDetailInput(screen: IGMScreen.AchievementDetail, keyCode: Int): Boolean {
-        return when (keyCode) {
-            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
+    private fun handleAchievementDetailInput(screen: IGMScreen.AchievementDetail, button: String?): Boolean {
+        return when (button) {
+            "btn_east" -> { pop(); true }
             else -> true
         }
     }
@@ -1378,20 +1377,20 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
-    private fun handleGuidePickerInput(screen: IGMScreen.GuidePicker, keyCode: Int): Boolean {
+    private fun handleGuidePickerInput(screen: IGMScreen.GuidePicker, button: String?): Boolean {
         val count = guideFiles.size
-        return when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_UP -> {
+        return when (button) {
+            "btn_up" -> {
                 replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
             }
-            KeyEvent.KEYCODE_DPAD_DOWN -> {
+            "btn_down" -> {
                 replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
             }
-            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+            "btn_south" -> {
                 guideFiles.getOrNull(screen.selectedIndex)?.let { openGuide(it) }
                 true
             }
-            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> {
+            "btn_east" -> {
                 pop()
                 if (screenStack.isEmpty()) closeAll()
                 true
@@ -1400,21 +1399,21 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
-    private fun handleGuideInput(screen: IGMScreen.Guide, keyCode: Int): Boolean {
+    private fun handleGuideInput(screen: IGMScreen.Guide, button: String?): Boolean {
         val guide = guideFiles.firstOrNull { it.file.absolutePath == screen.filePath }
         val type = guide?.type ?: return true
-        return when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_UP -> { guideScrollDir = -1; true }
-            KeyEvent.KEYCODE_DPAD_DOWN -> { guideScrollDir = 1; true }
-            KeyEvent.KEYCODE_DPAD_LEFT -> {
+        return when (button) {
+            "btn_up" -> { guideScrollDir = -1; true }
+            "btn_down" -> { guideScrollDir = 1; true }
+            "btn_left" -> {
                 if (type != GuideType.TXT && screen.textZoom > 1) guideScrollXDir = -1
                 true
             }
-            KeyEvent.KEYCODE_DPAD_RIGHT -> {
+            "btn_right" -> {
                 if (type != GuideType.TXT && screen.textZoom > 1) guideScrollXDir = 1
                 true
             }
-            KeyEvent.KEYCODE_BUTTON_L1 -> {
+            "btn_l" -> {
                 if (type == GuideType.PDF) {
                     replaceTop(screen.copy(page = (screen.page - 1).coerceAtLeast(0)))
                 } else {
@@ -1422,7 +1421,7 @@ class LibretroActivity : ComponentActivity() {
                 }
                 true
             }
-            KeyEvent.KEYCODE_BUTTON_R1 -> {
+            "btn_r" -> {
                 if (type == GuideType.PDF) {
                     replaceTop(screen.copy(page = (screen.page + 1).coerceAtMost(guidePageCount - 1)))
                 } else {
@@ -1430,13 +1429,13 @@ class LibretroActivity : ComponentActivity() {
                 }
                 true
             }
-            KeyEvent.KEYCODE_BUTTON_Y -> {
+            "btn_north" -> {
                 guideInitialScroll = guideScrollPos
                 guideInitialScrollX = guideScrollXPos
                 replaceTop(screen.copy(textZoom = if (screen.textZoom >= 3) 1 else screen.textZoom + 1))
                 true
             }
-            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> {
+            "btn_east" -> {
                 val pos = if (type == GuideType.PDF) screen.page else guideScrollPos
                 guideManager.save(guide.file, pos, guideScrollPos, guideScrollXPos, screen.textZoom)
                 guideScrollDir = 0
@@ -1449,22 +1448,22 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
-    private fun handleShaderSettingsInput(screen: IGMScreen.ShaderSettings, keyCode: Int): Boolean {
+    private fun handleShaderSettingsInput(screen: IGMScreen.ShaderSettings, button: String?): Boolean {
         val count = shaderParams.size
-        if (count == 0) return when (keyCode) {
-            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
+        if (count == 0) return when (button) {
+            "btn_east" -> { pop(); true }
             else -> true
         }
-        return when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_UP -> {
+        return when (button) {
+            "btn_up" -> {
                 replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
             }
-            KeyEvent.KEYCODE_DPAD_DOWN -> {
+            "btn_down" -> {
                 replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
             }
-            KeyEvent.KEYCODE_DPAD_LEFT -> { cycleShaderParam(screen.selectedIndex, -1); true }
-            KeyEvent.KEYCODE_DPAD_RIGHT -> { cycleShaderParam(screen.selectedIndex, 1); true }
-            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
+            "btn_left" -> { cycleShaderParam(screen.selectedIndex, -1); true }
+            "btn_right" -> { cycleShaderParam(screen.selectedIndex, 1); true }
+            "btn_east" -> { pop(); true }
             else -> true
         }
     }
@@ -1505,85 +1504,81 @@ class LibretroActivity : ComponentActivity() {
     private fun emulatorHasCategories(): Boolean =
         coreCategories.isNotEmpty() && coreOptions.any { it.category.isNotEmpty() }
 
-    private fun handleEmulatorInput(screen: IGMScreen.Emulator, keyCode: Int): Boolean {
+    private fun handleEmulatorInput(screen: IGMScreen.Emulator, button: String?): Boolean {
         if (screen.showDescription) {
-            return if (keyCode == KeyEvent.KEYCODE_BUTTON_B || keyCode == KeyEvent.KEYCODE_BACK ||
-                keyCode == KeyEvent.KEYCODE_BUTTON_A || keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
-                keyCode == KeyEvent.KEYCODE_ENTER) {
+            return if (button == "btn_east" || button == "btn_south") {
                 replaceTop(screen.copy(showDescription = false)); true
             } else true
         }
         if (coreOptions.isEmpty()) {
-            return if (keyCode == KeyEvent.KEYCODE_BUTTON_B || keyCode == KeyEvent.KEYCODE_BACK) { pop(); true } else true
+            return if (button == "btn_east") { pop(); true } else true
         }
         if (emulatorHasCategories()) {
             val items = emulatorMenuItems()
             val count = items.size
-            return when (keyCode) {
-                KeyEvent.KEYCODE_DPAD_UP -> {
+            return when (button) {
+                "btn_up" -> {
                     replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
                 }
-                KeyEvent.KEYCODE_DPAD_DOWN -> {
+                "btn_down" -> {
                     replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
                 }
-                KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+                "btn_south" -> {
                     val usedCategories = coreCategories.filter { cat -> coreOptions.any { it.category == cat.key } }
                     val cat = usedCategories.getOrNull(screen.selectedIndex)
                     push(IGMScreen.EmulatorCategory(categoryKey = cat?.key ?: "", categoryTitle = cat?.desc ?: ""))
                     true
                 }
-                KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
+                "btn_east" -> { pop(); true }
                 else -> true
             }
         }
         val count = coreOptions.size
-        return when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_UP -> {
+        return when (button) {
+            "btn_up" -> {
                 replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
             }
-            KeyEvent.KEYCODE_DPAD_DOWN -> {
+            "btn_down" -> {
                 replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
             }
-            KeyEvent.KEYCODE_DPAD_LEFT -> { cycleEmulatorValue(coreOptions, screen.selectedIndex, -1); true }
-            KeyEvent.KEYCODE_DPAD_RIGHT -> { cycleEmulatorValue(coreOptions, screen.selectedIndex, 1); true }
-            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+            "btn_left" -> { cycleEmulatorValue(coreOptions, screen.selectedIndex, -1); true }
+            "btn_right" -> { cycleEmulatorValue(coreOptions, screen.selectedIndex, 1); true }
+            "btn_south" -> {
                 val info = coreOptions.getOrNull(screen.selectedIndex)?.info
                 if (!info.isNullOrEmpty()) replaceTop(screen.copy(showDescription = true))
                 true
             }
-            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
+            "btn_east" -> { pop(); true }
             else -> true
         }
     }
 
-    private fun handleEmulatorCategoryInput(screen: IGMScreen.EmulatorCategory, keyCode: Int): Boolean {
+    private fun handleEmulatorCategoryInput(screen: IGMScreen.EmulatorCategory, button: String?): Boolean {
         if (screen.showDescription) {
-            return if (keyCode == KeyEvent.KEYCODE_BUTTON_B || keyCode == KeyEvent.KEYCODE_BACK ||
-                keyCode == KeyEvent.KEYCODE_BUTTON_A || keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
-                keyCode == KeyEvent.KEYCODE_ENTER) {
+            return if (button == "btn_east" || button == "btn_south") {
                 replaceTop(screen.copy(showDescription = false)); true
             } else true
         }
         val filtered = coreOptions.filter { it.category == screen.categoryKey }
         if (filtered.isEmpty()) {
-            return if (keyCode == KeyEvent.KEYCODE_BUTTON_B || keyCode == KeyEvent.KEYCODE_BACK) { pop(); true } else true
+            return if (button == "btn_east") { pop(); true } else true
         }
         val count = filtered.size
-        return when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_UP -> {
+        return when (button) {
+            "btn_up" -> {
                 replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
             }
-            KeyEvent.KEYCODE_DPAD_DOWN -> {
+            "btn_down" -> {
                 replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
             }
-            KeyEvent.KEYCODE_DPAD_LEFT -> { cycleEmulatorValue(filtered, screen.selectedIndex, -1); true }
-            KeyEvent.KEYCODE_DPAD_RIGHT -> { cycleEmulatorValue(filtered, screen.selectedIndex, 1); true }
-            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+            "btn_left" -> { cycleEmulatorValue(filtered, screen.selectedIndex, -1); true }
+            "btn_right" -> { cycleEmulatorValue(filtered, screen.selectedIndex, 1); true }
+            "btn_south" -> {
                 val info = filtered.getOrNull(screen.selectedIndex)?.info
                 if (!info.isNullOrEmpty()) replaceTop(screen.copy(showDescription = true))
                 true
             }
-            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
+            "btn_east" -> { pop(); true }
             else -> true
         }
     }
@@ -1616,12 +1611,12 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
-    private fun handleProfilePickerInput(screen: IGMScreen.Controls, keyCode: Int): Boolean {
+    private fun handleProfilePickerInput(screen: IGMScreen.Controls, button: String?): Boolean {
         if (screen.menuOpen) {
-            return when (keyCode) {
-                KeyEvent.KEYCODE_DPAD_UP -> { replaceTop(screen.copy(menuIndex = if (screen.menuIndex <= 0) 1 else 0)); true }
-                KeyEvent.KEYCODE_DPAD_DOWN -> { replaceTop(screen.copy(menuIndex = if (screen.menuIndex >= 1) 0 else 1)); true }
-                KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+            return when (button) {
+                "btn_up" -> { replaceTop(screen.copy(menuIndex = if (screen.menuIndex <= 0) 1 else 0)); true }
+                "btn_down" -> { replaceTop(screen.copy(menuIndex = if (screen.menuIndex >= 1) 0 else 1)); true }
+                "btn_south" -> {
                     val name = profileNames.getOrNull(screen.selectedIndex) ?: return true
                     when (screen.menuIndex) {
                         0 -> {
@@ -1644,25 +1639,25 @@ class LibretroActivity : ComponentActivity() {
             }
         }
         val count = profileNames.size
-        return when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_UP -> {
+        return when (button) {
+            "btn_up" -> {
                 if (count > 0) replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
             }
-            KeyEvent.KEYCODE_DPAD_DOWN -> {
+            "btn_down" -> {
                 if (count > 0) replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
             }
-            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+            "btn_south" -> {
                 val name = profileNames.getOrNull(screen.selectedIndex) ?: return true
                 currentProfileName = name
                 profileManager.saveProfileSelection(platformTag, gameBaseName, name)
                 replaceTop(screen)
                 true
             }
-            KeyEvent.KEYCODE_BUTTON_X -> {
+            "btn_west" -> {
                 push(IGMScreen.ProfileName(isNew = true))
                 true
             }
-            KeyEvent.KEYCODE_BUTTON_Y -> {
+            "btn_north" -> {
                 val name = profileNames.getOrNull(screen.selectedIndex) ?: return true
                 currentProfileName = name
                 profileManager.saveProfileSelection(platformTag, gameBaseName, name)
@@ -1670,19 +1665,19 @@ class LibretroActivity : ComponentActivity() {
                 push(IGMScreen.ControlEdit())
                 true
             }
-            KeyEvent.KEYCODE_BUTTON_START -> {
+            "btn_start" -> {
                 val name = profileNames.getOrNull(screen.selectedIndex)
                 if (name != null && !ProfileManager.isProtected(name)) {
                     replaceTop(screen.copy(menuOpen = true, menuIndex = 0))
                 }
                 true
             }
-            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
+            "btn_east" -> { pop(); true }
             else -> true
         }
     }
 
-    private fun handleControlEditInput(screen: IGMScreen.ControlEdit, rawKeyCode: Int, keyCode: Int): Boolean {
+    private fun handleControlEditInput(screen: IGMScreen.ControlEdit, rawKeyCode: Int, button: String?): Boolean {
         val inp = controllerManager.portInputs[0]
         if (screen.listeningIndex >= 0) {
             shortcutCountdownHandler.removeCallbacks(controlListenRunnable)
@@ -1692,19 +1687,19 @@ class LibretroActivity : ComponentActivity() {
             return true
         }
         val count = inp.buttons.size
-        return when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_UP -> {
+        return when (button) {
+            "btn_up" -> {
                 replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
             }
-            KeyEvent.KEYCODE_DPAD_DOWN -> {
+            "btn_down" -> {
                 replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
             }
-            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+            "btn_south" -> {
                 replaceTop(screen.copy(listeningIndex = screen.selectedIndex, listenCountdownMs = 0))
                 shortcutCountdownHandler.postDelayed(controlListenRunnable, controlListenTickMs)
                 true
             }
-            KeyEvent.KEYCODE_BUTTON_X -> {
+            "btn_west" -> {
                 if (screen.listeningIndex < 0) {
                     val btn = inp.buttons.getOrNull(screen.selectedIndex)
                     if (btn != null && btn.prefKey != "btn_menu" && inp.getKeyCodeFor(btn) != LibretroInput.UNMAPPED) {
@@ -1715,31 +1710,31 @@ class LibretroActivity : ComponentActivity() {
                 }
                 true
             }
-            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
+            "btn_east" -> { pop(); true }
             else -> true
         }
     }
 
-    private fun handleProfileNameInput(screen: IGMScreen.ProfileName, keyCode: Int): Boolean {
+    private fun handleProfileNameInput(screen: IGMScreen.ProfileName, button: String?): Boolean {
         val rows = dev.cannoli.scorza.ui.components.getKeyboardRows(screen.caps, screen.symbols)
         val maxRow = rows.lastIndex
         val maxCol = rows[screen.keyRow.coerceIn(0, maxRow)].lastIndex
-        return when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_UP -> {
+        return when (button) {
+            "btn_up" -> {
                 val newRow = if (screen.keyRow <= 0) maxRow else screen.keyRow - 1
                 replaceTop(screen.copy(keyRow = newRow, keyCol = screen.keyCol.coerceAtMost(rows[newRow].lastIndex))); true
             }
-            KeyEvent.KEYCODE_DPAD_DOWN -> {
+            "btn_down" -> {
                 val newRow = if (screen.keyRow >= maxRow) 0 else screen.keyRow + 1
                 replaceTop(screen.copy(keyRow = newRow, keyCol = screen.keyCol.coerceAtMost(rows[newRow].lastIndex))); true
             }
-            KeyEvent.KEYCODE_DPAD_LEFT -> {
+            "btn_left" -> {
                 replaceTop(screen.copy(keyCol = if (screen.keyCol <= 0) maxCol else screen.keyCol - 1)); true
             }
-            KeyEvent.KEYCODE_DPAD_RIGHT -> {
+            "btn_right" -> {
                 replaceTop(screen.copy(keyCol = if (screen.keyCol >= maxCol) 0 else screen.keyCol + 1)); true
             }
-            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+            "btn_south" -> {
                 dev.cannoli.scorza.ui.components.handleKeyboardConfirm(
                     screen.caps, screen.symbols, screen.keyRow, screen.keyCol,
                     screen.name, screen.cursorPos,
@@ -1750,14 +1745,14 @@ class LibretroActivity : ComponentActivity() {
                 )
                 true
             }
-            KeyEvent.KEYCODE_BUTTON_L1 -> {
+            "btn_l" -> {
                 if (screen.cursorPos > 0) replaceTop(screen.copy(cursorPos = screen.cursorPos - 1)); true
             }
-            KeyEvent.KEYCODE_BUTTON_R1 -> {
+            "btn_r" -> {
                 if (screen.cursorPos < screen.name.length) replaceTop(screen.copy(cursorPos = screen.cursorPos + 1)); true
             }
-            KeyEvent.KEYCODE_BUTTON_START -> { finishProfileName(screen); true }
-            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
+            "btn_start" -> { finishProfileName(screen); true }
+            "btn_east" -> { pop(); true }
             else -> true
         }
     }
@@ -1843,7 +1838,7 @@ class LibretroActivity : ComponentActivity() {
         if (screen.listening && screen.heldKeys.contains(keyCode)) cancelShortcutListening()
     }
 
-    private fun handleShortcutsInput(screen: IGMScreen.Shortcuts, rawKeyCode: Int, keyCode: Int): Boolean {
+    private fun handleShortcutsInput(screen: IGMScreen.Shortcuts, rawKeyCode: Int, button: String?): Boolean {
         if (screen.listening) {
             if (screen.heldKeys.contains(rawKeyCode)) return true
             val newKeys = screen.heldKeys + rawKeyCode
@@ -1853,22 +1848,22 @@ class LibretroActivity : ComponentActivity() {
             return true
         }
         val count = ShortcutAction.entries.size + 1
-        return when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_UP -> {
+        return when (button) {
+            "btn_up" -> {
                 replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
             }
-            KeyEvent.KEYCODE_DPAD_DOWN -> {
+            "btn_down" -> {
                 replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
             }
-            KeyEvent.KEYCODE_DPAD_LEFT -> {
+            "btn_left" -> {
                 if (screen.selectedIndex == 0) cycleShortcutSource(-1)
                 true
             }
-            KeyEvent.KEYCODE_DPAD_RIGHT -> {
+            "btn_right" -> {
                 if (screen.selectedIndex == 0) cycleShortcutSource(1)
                 true
             }
-            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+            "btn_south" -> {
                 if (screen.selectedIndex == 0) {
                     cycleShortcutSource(1)
                 } else {
@@ -1876,7 +1871,7 @@ class LibretroActivity : ComponentActivity() {
                 }
                 true
             }
-            KeyEvent.KEYCODE_BUTTON_X -> {
+            "btn_west" -> {
                 if (screen.selectedIndex > 0) {
                     val action = ShortcutAction.entries[screen.selectedIndex - 1]
                     shortcuts = shortcuts + (action to emptySet())
@@ -1884,7 +1879,7 @@ class LibretroActivity : ComponentActivity() {
                 }
                 true
             }
-            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> { pop(); true }
+            "btn_east" -> { pop(); true }
             else -> true
         }
     }
@@ -1902,17 +1897,17 @@ class LibretroActivity : ComponentActivity() {
 
     // --- Save Prompt ---
 
-    private fun handleSavePromptInput(screen: IGMScreen.SavePrompt, keyCode: Int): Boolean {
+    private fun handleSavePromptInput(screen: IGMScreen.SavePrompt, button: String?): Boolean {
         val count = buildSettingsItems().size
         if (count == 0) return true
-        return when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_UP -> {
+        return when (button) {
+            "btn_up" -> {
                 replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
             }
-            KeyEvent.KEYCODE_DPAD_DOWN -> {
+            "btn_down" -> {
                 replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
             }
-            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+            "btn_south" -> {
                 when (screen.selectedIndex) {
                     0 -> { saveToPlatform(); showOsd("Saved for $platformName") }
                     1 -> { saveToGame(); showOsd("Saved for this game") }
@@ -1922,7 +1917,7 @@ class LibretroActivity : ComponentActivity() {
                 pop(); pop()
                 true
             }
-            KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> {
+            "btn_east" -> {
                 frontendSnapshot = null
                 shaderParamsDirty = false
                 pop(); pop()
