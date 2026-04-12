@@ -9,6 +9,7 @@ layout(push_constant) uniform Push {
     vec4 OriginalSize;
     vec4 OutputSize;
     uint FrameCount;
+    float Time;
     float curvature;
     float scanline_strength;
     float mask_strength;
@@ -147,7 +148,7 @@ void main() {
     float vy = smoothstep(0.0, vigE, xy.y) * smoothstep(1.0, 1.0 - vigE, xy.y);
     col *= mix(1.0, vx * vy, params.vignette);
 
-    float sweepPhase = 1.0 - mod(float(params.FrameCount), 480.0) / 480.0;
+    float sweepPhase = 1.0 - fract(params.Time * 0.125);
     float band = smoothstep(0.04, 0.0, abs(xy.y - sweepPhase));
     col *= 1.0 + band * params.sweep_bright * params.sweep;
 

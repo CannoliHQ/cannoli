@@ -23,6 +23,8 @@ class ShaderPipeline private constructor(
     val parameters: ConcurrentHashMap<String, Float>
 ) {
     private var frameCount = 0
+    private var timeAccumNanos = 0L
+    private var lastTimeNanos = 0L
     private var fboWidth = 0
     private var fboHeight = 0
     private var fboVpW = 0
@@ -53,7 +55,14 @@ class ShaderPipeline private constructor(
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
         unbindQuad(passthroughProgram)
 
-        if (!paused) frameCount++
+        val now = System.nanoTime()
+        if (lastTimeNanos == 0L) lastTimeNanos = now
+        if (!paused) {
+            frameCount++
+            timeAccumNanos += now - lastTimeNanos
+        }
+        lastTimeNanos = now
+        val elapsedSeconds = timeAccumNanos / 1_000_000_000f
 
         for (i in preset.passes.indices) {
             val pass = preset.passes[i]
@@ -142,6 +151,8 @@ class ShaderPipeline private constructor(
             setUniform1i(program, "FrameCount", fc)
             setUniform1i(program, "params_FrameCount", fc)
             setUniform1i(program, "FrameDirection", 1)
+            setUniform1f(program, "Time", elapsedSeconds)
+            setUniform1f(program, "params_Time", elapsedSeconds)
 
             // MVP identity matrix
             for (name in arrayOf("MVPMatrix", "global.MVP", "global_MVP")) {
