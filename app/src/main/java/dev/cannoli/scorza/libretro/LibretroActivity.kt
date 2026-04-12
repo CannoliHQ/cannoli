@@ -256,7 +256,7 @@ class LibretroActivity : ComponentActivity() {
         sessionLog.log("save_dir=$saveDir")
         sessionLog.log("platform_tag=$platformTag")
         slotManager = SaveSlotManager(stateBasePath)
-        guideManager = GuideManager(cannoliRoot, platformTag, gameTitle)
+        guideManager = GuideManager(cannoliRoot, platformTag, File(romPath).nameWithoutExtension)
         profileManager = ProfileManager(cannoliRoot)
         profileManager.ensureDefaults()
         controllerManager = ControllerManager()
