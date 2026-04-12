@@ -470,6 +470,7 @@ class LibretroActivity : ComponentActivity() {
                 }
 
                 val glesBackend = LibretroRenderer(runner)
+                if (debugLogging) glesBackend.logger = { msg -> sessionLog.log(msg) }
                 configureBackend(glesBackend)
                 var startupCountdown = 35
                 // HACK: FBNeo has a bug where vertical arcade games initialize with wrong

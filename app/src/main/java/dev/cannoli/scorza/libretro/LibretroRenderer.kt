@@ -73,6 +73,14 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
 
     @Volatile override var onFrameRendered: (() -> Unit)? = null
 
+    @Volatile var logger: ((String) -> Unit)? = null
+    private var loggedFrameW = -1
+    private var loggedFrameH = -1
+    private var loggedAspect = Float.NaN
+    private var loggedRotation = -1
+    private var loggedSurfaceW = -1
+    private var loggedSurfaceH = -1
+
     private var textureId = 0
     private var programNone = 0
     private var frameBuffer: ByteBuffer? = null
@@ -146,6 +154,11 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
         surfaceWidth = width
         surfaceHeight = height
+        if (width != loggedSurfaceW || height != loggedSurfaceH) {
+            logger?.invoke("geom: surface ${loggedSurfaceW}x${loggedSurfaceH} -> ${width}x${height}")
+            loggedSurfaceW = width
+            loggedSurfaceH = height
+        }
     }
 
     override fun onDrawFrame(gl: GL10?) {
@@ -171,6 +184,20 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
 
         val w = runner.getFrameWidth()
         val h = runner.getFrameHeight()
+        if (w != loggedFrameW || h != loggedFrameH) {
+            logger?.invoke("geom: core frame ${loggedFrameW}x${loggedFrameH} -> ${w}x${h}")
+            loggedFrameW = w
+            loggedFrameH = h
+        }
+        if (coreAspectRatio != loggedAspect) {
+            logger?.invoke("geom: coreAspectRatio $loggedAspect -> $coreAspectRatio")
+            loggedAspect = coreAspectRatio
+        }
+        val rot = runner.getRotation()
+        if (rot != loggedRotation) {
+            logger?.invoke("geom: rotation $loggedRotation -> $rot")
+            loggedRotation = rot
+        }
         if (w == 0 || h == 0) {
             GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
             tickFps()
