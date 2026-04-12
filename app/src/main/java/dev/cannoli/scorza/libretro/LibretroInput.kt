@@ -7,10 +7,10 @@ class LibretroInput {
     data class ButtonDef(val retroMask: Int, val label: String, val prefKey: String, val defaultKeyCode: Int)
 
     val buttons = listOf(
-        ButtonDef(RETRO_A, "South", "btn_south", KeyEvent.KEYCODE_BUTTON_A),
-        ButtonDef(RETRO_B, "East", "btn_east", KeyEvent.KEYCODE_BUTTON_B),
-        ButtonDef(RETRO_X, "West", "btn_west", KeyEvent.KEYCODE_BUTTON_X),
-        ButtonDef(RETRO_Y, "North", "btn_north", KeyEvent.KEYCODE_BUTTON_Y),
+        ButtonDef(RETRO_B, "South", "btn_south", KeyEvent.KEYCODE_BUTTON_A),
+        ButtonDef(RETRO_A, "East", "btn_east", KeyEvent.KEYCODE_BUTTON_B),
+        ButtonDef(RETRO_Y, "West", "btn_west", KeyEvent.KEYCODE_BUTTON_X),
+        ButtonDef(RETRO_X, "North", "btn_north", KeyEvent.KEYCODE_BUTTON_Y),
         ButtonDef(RETRO_L, "L", "btn_l", KeyEvent.KEYCODE_BUTTON_L1),
         ButtonDef(RETRO_R, "R", "btn_r", KeyEvent.KEYCODE_BUTTON_R1),
         ButtonDef(RETRO_L2, "L2", "btn_l2", KeyEvent.KEYCODE_BUTTON_L2),
