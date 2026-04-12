@@ -23,7 +23,7 @@ class ShaderPipeline private constructor(
     val parameters: ConcurrentHashMap<String, Float>
 ) {
     private var frameCount = 0
-    private var timeAccumNanos = 0L
+    private var sweepNanos = 0L
     private var lastTimeNanos = 0L
     private var fboWidth = 0
     private var fboHeight = 0
@@ -59,10 +59,10 @@ class ShaderPipeline private constructor(
         if (lastTimeNanos == 0L) lastTimeNanos = now
         if (!paused) {
             frameCount++
-            timeAccumNanos += now - lastTimeNanos
+            sweepNanos = (sweepNanos + (now - lastTimeNanos)) % SWEEP_PERIOD_NANOS
         }
         lastTimeNanos = now
-        val elapsedSeconds = timeAccumNanos / 1_000_000_000f
+        val sweepPhase = sweepNanos.toFloat() / SWEEP_PERIOD_NANOS.toFloat()
 
         for (i in preset.passes.indices) {
             val pass = preset.passes[i]
@@ -151,8 +151,8 @@ class ShaderPipeline private constructor(
             setUniform1i(program, "FrameCount", fc)
             setUniform1i(program, "params_FrameCount", fc)
             setUniform1i(program, "FrameDirection", 1)
-            setUniform1f(program, "Time", elapsedSeconds)
-            setUniform1f(program, "params_Time", elapsedSeconds)
+            setUniform1f(program, "SweepPhase", sweepPhase)
+            setUniform1f(program, "params_SweepPhase", sweepPhase)
 
             // MVP identity matrix
             for (name in arrayOf("MVPMatrix", "global.MVP", "global_MVP")) {
@@ -232,6 +232,7 @@ class ShaderPipeline private constructor(
 
     companion object {
         private const val TAG = "ShaderPipeline"
+        private const val SWEEP_PERIOD_NANOS = 8L * 1_000_000_000L
         private var passthroughProgram = 0
 
         fun invalidateSharedProgram() {
