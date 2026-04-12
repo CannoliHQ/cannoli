@@ -202,8 +202,8 @@ fun LibretroScreen(
                         title = stringResource(R.string.title_controls),
                         items = items,
                         selectedIndex = screen.selectedIndex,
-                        bottomBarLeft = listOf(labels.back to stringResource(R.string.label_back), labels.north to stringResource(R.string.label_new)),
-                        bottomBarRight = listOf(labels.west to stringResource(R.string.label_edit), labels.confirm to stringResource(R.string.label_select)),
+                        bottomBarLeft = listOf(labels.back to stringResource(R.string.label_back), labels.west to stringResource(R.string.label_new)),
+                        bottomBarRight = listOf(labels.north to stringResource(R.string.label_edit), labels.confirm to stringResource(R.string.label_select)),
                         fontSize = igmFontSize,
                         lineHeight = igmLineHeight
                     )

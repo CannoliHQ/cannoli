@@ -1338,7 +1338,7 @@ class LibretroActivity : ComponentActivity() {
                 }
                 true
             }
-            "btn_north" -> {
+            "btn_west" -> {
                 val newFilter = (screen.filter + 1) % 2
                 replaceTop(screen.copy(filter = newFilter, selectedIndex = 0))
                 true
@@ -1699,7 +1699,7 @@ class LibretroActivity : ComponentActivity() {
                 shortcutCountdownHandler.postDelayed(controlListenRunnable, controlListenTickMs)
                 true
             }
-            "btn_west" -> {
+            "btn_north" -> {
                 if (screen.listeningIndex < 0) {
                     val btn = inp.buttons.getOrNull(screen.selectedIndex)
                     if (btn != null && btn.prefKey != "btn_menu" && inp.getKeyCodeFor(btn) != LibretroInput.UNMAPPED) {
@@ -1752,7 +1752,7 @@ class LibretroActivity : ComponentActivity() {
                 if (screen.cursorPos < screen.name.length) replaceTop(screen.copy(cursorPos = screen.cursorPos + 1)); true
             }
             "btn_start" -> { finishProfileName(screen); true }
-            "btn_east" -> { pop(); true }
+            "btn_west" -> { pop(); true }
             else -> true
         }
     }
@@ -1871,7 +1871,7 @@ class LibretroActivity : ComponentActivity() {
                 }
                 true
             }
-            "btn_west" -> {
+            "btn_north" -> {
                 if (screen.selectedIndex > 0) {
                     val action = ShortcutAction.entries[screen.selectedIndex - 1]
                     shortcuts = shortcuts + (action to emptySet())
