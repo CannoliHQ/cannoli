@@ -111,6 +111,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var systemListViewModel: SystemListViewModel
     private lateinit var gameListViewModel: GameListViewModel
     private lateinit var settingsViewModel: SettingsViewModel
+    private val inputTesterViewModel = dev.cannoli.scorza.ui.viewmodel.InputTesterViewModel()
+    private lateinit var controllerManager: dev.cannoli.scorza.input.ControllerManager
     private lateinit var updateManager: dev.cannoli.scorza.updater.UpdateManager
 
     private lateinit var retroArchLauncher: RetroArchLauncher
@@ -266,6 +268,7 @@ class MainActivity : ComponentActivity() {
                 val hasSelect = screen.currentPath != "/storage/"
                 (screen.entries.size + if (hasSelect) 1 else 0) to screen.selectedIndex
             }
+            is LauncherScreen.InputTester,
             is LauncherScreen.Setup,
             is LauncherScreen.Installing -> return
         }
@@ -317,6 +320,7 @@ class MainActivity : ComponentActivity() {
             is LauncherScreen.Credits -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
             is LauncherScreen.InstalledCores -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
             is LauncherScreen.DirectoryBrowser -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
+            is LauncherScreen.InputTester,
             is LauncherScreen.Setup,
             is LauncherScreen.Installing -> {}
         }
@@ -432,6 +436,8 @@ class MainActivity : ComponentActivity() {
                             currentScreen = currentScreen,
                             systemListViewModel = if (::systemListViewModel.isInitialized) systemListViewModel else null,
                             gameListViewModel = if (::gameListViewModel.isInitialized) gameListViewModel else null,
+                            inputTesterViewModel = inputTesterViewModel,
+                            onExitInputTester = { if (screenStack.size > 1) screenStack.removeAt(screenStack.lastIndex) },
                             settingsViewModel = settingsViewModel,
                             dialogState = dialogState,
                             onVisibleRangeChanged = { first, count, full ->
@@ -672,6 +678,10 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        if (::controllerManager.isInitialized) {
+            (getSystemService(INPUT_SERVICE) as android.hardware.input.InputManager)
+                .unregisterInputDeviceListener(controllerManager)
+        }
         super.onDestroy()
         unregisterCoreQueryReceiver()
         settings.shutdown()
@@ -686,13 +696,22 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (event.keyCode == KeyEvent.KEYCODE_BACK) return true
+        if (event.keyCode == KeyEvent.KEYCODE_BACK) {
+            if (screenStack.lastOrNull() is LauncherScreen.InputTester) {
+                routeKeyToInputTester(event, down = event.action == KeyEvent.ACTION_DOWN)
+            }
+            return true
+        }
         return super.dispatchKeyEvent(event)
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
         if (!permissionGranted) {
             requestStoragePermission()
+            return true
+        }
+        if (screenStack.lastOrNull() is LauncherScreen.InputTester) {
+            routeKeyToInputTester(event, down = true)
             return true
         }
         if (handleBindingKeyDown(keyCode)) {
@@ -709,6 +728,10 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        if (screenStack.lastOrNull() is LauncherScreen.InputTester) {
+            routeKeyToInputTester(event, down = false)
+            return true
+        }
         if (inputHandler.resolveButton(keyCode) == "btn_select") {
             selectHoldHandler.removeCallbacks(selectHoldRunnable)
             selectHoldHandler.removeCallbacks(collectionSelectHoldRunnable)
@@ -740,6 +763,108 @@ class MainActivity : ComponentActivity() {
             return true
         }
         return super.onKeyUp(keyCode, event)
+    }
+
+    override fun dispatchGenericMotionEvent(event: android.view.MotionEvent): Boolean {
+        val source = event.source
+        val isJoystick =
+            source and android.view.InputDevice.SOURCE_JOYSTICK == android.view.InputDevice.SOURCE_JOYSTICK ||
+            source and android.view.InputDevice.SOURCE_GAMEPAD == android.view.InputDevice.SOURCE_GAMEPAD
+        if (!isJoystick) return super.dispatchGenericMotionEvent(event)
+
+        if (screenStack.lastOrNull() is LauncherScreen.InputTester) {
+            val deviceId = event.deviceId
+            val port = controllerManager.getPortForDeviceId(deviceId) ?: 0
+            val name = event.device?.name ?: "unknown"
+            val leftX = event.getAxisValue(android.view.MotionEvent.AXIS_X)
+            val leftY = event.getAxisValue(android.view.MotionEvent.AXIS_Y)
+            val rightX = event.getAxisValue(android.view.MotionEvent.AXIS_Z)
+            val rightY = event.getAxisValue(android.view.MotionEvent.AXIS_RZ)
+            val leftTrigger = maxOf(
+                event.getAxisValue(android.view.MotionEvent.AXIS_LTRIGGER),
+                event.getAxisValue(android.view.MotionEvent.AXIS_BRAKE),
+            )
+            val rightTrigger = maxOf(
+                event.getAxisValue(android.view.MotionEvent.AXIS_RTRIGGER),
+                event.getAxisValue(android.view.MotionEvent.AXIS_GAS),
+            )
+            val hatX = event.getAxisValue(android.view.MotionEvent.AXIS_HAT_X)
+            val hatY = event.getAxisValue(android.view.MotionEvent.AXIS_HAT_Y)
+            inputTesterViewModel.onMotion(
+                port = port, deviceId = deviceId, deviceName = name,
+                leftX = leftX, leftY = leftY, rightX = rightX, rightY = rightY,
+                leftTrigger = leftTrigger, rightTrigger = rightTrigger,
+                hatX = hatX, hatY = hatY,
+            )
+            return true
+        }
+
+        return super.dispatchGenericMotionEvent(event)
+    }
+
+    private var testerProfileMap: Map<Int, String> = emptyMap()
+    private val testerPressedKeycodes = mutableMapOf<Int, String?>()
+    private var testerStartHeld = false
+
+    private fun loadTesterProfile(name: String) {
+        val controls = profileManager.readControls(name)
+        val profileInverse = controls.entries.associate { (prefKey, keyCode) -> keyCode to prefKey }
+        testerProfileMap = dev.cannoli.scorza.input.InputHandler.DEFAULT_KEY_MAP + profileInverse
+    }
+
+    private fun initTesterProfiles() {
+        val profiles = profileManager.listProfiles()
+        val initial = profiles.firstOrNull() ?: dev.cannoli.scorza.input.ProfileManager.NAVIGATION
+        inputTesterViewModel.setProfiles(profiles, initial)
+        loadTesterProfile(initial)
+        testerPressedKeycodes.clear()
+        testerStartHeld = false
+    }
+
+    private fun releaseAllTesterKeys() {
+        for ((kc, resolved) in testerPressedKeycodes.toMap()) {
+            inputTesterViewModel.onKeyUp(0, kc, resolved)
+        }
+        testerPressedKeycodes.clear()
+    }
+
+    private fun routeKeyToInputTester(event: KeyEvent, down: Boolean) {
+        val device = event.device
+        val deviceId = event.deviceId
+        val port = if (device != null) controllerManager.getPortForDeviceId(deviceId) ?: 0 else 0
+        val name = device?.name ?: "keyboard"
+        val keyName = KeyEvent.keyCodeToString(event.keyCode).removePrefix("KEYCODE_")
+        val navButton = inputHandler.resolveButton(event.keyCode)
+
+        if (down) {
+            if (navButton == "btn_start") testerStartHeld = true
+            if (testerStartHeld && (navButton == "btn_l" || navButton == "btn_r")) {
+                releaseAllTesterKeys()
+                val newProfile = inputTesterViewModel.cycleProfile(forward = navButton == "btn_r")
+                loadTesterProfile(newProfile)
+            }
+            val resolved = testerProfileMap[event.keyCode]
+            testerPressedKeycodes[event.keyCode] = resolved
+            inputTesterViewModel.onKeyDown(port, event.keyCode, keyName, deviceId, name, resolved)
+        } else {
+            if (navButton == "btn_start") testerStartHeld = false
+            val resolved = testerPressedKeycodes.remove(event.keyCode)
+            inputTesterViewModel.onKeyUp(port, event.keyCode, resolved)
+        }
+        refreshInputTesterPorts()
+    }
+
+    private fun refreshInputTesterPorts() {
+        val slots = controllerManager.slots
+        val ports = slots.indices.mapNotNull { i ->
+            val slot = slots[i] ?: return@mapNotNull null
+            dev.cannoli.scorza.ui.viewmodel.DeviceInfo(
+                port = i,
+                deviceId = -1,
+                name = slot.name,
+            )
+        }
+        inputTesterViewModel.setConnectedPorts(ports)
     }
 
     private fun handleBindingKeyDown(keyCode: Int): Boolean {
@@ -816,6 +941,11 @@ class MainActivity : ComponentActivity() {
 
         systemListViewModel = SystemListViewModel(scanner, collectionManager, orderingManager, recentlyPlayedManager)
         gameListViewModel = GameListViewModel(scanner, collectionManager, orderingManager, recentlyPlayedManager, platformResolver, resources)
+        controllerManager = dev.cannoli.scorza.input.ControllerManager()
+        controllerManager.loadBlacklist(this)
+        controllerManager.initialize()
+        (getSystemService(INPUT_SERVICE) as android.hardware.input.InputManager)
+            .registerInputDeviceListener(controllerManager, android.os.Handler(android.os.Looper.getMainLooper()))
         gameListViewModel.showFavoriteStars = settings.contentMode != ContentMode.FIVE_GAME_HANDHELD
         settingsViewModel.reinitialize(root, packageManager, packageName)
         updateManager = dev.cannoli.scorza.updater.UpdateManager(this, settings)
@@ -932,6 +1062,7 @@ class MainActivity : ComponentActivity() {
                             selectedIndex = (screen.selectedIndex - 1).coerceAtLeast(0)
                         )
                     }
+                    is LauncherScreen.InputTester -> {}
                     is LauncherScreen.Installing -> {}
                 }
                 else -> {}
@@ -1012,6 +1143,7 @@ class MainActivity : ComponentActivity() {
                             selectedIndex = (screen.selectedIndex + 1).coerceAtMost(maxIndex)
                         )
                     }
+                    is LauncherScreen.InputTester -> {}
                     is LauncherScreen.Installing -> {}
                 }
                 else -> {}
@@ -1305,6 +1437,12 @@ class MainActivity : ComponentActivity() {
                                 ))
                                 "profiles" -> pushScreen(LauncherScreen.ProfileList(profiles = profileManager.listProfiles()))
                                 "shortcuts" -> pushScreen(LauncherScreen.ShortcutBinding(shortcuts = globalOverrides.readShortcuts()))
+                                "input_tester" -> {
+                                    inputTesterViewModel.reset()
+                                    initTesterProfiles()
+                                    refreshInputTesterPorts()
+                                    pushScreen(LauncherScreen.InputTester)
+                                }
                                 "core_mapping" -> {
                                     val initial = platformResolver.getDetailedMappings(packageManager, installedCoreService.installedCores, LaunchManager.extractBundledCores(this@MainActivity), installedCoreService.unresponsivePackages)
                                     screenStack.add(LauncherScreen.CoreMapping(mappings = initial, allMappings = initial))
@@ -1481,6 +1619,7 @@ class MainActivity : ComponentActivity() {
                             initializeApp()
                         }
                     }
+                    is LauncherScreen.InputTester -> {}
                     is LauncherScreen.Credits -> {}
                     is LauncherScreen.InstalledCores -> {}
                     is LauncherScreen.DirectoryBrowser -> {
@@ -1666,6 +1805,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                     is LauncherScreen.Setup -> finishAffinity()
+                    is LauncherScreen.InputTester -> {}
                     is LauncherScreen.Installing -> {}
                 }
             }

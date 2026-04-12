@@ -48,8 +48,10 @@ import dev.cannoli.scorza.ui.screens.CoreMappingEntry
 import dev.cannoli.scorza.ui.screens.CorePickerOption
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.screens.GameListScreen
+import dev.cannoli.scorza.ui.screens.InputTesterScreen
 import dev.cannoli.scorza.ui.screens.SettingsScreen
 import dev.cannoli.scorza.ui.screens.SystemListScreen
+import dev.cannoli.scorza.ui.viewmodel.InputTesterViewModel
 import dev.cannoli.scorza.ui.screens.isFullScreen
 import dev.cannoli.igm.ui.theme.CannoliColors
 import dev.cannoli.igm.ui.theme.GrayText
@@ -70,6 +72,7 @@ sealed class LauncherScreen {
     data object SystemList : LauncherScreen()
     data object GameList : LauncherScreen()
     data object Settings : LauncherScreen()
+    data object InputTester : LauncherScreen()
     data class CoreMapping(val mappings: List<CoreMappingEntry>, val allMappings: List<CoreMappingEntry> = mappings, val selectedIndex: Int = 0, val scrollTarget: Int = 0, val filter: Int = 0) : LauncherScreen()
     data class CorePicker(val tag: String, val platformName: String, val cores: List<CorePickerOption>, val selectedIndex: Int = 0, val gamePath: String? = null, val scrollTarget: Int = 0, val activeIndex: Int = 0) : LauncherScreen()
     data class ColorList(val colors: List<ColorEntry>, val selectedIndex: Int = 0, val scrollTarget: Int = 0) : LauncherScreen()
@@ -107,6 +110,8 @@ fun AppNavGraph(
     currentScreen: LauncherScreen,
     systemListViewModel: SystemListViewModel? = null,
     gameListViewModel: GameListViewModel? = null,
+    inputTesterViewModel: InputTesterViewModel,
+    onExitInputTester: () -> Unit = {},
     settingsViewModel: SettingsViewModel,
     dialogState: StateFlow<DialogState>,
     onVisibleRangeChanged: (firstVisible: Int, visibleCount: Int, isViewportFull: Boolean) -> Unit = { _, _, _ -> },
@@ -175,6 +180,13 @@ fun AppNavGraph(
                     artWidth = appSettings.artWidth,
                     artScale = appSettings.artScale,
                     buttonLabelSet = labels
+                )
+            }
+            is LauncherScreen.InputTester -> {
+                InputTesterScreen(
+                    viewModel = inputTesterViewModel,
+                    buttonLabelSet = appSettings.buttonLabelSet,
+                    onExit = onExitInputTester,
                 )
             }
             is LauncherScreen.Settings -> SettingsScreen(
@@ -698,7 +710,7 @@ fun AppNavGraph(
 
         val systemListState = systemListViewModel?.state?.collectAsState()?.value
         val statusBarVisible = dialog !is DialogState.About && dialog !is DialogState.Kitchen && dialog !is DialogState.UpdateDownload && currentScreen !is LauncherScreen.Credits && currentScreen !is LauncherScreen.DirectoryBrowser && currentScreen !is LauncherScreen.Setup && currentScreen !is LauncherScreen.Installing && !(currentScreen is LauncherScreen.SystemList && systemListState?.isLoading == true) && (dev.cannoli.scorza.server.KitchenManager.isRunning || appSettings.showWifi || appSettings.showBluetooth || appSettings.showVpn || appSettings.showClock || appSettings.showBattery || (updateAvailable && appSettings.showUpdate))
-        if (statusBarVisible) {
+        if (statusBarVisible && currentScreen !is LauncherScreen.InputTester) {
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)

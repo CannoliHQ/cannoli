@@ -632,7 +632,8 @@ class SettingsViewModel(
             SettingsItem("button_labels", R.string.setting_button_labels, valueText = settings.buttonLabelSet.name.lowercase().replaceFirstChar { it.uppercase() }),
             SettingsItem("platform_switching", R.string.setting_platform_switching, valueRes = onOff(settings.platformSwitching)),
             SettingsItem("swap_play_resume", R.string.setting_swap_play_resume, valueRes = onOff(settings.swapPlayResume)),
-            SettingsItem("main_menu_quit", R.string.setting_main_menu_quit, valueRes = onOff(settings.mainMenuQuit))
+            SettingsItem("main_menu_quit", R.string.setting_main_menu_quit, valueRes = onOff(settings.mainMenuQuit)),
+            SettingsItem("input_tester", R.string.setting_input_tester, isEditable = true)
         )
         "kitchen" -> emptyList()
         "retroachievements" -> buildList {

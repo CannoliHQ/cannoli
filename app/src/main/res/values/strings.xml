@@ -91,6 +91,7 @@
     <string name="setting_ra_status">Logged in as</string>
     <string name="setting_kitchen_toggle">File Server</string>
     <string name="setting_debug_logging">Debug Logging</string>
+    <string name="setting_input_tester">Input Tester</string>
 
     <!-- Setting values -->
     <string name="value_on">On</string>
