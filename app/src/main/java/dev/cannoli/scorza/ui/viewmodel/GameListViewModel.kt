@@ -191,7 +191,9 @@ class GameListViewModel(
                 val paths = recentlyPlayedManager.load()
                 val toolPaths = paths.filter { scanner.resolveGameFromPath(it)?.platformTag == "tools" }
                 toolPaths.forEach { recentlyPlayedManager.remove(it) }
-                val games = (paths - toolPaths.toSet()).mapNotNull { scanner.resolveGameFromPath(it) }
+                val games = scanner.stripTags(
+                    (paths - toolPaths.toSet()).mapNotNull { scanner.resolveGameFromPath(it) }
+                )
 
                 val nameCount = games.groupBy { it.displayName }
                 val disambiguated = games.map { game ->

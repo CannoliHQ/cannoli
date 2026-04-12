@@ -337,7 +337,7 @@ class FileScanner(
         }
     }
 
-    private fun stripTags(games: List<Game>): List<Game> {
+    fun stripTags(games: List<Game>): List<Game> {
         val stripped = games.map { g ->
             if (g.isSubfolder) g to g.displayName
             else g to tagRegex.replace(g.displayName, "").trim()
