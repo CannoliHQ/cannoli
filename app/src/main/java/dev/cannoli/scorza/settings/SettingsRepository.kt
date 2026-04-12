@@ -55,6 +55,10 @@ class SettingsRepository(context: Context) {
         saveToDisk()
     }
 
+    fun reload() {
+        loadFromDisk()
+    }
+
     fun shutdown() {
         flush()
         saveThread.quitSafely()
@@ -235,6 +239,10 @@ class SettingsRepository(context: Context) {
         get() = jsonRead { optString(KEY_RA_TOKEN, "") }
         set(value) = jsonWrite { if (value.isEmpty()) remove(KEY_RA_TOKEN) else put(KEY_RA_TOKEN, value) }
 
+    var raPassword: String
+        get() = jsonRead { optString(KEY_RA_PASSWORD, "") }
+        set(value) = jsonWrite { if (value.isEmpty()) remove(KEY_RA_PASSWORD) else put(KEY_RA_PASSWORD, value) }
+
     var releaseChannel: String
         get() = jsonRead { optString(KEY_RELEASE_CHANNEL, "STABLE") }
         set(value) = jsonWrite { put(KEY_RELEASE_CHANNEL, value) }
@@ -313,6 +321,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_GRAPHICS_BACKEND = "graphics_backend"
         private const val KEY_RA_USERNAME = "ra_username"
         private const val KEY_RA_TOKEN = "ra_token"
+        private const val KEY_RA_PASSWORD = "ra_password"
         private const val KEY_RELEASE_CHANNEL = "release_channel"
         private const val KEY_LAST_UPDATE_CHECK = "last_update_check"
         private const val KEY_CACHED_UPDATE_VERSION = "cached_update_version"

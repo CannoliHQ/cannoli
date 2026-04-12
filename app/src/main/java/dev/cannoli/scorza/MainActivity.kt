@@ -652,6 +652,13 @@ class MainActivity : ComponentActivity() {
             startActivity(intent, opts)
             return
         }
+        if (::settings.isInitialized) {
+            settings.reload()
+            if (::settingsViewModel.isInitialized) settingsViewModel.load()
+            if (dialogState.value is DialogState.RAAccount && settings.raToken.isEmpty()) {
+                dialogState.value = DialogState.None
+            }
+        }
         if (::systemListViewModel.isInitialized) {
             rescanSystemList()
             if (screenStack.lastOrNull() is LauncherScreen.GameList) {
@@ -1339,11 +1346,13 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                                 "ra_login" -> {
+                                    val passwordForLogin = settingsViewModel.raPassword
                                     val ra = RetroAchievementsManager(
                                         onLogin = { success, nameOrError, token ->
                                             if (success && token != null) {
                                                 settings.raUsername = nameOrError
                                                 settings.raToken = token
+                                                settings.raPassword = passwordForLogin
                                                 settingsViewModel.raPassword = ""
                                                 dialogState.value = DialogState.RAAccount(username = nameOrError)
                                             } else {
@@ -1841,6 +1850,7 @@ class MainActivity : ComponentActivity() {
                 is DialogState.RAAccount -> {
                     settings.raUsername = ""
                     settings.raToken = ""
+                    settings.raPassword = ""
                     settingsViewModel.load()
                     dialogState.value = DialogState.None
                 }

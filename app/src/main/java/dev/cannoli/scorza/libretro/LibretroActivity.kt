@@ -46,6 +46,7 @@ import dev.cannoli.igm.IGMSettingsScreen
 import dev.cannoli.igm.InGameMenuOptions
 import dev.cannoli.igm.ShortcutAction
 import dev.cannoli.igm.GuideType
+import dev.cannoli.scorza.R
 import dev.cannoli.scorza.settings.SettingsRepository
 import android.os.Handler
 import android.os.Looper
@@ -484,29 +485,60 @@ class LibretroActivity : ComponentActivity() {
 
                 val raUser = intent.getStringExtra("ra_username") ?: ""
                 val raToken = intent.getStringExtra("ra_token") ?: ""
+                val raPassword = intent.getStringExtra("ra_password") ?: ""
                 val consoleId = RetroAchievementsManager.CONSOLE_MAP[platformTag]
-                sessionLog.log("RA init: user=${raUser.isNotEmpty()} token=${raToken.isNotEmpty()} consoleId=$consoleId platformTag=$platformTag")
-                if (consoleId != null && raUser.isNotEmpty() && raToken.isNotEmpty()) {
+                sessionLog.log("RA init: user=${raUser.isNotEmpty()} token=${raToken.isNotEmpty()} password=${raPassword.isNotEmpty()} consoleId=$consoleId platformTag=$platformTag")
+                if (consoleId != null && raUser.isNotEmpty() && (raToken.isNotEmpty() || raPassword.isNotEmpty())) {
                     val raGameIdOverride = intent.getIntExtra("ra_game_id", 0)
-                    val ra = RetroAchievementsManager(
+                    var tokenRetryAttempted = false
+                    lateinit var ra: RetroAchievementsManager
+                    ra = RetroAchievementsManager(
                         context = activity,
                         cacheDir = java.io.File(cacheDir, "ra_cache"),
                         onEvent = { _, title, _, _ ->
                             raHasAchievements = true
                             showOsd("\uDB81\uDD38 $title")
                         },
+                        onLogin = { success, nameOrError, newToken ->
+                            sessionLog.log("RA onLogin: success=$success name=$nameOrError tokenReceived=${newToken != null}")
+                            if (success && newToken != null) {
+                                if (tokenRetryAttempted) {
+                                    val repo = SettingsRepository(activity)
+                                    repo.raToken = newToken
+                                    repo.flush()
+                                    sessionLog.log("RA token refreshed via password retry")
+                                }
+                            } else if (!tokenRetryAttempted && raPassword.isNotEmpty()) {
+                                tokenRetryAttempted = true
+                                sessionLog.log("RA token login failed, retrying with password")
+                                ra.loginWithPassword(raUser, raPassword)
+                            } else {
+                                sessionLog.logError("RA login failed: $nameOrError")
+                                if (ra.isOnline) {
+                                    val repo = SettingsRepository(activity)
+                                    repo.raToken = ""
+                                    repo.raPassword = ""
+                                    repo.flush()
+                                    sessionLog.log("RA credentials cleared — user must re-authenticate")
+                                }
+                                showOsd(getString(R.string.ra_login_failed))
+                            }
+                        },
                         onSyncStatus = { msg -> showOsd(msg) }
                     )
                     ra.init()
-                    ra.loginWithToken(raUser, raToken)
-                    sessionLog.log("RA login: loggedIn=${ra.isLoggedIn} username=${ra.username} online=${ra.isOnline}")
+                    if (raToken.isNotEmpty()) {
+                        ra.loginWithToken(raUser, raToken)
+                    } else {
+                        tokenRetryAttempted = true
+                        ra.loginWithPassword(raUser, raPassword)
+                    }
                     if (raGameIdOverride > 0) {
                         ra.loadGameById(raGameIdOverride, consoleId)
                         sessionLog.log("RA loadGameById: id=$raGameIdOverride consoleId=$consoleId")
                     } else {
                         ra.loadGame(romPath, consoleId)
                     }
-                    sessionLog.log("RA game: gameId=${ra.gameId} title=${ra.gameTitle}")
                     if (resumeSlot >= 0) ra.pendingReset = true
                     raManager = ra
                 }

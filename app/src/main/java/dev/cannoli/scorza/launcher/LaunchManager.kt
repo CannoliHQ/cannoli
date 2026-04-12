@@ -398,6 +398,7 @@ class LaunchManager(
             putExtra("debug_logging", settings.debugLogging)
             putExtra("ra_username", settings.raUsername)
             putExtra("ra_token", settings.raToken)
+            putExtra("ra_password", settings.raPassword)
             val raIdFile = File(File(settings.sdCardRoot, "Config/RetroArch"), "ra_game_ids.txt")
             if (raIdFile.exists()) {
                 val romAbs = game.file.absolutePath
