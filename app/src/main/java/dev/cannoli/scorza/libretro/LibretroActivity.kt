@@ -1154,7 +1154,8 @@ class LibretroActivity : ComponentActivity() {
 
     private fun handleVideoInput(screen: IGMScreen.Video, keyCode: Int): Boolean {
         val hasParams = shaderParams.isNotEmpty()
-        val count = if (hasParams) 5 else 4
+        val count = buildSettingsItems().size
+        if (count == 0) return true
         return when (keyCode) {
             KeyEvent.KEYCODE_DPAD_UP -> {
                 replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
@@ -1196,7 +1197,8 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun handleAdvancedInput(screen: IGMScreen.Advanced, keyCode: Int): Boolean {
-        val count = if (controllerTypes.size > 1) 4 else 3
+        val count = buildSettingsItems().size
+        if (count == 0) return true
         return when (keyCode) {
             KeyEvent.KEYCODE_DPAD_UP -> {
                 replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
@@ -1860,7 +1862,8 @@ class LibretroActivity : ComponentActivity() {
     // --- Save Prompt ---
 
     private fun handleSavePromptInput(screen: IGMScreen.SavePrompt, keyCode: Int): Boolean {
-        val count = 3
+        val count = buildSettingsItems().size
+        if (count == 0) return true
         return when (keyCode) {
             KeyEvent.KEYCODE_DPAD_UP -> {
                 replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
