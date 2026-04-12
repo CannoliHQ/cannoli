@@ -25,9 +25,9 @@ import kotlinx.coroutines.flow.update
 
 class SettingsViewModel(
     private val settings: SettingsRepository,
-    private val cannoliRoot: java.io.File? = null,
-    private val packageManager: PackageManager? = null,
-    private val appPackageName: String? = null
+    private var cannoliRoot: java.io.File? = null,
+    private var packageManager: PackageManager? = null,
+    private var appPackageName: String? = null
 ) {
 
     val isTelevision = packageManager?.hasSystemFeature(PackageManager.FEATURE_LEANBACK) == true
@@ -213,6 +213,13 @@ class SettingsViewModel(
         snapshot = captureSettings()
         _state.value = State(categories = buildCategoryList(), categoryIndex = 0)
         _appSettings.value = readAppSettings()
+    }
+
+    fun reinitialize(root: java.io.File, pm: PackageManager, pkgName: String) {
+        cannoliRoot = root
+        packageManager = pm
+        appPackageName = pkgName
+        load()
     }
 
     private fun reloadCategories() {

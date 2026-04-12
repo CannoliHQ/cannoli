@@ -4,7 +4,7 @@ import dev.cannoli.scorza.util.IniParser
 import dev.cannoli.scorza.util.IniWriter
 import java.io.File
 
-class ProfileManager(private val cannoliRoot: String) {
+class ProfileManager(private var cannoliRoot: String) {
 
     private val profilesDir get() = File(cannoliRoot, "Config/Profiles")
 
@@ -25,6 +25,11 @@ class ProfileManager(private val cannoliRoot: String) {
             }
         }
         profileFile("Default").delete()
+    }
+
+    fun reinitialize(root: String) {
+        cannoliRoot = root
+        ensureDefaults()
     }
 
     fun listProfiles(): List<String> {

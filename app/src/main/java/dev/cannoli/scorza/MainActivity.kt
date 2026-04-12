@@ -166,17 +166,7 @@ class MainActivity : ComponentActivity() {
     private var currentFirstVisible = 0
     private var currentPageSize = 10
     private var permissionGranted by mutableStateOf(false)
-    private var inSetup by mutableStateOf(false)
     private var coldStart = true
-    private var setupSelectedIndex by mutableStateOf(0)
-    private var setupVolumeIndex by mutableStateOf(0)
-    private var setupVolumes = listOf<Pair<String, String>>()
-    private var setupCustomPath by mutableStateOf<String?>(null)
-    private var inSetupBrowser = false
-    private var setupBrowserPath = "/storage/"
-    private var setupBrowserEntries = emptyList<String>()
-    private var setupBrowserIndex = 0
-    private var setupBrowserScroll = 0
 
     private val shortcutCountdownHandler = Handler(Looper.getMainLooper())
     private val shortcutHoldMs = 1500
@@ -276,6 +266,8 @@ class MainActivity : ComponentActivity() {
                 val hasSelect = screen.currentPath != "/storage/"
                 (screen.entries.size + if (hasSelect) 1 else 0) to screen.selectedIndex
             }
+            is LauncherScreen.Setup,
+            is LauncherScreen.Installing -> return
         }
 
         if (itemCount == 0) return
@@ -325,6 +317,8 @@ class MainActivity : ComponentActivity() {
             is LauncherScreen.Credits -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
             is LauncherScreen.InstalledCores -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
             is LauncherScreen.DirectoryBrowser -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
+            is LauncherScreen.Setup,
+            is LauncherScreen.Installing -> {}
         }
     }
 
@@ -404,14 +398,56 @@ class MainActivity : ComponentActivity() {
         settings = SettingsRepository(this)
         initFonts(assets)
 
+        settingsViewModel = SettingsViewModel(settings)
+        profileManager = dev.cannoli.scorza.input.ProfileManager(settings.sdCardRoot)
+        inputHandler = InputHandler(
+            getButtonMappings = {
+                val screen = screenStack.lastOrNull() as? LauncherScreen.ControlBinding
+                if (screen != null && screen.profileName == dev.cannoli.scorza.input.ProfileManager.NAVIGATION) screen.controls
+                else profileManager.readControls(dev.cannoli.scorza.input.ProfileManager.NAVIGATION)
+            }
+        )
+        wireInput()
+
+        lifecycleScope.launch {
+            settingsViewModel.appSettings.collect { appSettings ->
+                inputHandler.swapConfirmBack = appSettings.buttonLabelSet != ButtonLabelSet.PLUMBER
+            }
+        }
+        onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {}
+        })
+
         if (hasStoragePermission()) {
             permissionGranted = true
             afterPermissionGranted()
-        } else {
-            setContent {
-                CannoliTheme {
-                    Surface(modifier = Modifier.fillMaxSize()) {
+        }
+
+        setContent {
+            val appFont by settingsViewModel.appSettings.collectAsState()
+            CannoliTheme(fontFamily = appFont.fontFamily) {
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    if (!permissionGranted) {
                         PermissionScreen()
+                    } else {
+                        val updateInfo = if (::updateManager.isInitialized) updateManager.updateAvailable.collectAsState().value else null
+                        val dlProgress = if (::updateManager.isInitialized) updateManager.downloadProgress.collectAsState().value else 0f
+                        val dlError = if (::updateManager.isInitialized) updateManager.downloadError.collectAsState().value else null
+                        AppNavGraph(
+                            currentScreen = currentScreen,
+                            systemListViewModel = if (::systemListViewModel.isInitialized) systemListViewModel else null,
+                            gameListViewModel = if (::gameListViewModel.isInitialized) gameListViewModel else null,
+                            settingsViewModel = settingsViewModel,
+                            dialogState = dialogState,
+                            onVisibleRangeChanged = { first, count, full ->
+                                currentFirstVisible = first
+                                if (full) currentPageSize = count
+                            },
+                            resumableGames = resumableGames,
+                            updateAvailable = updateInfo != null,
+                            downloadProgress = dlProgress ?: 0f,
+                            downloadError = dlError
+                        )
                     }
                 }
             }
@@ -431,7 +467,9 @@ class MainActivity : ComponentActivity() {
                 settings.setupCompleted = true
                 initializeApp()
             } else {
-                showSetupScreen()
+                val volumes = detectStorageVolumes() + ("Custom" to "")
+                screenStack.clear()
+                screenStack.add(LauncherScreen.Setup(volumes = volumes))
             }
         }
     }
@@ -523,53 +561,17 @@ class MainActivity : ComponentActivity() {
                 dialogState.value = DialogState.RestartRequired
             }
             BrowsePurpose.SETUP -> {
-                setupCustomPath = if (resolved.endsWith("/")) resolved else "$resolved/"
-            }
-        }
-    }
-
-    private fun showSetupScreen(reset: Boolean = true) {
-        inSetup = true
-        if (reset) {
-            setupVolumes = detectStorageVolumes() + ("Custom" to "")
-            setupVolumeIndex = 0
-            setupSelectedIndex = 0
-            setupCustomPath = null
-        }
-        setContent {
-            CannoliTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    val isCustom = setupVolumes[setupVolumeIndex].first == "Custom"
-                    val continueEnabled = !isCustom || setupCustomPath != null
-                    SetupScreen(
-                        storageLabel = setupVolumes[setupVolumeIndex].first,
-                        selectedIndex = setupSelectedIndex,
-                        isCustom = isCustom,
-                        customPath = setupCustomPath,
-                        continueEnabled = continueEnabled
-                    )
+                val idx = screenStack.indexOfLast { it is LauncherScreen.Setup }
+                if (idx >= 0) {
+                    val setup = screenStack[idx] as LauncherScreen.Setup
+                    val path = if (resolved.endsWith("/")) resolved else "$resolved/"
+                    screenStack[idx] = setup.copy(customPath = path)
                 }
             }
         }
     }
 
-    private var pendingSetupRoot: String? = null
-
-    private fun completeSetup() {
-        inSetup = false
-        val isCustom = setupVolumes[setupVolumeIndex].first == "Custom"
-        pendingSetupRoot = if (isCustom) setupCustomPath!! else setupVolumes[setupVolumeIndex].second + "Cannoli/"
-        showInstallingScreen()
-    }
-
-    private var installingFinished = false
-
-    private fun showInstallingScreen() {
-        var progress by mutableStateOf(0f)
-        var statusLabel by mutableStateOf("Kneading the dough...")
-        var finished by mutableStateOf(false)
-        installingFinished = false
-
+    private fun startInstalling(targetPath: String) {
         val labels = listOf(
             "Kneading the dough...",
             "Rolling the shells...",
@@ -579,22 +581,8 @@ class MainActivity : ComponentActivity() {
             "Piping the rigott..."
         )
 
-        setContent {
-            CannoliTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    InstallingScreen(
-                        progress = progress,
-                        statusLabel = statusLabel,
-                        finished = finished
-                    )
-                }
-            }
-        }
-
         ioScope.launch {
-            val root = File(pendingSetupRoot!!)
-
-            // pre-load platform info to count total operations
+            val root = File(targetPath)
             val coreInfo = dev.cannoli.scorza.scanner.CoreInfoRepository(assets, filesDir, File(applicationInfo.sourceDir).lastModified())
             coreInfo.load()
             val bundledCoresDir = LaunchManager.extractBundledCores(this@MainActivity)
@@ -604,10 +592,10 @@ class MainActivity : ComponentActivity() {
             collectionManager = CollectionManager(root)
             recentlyPlayedManager = RecentlyPlayedManager(root)
             orderingManager = OrderingManager(root)
-            val scanner = FileScanner(root, platformResolver, collectionManager, assets)
-            scanner.loadIgnoreExtensions()
-            scanner.loadIgnoreFiles()
-            // overhead steps: launchers(3) + installedCoreService(1) + launchManager(1) + syncAssets(1) + syncConfig(1)
+            val localScanner = FileScanner(root, platformResolver, collectionManager, assets)
+            localScanner.loadIgnoreExtensions()
+            localScanner.loadIgnoreFiles()
+
             val overhead = 7
             val dirCount = 18 + (platformResolver.getAllTags().size * 6)
             val totalSteps = dirCount + overhead
@@ -617,11 +605,11 @@ class MainActivity : ComponentActivity() {
                 completed++
                 val p = completed.toFloat() / totalSteps
                 val labelIndex = (p * labels.size).toInt().coerceIn(0, labels.lastIndex)
-                progress = p
-                statusLabel = labels[labelIndex]
+                val screen = screenStack.lastOrNull() as? LauncherScreen.Installing ?: return
+                screenStack[screenStack.lastIndex] = screen.copy(progress = p, statusLabel = labels[labelIndex])
             }
 
-            scanner.ensureDirectories { step() }
+            localScanner.ensureDirectories { step() }
 
             retroArchLauncher = RetroArchLauncher(this@MainActivity) { settings.retroArchPackage }; step()
             emuLauncher = EmuLauncher(this@MainActivity); step()
@@ -631,25 +619,17 @@ class MainActivity : ComponentActivity() {
             lm.syncRetroArchAssets(root); step()
             lm.syncRetroArchConfig(root); step()
 
-            this@MainActivity.scanner = scanner
+            this@MainActivity.scanner = localScanner
             launchManager = lm
 
             withContext(Dispatchers.Main) {
-                progress = 1f
-                statusLabel = "Cannoli is now ready to be garnished!"
-                finished = true
-                installingFinished = true
+                val screen = screenStack.lastOrNull() as? LauncherScreen.Installing ?: return@withContext
+                screenStack[screenStack.lastIndex] = screen.copy(
+                    progress = 1f,
+                    statusLabel = "Cannoli is now ready to be garnished!",
+                    finished = true
+                )
             }
-        }
-    }
-
-    private fun handleInstallingInput(keyCode: Int) {
-        if (keyCode == KeyEvent.KEYCODE_BUTTON_A && installingFinished) {
-            installingFinished = false
-            settings.sdCardRoot = pendingSetupRoot!!
-            settings.setupCompleted = true
-            pendingSetupRoot = null
-            finishInitializeApp()
         }
     }
 
@@ -713,14 +693,6 @@ class MainActivity : ComponentActivity() {
             requestStoragePermission()
             return true
         }
-        if (installingFinished) {
-            handleInstallingInput(keyCode)
-            return true
-        }
-        if (inSetup) {
-            handleSetupInput(keyCode)
-            return true
-        }
         if (handleBindingKeyDown(keyCode)) {
             return true
         }
@@ -728,14 +700,14 @@ class MainActivity : ComponentActivity() {
         if (event.repeatCount > 0 && screen is LauncherScreen.ShortcutBinding && !screen.listening) {
             return true
         }
-        if (::inputHandler.isInitialized && inputHandler.handleKeyEvent(event)) {
+        if (inputHandler.handleKeyEvent(event)) {
             return true
         }
         return super.onKeyDown(keyCode, event)
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
-        if (::inputHandler.isInitialized && inputHandler.resolveButton(keyCode) == "btn_select") {
+        if (inputHandler.resolveButton(keyCode) == "btn_select") {
             selectHoldHandler.removeCallbacks(selectHoldRunnable)
             selectHoldHandler.removeCallbacks(collectionSelectHoldRunnable)
             if (!selectHeld && dialogState.value is KeyboardInputState) {
@@ -794,122 +766,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun handleSetupInput(keyCode: Int) {
-        if (inSetupBrowser) {
-            handleSetupBrowserInput(keyCode)
-            return
-        }
-        val isCustom = setupVolumes[setupVolumeIndex].first == "Custom"
-        val maxIndex = if (isCustom) 1 else 0
-        val folderIndex = if (isCustom) 1 else -1
-        val continueEnabled = !isCustom || setupCustomPath != null
-
-        when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_UP -> setupSelectedIndex = (setupSelectedIndex - 1).coerceAtLeast(0)
-            KeyEvent.KEYCODE_DPAD_DOWN -> setupSelectedIndex = (setupSelectedIndex + 1).coerceAtMost(maxIndex)
-            KeyEvent.KEYCODE_DPAD_LEFT -> {
-                if (setupSelectedIndex == 0 && setupVolumes.size > 1) {
-                    setupVolumeIndex = (setupVolumeIndex - 1 + setupVolumes.size) % setupVolumes.size
-                    setupCustomPath = null
-                }
-            }
-            KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                if (setupSelectedIndex == 0 && setupVolumes.size > 1) {
-                    setupVolumeIndex = (setupVolumeIndex + 1) % setupVolumes.size
-                    setupCustomPath = null
-                }
-            }
-            KeyEvent.KEYCODE_BUTTON_A -> {
-                if (setupSelectedIndex == folderIndex) {
-                    inSetupBrowser = true
-                    setupBrowserPath = "/storage/"
-                    setupBrowserEntries = listDirectories(setupBrowserPath)
-                    setupBrowserIndex = 0
-                    setupBrowserScroll = 0
-                    showSetupBrowser()
-                }
-            }
-            KeyEvent.KEYCODE_BUTTON_START -> {
-                if (continueEnabled) completeSetup()
-            }
-            KeyEvent.KEYCODE_BUTTON_B -> finishAffinity()
-        }
-    }
-
-    private fun showSetupBrowser() {
-        setContent {
-            CannoliTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    val itemHeight = pillItemHeight(32.sp, 4.dp)
-                    DirectoryBrowserScreen(
-                        currentPath = setupBrowserPath,
-                        entries = setupBrowserEntries,
-                        selectedIndex = setupBrowserIndex,
-                        scrollTarget = setupBrowserScroll,
-                        backgroundImagePath = null,
-                        backgroundTint = 100,
-                        listFontSize = 22.sp,
-                        listLineHeight = 32.sp,
-                        listVerticalPadding = 4.dp,
-                        itemHeight = itemHeight,
-                        isSelectRow = setupBrowserIndex == 0,
-                        showSelectOption = setupBrowserPath != "/storage/",
-                        showNewFolder = false,
-                        onVisibleRangeChanged = { _, _, _ -> },
-                        buttonLabelSet = ButtonLabelSet.PLUMBER
-                    )
-                }
-            }
-        }
-    }
-
-    private fun handleSetupBrowserInput(keyCode: Int) {
-        val hasSelect = setupBrowserPath != "/storage/"
-        val count = setupBrowserEntries.size + if (hasSelect) 1 else 0
-        when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_UP -> {
-                setupBrowserIndex = (setupBrowserIndex - 1 + count) % count
-                showSetupBrowser()
-            }
-            KeyEvent.KEYCODE_DPAD_DOWN -> {
-                setupBrowserIndex = (setupBrowserIndex + 1) % count
-                showSetupBrowser()
-            }
-            KeyEvent.KEYCODE_BUTTON_A -> {
-                val hasSelect = setupBrowserPath != "/storage/"
-                val selectIndex = if (hasSelect) 0 else -1
-                if (setupBrowserIndex == selectIndex) {
-                    val selected = if (setupBrowserPath.endsWith("/")) setupBrowserPath else "$setupBrowserPath/"
-                    setupCustomPath = if (isVolumeRoot(selected)) selected + "Cannoli/" else selected
-                    inSetupBrowser = false
-                    showSetupScreen(reset = false)
-                } else {
-                    val entryIdx = setupBrowserIndex - if (hasSelect) 1 else 0
-                    val folderName = setupBrowserEntries[entryIdx]
-                    setupBrowserPath = resolveDirectoryEntry(setupBrowserPath, folderName)
-                    setupBrowserEntries = listDirectories(setupBrowserPath)
-                    setupBrowserIndex = 0
-                    setupBrowserScroll = 0
-                    showSetupBrowser()
-                }
-            }
-            KeyEvent.KEYCODE_BUTTON_B -> {
-                val parent = parentDirectory(setupBrowserPath)
-                if (parent != null) {
-                    setupBrowserPath = parent
-                    setupBrowserEntries = listDirectories(setupBrowserPath)
-                    setupBrowserIndex = 0
-                    setupBrowserScroll = 0
-                    showSetupBrowser()
-                }
-            }
-            KeyEvent.KEYCODE_BUTTON_Y -> {
-                inSetupBrowser = false
-                showSetupScreen(reset = false)
-            }
-        }
-    }
-
     private fun initializeApp() {
         val root = File(settings.sdCardRoot)
         dev.cannoli.scorza.util.DebugLog.init(root.absolutePath)
@@ -944,6 +800,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun finishInitializeApp() {
+        if (screenStack.firstOrNull() !is LauncherScreen.SystemList) {
+            screenStack.clear()
+            screenStack.add(LauncherScreen.SystemList)
+        }
+
         val root = File(settings.sdCardRoot)
 
         ioScope.launch {
@@ -954,7 +815,7 @@ class MainActivity : ComponentActivity() {
         systemListViewModel = SystemListViewModel(scanner, collectionManager, orderingManager, recentlyPlayedManager)
         gameListViewModel = GameListViewModel(scanner, collectionManager, orderingManager, recentlyPlayedManager, platformResolver, resources)
         gameListViewModel.showFavoriteStars = settings.contentMode != ContentMode.FIVE_GAME_HANDHELD
-        settingsViewModel = SettingsViewModel(settings, root, packageManager, packageName)
+        settingsViewModel.reinitialize(root, packageManager, packageName)
         updateManager = dev.cannoli.scorza.updater.UpdateManager(this, settings)
 
         ioScope.launch {
@@ -970,29 +831,7 @@ class MainActivity : ComponentActivity() {
         atomicRename = AtomicRename(root)
 
         globalOverrides = GlobalOverridesManager { settings.sdCardRoot }
-        profileManager = dev.cannoli.scorza.input.ProfileManager(settings.sdCardRoot)
-        profileManager.ensureDefaults()
-
-        inputHandler = InputHandler(
-            getButtonMappings = {
-                val screen = screenStack.lastOrNull() as? LauncherScreen.ControlBinding
-                if (screen != null && screen.profileName == dev.cannoli.scorza.input.ProfileManager.NAVIGATION) screen.controls
-                else profileManager.readControls(dev.cannoli.scorza.input.ProfileManager.NAVIGATION)
-            }
-        )
-        wireInput()
-
-        lifecycleScope.launch {
-            settingsViewModel.appSettings.collect { appSettings ->
-                inputHandler.swapConfirmBack = appSettings.buttonLabelSet != ButtonLabelSet.PLUMBER
-            }
-        }
-
-        onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                // swallow — back button/gesture does nothing in the launcher
-            }
-        })
+        profileManager.reinitialize(settings.sdCardRoot)
 
         rescanSystemList()
 
@@ -1011,31 +850,6 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        setContent {
-            val appFont by settingsViewModel.appSettings.collectAsState()
-            CannoliTheme(fontFamily = appFont.fontFamily) {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    val updateInfo by updateManager.updateAvailable.collectAsState()
-                    val dlProgress by updateManager.downloadProgress.collectAsState()
-                    val dlError by updateManager.downloadError.collectAsState()
-                    AppNavGraph(
-                        currentScreen = currentScreen,
-                        systemListViewModel = systemListViewModel,
-                        gameListViewModel = gameListViewModel,
-                        settingsViewModel = settingsViewModel,
-                        dialogState = dialogState,
-                        onVisibleRangeChanged = { first, count, full ->
-                            currentFirstVisible = first
-                            if (full) currentPageSize = count
-                        },
-                        resumableGames = resumableGames,
-                        updateAvailable = updateInfo != null,
-                        downloadProgress = dlProgress,
-                        downloadError = dlError
-                    )
-                }
-            }
-        }
     }
 
     private fun wrapIndex(current: Int, delta: Int, size: Int): Int =
@@ -1110,6 +924,13 @@ class MainActivity : ComponentActivity() {
                         val count = screen.entries.size + if (hasSelect) 1 else 0
                         if (count > 0) screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, -1, count))
                     }
+                    is LauncherScreen.Setup -> {
+                        val maxIndex = if (screen.volumes.getOrNull(screen.volumeIndex)?.first == "Custom") 1 else 0
+                        screenStack[screenStack.lastIndex] = screen.copy(
+                            selectedIndex = (screen.selectedIndex - 1).coerceAtLeast(0)
+                        )
+                    }
+                    is LauncherScreen.Installing -> {}
                 }
                 else -> {}
             }
@@ -1183,6 +1004,13 @@ class MainActivity : ComponentActivity() {
                         val count = screen.entries.size + if (hasSelect) 1 else 0
                         if (count > 0) screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, 1, count))
                     }
+                    is LauncherScreen.Setup -> {
+                        val maxIndex = if (screen.volumes.getOrNull(screen.volumeIndex)?.first == "Custom") 1 else 0
+                        screenStack[screenStack.lastIndex] = screen.copy(
+                            selectedIndex = (screen.selectedIndex + 1).coerceAtMost(maxIndex)
+                        )
+                    }
+                    is LauncherScreen.Installing -> {}
                 }
                 else -> {}
             }
@@ -1212,7 +1040,7 @@ class MainActivity : ComponentActivity() {
                     val newCol = if (col <= 0) rowSize - 1 else col - 1
                     dialogState.value = ds.copy(selectedIndex = (curRow * rowSize + newCol).coerceAtMost(HEX_KEYS.lastIndex))
                 }
-                DialogState.None -> when (currentScreen) {
+                DialogState.None -> when (val screen = currentScreen) {
                     LauncherScreen.SystemList -> if (!systemListViewModel.isReorderMode()) pageJump(-1)
                     LauncherScreen.GameList -> if (!gameListViewModel.isReorderMode()) pageJump(-1)
                     LauncherScreen.Settings -> {
@@ -1222,6 +1050,14 @@ class MainActivity : ComponentActivity() {
                                 ioScope.launch { updateManager.checkForUpdate() }
                             }
                         } else pageJump(-1)
+                    }
+                    is LauncherScreen.Setup -> {
+                        if (screen.selectedIndex == 0 && screen.volumes.size > 1) {
+                            screenStack[screenStack.lastIndex] = screen.copy(
+                                volumeIndex = (screen.volumeIndex - 1 + screen.volumes.size) % screen.volumes.size,
+                                customPath = null
+                            )
+                        }
                     }
                     else -> pageJump(-1)
                 }
@@ -1253,7 +1089,7 @@ class MainActivity : ComponentActivity() {
                     val newCol = if (col >= rowSize - 1) 0 else col + 1
                     dialogState.value = ds.copy(selectedIndex = (curRow * rowSize + newCol).coerceAtMost(HEX_KEYS.lastIndex))
                 }
-                DialogState.None -> when (currentScreen) {
+                DialogState.None -> when (val screen = currentScreen) {
                     LauncherScreen.SystemList -> if (!systemListViewModel.isReorderMode()) pageJump(1)
                     LauncherScreen.GameList -> if (!gameListViewModel.isReorderMode()) pageJump(1)
                     LauncherScreen.Settings -> {
@@ -1263,6 +1099,14 @@ class MainActivity : ComponentActivity() {
                                 ioScope.launch { updateManager.checkForUpdate() }
                             }
                         } else pageJump(1)
+                    }
+                    is LauncherScreen.Setup -> {
+                        if (screen.selectedIndex == 0 && screen.volumes.size > 1) {
+                            screenStack[screenStack.lastIndex] = screen.copy(
+                                volumeIndex = (screen.volumeIndex + 1) % screen.volumes.size,
+                                customPath = null
+                            )
+                        }
                     }
                     else -> pageJump(1)
                 }
@@ -1619,6 +1463,20 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     }
+                    is LauncherScreen.Setup -> {
+                        val isCustom = screen.volumes.getOrNull(screen.volumeIndex)?.first == "Custom"
+                        val folderIndex = if (isCustom) 1 else -1
+                        if (screen.selectedIndex == folderIndex) {
+                            pushDirectoryBrowser(BrowsePurpose.SETUP, "/storage/")
+                        }
+                    }
+                    is LauncherScreen.Installing -> {
+                        if (screen.finished) {
+                            settings.sdCardRoot = screen.targetPath
+                            settings.setupCompleted = true
+                            initializeApp()
+                        }
+                    }
                     is LauncherScreen.Credits -> {}
                     is LauncherScreen.InstalledCores -> {}
                     is LauncherScreen.DirectoryBrowser -> {
@@ -1803,6 +1661,8 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     }
+                    is LauncherScreen.Setup -> finishAffinity()
+                    is LauncherScreen.Installing -> {}
                 }
             }
         }
@@ -1814,7 +1674,7 @@ class MainActivity : ComponentActivity() {
                 is DialogState.CollectionRenameInput -> onCollectionRenameConfirm(ds)
                 is DialogState.ProfileNameInput -> onProfileNameConfirm(ds)
                 is DialogState.NewFolderInput -> onNewFolderConfirm(ds)
-                DialogState.None -> when (currentScreen) {
+                DialogState.None -> when (val screen = currentScreen) {
                     LauncherScreen.SystemList -> {
                         if (systemListViewModel.isReorderMode()) {
                             systemListViewModel.confirmReorder()
@@ -1864,6 +1724,15 @@ class MainActivity : ComponentActivity() {
                                 options = buildGameContextOptions(game, glState)
                             )
                         }
+                        }
+                    }
+                    is LauncherScreen.Setup -> {
+                        val isCustom = screen.volumes.getOrNull(screen.volumeIndex)?.first == "Custom"
+                        val continueEnabled = !isCustom || screen.customPath != null
+                        if (continueEnabled) {
+                            val targetPath = if (isCustom) screen.customPath!! else screen.volumes[screen.volumeIndex].second + "Cannoli/"
+                            screenStack[screenStack.lastIndex] = LauncherScreen.Installing(targetPath = targetPath)
+                            startInstalling(targetPath)
                         }
                     }
                     is LauncherScreen.ProfileList -> {

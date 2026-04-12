@@ -61,6 +61,8 @@ import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
 import kotlinx.coroutines.flow.StateFlow
 import dev.cannoli.scorza.ui.screens.DirectoryBrowserScreen
+import dev.cannoli.scorza.ui.screens.InstallingScreen
+import dev.cannoli.scorza.ui.screens.SetupScreen
 
 enum class BrowsePurpose { SD_ROOT, ROM_DIRECTORY, SETUP }
 
@@ -86,13 +88,25 @@ sealed class LauncherScreen {
         val selectedIndex: Int = 0,
         val scrollTarget: Int = 0
     ) : LauncherScreen()
+    data class Setup(
+        val volumes: List<Pair<String, String>> = emptyList(),
+        val volumeIndex: Int = 0,
+        val selectedIndex: Int = 0,
+        val customPath: String? = null
+    ) : LauncherScreen()
+    data class Installing(
+        val targetPath: String,
+        val progress: Float = 0f,
+        val statusLabel: String = "Kneading the dough...",
+        val finished: Boolean = false
+    ) : LauncherScreen()
 }
 
 @Composable
 fun AppNavGraph(
     currentScreen: LauncherScreen,
-    systemListViewModel: SystemListViewModel,
-    gameListViewModel: GameListViewModel,
+    systemListViewModel: SystemListViewModel? = null,
+    gameListViewModel: GameListViewModel? = null,
     settingsViewModel: SettingsViewModel,
     dialogState: StateFlow<DialogState>,
     onVisibleRangeChanged: (firstVisible: Int, visibleCount: Int, isViewportFull: Boolean) -> Unit = { _, _, _ -> },
@@ -127,6 +141,7 @@ fun AppNavGraph(
     Box(modifier = Modifier.fillMaxSize()) {
         when (currentScreen) {
             is LauncherScreen.SystemList -> {
+                if (systemListViewModel == null) return@Box
                 SystemListScreen(
                     viewModel = systemListViewModel,
                     backgroundImagePath = appSettings.backgroundImagePath,
@@ -145,6 +160,7 @@ fun AppNavGraph(
                 )
             }
             is LauncherScreen.GameList -> {
+                if (gameListViewModel == null) return@Box
                 GameListScreen(
                     viewModel = gameListViewModel,
                     backgroundImagePath = appSettings.backgroundImagePath,
@@ -636,6 +652,35 @@ fun AppNavGraph(
                     onVisibleRangeChanged = onVisibleRangeChanged,
                     buttonLabelSet = labels
                 )
+                if (dialog.isFullScreen) {
+                    DialogOverlay(
+                        dialogState = dialog,
+                        backgroundImagePath = appSettings.backgroundImagePath,
+                        backgroundTint = appSettings.backgroundTint,
+                        listFontSize = listFontSize,
+                        listLineHeight = listLineHeight,
+                        listVerticalPadding = listVerticalPadding,
+                        buttonLabelSet = labels
+                    )
+                }
+            }
+            is LauncherScreen.Setup -> {
+                val isCustom = currentScreen.volumes.getOrNull(currentScreen.volumeIndex)?.first == "Custom"
+                SetupScreen(
+                    storageLabel = currentScreen.volumes.getOrNull(currentScreen.volumeIndex)?.first ?: "",
+                    selectedIndex = currentScreen.selectedIndex,
+                    isCustom = isCustom,
+                    customPath = currentScreen.customPath,
+                    continueEnabled = !isCustom || currentScreen.customPath != null,
+                    buttonLabelSet = labels
+                )
+            }
+            is LauncherScreen.Installing -> {
+                InstallingScreen(
+                    progress = currentScreen.progress,
+                    statusLabel = currentScreen.statusLabel,
+                    finished = currentScreen.finished
+                )
             }
             is LauncherScreen.Credits -> {
                 CreditsOverlay(
@@ -651,8 +696,8 @@ fun AppNavGraph(
             }
         }
 
-        val systemListState by systemListViewModel.state.collectAsState()
-        val statusBarVisible = dialog !is DialogState.About && dialog !is DialogState.Kitchen && dialog !is DialogState.UpdateDownload && currentScreen !is LauncherScreen.Credits && currentScreen !is LauncherScreen.DirectoryBrowser && !(currentScreen is LauncherScreen.SystemList && systemListState.isLoading) && (dev.cannoli.scorza.server.KitchenManager.isRunning || appSettings.showWifi || appSettings.showBluetooth || appSettings.showVpn || appSettings.showClock || appSettings.showBattery || (updateAvailable && appSettings.showUpdate))
+        val systemListState = systemListViewModel?.state?.collectAsState()?.value
+        val statusBarVisible = dialog !is DialogState.About && dialog !is DialogState.Kitchen && dialog !is DialogState.UpdateDownload && currentScreen !is LauncherScreen.Credits && currentScreen !is LauncherScreen.DirectoryBrowser && currentScreen !is LauncherScreen.Setup && currentScreen !is LauncherScreen.Installing && !(currentScreen is LauncherScreen.SystemList && systemListState?.isLoading == true) && (dev.cannoli.scorza.server.KitchenManager.isRunning || appSettings.showWifi || appSettings.showBluetooth || appSettings.showVpn || appSettings.showClock || appSettings.showBattery || (updateAvailable && appSettings.showUpdate))
         if (statusBarVisible) {
         Box(
             modifier = Modifier

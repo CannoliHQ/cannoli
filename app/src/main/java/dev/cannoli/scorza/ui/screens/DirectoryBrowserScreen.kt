@@ -45,7 +45,10 @@ fun DirectoryBrowserScreen(
         listLineHeight = listLineHeight,
         fullWidth = true,
         showBackButton = false,
-        leftBottomItems = listOf(buttonLabelSet.y to "CANCEL", buttonLabelSet.back to "UP"),
+        leftBottomItems = buildList {
+            add(buttonLabelSet.y to "CANCEL")
+            if (showSelectOption) add(buttonLabelSet.back to "DIR UP")
+        },
         rightBottomItems = rightItems,
         buttonLabelSet = buttonLabelSet
     ) {
