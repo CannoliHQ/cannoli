@@ -10,15 +10,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.cannoli.scorza.R
-import dev.cannoli.igm.ButtonLabelSet
+import dev.cannoli.igm.ButtonStyle
 import dev.cannoli.igm.ui.components.BottomBar
 import dev.cannoli.igm.ui.components.LegendPill
 import dev.cannoli.igm.ui.theme.GrayText
 
 @Composable
-fun MissingCoreDialog(coreName: String, buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER) {
+fun MissingCoreDialog(coreName: String, buttonStyle: ButtonStyle = ButtonStyle()) {
     OverlayScrim(
-        bottomBar = { LegendPill(button = buttonLabelSet.back, label = stringResource(R.string.label_close)) }
+        bottomBar = { LegendPill(button = buttonStyle.back, label = stringResource(R.string.label_close)) }
     ) {
         Text(
             text = stringResource(R.string.dialog_title_missing_core),
@@ -35,16 +35,16 @@ fun MissingCoreDialog(coreName: String, buttonLabelSet: ButtonLabelSet = ButtonL
 }
 
 @Composable
-fun MissingAppDialog(appName: String, showRemove: Boolean = false, buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER) {
+fun MissingAppDialog(appName: String, showRemove: Boolean = false, buttonStyle: ButtonStyle = ButtonStyle()) {
     OverlayScrim(
         bottomBar = {
             if (showRemove) {
                 BottomBar(
-                    leftItems = listOf(buttonLabelSet.back to stringResource(R.string.label_close)),
-                    rightItems = listOf(buttonLabelSet.confirm to stringResource(R.string.label_remove))
+                    leftItems = listOf(buttonStyle.back to stringResource(R.string.label_close)),
+                    rightItems = listOf(buttonStyle.confirm to stringResource(R.string.label_remove))
                 )
             } else {
-                LegendPill(button = buttonLabelSet.back, label = stringResource(R.string.label_close))
+                LegendPill(button = buttonStyle.back, label = stringResource(R.string.label_close))
             }
         }
     ) {
@@ -63,9 +63,9 @@ fun MissingAppDialog(appName: String, showRemove: Boolean = false, buttonLabelSe
 }
 
 @Composable
-fun LaunchErrorDialog(message: String, buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER) {
+fun LaunchErrorDialog(message: String, buttonStyle: ButtonStyle = ButtonStyle()) {
     OverlayScrim(
-        bottomBar = { LegendPill(button = buttonLabelSet.back, label = stringResource(R.string.label_close)) }
+        bottomBar = { LegendPill(button = buttonStyle.back, label = stringResource(R.string.label_close)) }
     ) {
         Text(
             text = stringResource(R.string.dialog_title_launch_error),

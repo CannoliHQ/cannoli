@@ -46,7 +46,6 @@ import dev.cannoli.scorza.ui.components.StatusBar
 import dev.cannoli.igm.ui.components.pillInternalH
 import androidx.compose.ui.platform.LocalContext
 import dev.cannoli.igm.ui.components.screenPadding
-import dev.cannoli.igm.ButtonLabelSet
 import dev.cannoli.igm.IGMScreen
 import dev.cannoli.igm.IGMSettingsItem
 import dev.cannoli.igm.IGMSettingsScreen
@@ -114,7 +113,7 @@ fun LibretroScreen(
     val igmFontSize = settings.textSize.sp.sp
     val igmLineHeight = (settings.textSize.sp + 10).sp
     val igmScaleFactor = settings.textSize.sp / 22f
-    val labels = settings.buttonLabelSet
+    val labels = dev.cannoli.igm.ButtonStyle(settings.buttonLabelSet, settings.confirmButton)
     val statusBarEnabled = (settings.showWifi || settings.showBluetooth || settings.showClock || settings.showBattery || settings.showVpn) && !showDescription && !isGuideScreen
     val statusBarLeftEdge = remember { mutableIntStateOf(Int.MAX_VALUE) }
 
@@ -138,7 +137,7 @@ fun LibretroScreen(
                     undoLabel = undoLabel,
                     fontSize = igmFontSize,
                     lineHeight = igmLineHeight,
-                    buttonLabelSet = labels
+                    buttonStyle = labels
                 )
                 if (screen.confirmDeleteSlot) {
                     Box(
@@ -171,7 +170,7 @@ fun LibretroScreen(
                                 .align(Alignment.BottomCenter)
                                 .padding(screenPadding),
                             leftItems = listOf(labels.back to stringResource(R.string.label_cancel)),
-                            rightItems = listOf(labels.x to stringResource(R.string.label_delete))
+                            rightItems = listOf(labels.north to stringResource(R.string.label_delete))
                         )
                     }
                 }
@@ -203,8 +202,8 @@ fun LibretroScreen(
                         title = stringResource(R.string.title_controls),
                         items = items,
                         selectedIndex = screen.selectedIndex,
-                        bottomBarLeft = listOf(labels.back to stringResource(R.string.label_back), labels.x to stringResource(R.string.label_new)),
-                        bottomBarRight = listOf(labels.y to stringResource(R.string.label_edit), labels.confirm to stringResource(R.string.label_select)),
+                        bottomBarLeft = listOf(labels.back to stringResource(R.string.label_back), labels.north to stringResource(R.string.label_new)),
+                        bottomBarRight = listOf(labels.west to stringResource(R.string.label_edit), labels.confirm to stringResource(R.string.label_select)),
                         fontSize = igmFontSize,
                         lineHeight = igmLineHeight
                     )
@@ -225,7 +224,7 @@ fun LibretroScreen(
                     canUnmapSelected = canUnmap,
                     fontSize = igmFontSize,
                     lineHeight = igmLineHeight,
-                    buttonLabelSet = labels
+                    buttonStyle = labels
                 )
             }
             is IGMScreen.ProfileName -> {
@@ -252,7 +251,7 @@ fun LibretroScreen(
                 val bottomBarRight = when {
                     isOptionList -> listOf(labels.confirm to stringResource(R.string.label_info), "←→" to changeLabel)
                     screen is IGMScreen.Shortcuts && screen.selectedIndex == 0 -> listOf("←→" to changeLabel)
-                    screen is IGMScreen.Shortcuts -> listOf(labels.x to stringResource(R.string.label_clear), labels.confirm to stringResource(R.string.label_set))
+                    screen is IGMScreen.Shortcuts -> listOf(labels.north to stringResource(R.string.label_clear), labels.confirm to stringResource(R.string.label_set))
                     screen is IGMScreen.Video -> listOf(labels.confirm to selectLabel, "←→" to changeLabel)
                     screen is IGMScreen.Advanced -> listOf("←→" to changeLabel)
                     screen is IGMScreen.ShaderSettings -> listOf("←→" to changeLabel)
@@ -279,7 +278,7 @@ fun LibretroScreen(
                     bottomBarRight = bottomBarRight,
                     fontSize = igmFontSize,
                     lineHeight = igmLineHeight,
-                    buttonLabelSet = labels
+                    buttonStyle = labels
                 )
             }
             is IGMScreen.Info -> {
@@ -356,7 +355,7 @@ fun LibretroScreen(
                     selectedIndex = screen.selectedIndex,
                     fontSize = igmFontSize,
                     lineHeight = igmLineHeight,
-                    buttonLabelSet = labels
+                    buttonStyle = labels
                 )
             }
             is IGMScreen.Guide -> {
@@ -398,10 +397,10 @@ fun LibretroScreen(
                     },
                     selectedIndex = screen.selectedIndex.coerceAtMost((filtered.size - 1).coerceAtLeast(0)),
                     coreInfo = screen.status,
-                    bottomBarRight = listOf(labels.y to filterLabel, labels.confirm to stringResource(R.string.label_details)),
+                    bottomBarRight = listOf(labels.west to filterLabel, labels.confirm to stringResource(R.string.label_details)),
                     fontSize = igmFontSize,
                     lineHeight = igmLineHeight,
-                    buttonLabelSet = labels
+                    buttonStyle = labels
                 )
             }
             is IGMScreen.AchievementDetail -> {

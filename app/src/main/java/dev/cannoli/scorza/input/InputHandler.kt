@@ -21,9 +21,11 @@ class InputHandler(
     var onR2: () -> Unit = {}
     var onL3: () -> Unit = {}
     var onR3: () -> Unit = {}
-    var onX: () -> Unit = {}
-    var onY: () -> Unit = {}
+    var onWest: () -> Unit = {}
+    var onNorth: () -> Unit = {}
     var onMenu: () -> Unit = {}
+
+    var swapConfirmBack: Boolean = true
 
     fun handleKeyEvent(event: KeyEvent): Boolean {
         if (event.action != KeyEvent.ACTION_DOWN && event.action != KeyEvent.ACTION_MULTIPLE) return false
@@ -61,10 +63,10 @@ class InputHandler(
             "btn_down" -> onDown()
             "btn_left" -> onLeft()
             "btn_right" -> onRight()
-            "btn_a" -> onConfirm()
-            "btn_b" -> onBack()
-            "btn_x" -> onX()
-            "btn_y" -> onY()
+            "btn_south" -> if (swapConfirmBack) onBack() else onConfirm()
+            "btn_east" -> if (swapConfirmBack) onConfirm() else onBack()
+            "btn_west" -> onWest()
+            "btn_north" -> onNorth()
             "btn_select" -> onSelect()
             "btn_start" -> onStart()
             "btn_l" -> onL1()
@@ -81,10 +83,10 @@ class InputHandler(
 
     companion object {
         val DEFAULT_KEY_MAP = mapOf(
-            KeyEvent.KEYCODE_BUTTON_A to "btn_a",
-            KeyEvent.KEYCODE_BUTTON_B to "btn_b",
-            KeyEvent.KEYCODE_BUTTON_X to "btn_x",
-            KeyEvent.KEYCODE_BUTTON_Y to "btn_y",
+            KeyEvent.KEYCODE_BUTTON_A to "btn_south",
+            KeyEvent.KEYCODE_BUTTON_B to "btn_east",
+            KeyEvent.KEYCODE_BUTTON_X to "btn_west",
+            KeyEvent.KEYCODE_BUTTON_Y to "btn_north",
             KeyEvent.KEYCODE_BUTTON_L1 to "btn_l",
             KeyEvent.KEYCODE_BUTTON_R1 to "btn_r",
             KeyEvent.KEYCODE_BUTTON_L2 to "btn_l2",

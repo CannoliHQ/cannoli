@@ -38,7 +38,6 @@ import dev.cannoli.igm.ui.theme.MPlus1Code
 import dev.cannoli.igm.ui.theme.hexToColor
 import dev.cannoli.scorza.util.FontNameParser
 import dev.cannoli.igm.AchievementInfo
-import dev.cannoli.igm.ButtonLabelSet
 import dev.cannoli.igm.IGMScreen
 import dev.cannoli.igm.IGMSettings
 import dev.cannoli.igm.IGMSettingsItem
@@ -124,7 +123,7 @@ class LibretroActivity : ComponentActivity() {
     private val shortcutChordKeys = mutableSetOf<Int>()
     private var coreInfoText by mutableStateOf("")
 
-    private var buttonLabelSet = ButtonLabelSet.PLUMBER
+    private var confirmButton = dev.cannoli.igm.ConfirmButton.EAST
 
     private var frontendSnapshot: OverrideManager.Settings? = null
     private var shaderParamsDirty = false
@@ -224,7 +223,7 @@ class LibretroActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (savedInstanceState != null) { finish(); return }
-        buttonLabelSet = SettingsRepository(this).buttonLabelSet
+        confirmButton = SettingsRepository(this).confirmButton
         isRunning = true
         window.setBackgroundDrawableResource(android.R.color.black)
         goFullscreen()
@@ -768,7 +767,7 @@ class LibretroActivity : ComponentActivity() {
             val assigned = defaultProfileControls[btn.prefKey] ?: btn.defaultKeyCode
             if (assigned == keyCode) { resolved = btn.defaultKeyCode; break }
         }
-        if (buttonLabelSet != ButtonLabelSet.PLUMBER) {
+        if (confirmButton == dev.cannoli.igm.ConfirmButton.EAST) {
             resolved = when (resolved) {
                 KeyEvent.KEYCODE_BUTTON_A -> KeyEvent.KEYCODE_BUTTON_B
                 KeyEvent.KEYCODE_BUTTON_B -> KeyEvent.KEYCODE_BUTTON_A

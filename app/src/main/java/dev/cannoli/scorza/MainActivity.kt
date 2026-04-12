@@ -51,7 +51,6 @@ import dev.cannoli.scorza.scanner.OrderingManager
 import dev.cannoli.scorza.scanner.PlatformResolver
 import dev.cannoli.scorza.scanner.RecentlyPlayedManager
 import androidx.lifecycle.lifecycleScope
-import dev.cannoli.igm.ButtonLabelSet
 import dev.cannoli.scorza.settings.ContentMode
 import dev.cannoli.scorza.settings.GlobalOverridesManager
 import dev.cannoli.scorza.settings.SettingsRepository
@@ -412,6 +411,12 @@ class MainActivity : ComponentActivity() {
             }
         )
         wireInput()
+
+        lifecycleScope.launch {
+            settingsViewModel.appSettings.collect { appSettings ->
+                inputHandler.swapConfirmBack = appSettings.confirmButton == dev.cannoli.igm.ConfirmButton.EAST
+            }
+        }
 
         onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {}
@@ -2021,7 +2026,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        inputHandler.onX = {
+        inputHandler.onNorth = {
             when (val ds = dialogState.value) {
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
@@ -2127,7 +2132,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        inputHandler.onY = {
+        inputHandler.onWest = {
             when (val ds = dialogState.value) {
                 is DialogState.RenameInput,
                 is DialogState.CollectionRenameInput -> {

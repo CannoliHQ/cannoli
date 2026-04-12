@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import dev.cannoli.scorza.R
-import dev.cannoli.igm.ButtonLabelSet
+import dev.cannoli.igm.ButtonStyle
 import dev.cannoli.igm.ui.components.BottomBar
 import dev.cannoli.igm.ui.components.List
 import dev.cannoli.igm.ui.components.PillRowKeyValue
@@ -38,7 +38,7 @@ fun DialogOverlay(
     downloadProgress: Float = 0f,
     downloadError: String? = null,
     updateAvailable: Boolean = false,
-    buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER
+    buttonStyle: ButtonStyle = ButtonStyle()
 ) {
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
     when (dialogState) {
@@ -51,7 +51,7 @@ fun DialogOverlay(
                 listLineHeight = listLineHeight,
                 fullWidth = dialogState.options.any { it.contains('\t') },
                 rightBottomItems = emptyList(),
-                buttonLabelSet = buttonLabelSet
+                buttonStyle = buttonStyle
             ) {
                 List(
                     items = dialogState.options,
@@ -89,7 +89,7 @@ fun DialogOverlay(
                 listFontSize = listFontSize,
                 listLineHeight = listLineHeight,
                 rightBottomItems = emptyList(),
-                buttonLabelSet = buttonLabelSet
+                buttonStyle = buttonStyle
             ) {
                 List(
                     items = dialogState.options,
@@ -112,7 +112,7 @@ fun DialogOverlay(
                 selectedRow = dialogState.selectedRow,
                 selectedCol = dialogState.selectedCol,
                 currentColor = dialogState.currentColor,
-                buttonLabelSet = buttonLabelSet
+                buttonStyle = buttonStyle
             )
         }
 
@@ -120,7 +120,7 @@ fun DialogOverlay(
             HexColorInputOverlay(
                 currentHex = dialogState.currentHex,
                 selectedIndex = dialogState.selectedIndex,
-                buttonLabelSet = buttonLabelSet
+                buttonStyle = buttonStyle
             )
         }
 
@@ -137,24 +137,24 @@ fun DialogOverlay(
                 keyCol = ks.keyCol,
                 caps = ks.caps,
                 symbols = ks.symbols,
-                buttonLabelSet = buttonLabelSet
+                buttonStyle = buttonStyle
             )
         }
 
         is DialogState.About -> {
-            AboutOverlay(statusMessage = dialogState.statusMessage, updateAvailable = updateAvailable, buttonLabelSet = buttonLabelSet)
+            AboutOverlay(statusMessage = dialogState.statusMessage, updateAvailable = updateAvailable, buttonStyle = buttonStyle)
         }
 
         is DialogState.Kitchen -> {
-            KitchenOverlay(url = dialogState.url, pin = dialogState.pin, buttonLabelSet = buttonLabelSet)
+            KitchenOverlay(url = dialogState.url, pin = dialogState.pin, buttonStyle = buttonStyle)
         }
 
         is DialogState.RAAccount -> {
-            RAAccountOverlay(username = dialogState.username, buttonLabelSet = buttonLabelSet)
+            RAAccountOverlay(username = dialogState.username, buttonStyle = buttonStyle)
         }
 
         is DialogState.RALoggingIn -> {
-            RALoggingInOverlay(message = dialogState.message, buttonLabelSet = buttonLabelSet)
+            RALoggingInOverlay(message = dialogState.message, buttonStyle = buttonStyle)
         }
 
         is DialogState.UpdateDownload -> {
@@ -163,12 +163,12 @@ fun DialogOverlay(
                 changelog = dialogState.changelog,
                 progress = downloadProgress,
                 error = downloadError,
-                buttonLabelSet = buttonLabelSet
+                buttonStyle = buttonStyle
             )
         }
 
         is DialogState.RestartRequired -> {
-            RestartOverlay(message = stringResource(R.string.restart_required), buttonLabelSet = buttonLabelSet)
+            RestartOverlay(message = stringResource(R.string.restart_required), buttonStyle = buttonStyle)
         }
 
         else -> {}
@@ -185,7 +185,7 @@ internal fun ListDialogScreen(
     fullWidth: Boolean = false,
     leftBottomItems: List<Pair<String, String>> = emptyList(),
     rightBottomItems: List<Pair<String, String>>,
-    buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER,
+    buttonStyle: ButtonStyle = ButtonStyle(),
     showBackButton: Boolean = true,
     content: @Composable () -> Unit
 ) {
@@ -208,7 +208,7 @@ internal fun ListDialogScreen(
                 Spacer(modifier = Modifier.height(8.dp))
                 content()
             }
-            val left = if (showBackButton) listOf(buttonLabelSet.back to stringResource(R.string.label_back)) + leftBottomItems else leftBottomItems
+            val left = if (showBackButton) listOf(buttonStyle.back to stringResource(R.string.label_back)) + leftBottomItems else leftBottomItems
             BottomBar(
                 modifier = Modifier.align(Alignment.BottomCenter),
                 leftItems = left,

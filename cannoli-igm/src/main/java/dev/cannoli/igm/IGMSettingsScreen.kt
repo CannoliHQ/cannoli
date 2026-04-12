@@ -40,13 +40,13 @@ fun IGMSettingsScreen(
     bottomBarRight: kotlin.collections.List<Pair<String, String>> = emptyList(),
     fontSize: TextUnit = 22.sp,
     lineHeight: TextUnit = 32.sp,
-    buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER,
+    buttonStyle: ButtonStyle = ButtonStyle(),
     backLabel: String = "Back",
     changeLabel: String = "Change",
     selectLabel: String = "Select"
 ) {
-    val resolvedLeft = bottomBarLeft.ifEmpty { listOf(buttonLabelSet.back to backLabel) }
-    val resolvedRight = bottomBarRight.ifEmpty { listOf("←→" to changeLabel, buttonLabelSet.confirm to selectLabel) }
+    val resolvedLeft = bottomBarLeft.ifEmpty { listOf(buttonStyle.back to backLabel) }
+    val resolvedRight = bottomBarRight.ifEmpty { listOf("←→" to changeLabel, buttonStyle.confirm to selectLabel) }
     val itemHeight = pillItemHeight(lineHeight, verticalPadding)
     val colors = LocalCannoliColors.current
 

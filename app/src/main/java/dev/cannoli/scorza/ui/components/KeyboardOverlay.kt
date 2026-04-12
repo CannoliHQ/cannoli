@@ -34,7 +34,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
-import dev.cannoli.igm.ButtonLabelSet
+import dev.cannoli.igm.ButtonStyle
 import dev.cannoli.igm.ui.components.BottomBar
 import dev.cannoli.igm.ui.components.screenPadding
 
@@ -85,7 +85,7 @@ fun KeyboardOverlay(
     keyCol: Int,
     caps: Boolean,
     symbols: Boolean = false,
-    buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER
+    buttonStyle: ButtonStyle = ButtonStyle()
 ) {
     val rows = getKeyboardRows(caps, symbols)
     val row = keyRow.coerceIn(0, rows.lastIndex)
@@ -214,7 +214,7 @@ fun KeyboardOverlay(
                 .align(Alignment.BottomCenter)
                 .padding(horizontal = screenPadding, vertical = 16.dp),
             leftItems = listOf(
-                buttonLabelSet.y to stringResource(R.string.label_cancel)
+                buttonStyle.west to stringResource(R.string.label_cancel)
             ),
             rightItems = listOf(
                 "\uDB81\uDC0A" to stringResource(R.string.label_confirm)

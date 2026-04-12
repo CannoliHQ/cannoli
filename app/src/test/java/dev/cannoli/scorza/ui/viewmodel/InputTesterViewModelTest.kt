@@ -20,12 +20,12 @@ class InputTesterViewModelTest {
             keyName = "BUTTON_A",
             deviceId = 10,
             deviceName = "Test Pad",
-            resolvedButton = "btn_a",
+            resolvedButton = "btn_south",
         )
         val state = vm.state.value
-        assertTrue("btn_a" in (state.portStates[0]?.pressedButtons ?: emptySet()))
+        assertTrue("btn_south" in (state.portStates[0]?.pressedButtons ?: emptySet()))
         assertEquals(1, state.eventLog.size)
-        assertEquals("btn_a", state.eventLog.first().resolvedButton)
+        assertEquals("btn_south", state.eventLog.first().resolvedButton)
         assertEquals(0, state.lastEventDevice?.port)
         assertEquals("Test Pad", state.lastEventDevice?.name)
     }
@@ -33,8 +33,8 @@ class InputTesterViewModelTest {
     @Test
     fun keyUp_removesButton() {
         val vm = vm()
-        vm.onKeyDown(0, 96, "BUTTON_A", 10, "Test Pad", "btn_a")
-        vm.onKeyUp(0, 96, "BUTTON_A", 10, "Test Pad", "btn_a")
+        vm.onKeyDown(0, 96, "BUTTON_A", 10, "Test Pad", "btn_south")
+        vm.onKeyUp(0, 96, "BUTTON_A", 10, "Test Pad", "btn_south")
         val pressed = vm.state.value.portStates[0]?.pressedButtons ?: emptySet()
         assertTrue(pressed.isEmpty())
     }
@@ -52,7 +52,7 @@ class InputTesterViewModelTest {
     fun eventLogIsBoundedByCapacity() {
         val vm = InputTesterViewModel(now = { fakeNow }, eventLogCapacity = 3)
         repeat(5) { i ->
-            vm.onKeyDown(0, 96 + i, "K$i", 10, "Test Pad", "btn_a")
+            vm.onKeyDown(0, 96 + i, "K$i", 10, "Test Pad", "btn_south")
         }
         val log = vm.state.value.eventLog
         assertEquals(3, log.size)
@@ -71,20 +71,20 @@ class InputTesterViewModelTest {
     @Test
     fun orphanKeyUp_isIgnored() {
         val vm = vm()
-        vm.onKeyUp(0, 96, "BUTTON_A", 10, "Test Pad", "btn_a")
+        vm.onKeyUp(0, 96, "BUTTON_A", 10, "Test Pad", "btn_south")
         assertEquals(0, vm.state.value.eventLog.size)
     }
 
     @Test
     fun autorepeatKeyDown_notLoggedAndDoesNotCountTowardExit() {
         val vm = vm()
-        vm.onKeyDown(0, 96, "BUTTON_A", 10, "Test Pad", "btn_a")
+        vm.onKeyDown(0, 96, "BUTTON_A", 10, "Test Pad", "btn_south")
         repeat(10) {
-            vm.onKeyDown(0, 96, "BUTTON_A", 10, "Test Pad", "btn_a")
+            vm.onKeyDown(0, 96, "BUTTON_A", 10, "Test Pad", "btn_south")
         }
         assertEquals(1, vm.state.value.eventLog.size)
         assertFalse(vm.state.value.exitRequested)
-        assertTrue("btn_a" in (vm.state.value.portStates[0]?.pressedButtons ?: emptySet()))
+        assertTrue("btn_south" in (vm.state.value.portStates[0]?.pressedButtons ?: emptySet()))
     }
 
     @Test

@@ -54,7 +54,7 @@ import dev.cannoli.igm.ui.components.pillItemHeight
 import dev.cannoli.igm.ui.components.screenPadding
 import dev.cannoli.igm.ui.theme.GrayText
 import dev.cannoli.igm.ui.theme.LocalCannoliColors
-import dev.cannoli.igm.ButtonLabelSet
+import dev.cannoli.igm.ButtonStyle
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -73,7 +73,7 @@ fun GameListScreen(
     swapPlayResume: Boolean = false,
     artWidth: Int = 40,
     artScale: ArtScale = ArtScale.FIT,
-    buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER
+    buttonStyle: ButtonStyle = ButtonStyle()
 ) {
     val state by viewModel.state.collectAsState()
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
@@ -203,19 +203,19 @@ fun GameListScreen(
             val resumeLabel = stringResource(R.string.label_resume)
             val showNewButton = state.isCollectionsList || state.isCollection
             val leftItems = buildList {
-                add(buttonLabelSet.back to stringResource(R.string.label_back))
-                if (showNewButton) add(buttonLabelSet.y to stringResource(R.string.label_new))
+                add(buttonStyle.back to stringResource(R.string.label_back))
+                if (showNewButton) add(buttonStyle.west to stringResource(R.string.label_new))
             }
             val rightItems = if (state.games.isEmpty()) {
                 emptyList()
             } else if (state.multiSelectMode) {
-                listOf(buttonLabelSet.confirm to actionLabel, "▶" to stringResource(R.string.label_confirm))
+                listOf(buttonStyle.confirm to actionLabel, "▶" to stringResource(R.string.label_confirm))
             } else if (hasResumeState && swapPlayResume) {
-                listOf(buttonLabelSet.x to actionLabel, buttonLabelSet.confirm to resumeLabel)
+                listOf(buttonStyle.north to actionLabel, buttonStyle.confirm to resumeLabel)
             } else {
                 buildList {
-                    if (!showNewButton && hasResumeState) add(buttonLabelSet.x to resumeLabel)
-                    add(buttonLabelSet.confirm to actionLabel)
+                    if (!showNewButton && hasResumeState) add(buttonStyle.north to resumeLabel)
+                    add(buttonStyle.confirm to actionLabel)
                 }
             }
             BottomBar(
@@ -264,7 +264,7 @@ fun GameListScreen(
             listFontSize = listFontSize,
             listLineHeight = listLineHeight,
             listVerticalPadding = listVerticalPadding,
-            buttonLabelSet = buttonLabelSet
+            buttonStyle = buttonStyle
         )
     }
 }

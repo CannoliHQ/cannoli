@@ -11,13 +11,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.sp
-import dev.cannoli.igm.ButtonLabelSet
+import dev.cannoli.igm.ButtonStyle
 import dev.cannoli.igm.ui.components.BottomBar
 import dev.cannoli.igm.ui.components.screenPadding
 import dev.cannoli.igm.ui.theme.LocalCannoliFont
 
 @Composable
-fun RestartOverlay(message: String, buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER) {
+fun RestartOverlay(message: String, buttonStyle: ButtonStyle = ButtonStyle()) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -37,7 +37,7 @@ fun RestartOverlay(message: String, buttonLabelSet: ButtonLabelSet = ButtonLabel
                 .align(Alignment.BottomCenter)
                 .padding(screenPadding),
             leftItems = emptyList(),
-            rightItems = listOf(buttonLabelSet.confirm to "CONTINUE")
+            rightItems = listOf(buttonStyle.confirm to "CONTINUE")
         )
     }
 }

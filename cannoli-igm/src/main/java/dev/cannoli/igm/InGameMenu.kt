@@ -59,7 +59,7 @@ fun InGameMenu(
     undoLabel: String?,
     fontSize: TextUnit = 22.sp,
     lineHeight: TextUnit = 32.sp,
-    buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER
+    buttonStyle: ButtonStyle = ButtonStyle()
 ) {
     val itemHeight = pillItemHeight(lineHeight, verticalPadding)
     val showThumbnail = selectedIndex == menuOptions.saveStateIndex || selectedIndex == menuOptions.loadStateIndex
@@ -134,15 +134,15 @@ fun InGameMenu(
 
             val canDeleteSlot = showThumbnail && slotExists
             val leftItems = buildList {
-                add(buttonLabelSet.back to "BACK")
-                if (undoLabel != null) add(buttonLabelSet.x to undoLabel.uppercase())
-                if (canDeleteSlot) add(buttonLabelSet.y to "DELETE")
+                add(buttonStyle.back to "BACK")
+                if (undoLabel != null) add(buttonStyle.north to undoLabel.uppercase())
+                if (canDeleteSlot) add(buttonStyle.west to "DELETE")
             }
             val rightItems = when {
-                selectedIndex == menuOptions.saveStateIndex -> listOf("◀▶" to "SLOT", buttonLabelSet.confirm to "SAVE")
-                selectedIndex == menuOptions.loadStateIndex -> listOf("◀▶" to "SLOT", buttonLabelSet.confirm to "LOAD")
-                onDiscRow -> listOf("◀▶" to "DISC", buttonLabelSet.confirm to "SELECT")
-                else -> listOf(buttonLabelSet.confirm to "SELECT")
+                selectedIndex == menuOptions.saveStateIndex -> listOf("◀▶" to "SLOT", buttonStyle.confirm to "SAVE")
+                selectedIndex == menuOptions.loadStateIndex -> listOf("◀▶" to "SLOT", buttonStyle.confirm to "LOAD")
+                onDiscRow -> listOf("◀▶" to "DISC", buttonStyle.confirm to "SELECT")
+                else -> listOf(buttonStyle.confirm to "SELECT")
             }
 
             BottomBar(

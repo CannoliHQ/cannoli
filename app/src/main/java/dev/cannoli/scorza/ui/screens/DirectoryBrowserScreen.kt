@@ -3,7 +3,7 @@ package dev.cannoli.scorza.ui.screens
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
-import dev.cannoli.igm.ButtonLabelSet
+import dev.cannoli.igm.ButtonStyle
 import dev.cannoli.igm.ui.components.List
 import dev.cannoli.igm.ui.components.PillRowText
 import dev.cannoli.scorza.ui.components.ListDialogScreen
@@ -24,16 +24,16 @@ fun DirectoryBrowserScreen(
     showSelectOption: Boolean = true,
     showNewFolder: Boolean = true,
     onVisibleRangeChanged: (Int, Int, Boolean) -> Unit,
-    buttonLabelSet: ButtonLabelSet
+    buttonStyle: ButtonStyle
 ) {
     val displayItems = if (showSelectOption) listOf("Use this location") + entries else entries
 
     val rightItems = buildList {
-        if (showNewFolder && showSelectOption) add(buttonLabelSet.x to "NEW FOLDER")
+        if (showNewFolder && showSelectOption) add(buttonStyle.north to "NEW FOLDER")
         if (showSelectOption && isSelectRow) {
-            add(buttonLabelSet.confirm to "SELECT")
+            add(buttonStyle.confirm to "SELECT")
         } else {
-            add(buttonLabelSet.confirm to "OPEN")
+            add(buttonStyle.confirm to "OPEN")
         }
     }
 
@@ -46,11 +46,11 @@ fun DirectoryBrowserScreen(
         fullWidth = true,
         showBackButton = false,
         leftBottomItems = buildList {
-            add(buttonLabelSet.y to "CANCEL")
-            if (showSelectOption) add(buttonLabelSet.back to "DIR UP")
+            add(buttonStyle.west to "CANCEL")
+            if (showSelectOption) add(buttonStyle.back to "DIR UP")
         },
         rightBottomItems = rightItems,
-        buttonLabelSet = buttonLabelSet
+        buttonStyle = buttonStyle
     ) {
         List(
             items = displayItems,

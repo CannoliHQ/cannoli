@@ -24,13 +24,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.BuildConfig
 import dev.cannoli.scorza.R
-import dev.cannoli.igm.ButtonLabelSet
+import dev.cannoli.igm.ButtonStyle
 import dev.cannoli.igm.ui.components.BottomBar
 import dev.cannoli.igm.ui.components.screenPadding
 import dev.cannoli.igm.ui.theme.LocalCannoliFont
 
 @Composable
-fun AboutOverlay(statusMessage: String? = null, updateAvailable: Boolean = false, buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER) {
+fun AboutOverlay(statusMessage: String? = null, updateAvailable: Boolean = false, buttonStyle: ButtonStyle = ButtonStyle()) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -105,10 +105,10 @@ fun AboutOverlay(statusMessage: String? = null, updateAvailable: Boolean = false
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(screenPadding),
-            leftItems = listOf(buttonLabelSet.back to stringResource(R.string.label_back)),
+            leftItems = listOf(buttonStyle.back to stringResource(R.string.label_back)),
             rightItems = buildList {
-                if (updateAvailable) add(buttonLabelSet.y to stringResource(R.string.label_update))
-                add(buttonLabelSet.x to stringResource(R.string.label_credits))
+                if (updateAvailable) add(buttonStyle.west to stringResource(R.string.label_update))
+                add(buttonStyle.north to stringResource(R.string.label_credits))
             }
         )
     }

@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Text
 import androidx.compose.ui.res.stringResource
 import dev.cannoli.igm.ui.theme.LocalCannoliColors
-import dev.cannoli.igm.ButtonLabelSet
+import dev.cannoli.igm.ButtonStyle
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.ui.components.ControllerDiagram
 import dev.cannoli.scorza.ui.components.DiagramInput
@@ -41,7 +41,7 @@ import dev.cannoli.scorza.ui.viewmodel.InputTesterViewModel
 @Composable
 fun InputTesterScreen(
     viewModel: InputTesterViewModel,
-    buttonLabelSet: ButtonLabelSet,
+    buttonStyle: ButtonStyle,
     onExit: () -> Unit,
 ) {
     val uiState by viewModel.state.collectAsState()
@@ -55,12 +55,9 @@ fun InputTesterScreen(
         if (uiState.exitRequested) onExit()
     }
 
-    val faceLabels = remember(buttonLabelSet) {
-        when (buttonLabelSet) {
-            ButtonLabelSet.PLUMBER -> FaceLabels(top = "X", bottom = "B", left = "Y", right = "A")
-            ButtonLabelSet.REDMOND -> FaceLabels(top = "Y", bottom = "A", left = "X", right = "B")
-            ButtonLabelSet.SHAPES -> FaceLabels(top = "△", bottom = "✕", left = "□", right = "○")
-        }
+    val faceLabels = remember(buttonStyle.labelSet) {
+        val ls = buttonStyle.labelSet
+        FaceLabels(top = ls.north, bottom = ls.south, left = ls.west, right = ls.east)
     }
 
     val activePortState = uiState.portStates[uiState.activePort]

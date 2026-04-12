@@ -14,7 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.cannoli.scorza.R
-import dev.cannoli.igm.ButtonLabelSet
+import dev.cannoli.igm.ButtonStyle
 import dev.cannoli.igm.ui.components.BottomBar
 import dev.cannoli.igm.ui.components.LegendPill
 import dev.cannoli.igm.ui.components.screenPadding
@@ -56,11 +56,11 @@ fun OverlayScrim(
 @Composable
 fun MessageOverlay(
     message: String,
-    buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER,
+    buttonStyle: ButtonStyle = ButtonStyle(),
     buttonLabel: String = stringResource(R.string.label_close)
 ) {
     OverlayScrim(
-        bottomBar = { LegendPill(button = buttonLabelSet.back, label = buttonLabel) }
+        bottomBar = { LegendPill(button = buttonStyle.back, label = buttonLabel) }
     ) {
         Text(
             text = message,
@@ -76,15 +76,15 @@ fun MessageOverlay(
 @Composable
 fun ConfirmOverlay(
     message: String,
-    buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER,
+    buttonStyle: ButtonStyle = ButtonStyle(),
     cancelLabel: String = stringResource(R.string.label_cancel),
     confirmLabel: String = stringResource(R.string.label_delete)
 ) {
     OverlayScrim(
         bottomBar = {
             BottomBar(
-                leftItems = listOf(buttonLabelSet.back to cancelLabel),
-                rightItems = listOf(buttonLabelSet.confirm to confirmLabel)
+                leftItems = listOf(buttonStyle.back to cancelLabel),
+                rightItems = listOf(buttonStyle.confirm to confirmLabel)
             )
         }
     ) {

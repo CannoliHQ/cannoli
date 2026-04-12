@@ -32,14 +32,14 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 
 import dev.cannoli.scorza.R
-import dev.cannoli.igm.ButtonLabelSet
+import dev.cannoli.igm.ButtonStyle
 import dev.cannoli.igm.ui.components.BottomBar
 import dev.cannoli.igm.ui.components.screenPadding
 import dev.cannoli.igm.ui.theme.GrayText
 import dev.cannoli.igm.ui.theme.LocalCannoliFont
 
 @Composable
-fun KitchenOverlay(url: String, pin: String, buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER) {
+fun KitchenOverlay(url: String, pin: String, buttonStyle: ButtonStyle = ButtonStyle()) {
     val qrUrl = remember(url, pin) { "$url?host=${java.net.URLEncoder.encode(pin, "UTF-8")}" }
     val qrBitmap = remember(qrUrl) { generateQrBitmap(qrUrl, 256) }
 
@@ -118,8 +118,8 @@ fun KitchenOverlay(url: String, pin: String, buttonLabelSet: ButtonLabelSet = Bu
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(horizontal = screenPadding, vertical = 16.dp),
-            leftItems = listOf(buttonLabelSet.back to stringResource(R.string.label_back)),
-            rightItems = listOf(buttonLabelSet.x to stringResource(R.string.label_stop))
+            leftItems = listOf(buttonStyle.back to stringResource(R.string.label_back)),
+            rightItems = listOf(buttonStyle.north to stringResource(R.string.label_stop))
         )
     }
 }

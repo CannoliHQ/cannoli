@@ -19,14 +19,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
-import dev.cannoli.igm.ButtonLabelSet
+import dev.cannoli.igm.ButtonStyle
 import dev.cannoli.igm.ui.components.BottomBar
 import dev.cannoli.igm.ui.components.screenPadding
 import dev.cannoli.igm.ui.theme.GrayText
 import dev.cannoli.igm.ui.theme.LocalCannoliFont
 
 @Composable
-fun RAAccountOverlay(username: String, buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER) {
+fun RAAccountOverlay(username: String, buttonStyle: ButtonStyle = ButtonStyle()) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -73,8 +73,8 @@ fun RAAccountOverlay(username: String, buttonLabelSet: ButtonLabelSet = ButtonLa
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(screenPadding),
-            leftItems = listOf(buttonLabelSet.back to stringResource(R.string.label_back)),
-            rightItems = listOf(buttonLabelSet.x to stringResource(R.string.label_logout))
+            leftItems = listOf(buttonStyle.back to stringResource(R.string.label_back)),
+            rightItems = listOf(buttonStyle.north to stringResource(R.string.label_logout))
         )
     }
 }

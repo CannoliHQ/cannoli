@@ -23,7 +23,7 @@ import dev.cannoli.scorza.R
 import dev.cannoli.igm.ui.components.BottomBar
 import dev.cannoli.igm.ui.components.PillRowKeyValue
 import dev.cannoli.igm.ui.components.screenPadding
-import dev.cannoli.igm.ButtonLabelSet
+import dev.cannoli.igm.ButtonStyle
 import dev.cannoli.igm.ui.theme.GrayText
 
 @Composable
@@ -33,7 +33,7 @@ fun SetupScreen(
     isCustom: Boolean = false,
     customPath: String? = null,
     continueEnabled: Boolean = true,
-    buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER
+    buttonStyle: ButtonStyle = ButtonStyle()
 ) {
     val fontSize = 22.sp
     val lineHeight = 32.sp
@@ -109,7 +109,7 @@ fun SetupScreen(
         val rightItems = mutableListOf<Pair<String, String>>()
         when (selectedIndex) {
             0 -> rightItems.add("←→" to stringResource(R.string.label_change))
-            folderIndex -> rightItems.add(buttonLabelSet.confirm to stringResource(R.string.label_select))
+            folderIndex -> rightItems.add(buttonStyle.confirm to stringResource(R.string.label_select))
         }
         if (continueEnabled) {
             rightItems.add("Start" to "Confirm")
@@ -119,7 +119,7 @@ fun SetupScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(horizontal = screenPadding, vertical = 16.dp),
-            leftItems = listOf(buttonLabelSet.back to stringResource(R.string.label_quit)),
+            leftItems = listOf(buttonStyle.back to stringResource(R.string.label_quit)),
             rightItems = rightItems
         )
     }

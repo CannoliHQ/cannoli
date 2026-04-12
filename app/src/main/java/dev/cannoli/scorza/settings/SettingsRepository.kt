@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import android.os.Handler
 import android.os.HandlerThread
 import dev.cannoli.igm.ButtonLabelSet
+import dev.cannoli.igm.ConfirmButton
 import org.json.JSONObject
 import java.io.File
 
@@ -138,6 +139,10 @@ class SettingsRepository(context: Context) {
     var buttonLabelSet: ButtonLabelSet
         get() = ButtonLabelSet.fromString(jsonRead { optString(KEY_BUTTON_LABEL_SET, null) })
         set(value) = jsonWrite { put(KEY_BUTTON_LABEL_SET, value.name) }
+
+    var confirmButton: ConfirmButton
+        get() = ConfirmButton.fromString(jsonRead { optString(KEY_CONFIRM_BUTTON, null) })
+        set(value) = jsonWrite { put(KEY_CONFIRM_BUTTON, value.name) }
 
     var mainMenuQuit: Boolean
         get() = jsonRead { optBoolean(KEY_MAIN_MENU_QUIT, false) }
@@ -330,6 +335,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_CACHED_UPDATE_APK = "cached_update_apk"
         private const val KEY_CACHED_UPDATE_CHANGELOG = "cached_update_changelog"
         private const val KEY_BUTTON_LABEL_SET = "button_label_set"
+        private const val KEY_CONFIRM_BUTTON = "confirm_button"
         private const val KEY_CONTENT_MODE = "content_mode"
         private const val KEY_DEBUG_LOGGING = "debug_logging"
     }

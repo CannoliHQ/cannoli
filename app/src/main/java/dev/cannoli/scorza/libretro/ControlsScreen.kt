@@ -23,7 +23,7 @@ import dev.cannoli.igm.ui.components.PillRowKeyValue
 import dev.cannoli.igm.ui.components.ScreenBackground
 import dev.cannoli.igm.ui.components.ScreenTitle
 import dev.cannoli.igm.ui.components.pillItemHeight
-import dev.cannoli.igm.ButtonLabelSet
+import dev.cannoli.igm.ButtonStyle
 import dev.cannoli.igm.ui.components.screenPadding
 
 private val verticalPadding = 8.dp
@@ -40,7 +40,7 @@ fun ControlsScreen(
     canUnmapSelected: Boolean = false,
     fontSize: TextUnit = 22.sp,
     lineHeight: TextUnit = 32.sp,
-    buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER
+    buttonStyle: ButtonStyle = ButtonStyle()
 ) {
     val itemHeight = pillItemHeight(lineHeight, verticalPadding)
     val screenTitle = profileName ?: stringResource(titleRes)
@@ -89,14 +89,14 @@ fun ControlsScreen(
             val bottomLeft = if (listeningIndex >= 0) {
                 emptyList()
             } else {
-                listOf(buttonLabelSet.back to stringResource(R.string.label_back))
+                listOf(buttonStyle.back to stringResource(R.string.label_back))
             }
             val bottomRight = if (listeningIndex >= 0) {
                 listOf("" to stringResource(R.string.igm_press_button, remainingSec))
             } else {
                 buildList {
-                    if (canUnmapSelected) add(buttonLabelSet.x to stringResource(R.string.label_unmap))
-                    add(buttonLabelSet.confirm to stringResource(R.string.label_remap))
+                    if (canUnmapSelected) add(buttonStyle.north to stringResource(R.string.label_unmap))
+                    add(buttonStyle.confirm to stringResource(R.string.label_remap))
                 }
             }
 

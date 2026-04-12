@@ -3,17 +3,17 @@ package dev.cannoli.igm
 enum class ButtonLabelSet {
     PLUMBER, REDMOND, SHAPES;
 
-    val confirm: String get() = when (this) {
-        PLUMBER -> "A"; REDMOND -> "A"; SHAPES -> "✕"
+    val south: String get() = when (this) {
+        PLUMBER -> "B"; REDMOND -> "A"; SHAPES -> "✕"
     }
-    val back: String get() = when (this) {
-        PLUMBER -> "B"; REDMOND -> "B"; SHAPES -> "○"
+    val east: String get() = when (this) {
+        PLUMBER -> "A"; REDMOND -> "B"; SHAPES -> "○"
     }
-    val x: String get() = when (this) {
-        PLUMBER -> "X"; REDMOND -> "Y"; SHAPES -> "△"
-    }
-    val y: String get() = when (this) {
+    val west: String get() = when (this) {
         PLUMBER -> "Y"; REDMOND -> "X"; SHAPES -> "□"
+    }
+    val north: String get() = when (this) {
+        PLUMBER -> "X"; REDMOND -> "Y"; SHAPES -> "△"
     }
 
     companion object {

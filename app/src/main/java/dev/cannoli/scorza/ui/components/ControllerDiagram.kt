@@ -199,10 +199,10 @@ private fun DrawScope.drawFaceButtons(
         drawCircle(color = outline, radius = r, center = c, style = Stroke(width = unit * 0.3f))
         drawFaceLabel(label, c, unit, labelColor, tm)
     }
-    face("btn_y", labels.top,    0f, -offset)
-    face("btn_a", labels.bottom, 0f,  offset)
-    face("btn_x", labels.left,  -offset, 0f)
-    face("btn_b", labels.right,  offset, 0f)
+    face("btn_north", labels.top,    0f, -offset)
+    face("btn_south", labels.bottom, 0f,  offset)
+    face("btn_west",  labels.left,  -offset, 0f)
+    face("btn_east",  labels.right,  offset, 0f)
 }
 
 private fun DrawScope.drawFaceLabel(

@@ -24,7 +24,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
-import dev.cannoli.igm.ButtonLabelSet
+import dev.cannoli.igm.ButtonStyle
 import dev.cannoli.igm.ui.components.BottomBar
 import dev.cannoli.igm.ui.theme.COLOR_PRESETS
 
@@ -36,7 +36,7 @@ fun ColorPickerOverlay(
     selectedRow: Int,
     selectedCol: Int,
     currentColor: Long,
-    buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER
+    buttonStyle: ButtonStyle = ButtonStyle()
 ) {
     Box(
         modifier = Modifier
@@ -112,10 +112,10 @@ fun ColorPickerOverlay(
                 .padding(bottom = 20.dp)
         ) {
             BottomBar(
-                leftItems = listOf(buttonLabelSet.back to stringResource(R.string.label_back)),
+                leftItems = listOf(buttonStyle.back to stringResource(R.string.label_back)),
                 rightItems = listOf(
-                    buttonLabelSet.x to stringResource(R.string.label_hex),
-                    buttonLabelSet.confirm to stringResource(R.string.label_select)
+                    buttonStyle.north to stringResource(R.string.label_hex),
+                    buttonStyle.confirm to stringResource(R.string.label_select)
                 )
             )
         }
@@ -130,7 +130,7 @@ const val HEX_ROW_SIZE = 9
 fun HexColorInputOverlay(
     currentHex: String,
     selectedIndex: Int,
-    buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER
+    buttonStyle: ButtonStyle = ButtonStyle()
 ) {
     val displayHex = "#$currentHex"
     val previewColor = if (currentHex.length == 6) {
@@ -204,7 +204,7 @@ fun HexColorInputOverlay(
                 .padding(bottom = 20.dp)
         ) {
             BottomBar(
-                leftItems = listOf(buttonLabelSet.back to stringResource(R.string.label_back)),
+                leftItems = listOf(buttonStyle.back to stringResource(R.string.label_back)),
                 rightItems = emptyList()
             )
         }
