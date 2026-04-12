@@ -833,7 +833,7 @@ class MainActivity : ComponentActivity() {
     private fun updateTesterExitCountdown() {
         if (testerSelectHeld && testerStartHeld) {
             testerExitHandler.removeCallbacks(testerExitRunnable)
-            testerExitHandler.postDelayed(testerExitRunnable, 2000L)
+            testerExitHandler.postDelayed(testerExitRunnable, 1250L)
         } else {
             testerExitHandler.removeCallbacks(testerExitRunnable)
         }
