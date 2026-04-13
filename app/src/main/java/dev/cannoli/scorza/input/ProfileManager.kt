@@ -79,6 +79,21 @@ class ProfileManager(private var cannoliRoot: String) {
         IniWriter.write(file, merged)
     }
 
+    fun autoProfileControlsFor(
+        identity: ControllerIdentity,
+        matcher: dev.cannoli.scorza.input.autoconfig.AutoconfigMatcher,
+        verifier: (IntArray) -> BooleanArray = { codes -> BooleanArray(codes.size) { true } }
+    ): AutoProfileMatch? {
+        val entry = matcher.match(identity) ?: return null
+        val controls = dev.cannoli.scorza.input.autoconfig.AutoconfigTranslator.toProfile(entry)
+        if (controls.isEmpty()) return null
+        val keycodes = controls.values.toIntArray()
+        val supported = verifier(keycodes)
+        if (supported.any { !it }) return null
+        val rawName = entry.deviceName.ifEmpty { identity.name }
+        return AutoProfileMatch(controls = controls, deviceName = rawName)
+    }
+
     fun createProfile(name: String, copyFrom: Map<String, Int> = emptyMap()): Boolean {
         if (name.isBlank() || PROTECTED.any { name.equals(it, ignoreCase = true) }) return false
         val f = profileFile(name)
@@ -140,3 +155,5 @@ class ProfileManager(private var cannoliRoot: String) {
         fun isProtected(name: String): Boolean = name in PROTECTED
     }
 }
+
+data class AutoProfileMatch(val controls: Map<String, Int>, val deviceName: String)
