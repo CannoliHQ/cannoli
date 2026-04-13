@@ -573,6 +573,11 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeAudioResume(JNIEnv *, jobj
     nativeAudioResume();
 }
 
+JNIEXPORT jstring JNICALL
+Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeAudioGetDiagnostics(JNIEnv *env, jobject) {
+    return env->NewStringUTF(nativeAudioGetDiagnostics());
+}
+
 JNIEXPORT jintArray JNICALL
 Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeLoadGame(JNIEnv *env, jobject, jstring romPath) {
     const char *path = env->GetStringUTFChars(romPath, nullptr);

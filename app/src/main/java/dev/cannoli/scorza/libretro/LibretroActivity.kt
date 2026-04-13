@@ -458,7 +458,9 @@ class LibretroActivity : ComponentActivity() {
                 scanShaderPresets()
 
                 audioSampleRate = avInfo.sampleRate
+                sessionLog.log("audio init: requested sampleRate=${avInfo.sampleRate}")
                 runner.initAudio(avInfo.sampleRate)
+                sessionLog.log("audio ${runner.getAudioDiagnostics()}")
                 runner.setAudioMuted(true)
 
                 val shaderCacheDir = File(cacheDir, "shader_cache")

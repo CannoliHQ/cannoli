@@ -28,6 +28,7 @@ class LibretroRunner {
     fun init(systemDir: String, saveDir: String) = nativeInit(systemDir, saveDir)
 
     fun initAudio(sampleRate: Int) = nativeAudioInit(sampleRate)
+    fun getAudioDiagnostics(): String = nativeAudioGetDiagnostics()
     fun stopAudio() = nativeAudioStop()
     fun setAudioMuted(muted: Boolean) = nativeAudioSetMuted(muted)
     fun pauseAudio() = nativeAudioPause()
@@ -144,6 +145,7 @@ class LibretroRunner {
     private external fun nativeLoadCore(corePath: String): Boolean
     private external fun nativeInit(systemDir: String, saveDir: String)
     private external fun nativeAudioInit(sampleRate: Int)
+    private external fun nativeAudioGetDiagnostics(): String
     private external fun nativeAudioStop()
     private external fun nativeAudioSetMuted(muted: Boolean)
     private external fun nativeAudioPause()

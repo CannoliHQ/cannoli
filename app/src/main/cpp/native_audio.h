@@ -8,3 +8,4 @@ void nativeAudioSetMuted(bool muted);
 void nativeAudioPause();
 void nativeAudioResume();
 void nativeAudioStop();
+const char* nativeAudioGetDiagnostics();
