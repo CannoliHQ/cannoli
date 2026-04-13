@@ -1130,14 +1130,9 @@ class LibretroActivity : ComponentActivity() {
 
     private fun copyBundledShaders() {
         val destDir = File(cannoliRoot, "Shaders")
-        val versionFile = File(destDir, ".bundled_version")
-        val currentVersion = try {
-            packageManager.getPackageInfo(packageName, 0).longVersionCode.toString()
-        } catch (_: Exception) { "" }
-        if (versionFile.exists() && versionFile.readText().trim() == currentVersion) return
-        copyAssetDir("shaders", destDir)
         destDir.mkdirs()
-        versionFile.writeText(currentVersion)
+        File(destDir, ".bundled_version").delete()
+        copyAssetDir("shaders", destDir)
     }
 
     private fun copyAssetDir(assetPath: String, destDir: File) {
