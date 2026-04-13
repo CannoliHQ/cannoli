@@ -62,6 +62,8 @@ class LibretroActivity : ComponentActivity() {
     private lateinit var input: LibretroInput
     private lateinit var controllerManager: ControllerManager
     private lateinit var profileManager: ProfileManager
+    private lateinit var autoconfigLoader: dev.cannoli.scorza.input.autoconfig.AutoconfigLoader
+    private lateinit var autoconfigMatcher: dev.cannoli.scorza.input.autoconfig.AutoconfigMatcher
     private lateinit var slotManager: SaveSlotManager
     private lateinit var overrideManager: OverrideManager
     private var glSurfaceView: GLSurfaceView? = null
@@ -259,6 +261,10 @@ class LibretroActivity : ComponentActivity() {
         guideManager = GuideManager(cannoliRoot, platformTag, File(romPath).nameWithoutExtension)
         profileManager = ProfileManager(cannoliRoot)
         profileManager.ensureDefaults()
+        autoconfigLoader = dev.cannoli.scorza.input.autoconfig.AutoconfigLoader(
+            dev.cannoli.scorza.input.autoconfig.AssetCfgSource(this)
+        )
+        autoconfigMatcher = dev.cannoli.scorza.input.autoconfig.AutoconfigMatcher(autoconfigLoader.entries())
         controllerManager = ControllerManager()
         controllerManager.loadBlacklist(this)
         controllerManager.onDeviceDisconnected = { port -> onControllerDisconnected(port) }
@@ -1757,10 +1763,22 @@ class LibretroActivity : ComponentActivity() {
         val name = screen.name.trim()
         if (name.isBlank() || ProfileManager.isProtected(name)) { pop(); return }
         if (screen.isNew) {
-            val currentControls = mutableMapOf<String, Int>()
-            val inp = controllerManager.portInputs[0]
-            for (btn in inp.buttons) currentControls[btn.prefKey] = inp.getKeyCodeFor(btn)
-            if (!profileManager.createProfile(name, currentControls)) { pop(); return }
+            val identity = controllerManager.slots[0]
+            val device = controllerManager.getDeviceIdForPort(0)?.let { android.view.InputDevice.getDevice(it) }
+            val verifier: (IntArray) -> BooleanArray = if (device != null) {
+                { codes -> device.hasKeys(*codes) }
+            } else {
+                { codes -> BooleanArray(codes.size) { true } }
+            }
+            val match = identity?.let { profileManager.autoProfileControlsFor(it, autoconfigMatcher, verifier) }
+            val controls = if (match != null) {
+                match.controls
+            } else {
+                val inp = controllerManager.portInputs[0]
+                buildMap { for (btn in inp.buttons) put(btn.prefKey, inp.getKeyCodeFor(btn)) }
+            }
+            if (!profileManager.createProfile(name, controls)) { pop(); return }
+            if (match != null) showOsd("Prefilled with ${match.deviceName}")
         } else {
             val file = java.io.File(cannoliRoot, "Config/Profiles/${screen.originalName}.ini")
             val dest = java.io.File(cannoliRoot, "Config/Profiles/$name.ini")

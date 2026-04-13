@@ -220,6 +220,8 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var globalOverrides: GlobalOverridesManager
     private lateinit var profileManager: dev.cannoli.scorza.input.ProfileManager
+    private lateinit var autoconfigLoader: dev.cannoli.scorza.input.autoconfig.AutoconfigLoader
+    private lateinit var autoconfigMatcher: dev.cannoli.scorza.input.autoconfig.AutoconfigMatcher
     private lateinit var launchManager: LaunchManager
 
     private fun pushScreen(new: LauncherScreen) {
@@ -403,6 +405,10 @@ class MainActivity : ComponentActivity() {
 
         settingsViewModel = SettingsViewModel(settings)
         profileManager = dev.cannoli.scorza.input.ProfileManager(settings.sdCardRoot)
+        autoconfigLoader = dev.cannoli.scorza.input.autoconfig.AutoconfigLoader(
+            dev.cannoli.scorza.input.autoconfig.AssetCfgSource(this)
+        )
+        autoconfigMatcher = dev.cannoli.scorza.input.autoconfig.AutoconfigMatcher(autoconfigLoader.entries())
         inputHandler = InputHandler(
             getButtonMappings = {
                 val screen = screenStack.lastOrNull() as? LauncherScreen.ControlBinding
@@ -3079,9 +3085,21 @@ class MainActivity : ComponentActivity() {
             return
         }
         if (state.isNew) {
-            if (!profileManager.createProfile(name)) {
+            val identity = controllerManager.slots[0]
+            val device = controllerManager.getDeviceIdForPort(0)?.let { android.view.InputDevice.getDevice(it) }
+            val verifier: (IntArray) -> BooleanArray = if (device != null) {
+                { codes -> device.hasKeys(*codes) }
+            } else {
+                { codes -> BooleanArray(codes.size) { true } }
+            }
+            val match = identity?.let { profileManager.autoProfileControlsFor(it, autoconfigMatcher, verifier) }
+            val controls = match?.controls ?: emptyMap()
+            if (!profileManager.createProfile(name, controls)) {
                 dialogState.value = DialogState.None
                 return
+            }
+            if (match != null) {
+                android.widget.Toast.makeText(this, "Prefilled with ${match.deviceName}", android.widget.Toast.LENGTH_SHORT).show()
             }
         } else {
             val file = java.io.File(settings.sdCardRoot, "Config/Profiles/${state.originalName}.ini")
