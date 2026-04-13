@@ -654,6 +654,7 @@ class SettingsViewModel(
         }
         "advanced" -> buildList {
             add(SettingsItem("core_mapping", R.string.setting_core_mapping, isEditable = true))
+            add(SettingsItem("debug_logging", R.string.setting_debug_logging, valueRes = onOff(settings.debugLogging)))
             add(SettingsItem("retroarch_diy_mode", R.string.setting_retroarch_diy_mode, valueRes = onOff(settings.retroArchDiyMode)))
             val pkgs = detectInstalledRaPackages()
             if (pkgs.isNotEmpty() && settings.retroArchPackage !in pkgs) {
@@ -672,7 +673,6 @@ class SettingsViewModel(
             if (!isTelevision && !isDefaultLauncher()) {
                 add(SettingsItem("set_default_launcher", R.string.setting_set_default_launcher, isEditable = true))
             }
-            add(SettingsItem("debug_logging", R.string.setting_debug_logging, valueRes = onOff(settings.debugLogging)))
         }
         else -> emptyList()
     }
