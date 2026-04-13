@@ -106,7 +106,8 @@ void nativeAudioInit(int32_t sampleRate) {
 
     char buf[1024];
     snprintf(buf, sizeof(buf),
-             "request: rate=%d channels=2 format=I16 perf=LowLatency sharing=Exclusive api=Unspecified",
+             "request: rate=%d channels=2 format=I16 perf=LowLatency sharing=Exclusive "
+             "srcQuality=Medium api=Unspecified",
              sampleRate);
     sDiagnostics = buf;
 
@@ -117,6 +118,7 @@ void nativeAudioInit(int32_t sampleRate) {
            ->setFormat(oboe::AudioFormat::I16)
            ->setChannelCount(oboe::ChannelCount::Stereo)
            ->setSampleRate(sampleRate)
+           ->setSampleRateConversionQuality(oboe::SampleRateConversionQuality::Medium)
            ->setDataCallback(&sCallback);
 
     oboe::Result result = builder.openStream(sStream);
