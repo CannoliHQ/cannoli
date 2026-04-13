@@ -742,7 +742,21 @@ class LibretroActivity : ComponentActivity() {
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
         if (loading) return true
         if (screenStack.isNotEmpty()) {
-            if (currentScreen is IGMScreen.Guide) {
+            val cs = currentScreen
+            if (cs is IGMScreen.ProfileName && resolveNavButton(keyCode) == "btn_select") {
+                shortcutCountdownHandler.removeCallbacks(keyboardSelectHoldRunnable)
+                if (!keyboardSelectHeld) {
+                    if (cs.symbols) {
+                        replaceTop(cs.copy(caps = keyboardCapsBeforeSymbols, symbols = false))
+                    } else {
+                        replaceTop(cs.copy(caps = !cs.caps))
+                    }
+                }
+                keyboardSelectDown = false
+                keyboardSelectHeld = false
+                return true
+            }
+            if (cs is IGMScreen.Guide) {
                 when (resolveNavButton(keyCode)) {
                     "btn_up", "btn_down" -> guideScrollDir = 0
                     "btn_left", "btn_right" -> guideScrollXDir = 0
@@ -1755,6 +1769,27 @@ class LibretroActivity : ComponentActivity() {
             "btn_r" -> {
                 if (screen.cursorPos < screen.name.length) replaceTop(screen.copy(cursorPos = screen.cursorPos + 1)); true
             }
+            "btn_north" -> {
+                val newName = screen.name.substring(0, screen.cursorPos) + " " + screen.name.substring(screen.cursorPos)
+                replaceTop(screen.copy(name = newName, cursorPos = screen.cursorPos + 1))
+                true
+            }
+            "btn_east" -> {
+                if (screen.cursorPos > 0) {
+                    val newName = screen.name.removeRange(screen.cursorPos - 1, screen.cursorPos)
+                    replaceTop(screen.copy(name = newName, cursorPos = screen.cursorPos - 1))
+                }
+                true
+            }
+            "btn_select" -> {
+                if (!keyboardSelectDown) {
+                    keyboardSelectDown = true
+                    keyboardSelectHeld = false
+                    shortcutCountdownHandler.removeCallbacks(keyboardSelectHoldRunnable)
+                    shortcutCountdownHandler.postDelayed(keyboardSelectHoldRunnable, 400)
+                }
+                true
+            }
             "btn_start" -> { finishProfileName(screen); true }
             "btn_west" -> { pop(); true }
             else -> true
@@ -1823,6 +1858,16 @@ class LibretroActivity : ComponentActivity() {
     private val shortcutCountdownHandler = Handler(Looper.getMainLooper())
     private val shortcutHoldMs = 1500
     private val shortcutTickMs = 100L
+
+    private var keyboardSelectDown = false
+    private var keyboardSelectHeld = false
+    private var keyboardCapsBeforeSymbols = false
+    private val keyboardSelectHoldRunnable = Runnable {
+        val s = currentScreen as? IGMScreen.ProfileName ?: return@Runnable
+        keyboardSelectHeld = true
+        if (!s.symbols) keyboardCapsBeforeSymbols = s.caps
+        replaceTop(s.copy(caps = false, symbols = !s.symbols))
+    }
 
     private val shortcutCountdownRunnable = object : Runnable {
         override fun run() {
