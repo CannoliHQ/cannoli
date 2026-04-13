@@ -75,6 +75,9 @@ jobs:
           mkdir -p app/src/main/assets/kitchen
           cp -r /tmp/kitchen/dist/* app/src/main/assets/kitchen/
 
+      - name: Fetch RetroArch autoconfig cfgs
+        run: ./scripts/fetch-autoconfig.sh
+
       - name: Decode keystore
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/release.keystore
 
