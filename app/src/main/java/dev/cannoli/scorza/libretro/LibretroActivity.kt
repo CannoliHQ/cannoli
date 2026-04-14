@@ -488,6 +488,7 @@ class LibretroActivity : ComponentActivity() {
                 }
 
                 val glesBackend = LibretroRenderer(runner)
+                glesBackend.coreTargetFps = avInfo.fps
                 if (debugLogging) glesBackend.logger = { msg -> sessionLog.log(msg) }
                 configureBackend(glesBackend)
                 var startupCountdown = 35
