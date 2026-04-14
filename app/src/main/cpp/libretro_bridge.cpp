@@ -564,6 +564,11 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeAudioSetMuted(JNIEnv *, jo
 }
 
 JNIEXPORT void JNICALL
+Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeAudioSetNonblock(JNIEnv *, jobject, jboolean nonblock) {
+    nativeAudioSetNonblock(nonblock);
+}
+
+JNIEXPORT void JNICALL
 Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeAudioPause(JNIEnv *, jobject) {
     nativeAudioPause();
 }

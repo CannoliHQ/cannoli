@@ -10,3 +10,6 @@
 	path = app/src/main/cpp/third_party/rcheevos
 	url = https://github.com/CannoliHQ/rcheevos.git
 	ignore = dirty
+[submodule "app/src/main/cpp/third_party/speexdsp"]
+	path = app/src/main/cpp/third_party/speexdsp
+	url = https://github.com/xiph/speexdsp.git

@@ -4,6 +4,20 @@ project(cannoli_native)
 find_library(log-lib log)
 find_package(oboe REQUIRED CONFIG)
 
+# --- speex_resampler (libspeexdsp resampler, compiled standalone) ---
+add_library(speex_resampler STATIC
+    third_party/speexdsp/libspeexdsp/resample.c)
+target_compile_definitions(speex_resampler PUBLIC
+    OUTSIDE_SPEEX
+    RANDOM_PREFIX=cannoli)
+target_compile_definitions(speex_resampler PRIVATE
+    FLOATING_POINT
+    EXPORT=)
+target_include_directories(speex_resampler PUBLIC
+    third_party/speexdsp/include/speex
+    third_party/speexdsp/libspeexdsp)
+target_compile_options(speex_resampler PRIVATE -Wno-unused-function -Wno-unused-variable)
+
 # Copy libretro.h into rcheevos include so rc_libretro.c can find it via <libretro.h>
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/libretro.h
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/rcheevos/include/libretro.h COPYONLY)
@@ -26,7 +40,7 @@ target_compile_definitions(rcheevos PUBLIC RC_CLIENT_SUPPORTS_HASH)
 
 # --- retro_bridge (libretro core runner) ---
 add_library(retro_bridge SHARED libretro_bridge.cpp ra_integration.c native_audio.cpp)
-target_link_libraries(retro_bridge rcheevos oboe::oboe z ${log-lib})
+target_link_libraries(retro_bridge rcheevos speex_resampler oboe::oboe z ${log-lib})
 target_include_directories(retro_bridge PRIVATE third_party/rcheevos/include third_party/rcheevos/src)
 
 # --- glslang (Vulkan GLSL → SPIR-V) ---

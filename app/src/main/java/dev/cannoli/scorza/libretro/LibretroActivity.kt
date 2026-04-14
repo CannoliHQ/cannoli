@@ -143,6 +143,14 @@ class LibretroActivity : ComponentActivity() {
     private var fastForwarding by mutableStateOf(false)
     private var holdingFf = false
 
+    private val audioStatsHandler = Handler(Looper.getMainLooper())
+    private val audioStatsRunnable = object : Runnable {
+        override fun run() {
+            sessionLog.log("audio ${runner.getAudioDiagnostics()}")
+            audioStatsHandler.postDelayed(this, 5000)
+        }
+    }
+
     private fun setFastForward(enabled: Boolean) {
         fastForwarding = enabled
         renderer.fastForwardFrames = if (enabled) maxFfSpeed else 0
@@ -460,8 +468,10 @@ class LibretroActivity : ComponentActivity() {
                 audioSampleRate = avInfo.sampleRate
                 sessionLog.log("audio init: requested sampleRate=${avInfo.sampleRate}")
                 runner.initAudio(avInfo.sampleRate)
-                sessionLog.log("audio ${runner.getAudioDiagnostics()}")
-                runner.setAudioMuted(true)
+                if (debugLogging) {
+                    sessionLog.log("audio ${runner.getAudioDiagnostics()}")
+                    audioStatsHandler.postDelayed(audioStatsRunnable, 5000)
+                }
 
                 val shaderCacheDir = File(cacheDir, "shader_cache")
                 ShaderPipeline.cacheDir = shaderCacheDir
@@ -490,7 +500,6 @@ class LibretroActivity : ComponentActivity() {
                 val verticalToggle = prepareVerticalModeReinit()
                 glesBackend.onFrameRendered = {
                     if (startupCountdown > 0 && --startupCountdown == 0) {
-                        runner.setAudioMuted(false)
                         runOnUiThread { revealed = true }
                     }
                     if (verticalToggle != null) {
@@ -2224,6 +2233,7 @@ class LibretroActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        audioStatsHandler.removeCallbacks(audioStatsRunnable)
         if (::sessionLog.isInitialized) {
             sessionLog.log("onDestroy")
             sessionLog.close()
