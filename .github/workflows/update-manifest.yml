@@ -53,8 +53,17 @@ jobs:
             CHANNEL="stable"
           fi
 
-          IFS='.-' read -r MAJOR MINOR PATCH _ <<< "$VERSION"
-          VERSION_CODE=$(( ${MAJOR:-0} * 10000 + ${MINOR:-0} * 100 + ${PATCH:-0} ))
+          BASE="${VERSION%%-*}"
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE"
+          if [[ "$VERSION" == *-* ]]; then
+            SUFFIX="${VERSION#*-}"
+            PRE="${SUFFIX##*.}"
+            [[ "$PRE" =~ ^[0-9]+$ ]] || PRE=1
+            (( PRE > 98 )) && PRE=98
+          else
+            PRE=99
+          fi
+          VERSION_CODE=$(( ${MAJOR:-0} * 1000000 + ${MINOR:-0} * 10000 + ${PATCH:-0} * 100 + PRE ))
 
           APK=$(gh release view "$TAG" --json assets \
             -q '.assets[] | select(.name | startswith("cannoli-") and endswith(".apk")) | .name')
