@@ -724,6 +724,7 @@ class LibretroActivity : ComponentActivity() {
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
         if (loading) return true
+        if (isSystemMediaKey(keyCode)) return super.onKeyDown(keyCode, event)
         val screen = currentScreen ?: return handleGameplayInput(keyCode, event)
         val button = resolveNavButton(keyCode)
         return when (screen) {
@@ -751,6 +752,7 @@ class LibretroActivity : ComponentActivity() {
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
         if (loading) return true
+        if (isSystemMediaKey(keyCode)) return super.onKeyUp(keyCode, event)
         if (screenStack.isNotEmpty()) {
             val cs = currentScreen
             if (cs is IGMScreen.ProfileName && resolveNavButton(keyCode) == "btn_select") {
@@ -792,6 +794,19 @@ class LibretroActivity : ComponentActivity() {
         controllerManager.portInputMasks[port] = controllerManager.portInputMasks[port] and mask.inv()
         runner.setInput(port, controllerManager.portInputMasks[port])
         return true
+    }
+
+    private fun isSystemMediaKey(keyCode: Int): Boolean = when (keyCode) {
+        KeyEvent.KEYCODE_VOLUME_UP,
+        KeyEvent.KEYCODE_VOLUME_DOWN,
+        KeyEvent.KEYCODE_VOLUME_MUTE,
+        KeyEvent.KEYCODE_MEDIA_PLAY,
+        KeyEvent.KEYCODE_MEDIA_PAUSE,
+        KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
+        KeyEvent.KEYCODE_MEDIA_STOP,
+        KeyEvent.KEYCODE_MEDIA_NEXT,
+        KeyEvent.KEYCODE_MEDIA_PREVIOUS -> true
+        else -> false
     }
 
     private fun resolveNavButton(keyCode: Int): String? {
