@@ -103,10 +103,16 @@ struct AudioState : public oboe::AudioStreamDataCallback,
 
 AudioState g;
 std::string gDiagnostics;
+std::string gDiagnosticsHeader; // stable "request: ..." prefix set at init
 
 int32_t roundToEven(int32_t v) { return (v / 2) * 2; }
 
 bool AudioState::openStream() {
+    // Reset the diagnostic line from the stable header. Without this, each
+    // reopen (e.g. onErrorAfterClose recovery) stacks another "opened" entry
+    // onto the existing string, which makes the session log unreadable.
+    gDiagnostics = gDiagnosticsHeader;
+
     // Default to the safe (non-fast-mixer) Oboe path. The fast path is what
     // crackled under the original Oboe driver on Moorechip — tiny ~96-frame
     // callbacks force the resampler and PI controller to react per HAL burst
@@ -343,16 +349,20 @@ oboe::DataCallbackResult AudioState::onAudioReady(
 
 void AudioState::onErrorAfterClose(oboe::AudioStream* /*oldStream*/, oboe::Result result) {
     if (result != oboe::Result::ErrorDisconnected) return;
-    // Device changed (headphones unplugged, etc). Reopen on the same params
-    // and start immediately — FIFO likely has data already in the middle of
-    // a session.
+    // Device changed (headphones unplugged, BT handoff, etc). Reopen on the
+    // same params and start immediately — the FIFO is likely mid-session and
+    // already has queued data, so there's no deferred-start window here.
     closeStream();
     streamStarted.store(false, std::memory_order_release);
-    if (!openStream()) return;
+    if (!openStream()) {
+        gDiagnostics += " | recovery openStream FAILED";
+        return;
+    }
     if (running.load(std::memory_order_acquire)) {
         stream->requestStart();
         streamStarted.store(true, std::memory_order_release);
     }
+    gDiagnostics += " | recovered from ErrorDisconnected";
 }
 
 } // namespace
@@ -363,12 +373,28 @@ void nativeAudioInit(int32_t sampleRate) {
     g.inputRate = sampleRate;
     g.running.store(false, std::memory_order_relaxed);
 
+    // Reset per-session stat counters. These are atomic members of the
+    // namespace-static AudioState g, so without explicit resets they carry
+    // over between play sessions in the same process and the diagnostic
+    // output looks nonsensical ("writes=2273 at t=16ms after init").
+    g.statWrites.store(0, std::memory_order_relaxed);
+    g.statFramesIn.store(0, std::memory_order_relaxed);
+    g.statWriteDrops.store(0, std::memory_order_relaxed);
+    g.statCallbacks.store(0, std::memory_order_relaxed);
+    g.statFramesOut.store(0, std::memory_order_relaxed);
+    g.statUnderfills.store(0, std::memory_order_relaxed);
+    g.statAdaptTicks.store(0, std::memory_order_relaxed);
+    g.statLastFifoFill.store(0, std::memory_order_relaxed);
+    g.statAdaptRate.store(sampleRate, std::memory_order_relaxed);
+    g.statXRun.store(0, std::memory_order_relaxed);
+
     char buf[256];
     snprintf(buf, sizeof(buf),
              "request: inRate=%d outRate=%d channels=%d bufFrames=%.1f minMs=%.0f",
              sampleRate, OUTPUT_RATE, CHANNELS,
              BUFFER_SIZE_IN_VIDEO_FRAMES, MIN_BUFFER_MS);
-    gDiagnostics = buf;
+    gDiagnosticsHeader = buf;
+    gDiagnostics = gDiagnosticsHeader;
 
     if (!g.openStream()) {
         g.closeStream();
