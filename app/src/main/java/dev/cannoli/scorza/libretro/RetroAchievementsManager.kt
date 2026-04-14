@@ -3,6 +3,7 @@ package dev.cannoli.scorza.libretro
 import android.os.Handler
 import android.os.Looper
 import dev.cannoli.igm.AchievementInfo
+import dev.cannoli.scorza.BuildConfig
 import java.io.IOException
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
@@ -19,6 +20,11 @@ class RetroAchievementsManager(
 ) {
     private val httpExecutor = Executors.newFixedThreadPool(2)
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val userAgent: String by lazy {
+        val clause = try { nativeGetUserAgentClause() } catch (_: Throwable) { "" }
+        val base = "Cannoli/${BuildConfig.VERSION_NAME}"
+        if (clause.isNotEmpty()) "$base $clause" else base
+    }
 
     fun init() {
         nativeInit()
@@ -212,6 +218,7 @@ class RetroAchievementsManager(
                 conn = URL(url).openConnection() as HttpURLConnection
                 conn.connectTimeout = 10_000
                 conn.readTimeout = 10_000
+                conn.setRequestProperty("User-Agent", userAgent)
                 if (postData != null) {
                     conn.requestMethod = "POST"
                     conn.doOutput = true
@@ -283,6 +290,7 @@ class RetroAchievementsManager(
     private external fun nativeGetUsername(): String
     private external fun nativeGetGameId(): Int
     private external fun nativeGetGameTitle(): String
+    private external fun nativeGetUserAgentClause(): String
     private external fun nativeHttpResponse(requestPtr: Long, body: String, httpStatus: Int)
     private external fun nativeGetAchievementData(): String
     private external fun nativeManualUnlock(achievementId: Int)
