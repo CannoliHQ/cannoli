@@ -43,7 +43,9 @@ class SettingsViewModel(
 
     data class FontOption(val key: String, val label: String, val fontFamily: FontFamily)
 
-    private val fontOptions: List<FontOption> = buildList {
+    private var fontOptions: List<FontOption> = buildFontOptions()
+
+    private fun buildFontOptions(): List<FontOption> = buildList {
         add(FontOption("default", "Default", MPlus1Code))
         add(FontOption("the_og", "The OG", BPReplay))
         val fontsDir = cannoliRoot?.let { java.io.File(it, "Config/Fonts") }
@@ -223,6 +225,7 @@ class SettingsViewModel(
         cannoliRoot = root
         packageManager = pm
         appPackageName = pkgName
+        fontOptions = buildFontOptions()
         load()
     }
 
