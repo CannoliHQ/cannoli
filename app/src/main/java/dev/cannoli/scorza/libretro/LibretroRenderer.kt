@@ -80,6 +80,7 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
     private var loggedRotation = -1
     private var loggedSurfaceW = -1
     private var loggedSurfaceH = -1
+    private var loggedFirstFrame = false
 
     private var textureId = 0
     private var programNone = 0
@@ -103,6 +104,13 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         GLES20.glClearColor(0f, 0f, 0f, 1f)
         fpsTimestamp = System.nanoTime()
+        loggedFirstFrame = false
+        logger?.invoke(
+            "GL surface created: vendor=${GLES20.glGetString(GLES20.GL_VENDOR)}" +
+                " renderer=${GLES20.glGetString(GLES20.GL_RENDERER)}" +
+                " version=${GLES20.glGetString(GLES20.GL_VERSION)}" +
+                " glsl=${GLES20.glGetString(GLES20.GL_SHADING_LANGUAGE_VERSION)}"
+        )
 
         val vertices = floatArrayOf(-1f, -1f, 1f, -1f, -1f, 1f, 1f, 1f)
         vertexBuffer = ByteBuffer.allocateDirect(vertices.size * 4)
@@ -162,6 +170,10 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
     }
 
     override fun onDrawFrame(gl: GL10?) {
+        if (!loggedFirstFrame) {
+            loggedFirstFrame = true
+            logger?.invoke("GL first frame: surface=${surfaceWidth}x${surfaceHeight}")
+        }
         if (!paused) {
             val now = System.nanoTime()
             val delta = if (lastDrawNanos == 0L) 0L else now - lastDrawNanos
