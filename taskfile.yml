@@ -3,6 +3,8 @@ version: '3'
 vars:
   BUILDBOT: https://buildbot.libretro.com/nightly/android/latest
   CORES_DIR: app/src/main/jniLibs
+  KITCHEN_SRC: ../cannoli-kitchen
+  KITCHEN_DEST: app/src/main/assets/kitchen
 
 tasks:
   cores:
@@ -54,3 +56,11 @@ tasks:
     desc: Sync credits.json to CreditsOverlay.kt, README.md, and taskfile.yml
     cmds:
       - python3 scripts/sync_credits.py
+
+  kitchen:
+    desc: Build cannoli-kitchen and copy dist into app assets
+    dir: '{{.KITCHEN_SRC}}'
+    cmds:
+      - bun run build
+      - rm -rf {{.USER_WORKING_DIR}}/{{.KITCHEN_DEST}}/*
+      - cp -R dist/. {{.USER_WORKING_DIR}}/{{.KITCHEN_DEST}}/
