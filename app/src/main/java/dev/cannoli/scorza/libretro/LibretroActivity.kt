@@ -318,73 +318,70 @@ class LibretroActivity : ComponentActivity() {
                 CompositionLocalProvider(LocalCannoliColors provides colors) {
                     if (loading) {
                         Box(modifier = Modifier.fillMaxSize().background(Color.Black))
-                    } else if (!revealed) {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            AndroidView(
-                                factory = { gameView!! },
-                                modifier = Modifier.fillMaxSize()
-                            )
-                            Box(modifier = Modifier.fillMaxSize().background(Color.Black))
-                        }
                     } else {
-                        val screen = currentScreen
-                        LibretroScreen(
-                            glSurfaceView = gameView!!,
-                            gameTitle = gameTitle,
-                            screen = screen,
-                            menuOptions = menuOptions(),
-                            selectedSlot = currentSlot,
-                            slotThumbnail = slotThumbnail,
-                            slotExists = slotExists,
-                            slotOccupied = slotOccupied,
-                            undoLabel = when (undoType) {
-                                UndoType.SAVE -> "Undo Save"
-                                UndoType.LOAD -> "Undo Load"
-                                UndoType.RESET -> "Undo Reset"
-                                null -> null
-                            },
-                            settingsItems = if (screen is IGMScreen.Menu) emptyList() else buildSettingsItems(),
-                            coreInfo = coreInfoText,
-                            input = controllerManager.portInputs[0],
-                            profileName = currentProfileName,
-                            profileNames = profileNames,
-                            debugHud = debugHud,
-                            renderer = renderer,
-                            runner = runner,
-                            audioSampleRate = audioSampleRate,
-                            osdMessage = osdMessage,
-                            fastForwarding = fastForwarding,
-                            guideFiles = guideFiles,
-                            guidePageCount = guidePageCount,
-                            guideScrollDir = guideScrollDir,
-                            guideScrollXDir = guideScrollXDir,
-                            guidePageJump = guidePageJump,
-                            guidePageJumpDir = guidePageJumpDir,
-                            guideInitialScroll = guideInitialScroll,
-                            guideInitialScrollX = guideInitialScrollX,
-                            onGuideScrollChanged = { y, x -> guideScrollPos = y; guideScrollXPos = x },
-                            gameInfo = GameInfo(
-                                coreName = coreInfoText,
-                                romPath = romPath,
-                                savePath = sramPath.takeIf { java.io.File(it).exists() },
-                                rootPrefix = cannoliRoot,
-                                originalRomPath = originalRomPath,
-                                rendererName = renderer.backendName,
-                                raStatus = raManager?.let { ra ->
-                                    if (ra.isLoggedIn) {
-                                        val status = if (ra.isOnline) "Online" else "Offline"
-                                        "${ra.username} ($status)"
-                                    } else null
+                        val screen = if (revealed) currentScreen else null
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            LibretroScreen(
+                                glSurfaceView = gameView!!,
+                                gameTitle = gameTitle,
+                                screen = screen,
+                                menuOptions = menuOptions(),
+                                selectedSlot = currentSlot,
+                                slotThumbnail = slotThumbnail,
+                                slotExists = slotExists,
+                                slotOccupied = slotOccupied,
+                                undoLabel = when (undoType) {
+                                    UndoType.SAVE -> "Undo Save"
+                                    UndoType.LOAD -> "Undo Load"
+                                    UndoType.RESET -> "Undo Reset"
+                                    null -> null
                                 },
-                                raGameId = raManager?.let { ra ->
-                                    val id = ra.gameId
-                                    if (id > 0) {
-                                        val title = ra.gameTitle
-                                        if (title.isNotEmpty()) "$id — $title" else "$id"
-                                    } else null
-                                }
+                                settingsItems = if (screen is IGMScreen.Menu) emptyList() else buildSettingsItems(),
+                                coreInfo = coreInfoText,
+                                input = controllerManager.portInputs[0],
+                                profileName = currentProfileName,
+                                profileNames = profileNames,
+                                debugHud = debugHud,
+                                renderer = renderer,
+                                runner = runner,
+                                audioSampleRate = audioSampleRate,
+                                osdMessage = osdMessage,
+                                fastForwarding = fastForwarding,
+                                guideFiles = guideFiles,
+                                guidePageCount = guidePageCount,
+                                guideScrollDir = guideScrollDir,
+                                guideScrollXDir = guideScrollXDir,
+                                guidePageJump = guidePageJump,
+                                guidePageJumpDir = guidePageJumpDir,
+                                guideInitialScroll = guideInitialScroll,
+                                guideInitialScrollX = guideInitialScrollX,
+                                onGuideScrollChanged = { y, x -> guideScrollPos = y; guideScrollXPos = x },
+                                gameInfo = GameInfo(
+                                    coreName = coreInfoText,
+                                    romPath = romPath,
+                                    savePath = sramPath.takeIf { java.io.File(it).exists() },
+                                    rootPrefix = cannoliRoot,
+                                    originalRomPath = originalRomPath,
+                                    rendererName = renderer.backendName,
+                                    raStatus = raManager?.let { ra ->
+                                        if (ra.isLoggedIn) {
+                                            val status = if (ra.isOnline) "Online" else "Offline"
+                                            "${ra.username} ($status)"
+                                        } else null
+                                    },
+                                    raGameId = raManager?.let { ra ->
+                                        val id = ra.gameId
+                                        if (id > 0) {
+                                            val title = ra.gameTitle
+                                            if (title.isNotEmpty()) "$id — $title" else "$id"
+                                        } else null
+                                    }
+                                )
                             )
-                        )
+                            if (!revealed) {
+                                Box(modifier = Modifier.fillMaxSize().background(Color.Black))
+                            }
+                        }
                     }
                 }
             }
