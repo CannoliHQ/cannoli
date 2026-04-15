@@ -27,6 +27,7 @@ static jmethodID g_onEvent = NULL;
 static jmethodID g_onLoginResult = NULL;
 static jmethodID g_onAwardResult = NULL;
 static pthread_mutex_t g_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t g_client_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static char *g_pending_rom_path = NULL;
 static uint32_t g_pending_console_id = 0;
@@ -36,41 +37,15 @@ static int g_memory_initialized = 0;
 
 static void ra_load_game_callback(int result, const char *error_message, rc_client_t *client, void *userdata);
 
-/* ---- HTTP response queue ---- */
+/* ---- HTTP response callback holder ---- */
+/* Allocated per outgoing rc_client server request, freed when the matching
+ * response arrives in nativeHttpResponse. Response bodies are processed
+ * inline on the HTTP delivery thread under g_client_mutex so rc_client
+ * state mutation never happens on the GL thread. */
 typedef struct QueuedResponse {
     rc_client_server_callback_t callback;
     void *callback_data;
-    char *body;
-    size_t body_len;
-    int http_status;
-    struct QueuedResponse *next;
 } QueuedResponse;
-
-static QueuedResponse *g_response_head = NULL;
-static QueuedResponse *g_response_tail = NULL;
-
-static void process_queued_responses(void) {
-    pthread_mutex_lock(&g_queue_mutex);
-    QueuedResponse *head = g_response_head;
-    g_response_head = NULL;
-    g_response_tail = NULL;
-    pthread_mutex_unlock(&g_queue_mutex);
-
-    while (head) {
-        QueuedResponse *next = head->next;
-        if (head->callback) {
-            rc_api_server_response_t response;
-            memset(&response, 0, sizeof(response));
-            response.body = head->body;
-            response.body_length = head->body_len;
-            response.http_status_code = head->http_status;
-            head->callback(&response, head->callback_data);
-        }
-        free(head->body);
-        free(head);
-        head = next;
-    }
-}
 
 /* ---- rcheevos callbacks ---- */
 
@@ -237,6 +212,7 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeInit(JNIEnv *env
 JNIEXPORT void JNICALL
 Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeDestroy(JNIEnv *env, jobject thiz) {
     (void)thiz;
+    pthread_mutex_lock(&g_client_mutex);
     if (g_memory_initialized) {
         rc_libretro_memory_destroy(&g_memory_regions);
         g_memory_initialized = 0;
@@ -253,6 +229,7 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeDestroy(JNIEnv *
         (*env)->DeleteGlobalRef(env, g_manager);
         g_manager = NULL;
     }
+    pthread_mutex_unlock(&g_client_mutex);
     LOGI("RetroAchievements destroyed");
 }
 
@@ -318,7 +295,9 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeLoginWithToken(J
         if (tok) (*env)->ReleaseStringUTFChars(env, token, tok);
         return;
     }
+    pthread_mutex_lock(&g_client_mutex);
     rc_client_begin_login_with_token(g_client, user, tok, ra_login_callback, NULL);
+    pthread_mutex_unlock(&g_client_mutex);
     (*env)->ReleaseStringUTFChars(env, username, user);
     (*env)->ReleaseStringUTFChars(env, token, tok);
 }
@@ -335,7 +314,9 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeLoginWithPasswor
         if (pass) (*env)->ReleaseStringUTFChars(env, password, pass);
         return;
     }
+    pthread_mutex_lock(&g_client_mutex);
     rc_client_begin_login_with_password(g_client, user, pass, ra_login_callback, NULL);
+    pthread_mutex_unlock(&g_client_mutex);
     (*env)->ReleaseStringUTFChars(env, username, user);
     (*env)->ReleaseStringUTFChars(env, password, pass);
 }
@@ -377,18 +358,21 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeLoadGameById(JNI
 JNIEXPORT void JNICALL
 Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeUnloadGame(JNIEnv *env, jobject thiz) {
     (void)env; (void)thiz;
+    pthread_mutex_lock(&g_client_mutex);
     if (g_memory_initialized) {
         rc_libretro_memory_destroy(&g_memory_regions);
         g_memory_initialized = 0;
     }
     if (g_client) rc_client_unload_game(g_client);
+    pthread_mutex_unlock(&g_client_mutex);
 }
 
 void ra_process_frame(void) {
     if (!g_client) return;
-    process_queued_responses();
+    if (pthread_mutex_trylock(&g_client_mutex) != 0) return;
     if (rc_client_is_game_loaded(g_client))
         rc_client_do_frame(g_client);
+    pthread_mutex_unlock(&g_client_mutex);
 }
 
 JNIEXPORT void JNICALL
@@ -400,56 +384,88 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeDoFrame(JNIEnv *
 JNIEXPORT void JNICALL
 Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeIdle(JNIEnv *env, jobject thiz) {
     (void)env; (void)thiz;
-    if (!g_client) return;
-    process_queued_responses();
 }
 
 JNIEXPORT void JNICALL
 Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeReset(JNIEnv *env, jobject thiz) {
     (void)env; (void)thiz;
+    pthread_mutex_lock(&g_client_mutex);
     if (g_client) rc_client_reset(g_client);
+    pthread_mutex_unlock(&g_client_mutex);
 }
 
 JNIEXPORT jboolean JNICALL
 Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeIsLoggedIn(JNIEnv *env, jobject thiz) {
     (void)env; (void)thiz;
-    if (!g_client) return JNI_FALSE;
-    const rc_client_user_t *user = rc_client_get_user_info(g_client);
-    return (user && user->token[0]) ? JNI_TRUE : JNI_FALSE;
+    pthread_mutex_lock(&g_client_mutex);
+    jboolean result = JNI_FALSE;
+    if (g_client) {
+        const rc_client_user_t *user = rc_client_get_user_info(g_client);
+        if (user && user->token[0]) result = JNI_TRUE;
+    }
+    pthread_mutex_unlock(&g_client_mutex);
+    return result;
 }
 
 JNIEXPORT jstring JNICALL
 Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeGetUsername(JNIEnv *env, jobject thiz) {
     (void)thiz;
-    if (!g_client) return (*env)->NewStringUTF(env, "");
-    const rc_client_user_t *user = rc_client_get_user_info(g_client);
-    return (*env)->NewStringUTF(env, user ? user->display_name : "");
+    char name[256];
+    name[0] = '\0';
+    pthread_mutex_lock(&g_client_mutex);
+    if (g_client) {
+        const rc_client_user_t *user = rc_client_get_user_info(g_client);
+        if (user && user->display_name) {
+            strncpy(name, user->display_name, sizeof(name) - 1);
+            name[sizeof(name) - 1] = '\0';
+        }
+    }
+    pthread_mutex_unlock(&g_client_mutex);
+    return (*env)->NewStringUTF(env, name);
 }
 
 JNIEXPORT jint JNICALL
 Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeGetGameId(JNIEnv *env, jobject thiz) {
     (void)env; (void)thiz;
-    if (!g_client || !rc_client_is_game_loaded(g_client)) return 0;
-    const rc_client_game_t *game = rc_client_get_game_info(g_client);
-    return game ? (jint)game->id : 0;
+    pthread_mutex_lock(&g_client_mutex);
+    jint result = 0;
+    if (g_client && rc_client_is_game_loaded(g_client)) {
+        const rc_client_game_t *game = rc_client_get_game_info(g_client);
+        if (game) result = (jint)game->id;
+    }
+    pthread_mutex_unlock(&g_client_mutex);
+    return result;
 }
 
 JNIEXPORT jstring JNICALL
 Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeGetGameTitle(JNIEnv *env, jobject thiz) {
     (void)thiz;
-    if (!g_client || !rc_client_is_game_loaded(g_client)) return (*env)->NewStringUTF(env, "");
-    const rc_client_game_t *game = rc_client_get_game_info(g_client);
-    return (*env)->NewStringUTF(env, (game && game->title) ? game->title : "");
+    char title[256];
+    title[0] = '\0';
+    pthread_mutex_lock(&g_client_mutex);
+    if (g_client && rc_client_is_game_loaded(g_client)) {
+        const rc_client_game_t *game = rc_client_get_game_info(g_client);
+        if (game && game->title) {
+            strncpy(title, game->title, sizeof(title) - 1);
+            title[sizeof(title) - 1] = '\0';
+        }
+    }
+    pthread_mutex_unlock(&g_client_mutex);
+    return (*env)->NewStringUTF(env, title);
 }
 
 JNIEXPORT jstring JNICALL
 Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeGetUserAgentClause(JNIEnv *env, jobject thiz) {
     (void)thiz;
-    if (!g_client) return (*env)->NewStringUTF(env, "");
     char buf[128];
-    size_t n = rc_client_get_user_agent_clause(g_client, buf, sizeof(buf));
-    if (n >= sizeof(buf)) n = sizeof(buf) - 1;
-    buf[n] = '\0';
+    buf[0] = '\0';
+    pthread_mutex_lock(&g_client_mutex);
+    if (g_client) {
+        size_t n = rc_client_get_user_agent_clause(g_client, buf, sizeof(buf));
+        if (n >= sizeof(buf)) n = sizeof(buf) - 1;
+        buf[n] = '\0';
+    }
+    pthread_mutex_unlock(&g_client_mutex);
     return (*env)->NewStringUTF(env, buf);
 }
 
@@ -461,36 +477,54 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeHttpResponse(JNI
     if (!qr) return;
 
     const char *bodyStr = body ? (*env)->GetStringUTFChars(env, body, NULL) : NULL;
-    const char *src = bodyStr ? bodyStr : "";
-    size_t len = strlen(src);
-    qr->body = (char *)malloc(len + 1);
-    memcpy(qr->body, src, len + 1);
-    qr->body_len = len;
-    qr->http_status = httpStatus;
+    size_t len = bodyStr ? strlen(bodyStr) : 0;
+    char *bodyCopy = (char *)malloc(len + 1);
+    if (bodyCopy) {
+        if (bodyStr) memcpy(bodyCopy, bodyStr, len);
+        bodyCopy[len] = '\0';
+    }
     if (bodyStr) (*env)->ReleaseStringUTFChars(env, body, bodyStr);
 
-    pthread_mutex_lock(&g_queue_mutex);
-    qr->next = NULL;
-    if (g_response_tail) g_response_tail->next = qr;
-    else g_response_head = qr;
-    g_response_tail = qr;
-    pthread_mutex_unlock(&g_queue_mutex);
+    if (qr->callback) {
+        rc_api_server_response_t response;
+        memset(&response, 0, sizeof(response));
+        response.body = bodyCopy;
+        response.body_length = len;
+        response.http_status_code = httpStatus;
+
+        pthread_mutex_lock(&g_client_mutex);
+        qr->callback(&response, qr->callback_data);
+        pthread_mutex_unlock(&g_client_mutex);
+    }
+
+    free(bodyCopy);
+    free(qr);
 }
 
 /* Returns pipe-delimited flat string: id|title|description|points|unlocked|state|unlockTime\n per achievement */
 JNIEXPORT jstring JNICALL
 Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeGetAchievementData(JNIEnv *env, jobject thiz) {
     (void)thiz;
-    if (!g_client || !rc_client_is_game_loaded(g_client))
+    pthread_mutex_lock(&g_client_mutex);
+    if (!g_client || !rc_client_is_game_loaded(g_client)) {
+        pthread_mutex_unlock(&g_client_mutex);
         return (*env)->NewStringUTF(env, "");
+    }
 
     rc_client_achievement_list_t *list = rc_client_create_achievement_list(g_client,
         RC_CLIENT_ACHIEVEMENT_CATEGORY_CORE, RC_CLIENT_ACHIEVEMENT_LIST_GROUPING_LOCK_STATE);
-    if (!list) return (*env)->NewStringUTF(env, "");
+    if (!list) {
+        pthread_mutex_unlock(&g_client_mutex);
+        return (*env)->NewStringUTF(env, "");
+    }
 
     size_t cap = 4096;
     char *buf = (char *)malloc(cap);
-    if (!buf) { rc_client_destroy_achievement_list(list); return (*env)->NewStringUTF(env, ""); }
+    if (!buf) {
+        rc_client_destroy_achievement_list(list);
+        pthread_mutex_unlock(&g_client_mutex);
+        return (*env)->NewStringUTF(env, "");
+    }
     size_t pos = 0;
 
     for (uint32_t b = 0; b < list->num_buckets; b++) {
@@ -505,7 +539,12 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeGetAchievementDa
             if (pos + 512 > cap) {
                 cap *= 2;
                 char *newbuf = (char *)realloc(buf, cap);
-                if (!newbuf) { free(buf); rc_client_destroy_achievement_list(list); return (*env)->NewStringUTF(env, ""); }
+                if (!newbuf) {
+                    free(buf);
+                    rc_client_destroy_achievement_list(list);
+                    pthread_mutex_unlock(&g_client_mutex);
+                    return (*env)->NewStringUTF(env, "");
+                }
                 buf = newbuf;
             }
             pos += snprintf(buf + pos, cap - pos, "%u|%s|%s|%u|%d|%d|%ld\n",
@@ -519,6 +558,7 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeGetAchievementDa
     else buf[0] = '\0';
 
     rc_client_destroy_achievement_list(list);
+    pthread_mutex_unlock(&g_client_mutex);
     jstring result = (*env)->NewStringUTF(env, buf);
     free(buf);
     return result;
@@ -545,10 +585,11 @@ static void ra_award_response(const rc_api_server_response_t *response, void *us
 JNIEXPORT void JNICALL
 Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeManualUnlock(JNIEnv *env, jobject thiz, jint achievementId) {
     (void)thiz;
-    if (!g_client) return;
+    pthread_mutex_lock(&g_client_mutex);
+    if (!g_client) { pthread_mutex_unlock(&g_client_mutex); return; }
 
     const rc_client_user_t *user = rc_client_get_user_info(g_client);
-    if (!user || !user->token[0]) return;
+    if (!user || !user->token[0]) { pthread_mutex_unlock(&g_client_mutex); return; }
 
     const rc_client_game_t *game = rc_client_get_game_info(g_client);
 
@@ -580,4 +621,5 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeManualUnlock(JNI
         }
         rc_api_destroy_request(&request);
     }
+    pthread_mutex_unlock(&g_client_mutex);
 }
