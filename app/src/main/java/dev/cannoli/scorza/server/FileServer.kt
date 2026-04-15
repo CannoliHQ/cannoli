@@ -588,8 +588,17 @@ class FileServer(
             val rawName = filenameMatch.groupValues[1]
             val filename = sanitizeFilename(rawName)
             val dest = File(destDir, filename)
-            dest.outputStream().use { fos ->
-                stream.streamBodyToBoundary(boundaryBytes, fos)
+            var complete = false
+            try {
+                dest.outputStream().use { fos ->
+                    complete = stream.streamBodyToBoundary(boundaryBytes, fos)
+                }
+            } catch (e: Exception) {
+                complete = false
+            }
+            if (!complete) {
+                try { dest.delete() } catch (_: Exception) {}
+                return
             }
             uploaded.add(filename)
         }
@@ -606,6 +615,7 @@ class FileServer(
         private var pos = 0
         private var len = 0
         private var totalRead = 0L
+        private var streamEnded = false
         var lastBoundaryLine = ""
             private set
 
@@ -621,12 +631,12 @@ class FileServer(
         private fun fillAtLeast(needed: Int): Boolean {
             while (len - pos < needed) {
                 compact()
-                if (totalRead >= totalLength) return len - pos > 0
+                if (totalRead >= totalLength) { streamEnded = true; return len - pos >= needed }
                 val space = buf.size - len
-                if (space <= 0) return len - pos > 0
+                if (space <= 0) return len - pos >= needed
                 val toRead = minOf(space.toLong(), totalLength - totalRead).toInt()
                 val n = input.read(buf, len, toRead)
-                if (n <= 0) return len - pos > 0
+                if (n <= 0) { streamEnded = true; return len - pos >= needed }
                 len += n
                 totalRead += n
             }
@@ -677,7 +687,7 @@ class FileServer(
             return sb.toString()
         }
 
-        fun streamBodyToBoundary(boundaryBytes: ByteArray, out: java.io.OutputStream) {
+        fun streamBodyToBoundary(boundaryBytes: ByteArray, out: java.io.OutputStream): Boolean {
             val marker = byteArrayOf(0x0D, 0x0A) + boundaryBytes
             val mLen = marker.size
             val bos = java.io.BufferedOutputStream(out, 262144)
@@ -689,7 +699,7 @@ class FileServer(
                     pos = len
                     bos.flush()
                     lastBoundaryLine = ""
-                    return
+                    return false
                 }
 
                 val avail = len - pos
@@ -713,7 +723,7 @@ class FileServer(
                     pos = found + mLen
                     val rest = readLine() ?: ""
                     lastBoundaryLine = String(boundaryBytes, Charsets.UTF_8) + rest
-                    return
+                    return true
                 }
 
                 val safeEnd = len - (mLen - 1)
