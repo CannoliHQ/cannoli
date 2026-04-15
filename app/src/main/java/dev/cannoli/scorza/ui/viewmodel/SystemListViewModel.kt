@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class SystemListViewModel(
     private val scanner: FileScanner,
@@ -55,7 +56,7 @@ class SystemListViewModel(
         savedPosition = _state.value.selectedIndex to firstVisibleIndex
     }
 
-    fun scan(showRecentlyPlayed: Boolean = true, showEmpty: Boolean = false, contentMode: ContentMode = ContentMode.PLATFORMS, toolsName: String = "Tools", portsName: String = "Ports") {
+    fun scan(showRecentlyPlayed: Boolean = true, showEmpty: Boolean = false, contentMode: ContentMode = ContentMode.PLATFORMS, toolsName: String = "Tools", portsName: String = "Ports", onReady: () -> Unit = {}) {
         val prev = _state.value
         val prevItemCount = prev.items.size
         val restored = savedPosition
@@ -141,6 +142,7 @@ class SystemListViewModel(
                 scrollTarget = scrollTo,
                 isLoading = false
             )
+            withContext(Dispatchers.Main) { onReady() }
         }
     }
 

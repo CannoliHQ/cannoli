@@ -2065,11 +2065,29 @@ class MainActivity : ComponentActivity() {
                 }
                 DialogState.None -> when (val screen = currentScreen) {
                     LauncherScreen.SystemList -> {
-                        systemListViewModel.savePosition()
-                        settingsViewModel.load()
-                        screenStack.add(LauncherScreen.Settings)
-                        if (updateManager.isOnline()) {
-                            ioScope.launch { updateManager.checkForUpdate() }
+                        val fgh = settings.contentMode == ContentMode.FIVE_GAME_HANDHELD
+                        val item = systemListViewModel.getSelectedItem()
+                        if (fgh && item is SystemListViewModel.ListItem.GameItem) {
+                            val game = item.game
+                            val isResumable = resumableGames.contains(game.file.absolutePath)
+                            if (isResumable && settings.swapPlayResume) {
+                                val errorDialog = launchManager.launchGame(game)
+                                if (errorDialog != null) {
+                                    dialogState.value = errorDialog
+                                } else {
+                                    ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
+                                }
+                            } else if (isResumable) {
+                                launchManager.resumeGame(game)
+                                ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
+                            }
+                        } else if (!fgh) {
+                            systemListViewModel.savePosition()
+                            settingsViewModel.load()
+                            screenStack.add(LauncherScreen.Settings)
+                            if (updateManager.isOnline()) {
+                                ioScope.launch { updateManager.checkForUpdate() }
+                            }
                         }
                     }
                     LauncherScreen.Settings -> {
@@ -2158,14 +2176,23 @@ class MainActivity : ComponentActivity() {
                 DialogState.None -> {
                     when (currentScreen) {
                         LauncherScreen.SystemList -> {
-                            val km = dev.cannoli.scorza.server.KitchenManager
-                            if (km.isRunning || systemListViewModel.state.value.items.isEmpty()) {
-                                val root = File(settings.sdCardRoot)
-                                if (!km.isRunning) km.toggle(root, assets)
-                                dialogState.value = DialogState.Kitchen(
-                                    url = km.getUrl(),
-                                    pin = km.pin
-                                )
+                            if (settings.contentMode == ContentMode.FIVE_GAME_HANDHELD) {
+                                systemListViewModel.savePosition()
+                                settingsViewModel.load()
+                                screenStack.add(LauncherScreen.Settings)
+                                if (updateManager.isOnline()) {
+                                    ioScope.launch { updateManager.checkForUpdate() }
+                                }
+                            } else {
+                                val km = dev.cannoli.scorza.server.KitchenManager
+                                if (km.isRunning || systemListViewModel.state.value.items.isEmpty()) {
+                                    val root = File(settings.sdCardRoot)
+                                    if (!km.isRunning) km.toggle(root, assets)
+                                    dialogState.value = DialogState.Kitchen(
+                                        url = km.getUrl(),
+                                        pin = km.pin
+                                    )
+                                }
                             }
                         }
                         LauncherScreen.GameList -> {
@@ -2310,7 +2337,12 @@ class MainActivity : ComponentActivity() {
             showEmpty = settings.showEmpty,
             contentMode = settings.contentMode,
             toolsName = settings.toolsName,
-            portsName = settings.portsName
+            portsName = settings.portsName,
+            onReady = {
+                if (settings.contentMode == ContentMode.FIVE_GAME_HANDHELD) {
+                    scanResumableGames()
+                }
+            }
         )
     }
 
@@ -2494,11 +2526,17 @@ class MainActivity : ComponentActivity() {
             }
             is SystemListViewModel.ListItem.GameItem -> {
                 val game = item.game
-                val errorDialog = launchManager.launchGame(game)
-                if (errorDialog != null) {
-                    dialogState.value = errorDialog
-                } else {
+                val isResumable = resumableGames.contains(game.file.absolutePath)
+                if (isResumable && settings.swapPlayResume) {
+                    launchManager.resumeGame(game)
                     ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
+                } else {
+                    val errorDialog = launchManager.launchGame(game)
+                    if (errorDialog != null) {
+                        dialogState.value = errorDialog
+                    } else {
+                        ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
+                    }
                 }
             }
             is SystemListViewModel.ListItem.ToolsFolder -> {
@@ -2566,7 +2604,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun scanResumableGames() {
-        val games = gameListViewModel.state.value.games
+        val gameListGames = gameListViewModel.state.value.games
+        val systemListGames = systemListViewModel.state.value.items
+            .filterIsInstance<SystemListViewModel.ListItem.GameItem>()
+            .map { it.game }
+        val games = (gameListGames + systemListGames).distinctBy { it.file.absolutePath }
         ioScope.launch {
             val result = launchManager.findResumableGames(games)
             withContext(Dispatchers.Main) { resumableGames = result }

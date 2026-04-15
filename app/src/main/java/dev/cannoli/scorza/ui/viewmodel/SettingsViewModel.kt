@@ -129,6 +129,7 @@ class SettingsViewModel(
         val artScale: ArtScale = ArtScale.DEFAULT,
         val buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER,
         val confirmButton: ConfirmButton = ConfirmButton.EAST,
+        val contentMode: ContentMode = ContentMode.PLATFORMS,
     )
 
     private val _state = MutableStateFlow(State())
@@ -162,6 +163,7 @@ class SettingsViewModel(
         artScale = settings.artScale,
         buttonLabelSet = settings.buttonLabelSet,
         confirmButton = settings.confirmButton,
+        contentMode = settings.contentMode,
     )
 
     private val allCategories = listOf(

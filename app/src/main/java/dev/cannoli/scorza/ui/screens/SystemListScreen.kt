@@ -66,6 +66,9 @@ fun SystemListScreen(
     mainMenuQuit: Boolean = false,
     artWidth: Int = 40,
     artScale: ArtScale = ArtScale.FIT,
+    resumableGames: Set<String> = emptySet(),
+    swapPlayResume: Boolean = false,
+    fiveGameHandheld: Boolean = false,
     buttonStyle: ButtonStyle = ButtonStyle()
 ) {
     val state by viewModel.state.collectAsState()
@@ -220,7 +223,24 @@ fun SystemListScreen(
             }
             }
 
-            val rightItems = if (state.items.isEmpty()) {
+            val hasResumeState = selectedGame != null && resumableGames.contains(selectedGame.file.absolutePath)
+            val playLabel = if (selectedGame != null) stringResource(R.string.label_play) else stringResource(R.string.label_select)
+            val resumeLabel = stringResource(R.string.label_resume)
+            val rightItems = if (fiveGameHandheld) {
+                if (state.items.isEmpty()) {
+                    emptyList()
+                } else {
+                    buildList {
+                        if (hasResumeState && swapPlayResume) {
+                            add(buttonStyle.north to playLabel)
+                            add(buttonStyle.confirm to resumeLabel)
+                        } else {
+                            if (hasResumeState) add(buttonStyle.north to resumeLabel)
+                            add(buttonStyle.confirm to playLabel)
+                        }
+                    }
+                }
+            } else if (state.items.isEmpty()) {
                 listOf(buttonStyle.west to stringResource(R.string.label_kitchen))
             } else if (kitchenRunning) {
                 listOf(buttonStyle.west to stringResource(R.string.label_kitchen), buttonStyle.confirm to stringResource(R.string.label_select))
@@ -229,7 +249,11 @@ fun SystemListScreen(
             }
             val leftItems = buildList {
                 if (mainMenuQuit) add(buttonStyle.back to stringResource(R.string.label_quit))
-                add(buttonStyle.north to stringResource(R.string.label_settings))
+                if (fiveGameHandheld) {
+                    add(buttonStyle.west to stringResource(R.string.label_settings))
+                } else {
+                    add(buttonStyle.north to stringResource(R.string.label_settings))
+                }
             }
             BottomBar(
                 modifier = Modifier.align(Alignment.BottomCenter),
