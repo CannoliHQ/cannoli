@@ -515,6 +515,7 @@ class LibretroActivity : ComponentActivity() {
                     }
                 }
                 renderer = glesBackend
+                pushShaderParamsToRenderer()
 
                 glSurfaceView = GLSurfaceView(activity).apply {
                     setEGLContextClientVersion(3)
@@ -1232,8 +1233,24 @@ class LibretroActivity : ComponentActivity() {
         if (path.isNullOrEmpty()) { shaderParams = emptyList(); return }
         val preset = PresetParser.parse(File(path))
         if (preset == null) { shaderParams = emptyList(); return }
+        val existing = shaderParams.associate { it.id to it.value }
         shaderParams = preset.parameters.values.map { p ->
-            ShaderParamItem(p.id, p.description, p.default, p.min, p.max, p.step)
+            val value = existing[p.id] ?: p.default
+            ShaderParamItem(p.id, p.description, value, p.min, p.max, p.step)
+        }
+    }
+
+    private fun applySavedShaderParams(saved: Map<String, Float>) {
+        if (saved.isEmpty()) return
+        shaderParams = shaderParams.map { p ->
+            val v = saved[p.id] ?: return@map p
+            p.copy(value = v)
+        }
+    }
+
+    private fun pushShaderParamsToRenderer() {
+        for (p in shaderParams) {
+            renderer.setShaderParameter(p.id, p.value)
         }
     }
 
@@ -1362,6 +1379,7 @@ class LibretroActivity : ComponentActivity() {
         renderer.clearShaderParamOverrides()
         renderer.screenEffect = screenEffect
         renderer.shaderPresetPath = resolveShaderPresetPath()
+        shaderParams = emptyList()
         refreshShaderParams()
     }
 
@@ -2098,6 +2116,7 @@ class LibretroActivity : ComponentActivity() {
     private fun buildCurrentSettings(): OverrideManager.Settings {
         val optionMap = mutableMapOf<String, String>()
         for (opt in coreOptions) optionMap[opt.key] = opt.selected
+        val paramMap = shaderParams.associate { it.id to it.value }
 
         return OverrideManager.Settings(
             scalingMode = scalingMode,
@@ -2108,7 +2127,8 @@ class LibretroActivity : ComponentActivity() {
             shaderPreset = shaderPreset,
             overlay = overlay,
             controllerTypeId = controllerTypes.getOrNull(controllerTypeIndex)?.id ?: -1,
-            coreOptions = optionMap
+            coreOptions = optionMap,
+            shaderParams = paramMap
         )
     }
 
@@ -2151,6 +2171,9 @@ class LibretroActivity : ComponentActivity() {
             runner.setCoreOption(key, value)
         }
         coreOptions = runner.getCoreOptions()
+        shaderParams = emptyList()
+        refreshShaderParams()
+        applySavedShaderParams(settings.shaderParams)
         platformBaseline = overrideManager.loadPlatformBaseline()
     }
 

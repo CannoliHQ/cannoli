@@ -52,7 +52,8 @@ class OverrideManager(
         var controls: Map<String, Int> = emptyMap(),
         var shortcuts: Map<ShortcutAction, Set<Int>> = emptyMap(),
         var controllerTypeId: Int = -1,
-        var coreOptions: Map<String, String> = emptyMap()
+        var coreOptions: Map<String, String> = emptyMap(),
+        var shaderParams: Map<String, Float> = emptyMap()
     ) {
         fun frontendEquals(other: Settings): Boolean =
             graphicsBackend == other.graphicsBackend &&
@@ -73,15 +74,18 @@ class OverrideManager(
             shaderPreset == other.shaderPreset &&
             overlay == other.overlay &&
             controllerTypeId == other.controllerTypeId &&
-            coreOptions == other.coreOptions
+            coreOptions == other.coreOptions &&
+            shaderParams == other.shaderParams
     }
 
     fun load(profileManager: ProfileManager): Settings {
         val settings = Settings()
         applyFrontend(platformFile, settings)
         applyOptions(platformFile, settings)
+        applyShaderParams(platformFile, settings)
         applyFrontend(gameFile, settings)
         applyOptions(gameFile, settings)
+        applyShaderParams(gameFile, settings)
         settings.profileName = profileManager.resolveProfile(platformTag, gameBaseName)
         settings.controls = profileManager.readControls(settings.profileName)
         resolveShortcutSource(settings)
@@ -100,6 +104,7 @@ class OverrideManager(
         val settings = Settings()
         applyFrontend(platformFile, settings)
         applyOptions(platformFile, settings)
+        applyShaderParams(platformFile, settings)
         return settings
     }
 
@@ -107,6 +112,12 @@ class OverrideManager(
         val existing = if (platformFile.exists()) IniParser.parse(platformFile).sections.toMutableMap() else mutableMapOf()
         existing["frontend"] = buildFrontendMap(settings)
         if (settings.coreOptions.isNotEmpty()) existing["options"] = settings.coreOptions
+        else existing.remove("options")
+        if (settings.shaderParams.isNotEmpty()) {
+            existing["shader_params"] = settings.shaderParams.mapValues { it.value.toString() }
+        } else {
+            existing.remove("shader_params")
+        }
         IniWriter.write(platformFile, existing)
     }
 
@@ -123,6 +134,13 @@ class OverrideManager(
         }
         if (optionsDelta.isNotEmpty()) existing["options"] = optionsDelta
         else existing.remove("options")
+
+        val shaderDelta = mutableMapOf<String, String>()
+        for ((key, value) in settings.shaderParams) {
+            if (baseline.shaderParams[key] != value) shaderDelta[key] = value.toString()
+        }
+        if (shaderDelta.isNotEmpty()) existing["shader_params"] = shaderDelta
+        else existing.remove("shader_params")
 
         if (existing.any { it.value.isNotEmpty() }) IniWriter.write(gameFile, existing)
         else if (gameFile.exists()) gameFile.delete()
@@ -190,6 +208,18 @@ class OverrideManager(
             val merged = settings.coreOptions.toMutableMap()
             merged.putAll(s)
             settings.coreOptions = merged
+        }
+    }
+
+    private fun applyShaderParams(file: File, settings: Settings) {
+        if (!file.exists()) return
+        val s = IniParser.parse(file).getSection("shader_params")
+        if (s.isNotEmpty()) {
+            val merged = settings.shaderParams.toMutableMap()
+            for ((key, value) in s) {
+                value.toFloatOrNull()?.let { merged[key] = it }
+            }
+            settings.shaderParams = merged
         }
     }
 
