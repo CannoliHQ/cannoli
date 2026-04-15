@@ -75,7 +75,7 @@ class FileServer(
 
     private fun handleClient(client: Socket) {
         try {
-            client.soTimeout = 30_000
+            client.soTimeout = 600_000
             client.receiveBufferSize = 262144
             val input = client.getInputStream()
             val requestLine = readLine(input) ?: return
