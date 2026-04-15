@@ -38,7 +38,8 @@
       "melonds_libretro"
     ],
     "app": [
-      "me.magnum.melonds"
+      "me.magnum.melonds",
+      "com.dsemu.drastic"
     ]
   },
   
@@ -79,13 +80,17 @@
     "name": "PlayStation",
     "core": "pcsx_rearmed_libretro",
     "app": [
-      "org.duckstation.duckstation"
+      "com.github.stenzek.duckstation"
     ]
   },
   "PSP": {
     "name": "PSP",
     "retroarch": [
       "ppsspp_libretro"
+    ],
+    "app": [
+      "org.ppsspp.ppsspp",
+      "org.ppsspp.ppssppgold"
     ]
   },
   "DC": {
