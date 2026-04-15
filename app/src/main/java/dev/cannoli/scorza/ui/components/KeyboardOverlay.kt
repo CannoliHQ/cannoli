@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.igm.ButtonStyle
+import dev.cannoli.igm.START_GLYPH
 import dev.cannoli.igm.ui.components.BottomBar
 import dev.cannoli.igm.ui.components.screenPadding
 
@@ -217,7 +218,7 @@ fun KeyboardOverlay(
                 buttonStyle.west to stringResource(R.string.label_cancel)
             ),
             rightItems = listOf(
-                "\uDB81\uDC0A" to stringResource(R.string.label_confirm)
+                START_GLYPH to stringResource(R.string.label_confirm)
             )
         )
     }

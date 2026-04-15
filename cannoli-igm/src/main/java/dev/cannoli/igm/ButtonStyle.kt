@@ -1,5 +1,7 @@
 package dev.cannoli.igm
 
+const val START_GLYPH = "\uDB81\uDC0A"
+
 data class ButtonStyle(
     val labelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER,
     val confirmButton: ConfirmButton = ConfirmButton.EAST,
