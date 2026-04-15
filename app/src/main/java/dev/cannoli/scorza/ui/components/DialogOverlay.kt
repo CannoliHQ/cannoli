@@ -109,17 +109,23 @@ fun DialogOverlay(
 
         is DialogState.ColorPicker -> {
             ColorPickerOverlay(
+                title = dialogState.title,
                 selectedRow = dialogState.selectedRow,
                 selectedCol = dialogState.selectedCol,
                 currentColor = dialogState.currentColor,
+                titleFontSize = listFontSize,
+                titleLineHeight = listLineHeight,
                 buttonStyle = buttonStyle
             )
         }
 
         is DialogState.HexColorInput -> {
             HexColorInputOverlay(
+                title = dialogState.title,
                 currentHex = dialogState.currentHex,
                 selectedIndex = dialogState.selectedIndex,
+                titleFontSize = listFontSize,
+                titleLineHeight = listLineHeight,
                 buttonStyle = buttonStyle
             )
         }

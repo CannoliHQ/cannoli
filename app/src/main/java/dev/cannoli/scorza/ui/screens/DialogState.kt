@@ -27,8 +27,8 @@ sealed interface DialogState {
     data class DeleteCollectionConfirm(val collectionStem: String) : DialogState
     data class RenameResult(val success: Boolean, val message: String) : DialogState
     data class CollectionCreated(val collectionName: String) : DialogState
-    data class ColorPicker(val settingKey: String, val currentColor: Long, val selectedRow: Int = 0, val selectedCol: Int = 0) : DialogState
-    data class HexColorInput(val settingKey: String, val currentHex: String = "", val selectedIndex: Int = 0) : DialogState
+    data class ColorPicker(val settingKey: String, val title: String, val currentColor: Long, val selectedRow: Int = 0, val selectedCol: Int = 0) : DialogState
+    data class HexColorInput(val settingKey: String, val title: String, val currentHex: String = "", val selectedIndex: Int = 0) : DialogState
     data class About(val statusMessage: String? = null) : DialogState
     data class Kitchen(val urls: List<String>, val selectedIndex: Int = 0, val pin: String, val requirePin: Boolean = true) : DialogState
     data class RAAccount(val username: String, val score: Int = 0) : DialogState

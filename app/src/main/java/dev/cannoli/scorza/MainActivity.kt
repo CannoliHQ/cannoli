@@ -2074,6 +2074,7 @@ class MainActivity : ComponentActivity() {
                     val currentHex = settingsViewModel.getColorHex(ds.settingKey).removePrefix("#")
                     dialogState.value = DialogState.HexColorInput(
                         settingKey = ds.settingKey,
+                        title = ds.title,
                         currentHex = currentHex
                     )
                 }
@@ -2376,6 +2377,18 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun colorSettingTitle(settingKey: String): String {
+        val labelRes = when (settingKey) {
+            "color_accent" -> R.string.setting_color_accent
+            "color_highlight" -> R.string.setting_color_highlight
+            "color_highlight_text" -> R.string.setting_color_highlight_text
+            "color_text" -> R.string.setting_color_text
+            "color_title" -> R.string.setting_color_title
+            else -> return ""
+        }
+        return getString(labelRes)
+    }
+
     private fun openColorPicker(settingKey: String) {
         val hex = settingsViewModel.getColorHex(settingKey)
         val color = hexToColor(hex) ?: androidx.compose.ui.graphics.Color.White
@@ -2385,6 +2398,7 @@ class MainActivity : ComponentActivity() {
         val col = if (idx >= 0) idx % COLOR_GRID_COLS else 0
         dialogState.value = DialogState.ColorPicker(
             settingKey = settingKey,
+            title = colorSettingTitle(settingKey),
             currentColor = argb,
             selectedRow = row,
             selectedCol = col
