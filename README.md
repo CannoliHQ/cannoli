@@ -7,12 +7,10 @@ Cannoli
 
 <h4 style="font-size:18px; padding-top:0px; margin-top:0px;">A frontend with just the right amount of filling!</h4>
 
-<a href="LICENSE"><img src="https://img.shields.io/github/license/CannoliHQ/cannoli?style=for-the-badge&color=0AB9E6" alt="License"></a>
-<a href="https://github.com/CannoliHQ/cannoli/stargazers"><img src="https://img.shields.io/github/stars/CannoliHQ/cannoli?style=for-the-badge&color=0AB9E6" alt="Stars"></a>
-<a href="https://github.com/CannoliHQ/cannoli/releases"><img src="https://img.shields.io/github/downloads/CannoliHQ/cannoli/total?style=for-the-badge&color=0AB9E6" alt="Downloads"></a>
-<br>
-<a href="https://cannoli.dev"><img src="https://img.shields.io/badge/Docs-cannoli.dev-0AB9E6?style=for-the-badge" alt="Docs"></a>
-<a href="AI_DISCLOSURE.md"><img src="https://img.shields.io/badge/AI_Disclosure-0AB9E6?style=for-the-badge" alt="AI Disclosure"></a>
+<a href="LICENSE"><img src="https://img.shields.io/github/license/CannoliHQ/cannoli?style=for-the-badge&labelColor=E8C896&color=555555" height="40" alt="License"></a>
+<a href="https://github.com/CannoliHQ/cannoli/stargazers"><img src="https://img.shields.io/github/stars/CannoliHQ/cannoli?style=for-the-badge&labelColor=E8C896&color=555555" height="40" alt="Stars"></a>
+<a href="https://github.com/CannoliHQ/cannoli/releases"><img src="https://img.shields.io/github/downloads/CannoliHQ/cannoli/total?style=for-the-badge&labelColor=E8C896&color=555555" height="40" alt="Downloads"></a>
+<a href="https://cannoli.dev"><img src="https://img.shields.io/badge/Docs-cannoli.dev-555555?style=for-the-badge&labelColor=E8C896" height="40" alt="Docs"></a>
 
 </div>
 
@@ -60,62 +58,6 @@ Since purchasing a Retroid Pocket Classic I've been yearning for MinUI's simplic
 - Easy to add new games
 - Basic features baked in
 - Judicious addition of new features
-
----
-
-# Credits and Licenses
-
-Full license texts are available in the [licenses](licenses/) directory.
-
-### Cores
-
-| Name                | License        |
-|---------------------|----------------|
-| FBNeo               | Non-commercial |
-| Gambatte            | GPLv2          |
-| Genesis Plus GX     | Non-commercial |
-| Handy               | Zlib           |
-| MAME 2003-Plus      | MAME           |
-| Mednafen NGP        | GPLv2          |
-| Mednafen PCE FAST   | GPLv2          |
-| Mednafen VB         | GPLv2          |
-| Mednafen WonderSwan | GPLv2          |
-| mGBA                | MPLv2.0        |
-| Nestopia            | GPLv2          |
-| PCSX ReARMed        | GPLv2          |
-| PokeMini            | GPLv3          |
-| ProSystem           | GPLv2          |
-| Snes9x              | Non-commercial |
-| Stella              | GPLv2          |
-| SwanStation         | GPLv3          |
-
-### Shaders
-
-| Name           | License       |
-|----------------|---------------|
-| crt-easymode   | GPL           |
-| sharp-bilinear | Public domain |
-| scanline-fract | Public domain |
-| zfast-crt      | GPLv2         |
-| zfast-lcd      | GPLv2         |
-| lcd3x          | Public domain |
-
-### Libraries
-
-| Name                      | License       |
-|---------------------------|---------------|
-| Apache Commons Compress   | Apache 2.0    |
-| PdfiumAndroid (io.legere) | Apache 2.0    |
-| XZ for Java               | Public domain |
-| ZXing                     | Apache 2.0    |
-
-### Fonts
-
-| Name             | License |
-|------------------|---------|
-| M+ Fonts Project | OFL     |
-| BPreplay         | OFL     |
-| Nerd Fonts       | OFL     |
 
 ---
 
