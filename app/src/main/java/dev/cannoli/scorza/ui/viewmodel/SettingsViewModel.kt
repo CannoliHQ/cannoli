@@ -276,6 +276,7 @@ class SettingsViewModel(
         val current = _state.value
         if (current.inSubList) return false
         val cat = current.categories.getOrNull(current.categoryIndex) ?: return false
+        if (cat.key == "display") fontOptions = buildFontOptions()
         val items = buildItemsForCategory(cat.key)
         _state.update {
             it.copy(activeCategory = cat.key, activeCategoryLabel = cat.labelRes, items = items, selectedIndex = 0)
