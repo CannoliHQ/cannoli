@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.libretro
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -7,9 +8,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.annotation.StringRes
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.TextUnit
@@ -23,6 +29,7 @@ import dev.cannoli.igm.ui.components.PillRowKeyValue
 import dev.cannoli.igm.ui.components.ScreenBackground
 import dev.cannoli.igm.ui.components.ScreenTitle
 import dev.cannoli.igm.ui.components.pillItemHeight
+import dev.cannoli.igm.ui.theme.LocalCannoliColors
 import dev.cannoli.igm.ButtonStyle
 import dev.cannoli.igm.ui.components.screenPadding
 
@@ -83,16 +90,13 @@ fun ControlsScreen(
                 }
             }
 
-            val remainingSec = if (listeningIndex >= 0) {
-                ((listenTimeoutMs - listenCountdownMs + 999) / 1000).coerceAtLeast(0)
-            } else 0
             val bottomLeft = if (listeningIndex >= 0) {
                 emptyList()
             } else {
                 listOf(buttonStyle.back to stringResource(R.string.label_back))
             }
             val bottomRight = if (listeningIndex >= 0) {
-                listOf("" to stringResource(R.string.igm_press_button, remainingSec))
+                emptyList()
             } else {
                 buildList {
                     if (canUnmapSelected) add(buttonStyle.north to stringResource(R.string.label_unmap))
@@ -105,6 +109,59 @@ fun ControlsScreen(
                 leftItems = bottomLeft,
                 rightItems = bottomRight
             )
+        }
+
+        if (listeningIndex >= 0) {
+            val colors = LocalCannoliColors.current
+            val buttonLabel = input.buttons.getOrNull(listeningIndex)?.label.orEmpty()
+            val remaining = (listenTimeoutMs - listenCountdownMs).coerceAtLeast(0)
+            val progress = if (listenTimeoutMs > 0) {
+                (remaining.toFloat() / listenTimeoutMs.toFloat()).coerceIn(0f, 1f)
+            } else 0f
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.92f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth(0.7f)
+                ) {
+                    Text(
+                        text = buttonLabel,
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontSize = 24.sp,
+                            color = colors.text
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(R.string.press_button_prompt),
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontSize = 16.sp,
+                            color = colors.text.copy(alpha = 0.6f)
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.5f)
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(colors.text.copy(alpha = 0.2f))
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(progress)
+                                .height(8.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(colors.highlight)
+                        )
+                    }
+                }
+            }
         }
     }
 }

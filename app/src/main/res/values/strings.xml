@@ -254,6 +254,7 @@
     <string name="igm_delete_profile">Delete Profile?</string>
     <string name="value_active">Active</string>
     <string name="igm_press_button">PRESS A BUTTON… %1$d</string>
+    <string name="press_button_prompt">Press any button…</string>
 
     <!-- Achievements -->
     <string name="ach_title">Achievements (%1$d/%2$d)</string>
