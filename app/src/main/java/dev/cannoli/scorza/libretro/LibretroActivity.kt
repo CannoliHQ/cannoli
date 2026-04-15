@@ -468,6 +468,7 @@ class LibretroActivity : ComponentActivity() {
                 audioSampleRate = avInfo.sampleRate
                 sessionLog.log("audio init: requested sampleRate=${avInfo.sampleRate}")
                 runner.initAudio(avInfo.sampleRate)
+                runner.setAudioMuted(true)
                 if (debugLogging) {
                     sessionLog.log("audio ${runner.getAudioDiagnostics()}")
                     audioStatsHandler.postDelayed(audioStatsRunnable, 5000)
@@ -501,6 +502,7 @@ class LibretroActivity : ComponentActivity() {
                 val verticalToggle = prepareVerticalModeReinit()
                 glesBackend.onFrameRendered = {
                     if (startupCountdown > 0 && --startupCountdown == 0) {
+                        runner.setAudioMuted(false)
                         runOnUiThread { revealed = true }
                     }
                     if (verticalToggle != null) {
