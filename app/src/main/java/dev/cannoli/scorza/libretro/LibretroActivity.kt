@@ -2186,6 +2186,8 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun prepareVerticalModeReinit(): Pair<() -> Unit, () -> Unit>? {
+        val coreName = File(corePath).nameWithoutExtension.lowercase()
+        if (!coreName.contains("fbneo") && !coreName.contains("mame")) return null
         val opts = runner.getCoreOptions()
         val vertOpt = opts.find { "vertical" in it.desc.lowercase() } ?: return null
         if (vertOpt.values.size < 2) return null
