@@ -194,11 +194,16 @@ fun SystemListScreen(
                 }
                 }
                 if (showArt) {
+                    val artTopPadding = if (fiveGameHandheld && title.isEmpty()) {
+                        pillItemHeight(listLineHeight, 4.dp) + 8.dp
+                    } else {
+                        0.dp
+                    }
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()
                             .fillMaxWidth()
-                            .padding(start = 16.dp),
+                            .padding(start = 16.dp, top = artTopPadding),
                         contentAlignment = Alignment.Center
                     ) {
                         val art = selectedArt ?: return@Box
