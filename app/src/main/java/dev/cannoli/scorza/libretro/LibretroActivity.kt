@@ -492,7 +492,7 @@ class LibretroActivity : ComponentActivity() {
                 glesBackend.coreTargetFps = avInfo.fps
                 if (debugLogging) glesBackend.logger = { msg -> sessionLog.log(msg) }
                 configureBackend(glesBackend)
-                var startupCountdown = 35
+                var startupCountdown = 10
                 // HACK: FBNeo has a bug where vertical arcade games initialize with wrong
                 // framebuffer orientation despite reporting correct rotation. Toggling the
                 // vertical-mode option off→on→off forces FBNeo to reinitialize its video
@@ -503,6 +503,7 @@ class LibretroActivity : ComponentActivity() {
                 glesBackend.onFrameRendered = {
                     if (startupCountdown > 0 && --startupCountdown == 0) {
                         runner.setAudioMuted(false)
+                        sessionLog.log("startup reveal: unmute and reveal")
                         runOnUiThread { revealed = true }
                     }
                     if (verticalToggle != null) {
@@ -1195,9 +1196,14 @@ class LibretroActivity : ComponentActivity() {
 
     private fun copyBundledShaders() {
         val destDir = File(cannoliRoot, "Shaders")
+        val versionFile = File(destDir, ".bundled_version")
+        val currentVersion = try {
+            packageManager.getPackageInfo(packageName, 0).longVersionCode.toString()
+        } catch (_: Exception) { "" }
+        if (versionFile.exists() && versionFile.readText().trim() == currentVersion) return
         destDir.mkdirs()
-        File(destDir, ".bundled_version").delete()
         copyAssetDir("shaders", destDir)
+        versionFile.writeText(currentVersion)
     }
 
     private fun copyAssetDir(assetPath: String, destDir: File) {
