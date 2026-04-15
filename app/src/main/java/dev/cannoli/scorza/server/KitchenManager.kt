@@ -10,15 +10,19 @@ object KitchenManager {
     val isRunning: Boolean get() = server?.isRunning ?: false
     val pin: String get() = server?.pin ?: ""
 
-    fun toggle(cannoliRoot: File, assets: AssetManager) {
+    fun toggle(cannoliRoot: File, assets: AssetManager, codeBypass: Boolean = false) {
         val s = server
         if (s != null && s.isRunning) {
             s.stop()
         } else {
-            val newServer = FileServer(cannoliRoot, assets)
+            val newServer = FileServer(cannoliRoot, assets, codeBypass = codeBypass)
             server = newServer
             newServer.start()
         }
+    }
+
+    fun setCodeBypass(enabled: Boolean) {
+        server?.codeBypass = enabled
     }
 
     fun stop() {

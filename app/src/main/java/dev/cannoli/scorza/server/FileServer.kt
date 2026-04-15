@@ -14,7 +14,8 @@ import kotlin.concurrent.thread
 class FileServer(
     private val cannoliRoot: File,
     private val assets: AssetManager,
-    private val port: Int = 1091
+    private val port: Int = 1091,
+    @Volatile var codeBypass: Boolean = false
 ) {
     private var serverSocket: ServerSocket? = null
     @Volatile private var running = false
@@ -120,13 +121,18 @@ class FileServer(
                 return
             }
 
+            val apiSegments = segments.drop(1)
+            val resource = apiSegments.firstOrNull() ?: ""
+
+            if (method == "GET" && resource == "auth") {
+                handleAuthStatus(output)
+                return
+            }
+
             if (!checkAuth(headers)) {
                 sendUnauthorized(output)
                 return
             }
-
-            val apiSegments = segments.drop(1)
-            val resource = apiSegments.firstOrNull() ?: ""
 
             when {
                 method == "GET" && resource == "info" -> handleInfo(output)
@@ -756,6 +762,7 @@ class FileServer(
     }
 
     private fun checkAuth(headers: Map<String, String>): Boolean {
+        if (codeBypass) return true
         val auth = headers["authorization"] ?: return false
         if (!auth.startsWith("Basic ")) return false
         val decoded = try {
@@ -763,6 +770,10 @@ class FileServer(
         } catch (_: Exception) { return false }
         val parts = decoded.split(":", limit = 2)
         return parts.size == 2 && parts[0] == "nonna" && parts[1] == pin
+    }
+
+    private fun handleAuthStatus(output: OutputStream) {
+        sendJson(output, 200, """{"required":${!codeBypass}}""")
     }
 
     private fun sendUnauthorized(output: OutputStream) {

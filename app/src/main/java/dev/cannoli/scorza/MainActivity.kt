@@ -1495,10 +1495,12 @@ class MainActivity : ComponentActivity() {
                             } else if (cat?.key == "kitchen") {
                                 val root = File(settings.sdCardRoot)
                                 val km = dev.cannoli.scorza.server.KitchenManager
-                                if (!km.isRunning) km.toggle(root, assets)
+                                if (!km.isRunning) km.toggle(root, assets, settings.kitchenCodeBypass)
+                                else km.setCodeBypass(settings.kitchenCodeBypass)
                                 dialogState.value = DialogState.Kitchen(
                                     urls = km.getUrls(hasActiveVpn()),
-                                    pin = km.pin
+                                    pin = km.pin,
+                                    requirePin = !settings.kitchenCodeBypass
                                 )
                             } else {
                                 settingsViewModel.enterCategory()
@@ -2199,10 +2201,12 @@ class MainActivity : ComponentActivity() {
                                 val km = dev.cannoli.scorza.server.KitchenManager
                                 if (km.isRunning || systemListViewModel.state.value.items.isEmpty()) {
                                     val root = File(settings.sdCardRoot)
-                                    if (!km.isRunning) km.toggle(root, assets)
+                                    if (!km.isRunning) km.toggle(root, assets, settings.kitchenCodeBypass)
+                                    else km.setCodeBypass(settings.kitchenCodeBypass)
                                     dialogState.value = DialogState.Kitchen(
                                         urls = km.getUrls(hasActiveVpn()),
-                                        pin = km.pin
+                                        pin = km.pin,
+                                        requirePin = !settings.kitchenCodeBypass
                                     )
                                 }
                             }

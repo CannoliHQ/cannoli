@@ -61,6 +61,7 @@
     <string name="setting_swap_play_resume">Swap Play and Resume</string>
     <string name="setting_main_menu_quit">Main Menu Quit</string>
     <string name="setting_retroarch_diy_mode">RetroArch DIY Mode</string>
+    <string name="setting_kitchen_code_bypass">Kitchen Code Bypass</string>
     <string name="setting_set_default_launcher">Set as Default Launcher</string>
     <string name="setting_show_empty">Empty Platforms</string>
     <string name="setting_content_mode">Content Mode</string>

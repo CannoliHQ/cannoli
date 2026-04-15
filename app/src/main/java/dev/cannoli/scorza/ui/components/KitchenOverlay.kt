@@ -43,11 +43,14 @@ fun KitchenOverlay(
     urls: List<String>,
     selectedIndex: Int,
     pin: String,
+    requirePin: Boolean = true,
     buttonStyle: ButtonStyle = ButtonStyle()
 ) {
     val safeIndex = selectedIndex.coerceIn(0, (urls.size - 1).coerceAtLeast(0))
     val url = urls.getOrNull(safeIndex) ?: "http://?.?.?.?:1091"
-    val qrUrl = remember(url, pin) { "$url?host=${java.net.URLEncoder.encode(pin, "UTF-8")}" }
+    val qrUrl = remember(url, pin, requirePin) {
+        if (requirePin) "$url?host=${java.net.URLEncoder.encode(pin, "UTF-8")}" else url
+    }
     val qrBitmap = remember(qrUrl) { generateQrBitmap(qrUrl, 256) }
 
     Box(
@@ -94,28 +97,30 @@ fun KitchenOverlay(
                 )
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            if (requirePin) {
+                Spacer(modifier = Modifier.height(24.dp))
 
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                for (char in pin) {
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFF1A1A1E)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = char.toString(),
-                            style = TextStyle(
-                                fontFamily = LocalCannoliFont.current,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 24.sp,
-                                color = Color.White
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    for (char in pin) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0xFF1A1A1E)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = char.toString(),
+                                style = TextStyle(
+                                    fontFamily = LocalCannoliFont.current,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 24.sp,
+                                    color = Color.White
+                                )
                             )
-                        )
+                        }
                     }
                 }
             }

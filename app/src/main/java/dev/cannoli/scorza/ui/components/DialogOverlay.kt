@@ -150,6 +150,7 @@ fun DialogOverlay(
                 urls = dialogState.urls,
                 selectedIndex = dialogState.selectedIndex,
                 pin = dialogState.pin,
+                requirePin = dialogState.requirePin,
                 buttonStyle = buttonStyle
             )
         }

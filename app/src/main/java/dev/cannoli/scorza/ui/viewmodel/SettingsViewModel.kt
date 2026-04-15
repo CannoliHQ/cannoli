@@ -391,6 +391,10 @@ class SettingsViewModel(
             "main_menu_quit" -> settings.mainMenuQuit = !settings.mainMenuQuit
             "retroarch_diy_mode" -> settings.retroArchDiyMode = !settings.retroArchDiyMode
             "debug_logging" -> settings.debugLogging = !settings.debugLogging
+            "kitchen_code_bypass" -> {
+                settings.kitchenCodeBypass = !settings.kitchenCodeBypass
+                dev.cannoli.scorza.server.KitchenManager.setCodeBypass(settings.kitchenCodeBypass)
+            }
             "graphics_backend" -> {
                 val backends = listOf("GLES", "VULKAN")
                 val cur = backends.indexOf(settings.graphicsBackend).coerceAtLeast(0)
@@ -662,6 +666,7 @@ class SettingsViewModel(
             add(SettingsItem("core_mapping", R.string.setting_core_mapping, isEditable = true))
             add(SettingsItem("debug_logging", R.string.setting_debug_logging, valueRes = onOff(settings.debugLogging)))
             add(SettingsItem("retroarch_diy_mode", R.string.setting_retroarch_diy_mode, valueRes = onOff(settings.retroArchDiyMode)))
+            add(SettingsItem("kitchen_code_bypass", R.string.setting_kitchen_code_bypass, valueRes = onOff(settings.kitchenCodeBypass)))
             val pkgs = detectInstalledRaPackages()
             if (pkgs.isNotEmpty() && settings.retroArchPackage !in pkgs) {
                 settings.retroArchPackage = pkgs.first()

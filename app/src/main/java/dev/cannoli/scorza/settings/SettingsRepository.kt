@@ -148,6 +148,10 @@ class SettingsRepository(context: Context) {
         get() = jsonRead { optBoolean(KEY_MAIN_MENU_QUIT, false) }
         set(value) = jsonWrite { put(KEY_MAIN_MENU_QUIT, value) }
 
+    var kitchenCodeBypass: Boolean
+        get() = jsonRead { optBoolean(KEY_KITCHEN_CODE_BYPASS, false) }
+        set(value) = jsonWrite { put(KEY_KITCHEN_CODE_BYPASS, value) }
+
     var retroArchDiyMode: Boolean
         get() = jsonRead { optBoolean(KEY_RETROARCH_DIY_MODE, true) }
         set(value) = jsonWrite { put(KEY_RETROARCH_DIY_MODE, value) }
@@ -310,6 +314,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_PLATFORM_SWITCHING = "platform_switching"
         private const val KEY_SWAP_PLAY_RESUME = "swap_play_resume"
         private const val KEY_MAIN_MENU_QUIT = "main_menu_quit"
+        private const val KEY_KITCHEN_CODE_BYPASS = "kitchen_code_bypass"
         private const val KEY_RETROARCH_DIY_MODE = "retroarch_diy_mode"
         private const val KEY_SHOW_EMPTY = "show_empty"
         private const val KEY_SHOW_WIFI = "show_wifi"
