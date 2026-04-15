@@ -22,7 +22,7 @@ fun <T> List(
     reorderMode: Boolean = false,
     onVisibleRangeChanged: ((firstVisible: Int, visibleCount: Int, isViewportFull: Boolean) -> Unit)? = null,
     key: ((index: Int, item: T) -> Any)? = null,
-    itemContent: @Composable (index: Int, item: T) -> Unit
+    itemContent: @Composable (index: Int, item: T, isSelected: Boolean) -> Unit
 ) {
     ListScrollEffect(listState, selectedIndex, items.size, scrollTarget, reorderMode, onVisibleRangeChanged)
 
@@ -48,7 +48,7 @@ fun <T> List(
         contentPadding = PaddingValues(bottom = 2000.dp)
     ) {
         itemsIndexed(items, key = key) { index, item ->
-            itemContent(index, item)
+            itemContent(index, item, selectedIndex == index)
         }
     }
 }

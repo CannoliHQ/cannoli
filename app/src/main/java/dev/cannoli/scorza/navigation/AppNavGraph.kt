@@ -234,14 +234,14 @@ fun AppNavGraph(
                         itemHeight = itemHeight,
                         scrollTarget = currentScreen.scrollTarget,
                         onVisibleRangeChanged = onVisibleRangeChanged
-                    ) { index, entry ->
+                    ) { _, entry, isSelected ->
                         val value = if (entry.runnerLabel.isNotEmpty())
                             "${entry.coreDisplayName} (${entry.runnerLabel})"
                         else entry.coreDisplayName
                         PillRowKeyValue(
                             label = entry.platformName,
                             value = value,
-                            isSelected = currentScreen.selectedIndex == index,
+                            isSelected = isSelected,
                             fontSize = listFontSize,
                             lineHeight = listLineHeight,
                             verticalPadding = listVerticalPadding
@@ -274,14 +274,14 @@ fun AppNavGraph(
                             itemHeight = itemHeight,
                             scrollTarget = currentScreen.scrollTarget,
                             onVisibleRangeChanged = onVisibleRangeChanged
-                        ) { index, option ->
+                        ) { index, option, isSelected ->
                             val label = if (option.runnerLabel.isEmpty()) option.displayName
                                 else "${option.displayName} (${option.runnerLabel})"
                             if (index == currentScreen.activeIndex) {
                                 PillRowKeyValue(
                                     label = label,
                                     value = stringResource(R.string.value_current),
-                                    isSelected = currentScreen.selectedIndex == index,
+                                    isSelected = isSelected,
                                     fontSize = listFontSize,
                                     lineHeight = listLineHeight,
                                     verticalPadding = listVerticalPadding
@@ -289,7 +289,7 @@ fun AppNavGraph(
                             } else {
                                 PillRowText(
                                     label = label,
-                                    isSelected = currentScreen.selectedIndex == index,
+                                    isSelected = isSelected,
                                     fontSize = listFontSize,
                                     lineHeight = listLineHeight,
                                     verticalPadding = listVerticalPadding
@@ -316,11 +316,11 @@ fun AppNavGraph(
                         itemHeight = itemHeight,
                         scrollTarget = currentScreen.scrollTarget,
                         onVisibleRangeChanged = onVisibleRangeChanged
-                    ) { index, entry ->
+                    ) { _, entry, isSelected ->
                         PillRowKeyValue(
                             label = stringResource(entry.labelRes),
                             value = entry.hex.uppercase(),
-                            isSelected = currentScreen.selectedIndex == index,
+                            isSelected = isSelected,
                             fontSize = listFontSize,
                             lineHeight = listLineHeight,
                             verticalPadding = listVerticalPadding,
@@ -367,10 +367,10 @@ fun AppNavGraph(
                             itemHeight = itemHeight,
                             scrollTarget = currentScreen.scrollTarget,
                             onVisibleRangeChanged = onVisibleRangeChanged
-                        ) { index, _ ->
+                        ) { index, _, isSelected ->
                             PillRowText(
                                 label = currentScreen.displayNames.getOrElse(index) { currentScreen.collections[index] },
-                                isSelected = currentScreen.selectedIndex == index,
+                                isSelected = isSelected,
                                 fontSize = listFontSize,
                                 lineHeight = listLineHeight,
                                 verticalPadding = listVerticalPadding,
@@ -420,10 +420,10 @@ fun AppNavGraph(
                             itemHeight = itemHeight,
                             scrollTarget = currentScreen.scrollTarget,
                             onVisibleRangeChanged = onVisibleRangeChanged
-                        ) { index, _ ->
+                        ) { index, _, isSelected ->
                             PillRowText(
                                 label = currentScreen.displayNames.getOrElse(index) { currentScreen.collections[index] },
-                                isSelected = currentScreen.selectedIndex == index,
+                                isSelected = isSelected,
                                 fontSize = listFontSize,
                                 lineHeight = listLineHeight,
                                 verticalPadding = listVerticalPadding,
@@ -450,10 +450,10 @@ fun AppNavGraph(
                         itemHeight = itemHeight,
                         scrollTarget = currentScreen.scrollTarget,
                         onVisibleRangeChanged = onVisibleRangeChanged
-                    ) { index, app ->
+                    ) { index, app, isSelected ->
                         PillRowText(
                             label = app,
-                            isSelected = currentScreen.selectedIndex == index,
+                            isSelected = isSelected,
                             fontSize = listFontSize,
                             lineHeight = listLineHeight,
                             verticalPadding = listVerticalPadding,
@@ -478,10 +478,10 @@ fun AppNavGraph(
                         itemHeight = itemHeight,
                         scrollTarget = currentScreen.scrollTarget,
                         onVisibleRangeChanged = onVisibleRangeChanged
-                    ) { index, name ->
+                    ) { _, name, isSelected ->
                         PillRowText(
                             label = name,
-                            isSelected = currentScreen.selectedIndex == index,
+                            isSelected = isSelected,
                             fontSize = listFontSize,
                             lineHeight = listLineHeight,
                             verticalPadding = listVerticalPadding
@@ -545,14 +545,14 @@ fun AppNavGraph(
                         itemHeight = itemHeight,
                         scrollTarget = currentScreen.scrollTarget,
                         onVisibleRangeChanged = onVisibleRangeChanged
-                    ) { index, action ->
+                    ) { _, action, isSelected ->
                         val chord = currentScreen.shortcuts[action]
                         val value = if (chord.isNullOrEmpty()) stringResource(R.string.value_none)
                         else chord.joinToString(" + ") { LibretroInput.keyCodeName(it) }
                         PillRowKeyValue(
                             label = action.label,
                             value = value,
-                            isSelected = currentScreen.selectedIndex == index,
+                            isSelected = isSelected,
                             fontSize = listFontSize,
                             lineHeight = listLineHeight,
                             verticalPadding = listVerticalPadding
@@ -638,10 +638,10 @@ fun AppNavGraph(
                             itemHeight = itemHeight,
                             scrollTarget = currentScreen.scrollTarget,
                             onVisibleRangeChanged = onVisibleRangeChanged
-                        ) { index, core ->
+                        ) { _, core, isSelected ->
                             PillRowText(
                                 label = core,
-                                isSelected = currentScreen.selectedIndex == index,
+                                isSelected = isSelected,
                                 fontSize = listFontSize,
                                 lineHeight = listLineHeight,
                                 verticalPadding = listVerticalPadding

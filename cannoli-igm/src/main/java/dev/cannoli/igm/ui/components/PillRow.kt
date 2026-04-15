@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.foundation.ScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -107,12 +108,11 @@ fun PillRowText(
     checkState: Boolean? = null
 ) {
     val colors = LocalCannoliColors.current
-    val textStyle = MaterialTheme.typography.bodyLarge.copy(
-        fontSize = fontSize,
-        lineHeight = lineHeight
-    )
-
-    val iconStyle = textStyle.copy(fontFamily = MPlus1Code)
+    val baseStyle = MaterialTheme.typography.bodyLarge
+    val textStyle = remember(baseStyle, fontSize, lineHeight) {
+        baseStyle.copy(fontSize = fontSize, lineHeight = lineHeight)
+    }
+    val iconStyle = remember(textStyle) { textStyle.copy(fontFamily = MPlus1Code) }
 
     PillRow(isSelected = isSelected, verticalPadding = verticalPadding, lineHeight = lineHeight) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -152,13 +152,14 @@ fun PillRowKeyValue(
     swatchColor: Color? = null
 ) {
     val colors = LocalCannoliColors.current
-    val textStyle = MaterialTheme.typography.bodyLarge.copy(
-        fontSize = fontSize,
-        lineHeight = lineHeight
-    )
-    val valueStyle = MaterialTheme.typography.bodyMedium.copy(
-        fontSize = (fontSize.value * 0.72f).sp
-    )
+    val baseStyle = MaterialTheme.typography.bodyLarge
+    val baseValueStyle = MaterialTheme.typography.bodyMedium
+    val textStyle = remember(baseStyle, fontSize, lineHeight) {
+        baseStyle.copy(fontSize = fontSize, lineHeight = lineHeight)
+    }
+    val valueStyle = remember(baseValueStyle, fontSize) {
+        baseValueStyle.copy(fontSize = (fontSize.value * 0.72f).sp)
+    }
 
     val scrollState = rememberScrollState()
     MarqueeEffect(scrollState, isSelected)

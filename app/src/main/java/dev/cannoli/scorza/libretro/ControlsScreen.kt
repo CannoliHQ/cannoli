@@ -66,7 +66,7 @@ fun ControlsScreen(
                     items = input.buttons,
                     selectedIndex = selectedIndex,
                     itemHeight = itemHeight
-                ) { index, button ->
+                ) { index, button, isSelected ->
                     val value = if (index == listeningIndex) {
                         "..."
                     } else {
@@ -75,7 +75,7 @@ fun ControlsScreen(
                     PillRowKeyValue(
                         label = button.label,
                         value = value,
-                        isSelected = index == selectedIndex,
+                        isSelected = isSelected,
                         fontSize = fontSize,
                         lineHeight = lineHeight,
                         verticalPadding = verticalPadding

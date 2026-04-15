@@ -149,14 +149,14 @@ fun GameListScreen(
                                     onVisibleRangeChanged(first, count, full)
                                 },
                                 key = if (state.reorderMode) null else { _, game -> game.file.absolutePath }
-                            ) { index, game ->
+                            ) { index, game, isSelected ->
                                 GameRow(
                                     game = game,
-                                    isSelected = state.selectedIndex == index,
+                                    isSelected = isSelected,
                                     fontSize = listFontSize,
                                     lineHeight = listLineHeight,
                                     verticalPadding = listVerticalPadding,
-                                    showReorderIcon = state.reorderMode && state.selectedIndex == index,
+                                    showReorderIcon = state.reorderMode && isSelected,
                                     checkState = if (state.multiSelectMode && !game.isSubfolder && !game.isChildCollection) index in state.checkedIndices else null
                                 )
                             }

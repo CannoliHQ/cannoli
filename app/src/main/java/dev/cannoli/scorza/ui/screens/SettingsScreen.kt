@@ -74,13 +74,13 @@ fun SettingsScreen(
                     itemHeight = itemHeight,
                     onVisibleRangeChanged = onVisibleRangeChanged,
                     key = { _, item -> item.key }
-                ) { index, item ->
+                ) { _, item, isSelected ->
                     val hasValue = item.valueText != null || item.valueRes != null || item.swatchColor != null
                     if (hasValue) {
                         PillRowKeyValue(
                             label = item.labelText ?: stringResource(item.labelRes),
                             value = item.valueText ?: item.valueRes?.let { stringResource(it) } ?: "",
-                            isSelected = state.selectedIndex == index,
+                            isSelected = isSelected,
                             fontSize = listFontSize,
                             lineHeight = listLineHeight,
                             verticalPadding = listVerticalPadding,
@@ -89,7 +89,7 @@ fun SettingsScreen(
                     } else {
                         PillRowText(
                             label = item.labelText ?: stringResource(item.labelRes),
-                            isSelected = state.selectedIndex == index,
+                            isSelected = isSelected,
                             fontSize = listFontSize,
                             lineHeight = listLineHeight,
                             verticalPadding = listVerticalPadding
@@ -138,10 +138,10 @@ fun SettingsScreen(
                     itemHeight = itemHeight,
                     onVisibleRangeChanged = onVisibleRangeChanged,
                     key = { _, category -> category.key }
-                ) { index, category ->
+                ) { _, category, isSelected ->
                     PillRowText(
                         label = stringResource(category.labelRes),
-                        isSelected = state.categoryIndex == index,
+                        isSelected = isSelected,
                         fontSize = listFontSize,
                         lineHeight = listLineHeight,
                         verticalPadding = listVerticalPadding

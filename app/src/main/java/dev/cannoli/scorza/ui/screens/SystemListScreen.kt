@@ -74,6 +74,10 @@ fun SystemListScreen(
     val state by viewModel.state.collectAsState()
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
 
+    val recentlyPlayedLabel = stringResource(R.string.label_recently_played)
+    val favoritesLabel = stringResource(R.string.label_favorites)
+    val collectionsLabel = stringResource(R.string.label_collections)
+
     val selectedItem = state.items.getOrNull(state.selectedIndex)
     val selectedGame = (selectedItem as? ListItem.GameItem)?.game
     val artPath = selectedGame?.artFile?.absolutePath
@@ -94,8 +98,7 @@ fun SystemListScreen(
             }
         } else null
     }
-    val hasGameItems = state.items.any { it is ListItem.GameItem }
-    val showArt = hasGameItems && selectedArt != null && artWidth > 0
+    val showArt = state.hasGameItems && selectedArt != null && artWidth > 0
 
     ScreenBackground(backgroundImagePath = backgroundImagePath, backgroundTint = backgroundTint) {
         if (state.isLoading) {
@@ -171,21 +174,21 @@ fun SystemListScreen(
                             is ListItem.PortsFolder -> "ports"
                         }
                     }
-                ) { index, item ->
+                ) { _, item, isSelected ->
                     val label = when (item) {
-                        is ListItem.RecentlyPlayedItem -> stringResource(R.string.label_recently_played)
-                        is ListItem.FavoritesItem -> stringResource(R.string.label_favorites)
-                        is ListItem.CollectionsFolder -> stringResource(R.string.label_collections)
+                        is ListItem.RecentlyPlayedItem -> recentlyPlayedLabel
+                        is ListItem.FavoritesItem -> favoritesLabel
+                        is ListItem.CollectionsFolder -> collectionsLabel
                         is ListItem.PlatformItem -> item.platform.displayName
                         is ListItem.CollectionItem -> dev.cannoli.scorza.model.Collection.stemToDisplayName(item.name)
                         is ListItem.GameItem -> item.game.displayName
                         is ListItem.ToolsFolder -> item.name
                         is ListItem.PortsFolder -> item.name
                     }
-                    val showReorder = state.reorderMode && state.selectedIndex == index && (item is ListItem.PlatformItem || item is ListItem.ToolsFolder || item is ListItem.PortsFolder || item is ListItem.CollectionItem || item is ListItem.GameItem)
+                    val showReorder = state.reorderMode && isSelected && (item is ListItem.PlatformItem || item is ListItem.ToolsFolder || item is ListItem.PortsFolder || item is ListItem.CollectionItem || item is ListItem.GameItem)
                     PillRowText(
                         label = label,
-                        isSelected = state.selectedIndex == index,
+                        isSelected = isSelected,
                         fontSize = listFontSize,
                         lineHeight = listLineHeight,
                         verticalPadding = listVerticalPadding,

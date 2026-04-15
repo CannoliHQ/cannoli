@@ -58,10 +58,10 @@ fun DirectoryBrowserScreen(
             itemHeight = itemHeight,
             scrollTarget = scrollTarget,
             onVisibleRangeChanged = onVisibleRangeChanged
-        ) { index, item ->
+        ) { _, item, isSelected ->
             PillRowText(
                 label = item,
-                isSelected = selectedIndex == index,
+                isSelected = isSelected,
                 fontSize = listFontSize,
                 lineHeight = listLineHeight,
                 verticalPadding = listVerticalPadding

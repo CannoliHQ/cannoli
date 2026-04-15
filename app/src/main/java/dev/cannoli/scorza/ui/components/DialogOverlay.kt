@@ -57,13 +57,13 @@ fun DialogOverlay(
                     items = dialogState.options,
                     selectedIndex = dialogState.selectedOption,
                     itemHeight = itemHeight
-                ) { index, option ->
+                ) { _, option, isSelected ->
                     val parts = option.split("\t", limit = 2)
                     if (parts.size == 2) {
                         PillRowKeyValue(
                             label = parts[0],
                             value = parts[1],
-                            isSelected = dialogState.selectedOption == index,
+                            isSelected = isSelected,
                             fontSize = listFontSize,
                             lineHeight = listLineHeight,
                             verticalPadding = listVerticalPadding
@@ -71,7 +71,7 @@ fun DialogOverlay(
                     } else {
                         PillRowText(
                             label = option,
-                            isSelected = dialogState.selectedOption == index,
+                            isSelected = isSelected,
                             fontSize = listFontSize,
                             lineHeight = listLineHeight,
                             verticalPadding = listVerticalPadding
@@ -95,10 +95,10 @@ fun DialogOverlay(
                     items = dialogState.options,
                     selectedIndex = dialogState.selectedOption,
                     itemHeight = itemHeight
-                ) { index, option ->
+                ) { _, option, isSelected ->
                     PillRowText(
                         label = option,
-                        isSelected = dialogState.selectedOption == index,
+                        isSelected = isSelected,
                         fontSize = listFontSize,
                         lineHeight = listLineHeight,
                         verticalPadding = listVerticalPadding

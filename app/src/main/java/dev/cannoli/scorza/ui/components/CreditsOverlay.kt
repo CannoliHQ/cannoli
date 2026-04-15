@@ -73,11 +73,11 @@ fun CreditsOverlay(
             scrollTarget = scrollTarget,
             itemHeight = itemHeight,
             onVisibleRangeChanged = onVisibleRangeChanged
-        ) { index, entry ->
+        ) { _, entry, isSelected ->
             PillRowKeyValue(
                 label = entry.name,
                 value = entry.detail,
-                isSelected = selectedIndex == index,
+                isSelected = isSelected,
                 fontSize = listFontSize,
                 lineHeight = listLineHeight,
                 verticalPadding = listVerticalPadding

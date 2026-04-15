@@ -43,7 +43,8 @@ class SystemListViewModel(
         val scrollTarget: Int = 0,
         val isLoading: Boolean = true,
         val reorderMode: Boolean = false,
-        val reorderOriginalIndex: Int = -1
+        val reorderOriginalIndex: Int = -1,
+        val hasGameItems: Boolean = false
     )
 
     private val _state = MutableStateFlow(State())
@@ -140,7 +141,8 @@ class SystemListViewModel(
                 platforms = platforms,
                 selectedIndex = safeIndex,
                 scrollTarget = scrollTo,
-                isLoading = false
+                isLoading = false,
+                hasGameItems = items.any { it is ListItem.GameItem }
             )
             withContext(Dispatchers.Main) { onReady() }
         }

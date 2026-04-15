@@ -94,12 +94,12 @@ fun IGMSettingsScreen(
                         items = items,
                         selectedIndex = selectedIndex,
                         itemHeight = itemHeight
-                    ) { index, item ->
+                    ) { _, item, isSelected ->
                         if (item.value != null) {
                             PillRowKeyValue(
                                 label = item.label,
                                 value = item.value,
-                                isSelected = index == selectedIndex,
+                                isSelected = isSelected,
                                 fontSize = fontSize,
                                 lineHeight = lineHeight,
                                 verticalPadding = verticalPadding
@@ -107,7 +107,7 @@ fun IGMSettingsScreen(
                         } else {
                             PillRowText(
                                 label = item.label,
-                                isSelected = index == selectedIndex,
+                                isSelected = isSelected,
                                 fontSize = fontSize,
                                 lineHeight = lineHeight,
                                 verticalPadding = verticalPadding

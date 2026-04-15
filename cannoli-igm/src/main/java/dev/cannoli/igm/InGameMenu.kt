@@ -92,12 +92,12 @@ fun InGameMenu(
                             items = menuOptions.options,
                             selectedIndex = selectedIndex,
                             itemHeight = itemHeight
-                        ) { index, option ->
+                        ) { index, option, isSelected ->
                             if (index == menuOptions.switchDiscIndex) {
                                 PillRowKeyValue(
                                     label = option,
                                     value = menuOptions.discLabel,
-                                    isSelected = index == selectedIndex,
+                                    isSelected = isSelected,
                                     fontSize = fontSize,
                                     lineHeight = lineHeight,
                                     verticalPadding = verticalPadding
@@ -105,7 +105,7 @@ fun InGameMenu(
                             } else {
                                 PillRowText(
                                     label = option,
-                                    isSelected = index == selectedIndex,
+                                    isSelected = isSelected,
                                     fontSize = fontSize,
                                     lineHeight = lineHeight,
                                     verticalPadding = verticalPadding
