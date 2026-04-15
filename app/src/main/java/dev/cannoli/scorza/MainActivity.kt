@@ -1219,6 +1219,12 @@ class MainActivity : ComponentActivity() {
 
         inputHandler.onLeft = {
             when (val ds = dialogState.value) {
+                is DialogState.Kitchen -> {
+                    if (ds.urls.size > 1) {
+                        val newIdx = (ds.selectedIndex - 1 + ds.urls.size) % ds.urls.size
+                        dialogState.value = ds.copy(selectedIndex = newIdx)
+                    }
+                }
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
                 is DialogState.CollectionRenameInput,
@@ -1268,6 +1274,12 @@ class MainActivity : ComponentActivity() {
 
         inputHandler.onRight = {
             when (val ds = dialogState.value) {
+                is DialogState.Kitchen -> {
+                    if (ds.urls.size > 1) {
+                        val newIdx = (ds.selectedIndex + 1) % ds.urls.size
+                        dialogState.value = ds.copy(selectedIndex = newIdx)
+                    }
+                }
                 is DialogState.RenameInput,
                 is DialogState.NewCollectionInput,
                 is DialogState.CollectionRenameInput,
@@ -1485,7 +1497,7 @@ class MainActivity : ComponentActivity() {
                                 val km = dev.cannoli.scorza.server.KitchenManager
                                 if (!km.isRunning) km.toggle(root, assets)
                                 dialogState.value = DialogState.Kitchen(
-                                    url = km.getUrl(),
+                                    urls = km.getUrls(hasActiveVpn()),
                                     pin = km.pin
                                 )
                             } else {
@@ -2189,7 +2201,7 @@ class MainActivity : ComponentActivity() {
                                     val root = File(settings.sdCardRoot)
                                     if (!km.isRunning) km.toggle(root, assets)
                                     dialogState.value = DialogState.Kitchen(
-                                        url = km.getUrl(),
+                                        urls = km.getUrls(hasActiveVpn()),
                                         pin = km.pin
                                     )
                                 }
@@ -2324,6 +2336,13 @@ class MainActivity : ComponentActivity() {
             rescanSystemList()
         }
         screenStack.removeAt(screenStack.lastIndex)
+    }
+
+    private fun hasActiveVpn(): Boolean {
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return false
+        val net = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(net) ?: return false
+        return caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN)
     }
 
     private fun rescanSystemList() {

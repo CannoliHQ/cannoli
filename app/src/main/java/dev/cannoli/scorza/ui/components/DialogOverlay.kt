@@ -146,7 +146,12 @@ fun DialogOverlay(
         }
 
         is DialogState.Kitchen -> {
-            KitchenOverlay(url = dialogState.url, pin = dialogState.pin, buttonStyle = buttonStyle)
+            KitchenOverlay(
+                urls = dialogState.urls,
+                selectedIndex = dialogState.selectedIndex,
+                pin = dialogState.pin,
+                buttonStyle = buttonStyle
+            )
         }
 
         is DialogState.RAAccount -> {

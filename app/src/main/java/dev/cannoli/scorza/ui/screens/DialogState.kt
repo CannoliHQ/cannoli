@@ -30,7 +30,7 @@ sealed interface DialogState {
     data class ColorPicker(val settingKey: String, val currentColor: Long, val selectedRow: Int = 0, val selectedCol: Int = 0) : DialogState
     data class HexColorInput(val settingKey: String, val currentHex: String = "", val selectedIndex: Int = 0) : DialogState
     data class About(val statusMessage: String? = null) : DialogState
-    data class Kitchen(val url: String, val pin: String) : DialogState
+    data class Kitchen(val urls: List<String>, val selectedIndex: Int = 0, val pin: String) : DialogState
     data class RAAccount(val username: String, val score: Int = 0) : DialogState
     data class RALoggingIn(val message: String = "Logging in...") : DialogState
     data class ProfileNameInput(val isNew: Boolean, val originalName: String = "", override val currentName: String = "", override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState

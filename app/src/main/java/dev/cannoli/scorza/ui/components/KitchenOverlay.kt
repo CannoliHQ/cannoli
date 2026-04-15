@@ -39,7 +39,14 @@ import dev.cannoli.igm.ui.theme.GrayText
 import dev.cannoli.igm.ui.theme.LocalCannoliFont
 
 @Composable
-fun KitchenOverlay(url: String, pin: String, buttonStyle: ButtonStyle = ButtonStyle()) {
+fun KitchenOverlay(
+    urls: List<String>,
+    selectedIndex: Int,
+    pin: String,
+    buttonStyle: ButtonStyle = ButtonStyle()
+) {
+    val safeIndex = selectedIndex.coerceIn(0, (urls.size - 1).coerceAtLeast(0))
+    val url = urls.getOrNull(safeIndex) ?: "http://?.?.?.?:1091"
     val qrUrl = remember(url, pin) { "$url?host=${java.net.URLEncoder.encode(pin, "UTF-8")}" }
     val qrBitmap = remember(qrUrl) { generateQrBitmap(qrUrl, 256) }
 
@@ -118,7 +125,10 @@ fun KitchenOverlay(url: String, pin: String, buttonStyle: ButtonStyle = ButtonSt
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(horizontal = screenPadding, vertical = 16.dp),
-            leftItems = listOf(buttonStyle.back to stringResource(R.string.label_back)),
+            leftItems = buildList {
+                add(buttonStyle.back to stringResource(R.string.label_back))
+                if (urls.size > 1) add("\u25C0\u25B6" to stringResource(R.string.label_interface))
+            },
             rightItems = listOf(buttonStyle.north to stringResource(R.string.label_stop))
         )
     }
