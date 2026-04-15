@@ -69,9 +69,7 @@ jobs:
       - name: Build Kitchen frontend
         run: |
           git clone https://github.com/CannoliHQ/kitchen.git /tmp/kitchen
-          cd /tmp/kitchen
-          bun install --frozen-lockfile
-          bun run build
+          (cd /tmp/kitchen && bun install --frozen-lockfile && bun run build)
           mkdir -p app/src/main/assets/kitchen
           cp -r /tmp/kitchen/dist/* app/src/main/assets/kitchen/
 
