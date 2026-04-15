@@ -1,7 +1,10 @@
 package dev.cannoli.scorza.libretro
 
+import android.app.UiModeManager
 import android.content.Context
+import android.content.res.Configuration
 import android.hardware.input.InputManager
+import android.os.Build
 import dev.cannoli.scorza.input.ControllerManager
 import dev.cannoli.scorza.input.ProfileManager
 import android.graphics.Bitmap
@@ -588,6 +591,18 @@ class LibretroActivity : ComponentActivity() {
         }
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+        requestAllmIfTv()
+    }
+
+    private fun requestAllmIfTv() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
+        val uiModeManager = getSystemService(UI_MODE_SERVICE) as? UiModeManager ?: return
+        if (uiModeManager.currentModeType != Configuration.UI_MODE_TYPE_TELEVISION) return
+        val display = window.decorView.display ?: return
+        if (!display.isMinimalPostProcessingSupported) return
+        window.setPreferMinimalPostProcessing(true)
+        sessionLog.log("ALLM requested (minimal post-processing)")
     }
 
     // --- Input ---
