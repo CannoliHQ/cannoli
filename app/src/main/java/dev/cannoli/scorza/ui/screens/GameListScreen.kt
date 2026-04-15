@@ -214,7 +214,7 @@ fun GameListScreen(
                 listOf(buttonStyle.north to actionLabel, buttonStyle.confirm to resumeLabel)
             } else {
                 buildList {
-                    if (!showNewButton && hasResumeState) add(buttonStyle.north to resumeLabel)
+                    if (hasResumeState) add(buttonStyle.north to resumeLabel)
                     add(buttonStyle.confirm to actionLabel)
                 }
             }

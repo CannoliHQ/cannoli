@@ -1798,7 +1798,7 @@ class MainActivity : ComponentActivity() {
                         } else if (!navigating) {
                             val glState = gameListViewModel.state.value
                             if (!gameListViewModel.exitSubfolder()) {
-                                if (gameListViewModel.exitChildCollection()) {
+                                if (gameListViewModel.exitChildCollection { scanResumableGames() }) {
                                     // navigated back to parent collection
                                 } else if (settings.contentMode == ContentMode.PLATFORMS
                                     && glState.isCollection && glState.collectionName != null
@@ -2114,7 +2114,7 @@ class MainActivity : ComponentActivity() {
                     }
                     LauncherScreen.GameList -> {
                         val glState = gameListViewModel.state.value
-                        if (!glState.isCollectionsList && !glState.isCollection) {
+                        if (!glState.isCollectionsList) {
                             val game = gameListViewModel.getSelectedGame()
                             if (game != null && !game.isSubfolder && !game.isChildCollection) {
                                 val isResumable = resumableGames.contains(game.file.absolutePath)
@@ -2587,6 +2587,7 @@ class MainActivity : ComponentActivity() {
         if (gameListViewModel.state.value.isCollectionsList) {
             navigating = true
             gameListViewModel.loadCollection(game.file.nameWithoutExtension) {
+                scanResumableGames()
                 navigating = false
             }
             return
@@ -2596,6 +2597,7 @@ class MainActivity : ComponentActivity() {
             navigating = true
             val childStem = game.file.name
             gameListViewModel.enterChildCollection(childStem) {
+                scanResumableGames()
                 navigating = false
             }
             return
