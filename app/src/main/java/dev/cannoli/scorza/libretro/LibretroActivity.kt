@@ -391,7 +391,7 @@ class LibretroActivity : ComponentActivity() {
             override fun handleOnBackPressed() {
                 if (loading) return
                 if (screenStack.isEmpty()) openMenu() else pop()
-                if (screenStack.isEmpty()) { renderer.paused = false; runner.resumeAudio() }
+                if (screenStack.isEmpty()) { renderer.paused = false; runner.resumeAudio(); startVsyncPacer() }
             }
         })
 
@@ -908,6 +908,7 @@ class LibretroActivity : ComponentActivity() {
                     if (guides.isNotEmpty()) {
                         renderer.paused = true
                         runner.pauseAudio()
+                        stopVsyncPacer()
                         screenStack.clear()
                         guideFiles = guides
                         if (guides.size == 1) openGuide(guides[0])
@@ -933,6 +934,7 @@ class LibretroActivity : ComponentActivity() {
         push(IGMScreen.Menu())
         renderer.paused = true
         runner.pauseAudio()
+        stopVsyncPacer()
         refreshSlotInfo()
         refreshDiskInfo()
     }
@@ -946,6 +948,7 @@ class LibretroActivity : ComponentActivity() {
         for (p in 0 until LibretroRunner.MAX_PORTS) runner.setInput(p, 0)
         renderer.paused = false
         runner.resumeAudio()
+        startVsyncPacer()
     }
 
     private fun onControllerDisconnected(port: Int) {
