@@ -105,7 +105,7 @@ class SettingsRepository(context: Context) {
         set(value) = jsonWrite { put(KEY_RA_PACKAGE, value) }
 
     var textSize: TextSize
-        get() = TextSize.fromString(jsonRead { optString(KEY_TEXT_SIZE, null) })
+        get() = TextSize.fromString(jsonRead { if (has(KEY_TEXT_SIZE)) optString(KEY_TEXT_SIZE) else null })
         set(value) = jsonWrite { put(KEY_TEXT_SIZE, value.name) }
 
     var font: String
@@ -117,7 +117,7 @@ class SettingsRepository(context: Context) {
         set(value) = jsonWrite { if (value.isEmpty()) remove(KEY_TITLE) else put(KEY_TITLE, value) }
 
     var timeFormat: TimeFormat
-        get() = TimeFormat.fromString(jsonRead { optString(KEY_TIME_FORMAT, null) })
+        get() = TimeFormat.fromString(jsonRead { if (has(KEY_TIME_FORMAT)) optString(KEY_TIME_FORMAT) else null })
         set(value) = jsonWrite { put(KEY_TIME_FORMAT, value.name) }
 
     var backgroundImagePath: String?
@@ -137,11 +137,11 @@ class SettingsRepository(context: Context) {
         set(value) = jsonWrite { put(KEY_SWAP_PLAY_RESUME, value) }
 
     var buttonLabelSet: ButtonLabelSet
-        get() = ButtonLabelSet.fromString(jsonRead { optString(KEY_BUTTON_LABEL_SET, null) })
+        get() = ButtonLabelSet.fromString(jsonRead { if (has(KEY_BUTTON_LABEL_SET)) optString(KEY_BUTTON_LABEL_SET) else null })
         set(value) = jsonWrite { put(KEY_BUTTON_LABEL_SET, value.name) }
 
     var confirmButton: ConfirmButton
-        get() = ConfirmButton.fromString(jsonRead { optString(KEY_CONFIRM_BUTTON, null) })
+        get() = ConfirmButton.fromString(jsonRead { if (has(KEY_CONFIRM_BUTTON)) optString(KEY_CONFIRM_BUTTON) else null })
         set(value) = jsonWrite { put(KEY_CONFIRM_BUTTON, value.name) }
 
     var mainMenuQuit: Boolean
@@ -201,7 +201,7 @@ class SettingsRepository(context: Context) {
         set(value) = jsonWrite { if (value == "Ports") remove(KEY_PORTS_NAME) else put(KEY_PORTS_NAME, value) }
 
     var contentMode: ContentMode
-        get() = ContentMode.fromString(jsonRead { optString(KEY_CONTENT_MODE, null) })
+        get() = ContentMode.fromString(jsonRead { if (has(KEY_CONTENT_MODE)) optString(KEY_CONTENT_MODE) else null })
         set(value) = jsonWrite { put(KEY_CONTENT_MODE, value.name) }
 
     var artWidth: Int
@@ -209,7 +209,7 @@ class SettingsRepository(context: Context) {
         set(value) = jsonWrite { put(KEY_ART_WIDTH, value) }
 
     var artScale: ArtScale
-        get() = ArtScale.fromString(jsonRead { optString(KEY_ART_SCALE, null) })
+        get() = ArtScale.fromString(jsonRead { if (has(KEY_ART_SCALE)) optString(KEY_ART_SCALE) else null })
         set(value) = jsonWrite { put(KEY_ART_SCALE, value.name) }
 
     var backgroundTint: Int
