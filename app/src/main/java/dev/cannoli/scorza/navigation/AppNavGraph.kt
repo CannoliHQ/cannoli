@@ -576,18 +576,18 @@ fun AppNavGraph(
                             val actionName = ShortcutAction.entries.getOrNull(currentScreen.selectedIndex)?.label ?: ""
                             Text(
                                 text = actionName,
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    fontSize = 16.sp,
-                                    color = colors.text.copy(alpha = 0.6f)
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontSize = 24.sp,
+                                    color = colors.text
                                 )
                             )
                             Spacer(modifier = Modifier.height(Spacing.Sm))
                             Text(
                                 text = if (currentScreen.heldKeys.isEmpty()) stringResource(R.string.shortcut_hold_prompt)
                                 else currentScreen.heldKeys.joinToString(" + ") { LibretroInput.keyCodeName(it) },
-                                style = MaterialTheme.typography.bodyLarge.copy(
-                                    fontSize = 24.sp,
-                                    color = colors.text
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontSize = 16.sp,
+                                    color = colors.text.copy(alpha = 0.6f)
                                 )
                             )
                             Spacer(modifier = Modifier.height(Spacing.Lg))
