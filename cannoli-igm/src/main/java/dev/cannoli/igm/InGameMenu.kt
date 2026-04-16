@@ -33,6 +33,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import dev.cannoli.igm.ui.theme.Spacing
 import androidx.compose.ui.unit.sp
 import dev.cannoli.igm.ui.components.BottomBar
 import dev.cannoli.igm.ui.components.List
@@ -88,7 +89,7 @@ fun InGameMenu(
                     fontSize = fontSize,
                     lineHeight = lineHeight
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Spacing.Sm))
                 Row(modifier = Modifier.fillMaxSize()) {
                     Column(
                         modifier = Modifier
@@ -203,7 +204,7 @@ fun PolaroidFrame(
         }
 
         if (showIndicators) {
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(Spacing.Sm))
 
         Row(
             horizontalArrangement = Arrangement.Center,

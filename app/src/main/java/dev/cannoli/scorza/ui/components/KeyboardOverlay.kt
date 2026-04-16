@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import dev.cannoli.igm.ui.theme.Spacing
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.igm.ButtonStyle
@@ -147,7 +148,7 @@ fun KeyboardOverlay(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(Spacing.Md))
 
             rows.forEachIndexed { ri, keys ->
                 if (keys.size == 1 && keys[0] == KEY_SPACE) {

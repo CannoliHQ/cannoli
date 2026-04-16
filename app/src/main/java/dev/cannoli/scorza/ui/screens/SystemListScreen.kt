@@ -32,6 +32,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import dev.cannoli.igm.ui.theme.Spacing
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.settings.ArtScale
@@ -129,7 +130,7 @@ fun SystemListScreen(
                     fontSize = listFontSize,
                     lineHeight = listLineHeight
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Spacing.Sm))
             }
             if (state.items.isEmpty()) {
                 Box(

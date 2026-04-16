@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import dev.cannoli.igm.ui.theme.Spacing
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Text
 import androidx.compose.ui.res.stringResource
@@ -95,7 +96,7 @@ fun InputTesterScreen(
                 text = colors.text,
                 highlightText = colors.highlightText,
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Spacing.Sm))
             Row(modifier = Modifier.fillMaxWidth().weight(1f, fill = true)) {
                 Box(modifier = Modifier.fillMaxHeight().weight(1f, fill = true)) {
                     ControllerDiagram(
@@ -112,7 +113,7 @@ fun InputTesterScreen(
                     )
                 }
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Spacing.Sm))
             Text(
                 text = stringResource(R.string.input_tester_cycle_hint),
                 color = colors.text.copy(alpha = 0.5f),

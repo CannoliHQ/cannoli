@@ -14,6 +14,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import dev.cannoli.igm.ui.theme.Spacing
 import dev.cannoli.scorza.R
 import dev.cannoli.igm.ButtonStyle
 import dev.cannoli.igm.ui.components.BottomBar
@@ -217,7 +218,7 @@ internal fun ListDialogScreen(
                     fontSize = listFontSize,
                     lineHeight = listLineHeight
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Spacing.Sm))
                 content()
             }
             val left = if (showBackButton) listOf(buttonStyle.back to stringResource(R.string.label_back)) + leftBottomItems else leftBottomItems

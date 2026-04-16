@@ -27,6 +27,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import dev.cannoli.igm.ui.theme.Spacing
 import androidx.compose.ui.unit.sp
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
@@ -73,7 +74,7 @@ fun KitchenOverlay(
                 )
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(Spacing.Lg))
 
             if (qrBitmap != null) {
                 Image(
@@ -85,7 +86,7 @@ fun KitchenOverlay(
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(Spacing.Lg))
 
             Text(
                 text = url,
@@ -98,7 +99,7 @@ fun KitchenOverlay(
             )
 
             if (requirePin) {
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(Spacing.Lg))
 
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)

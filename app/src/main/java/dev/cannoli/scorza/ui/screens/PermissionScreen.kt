@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import dev.cannoli.igm.ui.theme.Spacing
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.igm.ui.theme.GrayText
@@ -36,7 +37,7 @@ fun PermissionScreen() {
             modifier = Modifier.size(128.dp)
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(Spacing.Md))
 
         Text(
             text = stringResource(R.string.permission_title),
@@ -47,7 +48,7 @@ fun PermissionScreen() {
             color = Color.White
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(Spacing.Sm))
 
         Text(
             text = stringResource(R.string.permission_description),
@@ -57,7 +58,7 @@ fun PermissionScreen() {
             color = GrayText
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(Spacing.Lg))
 
         Text(
             text = stringResource(R.string.permission_grant),

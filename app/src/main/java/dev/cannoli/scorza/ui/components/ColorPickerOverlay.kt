@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import dev.cannoli.igm.ui.theme.Spacing
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.igm.ButtonStyle
@@ -114,7 +115,7 @@ fun ColorPickerOverlay(
                             }
                         }
                         if (ri < rows.lastIndex) {
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(Spacing.Sm))
                         }
                     }
                 }
@@ -218,7 +219,7 @@ fun HexColorInputOverlay(
                                 }
                             }
                         }
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(Spacing.Xs))
                     }
                 }
             }

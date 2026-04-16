@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import dev.cannoli.igm.ui.theme.Spacing
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
@@ -580,7 +581,7 @@ fun AppNavGraph(
                                     color = colors.text.copy(alpha = 0.6f)
                                 )
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(Spacing.Sm))
                             Text(
                                 text = if (currentScreen.heldKeys.isEmpty()) stringResource(R.string.shortcut_hold_prompt)
                                 else currentScreen.heldKeys.joinToString(" + ") { LibretroInput.keyCodeName(it) },
@@ -589,7 +590,7 @@ fun AppNavGraph(
                                     color = colors.text
                                 )
                             )
-                            Spacer(modifier = Modifier.height(24.dp))
+                            Spacer(modifier = Modifier.height(Spacing.Lg))
                             if (currentScreen.heldKeys.isNotEmpty()) {
                                 val progress = (currentScreen.countdownMs / 1500f).coerceIn(0f, 1f)
                                 Box(

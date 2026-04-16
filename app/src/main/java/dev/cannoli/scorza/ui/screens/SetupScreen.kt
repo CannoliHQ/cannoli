@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import dev.cannoli.igm.ui.theme.Spacing
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.igm.ui.components.BottomBar
@@ -67,7 +68,7 @@ fun SetupScreen(
                     modifier = Modifier.size(64.dp)
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(Spacing.Md))
 
                 Text(
                     text = stringResource(R.string.setup_welcome),
@@ -78,7 +79,7 @@ fun SetupScreen(
                     color = Color.White
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Spacing.Sm))
 
                 Text(
                     text = stringResource(R.string.setup_description),
@@ -89,7 +90,7 @@ fun SetupScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(Spacing.Xl))
 
             Column(
                 modifier = Modifier
@@ -107,7 +108,7 @@ fun SetupScreen(
                 )
 
                 if (isCustom) {
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(Spacing.Md))
 
                     PillRowKeyValue(
                         label = stringResource(R.string.setup_folder_label),

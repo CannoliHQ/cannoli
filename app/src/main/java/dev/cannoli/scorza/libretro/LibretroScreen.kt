@@ -27,6 +27,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import dev.cannoli.igm.ui.theme.Spacing
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -162,7 +163,7 @@ fun LibretroScreen(
                                 style = MaterialTheme.typography.titleLarge,
                                 color = Color.White
                             )
-                            Spacer(modifier = Modifier.height(24.dp))
+                            Spacer(modifier = Modifier.height(Spacing.Lg))
                             Box(modifier = Modifier.fillMaxWidth(0.5f)) {
                                 PolaroidFrame(
                                     thumbnail = slotThumbnail,
@@ -320,7 +321,7 @@ fun LibretroScreen(
                                     .clipToBounds()
                                     .verticalScroll(rememberScrollState())
                             ) {
-                                Spacer(modifier = Modifier.height(16.dp))
+                                Spacer(modifier = Modifier.height(Spacing.Md))
                                 InfoRow(stringResource(R.string.info_core), gameInfo.coreName, infoModifier)
                                 Spacer(modifier = Modifier.height(12.dp))
                                 if (gameInfo.originalRomPath != null) {
@@ -446,7 +447,7 @@ fun LibretroScreen(
                                     textAlign = TextAlign.Center
                                 )
                             )
-                            Spacer(modifier = Modifier.height(4.dp))
+                            Spacer(modifier = Modifier.height(Spacing.Xs))
                             Text(
                                 text = unlockText,
                                 style = TextStyle(
@@ -455,7 +456,7 @@ fun LibretroScreen(
                                     color = Color.White
                                 )
                             )
-                            Spacer(modifier = Modifier.height(4.dp))
+                            Spacer(modifier = Modifier.height(Spacing.Xs))
                             Text(
                                 text = stringResource(R.string.ach_points, ach.points),
                                 style = TextStyle(
@@ -464,7 +465,7 @@ fun LibretroScreen(
                                     color = Color.White
                                 )
                             )
-                            Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(Spacing.Md))
                             Text(
                                 text = ach.description,
                                 style = TextStyle(
@@ -506,7 +507,7 @@ fun LibretroScreen(
                             color = colors.text.copy(alpha = 0.6f)
                         )
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Spacing.Sm))
                     Text(
                         text = if (screen.heldKeys.isEmpty()) stringResource(R.string.shortcut_hold_prompt)
                         else screen.heldKeys.joinToString(" + ") { LibretroInput.keyCodeName(it) },
@@ -515,7 +516,7 @@ fun LibretroScreen(
                             color = colors.text
                         )
                     )
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(Spacing.Lg))
                     if (screen.heldKeys.isNotEmpty()) {
                         val progress = (screen.countdownMs / 1500f).coerceIn(0f, 1f)
                         Box(

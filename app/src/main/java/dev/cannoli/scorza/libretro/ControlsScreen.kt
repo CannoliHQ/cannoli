@@ -20,6 +20,7 @@ import androidx.annotation.StringRes
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import dev.cannoli.igm.ui.theme.Spacing
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.input.ProfileManager
@@ -69,7 +70,7 @@ fun ControlsScreen(
                     fontSize = fontSize,
                     lineHeight = lineHeight
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Spacing.Sm))
                 List(
                     items = input.buttons,
                     selectedIndex = selectedIndex,
@@ -137,7 +138,7 @@ fun ControlsScreen(
                             color = colors.text
                         )
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Spacing.Sm))
                     Text(
                         text = stringResource(R.string.press_button_prompt),
                         style = MaterialTheme.typography.bodyMedium.copy(
@@ -145,7 +146,7 @@ fun ControlsScreen(
                             color = colors.text.copy(alpha = 0.6f)
                         )
                     )
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(Spacing.Lg))
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(0.5f)

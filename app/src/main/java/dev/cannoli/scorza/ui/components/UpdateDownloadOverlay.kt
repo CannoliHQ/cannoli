@@ -22,6 +22,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import dev.cannoli.igm.ui.theme.Spacing
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.igm.ButtonStyle
@@ -59,7 +60,7 @@ fun UpdateDownloadOverlay(
                 )
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(Spacing.Md))
 
             if (changelog.isNotEmpty()) {
                 Text(
@@ -71,7 +72,7 @@ fun UpdateDownloadOverlay(
                         textAlign = TextAlign.Center
                     )
                 )
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(Spacing.Lg))
             }
 
             if (error != null) {
@@ -96,7 +97,7 @@ fun UpdateDownloadOverlay(
                     gapSize = 0.dp,
                     drawStopIndicator = {}
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Spacing.Sm))
                 Text(
                     text = "${(progress * 100).toInt()}%",
                     style = TextStyle(

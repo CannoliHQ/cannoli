@@ -21,6 +21,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import dev.cannoli.igm.ui.theme.Spacing
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.BuildConfig
 import dev.cannoli.scorza.R
@@ -67,7 +68,7 @@ fun AboutOverlay(statusMessage: String? = null, updateAvailable: Boolean = false
                 )
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(Spacing.Lg))
 
             Text(
                 text = "v${BuildConfig.VERSION_NAME}  •  ${BuildConfig.BUILD_DATE}  •  ${BuildConfig.GIT_HASH}",
@@ -78,7 +79,7 @@ fun AboutOverlay(statusMessage: String? = null, updateAvailable: Boolean = false
                 )
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(Spacing.Lg))
 
             Text(
                 text = stringResource(R.string.about_website),
@@ -90,7 +91,7 @@ fun AboutOverlay(statusMessage: String? = null, updateAvailable: Boolean = false
             )
 
             if (statusMessage != null) {
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(Spacing.Md))
                 Text(
                     text = statusMessage,
                     style = TextStyle(

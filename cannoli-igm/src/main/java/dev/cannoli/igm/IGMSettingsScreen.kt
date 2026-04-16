@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import dev.cannoli.igm.ui.theme.Spacing
 import androidx.compose.ui.unit.sp
 import dev.cannoli.igm.ui.components.BottomBar
 import dev.cannoli.igm.ui.components.List
@@ -62,7 +63,7 @@ fun IGMSettingsScreen(
                         fontSize = fontSize,
                         lineHeight = lineHeight
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(Spacing.Md))
                     Text(
                         text = description,
                         style = MaterialTheme.typography.bodyMedium.copy(
@@ -84,7 +85,7 @@ fun IGMSettingsScreen(
                         fontSize = fontSize,
                         lineHeight = lineHeight
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Spacing.Sm))
                     List(
                         items = items,
                         selectedIndex = selectedIndex,

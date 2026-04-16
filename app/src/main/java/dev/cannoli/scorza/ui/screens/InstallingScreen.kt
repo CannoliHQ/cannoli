@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import dev.cannoli.igm.ui.theme.Spacing
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.igm.ui.components.PillRowText
@@ -60,7 +61,7 @@ fun InstallingScreen(
                 modifier = Modifier.size(128.dp)
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(Spacing.Xl))
 
             Text(
                 text = statusLabel,
@@ -69,7 +70,7 @@ fun InstallingScreen(
             )
 
             if (!finished) {
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(Spacing.Md))
 
                 LinearProgressIndicator(
                     progress = { animatedProgress },
@@ -84,7 +85,7 @@ fun InstallingScreen(
                     drawStopIndicator = {}
                 )
             } else {
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(Spacing.Lg))
 
                 PillRowText(
                     label = stringResource(R.string.install_continue),
