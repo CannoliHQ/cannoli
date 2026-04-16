@@ -11,10 +11,17 @@ object DebugLog {
     private val fmt = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
     private val lock = Any()
 
-    fun init(dir: String) {
+    fun init(cannoliRoot: String, enabled: Boolean) {
+        if (!enabled) return
         synchronized(lock) {
-            val file = File(dir, "debug.log")
-            writer = FileWriter(file, false)
+            try {
+                val dir = File(cannoliRoot, "Logs")
+                dir.mkdirs()
+                val file = File(dir, "filescanner.log")
+                writer = FileWriter(file, false)
+            } catch (_: Exception) {
+                writer = null
+            }
         }
         write("DebugLog initialized")
     }
