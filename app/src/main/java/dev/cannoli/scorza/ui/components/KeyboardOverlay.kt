@@ -120,12 +120,14 @@ fun KeyboardOverlay(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
+            .padding(screenPadding)
     ) {
         Column(
             modifier = Modifier
-                .align(Alignment.Center)
-                .padding(horizontal = screenPadding),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxSize()
+                .padding(bottom = 48.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             Box(
                 modifier = Modifier
@@ -211,9 +213,7 @@ fun KeyboardOverlay(
         }
 
         BottomBar(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(horizontal = screenPadding, vertical = 16.dp),
+            modifier = Modifier.align(Alignment.BottomCenter),
             leftItems = listOf(
                 buttonStyle.west to stringResource(R.string.label_cancel)
             ),
