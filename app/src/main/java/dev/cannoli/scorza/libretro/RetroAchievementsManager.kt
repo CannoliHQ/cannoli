@@ -106,6 +106,10 @@ class RetroAchievementsManager(
     val syncingIds: MutableSet<Int> = Collections.synchronizedSet(mutableSetOf())
     val localUnlocks: MutableSet<Int> = Collections.synchronizedSet(mutableSetOf())
 
+    @Volatile private var syncExpectedCount = 0
+    @Volatile private var syncSuccessCount = 0
+    @Volatile private var syncFailCount = 0
+
     private fun syncPending() {
         if (pendingSyncIds.isEmpty() || !nativeIsLoggedIn()) return
         val toSync: Set<Int>
@@ -115,13 +119,13 @@ class RetroAchievementsManager(
         if (toSync.isEmpty()) return
         val count = toSync.size
         logger("RA syncPending: syncing $count achievements: $toSync")
+        syncExpectedCount = count
+        syncSuccessCount = 0
+        syncFailCount = 0
         synchronized(syncingIds) { syncingIds.addAll(toSync) }
         cachedAchievements = null
         httpExecutor.execute {
             for (id in toSync) nativeManualUnlock(id)
-        }
-        mainHandler.post {
-            onSyncStatus("Syncing $count Offline ${if (count == 1) "Achievement" else "Achievements"}")
         }
     }
     private var networkCallback: android.net.ConnectivityManager.NetworkCallback? = null
@@ -172,6 +176,7 @@ class RetroAchievementsManager(
     }
     @Volatile var isOffline = false
         private set
+    @Volatile private var networkConnected = true
     @Volatile var pendingReset = false
 
     fun getAchievements(): List<Achievement> {
@@ -277,22 +282,44 @@ class RetroAchievementsManager(
 
     val pendingSyncCount: Int get() = pendingSyncIds.size
 
-    fun getStatus(): String = when {
-        !isOffline -> "Online"
-        pendingSyncIds.isEmpty() -> "Offline"
-        else -> "Offline \u2022 ${pendingSyncIds.size} Pending Sync"
+    fun getStatus(): String {
+        val offline = !isOnline || isOffline
+        return when {
+            !offline -> "Online"
+            pendingSyncIds.isEmpty() -> "Offline"
+            else -> "Offline \u2022 ${pendingSyncIds.size} Pending Sync"
+        }
     }
 
     @Suppress("unused")
     private fun onAchievementEvent(type: Int, achievementId: Int, title: String, description: String, points: Int) {
-        logger("RA achievement event: type=$type id=$achievementId title=$title points=$points offline=$isOffline")
+        logger("RA achievement event: type=$type id=$achievementId title=$title points=$points")
+
+        if (type == EVENT_RECONNECTED) {
+            logger("RA reconnected: rcheevos completed all pending awards")
+            val cleared = pendingSyncIds.size
+            if (cleared > 0) {
+                pendingSyncIds.clear()
+                savePendingSync()
+                logger("RA cleared $cleared pending sync IDs after reconnect")
+                mainHandler.post {
+                    onSyncStatus("$cleared ${if (cleared == 1) "Achievement" else "Achievements"} Synced")
+                }
+            }
+            return
+        }
+
+        if (type == EVENT_DISCONNECTED) {
+            logger("RA disconnected: rcheevos has pending awards that will retry")
+            mainHandler.postDelayed({ onSyncStatus("Offline: Will Sync Later") }, 3500)
+            return
+        }
+
         if (achievementId > 0) {
             localUnlocks.add(achievementId)
-            if (isOffline) {
-                pendingSyncIds.add(achievementId)
-                savePendingSync()
-                logger("RA achievement queued for offline sync: id=$achievementId pendingCount=${pendingSyncIds.size}")
-            }
+            pendingSyncIds.add(achievementId)
+            savePendingSync()
+            logger("RA achievement queued for sync: id=$achievementId pendingCount=${pendingSyncIds.size}")
         }
         cachedAchievements = null
         mainHandler.post { onEvent(type, title, description, points) }
@@ -312,9 +339,22 @@ class RetroAchievementsManager(
             pendingSyncIds.remove(achievementId)
             syncingIds.remove(achievementId)
             savePendingSync()
+            syncSuccessCount++
         } else {
             syncingIds.remove(achievementId)
+            syncFailCount++
             logger("RA award FAILED for id=$achievementId, keeping in pending queue")
+        }
+        val done = syncSuccessCount + syncFailCount
+        if (done >= syncExpectedCount && syncExpectedCount > 0) {
+            val msg = if (syncFailCount == 0) {
+                "$syncSuccessCount ${if (syncSuccessCount == 1) "Achievement" else "Achievements"} Synced"
+            } else {
+                "$syncSuccessCount Synced, $syncFailCount Failed"
+            }
+            logger("RA sync complete: $msg")
+            syncExpectedCount = 0
+            mainHandler.post { onSyncStatus(msg) }
         }
     }
 
@@ -350,6 +390,8 @@ class RetroAchievementsManager(
         }
 
         private const val RC_SERVER_ERROR = 503
+        private const val EVENT_DISCONNECTED = 17
+        private const val EVENT_RECONNECTED = 18
         private val CACHE_KEY_STRIP_REGEX = Regex("[&?](t|u)=[^&]+")
 
         val CONSOLE_MAP = mapOf(

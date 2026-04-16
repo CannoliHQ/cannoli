@@ -62,6 +62,7 @@ static int g_memory_initialized = 0;
 static int g_memory_init_attempts = 0;
 
 static void ra_load_game_callback(int result, const char *error_message, rc_client_t *client, void *userdata);
+static void ra_try_init_memory(void);
 
 typedef struct PendingResponse {
     struct PendingResponse *next;
@@ -88,18 +89,10 @@ static int g_memory_read_logged = 0;
 static uint32_t ra_read_memory(uint32_t address, uint8_t *buffer, uint32_t num_bytes, rc_client_t *client) {
     (void)client;
     if (!g_memory_initialized) {
-        if (!g_memory_read_logged) {
-            g_memory_read_logged = 1;
-            ra_log_to_kotlin("read_memory: BLOCKED (memory not initialized) addr=0x%x bytes=%u", address, num_bytes);
-        }
-        return 0;
+        ra_try_init_memory();
+        if (!g_memory_initialized) return 0;
     }
-    uint32_t result = rc_libretro_memory_read(&g_memory_regions, address, buffer, num_bytes);
-    if (!g_memory_read_logged) {
-        g_memory_read_logged = 1;
-        ra_log_to_kotlin("read_memory: first read addr=0x%x bytes=%u result=%u", address, num_bytes, result);
-    }
-    return result;
+    return rc_libretro_memory_read(&g_memory_regions, address, buffer, num_bytes);
 }
 
 static void ra_server_call(const rc_api_request_t *request,
@@ -189,7 +182,9 @@ static void ra_event_handler(const rc_client_event_t *event, rc_client_t *client
     ra_log_to_kotlin("event: type=%d", event->type);
 
     if (event->type != RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED &&
-        event->type != RC_CLIENT_EVENT_GAME_COMPLETED)
+        event->type != RC_CLIENT_EVENT_GAME_COMPLETED &&
+        event->type != RC_CLIENT_EVENT_DISCONNECTED &&
+        event->type != RC_CLIENT_EVENT_RECONNECTED)
         return;
 
     const char *title = "";
