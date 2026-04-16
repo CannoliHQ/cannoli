@@ -16,7 +16,8 @@ class RetroAchievementsManager(
     private val cacheDir: java.io.File? = null,
     private val onEvent: (type: Int, title: String, description: String, points: Int) -> Unit = { _, _, _, _ -> },
     private val onLogin: (success: Boolean, displayName: String, token: String?) -> Unit = { _, _, _ -> },
-    private val onSyncStatus: (message: String) -> Unit = {}
+    private val onSyncStatus: (message: String) -> Unit = {},
+    private val logger: (String) -> Unit = {}
 ) {
     private val httpExecutor = Executors.newFixedThreadPool(2)
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -27,11 +28,13 @@ class RetroAchievementsManager(
     }
 
     fun init() {
+        logger("RA init")
         nativeInit()
         registerNetworkCallback()
     }
 
     fun destroy() {
+        logger("RA destroy")
         unregisterNetworkCallback()
         nativeDestroy()
         httpExecutor.shutdownNow()
@@ -46,14 +49,17 @@ class RetroAchievementsManager(
     }
 
     fun loadGame(romPath: String, consoleId: Int) {
+        logger("RA loadGame: romPath=$romPath consoleId=$consoleId")
         nativeLoadGame(romPath, consoleId)
     }
 
     fun loadGameById(gameId: Int, consoleId: Int) {
+        logger("RA loadGameById: gameId=$gameId consoleId=$consoleId")
         nativeLoadGameById(gameId, consoleId)
     }
 
     fun unloadGame() {
+        logger("RA unloadGame")
         nativeUnloadGame()
     }
 
@@ -70,6 +76,7 @@ class RetroAchievementsManager(
     }
 
     fun reset() {
+        logger("RA reset")
         nativeReset()
     }
 
@@ -94,6 +101,7 @@ class RetroAchievementsManager(
             pendingSyncIds.clear()
         }
         val count = toSync.size
+        logger("RA syncPending: syncing $count achievements: $toSync")
         savePendingSync()
         cachedAchievements = null
         httpExecutor.execute {
@@ -211,6 +219,8 @@ class RetroAchievementsManager(
 
     @Suppress("unused")
     private fun onServerCall(url: String, postData: String?, requestPtr: Long) {
+        val urlTag = url.substringAfterLast("/").substringBefore("?").take(40)
+        logger("RA http request: $urlTag")
         httpExecutor.execute {
             val key = cacheKey(postData)
             var conn: HttpURLConnection? = null
@@ -231,15 +241,18 @@ class RetroAchievementsManager(
                 } catch (_: IOException) {
                     conn.errorStream?.bufferedReader()?.readText() ?: ""
                 }
+                logger("RA http response: $urlTag status=$status bodyLen=${body.length}")
                 if (key != null && status == 200 && body.isNotEmpty()) writeCache(key, body)
                 isOffline = false
                 nativeHttpResponse(requestPtr, body, status)
-            } catch (_: IOException) {
+            } catch (e: IOException) {
                 val cached = if (key != null) readCache(key) else null
                 if (cached != null) {
+                    logger("RA http FAILED ($urlTag): ${e.message} -- using cache (len=${cached.length})")
                     isOffline = true
                     nativeHttpResponse(requestPtr, cached, 200)
                 } else {
+                    logger("RA http FAILED ($urlTag): ${e.message} -- no cache")
                     isOffline = true
                     nativeHttpResponse(requestPtr, "", RC_SERVER_ERROR)
                 }
@@ -259,11 +272,13 @@ class RetroAchievementsManager(
 
     @Suppress("unused")
     private fun onAchievementEvent(type: Int, achievementId: Int, title: String, description: String, points: Int) {
+        logger("RA achievement event: type=$type id=$achievementId title=$title points=$points offline=$isOffline")
         if (achievementId > 0) {
             localUnlocks.add(achievementId)
             if (isOffline) {
                 pendingSyncIds.add(achievementId)
                 savePendingSync()
+                logger("RA achievement queued for offline sync: id=$achievementId pendingCount=${pendingSyncIds.size}")
             }
         }
         cachedAchievements = null
@@ -272,8 +287,14 @@ class RetroAchievementsManager(
 
     @Suppress("unused")
     private fun onLoginResult(success: Boolean, displayNameOrError: String, token: String?) {
+        logger("RA login result: success=$success offline=$isOffline pendingSync=${pendingSyncIds.size}")
         if (success && !isOffline) syncPending()
         mainHandler.post { onLogin(success, displayNameOrError, token) }
+    }
+
+    @Suppress("unused")
+    private fun onNativeLog(message: String) {
+        logger("RA [native] $message")
     }
 
     private external fun nativeInit()

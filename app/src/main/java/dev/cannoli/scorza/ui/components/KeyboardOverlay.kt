@@ -93,7 +93,9 @@ fun KeyboardOverlay(
     val rows = getKeyboardRows(caps, symbols)
     val row = keyRow.coerceIn(0, rows.lastIndex)
     val col = keyCol.coerceIn(0, rows[row].lastIndex)
-    val highlight = LocalCannoliColors.current.highlight
+    val colors = LocalCannoliColors.current
+    val highlight = colors.highlight
+    val highlightText = colors.highlightText
 
     val scrollState = rememberScrollState()
     var cursorVisible by remember { mutableStateOf(true) }
@@ -172,7 +174,7 @@ fun KeyboardOverlay(
                                 modifier = Modifier
                                     .width(60.dp)
                                     .height(2.dp)
-                                    .background(Color.White.copy(alpha = 0.5f))
+                                    .background(if (isSelected) highlightText.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.5f))
                             )
                         }
                     }
@@ -186,18 +188,19 @@ fun KeyboardOverlay(
                             val isAction = key in listOf(KEY_SHIFT, KEY_ENTER, KEY_BACKSPACE, KEY_SYMBOLS)
                             val isShiftActive = key == KEY_SHIFT && caps
 
+                            val keyBg = when {
+                                isSelected -> highlight
+                                isShiftActive -> highlight.copy(alpha = 0.5f)
+                                else -> KEY_BG
+                            }
+                            val keyText = if (isSelected) highlightText else Color.White
+
                             Box(
                                 modifier = Modifier
                                     .padding(2.dp)
                                     .size(48.dp)
                                     .clip(RoundedCornerShape(Radius.Md))
-                                    .background(
-                                        when {
-                                            isSelected -> highlight
-                                            isShiftActive -> highlight.copy(alpha = 0.5f)
-                                            else -> KEY_BG
-                                        }
-                                    ),
+                                    .background(keyBg),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -205,7 +208,7 @@ fun KeyboardOverlay(
                                     style = MaterialTheme.typography.bodyLarge.copy(
                                         fontSize = if (isAction) 18.sp else 16.sp
                                     ),
-                                    color = Color.White,
+                                    color = keyText,
                                     textAlign = TextAlign.Center
                                 )
                             }

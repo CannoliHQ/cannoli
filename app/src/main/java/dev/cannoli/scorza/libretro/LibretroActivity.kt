@@ -565,12 +565,13 @@ class LibretroActivity : ComponentActivity() {
                                     repo.raToken = ""
                                     repo.raPassword = ""
                                     repo.flush()
-                                    sessionLog.log("RA credentials cleared — user must re-authenticate")
+                                    sessionLog.log("RA credentials cleared -- user must re-authenticate")
                                 }
                                 showOsd(getString(R.string.ra_login_failed))
                             }
                         },
-                        onSyncStatus = { msg -> showOsd(msg) }
+                        onSyncStatus = { msg -> showOsd(msg) },
+                        logger = { msg -> sessionLog.log(msg) }
                     )
                     ra.init()
                     if (raToken.isNotEmpty()) {
@@ -584,8 +585,12 @@ class LibretroActivity : ComponentActivity() {
                         sessionLog.log("RA loadGameById: id=$raGameIdOverride consoleId=$consoleId")
                     } else {
                         ra.loadGame(romPath, consoleId)
+                        sessionLog.log("RA loadGame: romPath=$romPath consoleId=$consoleId")
                     }
-                    if (resumeSlot >= 0) ra.pendingReset = true
+                    if (resumeSlot >= 0) {
+                        ra.pendingReset = true
+                        sessionLog.log("RA pendingReset=true (resumeSlot=$resumeSlot)")
+                    }
                     raManager = ra
                 }
             }
@@ -868,6 +873,7 @@ class LibretroActivity : ComponentActivity() {
                 ShortcutAction.LOAD_STATE -> {
                     if (stateBasePath.isNotEmpty() && slotManager.stateExists(currentSlot)) {
                         slotManager.loadState(runner, currentSlot)
+                        sessionLog.log("RA state load (shortcut): resetting, slot=${currentSlot.label}")
                         raManager?.reset()
                         showOsd("Loaded ${currentSlot.label}")
                     }
@@ -1077,6 +1083,7 @@ class LibretroActivity : ComponentActivity() {
                     undoSlot = null
                     startUndoTimer()
                     slotManager.loadState(runner, slot)
+                    sessionLog.log("RA state load (IGM): resetting, slot=${slot.label}")
                     raManager?.reset()
                     showOsd("Loaded ${slot.label}")
                 }
@@ -2241,6 +2248,7 @@ class LibretroActivity : ComponentActivity() {
     private fun cleanup() {
         if (cleaned || loading) return
         cleaned = true
+        sessionLog.log("RA cleanup: raManager=${raManager != null}")
         raManager?.unloadGame()
         raManager?.destroy()
         raManager = null

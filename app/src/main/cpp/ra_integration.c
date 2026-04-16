@@ -1,6 +1,7 @@
 #include <jni.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <pthread.h>
 #include <android/log.h>
 #include "rc_client.h"
@@ -26,8 +27,34 @@ static jmethodID g_onServerCall = NULL;
 static jmethodID g_onEvent = NULL;
 static jmethodID g_onLoginResult = NULL;
 static jmethodID g_onAwardResult = NULL;
+static jmethodID g_onLog = NULL;
 static pthread_mutex_t g_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t g_client_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static long g_trylock_skip_count = 0;
+static long g_frame_count = 0;
+
+static void ra_log_to_kotlin(const char *fmt, ...) {
+    if (!g_jvm || !g_manager || !g_onLog) return;
+    char buf[512];
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+
+    JNIEnv *env;
+    int attached = 0;
+    if ((*g_jvm)->GetEnv(g_jvm, (void **)&env, JNI_VERSION_1_6) != JNI_OK) {
+        (*g_jvm)->AttachCurrentThread(g_jvm, &env, NULL);
+        attached = 1;
+    }
+    jstring jMsg = (*env)->NewStringUTF(env, buf);
+    if (jMsg) {
+        (*env)->CallVoidMethod(env, g_manager, g_onLog, jMsg);
+        (*env)->DeleteLocalRef(env, jMsg);
+    }
+    if (attached) (*g_jvm)->DetachCurrentThread(g_jvm);
+}
 
 static char *g_pending_rom_path = NULL;
 static uint32_t g_pending_console_id = 0;
@@ -55,10 +82,23 @@ static void ra_get_core_memory(unsigned id, rc_libretro_core_memory_info_t *info
     LOGI("get_core_memory(%u): data=%p size=%zu", id, info->data, info->size);
 }
 
+static int g_memory_read_logged = 0;
+
 static uint32_t ra_read_memory(uint32_t address, uint8_t *buffer, uint32_t num_bytes, rc_client_t *client) {
     (void)client;
-    if (!g_memory_initialized) return 0;
-    return rc_libretro_memory_read(&g_memory_regions, address, buffer, num_bytes);
+    if (!g_memory_initialized) {
+        if (!g_memory_read_logged) {
+            g_memory_read_logged = 1;
+            ra_log_to_kotlin("read_memory: BLOCKED (memory not initialized) addr=0x%x bytes=%u", address, num_bytes);
+        }
+        return 0;
+    }
+    uint32_t result = rc_libretro_memory_read(&g_memory_regions, address, buffer, num_bytes);
+    if (!g_memory_read_logged) {
+        g_memory_read_logged = 1;
+        ra_log_to_kotlin("read_memory: first read addr=0x%x bytes=%u result=%u", address, num_bytes, result);
+    }
+    return result;
 }
 
 static void ra_server_call(const rc_api_request_t *request,
@@ -146,6 +186,8 @@ static void ra_event_handler(const rc_client_event_t *event, rc_client_t *client
     (void)client;
     if (!g_jvm || !g_manager) return;
 
+    ra_log_to_kotlin("event: type=%d", event->type);
+
     if (event->type != RC_CLIENT_EVENT_ACHIEVEMENT_TRIGGERED &&
         event->type != RC_CLIENT_EVENT_GAME_COMPLETED)
         return;
@@ -186,6 +228,7 @@ static void ra_event_handler(const rc_client_event_t *event, rc_client_t *client
 static void ra_log(const char *message, const rc_client_t *client) {
     (void)client;
     LOGI("%s", message);
+    ra_log_to_kotlin("rcheevos: %s", message);
 }
 
 /* ---- JNI functions ---- */
@@ -199,7 +242,11 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeInit(JNIEnv *env
     g_onServerCall = (*env)->GetMethodID(env, cls, "onServerCall", "(Ljava/lang/String;Ljava/lang/String;J)V");
     g_onEvent = (*env)->GetMethodID(env, cls, "onAchievementEvent", "(IILjava/lang/String;Ljava/lang/String;I)V");
     g_onLoginResult = (*env)->GetMethodID(env, cls, "onLoginResult", "(ZLjava/lang/String;Ljava/lang/String;)V");
+    g_onLog = (*env)->GetMethodID(env, cls, "onNativeLog", "(Ljava/lang/String;)V");
     (*env)->DeleteLocalRef(env, cls);
+
+    g_frame_count = 0;
+    g_trylock_skip_count = 0;
 
     g_client = rc_client_create(ra_read_memory, ra_server_call);
     rc_client_enable_logging(g_client, RC_CLIENT_LOG_LEVEL_INFO, ra_log);
@@ -207,11 +254,13 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeInit(JNIEnv *env
     rc_client_set_event_handler(g_client, ra_event_handler);
 
     LOGI("RetroAchievements initialized");
+    ra_log_to_kotlin("native init complete");
 }
 
 JNIEXPORT void JNICALL
 Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeDestroy(JNIEnv *env, jobject thiz) {
     (void)thiz;
+    ra_log_to_kotlin("destroy: frames=%ld trylockSkips=%ld memInit=%d", g_frame_count, g_trylock_skip_count, g_memory_initialized);
     pthread_mutex_lock(&g_client_mutex);
     if (g_memory_initialized) {
         rc_libretro_memory_destroy(&g_memory_regions);
@@ -255,8 +304,11 @@ static void ra_login_callback(int result, const char *error_message, rc_client_t
 
         if (g_pending_rom_path || g_pending_game_id) {
             const struct retro_memory_map *mmap = bridge_get_memory_map();
-            rc_libretro_memory_init(&g_memory_regions, mmap, ra_get_core_memory, g_pending_console_id);
+            int mem_result = rc_libretro_memory_init(&g_memory_regions, mmap, ra_get_core_memory, g_pending_console_id);
             g_memory_initialized = 1;
+            ra_log_to_kotlin("memory init: result=%d mmap=%s regions=%u totalSize=%u",
+                mem_result, mmap ? "present" : "NULL",
+                g_memory_regions.count, g_memory_regions.total_size);
 
             if (g_pending_game_id) {
                 LOGI("Loading game by ID: %u (console %u)", g_pending_game_id, g_pending_console_id);
@@ -326,8 +378,10 @@ static void ra_load_game_callback(int result, const char *error_message, rc_clie
     if (result == RC_OK) {
         const rc_client_game_t *game = rc_client_get_game_info(g_client);
         LOGI("Game loaded: %s (id: %u)", game->title, game->id);
+        ra_log_to_kotlin("game loaded: id=%u title=%s", game->id, game->title);
     } else {
         LOGE("Game load failed: %s", error_message ? error_message : "unknown error");
+        ra_log_to_kotlin("game load FAILED: %s", error_message ? error_message : "unknown error");
     }
 }
 
@@ -369,7 +423,16 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeUnloadGame(JNIEn
 
 void ra_process_frame(void) {
     if (!g_client) return;
-    if (pthread_mutex_trylock(&g_client_mutex) != 0) return;
+    if (pthread_mutex_trylock(&g_client_mutex) != 0) {
+        g_trylock_skip_count++;
+        return;
+    }
+    g_frame_count++;
+    if (g_frame_count % 3600 == 0) {
+        ra_log_to_kotlin("frame stats: frames=%ld trylockSkips=%ld gameLoaded=%d memInit=%d",
+            g_frame_count, g_trylock_skip_count,
+            rc_client_is_game_loaded(g_client), g_memory_initialized);
+    }
     if (rc_client_is_game_loaded(g_client))
         rc_client_do_frame(g_client);
     pthread_mutex_unlock(&g_client_mutex);
@@ -389,6 +452,7 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeIdle(JNIEnv *env
 JNIEXPORT void JNICALL
 Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeReset(JNIEnv *env, jobject thiz) {
     (void)env; (void)thiz;
+    ra_log_to_kotlin("reset: frames=%ld trylockSkips=%ld", g_frame_count, g_trylock_skip_count);
     pthread_mutex_lock(&g_client_mutex);
     if (g_client) rc_client_reset(g_client);
     pthread_mutex_unlock(&g_client_mutex);
