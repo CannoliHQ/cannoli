@@ -13,7 +13,7 @@ import dev.cannoli.scorza.R
 import dev.cannoli.igm.ButtonStyle
 import dev.cannoli.igm.ui.components.BottomBar
 import dev.cannoli.igm.ui.components.LegendPill
-import dev.cannoli.igm.ui.theme.GrayText
+import dev.cannoli.igm.ui.theme.LocalCannoliColors
 
 @Composable
 fun MissingCoreDialog(coreName: String, buttonStyle: ButtonStyle = ButtonStyle()) {
@@ -29,7 +29,7 @@ fun MissingCoreDialog(coreName: String, buttonStyle: ButtonStyle = ButtonStyle()
         Text(
             text = stringResource(R.string.dialog_missing_core, coreName),
             style = MaterialTheme.typography.bodyLarge,
-            color = GrayText
+            color = LocalCannoliColors.current.text.copy(alpha = 0.6f)
         )
     }
 }
@@ -57,7 +57,7 @@ fun MissingAppDialog(appName: String, showRemove: Boolean = false, buttonStyle: 
         Text(
             text = stringResource(R.string.dialog_missing_app, appName),
             style = MaterialTheme.typography.bodyLarge,
-            color = GrayText
+            color = LocalCannoliColors.current.text.copy(alpha = 0.6f)
         )
     }
 }
@@ -76,7 +76,7 @@ fun LaunchErrorDialog(message: String, buttonStyle: ButtonStyle = ButtonStyle())
         Text(
             text = message,
             style = MaterialTheme.typography.bodyLarge,
-            color = GrayText
+            color = LocalCannoliColors.current.text.copy(alpha = 0.6f)
         )
     }
 }

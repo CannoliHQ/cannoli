@@ -33,7 +33,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
-import dev.cannoli.igm.ui.theme.GrayText
 import dev.cannoli.igm.ui.theme.LocalCannoliFont
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableIntStateOf
@@ -623,7 +622,7 @@ private fun InfoRow(label: String, value: String, modifier: Modifier = Modifier)
             text = label,
             style = MaterialTheme.typography.bodyMedium.copy(
                 fontSize = 14.sp,
-                color = colors.text.copy(alpha = 0.5f)
+                color = colors.text.copy(alpha = 0.6f)
             )
         )
         Text(

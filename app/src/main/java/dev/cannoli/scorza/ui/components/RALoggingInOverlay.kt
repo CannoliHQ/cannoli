@@ -19,6 +19,7 @@ import dev.cannoli.scorza.R
 import dev.cannoli.igm.ButtonStyle
 import dev.cannoli.igm.ui.components.BottomBar
 import dev.cannoli.igm.ui.components.screenPadding
+import dev.cannoli.igm.ui.theme.LocalCannoliColors
 import dev.cannoli.igm.ui.theme.LocalCannoliFont
 
 @Composable
@@ -47,7 +48,7 @@ fun RALoggingInOverlay(message: String, buttonStyle: ButtonStyle = ButtonStyle()
                 style = TextStyle(
                     fontFamily = LocalCannoliFont.current,
                     fontSize = 18.sp,
-                    color = Color.White.copy(alpha = 0.7f)
+                    color = LocalCannoliColors.current.text.copy(alpha = 0.6f)
                 )
             )
         }

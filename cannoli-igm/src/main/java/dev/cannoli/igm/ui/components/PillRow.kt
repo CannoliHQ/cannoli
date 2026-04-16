@@ -31,7 +31,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.cannoli.igm.ui.theme.GrayText
 import dev.cannoli.igm.ui.theme.LocalCannoliColors
 import dev.cannoli.igm.ui.theme.MPlus1Code
 
@@ -165,7 +164,7 @@ fun PillRowKeyValue(
     MarqueeEffect(scrollState, isSelected)
 
     val labelColor = if (isSelected) colors.highlightText else colors.text
-    val valueColor = if (isSelected) colors.highlightText.copy(alpha = 0.5f) else GrayText
+    val valueColor = if (isSelected) colors.highlightText.copy(alpha = 0.5f) else colors.text.copy(alpha = 0.6f)
     val borderColor = if (isSelected) colors.highlightText.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.3f)
 
     PillRow(isSelected = isSelected, verticalPadding = verticalPadding, lineHeight = lineHeight, modifier = Modifier.fillMaxWidth()) {

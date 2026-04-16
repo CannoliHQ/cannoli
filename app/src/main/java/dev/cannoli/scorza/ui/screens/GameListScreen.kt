@@ -53,7 +53,6 @@ import dev.cannoli.igm.ui.components.ScreenBackground
 import dev.cannoli.igm.ui.components.ScreenTitle
 import dev.cannoli.igm.ui.components.pillItemHeight
 import dev.cannoli.igm.ui.components.screenPadding
-import dev.cannoli.igm.ui.theme.GrayText
 import dev.cannoli.igm.ui.theme.LocalCannoliColors
 import dev.cannoli.igm.ButtonStyle
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
@@ -316,7 +315,7 @@ private fun GameRow(
                     Text(
                         text = "/",
                         style = textStyle,
-                        color = if (isSelected) colors.highlightText else GrayText
+                        color = if (isSelected) colors.highlightText else colors.text.copy(alpha = 0.6f)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                 }

@@ -117,14 +117,14 @@ fun InputTesterScreen(
             Spacer(Modifier.height(Spacing.Sm))
             Text(
                 text = stringResource(R.string.input_tester_cycle_hint),
-                color = colors.text.copy(alpha = 0.5f),
+                color = colors.text.copy(alpha = 0.6f),
                 fontSize = 12.sp,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
             )
             Text(
                 text = stringResource(R.string.input_tester_exit_hint),
-                color = colors.text.copy(alpha = 0.5f),
+                color = colors.text.copy(alpha = 0.6f),
                 fontSize = 12.sp,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),

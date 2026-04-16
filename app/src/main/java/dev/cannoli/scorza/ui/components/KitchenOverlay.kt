@@ -37,7 +37,6 @@ import dev.cannoli.scorza.R
 import dev.cannoli.igm.ButtonStyle
 import dev.cannoli.igm.ui.components.BottomBar
 import dev.cannoli.igm.ui.components.screenPadding
-import dev.cannoli.igm.ui.theme.GrayText
 import dev.cannoli.igm.ui.theme.LocalCannoliFont
 
 @Composable

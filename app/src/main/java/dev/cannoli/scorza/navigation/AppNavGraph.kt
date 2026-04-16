@@ -56,7 +56,6 @@ import dev.cannoli.scorza.ui.screens.SystemListScreen
 import dev.cannoli.scorza.ui.viewmodel.InputTesterViewModel
 import dev.cannoli.scorza.ui.screens.isFullScreen
 import dev.cannoli.igm.ui.theme.CannoliColors
-import dev.cannoli.igm.ui.theme.GrayText
 import dev.cannoli.igm.ui.theme.LocalCannoliColors
 import dev.cannoli.igm.ui.theme.LocalScaleFactor
 import dev.cannoli.igm.ButtonStyle
@@ -266,7 +265,7 @@ fun AppNavGraph(
                         Text(
                             text = stringResource(R.string.no_compatible_cores),
                             style = MaterialTheme.typography.bodyLarge,
-                            color = GrayText,
+                            color = cannoliColors.text.copy(alpha = 0.6f),
                             modifier = Modifier.padding(start = 14.dp)
                         )
                     } else {
@@ -359,7 +358,7 @@ fun AppNavGraph(
                         Text(
                             text = stringResource(R.string.no_collections),
                             style = MaterialTheme.typography.bodyLarge,
-                            color = GrayText,
+                            color = cannoliColors.text.copy(alpha = 0.6f),
                             modifier = Modifier.padding(start = 14.dp)
                         )
                     } else {
@@ -412,7 +411,7 @@ fun AppNavGraph(
                         Text(
                             text = stringResource(R.string.no_collections),
                             style = MaterialTheme.typography.bodyLarge,
-                            color = GrayText,
+                            color = cannoliColors.text.copy(alpha = 0.6f),
                             modifier = Modifier.padding(start = 14.dp)
                         )
                     } else {
@@ -630,7 +629,7 @@ fun AppNavGraph(
                         Text(
                             text = stringResource(R.string.installed_cores_none),
                             style = MaterialTheme.typography.bodyLarge,
-                            color = GrayText,
+                            color = cannoliColors.text.copy(alpha = 0.6f),
                             modifier = Modifier.padding(start = 14.dp)
                         )
                     } else {

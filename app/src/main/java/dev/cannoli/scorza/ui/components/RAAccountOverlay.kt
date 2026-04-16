@@ -23,7 +23,7 @@ import dev.cannoli.scorza.R
 import dev.cannoli.igm.ButtonStyle
 import dev.cannoli.igm.ui.components.BottomBar
 import dev.cannoli.igm.ui.components.screenPadding
-import dev.cannoli.igm.ui.theme.GrayText
+import dev.cannoli.igm.ui.theme.LocalCannoliColors
 import dev.cannoli.igm.ui.theme.LocalCannoliFont
 
 @Composable
@@ -55,7 +55,7 @@ fun RAAccountOverlay(username: String, buttonStyle: ButtonStyle = ButtonStyle())
                 style = TextStyle(
                     fontFamily = LocalCannoliFont.current,
                     fontSize = 16.sp,
-                    color = GrayText
+                    color = LocalCannoliColors.current.text.copy(alpha = 0.6f)
                 )
             )
 

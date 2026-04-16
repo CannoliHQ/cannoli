@@ -85,7 +85,7 @@ fun GuideScreen(
                     style = TextStyle(
                         fontFamily = LocalCannoliFont.current,
                         fontSize = 13.sp,
-                        color = colors.text.copy(alpha = 0.5f)
+                        color = colors.text.copy(alpha = 0.6f)
                     ),
                     modifier = Modifier
                         .align(Alignment.TopEnd)
