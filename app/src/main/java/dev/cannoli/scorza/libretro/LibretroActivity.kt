@@ -592,6 +592,7 @@ class LibretroActivity : ComponentActivity() {
                         sessionLog.log("RA pendingReset=true (resumeSlot=$resumeSlot)")
                     }
                     raManager = ra
+                    slotManager.raManager = ra
                 }
             }
         }
@@ -873,8 +874,7 @@ class LibretroActivity : ComponentActivity() {
                 ShortcutAction.LOAD_STATE -> {
                     if (stateBasePath.isNotEmpty() && slotManager.stateExists(currentSlot)) {
                         slotManager.loadState(runner, currentSlot)
-                        sessionLog.log("RA state load (shortcut): resetting, slot=${currentSlot.label}")
-                        raManager?.reset()
+                        sessionLog.log("RA state load (shortcut): slot=${currentSlot.label}")
                         showOsd("Loaded ${currentSlot.label}")
                     }
                 }
@@ -1083,8 +1083,7 @@ class LibretroActivity : ComponentActivity() {
                     undoSlot = null
                     startUndoTimer()
                     slotManager.loadState(runner, slot)
-                    sessionLog.log("RA state load (IGM): resetting, slot=${slot.label}")
-                    raManager?.reset()
+                    sessionLog.log("RA state load (IGM): slot=${slot.label}")
                     showOsd("Loaded ${slot.label}")
                 }
                 closeAll()
@@ -1111,6 +1110,8 @@ class LibretroActivity : ComponentActivity() {
                     startUndoTimer(30_000)
                 }
                 runner.reset()
+                sessionLog.log("RA reset (IGM game reset)")
+                raManager?.reset()
                 closeAll()
             }
             menu.achievementsIndex -> {
@@ -2287,6 +2288,9 @@ class LibretroActivity : ComponentActivity() {
         if (!loading && !cleaned && stateBasePath.isNotEmpty() && !autoSavedOnStop) {
             File("$stateBasePath.auto").parentFile?.mkdirs()
             runner.saveState("$stateBasePath.auto")
+            raManager?.serializeProgress()?.let { data ->
+                try { File("$stateBasePath.auto.ra").writeBytes(data) } catch (_: Exception) {}
+            }
             autoSavedOnStop = true
             if (cannoliRoot.isNotEmpty() && romPath.isNotEmpty()) {
                 val f = File(cannoliRoot, "Config/State/quick_resume.txt")

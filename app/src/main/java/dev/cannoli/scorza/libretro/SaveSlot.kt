@@ -11,6 +11,8 @@ typealias Slot = SharedSlotManager.Slot
 
 class SaveSlotManager(private val stateBasePath: String) {
 
+    var raManager: RetroAchievementsManager? = null
+
     val slots = SharedSlotManager().slots
 
     fun statePath(slot: Slot): String {
@@ -25,11 +27,14 @@ class SaveSlotManager(private val stateBasePath: String) {
         return if (n == 0) "$stateBasePath.png" else "$stateBasePath$n.png"
     }
 
+    private fun raProgressPath(slot: Slot): String = "${statePath(slot)}.ra"
+
     fun stateExists(slot: Slot): Boolean = File(statePath(slot)).exists()
 
     fun deleteState(slot: Slot) {
         File(statePath(slot)).delete()
         File(thumbnailPath(slot)).delete()
+        File(raProgressPath(slot)).delete()
     }
 
     fun loadThumbnail(slot: Slot): Bitmap? {
@@ -45,14 +50,30 @@ class SaveSlotManager(private val stateBasePath: String) {
         if (slot.index == 0) rotateSlots()
 
         val ok = runner.saveState(path)
-        if (ok) captureScreenshot(runner, thumbnailPath(slot))
+        if (ok) {
+            captureScreenshot(runner, thumbnailPath(slot))
+            raManager?.serializeProgress()?.let { data ->
+                try { File(raProgressPath(slot)).writeBytes(data) } catch (_: Exception) {}
+            }
+        }
         return ok
     }
 
     fun loadState(runner: LibretroRunner, slot: Slot): Boolean {
         val path = statePath(slot)
         if (!File(path).exists()) return false
-        return runner.loadState(path)
+        val ok = runner.loadState(path)
+        if (ok) {
+            val raFile = File(raProgressPath(slot))
+            if (raFile.exists()) {
+                try {
+                    raManager?.deserializeProgress(raFile.readBytes())
+                } catch (_: Exception) {}
+            } else {
+                raManager?.reset()
+            }
+        }
+        return ok
     }
 
     private fun raPath(n: Int) = if (n == 0) stateBasePath else "$stateBasePath$n"
@@ -62,9 +83,11 @@ class SaveSlotManager(private val stateBasePath: String) {
         for (i in 9 downTo 1) {
             moveFile(raPath(i - 1), raPath(i))
             moveFile(raThumbPath(i - 1), raThumbPath(i))
+            moveFile("${raPath(i - 1)}.ra", "${raPath(i)}.ra")
         }
         moveFile("$stateBasePath.auto", raPath(0))
         moveFile("$stateBasePath.auto.png", raThumbPath(0))
+        moveFile("$stateBasePath.auto.ra", "${raPath(0)}.ra")
     }
 
     private fun moveFile(src: String, dst: String) {
