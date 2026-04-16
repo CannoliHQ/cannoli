@@ -52,9 +52,10 @@ class SaveSlotManager(private val stateBasePath: String) {
         val ok = runner.saveState(path)
         if (ok) {
             captureScreenshot(runner, thumbnailPath(slot))
-            raManager?.serializeProgress()?.let { data ->
-                try { File(raProgressPath(slot)).writeBytes(data) } catch (_: Exception) {}
-            }
+            // TODO: serialize RA progress alongside state once we adopt a container format
+            // raManager?.serializeProgress()?.let { data ->
+            //     try { File(raProgressPath(slot)).writeBytes(data) } catch (_: Exception) {}
+            // }
         }
         return ok
     }
@@ -64,14 +65,8 @@ class SaveSlotManager(private val stateBasePath: String) {
         if (!File(path).exists()) return false
         val ok = runner.loadState(path)
         if (ok) {
-            val raFile = File(raProgressPath(slot))
-            if (raFile.exists()) {
-                try {
-                    raManager?.deserializeProgress(raFile.readBytes())
-                } catch (_: Exception) {}
-            } else {
-                raManager?.reset()
-            }
+            // TODO: deserialize RA progress once we adopt a container format
+            raManager?.reset()
         }
         return ok
     }
