@@ -6,9 +6,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -46,43 +49,54 @@ fun SetupScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
+            .padding(screenPadding)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = screenPadding, vertical = 40.dp),
+                .padding(bottom = 48.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Image(
-                painter = painterResource(R.drawable.cannoli_nobg),
-                contentDescription = null,
-                modifier = Modifier.size(128.dp)
-            )
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.cannoli_nobg),
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp)
+                )
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-            Text(
-                text = stringResource(R.string.setup_welcome),
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    fontSize = 28.sp,
-                    lineHeight = 36.sp
-                ),
-                color = Color.White
-            )
+                Text(
+                    text = stringResource(R.string.setup_welcome),
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontSize = 28.sp,
+                        lineHeight = 36.sp
+                    ),
+                    color = Color.White
+                )
 
-            Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-            Text(
-                text = stringResource(R.string.setup_description),
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontSize = 16.sp
-                ),
-                color = GrayText
-            )
+                Text(
+                    text = stringResource(R.string.setup_description),
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontSize = 16.sp
+                    ),
+                    color = GrayText
+                )
+            }
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            Column(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState())
+            ) {
                 PillRowKeyValue(
                     label = stringResource(R.string.setup_storage),
                     value = storageLabel,
@@ -117,9 +131,7 @@ fun SetupScreen(
         }
 
         BottomBar(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(horizontal = screenPadding, vertical = 16.dp),
+            modifier = Modifier.align(Alignment.BottomCenter),
             leftItems = listOf(buttonStyle.back to stringResource(R.string.label_quit)),
             rightItems = rightItems
         )
