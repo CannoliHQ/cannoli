@@ -9,6 +9,7 @@
     <string name="label_launch">LAUNCH</string>
     <string name="label_open">OPEN</string>
     <string name="label_save">SAVE</string>
+    <string name="label_load">LOAD</string>
     <string name="label_change">CHANGE</string>
     <string name="label_sleep">SLEEP</string>
     <string name="label_close">CLOSE</string>
@@ -21,6 +22,12 @@
     <string name="label_settings">SETTINGS</string>
     <string name="label_menu">MENU</string>
     <string name="label_resume">RESUME</string>
+    <string name="label_continue">CONTINUE</string>
+    <string name="label_new_folder">NEW FOLDER</string>
+    <string name="label_parent">PARENT</string>
+    <string name="label_slot">SLOT</string>
+    <string name="label_disc">DISC</string>
+    <string name="label_use_location">USE THIS LOCATION</string>
 
     <string name="settings_title">Settings</string>
 
@@ -148,6 +155,9 @@
     <string name="setup_description">Select where to create your Cannoli folder.</string>
     <string name="setup_storage">Storage</string>
     <string name="setup_continue">Continue</string>
+    <string name="install_continue">Continue</string>
+    <string name="setup_folder_label">Folder</string>
+    <string name="setup_folder_unset">Not selected</string>
     <string name="label_quit">QUIT</string>
     <string name="dialog_quit_confirm">Are you sure you want to quit?</string>
 

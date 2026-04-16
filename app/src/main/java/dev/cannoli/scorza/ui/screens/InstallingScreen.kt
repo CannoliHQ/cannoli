@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
@@ -83,7 +84,7 @@ fun InstallingScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 PillRowText(
-                    label = "Continue",
+                    label = stringResource(R.string.install_continue),
                     isSelected = true,
                     fontSize = 22.sp,
                     lineHeight = 32.sp,

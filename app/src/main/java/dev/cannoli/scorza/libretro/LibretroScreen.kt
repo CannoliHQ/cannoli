@@ -135,6 +135,13 @@ fun LibretroScreen(
                     slotExists = slotExists,
                     slotOccupied = slotOccupied,
                     undoLabel = undoLabel,
+                    backLabel = stringResource(R.string.label_back),
+                    deleteLabel = stringResource(R.string.label_delete),
+                    slotLabel = stringResource(R.string.label_slot),
+                    saveLabel = stringResource(R.string.label_save),
+                    loadLabel = stringResource(R.string.label_load),
+                    discLabel = stringResource(R.string.label_disc),
+                    selectLabel = stringResource(R.string.label_select),
                     fontSize = igmFontSize,
                     lineHeight = igmLineHeight,
                     buttonStyle = labels

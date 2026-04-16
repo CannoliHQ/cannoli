@@ -57,6 +57,13 @@ fun InGameMenu(
     slotExists: Boolean,
     slotOccupied: kotlin.collections.List<Boolean>,
     undoLabel: String?,
+    backLabel: String,
+    deleteLabel: String,
+    slotLabel: String,
+    saveLabel: String,
+    loadLabel: String,
+    discLabel: String,
+    selectLabel: String,
     fontSize: TextUnit = 22.sp,
     lineHeight: TextUnit = 32.sp,
     buttonStyle: ButtonStyle = ButtonStyle()
@@ -134,15 +141,15 @@ fun InGameMenu(
 
             val canDeleteSlot = showThumbnail && slotExists
             val leftItems = buildList {
-                add(buttonStyle.back to "BACK")
+                add(buttonStyle.back to backLabel)
                 if (undoLabel != null) add(buttonStyle.north to undoLabel.uppercase())
-                if (canDeleteSlot) add(buttonStyle.west to "DELETE")
+                if (canDeleteSlot) add(buttonStyle.west to deleteLabel)
             }
             val rightItems = when {
-                selectedIndex == menuOptions.saveStateIndex -> listOf("◀▶" to "SLOT", buttonStyle.confirm to "SAVE")
-                selectedIndex == menuOptions.loadStateIndex -> listOf("◀▶" to "SLOT", buttonStyle.confirm to "LOAD")
-                onDiscRow -> listOf("◀▶" to "DISC", buttonStyle.confirm to "SELECT")
-                else -> listOf(buttonStyle.confirm to "SELECT")
+                selectedIndex == menuOptions.saveStateIndex -> listOf("◀▶" to slotLabel, buttonStyle.confirm to saveLabel)
+                selectedIndex == menuOptions.loadStateIndex -> listOf("◀▶" to slotLabel, buttonStyle.confirm to loadLabel)
+                onDiscRow -> listOf("◀▶" to discLabel, buttonStyle.confirm to selectLabel)
+                else -> listOf(buttonStyle.confirm to selectLabel)
             }
 
             BottomBar(

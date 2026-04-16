@@ -24,6 +24,7 @@ import dev.cannoli.igm.ui.components.BottomBar
 import dev.cannoli.igm.ui.components.PillRowKeyValue
 import dev.cannoli.igm.ui.components.screenPadding
 import dev.cannoli.igm.ButtonStyle
+import dev.cannoli.igm.START_GLYPH
 import dev.cannoli.igm.ui.theme.GrayText
 
 @Composable
@@ -95,8 +96,8 @@ fun SetupScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     PillRowKeyValue(
-                        label = "Folder",
-                        value = customPath ?: "Not selected",
+                        label = stringResource(R.string.setup_folder_label),
+                        value = customPath ?: stringResource(R.string.setup_folder_unset),
                         isSelected = selectedIndex == folderIndex,
                         fontSize = fontSize,
                         lineHeight = lineHeight,
@@ -112,7 +113,7 @@ fun SetupScreen(
             folderIndex -> rightItems.add(buttonStyle.confirm to stringResource(R.string.label_select))
         }
         if (continueEnabled) {
-            rightItems.add("Start" to "Confirm")
+            rightItems.add(START_GLYPH to stringResource(R.string.label_continue))
         }
 
         BottomBar(
