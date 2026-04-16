@@ -80,6 +80,18 @@ class RetroAchievementsManager(
         nativeReset()
     }
 
+    fun serializeProgress(): ByteArray? {
+        val data = nativeSerializeProgress()
+        logger("RA serializeProgress: ${data?.size ?: 0} bytes")
+        return data
+    }
+
+    fun deserializeProgress(data: ByteArray): Boolean {
+        val ok = nativeDeserializeProgress(data)
+        logger("RA deserializeProgress: ${data.size} bytes, success=$ok")
+        return ok
+    }
+
     val isLoggedIn: Boolean get() = nativeIsLoggedIn()
     val username: String get() = nativeGetUsername()
     val gameId: Int get() = nativeGetGameId()
@@ -91,6 +103,7 @@ class RetroAchievementsManager(
 
     private var cachedAchievements: List<Achievement>? = null
     val pendingSyncIds: MutableSet<Int> = Collections.synchronizedSet(mutableSetOf())
+    val syncingIds: MutableSet<Int> = Collections.synchronizedSet(mutableSetOf())
     val localUnlocks: MutableSet<Int> = Collections.synchronizedSet(mutableSetOf())
 
     private fun syncPending() {
@@ -98,17 +111,17 @@ class RetroAchievementsManager(
         val toSync: Set<Int>
         synchronized(pendingSyncIds) {
             toSync = pendingSyncIds.toSet()
-            pendingSyncIds.clear()
         }
+        if (toSync.isEmpty()) return
         val count = toSync.size
         logger("RA syncPending: syncing $count achievements: $toSync")
-        savePendingSync()
+        synchronized(syncingIds) { syncingIds.addAll(toSync) }
         cachedAchievements = null
         httpExecutor.execute {
             for (id in toSync) nativeManualUnlock(id)
         }
         mainHandler.post {
-            onSyncStatus("$count Offline ${if (count == 1) "Achievement" else "Achievements"} Synced")
+            onSyncStatus("Syncing $count Offline ${if (count == 1) "Achievement" else "Achievements"}")
         }
     }
     private var networkCallback: android.net.ConnectivityManager.NetworkCallback? = null
@@ -293,6 +306,19 @@ class RetroAchievementsManager(
     }
 
     @Suppress("unused")
+    private fun onAwardResult(achievementId: Int, success: Boolean) {
+        logger("RA award result: id=$achievementId success=$success")
+        if (success) {
+            pendingSyncIds.remove(achievementId)
+            syncingIds.remove(achievementId)
+            savePendingSync()
+        } else {
+            syncingIds.remove(achievementId)
+            logger("RA award FAILED for id=$achievementId, keeping in pending queue")
+        }
+    }
+
+    @Suppress("unused")
     private fun onNativeLog(message: String) {
         logger("RA [native] $message")
     }
@@ -314,6 +340,8 @@ class RetroAchievementsManager(
     private external fun nativeGetUserAgentClause(): String
     private external fun nativeHttpResponse(requestPtr: Long, body: String, httpStatus: Int)
     private external fun nativeGetAchievementData(): String
+    private external fun nativeSerializeProgress(): ByteArray?
+    private external fun nativeDeserializeProgress(data: ByteArray): Boolean
     private external fun nativeManualUnlock(achievementId: Int)
 
     companion object {
