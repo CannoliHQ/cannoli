@@ -44,6 +44,7 @@ import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.libretro.LibretroActivity
 import dev.cannoli.scorza.libretro.LibretroInput
 import dev.cannoli.scorza.libretro.RetroAchievementsManager
+import dev.cannoli.igm.ELLIPSIS
 import dev.cannoli.igm.ShortcutAction
 import dev.cannoli.scorza.scanner.CollectionManager
 import dev.cannoli.scorza.scanner.FileScanner
@@ -585,12 +586,12 @@ class MainActivity : ComponentActivity() {
 
     private fun startInstalling(targetPath: String) {
         val labels = listOf(
-            "Kneading the dough...",
-            "Rolling the shells...",
-            "Heating the oil...",
-            "Frying the shells...",
-            "Making the filling...",
-            "Piping the rigott..."
+            "Kneading the dough$ELLIPSIS",
+            "Rolling the shells$ELLIPSIS",
+            "Heating the oil$ELLIPSIS",
+            "Frying the shells$ELLIPSIS",
+            "Making the filling$ELLIPSIS",
+            "Piping the rigott$ELLIPSIS"
         )
 
         ioScope.launch {

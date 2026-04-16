@@ -31,6 +31,7 @@ import dev.cannoli.igm.ui.components.ScreenTitle
 import dev.cannoli.igm.ui.components.pillItemHeight
 import dev.cannoli.igm.ui.theme.LocalCannoliColors
 import dev.cannoli.igm.ButtonStyle
+import dev.cannoli.igm.ELLIPSIS
 import dev.cannoli.igm.ui.components.screenPadding
 
 private val verticalPadding = 8.dp
@@ -75,7 +76,7 @@ fun ControlsScreen(
                     itemHeight = itemHeight
                 ) { index, button, isSelected ->
                     val value = if (index == listeningIndex) {
-                        "..."
+                        ELLIPSIS
                     } else {
                         LibretroInput.keyCodeName(input.getKeyCodeFor(button))
                     }

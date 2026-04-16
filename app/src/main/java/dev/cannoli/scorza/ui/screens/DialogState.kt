@@ -1,5 +1,7 @@
 package dev.cannoli.scorza.ui.screens
 
+import dev.cannoli.igm.ELLIPSIS
+
 interface KeyboardInputState {
     val currentName: String
     val cursorPos: Int
@@ -32,7 +34,7 @@ sealed interface DialogState {
     data class About(val statusMessage: String? = null) : DialogState
     data class Kitchen(val urls: List<String>, val selectedIndex: Int = 0, val pin: String, val requirePin: Boolean = true) : DialogState
     data class RAAccount(val username: String, val score: Int = 0) : DialogState
-    data class RALoggingIn(val message: String = "Logging in...") : DialogState
+    data class RALoggingIn(val message: String = "Logging in$ELLIPSIS") : DialogState
     data class ProfileNameInput(val isNew: Boolean, val originalName: String = "", override val currentName: String = "", override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
     data class NewFolderInput(val parentPath: String, override val currentName: String = "", override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
     data class DeleteProfileConfirm(val profileName: String) : DialogState

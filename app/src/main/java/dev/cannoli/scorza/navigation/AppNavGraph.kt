@@ -31,6 +31,7 @@ import dev.cannoli.scorza.input.ProfileManager
 import dev.cannoli.scorza.settings.ArtScale
 import dev.cannoli.scorza.libretro.ControlsScreen
 import dev.cannoli.scorza.libretro.LibretroInput
+import dev.cannoli.igm.ELLIPSIS
 import dev.cannoli.igm.ShortcutAction
 import dev.cannoli.scorza.ui.components.ConfirmOverlay
 import dev.cannoli.scorza.ui.components.CreditsOverlay
@@ -100,7 +101,7 @@ sealed class LauncherScreen {
     data class Installing(
         val targetPath: String,
         val progress: Float = 0f,
-        val statusLabel: String = "Kneading the dough...",
+        val statusLabel: String = "Kneading the dough$ELLIPSIS",
         val finished: Boolean = false
     ) : LauncherScreen()
 }
