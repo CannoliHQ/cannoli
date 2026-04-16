@@ -28,7 +28,7 @@ class SessionLog(
                     val dir = File(cannoliRoot, "Logs/$coreName")
                     dir.mkdirs()
                     val file = File(dir, "${ts}_${coreName}.log")
-                    writer = FileWriter(file, false)
+                    writer = FileWriter(file, true)
                     writeHeader()
                 } catch (_: Exception) {
                     writer = null

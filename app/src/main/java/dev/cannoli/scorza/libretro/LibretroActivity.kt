@@ -236,11 +236,6 @@ class LibretroActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (savedInstanceState != null) { finish(); return }
-        confirmButton = SettingsRepository(this).confirmButton
-        isRunning = true
-        window.setBackgroundDrawableResource(android.R.color.black)
-        goFullscreen()
 
         gameTitle = (intent.getStringExtra("game_title") ?: "").removePrefix("★ ")
         corePath = intent.getStringExtra("core_path") ?: run { finish(); return }
@@ -263,7 +258,19 @@ class LibretroActivity : ComponentActivity() {
             romPath = romPath,
             graphicsBackend = intent.getStringExtra("graphics_backend") ?: "GLES"
         )
+
+        if (savedInstanceState != null) {
+            sessionLog.log("onCreate: savedInstanceState != null, finishing (isChangingConfigurations=$isChangingConfigurations, isTaskRoot=$isTaskRoot)")
+            sessionLog.close()
+            finish()
+            return
+        }
+
         sessionLog.log("onCreate started")
+        confirmButton = SettingsRepository(this).confirmButton
+        isRunning = true
+        window.setBackgroundDrawableResource(android.R.color.black)
+        goFullscreen()
         sessionLog.log("game_title=$gameTitle")
         sessionLog.log("system_dir=$systemDir")
         sessionLog.log("save_dir=$saveDir")
@@ -2288,9 +2295,10 @@ class LibretroActivity : ComponentActivity() {
         if (!loading && !cleaned && stateBasePath.isNotEmpty() && !autoSavedOnStop) {
             File("$stateBasePath.auto").parentFile?.mkdirs()
             runner.saveState("$stateBasePath.auto")
-            raManager?.serializeProgress()?.let { data ->
-                try { File("$stateBasePath.auto.ra").writeBytes(data) } catch (_: Exception) {}
-            }
+            // TODO: serialize RA progress once we adopt a container format
+            // raManager?.serializeProgress()?.let { data ->
+            //     try { File("$stateBasePath.auto.ra").writeBytes(data) } catch (_: Exception) {}
+            // }
             autoSavedOnStop = true
             if (cannoliRoot.isNotEmpty() && romPath.isNotEmpty()) {
                 val f = File(cannoliRoot, "Config/State/quick_resume.txt")
@@ -2308,10 +2316,15 @@ class LibretroActivity : ComponentActivity() {
         autoSavedOnStop = false
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        if (::sessionLog.isInitialized) sessionLog.log("onSaveInstanceState (system will recreate)")
+    }
+
     override fun onDestroy() {
         audioStatsHandler.removeCallbacks(audioStatsRunnable)
         if (::sessionLog.isInitialized) {
-            sessionLog.log("onDestroy")
+            sessionLog.log("onDestroy (isFinishing=$isFinishing, isChangingConfigurations=$isChangingConfigurations)")
             sessionLog.close()
         }
         isRunning = false
