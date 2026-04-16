@@ -10,6 +10,14 @@ val Black = Color(0xFF000000)
 val White = Color(0xFFFFFFFF)
 val GrayText = Color(0xFF999999)
 val DarkGray = Color(0xFF1A1A1A)
+val ProgressTrack = Color(0xFF333333)
+val SurfaceDim = Color(0xFF1A1A1E)
+val PolaroidDark = Color(0xFF222222)
+val PolaroidSelect = Color(0xFF4A90D9)
+val PolaroidInactive = Color(0xFFCCCCCC)
+val Success = Color(0xFF90EE90)
+val ErrorText = Color(0xFFFF6B6B)
+val ErrorHighlight = Color(0xFFFF5555)
 
 data class CannoliColors(
     val highlight: Color = Color.White,

@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import dev.cannoli.igm.ui.theme.ErrorHighlight
 import dev.cannoli.igm.ui.theme.Spacing
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Text
@@ -178,7 +179,7 @@ private fun EventLog(
     ) {
         Column {
             entries.forEach { e ->
-                val color = if (e.resolvedButton == null) Color(0xFFFF5555) else textColor
+                val color = if (e.resolvedButton == null) ErrorHighlight else textColor
                 val arrow = if (e.isDown) "↓" else "↑"
                 Text(
                     text = "$arrow ${e.keyName} (${e.keyCode})",

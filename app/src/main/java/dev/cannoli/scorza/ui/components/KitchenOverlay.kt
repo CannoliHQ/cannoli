@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.cannoli.igm.ui.theme.Spacing
+import dev.cannoli.igm.ui.theme.SurfaceDim
 import androidx.compose.ui.unit.sp
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
@@ -109,7 +110,7 @@ fun KitchenOverlay(
                             modifier = Modifier
                                 .size(48.dp)
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(Color(0xFF1A1A1E)),
+                                .background(SurfaceDim),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(

@@ -32,6 +32,7 @@ import dev.cannoli.scorza.R
 import dev.cannoli.igm.ui.components.PillRowText
 import dev.cannoli.igm.ui.components.screenPadding
 import dev.cannoli.igm.ui.theme.GrayText
+import dev.cannoli.igm.ui.theme.ProgressTrack
 
 @Composable
 fun InstallingScreen(
@@ -80,7 +81,7 @@ fun InstallingScreen(
                         .height(6.dp)
                         .clip(RoundedCornerShape(3.dp)),
                     color = Color.White,
-                    trackColor = Color(0xFF333333),
+                    trackColor = ProgressTrack,
                     gapSize = 0.dp,
                     drawStopIndicator = {}
                 )

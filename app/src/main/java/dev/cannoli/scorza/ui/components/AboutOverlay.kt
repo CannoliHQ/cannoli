@@ -29,6 +29,7 @@ import dev.cannoli.igm.ButtonStyle
 import dev.cannoli.igm.ui.components.BottomBar
 import dev.cannoli.igm.ui.components.screenPadding
 import dev.cannoli.igm.ui.theme.LocalCannoliFont
+import dev.cannoli.igm.ui.theme.Success
 
 @Composable
 fun AboutOverlay(statusMessage: String? = null, updateAvailable: Boolean = false, buttonStyle: ButtonStyle = ButtonStyle()) {
@@ -97,7 +98,7 @@ fun AboutOverlay(statusMessage: String? = null, updateAvailable: Boolean = false
                     style = TextStyle(
                         fontFamily = LocalCannoliFont.current,
                         fontSize = 14.sp,
-                        color = Color(0xFF90EE90)
+                        color = Success
                     )
                 )
             }

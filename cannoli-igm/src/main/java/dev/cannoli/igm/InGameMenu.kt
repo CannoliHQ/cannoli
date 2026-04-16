@@ -44,6 +44,9 @@ import dev.cannoli.igm.ui.components.ScreenTitle
 import dev.cannoli.igm.ui.components.pillItemHeight
 import dev.cannoli.igm.ui.components.screenPadding
 import dev.cannoli.igm.ui.theme.GrayText
+import dev.cannoli.igm.ui.theme.PolaroidDark
+import dev.cannoli.igm.ui.theme.PolaroidInactive
+import dev.cannoli.igm.ui.theme.PolaroidSelect
 
 
 private val verticalPadding = 8.dp
@@ -169,7 +172,7 @@ fun PolaroidFrame(
     slotOccupied: kotlin.collections.List<Boolean>,
     showIndicators: Boolean = true
 ) {
-    val selectedColor = Color(0xFF4A90D9)
+    val selectedColor = PolaroidSelect
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -183,7 +186,7 @@ fun PolaroidFrame(
                 .fillMaxWidth()
                 .aspectRatio(10f / 9f)
                 .clip(RoundedCornerShape(2.dp))
-                .background(Color(0xFF222222)),
+                .background(PolaroidDark),
             contentAlignment = Alignment.Center
         ) {
             if (thumbnail != null) {
@@ -227,7 +230,7 @@ fun PolaroidFrame(
                         color = when {
                             autoSelected -> Color.White
                             autoOccupied -> Color.Black
-                            else -> Color(0xFFCCCCCC)
+                            else -> PolaroidInactive
                         }
                     )
                 )

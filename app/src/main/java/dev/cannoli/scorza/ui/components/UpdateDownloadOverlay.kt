@@ -22,6 +22,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import dev.cannoli.igm.ui.theme.ErrorText
+import dev.cannoli.igm.ui.theme.ProgressTrack
 import dev.cannoli.igm.ui.theme.Spacing
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
@@ -81,7 +83,7 @@ fun UpdateDownloadOverlay(
                     style = TextStyle(
                         fontFamily = LocalCannoliFont.current,
                         fontSize = 16.sp,
-                        color = Color(0xFFFF6B6B),
+                        color = ErrorText,
                         textAlign = TextAlign.Center
                     )
                 )
@@ -93,7 +95,7 @@ fun UpdateDownloadOverlay(
                         .height(6.dp)
                         .clip(RoundedCornerShape(3.dp)),
                     color = Color.White,
-                    trackColor = Color(0xFF333333),
+                    trackColor = ProgressTrack,
                     gapSize = 0.dp,
                     drawStopIndicator = {}
                 )
