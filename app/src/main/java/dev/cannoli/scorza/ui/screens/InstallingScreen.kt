@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -28,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.igm.ui.components.PillRowText
+import dev.cannoli.igm.ui.components.screenPadding
 import dev.cannoli.igm.ui.theme.GrayText
 
 @Composable
@@ -45,12 +47,12 @@ fun InstallingScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black),
+            .background(Color.Black)
+            .padding(screenPadding),
         contentAlignment = Alignment.Center
     ) {
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(horizontal = 64.dp)
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Image(
                 painter = painterResource(R.drawable.cannoli_nobg),
@@ -72,7 +74,8 @@ fun InstallingScreen(
                 LinearProgressIndicator(
                     progress = { animatedProgress },
                     modifier = Modifier
-                        .fillMaxWidth(0.5f)
+                        .fillMaxWidth()
+                        .widthIn(max = 320.dp)
                         .height(6.dp)
                         .clip(RoundedCornerShape(3.dp)),
                     color = Color.White,
