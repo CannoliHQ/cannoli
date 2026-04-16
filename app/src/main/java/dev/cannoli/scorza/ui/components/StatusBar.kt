@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -238,36 +239,27 @@ private fun BatteryGauge(
     textColor: Color,
     scaleFactor: Float = 1f
 ) {
-    val bodyHeight = (14 * scaleFactor).dp
-    val bodyWidth = (30 * scaleFactor).dp
-    val tipWidth = (3 * scaleFactor).dp
-    val tipHeight = (7 * scaleFactor).dp
+    val bodyHeight = (12 * scaleFactor).dp
+    val bodyWidth = (24 * scaleFactor).dp
+    val tipWidth = (2.5f * scaleFactor).dp
+    val tipHeight = (6 * scaleFactor).dp
     val borderWidth = (1.5f * scaleFactor).dp
-    val cornerRadius = (3 * scaleFactor).dp
+    val cornerRadius = (2.5f * scaleFactor).dp
+    val fillFraction = (level / 100f).coerceIn(0f, 1f)
+
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
                 .width(bodyWidth)
                 .height(bodyHeight)
-                .border(borderWidth, textColor, RoundedCornerShape(cornerRadius)),
-            contentAlignment = Alignment.Center
+                .border(borderWidth, textColor, RoundedCornerShape(cornerRadius))
         ) {
             Box(
                 modifier = Modifier
                     .padding(borderWidth)
                     .fillMaxHeight()
-                    .width(bodyWidth - borderWidth * 2)
+                    .fillMaxWidth(fillFraction)
                     .background(textColor, RoundedCornerShape((1.5f * scaleFactor).dp))
-            )
-            Text(
-                text = if (isCharging) ICON_CHARGING + stringResource(R.string.battery_level, level)
-                    else stringResource(R.string.battery_level, level),
-                style = TextStyle(
-                    fontFamily = MPlus1Code,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = (8 * scaleFactor).sp,
-                    color = LocalCannoliColors.current.highlight
-                )
             )
         }
         Box(
@@ -279,6 +271,17 @@ private fun BatteryGauge(
                     textColor,
                     RoundedCornerShape(topEnd = (2 * scaleFactor).dp, bottomEnd = (2 * scaleFactor).dp)
                 )
+        )
+        Box(modifier = Modifier.width((3 * scaleFactor).dp))
+        Text(
+            text = if (isCharging) ICON_CHARGING + stringResource(R.string.battery_level, level)
+                else stringResource(R.string.battery_level, level),
+            style = TextStyle(
+                fontFamily = MPlus1Code,
+                fontWeight = FontWeight.Bold,
+                fontSize = (10 * scaleFactor).sp,
+                color = textColor
+            )
         )
     }
 }
