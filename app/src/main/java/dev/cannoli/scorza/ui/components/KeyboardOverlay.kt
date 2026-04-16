@@ -39,6 +39,7 @@ import dev.cannoli.igm.ButtonStyle
 import dev.cannoli.igm.START_GLYPH
 import dev.cannoli.igm.ui.components.BottomBar
 import dev.cannoli.igm.ui.components.screenPadding
+import dev.cannoli.igm.ui.theme.LocalCannoliColors
 
 const val KEY_SHIFT = "⇧"
 const val KEY_ENTER = "↵"
@@ -76,7 +77,6 @@ fun getKeyboardRows(caps: Boolean, symbols: Boolean): List<List<String>> = when 
     else -> KEYBOARD_ALPHA
 }
 
-private val HIGHLIGHT_COLOR = Color(0xFF6366F1)
 private val KEY_BG = Color.White.copy(alpha = 0.12f)
 
 @Composable
@@ -92,6 +92,7 @@ fun KeyboardOverlay(
     val rows = getKeyboardRows(caps, symbols)
     val row = keyRow.coerceIn(0, rows.lastIndex)
     val col = keyCol.coerceIn(0, rows[row].lastIndex)
+    val highlight = LocalCannoliColors.current.highlight
 
     val scrollState = rememberScrollState()
     var cursorVisible by remember { mutableStateOf(true) }
@@ -163,7 +164,7 @@ fun KeyboardOverlay(
                                 .height(48.dp)
                                 .fillMaxWidth(0.7f)
                                 .clip(RoundedCornerShape(6.dp))
-                                .background(if (isSelected) HIGHLIGHT_COLOR else KEY_BG),
+                                .background(if (isSelected) highlight else KEY_BG),
                             contentAlignment = Alignment.Center
                         ) {
                             Box(
@@ -191,8 +192,8 @@ fun KeyboardOverlay(
                                     .clip(RoundedCornerShape(6.dp))
                                     .background(
                                         when {
-                                            isSelected -> HIGHLIGHT_COLOR
-                                            isShiftActive -> HIGHLIGHT_COLOR.copy(alpha = 0.5f)
+                                            isSelected -> highlight
+                                            isShiftActive -> highlight.copy(alpha = 0.5f)
                                             else -> KEY_BG
                                         }
                                     ),

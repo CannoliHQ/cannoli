@@ -32,9 +32,9 @@ import dev.cannoli.igm.ui.components.BottomBar
 import dev.cannoli.igm.ui.components.ScreenTitle
 import dev.cannoli.igm.ui.components.screenPadding
 import dev.cannoli.igm.ui.theme.COLOR_PRESETS
+import dev.cannoli.igm.ui.theme.LocalCannoliColors
 
 const val COLOR_GRID_COLS = 4
-private val HIGHLIGHT_BORDER = Color(0xFF6366F1)
 
 private fun colorDisplayName(argb: Long): String {
     val preset = COLOR_PRESETS.firstOrNull { it.color == argb }
@@ -54,6 +54,7 @@ fun ColorPickerOverlay(
     buttonStyle: ButtonStyle = ButtonStyle()
 ) {
     val currentName = colorDisplayName(currentColor)
+    val highlight = LocalCannoliColors.current.highlight
 
     Box(
         modifier = Modifier
@@ -107,7 +108,7 @@ fun ColorPickerOverlay(
                                         .size(48.dp)
                                         .clip(RoundedCornerShape(8.dp))
                                         .then(
-                                            if (isSelected) Modifier.border(3.dp, HIGHLIGHT_BORDER, RoundedCornerShape(8.dp))
+                                            if (isSelected) Modifier.border(3.dp, highlight, RoundedCornerShape(8.dp))
                                             else Modifier.border(1.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
                                         )
                                         .background(Color(preset.color))
@@ -150,6 +151,7 @@ fun HexColorInputOverlay(
     val previewColor = if (currentHex.length == 6) {
         try { Color(0xFF000000 or currentHex.toLong(16)) } catch (_: Exception) { Color.Black }
     } else Color.Black
+    val highlight = LocalCannoliColors.current.highlight
 
     Box(
         modifier = Modifier
@@ -204,7 +206,7 @@ fun HexColorInputOverlay(
                                         .size(40.dp)
                                         .clip(RoundedCornerShape(6.dp))
                                         .background(
-                                            if (isSelected) Color(0xFF6366F1)
+                                            if (isSelected) highlight
                                             else Color.White.copy(alpha = 0.12f)
                                         ),
                                     contentAlignment = Alignment.Center
