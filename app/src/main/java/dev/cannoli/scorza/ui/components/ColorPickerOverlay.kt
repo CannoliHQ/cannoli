@@ -25,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import dev.cannoli.igm.ui.theme.Spacing
+import dev.cannoli.igm.ui.theme.Radius
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.igm.ButtonStyle
@@ -84,9 +85,9 @@ fun ColorPickerOverlay(
                         Box(
                             modifier = Modifier
                                 .size(48.dp)
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(Radius.Lg))
                                 .background(Color(currentColor))
-                                .border(2.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                                .border(2.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(Radius.Lg))
                         )
                         Spacer(modifier = Modifier.width(16.dp))
                         Text(
@@ -106,10 +107,10 @@ fun ColorPickerOverlay(
                                 Box(
                                     modifier = Modifier
                                         .size(48.dp)
-                                        .clip(RoundedCornerShape(8.dp))
+                                        .clip(RoundedCornerShape(Radius.Lg))
                                         .then(
-                                            if (isSelected) Modifier.border(3.dp, highlight, RoundedCornerShape(8.dp))
-                                            else Modifier.border(1.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
+                                            if (isSelected) Modifier.border(3.dp, highlight, RoundedCornerShape(Radius.Lg))
+                                            else Modifier.border(1.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(Radius.Lg))
                                         )
                                         .background(Color(preset.color))
                                 )
@@ -181,9 +182,9 @@ fun HexColorInputOverlay(
                         Box(
                             modifier = Modifier
                                 .size(48.dp)
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(Radius.Lg))
                                 .background(previewColor)
-                                .border(2.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                                .border(2.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(Radius.Lg))
                         )
                         Spacer(modifier = Modifier.width(16.dp))
                         Text(
@@ -204,7 +205,7 @@ fun HexColorInputOverlay(
                                 Box(
                                     modifier = Modifier
                                         .size(40.dp)
-                                        .clip(RoundedCornerShape(6.dp))
+                                        .clip(RoundedCornerShape(Radius.Md))
                                         .background(
                                             if (isSelected) highlight
                                             else Color.White.copy(alpha = 0.12f)

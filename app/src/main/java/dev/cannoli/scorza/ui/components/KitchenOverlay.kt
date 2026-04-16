@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.cannoli.igm.ui.theme.Spacing
+import dev.cannoli.igm.ui.theme.Radius
 import dev.cannoli.igm.ui.theme.SurfaceDim
 import androidx.compose.ui.unit.sp
 import com.google.zxing.BarcodeFormat
@@ -82,7 +83,7 @@ fun KitchenOverlay(
                     contentDescription = null,
                     modifier = Modifier
                         .size(200.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(Radius.Lg))
                 )
             }
 
@@ -108,7 +109,7 @@ fun KitchenOverlay(
                         Box(
                             modifier = Modifier
                                 .size(48.dp)
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(Radius.Lg))
                                 .background(SurfaceDim),
                             contentAlignment = Alignment.Center
                         ) {

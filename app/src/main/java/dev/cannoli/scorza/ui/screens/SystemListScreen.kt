@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import dev.cannoli.igm.ui.theme.Spacing
+import dev.cannoli.igm.ui.theme.Radius
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.settings.ArtScale
@@ -222,7 +223,7 @@ fun SystemListScreen(
                         Image(
                             bitmap = art,
                             contentDescription = null,
-                            modifier = artModifier.clip(RoundedCornerShape(8.dp)),
+                            modifier = artModifier.clip(RoundedCornerShape(Radius.Lg)),
                             contentScale = artContentScale,
                             filterQuality = FilterQuality.High
                         )

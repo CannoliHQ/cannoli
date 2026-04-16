@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.igm.ui.theme.LocalCannoliColors
+import dev.cannoli.igm.ui.theme.Radius
 import dev.cannoli.igm.ui.theme.LocalCannoliFont
 import dev.cannoli.igm.ui.theme.LocalScaleFactor
 import dev.cannoli.igm.ui.theme.MPlus1Code
@@ -31,7 +32,7 @@ fun LegendPill(button: String, label: String) {
 
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(50))
+            .clip(Radius.Pill)
             .background(outerPill)
             .padding(start = (5 * sf).dp, end = (14 * sf).dp, top = (6 * sf).dp, bottom = (6 * sf).dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -39,7 +40,7 @@ fun LegendPill(button: String, label: String) {
     ) {
         Box(
             modifier = Modifier
-                .clip(RoundedCornerShape(50))
+                .clip(Radius.Pill)
                 .background(innerPill)
                 .padding(horizontal = (10 * sf).dp, vertical = (4 * sf).dp),
             contentAlignment = Alignment.Center

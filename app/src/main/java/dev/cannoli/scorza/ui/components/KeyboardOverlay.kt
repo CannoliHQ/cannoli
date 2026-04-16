@@ -33,6 +33,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.cannoli.igm.ui.theme.Spacing
+import dev.cannoli.igm.ui.theme.Radius
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.igm.ButtonStyle
@@ -134,7 +135,7 @@ fun KeyboardOverlay(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(6.dp))
+                    .clip(RoundedCornerShape(Radius.Md))
                     .background(Color.White.copy(alpha = 0.12f))
                     .padding(horizontal = 16.dp, vertical = 10.dp)
                     .clipToBounds()
@@ -163,7 +164,7 @@ fun KeyboardOverlay(
                                 .padding(2.dp)
                                 .height(48.dp)
                                 .fillMaxWidth(0.7f)
-                                .clip(RoundedCornerShape(6.dp))
+                                .clip(RoundedCornerShape(Radius.Md))
                                 .background(if (isSelected) highlight else KEY_BG),
                             contentAlignment = Alignment.Center
                         ) {
@@ -189,7 +190,7 @@ fun KeyboardOverlay(
                                 modifier = Modifier
                                     .padding(2.dp)
                                     .size(48.dp)
-                                    .clip(RoundedCornerShape(6.dp))
+                                    .clip(RoundedCornerShape(Radius.Md))
                                     .background(
                                         when {
                                             isSelected -> highlight

@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.cannoli.igm.ui.theme.Spacing
+import dev.cannoli.igm.ui.theme.Radius
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
@@ -596,14 +597,14 @@ fun AppNavGraph(
                                     modifier = Modifier
                                         .fillMaxWidth(0.5f)
                                         .height(8.dp)
-                                        .clip(RoundedCornerShape(4.dp))
+                                        .clip(RoundedCornerShape(Radius.Sm))
                                         .background(colors.text.copy(alpha = 0.2f))
                                 ) {
                                     Box(
                                         modifier = Modifier
                                             .fillMaxWidth(progress)
                                             .height(8.dp)
-                                            .clip(RoundedCornerShape(4.dp))
+                                            .clip(RoundedCornerShape(Radius.Sm))
                                             .background(colors.highlight)
                                     )
                                 }

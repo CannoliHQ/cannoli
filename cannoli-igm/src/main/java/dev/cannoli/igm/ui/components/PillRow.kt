@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.igm.ui.theme.LocalCannoliColors
+import dev.cannoli.igm.ui.theme.Radius
 import dev.cannoli.igm.ui.theme.MPlus1Code
 
 val screenPadding = 20.dp
@@ -76,7 +77,7 @@ fun PillRow(
             modifier = modifier
                 .then(heightMod)
                 .padding(vertical = 2.dp)
-                .clip(RoundedCornerShape(50))
+                .clip(Radius.Pill)
                 .background(colors.highlight)
                 .padding(horizontal = pillInternalH, vertical = verticalPadding),
             contentAlignment = Alignment.CenterStart
@@ -191,9 +192,9 @@ fun PillRowKeyValue(
                 Box(
                     modifier = Modifier
                         .size((fontSize.value * 0.7f).dp)
-                        .clip(RoundedCornerShape(4.dp))
+                        .clip(RoundedCornerShape(Radius.Sm))
                         .background(swatchColor)
-                        .border(1.dp, borderColor, RoundedCornerShape(4.dp))
+                        .border(1.dp, borderColor, RoundedCornerShape(Radius.Sm))
                 )
                 Spacer(modifier = Modifier.width(8.dp))
             }

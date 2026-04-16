@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import dev.cannoli.igm.ui.theme.ErrorText
 import dev.cannoli.igm.ui.theme.ProgressTrack
 import dev.cannoli.igm.ui.theme.Spacing
+import dev.cannoli.igm.ui.theme.Radius
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.igm.ButtonStyle
@@ -93,7 +94,7 @@ fun UpdateDownloadOverlay(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp)),
+                        .clip(RoundedCornerShape(Radius.Sm)),
                     color = Color.White,
                     trackColor = ProgressTrack,
                     gapSize = 0.dp,

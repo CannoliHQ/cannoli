@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.cannoli.igm.ui.theme.ErrorHighlight
 import dev.cannoli.igm.ui.theme.Spacing
+import dev.cannoli.igm.ui.theme.Radius
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Text
 import androidx.compose.ui.res.stringResource
@@ -147,7 +148,7 @@ private fun Header(
     ) {
         Box(
             modifier = Modifier
-                .clip(RoundedCornerShape(50))
+                .clip(Radius.Pill)
                 .background(highlight)
                 .padding(horizontal = 12.dp, vertical = 6.dp)
         ) {
@@ -156,7 +157,7 @@ private fun Header(
         Spacer(Modifier.fillMaxWidth().weight(1f, fill = true))
         Box(
             modifier = Modifier
-                .clip(RoundedCornerShape(50))
+                .clip(Radius.Pill)
                 .background(Color.White.copy(alpha = 0.08f))
                 .padding(horizontal = 12.dp, vertical = 6.dp)
         ) {
@@ -173,7 +174,7 @@ private fun EventLog(
     Box(
         modifier = Modifier
             .width(160.dp)
-            .clip(RoundedCornerShape(6.dp))
+            .clip(RoundedCornerShape(Radius.Md))
             .background(Color.White.copy(alpha = 0.04f))
             .padding(horizontal = 10.dp, vertical = 6.dp)
     ) {

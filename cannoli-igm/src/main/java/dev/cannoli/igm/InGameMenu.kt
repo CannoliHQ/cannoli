@@ -34,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import dev.cannoli.igm.ui.theme.Spacing
+import dev.cannoli.igm.ui.theme.Radius
 import androidx.compose.ui.unit.sp
 import dev.cannoli.igm.ui.components.BottomBar
 import dev.cannoli.igm.ui.components.List
@@ -177,7 +178,7 @@ fun PolaroidFrame(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
+            .clip(RoundedCornerShape(Radius.Sm))
             .background(Color.White)
             .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = if (showIndicators) 12.dp else 8.dp)
     ) {
@@ -185,7 +186,7 @@ fun PolaroidFrame(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(10f / 9f)
-                .clip(RoundedCornerShape(2.dp))
+                .clip(RoundedCornerShape(Radius.Sm))
                 .background(PolaroidDark),
             contentAlignment = Alignment.Center
         ) {
@@ -218,7 +219,7 @@ fun PolaroidFrame(
             val autoOccupied = slotOccupied.getOrElse(0) { false }
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(4.dp))
+                    .clip(RoundedCornerShape(Radius.Sm))
                     .then(if (autoSelected) Modifier.background(selectedColor) else Modifier)
                     .padding(horizontal = 4.dp, vertical = 1.dp)
             ) {
