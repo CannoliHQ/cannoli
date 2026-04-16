@@ -280,9 +280,10 @@ fun LibretroScreen(
                     title = title,
                     items = settingsItems,
                     selectedIndex = screen.selectedIndex,
+                    bottomBarLeft = listOf(labels.back to stringResource(R.string.label_back)),
+                    bottomBarRight = bottomBarRight,
                     coreInfo = coreInfo,
                     description = description,
-                    bottomBarRight = bottomBarRight,
                     fontSize = igmFontSize,
                     lineHeight = igmLineHeight,
                     buttonStyle = labels
@@ -360,6 +361,8 @@ fun LibretroScreen(
                     title = stringResource(R.string.title_guide),
                     items = guideFiles.map { IGMSettingsItem(it.name) },
                     selectedIndex = screen.selectedIndex,
+                    bottomBarLeft = listOf(labels.back to stringResource(R.string.label_back)),
+                    bottomBarRight = listOf(labels.confirm to stringResource(R.string.label_select)),
                     fontSize = igmFontSize,
                     lineHeight = igmLineHeight,
                     buttonStyle = labels
@@ -403,8 +406,9 @@ fun LibretroScreen(
                         )
                     },
                     selectedIndex = screen.selectedIndex.coerceAtMost((filtered.size - 1).coerceAtLeast(0)),
-                    coreInfo = screen.status,
+                    bottomBarLeft = listOf(labels.back to stringResource(R.string.label_back)),
                     bottomBarRight = listOf(labels.west to filterLabel, labels.confirm to stringResource(R.string.label_details)),
+                    coreInfo = screen.status,
                     fontSize = igmFontSize,
                     lineHeight = igmLineHeight,
                     buttonStyle = labels

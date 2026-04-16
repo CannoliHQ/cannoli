@@ -34,19 +34,14 @@ fun IGMSettingsScreen(
     title: String,
     items: kotlin.collections.List<IGMSettingsItem>,
     selectedIndex: Int,
+    bottomBarLeft: kotlin.collections.List<Pair<String, String>>,
+    bottomBarRight: kotlin.collections.List<Pair<String, String>>,
     coreInfo: String = "",
     description: String? = null,
-    bottomBarLeft: kotlin.collections.List<Pair<String, String>> = emptyList(),
-    bottomBarRight: kotlin.collections.List<Pair<String, String>> = emptyList(),
     fontSize: TextUnit = 22.sp,
     lineHeight: TextUnit = 32.sp,
-    buttonStyle: ButtonStyle = ButtonStyle(),
-    backLabel: String = "Back",
-    changeLabel: String = "Change",
-    selectLabel: String = "Select"
+    buttonStyle: ButtonStyle = ButtonStyle()
 ) {
-    val resolvedLeft = bottomBarLeft.ifEmpty { listOf(buttonStyle.back to backLabel) }
-    val resolvedRight = bottomBarRight.ifEmpty { listOf("←→" to changeLabel, buttonStyle.confirm to selectLabel) }
     val itemHeight = pillItemHeight(lineHeight, verticalPadding)
     val colors = LocalCannoliColors.current
 
@@ -132,8 +127,8 @@ fun IGMSettingsScreen(
 
             BottomBar(
                 modifier = Modifier.align(Alignment.BottomCenter),
-                leftItems = resolvedLeft,
-                rightItems = if (description != null) emptyList() else resolvedRight
+                leftItems = bottomBarLeft,
+                rightItems = if (description != null) emptyList() else bottomBarRight
             )
         }
     }
