@@ -242,44 +242,49 @@ class RetroAchievementsManager(
     private fun onServerCall(url: String, postData: String?, requestPtr: Long) {
         val urlTag = url.substringAfterLast("/").substringBefore("?").take(40)
         logger("RA http request: $urlTag")
-        httpExecutor.execute {
-            val key = cacheKey(postData)
-            var conn: HttpURLConnection? = null
-            try {
-                conn = URL(url).openConnection() as HttpURLConnection
-                conn.connectTimeout = 10_000
-                conn.readTimeout = 10_000
-                conn.setRequestProperty("User-Agent", userAgent)
-                if (postData != null) {
-                    conn.requestMethod = "POST"
-                    conn.doOutput = true
-                    conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
-                    OutputStreamWriter(conn.outputStream).use { it.write(postData) }
+        try {
+            httpExecutor.execute {
+                val key = cacheKey(postData)
+                var conn: HttpURLConnection? = null
+                try {
+                    conn = URL(url).openConnection() as HttpURLConnection
+                    conn.connectTimeout = 10_000
+                    conn.readTimeout = 10_000
+                    conn.setRequestProperty("User-Agent", userAgent)
+                    if (postData != null) {
+                        conn.requestMethod = "POST"
+                        conn.doOutput = true
+                        conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                        OutputStreamWriter(conn.outputStream).use { it.write(postData) }
+                    }
+                    val status = conn.responseCode
+                    val body = try {
+                        conn.inputStream.bufferedReader().readText()
+                    } catch (_: IOException) {
+                        conn.errorStream?.bufferedReader()?.readText() ?: ""
+                    }
+                    logger("RA http response: $urlTag status=$status bodyLen=${body.length}")
+                    if (key != null && status == 200 && body.isNotEmpty()) writeCache(key, body)
+                    isOffline = false
+                    nativeHttpResponse(requestPtr, body, status)
+                } catch (e: IOException) {
+                    val cached = if (key != null) readCache(key) else null
+                    if (cached != null) {
+                        logger("RA http FAILED ($urlTag): ${e.message} -- using cache (len=${cached.length})")
+                        isOffline = true
+                        nativeHttpResponse(requestPtr, cached, 200)
+                    } else {
+                        logger("RA http FAILED ($urlTag): ${e.message} -- no cache")
+                        isOffline = true
+                        nativeHttpResponse(requestPtr, "", RC_SERVER_ERROR)
+                    }
+                } finally {
+                    conn?.disconnect()
                 }
-                val status = conn.responseCode
-                val body = try {
-                    conn.inputStream.bufferedReader().readText()
-                } catch (_: IOException) {
-                    conn.errorStream?.bufferedReader()?.readText() ?: ""
-                }
-                logger("RA http response: $urlTag status=$status bodyLen=${body.length}")
-                if (key != null && status == 200 && body.isNotEmpty()) writeCache(key, body)
-                isOffline = false
-                nativeHttpResponse(requestPtr, body, status)
-            } catch (e: IOException) {
-                val cached = if (key != null) readCache(key) else null
-                if (cached != null) {
-                    logger("RA http FAILED ($urlTag): ${e.message} -- using cache (len=${cached.length})")
-                    isOffline = true
-                    nativeHttpResponse(requestPtr, cached, 200)
-                } else {
-                    logger("RA http FAILED ($urlTag): ${e.message} -- no cache")
-                    isOffline = true
-                    nativeHttpResponse(requestPtr, "", RC_SERVER_ERROR)
-                }
-            } finally {
-                conn?.disconnect()
             }
+        } catch (_: java.util.concurrent.RejectedExecutionException) {
+            logger("RA http rejected ($urlTag): executor shut down")
+            nativeHttpResponse(requestPtr, "", RC_SERVER_ERROR)
         }
     }
 

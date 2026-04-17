@@ -86,6 +86,8 @@ typedef struct PendingResponse {
 static PendingResponse *g_response_head = NULL;
 static PendingResponse *g_response_tail = NULL;
 
+static void ra_award_response(const rc_api_server_response_t *response, void *userdata);
+
 /* ---- rcheevos callbacks ---- */
 
 static void ra_get_core_memory(unsigned id, rc_libretro_core_memory_info_t *info) {
@@ -296,7 +298,8 @@ static void ra_drain_response_queue(void) {
             pr->callback(&response, pr->callback_data);
         }
 
-        if (pr->award_achievement_id > 0 && g_jvm && g_manager && g_onAwardResult) {
+        if (pr->award_achievement_id > 0 && pr->callback != ra_award_response &&
+            g_jvm && g_manager && g_onAwardResult) {
             int success = (pr->http_status == 200 && pr->body && strstr(pr->body, "\"Success\":true"));
             ra_log_to_kotlin("award tracked: id=%d http=%d success=%d", pr->award_achievement_id, pr->http_status, success);
             JNIEnv *env;
