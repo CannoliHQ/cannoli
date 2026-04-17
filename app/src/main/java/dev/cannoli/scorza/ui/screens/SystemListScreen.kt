@@ -72,7 +72,7 @@ fun SystemListScreen(
     resumableGames: Set<String> = emptySet(),
     swapPlayResume: Boolean = false,
     fiveGameHandheld: Boolean = false,
-    buttonStyle: ButtonStyle = ButtonStyle()
+    buttonStyle: ButtonStyle = ButtonStyle(),
 ) {
     val state by viewModel.state.collectAsState()
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)

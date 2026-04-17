@@ -38,7 +38,8 @@
             android:label="@string/app_name"
             android:theme="@style/Theme.Cannoli"
             android:configChanges="orientation|screenSize|keyboardHidden"
-            android:launchMode="singleTop">
+            android:launchMode="singleTop"
+            android:windowLayoutInDisplayCutoutMode="shortEdges">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -51,7 +52,8 @@
         <activity
             android:name=".libretro.LibretroActivity"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout|uiMode|density|navigation|touchscreen"
-            android:theme="@style/Theme.Cannoli" />
+            android:theme="@style/Theme.Cannoli"
+            android:windowLayoutInDisplayCutoutMode="shortEdges" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

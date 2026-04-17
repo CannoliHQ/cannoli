@@ -2,6 +2,7 @@ package dev.cannoli.ui.components
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
@@ -13,6 +14,7 @@ import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -30,7 +32,38 @@ val LocalStatusBarLeftEdge = staticCompositionLocalOf<MutableIntState> { mutable
 fun ScreenTitle(
     text: String,
     fontSize: TextUnit,
-    lineHeight: TextUnit
+    lineHeight: TextUnit,
+    trailing: @Composable (() -> Unit)? = null
+) {
+    if (trailing != null) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TitleText(
+                text = text,
+                fontSize = fontSize,
+                lineHeight = lineHeight,
+                modifier = Modifier.weight(1f)
+            )
+            trailing()
+        }
+    } else {
+        TitleText(
+            text = text,
+            fontSize = fontSize,
+            lineHeight = lineHeight,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Composable
+private fun TitleText(
+    text: String,
+    fontSize: TextUnit,
+    lineHeight: TextUnit,
+    modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
     val statusBarLeftPx = LocalStatusBarLeftEdge.current.intValue
@@ -41,7 +74,7 @@ fun ScreenTitle(
 
     val scaledFontSizeSp = fontSize.value * 1.3f
 
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+    BoxWithConstraints(modifier = modifier) {
         val containerWidthPx = with(density) { maxWidth.toPx() }
         val paddingPx = with(density) { (screenPadding + pillInternalH).toPx() }
         val gapPx = with(density) { 16.dp.toPx() }

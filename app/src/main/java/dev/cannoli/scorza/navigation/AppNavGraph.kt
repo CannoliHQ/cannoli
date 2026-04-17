@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,10 +20,10 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -59,6 +60,7 @@ import dev.cannoli.ui.components.PillRowKeyValue
 import dev.cannoli.ui.components.PillRowText
 import dev.cannoli.ui.components.StatusBar
 import dev.cannoli.ui.components.pillItemHeight
+import dev.cannoli.ui.components.screenPadding
 import dev.cannoli.ui.theme.CannoliColors
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliFont
@@ -147,7 +149,7 @@ fun AppNavGraph(
     val cannoliTypography = buildCannoliTypography(baseSizeSp = appSettings.textSize.sp, fontFamily = LocalCannoliFont.current)
 
     CompositionLocalProvider(LocalCannoliColors provides cannoliColors, LocalStatusBarLeftEdge provides statusBarLeftEdge, LocalScaleFactor provides scaleFactor, LocalCannoliTypography provides cannoliTypography) {
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
         when (currentScreen) {
             is LauncherScreen.SystemList -> {
                 if (systemListViewModel == null) return@Box
@@ -168,7 +170,7 @@ fun AppNavGraph(
                     resumableGames = resumableGames,
                     swapPlayResume = appSettings.swapPlayResume,
                     fiveGameHandheld = appSettings.contentMode == dev.cannoli.scorza.settings.ContentMode.FIVE_GAME_HANDHELD,
-                    buttonStyle = labels
+                    buttonStyle = labels,
                 )
             }
             is LauncherScreen.GameList -> {
@@ -186,7 +188,7 @@ fun AppNavGraph(
                     swapPlayResume = appSettings.swapPlayResume,
                     artWidth = appSettings.artWidth,
                     artScale = appSettings.artScale,
-                    buttonStyle = labels
+                    buttonStyle = labels,
                 )
             }
             is LauncherScreen.InputTester -> {
@@ -208,7 +210,7 @@ fun AppNavGraph(
                 downloadError = downloadError,
                 updateAvailable = updateAvailable,
                 onVisibleRangeChanged = onVisibleRangeChanged,
-                buttonStyle = labels
+                buttonStyle = labels,
             )
             is LauncherScreen.CoreMapping -> {
                 val filterLabel = when (currentScreen.filter) {
@@ -721,7 +723,7 @@ fun AppNavGraph(
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(20.dp)
+                .padding(screenPadding)
                 .onGloballyPositioned { coords ->
                     statusBarLeftEdge.intValue = coords.positionInWindow().x.toInt()
                 }

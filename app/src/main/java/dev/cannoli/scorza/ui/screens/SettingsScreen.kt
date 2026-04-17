@@ -45,7 +45,7 @@ fun SettingsScreen(
     downloadError: String? = null,
     updateAvailable: Boolean = false,
     onVisibleRangeChanged: (Int, Int, Boolean) -> Unit = { _, _, _ -> },
-    buttonStyle: ButtonStyle = ButtonStyle()
+    buttonStyle: ButtonStyle = ButtonStyle(),
 ) {
     val state by viewModel.state.collectAsState()
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
@@ -67,7 +67,7 @@ fun SettingsScreen(
                     ScreenTitle(
                         text = stringResource(categoryLabel),
                         fontSize = listFontSize,
-                        lineHeight = listLineHeight
+                        lineHeight = listLineHeight,
                     )
                     Spacer(modifier = Modifier.height(Spacing.Sm))
                 }
@@ -132,7 +132,7 @@ fun SettingsScreen(
                 ScreenTitle(
                     text = stringResource(R.string.settings_title),
                     fontSize = listFontSize,
-                    lineHeight = listLineHeight
+                    lineHeight = listLineHeight,
                 )
                 Spacer(modifier = Modifier.height(Spacing.Sm))
                 List(

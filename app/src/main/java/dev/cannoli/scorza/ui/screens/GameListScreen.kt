@@ -75,7 +75,7 @@ fun GameListScreen(
     swapPlayResume: Boolean = false,
     artWidth: Int = 40,
     artScale: ArtScale = ArtScale.FIT,
-    buttonStyle: ButtonStyle = ButtonStyle()
+    buttonStyle: ButtonStyle = ButtonStyle(),
 ) {
     val state by viewModel.state.collectAsState()
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
@@ -116,7 +116,7 @@ fun GameListScreen(
                 ScreenTitle(
                     text = state.breadcrumb,
                     fontSize = listFontSize,
-                    lineHeight = listLineHeight
+                    lineHeight = listLineHeight,
                 )
                 Spacer(modifier = Modifier.height(Spacing.Sm))
                 if (state.games.isEmpty()) {
