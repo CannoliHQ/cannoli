@@ -7,7 +7,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.launcher.InstalledCoreService
-import dev.cannoli.scorza.launcher.isPackageInstalled
 import dev.cannoli.scorza.settings.ArtScale
 import dev.cannoli.scorza.settings.ContentMode
 import dev.cannoli.scorza.settings.SettingsRepository
@@ -179,7 +178,9 @@ class SettingsViewModel(
 
     private fun detectInstalledRaPackages(): List<String> {
         val pm = packageManager ?: return listOf(settings.retroArchPackage)
-        return SettingsRepository.KNOWN_RA_PACKAGES.filter { pm.isPackageInstalled(it) }
+        return pm.getInstalledPackages(0)
+            .map { it.packageName }
+            .filter { it.startsWith("com.retroarch") || it.startsWith("dev.cannoli.ricotta") }
     }
 
     private data class SettingsSnapshot(

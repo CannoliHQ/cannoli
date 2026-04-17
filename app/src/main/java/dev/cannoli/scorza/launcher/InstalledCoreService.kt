@@ -6,7 +6,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Handler
 import android.os.Looper
-import dev.cannoli.scorza.settings.SettingsRepository
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
@@ -29,8 +28,7 @@ class InstalledCoreService(private val context: Context) {
     suspend fun queryAllPackages() {
         val result = mutableMapOf<String, Set<String>>()
         val unresponsive = mutableSetOf<String>()
-        for (pkg in SettingsRepository.KNOWN_RA_PACKAGES) {
-            if (!context.isPackageInstalled(pkg)) continue
+        for (pkg in discoverRaPackages()) {
             val cores = queryPackage(pkg)
             if (cores.isNotEmpty()) result[pkg] = cores
             else unresponsive.add(pkg)
@@ -38,6 +36,12 @@ class InstalledCoreService(private val context: Context) {
         installedCores = result
         unresponsivePackages = unresponsive
         cacheReady = true
+    }
+
+    private fun discoverRaPackages(): List<String> {
+        return context.packageManager.getInstalledPackages(0)
+            .map { it.packageName }
+            .filter { it.startsWith("com.retroarch") || it.startsWith("dev.cannoli.ricotta") }
     }
 
     private suspend fun queryPackage(pkg: String, timeoutMs: Long = 3000L): Set<String> =
