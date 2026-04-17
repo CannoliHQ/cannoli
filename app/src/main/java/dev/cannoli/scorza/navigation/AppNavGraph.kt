@@ -127,7 +127,7 @@ fun AppNavGraph(
 
     val listFontSize = appSettings.textSize.sp.sp
     val listLineHeight = (appSettings.textSize.sp + 10).sp
-    val listVerticalPadding = 4.dp
+    val listVerticalPadding = 6.dp
 
     val labels = dev.cannoli.ui.ButtonStyle(appSettings.buttonLabelSet, appSettings.confirmButton)
 

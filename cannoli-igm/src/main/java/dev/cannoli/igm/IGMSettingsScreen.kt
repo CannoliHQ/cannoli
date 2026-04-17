@@ -29,7 +29,7 @@ import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.screenPadding
 import dev.cannoli.ui.theme.LocalCannoliColors
 
-private val verticalPadding = 8.dp
+private val verticalPadding = 6.dp
 
 @Composable
 fun IGMSettingsScreen(

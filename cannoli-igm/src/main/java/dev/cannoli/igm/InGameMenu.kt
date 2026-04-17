@@ -52,7 +52,7 @@ import dev.cannoli.ui.theme.PolaroidInactive
 import dev.cannoli.ui.theme.PolaroidSelect
 
 
-private val verticalPadding = 8.dp
+private val verticalPadding = 6.dp
 
 @Composable
 fun InGameMenu(
