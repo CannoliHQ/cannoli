@@ -151,9 +151,9 @@ fun InGameMenu(
                 if (canDeleteSlot) add(buttonStyle.west to deleteLabel)
             }
             val rightItems = when {
-                selectedIndex == menuOptions.saveStateIndex -> listOf("◀▶" to slotLabel, buttonStyle.confirm to saveLabel)
-                selectedIndex == menuOptions.loadStateIndex -> listOf("◀▶" to slotLabel, buttonStyle.confirm to loadLabel)
-                onDiscRow -> listOf("◀▶" to discLabel, buttonStyle.confirm to selectLabel)
+                selectedIndex == menuOptions.saveStateIndex -> listOf(DPAD_HORIZONTAL to slotLabel, buttonStyle.confirm to saveLabel)
+                selectedIndex == menuOptions.loadStateIndex -> listOf(DPAD_HORIZONTAL to slotLabel, buttonStyle.confirm to loadLabel)
+                onDiscRow -> listOf(DPAD_HORIZONTAL to discLabel, buttonStyle.confirm to selectLabel)
                 else -> listOf(buttonStyle.confirm to selectLabel)
             }
 

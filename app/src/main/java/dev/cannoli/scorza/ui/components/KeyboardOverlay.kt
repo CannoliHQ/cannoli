@@ -41,12 +41,11 @@ import dev.cannoli.igm.START_GLYPH
 import dev.cannoli.igm.ui.components.BottomBar
 import dev.cannoli.igm.ui.components.screenPadding
 import dev.cannoli.igm.ui.theme.LocalCannoliColors
-
-const val KEY_SHIFT = "⇧"
-const val KEY_ENTER = "↵"
-const val KEY_BACKSPACE = "←"
-const val KEY_SYMBOLS = "⌨"
-const val KEY_SPACE = " "
+import dev.cannoli.igm.KEY_SHIFT
+import dev.cannoli.igm.KEY_ENTER
+import dev.cannoli.igm.KEY_BACKSPACE
+import dev.cannoli.igm.KEY_SYMBOLS
+import dev.cannoli.igm.KEY_SPACE
 
 val KEYBOARD_ALPHA = listOf(
     listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0", KEY_BACKSPACE),

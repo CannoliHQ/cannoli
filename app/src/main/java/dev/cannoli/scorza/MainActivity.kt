@@ -45,7 +45,11 @@ import dev.cannoli.scorza.libretro.LibretroActivity
 import dev.cannoli.scorza.libretro.LibretroInput
 import dev.cannoli.scorza.libretro.RetroAchievementsManager
 import dev.cannoli.igm.ELLIPSIS
+import dev.cannoli.igm.KEY_BACKSPACE
+import dev.cannoli.igm.KEY_ENTER
+import dev.cannoli.igm.STAR
 import dev.cannoli.igm.ShortcutAction
+import dev.cannoli.igm.STAR
 import dev.cannoli.scorza.scanner.CollectionManager
 import dev.cannoli.scorza.scanner.FileScanner
 import dev.cannoli.scorza.scanner.OrderingManager
@@ -75,9 +79,13 @@ import dev.cannoli.scorza.ui.screens.withInsertedChar
 import dev.cannoli.scorza.ui.screens.withKeyboard
 import dev.cannoli.scorza.ui.screens.withMenuDelta
 import dev.cannoli.igm.ui.theme.COLOR_PRESETS
+import dev.cannoli.igm.STAR
 import dev.cannoli.igm.ui.theme.CannoliTheme
+import dev.cannoli.igm.STAR
 import dev.cannoli.igm.ui.theme.colorToArgbLong
+import dev.cannoli.igm.STAR
 import dev.cannoli.igm.ui.theme.hexToColor
+import dev.cannoli.igm.STAR
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.ui.screens.DirectoryBrowserScreen
@@ -85,7 +93,9 @@ import dev.cannoli.scorza.ui.screens.InstallingScreen
 import dev.cannoli.scorza.ui.screens.PermissionScreen
 import dev.cannoli.scorza.ui.screens.SetupScreen
 import dev.cannoli.igm.ui.components.pillItemHeight
+import dev.cannoli.igm.STAR
 import dev.cannoli.igm.ui.theme.initFonts
+import dev.cannoli.igm.STAR
 import dev.cannoli.scorza.model.Game
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
@@ -1393,12 +1403,12 @@ class MainActivity : ComponentActivity() {
                     val key = HEX_KEYS.getOrNull(ds.selectedIndex) ?: ""
                     when (key) {
                         "" -> {}
-                        "←" -> {
+                        KEY_BACKSPACE -> {
                             if (ds.currentHex.isNotEmpty()) {
                                 dialogState.value = ds.copy(currentHex = ds.currentHex.dropLast(1))
                             }
                         }
-                        "↵" -> {
+                        KEY_ENTER -> {
                             if (ds.currentHex.length == 6) {
                                 settingsViewModel.setColor(ds.settingKey, "#${ds.currentHex}")
                                 val entries = settingsViewModel.getColorEntries()
@@ -1944,7 +1954,7 @@ class MainActivity : ComponentActivity() {
                         val glState = gameListViewModel.state.value
                         val game = gameListViewModel.getSelectedGame()
                         if (game != null) {
-                            val menuName = game.displayName.removePrefix("★ ").let { if (game.isChildCollection) it.removePrefix("/") else it }
+                            val menuName = game.displayName.removePrefix("$STAR ").let { if (game.isChildCollection) it.removePrefix("/") else it }
                             dialogState.value = DialogState.ContextMenu(
                                 gameName = menuName,
                                 options = buildGameContextOptions(game, glState)
@@ -2411,8 +2421,8 @@ class MainActivity : ComponentActivity() {
         if (item is SystemListViewModel.ListItem.GameItem) {
             val game = item.game
             pendingFghGame = game
-            val isFav = game.displayName.startsWith("★")
-            val menuName = game.displayName.removePrefix("★ ")
+            val isFav = game.displayName.startsWith(STAR)
+            val menuName = game.displayName.removePrefix("$STAR ")
             val options = buildList {
                 add(if (isFav) MENU_REMOVE_FAVORITE else MENU_ADD_FAVORITE)
                 add(MENU_MANAGE_COLLECTIONS)
@@ -2440,7 +2450,7 @@ class MainActivity : ComponentActivity() {
             selected == MENU_ADD_FAVORITE || selected == MENU_REMOVE_FAVORITE -> {
                 val path = game.file.absolutePath
                 ioScope.launch {
-                    val isFav = game.displayName.startsWith("★")
+                    val isFav = game.displayName.startsWith(STAR)
                     if (isFav) collectionManager.removeFromCollection("Favorites", path)
                     else collectionManager.addToCollection("Favorites", path)
                     rescanSystemList()
@@ -2448,7 +2458,7 @@ class MainActivity : ComponentActivity() {
                 dialogState.value = DialogState.None
             }
             selected == MENU_MANAGE_COLLECTIONS -> {
-                openCollectionManager(listOf(game.file.absolutePath), game.displayName.removePrefix("★ "))
+                openCollectionManager(listOf(game.file.absolutePath), game.displayName.removePrefix("$STAR "))
             }
             selected == MENU_EMULATOR_OVERRIDE || selected.startsWith("$MENU_EMULATOR_OVERRIDE\t") -> {
                 val tag = game.platformTag
@@ -2473,7 +2483,7 @@ class MainActivity : ComponentActivity() {
                 dialogState.value = DialogState.None
                 screenStack.add(LauncherScreen.CorePicker(
                     tag = tag,
-                    platformName = game.displayName.removePrefix("★ "),
+                    platformName = game.displayName.removePrefix("$STAR "),
                     cores = allOptions,
                     selectedIndex = selectedIdx,
                     gamePath = game.file.absolutePath,
@@ -2481,7 +2491,7 @@ class MainActivity : ComponentActivity() {
                 ))
             }
             selected == MENU_DELETE || selected == MENU_DELETE_GAME -> {
-                dialogState.value = DialogState.DeleteConfirm(gameName = game.displayName.removePrefix("★ "))
+                dialogState.value = DialogState.DeleteConfirm(gameName = game.displayName.removePrefix("$STAR "))
             }
         }
     }
@@ -2690,7 +2700,7 @@ class MainActivity : ComponentActivity() {
         if (glState.isCollectionsList || game.isChildCollection) return listOf(MENU_RENAME, MENU_CHILD_COLLECTIONS, MENU_DELETE)
         if (game.isSubfolder) return listOf(MENU_RENAME, MENU_DELETE)
         val isApk = game.platformTag == "tools" || game.platformTag == "ports"
-        val isFav = game.displayName.startsWith("★") ||
+        val isFav = game.displayName.startsWith(STAR) ||
             (glState.isCollection && glState.collectionName == "Favorites")
         return buildList {
             if (glState.platformTag == "recently_played") add(MENU_REMOVE_FROM_RECENTS)
@@ -2808,7 +2818,7 @@ class MainActivity : ComponentActivity() {
                         cursorPos = displayName.length
                     )
                 } else {
-                    val name = game.displayName.removePrefix("★ ")
+                    val name = game.displayName.removePrefix("$STAR ")
                     dialogState.value = DialogState.RenameInput(
                         gameName = name,
                         currentName = name,
@@ -2821,7 +2831,7 @@ class MainActivity : ComponentActivity() {
                     val stem = if (game.isChildCollection) game.file.name else game.file.nameWithoutExtension
                     dialogState.value = DialogState.DeleteCollectionConfirm(collectionStem = stem)
                 } else {
-                    dialogState.value = DialogState.DeleteConfirm(gameName = game.displayName.removePrefix("★ "))
+                    dialogState.value = DialogState.DeleteConfirm(gameName = game.displayName.removePrefix("$STAR "))
                 }
             }
             selected == MENU_MANAGE_COLLECTIONS -> {
@@ -3095,7 +3105,7 @@ class MainActivity : ComponentActivity() {
                 ioScope.launch {
                     glState.games.filter { it.file.absolutePath in pathSet }
                         .forEach { g ->
-                            val name = g.displayName.removePrefix("★ ")
+                            val name = g.displayName.removePrefix("$STAR ")
                             scanner.removeApkLaunch(glState.platformTag, name)
                         }
                     gameListViewModel.reload()

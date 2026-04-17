@@ -28,6 +28,7 @@ import dev.cannoli.igm.ui.components.ScreenTitle
 import dev.cannoli.igm.ui.components.pillItemHeight
 import dev.cannoli.igm.ui.components.screenPadding
 import dev.cannoli.igm.ButtonStyle
+import dev.cannoli.igm.DPAD_HORIZONTAL
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 
 @Composable
@@ -104,7 +105,7 @@ fun SettingsScreen(
             val isEditableItem = selectedItem?.isEditable == true
             val showChange = !isEditableItem && selectedItem?.canCycle != false
             val leftItems = if (showChange) {
-                listOf(buttonStyle.back to stringResource(R.string.label_back), "◀▶" to stringResource(R.string.label_change))
+                listOf(buttonStyle.back to stringResource(R.string.label_back), DPAD_HORIZONTAL to stringResource(R.string.label_change))
             } else {
                 listOf(buttonStyle.back to stringResource(R.string.label_back))
             }

@@ -1,9 +1,9 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name" translatable="false">Cannoli</string>
 
     <!-- Bottom bar labels -->
     <string name="label_back">BACK</string>
-    <string name="label_cancel">CANCEL</string>
+    <string name="label_cancel" tools:ignore="ButtonCase">CANCEL</string>
     <string name="label_select">SELECT</string>
     <string name="label_play">PLAY</string>
     <string name="label_launch">LAUNCH</string>
@@ -180,7 +180,7 @@
     <string name="label_set">SET</string>
     <string name="label_clear">CLEAR</string>
     <string name="label_kitchen">KITCHEN</string>
-    <string name="label_hold_buttons">HOLD ONE OR MORE BUTTONS...</string>
+    <string name="label_hold_buttons" tools:ignore="TypographyEllipsis">HOLD ONE OR MORE BUTTONS...</string>
 
     <!-- Formatted strings -->
     <string name="collection_created">%1$s Created</string>
@@ -220,12 +220,12 @@
     <string name="title_profiles">Profiles</string>
     <string name="title_button_mapping">Button Mapping</string>
     <string name="title_shortcuts">Shortcuts</string>
-    <string name="shortcut_hold_prompt">Hold one or more buttons...</string>
+    <string name="shortcut_hold_prompt" tools:ignore="TypographyEllipsis">Hold one or more buttons...</string>
     <string name="dialog_delete_profile">Delete profile \"%1$s\"?</string>
 
     <!-- Update download -->
-    <string name="update_downloading">Downloading...</string>
-    <string name="update_installing">Installing...</string>
+    <string name="update_downloading" tools:ignore="TypographyEllipsis">Downloading...</string>
+    <string name="update_installing" tools:ignore="TypographyEllipsis">Installing...</string>
     <string name="update_retry">RETRY</string>
     <string name="restart_required">Restart required to apply changes.</string>
     <string name="update_up_to_date">You\'re on the latest version.</string>
@@ -263,8 +263,8 @@
     <string name="igm_delete_slot">Delete %1$s?</string>
     <string name="igm_delete_profile">Delete Profile?</string>
     <string name="value_active">Active</string>
-    <string name="igm_press_button">PRESS A BUTTON... %1$d</string>
-    <string name="press_button_prompt">Press any button...</string>
+    <string name="igm_press_button" tools:ignore="TypographyEllipsis">PRESS A BUTTON... %1$d</string>
+    <string name="press_button_prompt" tools:ignore="TypographyEllipsis">Press any button...</string>
 
     <!-- Achievements -->
     <string name="ach_title">Achievements (%1$d/%2$d)</string>

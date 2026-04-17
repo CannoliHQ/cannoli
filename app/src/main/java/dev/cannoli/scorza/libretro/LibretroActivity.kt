@@ -34,20 +34,34 @@ import dev.cannoli.scorza.libretro.shader.PresetParser
 import dev.cannoli.scorza.libretro.shader.ShaderPipeline
 import dev.cannoli.scorza.libretro.shader.SlangTranspiler
 import dev.cannoli.igm.ui.theme.BPReplay
+import dev.cannoli.igm.STAR
 import dev.cannoli.igm.ui.theme.CannoliColors
+import dev.cannoli.igm.STAR
 import dev.cannoli.igm.ui.theme.CannoliTheme
+import dev.cannoli.igm.STAR
 import dev.cannoli.igm.ui.theme.LocalCannoliColors
+import dev.cannoli.igm.STAR
 import dev.cannoli.igm.ui.theme.MPlus1Code
+import dev.cannoli.igm.STAR
 import dev.cannoli.igm.ui.theme.hexToColor
+import dev.cannoli.igm.STAR
 import dev.cannoli.scorza.util.FontNameParser
 import dev.cannoli.igm.AchievementInfo
+import dev.cannoli.igm.STAR
 import dev.cannoli.igm.IGMScreen
+import dev.cannoli.igm.STAR
 import dev.cannoli.igm.IGMSettings
+import dev.cannoli.igm.STAR
 import dev.cannoli.igm.IGMSettingsItem
+import dev.cannoli.igm.STAR
 import dev.cannoli.igm.IGMSettingsScreen
+import dev.cannoli.igm.STAR
 import dev.cannoli.igm.InGameMenuOptions
+import dev.cannoli.igm.STAR
 import dev.cannoli.igm.ShortcutAction
+import dev.cannoli.igm.STAR
 import dev.cannoli.igm.GuideType
+import dev.cannoli.igm.STAR
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.settings.SettingsRepository
 import android.os.Handler
@@ -237,7 +251,7 @@ class LibretroActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        gameTitle = (intent.getStringExtra("game_title") ?: "").removePrefix("★ ")
+        gameTitle = (intent.getStringExtra("game_title") ?: "").removePrefix("$STAR ")
         corePath = intent.getStringExtra("core_path") ?: run { finish(); return }
         romPath = intent.getStringExtra("rom_path") ?: run { finish(); return }
         originalRomPath = intent.getStringExtra("original_rom_path")

@@ -47,6 +47,10 @@ import dev.cannoli.scorza.ui.components.StatusBar
 import dev.cannoli.igm.ui.components.pillInternalH
 import androidx.compose.ui.platform.LocalContext
 import dev.cannoli.igm.ui.components.screenPadding
+import dev.cannoli.igm.BULLET
+import dev.cannoli.igm.CIRCLE_EMPTY
+import dev.cannoli.igm.DPAD_HORIZONTAL
+import dev.cannoli.igm.HALF_CIRCLE
 import dev.cannoli.igm.IGMScreen
 import dev.cannoli.igm.IGMSettingsItem
 import dev.cannoli.igm.IGMSettingsScreen
@@ -257,12 +261,12 @@ fun LibretroScreen(
                 val changeLabel = stringResource(R.string.label_change)
                 val selectLabel = stringResource(R.string.label_select)
                 val bottomBarRight = when {
-                    isOptionList -> listOf(labels.confirm to stringResource(R.string.label_info), "←→" to changeLabel)
-                    screen is IGMScreen.Shortcuts && screen.selectedIndex == 0 -> listOf("←→" to changeLabel)
+                    isOptionList -> listOf(labels.confirm to stringResource(R.string.label_info), DPAD_HORIZONTAL to changeLabel)
+                    screen is IGMScreen.Shortcuts && screen.selectedIndex == 0 -> listOf(DPAD_HORIZONTAL to changeLabel)
                     screen is IGMScreen.Shortcuts -> listOf(labels.north to stringResource(R.string.label_clear), labels.confirm to stringResource(R.string.label_set))
-                    screen is IGMScreen.Video -> listOf(labels.confirm to selectLabel, "←→" to changeLabel)
-                    screen is IGMScreen.Advanced -> listOf("←→" to changeLabel)
-                    screen is IGMScreen.ShaderSettings -> listOf("←→" to changeLabel)
+                    screen is IGMScreen.Video -> listOf(labels.confirm to selectLabel, DPAD_HORIZONTAL to changeLabel)
+                    screen is IGMScreen.Advanced -> listOf(DPAD_HORIZONTAL to changeLabel)
+                    screen is IGMScreen.ShaderSettings -> listOf(DPAD_HORIZONTAL to changeLabel)
                     else -> listOf(labels.confirm to selectLabel)
                 }
                 val emulatorLabel = stringResource(R.string.igm_emulator)
@@ -397,9 +401,9 @@ fun LibretroScreen(
                     title = stringResource(R.string.ach_title, screen.achievements.count { it.unlocked }, screen.achievements.size),
                     items = filtered.map { ach ->
                         val prefix = when {
-                            ach.pendingSync -> "◐"
-                            ach.unlocked -> "●"
-                            else -> "○"
+                            ach.pendingSync -> HALF_CIRCLE
+                            ach.unlocked -> BULLET
+                            else -> CIRCLE_EMPTY
                         }
                         IGMSettingsItem(
                             label = "$prefix ${ach.title}",

@@ -29,6 +29,8 @@ import dev.cannoli.igm.ui.theme.Radius
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.igm.ButtonStyle
+import dev.cannoli.igm.KEY_BACKSPACE
+import dev.cannoli.igm.KEY_ENTER
 import dev.cannoli.igm.ui.components.BottomBar
 import dev.cannoli.igm.ui.components.ScreenTitle
 import dev.cannoli.igm.ui.components.screenPadding
@@ -135,8 +137,8 @@ fun ColorPickerOverlay(
     }
 }
 
-val HEX_KEYS = listOf("0", "1", "2", "3", "4", "5", "6", "7", "←",
-                       "8", "9", "A", "B", "C", "D", "E", "F", "↵")
+val HEX_KEYS = listOf("0", "1", "2", "3", "4", "5", "6", "7", KEY_BACKSPACE,
+                       "8", "9", "A", "B", "C", "D", "E", "F", KEY_ENTER)
 const val HEX_ROW_SIZE = 9
 
 @Composable
@@ -201,7 +203,7 @@ fun HexColorInputOverlay(
                             for (i in rowStart until (rowStart + HEX_ROW_SIZE).coerceAtMost(HEX_KEYS.size)) {
                                 val key = HEX_KEYS[i]
                                 val isSelected = i == selectedIndex
-                                val isAction = key == "←" || key == "↵"
+                                val isAction = key == KEY_BACKSPACE || key == KEY_ENTER
                                 Box(
                                     modifier = Modifier
                                         .size(40.dp)

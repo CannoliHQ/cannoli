@@ -56,6 +56,7 @@ import dev.cannoli.igm.ui.components.pillItemHeight
 import dev.cannoli.igm.ui.components.screenPadding
 import dev.cannoli.igm.ui.theme.LocalCannoliColors
 import dev.cannoli.igm.ButtonStyle
+import dev.cannoli.igm.START_GLYPH
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -210,7 +211,7 @@ fun GameListScreen(
             val rightItems = if (state.games.isEmpty()) {
                 emptyList()
             } else if (state.multiSelectMode) {
-                listOf(buttonStyle.confirm to actionLabel, "▶" to stringResource(R.string.label_confirm))
+                listOf(buttonStyle.confirm to actionLabel, START_GLYPH to stringResource(R.string.label_confirm))
             } else if (hasResumeState && swapPlayResume) {
                 listOf(buttonStyle.north to actionLabel, buttonStyle.confirm to resumeLabel)
             } else {

@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.ui.viewmodel
 
+import dev.cannoli.igm.STAR
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.model.Collection
 import dev.cannoli.scorza.model.Game
@@ -164,12 +165,12 @@ class GameListViewModel(
                 val starred = if (showFavoriteStars) {
                     val favPaths = collectionManager.getFavoritePaths()
                     games.map { game ->
-                        if (game.file.absolutePath in favPaths) game.copy(displayName = "★ ${game.displayName}") else game
+                        if (game.file.absolutePath in favPaths) game.copy(displayName = "$STAR ${game.displayName}") else game
                     }
                 } else games
                 val order = if (type == "tools") orderingManager.loadToolOrder() else orderingManager.loadPortOrder()
                 val ordered = applyCustomOrder(starred, order)
-                    .sortedBy { !it.displayName.startsWith("★") }
+                    .sortedBy { !it.displayName.startsWith(STAR) }
                 _state.value = State(
                     platformTag = type,
                     breadcrumb = displayName,
@@ -351,7 +352,7 @@ class GameListViewModel(
         val game = current.games.getOrNull(current.selectedIndex) ?: return
         if (game.isSubfolder || game.isChildCollection || current.isCollectionsList) return
         val path = game.file.absolutePath
-        val isFav = game.displayName.startsWith("★") ||
+        val isFav = game.displayName.startsWith(STAR) ||
             (current.isCollection && current.collectionName == "Favorites")
         val oldIndex = current.selectedIndex
         scope.launch(Dispatchers.IO) {
@@ -363,11 +364,11 @@ class GameListViewModel(
                 val entries = if (current.platformTag == "tools") scanner.scanTools() else scanner.scanPorts()
                 val favPaths = if (showFavoriteStars) collectionManager.getFavoritePaths() else emptySet()
                 val games = entries.map { (file, name, launch) ->
-                    val label = if (showFavoriteStars && file.absolutePath in favPaths) "★ $name" else name
+                    val label = if (showFavoriteStars && file.absolutePath in favPaths) "$STAR $name" else name
                     Game(file = file, displayName = label, platformTag = current.platformTag, launchTarget = launch)
                 }
                 val order = if (current.platformTag == "tools") orderingManager.loadToolOrder() else orderingManager.loadPortOrder()
-                applyCustomOrder(games, order).sortedBy { !it.displayName.startsWith("★") }
+                applyCustomOrder(games, order).sortedBy { !it.displayName.startsWith(STAR) }
             } else {
                 scanner.scanGames(current.platformTags, current.subfolderPath)
             }
@@ -433,7 +434,7 @@ class GameListViewModel(
             val isApkList = current.platformTag == "tools" || current.platformTag == "ports"
             if (!isApkList) {
                 if (item.isChildCollection != target.isChildCollection) return@update current
-                if (item.displayName.startsWith("★") != target.displayName.startsWith("★")) return@update current
+                if (item.displayName.startsWith(STAR) != target.displayName.startsWith(STAR)) return@update current
             }
             val games = current.games.toMutableList()
             games[idx] = target; games[idx - 1] = item
@@ -451,7 +452,7 @@ class GameListViewModel(
             val isApkList = current.platformTag == "tools" || current.platformTag == "ports"
             if (!isApkList) {
                 if (item.isChildCollection != target.isChildCollection) return@update current
-                if (item.displayName.startsWith("★") != target.displayName.startsWith("★")) return@update current
+                if (item.displayName.startsWith(STAR) != target.displayName.startsWith(STAR)) return@update current
             }
             val games = current.games.toMutableList()
             games[idx] = target; games[idx + 1] = item

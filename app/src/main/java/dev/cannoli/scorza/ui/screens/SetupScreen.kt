@@ -28,6 +28,7 @@ import dev.cannoli.igm.ui.components.BottomBar
 import dev.cannoli.igm.ui.components.PillRowKeyValue
 import dev.cannoli.igm.ui.components.screenPadding
 import dev.cannoli.igm.ButtonStyle
+import dev.cannoli.igm.DPAD_HORIZONTAL
 import dev.cannoli.igm.START_GLYPH
 import dev.cannoli.igm.ui.theme.GrayText
 
@@ -124,7 +125,7 @@ fun SetupScreen(
 
         val rightItems = mutableListOf<Pair<String, String>>()
         when (selectedIndex) {
-            0 -> rightItems.add("←→" to stringResource(R.string.label_change))
+            0 -> rightItems.add(DPAD_HORIZONTAL to stringResource(R.string.label_change))
             folderIndex -> rightItems.add(buttonStyle.confirm to stringResource(R.string.label_select))
         }
         if (continueEnabled) {

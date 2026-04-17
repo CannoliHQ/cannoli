@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.scanner
 
+import dev.cannoli.igm.STAR
 import dev.cannoli.scorza.model.Game
 import dev.cannoli.scorza.model.LaunchTarget
 import dev.cannoli.scorza.model.Platform
@@ -116,8 +117,8 @@ class FileScanner(
         val combined = tags.flatMap { scanGames(it, subfolder) }
         return combined.sortedWith(
             compareBy<Game> { !it.isSubfolder }
-                .thenBy { !it.displayName.startsWith("★") }
-                .thenBy(dev.cannoli.scorza.util.NaturalSort) { it.displayName.removePrefix("★ ") }
+                .thenBy { !it.displayName.startsWith(STAR) }
+                .thenBy(dev.cannoli.scorza.util.NaturalSort) { it.displayName.removePrefix("$STAR ") }
         )
     }
 
@@ -261,13 +262,13 @@ class FileScanner(
         val favPaths = collectionManager.getFavoritePaths()
         val starred = games.map { game ->
             if (!game.isSubfolder && game.file.absolutePath in favPaths)
-                game.copy(displayName = "★ ${game.displayName}")
+                game.copy(displayName = "$STAR ${game.displayName}")
             else game
         }
         return starred.sortedWith(
             compareBy<Game> { !it.isSubfolder }
-                .thenBy { !it.displayName.startsWith("★") }
-                .thenBy(dev.cannoli.scorza.util.NaturalSort) { it.displayName.removePrefix("★ ") }
+                .thenBy { !it.displayName.startsWith(STAR) }
+                .thenBy(dev.cannoli.scorza.util.NaturalSort) { it.displayName.removePrefix("$STAR ") }
         )
     }
 
@@ -421,11 +422,11 @@ class FileScanner(
                     val favPaths = collectionManager.getFavoritePaths()
                     val tagged = games.map { game ->
                         if (game.file.absolutePath in favPaths)
-                            game.copy(displayName = "★ ${game.displayName}")
+                            game.copy(displayName = "$STAR ${game.displayName}")
                         else game
                     }
-                    val favs = tagged.filter { it.displayName.startsWith("★") }
-                    val rest = tagged.filter { !it.displayName.startsWith("★") }
+                    val favs = tagged.filter { it.displayName.startsWith(STAR) }
+                    val rest = tagged.filter { !it.displayName.startsWith(STAR) }
                     favs + rest
                 }
             }

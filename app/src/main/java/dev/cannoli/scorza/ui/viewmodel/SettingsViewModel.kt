@@ -11,13 +11,18 @@ import dev.cannoli.scorza.launcher.isPackageInstalled
 import dev.cannoli.scorza.settings.ArtScale
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.igm.ButtonLabelSet
+import dev.cannoli.igm.BULLET
 import dev.cannoli.igm.ConfirmButton
+import dev.cannoli.igm.BULLET
 import dev.cannoli.scorza.settings.ContentMode
 import dev.cannoli.scorza.settings.TextSize
 import dev.cannoli.scorza.settings.TimeFormat
 import dev.cannoli.igm.ui.theme.BPReplay
+import dev.cannoli.igm.BULLET
 import dev.cannoli.igm.ui.theme.MPlus1Code
+import dev.cannoli.igm.BULLET
 import dev.cannoli.igm.ui.theme.hexToColor
+import dev.cannoli.igm.BULLET
 import dev.cannoli.scorza.util.FontNameParser
 import dev.cannoli.scorza.util.sortedNatural
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -657,7 +662,7 @@ class SettingsViewModel(
         "kitchen" -> emptyList()
         "retroachievements" -> buildList {
             add(SettingsItem("ra_username", R.string.setting_ra_username, valueText = settings.raUsername.ifEmpty { null }, valueRes = if (settings.raUsername.isEmpty()) R.string.value_not_set else null, isEditable = true))
-            add(SettingsItem("ra_password", R.string.setting_ra_password, valueText = if (raPassword.isEmpty()) null else "●".repeat(raPassword.length), valueRes = if (raPassword.isEmpty()) R.string.value_not_set else null, isEditable = true))
+            add(SettingsItem("ra_password", R.string.setting_ra_password, valueText = if (raPassword.isEmpty()) null else BULLET.repeat(raPassword.length), valueRes = if (raPassword.isEmpty()) R.string.value_not_set else null, isEditable = true))
             if (settings.raUsername.isNotEmpty() && raPassword.isNotEmpty()) {
                 add(SettingsItem("ra_login", R.string.setting_ra_login, isEditable = true))
             }

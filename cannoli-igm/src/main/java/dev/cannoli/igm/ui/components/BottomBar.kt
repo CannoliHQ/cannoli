@@ -52,6 +52,7 @@ fun LegendPill(button: String, label: String) {
                     fontFamily = if (isArrow) MPlus1Code else LocalCannoliFont.current,
                     fontWeight = FontWeight.Bold,
                     fontSize = (14 * sf).sp,
+                    lineHeight = (14 * sf).sp,
                     color = accent
                 )
             )
@@ -63,6 +64,7 @@ fun LegendPill(button: String, label: String) {
                 fontFamily = LocalCannoliFont.current,
                 fontWeight = FontWeight.Bold,
                 fontSize = (12 * sf).sp,
+                lineHeight = (12 * sf).sp,
                 color = accent
             )
         )
