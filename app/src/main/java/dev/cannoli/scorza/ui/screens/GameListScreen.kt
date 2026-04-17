@@ -317,7 +317,7 @@ private fun GameRow(
                     Text(
                         text = "/",
                         style = textStyle,
-                        color = if (isSelected) colors.highlightText else colors.text.copy(alpha = 0.6f)
+                        color = if (isSelected) colors.highlightText else colors.text
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                 }
