@@ -73,17 +73,7 @@ fun UpdateDownloadOverlay(
                     style = typo.bodyMedium.copy(color = ErrorText, textAlign = TextAlign.Center)
                 )
             } else {
-                LinearProgressIndicator(
-                    progress = { progress.coerceAtLeast(0f) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(Radius.Sm)),
-                    color = Color.White,
-                    trackColor = ProgressTrack,
-                    gapSize = 0.dp,
-                    drawStopIndicator = {}
-                )
+                CannoliProgressBar(progress = progress)
                 Spacer(modifier = Modifier.height(Spacing.Sm))
                 Text(
                     text = "${(progress * 100).toInt()}%",

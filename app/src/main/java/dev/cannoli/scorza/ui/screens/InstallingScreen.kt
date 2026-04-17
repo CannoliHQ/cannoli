@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import dev.cannoli.scorza.R
 import dev.cannoli.ui.components.PillRowText
 import dev.cannoli.ui.components.screenPadding
+import dev.cannoli.ui.components.CannoliProgressBar
 import dev.cannoli.ui.theme.GrayText
 import dev.cannoli.ui.theme.LocalCannoliTypography
 import dev.cannoli.ui.theme.ProgressTrack
@@ -74,17 +75,9 @@ fun InstallingScreen(
             if (!finished) {
                 Spacer(modifier = Modifier.height(Spacing.Md))
 
-                LinearProgressIndicator(
-                    progress = { animatedProgress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .widthIn(max = 320.dp)
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(Radius.Sm)),
-                    color = Color.White,
-                    trackColor = ProgressTrack,
-                    gapSize = 0.dp,
-                    drawStopIndicator = {}
+                CannoliProgressBar(
+                    progress = animatedProgress,
+                    modifier = Modifier.widthIn(max = 320.dp)
                 )
             } else {
                 Spacer(modifier = Modifier.height(Spacing.Lg))

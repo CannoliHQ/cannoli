@@ -40,6 +40,7 @@ import dev.cannoli.scorza.ui.screens.ColorEntry
 import dev.cannoli.scorza.ui.screens.CoreMappingEntry
 import dev.cannoli.scorza.ui.screens.CorePickerOption
 import dev.cannoli.scorza.ui.screens.DialogState
+import dev.cannoli.scorza.ui.screens.KeyboardInputState
 import dev.cannoli.scorza.ui.screens.DirectoryBrowserScreen
 import dev.cannoli.scorza.ui.screens.GameListScreen
 import dev.cannoli.scorza.ui.screens.InputTesterScreen
@@ -719,8 +720,24 @@ fun AppNavGraph(
         }
 
         val systemListState = systemListViewModel?.state?.collectAsState()?.value
-        val statusBarVisible = dialog !is DialogState.About && dialog !is DialogState.Kitchen && dialog !is DialogState.UpdateDownload && currentScreen !is LauncherScreen.Credits && currentScreen !is LauncherScreen.DirectoryBrowser && currentScreen !is LauncherScreen.Setup && currentScreen !is LauncherScreen.Installing && !(currentScreen is LauncherScreen.SystemList && systemListState?.isLoading == true) && (dev.cannoli.scorza.server.KitchenManager.isRunning || appSettings.showWifi || appSettings.showBluetooth || appSettings.showVpn || appSettings.showClock || appSettings.showBattery || (updateAvailable && appSettings.showUpdate))
-        if (statusBarVisible && currentScreen !is LauncherScreen.InputTester) {
+        val hideForDialog = dialog is DialogState.About
+                || dialog is DialogState.Kitchen
+                || dialog is DialogState.UpdateDownload
+                || dialog is KeyboardInputState
+        val hideForScreen = currentScreen is LauncherScreen.Credits
+                || currentScreen is LauncherScreen.DirectoryBrowser
+                || currentScreen is LauncherScreen.Setup
+                || currentScreen is LauncherScreen.Installing
+                || currentScreen is LauncherScreen.InputTester
+                || (currentScreen is LauncherScreen.SystemList && systemListState?.isLoading == true)
+        val hasContent = dev.cannoli.scorza.server.KitchenManager.isRunning
+                || appSettings.showWifi
+                || appSettings.showBluetooth
+                || appSettings.showVpn
+                || appSettings.showClock
+                || appSettings.showBattery
+                || (updateAvailable && appSettings.showUpdate)
+        if (!hideForDialog && !hideForScreen && hasContent) {
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)

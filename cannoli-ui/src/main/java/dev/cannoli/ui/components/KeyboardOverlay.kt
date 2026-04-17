@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -158,6 +159,15 @@ fun KeyboardOverlay(
 
             Spacer(modifier = Modifier.height(Spacing.Md))
 
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val maxKeysPerRow = rows.maxOf { it.size }
+                val keyGap = 4.dp
+                val keySize = ((maxWidth - keyGap * (maxKeysPerRow - 1)) / maxKeysPerRow).coerceAtMost(48.dp)
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(keyGap)
+            ) {
             rows.forEachIndexed { ri, keys ->
                 if (keys.size == 1 && keys[0] == KEY_SPACE) {
                     Row(
@@ -168,7 +178,7 @@ fun KeyboardOverlay(
                         Box(
                             modifier = Modifier
                                 .padding(2.dp)
-                                .height(48.dp)
+                                .height(keySize)
                                 .widthIn(max = 400.dp).fillMaxWidth()
                                 .clip(RoundedCornerShape(Radius.Md))
                                 .background(if (isSelected) highlight else KEY_BG),
@@ -184,7 +194,7 @@ fun KeyboardOverlay(
                     }
                 } else {
                     Row(
-                        horizontalArrangement = Arrangement.Center,
+                        horizontalArrangement = Arrangement.spacedBy(keyGap, Alignment.CenterHorizontally),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         keys.forEachIndexed { ci, key ->
@@ -201,8 +211,7 @@ fun KeyboardOverlay(
 
                             Box(
                                 modifier = Modifier
-                                    .padding(2.dp)
-                                    .size(48.dp)
+                                    .size(keySize)
                                     .clip(RoundedCornerShape(Radius.Md))
                                     .background(keyBg),
                                 contentAlignment = Alignment.Center
@@ -219,6 +228,8 @@ fun KeyboardOverlay(
                         }
                     }
                 }
+            }
+            }
             }
         }
 
