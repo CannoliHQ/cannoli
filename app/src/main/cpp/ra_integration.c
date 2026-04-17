@@ -63,7 +63,11 @@ static int g_memory_init_attempts = 0;
 static volatile int g_pending_reset = 0;
 
 #define MAX_PENDING_UNLOCKS 64
-static int g_pending_unlocks[MAX_PENDING_UNLOCKS];
+typedef struct {
+    int achievement_id;
+    char game_hash[33];
+} PendingUnlock;
+static PendingUnlock g_pending_unlocks[MAX_PENDING_UNLOCKS];
 static int g_pending_unlock_count = 0;
 
 static void ra_load_game_callback(int result, const char *error_message, rc_client_t *client, void *userdata);
@@ -76,6 +80,7 @@ typedef struct PendingResponse {
     char *body;
     size_t body_length;
     int http_status;
+    int award_achievement_id;
 } PendingResponse;
 
 static PendingResponse *g_response_head = NULL;
@@ -151,6 +156,11 @@ static void ra_server_call(const rc_api_request_t *request,
     }
     pr->callback = callback;
     pr->callback_data = callback_data;
+    pr->award_achievement_id = 0;
+    if (request->post_data && strstr(request->post_data, "r=awardachievement")) {
+        const char *ap = strstr(request->post_data, "a=");
+        if (ap) pr->award_achievement_id = atoi(ap + 2);
+    }
 
     LOGI("server_call: %s", request->url);
     /* Call Kotlin to execute HTTP */
@@ -284,6 +294,20 @@ static void ra_drain_response_queue(void) {
             response.body_length = pr->body_length;
             response.http_status_code = pr->http_status;
             pr->callback(&response, pr->callback_data);
+        }
+
+        if (pr->award_achievement_id > 0 && g_jvm && g_manager && g_onAwardResult) {
+            int success = (pr->http_status == 200 && pr->body && strstr(pr->body, "\"Success\":true"));
+            ra_log_to_kotlin("award tracked: id=%d http=%d success=%d", pr->award_achievement_id, pr->http_status, success);
+            JNIEnv *env;
+            int attached = 0;
+            if ((*g_jvm)->GetEnv(g_jvm, (void **)&env, JNI_VERSION_1_6) != JNI_OK) {
+                (*g_jvm)->AttachCurrentThread(g_jvm, &env, NULL);
+                attached = 1;
+            }
+            (*env)->CallVoidMethod(env, g_manager, g_onAwardResult, pr->award_achievement_id,
+                success ? JNI_TRUE : JNI_FALSE);
+            if (attached) (*g_jvm)->DetachCurrentThread(g_jvm);
         }
 
         free(pr->body);
@@ -468,22 +492,22 @@ static void ra_try_init_memory(void) {
     }
 }
 
-static void ra_do_manual_unlock(int achievement_id);
+static void ra_do_manual_unlock(int achievement_id, const char *game_hash);
 
 static void ra_drain_pending_unlocks(void) {
-    int ids[MAX_PENDING_UNLOCKS];
+    PendingUnlock batch[MAX_PENDING_UNLOCKS];
     int count = 0;
 
     pthread_mutex_lock(&g_queue_mutex);
     count = g_pending_unlock_count;
     if (count > 0) {
-        memcpy(ids, g_pending_unlocks, count * sizeof(int));
+        memcpy(batch, g_pending_unlocks, count * sizeof(PendingUnlock));
         g_pending_unlock_count = 0;
     }
     pthread_mutex_unlock(&g_queue_mutex);
 
     for (int i = 0; i < count; i++) {
-        ra_do_manual_unlock(ids[i]);
+        ra_do_manual_unlock(batch[i].achievement_id, batch[i].game_hash);
     }
 }
 
@@ -601,6 +625,21 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeGetGameTitle(JNI
 }
 
 JNIEXPORT jstring JNICALL
+Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeGetGameHash(JNIEnv *env, jobject thiz) {
+    (void)thiz;
+    char hash[33];
+    hash[0] = '\0';
+    if (g_client && rc_client_is_game_loaded(g_client)) {
+        const rc_client_game_t *game = rc_client_get_game_info(g_client);
+        if (game && game->hash) {
+            strncpy(hash, game->hash, sizeof(hash) - 1);
+            hash[sizeof(hash) - 1] = '\0';
+        }
+    }
+    return (*env)->NewStringUTF(env, hash);
+}
+
+JNIEXPORT jstring JNICALL
 Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeGetUserAgentClause(JNIEnv *env, jobject thiz) {
     (void)thiz;
     char buf[128];
@@ -705,6 +744,9 @@ static void ra_award_response(const rc_api_server_response_t *response, void *us
     int achId = (int)(intptr_t)userdata;
     int success = (response->http_status_code == 200 && response->body && strstr(response->body, "\"Success\":true"));
     ra_log_to_kotlin("award response: id=%d http=%d success=%d", achId, response->http_status_code, success);
+    if (!success && response->body && response->body_length > 0) {
+        ra_log_to_kotlin("award response body: %.200s", response->body);
+    }
 
     if (g_jvm && g_manager && g_onAwardResult) {
         JNIEnv *env;
@@ -767,15 +809,13 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeDeserializeProgr
     return result == RC_OK ? JNI_TRUE : JNI_FALSE;
 }
 
-static void ra_do_manual_unlock(int achievement_id) {
+static void ra_do_manual_unlock(int achievement_id, const char *game_hash) {
     if (!g_client) return;
 
     const rc_client_user_t *user = rc_client_get_user_info(g_client);
     if (!user || !user->token[0]) return;
 
-    const rc_client_game_t *game = rc_client_get_game_info(g_client);
-
-    ra_log_to_kotlin("manual unlock: achievement %d", achievement_id);
+    ra_log_to_kotlin("manual unlock: achievement %d hash=%s", achievement_id, game_hash);
 
     rc_api_award_achievement_request_t params;
     memset(&params, 0, sizeof(params));
@@ -783,7 +823,7 @@ static void ra_do_manual_unlock(int achievement_id) {
     params.api_token = user->token;
     params.achievement_id = (uint32_t)achievement_id;
     params.hardcore = 0;
-    params.game_hash = game ? game->hash : "";
+    params.game_hash = game_hash;
 
     rc_api_request_t request;
     if (rc_api_init_award_achievement_request(&request, &params) == RC_OK) {
@@ -793,14 +833,23 @@ static void ra_do_manual_unlock(int achievement_id) {
 }
 
 JNIEXPORT void JNICALL
-Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeQueueUnlock(JNIEnv *env, jobject thiz, jint achievementId) {
-    (void)env; (void)thiz;
+Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeQueueUnlock(JNIEnv *env, jobject thiz, jint achievementId, jstring gameHash) {
+    (void)thiz;
+    const char *hash = gameHash ? (*env)->GetStringUTFChars(env, gameHash, NULL) : NULL;
     pthread_mutex_lock(&g_queue_mutex);
     if (g_pending_unlock_count < MAX_PENDING_UNLOCKS) {
-        g_pending_unlocks[g_pending_unlock_count++] = (int)achievementId;
-        ra_log_to_kotlin("queued unlock: achievement %d (pending=%d)", (int)achievementId, g_pending_unlock_count);
+        PendingUnlock *pu = &g_pending_unlocks[g_pending_unlock_count++];
+        pu->achievement_id = (int)achievementId;
+        if (hash) {
+            strncpy(pu->game_hash, hash, sizeof(pu->game_hash) - 1);
+            pu->game_hash[sizeof(pu->game_hash) - 1] = '\0';
+        } else {
+            pu->game_hash[0] = '\0';
+        }
+        ra_log_to_kotlin("queued unlock: achievement %d hash=%s (pending=%d)", (int)achievementId, pu->game_hash, g_pending_unlock_count);
     }
     pthread_mutex_unlock(&g_queue_mutex);
+    if (hash) (*env)->ReleaseStringUTFChars(env, gameHash, hash);
 }
 
 JNIEXPORT void JNICALL

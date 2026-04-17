@@ -99,7 +99,7 @@ class RetroAchievementsManager(
     }
 
     private var cachedAchievements: List<Achievement>? = null
-    val pendingSyncIds: MutableSet<Int> = Collections.synchronizedSet(mutableSetOf())
+    val pendingSyncIds: MutableMap<Int, String> = Collections.synchronizedMap(mutableMapOf())
     val syncingIds: MutableSet<Int> = Collections.synchronizedSet(mutableSetOf())
     val localUnlocks: MutableSet<Int> = Collections.synchronizedSet(mutableSetOf())
 
@@ -109,19 +109,19 @@ class RetroAchievementsManager(
 
     private fun syncPending() {
         if (pendingSyncIds.isEmpty() || !nativeIsLoggedIn()) return
-        val toSync: Set<Int>
+        val toSync: Map<Int, String>
         synchronized(pendingSyncIds) {
-            toSync = pendingSyncIds.toSet()
+            toSync = pendingSyncIds.toMap()
         }
         if (toSync.isEmpty()) return
         val count = toSync.size
-        logger("RA syncPending: syncing $count achievements: $toSync")
+        logger("RA syncPending: syncing $count achievements: ${toSync.keys}")
         syncExpectedCount = count
         syncSuccessCount = 0
         syncFailCount = 0
-        synchronized(syncingIds) { syncingIds.addAll(toSync) }
+        synchronized(syncingIds) { syncingIds.addAll(toSync.keys) }
         cachedAchievements = null
-        for (id in toSync) nativeQueueUnlock(id)
+        for ((id, hash) in toSync) nativeQueueUnlock(id, hash)
     }
     private var networkCallback: android.net.ConnectivityManager.NetworkCallback? = null
 
@@ -149,9 +149,13 @@ class RetroAchievementsManager(
         pendingSyncFile?.let { file ->
             if (file.exists()) {
                 try {
-                    file.readLines().mapNotNull { it.trim().toIntOrNull() }.forEach {
-                        pendingSyncIds.add(it)
-                        localUnlocks.add(it)
+                    file.readLines().forEach { line ->
+                        val parts = line.trim().split('|', limit = 2)
+                        val id = parts[0].toIntOrNull() ?: return@forEach
+                        val hash = if (parts.size > 1) parts[1] else ""
+                        if (hash.isEmpty()) return@forEach
+                        pendingSyncIds[id] = hash
+                        localUnlocks.add(id)
                     }
                 } catch (_: IOException) {}
             }
@@ -164,7 +168,7 @@ class RetroAchievementsManager(
                 file.parentFile?.mkdirs()
                 synchronized(pendingSyncIds) {
                     if (pendingSyncIds.isEmpty()) file.delete()
-                    else file.writeText(pendingSyncIds.joinToString("\n"))
+                    else file.writeText(pendingSyncIds.entries.joinToString("\n") { "${it.key}|${it.value}" })
                 }
             } catch (_: IOException) {}
         }
@@ -296,15 +300,6 @@ class RetroAchievementsManager(
 
         if (type == EVENT_RECONNECTED) {
             logger("RA reconnected: rcheevos completed all pending awards")
-            val cleared = pendingSyncIds.size
-            if (cleared > 0) {
-                pendingSyncIds.clear()
-                savePendingSync()
-                logger("RA cleared $cleared pending sync IDs after reconnect")
-                mainHandler.post {
-                    onSyncStatus("$cleared ${if (cleared == 1) "Achievement" else "Achievements"} Synced")
-                }
-            }
             return
         }
 
@@ -316,9 +311,10 @@ class RetroAchievementsManager(
 
         if (achievementId > 0) {
             localUnlocks.add(achievementId)
-            pendingSyncIds.add(achievementId)
+            val hash = nativeGetGameHash()
+            pendingSyncIds[achievementId] = hash
             savePendingSync()
-            logger("RA achievement queued for sync: id=$achievementId pendingCount=${pendingSyncIds.size}")
+            logger("RA achievement pending: id=$achievementId hash=$hash pendingCount=${pendingSyncIds.size}")
         }
         cachedAchievements = null
         mainHandler.post { onEvent(type, title, description, points) }
@@ -381,7 +377,8 @@ class RetroAchievementsManager(
     private external fun nativeGetAchievementData(): String
     private external fun nativeSerializeProgress(): ByteArray?
     private external fun nativeDeserializeProgress(data: ByteArray): Boolean
-    private external fun nativeQueueUnlock(achievementId: Int)
+    private external fun nativeQueueUnlock(achievementId: Int, gameHash: String)
+    private external fun nativeGetGameHash(): String
     private external fun nativeSetPendingReset()
 
     companion object {
