@@ -87,6 +87,7 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
     private var frameBuffer: ByteBuffer? = null
     private var lastWidth = 0
     private var lastHeight = 0
+    private var lastPixelFormat = 0
     private var surfaceWidth = 0
     private var surfaceHeight = 0
 
@@ -152,6 +153,9 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
         pipeline = null
         ShaderPipeline.invalidateSharedProgram()
 
+        lastWidth = 0
+        lastHeight = 0
+        lastPixelFormat = 0
         lastRotation = -1
         shaderDirty = true
         sharpnessDirty = true
@@ -221,11 +225,10 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
             val pixelFormat = runner.getPixelFormat()
             val bpp = if (pixelFormat == LibretroRunner.PIXEL_FORMAT_XRGB8888) 4 else 2
             val needed = w * h * bpp
+            val textureChanged = lastWidth != w || lastHeight != h || lastPixelFormat != pixelFormat
 
-            if (frameBuffer == null || lastWidth != w || lastHeight != h) {
+            if (frameBuffer == null || frameBuffer!!.capacity() < needed) {
                 frameBuffer = ByteBuffer.allocateDirect(needed).order(ByteOrder.nativeOrder())
-                lastWidth = w
-                lastHeight = h
             }
 
             frameBuffer!!.clear()
@@ -234,16 +237,33 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
 
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId)
             if (pixelFormat == LibretroRunner.PIXEL_FORMAT_XRGB8888) {
-                GLES20.glTexImage2D(
-                    GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA,
-                    w, h, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, frameBuffer
-                )
+                if (textureChanged) {
+                    GLES20.glTexImage2D(
+                        GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA,
+                        w, h, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, frameBuffer
+                    )
+                } else {
+                    GLES20.glTexSubImage2D(
+                        GLES20.GL_TEXTURE_2D, 0, 0, 0,
+                        w, h, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, frameBuffer
+                    )
+                }
             } else {
-                GLES20.glTexImage2D(
-                    GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGB,
-                    w, h, 0, GLES20.GL_RGB, GLES20.GL_UNSIGNED_SHORT_5_6_5, frameBuffer
-                )
+                if (textureChanged) {
+                    GLES20.glTexImage2D(
+                        GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGB,
+                        w, h, 0, GLES20.GL_RGB, GLES20.GL_UNSIGNED_SHORT_5_6_5, frameBuffer
+                    )
+                } else {
+                    GLES20.glTexSubImage2D(
+                        GLES20.GL_TEXTURE_2D, 0, 0, 0,
+                        w, h, GLES20.GL_RGB, GLES20.GL_UNSIGNED_SHORT_5_6_5, frameBuffer
+                    )
+                }
             }
+            lastWidth = w
+            lastHeight = h
+            lastPixelFormat = pixelFormat
         }
 
         if (sharpnessDirty) {
