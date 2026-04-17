@@ -32,6 +32,7 @@ import dev.cannoli.ui.R
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.KEY_BACKSPACE
 import dev.cannoli.ui.KEY_ENTER
+import dev.cannoli.ui.START_GLYPH
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.screenPadding
@@ -242,8 +243,8 @@ fun HexColorInputOverlay(
 
         BottomBar(
             modifier = Modifier.align(Alignment.BottomCenter),
-            leftItems = listOf(buttonStyle.back to stringResource(R.string.label_back)),
-            rightItems = emptyList()
+            leftItems = listOf(buttonStyle.west to stringResource(R.string.label_cancel), buttonStyle.back to stringResource(R.string.label_delete)),
+            rightItems = listOf(START_GLYPH to stringResource(R.string.label_confirm))
         )
     }
 }

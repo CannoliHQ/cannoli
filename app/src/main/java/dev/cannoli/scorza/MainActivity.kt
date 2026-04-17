@@ -1735,7 +1735,9 @@ class MainActivity : ComponentActivity() {
                     dialogState.value = DialogState.None
                 }
                 is DialogState.HexColorInput -> {
-                    openColorPicker(ds.settingKey)
+                    if (ds.currentHex.isNotEmpty()) {
+                        dialogState.value = ds.copy(currentHex = ds.currentHex.dropLast(1))
+                    }
                 }
                 is DialogState.ContextMenu, is DialogState.BulkContextMenu -> {
                     pendingContextReturn = null
@@ -1893,6 +1895,14 @@ class MainActivity : ComponentActivity() {
                 is DialogState.CollectionRenameInput -> onCollectionRenameConfirm(ds)
                 is DialogState.ProfileNameInput -> onProfileNameConfirm(ds)
                 is DialogState.NewFolderInput -> onNewFolderConfirm(ds)
+                is DialogState.HexColorInput -> {
+                    if (ds.currentHex.length == 6) {
+                        settingsViewModel.setColor(ds.settingKey, "#${ds.currentHex}")
+                        val entries = settingsViewModel.getColorEntries()
+                        updateColorListOnStack(ds.settingKey, entries)
+                        dialogState.value = DialogState.None
+                    }
+                }
                 DialogState.None -> when (val screen = currentScreen) {
                     LauncherScreen.SystemList -> {
                         if (systemListViewModel.isReorderMode()) {
@@ -2174,6 +2184,9 @@ class MainActivity : ComponentActivity() {
                 is DialogState.ProfileNameInput,
                 is DialogState.NewFolderInput -> {
                     dialogState.value = DialogState.None
+                }
+                is DialogState.HexColorInput -> {
+                    openColorPicker(ds.settingKey)
                 }
                 is DialogState.About -> {
                     val info = updateManager.updateAvailable.value
