@@ -1,12 +1,8 @@
 package dev.cannoli.ui
 
-const val START_GLYPH = "▶"
-
-// Text conventions
+const val START_GLYPH = "START"
 const val ELLIPSIS = "..."
-
-const val DPAD_HORIZONTAL = "←→"
-
+const val DPAD_HORIZONTAL = "L/R"
 const val KEY_SHIFT = "⇧"
 const val KEY_ENTER = "↵"
 const val KEY_BACKSPACE = "←"

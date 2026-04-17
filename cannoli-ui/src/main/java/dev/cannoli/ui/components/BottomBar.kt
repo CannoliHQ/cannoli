@@ -13,15 +13,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.Radius
 import dev.cannoli.ui.theme.LocalCannoliFont
 import dev.cannoli.ui.theme.LocalScaleFactor
-import dev.cannoli.ui.theme.MPlus1Code
 
 @Composable
 fun LegendPill(button: String, label: String) {
@@ -45,14 +46,18 @@ fun LegendPill(button: String, label: String) {
                 .padding(horizontal = (10 * sf).dp, vertical = (4 * sf).dp),
             contentAlignment = Alignment.Center
         ) {
-            val isArrow = button.any { it in "\u25C0\u25B6\u2190\u2192" }
             Text(
                 text = button,
                 style = TextStyle(
-                    fontFamily = if (isArrow) MPlus1Code else LocalCannoliFont.current,
+                    fontFamily = LocalCannoliFont.current,
                     fontWeight = FontWeight.Bold,
                     fontSize = (14 * sf).sp,
                     lineHeight = (14 * sf).sp,
+                    platformStyle = PlatformTextStyle(includeFontPadding = false),
+                    lineHeightStyle = LineHeightStyle(
+                        alignment = LineHeightStyle.Alignment.Center,
+                        trim = LineHeightStyle.Trim.Both
+                    ),
                     color = accent
                 )
             )
@@ -65,6 +70,11 @@ fun LegendPill(button: String, label: String) {
                 fontWeight = FontWeight.Bold,
                 fontSize = (12 * sf).sp,
                 lineHeight = (12 * sf).sp,
+                platformStyle = PlatformTextStyle(includeFontPadding = false),
+                lineHeightStyle = LineHeightStyle(
+                    alignment = LineHeightStyle.Alignment.Center,
+                    trim = LineHeightStyle.Trim.Both
+                ),
                 color = accent
             )
         )

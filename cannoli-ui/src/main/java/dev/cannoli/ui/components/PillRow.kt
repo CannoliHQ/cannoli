@@ -33,7 +33,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.Radius
-import dev.cannoli.ui.theme.MPlus1Code
 
 val screenPadding = 20.dp
 val pillInternalH = 14.dp
@@ -112,14 +111,13 @@ fun PillRowText(
     val textStyle = remember(baseStyle, fontSize, lineHeight) {
         baseStyle.copy(fontSize = fontSize, lineHeight = lineHeight)
     }
-    val iconStyle = remember(textStyle) { textStyle.copy(fontFamily = MPlus1Code) }
 
     PillRow(isSelected = isSelected, verticalPadding = verticalPadding, lineHeight = lineHeight) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (checkState != null) {
                 Text(
                     text = if (checkState) "\u2611" else "\u2610",
-                    style = iconStyle,
+                    style = textStyle,
                     color = if (isSelected) colors.highlightText else colors.text
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -127,7 +125,7 @@ fun PillRowText(
             if (showReorderIcon) {
                 Text(
                     text = "\u2195",
-                    style = iconStyle,
+                    style = textStyle,
                     color = if (isSelected) colors.highlightText else colors.text
                 )
                 Spacer(modifier = Modifier.width(8.dp))
