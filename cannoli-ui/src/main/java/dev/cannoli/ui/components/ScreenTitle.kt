@@ -1,4 +1,4 @@
-package dev.cannoli.igm.ui.components
+package dev.cannoli.ui.components
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.cannoli.igm.ui.theme.LocalCannoliColors
+import dev.cannoli.ui.theme.LocalCannoliColors
 
 
 val LocalStatusBarLeftEdge = staticCompositionLocalOf<MutableIntState> { mutableIntStateOf(Int.MAX_VALUE) }

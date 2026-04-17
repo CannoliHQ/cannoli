@@ -1,4 +1,4 @@
-package dev.cannoli.igm.ui.theme
+package dev.cannoli.ui.theme
 
 import androidx.compose.ui.unit.dp
 

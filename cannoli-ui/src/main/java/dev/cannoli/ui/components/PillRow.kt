@@ -1,4 +1,4 @@
-package dev.cannoli.igm.ui.components
+package dev.cannoli.ui.components
 
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
@@ -31,9 +31,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.cannoli.igm.ui.theme.LocalCannoliColors
-import dev.cannoli.igm.ui.theme.Radius
-import dev.cannoli.igm.ui.theme.MPlus1Code
+import dev.cannoli.ui.theme.LocalCannoliColors
+import dev.cannoli.ui.theme.Radius
+import dev.cannoli.ui.theme.MPlus1Code
 
 val screenPadding = 20.dp
 val pillInternalH = 14.dp

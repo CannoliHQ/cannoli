@@ -17,14 +17,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import dev.cannoli.igm.ui.theme.Spacing
+import dev.cannoli.ui.theme.Spacing
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
-import dev.cannoli.igm.ButtonStyle
-import dev.cannoli.igm.ui.components.BottomBar
-import dev.cannoli.igm.ui.components.screenPadding
-import dev.cannoli.igm.ui.theme.LocalCannoliColors
-import dev.cannoli.igm.ui.theme.LocalCannoliFont
+import dev.cannoli.ui.ButtonStyle
+import dev.cannoli.ui.components.BottomBar
+import dev.cannoli.ui.components.screenPadding
+import dev.cannoli.ui.theme.LocalCannoliColors
+import dev.cannoli.ui.theme.LocalCannoliFont
 
 @Composable
 fun RAAccountOverlay(username: String, buttonStyle: ButtonStyle = ButtonStyle()) {

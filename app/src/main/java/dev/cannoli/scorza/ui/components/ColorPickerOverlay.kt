@@ -24,18 +24,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import dev.cannoli.igm.ui.theme.Spacing
-import dev.cannoli.igm.ui.theme.Radius
+import dev.cannoli.ui.theme.Spacing
+import dev.cannoli.ui.theme.Radius
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
-import dev.cannoli.igm.ButtonStyle
-import dev.cannoli.igm.KEY_BACKSPACE
-import dev.cannoli.igm.KEY_ENTER
-import dev.cannoli.igm.ui.components.BottomBar
-import dev.cannoli.igm.ui.components.ScreenTitle
-import dev.cannoli.igm.ui.components.screenPadding
-import dev.cannoli.igm.ui.theme.COLOR_PRESETS
-import dev.cannoli.igm.ui.theme.LocalCannoliColors
+import dev.cannoli.ui.ButtonStyle
+import dev.cannoli.ui.KEY_BACKSPACE
+import dev.cannoli.ui.KEY_ENTER
+import dev.cannoli.ui.components.BottomBar
+import dev.cannoli.ui.components.ScreenTitle
+import dev.cannoli.ui.components.screenPadding
+import dev.cannoli.ui.theme.COLOR_PRESETS
+import dev.cannoli.ui.theme.LocalCannoliColors
 
 const val COLOR_GRID_COLS = 4
 

@@ -1,4 +1,4 @@
-package dev.cannoli.igm.ui.components
+package dev.cannoli.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -17,11 +17,11 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.cannoli.igm.ui.theme.LocalCannoliColors
-import dev.cannoli.igm.ui.theme.Radius
-import dev.cannoli.igm.ui.theme.LocalCannoliFont
-import dev.cannoli.igm.ui.theme.LocalScaleFactor
-import dev.cannoli.igm.ui.theme.MPlus1Code
+import dev.cannoli.ui.theme.LocalCannoliColors
+import dev.cannoli.ui.theme.Radius
+import dev.cannoli.ui.theme.LocalCannoliFont
+import dev.cannoli.ui.theme.LocalScaleFactor
+import dev.cannoli.ui.theme.MPlus1Code
 
 @Composable
 fun LegendPill(button: String, label: String) {

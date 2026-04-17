@@ -22,16 +22,16 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import dev.cannoli.igm.ui.theme.ErrorText
-import dev.cannoli.igm.ui.theme.ProgressTrack
-import dev.cannoli.igm.ui.theme.Spacing
-import dev.cannoli.igm.ui.theme.Radius
+import dev.cannoli.ui.theme.ErrorText
+import dev.cannoli.ui.theme.ProgressTrack
+import dev.cannoli.ui.theme.Spacing
+import dev.cannoli.ui.theme.Radius
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
-import dev.cannoli.igm.ButtonStyle
-import dev.cannoli.igm.ui.components.BottomBar
-import dev.cannoli.igm.ui.components.screenPadding
-import dev.cannoli.igm.ui.theme.LocalCannoliFont
+import dev.cannoli.ui.ButtonStyle
+import dev.cannoli.ui.components.BottomBar
+import dev.cannoli.ui.components.screenPadding
+import dev.cannoli.ui.theme.LocalCannoliFont
 
 @Composable
 fun UpdateDownloadOverlay(

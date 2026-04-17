@@ -24,4 +24,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "Cannoli"
 include(":app")
+include(":cannoli-ui")
 include(":cannoli-igm")

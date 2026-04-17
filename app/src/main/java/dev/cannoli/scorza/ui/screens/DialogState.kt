@@ -1,6 +1,6 @@
 package dev.cannoli.scorza.ui.screens
 
-import dev.cannoli.igm.ELLIPSIS
+import dev.cannoli.ui.ELLIPSIS
 
 interface KeyboardInputState {
     val currentName: String

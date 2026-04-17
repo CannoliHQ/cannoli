@@ -27,30 +27,31 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import dev.cannoli.igm.ui.theme.Spacing
-import dev.cannoli.igm.ui.theme.Radius
+import dev.cannoli.ui.theme.Spacing
+import dev.cannoli.ui.theme.Radius
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
-import dev.cannoli.igm.ui.theme.LocalCannoliFont
+import dev.cannoli.ui.theme.LocalCannoliFont
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.viewinterop.AndroidView
-import dev.cannoli.igm.ui.components.BottomBar
-import dev.cannoli.igm.ui.components.ScreenBackground
-import dev.cannoli.igm.ui.components.LocalStatusBarLeftEdge
-import dev.cannoli.igm.ui.components.ScreenTitle
+import dev.cannoli.ui.components.BottomBar
+import dev.cannoli.ui.components.ScreenBackground
+import dev.cannoli.ui.components.LocalStatusBarLeftEdge
+import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.scorza.ui.components.StatusBar
-import dev.cannoli.igm.ui.components.pillInternalH
+import dev.cannoli.ui.components.pillInternalH
 import androidx.compose.ui.platform.LocalContext
-import dev.cannoli.igm.ui.components.screenPadding
-import dev.cannoli.igm.BULLET
-import dev.cannoli.igm.CIRCLE_EMPTY
-import dev.cannoli.igm.DPAD_HORIZONTAL
-import dev.cannoli.igm.HALF_CIRCLE
+import dev.cannoli.ui.components.screenPadding
+import dev.cannoli.ui.BULLET
+import dev.cannoli.ui.ButtonStyle
+import dev.cannoli.ui.CIRCLE_EMPTY
+import dev.cannoli.ui.DPAD_HORIZONTAL
+import dev.cannoli.ui.HALF_CIRCLE
 import dev.cannoli.igm.IGMScreen
 import dev.cannoli.igm.IGMSettingsItem
 import dev.cannoli.igm.IGMSettingsScreen
@@ -59,8 +60,8 @@ import dev.cannoli.igm.InGameMenuOptions
 import dev.cannoli.igm.GuideScreen
 import dev.cannoli.igm.GuideType
 import dev.cannoli.igm.PolaroidFrame
-import dev.cannoli.igm.ui.theme.LocalCannoliColors
-import dev.cannoli.igm.ui.theme.LocalScaleFactor
+import dev.cannoli.ui.theme.LocalCannoliColors
+import dev.cannoli.ui.theme.LocalScaleFactor
 
 data class GameInfo(
     val coreName: String,
@@ -118,7 +119,7 @@ fun LibretroScreen(
     val igmFontSize = settings.textSize.sp.sp
     val igmLineHeight = (settings.textSize.sp + 10).sp
     val igmScaleFactor = settings.textSize.sp / 22f
-    val labels = dev.cannoli.igm.ButtonStyle(settings.buttonLabelSet, settings.confirmButton)
+    val labels = dev.cannoli.ui.ButtonStyle(settings.buttonLabelSet, settings.confirmButton)
     val statusBarEnabled = (settings.showWifi || settings.showBluetooth || settings.showClock || settings.showBattery || settings.showVpn) && !showDescription && !isGuideScreen
     val statusBarLeftEdge = remember { mutableIntStateOf(Int.MAX_VALUE) }
 

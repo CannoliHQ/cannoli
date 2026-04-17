@@ -1,6 +1,6 @@
 package dev.cannoli.scorza.ui.viewmodel
 
-import dev.cannoli.igm.STAR
+import dev.cannoli.ui.STAR
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.model.Collection
 import dev.cannoli.scorza.model.Game

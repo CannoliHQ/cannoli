@@ -1,4 +1,4 @@
-package dev.cannoli.igm.ui.components
+package dev.cannoli.ui.components
 
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image

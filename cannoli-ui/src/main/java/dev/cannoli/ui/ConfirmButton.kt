@@ -1,4 +1,4 @@
-package dev.cannoli.igm
+package dev.cannoli.ui
 
 enum class ConfirmButton {
     SOUTH, EAST;

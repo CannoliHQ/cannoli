@@ -44,12 +44,11 @@ import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.libretro.LibretroActivity
 import dev.cannoli.scorza.libretro.LibretroInput
 import dev.cannoli.scorza.libretro.RetroAchievementsManager
-import dev.cannoli.igm.ELLIPSIS
-import dev.cannoli.igm.KEY_BACKSPACE
-import dev.cannoli.igm.KEY_ENTER
-import dev.cannoli.igm.STAR
+import dev.cannoli.ui.ELLIPSIS
+import dev.cannoli.ui.KEY_BACKSPACE
+import dev.cannoli.ui.KEY_ENTER
+import dev.cannoli.ui.STAR
 import dev.cannoli.igm.ShortcutAction
-import dev.cannoli.igm.STAR
 import dev.cannoli.scorza.scanner.CollectionManager
 import dev.cannoli.scorza.scanner.FileScanner
 import dev.cannoli.scorza.scanner.OrderingManager
@@ -78,24 +77,18 @@ import dev.cannoli.scorza.ui.screens.withCursor
 import dev.cannoli.scorza.ui.screens.withInsertedChar
 import dev.cannoli.scorza.ui.screens.withKeyboard
 import dev.cannoli.scorza.ui.screens.withMenuDelta
-import dev.cannoli.igm.ui.theme.COLOR_PRESETS
-import dev.cannoli.igm.STAR
-import dev.cannoli.igm.ui.theme.CannoliTheme
-import dev.cannoli.igm.STAR
-import dev.cannoli.igm.ui.theme.colorToArgbLong
-import dev.cannoli.igm.STAR
-import dev.cannoli.igm.ui.theme.hexToColor
-import dev.cannoli.igm.STAR
+import dev.cannoli.ui.theme.COLOR_PRESETS
+import dev.cannoli.ui.theme.CannoliTheme
+import dev.cannoli.ui.theme.colorToArgbLong
+import dev.cannoli.ui.theme.hexToColor
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.ui.screens.DirectoryBrowserScreen
 import dev.cannoli.scorza.ui.screens.InstallingScreen
 import dev.cannoli.scorza.ui.screens.PermissionScreen
 import dev.cannoli.scorza.ui.screens.SetupScreen
-import dev.cannoli.igm.ui.components.pillItemHeight
-import dev.cannoli.igm.STAR
-import dev.cannoli.igm.ui.theme.initFonts
-import dev.cannoli.igm.STAR
+import dev.cannoli.ui.components.pillItemHeight
+import dev.cannoli.ui.theme.initFonts
 import dev.cannoli.scorza.model.Game
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
@@ -431,7 +424,7 @@ class MainActivity : ComponentActivity() {
 
         lifecycleScope.launch {
             settingsViewModel.appSettings.collect { appSettings ->
-                inputHandler.swapConfirmBack = appSettings.confirmButton == dev.cannoli.igm.ConfirmButton.EAST
+                inputHandler.swapConfirmBack = appSettings.confirmButton == dev.cannoli.ui.ConfirmButton.EAST
             }
         }
 

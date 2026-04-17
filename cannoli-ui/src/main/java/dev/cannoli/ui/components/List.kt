@@ -1,4 +1,4 @@
-package dev.cannoli.igm.ui.components
+package dev.cannoli.ui.components
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn

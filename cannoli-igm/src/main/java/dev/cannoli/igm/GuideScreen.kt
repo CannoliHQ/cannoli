@@ -32,9 +32,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.cannoli.igm.ui.components.ScreenBackground
-import dev.cannoli.igm.ui.theme.LocalCannoliColors
-import dev.cannoli.igm.ui.theme.LocalCannoliFont
+import dev.cannoli.ui.components.ScreenBackground
+import dev.cannoli.ui.theme.LocalCannoliColors
+import dev.cannoli.ui.theme.LocalCannoliFont
 import kotlinx.coroutines.delay
 import java.io.File
 

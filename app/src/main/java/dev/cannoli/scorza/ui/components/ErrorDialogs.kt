@@ -10,10 +10,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.cannoli.scorza.R
-import dev.cannoli.igm.ButtonStyle
-import dev.cannoli.igm.ui.components.BottomBar
-import dev.cannoli.igm.ui.components.LegendPill
-import dev.cannoli.igm.ui.theme.LocalCannoliColors
+import dev.cannoli.ui.ButtonStyle
+import dev.cannoli.ui.components.BottomBar
+import dev.cannoli.ui.components.LegendPill
+import dev.cannoli.ui.theme.LocalCannoliColors
 
 @Composable
 fun MissingCoreDialog(coreName: String, buttonStyle: ButtonStyle = ButtonStyle()) {

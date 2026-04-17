@@ -17,8 +17,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import dev.cannoli.igm.ui.theme.Spacing
-import dev.cannoli.igm.ui.theme.Radius
+import dev.cannoli.ui.theme.Spacing
+import dev.cannoli.ui.theme.Radius
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
@@ -33,19 +33,19 @@ import dev.cannoli.scorza.input.ProfileManager
 import dev.cannoli.scorza.settings.ArtScale
 import dev.cannoli.scorza.libretro.ControlsScreen
 import dev.cannoli.scorza.libretro.LibretroInput
-import dev.cannoli.igm.ELLIPSIS
+import dev.cannoli.ui.ELLIPSIS
 import dev.cannoli.igm.ShortcutAction
 import dev.cannoli.scorza.ui.components.ConfirmOverlay
 import dev.cannoli.scorza.ui.components.CreditsOverlay
 import dev.cannoli.scorza.ui.components.DialogOverlay
-import dev.cannoli.igm.ui.components.List
+import dev.cannoli.ui.components.List
 import dev.cannoli.scorza.ui.components.ListDialogScreen
 import dev.cannoli.scorza.ui.components.MessageOverlay
-import dev.cannoli.igm.ui.components.PillRowKeyValue
-import dev.cannoli.igm.ui.components.PillRowText
-import dev.cannoli.igm.ui.components.LocalStatusBarLeftEdge
+import dev.cannoli.ui.components.PillRowKeyValue
+import dev.cannoli.ui.components.PillRowText
+import dev.cannoli.ui.components.LocalStatusBarLeftEdge
 import dev.cannoli.scorza.ui.components.StatusBar
-import dev.cannoli.igm.ui.components.pillItemHeight
+import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.scorza.ui.screens.ColorEntry
 import dev.cannoli.scorza.ui.screens.CoreMappingEntry
 import dev.cannoli.scorza.ui.screens.CorePickerOption
@@ -56,10 +56,10 @@ import dev.cannoli.scorza.ui.screens.SettingsScreen
 import dev.cannoli.scorza.ui.screens.SystemListScreen
 import dev.cannoli.scorza.ui.viewmodel.InputTesterViewModel
 import dev.cannoli.scorza.ui.screens.isFullScreen
-import dev.cannoli.igm.ui.theme.CannoliColors
-import dev.cannoli.igm.ui.theme.LocalCannoliColors
-import dev.cannoli.igm.ui.theme.LocalScaleFactor
-import dev.cannoli.igm.ButtonStyle
+import dev.cannoli.ui.theme.CannoliColors
+import dev.cannoli.ui.theme.LocalCannoliColors
+import dev.cannoli.ui.theme.LocalScaleFactor
+import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
@@ -129,7 +129,7 @@ fun AppNavGraph(
     val listLineHeight = (appSettings.textSize.sp + 10).sp
     val listVerticalPadding = 4.dp
 
-    val labels = dev.cannoli.igm.ButtonStyle(appSettings.buttonLabelSet, appSettings.confirmButton)
+    val labels = dev.cannoli.ui.ButtonStyle(appSettings.buttonLabelSet, appSettings.confirmButton)
 
     val cannoliColors = CannoliColors(
         highlight = appSettings.colorHighlight,

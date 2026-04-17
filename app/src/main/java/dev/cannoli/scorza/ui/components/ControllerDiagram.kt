@@ -18,7 +18,7 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
-import dev.cannoli.igm.ui.theme.LocalCannoliColors
+import dev.cannoli.ui.theme.LocalCannoliColors
 
 data class FaceLabels(val top: String, val bottom: String, val left: String, val right: String)
 

@@ -15,18 +15,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import dev.cannoli.igm.ui.theme.Spacing
+import dev.cannoli.ui.ButtonStyle
+import dev.cannoli.ui.theme.Spacing
 import androidx.compose.ui.unit.sp
-import dev.cannoli.igm.ui.components.BottomBar
-import dev.cannoli.igm.ui.components.List
-import dev.cannoli.igm.ui.components.PillRowKeyValue
-import dev.cannoli.igm.ui.components.PillRowText
-import dev.cannoli.igm.ui.components.ScreenBackground
-import dev.cannoli.igm.ui.components.ScreenTitle
-import dev.cannoli.igm.ui.components.pillInternalH
-import dev.cannoli.igm.ui.components.pillItemHeight
-import dev.cannoli.igm.ui.components.screenPadding
-import dev.cannoli.igm.ui.theme.LocalCannoliColors
+import dev.cannoli.ui.components.BottomBar
+import dev.cannoli.ui.components.List
+import dev.cannoli.ui.components.PillRowKeyValue
+import dev.cannoli.ui.components.PillRowText
+import dev.cannoli.ui.components.ScreenBackground
+import dev.cannoli.ui.components.ScreenTitle
+import dev.cannoli.ui.components.pillInternalH
+import dev.cannoli.ui.components.pillItemHeight
+import dev.cannoli.ui.components.screenPadding
+import dev.cannoli.ui.theme.LocalCannoliColors
 
 private val verticalPadding = 8.dp
 

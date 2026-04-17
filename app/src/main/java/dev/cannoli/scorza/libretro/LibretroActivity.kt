@@ -33,35 +33,22 @@ import androidx.core.view.WindowInsetsControllerCompat
 import dev.cannoli.scorza.libretro.shader.PresetParser
 import dev.cannoli.scorza.libretro.shader.ShaderPipeline
 import dev.cannoli.scorza.libretro.shader.SlangTranspiler
-import dev.cannoli.igm.ui.theme.BPReplay
-import dev.cannoli.igm.STAR
-import dev.cannoli.igm.ui.theme.CannoliColors
-import dev.cannoli.igm.STAR
-import dev.cannoli.igm.ui.theme.CannoliTheme
-import dev.cannoli.igm.STAR
-import dev.cannoli.igm.ui.theme.LocalCannoliColors
-import dev.cannoli.igm.STAR
-import dev.cannoli.igm.ui.theme.MPlus1Code
-import dev.cannoli.igm.STAR
-import dev.cannoli.igm.ui.theme.hexToColor
-import dev.cannoli.igm.STAR
+import dev.cannoli.ui.theme.BPReplay
+import dev.cannoli.ui.STAR
+import dev.cannoli.ui.theme.CannoliColors
+import dev.cannoli.ui.theme.CannoliTheme
+import dev.cannoli.ui.theme.LocalCannoliColors
+import dev.cannoli.ui.theme.MPlus1Code
+import dev.cannoli.ui.theme.hexToColor
 import dev.cannoli.scorza.util.FontNameParser
 import dev.cannoli.igm.AchievementInfo
-import dev.cannoli.igm.STAR
 import dev.cannoli.igm.IGMScreen
-import dev.cannoli.igm.STAR
 import dev.cannoli.igm.IGMSettings
-import dev.cannoli.igm.STAR
 import dev.cannoli.igm.IGMSettingsItem
-import dev.cannoli.igm.STAR
 import dev.cannoli.igm.IGMSettingsScreen
-import dev.cannoli.igm.STAR
 import dev.cannoli.igm.InGameMenuOptions
-import dev.cannoli.igm.STAR
 import dev.cannoli.igm.ShortcutAction
-import dev.cannoli.igm.STAR
 import dev.cannoli.igm.GuideType
-import dev.cannoli.igm.STAR
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.settings.SettingsRepository
 import android.os.Handler
@@ -142,7 +129,7 @@ class LibretroActivity : ComponentActivity() {
     private val shortcutChordKeys = mutableSetOf<Int>()
     private var coreInfoText by mutableStateOf("")
 
-    private var confirmButton = dev.cannoli.igm.ConfirmButton.EAST
+    private var confirmButton = dev.cannoli.ui.ConfirmButton.EAST
 
     private var frontendSnapshot: OverrideManager.Settings? = null
     private var shaderParamsDirty = false
@@ -858,7 +845,7 @@ class LibretroActivity : ComponentActivity() {
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> return "btn_south"
         }
         val pref = navInputHandler.resolveButton(keyCode) ?: return null
-        return if (confirmButton == dev.cannoli.igm.ConfirmButton.EAST) {
+        return if (confirmButton == dev.cannoli.ui.ConfirmButton.EAST) {
             when (pref) {
                 "btn_south" -> "btn_east"
                 "btn_east" -> "btn_south"

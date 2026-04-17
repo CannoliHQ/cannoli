@@ -17,10 +17,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import dev.cannoli.igm.ui.theme.Spacing
+import dev.cannoli.ui.theme.Spacing
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
-import dev.cannoli.igm.ui.theme.GrayText
+import dev.cannoli.ui.theme.GrayText
 
 @Composable
 fun PermissionScreen() {

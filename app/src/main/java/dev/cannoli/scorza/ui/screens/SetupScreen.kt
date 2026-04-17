@@ -21,16 +21,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import dev.cannoli.igm.ui.theme.Spacing
+import dev.cannoli.ui.theme.Spacing
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
-import dev.cannoli.igm.ui.components.BottomBar
-import dev.cannoli.igm.ui.components.PillRowKeyValue
-import dev.cannoli.igm.ui.components.screenPadding
-import dev.cannoli.igm.ButtonStyle
-import dev.cannoli.igm.DPAD_HORIZONTAL
-import dev.cannoli.igm.START_GLYPH
-import dev.cannoli.igm.ui.theme.GrayText
+import dev.cannoli.ui.components.BottomBar
+import dev.cannoli.ui.components.PillRowKeyValue
+import dev.cannoli.ui.components.screenPadding
+import dev.cannoli.ui.ButtonStyle
+import dev.cannoli.ui.DPAD_HORIZONTAL
+import dev.cannoli.ui.START_GLYPH
+import dev.cannoli.ui.theme.GrayText
 
 @Composable
 fun SetupScreen(

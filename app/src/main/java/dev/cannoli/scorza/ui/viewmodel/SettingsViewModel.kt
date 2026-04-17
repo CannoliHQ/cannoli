@@ -10,19 +10,15 @@ import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.isPackageInstalled
 import dev.cannoli.scorza.settings.ArtScale
 import dev.cannoli.scorza.settings.SettingsRepository
-import dev.cannoli.igm.ButtonLabelSet
-import dev.cannoli.igm.BULLET
-import dev.cannoli.igm.ConfirmButton
-import dev.cannoli.igm.BULLET
+import dev.cannoli.ui.BULLET
+import dev.cannoli.ui.ButtonLabelSet
+import dev.cannoli.ui.ConfirmButton
 import dev.cannoli.scorza.settings.ContentMode
 import dev.cannoli.scorza.settings.TextSize
 import dev.cannoli.scorza.settings.TimeFormat
-import dev.cannoli.igm.ui.theme.BPReplay
-import dev.cannoli.igm.BULLET
-import dev.cannoli.igm.ui.theme.MPlus1Code
-import dev.cannoli.igm.BULLET
-import dev.cannoli.igm.ui.theme.hexToColor
-import dev.cannoli.igm.BULLET
+import dev.cannoli.ui.theme.BPReplay
+import dev.cannoli.ui.theme.MPlus1Code
+import dev.cannoli.ui.theme.hexToColor
 import dev.cannoli.scorza.util.FontNameParser
 import dev.cannoli.scorza.util.sortedNatural
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -496,7 +492,7 @@ class SettingsViewModel(
                 key = key,
                 labelRes = labelRes,
                 hex = hex,
-                color = dev.cannoli.igm.ui.theme.colorToArgbLong(color ?: androidx.compose.ui.graphics.Color.White)
+                color = dev.cannoli.ui.theme.colorToArgbLong(color ?: androidx.compose.ui.graphics.Color.White)
             )
         }
     }

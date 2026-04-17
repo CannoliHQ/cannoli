@@ -1,4 +1,4 @@
-package dev.cannoli.igm
+package dev.cannoli.ui
 
 data class ButtonStyle(
     val labelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER,

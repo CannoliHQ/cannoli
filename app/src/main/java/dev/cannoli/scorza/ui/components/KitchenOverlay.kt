@@ -27,18 +27,18 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import dev.cannoli.igm.ui.theme.Spacing
-import dev.cannoli.igm.ui.theme.Radius
-import dev.cannoli.igm.ui.theme.SurfaceDim
+import dev.cannoli.ui.theme.Spacing
+import dev.cannoli.ui.theme.Radius
+import dev.cannoli.ui.theme.SurfaceDim
 import androidx.compose.ui.unit.sp
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 
 import dev.cannoli.scorza.R
-import dev.cannoli.igm.ButtonStyle
-import dev.cannoli.igm.ui.components.BottomBar
-import dev.cannoli.igm.ui.components.screenPadding
-import dev.cannoli.igm.ui.theme.LocalCannoliFont
+import dev.cannoli.ui.ButtonStyle
+import dev.cannoli.ui.components.BottomBar
+import dev.cannoli.ui.components.screenPadding
+import dev.cannoli.ui.theme.LocalCannoliFont
 
 @Composable
 fun KitchenOverlay(

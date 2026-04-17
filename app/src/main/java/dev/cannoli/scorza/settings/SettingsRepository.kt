@@ -4,8 +4,8 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.os.Handler
 import android.os.HandlerThread
-import dev.cannoli.igm.ButtonLabelSet
-import dev.cannoli.igm.ConfirmButton
+import dev.cannoli.ui.ButtonLabelSet
+import dev.cannoli.ui.ConfirmButton
 import org.json.JSONObject
 import java.io.File
 

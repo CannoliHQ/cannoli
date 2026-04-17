@@ -3,14 +3,12 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-// kotlin.plugin.compose includes kotlin.android in newer Kotlin/AGP but not older.
-// Apply kotlin.android if not already present.
 if (extensions.findByName("kotlin") == null) {
     apply(plugin = "org.jetbrains.kotlin.android")
 }
 
 android {
-    namespace = "dev.cannoli.igm"
+    namespace = "dev.cannoli.ui"
     compileSdk = 36
 
     defaultConfig {
@@ -34,7 +32,6 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
 }
 
 dependencies {
-    api(project(":cannoli-ui"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))

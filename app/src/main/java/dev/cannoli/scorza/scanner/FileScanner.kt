@@ -1,6 +1,6 @@
 package dev.cannoli.scorza.scanner
 
-import dev.cannoli.igm.STAR
+import dev.cannoli.ui.STAR
 import dev.cannoli.scorza.model.Game
 import dev.cannoli.scorza.model.LaunchTarget
 import dev.cannoli.scorza.model.Platform
