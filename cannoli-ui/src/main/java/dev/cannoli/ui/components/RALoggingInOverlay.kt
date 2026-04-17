@@ -12,15 +12,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
 import dev.cannoli.ui.R
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.screenPadding
 import dev.cannoli.ui.theme.LocalCannoliColors
-import dev.cannoli.ui.theme.LocalCannoliFont
+import dev.cannoli.ui.theme.LocalCannoliTypography
 
 @Composable
 fun RALoggingInOverlay(message: String, buttonStyle: ButtonStyle = ButtonStyle()) {
@@ -34,22 +31,14 @@ fun RALoggingInOverlay(message: String, buttonStyle: ButtonStyle = ButtonStyle()
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            val typo = LocalCannoliTypography.current
             Text(
                 text = stringResource(R.string.ra_title),
-                style = TextStyle(
-                    fontFamily = LocalCannoliFont.current,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 28.sp,
-                    color = Color.White
-                )
+                style = typo.titleLarge.copy(color = Color.White)
             )
             Text(
                 text = message,
-                style = TextStyle(
-                    fontFamily = LocalCannoliFont.current,
-                    fontSize = 18.sp,
-                    color = LocalCannoliColors.current.text.copy(alpha = 0.6f)
-                )
+                style = typo.bodyMedium.copy(color = LocalCannoliColors.current.text.copy(alpha = 0.6f))
             )
         }
         BottomBar(

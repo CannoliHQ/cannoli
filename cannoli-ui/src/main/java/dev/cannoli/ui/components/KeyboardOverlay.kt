@@ -41,6 +41,7 @@ import dev.cannoli.ui.START_GLYPH
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.screenPadding
 import dev.cannoli.ui.theme.LocalCannoliColors
+import dev.cannoli.ui.theme.LocalCannoliTypography
 import dev.cannoli.ui.KEY_SHIFT
 import dev.cannoli.ui.KEY_ENTER
 import dev.cannoli.ui.KEY_BACKSPACE
@@ -89,6 +90,7 @@ fun KeyboardOverlay(
     symbols: Boolean = false,
     buttonStyle: ButtonStyle = ButtonStyle()
 ) {
+    val typo = LocalCannoliTypography.current
     val rows = getKeyboardRows(caps, symbols)
     val row = keyRow.coerceIn(0, rows.lastIndex)
     val col = keyCol.coerceIn(0, rows[row].lastIndex)
@@ -144,7 +146,7 @@ fun KeyboardOverlay(
             ) {
                 Text(
                     text = displayText,
-                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 20.sp),
+                    style = typo.bodyLarge,
                     color = Color.White,
                     maxLines = 1,
                     softWrap = false

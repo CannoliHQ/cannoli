@@ -18,20 +18,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.cannoli.ui.theme.ErrorText
 import dev.cannoli.ui.theme.ProgressTrack
 import dev.cannoli.ui.theme.Spacing
 import dev.cannoli.ui.theme.Radius
-import androidx.compose.ui.unit.sp
 import dev.cannoli.ui.R
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.screenPadding
-import dev.cannoli.ui.theme.LocalCannoliFont
+import dev.cannoli.ui.theme.LocalCannoliTypography
 
 @Composable
 fun UpdateDownloadOverlay(
@@ -41,6 +38,7 @@ fun UpdateDownloadOverlay(
     error: String?,
     buttonStyle: ButtonStyle = ButtonStyle()
 ) {
+    val typo = LocalCannoliTypography.current
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -55,12 +53,7 @@ fun UpdateDownloadOverlay(
         ) {
             Text(
                 text = "v$versionName",
-                style = TextStyle(
-                    fontFamily = LocalCannoliFont.current,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 28.sp,
-                    color = Color.White
-                )
+                style = typo.titleLarge.copy(color = Color.White)
             )
 
             Spacer(modifier = Modifier.height(Spacing.Md))
@@ -68,12 +61,7 @@ fun UpdateDownloadOverlay(
             if (changelog.isNotEmpty()) {
                 Text(
                     text = changelog,
-                    style = TextStyle(
-                        fontFamily = LocalCannoliFont.current,
-                        fontSize = 16.sp,
-                        color = Color.White,
-                        textAlign = TextAlign.Center
-                    )
+                    style = typo.bodyMedium.copy(color = Color.White, textAlign = TextAlign.Center)
                 )
                 Spacer(modifier = Modifier.height(Spacing.Lg))
             }
@@ -81,12 +69,7 @@ fun UpdateDownloadOverlay(
             if (error != null) {
                 Text(
                     text = error,
-                    style = TextStyle(
-                        fontFamily = LocalCannoliFont.current,
-                        fontSize = 16.sp,
-                        color = ErrorText,
-                        textAlign = TextAlign.Center
-                    )
+                    style = typo.bodyMedium.copy(color = ErrorText, textAlign = TextAlign.Center)
                 )
             } else {
                 LinearProgressIndicator(
@@ -103,11 +86,7 @@ fun UpdateDownloadOverlay(
                 Spacer(modifier = Modifier.height(Spacing.Sm))
                 Text(
                     text = "${(progress * 100).toInt()}%",
-                    style = TextStyle(
-                        fontFamily = LocalCannoliFont.current,
-                        fontSize = 14.sp,
-                        color = Color.White
-                    )
+                    style = typo.labelSmall.copy(color = Color.White)
                 )
             }
         }

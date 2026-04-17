@@ -2,10 +2,10 @@ package dev.cannoli.scorza.libretro
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import dev.cannoli.igm.SaveSlotManager as SharedSlotManager
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import dev.cannoli.igm.SaveSlotManager as SharedSlotManager
 
 typealias Slot = SharedSlotManager.Slot
 

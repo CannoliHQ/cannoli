@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -28,6 +27,7 @@ import dev.cannoli.ui.components.pillInternalH
 import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.screenPadding
 import dev.cannoli.ui.theme.LocalCannoliColors
+import dev.cannoli.ui.theme.LocalCannoliTypography
 
 private val verticalPadding = 6.dp
 
@@ -44,6 +44,7 @@ fun IGMSettingsScreen(
     lineHeight: TextUnit = 32.sp,
     buttonStyle: ButtonStyle = ButtonStyle()
 ) {
+    val typo = LocalCannoliTypography.current
     val itemHeight = pillItemHeight(lineHeight, verticalPadding)
     val colors = LocalCannoliColors.current
 
@@ -67,9 +68,7 @@ fun IGMSettingsScreen(
                     Spacer(modifier = Modifier.height(Spacing.Md))
                     Text(
                         text = description,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontSize = 16.sp,
-                            lineHeight = 22.sp,
+                        style = typo.bodyMedium.copy(
                             color = colors.text.copy(alpha = 0.8f)
                         ),
                         modifier = Modifier.padding(start = pillInternalH)
@@ -116,8 +115,7 @@ fun IGMSettingsScreen(
                 if (coreInfo.isNotEmpty()) {
                     Text(
                         text = coreInfo,
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontSize = 14.sp,
+                        style = typo.labelSmall.copy(
                             color = colors.text.copy(alpha = 0.4f)
                         ),
                         modifier = Modifier

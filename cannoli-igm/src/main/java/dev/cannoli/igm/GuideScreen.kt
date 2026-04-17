@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliFont
+import dev.cannoli.ui.theme.LocalCannoliTypography
 import kotlinx.coroutines.delay
 import java.io.File
 
@@ -59,6 +60,7 @@ fun GuideScreen(
     onScrollPosChanged: (y: Int, x: Int) -> Unit,
     pageLabel: String = "%d / %d"
 ) {
+    val typo = LocalCannoliTypography.current
     val colors = LocalCannoliColors.current
     val zoomIndex = (textZoom - 1).coerceIn(0, ZOOM_SCALES.lastIndex)
 
@@ -82,11 +84,7 @@ fun GuideScreen(
             if (guideType == GuideType.PDF && pageCount > 0) {
                 Text(
                     text = String.format(pageLabel, page + 1, pageCount),
-                    style = TextStyle(
-                        fontFamily = LocalCannoliFont.current,
-                        fontSize = 13.sp,
-                        color = colors.text.copy(alpha = 0.6f)
-                    ),
+                    style = typo.labelSmall.copy(color = colors.text.copy(alpha = 0.6f)),
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(8.dp)

@@ -10,7 +10,6 @@ import dev.cannoli.scorza.model.Game
 import dev.cannoli.scorza.model.LaunchTarget
 import dev.cannoli.scorza.scanner.PlatformResolver
 import dev.cannoli.scorza.settings.SettingsRepository
-import dev.cannoli.scorza.settings.TimeFormat
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.util.ArchiveExtractor
 import java.io.File

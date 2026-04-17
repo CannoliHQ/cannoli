@@ -1,10 +1,10 @@
 package dev.cannoli.scorza.scanner
 
-import dev.cannoli.ui.STAR
 import dev.cannoli.scorza.model.Game
 import dev.cannoli.scorza.model.LaunchTarget
 import dev.cannoli.scorza.model.Platform
 import dev.cannoli.scorza.util.sortedNatural
+import dev.cannoli.ui.STAR
 import java.io.File
 import java.io.IOException
 

@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -26,14 +25,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import dev.cannoli.ui.theme.Spacing
-import dev.cannoli.ui.theme.Radius
-import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.ui.components.PillRowText
 import dev.cannoli.ui.components.screenPadding
 import dev.cannoli.ui.theme.GrayText
+import dev.cannoli.ui.theme.LocalCannoliTypography
 import dev.cannoli.ui.theme.ProgressTrack
+import dev.cannoli.ui.theme.Radius
+import dev.cannoli.ui.theme.Spacing
 
 @Composable
 fun InstallingScreen(
@@ -41,6 +40,7 @@ fun InstallingScreen(
     statusLabel: String,
     finished: Boolean
 ) {
+    val typo = LocalCannoliTypography.current
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
         animationSpec = tween(durationMillis = 600),
@@ -67,7 +67,7 @@ fun InstallingScreen(
 
             Text(
                 text = statusLabel,
-                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp),
+                style = typo.bodyMedium,
                 color = GrayText
             )
 
@@ -92,8 +92,8 @@ fun InstallingScreen(
                 PillRowText(
                     label = stringResource(R.string.install_continue),
                     isSelected = true,
-                    fontSize = 22.sp,
-                    lineHeight = 32.sp,
+                    fontSize = typo.bodyLarge.fontSize,
+                    lineHeight = typo.bodyLarge.lineHeight,
                     verticalPadding = 4.dp
                 )
             }

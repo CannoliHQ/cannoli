@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -17,13 +16,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import dev.cannoli.ui.theme.Spacing
-import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.ui.theme.GrayText
+import dev.cannoli.ui.theme.LocalCannoliTypography
+import dev.cannoli.ui.theme.Spacing
 
 @Composable
 fun PermissionScreen() {
+    val typo = LocalCannoliTypography.current
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -41,10 +41,7 @@ fun PermissionScreen() {
 
         Text(
             text = stringResource(R.string.permission_title),
-            style = MaterialTheme.typography.bodyLarge.copy(
-                fontSize = 28.sp,
-                lineHeight = 36.sp
-            ),
+            style = typo.titleLarge,
             color = Color.White
         )
 
@@ -52,9 +49,7 @@ fun PermissionScreen() {
 
         Text(
             text = stringResource(R.string.permission_description),
-            style = MaterialTheme.typography.bodyMedium.copy(
-                fontSize = 16.sp
-            ),
+            style = typo.bodyMedium,
             color = GrayText
         )
 
@@ -62,9 +57,7 @@ fun PermissionScreen() {
 
         Text(
             text = stringResource(R.string.permission_grant),
-            style = MaterialTheme.typography.bodyMedium.copy(
-                fontSize = 16.sp
-            ),
+            style = typo.bodyMedium,
             color = GrayText
         )
     }

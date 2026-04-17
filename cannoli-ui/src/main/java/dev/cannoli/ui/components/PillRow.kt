@@ -42,8 +42,10 @@ fun pillItemHeight(lineHeight: TextUnit, verticalPadding: Dp): Dp {
     return with(LocalDensity.current) { lineHeight.toDp() } + verticalPadding * 2 + 4.dp
 }
 
+const val MarqueeInitialDelayMs = 800L
+
 @Composable
-fun MarqueeEffect(scrollState: ScrollState, active: Boolean, key: Any = active, initialDelayMs: Long = 600) {
+fun MarqueeEffect(scrollState: ScrollState, active: Boolean, key: Any = active, initialDelayMs: Long = MarqueeInitialDelayMs) {
     LaunchedEffect(key) {
         scrollState.scrollTo(0)
         if (!active) return@LaunchedEffect

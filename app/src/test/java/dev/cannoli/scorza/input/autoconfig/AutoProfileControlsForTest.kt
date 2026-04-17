@@ -1,6 +1,5 @@
 package dev.cannoli.scorza.input.autoconfig
 
-import dev.cannoli.scorza.input.AutoProfileMatch
 import dev.cannoli.scorza.input.ControllerIdentity
 import dev.cannoli.scorza.input.ProfileManager
 import org.junit.After

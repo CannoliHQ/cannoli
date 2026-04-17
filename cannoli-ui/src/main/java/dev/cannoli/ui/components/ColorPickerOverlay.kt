@@ -36,6 +36,7 @@ import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.screenPadding
 import dev.cannoli.ui.theme.COLOR_PRESETS
 import dev.cannoli.ui.theme.LocalCannoliColors
+import dev.cannoli.ui.theme.LocalCannoliTypography
 
 const val COLOR_GRID_COLS = 4
 
@@ -56,6 +57,7 @@ fun ColorPickerOverlay(
     titleLineHeight: TextUnit = 32.sp,
     buttonStyle: ButtonStyle = ButtonStyle()
 ) {
+    val typo = LocalCannoliTypography.current
     val currentName = colorDisplayName(currentColor)
     val highlight = LocalCannoliColors.current.highlight
 
@@ -94,7 +96,7 @@ fun ColorPickerOverlay(
                         Spacer(modifier = Modifier.width(16.dp))
                         Text(
                             text = currentName,
-                            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 20.sp),
+                            style = typo.bodyLarge,
                             color = Color.White
                         )
                     }
@@ -150,6 +152,7 @@ fun HexColorInputOverlay(
     titleLineHeight: TextUnit = 32.sp,
     buttonStyle: ButtonStyle = ButtonStyle()
 ) {
+    val typo = LocalCannoliTypography.current
     val displayHex = "#$currentHex"
     val previewColor = if (currentHex.length == 6) {
         try { Color(0xFF000000 or currentHex.toLong(16)) } catch (_: Exception) { Color.Black }
@@ -191,7 +194,7 @@ fun HexColorInputOverlay(
                         Spacer(modifier = Modifier.width(16.dp))
                         Text(
                             text = displayHex,
-                            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 24.sp),
+                            style = typo.bodyLarge,
                             color = Color.White
                         )
                     }

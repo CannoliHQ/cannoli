@@ -17,22 +17,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import dev.cannoli.ui.theme.Spacing
-import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.BuildConfig
 import dev.cannoli.scorza.R
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.screenPadding
-import dev.cannoli.ui.theme.LocalCannoliFont
+import dev.cannoli.ui.theme.LocalCannoliTypography
+import dev.cannoli.ui.theme.Spacing
 import dev.cannoli.ui.theme.Success
 
 @Composable
 fun AboutOverlay(statusMessage: String? = null, updateAvailable: Boolean = false, buttonStyle: ButtonStyle = ButtonStyle()) {
+    val typo = LocalCannoliTypography.current
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -51,55 +49,33 @@ fun AboutOverlay(statusMessage: String? = null, updateAvailable: Boolean = false
 
             Text(
                 text = stringResource(R.string.about_title),
-                style = TextStyle(
-                    fontFamily = LocalCannoliFont.current,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 32.sp,
-                    color = Color.White
-                )
+                style = typo.titleLarge.copy(color = Color.White)
             )
 
             Text(
                 text = stringResource(R.string.about_description),
-                style = TextStyle(
-                    fontFamily = LocalCannoliFont.current,
-                    fontSize = 16.sp,
-                    color = Color.White,
-                    textAlign = TextAlign.Center
-                )
+                style = typo.bodyMedium.copy(color = Color.White, textAlign = TextAlign.Center)
             )
 
             Spacer(modifier = Modifier.height(Spacing.Lg))
 
             Text(
                 text = "v${BuildConfig.VERSION_NAME}  •  ${BuildConfig.BUILD_DATE}  •  ${BuildConfig.GIT_HASH}",
-                style = TextStyle(
-                    fontFamily = LocalCannoliFont.current,
-                    fontSize = 18.sp,
-                    color = Color.White
-                )
+                style = typo.bodyMedium.copy(color = Color.White)
             )
 
             Spacer(modifier = Modifier.height(Spacing.Lg))
 
             Text(
                 text = stringResource(R.string.about_website),
-                style = TextStyle(
-                    fontFamily = LocalCannoliFont.current,
-                    fontSize = 18.sp,
-                    color = Color.White
-                )
+                style = typo.bodyMedium.copy(color = Color.White)
             )
 
             if (statusMessage != null) {
                 Spacer(modifier = Modifier.height(Spacing.Md))
                 Text(
                     text = statusMessage,
-                    style = TextStyle(
-                        fontFamily = LocalCannoliFont.current,
-                        fontSize = 14.sp,
-                        color = Success
-                    )
+                    style = typo.labelSmall.copy(color = Success)
                 )
             }
         }

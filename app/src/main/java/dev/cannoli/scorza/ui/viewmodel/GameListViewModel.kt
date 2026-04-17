@@ -1,6 +1,5 @@
 package dev.cannoli.scorza.ui.viewmodel
 
-import dev.cannoli.ui.STAR
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.model.Collection
 import dev.cannoli.scorza.model.Game
@@ -9,6 +8,7 @@ import dev.cannoli.scorza.scanner.FileScanner
 import dev.cannoli.scorza.scanner.OrderingManager
 import dev.cannoli.scorza.scanner.PlatformResolver
 import dev.cannoli.scorza.scanner.RecentlyPlayedManager
+import dev.cannoli.ui.STAR
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

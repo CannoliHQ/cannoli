@@ -37,7 +37,7 @@ fun ScreenTitle(
     val density = LocalDensity.current
     val textMeasurer = rememberTextMeasurer()
 
-    MarqueeEffect(scrollState, active = true, key = text, initialDelayMs = 800)
+    MarqueeEffect(scrollState, active = true, key = text)
 
     val scaledFontSizeSp = fontSize.value * 1.3f
 

@@ -1,11 +1,8 @@
 package dev.cannoli.scorza.libretro
 
 import android.graphics.Bitmap
-import android.opengl.GLSurfaceView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -13,55 +10,59 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
-import dev.cannoli.ui.theme.Spacing
-import dev.cannoli.ui.theme.Radius
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.cannoli.scorza.R
-import dev.cannoli.ui.theme.LocalCannoliFont
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.viewinterop.AndroidView
-import dev.cannoli.ui.components.BottomBar
-import dev.cannoli.ui.components.ScreenBackground
-import dev.cannoli.ui.components.LocalStatusBarLeftEdge
-import dev.cannoli.ui.components.ScreenTitle
-import dev.cannoli.ui.components.StatusBar
-import dev.cannoli.ui.components.pillInternalH
-import androidx.compose.ui.platform.LocalContext
-import dev.cannoli.ui.components.screenPadding
-import dev.cannoli.ui.BULLET
-import dev.cannoli.ui.ButtonStyle
-import dev.cannoli.ui.CIRCLE_EMPTY
-import dev.cannoli.ui.DPAD_HORIZONTAL
-import dev.cannoli.ui.HALF_CIRCLE
+import dev.cannoli.igm.GuideScreen
+import dev.cannoli.igm.GuideType
 import dev.cannoli.igm.IGMScreen
 import dev.cannoli.igm.IGMSettingsItem
 import dev.cannoli.igm.IGMSettingsScreen
 import dev.cannoli.igm.InGameMenu
 import dev.cannoli.igm.InGameMenuOptions
-import dev.cannoli.igm.GuideScreen
-import dev.cannoli.igm.GuideType
 import dev.cannoli.igm.PolaroidFrame
+import dev.cannoli.scorza.R
+import dev.cannoli.ui.BULLET
+import dev.cannoli.ui.ButtonStyle
+import dev.cannoli.ui.CIRCLE_EMPTY
+import dev.cannoli.ui.DPAD_HORIZONTAL
+import dev.cannoli.ui.HALF_CIRCLE
+import dev.cannoli.ui.components.BottomBar
+import dev.cannoli.ui.components.LocalStatusBarLeftEdge
+import dev.cannoli.ui.components.ScreenBackground
+import dev.cannoli.ui.components.ScreenTitle
+import dev.cannoli.ui.components.StatusBar
+import dev.cannoli.ui.components.pillInternalH
+import dev.cannoli.ui.components.screenPadding
 import dev.cannoli.ui.theme.LocalCannoliColors
+import dev.cannoli.ui.theme.LocalCannoliFont
+import dev.cannoli.ui.theme.LocalCannoliTypography
 import dev.cannoli.ui.theme.LocalScaleFactor
+import dev.cannoli.ui.theme.Radius
+import dev.cannoli.ui.theme.Spacing
+import dev.cannoli.ui.theme.buildCannoliTypography
 
 data class GameInfo(
     val coreName: String,
@@ -119,11 +120,12 @@ fun LibretroScreen(
     val igmFontSize = settings.textSize.sp.sp
     val igmLineHeight = (settings.textSize.sp + 10).sp
     val igmScaleFactor = settings.textSize.sp / 22f
-    val labels = dev.cannoli.ui.ButtonStyle(settings.buttonLabelSet, settings.confirmButton)
+    val igmTypography = buildCannoliTypography(baseSizeSp = settings.textSize.sp, fontFamily = LocalCannoliFont.current)
+    val labels = ButtonStyle(settings.buttonLabelSet, settings.confirmButton)
     val statusBarEnabled = (settings.showWifi || settings.showBluetooth || settings.showClock || settings.showBattery || settings.showVpn) && !showDescription && !isGuideScreen
     val statusBarLeftEdge = remember { mutableIntStateOf(Int.MAX_VALUE) }
 
-    CompositionLocalProvider(LocalStatusBarLeftEdge provides statusBarLeftEdge, LocalScaleFactor provides igmScaleFactor) {
+    CompositionLocalProvider(LocalStatusBarLeftEdge provides statusBarLeftEdge, LocalScaleFactor provides igmScaleFactor, LocalCannoliTypography provides igmTypography) {
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(
             factory = { glSurfaceView },

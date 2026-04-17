@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,22 +22,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import dev.cannoli.ui.theme.Spacing
-import dev.cannoli.ui.theme.Radius
-import dev.cannoli.ui.theme.SurfaceDim
-import androidx.compose.ui.unit.sp
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
-
 import dev.cannoli.scorza.R
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.screenPadding
-import dev.cannoli.ui.theme.LocalCannoliFont
+import dev.cannoli.ui.theme.LocalCannoliTypography
+import dev.cannoli.ui.theme.Radius
+import dev.cannoli.ui.theme.Spacing
+import dev.cannoli.ui.theme.SurfaceDim
 
 @Composable
 fun KitchenOverlay(
@@ -48,6 +43,7 @@ fun KitchenOverlay(
     requirePin: Boolean = true,
     buttonStyle: ButtonStyle = ButtonStyle()
 ) {
+    val typo = LocalCannoliTypography.current
     val safeIndex = selectedIndex.coerceIn(0, (urls.size - 1).coerceAtLeast(0))
     val url = urls.getOrNull(safeIndex) ?: "http://?.?.?.?:1091"
     val qrUrl = remember(url, pin, requirePin) {
@@ -67,12 +63,7 @@ fun KitchenOverlay(
         ) {
             Text(
                 text = stringResource(R.string.kitchen_title),
-                style = TextStyle(
-                    fontFamily = LocalCannoliFont.current,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 28.sp,
-                    color = Color.White
-                )
+                style = typo.titleLarge.copy(color = Color.White)
             )
 
             Spacer(modifier = Modifier.height(Spacing.Lg))
@@ -91,12 +82,7 @@ fun KitchenOverlay(
 
             Text(
                 text = url,
-                style = TextStyle(
-                    fontFamily = LocalCannoliFont.current,
-                    fontSize = 18.sp,
-                    color = Color.White,
-                    textAlign = TextAlign.Center
-                )
+                style = typo.bodyMedium.copy(color = Color.White, textAlign = TextAlign.Center)
             )
 
             if (requirePin) {
@@ -115,12 +101,7 @@ fun KitchenOverlay(
                         ) {
                             Text(
                                 text = char.toString(),
-                                style = TextStyle(
-                                    fontFamily = LocalCannoliFont.current,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 24.sp,
-                                    color = Color.White
-                                )
+                                style = typo.bodyLarge.copy(color = Color.White)
                             )
                         }
                     }

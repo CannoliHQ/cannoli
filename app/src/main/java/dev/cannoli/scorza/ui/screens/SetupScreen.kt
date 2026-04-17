@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -21,16 +20,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import dev.cannoli.ui.theme.Spacing
-import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
-import dev.cannoli.ui.components.BottomBar
-import dev.cannoli.ui.components.PillRowKeyValue
-import dev.cannoli.ui.components.screenPadding
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.DPAD_HORIZONTAL
 import dev.cannoli.ui.START_GLYPH
+import dev.cannoli.ui.components.BottomBar
+import dev.cannoli.ui.components.PillRowKeyValue
+import dev.cannoli.ui.components.screenPadding
 import dev.cannoli.ui.theme.GrayText
+import dev.cannoli.ui.theme.LocalCannoliTypography
+import dev.cannoli.ui.theme.Spacing
 
 @Composable
 fun SetupScreen(
@@ -41,8 +40,9 @@ fun SetupScreen(
     continueEnabled: Boolean = true,
     buttonStyle: ButtonStyle = ButtonStyle()
 ) {
-    val fontSize = 22.sp
-    val lineHeight = 32.sp
+    val typo = LocalCannoliTypography.current
+    val fontSize = typo.bodyLarge.fontSize
+    val lineHeight = typo.bodyLarge.lineHeight
     val verticalPadding = 4.dp
 
     val folderIndex = if (isCustom) 1 else -1
@@ -73,10 +73,7 @@ fun SetupScreen(
 
                 Text(
                     text = stringResource(R.string.setup_welcome),
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontSize = 28.sp,
-                        lineHeight = 36.sp
-                    ),
+                    style = typo.titleLarge,
                     color = Color.White
                 )
 
@@ -84,9 +81,7 @@ fun SetupScreen(
 
                 Text(
                     text = stringResource(R.string.setup_description),
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontSize = 16.sp
-                    ),
+                    style = typo.bodyMedium,
                     color = GrayText
                 )
             }

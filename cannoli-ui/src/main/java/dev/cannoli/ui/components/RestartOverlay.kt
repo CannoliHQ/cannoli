@@ -10,13 +10,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.sp
 import dev.cannoli.ui.R
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.screenPadding
-import dev.cannoli.ui.theme.LocalCannoliFont
+import dev.cannoli.ui.theme.LocalCannoliTypography
 
 @Composable
 fun RestartOverlay(message: String, buttonStyle: ButtonStyle = ButtonStyle()) {
@@ -28,11 +26,7 @@ fun RestartOverlay(message: String, buttonStyle: ButtonStyle = ButtonStyle()) {
     ) {
         Text(
             text = message,
-            style = TextStyle(
-                fontFamily = LocalCannoliFont.current,
-                fontSize = 22.sp,
-                color = Color.White
-            )
+            style = LocalCannoliTypography.current.bodyLarge.copy(color = Color.White)
         )
         BottomBar(
             modifier = Modifier
