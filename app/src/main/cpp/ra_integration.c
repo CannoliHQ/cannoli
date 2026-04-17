@@ -60,6 +60,11 @@ static uint32_t g_pending_game_id = 0;
 static rc_libretro_memory_regions_t g_memory_regions;
 static int g_memory_initialized = 0;
 static int g_memory_init_attempts = 0;
+static volatile int g_pending_reset = 0;
+
+#define MAX_PENDING_UNLOCKS 64
+static int g_pending_unlocks[MAX_PENDING_UNLOCKS];
+static int g_pending_unlock_count = 0;
 
 static void ra_load_game_callback(int result, const char *error_message, rc_client_t *client, void *userdata);
 static void ra_try_init_memory(void);
@@ -113,7 +118,8 @@ static void ra_server_call(const rc_api_request_t *request,
                 p += 10;
                 while (*p && *p != '&') p++;
             } else {
-                new_post[pos++] = *p++;
+                if (pos < sizeof(new_post) - 1) new_post[pos++] = *p;
+                p++;
             }
         }
         new_post[pos] = '\0';
@@ -243,6 +249,11 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeInit(JNIEnv *env
 
     g_frame_count = 0;
     g_memory_init_attempts = 0;
+    g_pending_reset = 0;
+
+    pthread_mutex_lock(&g_queue_mutex);
+    g_pending_unlock_count = 0;
+    pthread_mutex_unlock(&g_queue_mutex);
 
     g_client = rc_client_create(ra_read_memory, ra_server_call);
     rc_client_enable_logging(g_client, RC_CLIENT_LOG_LEVEL_INFO, ra_log);
@@ -457,13 +468,47 @@ static void ra_try_init_memory(void) {
     }
 }
 
+static void ra_do_manual_unlock(int achievement_id);
+
+static void ra_drain_pending_unlocks(void) {
+    int ids[MAX_PENDING_UNLOCKS];
+    int count = 0;
+
+    pthread_mutex_lock(&g_queue_mutex);
+    count = g_pending_unlock_count;
+    if (count > 0) {
+        memcpy(ids, g_pending_unlocks, count * sizeof(int));
+        g_pending_unlock_count = 0;
+    }
+    pthread_mutex_unlock(&g_queue_mutex);
+
+    for (int i = 0; i < count; i++) {
+        ra_do_manual_unlock(ids[i]);
+    }
+}
+
 void ra_process_frame(void) {
     if (!g_client) return;
 
     ra_drain_response_queue();
+    ra_drain_pending_unlocks();
 
     if (!g_memory_initialized)
         ra_try_init_memory();
+
+    if (g_pending_reset && rc_client_is_game_loaded(g_client)) {
+        g_pending_reset = 0;
+        ra_log_to_kotlin("pending reset: executing deferred reset");
+        rc_client_reset(g_client);
+        if (g_memory_initialized) {
+            rc_libretro_memory_destroy(&g_memory_regions);
+            g_memory_initialized = 0;
+            g_memory_init_attempts = 0;
+            g_memory_read_logged = 0;
+            ra_try_init_memory();
+            ra_log_to_kotlin("pending reset: memory re-initialized, totalSize=%u", g_memory_regions.total_size);
+        }
+    }
 
     g_frame_count++;
     if (g_frame_count % 3600 == 0) {
@@ -722,9 +767,7 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeDeserializeProgr
     return result == RC_OK ? JNI_TRUE : JNI_FALSE;
 }
 
-JNIEXPORT void JNICALL
-Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeManualUnlock(JNIEnv *env, jobject thiz, jint achievementId) {
-    (void)env; (void)thiz;
+static void ra_do_manual_unlock(int achievement_id) {
     if (!g_client) return;
 
     const rc_client_user_t *user = rc_client_get_user_info(g_client);
@@ -732,19 +775,37 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeManualUnlock(JNI
 
     const rc_client_game_t *game = rc_client_get_game_info(g_client);
 
-    ra_log_to_kotlin("manual unlock: achievement %d", achievementId);
+    ra_log_to_kotlin("manual unlock: achievement %d", achievement_id);
 
     rc_api_award_achievement_request_t params;
     memset(&params, 0, sizeof(params));
     params.username = user->display_name;
     params.api_token = user->token;
-    params.achievement_id = (uint32_t)achievementId;
+    params.achievement_id = (uint32_t)achievement_id;
     params.hardcore = 0;
     params.game_hash = game ? game->hash : "";
 
     rc_api_request_t request;
     if (rc_api_init_award_achievement_request(&request, &params) == RC_OK) {
-        ra_server_call(&request, ra_award_response, (void *)(intptr_t)achievementId, g_client);
+        ra_server_call(&request, ra_award_response, (void *)(intptr_t)achievement_id, g_client);
         rc_api_destroy_request(&request);
     }
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeQueueUnlock(JNIEnv *env, jobject thiz, jint achievementId) {
+    (void)env; (void)thiz;
+    pthread_mutex_lock(&g_queue_mutex);
+    if (g_pending_unlock_count < MAX_PENDING_UNLOCKS) {
+        g_pending_unlocks[g_pending_unlock_count++] = (int)achievementId;
+        ra_log_to_kotlin("queued unlock: achievement %d (pending=%d)", (int)achievementId, g_pending_unlock_count);
+    }
+    pthread_mutex_unlock(&g_queue_mutex);
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeSetPendingReset(JNIEnv *env, jobject thiz) {
+    (void)env; (void)thiz;
+    g_pending_reset = 1;
+    ra_log_to_kotlin("pending reset: flagged");
 }

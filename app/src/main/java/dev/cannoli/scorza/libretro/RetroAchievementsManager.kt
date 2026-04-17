@@ -36,8 +36,9 @@ class RetroAchievementsManager(
     fun destroy() {
         logger("RA destroy")
         unregisterNetworkCallback()
+        httpExecutor.shutdown()
+        try { httpExecutor.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS) } catch (_: InterruptedException) {}
         nativeDestroy()
-        httpExecutor.shutdownNow()
     }
 
     fun loginWithToken(username: String, token: String) {
@@ -64,10 +65,6 @@ class RetroAchievementsManager(
     }
 
     fun doFrame() {
-        if (pendingReset && gameId > 0) {
-            pendingReset = false
-            nativeReset()
-        }
         nativeDoFrame()
     }
 
@@ -124,9 +121,7 @@ class RetroAchievementsManager(
         syncFailCount = 0
         synchronized(syncingIds) { syncingIds.addAll(toSync) }
         cachedAchievements = null
-        httpExecutor.execute {
-            for (id in toSync) nativeManualUnlock(id)
-        }
+        for (id in toSync) nativeQueueUnlock(id)
     }
     private var networkCallback: android.net.ConnectivityManager.NetworkCallback? = null
 
@@ -177,7 +172,11 @@ class RetroAchievementsManager(
     @Volatile var isOffline = false
         private set
     @Volatile private var networkConnected = true
-    @Volatile var pendingReset = false
+
+    fun setPendingReset() {
+        logger("RA setPendingReset")
+        nativeSetPendingReset()
+    }
 
     fun getAchievements(): List<Achievement> {
         cachedAchievements?.let { return it }
@@ -382,7 +381,8 @@ class RetroAchievementsManager(
     private external fun nativeGetAchievementData(): String
     private external fun nativeSerializeProgress(): ByteArray?
     private external fun nativeDeserializeProgress(data: ByteArray): Boolean
-    private external fun nativeManualUnlock(achievementId: Int)
+    private external fun nativeQueueUnlock(achievementId: Int)
+    private external fun nativeSetPendingReset()
 
     companion object {
         init {

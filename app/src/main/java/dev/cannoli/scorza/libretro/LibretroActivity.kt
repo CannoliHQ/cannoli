@@ -593,8 +593,8 @@ class LibretroActivity : ComponentActivity() {
                         sessionLog.log("RA loadGame: romPath=$romPath consoleId=$consoleId")
                     }
                     if (resumeSlot >= 0) {
-                        ra.pendingReset = true
-                        sessionLog.log("RA pendingReset=true (resumeSlot=$resumeSlot)")
+                        ra.setPendingReset()
+                        sessionLog.log("RA setPendingReset (resumeSlot=$resumeSlot)")
                     }
                     raManager = ra
                     slotManager.raManager = ra
