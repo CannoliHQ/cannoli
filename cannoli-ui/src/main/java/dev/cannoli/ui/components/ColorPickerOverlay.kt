@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -203,19 +204,24 @@ fun HexColorInputOverlay(
                     Spacer(modifier = Modifier.height(20.dp))
 
                     for (rowStart in 0 until HEX_KEYS.size step HEX_ROW_SIZE) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(Spacing.Sm)
+                        ) {
                             for (i in rowStart until (rowStart + HEX_ROW_SIZE).coerceAtMost(HEX_KEYS.size)) {
                                 val key = HEX_KEYS[i]
                                 val isSelected = i == selectedIndex
                                 val isAction = key == KEY_BACKSPACE || key == KEY_ENTER
                                 Box(
                                     modifier = Modifier
-                                        .size(40.dp)
-                                        .clip(RoundedCornerShape(Radius.Md))
-                                        .background(
-                                            if (isSelected) highlight
-                                            else Color.White.copy(alpha = 0.12f)
-                                        ),
+                                        .weight(1f)
+                                        .aspectRatio(1f)
+                                        .clip(RoundedCornerShape(Radius.Lg))
+                                        .then(
+                                            if (isSelected) Modifier.border(3.dp, highlight, RoundedCornerShape(Radius.Lg))
+                                            else Modifier.border(1.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(Radius.Lg))
+                                        )
+                                        .background(Color.White.copy(alpha = 0.12f)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
