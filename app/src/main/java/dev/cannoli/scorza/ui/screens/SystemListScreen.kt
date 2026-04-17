@@ -38,7 +38,7 @@ import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.settings.ArtScale
 import dev.cannoli.ui.components.BottomBar
-import dev.cannoli.scorza.ui.components.ConfirmOverlay
+import dev.cannoli.ui.components.ConfirmOverlay
 import dev.cannoli.scorza.ui.components.DialogOverlay
 import dev.cannoli.ui.components.List
 import dev.cannoli.ui.components.PillRowText

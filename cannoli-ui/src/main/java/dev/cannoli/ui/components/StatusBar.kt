@@ -1,4 +1,4 @@
-package dev.cannoli.scorza.ui.components
+package dev.cannoli.ui.components
 
 import android.bluetooth.BluetoothAdapter
 import android.content.BroadcastReceiver
@@ -42,9 +42,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.cannoli.scorza.R
-import dev.cannoli.scorza.server.KitchenManager
-import dev.cannoli.scorza.settings.TextSize
+import dev.cannoli.ui.R
 import dev.cannoli.ui.components.pillInternalH
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliFont
@@ -73,12 +71,12 @@ fun StatusBar(
     showClock: Boolean = true,
     showBattery: Boolean = true,
     showUpdate: Boolean = true,
+    showKitchen: Boolean = false,
     use24hTime: Boolean = false,
-    textSize: TextSize = TextSize.DEFAULT
+    textSizeSp: Int = 22
 ) {
     val context = LocalContext.current
-    val showKitchen = KitchenManager.isRunning
-    val lineHeight = (textSize.sp + 10).sp
+    val lineHeight = (textSizeSp + 10).sp
     val verticalPadding = 4.dp
     val scaleFactor = LocalScaleFactor.current
 

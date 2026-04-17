@@ -58,12 +58,12 @@ import androidx.lifecycle.lifecycleScope
 import dev.cannoli.scorza.settings.ContentMode
 import dev.cannoli.scorza.settings.GlobalOverridesManager
 import dev.cannoli.scorza.settings.SettingsRepository
-import dev.cannoli.scorza.ui.components.COLOR_GRID_COLS
-import dev.cannoli.scorza.ui.components.handleKeyboardConfirm
-import dev.cannoli.scorza.ui.components.HEX_KEYS
+import dev.cannoli.ui.components.COLOR_GRID_COLS
+import dev.cannoli.ui.components.handleKeyboardConfirm
+import dev.cannoli.ui.components.HEX_KEYS
 import dev.cannoli.scorza.ui.components.CREDITS
-import dev.cannoli.scorza.ui.components.HEX_ROW_SIZE
-import dev.cannoli.scorza.ui.components.getKeyboardRows
+import dev.cannoli.ui.components.HEX_ROW_SIZE
+import dev.cannoli.ui.components.getKeyboardRows
 import dev.cannoli.scorza.ui.screens.ColorEntry
 import dev.cannoli.scorza.ui.screens.CoreMappingEntry
 import dev.cannoli.scorza.ui.screens.CorePickerOption

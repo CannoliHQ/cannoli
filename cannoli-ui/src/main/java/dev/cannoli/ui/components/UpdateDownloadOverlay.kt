@@ -1,4 +1,4 @@
-package dev.cannoli.scorza.ui.components
+package dev.cannoli.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -27,7 +27,7 @@ import dev.cannoli.ui.theme.ProgressTrack
 import dev.cannoli.ui.theme.Spacing
 import dev.cannoli.ui.theme.Radius
 import androidx.compose.ui.unit.sp
-import dev.cannoli.scorza.R
+import dev.cannoli.ui.R
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.screenPadding

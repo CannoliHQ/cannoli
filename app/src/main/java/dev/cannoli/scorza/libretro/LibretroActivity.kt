@@ -1816,7 +1816,7 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun handleProfileNameInput(screen: IGMScreen.ProfileName, button: String?): Boolean {
-        val rows = dev.cannoli.scorza.ui.components.getKeyboardRows(screen.caps, screen.symbols)
+        val rows = dev.cannoli.ui.components.getKeyboardRows(screen.caps, screen.symbols)
         val maxRow = rows.lastIndex
         val maxCol = rows[screen.keyRow.coerceIn(0, maxRow)].lastIndex
         return when (button) {
@@ -1835,7 +1835,7 @@ class LibretroActivity : ComponentActivity() {
                 replaceTop(screen.copy(keyCol = if (screen.keyCol >= maxCol) 0 else screen.keyCol + 1)); true
             }
             "btn_south" -> {
-                dev.cannoli.scorza.ui.components.handleKeyboardConfirm(
+                dev.cannoli.ui.components.handleKeyboardConfirm(
                     screen.caps, screen.symbols, screen.keyRow, screen.keyCol,
                     screen.name, screen.cursorPos,
                     onChar = { newName, newPos -> replaceTop(screen.copy(name = newName, cursorPos = newPos)) },

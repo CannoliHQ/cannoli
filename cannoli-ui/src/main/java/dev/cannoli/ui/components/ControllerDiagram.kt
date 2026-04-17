@@ -1,4 +1,4 @@
-package dev.cannoli.scorza.ui.components
+package dev.cannoli.ui.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.BoxWithConstraints

@@ -1,4 +1,4 @@
-package dev.cannoli.scorza.ui.components
+package dev.cannoli.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -12,7 +12,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.sp
-import dev.cannoli.scorza.R
+import dev.cannoli.ui.R
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.screenPadding

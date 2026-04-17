@@ -43,7 +43,7 @@ import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.LocalStatusBarLeftEdge
 import dev.cannoli.ui.components.ScreenTitle
-import dev.cannoli.scorza.ui.components.StatusBar
+import dev.cannoli.ui.components.StatusBar
 import dev.cannoli.ui.components.pillInternalH
 import androidx.compose.ui.platform.LocalContext
 import dev.cannoli.ui.components.screenPadding
@@ -241,7 +241,7 @@ fun LibretroScreen(
                 )
             }
             is IGMScreen.ProfileName -> {
-                dev.cannoli.scorza.ui.components.KeyboardOverlay(
+                dev.cannoli.ui.components.KeyboardOverlay(
                     text = screen.name,
                     cursorPos = screen.cursorPos,
                     keyRow = screen.keyRow,
@@ -612,7 +612,7 @@ fun LibretroScreen(
                     showClock = settings.showClock,
                     showBattery = settings.showBattery && !context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK),
                     use24hTime = settings.timeFormat == dev.cannoli.scorza.settings.TimeFormat.TWENTY_FOUR_HOUR,
-                    textSize = settings.textSize
+                    textSizeSp = settings.textSize.sp
                 )
             }
         }

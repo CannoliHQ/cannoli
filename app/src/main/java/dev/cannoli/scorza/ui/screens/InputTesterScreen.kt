@@ -35,9 +35,9 @@ import androidx.compose.ui.res.stringResource
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.scorza.R
-import dev.cannoli.scorza.ui.components.ControllerDiagram
-import dev.cannoli.scorza.ui.components.DiagramInput
-import dev.cannoli.scorza.ui.components.FaceLabels
+import dev.cannoli.ui.components.ControllerDiagram
+import dev.cannoli.ui.components.DiagramInput
+import dev.cannoli.ui.components.FaceLabels
 import dev.cannoli.scorza.ui.viewmodel.EventLogEntry
 import dev.cannoli.scorza.ui.viewmodel.InputTesterViewModel
 

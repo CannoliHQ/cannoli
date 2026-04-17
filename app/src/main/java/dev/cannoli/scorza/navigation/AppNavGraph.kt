@@ -35,16 +35,16 @@ import dev.cannoli.scorza.libretro.ControlsScreen
 import dev.cannoli.scorza.libretro.LibretroInput
 import dev.cannoli.ui.ELLIPSIS
 import dev.cannoli.igm.ShortcutAction
-import dev.cannoli.scorza.ui.components.ConfirmOverlay
+import dev.cannoli.ui.components.ConfirmOverlay
 import dev.cannoli.scorza.ui.components.CreditsOverlay
 import dev.cannoli.scorza.ui.components.DialogOverlay
 import dev.cannoli.ui.components.List
 import dev.cannoli.scorza.ui.components.ListDialogScreen
-import dev.cannoli.scorza.ui.components.MessageOverlay
+import dev.cannoli.ui.components.MessageOverlay
 import dev.cannoli.ui.components.PillRowKeyValue
 import dev.cannoli.ui.components.PillRowText
 import dev.cannoli.ui.components.LocalStatusBarLeftEdge
-import dev.cannoli.scorza.ui.components.StatusBar
+import dev.cannoli.ui.components.StatusBar
 import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.scorza.ui.screens.ColorEntry
 import dev.cannoli.scorza.ui.screens.CoreMappingEntry
@@ -732,8 +732,9 @@ fun AppNavGraph(
                 showClock = appSettings.showClock,
                 showBattery = appSettings.showBattery,
                 showUpdate = appSettings.showUpdate,
+                showKitchen = dev.cannoli.scorza.server.KitchenManager.isRunning,
                 use24hTime = appSettings.use24h,
-                textSize = appSettings.textSize
+                textSizeSp = appSettings.textSize.sp
             )
         }
         }
