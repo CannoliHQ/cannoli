@@ -46,6 +46,7 @@ import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.screenPadding
+import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.theme.GrayText
 import dev.cannoli.ui.theme.PolaroidDark
 import dev.cannoli.ui.theme.PolaroidInactive
@@ -88,7 +89,7 @@ fun InGameMenu(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = 48.dp)
+                    .padding(bottom = footerReservation())
             ) {
                 ScreenTitle(
                     text = gameTitle,

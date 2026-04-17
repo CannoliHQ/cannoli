@@ -27,6 +27,7 @@ import dev.cannoli.ui.START_GLYPH
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.PillRowKeyValue
 import dev.cannoli.ui.components.screenPadding
+import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.theme.GrayText
 import dev.cannoli.ui.theme.LocalCannoliTypography
 import dev.cannoli.ui.theme.Spacing
@@ -56,7 +57,7 @@ fun SetupScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 48.dp),
+                .padding(bottom = footerReservation()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Column(

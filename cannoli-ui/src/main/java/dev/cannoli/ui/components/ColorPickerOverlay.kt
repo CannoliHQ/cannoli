@@ -34,6 +34,7 @@ import dev.cannoli.ui.KEY_ENTER
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.screenPadding
+import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.theme.COLOR_PRESETS
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliTypography
@@ -70,7 +71,7 @@ fun ColorPickerOverlay(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 48.dp)
+                .padding(bottom = footerReservation())
         ) {
             ScreenTitle(
                 text = title,
@@ -168,7 +169,7 @@ fun HexColorInputOverlay(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 48.dp)
+                .padding(bottom = footerReservation())
         ) {
             ScreenTitle(
                 text = title,

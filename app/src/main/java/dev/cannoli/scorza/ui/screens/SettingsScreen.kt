@@ -29,6 +29,7 @@ import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.screenPadding
+import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.theme.Spacing
 
 @Composable
@@ -59,7 +60,7 @@ fun SettingsScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = 48.dp)
+                    .padding(bottom = footerReservation())
             ) {
                 val categoryLabel = state.activeCategoryLabel
                 if (categoryLabel != null) {
@@ -126,7 +127,7 @@ fun SettingsScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = 48.dp)
+                    .padding(bottom = footerReservation())
             ) {
                 ScreenTitle(
                     text = stringResource(R.string.settings_title),

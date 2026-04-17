@@ -56,6 +56,7 @@ import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.StatusBar
 import dev.cannoli.ui.components.pillInternalH
 import dev.cannoli.ui.components.screenPadding
+import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliFont
 import dev.cannoli.ui.theme.LocalCannoliTypography
@@ -314,7 +315,7 @@ fun LibretroScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(bottom = 48.dp)
+                                .padding(bottom = footerReservation())
                         ) {
                             ScreenTitle(
                                 text = gameTitle,

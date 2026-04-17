@@ -33,6 +33,7 @@ import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.UpdateDownloadOverlay
 import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.screenPadding
+import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.theme.Spacing
 
 @Composable
@@ -218,7 +219,7 @@ internal fun ListDialogScreen(
             Column(
                 modifier = Modifier
                     .then(if (fullWidth) Modifier.fillMaxSize() else Modifier.fillMaxWidth(0.65f))
-                    .padding(bottom = 48.dp)
+                    .padding(bottom = footerReservation())
             ) {
                 ScreenTitle(
                     text = title,

@@ -20,6 +20,7 @@ import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.LegendPill
 import dev.cannoli.ui.components.screenPadding
+import dev.cannoli.ui.components.footerReservation
 
 /**
  * Full-screen dark overlay container with centered content and a bottom bar.
@@ -38,7 +39,7 @@ fun OverlayScrim(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 48.dp),
+                .padding(bottom = footerReservation()),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {

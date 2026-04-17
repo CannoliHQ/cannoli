@@ -32,10 +32,14 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.ui.theme.LocalCannoliColors
+import dev.cannoli.ui.theme.LocalScaleFactor
 import dev.cannoli.ui.theme.Radius
 
 val screenPadding = 20.dp
 val pillInternalH = 14.dp
+
+@Composable
+fun footerReservation(): Dp = (48 * LocalScaleFactor.current).dp
 
 @Composable
 fun pillItemHeight(lineHeight: TextUnit, verticalPadding: Dp): Dp {
