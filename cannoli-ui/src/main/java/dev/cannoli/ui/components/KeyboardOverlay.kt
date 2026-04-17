@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -167,7 +168,7 @@ fun KeyboardOverlay(
                             modifier = Modifier
                                 .padding(2.dp)
                                 .height(48.dp)
-                                .fillMaxWidth(0.7f)
+                                .widthIn(max = 400.dp).fillMaxWidth()
                                 .clip(RoundedCornerShape(Radius.Md))
                                 .background(if (isSelected) highlight else KEY_BG),
                             contentAlignment = Alignment.Center

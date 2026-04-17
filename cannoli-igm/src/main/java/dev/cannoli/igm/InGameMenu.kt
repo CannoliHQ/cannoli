@@ -101,7 +101,7 @@ fun InGameMenu(
                     Column(
                         modifier = Modifier
                             .fillMaxHeight()
-                            .then(if (showThumbnail) Modifier.fillMaxWidth(0.5f) else Modifier.fillMaxWidth())
+                            .then(if (showThumbnail) Modifier.weight(0.4f) else Modifier.weight(1f))
                     ) {
                         List(
                             items = menuOptions.options,
@@ -133,7 +133,7 @@ fun InGameMenu(
                         Box(
                             modifier = Modifier
                                 .fillMaxHeight()
-                                .fillMaxWidth()
+                                .weight(0.6f)
                                 .padding(start = 16.dp),
                             contentAlignment = Alignment.Center
                         ) { Box(modifier = Modifier.widthIn(max = 280.dp)) {

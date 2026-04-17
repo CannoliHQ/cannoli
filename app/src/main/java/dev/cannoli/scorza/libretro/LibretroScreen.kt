@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -172,7 +173,7 @@ fun LibretroScreen(
                                 color = Color.White
                             )
                             Spacer(modifier = Modifier.height(Spacing.Lg))
-                            Box(modifier = Modifier.fillMaxWidth(0.5f)) {
+                            Box(modifier = Modifier.widthIn(max = 280.dp).fillMaxWidth()) {
                                 PolaroidFrame(
                                     thumbnail = slotThumbnail,
                                     selectedSlotIndex = selectedSlot.index,
@@ -443,7 +444,7 @@ fun LibretroScreen(
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center,
-                            modifier = Modifier.fillMaxWidth(0.8f)
+                            modifier = Modifier.widthIn(max = 560.dp).fillMaxWidth()
                         ) {
                             Text(
                                 text = ach.title,
@@ -505,7 +506,7 @@ fun LibretroScreen(
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth(0.7f)
+                    modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth()
                 ) {
                     val actionName = settingsItems.getOrNull(screen.selectedIndex)?.label ?: ""
                     Text(
@@ -529,7 +530,7 @@ fun LibretroScreen(
                         val progress = (screen.countdownMs / 1500f).coerceIn(0f, 1f)
                         Box(
                             modifier = Modifier
-                                .fillMaxWidth(0.5f)
+                                .widthIn(max = 280.dp).fillMaxWidth()
                                 .height(8.dp)
                                 .clip(RoundedCornerShape(Radius.Sm))
                                 .background(colors.text.copy(alpha = 0.2f))

@@ -6,7 +6,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -149,7 +150,7 @@ fun AppNavGraph(
     val cannoliTypography = buildCannoliTypography(baseSizeSp = appSettings.textSize.sp, fontFamily = LocalCannoliFont.current)
 
     CompositionLocalProvider(LocalCannoliColors provides cannoliColors, LocalStatusBarLeftEdge provides statusBarLeftEdge, LocalScaleFactor provides scaleFactor, LocalCannoliTypography provides cannoliTypography) {
-    Box(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
+    Box(modifier = Modifier.fillMaxSize().displayCutoutPadding()) {
         when (currentScreen) {
             is LauncherScreen.SystemList -> {
                 if (systemListViewModel == null) return@Box
@@ -575,7 +576,7 @@ fun AppNavGraph(
                     ) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.fillMaxWidth(0.7f)
+                            modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth()
                         ) {
                             val actionName = ShortcutAction.entries.getOrNull(currentScreen.selectedIndex)?.label ?: ""
                             Text(
@@ -599,7 +600,7 @@ fun AppNavGraph(
                                 val progress = (currentScreen.countdownMs / 1500f).coerceIn(0f, 1f)
                                 Box(
                                     modifier = Modifier
-                                        .fillMaxWidth(0.5f)
+                                        .widthIn(max = 280.dp).fillMaxWidth()
                                         .height(8.dp)
                                         .clip(RoundedCornerShape(Radius.Sm))
                                         .background(colors.text.copy(alpha = 0.2f))
