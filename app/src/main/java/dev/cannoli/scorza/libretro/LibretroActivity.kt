@@ -667,6 +667,10 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
+    override fun dispatchTouchEvent(event: android.view.MotionEvent): Boolean {
+        return true
+    }
+
     override fun dispatchGenericMotionEvent(event: android.view.MotionEvent): Boolean {
         if (loading) return super.dispatchGenericMotionEvent(event)
         val source = event.source
