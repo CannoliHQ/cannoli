@@ -37,7 +37,7 @@ val COLOR_PRESETS = listOf(
     ColorPreset("Black", 0xFF1A1A1E),
     ColorPreset("Dark Grey", 0xFF3A3A3C),
     ColorPreset("Light Grey", 0xFFC0BFBE),
-    ColorPreset("White", 0xFFF5F4F0),
+    ColorPreset("White", 0xFFFFFFFF),
     ColorPreset("Flame Red", 0xFFCC1A1A),
     ColorPreset("Crimson", 0xFFB8002A),
     ColorPreset("Berry", 0xFFC0336B),
