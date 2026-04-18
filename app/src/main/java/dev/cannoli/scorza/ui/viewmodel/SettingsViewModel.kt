@@ -130,6 +130,7 @@ class SettingsViewModel(
         val buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER,
         val confirmButton: ConfirmButton = ConfirmButton.EAST,
         val contentMode: ContentMode = ContentMode.PLATFORMS,
+        val portraitMarginPx: Int = 0,
     )
 
     private val _state = MutableStateFlow(State())
@@ -164,6 +165,7 @@ class SettingsViewModel(
         buttonLabelSet = settings.buttonLabelSet,
         confirmButton = settings.confirmButton,
         contentMode = settings.contentMode,
+        portraitMarginPx = settings.portraitMarginPx,
     )
 
     private val allCategories = listOf(
@@ -214,7 +216,8 @@ class SettingsViewModel(
         val releaseChannel: String,
         val artWidth: Int,
         val artScale: ArtScale,
-        val retroArchDiyMode: Boolean
+        val retroArchDiyMode: Boolean,
+        val portraitMarginPx: Int,
     )
 
     private var snapshot: SettingsSnapshot? = null
@@ -293,6 +296,10 @@ class SettingsViewModel(
         _state.update { it.copy(items = items) }
     }
 
+    fun refreshAppSettings() {
+        _appSettings.value = readAppSettings()
+    }
+
     fun enterSubCategory(key: String, @StringRes labelRes: Int) {
         val current = _state.value
         val items = buildItemsForCategory(key)
@@ -319,7 +326,7 @@ class SettingsViewModel(
         return true
     }
 
-    fun cycleSelected(direction: Int) {
+    fun cycleSelected(direction: Int, repeatCount: Int = 0) {
         val current = _state.value
         if (!current.inSubList) return
         val item = current.items.getOrNull(current.selectedIndex) ?: return
@@ -393,6 +400,14 @@ class SettingsViewModel(
             "main_menu_quit" -> settings.mainMenuQuit = !settings.mainMenuQuit
             "retroarch_diy_mode" -> settings.retroArchDiyMode = !settings.retroArchDiyMode
             "debug_logging" -> settings.debugLogging = !settings.debugLogging
+            "portrait_margin" -> {
+                val step = when {
+                    repeatCount == 0 -> 1
+                    repeatCount < 10 -> 10
+                    else -> 25
+                }
+                settings.portraitMarginPx = (settings.portraitMarginPx + direction * step).coerceAtLeast(0)
+            }
             "kitchen_code_bypass" -> {
                 settings.kitchenCodeBypass = !settings.kitchenCodeBypass
                 dev.cannoli.scorza.server.KitchenManager.setCodeBypass(settings.kitchenCodeBypass)
@@ -551,7 +566,8 @@ class SettingsViewModel(
         releaseChannel = settings.releaseChannel,
         artWidth = settings.artWidth,
         artScale = settings.artScale,
-        retroArchDiyMode = settings.retroArchDiyMode
+        retroArchDiyMode = settings.retroArchDiyMode,
+        portraitMarginPx = settings.portraitMarginPx,
     )
 
     private fun restoreSettings(snap: SettingsSnapshot) {
@@ -586,14 +602,13 @@ class SettingsViewModel(
         settings.artWidth = snap.artWidth
         settings.artScale = snap.artScale
         settings.retroArchDiyMode = snap.retroArchDiyMode
+        settings.portraitMarginPx = snap.portraitMarginPx
     }
 
     private fun onOff(value: Boolean) = if (value) R.string.value_on else R.string.value_off
     private fun showHide(value: Boolean) = if (value) R.string.value_show else R.string.value_hide
     private fun buildItemsForCategory(categoryKey: String): List<SettingsItem> = when (categoryKey) {
         "display" -> buildList {
-            val artW = settings.artWidth
-            add(SettingsItem("art_width", R.string.setting_art_width, valueText = if (artW == 0) null else "$artW%", valueRes = if (artW == 0) R.string.value_off else null))
             val artScaleRes = when (settings.artScale) {
                 ArtScale.FIT -> R.string.value_fit
                 ArtScale.ORIGINAL -> R.string.value_original
@@ -601,6 +616,8 @@ class SettingsViewModel(
                 ArtScale.FIT_HEIGHT -> R.string.value_fit_height
             }
             add(SettingsItem("art_scale", R.string.setting_art_scale, valueRes = artScaleRes))
+            val artW = settings.artWidth
+            add(SettingsItem("art_width", R.string.setting_art_width, valueText = if (artW == 0) null else "$artW%", valueRes = if (artW == 0) R.string.value_off else null))
             add(SettingsItem("bg_image", R.string.setting_bg_image, valueText = settings.backgroundImagePath?.let { java.io.File(it).name }, valueRes = if (settings.backgroundImagePath == null) R.string.value_none else null))
             if (settings.backgroundImagePath != null) {
                 val tintVal = settings.backgroundTint
@@ -609,6 +626,13 @@ class SettingsViewModel(
             add(SettingsItem("colors", R.string.setting_colors, isEditable = true))
             val currentFont = fontOptions.firstOrNull { it.key == settings.font } ?: fontOptions.first()
             add(SettingsItem("font", R.string.setting_font, valueText = currentFont.label))
+            val marginPx = settings.portraitMarginPx
+            add(SettingsItem(
+                "portrait_margin",
+                R.string.setting_portrait_margin,
+                valueText = if (marginPx == 0) null else "$marginPx px",
+                valueRes = if (marginPx == 0) R.string.value_off else null
+            ))
             add(SettingsItem("status_bar", R.string.settings_status_bar, isEditable = true))
             add(SettingsItem("text_size", R.string.setting_text_size, valueText = "${settings.textSize.sp}sp"))
             add(SettingsItem("title", R.string.setting_title, valueText = settings.title.ifEmpty { null }, valueRes = if (settings.title.isEmpty()) R.string.value_none else null, isEditable = true))

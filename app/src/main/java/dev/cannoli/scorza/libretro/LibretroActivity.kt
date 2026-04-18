@@ -483,6 +483,7 @@ class LibretroActivity : ComponentActivity() {
                 ShaderPipeline.cacheDir = shaderCacheDir
                 SlangTranspiler.cacheDir = shaderCacheDir
 
+                val globalSettings = SettingsRepository(activity)
                 fun configureBackend(backend: GraphicsBackend) {
                     backend.coreAspectRatio = runner.getAspectRatio()
                     backend.scalingMode = scalingMode
@@ -491,6 +492,7 @@ class LibretroActivity : ComponentActivity() {
                     backend.debugHud = debugHud
                     backend.overlayPath = resolveOverlayPath()
                     backend.shaderPresetPath = resolveShaderPresetPath()
+                    backend.portraitMarginPx = globalSettings.portraitMarginPx
                 }
 
                 val glesBackend = LibretroRenderer(runner)

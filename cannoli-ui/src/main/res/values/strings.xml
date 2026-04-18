@@ -270,4 +270,7 @@
 
     <!-- Guide -->
     <string name="guide_page">%1$d / %2$d</string>
+
+    <string name="setting_portrait_margin">Portrait Margin</string>
+    <string name="portrait_margin_hud">Margin: %1$d px</string>
 </resources>

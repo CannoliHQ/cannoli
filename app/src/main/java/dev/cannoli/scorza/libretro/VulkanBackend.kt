@@ -50,6 +50,18 @@ class VulkanBackend(private val runner: LibretroRunner) : GraphicsBackend, Surfa
     @Volatile override var frameTimeMs = 0f; private set
     @Volatile override var viewportWidth = 0; private set
     @Volatile override var viewportHeight = 0; private set
+    @Volatile override var portraitMarginPx: Int = 0
+        set(value) {
+            val clamped = value.coerceAtLeast(0)
+            field = clamped
+            pushPortraitMargin()
+        }
+
+    private fun pushPortraitMargin() {
+        renderHandler?.post {
+            if (initialized) nativeSetPortraitMargin(portraitMarginPx > 0, portraitMarginPx)
+        }
+    }
 
     private fun loadShaderPreset(path: String?) {
         if (renderHandler == null) {
@@ -169,6 +181,7 @@ class VulkanBackend(private val runner: LibretroRunner) : GraphicsBackend, Surfa
             initialized = nativeInit(holder.surface, pipelineCachePath)
             if (initialized) {
                 nativeSetScaling(scalingMode.ordinal, coreAspectRatio, sharpness.ordinal)
+                nativeSetPortraitMargin(portraitMarginPx > 0, portraitMarginPx)
                 // Load shader preset and overlay now that native is ready
                 loadShaderPreset(shaderPresetPath)
                 loadOverlayImage(overlayPath)
@@ -242,4 +255,5 @@ class VulkanBackend(private val runner: LibretroRunner) : GraphicsBackend, Surfa
     private external fun nativeLoadPreset(passData: Array<ByteArray>, configData: IntArray, scales: FloatArray, passCount: Int): Boolean
     private external fun nativeUnloadPreset()
     private external fun nativeWaitIdle()
+    private external fun nativeSetPortraitMargin(enabled: Boolean, px: Int)
 }

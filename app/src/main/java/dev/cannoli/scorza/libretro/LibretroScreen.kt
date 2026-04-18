@@ -45,6 +45,9 @@ import dev.cannoli.igm.InGameMenu
 import dev.cannoli.igm.InGameMenuOptions
 import dev.cannoli.igm.PolaroidFrame
 import dev.cannoli.scorza.R
+import dev.cannoli.scorza.ui.LocalPortraitMargin
+import dev.cannoli.scorza.ui.PortraitMarginState
+import dev.cannoli.scorza.ui.effectivePortraitMarginDp
 import dev.cannoli.ui.BULLET
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.CIRCLE_EMPTY
@@ -127,13 +130,17 @@ fun LibretroScreen(
     val statusBarEnabled = (settings.showWifi || settings.showBluetooth || settings.showClock || settings.showBattery || settings.showVpn) && !showDescription && !isGuideScreen
     val statusBarLeftEdge = remember { mutableIntStateOf(Int.MAX_VALUE) }
 
-    CompositionLocalProvider(LocalStatusBarLeftEdge provides statusBarLeftEdge, LocalScaleFactor provides igmScaleFactor, LocalCannoliTypography provides igmTypography) {
+    val portraitMarginState = PortraitMarginState(
+        marginPx = settings.portraitMarginPx
+    )
+    CompositionLocalProvider(LocalStatusBarLeftEdge provides statusBarLeftEdge, LocalScaleFactor provides igmScaleFactor, LocalCannoliTypography provides igmTypography, LocalPortraitMargin provides portraitMarginState) {
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(
             factory = { glSurfaceView },
             modifier = Modifier.fillMaxSize()
         )
 
+        Box(modifier = Modifier.fillMaxSize().padding(bottom = effectivePortraitMarginDp())) {
         when (screen) {
             is IGMScreen.Menu -> {
                 InGameMenu(
@@ -619,6 +626,7 @@ fun LibretroScreen(
                     textSizeSp = settings.textSize.sp
                 )
             }
+        }
         }
     }
     }

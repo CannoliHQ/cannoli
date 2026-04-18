@@ -5,6 +5,7 @@
 #include <cstring>
 #include <ctime>
 #include <array>
+#include <algorithm>
 
 typedef FrameBuffer* (*GetFrameBufferFn)();
 typedef void (*MarkFrameConsumedFn)();
@@ -541,7 +542,12 @@ void VulkanRenderer::renderFrame() {
     vkResetFences(device_, 1, &inFlightFence_);
 
     // Compute viewport
-    int sw = swapchainExtent_.width, sh = swapchainExtent_.height;
+    int sw = (int)swapchainExtent_.width;
+    int shFull = (int)swapchainExtent_.height;
+    bool portrait = sw < shFull;
+    int sh = (portraitMarginEnabled_ && portrait)
+        ? std::max(1, shFull - portraitMarginPx_)
+        : shFull;
     float gameAspect = (scalingMode_ == 3) ? (float)sw / sh
         : (scalingMode_ == 2) ? (float)frameWidth_ / frameHeight_
         : (coreAspect_ > 0) ? coreAspect_ : (float)frameWidth_ / frameHeight_;

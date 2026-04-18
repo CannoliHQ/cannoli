@@ -55,6 +55,11 @@ public:
     int getViewportWidth() const { return vpW_; }
     int getViewportHeight() const { return vpH_; }
 
+    void setPortraitMargin(bool enabled, int px) {
+        portraitMarginEnabled_ = enabled;
+        portraitMarginPx_ = (px < 0) ? 0 : px;
+    }
+
 private:
     bool createInstance();
     void recreateSwapchain();
@@ -153,4 +158,7 @@ private:
 
     bool lowLatency_ = false;
     std::map<std::string, float> params_;
+
+    bool portraitMarginEnabled_ = false;
+    int portraitMarginPx_ = 0;
 };

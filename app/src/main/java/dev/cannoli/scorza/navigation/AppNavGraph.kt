@@ -28,6 +28,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.cannoli.scorza.ui.LocalPortraitMargin
+import dev.cannoli.scorza.ui.PortraitMarginState
+import dev.cannoli.scorza.ui.effectivePortraitMarginDp
 import dev.cannoli.igm.ShortcutAction
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.input.ProfileManager
@@ -45,6 +48,7 @@ import dev.cannoli.scorza.ui.screens.DirectoryBrowserScreen
 import dev.cannoli.scorza.ui.screens.GameListScreen
 import dev.cannoli.scorza.ui.screens.InputTesterScreen
 import dev.cannoli.scorza.ui.screens.InstallingScreen
+import dev.cannoli.scorza.ui.screens.PortraitMarginOverlay
 import dev.cannoli.scorza.ui.screens.SettingsScreen
 import dev.cannoli.scorza.ui.screens.SetupScreen
 import dev.cannoli.scorza.ui.screens.SystemListScreen
@@ -125,7 +129,7 @@ fun AppNavGraph(
     resumableGames: Set<String> = emptySet(),
     updateAvailable: Boolean = false,
     downloadProgress: Float = 0f,
-    downloadError: String? = null
+    downloadError: String? = null,
 ) {
     val dialog by dialogState.collectAsState()
     val appSettings by settingsViewModel.appSettings.collectAsState()
@@ -150,8 +154,16 @@ fun AppNavGraph(
     val scaleFactor = appSettings.textSize.sp / 22f
     val cannoliTypography = buildCannoliTypography(baseSizeSp = appSettings.textSize.sp, fontFamily = LocalCannoliFont.current)
 
-    CompositionLocalProvider(LocalCannoliColors provides cannoliColors, LocalStatusBarLeftEdge provides statusBarLeftEdge, LocalScaleFactor provides scaleFactor, LocalCannoliTypography provides cannoliTypography) {
+    val portraitMarginState = PortraitMarginState(marginPx = appSettings.portraitMarginPx)
+    CompositionLocalProvider(
+        LocalCannoliColors provides cannoliColors,
+        LocalStatusBarLeftEdge provides statusBarLeftEdge,
+        LocalScaleFactor provides scaleFactor,
+        LocalCannoliTypography provides cannoliTypography,
+        LocalPortraitMargin provides portraitMarginState
+    ) {
     Box(modifier = Modifier.fillMaxSize().displayCutoutPadding()) {
+    Box(modifier = Modifier.fillMaxSize().padding(bottom = effectivePortraitMarginDp())) {
         when (currentScreen) {
             is LauncherScreen.SystemList -> {
                 if (systemListViewModel == null) return@Box
@@ -758,6 +770,14 @@ fun AppNavGraph(
             )
         }
         }
+    }
+    val settingsState = settingsViewModel.state.collectAsState().value
+    val onPortraitMarginRow = currentScreen is LauncherScreen.Settings
+        && settingsState.activeCategory == "display"
+        && settingsState.items.getOrNull(settingsState.selectedIndex)?.key == "portrait_margin"
+    if (onPortraitMarginRow && appSettings.portraitMarginPx > 0) {
+        PortraitMarginOverlay(marginPx = appSettings.portraitMarginPx)
+    }
     }
     }
 }

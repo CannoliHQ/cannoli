@@ -12,6 +12,7 @@ interface GraphicsBackend {
     var shaderPresetPath: String?
     var coreTargetFps: Double
     var onFrameRendered: (() -> Unit)?
+    var portraitMarginPx: Int
 
     val backendName: String
     val fps: Float

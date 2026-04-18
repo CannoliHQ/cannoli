@@ -54,6 +54,7 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
     @Volatile override var frameTimeMs = 0f; private set
     @Volatile override var viewportWidth = 0; private set
     @Volatile override var viewportHeight = 0; private set
+    @Volatile override var portraitMarginPx: Int = 0
 
     private var frameCount = 0
     private var fpsTimestamp = 0L
@@ -320,7 +321,10 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
             }
             ScalingMode.INTEGER -> if (rotated) h.toFloat() / w.toFloat() else w.toFloat() / h.toFloat()
         }
-        val screenAspect = surfaceWidth.toFloat() / surfaceHeight.toFloat()
+        val portrait = surfaceWidth < surfaceHeight
+        val marginActive = portrait && portraitMarginPx > 0
+        val effH = if (marginActive) (surfaceHeight - portraitMarginPx).coerceAtLeast(1) else surfaceHeight
+        val screenAspect = surfaceWidth.toFloat() / effH.toFloat()
 
         var vpW: Int
         var vpH: Int
@@ -328,7 +332,7 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
             val dimW = if (rotated) h else w
             val dimH = if (rotated) w else h
             val scaleX = surfaceWidth / dimW
-            val scaleY = surfaceHeight / dimH
+            val scaleY = effH / dimH
             val scale = maxOf(1, minOf(scaleX, scaleY))
             vpW = dimW * scale
             vpH = dimH * scale
@@ -336,11 +340,12 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
             vpW = surfaceWidth
             vpH = (surfaceWidth / gameAspect).toInt()
         } else {
-            vpW = (surfaceHeight * gameAspect).toInt()
-            vpH = surfaceHeight
+            vpW = (effH * gameAspect).toInt()
+            vpH = effH
         }
         val vpX = (surfaceWidth - vpW) / 2
-        val vpY = (surfaceHeight - vpH) / 2
+        val marginYOffset = if (marginActive) portraitMarginPx else 0
+        val vpY = marginYOffset + (effH - vpH) / 2
 
         viewportWidth = vpW
         viewportHeight = vpH

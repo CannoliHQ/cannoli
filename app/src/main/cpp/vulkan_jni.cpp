@@ -174,4 +174,10 @@ Java_dev_cannoli_scorza_libretro_VulkanBackend_nativeSetLowLatency(JNIEnv *, job
     if (g_renderer) g_renderer->setLowLatency(enabled);
 }
 
+JNIEXPORT void JNICALL
+Java_dev_cannoli_scorza_libretro_VulkanBackend_nativeSetPortraitMargin(JNIEnv *, jobject, jboolean enabled, jint px)
+{
+    if (g_renderer) g_renderer->setPortraitMargin(enabled == JNI_TRUE, (int)px);
+}
+
 }

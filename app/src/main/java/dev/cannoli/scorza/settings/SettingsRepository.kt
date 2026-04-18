@@ -284,6 +284,10 @@ class SettingsRepository(context: Context) {
         get() = jsonRead { optBoolean(KEY_DEBUG_LOGGING, false) }
         set(value) = jsonWrite { put(KEY_DEBUG_LOGGING, value) }
 
+    var portraitMarginPx: Int
+        get() = jsonRead { optInt(KEY_PORTRAIT_MARGIN_PX, 0) }
+        set(value) = jsonWrite { put(KEY_PORTRAIT_MARGIN_PX, value.coerceAtLeast(0)) }
+
     companion object {
         const val DEFAULT_ROOT = "/storage/emulated/0/Cannoli/"
         const val DEFAULT_RA_PACKAGE = "dev.cannoli.ricotta.aarch64"
@@ -336,6 +340,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_CONFIRM_BUTTON = "confirm_button"
         private const val KEY_CONTENT_MODE = "content_mode"
         private const val KEY_DEBUG_LOGGING = "debug_logging"
+        private const val KEY_PORTRAIT_MARGIN_PX = "portrait_margin_px"
     }
 }
 

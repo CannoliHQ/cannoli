@@ -163,6 +163,8 @@ class MainActivity : ComponentActivity() {
     private var permissionGranted by mutableStateOf(false)
     private var coldStart = true
 
+    private var lastKeyRepeatCount: Int = 0
+
     private val shortcutCountdownHandler = Handler(Looper.getMainLooper())
     private val shortcutHoldMs = 1500
     private val shortcutTickMs = 100L
@@ -452,7 +454,7 @@ class MainActivity : ComponentActivity() {
                             resumableGames = resumableGames,
                             updateAvailable = updateInfo != null,
                             downloadProgress = dlProgress ?: 0f,
-                            downloadError = dlError
+                            downloadError = dlError,
                         )
                     }
                 }
@@ -725,6 +727,7 @@ class MainActivity : ComponentActivity() {
         if (event.repeatCount > 0 && screen is LauncherScreen.ShortcutBinding && !screen.listening) {
             return true
         }
+        lastKeyRepeatCount = event.repeatCount
         if (inputHandler.handleKeyEvent(event)) {
             return true
         }
@@ -1246,7 +1249,7 @@ class MainActivity : ComponentActivity() {
                     LauncherScreen.GameList -> if (!gameListViewModel.isReorderMode()) pageJump(-1)
                     LauncherScreen.Settings -> {
                         if (settingsViewModel.state.value.inSubList) {
-                            settingsViewModel.cycleSelected(-1)
+                            settingsViewModel.cycleSelected(-1, repeatCount = lastKeyRepeatCount)
                             if (settingsViewModel.getSelectedItem()?.key == "release_channel") {
                                 ioScope.launch { updateManager.checkForUpdate() }
                             }
@@ -1301,7 +1304,7 @@ class MainActivity : ComponentActivity() {
                     LauncherScreen.GameList -> if (!gameListViewModel.isReorderMode()) pageJump(1)
                     LauncherScreen.Settings -> {
                         if (settingsViewModel.state.value.inSubList) {
-                            settingsViewModel.cycleSelected(1)
+                            settingsViewModel.cycleSelected(1, repeatCount = lastKeyRepeatCount)
                             if (settingsViewModel.getSelectedItem()?.key == "release_channel") {
                                 ioScope.launch { updateManager.checkForUpdate() }
                             }
