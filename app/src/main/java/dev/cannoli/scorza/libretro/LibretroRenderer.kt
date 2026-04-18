@@ -46,6 +46,7 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
     @Volatile private var overlayDirty = false
     @Volatile private var pipelineDirty = false
     private var pipeline: ShaderPipeline? = null
+    private var pipelineWarmedUp = false
     private var overlayTextureId = 0
     private var overlayLoaded = false
 
@@ -286,6 +287,7 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
         if (pipelineDirty) {
             pipelineDirty = false
             loadPipeline()
+            pipelineWarmedUp = false
         }
 
         if (overlayDirty) {
@@ -350,10 +352,14 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
         viewportWidth = vpW
         viewportHeight = vpH
 
-        if (screenEffect != ScreenEffect.NONE && pipeline != null) {
+        if (screenEffect != ScreenEffect.NONE && pipeline != null && pipelineWarmedUp) {
             pipeline!!.render(textureId, w, h, vpX, vpY, vpW, vpH,
                 texCoordBuffer, fboTexCoordBuffer, vertexBuffer, paused = paused)
         } else {
+            if (pipeline != null && screenEffect != ScreenEffect.NONE) {
+                pipeline!!.prewarmFbos(w, h, vpW, vpH)
+                pipelineWarmedUp = true
+            }
             drawSimple(w, h, vpX, vpY, vpW, vpH)
         }
         if (overlayLoaded) drawOverlay()
@@ -375,6 +381,7 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
     }
 
     private fun drawSimple(w: Int, h: Int, vpX: Int, vpY: Int, vpW: Int, vpH: Int) {
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
         GLES20.glViewport(vpX, vpY, vpW, vpH)
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
         GLES20.glUseProgram(programNone)
@@ -389,6 +396,7 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
     }
 
     private fun loadPipeline() {
+        if (pipeline != null) GLES20.glFinish()
         pipeline?.destroy()
         pipeline = null
         val path = shaderPresetPath

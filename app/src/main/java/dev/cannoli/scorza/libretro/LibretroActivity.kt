@@ -130,6 +130,7 @@ class LibretroActivity : ComponentActivity() {
 
     private var frontendSnapshot: OverrideManager.Settings? = null
     private var shaderParamsDirty = false
+    private var lastShaderCycleMs = 0L
     private var platformBaseline: OverrideManager.Settings? = null
     private var defaultProfileControls = emptyMap<String, Int>()
     private val navInputHandler = dev.cannoli.scorza.input.InputHandler { defaultProfileControls }
@@ -1387,6 +1388,9 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun cycleShader(direction: Int) {
+        val now = android.os.SystemClock.uptimeMillis()
+        if (now - lastShaderCycleMs < 250) return
+        lastShaderCycleMs = now
         if (shaderPresets.isEmpty()) {
             screenEffect = ScreenEffect.NONE
             shaderPreset = ""

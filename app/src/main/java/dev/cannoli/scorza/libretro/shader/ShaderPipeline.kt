@@ -196,6 +196,11 @@ class ShaderPipeline private constructor(
         fboVpH = 0
     }
 
+    fun prewarmFbos(frameW: Int, frameH: Int, vpW: Int, vpH: Int) {
+        ensureFbos(frameW, frameH, vpW, vpH)
+        GLES20.glFinish()
+    }
+
     private fun ensureFbos(frameW: Int, frameH: Int, vpW: Int, vpH: Int) {
         if (fboWidth == frameW && fboHeight == frameH && fboVpW == vpW && fboVpH == vpH) return
         recreateFbo(sourceFbo, sourceTexture, frameW, frameH, true, false)
