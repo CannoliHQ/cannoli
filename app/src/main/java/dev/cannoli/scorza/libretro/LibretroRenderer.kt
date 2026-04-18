@@ -15,7 +15,13 @@ import java.util.concurrent.ConcurrentHashMap
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
-enum class ScalingMode { CORE_REPORTED, INTEGER, ASPECT_SCREEN, FULLSCREEN }
+enum class ScalingMode(val nativeCode: Int) {
+    CORE_REPORTED(0),
+    INTEGER(1),
+    INTEGER_OVERSCALE(4),
+    ASPECT_SCREEN(2),
+    FULLSCREEN(3),
+}
 enum class Sharpness { SHARP, SOFT }
 enum class ScreenEffect { NONE, SHADER }
 enum class GraphicsBackendPref { AUTO, GLES, VULKAN }
@@ -321,7 +327,8 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
                 val base = w.toFloat() / h.toFloat()
                 if (rotated) 1f / base else base
             }
-            ScalingMode.INTEGER -> if (rotated) h.toFloat() / w.toFloat() else w.toFloat() / h.toFloat()
+            ScalingMode.INTEGER,
+            ScalingMode.INTEGER_OVERSCALE -> if (rotated) h.toFloat() / w.toFloat() else w.toFloat() / h.toFloat()
         }
         val portrait = surfaceWidth < surfaceHeight
         val marginActive = portrait && portraitMarginPx > 0
@@ -330,12 +337,17 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
 
         var vpW: Int
         var vpH: Int
-        if (scalingMode == ScalingMode.INTEGER) {
+        if (scalingMode == ScalingMode.INTEGER || scalingMode == ScalingMode.INTEGER_OVERSCALE) {
             val dimW = if (rotated) h else w
             val dimH = if (rotated) w else h
-            val scaleX = surfaceWidth / dimW
-            val scaleY = effH / dimH
-            val scale = maxOf(1, minOf(scaleX, scaleY))
+            val scaleXf = surfaceWidth.toFloat() / dimW
+            val scaleYf = effH.toFloat() / dimH
+            val minF = minOf(scaleXf, scaleYf)
+            val scale = if (scalingMode == ScalingMode.INTEGER_OVERSCALE) {
+                maxOf(1, kotlin.math.ceil(minF).toInt())
+            } else {
+                maxOf(1, kotlin.math.floor(minF).toInt())
+            }
             vpW = dimW * scale
             vpH = dimH * scale
         } else if (gameAspect > screenAspect) {

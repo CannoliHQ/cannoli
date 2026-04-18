@@ -6,6 +6,7 @@
 #include <ctime>
 #include <array>
 #include <algorithm>
+#include <cmath>
 
 typedef FrameBuffer* (*GetFrameBufferFn)();
 typedef void (*MarkFrameConsumedFn)();
@@ -553,8 +554,13 @@ void VulkanRenderer::renderFrame() {
         : (coreAspect_ > 0) ? coreAspect_ : (float)frameWidth_ / frameHeight_;
     float screenAspect = (float)sw / sh;
 
-    if (scalingMode_ == 1) {
-        int scale = std::max(1, std::min((int)(sw / frameWidth_), (int)(sh / frameHeight_)));
+    if (scalingMode_ == 1 || scalingMode_ == 4) {
+        float sxf = (float)sw / frameWidth_;
+        float syf = (float)sh / frameHeight_;
+        float minF = std::min(sxf, syf);
+        int scale = (scalingMode_ == 4)
+            ? std::max(1, (int)std::ceil(minF))
+            : std::max(1, (int)std::floor(minF));
         vpW_ = frameWidth_ * scale;
         vpH_ = frameHeight_ * scale;
     } else if (gameAspect > screenAspect) {
@@ -566,6 +572,12 @@ void VulkanRenderer::renderFrame() {
     }
     vpX_ = (sw - vpW_) / 2;
     vpY_ = (sh - vpH_) / 2;
+    scissorX_ = std::max(0, vpX_);
+    scissorY_ = std::max(0, vpY_);
+    int clampedRight = std::min(sw, vpX_ + vpW_);
+    int clampedBottom = std::min(shFull, vpY_ + vpH_);
+    scissorW_ = std::max(0, clampedRight - scissorX_);
+    scissorH_ = std::max(0, clampedBottom - scissorY_);
 
     VkCommandBuffer cmd = commandBuffers_[0];
     vkResetCommandBuffer(cmd, 0);
@@ -637,7 +649,7 @@ void VulkanRenderer::renderFrame() {
         vkCmdBindVertexBuffers(cmd, 0, 1, &vertexBuffer_, &offset);
         VkViewport viewport{(float)vpX_, (float)vpY_, (float)vpW_, (float)vpH_, 0.0f, 1.0f};
         vkCmdSetViewport(cmd, 0, 1, &viewport);
-        VkRect2D scissor{{vpX_, vpY_}, {(uint32_t)vpW_, (uint32_t)vpH_}};
+        VkRect2D scissor{{scissorX_, scissorY_}, {(uint32_t)scissorW_, (uint32_t)scissorH_}};
         vkCmdSetScissor(cmd, 0, 1, &scissor);
         vkCmdDraw(cmd, 3, 1, 0, 0);
         drawOverlayInline(cmd);
@@ -658,7 +670,7 @@ void VulkanRenderer::renderFrame() {
 
         VkViewport viewport{(float)vpX_, (float)vpY_, (float)vpW_, (float)vpH_, 0.0f, 1.0f};
         vkCmdSetViewport(cmd, 0, 1, &viewport);
-        VkRect2D scissor{{vpX_, vpY_}, {(uint32_t)vpW_, (uint32_t)vpH_}};
+        VkRect2D scissor{{scissorX_, scissorY_}, {(uint32_t)scissorW_, (uint32_t)scissorH_}};
         vkCmdSetScissor(cmd, 0, 1, &scissor);
         vkCmdDraw(cmd, 3, 1, 0, 0);
         drawOverlayInline(cmd);

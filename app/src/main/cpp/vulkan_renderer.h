@@ -147,10 +147,11 @@ private:
     void renderMultiPass();
 
     int surfaceWidth_ = 0, surfaceHeight_ = 0;
-    int scalingMode_ = 0; // 0=core, 1=integer, 2=fullscreen
+    int scalingMode_ = 0; // 0=core, 1=integer, 2=aspect_screen, 3=fullscreen, 4=integer_overscale
     float coreAspect_ = 0;
     int sharpness_ = 0;
     int vpX_ = 0, vpY_ = 0, vpW_ = 0, vpH_ = 0;
+    int scissorX_ = 0, scissorY_ = 0, scissorW_ = 0, scissorH_ = 0;
     float fps_ = 0;
     int frameCount_ = 0;
     uint32_t totalFrames_ = 0;

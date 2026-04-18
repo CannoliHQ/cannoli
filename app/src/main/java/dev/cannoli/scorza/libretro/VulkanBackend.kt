@@ -147,7 +147,7 @@ class VulkanBackend(private val runner: LibretroRunner) : GraphicsBackend, Surfa
 
     private fun pushScaling() {
         renderHandler?.post {
-            nativeSetScaling(scalingMode.ordinal, coreAspectRatio, sharpness.ordinal)
+            nativeSetScaling(scalingMode.nativeCode, coreAspectRatio, sharpness.ordinal)
         }
     }
 
@@ -180,7 +180,7 @@ class VulkanBackend(private val runner: LibretroRunner) : GraphicsBackend, Surfa
         renderHandler?.post {
             initialized = nativeInit(holder.surface, pipelineCachePath)
             if (initialized) {
-                nativeSetScaling(scalingMode.ordinal, coreAspectRatio, sharpness.ordinal)
+                nativeSetScaling(scalingMode.nativeCode, coreAspectRatio, sharpness.ordinal)
                 nativeSetPortraitMargin(portraitMarginPx > 0, portraitMarginPx)
                 // Load shader preset and overlay now that native is ready
                 loadShaderPreset(shaderPresetPath)

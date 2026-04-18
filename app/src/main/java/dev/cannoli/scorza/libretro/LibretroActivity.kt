@@ -1191,6 +1191,7 @@ class LibretroActivity : ComponentActivity() {
     private fun scalingLabel() = when (scalingMode) {
         ScalingMode.CORE_REPORTED -> "Core Reported"
         ScalingMode.INTEGER -> "Integer"
+        ScalingMode.INTEGER_OVERSCALE -> "Integer Overscale"
         ScalingMode.ASPECT_SCREEN -> "Aspect Screen"
         ScalingMode.FULLSCREEN -> "Fullscreen"
     }
