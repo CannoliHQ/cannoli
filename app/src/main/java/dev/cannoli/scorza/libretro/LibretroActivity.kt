@@ -298,7 +298,8 @@ class LibretroActivity : ComponentActivity() {
             highlight = hexToColor(intent.getStringExtra("color_highlight") ?: "#FFFFFF") ?: Color.White,
             text = hexToColor(intent.getStringExtra("color_text") ?: "#FFFFFF") ?: Color.White,
             highlightText = hexToColor(intent.getStringExtra("color_highlight_text") ?: "#000000") ?: Color.Black,
-            accent = hexToColor(intent.getStringExtra("color_accent") ?: "#FFFFFF") ?: Color.White
+            accent = hexToColor(intent.getStringExtra("color_accent") ?: "#FFFFFF") ?: Color.White,
+            title = hexToColor(intent.getStringExtra("color_title") ?: "#FFFFFF") ?: Color.White
         )
 
         val fontFamily = run {

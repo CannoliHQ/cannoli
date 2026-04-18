@@ -392,6 +392,7 @@ class LaunchManager(
             putExtra("color_text", settings.colorText)
             putExtra("color_highlight_text", settings.colorHighlightText)
             putExtra("color_accent", settings.colorAccent)
+            putExtra("color_title", settings.colorTitle)
             putExtra("font", settings.font)
             putExtra("graphics_backend", settings.graphicsBackend)
             putExtra("debug_logging", settings.debugLogging)
