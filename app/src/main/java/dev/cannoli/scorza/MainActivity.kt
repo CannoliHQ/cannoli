@@ -982,6 +982,7 @@ class MainActivity : ComponentActivity() {
         scanner.loadIgnoreExtensions()
         scanner.loadIgnoreFiles()
         collectionManager.migrateCollectionsToHashedNames()
+        adoptLegacyFghCollectionIfNeeded()
         launchManager.syncRetroArchAssets(root)
         launchManager.syncRetroArchConfig(root)
 
@@ -1011,7 +1012,7 @@ class MainActivity : ComponentActivity() {
         (getSystemService(INPUT_SERVICE) as android.hardware.input.InputManager)
             .registerInputDeviceListener(controllerManager, android.os.Handler(android.os.Looper.getMainLooper()))
         gameListViewModel.showFavoriteStars = settings.contentMode != ContentMode.FIVE_GAME_HANDHELD
-        settingsViewModel.reinitialize(root, packageManager, packageName)
+        settingsViewModel.reinitialize(root, packageManager, packageName, collectionManager)
         updateManager = dev.cannoli.scorza.updater.UpdateManager(this, settings)
 
         ioScope.launch {
@@ -1505,6 +1506,11 @@ class MainActivity : ComponentActivity() {
                         } else {
                             when (val key = settingsViewModel.enterSelected()) {
                                 "status_bar" -> settingsViewModel.enterSubCategory("status_bar", R.string.settings_status_bar)
+                                "fgh_collection" -> settingsViewModel.enterSubCategory(
+                                    "fgh_collection_picker",
+                                    R.string.setting_fgh_collection,
+                                    settingsViewModel.fghPickerInitialIndex()
+                                )
                                 "sd_root" -> pushDirectoryBrowser(BrowsePurpose.SD_ROOT, settings.sdCardRoot)
                                 "rom_directory" -> {
                                     val startPath = settings.romDirectory.ifEmpty { settings.sdCardRoot }
@@ -1582,7 +1588,13 @@ class MainActivity : ComponentActivity() {
                                 }
                                 null -> {}
                                 else -> {
-                                    if (key.startsWith("color_")) {
+                                    if (key.startsWith("fgh_pick:")) {
+                                        val stem = key.removePrefix("fgh_pick:")
+                                        settingsViewModel.selectFghCollectionStem(stem)
+                                        settingsViewModel.save()
+                                        settingsViewModel.exitSubList()
+                                        rescanSystemList()
+                                    } else if (key.startsWith("color_")) {
                                         val entries = settingsViewModel.getColorEntries()
                                         val idx = entries.indexOfFirst { it.key == key }.coerceAtLeast(0)
                                         screenStack.add(LauncherScreen.ColorList(colors = entries, selectedIndex = idx))
@@ -1786,7 +1798,7 @@ class MainActivity : ComponentActivity() {
                 is DialogState.RestartRequired -> {}
                 DialogState.None -> when (val screen = currentScreen) {
                     LauncherScreen.SystemList -> {
-                        if (systemListViewModel.isReorderMode()) systemListViewModel.cancelReorder(showRecentlyPlayed = settings.showRecentlyPlayed, showEmpty = settings.showEmpty, contentMode = settings.contentMode, toolsName = settings.toolsName, portsName = settings.portsName)
+                        if (systemListViewModel.isReorderMode()) systemListViewModel.cancelReorder(showRecentlyPlayed = settings.showRecentlyPlayed, showEmpty = settings.showEmpty, contentMode = settings.contentMode, fghCollectionStem = validateFghStem(), toolsName = settings.toolsName, portsName = settings.portsName)
                         else if (settings.mainMenuQuit) dialogState.value = DialogState.QuitConfirm
                     }
                     LauncherScreen.GameList -> {
@@ -2087,7 +2099,7 @@ class MainActivity : ComponentActivity() {
                 }
                 DialogState.None -> when (val screen = currentScreen) {
                     LauncherScreen.SystemList -> {
-                        val fgh = settings.contentMode == ContentMode.FIVE_GAME_HANDHELD
+                        val fgh = validateFghStem() != null
                         val item = systemListViewModel.getSelectedItem()
                         if (fgh && item is SystemListViewModel.ListItem.GameItem) {
                             val game = item.game
@@ -2362,29 +2374,36 @@ class MainActivity : ComponentActivity() {
 
     private fun rescanSystemList() {
         collectionManager.invalidateFavorites()
+        val fghStem = validateFghStem()
         gameListViewModel.showFavoriteStars = settings.contentMode != ContentMode.FIVE_GAME_HANDHELD
-        if (settings.contentMode == ContentMode.FIVE_GAME_HANDHELD) {
-            ensureFiveGameHandheldCollection()
-        }
         systemListViewModel.scan(
             showRecentlyPlayed = settings.showRecentlyPlayed,
             showEmpty = settings.showEmpty,
             contentMode = settings.contentMode,
+            fghCollectionStem = fghStem,
             toolsName = settings.toolsName,
             portsName = settings.portsName,
             onReady = {
-                if (settings.contentMode == ContentMode.FIVE_GAME_HANDHELD) {
+                if (fghStem != null) {
                     scanResumableGames()
                 }
             }
         )
     }
 
-    private fun ensureFiveGameHandheldCollection() {
-        val stems = collectionManager.getCollectionStems()
-        if (collectionManager.findFghStem() == null) {
-            collectionManager.createCollection("5GH")
-        }
+    private fun validateFghStem(): String? {
+        if (settings.contentMode != ContentMode.FIVE_GAME_HANDHELD) return null
+        val stem = settings.fghCollectionStem
+        if (stem != null && collectionManager.hasCollection(stem)) return stem
+        val fallback = collectionManager.findLegacyFghStem()
+            ?: collectionManager.getCollectionStems().firstOrNull { !it.equals("Favorites", ignoreCase = true) }
+        settings.fghCollectionStem = fallback
+        return fallback
+    }
+
+    private fun adoptLegacyFghCollectionIfNeeded() {
+        if (settings.contentMode != ContentMode.FIVE_GAME_HANDHELD) return
+        validateFghStem()
     }
 
     private fun colorSettingTitle(settingKey: String): String {
@@ -3273,16 +3292,21 @@ class MainActivity : ComponentActivity() {
         pendingContextReturn = null
         dialogState.value = DialogState.None
         ioScope.launch {
+            val oldPath = game.file.absolutePath
             if (game.isSubfolder) {
                 val newDir = File(game.file.parentFile, newName)
                 val ok = game.file.renameTo(newDir)
                 val msg = if (ok) null else "Failed to rename directory"
+                if (ok) recentlyPlayedManager.renamePath(oldPath, newDir.absolutePath)
                 withContext(Dispatchers.Main) {
                     if (msg != null) dialogState.value = DialogState.RenameResult(false, msg)
                 }
             } else {
                 val result = atomicRename.rename(game.file, newName, game.platformTag)
-                if (!result.success) {
+                if (result.success) {
+                    val newRom = File(game.file.parentFile, "$newName.${game.file.extension}")
+                    recentlyPlayedManager.renamePath(oldPath, newRom.absolutePath)
+                } else {
                     withContext(Dispatchers.Main) {
                         dialogState.value = DialogState.RenameResult(false, result.error ?: "Rename failed")
                     }

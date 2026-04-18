@@ -104,7 +104,8 @@ fun SettingsScreen(
             val selectedItem = state.items.getOrNull(state.selectedIndex)
             val isColorItem = selectedItem?.key?.startsWith("color_") == true
             val isEditableItem = selectedItem?.isEditable == true
-            val showChange = !isEditableItem && selectedItem?.canCycle != false
+            val isFghCollection = selectedItem?.key == "fgh_collection"
+            val showChange = selectedItem?.canCycle != false && (!isEditableItem || isFghCollection)
             val leftItems = if (showChange) {
                 listOf(buttonStyle.back to stringResource(R.string.label_back), DPAD_HORIZONTAL to stringResource(R.string.label_change))
             } else {
@@ -113,6 +114,8 @@ fun SettingsScreen(
             val showClear = selectedItem?.key == "rom_directory" && selectedItem.valueText != null
             val rightItems = if (isColorItem) {
                 listOf(buttonStyle.confirm to stringResource(R.string.label_select))
+            } else if (isFghCollection) {
+                listOf(buttonStyle.confirm to stringResource(R.string.label_choose))
             } else if (showClear) {
                 listOf(buttonStyle.north to stringResource(R.string.label_clear))
             } else {

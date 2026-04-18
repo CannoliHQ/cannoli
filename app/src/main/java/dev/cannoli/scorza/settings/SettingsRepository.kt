@@ -208,6 +208,10 @@ class SettingsRepository(context: Context) {
         get() = ContentMode.fromString(jsonRead { if (has(KEY_CONTENT_MODE)) optString(KEY_CONTENT_MODE) else null })
         set(value) = jsonWrite { put(KEY_CONTENT_MODE, value.name) }
 
+    var fghCollectionStem: String?
+        get() = jsonRead { optString(KEY_FGH_COLLECTION, "").ifEmpty { null } }
+        set(value) = jsonWrite { if (value == null) remove(KEY_FGH_COLLECTION) else put(KEY_FGH_COLLECTION, value) }
+
     var artWidth: Int
         get() = jsonRead { optInt(KEY_ART_WIDTH, 40) }
         set(value) = jsonWrite { put(KEY_ART_WIDTH, value) }
@@ -341,6 +345,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_CONTENT_MODE = "content_mode"
         private const val KEY_DEBUG_LOGGING = "debug_logging"
         private const val KEY_PORTRAIT_MARGIN_PX = "portrait_margin_px"
+        private const val KEY_FGH_COLLECTION = "fgh_collection"
     }
 }
 

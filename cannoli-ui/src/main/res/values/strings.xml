@@ -11,6 +11,7 @@
     <string name="label_save">SAVE</string>
     <string name="label_load">LOAD</string>
     <string name="label_change">CHANGE</string>
+    <string name="label_choose">CHOOSE</string>
     <string name="label_sleep">SLEEP</string>
     <string name="label_close">CLOSE</string>
     <string name="label_remove">REMOVE SHORTCUT</string>
@@ -94,6 +95,7 @@
     <string name="setting_set_default_launcher">Set as Default Launcher</string>
     <string name="setting_show_empty">Empty Platforms</string>
     <string name="setting_content_mode">Content Mode</string>
+    <string name="setting_fgh_collection">5GH Collection</string>
     <string name="setting_scroll_speed">Marquee Speed</string>
     <string name="setting_show_tools">Tools</string>
     <string name="setting_show_ports">Ports</string>
@@ -137,6 +139,7 @@
     <string name="value_show">Show</string>
     <string name="value_hide">Hide</string>
     <string name="value_none">None</string>
+    <string name="value_selected">Selected</string>
     <string name="value_cannoli_root">Cannoli Root</string>
     <string name="value_platforms">Default</string>
     <string name="value_collections">Collections Only</string>
@@ -198,6 +201,7 @@
 
     <!-- System list -->
     <string name="empty_content">No content found. Go add some!</string>
+    <string name="empty_fgh_collection">Your 5GH collection is empty. Go fill it!</string>
     <string name="label_recently_played">Recently Played</string>
     <string name="label_favorites">Favorites</string>
     <string name="label_collections">Collections</string>

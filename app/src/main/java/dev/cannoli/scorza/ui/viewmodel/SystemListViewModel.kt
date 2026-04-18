@@ -52,18 +52,20 @@ class SystemListViewModel(
 
     var firstVisibleIndex: Int = 0
     private var savedPosition: Pair<Int, Int>? = null
+    private var currentFghStem: String? = null
 
     fun savePosition() {
         savedPosition = _state.value.selectedIndex to firstVisibleIndex
     }
 
-    fun scan(showRecentlyPlayed: Boolean = true, showEmpty: Boolean = false, contentMode: ContentMode = ContentMode.PLATFORMS, toolsName: String = "Tools", portsName: String = "Ports", onReady: () -> Unit = {}) {
+    fun scan(showRecentlyPlayed: Boolean = true, showEmpty: Boolean = false, contentMode: ContentMode = ContentMode.PLATFORMS, fghCollectionStem: String? = null, toolsName: String = "Tools", portsName: String = "Ports", onReady: () -> Unit = {}) {
         val prev = _state.value
         val prevItemCount = prev.items.size
         val restored = savedPosition
         savedPosition = null
         val prevSelectedIndex = restored?.first ?: prev.selectedIndex
         val prevFirstVisible = restored?.second ?: firstVisibleIndex
+        currentFghStem = fghCollectionStem
 
         scope.launch(Dispatchers.IO) {
             val platforms = scanner.scanPlatforms()
@@ -74,9 +76,8 @@ class SystemListViewModel(
             val items = mutableListOf<ListItem>()
 
             if (contentMode == ContentMode.FIVE_GAME_HANDHELD) {
-                val fghStem = collectionManager.findFghStem()
-                if (fghStem != null) {
-                    val games = scanner.scanCollectionGames(fghStem, includeFavoriteStars = false)
+                if (fghCollectionStem != null) {
+                    val games = scanner.scanCollectionGames(fghCollectionStem, includeFavoriteStars = false)
                     games.forEach { items.add(ListItem.GameItem(it)) }
                 }
             } else {
@@ -114,11 +115,13 @@ class SystemListViewModel(
                 }
                 ContentMode.FIVE_GAME_HANDHELD -> {}
             }
-            if (ports.isNotEmpty()) {
-                reorderableItems.add(ListItem.PortsFolder(portsName, ports.size))
-            }
-            if (tools.isNotEmpty()) {
-                reorderableItems.add(ListItem.ToolsFolder(toolsName, tools.size))
+            if (contentMode != ContentMode.FIVE_GAME_HANDHELD) {
+                if (ports.isNotEmpty()) {
+                    reorderableItems.add(ListItem.PortsFolder(portsName, ports.size))
+                }
+                if (tools.isNotEmpty()) {
+                    reorderableItems.add(ListItem.ToolsFolder(toolsName, tools.size))
+                }
             }
             if (reorderableItems.isNotEmpty()) {
                 val ordered = applyCustomOrder(reorderableItems, orderingManager.loadPlatformOrder())
@@ -218,7 +221,7 @@ class SystemListViewModel(
         if (!current.reorderMode) return
         val gameItems = current.items.filterIsInstance<ListItem.GameItem>()
         if (gameItems.isNotEmpty()) {
-            val fghStem = collectionManager.findFghStem()
+            val fghStem = currentFghStem
             if (fghStem != null) {
                 val paths = gameItems.map { it.game.file.absolutePath }
                 scope.launch(Dispatchers.IO) {
@@ -235,10 +238,10 @@ class SystemListViewModel(
         _state.update { it.copy(reorderMode = false, reorderOriginalIndex = -1) }
     }
 
-    fun cancelReorder(showRecentlyPlayed: Boolean = true, showEmpty: Boolean = false, contentMode: ContentMode = ContentMode.PLATFORMS, toolsName: String = "Tools", portsName: String = "Ports") {
+    fun cancelReorder(showRecentlyPlayed: Boolean = true, showEmpty: Boolean = false, contentMode: ContentMode = ContentMode.PLATFORMS, fghCollectionStem: String? = null, toolsName: String = "Tools", portsName: String = "Ports") {
         val current = _state.value
         if (!current.reorderMode) return
-        scan(showRecentlyPlayed, showEmpty, contentMode, toolsName, portsName)
+        scan(showRecentlyPlayed, showEmpty, contentMode, fghCollectionStem, toolsName, portsName)
     }
 
     private fun ListItem.isReorderable(): Boolean = this is ListItem.PlatformItem || this is ListItem.ToolsFolder || this is ListItem.PortsFolder || this is ListItem.CollectionItem || this is ListItem.GameItem

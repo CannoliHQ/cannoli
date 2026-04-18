@@ -7,6 +7,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.launcher.InstalledCoreService
+import dev.cannoli.scorza.model.Collection
+import dev.cannoli.scorza.scanner.CollectionManager
 import dev.cannoli.scorza.settings.ArtScale
 import dev.cannoli.scorza.settings.ContentMode
 import dev.cannoli.scorza.settings.SettingsRepository
@@ -28,7 +30,8 @@ class SettingsViewModel(
     private val settings: SettingsRepository,
     private var cannoliRoot: java.io.File? = null,
     private var packageManager: PackageManager? = null,
-    private var appPackageName: String? = null
+    private var appPackageName: String? = null,
+    private var collectionManager: CollectionManager? = null
 ) {
 
     val isTelevision: Boolean
@@ -130,6 +133,7 @@ class SettingsViewModel(
         val buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER,
         val confirmButton: ConfirmButton = ConfirmButton.EAST,
         val contentMode: ContentMode = ContentMode.PLATFORMS,
+        val fghCollectionStem: String? = null,
         val portraitMarginPx: Int = 0,
     )
 
@@ -165,6 +169,7 @@ class SettingsViewModel(
         buttonLabelSet = settings.buttonLabelSet,
         confirmButton = settings.confirmButton,
         contentMode = settings.contentMode,
+        fghCollectionStem = settings.fghCollectionStem,
         portraitMarginPx = settings.portraitMarginPx,
     )
 
@@ -208,6 +213,7 @@ class SettingsViewModel(
         val showEmpty: Boolean,
         val showRecentlyPlayed: Boolean,
         val contentMode: ContentMode,
+        val fghCollectionStem: String?,
         val sdRoot: String,
         val romDirectory: String,
         val raPackage: String,
@@ -228,10 +234,11 @@ class SettingsViewModel(
         _appSettings.value = readAppSettings()
     }
 
-    fun reinitialize(root: java.io.File, pm: PackageManager, pkgName: String) {
+    fun reinitialize(root: java.io.File, pm: PackageManager, pkgName: String, cm: CollectionManager? = null) {
         cannoliRoot = root
         packageManager = pm
         appPackageName = pkgName
+        if (cm != null) collectionManager = cm
         fontOptions = buildFontOptions()
         load()
     }
@@ -300,12 +307,24 @@ class SettingsViewModel(
         _appSettings.value = readAppSettings()
     }
 
-    fun enterSubCategory(key: String, @StringRes labelRes: Int) {
+    fun enterSubCategory(key: String, @StringRes labelRes: Int, initialIndex: Int = 0) {
         val current = _state.value
         val items = buildItemsForCategory(key)
+        val safeInitial = initialIndex.coerceIn(0, (items.size - 1).coerceAtLeast(0))
         _state.update {
-            it.copy(activeCategory = key, parentCategory = current.activeCategory, parentSelectedIndex = current.selectedIndex, activeCategoryLabel = labelRes, items = items, selectedIndex = 0)
+            it.copy(activeCategory = key, parentCategory = current.activeCategory, parentSelectedIndex = current.selectedIndex, activeCategoryLabel = labelRes, items = items, selectedIndex = safeInitial)
         }
+    }
+
+    fun fghPickerInitialIndex(): Int {
+        val stems = fghCollectionStems()
+        val cur = settings.fghCollectionStem ?: return 0
+        return stems.indexOf(cur).coerceAtLeast(0)
+    }
+
+    fun selectFghCollectionStem(stem: String?) {
+        settings.fghCollectionStem = stem
+        _appSettings.value = readAppSettings()
     }
 
     fun exitSubList(): Boolean {
@@ -389,6 +408,14 @@ class SettingsViewModel(
                 val entries = ContentMode.entries
                 val cur = entries.indexOf(settings.contentMode).coerceAtLeast(0)
                 settings.contentMode = entries[((cur + direction) % entries.size + entries.size) % entries.size]
+            }
+            "fgh_collection" -> {
+                val stems = fghCollectionStems()
+                if (stems.isNotEmpty()) {
+                    val cur = stems.indexOf(settings.fghCollectionStem).coerceAtLeast(0)
+                    val next = ((cur + direction) % stems.size + stems.size) % stems.size
+                    settings.fghCollectionStem = stems[next]
+                }
             }
             "show_empty" -> settings.showEmpty = !settings.showEmpty
             "show_recently_played" -> settings.showRecentlyPlayed = !settings.showRecentlyPlayed
@@ -558,6 +585,7 @@ class SettingsViewModel(
         showEmpty = settings.showEmpty,
         showRecentlyPlayed = settings.showRecentlyPlayed,
         contentMode = settings.contentMode,
+        fghCollectionStem = settings.fghCollectionStem,
         sdRoot = settings.sdCardRoot,
         romDirectory = settings.romDirectory,
         raPackage = settings.retroArchPackage,
@@ -593,6 +621,7 @@ class SettingsViewModel(
         settings.showEmpty = snap.showEmpty
         settings.showRecentlyPlayed = snap.showRecentlyPlayed
         settings.contentMode = snap.contentMode
+        settings.fghCollectionStem = snap.fghCollectionStem
         settings.sdCardRoot = snap.sdRoot
         settings.romDirectory = snap.romDirectory
         settings.retroArchPackage = snap.raPackage
@@ -603,6 +632,11 @@ class SettingsViewModel(
         settings.artScale = snap.artScale
         settings.retroArchDiyMode = snap.retroArchDiyMode
         settings.portraitMarginPx = snap.portraitMarginPx
+    }
+
+    private fun fghCollectionStems(): List<String> {
+        val cm = collectionManager ?: return emptyList()
+        return cm.getCollectionStems().filter { !it.equals("Favorites", ignoreCase = true) }
     }
 
     private fun onOff(value: Boolean) = if (value) R.string.value_on else R.string.value_off
@@ -644,6 +678,22 @@ class SettingsViewModel(
                 ContentMode.FIVE_GAME_HANDHELD -> R.string.value_five_game_handheld
             }
             add(SettingsItem("content_mode", R.string.setting_content_mode, valueRes = contentModeRes))
+            if (settings.contentMode == ContentMode.FIVE_GAME_HANDHELD) {
+                val stems = fghCollectionStems()
+                val curStem = settings.fghCollectionStem
+                val effective = if (curStem != null && curStem in stems) curStem else stems.firstOrNull()
+                if (effective != null && effective != curStem) {
+                    settings.fghCollectionStem = effective
+                }
+                add(SettingsItem(
+                    "fgh_collection",
+                    R.string.setting_fgh_collection,
+                    valueText = effective?.let { Collection.stemToDisplayName(it) },
+                    valueRes = if (effective == null) R.string.value_none else null,
+                    isEditable = stems.isNotEmpty(),
+                    canCycle = stems.isNotEmpty()
+                ))
+            }
             if (settings.contentMode != ContentMode.FIVE_GAME_HANDHELD) {
                 add(SettingsItem("show_recently_played", R.string.setting_show_recently_played, valueRes = showHide(settings.showRecentlyPlayed)))
             }
@@ -655,6 +705,20 @@ class SettingsViewModel(
             add(SettingsItem("sd_root", R.string.setting_sd_root, valueText = settings.sdCardRoot, isEditable = true))
             val romDir = settings.romDirectory
             add(SettingsItem("rom_directory", R.string.setting_rom_directory, valueText = romDir.ifEmpty { null }, valueRes = if (romDir.isEmpty()) R.string.value_cannoli_root else null, isEditable = true, canCycle = false))
+        }
+        "fgh_collection_picker" -> buildList {
+            val stems = fghCollectionStems()
+            val curStem = settings.fghCollectionStem
+            for (stem in stems) {
+                add(SettingsItem(
+                    key = "fgh_pick:$stem",
+                    labelRes = R.string.setting_fgh_collection,
+                    labelText = Collection.stemToDisplayName(stem),
+                    valueRes = if (stem == curStem) R.string.value_selected else null,
+                    isEditable = true,
+                    canCycle = false
+                ))
+            }
         }
         "colors" -> listOf(
             SettingsItem("color_text", R.string.setting_color_text, valueText = settings.colorText.uppercase(), isEditable = true, swatchColor = hexToColor(settings.colorText)),

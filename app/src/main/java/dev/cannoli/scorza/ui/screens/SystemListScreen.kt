@@ -140,7 +140,7 @@ fun SystemListScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = stringResource(R.string.empty_content),
+                        text = stringResource(if (fiveGameHandheld) R.string.empty_fgh_collection else R.string.empty_content),
                         style = MaterialTheme.typography.bodyLarge.copy(
                             fontSize = listFontSize,
                             lineHeight = listLineHeight
