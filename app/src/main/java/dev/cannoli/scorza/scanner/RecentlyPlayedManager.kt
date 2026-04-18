@@ -29,6 +29,20 @@ class RecentlyPlayedManager(cannoliRoot: File) {
         }
     }
 
+    fun renamePath(oldPath: String, newPath: String) {
+        if (oldPath == newPath) return
+        synchronized(lock) {
+            if (!recentlyPlayedFile.exists()) return
+            val existing = try {
+                recentlyPlayedFile.readLines().map { it.trim() }.filter { it.isNotEmpty() }
+            } catch (_: IOException) { return }
+            if (existing.none { it == oldPath }) return
+            val updated = existing.map { if (it == oldPath) newPath else it }
+                .distinct()
+            recentlyPlayedFile.writeText(updated.joinToString("\n") + "\n")
+        }
+    }
+
     fun remove(romPath: String) {
         synchronized(lock) {
             if (!recentlyPlayedFile.exists()) return
