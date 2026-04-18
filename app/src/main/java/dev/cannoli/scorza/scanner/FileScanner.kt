@@ -21,6 +21,12 @@ class FileScanner(
     private val toolsDir = File(cannoliRoot, "Config/Launch Scripts/Tools")
     private val portsDir = File(cannoliRoot, "Config/Launch Scripts/Ports")
 
+    private fun romsTagDir(tag: String): File {
+        val direct = File(romsDir, tag)
+        if (direct.exists()) return direct
+        return romsDir.listFiles()?.firstOrNull { it.isDirectory && it.name.equals(tag, ignoreCase = true) } ?: direct
+    }
+
     private val artCache = java.util.concurrent.ConcurrentHashMap<String, Map<String, File>>()
     private val mapCache = java.util.concurrent.ConcurrentHashMap<String, Map<String, String>>()
     private val discRegex = Regex("""\s*\((Disc|Disk)\s*\d+\)|\s*\(CD\d+\)""", RegexOption.IGNORE_CASE)
@@ -80,7 +86,7 @@ class FileScanner(
         var anyStale = false
 
         val all = knownDirs.map { dir ->
-            val tag = dir.name
+            val tag = dir.name.uppercase()
             val dirMod = dir.lastModified()
             dirTimestamps[tag] = dirMod
 
@@ -123,11 +129,8 @@ class FileScanner(
     }
 
     fun scanGames(tag: String, subfolder: String? = null): List<Game> {
-        val baseDir = if (subfolder != null) {
-            File(romsDir, "$tag/$subfolder")
-        } else {
-            File(romsDir, tag)
-        }
+        val tagDir = romsTagDir(tag)
+        val baseDir = if (subfolder != null) File(tagDir, subfolder) else tagDir
 
         if (!baseDir.exists()) return emptyList()
 
@@ -286,7 +289,7 @@ class FileScanner(
     }
 
     private fun reconstructGames(tag: String, cached: CachedGameList): List<Game> {
-        val nameMap = parseMapFile(File(romsDir, tag), tag)
+        val nameMap = parseMapFile(romsTagDir(tag), tag)
         val games = cached.games.mapNotNull { entry ->
             val file = File(entry.path)
             if (!entry.isSubfolder && isIgnoredExtension(file)) return@mapNotNull null
@@ -387,7 +390,7 @@ class FileScanner(
                     val tag = when {
                         file.absolutePath.startsWith(toolsDir.absolutePath + "/") -> "tools"
                         file.absolutePath.startsWith(portsDir.absolutePath + "/") -> "ports"
-                        else -> file.parentFile?.name ?: ""
+                        else -> file.parentFile?.name?.uppercase() ?: ""
                     }
                     Game(
                         file = file,
@@ -441,7 +444,7 @@ class FileScanner(
             val tag = when {
                 file.absolutePath.startsWith(toolsDir.absolutePath + "/") -> "tools"
                 file.absolutePath.startsWith(portsDir.absolutePath + "/") -> "ports"
-                else -> file.parentFile?.name ?: ""
+                else -> file.parentFile?.name?.uppercase() ?: ""
             }
             Game(
                 file = file,
@@ -612,9 +615,9 @@ class FileScanner(
     private fun resolvePlatformTag(romFile: File): String {
         val romsPath = romsDir.absolutePath + "/"
         val filePath = romFile.absolutePath
-        if (!filePath.startsWith(romsPath)) return romFile.parentFile?.name ?: ""
+        if (!filePath.startsWith(romsPath)) return romFile.parentFile?.name?.uppercase() ?: ""
         val relative = filePath.removePrefix(romsPath)
-        return relative.substringBefore('/')
+        return relative.substringBefore('/').uppercase()
     }
 
     private fun findArt(tag: String, gameName: String): File? {

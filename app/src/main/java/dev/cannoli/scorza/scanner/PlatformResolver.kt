@@ -79,6 +79,12 @@ class PlatformResolver(
     private var gameOverrides: MutableMap<String, GameCoreOverride> = java.util.concurrent.ConcurrentHashMap()
     private val coresFile get() = File(cannoliRoot, "Config/cores.json")
 
+    private fun romsTagDir(tag: String, romsDir: File = File(cannoliRoot, "Roms")): File {
+        val direct = File(romsDir, tag)
+        if (direct.exists()) return direct
+        return romsDir.listFiles()?.firstOrNull { it.isDirectory && it.name.equals(tag, ignoreCase = true) } ?: direct
+    }
+
     fun load() {
         loadPlatformsAsset()
         val configFile = File(cannoliRoot, "Config/platforms.ini")
@@ -288,8 +294,7 @@ class PlatformResolver(
     }
 
     fun getRunnerLabel(tag: String, coreId: String, installedRaCores: Map<String, Set<String>> = emptyMap()): String {
-        val romsDir = File(cannoliRoot, "Roms")
-        if (File(romsDir, "$tag/.emu_launch").exists()) return "External"
+        if (File(romsTagDir(tag), ".emu_launch").exists()) return "External"
         val override = userRunners[tag]
         if (override == "App") return "Standalone"
         if (override != null) return override
@@ -470,7 +475,7 @@ class PlatformResolver(
     }
 
     fun getEmuLaunch(tag: String, romsDir: File): LaunchTarget.EmuLaunch? {
-        val emuFile = File(romsDir, "$tag/.emu_launch")
+        val emuFile = File(romsTagDir(tag, romsDir), ".emu_launch")
         if (!emuFile.exists()) return null
 
         val emu = IniParser.parse(emuFile)
@@ -482,7 +487,7 @@ class PlatformResolver(
     }
 
     fun resolvePlatform(tag: String, romsDir: File, gameCount: Int): Platform {
-        val hasEmu = File(romsDir, "$tag/.emu_launch").exists()
+        val hasEmu = File(romsTagDir(tag, romsDir), ".emu_launch").exists()
         return Platform(
             tag = tag,
             displayName = getDisplayName(tag),
