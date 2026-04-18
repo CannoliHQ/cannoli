@@ -10,18 +10,9 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.os.BatteryManager
 import android.os.Build
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -33,17 +24,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.ui.R
-import dev.cannoli.ui.components.pillInternalH
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliFont
 import dev.cannoli.ui.theme.LocalScaleFactor
@@ -54,13 +41,10 @@ import java.util.Date
 import java.util.Locale
 
 private const val ICON_BLUETOOTH = "\uDB80\uDCAF"
-private const val ICON_BLUETOOTH_OFF = "\uDB80\uDCB2"
 private const val ICON_WIFI = "\uDB81\uDDA9"
-private const val ICON_WIFI_OFF = "\uDB81\uDDAA"
 private const val ICON_VPN = "\uDB82\uDFC4"
-private const val ICON_KITCHEN = "\uDB81\uDC8B"
 private const val ICON_UPDATE = "\uDB81\uDEB0"
-private const val ICON_CHARGING = "\uDB85\uDC0B"
+private const val ICON_CHARGING = "\uF0E7"
 
 @Composable
 fun StatusBar(
@@ -71,19 +55,15 @@ fun StatusBar(
     showClock: Boolean = true,
     showBattery: Boolean = true,
     showUpdate: Boolean = true,
-    showKitchen: Boolean = false,
     use24hTime: Boolean = false,
-    textSizeSp: Int = 22
+    textSizeSp: Int = 16
 ) {
     val context = LocalContext.current
-    val lineHeight = (textSizeSp + 10).sp
-    val verticalPadding = 4.dp
     val scaleFactor = LocalScaleFactor.current
 
     var batteryLevel by remember { mutableIntStateOf(0) }
     var isCharging by remember { mutableStateOf(false) }
     var wifiConnected by remember { mutableStateOf(false) }
-    var wifiEnabled by remember { mutableStateOf(true) }
     var hasVpn by remember { mutableStateOf(false) }
     var hasBluetooth by remember { mutableStateOf(false) }
     var rawTime by remember { mutableStateOf(Date()) }
@@ -121,16 +101,12 @@ fun StatusBar(
                 }
                 val net = cm.activeNetwork
                 updateNetState(if (net != null) cm.getNetworkCapabilities(net) else null)
-                val wm = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? android.net.wifi.WifiManager
-                wifiEnabled = wm?.isWifiEnabled == true
                 networkCallback = object : ConnectivityManager.NetworkCallback() {
                     override fun onAvailable(network: Network) {
                         updateNetState(cm.getNetworkCapabilities(network))
-                        wifiEnabled = wm?.isWifiEnabled == true
                     }
                     override fun onLost(network: Network) {
                         updateNetState(null)
-                        wifiEnabled = wm?.isWifiEnabled == true
                     }
                     override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
                         updateNetState(caps)
@@ -167,119 +143,46 @@ fun StatusBar(
         SimpleDateFormat(if (use24hTime) "HH:mm" else "h:mm a", Locale.getDefault())
     }
     val timeText = timeFormat.format(rawTime)
+    val batteryPercent = stringResource(R.string.battery_level, batteryLevel)
 
     val colors = LocalCannoliColors.current
+    val fontSize = (textSizeSp * scaleFactor).sp
 
     val iconStyle = TextStyle(
         fontFamily = MPlus1Code,
         fontWeight = FontWeight.Normal,
-        fontSize = (16 * scaleFactor).sp,
-        color = colors.highlightText
+        fontSize = fontSize,
+        color = colors.text
     )
 
     val textStyle = TextStyle(
         fontFamily = LocalCannoliFont.current,
-        fontWeight = FontWeight.Bold,
-        fontSize = (12 * scaleFactor).sp,
-        color = colors.highlightText
+        fontWeight = FontWeight.Normal,
+        fontSize = fontSize,
+        color = colors.text
     )
 
-    val minHeight = with(LocalDensity.current) { lineHeight.toDp() } + verticalPadding * 2
+    val showUpdateIcon = updateAvailable && showUpdate
+    val showBtIcon = showBluetooth && hasBluetooth
+    val showWifiIcon = showWifi && wifiConnected
+    val showVpnIcon = showVpn && hasVpn
+    val anyVisible = showUpdateIcon || showBtIcon || showWifiIcon || showVpnIcon || showBattery || showClock
+
+    if (!anyVisible) return
 
     Row(
-        modifier = Modifier
-            .defaultMinSize(minHeight = minHeight)
-            .clip(RoundedCornerShape(50))
-            .background(colors.highlight)
-            .padding(horizontal = pillInternalH, vertical = verticalPadding),
+        modifier = Modifier.defaultMinSize(minHeight = (32 * scaleFactor).dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy((6 * scaleFactor).dp)
     ) {
-        if (updateAvailable && showUpdate) {
-            Text(text = ICON_UPDATE, style = iconStyle)
-        }
-
-        if (showKitchen) {
-            Text(text = ICON_KITCHEN, style = iconStyle)
-        }
-
-        if (showBluetooth) {
-            Text(text = if (hasBluetooth) ICON_BLUETOOTH else ICON_BLUETOOTH_OFF, style = iconStyle)
-        }
-
-        if (showWifi) {
-            val wifiIcon = when { wifiConnected -> ICON_WIFI; !wifiEnabled -> ICON_WIFI_OFF; else -> null }
-            if (wifiIcon != null) Text(text = wifiIcon, style = iconStyle)
-        }
-
-        if (showVpn && hasVpn) {
-            Text(text = ICON_VPN, style = iconStyle)
-        }
-
+        if (showUpdateIcon) Text(text = ICON_UPDATE, style = iconStyle)
+        if (showBtIcon) Text(text = ICON_BLUETOOTH, style = iconStyle)
+        if (showWifiIcon) Text(text = ICON_WIFI, style = iconStyle)
+        if (showVpnIcon) Text(text = ICON_VPN, style = iconStyle)
         if (showBattery) {
-            BatteryGauge(
-                level = batteryLevel,
-                isCharging = isCharging,
-                textColor = colors.highlightText,
-                scaleFactor = scaleFactor
-            )
+            if (isCharging) Text(text = ICON_CHARGING, style = iconStyle)
+            Text(text = batteryPercent, style = textStyle)
         }
-        if (showClock) {
-            Text(text = timeText, style = textStyle)
-        }
-    }
-}
-
-@Composable
-private fun BatteryGauge(
-    level: Int,
-    isCharging: Boolean,
-    textColor: Color,
-    scaleFactor: Float = 1f
-) {
-    val bodyHeight = (12 * scaleFactor).dp
-    val bodyWidth = (24 * scaleFactor).dp
-    val tipWidth = (2.5f * scaleFactor).dp
-    val tipHeight = (6 * scaleFactor).dp
-    val borderWidth = (1.5f * scaleFactor).dp
-    val cornerRadius = (2.5f * scaleFactor).dp
-    val fillFraction = (level / 100f).coerceIn(0f, 1f)
-
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            modifier = Modifier
-                .width(bodyWidth)
-                .height(bodyHeight)
-                .border(borderWidth, textColor, RoundedCornerShape(cornerRadius))
-        ) {
-            Box(
-                modifier = Modifier
-                    .padding(borderWidth)
-                    .fillMaxHeight()
-                    .fillMaxWidth(fillFraction)
-                    .background(textColor, RoundedCornerShape((1.5f * scaleFactor).dp))
-            )
-        }
-        Box(
-            modifier = Modifier
-                .width(tipWidth)
-                .height(tipHeight)
-                .padding(start = (0.5f * scaleFactor).dp)
-                .background(
-                    textColor,
-                    RoundedCornerShape(topEnd = (2 * scaleFactor).dp, bottomEnd = (2 * scaleFactor).dp)
-                )
-        )
-        Box(modifier = Modifier.width((3 * scaleFactor).dp))
-        Text(
-            text = if (isCharging) ICON_CHARGING + stringResource(R.string.battery_level, level)
-                else stringResource(R.string.battery_level, level),
-            style = TextStyle(
-                fontFamily = MPlus1Code,
-                fontWeight = FontWeight.Bold,
-                fontSize = (10 * scaleFactor).sp,
-                color = textColor
-            )
-        )
+        if (showClock) Text(text = timeText, style = textStyle)
     }
 }

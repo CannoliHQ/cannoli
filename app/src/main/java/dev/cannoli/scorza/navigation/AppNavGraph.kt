@@ -754,9 +754,7 @@ fun AppNavGraph(
                 showClock = appSettings.showClock,
                 showBattery = appSettings.showBattery,
                 showUpdate = appSettings.showUpdate,
-                showKitchen = dev.cannoli.scorza.server.KitchenManager.isRunning,
-                use24hTime = appSettings.use24h,
-                textSizeSp = appSettings.textSize.sp
+                use24hTime = appSettings.use24h
             )
         }
         }
