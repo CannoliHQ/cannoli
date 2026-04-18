@@ -540,7 +540,7 @@ class LibretroActivity : ComponentActivity() {
                 val raUser = intent.getStringExtra("ra_username") ?: ""
                 val raToken = intent.getStringExtra("ra_token") ?: ""
                 val raPassword = intent.getStringExtra("ra_password") ?: ""
-                val consoleId = RetroAchievementsManager.CONSOLE_MAP[platformTag]
+                val consoleId = RetroAchievementsManager.CONSOLE_MAP[platformTag.uppercase()]
                 sessionLog.log("RA init: user=${raUser.isNotEmpty()} token=${raToken.isNotEmpty()} password=${raPassword.isNotEmpty()} consoleId=$consoleId platformTag=$platformTag")
                 if (consoleId != null && raUser.isNotEmpty() && (raToken.isNotEmpty() || raPassword.isNotEmpty())) {
                     val raGameIdOverride = intent.getIntExtra("ra_game_id", 0)
