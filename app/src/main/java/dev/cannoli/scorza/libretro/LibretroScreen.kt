@@ -622,8 +622,7 @@ fun LibretroScreen(
                     showVpn = settings.showVpn,
                     showClock = settings.showClock,
                     showBattery = settings.showBattery && !context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK),
-                    use24hTime = settings.timeFormat == dev.cannoli.scorza.settings.TimeFormat.TWENTY_FOUR_HOUR,
-                    textSizeSp = settings.textSize.sp
+                    use24hTime = settings.timeFormat == dev.cannoli.scorza.settings.TimeFormat.TWENTY_FOUR_HOUR
                 )
             }
         }
