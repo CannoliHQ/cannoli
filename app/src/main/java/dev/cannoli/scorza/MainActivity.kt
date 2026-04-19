@@ -3431,21 +3431,18 @@ class MainActivity : ComponentActivity() {
 
     private fun queryInstalledCores() {
         unregisterCoreQueryReceiver()
-        val pkgLabel = InstalledCoreService.getPackageLabel(settings.retroArchPackage)
+        val selectedPkg = settings.retroArchPackage
+        val pkgLabel = InstalledCoreService.getPackageLabel(selectedPkg)
         pushScreen(LauncherScreen.InstalledCores(title = "$pkgLabel Installed Cores"))
 
         ioScope.launch {
             installedCoreService.queryAllPackages()
-            val allCores = installedCoreService.installedCores.flatMap { (pkg, cores) ->
-                val label = InstalledCoreService.getPackageLabel(pkg)
-                cores.map { coreId ->
-                    val name = platformResolver.getCoreDisplayName(coreId)
-                    "$name ($label)"
-                }
-            }.sorted()
+            val cores = (installedCoreService.installedCores[selectedPkg] ?: emptySet())
+                .map { coreId -> platformResolver.getCoreDisplayName(coreId) }
+                .sorted()
             withContext(Dispatchers.Main) {
                 val screen = screenStack.lastOrNull() as? LauncherScreen.InstalledCores ?: return@withContext
-                screenStack[screenStack.lastIndex] = screen.copy(cores = allCores, loading = false)
+                screenStack[screenStack.lastIndex] = screen.copy(cores = cores, loading = false)
             }
         }
     }
