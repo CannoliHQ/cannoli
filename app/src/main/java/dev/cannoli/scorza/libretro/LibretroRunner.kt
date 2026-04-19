@@ -143,6 +143,8 @@ class LibretroRunner {
 
     fun getCoreLogs(): List<String> = nativeGetCoreLogs().toList()
 
+    fun getMemoryDescriptors(): List<String> = nativeGetMemoryDescriptors().toList()
+
     private external fun nativeLoadCore(corePath: String): Boolean
     private external fun nativeInit(systemDir: String, saveDir: String)
     private external fun nativeAudioInit(sampleRate: Int)
@@ -182,4 +184,5 @@ class LibretroRunner {
     private external fun nativeSetDiskIndex(index: Int): Boolean
     private external fun nativeGetDiskLabel(index: Int): String?
     private external fun nativeGetCoreLogs(): Array<String>
+    private external fun nativeGetMemoryDescriptors(): Array<String>
 }

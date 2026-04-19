@@ -1178,6 +1178,25 @@ extern "C" size_t bridge_get_memory_size(unsigned id) {
 }
 
 extern "C" JNIEXPORT jobjectArray JNICALL
+Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeGetMemoryDescriptors(JNIEnv *env, jobject) {
+    jclass strClass = env->FindClass("java/lang/String");
+    jobjectArray result = env->NewObjectArray((jsize)g_memory_descriptor_count, strClass, nullptr);
+    for (unsigned i = 0; i < g_memory_descriptor_count; i++) {
+        const auto &d = g_memory_descriptors[i];
+        char buf[256];
+        snprintf(buf, sizeof(buf),
+            "[%u] flags=0x%llx ptr=%s offset=0x%zx start=0x%zx select=0x%zx disconnect=0x%zx len=0x%zx addrspace=%s",
+            i,
+            (unsigned long long)d.flags,
+            d.ptr ? "set" : "null",
+            d.offset, d.start, d.select, d.disconnect, d.len,
+            d.addrspace ? d.addrspace : "");
+        env->SetObjectArrayElement(result, (jsize)i, env->NewStringUTF(buf));
+    }
+    return result;
+}
+
+extern "C" JNIEXPORT jobjectArray JNICALL
 Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeGetCoreLogs(JNIEnv *env, jobject) {
     std::lock_guard<std::mutex> lock(g_log_ring_mutex);
     jclass strClass = env->FindClass("java/lang/String");

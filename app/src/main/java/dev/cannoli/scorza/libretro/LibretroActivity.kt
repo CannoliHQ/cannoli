@@ -476,6 +476,9 @@ class LibretroActivity : ComponentActivity() {
                 return@launch
             }
             sessionLog.log("loadGame succeeded: fps=${avInfo.fps} sampleRate=${avInfo.sampleRate}")
+            val memDescs = runner.getMemoryDescriptors()
+            sessionLog.log("Memory descriptors: count=${memDescs.size}")
+            for (line in memDescs) sessionLog.log("  mmap: $line")
             if (sramPath.isNotEmpty() && File(sramPath).exists()) runner.loadSRAM(sramPath)
             if (resumeSlot >= 0) {
                 val slot = slotManager.slots.getOrNull(resumeSlot)
