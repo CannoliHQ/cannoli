@@ -4,6 +4,7 @@ import android.app.ActivityOptions
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import dev.cannoli.scorza.R
 import dev.cannoli.scorza.libretro.LibretroActivity
 import dev.cannoli.scorza.libretro.SaveSlotManager
 import dev.cannoli.scorza.model.Game
@@ -226,6 +227,7 @@ class LaunchManager(
     }
 
     fun launchGame(game: Game): DialogState? {
+        debugLog("launchGame entered: ${game.platformTag} / ${game.file.name} target=${game.launchTarget::class.simpleName}")
         if (launching) return null
         launching = true
         val launchFile = resolveLaunchFile(game)
@@ -274,7 +276,13 @@ class LaunchManager(
                     if (core != null) {
                         if (runnerPref != "RetroArch" && runnerPref != "RicottaArch") {
                             val embeddedCorePath = findEmbeddedCore(core)
+                            debugLog("RetroArch target: core=$core runnerPref=$runnerPref embeddedCorePath=$embeddedCorePath")
                             if (embeddedCorePath != null) {
+                                checkFirmware(game, core)?.let {
+                                    debugLog("checkFirmware returned dialog, aborting launch")
+                                    return errorAndReset(it)
+                                }
+                                debugLog("checkFirmware returned null, proceeding to launchEmbedded")
                                 launchEmbedded(game.copy(file = launchFile), embeddedCorePath, originalRomPath = game.file.absolutePath)
                                 return null
                             }
@@ -333,6 +341,7 @@ class LaunchManager(
                 }
             }
             is LaunchTarget.Embedded -> {
+                checkFirmware(game, coreIdFromPath(target.corePath))?.let { return errorAndReset(it) }
                 launchEmbedded(game.copy(file = launchFile), target.corePath, originalRomPath = game.file.absolutePath)
                 return null
             }
@@ -341,18 +350,24 @@ class LaunchManager(
         return launchResultDialog(result)
     }
 
-    fun resumeGame(game: Game) {
-        if (launching) return
+    fun resumeGame(game: Game): DialogState? {
+        debugLog("resumeGame entered: ${game.platformTag} / ${game.file.name}")
+        if (launching) return null
         launching = true
         val resumeSlot = findMostRecentSlot(game) ?: 0
-        val launchFile = resolveLaunchFile(game) ?: run { launching = false; return }
+        val launchFile = resolveLaunchFile(game) ?: run { launching = false; return null }
         val embeddedCorePath = getEmbeddedCorePath(game)
         if (embeddedCorePath != null) {
+            val coreId = coreIdFromPath(embeddedCorePath)
+            checkFirmware(game, coreId)?.let {
+                debugLog("resumeGame: checkFirmware returned dialog")
+                return errorAndReset(it)
+            }
             launchEmbedded(game.copy(file = launchFile), embeddedCorePath, resumeSlot, originalRomPath = game.file.absolutePath)
-            return
+            return null
         }
         val gameOverride = platformResolver.getGameOverride(game.file.absolutePath)
-        val core = gameOverride?.coreId ?: platformResolver.getCoreName(game.platformTag) ?: run { launching = false; return }
+        val core = gameOverride?.coreId ?: platformResolver.getCoreName(game.platformTag) ?: run { launching = false; return null }
         val raPackage = gameOverride?.raPackage ?: platformResolver.getPackage(game.platformTag)
         if (settings.retroArchDiyMode) {
             val raConfig = "/storage/emulated/0/Android/data/$raPackage/files/retroarch.cfg"
@@ -362,6 +377,7 @@ class LaunchManager(
             val launchConfig = buildGameConfig(game, resume = true, slot = resumeSlot) ?: raConfigPath
             retroArchLauncher.launch(launchFile, core, launchConfig, raPackage)
         }
+        return null
     }
 
     private fun errorAndReset(dialog: DialogState): DialogState {
@@ -390,6 +406,29 @@ class LaunchManager(
             is LaunchResult.Error -> DialogState.LaunchError(result.message)
             LaunchResult.Success -> null
         }
+    }
+
+    private fun coreIdFromPath(corePath: String): String =
+        File(corePath).name.removeSuffix("_android.so")
+
+    private fun checkFirmware(game: Game, coreId: String): DialogState? {
+        val biosDir = File(File(settings.sdCardRoot), "BIOS/${game.platformTag}")
+        val missing = platformResolver.getMissingFirmware(coreId, biosDir)
+        debugLog("checkFirmware coreId=$coreId biosDir=${biosDir.absolutePath} missing=${missing.size} opt=${missing.count { it.optional }}")
+        if (missing.isEmpty()) return null
+        val header = context.getString(R.string.dialog_missing_bios_header, "Cannoli/BIOS/${game.platformTag}")
+        val body = missing.joinToString(separator = "\n", prefix = "$header\n") { "• ${it.desc}" }
+        return DialogState.LaunchError(body)
+    }
+
+    private fun debugLog(message: String) {
+        if (!settings.debugLogging) return
+        try {
+            val dir = File(File(settings.sdCardRoot), "Logs")
+            dir.mkdirs()
+            val f = File(dir, "launch_debug.log")
+            f.appendText("${java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.US).format(java.util.Date())} $message\n")
+        } catch (_: Exception) {}
     }
 
     fun launchEmbedded(game: Game, corePath: String, resumeSlot: Int = -1, originalRomPath: String? = null) {

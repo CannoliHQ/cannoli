@@ -1075,8 +1075,12 @@ class MainActivity : ComponentActivity() {
                 val tag = lines[1]
                 if (romFile.exists()) {
                     val game = Game(romFile, romFile.nameWithoutExtension, tag)
-                    launchManager.resumeGame(game)
-                    ioScope.launch { recentlyPlayedManager.record(romFile.absolutePath) }
+                    val errorDialog = launchManager.resumeGame(game)
+                    if (errorDialog != null) {
+                        dialogState.value = errorDialog
+                    } else {
+                        ioScope.launch { recentlyPlayedManager.record(romFile.absolutePath) }
+                    }
                 }
             }
         }
@@ -2145,8 +2149,12 @@ class MainActivity : ComponentActivity() {
                                     ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
                                 }
                             } else if (isResumable) {
-                                launchManager.resumeGame(game)
-                                ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
+                                val errorDialog = launchManager.resumeGame(game)
+                                if (errorDialog != null) {
+                                    dialogState.value = errorDialog
+                                } else {
+                                    ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
+                                }
                             }
                         } else if (!fgh) {
                             systemListViewModel.savePosition()
@@ -2180,8 +2188,12 @@ class MainActivity : ComponentActivity() {
                                         ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
                                     }
                                 } else if (isResumable) {
-                                    launchManager.resumeGame(game)
-                                    if (trackRecent) ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
+                                    val errorDialog = launchManager.resumeGame(game)
+                                    if (errorDialog != null) {
+                                        dialogState.value = errorDialog
+                                    } else if (trackRecent) {
+                                        ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
+                                    }
                                 }
                             }
                         }
@@ -2627,8 +2639,12 @@ class MainActivity : ComponentActivity() {
                 val game = item.game
                 val isResumable = resumableGames.contains(game.file.absolutePath)
                 if (isResumable && settings.swapPlayResume) {
-                    launchManager.resumeGame(game)
-                    ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
+                    val errorDialog = launchManager.resumeGame(game)
+                    if (errorDialog != null) {
+                        dialogState.value = errorDialog
+                    } else {
+                        ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
+                    }
                 } else {
                     val errorDialog = launchManager.launchGame(game)
                     if (errorDialog != null) {
@@ -2688,8 +2704,10 @@ class MainActivity : ComponentActivity() {
         val tag = gameListViewModel.state.value.platformTag
         val trackRecent = tag != "tools"
         if (isResumable && settings.swapPlayResume) {
-            launchManager.resumeGame(game)
-            if (trackRecent) {
+            val errorDialog = launchManager.resumeGame(game)
+            if (errorDialog != null) {
+                dialogState.value = errorDialog
+            } else if (trackRecent) {
                 ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
                 if (tag == "recently_played") pendingRecentlyPlayedReorder = true
             }

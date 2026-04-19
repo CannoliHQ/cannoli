@@ -9,6 +9,12 @@ data class CoreInfo(
     val databases: List<String>
 )
 
+data class FirmwareEntry(
+    val path: String,
+    val desc: String,
+    val optional: Boolean
+)
+
 class CoreInfoRepository(private val assets: AssetManager, private val cacheDir: File? = null, private val apkLastModified: Long = 0L) {
 
     @Volatile private var cores = listOf<CoreInfo>()
@@ -131,5 +137,41 @@ class CoreInfoRepository(private val assets: AssetManager, private val cacheDir:
         val dbs = tagToDatabases[tag.uppercase()] ?: return emptyList()
         return cores.filter { core -> core.databases.any { it in dbs } }
             .sortedBy { it.displayName }
+    }
+
+    fun getFirmwareFor(coreId: String): List<FirmwareEntry> {
+        val filename = "$coreId.info"
+        val fields = mutableMapOf<String, String>()
+        try {
+            assets.open("core_info/$filename").bufferedReader().useLines { lines ->
+                for (line in lines) {
+                    val trimmed = line.trim()
+                    if (!trimmed.startsWith("firmware")) continue
+                    val eq = trimmed.indexOf('=')
+                    if (eq < 0) continue
+                    val key = trimmed.substring(0, eq).trim()
+                    val value = trimmed.substring(eq + 1).trim().removeSurrounding("\"")
+                    fields[key] = value
+                }
+            }
+        } catch (_: Exception) { return emptyList() }
+
+        val count = fields["firmware_count"]?.toIntOrNull() ?: return emptyList()
+        return (0 until count).mapNotNull { i ->
+            val path = fields["firmware${i}_path"] ?: return@mapNotNull null
+            val desc = fields["firmware${i}_desc"] ?: path
+            val optional = fields["firmware${i}_opt"]?.equals("true", ignoreCase = true) ?: false
+            FirmwareEntry(path, desc, optional)
+        }
+    }
+
+    fun getMissingFirmware(coreId: String, biosDir: File): List<FirmwareEntry> {
+        val all = getFirmwareFor(coreId)
+        if (all.isEmpty()) return emptyList()
+        val present = all.filter { File(biosDir, it.path).exists() }.map { it.path }.toSet()
+        val requiredMissing = all.filter { !it.optional && it.path !in present }
+        if (requiredMissing.isNotEmpty()) return requiredMissing
+        if (present.isEmpty()) return all
+        return emptyList()
     }
 }

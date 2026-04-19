@@ -169,6 +169,7 @@
     <string name="dialog_missing_core">%1$s is not available.\nNo bundled or RetroArch core found.</string>
     <string name="dialog_missing_app">%1$s is not installed.</string>
     <string name="dialog_launch_error">%1$s</string>
+    <string name="dialog_missing_bios_header">At least one BIOS file is required in %1$s:</string>
     <string name="dialog_title_missing_core">Missing core</string>
     <string name="dialog_title_missing_app">Missing App</string>
     <string name="dialog_title_launch_error">Launch failed</string>

@@ -315,6 +315,10 @@ class PlatformResolver(
         return coreInfo?.getDisplayName(coreId) ?: coreId
     }
 
+    fun getMissingFirmware(coreId: String, biosDir: File): List<FirmwareEntry> {
+        return coreInfo?.getMissingFirmware(coreId, biosDir) ?: emptyList()
+    }
+
     fun getRunnerLabel(tag: String, coreId: String, installedRaCores: Map<String, Set<String>> = emptyMap()): String {
         if (File(romsTagDir(tag), ".emu_launch").exists()) return "External"
         val override = userRunners[tag]
