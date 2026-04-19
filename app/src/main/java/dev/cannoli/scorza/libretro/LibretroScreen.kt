@@ -55,6 +55,7 @@ import dev.cannoli.ui.DPAD_HORIZONTAL
 import dev.cannoli.ui.HALF_CIRCLE
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.LocalStatusBarLeftEdge
+import dev.cannoli.ui.components.OsdPill
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.StatusBar
@@ -589,21 +590,7 @@ fun LibretroScreen(
         }
 
         if (osdMessage != null) {
-            val colors = LocalCannoliColors.current
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 25.dp)
-                    .clip(Radius.Pill)
-                    .background(colors.highlight)
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
-            ) {
-                Text(
-                    text = osdMessage,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
-                    color = colors.highlightText
-                )
-            }
+            OsdPill(message = osdMessage)
         }
 
         if (statusBarEnabled) {
