@@ -1,4 +1,4 @@
-name: Core / app mapping issue
+name: Core / Standalone App Mapping Issue
 description: A game launches in the wrong emulator, fails to resolve, or should map to a core or standalone app that is missing
 title: "[mapping] "
 labels: ["mapping"]
@@ -6,7 +6,7 @@ body:
   - type: input
     id: game
     attributes:
-      label: Platform and game
+      label: Platform and Game
       placeholder: "SNES — Aladdin (USA).sfc"
     validations:
       required: true
