@@ -245,18 +245,27 @@ class LaunchManager(
 
         val result = when (val target = game.launchTarget) {
             is LaunchTarget.RetroArch -> {
-                val runnerPref = gameOverride?.runner ?: platformResolver.getRunnerPreference(game.platformTag)
+                var runnerPref = gameOverride?.runner ?: platformResolver.getRunnerPreference(game.platformTag)
+                if (runnerPref == null) {
+                    val core = gameOverride?.coreId ?: platformResolver.getCoreName(game.platformTag)
+                    val embeddedAvailable = core?.let { findEmbeddedCore(it) != null } ?: false
+                    val raAvailable = core != null && installedCoreService?.installedCores?.any { it.value.contains(core) } == true
+                    if (!embeddedAvailable && !raAvailable
+                        && platformResolver.getFirstInstalledApp(game.platformTag, context.packageManager) != null) {
+                        runnerPref = "Standalone"
+                    }
+                }
                 if (runnerPref == "App" || runnerPref == "Standalone") {
-                    val app = platformResolver.getAppPackage(game.platformTag)
-                    if (app != null) {
-                        val cfg = platformResolver.getAppConfig(game.platformTag, app)
+                    val cfg = platformResolver.getFirstInstalledApp(game.platformTag, context.packageManager)
+                        ?: platformResolver.getAppPackage(game.platformTag)?.let { platformResolver.getAppConfig(game.platformTag, it) }
+                    if (cfg != null) {
                         val appConfig = ApkLauncher.AppLaunchConfig(
                             activityName = cfg.activity,
                             action = cfg.action,
                             pathExtra = cfg.pathExtra,
                             uriExtra = cfg.uriExtra
                         )
-                        apkLauncher.launchWithRom(app, launchFile, appConfig)
+                        apkLauncher.launchWithRom(cfg.packageName, launchFile, appConfig)
                     } else {
                         LaunchResult.CoreNotInstalled("unknown")
                     }
@@ -304,17 +313,23 @@ class LaunchManager(
                 emuLauncher.launch(launchFile, target.packageName, target.activityName, target.action)
             }
             is LaunchTarget.ApkLaunch -> {
+                val pkg = if (context.isPackageInstalled(target.packageName)) {
+                    target.packageName
+                } else {
+                    platformResolver.getFirstInstalledApp(game.platformTag, context.packageManager)?.packageName
+                        ?: target.packageName
+                }
                 if (launchFile.extension != "apk_launch" && launchFile.exists()) {
-                    val cfg = platformResolver.getAppConfig(game.platformTag, target.packageName)
+                    val cfg = platformResolver.getAppConfig(game.platformTag, pkg)
                     val appConfig = ApkLauncher.AppLaunchConfig(
                         activityName = cfg.activity,
                         action = cfg.action,
                         pathExtra = cfg.pathExtra,
                         uriExtra = cfg.uriExtra
                     )
-                    apkLauncher.launchWithRom(target.packageName, launchFile, appConfig)
+                    apkLauncher.launchWithRom(pkg, launchFile, appConfig)
                 } else {
-                    apkLauncher.launch(target.packageName)
+                    apkLauncher.launch(pkg)
                 }
             }
             is LaunchTarget.Embedded -> {
