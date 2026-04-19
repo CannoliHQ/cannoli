@@ -236,7 +236,7 @@ fun AppNavGraph(
                     else -> "ALL"
                 }
                 val selected = currentScreen.mappings.getOrNull(currentScreen.selectedIndex)
-                val canSelect = selected != null && selected.coreDisplayName != "Missing" && selected.coreDisplayName != "None"
+                val canSelect = selected != null
                 ListDialogScreen(
                     backgroundImagePath = appSettings.backgroundImagePath,
                     backgroundTint = appSettings.backgroundTint,
@@ -257,7 +257,7 @@ fun AppNavGraph(
                         scrollTarget = currentScreen.scrollTarget,
                         onVisibleRangeChanged = onVisibleRangeChanged
                     ) { _, entry, isSelected ->
-                        val value = if (entry.runnerLabel.isNotEmpty())
+                        val value = if (currentScreen.filter == 0 && entry.runnerLabel.isNotEmpty())
                             "${entry.coreDisplayName} (${entry.runnerLabel})"
                         else entry.coreDisplayName
                         PillRowKeyValue(

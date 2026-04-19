@@ -1647,7 +1647,6 @@ class MainActivity : ComponentActivity() {
                     }
                     is LauncherScreen.CoreMapping -> {
                         screen.mappings.getOrNull(screen.selectedIndex)?.let { entry ->
-                            if (entry.coreDisplayName == "Missing" || entry.coreDisplayName == "None") return@let
                             val bundledCoresDir = LaunchManager.extractBundledCores(this@MainActivity)
                             val options = platformResolver.getCorePickerOptions(
                                 entry.tag, packageManager,
@@ -3459,9 +3458,9 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun filterCoreMappings(all: List<dev.cannoli.scorza.ui.screens.CoreMappingEntry>, filter: Int): List<dev.cannoli.scorza.ui.screens.CoreMappingEntry> = when (filter) {
-        1 -> all.filter { it.coreDisplayName == "Missing" || it.coreDisplayName == "None" || it.runnerLabel == "Unknown" }
+        1 -> all.filter { it.coreDisplayName == "Missing" || it.coreDisplayName == "None" || it.runnerLabel == "Missing" || it.runnerLabel == "Unknown" }
         2 -> all.filter { it.runnerLabel == "Internal" }
-        3 -> all.filter { it.runnerLabel != "Internal" && it.coreDisplayName != "Missing" && it.coreDisplayName != "None" && it.runnerLabel != "Unknown" }
+        3 -> all.filter { it.runnerLabel != "Internal" && it.coreDisplayName != "Missing" && it.coreDisplayName != "None" && it.runnerLabel != "Missing" && it.runnerLabel != "Unknown" }
         else -> all
     }
 

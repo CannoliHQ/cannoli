@@ -337,18 +337,23 @@ class PlatformResolver(
         return tags.map { tag ->
             val app = getAppPackage(tag)
             val coreId = getCoreMapping(tag)
+            val installedApp: String? = when {
+                pm == null -> app
+                else -> getAppOptions(tag).firstOrNull { pm.isPackageInstalled(it.packageName) }?.packageName
+            }
             if (app != null && coreId.isBlank()) {
-                val installed = pm?.isPackageInstalled(app) ?: true
-                if (installed) {
-                    val appName = pm?.let { resolveAppLabel(it, app) } ?: app
+                if (installedApp != null) {
+                    val appName = pm?.let { resolveAppLabel(it, installedApp) } ?: (knownAppLabels[installedApp] ?: installedApp)
                     dev.cannoli.scorza.ui.screens.CoreMappingEntry(
                         tag = tag, platformName = getDisplayName(tag),
                         coreDisplayName = appName, runnerLabel = "Standalone"
                     )
                 } else {
+                    val firstApp = getAppOptions(tag).firstOrNull()?.packageName
+                    val label = firstApp?.let { knownAppLabels[it] ?: it } ?: "Missing"
                     dev.cannoli.scorza.ui.screens.CoreMappingEntry(
                         tag = tag, platformName = getDisplayName(tag),
-                        coreDisplayName = "Missing", runnerLabel = ""
+                        coreDisplayName = label, runnerLabel = "Missing"
                     )
                 }
             } else if (coreId.isBlank()) {
@@ -359,11 +364,19 @@ class PlatformResolver(
             } else {
                 val runner = getRunnerLabel(tag, coreId, installedRaCores)
                 val status = coreStatus(tag, coreId, runner, installedRaCores, embeddedCoresDir, unresponsivePackages)
-                dev.cannoli.scorza.ui.screens.CoreMappingEntry(
-                    tag = tag, platformName = getDisplayName(tag),
-                    coreDisplayName = if (status == "Missing") "Missing" else getCoreDisplayName(coreId),
-                    runnerLabel = if (status == "Present") runner else status
-                )
+                if (status == "Missing" && installedApp != null) {
+                    val appName = pm?.let { resolveAppLabel(it, installedApp) } ?: installedApp
+                    dev.cannoli.scorza.ui.screens.CoreMappingEntry(
+                        tag = tag, platformName = getDisplayName(tag),
+                        coreDisplayName = appName, runnerLabel = "Standalone"
+                    )
+                } else {
+                    dev.cannoli.scorza.ui.screens.CoreMappingEntry(
+                        tag = tag, platformName = getDisplayName(tag),
+                        coreDisplayName = getCoreDisplayName(coreId),
+                        runnerLabel = if (status == "Present") runner else status
+                    )
+                }
             }
         }.sortedNatural { it.platformName }
     }
@@ -438,9 +451,12 @@ class PlatformResolver(
         val appPackages = getAppOptions(tag)
         for (config in appPackages) {
             val pkg = config.packageName
-            val appName = pm?.let { resolveAppLabel(it, pkg) } ?: pkg
+            val appName = pm?.let { resolveAppLabel(it, pkg) } ?: (knownAppLabels[pkg] ?: pkg)
+            val installed = pm?.isPackageInstalled(pkg) ?: true
             options.add(dev.cannoli.scorza.ui.screens.CorePickerOption(
-                coreId = "", displayName = appName, runnerLabel = "Standalone", appPackage = pkg
+                coreId = "", displayName = appName,
+                runnerLabel = if (installed) "Standalone" else "Missing",
+                appPackage = pkg
             ))
         }
 
@@ -452,9 +468,63 @@ class PlatformResolver(
             val info = pm.getApplicationInfo(packageName, 0)
             pm.getApplicationLabel(info).toString()
         } catch (_: PackageManager.NameNotFoundException) {
-            packageName
+            knownAppLabels[packageName] ?: packageName
         }
     }
+
+    private val knownAppLabels = mapOf(
+        "com.explusalpha.A2600Emu" to "2600.emu",
+        "com.explusalpha.GbaEmu" to "GBA.emu",
+        "com.explusalpha.GbcEmu" to "GBC.emu",
+        "com.explusalpha.LynxEmu" to "Lynx.emu",
+        "com.explusalpha.MdEmu" to "MD.emu",
+        "com.explusalpha.NeoEmu" to "NEO.emu",
+        "com.explusalpha.NesEmu" to "NES.emu",
+        "com.explusalpha.NgpEmu" to "NGP.emu",
+        "com.explusalpha.SaturnEmu" to "Saturn.emu",
+        "com.explusalpha.Snes9xPlus" to "Snes9x EX+",
+        "com.explusalpha.SwanEmu" to "Swan.emu",
+        "com.PceEmu" to "PCE.emu",
+        "com.fastemulator.gba" to "My Boy!",
+        "com.fastemulator.gbc" to "My OldBoy!",
+        "it.dbtecno.pizzaboygbapro" to "Pizza Boy GBA Pro",
+        "it.dbtecno.pizzaboygba" to "Pizza Boy GBA",
+        "it.dbtecno.pizzaboypro" to "Pizza Boy GBC Pro",
+        "it.dbtecno.pizzaboy" to "Pizza Boy GBC",
+        "com.fms.ines.free" to "iNES",
+        "com.androidemu.nes" to "Nesoid",
+        "org.mupen64plusae.v3.fzurita" to "M64Plus FZ",
+        "org.mupen64plusae.v3.alpha" to "Mupen64Plus AE",
+        "me.magnum.melonds" to "melonDS",
+        "me.magnum.melonds.nightly" to "melonDS Nightly",
+        "com.dsemu.drastic" to "DraStic",
+        "com.fms.mg" to "MasterGear",
+        "org.devmiyax.yabasanshioro2.pro" to "YabaSanshiro2 Pro",
+        "org.devmiyax.yabasanshioro2" to "YabaSanshiro2",
+        "com.flycast.emulator" to "Flycast",
+        "io.recompiled.redream" to "Redream",
+        "com.github.stenzek.duckstation" to "DuckStation",
+        "com.epsxe.ePSXe" to "ePSXe",
+        "com.emulator.fpse" to "FPse",
+        "com.emulator.fpse64" to "FPse64",
+        "org.ppsspp.ppsspp" to "PPSSPP",
+        "org.ppsspp.ppssppgold" to "PPSSPP Gold",
+        "xyz.aethersx2.android" to "AetherSX2",
+        "org.dolphinemu.dolphinemu" to "Dolphin",
+        "org.mm.jr" to "Dolphin MMJR",
+        "org.dolphinemu.mmjr" to "Dolphin MMJR2",
+        "org.azahar_emu.azahar" to "Azahar",
+        "org.citra.citra_emu" to "Citra",
+        "io.github.lime3ds.android" to "Lime3DS",
+        "com.panda3ds.pandroid" to "Panda3DS",
+        "info.cemu.cemu" to "Cemu",
+        "org.vita3k.emulator" to "Vita3K",
+        "aenu.aps3e" to "aPS3e",
+        "org.citron.citron_emu" to "Citron",
+        "ru.vastness.altmer.iratajaguar" to "IrataJaguar",
+        "com.fms.colem.deluxe" to "ColEm Deluxe",
+        "com.fms.colem" to "ColEm",
+    )
 
     fun getDisplayName(tag: String): String {
         val upper = tag.uppercase()
