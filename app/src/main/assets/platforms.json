@@ -291,6 +291,7 @@
   },
   "GC": {
     "name": "GameCube",
+    "core": "dolphin_libretro",
     "app": [
       "org.dolphinemu.dolphinemu",
       { "package": "org.mm.jr", "uriExtra": "AutoStartFile" },
@@ -299,6 +300,7 @@
   },
   "WII": {
     "name": "Wii",
+    "core": "dolphin_libretro",
     "app": [
       "org.dolphinemu.dolphinemu",
       { "package": "org.mm.jr", "uriExtra": "AutoStartFile" },
@@ -307,6 +309,7 @@
   },
   "3DS": {
     "name": "Nintendo 3DS",
+    "core": "citra_libretro",
     "app": [
       "org.azahar_emu.azahar",
       "org.citra.citra_emu",
