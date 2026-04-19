@@ -261,7 +261,7 @@
   },
   "SUPERGRAFX": {
     "name": "PC Engine SuperGrafx",
-    "core": "mednafen_pce_fast_libretro",
+    "core": "mednafen_supergrafx_libretro",
     "app": [
       "com.PceEmu"
     ]
