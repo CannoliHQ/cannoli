@@ -492,6 +492,39 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *) {
 
 JNIEXPORT jboolean JNICALL
 Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeLoadCore(JNIEnv *env, jobject, jstring corePath) {
+    // Full reset of all bridge state so each core load starts from a clean slate,
+    // independent of whether the previous session's deinit ran.
+    free(g_memory_descriptors);
+    g_memory_descriptors = nullptr;
+    g_memory_descriptor_count = 0;
+    g_memory_map = {0};
+
+    g_core_options.clear();
+    g_core_categories.clear();
+    g_option_overrides.clear();
+    g_options_dirty = false;
+
+    g_pixel_format = RETRO_PIXEL_FORMAT_0RGB1555;
+    g_rotation = 0;
+
+    memset(g_input_state, 0, sizeof(g_input_state));
+    memset(g_analog_state, 0, sizeof(g_analog_state));
+
+    {
+        std::lock_guard<std::mutex> lock(g_frame_mutex);
+        free(g_frame_buf);
+        g_frame_buf = nullptr;
+        g_frame_width = 0;
+        g_frame_height = 0;
+        g_frame_pitch = 0;
+        g_frame_ready = false;
+    }
+
+    memset(&g_disk_control, 0, sizeof(g_disk_control));
+    g_has_disk_control = false;
+    g_get_image_label = nullptr;
+    for (int p = 0; p < MAX_PORTS; p++) g_controller_types[p].clear();
+
     const char *path = env->GetStringUTFChars(corePath, nullptr);
     core.handle = dlopen(path, RTLD_LAZY);
     env->ReleaseStringUTFChars(corePath, path);
