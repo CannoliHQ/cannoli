@@ -61,6 +61,7 @@ extern "C" {
 #define RETRO_ENVIRONMENT_SET_VARIABLES          16
 #define RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE    17
 #define RETRO_ENVIRONMENT_SET_SUPPORT_NO_GAME    18
+#define RETRO_ENVIRONMENT_SET_VARIABLE           21
 #define RETRO_ENVIRONMENT_GET_RUMBLE_INTERFACE   23
 #define RETRO_ENVIRONMENT_GET_LOG_INTERFACE      27
 #define RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY     31
@@ -73,6 +74,8 @@ extern "C" {
 #define RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY   9
 #define RETRO_ENVIRONMENT_GET_INPUT_BITMASKS     51
 #define RETRO_ENVIRONMENT_GET_CORE_OPTIONS_VERSION 52
+#define RETRO_ENVIRONMENT_SET_CORE_OPTIONS           53
+#define RETRO_ENVIRONMENT_SET_CORE_OPTIONS_INTL      54
 #define RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2        67
 #define RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2_INTL  68
 #define RETRO_ENVIRONMENT_SET_CORE_OPTIONS_UPDATE_DISPLAY_CALLBACK 69
@@ -100,6 +103,19 @@ struct retro_variable {
 struct retro_core_option_value {
     const char *value;
     const char *label;
+};
+
+struct retro_core_option_definition {
+    const char *key;
+    const char *desc;
+    const char *info;
+    struct retro_core_option_value values[128];
+    const char *default_value;
+};
+
+struct retro_core_options_intl {
+    struct retro_core_option_definition *us;
+    struct retro_core_option_definition *local;
 };
 
 struct retro_core_option_v2_definition {

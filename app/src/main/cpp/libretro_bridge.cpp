@@ -235,6 +235,47 @@ static bool environment_cb(unsigned cmd, void *data) {
             return true;
         }
 
+        case RETRO_ENVIRONMENT_SET_CORE_OPTIONS: {
+            g_core_options.clear();
+            g_core_categories.clear();
+            auto *def = (const struct retro_core_option_definition *)data;
+            while (def && def->key) {
+                CoreOption opt;
+                opt.key = def->key;
+                opt.desc = def->desc ? def->desc : def->key;
+                opt.info = def->info ? def->info : "";
+                for (int i = 0; i < 128 && def->values[i].value; i++) {
+                    const char *label = def->values[i].label;
+                    std::string lbl = (label && label[0]) ? label : def->values[i].value;
+                    opt.values.push_back({def->values[i].value, lbl});
+                }
+                opt.selected = def->default_value ? def->default_value :
+                               (!opt.values.empty() ? opt.values[0].value : "");
+                g_core_options.push_back(opt);
+                def++;
+            }
+            return true;
+        }
+
+        case RETRO_ENVIRONMENT_SET_CORE_OPTIONS_INTL: {
+            auto *intl = (const struct retro_core_options_intl *)data;
+            if (intl && intl->us) {
+                environment_cb(RETRO_ENVIRONMENT_SET_CORE_OPTIONS, (void *)intl->us);
+            }
+            return true;
+        }
+
+        case RETRO_ENVIRONMENT_SET_VARIABLE: {
+            auto *var = (const struct retro_variable *)data;
+            if (!var) return true;
+            if (!var->key) return true;
+            if (var->value) {
+                g_option_overrides[var->key] = var->value;
+                g_options_dirty = true;
+            }
+            return true;
+        }
+
         case RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2: {
             g_core_options.clear();
             g_core_categories.clear();
