@@ -432,22 +432,28 @@ class PlatformResolver(
             }
 
             for ((pkg, cores) in installedRaCores) {
-                if (coreId in cores) {
-                    options.add(dev.cannoli.scorza.ui.screens.CorePickerOption(
-                        coreId = coreId, displayName = displayName,
-                        runnerLabel = InstalledCoreService.getPackageLabel(pkg),
-                        raPackage = pkg
-                    ))
-                }
+                val installed = coreId in cores
+                val isRicotta = pkg.startsWith("dev.cannoli.ricotta")
+                // Non-Ricotta packages: only list installed cores.
+                // Ricotta packages: list every candidate — missing ones download on select.
+                if (!installed && !isRicotta) continue
+                options.add(dev.cannoli.scorza.ui.screens.CorePickerOption(
+                    coreId = coreId, displayName = displayName,
+                    runnerLabel = InstalledCoreService.getPackageLabel(pkg),
+                    raPackage = pkg,
+                    downloadable = !installed
+                ))
             }
 
             for (pkg in unresponsivePackages) {
                 if (installedRaCores.containsKey(pkg)) continue
                 val label = InstalledCoreService.getPackageLabel(pkg)
+                val isRicotta = pkg.startsWith("dev.cannoli.ricotta")
                 options.add(dev.cannoli.scorza.ui.screens.CorePickerOption(
                     coreId = coreId, displayName = displayName,
-                    runnerLabel = "$label (Unknown)",
-                    raPackage = pkg
+                    runnerLabel = if (isRicotta) label else "$label (Unknown)",
+                    raPackage = pkg,
+                    downloadable = isRicotta
                 ))
             }
         }

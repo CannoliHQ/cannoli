@@ -81,6 +81,14 @@ class InstalledCoreService(private val context: Context) {
     fun hasCoreInPackage(coreId: String, pkg: String): Boolean =
         installedCores[pkg]?.contains(coreId) == true
 
+    /** Update the in-memory map after a successful programmatic install. */
+    @Synchronized
+    fun markInstalled(pkg: String, coreId: String) {
+        val existing = installedCores[pkg].orEmpty()
+        installedCores = installedCores + (pkg to existing + coreId)
+        unresponsivePackages = unresponsivePackages - pkg
+    }
+
     companion object {
         private val PACKAGE_LABELS = mapOf(
             "dev.cannoli.ricotta.aarch64" to "RicottaArch",
