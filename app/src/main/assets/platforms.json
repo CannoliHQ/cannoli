@@ -6,7 +6,8 @@
       "com.explusalpha.GbcEmu",
       "com.fastemulator.gbc",
       { "package": "it.dbtecno.pizzaboypro", "uriExtra": "rom_uri" },
-      { "package": "it.dbtecno.pizzaboy", "uriExtra": "rom_uri" }
+      { "package": "it.dbtecno.pizzaboy", "uriExtra": "rom_uri" },
+      "com.pixelrespawn.linkboy"
     ]
   },
   "GBC": {
@@ -16,7 +17,8 @@
       "com.explusalpha.GbcEmu",
       "com.fastemulator.gbc",
       { "package": "it.dbtecno.pizzaboypro", "uriExtra": "rom_uri" },
-      { "package": "it.dbtecno.pizzaboy", "uriExtra": "rom_uri" }
+      { "package": "it.dbtecno.pizzaboy", "uriExtra": "rom_uri" },
+      "com.pixelrespawn.linkboy"
     ]
   },
   "GBA": {
@@ -26,7 +28,10 @@
       "com.explusalpha.GbaEmu",
       "com.fastemulator.gba",
       { "package": "it.dbtecno.pizzaboygbapro", "uriExtra": "rom_uri" },
-      { "package": "it.dbtecno.pizzaboygba", "uriExtra": "rom_uri" }
+      { "package": "it.dbtecno.pizzaboygba", "uriExtra": "rom_uri" },
+      "com.sky.SkyEmu",
+      { "package": "com.hydra.noods", "pathExtra": "LaunchPath" },
+      "com.pixelrespawn.linkboy"
     ]
   },
   "NES": {
@@ -57,6 +62,7 @@
   "N64": {
     "name": "Nintendo 64",
     "app": [
+      "org.mupen64plusae.v3.fzurita.pro",
       "org.mupen64plusae.v3.fzurita",
       "org.mupen64plusae.v3.alpha"
     ]
@@ -67,7 +73,10 @@
     "app": [
       { "package": "me.magnum.melonds", "action": "me.magnum.melonds.LAUNCH_ROM", "uriExtra": "uri" },
       { "package": "me.magnum.melonds.nightly", "action": "me.magnum.melonds.nightly.LAUNCH_ROM", "uriExtra": "uri" },
-      "com.dsemu.drastic"
+      "com.dsemu.drastic",
+      { "package": "me.magnum.melondualds", "action": "me.magnum.melonds.LAUNCH_ROM", "uriExtra": "uri" },
+      "com.sky.SkyEmu",
+      { "package": "com.hydra.noods", "pathExtra": "LaunchPath" }
     ]
   },
   
@@ -75,7 +84,9 @@
     "name": "Game Gear",
     "core": "genesis_plus_gx_libretro",
     "app": [
-      "com.fms.mg"
+      "com.fms.mg",
+      { "package": "it.dbtecno.pizzaboyscpro", "uriExtra": "rom_uri" },
+      { "package": "it.dbtecno.pizzaboyscbasic", "uriExtra": "rom_uri" }
     ]
   },
   "SMS": {
@@ -83,14 +94,18 @@
     "core": "genesis_plus_gx_libretro",
     "app": [
       "com.explusalpha.MdEmu",
-      "com.fms.mg"
+      "com.fms.mg",
+      { "package": "it.dbtecno.pizzaboyscpro", "uriExtra": "rom_uri" },
+      { "package": "it.dbtecno.pizzaboyscbasic", "uriExtra": "rom_uri" }
     ]
   },
   "MD": {
     "name": "Sega Genesis",
     "core": "genesis_plus_gx_libretro",
     "app": [
-      "com.explusalpha.MdEmu"
+      "com.explusalpha.MdEmu",
+      { "package": "it.dbtecno.pizzaboyscpro", "uriExtra": "rom_uri" },
+      { "package": "it.dbtecno.pizzaboyscbasic", "uriExtra": "rom_uri" }
     ]
   },
   "SG1000": {
@@ -108,7 +123,9 @@
     "name": "Sega CD",
     "core": "genesis_plus_gx_libretro",
     "app": [
-      "com.explusalpha.MdEmu"
+      "com.explusalpha.MdEmu",
+      { "package": "it.dbtecno.pizzaboyscpro", "uriExtra": "rom_uri" },
+      { "package": "it.dbtecno.pizzaboyscbasic", "uriExtra": "rom_uri" }
     ]
   },
   "SATURN": {
@@ -221,13 +238,19 @@
     "core": "fbneo_libretro",
     "arcade": true,
     "app": [
-      "com.explusalpha.NeoEmu"
+      "com.explusalpha.NeoEmu",
+      "com.seleuco.mame4droid"
     ]
   },
   "MAME": {
     "name": "Arcade",
     "core": "mame2003_plus_libretro",
-    "arcade": true
+    "arcade": true,
+    "app": [
+      "com.seleuco.mame4droid",
+      "com.explusalpha.NeoEmu",
+      "com.flycast.emulator"
+    ]
   },
   "FBN": {
     "name": "Arcade",
@@ -236,7 +259,10 @@
   },
   "VIRTUALBOY": {
     "name": "Virtual Boy",
-    "core": "mednafen_vb_libretro"
+    "core": "mednafen_vb_libretro",
+    "app": [
+      "com.simongellis.vvb"
+    ]
   },
   "POKEMINI": {
     "name": "Pokemon Mini",
@@ -248,7 +274,8 @@
     "core": "bluemsx_libretro",
     "app": [
       "com.fms.colem.deluxe",
-      "com.fms.colem"
+      "com.fms.colem",
+      "com.explusalpha.MsxEmu"
     ]
   },
   "VECTREX": {
@@ -273,7 +300,10 @@
   },
   "SCUMMVM": {
     "name": "ScummVM",
-    "core": "scummvm_libretro"
+    "core": "scummvm_libretro",
+    "app": [
+      "org.scummvm.scummvm"
+    ]
   },
   "AMIGA": {
     "name": "Amiga",
@@ -283,11 +313,11 @@
   "PS2": {
     "name": "PlayStation 2",
     "app": [
-      "xyz.aethersx2.android"
-    ],
-    "appActivity": "xyz.aethersx2.android.EmulationActivity",
-    "appAction": "android.intent.action.MAIN",
-    "appPathExtra": "bootPath"
+      { "package": "xyz.aethersx2.android", "activity": "xyz.aethersx2.android.EmulationActivity", "action": "android.intent.action.MAIN", "pathExtra": "bootPath" },
+      "come.nanodata.armsx2",
+      "com.sbro.emucorex",
+      "com.virtualapplications.play"
+    ]
   },
   "GC": {
     "name": "GameCube",
@@ -312,8 +342,11 @@
     "core": "citra_libretro",
     "app": [
       "org.azahar_emu.azahar",
+      "io.github.azaharplus.android",
       "org.citra.citra_emu",
+      "org.citra.citra_emu.canary",
       "io.github.lime3ds.android",
+      "io.github.mandarine3ds.mandarine",
       "com.panda3ds.pandroid"
     ]
   },
@@ -326,19 +359,23 @@
   "PSVITA": {
     "name": "PS Vita",
     "app": [
-      "org.vita3k.emulator"
+      "org.vita3k.emulator",
+      "org.vita3k.emulator.ikhoeyZX"
     ]
   },
   "PS3": {
     "name": "PlayStation 3",
     "app": [
+      "aenu.aps3e.premium",
       "aenu.aps3e"
     ]
   },
   "NSW": {
     "name": "Nintendo Switch",
     "app": [
-      "org.citron.citron_emu"
+      "org.citron.citron_emu",
+      { "package": "org.kenjinx.android", "action": "org.kenjinx.android.LAUNCH_GAME", "uriExtra": "bootPath" },
+      "skyline.emu"
     ]
   }
 }
