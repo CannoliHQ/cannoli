@@ -168,10 +168,6 @@ class CoreInfoRepository(private val assets: AssetManager, private val cacheDir:
     fun getMissingFirmware(coreId: String, biosDir: File): List<FirmwareEntry> {
         val all = getFirmwareFor(coreId)
         if (all.isEmpty()) return emptyList()
-        val present = all.filter { File(biosDir, it.path).exists() }.map { it.path }.toSet()
-        val requiredMissing = all.filter { !it.optional && it.path !in present }
-        if (requiredMissing.isNotEmpty()) return requiredMissing
-        if (present.isEmpty()) return all
-        return emptyList()
+        return all.filter { !it.optional && !File(biosDir, it.path).exists() }
     }
 }

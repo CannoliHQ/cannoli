@@ -93,6 +93,7 @@ class LibretroActivity : ComponentActivity() {
     }
     private var loading by mutableStateOf(true)
     private var revealed by mutableStateOf(false)
+    private var missingBios by mutableStateOf<List<dev.cannoli.scorza.scanner.FirmwareEntry>>(emptyList())
 
     private val screenStack = mutableStateListOf<IGMScreen>()
 
@@ -127,6 +128,7 @@ class LibretroActivity : ComponentActivity() {
     private var coreInfoText by mutableStateOf("")
 
     private var confirmButton = dev.cannoli.ui.ConfirmButton.EAST
+    private var buttonLabelSet = dev.cannoli.ui.ButtonLabelSet.PLUMBER
 
     private var frontendSnapshot: OverrideManager.Settings? = null
     private var shaderParamsDirty = false
@@ -183,6 +185,31 @@ class LibretroActivity : ComponentActivity() {
     private val currentSlot get() = slotManager.slots[selectedSlotIndex]
     private val currentScreen get() = screenStack.lastOrNull()
     private val hasDiscs get() = diskCount > 1
+
+    @androidx.compose.runtime.Composable
+    private fun MissingBiosScreen(entries: List<dev.cannoli.scorza.scanner.FirmwareEntry>) {
+        val header = getString(R.string.dialog_missing_bios_header, "Cannoli/BIOS/$platformTag")
+        val body = entries.joinToString(separator = "\n", prefix = "$header\n") { "• ${it.desc}" }
+        dev.cannoli.ui.components.LaunchErrorDialog(
+            message = body,
+            buttonStyle = dev.cannoli.ui.ButtonStyle(labelSet = buttonLabelSet, confirmButton = confirmButton)
+        )
+    }
+
+    private suspend fun maybeReportMissingBios(corePath: String, logs: List<String>): Boolean {
+        val matched = logs.any { line ->
+            val lower = line.lowercase()
+            "bios" in lower || "firmware" in lower
+        }
+        if (!matched) return false
+        val coreId = File(corePath).name.removeSuffix("_android.so")
+        val entries = dev.cannoli.scorza.scanner.CoreInfoRepository(assets).getFirmwareFor(coreId)
+        if (entries.isEmpty()) return false
+        withContext(kotlinx.coroutines.Dispatchers.Main) {
+            missingBios = entries
+        }
+        return true
+    }
 
     private fun diskLabel(index: Int): String =
         diskLabels.getOrNull(index)?.takeIf { it.isNotEmpty() } ?: "Disc ${index + 1}"
@@ -266,7 +293,9 @@ class LibretroActivity : ComponentActivity() {
         }
 
         sessionLog.log("onCreate started")
-        confirmButton = SettingsRepository(this).confirmButton
+        val bootSettings = SettingsRepository(this)
+        confirmButton = bootSettings.confirmButton
+        buttonLabelSet = bootSettings.buttonLabelSet
         isRunning = true
         window.setBackgroundDrawableResource(android.R.color.black)
         goFullscreen()
@@ -278,6 +307,7 @@ class LibretroActivity : ComponentActivity() {
         guideManager = GuideManager(cannoliRoot, platformTag, File(romPath).nameWithoutExtension)
         profileManager = ProfileManager(cannoliRoot)
         profileManager.ensureDefaults()
+        defaultProfileControls = profileManager.readControls(ProfileManager.NAVIGATION)
         autoconfigLoader = dev.cannoli.scorza.input.autoconfig.AutoconfigLoader(
             dev.cannoli.scorza.input.autoconfig.AssetCfgSource(this)
         )
@@ -323,7 +353,9 @@ class LibretroActivity : ComponentActivity() {
         setContent {
             CannoliTheme(fontFamily = fontFamily) {
                 CompositionLocalProvider(LocalCannoliColors provides colors) {
-                    if (loading) {
+                    if (missingBios.isNotEmpty()) {
+                        MissingBiosScreen(missingBios)
+                    } else if (loading) {
                         Box(modifier = Modifier.fillMaxSize().background(Color.Black))
                     } else {
                         val screen = if (revealed) currentScreen else null
@@ -396,6 +428,7 @@ class LibretroActivity : ComponentActivity() {
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
+                if (missingBios.isNotEmpty()) { finish(); return }
                 if (loading) return
                 if (screenStack.isEmpty()) openMenu() else pop()
                 if (screenStack.isEmpty()) { renderer.paused = false; runner.resumeAudio(); startVsyncPacer() }
@@ -408,9 +441,11 @@ class LibretroActivity : ComponentActivity() {
             sessionLog.log("loadCore: $corePath")
             if (!runner.loadCore(corePath)) {
                 sessionLog.logError("loadCore FAILED for $corePath")
-                for (line in runner.getCoreLogs()) sessionLog.log("  core: $line")
+                val logs = runner.getCoreLogs()
+                for (line in logs) sessionLog.log("  core: $line")
+                val shownBios = maybeReportMissingBios(corePath, logs)
                 sessionLog.close()
-                withContext(kotlinx.coroutines.Dispatchers.Main) { finish() }
+                if (!shownBios) withContext(kotlinx.coroutines.Dispatchers.Main) { finish() }
                 return@launch
             }
             runner.init(systemDir, saveDir)
@@ -432,10 +467,12 @@ class LibretroActivity : ComponentActivity() {
             val avInfo = runner.loadGame(romPath)
             if (avInfo == null) {
                 sessionLog.logError("loadGame returned null for $romPath")
-                for (line in runner.getCoreLogs()) sessionLog.log("  core: $line")
+                val gameLogs = runner.getCoreLogs()
+                for (line in gameLogs) sessionLog.log("  core: $line")
+                val shownBios = maybeReportMissingBios(corePath, gameLogs)
                 sessionLog.close()
                 runner.deinit()
-                withContext(kotlinx.coroutines.Dispatchers.Main) { finish() }
+                if (!shownBios) withContext(kotlinx.coroutines.Dispatchers.Main) { finish() }
                 return@launch
             }
             sessionLog.log("loadGame succeeded: fps=${avInfo.fps} sampleRate=${avInfo.sampleRate}")
@@ -758,6 +795,10 @@ class LibretroActivity : ComponentActivity() {
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (missingBios.isNotEmpty()) {
+            if (resolveNavButton(keyCode) == "btn_east") finish()
+            return true
+        }
         if (loading) return true
         if (isSystemMediaKey(keyCode)) return super.onKeyDown(keyCode, event)
         val screen = currentScreen ?: return handleGameplayInput(keyCode, event)

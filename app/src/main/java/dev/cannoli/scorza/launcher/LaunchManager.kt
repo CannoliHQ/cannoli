@@ -278,11 +278,6 @@ class LaunchManager(
                             val embeddedCorePath = findEmbeddedCore(core)
                             debugLog("RetroArch target: core=$core runnerPref=$runnerPref embeddedCorePath=$embeddedCorePath")
                             if (embeddedCorePath != null) {
-                                checkFirmware(game, core)?.let {
-                                    debugLog("checkFirmware returned dialog, aborting launch")
-                                    return errorAndReset(it)
-                                }
-                                debugLog("checkFirmware returned null, proceeding to launchEmbedded")
                                 launchEmbedded(game.copy(file = launchFile), embeddedCorePath, originalRomPath = game.file.absolutePath)
                                 return null
                             }
@@ -341,7 +336,6 @@ class LaunchManager(
                 }
             }
             is LaunchTarget.Embedded -> {
-                checkFirmware(game, coreIdFromPath(target.corePath))?.let { return errorAndReset(it) }
                 launchEmbedded(game.copy(file = launchFile), target.corePath, originalRomPath = game.file.absolutePath)
                 return null
             }
@@ -358,11 +352,6 @@ class LaunchManager(
         val launchFile = resolveLaunchFile(game) ?: run { launching = false; return null }
         val embeddedCorePath = getEmbeddedCorePath(game)
         if (embeddedCorePath != null) {
-            val coreId = coreIdFromPath(embeddedCorePath)
-            checkFirmware(game, coreId)?.let {
-                debugLog("resumeGame: checkFirmware returned dialog")
-                return errorAndReset(it)
-            }
             launchEmbedded(game.copy(file = launchFile), embeddedCorePath, resumeSlot, originalRomPath = game.file.absolutePath)
             return null
         }
@@ -406,19 +395,6 @@ class LaunchManager(
             is LaunchResult.Error -> DialogState.LaunchError(result.message)
             LaunchResult.Success -> null
         }
-    }
-
-    private fun coreIdFromPath(corePath: String): String =
-        File(corePath).name.removeSuffix("_android.so")
-
-    private fun checkFirmware(game: Game, coreId: String): DialogState? {
-        val biosDir = File(File(settings.sdCardRoot), "BIOS/${game.platformTag}")
-        val missing = platformResolver.getMissingFirmware(coreId, biosDir)
-        debugLog("checkFirmware coreId=$coreId biosDir=${biosDir.absolutePath} missing=${missing.size} opt=${missing.count { it.optional }}")
-        if (missing.isEmpty()) return null
-        val header = context.getString(R.string.dialog_missing_bios_header, "Cannoli/BIOS/${game.platformTag}")
-        val body = missing.joinToString(separator = "\n", prefix = "$header\n") { "• ${it.desc}" }
-        return DialogState.LaunchError(body)
     }
 
     private fun debugLog(message: String) {
