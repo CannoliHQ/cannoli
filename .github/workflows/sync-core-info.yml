@@ -1,0 +1,55 @@
+name: Sync Core Info
+
+on:
+  schedule:
+    - cron: '0 6 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch upstream info files
+        run: |
+          git clone --depth=1 https://github.com/libretro/libretro-super /tmp/libretro-super
+          rm -rf app/src/main/assets/core_info
+          mkdir -p app/src/main/assets/core_info
+          cp /tmp/libretro-super/dist/info/*.info app/src/main/assets/core_info/
+
+      - name: Check for changes
+        id: diff
+        run: |
+          if git diff --quiet -- app/src/main/assets/core_info; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            ADDED=$(git diff --name-status -- app/src/main/assets/core_info | grep -c '^A' || true)
+            REMOVED=$(git diff --name-status -- app/src/main/assets/core_info | grep -c '^D' || true)
+            MODIFIED=$(git diff --name-status -- app/src/main/assets/core_info | grep -c '^M' || true)
+            echo "added=$ADDED" >> "$GITHUB_OUTPUT"
+            echo "removed=$REMOVED" >> "$GITHUB_OUTPUT"
+            echo "modified=$MODIFIED" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create pull request
+        if: steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: sync/core-info
+          commit-message: "chore: sync core info files from libretro-super"
+          title: "chore: sync core info files from libretro-super"
+          body: |
+            Automated sync of `app/src/main/assets/core_info/` from [libretro/libretro-super](https://github.com/libretro/libretro-super/tree/master/dist/info).
+
+            - Added: ${{ steps.diff.outputs.added }}
+            - Removed: ${{ steps.diff.outputs.removed }}
+            - Modified: ${{ steps.diff.outputs.modified }}
+
+            Review the diff to confirm no cores we rely on have changed their `database` field in a way that breaks `CoreInfoRepository.tagToDatabases` mapping.
+          delete-branch: true
