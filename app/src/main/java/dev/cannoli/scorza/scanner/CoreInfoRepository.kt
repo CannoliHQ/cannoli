@@ -46,7 +46,7 @@ class CoreInfoRepository(private val assets: AssetManager, private val cacheDir:
         "NGPC" to listOf("SNK - Neo Geo Pocket Color"),
         "WS" to listOf("Bandai - WonderSwan"),
         "WSC" to listOf("Bandai - WonderSwan Color"),
-        "MAME" to listOf("MAME", "MAME 2003-Plus"),
+        "MAME" to listOf("MAME", "MAME 2003-Plus", "MAME 2000", "MAME 2003", "MAME 2003 (Midway)", "MAME 2010"),
         "FBN" to listOf("FBNeo - Arcade Games"),
         "VIRTUALBOY" to listOf("Nintendo - Virtual Boy"),
         "POKEMINI" to listOf("Nintendo - Pokemon Mini"),
