@@ -14,6 +14,14 @@ import java.io.File
 
 data class GameCoreOverride(val coreId: String = "", val runner: String? = null, val appPackage: String? = null, val raPackage: String? = null)
 
+data class AppConfig(
+    val packageName: String,
+    val activity: String? = null,
+    val action: String? = null,
+    val pathExtra: String? = null,
+    val uriExtra: String? = null
+)
+
 class PlatformResolver(
     private val cannoliRoot: File,
     private val assets: AssetManager,
@@ -23,51 +31,62 @@ class PlatformResolver(
 
     private var defaultCores = mapOf<String, String>()
     private var defaultPlatformNames = mapOf<String, String>()
-    private var defaultRetroArchCores = mapOf<String, List<String>>()
-    private var defaultApps = mapOf<String, List<String>>()
-    private var defaultAppActivities = mapOf<String, String>()
-    private var defaultAppActions = mapOf<String, String>()
-    private var defaultAppPathExtras = mapOf<String, String>()
+    private var defaultApps = mapOf<String, List<AppConfig>>()
     private var arcadePlatforms = setOf<String>()
 
     private fun loadPlatformsAsset() {
         val json = JSONObject(assets.open("platforms.json").use { it.bufferedReader().readText() })
         val cores = mutableMapOf<String, String>()
         val names = mutableMapOf<String, String>()
-        val raCores = mutableMapOf<String, List<String>>()
-        val apps = mutableMapOf<String, List<String>>()
-        val appActivities = mutableMapOf<String, String>()
-        val appActions = mutableMapOf<String, String>()
-        val appPathExtras = mutableMapOf<String, String>()
+        val apps = mutableMapOf<String, List<AppConfig>>()
         val arcade = mutableSetOf<String>()
         for (tag in json.keys()) {
             val entry = json.getJSONObject(tag)
             entry.optString("name", "").takeIf { it.isNotEmpty() }?.let { names[tag] = it }
             entry.optString("core", "").takeIf { it.isNotEmpty() }?.let { cores[tag] = it }
             if (entry.optBoolean("arcade")) arcade.add(tag)
+            val tagActivity = entry.optString("appActivity", "").ifEmpty { null }
+            val tagAction = entry.optString("appAction", "").ifEmpty { null }
+            val tagPathExtra = entry.optString("appPathExtra", "").ifEmpty { null }
+            val tagUriExtra = entry.optString("appUriExtra", "").ifEmpty { null }
             val appArray = entry.optJSONArray("app")
+            val list = mutableListOf<AppConfig>()
             if (appArray != null) {
-                val list = (0 until appArray.length()).map { appArray.getString(it) }
-                if (list.isNotEmpty()) apps[tag] = list
+                for (i in 0 until appArray.length()) {
+                    val item = appArray.get(i)
+                    when (item) {
+                        is String -> list.add(AppConfig(
+                            packageName = item,
+                            activity = tagActivity,
+                            action = tagAction,
+                            pathExtra = tagPathExtra,
+                            uriExtra = tagUriExtra
+                        ))
+                        is JSONObject -> list.add(AppConfig(
+                            packageName = item.getString("package"),
+                            activity = item.optString("activity").ifEmpty { null } ?: tagActivity,
+                            action = item.optString("action").ifEmpty { null } ?: tagAction,
+                            pathExtra = item.optString("pathExtra").ifEmpty { null } ?: tagPathExtra,
+                            uriExtra = item.optString("uriExtra").ifEmpty { null } ?: tagUriExtra
+                        ))
+                    }
+                }
             } else {
-                entry.optString("app", "").takeIf { it.isNotEmpty() }?.let { apps[tag] = listOf(it) }
+                entry.optString("app", "").takeIf { it.isNotEmpty() }?.let {
+                    list.add(AppConfig(
+                        packageName = it,
+                        activity = tagActivity,
+                        action = tagAction,
+                        pathExtra = tagPathExtra,
+                        uriExtra = tagUriExtra
+                    ))
+                }
             }
-            entry.optString("appActivity", "").takeIf { it.isNotEmpty() }?.let { appActivities[tag] = it }
-            entry.optString("appAction", "").takeIf { it.isNotEmpty() }?.let { appActions[tag] = it }
-            entry.optString("appPathExtra", "").takeIf { it.isNotEmpty() }?.let { appPathExtras[tag] = it }
-            val raArray = entry.optJSONArray("retroarch")
-            if (raArray != null) {
-                val list = (0 until raArray.length()).map { raArray.getString(it) }
-                if (list.isNotEmpty()) raCores[tag] = list
-            }
+            if (list.isNotEmpty()) apps[tag] = list
         }
         defaultCores = cores
         defaultPlatformNames = names
-        defaultRetroArchCores = raCores
         defaultApps = apps
-        defaultAppActivities = appActivities
-        defaultAppActions = appActions
-        defaultAppPathExtras = appPathExtras
         arcadePlatforms = arcade
     }
 
@@ -211,11 +230,11 @@ class PlatformResolver(
 
     fun getCoreMapping(tag: String): String {
         val upper = tag.uppercase()
-        return userCores[tag] ?: defaultCores[upper] ?: defaultRetroArchCores[upper]?.firstOrNull() ?: ""
+        return userCores[tag] ?: defaultCores[upper] ?: ""
     }
 
     fun setCoreMapping(tag: String, core: String, runner: String? = null, raPackage: String? = null) {
-        val defaultCore = defaultCores[tag.uppercase()] ?: defaultRetroArchCores[tag.uppercase()]?.firstOrNull()
+        val defaultCore = defaultCores[tag.uppercase()]
         if (core.isBlank() || core == defaultCore) {
             userCores.remove(tag)
         } else {
@@ -258,15 +277,18 @@ class PlatformResolver(
 
     fun getAllTags(): Set<String> = defaultPlatformNames.keys + ini.getSection("platforms").keys
 
-    fun getAppPackage(tag: String): String? = userApps[tag] ?: defaultApps[tag.uppercase()]?.firstOrNull()
+    fun getAppPackage(tag: String): String? = userApps[tag] ?: defaultApps[tag.uppercase()]?.firstOrNull()?.packageName
 
-    fun getAppActivity(tag: String): String? = defaultAppActivities[tag.uppercase()]
+    fun getAppOptions(tag: String): List<AppConfig> = defaultApps[tag.uppercase()] ?: emptyList()
 
-    fun getAppAction(tag: String): String? = defaultAppActions[tag.uppercase()]
+    fun getAppConfig(tag: String, packageName: String): AppConfig {
+        val configs = getAppOptions(tag)
+        return configs.firstOrNull { it.packageName == packageName } ?: AppConfig(packageName)
+    }
 
-    fun getAppPathExtra(tag: String): String? = defaultAppPathExtras[tag.uppercase()]
-
-    fun getAppOptions(tag: String): List<String> = defaultApps[tag.uppercase()] ?: emptyList()
+    fun getFirstInstalledApp(tag: String, pm: PackageManager): AppConfig? {
+        return getAppOptions(tag).firstOrNull { pm.isPackageInstalled(it.packageName) }
+    }
 
     fun setAppMapping(tag: String, appPackage: String?) {
         if (appPackage == null) {
@@ -311,7 +333,7 @@ class PlatformResolver(
         embeddedCoresDir: String? = null,
         unresponsivePackages: Set<String> = emptySet()
     ): List<dev.cannoli.scorza.ui.screens.CoreMappingEntry> {
-        val tags = (defaultCores.keys + defaultRetroArchCores.keys + defaultApps.keys + userCores.keys + userApps.keys)
+        val tags = (defaultCores.keys + defaultApps.keys + userCores.keys + userApps.keys)
         return tags.map { tag ->
             val app = getAppPackage(tag)
             val coreId = getCoreMapping(tag)
@@ -380,7 +402,6 @@ class PlatformResolver(
         val candidateCoreIds = mutableSetOf<String>()
         val upper = tag.uppercase()
         defaultCores[upper]?.let { candidateCoreIds.add(it) }
-        defaultRetroArchCores[upper]?.forEach { candidateCoreIds.add(it) }
         coreInfo?.getCoresForTag(tag)?.forEach { candidateCoreIds.add(it.id) }
 
         for (coreId in candidateCoreIds) {
@@ -415,7 +436,8 @@ class PlatformResolver(
         }
 
         val appPackages = getAppOptions(tag)
-        for (pkg in appPackages) {
+        for (config in appPackages) {
+            val pkg = config.packageName
             val appName = pm?.let { resolveAppLabel(it, pkg) } ?: pkg
             options.add(dev.cannoli.scorza.ui.screens.CorePickerOption(
                 coreId = "", displayName = appName, runnerLabel = "Standalone", appPackage = pkg
@@ -471,7 +493,6 @@ class PlatformResolver(
         return userCores[tag]
             ?: ini.get("cores", upper)
             ?: defaultCores[upper]
-            ?: defaultRetroArchCores[upper]?.firstOrNull()
     }
 
     fun getEmuLaunch(tag: String, romsDir: File): LaunchTarget.EmuLaunch? {

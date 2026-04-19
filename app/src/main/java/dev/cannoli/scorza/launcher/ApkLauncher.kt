@@ -28,7 +28,8 @@ class ApkLauncher(private val context: Context) {
     data class AppLaunchConfig(
         val activityName: String? = null,
         val action: String? = null,
-        val pathExtra: String? = null
+        val pathExtra: String? = null,
+        val uriExtra: String? = null
     )
 
     fun launchWithRom(
@@ -40,8 +41,8 @@ class ApkLauncher(private val context: Context) {
             return LaunchResult.AppNotInstalled(packageName)
         }
 
-        if (config.pathExtra != null) {
-            return launchWithPathExtra(packageName, romFile, config)
+        if (config.pathExtra != null || config.uriExtra != null) {
+            return launchWithExtra(packageName, romFile, config)
         }
 
         val uri: Uri = FileProvider.getUriForFile(
@@ -81,19 +82,30 @@ class ApkLauncher(private val context: Context) {
         }
     }
 
-    private fun launchWithPathExtra(
+    private fun launchWithExtra(
         packageName: String,
         romFile: File,
         config: AppLaunchConfig
     ): LaunchResult {
-        val action = config.action ?: Intent.ACTION_MAIN
+        val action = config.action ?: if (config.uriExtra != null) Intent.ACTION_VIEW else Intent.ACTION_MAIN
         val intent = Intent(action).apply {
             if (config.activityName != null) {
                 component = ComponentName(packageName, config.activityName)
             } else {
                 setPackage(packageName)
             }
-            putExtra(config.pathExtra, romFile.absolutePath)
+            if (config.pathExtra != null) {
+                putExtra(config.pathExtra, romFile.absolutePath)
+            }
+            if (config.uriExtra != null) {
+                val uri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    romFile
+                )
+                putExtra(config.uriExtra, uri.toString())
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
 

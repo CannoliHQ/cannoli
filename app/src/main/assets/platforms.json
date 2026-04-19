@@ -1,78 +1,124 @@
 {
   "GB": {
     "name": "Game Boy",
-    "core": "gambatte_libretro"
+    "core": "gambatte_libretro",
+    "app": [
+      "com.explusalpha.GbcEmu",
+      "com.fastemulator.gbc",
+      { "package": "it.dbtecno.pizzaboypro", "uriExtra": "rom_uri" },
+      { "package": "it.dbtecno.pizzaboy", "uriExtra": "rom_uri" }
+    ]
   },
   "GBC": {
     "name": "Game Boy Color",
-    "core": "gambatte_libretro"
+    "core": "gambatte_libretro",
+    "app": [
+      "com.explusalpha.GbcEmu",
+      "com.fastemulator.gbc",
+      { "package": "it.dbtecno.pizzaboypro", "uriExtra": "rom_uri" },
+      { "package": "it.dbtecno.pizzaboy", "uriExtra": "rom_uri" }
+    ]
   },
   "GBA": {
     "name": "Game Boy Advance",
     "core": "mgba_libretro",
-    "retroarch": [
-      "gpsp_libretro"
+    "app": [
+      "com.explusalpha.GbaEmu",
+      "com.fastemulator.gba",
+      { "package": "it.dbtecno.pizzaboygbapro", "uriExtra": "rom_uri" },
+      { "package": "it.dbtecno.pizzaboygba", "uriExtra": "rom_uri" }
     ]
   },
   "NES": {
     "name": "Nintendo Entertainment System",
-    "core": "nestopia_libretro"
+    "core": "nestopia_libretro",
+    "app": [
+      "com.explusalpha.NesEmu",
+      "com.fms.ines.free",
+      "com.androidemu.nes"
+    ]
   },
   "FDS": {
     "name": "Famicom Disk System",
-    "core": "nestopia_libretro"
+    "core": "nestopia_libretro",
+    "app": [
+      "com.explusalpha.NesEmu",
+      "com.fms.ines.free",
+      "com.androidemu.nes"
+    ]
   },
   "SNES": {
     "name": "Super Nintendo Entertainment System",
-    "core": "snes9x_libretro"
+    "core": "snes9x_libretro",
+    "app": [
+      "com.explusalpha.Snes9xPlus"
+    ]
   },
   "N64": {
     "name": "Nintendo 64",
-    "retroarch": [
-      "mupen64plus_next_gles3_libretro"
+    "core": "mupen64plus_next_gles3_libretro",
+    "app": [
+      "org.mupen64plusae.v3.fzurita",
+      "org.mupen64plusae.v3.alpha"
     ]
   },
   "NDS": {
     "name": "Nintendo DS",
-    "retroarch": [
-      "melonds_libretro"
-    ],
+    "core": "melonds_libretro",
     "app": [
-      "me.magnum.melonds",
+      { "package": "me.magnum.melonds", "action": "me.magnum.melonds.LAUNCH_ROM", "uriExtra": "uri" },
+      { "package": "me.magnum.melonds.nightly", "action": "me.magnum.melonds.nightly.LAUNCH_ROM", "uriExtra": "uri" },
       "com.dsemu.drastic"
     ]
   },
   
   "GG": {
     "name": "Game Gear",
-    "core": "genesis_plus_gx_libretro"
+    "core": "genesis_plus_gx_libretro",
+    "app": [
+      "com.fms.mg"
+    ]
   },
   "SMS": {
     "name": "Master System",
-    "core": "genesis_plus_gx_libretro"
+    "core": "genesis_plus_gx_libretro",
+    "app": [
+      "com.explusalpha.MdEmu",
+      "com.fms.mg"
+    ]
   },
   "MD": {
     "name": "Sega Genesis",
-    "core": "genesis_plus_gx_libretro"
+    "core": "genesis_plus_gx_libretro",
+    "app": [
+      "com.explusalpha.MdEmu"
+    ]
   },
   "SG1000": {
     "name": "Sega SG-1000",
-    "core": "genesis_plus_gx_libretro"
+    "core": "genesis_plus_gx_libretro",
+    "app": [
+      "com.fms.mg"
+    ]
   },
   "32X": {
     "name": "Sega 32X",
-    "retroarch": [
-      "picodrive_libretro"
-    ]
+    "core": "picodrive_libretro"
   },
   "SEGACD": {
     "name": "Sega CD",
-    "core": "genesis_plus_gx_libretro"
+    "core": "genesis_plus_gx_libretro",
+    "app": [
+      "com.explusalpha.MdEmu"
+    ]
   },
   "SATURN": {
     "name": "Sega Saturn",
-    "retroarch": [
-      "mednafen_saturn_libretro"
+    "core": "mednafen_saturn_libretro",
+    "app": [
+      "org.devmiyax.yabasanshioro2.pro",
+      "org.devmiyax.yabasanshioro2",
+      "com.explusalpha.SaturnEmu"
     ]
   },
   
@@ -80,14 +126,15 @@
     "name": "PlayStation",
     "core": "pcsx_rearmed_libretro",
     "app": [
-      "com.github.stenzek.duckstation"
+      "com.github.stenzek.duckstation",
+      "com.epsxe.ePSXe",
+      "com.emulator.fpse",
+      "com.emulator.fpse64"
     ]
   },
   "PSP": {
     "name": "PSP",
-    "retroarch": [
-      "ppsspp_libretro"
-    ],
+    "core": "ppsspp_libretro",
     "app": [
       "org.ppsspp.ppsspp",
       "org.ppsspp.ppssppgold"
@@ -95,29 +142,36 @@
   },
   "DC": {
     "name": "Dreamcast",
-    "retroarch": [
-      "flycast_libretro"
+    "core": "flycast_libretro",
+    "app": [
+      "com.flycast.emulator",
+      "io.recompiled.redream"
     ]
   },
   "LYNX": {
     "name": "Atari Lynx",
-    "core": "handy_libretro"
+    "core": "handy_libretro",
+    "app": [
+      "com.explusalpha.LynxEmu"
+    ]
   },
   "JAGUAR": {
     "name": "Atari Jaguar",
-    "retroarch": [
-      "virtualjaguar_libretro"
+    "core": "virtualjaguar_libretro",
+    "app": [
+      "ru.vastness.altmer.iratajaguar"
     ]
   },
   "ATARI2600": {
     "name": "Atari 2600",
-    "core": "stella_libretro"
+    "core": "stella_libretro",
+    "app": [
+      "com.explusalpha.A2600Emu"
+    ]
   },
   "ATARI5200": {
     "name": "Atari 5200",
-    "retroarch": [
-      "atari800_libretro"
-    ]
+    "core": "atari800_libretro"
   },
   "ATARI7800": {
     "name": "Atari 7800",
@@ -125,35 +179,51 @@
   },
   "PCE": {
     "name": "PC Engine",
-    "core": "mednafen_pce_fast_libretro"
+    "core": "mednafen_pce_fast_libretro",
+    "app": [
+      "com.PceEmu"
+    ]
   },
   "PCFX": {
     "name": "PC-FX",
-    "retroarch": [
-      "mednafen_pcfx_libretro"
-    ]
+    "core": "mednafen_pcfx_libretro"
   },
   "NGP": {
     "name": "Neo Geo Pocket",
-    "core": "mednafen_ngp_libretro"
+    "core": "mednafen_ngp_libretro",
+    "app": [
+      "com.explusalpha.NgpEmu"
+    ]
   },
   "NGPC": {
     "name": "Neo Geo Pocket Color",
-    "core": "mednafen_ngp_libretro"
+    "core": "mednafen_ngp_libretro",
+    "app": [
+      "com.explusalpha.NgpEmu"
+    ]
   },
   "WS": {
     "name": "WonderSwan",
-    "core": "mednafen_wswan_libretro"
+    "core": "mednafen_wswan_libretro",
+    "app": [
+      "com.explusalpha.SwanEmu"
+    ]
   },
   "WSC": {
     "name": "WonderSwan Color",
-    "core": "mednafen_wswan_libretro"
+    "core": "mednafen_wswan_libretro",
+    "app": [
+      "com.explusalpha.SwanEmu"
+    ]
   },
-  
+
   "NEOGEO": {
     "name": "Neo Geo",
     "core": "fbneo_libretro",
-    "arcade": true
+    "arcade": true,
+    "app": [
+      "com.explusalpha.NeoEmu"
+    ]
   },
   "MAME": {
     "name": "Arcade",
@@ -176,44 +246,39 @@
   
   "COLECOVISION": {
     "name": "ColecoVision",
-    "retroarch": [
-      "bluemsx_libretro"
+    "core": "bluemsx_libretro",
+    "app": [
+      "com.fms.colem.deluxe",
+      "com.fms.colem"
     ]
   },
   "VECTREX": {
     "name": "Vectrex",
-    "retroarch": [
-      "vecx_libretro"
-    ]
+    "core": "vecx_libretro"
   },
   "INTELLIVISION": {
     "name": "Intellivision",
-    "retroarch": [
-      "freeintv_libretro"
-    ]
+    "core": "freeintv_libretro"
   },
   "SUPERGRAFX": {
     "name": "PC Engine SuperGrafx",
-    "core": "mednafen_pce_fast_libretro"
+    "core": "mednafen_pce_fast_libretro",
+    "app": [
+      "com.PceEmu"
+    ]
   },
   
   "DOS": {
     "name": "DOS",
-    "retroarch": [
-      "dosbox_pure_libretro"
-    ]
+    "core": "dosbox_pure_libretro"
   },
   "SCUMMVM": {
     "name": "ScummVM",
-    "retroarch": [
-      "scummvm_libretro"
-    ]
+    "core": "scummvm_libretro"
   },
   "AMIGA": {
     "name": "Amiga",
-    "retroarch": [
-      "puae_libretro"
-    ]
+    "core": "puae_libretro"
   },
   
   "PS2": {
@@ -228,19 +293,26 @@
   "GC": {
     "name": "GameCube",
     "app": [
-      "org.dolphinemu.dolphinemu"
+      "org.dolphinemu.dolphinemu",
+      { "package": "org.mm.jr", "uriExtra": "AutoStartFile" },
+      { "package": "org.dolphinemu.mmjr", "uriExtra": "AutoStartFile" }
     ]
   },
   "WII": {
     "name": "Wii",
     "app": [
-      "org.dolphinemu.dolphinemu"
+      "org.dolphinemu.dolphinemu",
+      { "package": "org.mm.jr", "uriExtra": "AutoStartFile" },
+      { "package": "org.dolphinemu.mmjr", "uriExtra": "AutoStartFile" }
     ]
   },
   "3DS": {
     "name": "Nintendo 3DS",
     "app": [
-      "org.azahar_emu.azahar"
+      "org.azahar_emu.azahar",
+      "org.citra.citra_emu",
+      "io.github.lime3ds.android",
+      "com.panda3ds.pandroid"
     ]
   },
   "WIIU": {

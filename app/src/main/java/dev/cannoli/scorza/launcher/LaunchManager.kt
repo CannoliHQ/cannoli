@@ -233,7 +233,14 @@ class LaunchManager(
 
         val gameOverride = platformResolver.getGameOverride(game.file.absolutePath)
         if (gameOverride?.appPackage != null) {
-            return launchResultDialog(apkLauncher.launchWithRom(gameOverride.appPackage, launchFile))
+            val cfg = platformResolver.getAppConfig(game.platformTag, gameOverride.appPackage)
+            val appConfig = ApkLauncher.AppLaunchConfig(
+                activityName = cfg.activity,
+                action = cfg.action,
+                pathExtra = cfg.pathExtra,
+                uriExtra = cfg.uriExtra
+            )
+            return launchResultDialog(apkLauncher.launchWithRom(gameOverride.appPackage, launchFile, appConfig))
         }
 
         val result = when (val target = game.launchTarget) {
@@ -242,10 +249,12 @@ class LaunchManager(
                 if (runnerPref == "App" || runnerPref == "Standalone") {
                     val app = platformResolver.getAppPackage(game.platformTag)
                     if (app != null) {
+                        val cfg = platformResolver.getAppConfig(game.platformTag, app)
                         val appConfig = ApkLauncher.AppLaunchConfig(
-                            activityName = platformResolver.getAppActivity(game.platformTag),
-                            action = platformResolver.getAppAction(game.platformTag),
-                            pathExtra = platformResolver.getAppPathExtra(game.platformTag)
+                            activityName = cfg.activity,
+                            action = cfg.action,
+                            pathExtra = cfg.pathExtra,
+                            uriExtra = cfg.uriExtra
                         )
                         apkLauncher.launchWithRom(app, launchFile, appConfig)
                     } else {
@@ -296,10 +305,12 @@ class LaunchManager(
             }
             is LaunchTarget.ApkLaunch -> {
                 if (launchFile.extension != "apk_launch" && launchFile.exists()) {
+                    val cfg = platformResolver.getAppConfig(game.platformTag, target.packageName)
                     val appConfig = ApkLauncher.AppLaunchConfig(
-                        activityName = platformResolver.getAppActivity(game.platformTag),
-                        action = platformResolver.getAppAction(game.platformTag),
-                        pathExtra = platformResolver.getAppPathExtra(game.platformTag)
+                        activityName = cfg.activity,
+                        action = cfg.action,
+                        pathExtra = cfg.pathExtra,
+                        uriExtra = cfg.uriExtra
                     )
                     apkLauncher.launchWithRom(target.packageName, launchFile, appConfig)
                 } else {
