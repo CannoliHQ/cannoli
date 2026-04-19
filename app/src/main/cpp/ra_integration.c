@@ -72,6 +72,7 @@ static int g_pending_unlock_count = 0;
 
 static void ra_load_game_callback(int result, const char *error_message, rc_client_t *client, void *userdata);
 static void ra_try_init_memory(void);
+static void ra_drain_response_queue(void);
 
 typedef struct PendingResponse {
     struct PendingResponse *next;
@@ -249,6 +250,29 @@ static void ra_log(const char *message, const rc_client_t *client) {
 JNIEXPORT void JNICALL
 Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeInit(JNIEnv *env, jobject thiz) {
     (*env)->GetJavaVM(env, &g_jvm);
+
+    // Full reset of all module state so each init starts from a clean slate,
+    // regardless of whether the previous session's nativeDestroy ran.
+    ra_drain_response_queue();
+    if (g_client) {
+        rc_client_destroy(g_client);
+        g_client = NULL;
+    }
+    if (g_memory_initialized) {
+        rc_libretro_memory_destroy(&g_memory_regions);
+        g_memory_initialized = 0;
+    }
+    free(g_pending_rom_path);
+    g_pending_rom_path = NULL;
+    g_pending_console_id = 0;
+    g_pending_game_id = 0;
+    g_memory_init_attempts = 0;
+    g_memory_read_logged = 0;
+    if (g_manager) {
+        (*env)->DeleteGlobalRef(env, g_manager);
+        g_manager = NULL;
+    }
+
     g_manager = (*env)->NewGlobalRef(env, thiz);
 
     jclass cls = (*env)->GetObjectClass(env, thiz);
@@ -260,7 +284,6 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeInit(JNIEnv *env
     (*env)->DeleteLocalRef(env, cls);
 
     g_frame_count = 0;
-    g_memory_init_attempts = 0;
     g_pending_reset = 0;
 
     pthread_mutex_lock(&g_queue_mutex);
