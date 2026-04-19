@@ -56,7 +56,6 @@
   },
   "N64": {
     "name": "Nintendo 64",
-    "core": "mupen64plus_next_gles3_libretro",
     "app": [
       "org.mupen64plusae.v3.fzurita",
       "org.mupen64plusae.v3.alpha"
