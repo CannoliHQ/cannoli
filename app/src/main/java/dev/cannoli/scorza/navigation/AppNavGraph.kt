@@ -62,6 +62,7 @@ import dev.cannoli.ui.components.ConfirmOverlay
 import dev.cannoli.ui.components.List
 import dev.cannoli.ui.components.LocalStatusBarLeftEdge
 import dev.cannoli.ui.components.MessageOverlay
+import dev.cannoli.ui.components.OsdPill
 import dev.cannoli.ui.components.PillRowKeyValue
 import dev.cannoli.ui.components.PillRowText
 import dev.cannoli.ui.components.StatusBar
@@ -130,6 +131,7 @@ fun AppNavGraph(
     updateAvailable: Boolean = false,
     downloadProgress: Float = 0f,
     downloadError: String? = null,
+    osdMessage: String? = null,
 ) {
     val dialog by dialogState.collectAsState()
     val appSettings by settingsViewModel.appSettings.collectAsState()
@@ -777,6 +779,9 @@ fun AppNavGraph(
         && settingsState.items.getOrNull(settingsState.selectedIndex)?.key == "portrait_margin"
     if (onPortraitMarginRow && appSettings.portraitMarginPx > 0) {
         PortraitMarginOverlay(marginPx = appSettings.portraitMarginPx)
+    }
+    if (osdMessage != null) {
+        OsdPill(message = osdMessage)
     }
     }
     }

@@ -52,6 +52,8 @@
     <string name="label_remap">REMAP</string>
     <string name="label_unmap">UNMAP</string>
 
+    <string name="osd_cannot_steal_confirm">Remap the confirm button first to free this button</string>
+
     <string name="settings_title">Settings</string>
 
     <!-- Settings categories -->

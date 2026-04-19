@@ -163,6 +163,16 @@ class MainActivity : ComponentActivity() {
     private var permissionGranted by mutableStateOf(false)
     private var coldStart = true
 
+    private var osdMessage by mutableStateOf<String?>(null)
+    private val osdHandler = Handler(Looper.getMainLooper())
+    private val clearOsdRunnable = Runnable { osdMessage = null }
+
+    private fun showOsd(message: String, durationMs: Long = 3000) {
+        osdHandler.removeCallbacks(clearOsdRunnable)
+        osdMessage = message
+        osdHandler.postDelayed(clearOsdRunnable, durationMs)
+    }
+
     private var lastKeyRepeatCount: Int = 0
 
     private val shortcutCountdownHandler = Handler(Looper.getMainLooper())
@@ -455,6 +465,7 @@ class MainActivity : ComponentActivity() {
                             updateAvailable = updateInfo != null,
                             downloadProgress = dlProgress ?: 0f,
                             downloadError = dlError,
+                            osdMessage = osdMessage,
                         )
                     }
                 }
@@ -931,6 +942,15 @@ class MainActivity : ComponentActivity() {
         inputTesterViewModel.setConnectedPorts(ports)
     }
 
+    private fun wouldStealNavConfirm(screen: LauncherScreen.ControlBinding, prefKey: String, keyCode: Int): Boolean {
+        if (screen.profileName != dev.cannoli.scorza.input.ProfileManager.NAVIGATION) return false
+        val confirmKey = if (inputHandler.swapConfirmBack) "btn_east" else "btn_south"
+        if (prefKey == confirmKey) return false
+        val default = controlButtons.first { it.prefKey == confirmKey }.defaultKeyCode
+        val current = screen.controls[confirmKey] ?: default
+        return current == keyCode
+    }
+
     private fun handleBindingKeyDown(keyCode: Int): Boolean {
         val screen = screenStack.lastOrNull() ?: return false
         when (screen) {
@@ -938,8 +958,22 @@ class MainActivity : ComponentActivity() {
                 if (screen.listeningIndex < 0 || screen.listeningIndex >= controlButtons.size) return false
                 shortcutCountdownHandler.removeCallbacks(controlListenRunnable)
                 val btn = controlButtons[screen.listeningIndex]
+                if (wouldStealNavConfirm(screen, btn.prefKey, keyCode)) {
+                    showOsd(getString(R.string.osd_cannot_steal_confirm), durationMs = 4500)
+                    screenStack[screenStack.lastIndex] = screen.copy(
+                        listeningIndex = -1, listenCountdownMs = 0
+                    )
+                    return true
+                }
+                val newControls = screen.controls.toMutableMap()
+                for (other in controlButtons) {
+                    if (other.prefKey == btn.prefKey) continue
+                    val current = newControls[other.prefKey] ?: other.defaultKeyCode
+                    if (current == keyCode) newControls[other.prefKey] = LibretroInput.UNMAPPED
+                }
+                newControls[btn.prefKey] = keyCode
                 screenStack[screenStack.lastIndex] = screen.copy(
-                    controls = screen.controls + (btn.prefKey to keyCode),
+                    controls = newControls,
                     listeningIndex = -1, listenCountdownMs = 0
                 )
                 return true
