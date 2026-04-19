@@ -539,13 +539,23 @@ fun AppNavGraph(
                         && selectedBtn.prefKey != "btn_menu"
                         && tempInput.getKeyCodeFor(selectedBtn) != LibretroInput.UNMAPPED
                         && currentScreen.listeningIndex < 0
+                val swapConfirmBack = appSettings.confirmButton == dev.cannoli.ui.ConfirmButton.EAST
+                val isNavProfile = currentScreen.profileName == ProfileManager.NAVIGATION
                 ControlsScreen(
                     input = tempInput,
                     selectedIndex = currentScreen.selectedIndex,
                     listeningIndex = currentScreen.listeningIndex,
                     listenCountdownMs = currentScreen.listenCountdownMs,
                     titleRes = R.string.title_button_mapping,
-                    canUnmapSelected = canUnmap
+                    canUnmapSelected = canUnmap,
+                    labelSuffix = { btn ->
+                        if (!isNavProfile) null
+                        else when (btn.prefKey) {
+                            "btn_south" -> if (swapConfirmBack) "(Back)" else "(Confirm)"
+                            "btn_east" -> if (swapConfirmBack) "(Confirm)" else "(Back)"
+                            else -> null
+                        }
+                    }
                 )
             }
             is LauncherScreen.ShortcutBinding -> {

@@ -51,7 +51,8 @@ fun ControlsScreen(
     canUnmapSelected: Boolean = false,
     fontSize: TextUnit = 22.sp,
     lineHeight: TextUnit = 32.sp,
-    buttonStyle: ButtonStyle = ButtonStyle()
+    buttonStyle: ButtonStyle = ButtonStyle(),
+    labelSuffix: (LibretroInput.ButtonDef) -> String? = { null }
 ) {
     val itemHeight = pillItemHeight(lineHeight, verticalPadding)
     val screenTitle = profileName ?: stringResource(titleRes)
@@ -83,8 +84,10 @@ fun ControlsScreen(
                     } else {
                         LibretroInput.keyCodeName(input.getKeyCodeFor(button))
                     }
+                    val suffix = labelSuffix(button)
+                    val displayLabel = if (suffix != null) "${button.label} $suffix" else button.label
                     PillRowKeyValue(
-                        label = button.label,
+                        label = displayLabel,
                         value = value,
                         isSelected = isSelected,
                         fontSize = fontSize,
