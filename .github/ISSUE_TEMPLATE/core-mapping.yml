@@ -1,0 +1,27 @@
+name: Core / app mapping issue
+description: A game launches in the wrong emulator, fails to resolve, or should map to a core or standalone app that is missing
+title: "[mapping] "
+labels: ["mapping"]
+body:
+  - type: input
+    id: game
+    attributes:
+      label: Platform and game
+      placeholder: "SNES — Aladdin (USA).sfc"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong?
+      description: What should happen, what actually happens, and which emulators you have installed that are relevant.
+    validations:
+      required: true
+
+  - type: textarea
+    id: log
+    attributes:
+      label: Session log (optional)
+      description: Relevant portion of `/storage/<sd>/Cannoli/Logs/<core_or_app>/*.log`, pasted or attached.
+      render: text
