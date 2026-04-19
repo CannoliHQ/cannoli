@@ -3242,7 +3242,7 @@ class MainActivity : ComponentActivity() {
                 return
             }
             if (match != null) {
-                android.widget.Toast.makeText(this, "Prefilled with ${match.deviceName}", android.widget.Toast.LENGTH_SHORT).show()
+                showOsd("Prefilled with ${match.deviceName}")
             }
         } else {
             val file = java.io.File(settings.sdCardRoot, "Config/Profiles/${state.originalName}.ini")
