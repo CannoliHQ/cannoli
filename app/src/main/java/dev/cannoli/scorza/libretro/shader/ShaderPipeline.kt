@@ -283,6 +283,10 @@ class ShaderPipeline private constructor(
 
         fun compile(preset: ShaderPreset): ShaderPipeline? {
             if (preset.passes.isEmpty()) return null
+            if (!es3Supported) {
+                Log.w(TAG, "Shader pipeline requires OpenGL ES 3.0; skipping preset ${preset.basePath}")
+                return null
+            }
 
             if (passthroughProgram == 0) {
                 passthroughProgram = compileProgram(PASSTHROUGH_VERTEX, PASSTHROUGH_FRAGMENT)
@@ -376,6 +380,7 @@ class ShaderPipeline private constructor(
         }
 
         @Volatile var cacheDir: File? = null
+        @Volatile var es3Supported: Boolean = true
 
         private fun compileProgram(vertexSrc: String, fragmentSrc: String): Int {
             val cached = loadCachedBinary(vertexSrc, fragmentSrc)
@@ -388,7 +393,9 @@ class ShaderPipeline private constructor(
             val program = GLES20.glCreateProgram()
             GLES20.glAttachShader(program, vs)
             GLES20.glAttachShader(program, fs)
-            GLES30.glProgramParameteri(program, GLES30.GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GLES20.GL_TRUE)
+            if (es3Supported) {
+                GLES30.glProgramParameteri(program, GLES30.GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GLES20.GL_TRUE)
+            }
             GLES20.glLinkProgram(program)
             GLES20.glDeleteShader(vs)
             GLES20.glDeleteShader(fs)
@@ -412,6 +419,7 @@ class ShaderPipeline private constructor(
         }
 
         private fun loadCachedBinary(vertexSrc: String, fragmentSrc: String): Int {
+            if (!es3Supported) return 0
             val dir = cacheDir ?: return 0
             val hash = sourceHash(vertexSrc, fragmentSrc)
             val binFile = File(dir, "$hash.bin")
@@ -440,6 +448,7 @@ class ShaderPipeline private constructor(
         }
 
         private fun saveBinaryToCache(program: Int, vertexSrc: String, fragmentSrc: String) {
+            if (!es3Supported) return
             val dir = cacheDir ?: return
             try {
                 val length = IntArray(1)

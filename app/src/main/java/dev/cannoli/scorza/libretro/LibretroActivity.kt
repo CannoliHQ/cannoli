@@ -70,6 +70,7 @@ class LibretroActivity : ComponentActivity() {
     private var glSurfaceView: GLSurfaceView? = null
     private var gameView: android.view.View? = null
     private var vsyncCallback: android.view.Choreographer.FrameCallback? = null
+    private var es3Supported: Boolean = true
 
     private fun startVsyncPacer() {
         val view = glSurfaceView ?: return
@@ -293,6 +294,13 @@ class LibretroActivity : ComponentActivity() {
         }
 
         sessionLog.log("onCreate started")
+        val am = getSystemService(ACTIVITY_SERVICE) as android.app.ActivityManager
+        val reqGlEs = am.deviceConfigurationInfo.reqGlEsVersion
+        val glEsMajor = reqGlEs ushr 16
+        val glEsMinor = reqGlEs and 0xFFFF
+        es3Supported = reqGlEs >= 0x30000
+        ShaderPipeline.es3Supported = es3Supported
+        sessionLog.log("device GLES: 0x${Integer.toHexString(reqGlEs)} (${glEsMajor}.${glEsMinor}) es3Supported=$es3Supported")
         val bootSettings = SettingsRepository(this)
         confirmButton = bootSettings.confirmButton
         buttonLabelSet = bootSettings.buttonLabelSet
@@ -567,7 +575,7 @@ class LibretroActivity : ComponentActivity() {
                 pushShaderParamsToRenderer()
 
                 glSurfaceView = GLSurfaceView(activity).apply {
-                    setEGLContextClientVersion(3)
+                    setEGLContextClientVersion(if (es3Supported) 3 else 2)
                     setRenderer(glesBackend)
                     renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
                 }
