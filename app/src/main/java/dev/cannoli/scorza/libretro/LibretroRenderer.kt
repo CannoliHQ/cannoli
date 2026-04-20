@@ -110,7 +110,7 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
         floatArrayOf(1f, 1f, 1f, 0f, 0f, 1f, 0f, 0f)    // 270° CCW
     )
 
-    override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
+    override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) = guard("onSurfaceCreated") {
         GLES20.glClearColor(0f, 0f, 0f, 1f)
         fpsTimestamp = System.nanoTime()
         loggedFirstFrame = false
@@ -171,7 +171,7 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
         pipelineDirty = true
     }
 
-    override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
+    override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) = guard("onSurfaceChanged") {
         surfaceWidth = width
         surfaceHeight = height
         if (width != loggedSurfaceW || height != loggedSurfaceH) {
@@ -181,7 +181,7 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
         }
     }
 
-    override fun onDrawFrame(gl: GL10?) {
+    override fun onDrawFrame(gl: GL10?) = guard("onDrawFrame") {
         if (!loggedFirstFrame) {
             loggedFirstFrame = true
             logger?.invoke("GL first frame: surface=${surfaceWidth}x${surfaceHeight}")
@@ -378,6 +378,16 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
 
         tickFps()
         onFrameRendered?.invoke()
+    }
+
+    private inline fun guard(name: String, block: () -> Unit) {
+        try {
+            block()
+        } catch (t: Throwable) {
+            logger?.invoke("$name threw: ${t.javaClass.simpleName}: ${t.message}")
+            Log.e("LibretroRenderer", "$name threw", t)
+            throw t
+        }
     }
 
     private fun tickFps() {

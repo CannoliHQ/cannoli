@@ -547,7 +547,10 @@ class LibretroActivity : ComponentActivity() {
 
                 val glesBackend = LibretroRenderer(runner)
                 glesBackend.coreTargetFps = avInfo.fps
-                if (debugLogging) glesBackend.logger = { msg -> sessionLog.log(msg) }
+                if (debugLogging) {
+                    glesBackend.logger = { msg -> sessionLog.log(msg) }
+                    ShaderPipeline.logger = { msg -> sessionLog.log(msg) }
+                }
                 configureBackend(glesBackend)
                 var startupCountdown = 10
                 // HACK: FBNeo has a bug where vertical arcade games initialize with wrong
@@ -574,10 +577,18 @@ class LibretroActivity : ComponentActivity() {
                 renderer = glesBackend
                 pushShaderParamsToRenderer()
 
+                val eglLog: (String) -> Unit = { msg -> if (debugLogging) sessionLog.log(msg) }
+                val glVersion = if (es3Supported) 3 else 2
                 glSurfaceView = GLSurfaceView(activity).apply {
-                    setEGLContextClientVersion(if (es3Supported) 3 else 2)
+                    setEGLContextClientVersion(glVersion)
+                    setEGLConfigChooser(LoggingEglConfigChooser(glVersion, eglLog))
+                    setEGLContextFactory(LoggingEglContextFactory(glVersion, eglLog))
                     setRenderer(glesBackend)
                     renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
+                    addOnAttachStateChangeListener(object : android.view.View.OnAttachStateChangeListener {
+                        override fun onViewAttachedToWindow(v: android.view.View) { eglLog("GLSurfaceView attached to window") }
+                        override fun onViewDetachedFromWindow(v: android.view.View) { eglLog("GLSurfaceView detached from window") }
+                    })
                 }
                 gameView = glSurfaceView
                 startVsyncPacer()

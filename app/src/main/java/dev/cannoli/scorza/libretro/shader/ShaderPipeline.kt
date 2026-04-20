@@ -284,7 +284,9 @@ class ShaderPipeline private constructor(
         fun compile(preset: ShaderPreset): ShaderPipeline? {
             if (preset.passes.isEmpty()) return null
             if (!es3Supported) {
-                Log.w(TAG, "Shader pipeline requires OpenGL ES 3.0; skipping preset ${preset.basePath}")
+                val msg = "Shader pipeline requires OpenGL ES 3.0; skipping preset ${preset.basePath}"
+                Log.w(TAG, msg)
+                logger?.invoke(msg)
                 return null
             }
 
@@ -381,6 +383,7 @@ class ShaderPipeline private constructor(
 
         @Volatile var cacheDir: File? = null
         @Volatile var es3Supported: Boolean = true
+        @Volatile var logger: ((String) -> Unit)? = null
 
         private fun compileProgram(vertexSrc: String, fragmentSrc: String): Int {
             val cached = loadCachedBinary(vertexSrc, fragmentSrc)
