@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -18,8 +19,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -112,6 +115,7 @@ fun LibretroScreen(
     guideInitialScroll: Int = 0,
     guideInitialScrollX: Int = 0,
     onGuideScrollChanged: (y: Int, x: Int) -> Unit = { _, _ -> },
+    infoScrollDir: Int = 0,
     gameInfo: GameInfo = GameInfo("", "", null)
 ) {
     val overlayVisible = screen != null
@@ -332,11 +336,18 @@ fun LibretroScreen(
                                 lineHeight = igmLineHeight
                             )
                             val infoModifier = Modifier.padding(start = pillInternalH)
+                            val infoScrollState = remember { ScrollState(0) }
+                            LaunchedEffect(infoScrollDir) {
+                                while (infoScrollDir != 0) {
+                                    infoScrollState.dispatchRawDelta(infoScrollDir * 14f)
+                                    delay(16L)
+                                }
+                            }
                             Column(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .clipToBounds()
-                                    .verticalScroll(rememberScrollState())
+                                    .verticalScroll(infoScrollState)
                             ) {
                                 Spacer(modifier = Modifier.height(Spacing.Md))
                                 InfoRow(stringResource(R.string.info_core), gameInfo.coreName, infoModifier)

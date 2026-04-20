@@ -229,6 +229,7 @@ class LibretroActivity : ComponentActivity() {
     private var guideScrollXPos = 0
     private var guideInitialScroll by mutableIntStateOf(0)
     private var guideInitialScrollX by mutableIntStateOf(0)
+    private var infoScrollDir by mutableIntStateOf(0)
 
     private fun menuOptions() = InGameMenuOptions(hasDiscs, diskLabel(currentDiskIndex), raHasAchievements, guideFiles.isNotEmpty())
 
@@ -403,6 +404,7 @@ class LibretroActivity : ComponentActivity() {
                                 guideInitialScroll = guideInitialScroll,
                                 guideInitialScrollX = guideInitialScrollX,
                                 onGuideScrollChanged = { y, x -> guideScrollPos = y; guideScrollXPos = x },
+                                infoScrollDir = infoScrollDir,
                                 gameInfo = GameInfo(
                                     coreName = coreInfoText,
                                     romPath = romPath,
@@ -839,7 +841,12 @@ class LibretroActivity : ComponentActivity() {
             is IGMScreen.Shortcuts -> handleShortcutsInput(screen, keyCode, button)
             is IGMScreen.SavePrompt -> handleSavePromptInput(screen, button)
             is IGMScreen.Info -> {
-                if (button == "btn_east" || button == "btn_south") { pop(); true } else true
+                when (button) {
+                    "btn_east", "btn_south" -> { infoScrollDir = 0; pop(); true }
+                    "btn_up" -> { infoScrollDir = -1; true }
+                    "btn_down" -> { infoScrollDir = 1; true }
+                    else -> true
+                }
             }
             is IGMScreen.Achievements -> handleAchievementsInput(screen, button)
             is IGMScreen.AchievementDetail -> handleAchievementDetailInput(screen, button)
@@ -870,6 +877,11 @@ class LibretroActivity : ComponentActivity() {
                 when (resolveNavButton(keyCode)) {
                     "btn_up", "btn_down" -> guideScrollDir = 0
                     "btn_left", "btn_right" -> guideScrollXDir = 0
+                }
+            }
+            if (cs is IGMScreen.Info) {
+                when (resolveNavButton(keyCode)) {
+                    "btn_up", "btn_down" -> infoScrollDir = 0
                 }
             }
             handleShortcutKeyUp(keyCode)
