@@ -164,6 +164,8 @@ class ShaderPipeline private constructor(
             for ((key, value) in parameters) {
                 setUniform1f(program, key, value)
                 setUniform1f(program, "params_$key", value)
+                setUniform1f(program, "param_$key", value)
+                setUniform1f(program, "global_$key", value)
             }
 
             GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
@@ -312,10 +314,11 @@ class ShaderPipeline private constructor(
                 val fs: String
 
                 if (SlangTranspiler.isVulkanGLSL(source)) {
-                    val (rawVs, rawFs) = SlangTranspiler.splitSlangStages(source)
                     val basePath = shaderFile.parent
-                    val transVs = SlangTranspiler.transpile(rawVs, isVertex = true, basePath)
-                    val transFs = SlangTranspiler.transpile(rawFs, isVertex = false, basePath)
+                    val resolved = basePath?.let { SlangTranspiler.resolveIncludesPublic(source, it) } ?: source
+                    val (rawVs, rawFs) = SlangTranspiler.splitSlangStages(resolved)
+                    val transVs = SlangTranspiler.transpile(rawVs, isVertex = true)
+                    val transFs = SlangTranspiler.transpile(rawFs, isVertex = false)
                     if (transVs == null || transFs == null) {
                         cleanup(passPrograms)
                         return null
