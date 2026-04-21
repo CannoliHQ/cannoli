@@ -5,10 +5,23 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Environment
 import androidx.core.content.FileProvider
 import java.io.File
 
 class ApkLauncher(private val context: Context) {
+
+    var debugLog: (String) -> Unit = {}
+
+    enum class DataKind { NONE, SAF, PROVIDER, PATH }
+
+    data class AppLaunchConfig(
+        val activityName: String? = null,
+        val action: String? = null,
+        val data: DataKind = DataKind.NONE,
+        val extraKey: String? = null,
+        val extraKind: DataKind = DataKind.NONE
+    )
 
     fun launch(packageName: String): LaunchResult {
         val intent = context.packageManager.getLaunchIntentForPackage(packageName)
@@ -25,26 +38,85 @@ class ApkLauncher(private val context: Context) {
         }
     }
 
-    data class AppLaunchConfig(
-        val activityName: String? = null,
-        val action: String? = null,
-        val pathExtra: String? = null,
-        val uriExtra: String? = null
-    )
-
     fun launchWithRom(
         packageName: String,
         romFile: File,
         config: AppLaunchConfig = AppLaunchConfig()
     ): LaunchResult {
+        debugLog("ApkLauncher.launchWithRom pkg=$packageName rom=${romFile.absolutePath} config=$config")
+
         if (!context.isPackageInstalled(packageName)) {
+            debugLog("  -> package not installed")
             return LaunchResult.AppNotInstalled(packageName)
         }
 
-        if (config.pathExtra != null || config.uriExtra != null) {
-            return launchWithExtra(packageName, romFile, config)
+        if (config.data == DataKind.NONE && config.extraKey == null && config.action == null && config.activityName == null) {
+            debugLog("  -> fallback ACTION_VIEW + FileProvider")
+            return launchViewWithFileProvider(packageName, romFile)
         }
 
+        val intent = Intent().apply {
+            if (config.activityName != null) {
+                component = ComponentName(packageName, config.activityName)
+            } else {
+                setPackage(packageName)
+            }
+            config.action?.let { action = it }
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+
+        if (config.data != DataKind.NONE) {
+            val uri = buildUri(packageName, romFile, config.data, grantOnExtra = false, intent)
+            intent.data = uri
+            if (config.data == DataKind.PROVIDER) {
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+        }
+
+        if (config.extraKey != null && config.extraKind != DataKind.NONE) {
+            val value = when (config.extraKind) {
+                DataKind.PATH -> romFile.absolutePath
+                else -> buildUri(packageName, romFile, config.extraKind, grantOnExtra = true, intent).toString()
+            }
+            intent.putExtra(config.extraKey, value)
+        }
+
+        logIntent(intent)
+
+        val opts = ActivityOptions.makeCustomAnimation(context, 0, 0).toBundle()
+        return try {
+            context.startActivity(intent, opts)
+            debugLog("  -> startActivity succeeded")
+            LaunchResult.Success
+        } catch (e: Exception) {
+            debugLog("  -> startActivity failed: ${e.javaClass.simpleName}: ${e.message}")
+            LaunchResult.Error(e.message ?: "Failed to launch emulator")
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun logIntent(intent: Intent) {
+        val sb = StringBuilder("  intent:")
+        sb.append(" action=").append(intent.action)
+        sb.append(" component=").append(intent.component?.flattenToShortString())
+        sb.append(" package=").append(intent.`package`)
+        sb.append(" data=").append(intent.data)
+        sb.append(" flags=0x").append(Integer.toHexString(intent.flags))
+        val extras = intent.extras
+        if (extras != null) {
+            sb.append(" extras={")
+            var first = true
+            for (k in extras.keySet()) {
+                if (!first) sb.append(", ")
+                first = false
+                sb.append(k).append('=').append(extras.get(k))
+            }
+            sb.append('}')
+        }
+        debugLog(sb.toString())
+    }
+
+    private fun launchViewWithFileProvider(packageName: String, romFile: File): LaunchResult {
         val uri: Uri = FileProvider.getUriForFile(
             context,
             "${context.packageName}.fileprovider",
@@ -53,20 +125,19 @@ class ApkLauncher(private val context: Context) {
 
         val viewIntent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(uri, "*/*")
-            if (config.activityName != null) {
-                component = ComponentName(packageName, config.activityName)
-            } else {
-                setPackage(packageName)
-            }
+            setPackage(packageName)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
 
-        val opts = ActivityOptions.makeCustomAnimation(context, 0, 0).toBundle()
+        logIntent(viewIntent)
 
+        val opts = ActivityOptions.makeCustomAnimation(context, 0, 0).toBundle()
         return try {
             context.startActivity(viewIntent, opts)
+            debugLog("  -> FileProvider VIEW startActivity succeeded")
             LaunchResult.Success
         } catch (_: Exception) {
+            debugLog("  -> FileProvider VIEW failed, retrying via getLaunchIntentForPackage")
             val launchIntent = context.packageManager.getLaunchIntentForPackage(packageName)
                 ?: return LaunchResult.Error("No launch activity for $packageName")
             launchIntent.apply {
@@ -82,39 +153,47 @@ class ApkLauncher(private val context: Context) {
         }
     }
 
-    private fun launchWithExtra(
+    private fun buildUri(
         packageName: String,
         romFile: File,
-        config: AppLaunchConfig
-    ): LaunchResult {
-        val action = config.action ?: if (config.uriExtra != null) Intent.ACTION_VIEW else Intent.ACTION_MAIN
-        val intent = Intent(action).apply {
-            if (config.activityName != null) {
-                component = ComponentName(packageName, config.activityName)
-            } else {
-                setPackage(packageName)
+        kind: DataKind,
+        grantOnExtra: Boolean,
+        intent: Intent
+    ): Uri = when (kind) {
+        DataKind.SAF -> buildSafDocumentUri(romFile)
+        DataKind.PROVIDER -> {
+            val uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                romFile
+            )
+            if (grantOnExtra) {
+                context.grantUriPermission(packageName, uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            if (config.pathExtra != null) {
-                putExtra(config.pathExtra, romFile.absolutePath)
-            }
-            if (config.uriExtra != null) {
-                val uri = FileProvider.getUriForFile(
-                    context,
-                    "${context.packageName}.fileprovider",
-                    romFile
-                )
-                putExtra(config.uriExtra, uri.toString())
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            uri
         }
+        DataKind.PATH -> Uri.fromFile(romFile)
+        DataKind.NONE -> Uri.EMPTY
+    }
 
-        return try {
-            val opts = ActivityOptions.makeCustomAnimation(context, 0, 0).toBundle()
-            context.startActivity(intent, opts)
-            LaunchResult.Success
-        } catch (e: Exception) {
-            LaunchResult.Error(e.message ?: "Failed to launch emulator")
+    private fun buildSafDocumentUri(romFile: File): Uri {
+        val absolute = romFile.absolutePath
+        val primaryRoot = Environment.getExternalStorageDirectory().absolutePath
+        val (volumeId, relative) = when {
+            absolute.startsWith("$primaryRoot/") ->
+                "primary" to absolute.substring(primaryRoot.length + 1)
+            absolute.startsWith("/storage/") -> {
+                val after = absolute.removePrefix("/storage/")
+                val slash = after.indexOf('/')
+                if (slash < 0) "primary" to absolute.removePrefix("$primaryRoot/")
+                else after.substring(0, slash) to after.substring(slash + 1)
+            }
+            else -> "primary" to absolute
         }
+        val docId = "$volumeId:$relative"
+        return Uri.parse("content://com.android.externalstorage.documents/document")
+            .buildUpon()
+            .appendPath(docId)
+            .build()
     }
 }

@@ -30,6 +30,10 @@ class LaunchManager(
     private var raConfigPath: String? = null
     @Volatile var launching = false
 
+    init {
+        apkLauncher.debugLog = ::debugLog
+    }
+
     fun syncRetroArchAssets(root: File) {
         val fontDest = File(root, "Config/Assets/cannoli/font.ttf")
         if (fontDest.exists()) return
@@ -239,8 +243,9 @@ class LaunchManager(
             val appConfig = ApkLauncher.AppLaunchConfig(
                 activityName = cfg.activity,
                 action = cfg.action,
-                pathExtra = cfg.pathExtra,
-                uriExtra = cfg.uriExtra
+                data = cfg.data,
+                extraKey = cfg.extraKey,
+                extraKind = cfg.extraKind
             )
             return launchResultDialog(apkLauncher.launchWithRom(gameOverride.appPackage, launchFile, appConfig))
         }
@@ -264,8 +269,9 @@ class LaunchManager(
                         val appConfig = ApkLauncher.AppLaunchConfig(
                             activityName = cfg.activity,
                             action = cfg.action,
-                            pathExtra = cfg.pathExtra,
-                            uriExtra = cfg.uriExtra
+                            data = cfg.data,
+                            extraKey = cfg.extraKey,
+                            extraKind = cfg.extraKind
                         )
                         apkLauncher.launchWithRom(cfg.packageName, launchFile, appConfig)
                     } else {
@@ -327,8 +333,9 @@ class LaunchManager(
                     val appConfig = ApkLauncher.AppLaunchConfig(
                         activityName = cfg.activity,
                         action = cfg.action,
-                        pathExtra = cfg.pathExtra,
-                        uriExtra = cfg.uriExtra
+                        data = cfg.data,
+                        extraKey = cfg.extraKey,
+                        extraKind = cfg.extraKind
                     )
                     apkLauncher.launchWithRom(pkg, launchFile, appConfig)
                 } else {

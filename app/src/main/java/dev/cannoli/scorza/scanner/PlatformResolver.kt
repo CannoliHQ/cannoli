@@ -18,9 +18,17 @@ data class AppConfig(
     val packageName: String,
     val activity: String? = null,
     val action: String? = null,
-    val pathExtra: String? = null,
-    val uriExtra: String? = null
+    val data: dev.cannoli.scorza.launcher.ApkLauncher.DataKind = dev.cannoli.scorza.launcher.ApkLauncher.DataKind.NONE,
+    val extraKey: String? = null,
+    val extraKind: dev.cannoli.scorza.launcher.ApkLauncher.DataKind = dev.cannoli.scorza.launcher.ApkLauncher.DataKind.NONE
 )
+
+private fun parseDataKind(s: String?): dev.cannoli.scorza.launcher.ApkLauncher.DataKind = when (s?.lowercase()) {
+    "saf" -> dev.cannoli.scorza.launcher.ApkLauncher.DataKind.SAF
+    "provider" -> dev.cannoli.scorza.launcher.ApkLauncher.DataKind.PROVIDER
+    "path" -> dev.cannoli.scorza.launcher.ApkLauncher.DataKind.PATH
+    else -> dev.cannoli.scorza.launcher.ApkLauncher.DataKind.NONE
+}
 
 class PlatformResolver(
     private val cannoliRoot: File,
@@ -45,41 +53,26 @@ class PlatformResolver(
             entry.optString("name", "").takeIf { it.isNotEmpty() }?.let { names[tag] = it }
             entry.optString("core", "").takeIf { it.isNotEmpty() }?.let { cores[tag] = it }
             if (entry.optBoolean("arcade")) arcade.add(tag)
-            val tagActivity = entry.optString("appActivity", "").ifEmpty { null }
-            val tagAction = entry.optString("appAction", "").ifEmpty { null }
-            val tagPathExtra = entry.optString("appPathExtra", "").ifEmpty { null }
-            val tagUriExtra = entry.optString("appUriExtra", "").ifEmpty { null }
             val appArray = entry.optJSONArray("app")
             val list = mutableListOf<AppConfig>()
             if (appArray != null) {
                 for (i in 0 until appArray.length()) {
                     val item = appArray.get(i)
                     when (item) {
-                        is String -> list.add(AppConfig(
-                            packageName = item,
-                            activity = tagActivity,
-                            action = tagAction,
-                            pathExtra = tagPathExtra,
-                            uriExtra = tagUriExtra
-                        ))
+                        is String -> list.add(AppConfig(packageName = item))
                         is JSONObject -> list.add(AppConfig(
                             packageName = item.getString("package"),
-                            activity = item.optString("activity").ifEmpty { null } ?: tagActivity,
-                            action = item.optString("action").ifEmpty { null } ?: tagAction,
-                            pathExtra = item.optString("pathExtra").ifEmpty { null } ?: tagPathExtra,
-                            uriExtra = item.optString("uriExtra").ifEmpty { null } ?: tagUriExtra
+                            activity = item.optString("activity").ifEmpty { null },
+                            action = item.optString("action").ifEmpty { null },
+                            data = parseDataKind(item.optString("data").ifEmpty { null }),
+                            extraKey = item.optString("extraKey").ifEmpty { null },
+                            extraKind = parseDataKind(item.optString("extraKind").ifEmpty { null })
                         ))
                     }
                 }
             } else {
                 entry.optString("app", "").takeIf { it.isNotEmpty() }?.let {
-                    list.add(AppConfig(
-                        packageName = it,
-                        activity = tagActivity,
-                        action = tagAction,
-                        pathExtra = tagPathExtra,
-                        uriExtra = tagUriExtra
-                    ))
+                    list.add(AppConfig(packageName = it))
                 }
             }
             if (list.isNotEmpty()) apps[tag] = list
@@ -528,6 +521,26 @@ class PlatformResolver(
         "ru.vastness.altmer.iratajaguar" to "IrataJaguar",
         "com.fms.colem.deluxe" to "ColEm Deluxe",
         "com.fms.colem" to "ColEm",
+        "com.sky.SkyEmu" to "SkyEmu",
+        "com.pixelrespawn.linkboy" to "Linkboy",
+        "it.dbtecno.pizzaboyscpro" to "Pizza Boy SC Pro",
+        "it.dbtecno.pizzaboyscbasic" to "Pizza Boy SC Basic",
+        "com.hydra.noods" to "NooDS",
+        "me.magnum.melondualds" to "melonDS DualDS",
+        "come.nanodata.armsx2" to "ARMSX2",
+        "com.sbro.emucorex" to "EmuCoreX",
+        "com.virtualapplications.play" to "Play!",
+        "io.github.azaharplus.android" to "AzaharPlus",
+        "org.citra.citra_emu.canary" to "Citra Canary",
+        "io.github.mandarine3ds.mandarine" to "Mandarine",
+        "dev.eden.eden_emulator" to "Eden",
+        "dev.legacy.eden_emulator" to "Eden (Legacy)",
+        "org.kenjinx.android" to "Kenji-NX",
+        "skyline.emu" to "Skyline",
+        "aenu.aps3e.premium" to "aPS3e Premium",
+        "org.mupen64plusae.v3.fzurita.pro" to "M64Plus FZ Pro",
+        "org.vita3k.emulator.ikhoeyZX" to "Vita3K ikhoeyZX",
+        "com.seleuco.mame4droid" to "MAME4droid",
     )
 
     fun getDisplayName(tag: String): String {
