@@ -13,8 +13,7 @@ class SessionLog(
     private val cannoliRoot: String,
     private val coreName: String,
     private val corePath: String,
-    private val romPath: String,
-    private val graphicsBackend: String
+    private val romPath: String
 ) {
     private var writer: FileWriter? = null
     private val fmt = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
@@ -47,7 +46,6 @@ class SessionLog(
         w.appendLine("ROM: $romPath")
         val romFile = File(romPath)
         if (romFile.exists()) w.appendLine("ROM size: ${romFile.length()} bytes")
-        w.appendLine("Renderer: $graphicsBackend")
         w.appendLine("Cannoli root: $cannoliRoot")
         w.appendLine("===========================")
         w.appendLine()

@@ -124,10 +124,6 @@ class SettingsRepository(context: Context) {
         get() = jsonRead { optString(KEY_BG_IMAGE, "").ifEmpty { null } }
         set(value) = jsonWrite { if (value != null) put(KEY_BG_IMAGE, value) else remove(KEY_BG_IMAGE) }
 
-    var graphicsBackend: String
-        get() = jsonRead { optString(KEY_GRAPHICS_BACKEND, "GLES") }
-        set(value) = jsonWrite { put(KEY_GRAPHICS_BACKEND, value) }
-
     var platformSwitching: Boolean
         get() = jsonRead { optBoolean(KEY_PLATFORM_SWITCHING, false) }
         set(value) = jsonWrite { put(KEY_PLATFORM_SWITCHING, value) }
@@ -329,7 +325,6 @@ class SettingsRepository(context: Context) {
         private const val KEY_SHOW_RECENTLY_PLAYED = "show_recently_played"
         private const val KEY_TOOLS_NAME = "tools_name"
         private const val KEY_PORTS_NAME = "ports_name"
-        private const val KEY_GRAPHICS_BACKEND = "graphics_backend"
         private const val KEY_RA_USERNAME = "ra_username"
         private const val KEY_RA_TOKEN = "ra_token"
         private const val KEY_RA_PASSWORD = "ra_password"

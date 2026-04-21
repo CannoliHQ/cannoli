@@ -32,7 +32,7 @@ data class DebugHudState(
 
 @Composable
 fun DebugHud(
-    renderer: GraphicsBackend,
+    renderer: LibretroRenderer,
     runner: LibretroRunner,
     coreName: String,
     audioSampleRate: Int

@@ -30,7 +30,6 @@ class OverrideManager(
     }
 
     data class Settings(
-        var graphicsBackend: GraphicsBackendPref = GraphicsBackendPref.GLES,
         var scalingMode: ScalingMode = ScalingMode.CORE_REPORTED,
         var screenEffect: ScreenEffect = ScreenEffect.NONE,
         var sharpness: Sharpness = Sharpness.SHARP,
@@ -56,7 +55,6 @@ class OverrideManager(
         var shaderParams: Map<String, Float> = emptyMap()
     ) {
         fun frontendEquals(other: Settings): Boolean =
-            graphicsBackend == other.graphicsBackend &&
             scalingMode == other.scalingMode &&
             screenEffect == other.screenEffect &&
             sharpness == other.sharpness &&
@@ -181,7 +179,6 @@ class OverrideManager(
     private fun applyFrontend(file: File, settings: Settings) {
         if (!file.exists()) return
         val s = IniParser.parse(file).getSection("frontend")
-        s["graphics_backend"]?.let { v -> enumSafe<GraphicsBackendPref>(v)?.let { settings.graphicsBackend = it } }
         s["scaling"]?.let { v -> enumSafe<ScalingMode>(v)?.let { settings.scalingMode = it } }
         s["effect"]?.let { v -> enumSafe<ScreenEffect>(v)?.let { settings.screenEffect = it } }
         s["sharpness"]?.let { v -> enumSafe<Sharpness>(v)?.let { settings.sharpness = it } }
@@ -239,7 +236,6 @@ class OverrideManager(
     }
 
     private fun buildFrontendMap(settings: Settings): Map<String, String> = mapOf(
-        "graphics_backend" to settings.graphicsBackend.name,
         "scaling" to settings.scalingMode.name,
         "effect" to settings.screenEffect.name,
         "sharpness" to settings.sharpness.name,
@@ -261,7 +257,6 @@ class OverrideManager(
 
     private fun buildFrontendDelta(settings: Settings, baseline: Settings): Map<String, String> {
         val delta = mutableMapOf<String, String>()
-        if (settings.graphicsBackend != baseline.graphicsBackend) delta["graphics_backend"] = settings.graphicsBackend.name
         if (settings.scalingMode != baseline.scalingMode) delta["scaling"] = settings.scalingMode.name
         if (settings.screenEffect != baseline.screenEffect) delta["effect"] = settings.screenEffect.name
         if (settings.sharpness != baseline.sharpness) delta["sharpness"] = settings.sharpness.name

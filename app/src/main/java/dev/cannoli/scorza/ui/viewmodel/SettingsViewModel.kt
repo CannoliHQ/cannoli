@@ -202,7 +202,6 @@ class SettingsViewModel(
         val colorHighlightText: String,
         val colorAccent: String,
         val colorTitle: String,
-        val graphicsBackend: String,
         val platformSwitching: Boolean,
         val swapPlayResume: Boolean,
         val showWifi: Boolean,
@@ -439,11 +438,6 @@ class SettingsViewModel(
                 settings.kitchenCodeBypass = !settings.kitchenCodeBypass
                 dev.cannoli.scorza.server.KitchenManager.setCodeBypass(settings.kitchenCodeBypass)
             }
-            "graphics_backend" -> {
-                val backends = listOf("GLES", "VULKAN")
-                val cur = backends.indexOf(settings.graphicsBackend).coerceAtLeast(0)
-                settings.graphicsBackend = backends[((cur + direction) % backends.size + backends.size) % backends.size]
-            }
             "ra_package" -> {
                 val pkgs = detectInstalledRaPackages()
                 if (pkgs.isNotEmpty()) {
@@ -574,7 +568,6 @@ class SettingsViewModel(
         colorHighlightText = settings.colorHighlightText,
         colorAccent = settings.colorAccent,
         colorTitle = settings.colorTitle,
-        graphicsBackend = settings.graphicsBackend,
         platformSwitching = settings.platformSwitching,
         swapPlayResume = settings.swapPlayResume,
         showWifi = settings.showWifi,
@@ -610,7 +603,6 @@ class SettingsViewModel(
         settings.colorHighlightText = snap.colorHighlightText
         settings.colorAccent = snap.colorAccent
         settings.colorTitle = snap.colorTitle
-        settings.graphicsBackend = snap.graphicsBackend
         settings.platformSwitching = snap.platformSwitching
         settings.swapPlayResume = snap.swapPlayResume
         settings.showWifi = snap.showWifi

@@ -101,7 +101,7 @@ fun LibretroScreen(
     profileName: String = "",
     profileNames: List<String> = emptyList(),
     debugHud: Boolean,
-    renderer: GraphicsBackend,
+    renderer: LibretroRenderer,
     runner: LibretroRunner,
     audioSampleRate: Int,
     osdMessage: String?,

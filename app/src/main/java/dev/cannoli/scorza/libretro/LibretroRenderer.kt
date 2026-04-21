@@ -24,27 +24,26 @@ enum class ScalingMode(val nativeCode: Int) {
 }
 enum class Sharpness { SHARP, SOFT }
 enum class ScreenEffect { NONE, SHADER }
-enum class GraphicsBackendPref { AUTO, GLES, VULKAN }
 
-class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Renderer, GraphicsBackend {
+class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Renderer {
 
-    @Volatile override var paused = false
-    @Volatile override var fastForwardFrames = 0
-    @Volatile override var coreTargetFps = 60.0
-    @Volatile override var scalingMode = ScalingMode.CORE_REPORTED
-    @Volatile override var coreAspectRatio = 0f
-    @Volatile override var debugHud = false
+    @Volatile var paused = false
+    @Volatile var fastForwardFrames = 0
+    @Volatile var coreTargetFps = 60.0
+    @Volatile var scalingMode = ScalingMode.CORE_REPORTED
+    @Volatile var coreAspectRatio = 0f
+    @Volatile var debugHud = false
 
-    @Volatile override var sharpness = Sharpness.SHARP
+    @Volatile var sharpness = Sharpness.SHARP
         set(value) { field = value; sharpnessDirty = true }
 
-    @Volatile override var screenEffect = ScreenEffect.NONE
+    @Volatile var screenEffect = ScreenEffect.NONE
         set(value) { field = value; shaderDirty = true }
 
-    @Volatile override var overlayPath: String? = null
+    @Volatile var overlayPath: String? = null
         set(value) { field = value; overlayDirty = true }
 
-    @Volatile override var shaderPresetPath: String? = null
+    @Volatile var shaderPresetPath: String? = null
         set(value) { field = value; pipelineDirty = true }
 
     @Volatile private var sharpnessDirty = false
@@ -56,12 +55,12 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
     private var overlayTextureId = 0
     private var overlayLoaded = false
 
-    override val backendName = "GLES 3.0"
-    @Volatile override var fps = 0f; private set
-    @Volatile override var frameTimeMs = 0f; private set
-    @Volatile override var viewportWidth = 0; private set
-    @Volatile override var viewportHeight = 0; private set
-    @Volatile override var portraitMarginPx: Int = 0
+    val backendName = "GLES 3.0"
+    @Volatile var fps = 0f; private set
+    @Volatile var frameTimeMs = 0f; private set
+    @Volatile var viewportWidth = 0; private set
+    @Volatile var viewportHeight = 0; private set
+    @Volatile var portraitMarginPx: Int = 0
 
     private var frameCount = 0
     private var fpsTimestamp = 0L
@@ -70,16 +69,16 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
 
     private val shaderParamOverrides = ConcurrentHashMap<String, Float>()
 
-    override fun setShaderParameter(id: String, value: Float) {
+    fun setShaderParameter(id: String, value: Float) {
         shaderParamOverrides[id] = value
         pipeline?.parameters?.set(id, value)
     }
 
-    override fun clearShaderParamOverrides() {
+    fun clearShaderParamOverrides() {
         shaderParamOverrides.clear()
     }
 
-    @Volatile override var onFrameRendered: (() -> Unit)? = null
+    @Volatile var onFrameRendered: (() -> Unit)? = null
 
     @Volatile var logger: ((String) -> Unit)? = null
     private var loggedFrameW = -1

@@ -442,7 +442,6 @@ class LaunchManager(
             putExtra("color_accent", settings.colorAccent)
             putExtra("color_title", settings.colorTitle)
             putExtra("font", settings.font)
-            putExtra("graphics_backend", settings.graphicsBackend)
             putExtra("debug_logging", settings.debugLogging)
             putExtra("ra_username", settings.raUsername)
             putExtra("ra_token", settings.raToken)

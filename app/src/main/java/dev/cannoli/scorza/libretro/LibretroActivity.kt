@@ -59,7 +59,7 @@ import java.io.File
 class LibretroActivity : ComponentActivity() {
 
     private lateinit var runner: LibretroRunner
-    private lateinit var renderer: GraphicsBackend
+    private lateinit var renderer: LibretroRenderer
     private lateinit var input: LibretroInput
     private lateinit var controllerManager: ControllerManager
     private lateinit var profileManager: ProfileManager
@@ -283,8 +283,7 @@ class LibretroActivity : ComponentActivity() {
             cannoliRoot = cannoliRoot,
             coreName = coreName,
             corePath = corePath,
-            romPath = romPath,
-            graphicsBackend = intent.getStringExtra("graphics_backend") ?: "GLES"
+            romPath = romPath
         )
 
         if (savedInstanceState != null) {
@@ -536,7 +535,7 @@ class LibretroActivity : ComponentActivity() {
                 SlangTranspiler.cacheDir = shaderCacheDir
 
                 val globalSettings = SettingsRepository(activity)
-                fun configureBackend(backend: GraphicsBackend) {
+                fun configureBackend(backend: LibretroRenderer) {
                     backend.coreAspectRatio = runner.getAspectRatio()
                     backend.scalingMode = scalingMode
                     backend.sharpness = sharpness
