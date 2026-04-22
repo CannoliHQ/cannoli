@@ -96,7 +96,11 @@ class FileScanner(
             } else {
                 anyStale = true
                 val files = dir.listFiles()
-                files?.any { !it.name.startsWith(".") && !isIgnoredFile(it) && !isIgnoredExtension(it) } ?: false
+                files?.any { entry ->
+                    if (entry.name.startsWith(".") || isIgnoredFile(entry) || isIgnoredExtension(entry)) false
+                    else if (entry.isDirectory) entry.listFiles()?.any { !it.name.startsWith(".") } == true
+                    else true
+                } ?: false
             }
             newEntries[tag] = CachedPlatformEntry(dirMod, hasGames)
             platformResolver.resolvePlatform(tag, romsDir, if (hasGames) 1 else 0)
@@ -645,6 +649,7 @@ class FileScanner(
 
     fun invalidateGameCacheForTag(tag: String) {
         scanCache.invalidatePlatform(tag)
+        scanCache.removePlatformEntry(tag)
         dirTimestamps.remove(tag)
     }
 

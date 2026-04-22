@@ -81,6 +81,17 @@ class ScanCache(private val cannoliRoot: File) {
         File(gameCacheDir, "$tag.json").delete()
     }
 
+    fun removePlatformEntry(tag: String) {
+        if (!platformCacheFile.exists()) return
+        try {
+            val json = JSONObject(platformCacheFile.readText())
+            if (json.has(tag)) {
+                json.remove(tag)
+                writeAtomic(platformCacheFile, json.toString())
+            }
+        } catch (_: Exception) {}
+    }
+
     fun invalidateAll() {
         platformCacheFile.delete()
         if (gameCacheDir.exists()) {
