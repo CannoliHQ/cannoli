@@ -54,6 +54,18 @@
 
     <string name="osd_cannot_steal_confirm">Remap the confirm button first to free this button</string>
 
+    <!-- In-game shortcut actions -->
+    <string name="shortcut_action_save_state">Save State</string>
+    <string name="shortcut_action_load_state">Load State</string>
+    <string name="shortcut_action_reset_game">Reset Game</string>
+    <string name="shortcut_action_save_and_quit">Save and Quit</string>
+    <string name="shortcut_action_cycle_scaling">Cycle Scaling</string>
+    <string name="shortcut_action_cycle_shader">Cycle Shader</string>
+    <string name="shortcut_action_toggle_ff">Toggle Fast Forward</string>
+    <string name="shortcut_action_hold_ff">Hold Fast Forward</string>
+    <string name="shortcut_action_open_guide">Open Guide</string>
+    <string name="shortcut_action_open_menu">Open In-Game Menu</string>
+
     <string name="settings_title">Settings</string>
 
     <!-- Settings categories -->

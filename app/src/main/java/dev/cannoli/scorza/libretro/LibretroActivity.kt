@@ -2228,7 +2228,7 @@ class LibretroActivity : ComponentActivity() {
                 val chord = shortcuts[action]
                 val label = if (chord.isNullOrEmpty()) "None"
                 else chord.joinToString(" + ") { LibretroInput.keyCodeName(it) }
-                add(IGMSettingsItem(action.label, label))
+                add(IGMSettingsItem(getString(action.labelRes), label))
             }
         }
         is IGMScreen.SavePrompt -> listOf(

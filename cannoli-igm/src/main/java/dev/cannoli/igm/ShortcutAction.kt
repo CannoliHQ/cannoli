@@ -1,14 +1,17 @@
 package dev.cannoli.igm
 
-enum class ShortcutAction(val label: String) {
-    SAVE_STATE("Save State"),
-    LOAD_STATE("Load State"),
-    RESET_GAME("Reset Game"),
-    SAVE_AND_QUIT("Save and Quit"),
-    CYCLE_SCALING("Cycle Scaling"),
-    CYCLE_EFFECT("Cycle Shader"),
-    TOGGLE_FF("Toggle Fast Forward"),
-    HOLD_FF("Hold Fast Forward"),
-    OPEN_GUIDE("Open Guide"),
-    OPEN_MENU("Open Menu")
+import androidx.annotation.StringRes
+import dev.cannoli.ui.R
+
+enum class ShortcutAction(@StringRes val labelRes: Int) {
+    SAVE_STATE(R.string.shortcut_action_save_state),
+    LOAD_STATE(R.string.shortcut_action_load_state),
+    RESET_GAME(R.string.shortcut_action_reset_game),
+    SAVE_AND_QUIT(R.string.shortcut_action_save_and_quit),
+    CYCLE_SCALING(R.string.shortcut_action_cycle_scaling),
+    CYCLE_EFFECT(R.string.shortcut_action_cycle_shader),
+    TOGGLE_FF(R.string.shortcut_action_toggle_ff),
+    HOLD_FF(R.string.shortcut_action_hold_ff),
+    OPEN_GUIDE(R.string.shortcut_action_open_guide),
+    OPEN_MENU(R.string.shortcut_action_open_menu)
 }

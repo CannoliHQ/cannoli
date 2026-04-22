@@ -582,7 +582,7 @@ fun AppNavGraph(
                         val value = if (chord.isNullOrEmpty()) stringResource(R.string.value_none)
                         else chord.joinToString(" + ") { LibretroInput.keyCodeName(it) }
                         PillRowKeyValue(
-                            label = action.label,
+                            label = stringResource(action.labelRes),
                             value = value,
                             isSelected = isSelected,
                             fontSize = listFontSize,
@@ -603,7 +603,8 @@ fun AppNavGraph(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth()
                         ) {
-                            val actionName = ShortcutAction.entries.getOrNull(currentScreen.selectedIndex)?.label ?: ""
+                            val actionName = ShortcutAction.entries.getOrNull(currentScreen.selectedIndex)
+                                ?.let { stringResource(it.labelRes) } ?: ""
                             Text(
                                 text = actionName,
                                 style = MaterialTheme.typography.bodyLarge.copy(
