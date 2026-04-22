@@ -129,7 +129,10 @@ class LaunchManager(
             put("savestate_auto_save", "true")
             put("config_save_on_exit", "false")
             put("video_font_enable", "false")
-            put("assets_directory", "$rootPath/Config/Assets")
+
+            // TODO come back to this at a later date
+//            put("assets_directory", "$rootPath/Config/Assets")
+
             if (raUser.isNotEmpty() && raToken.isNotEmpty()) {
                 put("cheevos_enable", "true")
                 put("cheevos_username", raUser)
