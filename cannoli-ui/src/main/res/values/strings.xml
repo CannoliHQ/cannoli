@@ -61,6 +61,7 @@
     <string name="settings_library">Library</string>
     <string name="settings_status_bar">Status Bar</string>
     <string name="settings_input">Input</string>
+    <string name="settings_emulation">Emulation</string>
     <string name="settings_advanced">Advanced</string>
     <string name="settings_retroachievements" translatable="false">RetroAchievements</string>
     <string name="settings_about">About</string>
@@ -92,6 +93,7 @@
     <string name="setting_platform_switching">L1 / R1 Switches Platform</string>
     <string name="setting_swap_play_resume">Swap Play and Resume</string>
     <string name="setting_main_menu_quit">Main Menu Quit</string>
+    <string name="setting_always_save_on_quit">Save State On Quit</string>
     <string name="setting_retroarch_diy_mode">RetroArch DIY Mode</string>
     <string name="setting_kitchen_code_bypass">Kitchen Code Bypass</string>
     <string name="setting_set_default_launcher">Set as Default Launcher</string>
@@ -248,6 +250,7 @@
     <string name="igm_shader_settings">Shader Settings</string>
     <string name="igm_emulator">Emulator</string>
     <string name="igm_save_changes">Save Changes</string>
+    <string name="igm_save_and_quit">Save and Quit</string>
     <string name="title_controls">Controls</string>
     <string name="title_guide">Guide</string>
 

@@ -177,6 +177,7 @@ class SettingsViewModel(
         Category("display", R.string.settings_display),
         Category("library", R.string.settings_library),
         Category("input", R.string.settings_input),
+        Category("emulation", R.string.settings_emulation),
         Category("kitchen", R.string.settings_kitchen),
         Category("retroachievements", R.string.settings_retroachievements),
         Category("advanced", R.string.settings_advanced),
@@ -426,6 +427,7 @@ class SettingsViewModel(
             "main_menu_quit" -> settings.mainMenuQuit = !settings.mainMenuQuit
             "retroarch_diy_mode" -> settings.retroArchDiyMode = !settings.retroArchDiyMode
             "debug_logging" -> settings.debugLogging = !settings.debugLogging
+            "always_save_on_quit" -> settings.alwaysSaveOnQuit = !settings.alwaysSaveOnQuit
             "portrait_margin" -> {
                 val step = when {
                     repeatCount == 0 -> 1
@@ -736,6 +738,10 @@ class SettingsViewModel(
             SettingsItem("main_menu_quit", R.string.setting_main_menu_quit, valueRes = onOff(settings.mainMenuQuit)),
             SettingsItem("input_tester", R.string.setting_input_tester, isEditable = true)
         )
+        "emulation" -> listOf(
+            SettingsItem("core_mapping", R.string.setting_core_mapping, isEditable = true),
+            SettingsItem("always_save_on_quit", R.string.setting_always_save_on_quit, valueRes = onOff(settings.alwaysSaveOnQuit))
+        )
         "kitchen" -> emptyList()
         "retroachievements" -> buildList {
             add(SettingsItem("ra_username", R.string.setting_ra_username, valueText = settings.raUsername.ifEmpty { null }, valueRes = if (settings.raUsername.isEmpty()) R.string.value_not_set else null, isEditable = true))
@@ -745,7 +751,6 @@ class SettingsViewModel(
             }
         }
         "advanced" -> buildList {
-            add(SettingsItem("core_mapping", R.string.setting_core_mapping, isEditable = true))
             add(SettingsItem("debug_logging", R.string.setting_debug_logging, valueRes = onOff(settings.debugLogging)))
             add(SettingsItem("retroarch_diy_mode", R.string.setting_retroarch_diy_mode, valueRes = onOff(settings.retroArchDiyMode)))
             add(SettingsItem("kitchen_code_bypass", R.string.setting_kitchen_code_bypass, valueRes = onOff(settings.kitchenCodeBypass)))

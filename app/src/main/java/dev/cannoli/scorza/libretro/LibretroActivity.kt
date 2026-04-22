@@ -185,6 +185,7 @@ class LibretroActivity : ComponentActivity() {
     private val currentSlot get() = slotManager.slots[selectedSlotIndex]
     private val currentScreen get() = screenStack.lastOrNull()
     private val hasDiscs get() = diskCount > 1
+    private val alwaysSaveOnQuit: Boolean by lazy { dev.cannoli.scorza.settings.SettingsRepository(this).alwaysSaveOnQuit }
 
     @androidx.compose.runtime.Composable
     private fun MissingBiosScreen(entries: List<dev.cannoli.scorza.scanner.FirmwareEntry>) {
@@ -230,7 +231,13 @@ class LibretroActivity : ComponentActivity() {
     private var guideInitialScrollX by mutableIntStateOf(0)
     private var infoScrollDir by mutableIntStateOf(0)
 
-    private fun menuOptions() = InGameMenuOptions(hasDiscs, diskLabel(currentDiskIndex), raHasAchievements, guideFiles.isNotEmpty())
+    private fun menuOptions() = InGameMenuOptions(
+        hasDiscs,
+        diskLabel(currentDiskIndex),
+        raHasAchievements,
+        guideFiles.isNotEmpty(),
+        quitLabel = if (alwaysSaveOnQuit) getString(R.string.igm_save_and_quit) else "Quit"
+    )
 
     private fun refreshDiskInfo() {
         if (!romPath.endsWith(".m3u", ignoreCase = true)) return
@@ -1213,7 +1220,16 @@ class LibretroActivity : ComponentActivity() {
                 }
                 push(IGMScreen.Achievements(achievements = achievements, status = ra.getStatus()))
             }
-            menu.quitIndex -> quit()
+            menu.quitIndex -> {
+                if (alwaysSaveOnQuit && stateBasePath.isNotEmpty()) {
+                    try {
+                        slotManager.saveState(runner, slotManager.slots[0])
+                    } catch (t: Throwable) {
+                        sessionLog.log("alwaysSaveOnQuit failed: ${t.message}")
+                    }
+                }
+                quit()
+            }
         }
     }
 

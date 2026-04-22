@@ -1,6 +1,12 @@
 package dev.cannoli.igm
 
-class InGameMenuOptions(hasDiscs: Boolean, val discLabel: String, hasAchievements: Boolean = false, hasGuides: Boolean = false) {
+class InGameMenuOptions(
+    hasDiscs: Boolean,
+    val discLabel: String,
+    hasAchievements: Boolean = false,
+    hasGuides: Boolean = false,
+    quitLabel: String = "Quit"
+) {
     val options: List<String>
     val resumeIndex = 0
     val saveStateIndex = 1
@@ -37,7 +43,7 @@ class InGameMenuOptions(hasDiscs: Boolean, val discLabel: String, hasAchievement
         resetIndex = list.size
         list.add("Reset")
         quitIndex = list.size
-        list.add("Quit")
+        list.add(quitLabel)
         options = list
     }
 }
