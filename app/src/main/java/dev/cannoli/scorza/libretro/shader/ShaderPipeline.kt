@@ -140,32 +140,16 @@ class ShaderPipeline private constructor(
             setUniform2f(program, "OrigTextureSize", frameW.toFloat(), frameH.toFloat())
             setUniform2f(program, "OrigInputSize", frameW.toFloat(), frameH.toFloat())
 
-            // Slang push_constant convention (vec4: xy = size, zw = 1/size)
-            for (prefix in arrayOf("params.", "params_", "global_", "global.")) {
-                setUniform4f(program, "${prefix}SourceSize", inputW.toFloat(), inputH.toFloat(), 1f / inputW, 1f / inputH)
-                setUniform4f(program, "${prefix}OriginalSize", frameW.toFloat(), frameH.toFloat(), 1f / frameW, 1f / frameH)
-                setUniform4f(program, "${prefix}OutputSize", outW.toFloat(), outH.toFloat(), 1f / outW, 1f / outH)
-            }
-
             val fc = if (pass.frameCountMod > 0) frameCount % pass.frameCountMod else frameCount
             setUniform1i(program, "FrameCount", fc)
-            setUniform1i(program, "params_FrameCount", fc)
             setUniform1i(program, "FrameDirection", 1)
             setUniform1f(program, "SweepPhase", sweepPhase)
-            setUniform1f(program, "params_SweepPhase", sweepPhase)
 
-            // MVP identity matrix
-            for (name in arrayOf("MVPMatrix", "global.MVP", "global_MVP")) {
-                val loc = GLES20.glGetUniformLocation(program, name)
-                if (loc >= 0) GLES20.glUniformMatrix4fv(loc, 1, false, IDENTITY_MATRIX, 0)
-            }
+            val mvpLoc = GLES20.glGetUniformLocation(program, "MVPMatrix")
+            if (mvpLoc >= 0) GLES20.glUniformMatrix4fv(mvpLoc, 1, false, IDENTITY_MATRIX, 0)
 
-            // User-adjustable parameters
             for ((key, value) in parameters) {
                 setUniform1f(program, key, value)
-                setUniform1f(program, "params_$key", value)
-                setUniform1f(program, "param_$key", value)
-                setUniform1f(program, "global_$key", value)
             }
 
             GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
@@ -310,27 +294,10 @@ class ShaderPipeline private constructor(
                     return null
                 }
                 val source = shaderFile.readText()
-                val vs: String
-                val fs: String
-
-                if (SlangTranspiler.isVulkanGLSL(source)) {
-                    val basePath = shaderFile.parent
-                    val resolved = basePath?.let { SlangTranspiler.resolveIncludesPublic(source, it) } ?: source
-                    val (rawVs, rawFs) = SlangTranspiler.splitSlangStages(resolved)
-                    val transVs = SlangTranspiler.transpile(rawVs, isVertex = true)
-                    val transFs = SlangTranspiler.transpile(rawFs, isVertex = false)
-                    if (transVs == null || transFs == null) {
-                        cleanup(passPrograms)
-                        return null
-                    }
-                    vs = transVs
-                    fs = transFs
-                } else {
-                    val prepared = prepareSource(source)
-                    val (splitVs, splitFs) = PresetParser.splitVertexFragment(prepared)
-                    vs = splitVs ?: DEFAULT_VERTEX
-                    fs = splitFs ?: prepared
-                }
+                val prepared = prepareSource(source)
+                val (splitVs, splitFs) = PresetParser.splitVertexFragment(prepared)
+                val vs = splitVs ?: DEFAULT_VERTEX
+                val fs = splitFs ?: prepared
 
                 val precFs = ensurePrecision(fs)
                 val program = compileProgram(vs, precFs)
@@ -594,9 +561,5 @@ class ShaderPipeline private constructor(
             if (loc >= 0) GLES20.glUniform2f(loc, x, y)
         }
 
-        private fun setUniform4f(program: Int, name: String, x: Float, y: Float, z: Float, w: Float) {
-            val loc = GLES20.glGetUniformLocation(program, name)
-            if (loc >= 0) GLES20.glUniform4f(loc, x, y, z, w)
-        }
     }
 }

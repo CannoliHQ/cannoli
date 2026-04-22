@@ -42,7 +42,6 @@ import dev.cannoli.scorza.input.ControllerManager
 import dev.cannoli.scorza.input.ProfileManager
 import dev.cannoli.scorza.libretro.shader.PresetParser
 import dev.cannoli.scorza.libretro.shader.ShaderPipeline
-import dev.cannoli.scorza.libretro.shader.SlangTranspiler
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.util.SessionLog
 import dev.cannoli.ui.STAR
@@ -532,7 +531,6 @@ class LibretroActivity : ComponentActivity() {
 
                 val shaderCacheDir = File(cacheDir, "shader_cache")
                 ShaderPipeline.cacheDir = shaderCacheDir
-                SlangTranspiler.cacheDir = shaderCacheDir
 
                 val globalSettings = SettingsRepository(activity)
                 fun configureBackend(backend: LibretroRenderer) {
@@ -1320,7 +1318,7 @@ class LibretroActivity : ComponentActivity() {
 
     private fun scanShaderPresets() {
         val dir = File(cannoliRoot, "Shaders")
-        val exts = setOf("glslp", "slangp")
+        val exts = setOf("glslp")
         shaderPresets = dir.walk()
             .filter { it.isFile && it.extension.lowercase(java.util.Locale.ROOT) in exts }
             .map { it.relativeTo(dir).path }
