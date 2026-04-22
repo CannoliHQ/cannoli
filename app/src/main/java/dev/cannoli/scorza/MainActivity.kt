@@ -714,10 +714,12 @@ class MainActivity : ComponentActivity() {
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.keyCode == KeyEvent.KEYCODE_BACK) {
-            if (screenStack.lastOrNull() is LauncherScreen.InputTester) {
-                routeKeyToInputTester(event, down = event.action == KeyEvent.ACTION_DOWN)
+            if (!dev.cannoli.scorza.input.InputHandler.isGamepadEvent(event)) {
+                if (screenStack.lastOrNull() is LauncherScreen.InputTester) {
+                    routeKeyToInputTester(event, down = event.action == KeyEvent.ACTION_DOWN)
+                }
+                return true
             }
-            return true
         }
         return super.dispatchKeyEvent(event)
     }
@@ -750,7 +752,7 @@ class MainActivity : ComponentActivity() {
             routeKeyToInputTester(event, down = false)
             return true
         }
-        if (inputHandler.resolveButton(keyCode) == "btn_select") {
+        if (inputHandler.resolveButton(event) == "btn_select") {
             selectHoldHandler.removeCallbacks(selectHoldRunnable)
             selectHoldHandler.removeCallbacks(collectionSelectHoldRunnable)
             if (!selectHeld && dialogState.value is KeyboardInputState) {
@@ -890,7 +892,7 @@ class MainActivity : ComponentActivity() {
         val port = if (device != null) controllerManager.getPortForDeviceId(deviceId) ?: 0 else 0
         val name = device?.name ?: getString(R.string.input_tester_device_keyboard)
         val keyName = KeyEvent.keyCodeToString(event.keyCode).removePrefix("KEYCODE_")
-        val navButton = inputHandler.resolveButton(event.keyCode)
+        val navButton = inputHandler.resolveButton(event)
 
         if (down) {
             val isRepeat = event.repeatCount > 0
