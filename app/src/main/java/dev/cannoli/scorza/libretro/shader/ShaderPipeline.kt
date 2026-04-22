@@ -493,6 +493,13 @@ class ShaderPipeline private constructor(
             val filter = if (linear) GLES20.GL_LINEAR else GLES20.GL_NEAREST
             GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, filter)
             GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, filter)
+            // Adreno does not re-evaluate FBO completeness when a pre-attached texture
+            // later gets storage via glTexImage2D; re-attach so the FBO becomes complete.
+            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fbo)
+            GLES20.glFramebufferTexture2D(
+                GLES20.GL_FRAMEBUFFER, GLES20.GL_COLOR_ATTACHMENT0,
+                GLES20.GL_TEXTURE_2D, tex, 0
+            )
         }
 
         private fun loadLutTexture(file: File, ref: TextureRef): Int {
