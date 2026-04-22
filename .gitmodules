@@ -1,11 +1,3 @@
-[submodule "app/src/main/cpp/third_party/glslang"]
-	path = app/src/main/cpp/third_party/glslang
-	url = https://github.com/CannoliHQ/glslang.git
-	ignore = dirty
-[submodule "app/src/main/cpp/third_party/spirv-cross"]
-	path = app/src/main/cpp/third_party/spirv-cross
-	url = https://github.com/CannoliHQ/SPIRV-Cross.git
-	ignore = dirty
 [submodule "app/src/main/cpp/third_party/rcheevos"]
 	path = app/src/main/cpp/third_party/rcheevos
 	url = https://github.com/CannoliHQ/rcheevos.git
