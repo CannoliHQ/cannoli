@@ -20,6 +20,7 @@
 
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <uses-feature android:name="android.hardware.gamepad" android:required="false" />
 
     <application
         android:banner="@drawable/tv_banner"
@@ -30,15 +31,21 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Cannoli">
+        android:theme="@style/Theme.Cannoli"
+        android:isGame="true"
+        android:appCategory="game"
+        android:hardwareAccelerated="true"
+        android:largeHeap="true"
+        android:enableOnBackInvokedCallback="false">
 
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.Cannoli"
-            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout|uiMode|density|navigation|touchscreen"
             android:launchMode="singleTop"
+            android:resizeableActivity="false"
             android:windowLayoutInDisplayCutoutMode="shortEdges">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -53,6 +60,9 @@
             android:name=".libretro.LibretroActivity"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout|uiMode|density|navigation|touchscreen"
             android:theme="@style/Theme.Cannoli"
+            android:immersive="true"
+            android:resizeableActivity="false"
+            android:preferMinimalPostProcessing="true"
             android:windowLayoutInDisplayCutoutMode="shortEdges" />
 
         <provider
