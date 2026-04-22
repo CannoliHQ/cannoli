@@ -19,7 +19,7 @@ class LibretroInput {
         ButtonDef(RETRO_R3, "R3", "btn_r3", KeyEvent.KEYCODE_BUTTON_THUMBR),
         ButtonDef(RETRO_START, "Start", "btn_start", KeyEvent.KEYCODE_BUTTON_START),
         ButtonDef(RETRO_SELECT, "Select", "btn_select", KeyEvent.KEYCODE_BUTTON_SELECT),
-        ButtonDef(0, "Menu", "btn_menu", KeyEvent.KEYCODE_BUTTON_MODE),
+        ButtonDef(0, "Menu", "btn_menu", KeyEvent.KEYCODE_BACK),
         ButtonDef(RETRO_UP, "Up", "btn_up", KeyEvent.KEYCODE_DPAD_UP),
         ButtonDef(RETRO_DOWN, "Down", "btn_down", KeyEvent.KEYCODE_DPAD_DOWN),
         ButtonDef(RETRO_LEFT, "Left", "btn_left", KeyEvent.KEYCODE_DPAD_LEFT),

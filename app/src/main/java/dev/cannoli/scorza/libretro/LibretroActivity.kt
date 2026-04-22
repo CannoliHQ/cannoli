@@ -939,14 +939,18 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun handleGameplayInput(keyCode: Int, event: KeyEvent): Boolean {
-        val menuCode = defaultProfileControls["btn_menu"] ?: KeyEvent.KEYCODE_BUTTON_MODE
-        if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_MENU || keyCode == menuCode) { openMenu(); return true }
+        val menuCode = defaultProfileControls["btn_menu"] ?: KeyEvent.KEYCODE_BACK
         val port = controllerManager.getPortForDeviceId(event.deviceId) ?: 0
+        val portInput = controllerManager.portInputs[port]
+        val mappedMask = portInput.keyCodeToRetroMask(keyCode)
+        val isMenuKey = keyCode == KeyEvent.KEYCODE_MENU ||
+                keyCode == KeyEvent.KEYCODE_BACK ||
+                keyCode == menuCode
+        if (isMenuKey && mappedMask == null) { openMenu(); return true }
         val portKeys = controllerManager.portPressedKeys[port]
         val isNewPress = portKeys.add(keyCode)
         if (isNewPress) checkShortcuts(port)
-        val portInput = controllerManager.portInputs[port]
-        val mask = portInput.keyCodeToRetroMask(keyCode) ?: return super.onKeyDown(keyCode, event)
+        val mask = mappedMask ?: return super.onKeyDown(keyCode, event)
         controllerManager.portInputMasks[port] = controllerManager.portInputMasks[port] or mask
         runner.setInput(port, controllerManager.portInputMasks[port])
         return true
@@ -1003,6 +1007,9 @@ class LibretroActivity : ComponentActivity() {
                 ShortcutAction.HOLD_FF -> {
                     if (holdingFf) continue
                     holdingFf = true; setFastForward(true)
+                }
+                ShortcutAction.OPEN_MENU -> {
+                    openMenu()
                 }
                 ShortcutAction.OPEN_GUIDE -> {
                     val guides = guideManager.findGuides()
