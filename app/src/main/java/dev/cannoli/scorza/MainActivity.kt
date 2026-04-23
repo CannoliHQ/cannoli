@@ -785,12 +785,43 @@ class MainActivity : ComponentActivity() {
         return super.onKeyUp(keyCode, event)
     }
 
+    private val triggerL2HeldDevices = mutableSetOf<Int>()
+    private val triggerR2HeldDevices = mutableSetOf<Int>()
+
+    private fun syncBindingTrigger(deviceId: Int, keyCode: Int, value: Float, held: MutableSet<Int>) {
+        val wasHeld = deviceId in held
+        if (value > 0.5f && !wasHeld) {
+            held.add(deviceId)
+            handleBindingKeyDown(keyCode)
+        } else if (value < 0.3f && wasHeld) {
+            held.remove(deviceId)
+            val screen = screenStack.lastOrNull()
+            if (screen is LauncherScreen.ShortcutBinding && screen.listening && screen.heldKeys.contains(keyCode)) {
+                cancelShortcutListening()
+            }
+        }
+    }
+
     override fun dispatchGenericMotionEvent(event: android.view.MotionEvent): Boolean {
         val source = event.source
         val isJoystick =
             source and android.view.InputDevice.SOURCE_JOYSTICK == android.view.InputDevice.SOURCE_JOYSTICK ||
             source and android.view.InputDevice.SOURCE_GAMEPAD == android.view.InputDevice.SOURCE_GAMEPAD
         if (!isJoystick) return super.dispatchGenericMotionEvent(event)
+
+        val screen = screenStack.lastOrNull()
+        if (screen is LauncherScreen.ShortcutBinding || screen is LauncherScreen.ControlBinding) {
+            val lt = maxOf(
+                event.getAxisValue(android.view.MotionEvent.AXIS_LTRIGGER),
+                event.getAxisValue(android.view.MotionEvent.AXIS_BRAKE),
+            )
+            val rt = maxOf(
+                event.getAxisValue(android.view.MotionEvent.AXIS_RTRIGGER),
+                event.getAxisValue(android.view.MotionEvent.AXIS_GAS),
+            )
+            syncBindingTrigger(event.deviceId, KeyEvent.KEYCODE_BUTTON_L2, lt, triggerL2HeldDevices)
+            syncBindingTrigger(event.deviceId, KeyEvent.KEYCODE_BUTTON_R2, rt, triggerR2HeldDevices)
+        }
 
         if (screenStack.lastOrNull() is LauncherScreen.InputTester) {
             val deviceId = event.deviceId

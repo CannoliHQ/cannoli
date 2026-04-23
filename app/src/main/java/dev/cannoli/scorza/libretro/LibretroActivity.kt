@@ -255,6 +255,8 @@ class LibretroActivity : ComponentActivity() {
 
     companion object {
         private val FF_SPEEDS = listOf(2, 3, 4, 6, 8)
+        private const val TRIGGER_PRESS_THRESHOLD = 0.5f
+        private const val TRIGGER_RELEASE_THRESHOLD = 0.3f
         @Volatile var isRunning = false
     }
 
@@ -693,6 +695,9 @@ class LibretroActivity : ComponentActivity() {
             LibretroInput.RETRO_L2 or LibretroInput.RETRO_R2
 
     private var menuHeldKey = 0
+
+    private val triggerL2HeldDevices = mutableSetOf<Int>()
+    private val triggerR2HeldDevices = mutableSetOf<Int>()
     private val menuRepeatHandler = Handler(Looper.getMainLooper())
     private val menuRepeatDelay = 400L
     private val menuRepeatInterval = 80L
@@ -780,6 +785,9 @@ class LibretroActivity : ComponentActivity() {
         )
         if (leftTrigger > 0.5f) axes = axes or LibretroInput.RETRO_L2
         if (rightTrigger > 0.5f) axes = axes or LibretroInput.RETRO_R2
+
+        syncSyntheticTrigger(event.deviceId, port, KeyEvent.KEYCODE_BUTTON_L2, leftTrigger, triggerL2HeldDevices)
+        syncSyntheticTrigger(event.deviceId, port, KeyEvent.KEYCODE_BUTTON_R2, rightTrigger, triggerR2HeldDevices)
 
         controllerManager.portInputMasks[port] = (controllerManager.portInputMasks[port] and axisMask.inv()) or axes
         runner.setInput(port, controllerManager.portInputMasks[port])
@@ -936,6 +944,32 @@ class LibretroActivity : ComponentActivity() {
                 else -> pref
             }
         } else pref
+    }
+
+    private fun syncSyntheticTrigger(
+        deviceId: Int,
+        port: Int,
+        keyCode: Int,
+        value: Float,
+        held: MutableSet<Int>,
+    ) {
+        val wasHeld = deviceId in held
+        if (value > TRIGGER_PRESS_THRESHOLD && !wasHeld) {
+            held.add(deviceId)
+            val portKeys = controllerManager.portPressedKeys[port]
+            if (portKeys.add(keyCode)) checkShortcuts(port)
+        } else if (value < TRIGGER_RELEASE_THRESHOLD && wasHeld) {
+            held.remove(deviceId)
+            val portKeys = controllerManager.portPressedKeys[port]
+            portKeys.remove(keyCode)
+            if (holdingFf) {
+                val holdChord = shortcuts[ShortcutAction.HOLD_FF]
+                if (holdChord != null && !portKeys.containsAll(holdChord)) {
+                    holdingFf = false
+                    setFastForward(false)
+                }
+            }
+        }
     }
 
     private fun handleGameplayInput(keyCode: Int, event: KeyEvent): Boolean {
