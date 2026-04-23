@@ -2413,7 +2413,13 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun openAppPicker(type: String) {
-        val allApps = getInstalledLauncherApps()
+        val installed = getInstalledLauncherApps()
+        val allApps = buildList {
+            if (type == "tools" && packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)) {
+                add("Android TV Settings" to ApkLauncher.VIRTUAL_TV_SETTINGS_PACKAGE)
+            }
+            addAll(installed)
+        }
         val dir = if (type == "tools") scanner.tools else scanner.ports
         val existing = scanner.scanApkLaunches(dir).map { it.packageName }.toSet()
         val initialChecked = allApps.indices.filter { allApps[it].second in existing }.toSet()

@@ -7,12 +7,17 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Environment
 import android.os.StrictMode
+import android.provider.Settings
 import androidx.core.content.FileProvider
 import java.io.File
 
 class ApkLauncher(private val context: Context) {
 
     var debugLog: (String) -> Unit = {}
+
+    companion object {
+        const val VIRTUAL_TV_SETTINGS_PACKAGE = "cannoli.virtual.tv_settings"
+    }
 
     enum class DataKind { NONE, SAF, PROVIDER, PATH }
 
@@ -25,8 +30,12 @@ class ApkLauncher(private val context: Context) {
     )
 
     fun launch(packageName: String): LaunchResult {
-        val intent = context.packageManager.getLaunchIntentForPackage(packageName)
-            ?: return LaunchResult.AppNotInstalled(packageName)
+        val intent = if (packageName == VIRTUAL_TV_SETTINGS_PACKAGE) {
+            Intent(Settings.ACTION_SETTINGS)
+        } else {
+            context.packageManager.getLaunchIntentForPackage(packageName)
+                ?: return LaunchResult.AppNotInstalled(packageName)
+        }
 
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
