@@ -1353,8 +1353,20 @@ class LibretroActivity : ComponentActivity() {
         } catch (_: Exception) { "" }
         if (versionFile.exists() && versionFile.readText().trim() == currentVersion) return
         destDir.mkdirs()
+        purgeSlangShaders(destDir)
         copyAssetDir("shaders", destDir)
         versionFile.writeText(currentVersion)
+    }
+
+    private fun purgeSlangShaders(root: File) {
+        if (!root.isDirectory) return
+        val slangExts = setOf("slang", "slangp")
+        root.walkBottomUp().forEach { f ->
+            when {
+                f.isFile && f.extension.lowercase(java.util.Locale.ROOT) in slangExts -> f.delete()
+                f.isDirectory && f != root && f.listFiles()?.isEmpty() == true -> f.delete()
+            }
+        }
     }
 
     private fun copyAssetDir(assetPath: String, destDir: File) {
