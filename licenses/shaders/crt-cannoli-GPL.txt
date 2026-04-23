@@ -1,0 +1,3 @@
+Derivative of crt-easymode by EasyMode.
+Licensed under the GNU General Public License.
+See GPL-2.0.txt for the full license text.
