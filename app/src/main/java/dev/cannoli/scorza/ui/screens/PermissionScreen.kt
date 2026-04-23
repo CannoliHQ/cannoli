@@ -32,7 +32,7 @@ fun PermissionScreen() {
         verticalArrangement = Arrangement.Center
     ) {
         Image(
-            painter = painterResource(R.drawable.cannoli_nobg),
+            painter = painterResource(R.drawable.logo),
             contentDescription = null,
             modifier = Modifier.size(128.dp)
         )

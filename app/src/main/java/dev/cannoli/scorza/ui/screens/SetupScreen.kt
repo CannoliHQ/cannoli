@@ -65,7 +65,7 @@ fun SetupScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Image(
-                    painter = painterResource(R.drawable.cannoli_nobg),
+                    painter = painterResource(R.drawable.logo),
                     contentDescription = null,
                     modifier = Modifier.size(64.dp)
                 )
