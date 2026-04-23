@@ -116,6 +116,7 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var inputHandler: InputHandler
     private lateinit var atomicRename: AtomicRename
+    private val isTv: Boolean by lazy { packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) }
 
     private val screenStack = mutableStateListOf<LauncherScreen>(LauncherScreen.SystemList)
     private val currentScreen: LauncherScreen get() = screenStack.lastOrNull() ?: LauncherScreen.SystemList
@@ -719,12 +720,16 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (event.keyCode == KeyEvent.KEYCODE_BACK) {
-            if (!dev.cannoli.scorza.input.InputHandler.isGamepadEvent(event)) {
-                if (screenStack.lastOrNull() is LauncherScreen.InputTester) {
-                    routeKeyToInputTester(event, down = event.action == KeyEvent.ACTION_DOWN)
+        if (!InputHandler.isGamepadEvent(event)) {
+            when (event.keyCode) {
+                KeyEvent.KEYCODE_BACK -> {
+                    if (screenStack.lastOrNull() is LauncherScreen.InputTester) {
+                        routeKeyToInputTester(event, down = event.action == KeyEvent.ACTION_DOWN)
+                    } else if (isTv && event.action == KeyEvent.ACTION_DOWN && permissionGranted) {
+                        inputHandler.onBack()
+                    }
+                    return true
                 }
-                return true
             }
         }
         return super.dispatchKeyEvent(event)
@@ -747,6 +752,13 @@ class MainActivity : ComponentActivity() {
             return true
         }
         lastKeyRepeatCount = event.repeatCount
+        if (isTv && !InputHandler.isGamepadEvent(event)) {
+            when (keyCode) {
+                KeyEvent.KEYCODE_MEDIA_REWIND -> { inputHandler.onWest(); return true }
+                KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> { inputHandler.onNorth(); return true }
+                KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> { inputHandler.onStart(); return true }
+            }
+        }
         if (inputHandler.handleKeyEvent(event)) {
             return true
         }
