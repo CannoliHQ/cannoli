@@ -77,7 +77,7 @@
       { "package": "me.magnum.melondualds", "action": "me.magnum.melonds.LAUNCH_ROM", "extraKey": "uri", "extraKind": "provider" },
       { "package": "me.magnum.melonds.nightly", "action": "me.magnum.melonds.nightly.LAUNCH_ROM", "extraKey": "uri", "extraKind": "provider" },
       { "package": "com.hydra.noods", "extraKey": "LaunchPath", "extraKind": "path" },
-      { "package": "com.dsemu.drastic", "data": "provider" },
+      { "package": "com.dsemu.drastic", "action": "android.intent.action.VIEW", "data": "path" },
       { "package": "com.sky.SkyEmu", "action": "android.intent.action.VIEW", "data": "provider" }
     ]
   },

@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Environment
+import android.os.StrictMode
 import androidx.core.content.FileProvider
 import java.io.File
 
@@ -67,7 +68,7 @@ class ApkLauncher(private val context: Context) {
 
         if (config.data != DataKind.NONE) {
             val uri = buildUri(packageName, romFile, config.data, grantOnExtra = false, intent)
-            intent.data = uri
+            intent.setDataAndType(uri, "*/*")
             if (config.data == DataKind.PROVIDER) {
                 intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
@@ -84,6 +85,11 @@ class ApkLauncher(private val context: Context) {
         logIntent(intent)
 
         val opts = ActivityOptions.makeCustomAnimation(context, 0, 0).toBundle()
+        val previousVmPolicy = if (config.data == DataKind.PATH) {
+            val current = StrictMode.getVmPolicy()
+            StrictMode.setVmPolicy(StrictMode.VmPolicy.Builder().build())
+            current
+        } else null
         return try {
             context.startActivity(intent, opts)
             debugLog("  -> startActivity succeeded")
@@ -91,6 +97,8 @@ class ApkLauncher(private val context: Context) {
         } catch (e: Exception) {
             debugLog("  -> startActivity failed: ${e.javaClass.simpleName}: ${e.message}")
             LaunchResult.Error(e.message ?: "Failed to launch emulator")
+        } finally {
+            previousVmPolicy?.let { StrictMode.setVmPolicy(it) }
         }
     }
 
