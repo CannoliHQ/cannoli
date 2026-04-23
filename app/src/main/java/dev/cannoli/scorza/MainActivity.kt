@@ -1,6 +1,7 @@
 package dev.cannoli.scorza
 
 import android.Manifest
+import android.app.ActivityManager
 import android.app.ActivityOptions
 import android.content.Context
 import android.content.Intent
@@ -403,6 +404,11 @@ class MainActivity : ComponentActivity() {
             splashScreen.setOnExitAnimationListener { it.remove() }
         }
         super.onCreate(savedInstanceState)
+
+        @Suppress("DEPRECATION")
+        setTaskDescription(
+            ActivityManager.TaskDescription(getString(R.string.app_name), R.mipmap.ic_launcher)
+        )
 
         hideSystemUI()
 
