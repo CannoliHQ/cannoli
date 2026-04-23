@@ -1,7 +1,8 @@
 {
   "inspiration": [
     {"name":  "Hallie", "detail":  "My beautiful wife who makes me better in every way"},
-    { "name": "Shaun Inman", "detail": "MinUI" }
+    { "name": "Shaun Inman", "detail": "MinUI" },
+    {"name":  "Abraham McCampbell", "detail":  "Cannoli Logo"}
   ],
   "fonts": [
     { "name": "M+ Fonts Project", "what": "M PLUS 1 Code", "license": "OFL" },
@@ -34,11 +35,16 @@
     { "name": "SwanStation", "id": "swanstation", "what": "PlayStation", "license": "GPLv3" }
   ],
   "shaders": [
+    { "name": "EasyMode", "shader": "crt-aperture", "license": "GPL" },
+    { "name": "Cannoli (based on EasyMode)", "shader": "crt-cannoli", "license": "GPL" },
     { "name": "EasyMode", "shader": "crt-easymode", "license": "GPL" },
-    { "name": "Themaister", "shader": "sharp-bilinear", "license": "Public domain" },
-    { "name": "hunterk", "shader": "scanline-fract", "license": "Public domain" },
-    { "name": "SoltanGris42 / metallic77", "shader": "zfast-crt", "license": "GPLv2" },
-    { "name": "SoltanGris42", "shader": "zfast-lcd", "license": "GPLv2" },
-    { "name": "Gigaherz", "shader": "lcd3x", "license": "Public domain" }
+    { "name": "cgwg / Themaister / DOLLS", "shader": "crt-geom", "license": "GPLv2" },
+    { "name": "Timothy Lottes / hunterk", "shader": "crt-lottes-fast", "license": "Public domain" },
+    { "name": "Themaister", "shader": "dot", "license": "Public domain" },
+    { "name": "Gigaherz", "shader": "lcd3x", "license": "Public domain" },
+    { "name": "hunterk", "shader": "scanline", "license": "Public domain" },
+    { "name": "rsn8887", "shader": "sharp-bilinear-simple", "license": "Public domain" },
+    { "name": "SoltanGris42", "shader": "zfast-crt", "license": "GPLv2" },
+    { "name": "SoltanGris42", "shader": "zfast-lcd", "license": "GPLv2" }
   ]
 }
