@@ -11,7 +11,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -97,7 +96,7 @@ private fun DrawScope.drawDiagram(
     drawShoulderPill(p(76f, 8f), unit, "R1", fill("btn_r"), outline, label("btn_r"), textMeasurer)
 
     val dpadCenter = p(22f, 26f)
-    drawDpad(dpadCenter, unit, input, idle, highlight, outline)
+    drawDpad(dpadCenter, unit, input, idle, highlight)
 
     val faceCenter = p(78f, 26f)
     drawFaceButtons(faceCenter, unit, input, labels, idle, highlight, outline, textColor, pressedTextColor, textMeasurer)
@@ -150,7 +149,7 @@ private fun DrawScope.drawCenterPill(
 
 private fun DrawScope.drawDpad(
     center: Offset, unit: Float, input: DiagramInput,
-    idle: Color, highlight: Color, outline: Color,
+    idle: Color, highlight: Color,
 ) {
     val armLen = 4f * unit
     val thickness = 3f * unit

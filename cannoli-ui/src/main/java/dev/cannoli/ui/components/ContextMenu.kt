@@ -14,13 +14,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
-import dev.cannoli.ui.R
 import dev.cannoli.ui.ButtonStyle
-import dev.cannoli.ui.components.BottomBar
-import dev.cannoli.ui.components.LegendPill
-import dev.cannoli.ui.components.screenPadding
-import dev.cannoli.ui.components.footerReservation
+import dev.cannoli.ui.R
 
 /**
  * Full-screen dark overlay container with centered content and a bottom bar.

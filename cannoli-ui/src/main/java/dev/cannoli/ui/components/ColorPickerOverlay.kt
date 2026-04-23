@@ -7,9 +7,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -25,21 +25,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import dev.cannoli.ui.theme.Spacing
-import dev.cannoli.ui.theme.Radius
 import androidx.compose.ui.unit.sp
-import dev.cannoli.ui.R
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.KEY_BACKSPACE
 import dev.cannoli.ui.KEY_ENTER
+import dev.cannoli.ui.R
 import dev.cannoli.ui.START_GLYPH
-import dev.cannoli.ui.components.BottomBar
-import dev.cannoli.ui.components.ScreenTitle
-import dev.cannoli.ui.components.screenPadding
-import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.theme.COLOR_PRESETS
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliTypography
+import dev.cannoli.ui.theme.Radius
+import dev.cannoli.ui.theme.Spacing
 
 const val COLOR_GRID_COLS = 4
 

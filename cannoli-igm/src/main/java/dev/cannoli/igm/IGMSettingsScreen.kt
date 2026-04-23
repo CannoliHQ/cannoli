@@ -11,11 +11,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import dev.cannoli.ui.ButtonStyle
-import dev.cannoli.ui.theme.Spacing
 import androidx.compose.ui.unit.sp
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.List
@@ -23,12 +20,13 @@ import dev.cannoli.ui.components.PillRowKeyValue
 import dev.cannoli.ui.components.PillRowText
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
+import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.components.pillInternalH
 import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.screenPadding
-import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliTypography
+import dev.cannoli.ui.theme.Spacing
 
 private val verticalPadding = 6.dp
 
@@ -42,8 +40,7 @@ fun IGMSettingsScreen(
     coreInfo: String = "",
     description: String? = null,
     fontSize: TextUnit = 22.sp,
-    lineHeight: TextUnit = 32.sp,
-    buttonStyle: ButtonStyle = ButtonStyle()
+    lineHeight: TextUnit = 32.sp
 ) {
     val typo = LocalCannoliTypography.current
     val itemHeight = pillItemHeight(lineHeight, verticalPadding)

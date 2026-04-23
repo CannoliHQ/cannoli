@@ -1,6 +1,7 @@
 package dev.cannoli.scorza.libretro
 
 import android.graphics.Bitmap
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -8,11 +9,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
@@ -22,7 +21,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -62,9 +60,9 @@ import dev.cannoli.ui.components.OsdPill
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.StatusBar
+import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.components.pillInternalH
 import dev.cannoli.ui.components.screenPadding
-import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliFont
 import dev.cannoli.ui.theme.LocalCannoliTypography
@@ -72,6 +70,7 @@ import dev.cannoli.ui.theme.LocalScaleFactor
 import dev.cannoli.ui.theme.Radius
 import dev.cannoli.ui.theme.Spacing
 import dev.cannoli.ui.theme.buildCannoliTypography
+import kotlinx.coroutines.delay
 
 data class GameInfo(
     val coreName: String,
@@ -307,12 +306,10 @@ fun LibretroScreen(
                     coreInfo = coreInfo,
                     description = description,
                     fontSize = igmFontSize,
-                    lineHeight = igmLineHeight,
-                    buttonStyle = labels
+                    lineHeight = igmLineHeight
                 )
             }
             is IGMScreen.Info -> {
-                val colors = LocalCannoliColors.current
                 fun stripRoot(path: String): String {
                     if (gameInfo.rootPrefix.isNotEmpty() && path.startsWith(gameInfo.rootPrefix)) {
                         return path.removePrefix(gameInfo.rootPrefix).removePrefix("/")
@@ -393,8 +390,7 @@ fun LibretroScreen(
                     bottomBarLeft = listOf(labels.back to stringResource(R.string.label_back)),
                     bottomBarRight = listOf(labels.confirm to stringResource(R.string.label_select)),
                     fontSize = igmFontSize,
-                    lineHeight = igmLineHeight,
-                    buttonStyle = labels
+                    lineHeight = igmLineHeight
                 )
             }
             is IGMScreen.Guide -> {
@@ -439,8 +435,7 @@ fun LibretroScreen(
                     bottomBarRight = listOf(labels.west to filterLabel, labels.confirm to stringResource(R.string.label_details)),
                     coreInfo = screen.status,
                     fontSize = igmFontSize,
-                    lineHeight = igmLineHeight,
-                    buttonStyle = labels
+                    lineHeight = igmLineHeight
                 )
             }
             is IGMScreen.AchievementDetail -> {

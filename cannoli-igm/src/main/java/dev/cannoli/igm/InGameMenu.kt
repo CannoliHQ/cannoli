@@ -33,24 +33,24 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.DPAD_HORIZONTAL
-import dev.cannoli.ui.theme.Spacing
-import dev.cannoli.ui.theme.Radius
-import androidx.compose.ui.unit.sp
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.List
 import dev.cannoli.ui.components.PillRowKeyValue
 import dev.cannoli.ui.components.PillRowText
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
+import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.screenPadding
-import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.theme.GrayText
 import dev.cannoli.ui.theme.PolaroidDark
 import dev.cannoli.ui.theme.PolaroidInactive
 import dev.cannoli.ui.theme.PolaroidSelect
+import dev.cannoli.ui.theme.Radius
+import dev.cannoli.ui.theme.Spacing
 
 
 private val verticalPadding = 6.dp

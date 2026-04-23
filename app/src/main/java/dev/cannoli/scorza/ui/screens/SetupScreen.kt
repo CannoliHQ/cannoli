@@ -26,8 +26,8 @@ import dev.cannoli.ui.DPAD_HORIZONTAL
 import dev.cannoli.ui.START_GLYPH
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.PillRowKeyValue
-import dev.cannoli.ui.components.screenPadding
 import dev.cannoli.ui.components.footerReservation
+import dev.cannoli.ui.components.screenPadding
 import dev.cannoli.ui.theme.GrayText
 import dev.cannoli.ui.theme.LocalCannoliTypography
 import dev.cannoli.ui.theme.Spacing

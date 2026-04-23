@@ -45,9 +45,9 @@ import dev.cannoli.ui.components.List
 import dev.cannoli.ui.components.PillRowText
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
+import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.screenPadding
-import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.Radius
 import dev.cannoli.ui.theme.Spacing
