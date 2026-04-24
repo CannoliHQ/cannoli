@@ -698,6 +698,7 @@ class LibretroActivity : ComponentActivity() {
 
     private val triggerL2HeldDevices = mutableSetOf<Int>()
     private val triggerR2HeldDevices = mutableSetOf<Int>()
+    private val portConsumedKeys = Array(LibretroRunner.MAX_PORTS) { mutableSetOf<Int>() }
     private val menuRepeatHandler = Handler(Looper.getMainLooper())
     private val menuRepeatDelay = 400L
     private val menuRepeatInterval = 80L
@@ -900,8 +901,10 @@ class LibretroActivity : ComponentActivity() {
             return true
         }
         val port = controllerManager.getPortForDeviceId(event.deviceId) ?: 0
+        if (isSyntheticTriggerHeld(event.deviceId, keyCode)) return true
         val portKeys = controllerManager.portPressedKeys[port]
         portKeys.remove(keyCode)
+        portConsumedKeys[port].remove(keyCode)
 
         if (holdingFf) {
             val holdChord = shortcuts[ShortcutAction.HOLD_FF]
@@ -946,6 +949,12 @@ class LibretroActivity : ComponentActivity() {
         } else pref
     }
 
+    private fun isSyntheticTriggerHeld(deviceId: Int, keyCode: Int): Boolean = when (keyCode) {
+        KeyEvent.KEYCODE_BUTTON_L2 -> deviceId in triggerL2HeldDevices
+        KeyEvent.KEYCODE_BUTTON_R2 -> deviceId in triggerR2HeldDevices
+        else -> false
+    }
+
     private fun syncSyntheticTrigger(
         deviceId: Int,
         port: Int,
@@ -962,6 +971,7 @@ class LibretroActivity : ComponentActivity() {
             held.remove(deviceId)
             val portKeys = controllerManager.portPressedKeys[port]
             portKeys.remove(keyCode)
+            portConsumedKeys[port].remove(keyCode)
             if (holdingFf) {
                 val holdChord = shortcuts[ShortcutAction.HOLD_FF]
                 if (holdChord != null && !portKeys.containsAll(holdChord)) {
@@ -981,9 +991,11 @@ class LibretroActivity : ComponentActivity() {
                 keyCode == KeyEvent.KEYCODE_BACK ||
                 keyCode == menuCode
         if (isMenuKey && mappedMask == null) { openMenu(); return true }
+        if (isSyntheticTriggerHeld(event.deviceId, keyCode)) return true
         val portKeys = controllerManager.portPressedKeys[port]
         val isNewPress = portKeys.add(keyCode)
         if (isNewPress) checkShortcuts(port)
+        if (keyCode in portConsumedKeys[port]) return true
         val mask = mappedMask ?: return super.onKeyDown(keyCode, event)
         controllerManager.portInputMasks[port] = controllerManager.portInputMasks[port] or mask
         runner.setInput(port, controllerManager.portInputMasks[port])
@@ -992,8 +1004,10 @@ class LibretroActivity : ComponentActivity() {
 
     private fun checkShortcuts(port: Int) {
         val portKeys = controllerManager.portPressedKeys[port]
+        val consumed = portConsumedKeys[port]
         for ((action, chord) in shortcuts) {
             if (chord.isEmpty() || !portKeys.containsAll(chord)) continue
+            if (chord.any { it in consumed }) continue
             when (action) {
                 ShortcutAction.SAVE_STATE -> {
                     if (stateBasePath.isNotEmpty()) {
@@ -1058,9 +1072,14 @@ class LibretroActivity : ComponentActivity() {
                     }
                 }
             }
-            portKeys.clear()
-            controllerManager.portInputMasks[port] = 0
-            runner.setInput(port, 0)
+            consumed.addAll(chord)
+            var inputMask = controllerManager.portInputMasks[port]
+            val portInput = controllerManager.portInputs[port]
+            for (key in chord) {
+                portInput.keyCodeToRetroMask(key)?.let { inputMask = inputMask and it.inv() }
+            }
+            controllerManager.portInputMasks[port] = inputMask
+            runner.setInput(port, inputMask)
             break
         }
     }
@@ -1087,6 +1106,13 @@ class LibretroActivity : ComponentActivity() {
         menuHeldKey = 0
         applyProfileToAllPorts(profileManager.readControls(currentProfileName))
         controllerManager.resetAllInput()
+        triggerL2HeldDevices.clear()
+        triggerR2HeldDevices.clear()
+        for (set in portConsumedKeys) set.clear()
+        if (holdingFf) {
+            holdingFf = false
+            setFastForward(false)
+        }
         for (p in 0 until LibretroRunner.MAX_PORTS) runner.setInput(p, 0)
         renderer.paused = false
         runner.resumeAudio()
