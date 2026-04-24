@@ -107,6 +107,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var settingsViewModel: SettingsViewModel
     private val inputTesterViewModel = dev.cannoli.scorza.ui.viewmodel.InputTesterViewModel()
     private lateinit var controllerManager: dev.cannoli.scorza.input.ControllerManager
+    private lateinit var inputTesterController: dev.cannoli.scorza.input.InputTesterController
     private lateinit var updateManager: dev.cannoli.scorza.updater.UpdateManager
 
     private lateinit var retroArchLauncher: RetroArchLauncher
@@ -682,7 +683,7 @@ class MainActivity : ComponentActivity() {
             when (event.keyCode) {
                 KeyEvent.KEYCODE_BACK -> {
                     if (screenStack.lastOrNull() is LauncherScreen.InputTester) {
-                        routeKeyToInputTester(event, down = event.action == KeyEvent.ACTION_DOWN)
+                        inputTesterController.dispatchKey(event, down = event.action == KeyEvent.ACTION_DOWN)
                     } else if (isTv && event.action == KeyEvent.ACTION_DOWN && permissionGranted) {
                         inputHandler.onBack()
                     }
@@ -699,7 +700,7 @@ class MainActivity : ComponentActivity() {
             return true
         }
         if (screenStack.lastOrNull() is LauncherScreen.InputTester) {
-            routeKeyToInputTester(event, down = true)
+            inputTesterController.dispatchKey(event, down = true)
             return true
         }
         if (handleBindingKeyDown(keyCode)) {
@@ -725,7 +726,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
         if (screenStack.lastOrNull() is LauncherScreen.InputTester) {
-            routeKeyToInputTester(event, down = false)
+            inputTesterController.dispatchKey(event, down = false)
             return true
         }
         if (inputHandler.resolveButton(event) == "btn_select") {
@@ -800,155 +801,11 @@ class MainActivity : ComponentActivity() {
         }
 
         if (screenStack.lastOrNull() is LauncherScreen.InputTester) {
-            val deviceId = event.deviceId
-            val port = controllerManager.getPortForDeviceId(deviceId) ?: 0
-            val name = event.device?.name ?: getString(R.string.input_tester_device_unknown)
-            val leftX = event.getAxisValue(android.view.MotionEvent.AXIS_X)
-            val leftY = event.getAxisValue(android.view.MotionEvent.AXIS_Y)
-            val rightX = event.getAxisValue(android.view.MotionEvent.AXIS_Z)
-            val rightY = event.getAxisValue(android.view.MotionEvent.AXIS_RZ)
-            val leftTrigger = maxOf(
-                event.getAxisValue(android.view.MotionEvent.AXIS_LTRIGGER),
-                event.getAxisValue(android.view.MotionEvent.AXIS_BRAKE),
-            )
-            val rightTrigger = maxOf(
-                event.getAxisValue(android.view.MotionEvent.AXIS_RTRIGGER),
-                event.getAxisValue(android.view.MotionEvent.AXIS_GAS),
-            )
-            val hatX = event.getAxisValue(android.view.MotionEvent.AXIS_HAT_X)
-            val hatY = event.getAxisValue(android.view.MotionEvent.AXIS_HAT_Y)
-            inputTesterViewModel.onMotion(
-                port = port, deviceId = deviceId, deviceName = name,
-                leftX = leftX, leftY = leftY, rightX = rightX, rightY = rightY,
-                leftTrigger = leftTrigger, rightTrigger = rightTrigger,
-                hatX = hatX, hatY = hatY,
-            )
-
-            if (testerSelectHeld) {
-                val dir = when {
-                    hatX < -0.5f || leftX < -0.5f -> -1
-                    hatX >  0.5f || leftX >  0.5f ->  1
-                    else -> 0
-                }
-                if (dir != 0 && dir != testerHatChordState) {
-                    releaseAllTesterKeys(except = setOf("btn_select"))
-                    val newProfile = inputTesterViewModel.cycleProfile(
-                        forward = dir == 1,
-                        keepPressed = setOf("btn_select"),
-                    )
-                    loadTesterProfile(newProfile)
-                }
-                testerHatChordState = dir
-            } else {
-                testerHatChordState = 0
-            }
-
+            inputTesterController.dispatchMotion(event)
             return true
         }
 
         return super.dispatchGenericMotionEvent(event)
-    }
-
-    private var testerProfileMap: Map<Int, String> = emptyMap()
-    private val testerPressedKeycodes = mutableMapOf<Int, String?>()
-    private var testerSelectHeld = false
-    private var testerStartHeld = false
-    private var testerHatChordState: Int = 0
-    private val testerExitHandler = android.os.Handler(android.os.Looper.getMainLooper())
-    private val testerExitRunnable = Runnable { inputTesterViewModel.requestExit() }
-
-    private fun updateTesterExitCountdown() {
-        if (testerSelectHeld && testerStartHeld) {
-            testerExitHandler.removeCallbacks(testerExitRunnable)
-            testerExitHandler.postDelayed(testerExitRunnable, 1250L)
-        } else {
-            testerExitHandler.removeCallbacks(testerExitRunnable)
-        }
-    }
-
-    private fun loadTesterProfile(name: String) {
-        val controls = profileManager.readControls(name)
-        val profileInverse = controls.entries.associate { (prefKey, keyCode) -> keyCode to prefKey }
-        testerProfileMap = dev.cannoli.scorza.input.InputHandler.DEFAULT_KEY_MAP + profileInverse
-    }
-
-    private fun initTesterProfiles() {
-        val profiles = profileManager.listProfiles()
-        val initial = profiles.firstOrNull() ?: dev.cannoli.scorza.input.ProfileManager.NAVIGATION
-        inputTesterViewModel.setProfiles(profiles, initial)
-        loadTesterProfile(initial)
-        testerPressedKeycodes.clear()
-        testerSelectHeld = false
-        testerStartHeld = false
-        testerExitHandler.removeCallbacks(testerExitRunnable)
-    }
-
-    private fun releaseAllTesterKeys(except: Set<String> = emptySet()) {
-        val snapshot = testerPressedKeycodes.toMap()
-        for ((kc, resolved) in snapshot) {
-            if (resolved in except) continue
-            val keyName = KeyEvent.keyCodeToString(kc).removePrefix("KEYCODE_")
-            inputTesterViewModel.onKeyUp(0, kc, keyName, -1, "", resolved)
-            testerPressedKeycodes.remove(kc)
-        }
-    }
-
-    private fun routeKeyToInputTester(event: KeyEvent, down: Boolean) {
-        val device = event.device
-        val deviceId = event.deviceId
-        val port = if (device != null) controllerManager.getPortForDeviceId(deviceId) ?: 0 else 0
-        val name = device?.name ?: getString(R.string.input_tester_device_keyboard)
-        val keyName = KeyEvent.keyCodeToString(event.keyCode).removePrefix("KEYCODE_")
-        val navButton = inputHandler.resolveButton(event)
-
-        if (down) {
-            val isRepeat = event.repeatCount > 0
-            if (navButton == "btn_select" && !testerSelectHeld) {
-                testerSelectHeld = true
-                updateTesterExitCountdown()
-            }
-            if (navButton == "btn_start" && !testerStartHeld) {
-                testerStartHeld = true
-                updateTesterExitCountdown()
-            }
-            if (!isRepeat && testerSelectHeld && (navButton == "btn_left" || navButton == "btn_right")) {
-                releaseAllTesterKeys(except = setOf("btn_select"))
-                val newProfile = inputTesterViewModel.cycleProfile(
-                    forward = navButton == "btn_right",
-                    keepPressed = setOf("btn_select"),
-                )
-                loadTesterProfile(newProfile)
-            }
-            val resolved = testerProfileMap[event.keyCode]
-            testerPressedKeycodes[event.keyCode] = resolved
-            inputTesterViewModel.onKeyDown(port, event.keyCode, keyName, deviceId, name, resolved)
-            if (!isRepeat) inputTesterViewModel.setActivePort(port)
-        } else {
-            if (navButton == "btn_select" && testerSelectHeld) {
-                testerSelectHeld = false
-                updateTesterExitCountdown()
-            }
-            if (navButton == "btn_start" && testerStartHeld) {
-                testerStartHeld = false
-                updateTesterExitCountdown()
-            }
-            val resolved = testerPressedKeycodes.remove(event.keyCode)
-            inputTesterViewModel.onKeyUp(port, event.keyCode, keyName, deviceId, name, resolved)
-        }
-        refreshInputTesterPorts()
-    }
-
-    private fun refreshInputTesterPorts() {
-        val slots = controllerManager.slots
-        val ports = slots.indices.mapNotNull { i ->
-            val slot = slots[i] ?: return@mapNotNull null
-            dev.cannoli.scorza.ui.viewmodel.DeviceInfo(
-                port = i,
-                deviceId = controllerManager.getDeviceIdForPort(i) ?: -1,
-                name = slot.name,
-            )
-        }
-        inputTesterViewModel.setConnectedPorts(ports)
     }
 
     private fun wouldStealNavConfirm(screen: LauncherScreen.ControlBinding, prefKey: String, keyCode: Int): Boolean {
@@ -1054,6 +911,14 @@ class MainActivity : ComponentActivity() {
         controllerManager.initialize()
         (getSystemService(INPUT_SERVICE) as android.hardware.input.InputManager)
             .registerInputDeviceListener(controllerManager, android.os.Handler(android.os.Looper.getMainLooper()))
+        inputTesterController = dev.cannoli.scorza.input.InputTesterController(
+            viewModel = inputTesterViewModel,
+            controllerManager = controllerManager,
+            profileManager = profileManager,
+            inputHandler = inputHandler,
+            unknownDeviceName = getString(R.string.input_tester_device_unknown),
+            keyboardDeviceName = getString(R.string.input_tester_device_keyboard),
+        )
         gameListViewModel.showFavoriteStars = settings.contentMode != ContentMode.FIVE_GAME_HANDHELD
         settingsViewModel.reinitialize(root, packageManager, packageName, collectionManager)
         updateManager = dev.cannoli.scorza.updater.UpdateManager(this, settings)
@@ -1569,9 +1434,7 @@ class MainActivity : ComponentActivity() {
                                 "profiles" -> pushScreen(LauncherScreen.ProfileList(profiles = profileManager.listProfiles()))
                                 "shortcuts" -> pushScreen(LauncherScreen.ShortcutBinding(shortcuts = globalOverrides.readShortcuts()))
                                 "input_tester" -> {
-                                    inputTesterViewModel.reset()
-                                    initTesterProfiles()
-                                    refreshInputTesterPorts()
+                                    inputTesterController.enter()
                                     pushScreen(LauncherScreen.InputTester)
                                 }
                                 "core_mapping" -> {
