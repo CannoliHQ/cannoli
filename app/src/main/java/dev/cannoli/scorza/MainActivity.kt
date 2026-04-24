@@ -106,6 +106,9 @@ class MainActivity : ComponentActivity() {
     private lateinit var gameListViewModel: GameListViewModel
     private lateinit var settingsViewModel: SettingsViewModel
     private val inputTesterViewModel = dev.cannoli.scorza.ui.viewmodel.InputTesterViewModel()
+    private val setupCoordinator: dev.cannoli.scorza.setup.SetupCoordinator by lazy {
+        dev.cannoli.scorza.setup.SetupCoordinator(this, settings, ioScope)
+    }
     private lateinit var controllerManager: dev.cannoli.scorza.input.ControllerManager
     private lateinit var inputTesterController: dev.cannoli.scorza.input.InputTesterController
     private lateinit var updateManager: dev.cannoli.scorza.updater.UpdateManager
@@ -446,86 +449,21 @@ class MainActivity : ComponentActivity() {
             settings.setupCompleted = true
             initializeApp()
         } else {
-            val detected = detectExistingCannoli()
+            val detected = setupCoordinator.detectExistingCannoli()
             if (detected != null) {
                 settings.sdCardRoot = detected
                 settings.setupCompleted = true
                 initializeApp()
             } else {
-                val volumes = detectStorageVolumes() + ("Custom" to "")
+                val volumes = setupCoordinator.detectStorageVolumes() + ("Custom" to "")
                 screenStack.clear()
                 screenStack.add(LauncherScreen.Setup(volumes = volumes))
             }
         }
     }
 
-    private fun detectExistingCannoli(): String? {
-        val volumes = detectStorageVolumes()
-        for ((_, path) in volumes.reversed()) {
-            val cannoli = File(path, "Cannoli")
-            if (cannoli.exists() && cannoli.isDirectory && File(cannoli, "Config/settings.json").exists()) {
-                return cannoli.absolutePath + "/"
-            }
-        }
-        return null
-    }
-
-    private fun detectStorageVolumes(): List<Pair<String, String>> {
-        val volumes = mutableListOf("Internal Storage" to "/storage/emulated/0/")
-        val sm = getSystemService(android.os.storage.StorageManager::class.java)
-        for (sv in sm.storageVolumes) {
-            if (sv.isPrimary) continue
-            val path = if (android.os.Build.VERSION.SDK_INT >= 30) {
-                sv.directory?.absolutePath
-            } else {
-                try { sv.javaClass.getMethod("getPath").invoke(sv) as? String } catch (_: Exception) { null }
-            } ?: continue
-            val label = sv.getDescription(this) ?: File(path).name
-            volumes.add(label to "$path/")
-        }
-        if (volumes.size == 1) {
-            val storageDir = File("/storage")
-            storageDir.listFiles()?.forEach { dir ->
-                if (dir.name != "emulated" && dir.name != "self" && dir.isDirectory && dir.canRead()) {
-                    volumes.add(dir.name to dir.absolutePath + "/")
-                }
-            }
-        }
-        return volumes
-    }
-
-    private var volumeMap: Map<String, String> = emptyMap()
-
-    private fun listDirectories(path: String): List<String> {
-        if (path == "/storage/") {
-            val volumes = detectStorageVolumes()
-            volumeMap = volumes.associate { (label, volPath) -> label to volPath }
-            return volumes.map { it.first }
-        }
-        val dir = java.io.File(path)
-        return dir.listFiles()
-            ?.filter { it.isDirectory && !it.isHidden }
-            ?.map { it.name }
-            ?.sortedWith(dev.cannoli.scorza.util.NaturalSort)
-            ?: emptyList()
-    }
-
-    private fun resolveDirectoryEntry(currentPath: String, entryName: String): String {
-        if (currentPath == "/storage/") {
-            return volumeMap[entryName] ?: "/storage/$entryName/"
-        }
-        return currentPath + entryName + "/"
-    }
-
-    private fun parentDirectory(path: String): String? {
-        val trimmed = path.trimEnd('/')
-        if (trimmed == "/storage") return null
-        if (volumeMap.values.any { it.trimEnd('/') == trimmed }) return "/storage/"
-        return if (trimmed.contains('/')) trimmed.substringBeforeLast('/') + "/" else null
-    }
-
     private fun pushDirectoryBrowser(purpose: BrowsePurpose, startPath: String) {
-        val entries = listDirectories(startPath)
+        val entries = setupCoordinator.listDirectories(startPath)
         screenStack.add(LauncherScreen.DirectoryBrowser(
             purpose = purpose,
             currentPath = startPath,
@@ -534,7 +472,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun onDirectoryBrowserResult(purpose: BrowsePurpose, path: String) {
-        val resolved = if (isVolumeRoot(path)) path + "Cannoli/" else path
+        val resolved = if (setupCoordinator.isVolumeRoot(path)) path + "Cannoli/" else path
         when (purpose) {
             BrowsePurpose.SD_ROOT -> {
                 settings.sdCardRoot = resolved
@@ -557,65 +495,31 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startInstalling(targetPath: String) {
-        val labels = listOf(
-            "Kneading the dough$ELLIPSIS",
-            "Rolling the shells$ELLIPSIS",
-            "Heating the oil$ELLIPSIS",
-            "Frying the shells$ELLIPSIS",
-            "Making the filling$ELLIPSIS",
-            "Piping the rigott$ELLIPSIS"
-        )
-
-        ioScope.launch {
-            val root = File(targetPath)
-            val coreInfo = dev.cannoli.scorza.scanner.CoreInfoRepository(assets, filesDir, File(applicationInfo.sourceDir).lastModified())
-            coreInfo.load()
-            val bundledCoresDir = LaunchManager.extractBundledCores(this@MainActivity)
-            platformResolver = PlatformResolver(root, assets, coreInfo, bundledCoresDir)
-            platformResolver.load()
-
-            collectionManager = CollectionManager(root)
-            recentlyPlayedManager = RecentlyPlayedManager(root)
-            orderingManager = OrderingManager(root)
-            val localScanner = FileScanner(root, platformResolver, collectionManager, assets)
-            localScanner.loadIgnoreExtensions()
-            localScanner.loadIgnoreFiles()
-
-            val overhead = 7
-            val dirCount = 18 + (platformResolver.getAllTags().size * 6)
-            val totalSteps = dirCount + overhead
-            var completed = 0
-
-            fun step() {
-                completed++
-                val p = completed.toFloat() / totalSteps
-                val labelIndex = (p * labels.size).toInt().coerceIn(0, labels.lastIndex)
-                val screen = screenStack.lastOrNull() as? LauncherScreen.Installing ?: return
-                screenStack[screenStack.lastIndex] = screen.copy(progress = p, statusLabel = labels[labelIndex])
-            }
-
-            localScanner.ensureDirectories { step() }
-
-            retroArchLauncher = RetroArchLauncher(this@MainActivity) { settings.retroArchPackage }; step()
-            emuLauncher = EmuLauncher(this@MainActivity); step()
-            apkLauncher = ApkLauncher(this@MainActivity); step()
-            installedCoreService = InstalledCoreService(this@MainActivity); step()
-            val lm = LaunchManager(this@MainActivity, settings, platformResolver, retroArchLauncher, emuLauncher, apkLauncher, installedCoreService); step()
-            lm.syncRetroArchAssets(root); step()
-            lm.syncRetroArchConfig(root); step()
-
-            this@MainActivity.scanner = localScanner
-            launchManager = lm
-
-            withContext(Dispatchers.Main) {
-                val screen = screenStack.lastOrNull() as? LauncherScreen.Installing ?: return@withContext
+        setupCoordinator.startInstalling(
+            targetPath = targetPath,
+            onProgress = { progress, label ->
+                val screen = screenStack.lastOrNull() as? LauncherScreen.Installing ?: return@startInstalling
+                screenStack[screenStack.lastIndex] = screen.copy(progress = progress, statusLabel = label)
+            },
+            onFinished = { services ->
+                platformResolver = services.platformResolver
+                collectionManager = services.collectionManager
+                recentlyPlayedManager = services.recentlyPlayedManager
+                orderingManager = services.orderingManager
+                scanner = services.scanner
+                retroArchLauncher = services.retroArchLauncher
+                emuLauncher = services.emuLauncher
+                apkLauncher = services.apkLauncher
+                installedCoreService = services.installedCoreService
+                launchManager = services.launchManager
+                val screen = screenStack.lastOrNull() as? LauncherScreen.Installing ?: return@startInstalling
                 screenStack[screenStack.lastIndex] = screen.copy(
                     progress = 1f,
                     statusLabel = "Cannoli is now ready to be garnished!",
                     finished = true
                 )
-            }
-        }
+            },
+        )
     }
 
     @Suppress("DEPRECATION")
@@ -1630,8 +1534,8 @@ class MainActivity : ComponentActivity() {
                         } else {
                             val entryIdx = screen.selectedIndex - if (hasSelect) 1 else 0
                             val folderName = screen.entries[entryIdx]
-                            val newPath = resolveDirectoryEntry(screen.currentPath, folderName)
-                            val newEntries = listDirectories(newPath)
+                            val newPath = setupCoordinator.resolveDirectoryEntry(screen.currentPath, folderName)
+                            val newEntries = setupCoordinator.listDirectories(newPath)
                             screenStack[screenStack.lastIndex] = LauncherScreen.DirectoryBrowser(
                                 purpose = screen.purpose,
                                 currentPath = newPath,
@@ -1795,9 +1699,9 @@ class MainActivity : ComponentActivity() {
                         screenStack.removeAt(screenStack.lastIndex)
                     }
                     is LauncherScreen.DirectoryBrowser -> {
-                        val parent = parentDirectory(screen.currentPath)
+                        val parent = setupCoordinator.parentDirectory(screen.currentPath)
                         if (parent != null) {
-                            val newEntries = listDirectories(parent)
+                            val newEntries = setupCoordinator.listDirectories(parent)
                             screenStack[screenStack.lastIndex] = LauncherScreen.DirectoryBrowser(
                                 purpose = screen.purpose,
                                 currentPath = parent,
@@ -3170,13 +3074,9 @@ class MainActivity : ComponentActivity() {
         dialogState.value = DialogState.None
         val screen = currentScreen
         if (screen is LauncherScreen.DirectoryBrowser && screen.currentPath == state.parentPath) {
-            val newEntries = listDirectories(screen.currentPath)
+            val newEntries = setupCoordinator.listDirectories(screen.currentPath)
             screenStack[screenStack.lastIndex] = screen.copy(entries = newEntries)
         }
-    }
-
-    private fun isVolumeRoot(path: String): Boolean {
-        return detectStorageVolumes().any { it.second == path }
     }
 
     private fun onRenameConfirm(state: DialogState.RenameInput) {
