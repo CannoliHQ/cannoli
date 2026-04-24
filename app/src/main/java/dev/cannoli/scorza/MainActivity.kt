@@ -238,21 +238,8 @@ class MainActivity : ComponentActivity() {
         screenStack.add(new)
     }
 
-    private fun saveScrollPosition(screen: LauncherScreen): LauncherScreen = when (screen) {
-        is LauncherScreen.CoreMapping -> screen.copy(scrollTarget = currentFirstVisible)
-        is LauncherScreen.CorePicker -> screen.copy(scrollTarget = currentFirstVisible)
-        is LauncherScreen.ColorList -> screen.copy(scrollTarget = currentFirstVisible)
-        is LauncherScreen.CollectionPicker -> screen.copy(scrollTarget = currentFirstVisible)
-        is LauncherScreen.ChildPicker -> screen.copy(scrollTarget = currentFirstVisible)
-        is LauncherScreen.AppPicker -> screen.copy(scrollTarget = currentFirstVisible)
-        is LauncherScreen.ProfileList -> screen.copy(scrollTarget = currentFirstVisible)
-        is LauncherScreen.ControlBinding -> screen.copy(scrollTarget = currentFirstVisible)
-        is LauncherScreen.ShortcutBinding -> screen.copy(scrollTarget = currentFirstVisible)
-        is LauncherScreen.Credits -> screen.copy(scrollTarget = currentFirstVisible)
-        is LauncherScreen.InstalledCores -> screen.copy(scrollTarget = currentFirstVisible)
-        is LauncherScreen.DirectoryBrowser -> screen.copy(scrollTarget = currentFirstVisible)
-        else -> screen
-    }
+    private fun saveScrollPosition(screen: LauncherScreen): LauncherScreen =
+        if (screen is LauncherScreen.ScrollableScreen) screen.withScroll(screen.selectedIndex, currentFirstVisible) else screen
 
     private fun pageJump(direction: Int) {
         val page = currentPageSize.coerceAtLeast(1)
@@ -262,24 +249,8 @@ class MainActivity : ComponentActivity() {
             LauncherScreen.SystemList -> systemListViewModel.state.value.let { it.items.size to it.selectedIndex }
             LauncherScreen.GameList -> gameListViewModel.state.value.let { it.games.size to it.selectedIndex }
             LauncherScreen.Settings -> settingsViewModel.state.value.let { it.categories.size to it.categoryIndex }
-            is LauncherScreen.CoreMapping -> screen.mappings.size to screen.selectedIndex
-            is LauncherScreen.CorePicker -> screen.cores.size to screen.selectedIndex
-            is LauncherScreen.ColorList -> screen.colors.size to screen.selectedIndex
-            is LauncherScreen.CollectionPicker -> screen.collections.size to screen.selectedIndex
-            is LauncherScreen.ChildPicker -> screen.collections.size to screen.selectedIndex
-            is LauncherScreen.AppPicker -> screen.apps.size to screen.selectedIndex
-            is LauncherScreen.ProfileList -> screen.profiles.size to screen.selectedIndex
-            is LauncherScreen.ControlBinding -> controlButtonCount to screen.selectedIndex
-            is LauncherScreen.ShortcutBinding -> ShortcutAction.entries.size to screen.selectedIndex
-            is LauncherScreen.Credits -> CREDITS.size to screen.selectedIndex
-            is LauncherScreen.InstalledCores -> screen.cores.size to screen.selectedIndex
-            is LauncherScreen.DirectoryBrowser -> {
-                val hasSelect = screen.currentPath != "/storage/"
-                (screen.entries.size + if (hasSelect) 1 else 0) to screen.selectedIndex
-            }
-            is LauncherScreen.InputTester,
-            is LauncherScreen.Setup,
-            is LauncherScreen.Installing -> return
+            is LauncherScreen.ScrollableScreen -> screen.itemCount to screen.selectedIndex
+            else -> return
         }
 
         if (itemCount == 0) return
@@ -317,21 +288,8 @@ class MainActivity : ComponentActivity() {
             LauncherScreen.SystemList -> systemListViewModel.jumpToIndex(newIdx, newScroll)
             LauncherScreen.GameList -> gameListViewModel.jumpToIndex(newIdx, newScroll)
             LauncherScreen.Settings -> settingsViewModel.setCategoryIndex(newIdx)
-            is LauncherScreen.CoreMapping -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
-            is LauncherScreen.CorePicker -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
-            is LauncherScreen.ColorList -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
-            is LauncherScreen.CollectionPicker -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
-            is LauncherScreen.ChildPicker -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
-            is LauncherScreen.AppPicker -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
-            is LauncherScreen.ProfileList -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
-            is LauncherScreen.ControlBinding -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
-            is LauncherScreen.ShortcutBinding -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
-            is LauncherScreen.Credits -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
-            is LauncherScreen.InstalledCores -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
-            is LauncherScreen.DirectoryBrowser -> screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = newIdx, scrollTarget = newScroll)
-            is LauncherScreen.InputTester,
-            is LauncherScreen.Setup,
-            is LauncherScreen.Installing -> {}
+            is LauncherScreen.ScrollableScreen -> screenStack[screenStack.lastIndex] = screen.withScroll(newIdx, newScroll)
+            else -> {}
         }
     }
 

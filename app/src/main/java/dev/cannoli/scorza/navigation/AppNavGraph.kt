@@ -35,6 +35,7 @@ import dev.cannoli.scorza.libretro.ControlsScreen
 import dev.cannoli.scorza.libretro.LibretroInput
 import dev.cannoli.scorza.ui.LocalPortraitMargin
 import dev.cannoli.scorza.ui.PortraitMarginState
+import dev.cannoli.scorza.ui.components.CREDITS
 import dev.cannoli.scorza.ui.components.CreditsOverlay
 import dev.cannoli.scorza.ui.components.DialogOverlay
 import dev.cannoli.scorza.ui.components.ListDialogScreen
@@ -81,28 +82,71 @@ import kotlinx.coroutines.flow.StateFlow
 enum class BrowsePurpose { SD_ROOT, ROM_DIRECTORY, SETUP }
 
 sealed class LauncherScreen {
+    interface ScrollableScreen {
+        val selectedIndex: Int
+        val scrollTarget: Int
+        val itemCount: Int
+        fun withScroll(selectedIndex: Int, scrollTarget: Int): LauncherScreen
+    }
+
     data object SystemList : LauncherScreen()
     data object GameList : LauncherScreen()
     data object Settings : LauncherScreen()
     data object InputTester : LauncherScreen()
-    data class CoreMapping(val mappings: List<CoreMappingEntry>, val allMappings: List<CoreMappingEntry> = mappings, val selectedIndex: Int = 0, val scrollTarget: Int = 0, val filter: Int = 0) : LauncherScreen()
-    data class CorePicker(val tag: String, val platformName: String, val cores: List<CorePickerOption>, val selectedIndex: Int = 0, val gamePath: String? = null, val scrollTarget: Int = 0, val activeIndex: Int = 0) : LauncherScreen()
-    data class ColorList(val colors: List<ColorEntry>, val selectedIndex: Int = 0, val scrollTarget: Int = 0) : LauncherScreen()
-    data class CollectionPicker(val gamePaths: List<String>, val title: String, val collections: List<String>, val displayNames: List<String> = emptyList(), val selectedIndex: Int = 0, val checkedIndices: Set<Int> = emptySet(), val initialChecked: Set<Int> = emptySet(), val scrollTarget: Int = 0) : LauncherScreen()
-    data class AppPicker(val type: String, val title: String, val apps: List<String>, val packages: List<String>, val selectedIndex: Int = 0, val checkedIndices: Set<Int> = emptySet(), val initialChecked: Set<Int> = emptySet(), val scrollTarget: Int = 0) : LauncherScreen()
-    data class ChildPicker(val collectionName: String, val collections: List<String>, val displayNames: List<String> = emptyList(), val selectedIndex: Int = 0, val checkedIndices: Set<Int> = emptySet(), val initialChecked: Set<Int> = emptySet(), val scrollTarget: Int = 0) : LauncherScreen()
-    data class ProfileList(val profiles: List<String> = emptyList(), val selectedIndex: Int = 0, val scrollTarget: Int = 0) : LauncherScreen()
-    data class ControlBinding(val selectedIndex: Int = 0, val scrollTarget: Int = 0, val controls: Map<String, Int> = emptyMap(), val listeningIndex: Int = -1, val listenCountdownMs: Int = 0, val profileName: String = ProfileManager.DEFAULT_GAME) : LauncherScreen()
-    data class ShortcutBinding(val selectedIndex: Int = 0, val scrollTarget: Int = 0, val shortcuts: Map<ShortcutAction, Set<Int>> = emptyMap(), val listening: Boolean = false, val heldKeys: Set<Int> = emptySet(), val countdownMs: Int = 0) : LauncherScreen()
-    data class Credits(val selectedIndex: Int = 0, val scrollTarget: Int = 0) : LauncherScreen()
-    data class InstalledCores(val cores: List<String> = emptyList(), val loading: Boolean = true, val selectedIndex: Int = 0, val scrollTarget: Int = 0, val title: String? = null) : LauncherScreen()
+    data class CoreMapping(val mappings: List<CoreMappingEntry>, val allMappings: List<CoreMappingEntry> = mappings, override val selectedIndex: Int = 0, override val scrollTarget: Int = 0, val filter: Int = 0) : LauncherScreen(), ScrollableScreen {
+        override val itemCount: Int get() = mappings.size
+        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
+    }
+    data class CorePicker(val tag: String, val platformName: String, val cores: List<CorePickerOption>, override val selectedIndex: Int = 0, val gamePath: String? = null, override val scrollTarget: Int = 0, val activeIndex: Int = 0) : LauncherScreen(), ScrollableScreen {
+        override val itemCount: Int get() = cores.size
+        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
+    }
+    data class ColorList(val colors: List<ColorEntry>, override val selectedIndex: Int = 0, override val scrollTarget: Int = 0) : LauncherScreen(), ScrollableScreen {
+        override val itemCount: Int get() = colors.size
+        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
+    }
+    data class CollectionPicker(val gamePaths: List<String>, val title: String, val collections: List<String>, val displayNames: List<String> = emptyList(), override val selectedIndex: Int = 0, val checkedIndices: Set<Int> = emptySet(), val initialChecked: Set<Int> = emptySet(), override val scrollTarget: Int = 0) : LauncherScreen(), ScrollableScreen {
+        override val itemCount: Int get() = collections.size
+        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
+    }
+    data class AppPicker(val type: String, val title: String, val apps: List<String>, val packages: List<String>, override val selectedIndex: Int = 0, val checkedIndices: Set<Int> = emptySet(), val initialChecked: Set<Int> = emptySet(), override val scrollTarget: Int = 0) : LauncherScreen(), ScrollableScreen {
+        override val itemCount: Int get() = apps.size
+        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
+    }
+    data class ChildPicker(val collectionName: String, val collections: List<String>, val displayNames: List<String> = emptyList(), override val selectedIndex: Int = 0, val checkedIndices: Set<Int> = emptySet(), val initialChecked: Set<Int> = emptySet(), override val scrollTarget: Int = 0) : LauncherScreen(), ScrollableScreen {
+        override val itemCount: Int get() = collections.size
+        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
+    }
+    data class ProfileList(val profiles: List<String> = emptyList(), override val selectedIndex: Int = 0, override val scrollTarget: Int = 0) : LauncherScreen(), ScrollableScreen {
+        override val itemCount: Int get() = profiles.size
+        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
+    }
+    data class ControlBinding(override val selectedIndex: Int = 0, override val scrollTarget: Int = 0, val controls: Map<String, Int> = emptyMap(), val listeningIndex: Int = -1, val listenCountdownMs: Int = 0, val profileName: String = ProfileManager.DEFAULT_GAME) : LauncherScreen(), ScrollableScreen {
+        override val itemCount: Int get() = LibretroInput().buttons.size
+        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
+    }
+    data class ShortcutBinding(override val selectedIndex: Int = 0, override val scrollTarget: Int = 0, val shortcuts: Map<ShortcutAction, Set<Int>> = emptyMap(), val listening: Boolean = false, val heldKeys: Set<Int> = emptySet(), val countdownMs: Int = 0) : LauncherScreen(), ScrollableScreen {
+        override val itemCount: Int get() = ShortcutAction.entries.size
+        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
+    }
+    data class Credits(override val selectedIndex: Int = 0, override val scrollTarget: Int = 0) : LauncherScreen(), ScrollableScreen {
+        override val itemCount: Int get() = CREDITS.size
+        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
+    }
+    data class InstalledCores(val cores: List<String> = emptyList(), val loading: Boolean = true, override val selectedIndex: Int = 0, override val scrollTarget: Int = 0, val title: String? = null) : LauncherScreen(), ScrollableScreen {
+        override val itemCount: Int get() = cores.size
+        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
+    }
     data class DirectoryBrowser(
         val purpose: BrowsePurpose,
         val currentPath: String,
         val entries: List<String> = emptyList(),
-        val selectedIndex: Int = 0,
-        val scrollTarget: Int = 0
-    ) : LauncherScreen()
+        override val selectedIndex: Int = 0,
+        override val scrollTarget: Int = 0
+    ) : LauncherScreen(), ScrollableScreen {
+        override val itemCount: Int get() = entries.size + if (currentPath != "/storage/") 1 else 0
+        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
+    }
     data class Setup(
         val volumes: List<Pair<String, String>> = emptyList(),
         val volumeIndex: Int = 0,
