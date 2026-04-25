@@ -1,18 +1,17 @@
 package dev.cannoli.scorza.db.importer
 
+import android.content.res.AssetManager
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
-import android.content.res.AssetManager
 import dev.cannoli.scorza.db.CannoliDatabase
-import dev.cannoli.scorza.db.importer.legacy.CollectionManager
-import dev.cannoli.scorza.db.importer.legacy.FileScanner
-import dev.cannoli.scorza.db.importer.legacy.OrderingManager
-import dev.cannoli.scorza.db.importer.legacy.RecentlyPlayedManager
+import dev.cannoli.scorza.library.ArtworkLookup
+import dev.cannoli.scorza.library.NameMapLookup
+import dev.cannoli.scorza.library.RomScanner
+import dev.cannoli.scorza.model.Collection
 import dev.cannoli.scorza.scanner.PlatformResolver
 import dev.cannoli.scorza.util.ScanLog
-import dev.cannoli.ui.STAR
-import org.json.JSONArray
 import java.io.File
+import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -35,13 +34,13 @@ class Importer(
     private val assets: AssetManager,
     private val onProgress: ImportProgress,
 ) {
-    private val collectionManager = CollectionManager(cannoliRoot)
-    private val recentlyPlayedManager = RecentlyPlayedManager(cannoliRoot)
-    private val orderingManager = OrderingManager(cannoliRoot)
-    private val scanner = FileScanner(cannoliRoot, platformResolver, collectionManager, assets, romDirectory).also {
-        it.loadIgnoreExtensions()
-        it.loadIgnoreFiles()
-    }
+    private val collectionsDir = File(cannoliRoot, "Collections")
+    private val collectionParentsFile = File(collectionsDir, "collection_parents.txt")
+    private val orderingDir = File(cannoliRoot, "Config/Ordering")
+    private val recentlyPlayedFile = File(cannoliRoot, "Config/State/recently_played.txt")
+    private val toolsDir = File(cannoliRoot, "Config/Launch Scripts/Tools")
+    private val portsDir = File(cannoliRoot, "Config/Launch Scripts/Ports")
+
     private val conn: SQLiteConnection get() = db.conn
     private var orphans = 0
 
@@ -52,8 +51,7 @@ class Importer(
 
     fun run(): ImportResult {
         if (countRoms() > 0 || countApps() > 0) return ImportResult.NotNeeded
-        collectionManager.migrateCollectionsToHashedNames()
-        scanner.ensureDirectories()
+        migrateLegacyCollectionsToHashedNames()
 
         val timestamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
         val backupDir = File(cannoliRoot, "Backup/import-$timestamp")
@@ -64,14 +62,14 @@ class Importer(
         val romIdsByRelative = mutableMapOf<String, Long>()
 
         return try {
+            announce(Phase.PLATFORMS)
+            importPlatforms()
+
+            announce(Phase.ROMS)
+            importRoms(romIdsByRelative)
+
             conn.execSQL("BEGIN")
             try {
-                announce(Phase.PLATFORMS)
-                val tags = importPlatforms()
-
-                announce(Phase.ROMS)
-                importRoms(tags, romIdsByRelative)
-
                 announce(Phase.APPS)
                 importApps(toolNames, portNames)
 
@@ -136,7 +134,7 @@ class Importer(
     private fun progressWithin(phase: Phase, fraction: Float): Float =
         phase.start + (phase.end - phase.start) * fraction.coerceIn(0f, 1f)
 
-    private fun importPlatforms(): List<String> {
+    private fun importPlatforms() {
         val tags = platformResolver.getAllTags()
         for (tag in tags) {
             conn.prepare("INSERT OR IGNORE INTO platforms (tag, display_name) VALUES (?, ?)").use { stmt ->
@@ -145,76 +143,40 @@ class Importer(
                 stmt.step()
             }
         }
-        return tags.toList()
     }
 
-    private fun importRoms(tags: List<String>, romIdsByRelative: MutableMap<String, Long>) {
+    private fun importRoms(romIdsByRelative: MutableMap<String, Long>) {
+        val tags = platformResolver.getAllTags()
+        val artworkLookup = ArtworkLookup(cannoliRoot)
+        val nameMapLookup = NameMapLookup(cannoliRoot)
+        val romScanner = RomScanner(cannoliRoot, romDirectory, db, nameMapLookup, artworkLookup).also {
+            it.loadIgnoreLists(assets)
+        }
         for ((index, tag) in tags.withIndex()) {
-            val games = try { scanner.scanGames(tag) } catch (_: Throwable) { emptyList() }
-            for (game in games) {
-                if (game.isSubfolder) continue
-                val relative = relativizeRom(game.file) ?: run {
-                    orphan("rom outside romDirectory", game.file.absolutePath)
-                    continue
+            val upperTag = tag.uppercase()
+            try {
+                romScanner.scanPlatform(upperTag, isArcade = platformResolver.isArcade(upperTag))
+            } catch (t: Throwable) {
+                ScanLog.write("WARN scanPlatform $upperTag failed during import: ${t.message}")
+            }
+            conn.prepare("SELECT id, path FROM roms WHERE platform_tag = ?").use { stmt ->
+                stmt.bindText(1, upperTag)
+                while (stmt.step()) {
+                    romIdsByRelative[stmt.getText(1)] = stmt.getLong(0)
                 }
-                val discRelatives = game.discFiles?.mapNotNull { relativizeRom(it) }
-                val (displayName, romTags) = splitNameAndTags(
-                    rawName = game.file.nameWithoutExtension,
-                    resolvedDisplayName = game.displayName.removePrefix("$STAR "),
-                )
-                val id = insertRom(
-                    relativePath = relative,
-                    platformTag = tag.uppercase(),
-                    displayName = displayName,
-                    tags = romTags,
-                    discPaths = discRelatives,
-                )
-                if (id != null) romIdsByRelative[relative] = id
             }
             val fraction = (index + 1f) / tags.size.coerceAtLeast(1)
-            onProgress.update(progressWithin(Phase.ROMS, fraction), "Cataloging ${tag.uppercase()}")
+            onProgress.update(progressWithin(Phase.ROMS, fraction), "Cataloging $upperTag")
         }
-    }
-
-    private val tagRegex = Regex("""\s*(\([^)]*\)|\[[^\]]*\])""")
-
-    private fun splitNameAndTags(rawName: String, resolvedDisplayName: String): Pair<String, String?> {
-        val rawBase = tagRegex.replace(rawName, "").trim()
-        val nameOverridden = rawBase.isNotEmpty() && !resolvedDisplayName.equals(rawBase, ignoreCase = true) && !resolvedDisplayName.equals(rawName, ignoreCase = true)
-        if (nameOverridden) return resolvedDisplayName to null
-        if (rawBase.isEmpty() || rawBase == rawName) return rawName to null
-        val tags = tagRegex.findAll(rawName).joinToString(" ") { it.value.trim() }.takeIf { it.isNotBlank() }
-        return rawBase to tags
-    }
-
-    private fun insertRom(
-        relativePath: String,
-        platformTag: String,
-        displayName: String,
-        tags: String?,
-        discPaths: List<String>?,
-    ): Long? {
-        conn.prepare("""
-            INSERT INTO roms (path, platform_tag, display_name, tags, disc_paths)
-            VALUES (?, ?, ?, ?, ?)
-        """.trimIndent()).use { stmt ->
-            stmt.bindText(1, relativePath)
-            stmt.bindText(2, platformTag)
-            stmt.bindText(3, displayName)
-            if (tags != null) stmt.bindText(4, tags) else stmt.bindNull(4)
-            if (discPaths != null) stmt.bindText(5, JSONArray(discPaths).toString()) else stmt.bindNull(5)
-            stmt.step()
-        }
-        return conn.prepare("SELECT last_insert_rowid()").use { it.step(); it.getLong(0) }
     }
 
     private fun importApps(toolNames: MutableMap<String, Long>, portNames: MutableMap<String, Long>) {
-        for ((_, displayName, launch) in scanner.scanTools()) {
-            val id = insertApp("TOOL", displayName, launch.packageName) ?: continue
+        for ((displayName, packageName) in scanLegacyApkLaunches(toolsDir)) {
+            val id = insertApp("TOOL", displayName, packageName) ?: continue
             toolNames[displayName] = id
         }
-        for ((_, displayName, launch) in scanner.scanPorts()) {
-            val id = insertApp("PORT", displayName, launch.packageName) ?: continue
+        for ((displayName, packageName) in scanLegacyApkLaunches(portsDir)) {
+            val id = insertApp("PORT", displayName, packageName) ?: continue
             portNames[displayName] = id
         }
     }
@@ -252,24 +214,24 @@ class Importer(
         portNames: Map<String, Long>,
     ): Map<String, Long> {
         val byStem = mutableMapOf<String, Long>()
-        for (collection in collectionManager.scanCollections()) {
-            val isFavorites = collection.stem.equals("Favorites", ignoreCase = true)
+        for ((stem, displayName) in scanLegacyCollections()) {
+            val isFavorites = stem.equals("Favorites", ignoreCase = true)
             val collectionId = if (isFavorites) {
                 favoritesId
             } else {
                 conn.prepare("INSERT INTO collections (display_name, collection_type) VALUES (?, 'STANDARD')").use { stmt ->
-                    stmt.bindText(1, collection.displayName)
+                    stmt.bindText(1, displayName)
                     stmt.step()
                 }
                 conn.prepare("SELECT last_insert_rowid()").use { it.step(); it.getLong(0) }
             }
-            byStem[collection.stem] = collectionId
+            byStem[stem] = collectionId
 
-            for (path in collectionManager.getGamePaths(collection.stem)) {
+            for (path in readLegacyCollectionMembers(stem)) {
                 when (val ref = resolveLegacyPath(path, romIdsByRelative, toolNames, portNames)) {
                     is MemberRef.Rom -> insertRomMember(collectionId, ref.id)
                     is MemberRef.App -> insertAppMember(collectionId, ref.id)
-                    null -> orphan("collection ${collection.stem}", path)
+                    null -> orphan("collection $stem", path)
                 }
             }
         }
@@ -297,8 +259,7 @@ class Importer(
     }
 
     private fun importCollectionParents(collectionIdsByStem: Map<String, Long>) {
-        val parents = collectionManager.loadCollectionParents()
-        for ((childStem, parentStem) in parents) {
+        for ((childStem, parentStem) in readLegacyCollectionParents()) {
             val childId = collectionIdsByStem[childStem]
             val parentId = collectionIdsByStem[parentStem]
             if (childId == null || parentId == null) {
@@ -366,11 +327,9 @@ class Importer(
         toolNames: Map<String, Long>,
         portNames: Map<String, Long>,
     ) {
-        val paths = recentlyPlayedManager.load()
+        val paths = readLegacyRecentlyPlayed()
         if (paths.isEmpty()) return
         val now = System.currentTimeMillis()
-        // Synthesize timestamps so MRU order from the legacy file is preserved.
-        // Most recent gets `now`, next gets `now - 1ms`, and so on.
         for ((index, path) in paths.withIndex()) {
             val timestamp = now - index
             when (val ref = resolveLegacyPath(path, romIdsByRelative, toolNames, portNames)) {
@@ -390,8 +349,7 @@ class Importer(
     }
 
     private fun importOrdering(collectionIdsByStem: Map<String, Long>) {
-        val platformOrder = orderingManager.loadPlatformOrder()
-        for ((index, rawTag) in platformOrder.withIndex()) {
+        for ((index, rawTag) in readLegacyOrderingFile("platform_order.txt").withIndex()) {
             val tag = rawTag.uppercase()
             conn.prepare("INSERT OR IGNORE INTO platforms (tag, display_name) VALUES (?, ?)").use { stmt ->
                 stmt.bindText(1, tag)
@@ -404,8 +362,7 @@ class Importer(
                 stmt.step()
             }
         }
-        val collectionOrder = orderingManager.loadCollectionOrder()
-        for ((index, stem) in collectionOrder.withIndex()) {
+        for ((index, stem) in readLegacyOrderingFile("collection_order.txt").withIndex()) {
             val id = collectionIdsByStem[stem] ?: continue
             conn.prepare("UPDATE collections SET sort_order = ? WHERE id = ?").use { stmt ->
                 stmt.bindLong(1, index.toLong())
@@ -425,8 +382,8 @@ class Importer(
         if (relative != null) {
             romIdsByRelative[relative]?.let { return MemberRef.Rom(it) }
         }
-        val toolsRoot = scanner.tools.absolutePath + File.separator
-        val portsRoot = scanner.ports.absolutePath + File.separator
+        val toolsRoot = toolsDir.absolutePath + File.separator
+        val portsRoot = portsDir.absolutePath + File.separator
         if (absolutePath.startsWith(toolsRoot)) {
             toolNames[File(absolutePath).nameWithoutExtension]?.let { return MemberRef.App(it) }
         }
@@ -442,6 +399,122 @@ class Importer(
             if (relative.startsWith("..")) null else relative
         } catch (_: IllegalArgumentException) {
             null
+        }
+    }
+
+    private fun scanLegacyCollections(): List<Pair<String, String>> {
+        if (!collectionsDir.exists()) return emptyList()
+        val files = collectionsDir.listFiles { f -> f.extension == "txt" } ?: return emptyList()
+        return files.map { it.nameWithoutExtension to Collection.stemToDisplayName(it.nameWithoutExtension) }
+    }
+
+    private fun readLegacyCollectionMembers(stem: String): List<String> {
+        val file = File(collectionsDir, "$stem.txt")
+        if (!file.exists()) return emptyList()
+        return try {
+            file.readLines().map { it.trim() }.filter { it.isNotEmpty() }
+        } catch (_: IOException) { emptyList() }
+    }
+
+    private fun readLegacyCollectionParents(): Map<String, String> {
+        if (!collectionParentsFile.exists()) return emptyMap()
+        return try {
+            val map = linkedMapOf<String, String>()
+            for (line in collectionParentsFile.readLines()) {
+                val trimmed = line.trim()
+                if (trimmed.isEmpty() || '=' !in trimmed) continue
+                val (child, parent) = trimmed.split('=', limit = 2)
+                val c = child.trim(); val p = parent.trim()
+                if (c.isNotEmpty() && p.isNotEmpty()) map[c] = p
+            }
+            map
+        } catch (_: IOException) { emptyMap() }
+    }
+
+    private fun readLegacyOrderingFile(name: String): List<String> {
+        val file = File(orderingDir, name)
+        if (!file.exists()) return emptyList()
+        return try {
+            file.readLines().map { it.trim() }.filter { it.isNotEmpty() }
+        } catch (_: IOException) { emptyList() }
+    }
+
+    private fun readLegacyRecentlyPlayed(): List<String> {
+        if (!recentlyPlayedFile.exists()) return emptyList()
+        return try {
+            recentlyPlayedFile.readLines().map { it.trim() }.filter { it.isNotEmpty() }.take(10)
+        } catch (_: IOException) { emptyList() }
+    }
+
+    private fun scanLegacyApkLaunches(dir: File): List<Pair<String, String>> {
+        if (!dir.exists()) return emptyList()
+        val files = dir.listFiles { f -> f.extension == "apk_launch" } ?: return emptyList()
+        return files.mapNotNull { file ->
+            val pkg = try { file.readText().trim() } catch (_: IOException) { return@mapNotNull null }
+            if (pkg.isEmpty()) null else file.nameWithoutExtension to pkg
+        }
+    }
+
+    private fun migrateLegacyCollectionsToHashedNames() {
+        if (!collectionsDir.exists()) return
+        val files = collectionsDir.listFiles { f -> f.extension == "txt" } ?: return
+        val needsMigration = files.any { file ->
+            val stem = file.nameWithoutExtension
+            if (stem.equals("Favorites", ignoreCase = true)) return@any false
+            val idx = stem.lastIndexOf('_')
+            if (idx < 0) return@any true
+            val suffix = stem.substring(idx + 1)
+            !(suffix.length == 4 && suffix.all { it in '0'..'9' || it in 'a'..'f' })
+        }
+        if (!needsMigration) return
+
+        val renameMap = mutableMapOf<String, String>()
+        val existingStems = files.map { it.nameWithoutExtension }.toMutableSet()
+
+        for (file in files) {
+            val oldStem = file.nameWithoutExtension
+            if (oldStem.equals("Favorites", ignoreCase = true)) continue
+            val idx = oldStem.lastIndexOf('_')
+            val alreadyHashed = idx >= 0 && oldStem.substring(idx + 1).let { s ->
+                s.length == 4 && s.all { it in '0'..'9' || it in 'a'..'f' }
+            }
+            if (alreadyHashed) continue
+
+            val hash = Collection.generateUniqueHash(existingStems, oldStem)
+            val newStem = "${oldStem}_$hash"
+            val newFile = File(collectionsDir, "$newStem.txt")
+            if (file.renameTo(newFile)) {
+                renameMap[oldStem] = newStem
+                existingStems.remove(oldStem)
+                existingStems.add(newStem)
+            }
+        }
+
+        if (renameMap.isEmpty()) return
+
+        if (collectionParentsFile.exists()) {
+            try {
+                val updated = collectionParentsFile.readLines().map { line ->
+                    val trimmed = line.trim()
+                    if (trimmed.isEmpty() || '=' !in trimmed) return@map line
+                    val (child, parent) = trimmed.split('=', limit = 2)
+                    val newChild = renameMap[child.trim()] ?: child.trim()
+                    val newParent = renameMap[parent.trim()] ?: parent.trim()
+                    "$newChild=$newParent"
+                }
+                collectionParentsFile.writeText(updated.joinToString("\n") + "\n")
+            } catch (_: IOException) { }
+        }
+
+        val orderFile = File(orderingDir, "collection_order.txt")
+        if (orderFile.exists()) {
+            try {
+                val updated = orderFile.readLines().map { line ->
+                    val trimmed = line.trim()
+                    renameMap[trimmed] ?: trimmed
+                }
+                orderFile.writeText(updated.joinToString("\n") + "\n")
+            } catch (_: IOException) { }
         }
     }
 
