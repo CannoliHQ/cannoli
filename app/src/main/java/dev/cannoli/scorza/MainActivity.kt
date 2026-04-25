@@ -706,7 +706,51 @@ class MainActivity : ComponentActivity() {
 
         ioScope.launch { scanner.ensureDirectories() }
 
-        finishInitializeApp()
+        cannoliDatabase = dev.cannoli.scorza.db.CannoliDatabase(root)
+        runImporterThenContinue(root)
+    }
+
+    private lateinit var cannoliDatabase: dev.cannoli.scorza.db.CannoliDatabase
+
+    private fun runImporterThenContinue(root: File) {
+        val importer = dev.cannoli.scorza.db.importer.Importer(
+            cannoliRoot = root,
+            db = cannoliDatabase,
+            platformResolver = platformResolver,
+            scanner = scanner,
+            collectionManager = collectionManager,
+            recentlyPlayedManager = recentlyPlayedManager,
+            orderingManager = orderingManager,
+            onProgress = dev.cannoli.scorza.db.importer.ImportProgress { progress, label ->
+                runOnUiThread {
+                    val top = screenStack.lastOrNull()
+                    if (top is LauncherScreen.Housekeeping &&
+                        top.kind == dev.cannoli.scorza.ui.screens.HousekeepingKind.DATABASE_MIGRATION) {
+                        screenStack[screenStack.lastIndex] = top.copy(progress = progress, statusLabel = label)
+                    }
+                }
+            },
+        )
+
+        screenStack.add(
+            LauncherScreen.Housekeeping(
+                kind = dev.cannoli.scorza.ui.screens.HousekeepingKind.DATABASE_MIGRATION,
+                progress = 0f,
+                statusLabel = "Preparing",
+            )
+        )
+
+        ioScope.launch {
+            val result = importer.run()
+            withContext(Dispatchers.Main) {
+                val top = screenStack.lastOrNull()
+                if (top is LauncherScreen.Housekeeping) screenStack.removeAt(screenStack.lastIndex)
+                if (result is dev.cannoli.scorza.db.importer.ImportResult.Failure) {
+                    dev.cannoli.scorza.util.ScanLog.write("ERROR import returned Failure: ${result.cause.message}")
+                }
+                finishInitializeApp()
+            }
+        }
     }
 
     private fun finishInitializeApp() {
