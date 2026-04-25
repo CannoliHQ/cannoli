@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.library
 
+import androidx.sqlite.execSQL
 import dev.cannoli.scorza.db.CannoliDatabase
 import dev.cannoli.scorza.model.App
 import dev.cannoli.scorza.model.AppType
@@ -39,6 +40,24 @@ class AppsRepository(private val db: CannoliDatabase) {
             stmt.bindText(1, type.name)
             stmt.step()
             return stmt.getInt(0)
+        }
+    }
+
+    fun setOrder(type: AppType, orderedIds: List<Long>) {
+        db.conn.execSQL("BEGIN")
+        try {
+            orderedIds.forEachIndexed { index, id ->
+                db.conn.prepare("UPDATE apps SET sort_order = ? WHERE id = ? AND type = ?").use { stmt ->
+                    stmt.bindLong(1, index.toLong())
+                    stmt.bindLong(2, id)
+                    stmt.bindText(3, type.name)
+                    stmt.step()
+                }
+            }
+            db.conn.execSQL("COMMIT")
+        } catch (t: Throwable) {
+            db.conn.execSQL("ROLLBACK")
+            throw t
         }
     }
 

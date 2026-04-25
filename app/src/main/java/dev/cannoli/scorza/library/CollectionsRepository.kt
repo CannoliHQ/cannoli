@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.library
 
+import androidx.sqlite.execSQL
 import dev.cannoli.scorza.db.CannoliDatabase
 import dev.cannoli.scorza.db.CollectionType
 
@@ -89,6 +90,81 @@ class CollectionsRepository(private val db: CannoliDatabase) {
             while (stmt.step()) out.add(stmt.getLong(0))
         }
         return out
+    }
+
+    fun addMember(collectionId: Long, ref: LibraryRef) {
+        if (isMember(collectionId, ref)) return
+        val nextOrder = nextSortOrder(collectionId)
+        db.conn.prepare(
+            "INSERT INTO collection_members (collection_id, rom_id, app_id, sort_order) VALUES (?, ?, ?, ?)"
+        ).use { stmt ->
+            stmt.bindLong(1, collectionId)
+            when (ref) {
+                is LibraryRef.Rom -> { stmt.bindLong(2, ref.id); stmt.bindNull(3) }
+                is LibraryRef.App -> { stmt.bindNull(2); stmt.bindLong(3, ref.id) }
+            }
+            stmt.bindLong(4, nextOrder.toLong())
+            stmt.step()
+        }
+    }
+
+    fun removeMember(collectionId: Long, ref: LibraryRef) {
+        val sql = when (ref) {
+            is LibraryRef.Rom -> "DELETE FROM collection_members WHERE collection_id = ? AND rom_id = ?"
+            is LibraryRef.App -> "DELETE FROM collection_members WHERE collection_id = ? AND app_id = ?"
+        }
+        db.conn.prepare(sql).use { stmt ->
+            stmt.bindLong(1, collectionId)
+            stmt.bindLong(2, when (ref) { is LibraryRef.Rom -> ref.id; is LibraryRef.App -> ref.id })
+            stmt.step()
+        }
+    }
+
+    fun setMemberOrder(collectionId: Long, orderedRefs: List<LibraryRef>) {
+        db.conn.execSQL("BEGIN")
+        try {
+            orderedRefs.forEachIndexed { index, ref ->
+                val sql = when (ref) {
+                    is LibraryRef.Rom -> "UPDATE collection_members SET sort_order = ? WHERE collection_id = ? AND rom_id = ?"
+                    is LibraryRef.App -> "UPDATE collection_members SET sort_order = ? WHERE collection_id = ? AND app_id = ?"
+                }
+                db.conn.prepare(sql).use { stmt ->
+                    stmt.bindLong(1, index.toLong())
+                    stmt.bindLong(2, collectionId)
+                    stmt.bindLong(3, when (ref) { is LibraryRef.Rom -> ref.id; is LibraryRef.App -> ref.id })
+                    stmt.step()
+                }
+            }
+            db.conn.execSQL("COMMIT")
+        } catch (t: Throwable) {
+            db.conn.execSQL("ROLLBACK")
+            throw t
+        }
+    }
+
+    fun setCollectionOrder(orderedIds: List<Long>) {
+        db.conn.execSQL("BEGIN")
+        try {
+            orderedIds.forEachIndexed { index, id ->
+                db.conn.prepare("UPDATE collections SET sort_order = ? WHERE id = ?").use { stmt ->
+                    stmt.bindLong(1, index.toLong())
+                    stmt.bindLong(2, id)
+                    stmt.step()
+                }
+            }
+            db.conn.execSQL("COMMIT")
+        } catch (t: Throwable) {
+            db.conn.execSQL("ROLLBACK")
+            throw t
+        }
+    }
+
+    private fun nextSortOrder(collectionId: Long): Int {
+        db.conn.prepare("SELECT COALESCE(MAX(sort_order), -1) + 1 FROM collection_members WHERE collection_id = ?").use { stmt ->
+            stmt.bindLong(1, collectionId)
+            stmt.step()
+            return stmt.getInt(0)
+        }
     }
 
     private fun query(suffix: String, args: List<String> = emptyList()): List<CollectionRow> {
