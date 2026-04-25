@@ -211,6 +211,38 @@ class MainActivity : ComponentActivity() {
         else -> null
     }
 
+    private fun recordRecentlyPlayedByPath(path: String) {
+        ioScope.launch {
+            val ref: dev.cannoli.scorza.library.LibraryRef? = if (path.startsWith("/apps/")) {
+                val parts = path.removePrefix("/apps/").split("/", limit = 2)
+                if (parts.size == 2) {
+                    val type = runCatching { dev.cannoli.scorza.model.AppType.valueOf(parts[0]) }.getOrNull()
+                    val app = type?.let { appsRepository.byPackage(it, parts[1]) }
+                    app?.let { dev.cannoli.scorza.library.LibraryRef.App(it.id) }
+                } else null
+            } else {
+                romLibrary.gameByPath(path)?.let { dev.cannoli.scorza.library.LibraryRef.Rom(it.id) }
+            }
+            if (ref != null) recentlyPlayedRepository.record(ref)
+        }
+    }
+
+    private fun clearRecentlyPlayedByPath(path: String) {
+        ioScope.launch {
+            val ref: dev.cannoli.scorza.library.LibraryRef? = if (path.startsWith("/apps/")) {
+                val parts = path.removePrefix("/apps/").split("/", limit = 2)
+                if (parts.size == 2) {
+                    val type = runCatching { dev.cannoli.scorza.model.AppType.valueOf(parts[0]) }.getOrNull()
+                    val app = type?.let { appsRepository.byPackage(it, parts[1]) }
+                    app?.let { dev.cannoli.scorza.library.LibraryRef.App(it.id) }
+                } else null
+            } else {
+                romLibrary.gameByPath(path)?.let { dev.cannoli.scorza.library.LibraryRef.Rom(it.id) }
+            }
+            if (ref != null) recentlyPlayedRepository.clear(ref)
+        }
+    }
+
     private fun pushScreen(new: LauncherScreen) {
         val current = currentScreen
         screenStack[screenStack.lastIndex] = saveScrollPosition(current)
@@ -862,7 +894,7 @@ class MainActivity : ComponentActivity() {
                         if (errorDialog != null) {
                             dialogState.value = errorDialog
                         } else {
-                            ioScope.launch { recentlyPlayedManager.record(romFile.absolutePath) }
+                            recordRecentlyPlayedByPath(romFile.absolutePath)
                         }
                     }
                 }
@@ -1927,14 +1959,14 @@ class MainActivity : ComponentActivity() {
                                 if (errorDialog != null) {
                                     dialogState.value = errorDialog
                                 } else {
-                                    ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
+                                    recordRecentlyPlayedByPath(game.file.absolutePath)
                                 }
                             } else if (isResumable) {
                                 val errorDialog = launchManager.resumeGame(game)
                                 if (errorDialog != null) {
                                     dialogState.value = errorDialog
                                 } else {
-                                    ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
+                                    recordRecentlyPlayedByPath(game.file.absolutePath)
                                 }
                             }
                         } else if (!fgh) {
@@ -1967,7 +1999,7 @@ class MainActivity : ComponentActivity() {
                                     if (errorDialog != null) {
                                         dialogState.value = errorDialog
                                     } else if (trackRecent) {
-                                        ioScope.launch { recentlyPlayedManager.record(recentKey) }
+                                        recordRecentlyPlayedByPath(recentKey)
                                     }
                                 }
                             }
@@ -2424,14 +2456,14 @@ class MainActivity : ComponentActivity() {
                     if (errorDialog != null) {
                         dialogState.value = errorDialog
                     } else {
-                        ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
+                        recordRecentlyPlayedByPath(game.file.absolutePath)
                     }
                 } else {
                     val errorDialog = launchManager.launchGame(game)
                     if (errorDialog != null) {
                         dialogState.value = errorDialog
                     } else {
-                        ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
+                        recordRecentlyPlayedByPath(game.file.absolutePath)
                     }
                 }
             }
@@ -2489,7 +2521,7 @@ class MainActivity : ComponentActivity() {
         if (errorDialog != null) {
             dialogState.value = errorDialog
         } else if (trackRecent) {
-            ioScope.launch { recentlyPlayedManager.record(recentKey) }
+            recordRecentlyPlayedByPath(recentKey)
             if (tag == "recently_played") pendingRecentlyPlayedReorder = true
         }
     }
@@ -2642,8 +2674,8 @@ class MainActivity : ComponentActivity() {
             selected == MENU_REMOVE_FROM_RECENTS -> {
                 pendingContextReturn = null
                 dialogState.value = DialogState.None
+                clearRecentlyPlayedByPath(game.file.absolutePath)
                 ioScope.launch {
-                    recentlyPlayedManager.remove(game.file.absolutePath)
                     gameListViewModel.loadRecentlyPlayed()
                     rescanSystemList()
                 }
@@ -2886,8 +2918,8 @@ class MainActivity : ComponentActivity() {
             MENU_REMOVE_FROM_RECENTS -> {
                 pendingContextReturn = null
                 dialogState.value = DialogState.None
+                state.gamePaths.forEach { path -> clearRecentlyPlayedByPath(path) }
                 ioScope.launch {
-                    state.gamePaths.forEach { path -> recentlyPlayedManager.remove(path) }
                     gameListViewModel.loadRecentlyPlayed()
                     rescanSystemList()
                 }

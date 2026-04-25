@@ -27,6 +27,29 @@ class RecentlyPlayedRepository(private val db: CannoliDatabase) {
         return out
     }
 
+    fun record(ref: LibraryRef, timestamp: Long = System.currentTimeMillis()) {
+        val sql = when (ref) {
+            is LibraryRef.Rom -> "UPDATE roms SET last_played_at = ? WHERE id = ?"
+            is LibraryRef.App -> "UPDATE apps SET last_played_at = ? WHERE id = ?"
+        }
+        db.conn.prepare(sql).use { stmt ->
+            stmt.bindLong(1, timestamp)
+            stmt.bindLong(2, when (ref) { is LibraryRef.Rom -> ref.id; is LibraryRef.App -> ref.id })
+            stmt.step()
+        }
+    }
+
+    fun clear(ref: LibraryRef) {
+        val sql = when (ref) {
+            is LibraryRef.Rom -> "UPDATE roms SET last_played_at = NULL WHERE id = ?"
+            is LibraryRef.App -> "UPDATE apps SET last_played_at = NULL WHERE id = ?"
+        }
+        db.conn.prepare(sql).use { stmt ->
+            stmt.bindLong(1, when (ref) { is LibraryRef.Rom -> ref.id; is LibraryRef.App -> ref.id })
+            stmt.step()
+        }
+    }
+
     fun hasAny(): Boolean {
         db.conn.prepare("""
             SELECT 1 WHERE EXISTS(SELECT 1 FROM roms WHERE last_played_at IS NOT NULL)
