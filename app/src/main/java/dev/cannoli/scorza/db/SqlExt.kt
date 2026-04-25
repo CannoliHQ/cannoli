@@ -7,6 +7,20 @@ import androidx.sqlite.execSQL
 internal inline fun <T> SQLiteConnection.query(sql: String, block: (SQLiteStatement) -> T): T =
     prepare(sql).use(block)
 
+internal inline fun <T> SQLiteConnection.queryOne(sql: String, vararg args: Any?, mapper: (SQLiteStatement) -> T): T? =
+    prepare(sql).use { stmt ->
+        stmt.bindAll(args)
+        if (stmt.step()) mapper(stmt) else null
+    }
+
+internal inline fun <T> SQLiteConnection.queryAll(sql: String, vararg args: Any?, mapper: (SQLiteStatement) -> T): List<T> =
+    prepare(sql).use { stmt ->
+        stmt.bindAll(args)
+        val out = mutableListOf<T>()
+        while (stmt.step()) out.add(mapper(stmt))
+        out
+    }
+
 internal inline fun <T> SQLiteConnection.transaction(block: () -> T): T {
     execSQL("BEGIN")
     return try {

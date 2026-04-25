@@ -23,18 +23,17 @@ object FontNameParser {
                 raf.skipBytes(4)
                 val offset = raf.readInt().toLong() and 0xFFFFFFFFL
                 raf.skipBytes(4)
-                if (String(tag) == "name") { nameOffset = offset; break }
+                if (String(tag) == "name") {
+                    nameOffset = offset; break
+                }
             }
             if (nameOffset < 0) return null
             raf.seek(nameOffset)
-            @Suppress("UNUSED_VARIABLE") val format = raf.readUnsignedShort()
             val count = raf.readUnsignedShort()
             val stringOffset = raf.readUnsignedShort()
             val storageBase = nameOffset + stringOffset
-            for (i in 0 until count) {
+            (0 until count).forEach { _ ->
                 val platformID = raf.readUnsignedShort()
-                val encodingID = raf.readUnsignedShort()
-                val languageID = raf.readUnsignedShort()
                 val nameID = raf.readUnsignedShort()
                 val length = raf.readUnsignedShort()
                 val strOffset = raf.readUnsignedShort()

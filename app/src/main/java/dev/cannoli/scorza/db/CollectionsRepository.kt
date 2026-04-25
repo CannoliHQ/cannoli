@@ -13,26 +13,28 @@ class CollectionsRepository(private val db: CannoliDatabase) {
     )
 
     fun all(): List<CollectionRow> =
-        select("ORDER BY sort_order, display_name COLLATE NOCASE")
+        db.conn.queryAll("$BASE_SELECT ORDER BY sort_order, display_name COLLATE NOCASE", mapper = ::rowToCollection)
 
-    fun topLevel(): List<CollectionRow> =
-        select("WHERE parent_id IS NULL AND collection_type = 'STANDARD' ORDER BY sort_order, display_name COLLATE NOCASE")
+    fun topLevel(): List<CollectionRow> = db.conn.queryAll(
+        "$BASE_SELECT WHERE parent_id IS NULL AND collection_type = 'STANDARD' ORDER BY sort_order, display_name COLLATE NOCASE",
+        mapper = ::rowToCollection,
+    )
 
-    fun byId(id: Long): CollectionRow? =
-        select("WHERE id = ?", id).firstOrNull()
+    fun byId(id: Long): CollectionRow? = db.conn.queryOne(
+        "$BASE_SELECT WHERE id = ?", id, mapper = ::rowToCollection,
+    )
 
-    fun children(parentId: Long): List<CollectionRow> =
-        select("WHERE parent_id = ? ORDER BY sort_order, display_name COLLATE NOCASE", parentId)
+    fun children(parentId: Long): List<CollectionRow> = db.conn.queryAll(
+        "$BASE_SELECT WHERE parent_id = ? ORDER BY sort_order, display_name COLLATE NOCASE",
+        parentId, mapper = ::rowToCollection,
+    )
 
-    fun favoritesId(): Long? = db.conn.query(
-        "SELECT id FROM collections WHERE collection_type = 'FAVORITES' LIMIT 1"
-    ) { stmt -> if (stmt.step()) stmt.getLong(0) else null }
+    fun favoritesId(): Long? = db.conn.queryOne(
+        "SELECT id FROM collections WHERE collection_type = 'FAVORITES' LIMIT 1",
+    ) { it.getLong(0) }
 
-    fun romIdsIn(collectionId: Long): List<Long> =
-        readMemberIds("rom_id", collectionId)
-
-    fun appIdsIn(collectionId: Long): List<Long> =
-        readMemberIds("app_id", collectionId)
+    fun romIdsIn(collectionId: Long): List<Long> = readMemberIds("rom_id", collectionId)
+    fun appIdsIn(collectionId: Long): List<Long> = readMemberIds("app_id", collectionId)
 
     fun favoriteRomIds(): Set<Long> = favoritesId()?.let { romIdsIn(it).toSet() } ?: emptySet()
     fun favoriteAppIds(): Set<Long> = favoritesId()?.let { appIdsIn(it).toSet() } ?: emptySet()
@@ -43,22 +45,15 @@ class CollectionsRepository(private val db: CannoliDatabase) {
     fun isAppFavorited(appId: Long): Boolean =
         favoritesId()?.let { isMember(it, LibraryRef.App(appId)) } == true
 
-    fun isMember(collectionId: Long, ref: LibraryRef): Boolean = db.conn.query(
-        "SELECT 1 FROM collection_members WHERE collection_id = ? AND ${ref.column()} = ? LIMIT 1"
-    ) { stmt ->
-        stmt.bindLong(1, collectionId)
-        stmt.bindLong(2, ref.id)
-        stmt.step()
-    }
+    fun isMember(collectionId: Long, ref: LibraryRef): Boolean = db.conn.queryOne(
+        "SELECT 1 FROM collection_members WHERE collection_id = ? AND ${ref.column()} = ? LIMIT 1",
+        collectionId, ref.id,
+    ) { true } ?: false
 
-    fun collectionsContaining(ref: LibraryRef): Set<Long> {
-        val out = mutableSetOf<Long>()
-        db.conn.query("SELECT collection_id FROM collection_members WHERE ${ref.column()} = ?") { stmt ->
-            stmt.bindLong(1, ref.id)
-            while (stmt.step()) out.add(stmt.getLong(0))
-        }
-        return out
-    }
+    fun collectionsContaining(ref: LibraryRef): Set<Long> = db.conn.queryAll(
+        "SELECT collection_id FROM collection_members WHERE ${ref.column()} = ?",
+        ref.id,
+    ) { it.getLong(0) }.toSet()
 
     fun addMember(collectionId: Long, ref: LibraryRef) {
         if (isMember(collectionId, ref)) return
@@ -120,10 +115,7 @@ class CollectionsRepository(private val db: CannoliDatabase) {
         return out
     }
 
-    fun delete(collectionId: Long) = db.conn.execute(
-        "DELETE FROM collections WHERE id = ?",
-        collectionId,
-    )
+    fun delete(collectionId: Long) = db.conn.execute("DELETE FROM collections WHERE id = ?", collectionId)
 
     fun setCollectionOrder(orderedIds: List<Long>) = db.conn.transaction {
         orderedIds.forEachIndexed { index, id ->
@@ -141,42 +133,15 @@ class CollectionsRepository(private val db: CannoliDatabase) {
         return false
     }
 
-    private fun nextSortOrder(collectionId: Long): Int = db.conn.query(
-        "SELECT COALESCE(MAX(sort_order), -1) + 1 FROM collection_members WHERE collection_id = ?"
-    ) { stmt ->
-        stmt.bindLong(1, collectionId)
-        stmt.step()
-        stmt.getInt(0)
-    }
+    private fun nextSortOrder(collectionId: Long): Int = db.conn.queryOne(
+        "SELECT COALESCE(MAX(sort_order), -1) + 1 FROM collection_members WHERE collection_id = ?",
+        collectionId,
+    ) { it.getInt(0) } ?: 0
 
-    private fun readMemberIds(column: String, collectionId: Long): List<Long> {
-        val out = mutableListOf<Long>()
-        db.conn.query(
-            "SELECT $column FROM collection_members WHERE collection_id = ? AND $column IS NOT NULL ORDER BY sort_order"
-        ) { stmt ->
-            stmt.bindLong(1, collectionId)
-            while (stmt.step()) out.add(stmt.getLong(0))
-        }
-        return out
-    }
-
-    private fun select(suffix: String, vararg args: Any?): List<CollectionRow> {
-        val out = mutableListOf<CollectionRow>()
-        db.conn.query("SELECT id, display_name, parent_id, sort_order, collection_type FROM collections $suffix") { stmt ->
-            args.forEachIndexed { index, value ->
-                val pos = index + 1
-                when (value) {
-                    null -> stmt.bindNull(pos)
-                    is Long -> stmt.bindLong(pos, value)
-                    is Int -> stmt.bindLong(pos, value.toLong())
-                    is String -> stmt.bindText(pos, value)
-                    else -> error("unsupported select arg ${value::class.java.name}")
-                }
-            }
-            while (stmt.step()) out.add(rowToCollection(stmt))
-        }
-        return out
-    }
+    private fun readMemberIds(column: String, collectionId: Long): List<Long> = db.conn.queryAll(
+        "SELECT $column FROM collection_members WHERE collection_id = ? AND $column IS NOT NULL ORDER BY sort_order",
+        collectionId,
+    ) { it.getLong(0) }
 
     private fun rowToCollection(stmt: SQLiteStatement) = CollectionRow(
         id = stmt.getLong(0),
@@ -189,5 +154,9 @@ class CollectionsRepository(private val db: CannoliDatabase) {
     private fun LibraryRef.column(): String = when (this) {
         is LibraryRef.Rom -> "rom_id"
         is LibraryRef.App -> "app_id"
+    }
+
+    private companion object {
+        const val BASE_SELECT = "SELECT id, display_name, parent_id, sort_order, collection_type FROM collections"
     }
 }

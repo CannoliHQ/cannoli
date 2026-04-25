@@ -68,10 +68,8 @@ import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
 import dev.cannoli.scorza.util.AtomicRename
-import dev.cannoli.ui.ELLIPSIS
 import dev.cannoli.ui.KEY_BACKSPACE
 import dev.cannoli.ui.KEY_ENTER
-import dev.cannoli.ui.STAR
 import dev.cannoli.ui.components.COLOR_GRID_COLS
 import dev.cannoli.ui.components.HEX_KEYS
 import dev.cannoli.ui.components.HEX_ROW_SIZE
@@ -234,7 +232,7 @@ class MainActivity : ComponentActivity() {
 
     private fun invalidateAllLibraryCaches() {
         artworkLookup.invalidateAll()
-        nameMapLookup.invalidateAll()
+        arcadeTitleLookup.invalidateAll()
     }
 
     private fun deleteRom(rom: dev.cannoli.scorza.model.Rom) {
@@ -760,11 +758,12 @@ class MainActivity : ComponentActivity() {
 
         cannoliDatabase = dev.cannoli.scorza.db.CannoliDatabase(root)
         artworkLookup = dev.cannoli.scorza.util.ArtworkLookup(root)
-        nameMapLookup = dev.cannoli.scorza.util.NameMapLookup(root)
+        arcadeTitleLookup = dev.cannoli.scorza.util.ArcadeTitleLookup(root)
         romsRepository = dev.cannoli.scorza.db.RomsRepository(romDir, cannoliDatabase, artworkLookup)
-        romScanner = dev.cannoli.scorza.db.RomScanner(root, romDir, cannoliDatabase, nameMapLookup, artworkLookup).also {
+        val romWalker = dev.cannoli.scorza.util.RomDirectoryWalker(root, romDir, arcadeTitleLookup).also {
             it.loadIgnoreLists(assets)
         }
+        romScanner = dev.cannoli.scorza.db.RomScanner(cannoliDatabase, romWalker, artworkLookup)
         appsRepository = dev.cannoli.scorza.db.AppsRepository(cannoliDatabase)
         collectionsRepository = dev.cannoli.scorza.db.CollectionsRepository(cannoliDatabase)
         recentlyPlayedRepository = dev.cannoli.scorza.db.RecentlyPlayedRepository(cannoliDatabase)
@@ -773,7 +772,7 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var cannoliDatabase: dev.cannoli.scorza.db.CannoliDatabase
     private lateinit var artworkLookup: dev.cannoli.scorza.util.ArtworkLookup
-    private lateinit var nameMapLookup: dev.cannoli.scorza.util.NameMapLookup
+    private lateinit var arcadeTitleLookup: dev.cannoli.scorza.util.ArcadeTitleLookup
     private lateinit var romsRepository: dev.cannoli.scorza.db.RomsRepository
     private lateinit var romScanner: dev.cannoli.scorza.db.RomScanner
     private lateinit var appsRepository: dev.cannoli.scorza.db.AppsRepository
@@ -3248,7 +3247,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
             artworkLookup.invalidate(rom.platformTag)
-            rom.path.parentFile?.let { nameMapLookup.invalidate(it) }
+            rom.path.parentFile?.let { arcadeTitleLookup.invalidate(it) }
             romScanner.invalidatePlatform(rom.platformTag)
             gameListViewModel.reload()
         }

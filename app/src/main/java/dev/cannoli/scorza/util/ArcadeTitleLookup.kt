@@ -4,7 +4,7 @@ import java.io.File
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 
-class NameMapLookup(cannoliRoot: File) {
+class ArcadeTitleLookup(cannoliRoot: File) {
     private val arcadeMapFile = File(cannoliRoot, "Config/arcade_map.txt")
     private val cache = ConcurrentHashMap<String, Map<String, String>>()
     @Volatile private var arcadeCache: Map<String, String>? = null

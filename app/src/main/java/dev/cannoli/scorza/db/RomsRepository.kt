@@ -22,11 +22,12 @@ class RomsRepository(
 
     fun gameByPath(absolutePath: String): Rom? {
         val relative = relativizePath(absolutePath) ?: return null
-        return queryRom("WHERE path = ?", relative).firstOrNull()
+        return db.conn.queryOne("$BASE_SELECT WHERE path = ?", relative, mapper = ::rowToRom)
     }
 
-    fun gameById(romId: Long): Rom? =
-        queryRom("WHERE id = ?", romId).firstOrNull()
+    fun gameById(romId: Long): Rom? = db.conn.queryOne(
+        "$BASE_SELECT WHERE id = ?", romId, mapper = ::rowToRom,
+    )
 
     fun setRaGameId(romId: Long, raGameId: Int?) {
         if (raGameId == null) {
@@ -52,21 +53,13 @@ class RomsRepository(
 
     fun deleteRom(romId: Long) = db.conn.execute("DELETE FROM roms WHERE id = ?", romId)
 
-    fun platformCounts(): Map<String, Int> {
-        val out = mutableMapOf<String, Int>()
-        db.conn.query("SELECT platform_tag, COUNT(*) FROM roms GROUP BY platform_tag") { stmt ->
-            while (stmt.step()) out[stmt.getText(0)] = stmt.getInt(1)
-        }
-        return out
-    }
+    fun platformCounts(): Map<String, Int> = db.conn.queryAll(
+        "SELECT platform_tag, COUNT(*) FROM roms GROUP BY platform_tag",
+    ) { it.getText(0) to it.getInt(1) }.toMap()
 
-    fun knownPlatformTags(): List<String> {
-        val out = mutableListOf<String>()
-        db.conn.query("SELECT tag FROM platforms ORDER BY sort_order, tag") { stmt ->
-            while (stmt.step()) out.add(stmt.getText(0))
-        }
-        return out
-    }
+    fun knownPlatformTags(): List<String> = db.conn.queryAll(
+        "SELECT tag FROM platforms ORDER BY sort_order, tag",
+    ) { it.getText(0) }
 
     fun setPlatformOrder(orderedTags: List<String>) = db.conn.transaction {
         orderedTags.forEachIndexed { index, tag ->
@@ -74,8 +67,10 @@ class RomsRepository(
         }
     }
 
-    private fun romsForPlatform(platformTag: String): List<Rom> =
-        queryRom("WHERE platform_tag = ? ORDER BY display_name COLLATE NOCASE", platformTag)
+    private fun romsForPlatform(platformTag: String): List<Rom> = db.conn.queryAll(
+        "$BASE_SELECT WHERE platform_tag = ? ORDER BY display_name COLLATE NOCASE",
+        platformTag, mapper = ::rowToRom,
+    )
 
     /** When a subfolder is selected, return roms inside it (here) and roms in deeper subdirs (deeper).
      *  When no subfolder is selected, return roms at the platform root (here) and roms anywhere
@@ -101,47 +96,21 @@ class RomsRepository(
         return seen.map { ListItem.SubfolderItem(name = it, path = basePrefix + it) }
     }
 
-    private fun queryRom(whereClause: String, vararg args: Any?): List<Rom> {
-        val out = mutableListOf<Rom>()
-        db.conn.query(
-            """
-            SELECT id, path, platform_tag, display_name, tags, disc_paths, ra_game_id
-            FROM roms
-            $whereClause
-            """.trimIndent()
-        ) { stmt ->
-            args.forEachIndexed { index, value ->
-                val pos = index + 1
-                when (value) {
-                    is Long -> stmt.bindLong(pos, value)
-                    is String -> stmt.bindText(pos, value)
-                    else -> error("unsupported queryRom arg ${value?.let { it::class.java.name }}")
-                }
-            }
-            while (stmt.step()) out.add(rowToRom(stmt))
-        }
-        return out
-    }
-
     private fun rowToRom(stmt: SQLiteStatement): Rom {
-        val id = stmt.getLong(0)
         val relativePath = stmt.getText(1)
         val platformTag = stmt.getText(2)
-        val displayName = stmt.getText(3)
-        val tags = if (stmt.isNull(4)) null else stmt.getText(4)
-        val discPaths = if (stmt.isNull(5)) null else parseDiscPaths(stmt.getText(5))
-        val raGameId = if (stmt.isNull(6)) null else stmt.getLong(6).toInt()
         val absoluteFile = File(romDirectory, relativePath)
+        val discPaths = if (stmt.isNull(5)) null else parseDiscPaths(stmt.getText(5))
         return Rom(
-            id = id,
+            id = stmt.getLong(0),
             path = absoluteFile,
             platformTag = platformTag,
-            displayName = displayName,
-            tags = tags,
+            displayName = stmt.getText(3),
+            tags = if (stmt.isNull(4)) null else stmt.getText(4),
             artFile = artwork.find(platformTag, absoluteFile.nameWithoutExtension),
             launchTarget = LaunchTarget.RetroArch,
             discFiles = discPaths?.map { File(romDirectory, it) },
-            raGameId = raGameId,
+            raGameId = if (stmt.isNull(6)) null else stmt.getLong(6).toInt(),
         )
     }
 
@@ -160,5 +129,9 @@ class RomsRepository(
         val romsRoot = romDirectory.absolutePath + File.separator
         if (!absolutePath.startsWith(romsRoot)) return null
         return absolutePath.removePrefix(romsRoot)
+    }
+
+    private companion object {
+        const val BASE_SELECT = "SELECT id, path, platform_tag, display_name, tags, disc_paths, ra_game_id FROM roms"
     }
 }

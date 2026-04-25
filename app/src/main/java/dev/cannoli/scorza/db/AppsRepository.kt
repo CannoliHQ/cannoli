@@ -5,46 +5,31 @@ import dev.cannoli.scorza.model.App
 import dev.cannoli.scorza.model.AppType
 
 class AppsRepository(private val db: CannoliDatabase) {
-    fun all(type: AppType? = null): List<App> {
-        val sql = if (type != null) {
-            "SELECT $COLUMNS FROM apps WHERE type = ? ORDER BY sort_order, display_name COLLATE NOCASE"
-        } else {
-            "SELECT $COLUMNS FROM apps ORDER BY type, sort_order, display_name COLLATE NOCASE"
-        }
-        val out = mutableListOf<App>()
-        db.conn.query(sql) { stmt ->
-            if (type != null) stmt.bindText(1, type.name)
-            while (stmt.step()) out.add(rowToApp(stmt))
-        }
-        return out
+    fun all(type: AppType? = null): List<App> = if (type != null) {
+        db.conn.queryAll(
+            "SELECT $COLUMNS FROM apps WHERE type = ? ORDER BY sort_order, display_name COLLATE NOCASE",
+            type.name,
+            mapper = ::rowToApp,
+        )
+    } else {
+        db.conn.queryAll(
+            "SELECT $COLUMNS FROM apps ORDER BY type, sort_order, display_name COLLATE NOCASE",
+            mapper = ::rowToApp,
+        )
     }
 
-    fun byId(appId: Long): App? = db.conn.query("SELECT $COLUMNS FROM apps WHERE id = ?") { stmt ->
-        stmt.bindLong(1, appId)
-        if (stmt.step()) rowToApp(stmt) else null
-    }
+    fun byId(appId: Long): App? = db.conn.queryOne(
+        "SELECT $COLUMNS FROM apps WHERE id = ?", appId, mapper = ::rowToApp,
+    )
 
-    fun byDisplayName(type: AppType, displayName: String): App? = db.conn.query(
-        "SELECT $COLUMNS FROM apps WHERE type = ? AND display_name = ?"
-    ) { stmt ->
-        stmt.bindText(1, type.name)
-        stmt.bindText(2, displayName)
-        if (stmt.step()) rowToApp(stmt) else null
-    }
+    fun byPackage(type: AppType, packageName: String): App? = db.conn.queryOne(
+        "SELECT $COLUMNS FROM apps WHERE type = ? AND package_name = ?",
+        type.name, packageName, mapper = ::rowToApp,
+    )
 
-    fun byPackage(type: AppType, packageName: String): App? = db.conn.query(
-        "SELECT $COLUMNS FROM apps WHERE type = ? AND package_name = ?"
-    ) { stmt ->
-        stmt.bindText(1, type.name)
-        stmt.bindText(2, packageName)
-        if (stmt.step()) rowToApp(stmt) else null
-    }
-
-    fun count(type: AppType): Int = db.conn.query("SELECT COUNT(*) FROM apps WHERE type = ?") { stmt ->
-        stmt.bindText(1, type.name)
-        stmt.step()
-        stmt.getInt(0)
-    }
+    fun count(type: AppType): Int = db.conn.queryOne(
+        "SELECT COUNT(*) FROM apps WHERE type = ?", type.name,
+    ) { it.getInt(0) } ?: 0
 
     fun upsert(type: AppType, displayName: String, packageName: String): Long {
         db.conn.execute(

@@ -160,14 +160,11 @@ class UpdateManager(
     }
 
     fun isOnline(): Boolean {
-        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val net = cm.activeNetwork ?: return false
-            val caps = cm.getNetworkCapabilities(net) ?: return false
-            return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-        }
-        @Suppress("DEPRECATION")
-        return cm.activeNetworkInfo?.isConnected == true
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            ?: return false
+        val net = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(net) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
     private fun fetchJson(urlStr: String): JSONObject {
