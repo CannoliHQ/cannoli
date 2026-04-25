@@ -1,11 +1,11 @@
 package dev.cannoli.scorza.util
 
 import android.content.res.AssetManager
-import dev.cannoli.scorza.scanner.PlatformResolver
+import dev.cannoli.scorza.config.PlatformConfig
 import java.io.File
 
 object DirectoryLayout {
-    fun ensure(cannoliRoot: File, romDirectory: File, assets: AssetManager, platformResolver: PlatformResolver) {
+    fun ensure(cannoliRoot: File, romDirectory: File, assets: AssetManager, platformConfig: PlatformConfig) {
         listOf(
             romDirectory,
             File(cannoliRoot, "Art"),
@@ -38,7 +38,7 @@ object DirectoryLayout {
             } catch (_: Exception) {}
         }
 
-        for (tag in platformResolver.getAllTags()) {
+        for (tag in platformConfig.getAllTags()) {
             File(romDirectory, tag).mkdirs()
             File(cannoliRoot, "Art/$tag").mkdirs()
             File(cannoliRoot, "BIOS/$tag").mkdirs()

@@ -8,8 +8,8 @@ import dev.cannoli.scorza.launcher.EmuLauncher
 import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.LaunchManager
 import dev.cannoli.scorza.launcher.RetroArchLauncher
-import dev.cannoli.scorza.scanner.CoreInfoRepository
-import dev.cannoli.scorza.scanner.PlatformResolver
+import dev.cannoli.scorza.config.CoreInfoRepository
+import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.util.DirectoryLayout
 import dev.cannoli.scorza.util.NaturalSort
@@ -21,7 +21,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 data class InstalledServices(
-    val platformResolver: PlatformResolver,
+    val platformConfig: PlatformConfig,
     val retroArchLauncher: RetroArchLauncher,
     val emuLauncher: EmuLauncher,
     val apkLauncher: ApkLauncher,
@@ -120,11 +120,11 @@ class SetupCoordinator(
             val coreInfo = CoreInfoRepository(context.assets, context.filesDir, File(context.applicationInfo.sourceDir).lastModified())
             coreInfo.load()
             val bundledCoresDir = LaunchManager.extractBundledCores(context)
-            val platformResolver = PlatformResolver(root, context.assets, coreInfo, bundledCoresDir)
-            platformResolver.load()
+            val platformConfig = PlatformConfig(root, context.assets, coreInfo, bundledCoresDir)
+            platformConfig.load()
 
             val overhead = 7
-            val dirCount = 18 + (platformResolver.getAllTags().size * 6)
+            val dirCount = 18 + (platformConfig.getAllTags().size * 6)
             val totalSteps = dirCount + overhead
             var completed = 0
 
@@ -135,19 +135,19 @@ class SetupCoordinator(
                 onProgress(p, labels[labelIndex])
             }
 
-            DirectoryLayout.ensure(root, File(root, "Roms"), context.assets, platformResolver)
+            DirectoryLayout.ensure(root, File(root, "Roms"), context.assets, platformConfig)
             repeat(dirCount) { step() }
 
             val retroArchLauncher = RetroArchLauncher(context) { settings.retroArchPackage }; step()
             val emuLauncher = EmuLauncher(context); step()
             val apkLauncher = ApkLauncher(context); step()
             val installedCoreService = InstalledCoreService(context); step()
-            val lm = LaunchManager(context, settings, platformResolver, retroArchLauncher, emuLauncher, apkLauncher, installedCoreService); step()
+            val lm = LaunchManager(context, settings, platformConfig, retroArchLauncher, emuLauncher, apkLauncher, installedCoreService); step()
             lm.syncRetroArchAssets(root); step()
             lm.syncRetroArchConfig(root); step()
 
             val services = InstalledServices(
-                platformResolver = platformResolver,
+                platformConfig = platformConfig,
                 retroArchLauncher = retroArchLauncher,
                 emuLauncher = emuLauncher,
                 apkLauncher = apkLauncher,

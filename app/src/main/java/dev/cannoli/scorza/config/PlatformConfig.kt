@@ -1,4 +1,4 @@
-package dev.cannoli.scorza.scanner
+package dev.cannoli.scorza.config
 
 import android.content.pm.PackageManager
 import android.content.res.AssetManager
@@ -30,7 +30,7 @@ private fun parseDataKind(s: String?): dev.cannoli.scorza.launcher.ApkLauncher.D
     else -> dev.cannoli.scorza.launcher.ApkLauncher.DataKind.NONE
 }
 
-class PlatformResolver(
+class PlatformConfig(
     private val cannoliRoot: File,
     private val assets: AssetManager,
     private val coreInfo: CoreInfoRepository? = null,

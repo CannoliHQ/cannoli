@@ -1,4 +1,4 @@
-package dev.cannoli.scorza.scanner
+package dev.cannoli.scorza.config
 
 import android.content.res.AssetManager
 import java.io.File

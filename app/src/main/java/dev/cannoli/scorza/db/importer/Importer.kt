@@ -8,7 +8,7 @@ import dev.cannoli.scorza.library.ArtworkLookup
 import dev.cannoli.scorza.library.NameMapLookup
 import dev.cannoli.scorza.library.RomScanner
 import dev.cannoli.scorza.model.Collection
-import dev.cannoli.scorza.scanner.PlatformResolver
+import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.util.ScanLog
 import java.io.File
 import java.io.IOException
@@ -30,7 +30,7 @@ class Importer(
     private val cannoliRoot: File,
     private val romDirectory: File,
     private val db: CannoliDatabase,
-    private val platformResolver: PlatformResolver,
+    private val platformConfig: PlatformConfig,
     private val assets: AssetManager,
     private val onProgress: ImportProgress,
 ) {
@@ -135,18 +135,18 @@ class Importer(
         phase.start + (phase.end - phase.start) * fraction.coerceIn(0f, 1f)
 
     private fun importPlatforms() {
-        val tags = platformResolver.getAllTags()
+        val tags = platformConfig.getAllTags()
         for (tag in tags) {
             conn.prepare("INSERT OR IGNORE INTO platforms (tag, display_name) VALUES (?, ?)").use { stmt ->
                 stmt.bindText(1, tag.uppercase())
-                stmt.bindText(2, platformResolver.getDisplayName(tag))
+                stmt.bindText(2, platformConfig.getDisplayName(tag))
                 stmt.step()
             }
         }
     }
 
     private fun importRoms(romIdsByRelative: MutableMap<String, Long>) {
-        val tags = platformResolver.getAllTags()
+        val tags = platformConfig.getAllTags()
         val artworkLookup = ArtworkLookup(cannoliRoot)
         val nameMapLookup = NameMapLookup(cannoliRoot)
         val romScanner = RomScanner(cannoliRoot, romDirectory, db, nameMapLookup, artworkLookup).also {
@@ -155,7 +155,7 @@ class Importer(
         for ((index, tag) in tags.withIndex()) {
             val upperTag = tag.uppercase()
             try {
-                romScanner.scanPlatform(upperTag, isArcade = platformResolver.isArcade(upperTag))
+                romScanner.scanPlatform(upperTag, isArcade = platformConfig.isArcade(upperTag))
             } catch (t: Throwable) {
                 ScanLog.write("WARN scanPlatform $upperTag failed during import: ${t.message}")
             }
@@ -275,7 +275,7 @@ class Importer(
     }
 
     private fun importGameOverrides(romIdsByRelative: Map<String, Long>) {
-        val overrides = platformResolver.snapshotGameOverrides()
+        val overrides = platformConfig.snapshotGameOverrides()
         for ((absolutePath, override) in overrides) {
             val relative = relativizeRom(File(absolutePath))
             val romId = relative?.let { romIdsByRelative[it] }

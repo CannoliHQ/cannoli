@@ -10,7 +10,7 @@ import dev.cannoli.scorza.model.AppType
 import dev.cannoli.scorza.model.Game
 import dev.cannoli.scorza.model.LaunchTarget
 import dev.cannoli.scorza.model.Platform
-import dev.cannoli.scorza.scanner.PlatformResolver
+import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.settings.ContentMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,7 +29,7 @@ class SystemListViewModel(
     private val appsRepository: AppsRepository,
     private val collectionsRepository: CollectionsRepository,
     private val recentlyPlayedRepository: RecentlyPlayedRepository,
-    private val platformResolver: PlatformResolver,
+    private val platformConfig: PlatformConfig,
     private val romDirectory: File,
     private val appPackageToFile: (App) -> File = { File("/apps/${it.type.name}/${it.packageName}") },
 ) {
@@ -86,10 +86,10 @@ class SystemListViewModel(
                 .filter { it != TAG_TOOLS && it != TAG_PORTS }
 
             val allPlatforms = knownTags
-                .filter { platformResolver.isKnownTag(it) }
+                .filter { platformConfig.isKnownTag(it) }
                 .map { tag ->
                     val count = countsByTag[tag] ?: 0
-                    platformResolver.resolvePlatform(tag, romDirectory, count)
+                    platformConfig.resolvePlatform(tag, romDirectory, count)
                 }
 
             val groupedPlatforms = allPlatforms.groupBy { it.displayName }.map { (_, group) ->
@@ -194,8 +194,8 @@ class SystemListViewModel(
         val tagDirs = romDirectory.listFiles { f -> f.isDirectory && !f.name.startsWith(".") } ?: return
         for (dir in tagDirs) {
             val tag = dir.name.uppercase()
-            if (!platformResolver.isKnownTag(tag)) continue
-            romScanner.scanPlatform(tag, isArcade = platformResolver.isArcade(tag))
+            if (!platformConfig.isKnownTag(tag)) continue
+            romScanner.scanPlatform(tag, isArcade = platformConfig.isArcade(tag))
         }
     }
 

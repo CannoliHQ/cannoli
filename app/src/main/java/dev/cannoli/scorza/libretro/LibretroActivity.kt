@@ -93,7 +93,7 @@ class LibretroActivity : ComponentActivity() {
     }
     private var loading by mutableStateOf(true)
     private var revealed by mutableStateOf(false)
-    private var missingBios by mutableStateOf<List<dev.cannoli.scorza.scanner.FirmwareEntry>>(emptyList())
+    private var missingBios by mutableStateOf<List<dev.cannoli.scorza.config.FirmwareEntry>>(emptyList())
 
     private val screenStack = mutableStateListOf<IGMScreen>()
 
@@ -188,7 +188,7 @@ class LibretroActivity : ComponentActivity() {
     private val alwaysSaveOnQuit: Boolean by lazy { dev.cannoli.scorza.settings.SettingsRepository(this).alwaysSaveOnQuit }
 
     @androidx.compose.runtime.Composable
-    private fun MissingBiosScreen(entries: List<dev.cannoli.scorza.scanner.FirmwareEntry>) {
+    private fun MissingBiosScreen(entries: List<dev.cannoli.scorza.config.FirmwareEntry>) {
         val header = getString(R.string.dialog_missing_bios_header, "Cannoli/BIOS/$platformTag")
         val body = entries.joinToString(separator = "\n", prefix = "$header\n") { "• ${it.desc}" }
         dev.cannoli.ui.components.LaunchErrorDialog(
@@ -204,7 +204,7 @@ class LibretroActivity : ComponentActivity() {
         }
         if (!matched) return false
         val coreId = File(corePath).name.removeSuffix("_android.so")
-        val entries = dev.cannoli.scorza.scanner.CoreInfoRepository(assets).getFirmwareFor(coreId)
+        val entries = dev.cannoli.scorza.config.CoreInfoRepository(assets).getFirmwareFor(coreId)
         if (entries.isEmpty()) return false
         withContext(kotlinx.coroutines.Dispatchers.Main) {
             missingBios = entries

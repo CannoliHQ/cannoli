@@ -11,7 +11,7 @@ import dev.cannoli.scorza.model.AppType
 import dev.cannoli.scorza.model.Game
 import dev.cannoli.scorza.model.Rom
 import dev.cannoli.scorza.model.LaunchTarget
-import dev.cannoli.scorza.scanner.PlatformResolver
+import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.util.ArchiveExtractor
@@ -23,7 +23,7 @@ import java.text.Normalizer
 class LaunchManager(
     private val context: Context,
     private val settings: SettingsRepository,
-    private val platformResolver: PlatformResolver,
+    private val platformConfig: PlatformConfig,
     private val retroArchLauncher: RetroArchLauncher,
     private val emuLauncher: EmuLauncher,
     private val apkLauncher: ApkLauncher,
@@ -176,7 +176,7 @@ class LaunchManager(
 
     fun resolveLaunchFile(rom: Rom): File? {
         if (rom.discFiles != null) return createTempM3u(rom)
-        if (ArchiveExtractor.isArchive(rom.path) && !platformResolver.isArcade(rom.platformTag)) {
+        if (ArchiveExtractor.isArchive(rom.path) && !platformConfig.isArcade(rom.platformTag)) {
             return ArchiveExtractor.extract(rom.path, context.cacheDir)
         }
         return rom.path
@@ -189,13 +189,13 @@ class LaunchManager(
     }
 
     fun getEmbeddedCorePath(rom: Rom): String? {
-        val gameOverride = platformResolver.getGameOverride(rom.path.absolutePath)
+        val gameOverride = platformConfig.getGameOverride(rom.path.absolutePath)
         if (gameOverride?.appPackage != null) return null
         val target = rom.launchTarget
         if (target is LaunchTarget.Embedded) return target.corePath
         if (target !is LaunchTarget.RetroArch) return null
-        val core = gameOverride?.coreId ?: platformResolver.getCoreName(rom.platformTag) ?: return null
-        val runnerPref = gameOverride?.runner ?: platformResolver.getRunnerPreference(rom.platformTag)
+        val core = gameOverride?.coreId ?: platformConfig.getCoreName(rom.platformTag) ?: return null
+        val runnerPref = gameOverride?.runner ?: platformConfig.getRunnerPreference(rom.platformTag)
         if (runnerPref == "RetroArch" || runnerPref == "RicottaArch") return null
         return findEmbeddedCore(core)
     }
@@ -241,9 +241,9 @@ class LaunchManager(
         val launchFile = resolveLaunchFile(rom)
             ?: return errorAndReset(DialogState.LaunchError("Failed to extract archive"))
 
-        val gameOverride = platformResolver.getGameOverride(rom.path.absolutePath)
+        val gameOverride = platformConfig.getGameOverride(rom.path.absolutePath)
         if (gameOverride?.appPackage != null) {
-            val cfg = platformResolver.getAppConfig(rom.platformTag, gameOverride.appPackage)
+            val cfg = platformConfig.getAppConfig(rom.platformTag, gameOverride.appPackage)
             val appConfig = ApkLauncher.AppLaunchConfig(
                 activityName = cfg.activity,
                 action = cfg.action,
@@ -256,19 +256,19 @@ class LaunchManager(
 
         val result = when (val target = rom.launchTarget) {
             is LaunchTarget.RetroArch -> {
-                var runnerPref = gameOverride?.runner ?: platformResolver.getRunnerPreference(rom.platformTag)
+                var runnerPref = gameOverride?.runner ?: platformConfig.getRunnerPreference(rom.platformTag)
                 if (runnerPref == null) {
-                    val core = gameOverride?.coreId ?: platformResolver.getCoreName(rom.platformTag)
+                    val core = gameOverride?.coreId ?: platformConfig.getCoreName(rom.platformTag)
                     val embeddedAvailable = core?.let { findEmbeddedCore(it) != null } ?: false
                     val raAvailable = core != null && installedCoreService?.installedCores?.any { it.value.contains(core) } == true
                     if (!embeddedAvailable && !raAvailable
-                        && platformResolver.getFirstInstalledApp(rom.platformTag, context.packageManager) != null) {
+                        && platformConfig.getFirstInstalledApp(rom.platformTag, context.packageManager) != null) {
                         runnerPref = "Standalone"
                     }
                 }
                 if (runnerPref == "App" || runnerPref == "Standalone") {
-                    val cfg = platformResolver.getFirstInstalledApp(rom.platformTag, context.packageManager)
-                        ?: platformResolver.getAppPackage(rom.platformTag)?.let { platformResolver.getAppConfig(rom.platformTag, it) }
+                    val cfg = platformConfig.getFirstInstalledApp(rom.platformTag, context.packageManager)
+                        ?: platformConfig.getAppPackage(rom.platformTag)?.let { platformConfig.getAppConfig(rom.platformTag, it) }
                     if (cfg != null) {
                         val appConfig = ApkLauncher.AppLaunchConfig(
                             activityName = cfg.activity,
@@ -282,7 +282,7 @@ class LaunchManager(
                         LaunchResult.CoreNotInstalled("unknown")
                     }
                 } else {
-                    val core = gameOverride?.coreId ?: platformResolver.getCoreName(rom.platformTag)
+                    val core = gameOverride?.coreId ?: platformConfig.getCoreName(rom.platformTag)
                     if (core != null) {
                         if (runnerPref != "RetroArch" && runnerPref != "RicottaArch") {
                             val embeddedCorePath = findEmbeddedCore(core)
@@ -293,7 +293,7 @@ class LaunchManager(
                             }
                         }
                         val raPackage = gameOverride?.raPackage
-                            ?: platformResolver.getPackage(rom.platformTag)
+                            ?: platformConfig.getPackage(rom.platformTag)
                         if (raPackage != null && installedCoreService != null) {
                             if (!context.isPackageInstalled(raPackage)) {
                                 val appName = try {
@@ -329,11 +329,11 @@ class LaunchManager(
                 val pkg = if (context.isPackageInstalled(target.packageName)) {
                     target.packageName
                 } else {
-                    platformResolver.getFirstInstalledApp(rom.platformTag, context.packageManager)?.packageName
+                    platformConfig.getFirstInstalledApp(rom.platformTag, context.packageManager)?.packageName
                         ?: target.packageName
                 }
                 if (launchFile.extension != "apk_launch" && launchFile.exists()) {
-                    val cfg = platformResolver.getAppConfig(rom.platformTag, pkg)
+                    val cfg = platformConfig.getAppConfig(rom.platformTag, pkg)
                     val appConfig = ApkLauncher.AppLaunchConfig(
                         activityName = cfg.activity,
                         action = cfg.action,
@@ -389,9 +389,9 @@ class LaunchManager(
             launchEmbedded(rom.copy(path = launchFile), embeddedCorePath, resumeSlot, originalRomPath = rom.path.absolutePath)
             return null
         }
-        val gameOverride = platformResolver.getGameOverride(rom.path.absolutePath)
-        val core = gameOverride?.coreId ?: platformResolver.getCoreName(rom.platformTag) ?: run { launching = false; return null }
-        val raPackage = gameOverride?.raPackage ?: platformResolver.getPackage(rom.platformTag)
+        val gameOverride = platformConfig.getGameOverride(rom.path.absolutePath)
+        val core = gameOverride?.coreId ?: platformConfig.getCoreName(rom.platformTag) ?: run { launching = false; return null }
+        val raPackage = gameOverride?.raPackage ?: platformConfig.getPackage(rom.platformTag)
         if (settings.retroArchDiyMode) {
             val raConfig = "/storage/emulated/0/Android/data/$raPackage/files/retroarch.cfg"
             retroArchLauncher.launch(launchFile, core, raConfig, raPackage)
@@ -459,7 +459,7 @@ class LaunchManager(
             stateDir.mkdirs()
             putExtra("state_path", File(stateDir, "$romName.state").absolutePath)
             putExtra("platform_tag", rom.platformTag)
-            putExtra("platform_name", platformResolver.getDisplayName(rom.platformTag))
+            putExtra("platform_name", platformConfig.getDisplayName(rom.platformTag))
             putExtra("cannoli_root", cannoliRoot.absolutePath)
             putExtra("system_dir", File(cannoliRoot, "BIOS/${rom.platformTag}").absolutePath)
             putExtra("save_dir", saveDir.absolutePath)

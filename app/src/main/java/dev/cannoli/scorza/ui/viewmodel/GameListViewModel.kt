@@ -14,7 +14,7 @@ import dev.cannoli.scorza.model.Game
 import dev.cannoli.scorza.model.LaunchTarget
 import dev.cannoli.scorza.model.ListItem
 import dev.cannoli.scorza.model.Rom
-import dev.cannoli.scorza.scanner.PlatformResolver
+import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.ui.STAR
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -33,7 +33,7 @@ class GameListViewModel(
     private val appsRepository: AppsRepository,
     private val collectionsRepository: CollectionsRepository,
     private val recentlyPlayedRepository: RecentlyPlayedRepository,
-    private val platformResolver: PlatformResolver,
+    private val platformConfig: PlatformConfig,
     private val resources: android.content.res.Resources,
     private val isArcadeTag: (String) -> Boolean = { false },
     private val appPackageToFile: (App) -> File = { File("/apps/${it.type.name}/${it.packageName}") },
@@ -89,7 +89,7 @@ class GameListViewModel(
         scope.launch(Dispatchers.IO) {
             try {
                 val items = scanAndLoadPlatform(tag, tags, null)
-                val displayName = platformResolver.getDisplayName(tag)
+                val displayName = platformConfig.getDisplayName(tag)
                 val favRoms = collectionsRepository.favoriteRomIds()
                 _state.value = State(
                     platformTag = tag,
@@ -238,7 +238,7 @@ class GameListViewModel(
                 val nameCount = games.groupingBy { it.displayName }.eachCount()
                 val disambiguated = games.map { game ->
                     if ((nameCount[game.displayName] ?: 0) > 1 && game.platformTag.isNotEmpty()) {
-                        val platName = platformResolver.getDisplayName(game.platformTag)
+                        val platName = platformConfig.getDisplayName(game.platformTag)
                         game.copy(displayName = "${game.displayName} ($platName)")
                     } else game
                 }
@@ -549,7 +549,7 @@ class GameListViewModel(
         scope.launch(Dispatchers.IO) {
             try {
                 val items = scanAndLoadPlatform(tag, tags, subfolder)
-                val displayName = platformResolver.getDisplayName(tag)
+                val displayName = platformConfig.getDisplayName(tag)
                 val breadcrumb = if (breadcrumbStack.isEmpty()) displayName
                 else (listOf(displayName) + breadcrumbStack).joinToString(" › ")
                 val games = items.map { itemToGame(it, tag) }
