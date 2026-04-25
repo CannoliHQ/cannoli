@@ -677,6 +677,7 @@ class MainActivity : ComponentActivity() {
     private fun initializeApp() {
         val root = File(settings.sdCardRoot)
         dev.cannoli.scorza.util.DebugLog.init(root.absolutePath, settings.debugLogging)
+        dev.cannoli.scorza.util.ScanLog.init(root.absolutePath)
 
         retroArchLauncher = RetroArchLauncher(this) { settings.retroArchPackage }
         emuLauncher = EmuLauncher(this)
