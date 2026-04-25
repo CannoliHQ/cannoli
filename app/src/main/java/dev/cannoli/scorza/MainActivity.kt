@@ -181,54 +181,16 @@ class MainActivity : ComponentActivity() {
 
     private var lastKeyRepeatCount: Int = 0
 
-    private val shortcutCountdownHandler = Handler(Looper.getMainLooper())
-    private val shortcutHoldMs = 1500
-    private val shortcutTickMs = 100L
-
-    private val shortcutCountdownRunnable = object : Runnable {
-        override fun run() {
-            val screen = screenStack.lastOrNull() as? LauncherScreen.ShortcutBinding ?: return
-            if (!screen.listening) return
-            val newMs = screen.countdownMs + shortcutTickMs.toInt()
-            if (newMs >= shortcutHoldMs) {
-                val action = ShortcutAction.entries.getOrNull(screen.selectedIndex) ?: return
-                val chord = screen.heldKeys
-                val cleared = screen.shortcuts.filterValues { it != chord }
-                screenStack[screenStack.lastIndex] = screen.copy(
-                    shortcuts = cleared + (action to chord),
-                    listening = false, heldKeys = emptySet(), countdownMs = 0
-                )
-            } else {
-                screenStack[screenStack.lastIndex] = screen.copy(countdownMs = newMs)
-                shortcutCountdownHandler.postDelayed(this, shortcutTickMs)
-            }
-        }
+    private val bindingController by lazy {
+        dev.cannoli.scorza.input.BindingController(
+            screenStack = screenStack,
+            controlButtons = controlButtons,
+            swapConfirmBackProvider = { inputHandler.swapConfirmBack },
+            showOsd = { text, durationMs -> showOsd(text, durationMs = durationMs) },
+            cannotStealConfirmText = getString(R.string.osd_cannot_steal_confirm),
+        )
     }
-
-    private fun cancelShortcutListening() {
-        shortcutCountdownHandler.removeCallbacks(shortcutCountdownRunnable)
-        val screen = screenStack.lastOrNull() as? LauncherScreen.ShortcutBinding ?: return
-        if (screen.listening) {
-            screenStack[screenStack.lastIndex] = screen.copy(listening = false, heldKeys = emptySet(), countdownMs = 0)
-        }
-    }
-
-    private val controlListenTimeoutMs = 3000
-    private val controlListenTickMs = 100L
-
-    private val controlListenRunnable = object : Runnable {
-        override fun run() {
-            val screen = screenStack.lastOrNull() as? LauncherScreen.ControlBinding ?: return
-            if (screen.listeningIndex < 0) return
-            val newMs = screen.listenCountdownMs + controlListenTickMs.toInt()
-            if (newMs >= controlListenTimeoutMs) {
-                screenStack[screenStack.lastIndex] = screen.copy(listeningIndex = -1, listenCountdownMs = 0)
-            } else {
-                screenStack[screenStack.lastIndex] = screen.copy(listenCountdownMs = newMs)
-                shortcutCountdownHandler.postDelayed(this, controlListenTickMs)
-            }
-        }
-    }
+    private fun cancelShortcutListening() = bindingController.cancelShortcutListening()
 
     private lateinit var globalOverrides: GlobalOverridesManager
     private lateinit var profileManager: dev.cannoli.scorza.input.ProfileManager
@@ -607,7 +569,7 @@ class MainActivity : ComponentActivity() {
             inputTesterController.dispatchKey(event, down = true)
             return true
         }
-        if (handleBindingKeyDown(keyCode)) {
+        if (bindingController.handleKeyDown(keyCode)) {
             return true
         }
         val screen = screenStack.lastOrNull()
@@ -673,7 +635,7 @@ class MainActivity : ComponentActivity() {
         val wasHeld = deviceId in held
         if (value > 0.5f && !wasHeld) {
             held.add(deviceId)
-            handleBindingKeyDown(keyCode)
+            bindingController.handleKeyDown(keyCode)
         } else if (value < 0.3f && wasHeld) {
             held.remove(deviceId)
             val screen = screenStack.lastOrNull()
@@ -710,55 +672,6 @@ class MainActivity : ComponentActivity() {
         }
 
         return super.dispatchGenericMotionEvent(event)
-    }
-
-    private fun wouldStealNavConfirm(screen: LauncherScreen.ControlBinding, prefKey: String, keyCode: Int): Boolean {
-        if (screen.profileName != dev.cannoli.scorza.input.ProfileManager.NAVIGATION) return false
-        val confirmKey = if (inputHandler.swapConfirmBack) "btn_east" else "btn_south"
-        if (prefKey == confirmKey) return false
-        val default = controlButtons.first { it.prefKey == confirmKey }.defaultKeyCode
-        val current = screen.controls[confirmKey] ?: default
-        return current == keyCode
-    }
-
-    private fun handleBindingKeyDown(keyCode: Int): Boolean {
-        val screen = screenStack.lastOrNull() ?: return false
-        when (screen) {
-            is LauncherScreen.ControlBinding -> {
-                if (screen.listeningIndex < 0 || screen.listeningIndex >= controlButtons.size) return false
-                shortcutCountdownHandler.removeCallbacks(controlListenRunnable)
-                val btn = controlButtons[screen.listeningIndex]
-                if (wouldStealNavConfirm(screen, btn.prefKey, keyCode)) {
-                    showOsd(getString(R.string.osd_cannot_steal_confirm), durationMs = 4500)
-                    screenStack[screenStack.lastIndex] = screen.copy(
-                        listeningIndex = -1, listenCountdownMs = 0
-                    )
-                    return true
-                }
-                val newControls = screen.controls.toMutableMap()
-                for (other in controlButtons) {
-                    if (other.prefKey == btn.prefKey) continue
-                    val current = newControls[other.prefKey] ?: other.defaultKeyCode
-                    if (current == keyCode) newControls[other.prefKey] = LibretroInput.UNMAPPED
-                }
-                newControls[btn.prefKey] = keyCode
-                screenStack[screenStack.lastIndex] = screen.copy(
-                    controls = newControls,
-                    listeningIndex = -1, listenCountdownMs = 0
-                )
-                return true
-            }
-            is LauncherScreen.ShortcutBinding -> {
-                if (!screen.listening) return false
-                if (screen.heldKeys.contains(keyCode)) return true
-                val newKeys = screen.heldKeys + keyCode
-                screenStack[screenStack.lastIndex] = screen.copy(heldKeys = newKeys, countdownMs = 0)
-                shortcutCountdownHandler.removeCallbacks(shortcutCountdownRunnable)
-                shortcutCountdownHandler.postDelayed(shortcutCountdownRunnable, shortcutTickMs)
-                return true
-            }
-            else -> return false
-        }
     }
 
     private fun initializeApp() {
@@ -1495,12 +1408,7 @@ class MainActivity : ComponentActivity() {
                             ))
                         }
                     }
-                    is LauncherScreen.ControlBinding -> {
-                        if (screen.listeningIndex < 0) {
-                            screenStack[screenStack.lastIndex] = screen.copy(listeningIndex = screen.selectedIndex, listenCountdownMs = 0)
-                            shortcutCountdownHandler.postDelayed(controlListenRunnable, controlListenTickMs)
-                        }
-                    }
+                    is LauncherScreen.ControlBinding -> bindingController.startControlListening()
                     is LauncherScreen.ShortcutBinding -> {
                         if (!screen.listening) {
                             screenStack[screenStack.lastIndex] = screen.copy(
