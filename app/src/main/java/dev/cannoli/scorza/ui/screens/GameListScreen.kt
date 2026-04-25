@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -129,6 +130,14 @@ fun GameListScreen(
     val showFavoriteStars = viewModel.showFavoriteStars
     val favoriteRomIds = state.favoriteRomIds
     val favoriteAppIds = state.favoriteAppIds
+    val duplicateRomNames = remember(state.items) {
+        state.items.asSequence()
+            .filterIsInstance<ListItem.RomItem>()
+            .groupingBy { it.rom.displayName }
+            .eachCount()
+            .filterValues { it > 1 }
+            .keys
+    }
 
     ScreenBackground(backgroundImagePath = backgroundImagePath, backgroundTint = backgroundTint) {
         Box(
@@ -186,6 +195,9 @@ fun GameListScreen(
                                     is ListItem.AppItem -> item.app.id in favoriteAppIds
                                     else -> false
                                 }
+                                val tagSuffix = (item as? ListItem.RomItem)
+                                    ?.takeIf { it.rom.displayName in duplicateRomNames }
+                                    ?.rom?.tags
                                 ItemRow(
                                     item = item,
                                     showFavoriteStar = starred,
@@ -194,7 +206,8 @@ fun GameListScreen(
                                     lineHeight = listLineHeight,
                                     verticalPadding = listVerticalPadding,
                                     showReorderIcon = state.reorderMode && isSelected,
-                                    checkState = if (state.multiSelectMode && item.isLeafSelectable) index in state.checkedIndices else null
+                                    checkState = if (state.multiSelectMode && item.isLeafSelectable) index in state.checkedIndices else null,
+                                    tagSuffix = tagSuffix,
                                 )
                             }
                         }
@@ -316,7 +329,8 @@ private fun ItemRow(
     lineHeight: TextUnit,
     verticalPadding: Dp,
     showReorderIcon: Boolean = false,
-    checkState: Boolean? = null
+    checkState: Boolean? = null,
+    tagSuffix: String? = null,
 ) {
     val displayName = item.rowDisplayName(showStar = false)
     val rowText = if (showFavoriteStar) "$STAR $displayName" else displayName
@@ -367,6 +381,16 @@ private fun ItemRow(
                     maxLines = 1,
                     softWrap = false
                 )
+                if (tagSuffix != null) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = tagSuffix,
+                        style = textStyle.copy(fontSize = fontSize * 0.75f),
+                        color = if (isSelected) colors.highlightText else colors.accent,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                }
             }
         }
     }
