@@ -22,6 +22,7 @@ internal object Migrations {
                     path TEXT NOT NULL,
                     platform_tag TEXT NOT NULL REFERENCES platforms(tag) ON DELETE RESTRICT,
                     display_name TEXT NOT NULL,
+                    tags TEXT,
                     disc_paths TEXT,
                     ra_game_id INTEGER,
                     last_played_at INTEGER,

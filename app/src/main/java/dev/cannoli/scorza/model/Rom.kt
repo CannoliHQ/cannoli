@@ -7,6 +7,7 @@ data class Rom(
     val path: File,
     val platformTag: String,
     val displayName: String,
+    val tags: String? = null,
     val artFile: File? = null,
     val launchTarget: LaunchTarget = LaunchTarget.RetroArch,
     val discFiles: List<File>? = null,

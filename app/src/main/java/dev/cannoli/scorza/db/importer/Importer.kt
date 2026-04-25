@@ -151,10 +151,15 @@ class Importer(
                     continue
                 }
                 val discRelatives = game.discFiles?.mapNotNull { relativizeRom(it) }
+                val (displayName, romTags) = splitNameAndTags(
+                    rawName = game.file.nameWithoutExtension,
+                    resolvedDisplayName = game.displayName.removePrefix("$STAR "),
+                )
                 val id = insertRom(
                     relativePath = relative,
                     platformTag = tag.uppercase(),
-                    displayName = game.displayName.removePrefix("$STAR "),
+                    displayName = displayName,
+                    tags = romTags,
                     discPaths = discRelatives,
                 )
                 if (id != null) romIdsByRelative[relative] = id
@@ -164,20 +169,33 @@ class Importer(
         }
     }
 
+    private val tagRegex = Regex("""\s*(\([^)]*\)|\[[^\]]*\])""")
+
+    private fun splitNameAndTags(rawName: String, resolvedDisplayName: String): Pair<String, String?> {
+        val rawBase = tagRegex.replace(rawName, "").trim()
+        val nameOverridden = rawBase.isNotEmpty() && !resolvedDisplayName.equals(rawBase, ignoreCase = true) && !resolvedDisplayName.equals(rawName, ignoreCase = true)
+        if (nameOverridden) return resolvedDisplayName to null
+        if (rawBase.isEmpty() || rawBase == rawName) return rawName to null
+        val tags = tagRegex.findAll(rawName).joinToString(" ") { it.value.trim() }.takeIf { it.isNotBlank() }
+        return rawBase to tags
+    }
+
     private fun insertRom(
         relativePath: String,
         platformTag: String,
         displayName: String,
+        tags: String?,
         discPaths: List<String>?,
     ): Long? {
         conn.prepare("""
-            INSERT INTO roms (path, platform_tag, display_name, disc_paths)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO roms (path, platform_tag, display_name, tags, disc_paths)
+            VALUES (?, ?, ?, ?, ?)
         """.trimIndent()).use { stmt ->
             stmt.bindText(1, relativePath)
             stmt.bindText(2, platformTag)
             stmt.bindText(3, displayName)
-            if (discPaths != null) stmt.bindText(4, JSONArray(discPaths).toString()) else stmt.bindNull(4)
+            if (tags != null) stmt.bindText(4, tags) else stmt.bindNull(4)
+            if (discPaths != null) stmt.bindText(5, JSONArray(discPaths).toString()) else stmt.bindNull(5)
             stmt.step()
         }
         return conn.prepare("SELECT last_insert_rowid()").use { it.step(); it.getLong(0) }

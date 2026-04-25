@@ -101,7 +101,7 @@ class RomLibrary(
     private fun queryRom(whereClause: String, args: List<String>): List<Rom> {
         val out = mutableListOf<Rom>()
         val sql = """
-            SELECT id, path, platform_tag, display_name, disc_paths, ra_game_id
+            SELECT id, path, platform_tag, display_name, tags, disc_paths, ra_game_id
             FROM roms
             $whereClause
         """.trimIndent()
@@ -112,8 +112,9 @@ class RomLibrary(
                 val relativePath = stmt.getText(1)
                 val platformTag = stmt.getText(2)
                 val displayName = stmt.getText(3)
-                val discPaths = if (stmt.isNull(4)) null else parseDiscPaths(stmt.getText(4))
-                val raGameId = if (stmt.isNull(5)) null else stmt.getLong(5).toInt()
+                val tags = if (stmt.isNull(4)) null else stmt.getText(4)
+                val discPaths = if (stmt.isNull(5)) null else parseDiscPaths(stmt.getText(5))
+                val raGameId = if (stmt.isNull(6)) null else stmt.getLong(6).toInt()
                 val absoluteFile = File(romDirectory, relativePath)
                 val basename = absoluteFile.nameWithoutExtension
                 out.add(
@@ -122,6 +123,7 @@ class RomLibrary(
                         path = absoluteFile,
                         platformTag = platformTag,
                         displayName = displayName,
+                        tags = tags,
                         artFile = artwork.find(platformTag, basename),
                         launchTarget = LaunchTarget.RetroArch,
                         discFiles = discPaths?.map { File(romDirectory, it) },

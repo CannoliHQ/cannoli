@@ -46,6 +46,7 @@ class RomScanner(
     private data class ScannedRom(
         val relativePath: String,
         val displayName: String,
+        val tags: String?,
         val discPaths: List<String>?,
     )
 
@@ -65,7 +66,7 @@ class RomScanner(
             if (launch != null) {
                 val launchRel = "$relPrefix${subdir.name}${File.separator}${launch.file.name}"
                 val discRels = launch.discFiles?.map { "$relPrefix${subdir.name}${File.separator}${it.name}" }
-                out.add(ScannedRom(launchRel, subdir.name, discRels))
+                out.add(ScannedRom(launchRel, subdir.name, null, discRels))
             } else if (subdir.listFiles()?.any { !it.name.startsWith(".") } == true) {
                 scanDir(subdir, "$relPrefix${subdir.name}${File.separator}", isArcade, out)
             }
@@ -101,33 +102,36 @@ class RomScanner(
         }
 
         val nameOverrides = nameMap.mapFor(dir, fallbackToArcade = isArcade)
-        val stripped = stripTagsForDir(pending.map { it.rawName })
-        for ((index, p) in pending.withIndex()) {
-            val displayName = nameOverrides[p.sourceFileName] ?: stripped[index]
-            out.add(ScannedRom(p.relativePath, displayName, p.discPaths))
+        for (p in pending) {
+            val override = nameOverrides[p.sourceFileName]
+            val (displayName, tags) = if (override != null) {
+                override to null
+            } else {
+                splitNameAndTags(p.rawName)
+            }
+            out.add(ScannedRom(p.relativePath, displayName, tags, p.discPaths))
         }
     }
 
-    private fun stripTagsForDir(names: List<String>): List<String> {
-        val stripped = names.map { it to tagRegex.replace(it, "").trim() }
-        val baseCounts = mutableMapOf<String, Int>()
-        for ((_, base) in stripped) baseCounts[base] = (baseCounts[base] ?: 0) + 1
-        return stripped.map { (raw, base) ->
-            if (base.isEmpty() || (baseCounts[base] ?: 0) > 1) raw else base
-        }
+    private fun splitNameAndTags(rawName: String): Pair<String, String?> {
+        val base = tagRegex.replace(rawName, "").trim()
+        if (base.isEmpty() || base == rawName) return rawName to null
+        val tags = tagRegex.findAll(rawName).joinToString(" ") { it.value.trim() }.takeIf { it.isNotBlank() }
+        return base to tags
     }
 
     private fun sync(tag: String, scanned: List<ScannedRom>): SyncCounts {
-        data class ExistingRow(val id: Long, val displayName: String, val discPaths: String?)
+        data class ExistingRow(val id: Long, val displayName: String, val tags: String?, val discPaths: String?)
         val existing = mutableMapOf<String, ExistingRow>()
-        db.conn.prepare("SELECT id, path, display_name, disc_paths FROM roms WHERE platform_tag = ?").use { stmt ->
+        db.conn.prepare("SELECT id, path, display_name, tags, disc_paths FROM roms WHERE platform_tag = ?").use { stmt ->
             stmt.bindText(1, tag)
             while (stmt.step()) {
                 val path = stmt.getText(1)
                 existing[path] = ExistingRow(
                     id = stmt.getLong(0),
                     displayName = stmt.getText(2),
-                    discPaths = if (stmt.isNull(3)) null else stmt.getText(3),
+                    tags = if (stmt.isNull(3)) null else stmt.getText(3),
+                    discPaths = if (stmt.isNull(4)) null else stmt.getText(4),
                 )
             }
         }
@@ -143,19 +147,21 @@ class RomScanner(
                 val current = existing[rom.relativePath]
                 val discJson = rom.discPaths?.let { JSONArray(it).toString() }
                 if (current == null) {
-                    db.conn.prepare("INSERT INTO roms (path, platform_tag, display_name, disc_paths) VALUES (?, ?, ?, ?)").use { stmt ->
+                    db.conn.prepare("INSERT INTO roms (path, platform_tag, display_name, tags, disc_paths) VALUES (?, ?, ?, ?, ?)").use { stmt ->
                         stmt.bindText(1, rom.relativePath)
                         stmt.bindText(2, tag)
                         stmt.bindText(3, rom.displayName)
-                        if (discJson != null) stmt.bindText(4, discJson) else stmt.bindNull(4)
+                        if (rom.tags != null) stmt.bindText(4, rom.tags) else stmt.bindNull(4)
+                        if (discJson != null) stmt.bindText(5, discJson) else stmt.bindNull(5)
                         stmt.step()
                     }
                     inserted++
-                } else if (current.displayName != rom.displayName || current.discPaths != discJson) {
-                    db.conn.prepare("UPDATE roms SET display_name = ?, disc_paths = ? WHERE id = ?").use { stmt ->
+                } else if (current.displayName != rom.displayName || current.tags != rom.tags || current.discPaths != discJson) {
+                    db.conn.prepare("UPDATE roms SET display_name = ?, tags = ?, disc_paths = ? WHERE id = ?").use { stmt ->
                         stmt.bindText(1, rom.displayName)
-                        if (discJson != null) stmt.bindText(2, discJson) else stmt.bindNull(2)
-                        stmt.bindLong(3, current.id)
+                        if (rom.tags != null) stmt.bindText(2, rom.tags) else stmt.bindNull(2)
+                        if (discJson != null) stmt.bindText(3, discJson) else stmt.bindNull(3)
+                        stmt.bindLong(4, current.id)
                         stmt.step()
                     }
                     updated++
