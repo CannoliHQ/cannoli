@@ -1949,23 +1949,17 @@ class MainActivity : ComponentActivity() {
                     LauncherScreen.GameList -> {
                         val glState = gameListViewModel.state.value
                         if (!glState.isCollectionsList) {
-                            val game = gameListViewModel.getSelectedGame()
-                            if (game != null && !game.isSubfolder && !game.isChildCollection) {
-                                val isResumable = resumableGames.contains(game.file.absolutePath)
+                            val item = gameListViewModel.getSelectedItem()
+                            val recentKey = item?.let(::selectedRecentKey)
+                            if (recentKey != null) {
+                                val isResumable = resumableGames.contains(recentKey)
                                 val trackRecent = glState.platformTag != "tools"
-                                if (isResumable && settings.swapPlayResume) {
-                                    val errorDialog = launchManager.launchGame(game)
+                                if (isResumable) {
+                                    val errorDialog = launchSelected(item, resume = !settings.swapPlayResume)
                                     if (errorDialog != null) {
                                         dialogState.value = errorDialog
                                     } else if (trackRecent) {
-                                        ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
-                                    }
-                                } else if (isResumable) {
-                                    val errorDialog = launchManager.resumeGame(game)
-                                    if (errorDialog != null) {
-                                        dialogState.value = errorDialog
-                                    } else if (trackRecent) {
-                                        ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
+                                        ioScope.launch { recentlyPlayedManager.record(recentKey) }
                                     }
                                 }
                             }
@@ -2453,51 +2447,42 @@ class MainActivity : ComponentActivity() {
 
     private fun onGameListConfirm() {
         if (navigating) return
-        val game = gameListViewModel.getSelectedGame() ?: return
+        val item = gameListViewModel.getSelectedItem() ?: return
 
-        if (gameListViewModel.state.value.isCollectionsList) {
-            navigating = true
-            gameListViewModel.loadCollection(game.file.nameWithoutExtension) {
-                scanResumableGames()
-                navigating = false
+        when (item) {
+            is dev.cannoli.scorza.model.ListItem.CollectionItem -> {
+                navigating = true
+                gameListViewModel.loadCollection(item.collection.displayName) {
+                    scanResumableGames()
+                    navigating = false
+                }
+                return
             }
-            return
-        }
-
-        if (game.isChildCollection) {
-            navigating = true
-            val childStem = game.file.name
-            gameListViewModel.enterChildCollection(childStem) {
-                scanResumableGames()
-                navigating = false
+            is dev.cannoli.scorza.model.ListItem.ChildCollectionItem -> {
+                navigating = true
+                gameListViewModel.enterChildCollection(item.collection.displayName) {
+                    scanResumableGames()
+                    navigating = false
+                }
+                return
             }
-            return
+            is dev.cannoli.scorza.model.ListItem.SubfolderItem -> {
+                gameListViewModel.enterSubfolder(item.name)
+                return
+            }
+            else -> {}
         }
 
-        if (game.isSubfolder) {
-            gameListViewModel.enterSubfolder(game.file.name)
-            return
-        }
-
-        val isResumable = resumableGames.contains(game.file.absolutePath)
+        val recentKey = selectedRecentKey(item) ?: return
+        val isResumable = resumableGames.contains(recentKey)
         val tag = gameListViewModel.state.value.platformTag
         val trackRecent = tag != "tools"
-        if (isResumable && settings.swapPlayResume) {
-            val errorDialog = launchManager.resumeGame(game)
-            if (errorDialog != null) {
-                dialogState.value = errorDialog
-            } else if (trackRecent) {
-                ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
-                if (tag == "recently_played") pendingRecentlyPlayedReorder = true
-            }
-        } else {
-            val errorDialog = launchManager.launchGame(game)
-            if (errorDialog != null) {
-                dialogState.value = errorDialog
-            } else if (trackRecent) {
-                ioScope.launch { recentlyPlayedManager.record(game.file.absolutePath) }
-                if (tag == "recently_played") pendingRecentlyPlayedReorder = true
-            }
+        val errorDialog = launchSelected(item, resume = isResumable && settings.swapPlayResume)
+        if (errorDialog != null) {
+            dialogState.value = errorDialog
+        } else if (trackRecent) {
+            ioScope.launch { recentlyPlayedManager.record(recentKey) }
+            if (tag == "recently_played") pendingRecentlyPlayedReorder = true
         }
     }
 
