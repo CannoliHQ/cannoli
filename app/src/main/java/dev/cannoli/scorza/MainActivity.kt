@@ -1229,11 +1229,11 @@ class MainActivity : ComponentActivity() {
                 is DialogState.MissingApp -> {
                     val glState = gameListViewModel.state.value
                     if (glState.platformTag == "tools" || glState.platformTag == "ports") {
-                        val game = gameListViewModel.getSelectedGame()
-                        if (game != null) {
+                        val item = gameListViewModel.getSelectedItem()
+                        if (item is dev.cannoli.scorza.model.ListItem.AppItem) {
                             dialogState.value = DialogState.None
                             ioScope.launch {
-                                scanner.removeApkLaunch(glState.platformTag, game.displayName)
+                                appsRepository.delete(item.app.id)
                                 gameListViewModel.reload()
                                 rescanSystemList()
                             }
@@ -1248,7 +1248,8 @@ class MainActivity : ComponentActivity() {
                     dialogState.value = DialogState.None
                     if (!deletingFromParent) gameListViewModel.saveCollectionsPosition()
                     ioScope.launch {
-                        collectionManager.deleteCollection(stem)
+                        val id = collectionsRepository.all().firstOrNull { it.displayName == stem }?.id
+                        if (id != null) collectionsRepository.delete(id)
                         if (deletingFromParent) {
                             gameListViewModel.reload()
                             rescanSystemList()
@@ -1259,8 +1260,7 @@ class MainActivity : ComponentActivity() {
                                     rescanSystemList()
                                 }
                             } else {
-                                val remaining = collectionManager.scanCollections()
-                                    .filter { !it.stem.equals("Favorites", ignoreCase = true) }
+                                val remaining = collectionsRepository.topLevel()
                                 if (remaining.isEmpty()) {
                                     withContext(Dispatchers.Main) {
                                         screenStack.removeAt(screenStack.lastIndex)
@@ -2951,11 +2951,13 @@ class MainActivity : ComponentActivity() {
                 val glState = gameListViewModel.state.value
                 val pathSet = state.gamePaths.toSet()
                 ioScope.launch {
-                    glState.games.filter { it.file.absolutePath in pathSet }
-                        .forEach { g ->
-                            val name = g.displayName.removePrefix("$STAR ")
-                            scanner.removeApkLaunch(glState.platformTag, name)
+                    glState.items.forEachIndexed { index, item ->
+                        val path = glState.games.getOrNull(index)?.file?.absolutePath ?: return@forEachIndexed
+                        if (path !in pathSet) return@forEachIndexed
+                        if (item is dev.cannoli.scorza.model.ListItem.AppItem) {
+                            appsRepository.delete(item.app.id)
                         }
+                    }
                     gameListViewModel.reload()
                     rescanSystemList()
                 }
@@ -2963,10 +2965,19 @@ class MainActivity : ComponentActivity() {
             }
             MENU_REMOVE_FROM_COLLECTION -> {
                 pendingContextReturn = null
-                val collName = gameListViewModel.state.value.collectionName ?: return
+                val glState = gameListViewModel.state.value
+                val collectionId = glState.collectionId ?: return
+                val pathSet = state.gamePaths.toSet()
                 ioScope.launch {
-                    state.gamePaths.forEach { path ->
-                        collectionManager.removeFromCollection(collName, path)
+                    glState.items.forEachIndexed { index, item ->
+                        val path = glState.games.getOrNull(index)?.file?.absolutePath ?: return@forEachIndexed
+                        if (path !in pathSet) return@forEachIndexed
+                        val ref = when (item) {
+                            is dev.cannoli.scorza.model.ListItem.RomItem -> dev.cannoli.scorza.library.LibraryRef.Rom(item.rom.id)
+                            is dev.cannoli.scorza.model.ListItem.AppItem -> dev.cannoli.scorza.library.LibraryRef.App(item.app.id)
+                            else -> null
+                        }
+                        if (ref != null) collectionsRepository.removeMember(collectionId, ref)
                     }
                     gameListViewModel.reload()
                     rescanSystemList()

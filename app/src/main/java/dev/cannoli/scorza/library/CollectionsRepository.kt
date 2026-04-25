@@ -142,6 +142,13 @@ class CollectionsRepository(private val db: CannoliDatabase) {
         }
     }
 
+    fun delete(collectionId: Long) {
+        db.conn.prepare("DELETE FROM collections WHERE id = ?").use { stmt ->
+            stmt.bindLong(1, collectionId)
+            stmt.step()
+        }
+    }
+
     fun setCollectionOrder(orderedIds: List<Long>) {
         db.conn.execSQL("BEGIN")
         try {

@@ -43,6 +43,13 @@ class AppsRepository(private val db: CannoliDatabase) {
         }
     }
 
+    fun delete(appId: Long) {
+        db.conn.prepare("DELETE FROM apps WHERE id = ?").use { stmt ->
+            stmt.bindLong(1, appId)
+            stmt.step()
+        }
+    }
+
     fun setOrder(type: AppType, orderedIds: List<Long>) {
         db.conn.execSQL("BEGIN")
         try {
