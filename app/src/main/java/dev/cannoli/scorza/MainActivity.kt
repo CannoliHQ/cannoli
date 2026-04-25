@@ -1821,12 +1821,18 @@ class MainActivity : ComponentActivity() {
                             gameListViewModel.confirmReorder()
                         } else {
                         val glState = gameListViewModel.state.value
-                        val game = gameListViewModel.getSelectedGame()
-                        if (game != null) {
-                            val menuName = game.displayName.removePrefix("$STAR ").let { if (game.isChildCollection) it.removePrefix("/") else it }
+                        val item = gameListViewModel.getSelectedItem()
+                        if (item != null) {
+                            val menuName = when (item) {
+                                is dev.cannoli.scorza.model.ListItem.RomItem -> item.rom.displayName
+                                is dev.cannoli.scorza.model.ListItem.AppItem -> item.app.displayName
+                                is dev.cannoli.scorza.model.ListItem.SubfolderItem -> item.name
+                                is dev.cannoli.scorza.model.ListItem.CollectionItem -> item.collection.displayName
+                                is dev.cannoli.scorza.model.ListItem.ChildCollectionItem -> item.collection.displayName
+                            }
                             dialogState.value = DialogState.ContextMenu(
                                 gameName = menuName,
-                                options = buildGameContextOptions(game, glState)
+                                options = buildItemContextOptions(item, glState)
                             )
                         }
                         }
@@ -2577,12 +2583,19 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun buildGameContextOptions(game: dev.cannoli.scorza.model.Game, glState: dev.cannoli.scorza.ui.viewmodel.GameListViewModel.State): List<String> {
-        if (glState.isCollectionsList || game.isChildCollection) return listOf(MENU_RENAME, MENU_CHILD_COLLECTIONS, MENU_DELETE)
-        if (game.isSubfolder) return listOf(MENU_RENAME, MENU_DELETE)
-        val isApk = game.platformTag == "tools" || game.platformTag == "ports"
-        val isFav = game.displayName.startsWith(STAR) ||
-            (glState.isCollection && glState.collectionName == "Favorites")
+    private fun buildItemContextOptions(item: dev.cannoli.scorza.model.ListItem, glState: dev.cannoli.scorza.ui.viewmodel.GameListViewModel.State): List<String> {
+        if (glState.isCollectionsList || item is dev.cannoli.scorza.model.ListItem.ChildCollectionItem) return listOf(MENU_RENAME, MENU_CHILD_COLLECTIONS, MENU_DELETE)
+        if (item is dev.cannoli.scorza.model.ListItem.SubfolderItem) return listOf(MENU_RENAME, MENU_DELETE)
+        val rom = (item as? dev.cannoli.scorza.model.ListItem.RomItem)?.rom
+        val app = (item as? dev.cannoli.scorza.model.ListItem.AppItem)?.app
+        val isApk = app != null
+        val platformTag = rom?.platformTag ?: (if (app?.type == dev.cannoli.scorza.model.AppType.TOOL) "tools" else "ports")
+        val romPath = rom?.path?.absolutePath
+        val isFav = when {
+            rom != null -> rom.id in glState.favoriteRomIds
+            app != null -> app.id in glState.favoriteAppIds
+            else -> false
+        } || (glState.isCollection && glState.collectionName == "Favorites")
         return buildList {
             if (glState.platformTag == "recently_played") add(MENU_REMOVE_FROM_RECENTS)
             add(if (isFav) MENU_REMOVE_FAVORITE else MENU_ADD_FAVORITE)
@@ -2590,13 +2603,13 @@ class MainActivity : ComponentActivity() {
                 add(MENU_MANAGE_COLLECTIONS)
                 add(MENU_REMOVE)
             } else {
-                addAll(gameContextOptions.map { item ->
-                    if (item == MENU_EMULATOR_OVERRIDE) {
+                addAll(gameContextOptions.map { menuItem ->
+                    if (menuItem == MENU_EMULATOR_OVERRIDE && romPath != null) {
                         val bundledCoresDir = LaunchManager.extractBundledCores(this@MainActivity)
-                        val options = platformConfig.getCorePickerOptions(game.platformTag, packageManager,
+                        val options = platformConfig.getCorePickerOptions(platformTag, packageManager,
                             installedRaCores = installedCoreService.installedCores, embeddedCoresDir = bundledCoresDir,
                             unresponsivePackages = installedCoreService.unresponsivePackages)
-                        val override = platformConfig.getGameOverride(game.file.absolutePath)
+                        val override = platformConfig.getGameOverride(romPath)
                         if (override != null) {
                             val match = if (override.appPackage != null) {
                                 options.firstOrNull { it.appPackage == override.appPackage }
@@ -2607,13 +2620,13 @@ class MainActivity : ComponentActivity() {
                                 val desc = if (match.appPackage != null) match.displayName
                                     else "${match.runnerLabel} (${match.displayName})"
                                 "$MENU_EMULATOR_OVERRIDE\t$desc"
-                            } else item
+                            } else menuItem
                         } else {
                             "$MENU_EMULATOR_OVERRIDE\tPlatform Default"
                         }
-                    } else item
+                    } else menuItem
                 })
-                if (game.artFile != null) {
+                if (rom?.artFile != null) {
                     val idx = indexOf(MENU_DELETE_GAME)
                     if (idx >= 0) add(idx, MENU_DELETE_ART) else add(MENU_DELETE_ART)
                 }
@@ -2835,17 +2848,17 @@ class MainActivity : ComponentActivity() {
     private fun restoreContextMenu() {
         when (val ret = pendingContextReturn) {
             is ContextReturn.Single -> {
-                val game = gameListViewModel.getSelectedGame()
-                if (game != null) {
+                val item = gameListViewModel.getSelectedItem()
+                if (item != null) {
                     val glState = gameListViewModel.state.value
-                    val newOptions = buildGameContextOptions(game, glState)
+                    val newOptions = buildItemContextOptions(item, glState)
                     val oldSelected = ret.options.getOrNull(ret.selectedOption)
                     val restoredIdx = if (oldSelected != null) {
                         val key = oldSelected.substringBefore('\t')
                         newOptions.indexOfFirst { it.startsWith(key) }.coerceAtLeast(0)
                     } else 0
                     dialogState.value = DialogState.ContextMenu(
-                        gameName = game.displayName,
+                        gameName = ret.gameName,
                         selectedOption = restoredIdx,
                         options = newOptions
                     )
