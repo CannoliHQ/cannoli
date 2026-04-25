@@ -51,7 +51,6 @@ class Importer(
 
     fun run(): ImportResult {
         if (countRoms() > 0 || countApps() > 0) return ImportResult.NotNeeded
-        migrateLegacyCollectionsToHashedNames()
 
         val timestamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
         val backupDir = File(cannoliRoot, "Backup/import-$timestamp")
@@ -452,69 +451,6 @@ class Importer(
         return files.mapNotNull { file ->
             val pkg = try { file.readText().trim() } catch (_: IOException) { return@mapNotNull null }
             if (pkg.isEmpty()) null else file.nameWithoutExtension to pkg
-        }
-    }
-
-    private fun migrateLegacyCollectionsToHashedNames() {
-        if (!collectionsDir.exists()) return
-        val files = collectionsDir.listFiles { f -> f.extension == "txt" } ?: return
-        val needsMigration = files.any { file ->
-            val stem = file.nameWithoutExtension
-            if (stem.equals("Favorites", ignoreCase = true)) return@any false
-            val idx = stem.lastIndexOf('_')
-            if (idx < 0) return@any true
-            val suffix = stem.substring(idx + 1)
-            !(suffix.length == 4 && suffix.all { it in '0'..'9' || it in 'a'..'f' })
-        }
-        if (!needsMigration) return
-
-        val renameMap = mutableMapOf<String, String>()
-        val existingStems = files.map { it.nameWithoutExtension }.toMutableSet()
-
-        for (file in files) {
-            val oldStem = file.nameWithoutExtension
-            if (oldStem.equals("Favorites", ignoreCase = true)) continue
-            val idx = oldStem.lastIndexOf('_')
-            val alreadyHashed = idx >= 0 && oldStem.substring(idx + 1).let { s ->
-                s.length == 4 && s.all { it in '0'..'9' || it in 'a'..'f' }
-            }
-            if (alreadyHashed) continue
-
-            val hash = Collection.generateUniqueHash(existingStems, oldStem)
-            val newStem = "${oldStem}_$hash"
-            val newFile = File(collectionsDir, "$newStem.txt")
-            if (file.renameTo(newFile)) {
-                renameMap[oldStem] = newStem
-                existingStems.remove(oldStem)
-                existingStems.add(newStem)
-            }
-        }
-
-        if (renameMap.isEmpty()) return
-
-        if (collectionParentsFile.exists()) {
-            try {
-                val updated = collectionParentsFile.readLines().map { line ->
-                    val trimmed = line.trim()
-                    if (trimmed.isEmpty() || '=' !in trimmed) return@map line
-                    val (child, parent) = trimmed.split('=', limit = 2)
-                    val newChild = renameMap[child.trim()] ?: child.trim()
-                    val newParent = renameMap[parent.trim()] ?: parent.trim()
-                    "$newChild=$newParent"
-                }
-                collectionParentsFile.writeText(updated.joinToString("\n") + "\n")
-            } catch (_: IOException) { }
-        }
-
-        val orderFile = File(orderingDir, "collection_order.txt")
-        if (orderFile.exists()) {
-            try {
-                val updated = orderFile.readLines().map { line ->
-                    val trimmed = line.trim()
-                    renameMap[trimmed] ?: trimmed
-                }
-                orderFile.writeText(updated.joinToString("\n") + "\n")
-            } catch (_: IOException) { }
         }
     }
 

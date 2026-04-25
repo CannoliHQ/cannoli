@@ -9,20 +9,6 @@ data class Collection(
     val displayName: String get() = stemToDisplayName(stem)
 
     companion object {
-        private val hexChars = "0123456789abcdef"
-
-        fun generateHash(): String {
-            return (1..4).map { hexChars.random() }.joinToString("")
-        }
-
-        fun generateUniqueHash(existingStems: Set<String>, name: String): String {
-            var hash = generateHash()
-            while ("${name}_$hash" in existingStems) {
-                hash = generateHash()
-            }
-            return hash
-        }
-
         fun stemToDisplayName(stem: String): String {
             val idx = stem.lastIndexOf('_')
             if (idx < 0) return stem
