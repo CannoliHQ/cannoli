@@ -93,6 +93,7 @@ class Importer(
                 conn.execSQL("ROLLBACK")
                 throw t
             }
+            conn.execSQL("PRAGMA wal_checkpoint(TRUNCATE)")
 
             announce(Phase.ARCHIVE)
             archiveLegacyFiles(backupDir)
@@ -432,9 +433,20 @@ class Importer(
                 if (src.isDirectory) src.copyRecursively(dest, overwrite = true)
                 else src.copyTo(dest, overwrite = true)
                 if (src.isDirectory) src.deleteRecursively() else src.delete()
+                pruneEmptyParents(src)
             } catch (t: Throwable) {
                 ScanLog.write("WARN failed to archive ${src.absolutePath}: ${t.message}")
             }
+        }
+    }
+
+    private fun pruneEmptyParents(start: File) {
+        var dir = start.parentFile ?: return
+        while (dir.absolutePath != cannoliRoot.absolutePath && dir.startsWith(cannoliRoot)) {
+            val children = dir.listFiles() ?: break
+            if (children.isNotEmpty()) break
+            if (!dir.delete()) break
+            dir = dir.parentFile ?: break
         }
     }
 
