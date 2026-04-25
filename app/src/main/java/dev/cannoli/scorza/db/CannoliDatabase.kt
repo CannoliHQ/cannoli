@@ -14,6 +14,7 @@ class CannoliDatabase(cannoliRoot: File) {
         open.execSQL("PRAGMA journal_mode = WAL")
         runMigrations(open)
         runIntegrityCheck(open)
+        open.execSQL("PRAGMA wal_checkpoint(TRUNCATE)")
     }
 
     fun close() {

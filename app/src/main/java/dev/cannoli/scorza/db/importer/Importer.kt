@@ -9,6 +9,7 @@ import dev.cannoli.scorza.scanner.OrderingManager
 import dev.cannoli.scorza.scanner.PlatformResolver
 import dev.cannoli.scorza.scanner.RecentlyPlayedManager
 import dev.cannoli.scorza.util.ScanLog
+import dev.cannoli.ui.STAR
 import org.json.JSONArray
 import java.io.File
 import java.text.SimpleDateFormat
@@ -153,7 +154,7 @@ class Importer(
                 val id = insertRom(
                     relativePath = relative,
                     platformTag = tag.uppercase(),
-                    displayName = game.displayName,
+                    displayName = game.displayName.removePrefix("$STAR "),
                     discPaths = discRelatives,
                 )
                 if (id != null) romIdsByRelative[relative] = id
@@ -424,6 +425,8 @@ class Importer(
             File(cannoliRoot, "Config/Ordering"),
             File(cannoliRoot, "Config/Launch Scripts/Tools"),
             File(cannoliRoot, "Config/Launch Scripts/Ports"),
+            File(cannoliRoot, "Config/Cache/.platform_cache.json"),
+            File(cannoliRoot, "Config/Cache/.game_cache"),
         )
         for (src in candidates) {
             if (!src.exists()) continue
