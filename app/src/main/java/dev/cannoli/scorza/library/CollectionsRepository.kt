@@ -142,6 +142,47 @@ class CollectionsRepository(private val db: CannoliDatabase) {
         }
     }
 
+    fun create(displayName: String): Long {
+        db.conn.prepare("INSERT INTO collections (display_name, collection_type) VALUES (?, 'STANDARD')").use { stmt ->
+            stmt.bindText(1, displayName)
+            stmt.step()
+        }
+        return db.conn.prepare("SELECT last_insert_rowid()").use { it.step(); it.getLong(0) }
+    }
+
+    fun rename(collectionId: Long, newName: String) {
+        db.conn.prepare("UPDATE collections SET display_name = ? WHERE id = ?").use { stmt ->
+            stmt.bindText(1, newName)
+            stmt.bindLong(2, collectionId)
+            stmt.step()
+        }
+    }
+
+    fun setParent(collectionId: Long, parentId: Long?) {
+        val sql = if (parentId == null) "UPDATE collections SET parent_id = NULL WHERE id = ?"
+        else "UPDATE collections SET parent_id = ? WHERE id = ?"
+        db.conn.prepare(sql).use { stmt ->
+            if (parentId == null) {
+                stmt.bindLong(1, collectionId)
+            } else {
+                stmt.bindLong(1, parentId)
+                stmt.bindLong(2, collectionId)
+            }
+            stmt.step()
+        }
+    }
+
+    fun ancestors(collectionId: Long): List<CollectionRow> {
+        val out = mutableListOf<CollectionRow>()
+        var current = byId(collectionId)?.parentId
+        while (current != null) {
+            val row = byId(current) ?: break
+            out.add(row)
+            current = row.parentId
+        }
+        return out
+    }
+
     fun delete(collectionId: Long) {
         db.conn.prepare("DELETE FROM collections WHERE id = ?").use { stmt ->
             stmt.bindLong(1, collectionId)

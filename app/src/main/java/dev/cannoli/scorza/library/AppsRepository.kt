@@ -27,6 +27,33 @@ class AppsRepository(private val db: CannoliDatabase) {
         }
     }
 
+    fun byDisplayName(type: AppType, displayName: String): App? {
+        db.conn.prepare("SELECT id, type, display_name, package_name, last_played_at FROM apps WHERE type = ? AND display_name = ?").use { stmt ->
+            stmt.bindText(1, type.name)
+            stmt.bindText(2, displayName)
+            return if (stmt.step()) rowToApp(stmt) else null
+        }
+    }
+
+    fun upsert(type: AppType, displayName: String, packageName: String): Long {
+        val existing = byPackage(type, packageName)
+        if (existing != null) {
+            db.conn.prepare("UPDATE apps SET display_name = ? WHERE id = ?").use { stmt ->
+                stmt.bindText(1, displayName)
+                stmt.bindLong(2, existing.id)
+                stmt.step()
+            }
+            return existing.id
+        }
+        db.conn.prepare("INSERT INTO apps (type, display_name, package_name) VALUES (?, ?, ?)").use { stmt ->
+            stmt.bindText(1, type.name)
+            stmt.bindText(2, displayName)
+            stmt.bindText(3, packageName)
+            stmt.step()
+        }
+        return db.conn.prepare("SELECT last_insert_rowid()").use { it.step(); it.getLong(0) }
+    }
+
     fun byPackage(type: AppType, packageName: String): App? {
         db.conn.prepare("SELECT id, type, display_name, package_name, last_played_at FROM apps WHERE type = ? AND package_name = ?").use { stmt ->
             stmt.bindText(1, type.name)

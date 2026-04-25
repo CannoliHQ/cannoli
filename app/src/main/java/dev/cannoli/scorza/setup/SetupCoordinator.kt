@@ -5,16 +5,13 @@ import android.os.Build
 import android.os.storage.StorageManager
 import dev.cannoli.scorza.launcher.ApkLauncher
 import dev.cannoli.scorza.launcher.EmuLauncher
+import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.LaunchManager
 import dev.cannoli.scorza.launcher.RetroArchLauncher
-import dev.cannoli.scorza.scanner.CollectionManager
 import dev.cannoli.scorza.scanner.CoreInfoRepository
-import dev.cannoli.scorza.scanner.FileScanner
-import dev.cannoli.scorza.launcher.InstalledCoreService
-import dev.cannoli.scorza.scanner.OrderingManager
 import dev.cannoli.scorza.scanner.PlatformResolver
-import dev.cannoli.scorza.scanner.RecentlyPlayedManager
 import dev.cannoli.scorza.settings.SettingsRepository
+import dev.cannoli.scorza.util.DirectoryLayout
 import dev.cannoli.scorza.util.NaturalSort
 import dev.cannoli.ui.ELLIPSIS
 import java.io.File
@@ -25,10 +22,6 @@ import kotlinx.coroutines.withContext
 
 data class InstalledServices(
     val platformResolver: PlatformResolver,
-    val collectionManager: CollectionManager,
-    val recentlyPlayedManager: RecentlyPlayedManager,
-    val orderingManager: OrderingManager,
-    val scanner: FileScanner,
     val retroArchLauncher: RetroArchLauncher,
     val emuLauncher: EmuLauncher,
     val apkLauncher: ApkLauncher,
@@ -130,13 +123,6 @@ class SetupCoordinator(
             val platformResolver = PlatformResolver(root, context.assets, coreInfo, bundledCoresDir)
             platformResolver.load()
 
-            val collectionManager = CollectionManager(root)
-            val recentlyPlayedManager = RecentlyPlayedManager(root)
-            val orderingManager = OrderingManager(root)
-            val localScanner = FileScanner(root, platformResolver, collectionManager, context.assets)
-            localScanner.loadIgnoreExtensions()
-            localScanner.loadIgnoreFiles()
-
             val overhead = 7
             val dirCount = 18 + (platformResolver.getAllTags().size * 6)
             val totalSteps = dirCount + overhead
@@ -149,7 +135,8 @@ class SetupCoordinator(
                 onProgress(p, labels[labelIndex])
             }
 
-            localScanner.ensureDirectories { step() }
+            DirectoryLayout.ensure(root, File(root, "Roms"), context.assets, platformResolver)
+            repeat(dirCount) { step() }
 
             val retroArchLauncher = RetroArchLauncher(context) { settings.retroArchPackage }; step()
             val emuLauncher = EmuLauncher(context); step()
@@ -161,10 +148,6 @@ class SetupCoordinator(
 
             val services = InstalledServices(
                 platformResolver = platformResolver,
-                collectionManager = collectionManager,
-                recentlyPlayedManager = recentlyPlayedManager,
-                orderingManager = orderingManager,
-                scanner = localScanner,
                 retroArchLauncher = retroArchLauncher,
                 emuLauncher = emuLauncher,
                 apkLauncher = apkLauncher,

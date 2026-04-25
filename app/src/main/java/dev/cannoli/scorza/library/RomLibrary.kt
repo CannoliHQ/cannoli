@@ -31,6 +31,27 @@ class RomLibrary(
     fun gameById(romId: Long): Rom? =
         queryRom("WHERE id = ?", listOf(romId.toString())).firstOrNull()
 
+    fun setRaGameId(romId: Long, raGameId: Int?) {
+        val sql = if (raGameId == null) "UPDATE roms SET ra_game_id = NULL WHERE id = ?"
+        else "UPDATE roms SET ra_game_id = ? WHERE id = ?"
+        db.conn.prepare(sql).use { stmt ->
+            if (raGameId == null) {
+                stmt.bindLong(1, romId)
+            } else {
+                stmt.bindLong(1, raGameId.toLong())
+                stmt.bindLong(2, romId)
+            }
+            stmt.step()
+        }
+    }
+
+    fun deleteRom(romId: Long) {
+        db.conn.prepare("DELETE FROM roms WHERE id = ?").use { stmt ->
+            stmt.bindLong(1, romId)
+            stmt.step()
+        }
+    }
+
     fun platformCounts(): Map<String, Int> {
         val out = mutableMapOf<String, Int>()
         db.conn.prepare("SELECT platform_tag, COUNT(*) FROM roms GROUP BY platform_tag").use { stmt ->

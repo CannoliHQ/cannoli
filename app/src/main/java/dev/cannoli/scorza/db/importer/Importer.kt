@@ -2,6 +2,7 @@ package dev.cannoli.scorza.db.importer
 
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
+import android.content.res.AssetManager
 import dev.cannoli.scorza.db.CannoliDatabase
 import dev.cannoli.scorza.scanner.CollectionManager
 import dev.cannoli.scorza.scanner.FileScanner
@@ -31,12 +32,16 @@ class Importer(
     private val romDirectory: File,
     private val db: CannoliDatabase,
     private val platformResolver: PlatformResolver,
-    private val scanner: FileScanner,
-    private val collectionManager: CollectionManager,
-    private val recentlyPlayedManager: RecentlyPlayedManager,
-    private val orderingManager: OrderingManager,
+    private val assets: AssetManager,
     private val onProgress: ImportProgress,
 ) {
+    private val collectionManager = CollectionManager(cannoliRoot)
+    private val recentlyPlayedManager = RecentlyPlayedManager(cannoliRoot)
+    private val orderingManager = OrderingManager(cannoliRoot)
+    private val scanner = FileScanner(cannoliRoot, platformResolver, collectionManager, assets, romDirectory).also {
+        it.loadIgnoreExtensions()
+        it.loadIgnoreFiles()
+    }
     private val conn: SQLiteConnection get() = db.conn
     private var orphans = 0
 
@@ -47,6 +52,8 @@ class Importer(
 
     fun run(): ImportResult {
         if (countRoms() > 0 || countApps() > 0) return ImportResult.NotNeeded
+        collectionManager.migrateCollectionsToHashedNames()
+        scanner.ensureDirectories()
 
         val timestamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
         val backupDir = File(cannoliRoot, "Backup/import-$timestamp")

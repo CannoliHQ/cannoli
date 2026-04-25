@@ -8,7 +8,7 @@ import androidx.compose.ui.text.font.FontFamily
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.model.Collection
-import dev.cannoli.scorza.scanner.CollectionManager
+import dev.cannoli.scorza.library.CollectionsRepository
 import dev.cannoli.scorza.settings.ArtScale
 import dev.cannoli.scorza.settings.ContentMode
 import dev.cannoli.scorza.settings.SettingsRepository
@@ -31,7 +31,7 @@ class SettingsViewModel(
     private var cannoliRoot: java.io.File? = null,
     private var packageManager: PackageManager? = null,
     private var appPackageName: String? = null,
-    private var collectionManager: CollectionManager? = null
+    private var collectionsRepository: CollectionsRepository? = null
 ) {
 
     val isTelevision: Boolean
@@ -234,11 +234,11 @@ class SettingsViewModel(
         _appSettings.value = readAppSettings()
     }
 
-    fun reinitialize(root: java.io.File, pm: PackageManager, pkgName: String, cm: CollectionManager? = null) {
+    fun reinitialize(root: java.io.File, pm: PackageManager, pkgName: String, cr: CollectionsRepository? = null) {
         cannoliRoot = root
         packageManager = pm
         appPackageName = pkgName
-        if (cm != null) collectionManager = cm
+        if (cr != null) collectionsRepository = cr
         fontOptions = buildFontOptions()
         load()
     }
@@ -629,8 +629,8 @@ class SettingsViewModel(
     }
 
     private fun fghCollectionStems(): List<String> {
-        val cm = collectionManager ?: return emptyList()
-        return cm.getCollectionStems().filter { !it.equals("Favorites", ignoreCase = true) }
+        val cr = collectionsRepository ?: return emptyList()
+        return cr.all().filter { it.type == dev.cannoli.scorza.db.CollectionType.STANDARD }.map { it.displayName }
     }
 
     private fun onOff(value: Boolean) = if (value) R.string.value_on else R.string.value_off

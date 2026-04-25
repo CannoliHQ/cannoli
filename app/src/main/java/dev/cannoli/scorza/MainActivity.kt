@@ -45,11 +45,7 @@ import dev.cannoli.scorza.model.Game
 import dev.cannoli.scorza.navigation.AppNavGraph
 import dev.cannoli.scorza.navigation.BrowsePurpose
 import dev.cannoli.scorza.navigation.LauncherScreen
-import dev.cannoli.scorza.scanner.CollectionManager
-import dev.cannoli.scorza.scanner.FileScanner
-import dev.cannoli.scorza.scanner.OrderingManager
 import dev.cannoli.scorza.scanner.PlatformResolver
-import dev.cannoli.scorza.scanner.RecentlyPlayedManager
 import dev.cannoli.scorza.settings.ContentMode
 import dev.cannoli.scorza.settings.GlobalOverridesManager
 import dev.cannoli.scorza.settings.SettingsRepository
@@ -98,10 +94,6 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var settings: SettingsRepository
     private lateinit var platformResolver: PlatformResolver
-    private lateinit var scanner: FileScanner
-    private lateinit var collectionManager: CollectionManager
-    private lateinit var recentlyPlayedManager: RecentlyPlayedManager
-    private lateinit var orderingManager: OrderingManager
     private lateinit var systemListViewModel: SystemListViewModel
     private lateinit var gameListViewModel: GameListViewModel
     private lateinit var settingsViewModel: SettingsViewModel
@@ -211,35 +203,68 @@ class MainActivity : ComponentActivity() {
         else -> null
     }
 
+    private fun collectionsContainingPaths(
+        paths: List<String>,
+        candidates: List<dev.cannoli.scorza.library.CollectionsRepository.CollectionRow>
+    ): Set<String> {
+        if (paths.isEmpty()) return emptySet()
+        val sets = paths.map { path ->
+            val ref = resolvePathToRef(path) ?: return@map emptySet<String>()
+            val ids = collectionsRepository.collectionsContaining(ref)
+            candidates.asSequence().filter { it.id in ids }.map { it.displayName }.toSet()
+        }
+        return if (paths.size == 1) sets.first()
+        else sets.reduceOrNull { acc, set -> acc intersect set } ?: emptySet()
+    }
+
+    private fun addPathToCollectionByName(collectionName: String, path: String) {
+        val id = if (collectionName.equals("Favorites", ignoreCase = true)) collectionsRepository.favoritesId()
+        else collectionsRepository.all().firstOrNull { it.displayName == collectionName }?.id
+        val ref = resolvePathToRef(path)
+        if (id != null && ref != null) collectionsRepository.addMember(id, ref)
+    }
+
+    private fun removePathFromCollectionByName(collectionName: String, path: String) {
+        val id = if (collectionName.equals("Favorites", ignoreCase = true)) collectionsRepository.favoritesId()
+        else collectionsRepository.all().firstOrNull { it.displayName == collectionName }?.id
+        val ref = resolvePathToRef(path)
+        if (id != null && ref != null) collectionsRepository.removeMember(id, ref)
+    }
+
+    private fun invalidateAllLibraryCaches() {
+        artworkLookup.invalidateAll()
+        nameMapLookup.invalidateAll()
+    }
+
+    private fun deleteRomByGame(game: Game) {
+        val rom = romLibrary.gameByPath(game.file.absolutePath)
+        try { game.file.delete() } catch (_: Throwable) {}
+        game.discFiles?.forEach { try { it.delete() } catch (_: Throwable) {} }
+        if (rom != null) romLibrary.deleteRom(rom.id)
+        romScanner.invalidatePlatform(game.platformTag)
+    }
+
+    private fun resolvePathToRef(path: String): dev.cannoli.scorza.library.LibraryRef? {
+        return if (path.startsWith("/apps/")) {
+            val parts = path.removePrefix("/apps/").split("/", limit = 2)
+            if (parts.size == 2) {
+                val type = runCatching { dev.cannoli.scorza.model.AppType.valueOf(parts[0]) }.getOrNull()
+                type?.let { appsRepository.byPackage(it, parts[1]) }?.let { dev.cannoli.scorza.library.LibraryRef.App(it.id) }
+            } else null
+        } else {
+            romLibrary.gameByPath(path)?.let { dev.cannoli.scorza.library.LibraryRef.Rom(it.id) }
+        }
+    }
+
     private fun recordRecentlyPlayedByPath(path: String) {
         ioScope.launch {
-            val ref: dev.cannoli.scorza.library.LibraryRef? = if (path.startsWith("/apps/")) {
-                val parts = path.removePrefix("/apps/").split("/", limit = 2)
-                if (parts.size == 2) {
-                    val type = runCatching { dev.cannoli.scorza.model.AppType.valueOf(parts[0]) }.getOrNull()
-                    val app = type?.let { appsRepository.byPackage(it, parts[1]) }
-                    app?.let { dev.cannoli.scorza.library.LibraryRef.App(it.id) }
-                } else null
-            } else {
-                romLibrary.gameByPath(path)?.let { dev.cannoli.scorza.library.LibraryRef.Rom(it.id) }
-            }
-            if (ref != null) recentlyPlayedRepository.record(ref)
+            resolvePathToRef(path)?.let { recentlyPlayedRepository.record(it) }
         }
     }
 
     private fun clearRecentlyPlayedByPath(path: String) {
         ioScope.launch {
-            val ref: dev.cannoli.scorza.library.LibraryRef? = if (path.startsWith("/apps/")) {
-                val parts = path.removePrefix("/apps/").split("/", limit = 2)
-                if (parts.size == 2) {
-                    val type = runCatching { dev.cannoli.scorza.model.AppType.valueOf(parts[0]) }.getOrNull()
-                    val app = type?.let { appsRepository.byPackage(it, parts[1]) }
-                    app?.let { dev.cannoli.scorza.library.LibraryRef.App(it.id) }
-                } else null
-            } else {
-                romLibrary.gameByPath(path)?.let { dev.cannoli.scorza.library.LibraryRef.Rom(it.id) }
-            }
-            if (ref != null) recentlyPlayedRepository.clear(ref)
+            resolvePathToRef(path)?.let { recentlyPlayedRepository.clear(it) }
         }
     }
 
@@ -317,16 +342,10 @@ class MainActivity : ComponentActivity() {
     private fun refreshCollectionPickerOnStack() {
         val cp = currentScreen
         if (cp is LauncherScreen.CollectionPicker) {
-            val all = collectionManager.scanCollections()
-                .filter { !it.stem.equals("Favorites", ignoreCase = true) }
-            val stems = all.map { it.stem }
+            val all = collectionsRepository.all().filter { it.type == dev.cannoli.scorza.db.CollectionType.STANDARD }
+            val stems = all.map { it.displayName }
             val displayNames = all.map { it.displayName }
-            val alreadyIn = if (cp.gamePaths.size == 1) {
-                collectionManager.getCollectionsContaining(cp.gamePaths[0])
-            } else {
-                cp.gamePaths.map { collectionManager.getCollectionsContaining(it) }
-                    .reduceOrNull { acc, set -> acc intersect set } ?: emptySet()
-            }
+            val alreadyIn = collectionsContainingPaths(cp.gamePaths, all)
             val newInitialChecked = stems.indices
                 .filter { stems[it] in alreadyIn }
                 .toSet()
@@ -487,7 +506,7 @@ class MainActivity : ComponentActivity() {
             }
             BrowsePurpose.ROM_DIRECTORY -> {
                 settings.romDirectory = resolved
-                scanner.invalidateAllCaches()
+                invalidateAllLibraryCaches()
                 dialogState.value = DialogState.RestartRequired
             }
             BrowsePurpose.SETUP -> {
@@ -510,10 +529,6 @@ class MainActivity : ComponentActivity() {
             },
             onFinished = { services ->
                 platformResolver = services.platformResolver
-                collectionManager = services.collectionManager
-                recentlyPlayedManager = services.recentlyPlayedManager
-                orderingManager = services.orderingManager
-                scanner = services.scanner
                 retroArchLauncher = services.retroArchLauncher
                 emuLauncher = services.emuLauncher
                 apkLauncher = services.apkLauncher
@@ -737,22 +752,14 @@ class MainActivity : ComponentActivity() {
         installedCoreService = InstalledCoreService(this)
         launchManager = LaunchManager(this, settings, platformResolver, retroArchLauncher, emuLauncher, apkLauncher, installedCoreService)
 
-        collectionManager = CollectionManager(root)
-        recentlyPlayedManager = RecentlyPlayedManager(root)
-        orderingManager = OrderingManager(root)
-        val romDir = settings.romDirectory.takeIf { it.isNotEmpty() }?.let { File(it) }
-        scanner = FileScanner(root, platformResolver, collectionManager, assets, romDir)
-        scanner.loadIgnoreExtensions()
-        scanner.loadIgnoreFiles()
-        collectionManager.migrateCollectionsToHashedNames()
-        adoptLegacyFghCollectionIfNeeded()
+        val romDir = settings.romDirectory.takeIf { it.isNotEmpty() }?.let { File(it) } ?: File(root, "Roms")
         launchManager.syncRetroArchAssets(root)
         launchManager.syncRetroArchConfig(root)
 
-        ioScope.launch { scanner.ensureDirectories() }
+        ioScope.launch { dev.cannoli.scorza.util.DirectoryLayout.ensure(root, romDir, assets, platformResolver) }
 
         cannoliDatabase = dev.cannoli.scorza.db.CannoliDatabase(root)
-        runImporterThenContinue(root, romDir ?: File(root, "Roms"))
+        runImporterThenContinue(root, romDir)
     }
 
     private lateinit var cannoliDatabase: dev.cannoli.scorza.db.CannoliDatabase
@@ -770,10 +777,7 @@ class MainActivity : ComponentActivity() {
             romDirectory = romDir,
             db = cannoliDatabase,
             platformResolver = platformResolver,
-            scanner = scanner,
-            collectionManager = collectionManager,
-            recentlyPlayedManager = recentlyPlayedManager,
-            orderingManager = orderingManager,
+            assets = assets,
             onProgress = dev.cannoli.scorza.db.importer.ImportProgress { progress, label ->
                 runOnUiThread {
                     val top = screenStack.lastOrNull()
@@ -860,7 +864,7 @@ class MainActivity : ComponentActivity() {
             keyboardDeviceName = getString(R.string.input_tester_device_keyboard),
         )
         gameListViewModel.showFavoriteStars = settings.contentMode != ContentMode.FIVE_GAME_HANDHELD
-        settingsViewModel.reinitialize(root, packageManager, packageName, collectionManager)
+        settingsViewModel.reinitialize(root, packageManager, packageName, collectionsRepository)
         updateManager = dev.cannoli.scorza.updater.UpdateManager(this, settings)
 
         ioScope.launch {
@@ -1396,7 +1400,7 @@ class MainActivity : ComponentActivity() {
                                 "set_default_launcher" -> startActivity(android.content.Intent(android.provider.Settings.ACTION_HOME_SETTINGS))
                                 "installed_cores" -> queryInstalledCores()
                                 "rebuild_cache" -> {
-                                    scanner.invalidateAllCaches()
+                                    invalidateAllLibraryCaches()
                                     rescanSystemList()
                                 }
                                 "manage_tools" -> openAppPicker("tools")
@@ -1784,8 +1788,12 @@ class MainActivity : ComponentActivity() {
                                 .filter { !it.isSubfolder }
                             if (checkedGames.isNotEmpty()) {
                                 val paths = checkedGames.map { it.file.absolutePath }
-                                val favPaths = collectionManager.getFavoritePaths()
-                                val allFav = paths.all { it in favPaths }
+                                val allFav = paths.all { resolvePathToRef(it)?.let { ref ->
+                                    when (ref) {
+                                        is dev.cannoli.scorza.library.LibraryRef.Rom -> ref.id in glState.favoriteRomIds
+                                        is dev.cannoli.scorza.library.LibraryRef.App -> ref.id in glState.favoriteAppIds
+                                    }
+                                } == true }
                                 val isApkList = glState.platformTag == "tools" || glState.platformTag == "ports"
                                 val options = mutableListOf<String>()
                                 if (glState.platformTag == "recently_played") options.add(MENU_REMOVE_FROM_RECENTS)
@@ -1982,7 +1990,7 @@ class MainActivity : ComponentActivity() {
                         val item = settingsViewModel.getSelectedItem()
                         if (item?.key == "rom_directory" && settings.romDirectory.isNotEmpty()) {
                             settingsViewModel.clearRomDirectory()
-                            scanner.invalidateAllCaches()
+                            invalidateAllLibraryCaches()
                             dialogState.value = DialogState.RestartRequired
                         }
                     }
@@ -2194,8 +2202,8 @@ class MainActivity : ComponentActivity() {
             }
             addAll(installed)
         }
-        val dir = if (type == "tools") scanner.tools else scanner.ports
-        val existing = scanner.scanApkLaunches(dir).map { it.packageName }.toSet()
+        val appType = if (type == "tools") dev.cannoli.scorza.model.AppType.TOOL else dev.cannoli.scorza.model.AppType.PORT
+        val existing = appsRepository.all(appType).map { it.packageName }.toSet()
         val initialChecked = allApps.indices.filter { allApps[it].second in existing }.toSet()
         val title = if (type == "tools") "Manage Tools" else "Manage Ports"
         screenStack.add(LauncherScreen.AppPicker(
@@ -2215,9 +2223,13 @@ class MainActivity : ComponentActivity() {
             val pkg = state.packages.getOrNull(idx) ?: return@mapNotNull null
             name to pkg
         }
-        val dir = if (state.type == "tools") scanner.tools else scanner.ports
+        val appType = if (state.type == "tools") dev.cannoli.scorza.model.AppType.TOOL else dev.cannoli.scorza.model.AppType.PORT
         ioScope.launch {
-            scanner.syncApkLaunches(dir, selected)
+            val keep = selected.map { it.second }.toSet()
+            appsRepository.all(appType).forEach { app ->
+                if (app.packageName !in keep) appsRepository.delete(app.id)
+            }
+            selected.forEach { (name, pkg) -> appsRepository.upsert(appType, name, pkg) }
             rescanSystemList()
         }
         screenStack.removeAt(screenStack.lastIndex)
@@ -2231,7 +2243,6 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun rescanSystemList() {
-        collectionManager.invalidateFavorites()
         val fghStem = validateFghStem()
         gameListViewModel.showFavoriteStars = settings.contentMode != ContentMode.FIVE_GAME_HANDHELD
         systemListViewModel.scan(
@@ -2251,10 +2262,10 @@ class MainActivity : ComponentActivity() {
 
     private fun validateFghStem(): String? {
         if (settings.contentMode != ContentMode.FIVE_GAME_HANDHELD) return null
+        val all = collectionsRepository.all().filter { it.type == dev.cannoli.scorza.db.CollectionType.STANDARD }
         val stem = settings.fghCollectionStem
-        if (stem != null && collectionManager.hasCollection(stem)) return stem
-        val fallback = collectionManager.findLegacyFghStem()
-            ?: collectionManager.getCollectionStems().firstOrNull { !it.equals("Favorites", ignoreCase = true) }
+        if (stem != null && all.any { it.displayName == stem }) return stem
+        val fallback = all.firstOrNull()?.displayName
         settings.fghCollectionStem = fallback
         return fallback
     }
@@ -2327,8 +2338,8 @@ class MainActivity : ComponentActivity() {
                 val path = game.file.absolutePath
                 ioScope.launch {
                     val isFav = game.displayName.startsWith(STAR)
-                    if (isFav) collectionManager.removeFromCollection("Favorites", path)
-                    else collectionManager.addToCollection("Favorites", path)
+                    if (isFav) removePathFromCollectionByName("Favorites", path)
+                    else addPathToCollectionByName("Favorites", path)
                     rescanSystemList()
                 }
                 dialogState.value = DialogState.None
@@ -2396,7 +2407,8 @@ class MainActivity : ComponentActivity() {
             }
             is SystemListViewModel.ListItem.CollectionItem -> {
                 ioScope.launch {
-                    collectionManager.renameCollection(item.name, newName)
+                    val id = collectionsRepository.all().firstOrNull { it.displayName == item.name }?.id
+                    if (id != null) collectionsRepository.rename(id, newName)
                     rescanSystemList()
                 }
             }
@@ -2717,12 +2729,12 @@ class MainActivity : ComponentActivity() {
             selected == MENU_DELETE_ART -> {
                 pendingContextReturn = null
                 game.artFile?.delete()
-                scanner.invalidateArtForTag(game.platformTag)
+                artworkLookup.invalidate(game.platformTag)
                 gameListViewModel.reload()
                 dialogState.value = DialogState.None
             }
             selected == MENU_RA_GAME_ID -> {
-                val current = scanner.getRaGameId(game.file.absolutePath)?.toString() ?: ""
+                val current = romLibrary.gameByPath(game.file.absolutePath)?.raGameId?.toString() ?: ""
                 dialogState.value = DialogState.RenameInput(
                     gameName = "ra_game_id:${game.file.absolutePath}",
                     currentName = current,
@@ -2731,8 +2743,11 @@ class MainActivity : ComponentActivity() {
             }
             selected == MENU_REMOVE -> {
                 pendingContextReturn = null
+                val appType = if (glState.platformTag == "tools") dev.cannoli.scorza.model.AppType.TOOL else dev.cannoli.scorza.model.AppType.PORT
                 ioScope.launch {
-                    scanner.removeApkLaunch(glState.platformTag, game.displayName)
+                    appsRepository.byDisplayName(appType, game.displayName.removePrefix("$STAR "))?.let {
+                        appsRepository.delete(it.id)
+                    }
                     gameListViewModel.reload()
                     rescanSystemList()
                 }
@@ -2783,7 +2798,7 @@ class MainActivity : ComponentActivity() {
             val pathSet = state.bulkPaths.toSet()
             val toDelete = games.filter { it.file.absolutePath in pathSet }
             ioScope.launch {
-                toDelete.forEach { scanner.deleteGame(it) }
+                toDelete.forEach { deleteRomByGame(it) }
                 gameListViewModel.reload()
                 rescanSystemList()
                 withContext(Dispatchers.Main) { dialogState.value = DialogState.None }
@@ -2793,7 +2808,7 @@ class MainActivity : ComponentActivity() {
                 ?: (systemListViewModel.getSelectedItem() as? SystemListViewModel.ListItem.GameItem)?.game
                 ?: return
             ioScope.launch {
-                scanner.deleteGame(game)
+                deleteRomByGame(game)
                 gameListViewModel.reload()
                 rescanSystemList()
                 withContext(Dispatchers.Main) { dialogState.value = DialogState.None }
@@ -2809,8 +2824,8 @@ class MainActivity : ComponentActivity() {
         if (toAdd.isNotEmpty() || toRemove.isNotEmpty()) {
             ioScope.launch {
                 for (path in state.gamePaths) {
-                    toAdd.forEach { collName -> collectionManager.addToCollection(collName, path) }
-                    toRemove.forEach { collName -> collectionManager.removeFromCollection(collName, path) }
+                    toAdd.forEach { collName -> addPathToCollectionByName(collName, path) }
+                    toRemove.forEach { collName -> removePathFromCollectionByName(collName, path) }
                 }
                 gameListViewModel.reload()
                 rescanSystemList()
@@ -2853,16 +2868,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun openCollectionManager(gamePaths: List<String>, title: String) {
-        val all = collectionManager.scanCollections()
-            .filter { !it.stem.equals("Favorites", ignoreCase = true) }
-        val stems = all.map { it.stem }
+        val all = collectionsRepository.all().filter { it.type == dev.cannoli.scorza.db.CollectionType.STANDARD }
+        val stems = all.map { it.displayName }
         val displayNames = all.map { it.displayName }
-        val alreadyIn = if (gamePaths.size == 1) {
-            collectionManager.getCollectionsContaining(gamePaths[0])
-        } else {
-            gamePaths.map { collectionManager.getCollectionsContaining(it) }
-                .reduceOrNull { acc, set -> acc intersect set } ?: emptySet()
-        }
+        val alreadyIn = collectionsContainingPaths(gamePaths, all)
         val initialChecked = stems.indices
             .filter { stems[it] in alreadyIn }
             .toSet()
@@ -2879,19 +2888,20 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun openChildPicker(collectionStem: String) {
-        val allStems = collectionManager.getCollectionStems()
-            .filter { !it.equals("Favorites", ignoreCase = true) }
-        val ancestors = collectionManager.getAncestors(collectionStem)
-        val available = allStems.filter { it != collectionStem && it !in ancestors }
-        val displayNames = available.map { dev.cannoli.scorza.model.Collection.stemToDisplayName(it) }
-        val currentChildren = collectionManager.getChildCollections(collectionStem).toSet()
+        val parent = collectionsRepository.all().firstOrNull { it.displayName == collectionStem } ?: return
+        val all = collectionsRepository.all().filter { it.type == dev.cannoli.scorza.db.CollectionType.STANDARD }
+        val ancestorIds = collectionsRepository.ancestors(parent.id).map { it.id }.toSet() + parent.id
+        val available = all.filter { it.id !in ancestorIds }
+        val availableNames = available.map { it.displayName }
+        val displayNames = available.map { it.displayName }
+        val currentChildIds = collectionsRepository.children(parent.id).map { it.id }.toSet()
         val initialChecked = available.indices
-            .filter { available[it] in currentChildren }
+            .filter { available[it].id in currentChildIds }
             .toSet()
         dialogState.value = DialogState.None
         screenStack.add(LauncherScreen.ChildPicker(
             collectionName = collectionStem,
-            collections = available,
+            collections = availableNames,
             displayNames = displayNames,
             selectedIndex = 0,
             checkedIndices = initialChecked,
@@ -2900,11 +2910,19 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun onChildPickerConfirm(screen: LauncherScreen.ChildPicker) {
-        val selected = screen.checkedIndices
-            .mapNotNull { screen.collections.getOrNull(it) }
-            .toSet()
+        val parent = collectionsRepository.all().firstOrNull { it.displayName == screen.collectionName }
+        if (parent == null) {
+            screenStack.removeAt(screenStack.lastIndex)
+            restoreContextMenu()
+            return
+        }
+        val selectedNames = screen.checkedIndices.mapNotNull { screen.collections.getOrNull(it) }.toSet()
+        val all = collectionsRepository.all()
+        val targetChildIds = all.filter { it.displayName in selectedNames }.map { it.id }.toSet()
+        val currentChildIds = collectionsRepository.children(parent.id).map { it.id }.toSet()
         ioScope.launch {
-            collectionManager.setChildCollections(screen.collectionName, selected)
+            (targetChildIds - currentChildIds).forEach { collectionsRepository.setParent(it, parent.id) }
+            (currentChildIds - targetChildIds).forEach { collectionsRepository.setParent(it, null) }
             gameListViewModel.reload()
             rescanSystemList()
         }
@@ -2929,7 +2947,7 @@ class MainActivity : ComponentActivity() {
                 pendingContextReturn = null
                 ioScope.launch {
                     state.gamePaths.forEach { path ->
-                        collectionManager.addToCollection("Favorites", path)
+                        addPathToCollectionByName("Favorites", path)
                     }
                     gameListViewModel.reload()
                     rescanSystemList()
@@ -2940,7 +2958,7 @@ class MainActivity : ComponentActivity() {
                 pendingContextReturn = null
                 ioScope.launch {
                     state.gamePaths.forEach { path ->
-                        collectionManager.removeFromCollection("Favorites", path)
+                        removePathFromCollectionByName("Favorites", path)
                     }
                     gameListViewModel.reload()
                     rescanSystemList()
@@ -2967,7 +2985,7 @@ class MainActivity : ComponentActivity() {
                         g.artFile?.delete()
                         tagsToInvalidate.add(g.platformTag)
                     }
-                tagsToInvalidate.forEach { scanner.invalidateArtForTag(it) }
+                tagsToInvalidate.forEach { artworkLookup.invalidate(it) }
                 gameListViewModel.reload()
                 dialogState.value = DialogState.None
             }
@@ -3021,12 +3039,13 @@ class MainActivity : ComponentActivity() {
         }
         dialogState.value = DialogState.None
         ioScope.launch {
-            val stem = collectionManager.createCollection(name)
+            val newId = collectionsRepository.create(name)
             if (state.parentStem != null) {
-                collectionManager.setCollectionParent(stem, state.parentStem)
+                val parentId = collectionsRepository.all().firstOrNull { it.displayName == state.parentStem }?.id
+                if (parentId != null) collectionsRepository.setParent(newId, parentId)
             }
             state.gamePaths.forEach { path ->
-                collectionManager.addToCollection(stem, path)
+                resolvePathToRef(path)?.let { collectionsRepository.addMember(newId, it) }
             }
             gameListViewModel.reload()
             rescanSystemList()
@@ -3044,7 +3063,8 @@ class MainActivity : ComponentActivity() {
         val renamingFromParent = glState.isCollection && !glState.isCollectionsList
         dialogState.value = DialogState.None
         ioScope.launch {
-            collectionManager.renameCollection(state.oldStem, newName)
+            val id = collectionsRepository.all().firstOrNull { it.displayName == state.oldStem }?.id
+            if (id != null) collectionsRepository.rename(id, newName)
             if (renamingFromParent) {
                 gameListViewModel.reload()
             } else {
@@ -3135,7 +3155,9 @@ class MainActivity : ComponentActivity() {
         if (state.gameName.startsWith("ra_game_id:")) {
             val romPath = state.gameName.removePrefix("ra_game_id:")
             val gameId = state.currentName.trim().toIntOrNull()
-            scanner.setRaGameId(romPath, gameId)
+            ioScope.launch {
+                romLibrary.gameByPath(romPath)?.let { romLibrary.setRaGameId(it.id, gameId) }
+            }
             restoreContextMenu()
             return
         }
@@ -3154,29 +3176,25 @@ class MainActivity : ComponentActivity() {
         pendingContextReturn = null
         dialogState.value = DialogState.None
         ioScope.launch {
-            val oldPath = game.file.absolutePath
             if (game.isSubfolder) {
                 val newDir = File(game.file.parentFile, newName)
                 val ok = game.file.renameTo(newDir)
-                val msg = if (ok) null else "Failed to rename directory"
-                if (ok) recentlyPlayedManager.renamePath(oldPath, newDir.absolutePath)
-                withContext(Dispatchers.Main) {
-                    if (msg != null) dialogState.value = DialogState.RenameResult(false, msg)
+                if (!ok) {
+                    withContext(Dispatchers.Main) {
+                        dialogState.value = DialogState.RenameResult(false, "Failed to rename directory")
+                    }
                 }
             } else {
                 val result = atomicRename.rename(game.file, newName, game.platformTag)
-                if (result.success) {
-                    val newRom = File(game.file.parentFile, "$newName.${game.file.extension}")
-                    recentlyPlayedManager.renamePath(oldPath, newRom.absolutePath)
-                } else {
+                if (!result.success) {
                     withContext(Dispatchers.Main) {
                         dialogState.value = DialogState.RenameResult(false, result.error ?: "Rename failed")
                     }
                 }
             }
-            scanner.invalidateArtForTag(game.platformTag)
-            scanner.invalidateMapForDir(game.file.parent ?: "")
-            scanner.invalidateGameCacheForTag(game.platformTag)
+            artworkLookup.invalidate(game.platformTag)
+            game.file.parentFile?.let { nameMapLookup.invalidate(it) }
+            romScanner.invalidatePlatform(game.platformTag)
             gameListViewModel.reload()
         }
     }
