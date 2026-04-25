@@ -27,6 +27,7 @@ class RomScanner(
 
     fun scanPlatform(platformTag: String, isArcade: Boolean = false): SyncCounts {
         val tag = platformTag.uppercase()
+        ensurePlatformRow(tag)
         val tagDir = resolveTagDir(tag) ?: return clearPlatform(tag).also {
             ScanLog.write("scanPlatform $tag: no rom dir, cleared ${it.removed}")
         }
@@ -172,6 +173,16 @@ class RomScanner(
             stmt.step()
         }
         return SyncCounts(0, 0, count)
+    }
+
+    fun ensureReservedPlatformTag(tag: String) = ensurePlatformRow(tag)
+
+    private fun ensurePlatformRow(tag: String) {
+        db.conn.prepare("INSERT OR IGNORE INTO platforms (tag, display_name) VALUES (?, ?)").use { stmt ->
+            stmt.bindText(1, tag)
+            stmt.bindText(2, tag)
+            stmt.step()
+        }
     }
 
     private fun resolveTagDir(tag: String): File? {

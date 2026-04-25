@@ -787,7 +787,6 @@ class MainActivity : ComponentActivity() {
             platformResolver.purgeStaleRaMappings(installedCoreService.installedCores)
         }
 
-        systemListViewModel = SystemListViewModel(scanner, collectionManager, orderingManager, recentlyPlayedManager)
         val romDir = settings.romDirectory.takeIf { it.isNotEmpty() }?.let { File(it) } ?: File(root, "Roms")
         artworkLookup = dev.cannoli.scorza.library.ArtworkLookup(root)
         nameMapLookup = dev.cannoli.scorza.library.NameMapLookup(root)
@@ -796,6 +795,15 @@ class MainActivity : ComponentActivity() {
         appsRepository = dev.cannoli.scorza.library.AppsRepository(cannoliDatabase)
         collectionsRepository = dev.cannoli.scorza.library.CollectionsRepository(cannoliDatabase)
         recentlyPlayedRepository = dev.cannoli.scorza.library.RecentlyPlayedRepository(cannoliDatabase)
+        systemListViewModel = SystemListViewModel(
+            romLibrary = romLibrary,
+            romScanner = romScanner,
+            appsRepository = appsRepository,
+            collectionsRepository = collectionsRepository,
+            recentlyPlayedRepository = recentlyPlayedRepository,
+            platformResolver = platformResolver,
+            romDirectory = romDir,
+        )
         gameListViewModel = GameListViewModel(
             romLibrary = romLibrary,
             romScanner = romScanner,

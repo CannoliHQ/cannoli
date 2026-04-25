@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.library
 
+import androidx.sqlite.execSQL
 import dev.cannoli.scorza.db.CannoliDatabase
 import dev.cannoli.scorza.model.LaunchTarget
 import dev.cannoli.scorza.model.ListItem
@@ -29,6 +30,39 @@ class RomLibrary(
 
     fun gameById(romId: Long): Rom? =
         queryRom("WHERE id = ?", listOf(romId.toString())).firstOrNull()
+
+    fun platformCounts(): Map<String, Int> {
+        val out = mutableMapOf<String, Int>()
+        db.conn.prepare("SELECT platform_tag, COUNT(*) FROM roms GROUP BY platform_tag").use { stmt ->
+            while (stmt.step()) out[stmt.getText(0)] = stmt.getInt(1)
+        }
+        return out
+    }
+
+    fun knownPlatformTags(): List<String> {
+        val out = mutableListOf<String>()
+        db.conn.prepare("SELECT tag FROM platforms ORDER BY sort_order, tag").use { stmt ->
+            while (stmt.step()) out.add(stmt.getText(0))
+        }
+        return out
+    }
+
+    fun setPlatformOrder(orderedTags: List<String>) {
+        db.conn.execSQL("BEGIN")
+        try {
+            orderedTags.forEachIndexed { index, tag ->
+                db.conn.prepare("UPDATE platforms SET sort_order = ? WHERE tag = ?").use { stmt ->
+                    stmt.bindLong(1, index.toLong())
+                    stmt.bindText(2, tag)
+                    stmt.step()
+                }
+            }
+            db.conn.execSQL("COMMIT")
+        } catch (t: Throwable) {
+            db.conn.execSQL("ROLLBACK")
+            throw t
+        }
+    }
 
     private fun romsForPlatform(platformTag: String): List<Rom> =
         queryRom("WHERE platform_tag = ? ORDER BY display_name COLLATE NOCASE", listOf(platformTag))
