@@ -7,15 +7,12 @@ import dev.cannoli.scorza.library.LibraryRef
 import dev.cannoli.scorza.library.RecentlyPlayedRepository
 import dev.cannoli.scorza.library.RomLibrary
 import dev.cannoli.scorza.library.RomScanner
-import dev.cannoli.scorza.model.App
 import dev.cannoli.scorza.model.AppType
 import dev.cannoli.scorza.model.Collection
 import dev.cannoli.scorza.model.Game
-import dev.cannoli.scorza.model.LaunchTarget
 import dev.cannoli.scorza.model.ListItem
-import dev.cannoli.scorza.model.Rom
+import dev.cannoli.scorza.model.toLaunchGame
 import dev.cannoli.scorza.config.PlatformConfig
-import dev.cannoli.ui.STAR
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -36,7 +33,6 @@ class GameListViewModel(
     private val platformConfig: PlatformConfig,
     private val resources: android.content.res.Resources,
     private val isArcadeTag: (String) -> Boolean = { false },
-    private val appPackageToFile: (App) -> File = { File("/apps/${it.type.name}/${it.packageName}") },
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
@@ -47,7 +43,6 @@ class GameListViewModel(
         val platformTags: List<String> = emptyList(),
         val breadcrumb: String = "",
         val items: List<ListItem> = emptyList(),
-        val games: List<Game> = emptyList(),
         val favoriteRomIds: Set<Long> = emptySet(),
         val favoriteAppIds: Set<Long> = emptySet(),
         val selectedIndex: Int = 0,
@@ -96,7 +91,6 @@ class GameListViewModel(
                     platformTags = tags,
                     breadcrumb = displayName,
                     items = items,
-                    games = items.map { itemToGame(it, tag) },
                     favoriteRomIds = favRoms,
                     selectedIndex = 0,
                     isLoading = false
@@ -122,7 +116,6 @@ class GameListViewModel(
                 _state.value = State(
                     breadcrumb = collectionName,
                     items = emptyList(),
-                    games = emptyList(),
                     isLoading = false,
                     isCollection = true,
                     collectionName = collectionName,
@@ -176,7 +169,6 @@ class GameListViewModel(
         _state.value = State(
             breadcrumb = breadcrumb,
             items = items,
-            games = items.map { itemToGame(it, "") },
             favoriteRomIds = collectionsRepository.favoriteRomIds(),
             favoriteAppIds = collectionsRepository.favoriteAppIds(),
             selectedIndex = 0,
@@ -196,22 +188,13 @@ class GameListViewModel(
                 val appType = if (type == "tools") AppType.TOOL else AppType.PORT
                 val apps = appsRepository.all(appType)
                 val favAppIds = if (showFavoriteStars) collectionsRepository.favoriteAppIds() else emptySet()
-                val items = apps.map { ListItem.AppItem(it) }
-                val games = apps.map { app ->
-                    val name = if (showFavoriteStars && app.id in favAppIds) "$STAR ${app.displayName}" else app.displayName
-                    Game(
-                        file = appPackageToFile(app),
-                        displayName = name,
-                        platformTag = type,
-                        launchTarget = LaunchTarget.ApkLaunch(app.packageName),
-                    )
-                }
-                val sorted = games.sortedBy { !it.displayName.startsWith(STAR) }
+                val items = apps
+                    .sortedBy { it.id !in favAppIds }
+                    .map { ListItem.AppItem(it) }
                 _state.value = State(
                     platformTag = type,
                     breadcrumb = displayName,
                     items = items,
-                    games = sorted,
                     favoriteAppIds = favAppIds,
                     selectedIndex = 0,
                     isLoading = false
@@ -234,19 +217,10 @@ class GameListViewModel(
                         is LibraryRef.App -> appsRepository.byId(ref.id)?.let { ListItem.AppItem(it) }
                     }
                 }
-                val games = items.map { itemToGame(it, "") }
-                val nameCount = games.groupingBy { it.displayName }.eachCount()
-                val disambiguated = games.map { game ->
-                    if ((nameCount[game.displayName] ?: 0) > 1 && game.platformTag.isNotEmpty()) {
-                        val platName = platformConfig.getDisplayName(game.platformTag)
-                        game.copy(displayName = "${game.displayName} ($platName)")
-                    } else game
-                }
                 _state.value = State(
                     platformTag = "recently_played",
                     breadcrumb = resources.getString(R.string.label_recently_played),
                     items = items,
-                    games = disambiguated,
                     favoriteRomIds = collectionsRepository.favoriteRomIds(),
                     favoriteAppIds = collectionsRepository.favoriteAppIds(),
                     selectedIndex = 0,
@@ -267,15 +241,13 @@ class GameListViewModel(
             val items = collections.map { row ->
                 ListItem.CollectionItem(topLevelCollection(row.id, row.displayName))
             }
-            val games = items.map { itemToGame(it, "") }
-            val (idx, scroll) = if (restoreIndex && collectionsListItemCount > 0 && games.isNotEmpty()) {
-                val maxIdx = games.lastIndex.coerceAtLeast(0)
+            val (idx, scroll) = if (restoreIndex && collectionsListItemCount > 0 && items.isNotEmpty()) {
+                val maxIdx = items.lastIndex.coerceAtLeast(0)
                 collectionsListSaved.first.coerceAtMost(maxIdx) to collectionsListSaved.second.coerceAtMost(maxIdx)
             } else 0 to 0
             _state.value = State(
                 breadcrumb = resources.getString(R.string.label_collections),
                 items = items,
-                games = games,
                 selectedIndex = idx,
                 scrollTarget = scroll,
                 isLoading = false,
@@ -290,11 +262,9 @@ class GameListViewModel(
         val idx = current.selectedIndex
         if (idx <= 0) return
         val items = current.items.toMutableList()
-        val games = current.games.toMutableList()
         val item = items.removeAt(idx)
-        val game = games.removeAt(idx)
-        items.add(0, item); games.add(0, game)
-        _state.value = current.copy(items = items, games = games, selectedIndex = 0, scrollTarget = 0)
+        items.add(0, item)
+        _state.value = current.copy(items = items, selectedIndex = 0, scrollTarget = 0)
         firstVisibleIndex = 0
     }
 
@@ -332,7 +302,7 @@ class GameListViewModel(
                 onReady()
             }
         } else if (current.platformTag == "recently_played") {
-            _state.value = current.copy(items = emptyList(), games = emptyList(), isLoading = true)
+            _state.value = current.copy(items = emptyList(), isLoading = true)
             loadRecentlyPlayed(onReady)
         } else if (current.platformTags.isNotEmpty()) {
             loadGames(current.platformTag, current.platformTags, current.subfolderPath, preserveIndex, preserveScroll, prevCount, onReady)
@@ -377,10 +347,7 @@ class GameListViewModel(
         return current.items.getOrNull(current.selectedIndex)
     }
 
-    fun getSelectedGame(): Game? {
-        val current = _state.value
-        return current.games.getOrNull(current.selectedIndex)
-    }
+    fun getSelectedGame(): Game? = getSelectedItem()?.toLaunchGame()
 
     fun toggleFavorite(onDone: () -> Unit = {}) {
         val current = _state.value
@@ -410,10 +377,19 @@ class GameListViewModel(
             } else {
                 scanAndLoadPlatform(current.platformTag, current.platformTags, current.subfolderPath)
             }
-            val newGames = projectGamesForState(newItems, current.platformTag, current.platformTag == "tools" || current.platformTag == "ports")
-            val newIndex = newItems.indexOfFirst { itemRef(it) == ref }
-                .let { if (it >= 0) it else oldIndex.coerceAtMost(newItems.lastIndex.coerceAtLeast(0)) }
-            _state.value = current.copy(items = newItems, games = newGames, selectedIndex = newIndex, scrollTarget = -1)
+            val sortedItems = if (current.platformTag == "tools" || current.platformTag == "ports") {
+                val freshFavs = collectionsRepository.favoriteAppIds()
+                newItems.sortedBy { (it as? ListItem.AppItem)?.app?.id !in freshFavs }
+            } else newItems
+            val newIndex = sortedItems.indexOfFirst { itemRef(it) == ref }
+                .let { if (it >= 0) it else oldIndex.coerceAtMost(sortedItems.lastIndex.coerceAtLeast(0)) }
+            _state.value = current.copy(
+                items = sortedItems,
+                favoriteRomIds = collectionsRepository.favoriteRomIds(),
+                favoriteAppIds = collectionsRepository.favoriteAppIds(),
+                selectedIndex = newIndex,
+                scrollTarget = -1,
+            )
             withContext(Dispatchers.Main) { onDone() }
         }
     }
@@ -489,17 +465,22 @@ class GameListViewModel(
         if (isApkList) return true
         val itemA = current.items[a]; val itemB = current.items[b]
         if ((itemA is ListItem.ChildCollectionItem) != (itemB is ListItem.ChildCollectionItem)) return false
-        val gameA = current.games[a]; val gameB = current.games[b]
-        if (gameA.displayName.startsWith(STAR) != gameB.displayName.startsWith(STAR)) return false
+        val favA = isItemFavorited(current, itemA)
+        val favB = isItemFavorited(current, itemB)
+        if (favA != favB) return false
         return true
+    }
+
+    private fun isItemFavorited(current: State, item: ListItem): Boolean = when (item) {
+        is ListItem.RomItem -> item.rom.id in current.favoriteRomIds
+        is ListItem.AppItem -> item.app.id in current.favoriteAppIds
+        else -> false
     }
 
     private fun swapAt(current: State, a: Int, b: Int): State {
         val items = current.items.toMutableList()
-        val games = current.games.toMutableList()
         val ti = items[a]; items[a] = items[b]; items[b] = ti
-        val tg = games[a]; games[a] = games[b]; games[b] = tg
-        return current.copy(items = items, games = games, selectedIndex = b)
+        return current.copy(items = items, selectedIndex = b)
     }
 
     fun confirmReorder() {
@@ -552,7 +533,6 @@ class GameListViewModel(
                 val displayName = platformConfig.getDisplayName(tag)
                 val breadcrumb = if (breadcrumbStack.isEmpty()) displayName
                 else (listOf(displayName) + breadcrumbStack).joinToString(" › ")
-                val games = items.map { itemToGame(it, tag) }
                 val sameSize = prevCount >= 0 && items.size == prevCount && prevCount > 0
                 val maxIdx = items.lastIndex.coerceAtLeast(0)
                 val (idx, scroll) = if (sameSize || prevCount < 0) {
@@ -563,7 +543,6 @@ class GameListViewModel(
                     platformTags = tags,
                     breadcrumb = breadcrumb,
                     items = items,
-                    games = games,
                     favoriteRomIds = collectionsRepository.favoriteRomIds(),
                     selectedIndex = idx,
                     scrollTarget = scroll,
@@ -602,56 +581,6 @@ class GameListViewModel(
         is ListItem.RomItem -> LibraryRef.Rom(item.rom.id)
         is ListItem.AppItem -> LibraryRef.App(item.app.id)
         else -> null
-    }
-
-    private fun itemToGame(item: ListItem, defaultTag: String): Game = when (item) {
-        is ListItem.RomItem -> romToGame(item.rom)
-        is ListItem.AppItem -> appToGame(item.app, defaultTag)
-        is ListItem.SubfolderItem -> Game(
-            file = File(item.path),
-            displayName = item.name,
-            platformTag = defaultTag,
-            isSubfolder = true,
-        )
-        is ListItem.CollectionItem -> Game(
-            file = item.collection.file,
-            displayName = item.collection.displayName,
-            platformTag = "",
-        )
-        is ListItem.ChildCollectionItem -> Game(
-            file = item.collection.file,
-            displayName = "/${item.collection.displayName}",
-            platformTag = "",
-            isChildCollection = true,
-        )
-    }
-
-    private fun romToGame(rom: Rom): Game {
-        val starred = if (showFavoriteStars && collectionsRepository.isRomFavorited(rom.id)) "$STAR ${rom.displayName}" else rom.displayName
-        return Game(
-            file = rom.path,
-            displayName = starred,
-            platformTag = rom.platformTag,
-            artFile = rom.artFile,
-            launchTarget = rom.launchTarget,
-            discFiles = rom.discFiles,
-        )
-    }
-
-    private fun appToGame(app: App, defaultTag: String): Game {
-        val tag = if (defaultTag.isNotEmpty()) defaultTag else if (app.type == AppType.TOOL) "tools" else "ports"
-        val starred = if (showFavoriteStars && collectionsRepository.isAppFavorited(app.id)) "$STAR ${app.displayName}" else app.displayName
-        return Game(
-            file = appPackageToFile(app),
-            displayName = starred,
-            platformTag = tag,
-            launchTarget = LaunchTarget.ApkLaunch(app.packageName),
-        )
-    }
-
-    private fun projectGamesForState(items: List<ListItem>, platformTag: String, isApkList: Boolean): List<Game> {
-        val games = items.map { itemToGame(it, platformTag) }
-        return if (isApkList) games.sortedBy { !it.displayName.startsWith(STAR) } else games
     }
 
     fun close() { scope.cancel() }

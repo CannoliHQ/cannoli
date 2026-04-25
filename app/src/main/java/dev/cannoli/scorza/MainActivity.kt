@@ -42,6 +42,7 @@ import dev.cannoli.scorza.libretro.LibretroActivity
 import dev.cannoli.scorza.libretro.LibretroInput
 import dev.cannoli.scorza.libretro.RetroAchievementsManager
 import dev.cannoli.scorza.model.Game
+import dev.cannoli.scorza.model.recentKey
 import dev.cannoli.scorza.model.toLaunchGame
 import dev.cannoli.scorza.navigation.AppNavGraph
 import dev.cannoli.scorza.navigation.BrowsePurpose
@@ -1784,11 +1785,12 @@ class MainActivity : ComponentActivity() {
                     LauncherScreen.GameList -> {
                         if (gameListViewModel.isMultiSelectMode()) {
                             val glState = gameListViewModel.state.value
-                            val checkedGames = glState.checkedIndices
-                                .mapNotNull { glState.games.getOrNull(it) }
-                                .filter { !it.isSubfolder }
-                            if (checkedGames.isNotEmpty()) {
-                                val paths = checkedGames.map { it.file.absolutePath }
+                            val checkedItems = glState.checkedIndices
+                                .mapNotNull { glState.items.getOrNull(it) }
+                                .filterIsInstance<dev.cannoli.scorza.model.ListItem>()
+                                .filter { it !is dev.cannoli.scorza.model.ListItem.SubfolderItem && it !is dev.cannoli.scorza.model.ListItem.ChildCollectionItem }
+                            if (checkedItems.isNotEmpty()) {
+                                val paths = checkedItems.mapNotNull { it.recentKey() }
                                 val allFav = paths.all { resolvePathToRef(it)?.let { ref ->
                                     when (ref) {
                                         is dev.cannoli.scorza.library.LibraryRef.Rom -> ref.id in glState.favoriteRomIds
@@ -2788,9 +2790,10 @@ class MainActivity : ComponentActivity() {
     private fun onDeleteConfirm(state: DialogState.DeleteConfirm) {
         pendingContextReturn = null
         if (state.bulkPaths != null) {
-            val games = gameListViewModel.state.value.games
             val pathSet = state.bulkPaths.toSet()
-            val toDelete = games.filter { it.file.absolutePath in pathSet }
+            val toDelete = gameListViewModel.state.value.items
+                .mapNotNull { it.toLaunchGame() }
+                .filter { it.file.absolutePath in pathSet }
             ioScope.launch {
                 toDelete.forEach { deleteRomByGame(it) }
                 gameListViewModel.reload()
@@ -2971,13 +2974,14 @@ class MainActivity : ComponentActivity() {
             }
             MENU_DELETE_ART -> {
                 pendingContextReturn = null
-                val games = gameListViewModel.state.value.games
                 val pathSet = state.gamePaths.toSet()
                 val tagsToInvalidate = mutableSetOf<String>()
-                games.filter { it.file.absolutePath in pathSet }
-                    .forEach { g ->
-                        g.artFile?.delete()
-                        tagsToInvalidate.add(g.platformTag)
+                gameListViewModel.state.value.items
+                    .filterIsInstance<dev.cannoli.scorza.model.ListItem.RomItem>()
+                    .filter { it.rom.path.absolutePath in pathSet }
+                    .forEach { romItem ->
+                        romItem.rom.artFile?.delete()
+                        tagsToInvalidate.add(romItem.rom.platformTag)
                     }
                 tagsToInvalidate.forEach { artworkLookup.invalidate(it) }
                 gameListViewModel.reload()
@@ -2985,13 +2989,10 @@ class MainActivity : ComponentActivity() {
             }
             MENU_REMOVE -> {
                 pendingContextReturn = null
-                val glState = gameListViewModel.state.value
                 val pathSet = state.gamePaths.toSet()
                 ioScope.launch {
-                    glState.items.forEachIndexed { index, item ->
-                        val path = glState.games.getOrNull(index)?.file?.absolutePath ?: return@forEachIndexed
-                        if (path !in pathSet) return@forEachIndexed
-                        if (item is dev.cannoli.scorza.model.ListItem.AppItem) {
+                    gameListViewModel.state.value.items.forEach { item ->
+                        if (item is dev.cannoli.scorza.model.ListItem.AppItem && item.recentKey() in pathSet) {
                             appsRepository.delete(item.app.id)
                         }
                     }
@@ -3006,9 +3007,8 @@ class MainActivity : ComponentActivity() {
                 val collectionId = glState.collectionId ?: return
                 val pathSet = state.gamePaths.toSet()
                 ioScope.launch {
-                    glState.items.forEachIndexed { index, item ->
-                        val path = glState.games.getOrNull(index)?.file?.absolutePath ?: return@forEachIndexed
-                        if (path !in pathSet) return@forEachIndexed
+                    glState.items.forEach { item ->
+                        if (item.recentKey() !in pathSet) return@forEach
                         val ref = when (item) {
                             is dev.cannoli.scorza.model.ListItem.RomItem -> dev.cannoli.scorza.library.LibraryRef.Rom(item.rom.id)
                             is dev.cannoli.scorza.model.ListItem.AppItem -> dev.cannoli.scorza.library.LibraryRef.App(item.app.id)

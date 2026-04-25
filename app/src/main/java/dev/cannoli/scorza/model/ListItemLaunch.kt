@@ -23,3 +23,9 @@ fun ListItem.toLaunchGame(): Game? = when (this) {
     is ListItem.AppItem -> app.toLaunchGame()
     else -> null
 }
+
+fun ListItem.recentKey(): String? = when (this) {
+    is ListItem.RomItem -> rom.path.absolutePath
+    is ListItem.AppItem -> "/apps/${app.type.name}/${app.packageName}"
+    else -> null
+}
