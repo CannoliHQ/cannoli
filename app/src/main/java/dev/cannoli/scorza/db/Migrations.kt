@@ -3,9 +3,9 @@ package dev.cannoli.scorza.db
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
 
-internal data class Migration(val version: Int, val apply: (SQLiteConnection) -> Unit)
-
 internal object Migrations {
+    private data class Migration(val version: Int, val apply: (SQLiteConnection) -> Unit)
+
     private val all = listOf(
         Migration(1) { db ->
             db.execSQL("""

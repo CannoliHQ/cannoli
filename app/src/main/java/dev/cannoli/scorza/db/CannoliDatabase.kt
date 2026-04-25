@@ -7,14 +7,16 @@ import dev.cannoli.scorza.util.ScanLog
 import java.io.File
 
 class CannoliDatabase(cannoliRoot: File) {
-    private val dbFile = File(cannoliRoot, "Config/cannoli.db").apply { parentFile?.mkdirs() }
-    private val driver = BundledSQLiteDriver()
-    val conn: SQLiteConnection = driver.open(dbFile.absolutePath).also { open ->
-        open.execSQL("PRAGMA foreign_keys = ON")
-        open.execSQL("PRAGMA journal_mode = WAL")
-        runMigrations(open)
-        runIntegrityCheck(open)
-        open.execSQL("PRAGMA wal_checkpoint(TRUNCATE)")
+    val conn: SQLiteConnection
+
+    init {
+        val dbFile = File(cannoliRoot, "Config/cannoli.db").apply { parentFile?.mkdirs() }
+        conn = BundledSQLiteDriver().open(dbFile.absolutePath)
+        conn.execSQL("PRAGMA foreign_keys = ON")
+        conn.execSQL("PRAGMA journal_mode = WAL")
+        runMigrations(conn)
+        runIntegrityCheck(conn)
+        conn.execSQL("PRAGMA wal_checkpoint(TRUNCATE)")
     }
 
     fun close() {
@@ -30,19 +32,26 @@ class CannoliDatabase(cannoliRoot: File) {
     }
 
     private fun runIntegrityCheck(conn: SQLiteConnection) {
-        val ok = conn.prepare("PRAGMA integrity_check").use { stmt ->
+        val integrity = conn.query("PRAGMA integrity_check") { stmt ->
             stmt.step()
-            stmt.getText(0) == "ok"
+            stmt.getText(0)
         }
-        if (!ok) ScanLog.write("WARN integrity_check did not return ok")
-
-        val fkOk = conn.prepare("PRAGMA foreign_key_check").use { stmt -> !stmt.step() }
-        if (!fkOk) ScanLog.write("WARN foreign_key_check reported violations")
+        if (integrity != "ok") {
+            ScanLog.write("ERROR integrity_check returned: $integrity")
+            throw DatabaseCorrupt("integrity_check returned: $integrity")
+        }
+        val fkViolations = conn.query("PRAGMA foreign_key_check") { stmt -> stmt.step() }
+        if (fkViolations) {
+            ScanLog.write("ERROR foreign_key_check reported violations")
+            throw DatabaseCorrupt("foreign_key_check reported violations")
+        }
     }
 
     private fun readUserVersion(conn: SQLiteConnection): Int =
-        conn.prepare("PRAGMA user_version").use { stmt ->
+        conn.query("PRAGMA user_version") { stmt ->
             stmt.step()
             stmt.getInt(0)
         }
 }
+
+class DatabaseCorrupt(message: String) : RuntimeException(message)

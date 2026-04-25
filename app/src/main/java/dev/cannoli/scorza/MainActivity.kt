@@ -758,6 +758,15 @@ class MainActivity : ComponentActivity() {
         ioScope.launch { dev.cannoli.scorza.util.DirectoryLayout.ensure(root, romDir, assets, platformConfig) }
 
         cannoliDatabase = dev.cannoli.scorza.db.CannoliDatabase(root)
+        artworkLookup = dev.cannoli.scorza.library.ArtworkLookup(root)
+        nameMapLookup = dev.cannoli.scorza.library.NameMapLookup(root)
+        romLibrary = dev.cannoli.scorza.library.RomLibrary(root, romDir, cannoliDatabase, artworkLookup)
+        romScanner = dev.cannoli.scorza.library.RomScanner(root, romDir, cannoliDatabase, nameMapLookup, artworkLookup).also {
+            it.loadIgnoreLists(assets)
+        }
+        appsRepository = dev.cannoli.scorza.library.AppsRepository(cannoliDatabase)
+        collectionsRepository = dev.cannoli.scorza.library.CollectionsRepository(cannoliDatabase)
+        recentlyPlayedRepository = dev.cannoli.scorza.library.RecentlyPlayedRepository(cannoliDatabase)
         runImporterThenContinue(root, romDir)
     }
 
@@ -776,7 +785,7 @@ class MainActivity : ComponentActivity() {
             romDirectory = romDir,
             db = cannoliDatabase,
             platformConfig = platformConfig,
-            assets = assets,
+            romScanner = romScanner,
             onProgress = dev.cannoli.scorza.db.importer.ImportProgress { progress, label ->
                 runOnUiThread {
                     val top = screenStack.lastOrNull()
@@ -823,13 +832,6 @@ class MainActivity : ComponentActivity() {
         }
 
         val romDir = settings.romDirectory.takeIf { it.isNotEmpty() }?.let { File(it) } ?: File(root, "Roms")
-        artworkLookup = dev.cannoli.scorza.library.ArtworkLookup(root)
-        nameMapLookup = dev.cannoli.scorza.library.NameMapLookup(root)
-        romLibrary = dev.cannoli.scorza.library.RomLibrary(root, romDir, cannoliDatabase, artworkLookup)
-        romScanner = dev.cannoli.scorza.library.RomScanner(root, romDir, cannoliDatabase, nameMapLookup, artworkLookup).also { it.loadIgnoreLists(assets) }
-        appsRepository = dev.cannoli.scorza.library.AppsRepository(cannoliDatabase)
-        collectionsRepository = dev.cannoli.scorza.library.CollectionsRepository(cannoliDatabase)
-        recentlyPlayedRepository = dev.cannoli.scorza.library.RecentlyPlayedRepository(cannoliDatabase)
         systemListViewModel = SystemListViewModel(
             romLibrary = romLibrary,
             romScanner = romScanner,

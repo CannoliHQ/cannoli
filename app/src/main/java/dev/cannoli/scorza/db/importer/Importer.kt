@@ -1,11 +1,12 @@
 package dev.cannoli.scorza.db.importer
 
-import android.content.res.AssetManager
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
 import dev.cannoli.scorza.db.CannoliDatabase
-import dev.cannoli.scorza.library.ArtworkLookup
-import dev.cannoli.scorza.library.NameMapLookup
+import dev.cannoli.scorza.db.execute
+import dev.cannoli.scorza.db.executeReturningId
+import dev.cannoli.scorza.db.query
+import dev.cannoli.scorza.library.LibraryRef
 import dev.cannoli.scorza.library.RomScanner
 import dev.cannoli.scorza.model.Collection
 import dev.cannoli.scorza.config.PlatformConfig
@@ -31,7 +32,7 @@ class Importer(
     private val romDirectory: File,
     private val db: CannoliDatabase,
     private val platformConfig: PlatformConfig,
-    private val assets: AssetManager,
+    private val romScanner: RomScanner,
     private val onProgress: ImportProgress,
 ) {
     private val collectionsDir = File(cannoliRoot, "Collections")
@@ -43,11 +44,6 @@ class Importer(
 
     private val conn: SQLiteConnection get() = db.conn
     private var orphans = 0
-
-    private sealed interface MemberRef {
-        data class Rom(val id: Long) : MemberRef
-        data class App(val id: Long) : MemberRef
-    }
 
     fun run(): ImportResult {
         if (countRoms() > 0 || countApps() > 0) return ImportResult.NotNeeded
@@ -134,23 +130,26 @@ class Importer(
         phase.start + (phase.end - phase.start) * fraction.coerceIn(0f, 1f)
 
     private fun importPlatforms() {
-        val tags = platformConfig.getAllTags()
-        for (tag in tags) {
-            conn.prepare("INSERT OR IGNORE INTO platforms (tag, display_name) VALUES (?, ?)").use { stmt ->
-                stmt.bindText(1, tag.uppercase())
-                stmt.bindText(2, platformConfig.getDisplayName(tag))
-                stmt.step()
-            }
+        for (tag in platformConfig.getAllTags()) {
+            upsertPlatform(tag.uppercase(), platformConfig.getDisplayName(tag))
         }
     }
 
+    private fun upsertPlatform(tag: String, displayName: String) = conn.execute(
+        """
+        INSERT INTO platforms (tag, display_name) VALUES (?, ?)
+        ON CONFLICT(tag) DO UPDATE SET display_name = excluded.display_name
+        """.trimIndent(),
+        tag, displayName,
+    )
+
+    private fun ensurePlatformRow(tag: String) = conn.execute(
+        "INSERT OR IGNORE INTO platforms (tag, display_name) VALUES (?, ?)",
+        tag, tag,
+    )
+
     private fun importRoms(romIdsByRelative: MutableMap<String, Long>) {
         val tags = platformConfig.getAllTags()
-        val artworkLookup = ArtworkLookup(cannoliRoot)
-        val nameMapLookup = NameMapLookup(cannoliRoot)
-        val romScanner = RomScanner(cannoliRoot, romDirectory, db, nameMapLookup, artworkLookup).also {
-            it.loadIgnoreLists(assets)
-        }
         for ((index, tag) in tags.withIndex()) {
             val upperTag = tag.uppercase()
             try {
@@ -158,7 +157,7 @@ class Importer(
             } catch (t: Throwable) {
                 ScanLog.write("WARN scanPlatform $upperTag failed during import: ${t.message}")
             }
-            conn.prepare("SELECT id, path FROM roms WHERE platform_tag = ?").use { stmt ->
+            conn.query("SELECT id, path FROM roms WHERE platform_tag = ?") { stmt ->
                 stmt.bindText(1, upperTag)
                 while (stmt.step()) {
                     romIdsByRelative[stmt.getText(1)] = stmt.getLong(0)
@@ -181,15 +180,11 @@ class Importer(
     }
 
     private fun insertApp(type: String, displayName: String, packageName: String): Long? {
-        conn.prepare("""
-            INSERT OR IGNORE INTO apps (type, display_name, package_name) VALUES (?, ?, ?)
-        """.trimIndent()).use { stmt ->
-            stmt.bindText(1, type)
-            stmt.bindText(2, displayName)
-            stmt.bindText(3, packageName)
-            stmt.step()
-        }
-        return conn.prepare("SELECT id FROM apps WHERE type = ? AND package_name = ?").use { stmt ->
+        conn.execute(
+            "INSERT OR IGNORE INTO apps (type, display_name, package_name) VALUES (?, ?, ?)",
+            type, displayName, packageName,
+        )
+        return conn.query("SELECT id FROM apps WHERE type = ? AND package_name = ?") { stmt ->
             stmt.bindText(1, type)
             stmt.bindText(2, packageName)
             if (stmt.step()) stmt.getLong(0) else null
@@ -197,13 +192,10 @@ class Importer(
     }
 
     private fun ensureFavoritesCollection(): Long {
-        conn.prepare("""
-            INSERT OR IGNORE INTO collections (display_name, collection_type)
-            VALUES ('Favorites', 'FAVORITES')
-        """.trimIndent()).use { it.step() }
-        return conn.prepare(
-            "SELECT id FROM collections WHERE collection_type = 'FAVORITES' LIMIT 1"
-        ).use { it.step(); it.getLong(0) }
+        conn.execute("INSERT OR IGNORE INTO collections (display_name, collection_type) VALUES ('Favorites', 'FAVORITES')")
+        return conn.query("SELECT id FROM collections WHERE collection_type = 'FAVORITES' LIMIT 1") {
+            it.step(); it.getLong(0)
+        }
     }
 
     private fun importCollections(
@@ -215,21 +207,17 @@ class Importer(
         val byStem = mutableMapOf<String, Long>()
         for ((stem, displayName) in scanLegacyCollections()) {
             val isFavorites = stem.equals("Favorites", ignoreCase = true)
-            val collectionId = if (isFavorites) {
-                favoritesId
-            } else {
-                conn.prepare("INSERT INTO collections (display_name, collection_type) VALUES (?, 'STANDARD')").use { stmt ->
-                    stmt.bindText(1, displayName)
-                    stmt.step()
-                }
-                conn.prepare("SELECT last_insert_rowid()").use { it.step(); it.getLong(0) }
-            }
+            val collectionId = if (isFavorites) favoritesId
+            else conn.executeReturningId(
+                "INSERT INTO collections (display_name, collection_type) VALUES (?, 'STANDARD')",
+                displayName,
+            )
             byStem[stem] = collectionId
 
             for (path in readLegacyCollectionMembers(stem)) {
                 when (val ref = resolveLegacyPath(path, romIdsByRelative, toolNames, portNames)) {
-                    is MemberRef.Rom -> insertRomMember(collectionId, ref.id)
-                    is MemberRef.App -> insertAppMember(collectionId, ref.id)
+                    is LibraryRef.Rom -> insertRomMember(collectionId, ref.id)
+                    is LibraryRef.App -> insertAppMember(collectionId, ref.id)
                     null -> orphan("collection $stem", path)
                 }
             }
@@ -237,25 +225,15 @@ class Importer(
         return byStem
     }
 
-    private fun insertRomMember(collectionId: Long, romId: Long) {
-        conn.prepare(
-            "INSERT OR IGNORE INTO collection_members (collection_id, rom_id) VALUES (?, ?)"
-        ).use { stmt ->
-            stmt.bindLong(1, collectionId)
-            stmt.bindLong(2, romId)
-            stmt.step()
-        }
-    }
+    private fun insertRomMember(collectionId: Long, romId: Long) = conn.execute(
+        "INSERT OR IGNORE INTO collection_members (collection_id, rom_id) VALUES (?, ?)",
+        collectionId, romId,
+    )
 
-    private fun insertAppMember(collectionId: Long, appId: Long) {
-        conn.prepare(
-            "INSERT OR IGNORE INTO collection_members (collection_id, app_id) VALUES (?, ?)"
-        ).use { stmt ->
-            stmt.bindLong(1, collectionId)
-            stmt.bindLong(2, appId)
-            stmt.step()
-        }
-    }
+    private fun insertAppMember(collectionId: Long, appId: Long) = conn.execute(
+        "INSERT OR IGNORE INTO collection_members (collection_id, app_id) VALUES (?, ?)",
+        collectionId, appId,
+    )
 
     private fun importCollectionParents(collectionIdsByStem: Map<String, Long>) {
         for ((childStem, parentStem) in readLegacyCollectionParents()) {
@@ -265,34 +243,28 @@ class Importer(
                 orphan("collection_parents", "$childStem -> $parentStem")
                 continue
             }
-            conn.prepare("UPDATE collections SET parent_id = ? WHERE id = ?").use { stmt ->
-                stmt.bindLong(1, parentId)
-                stmt.bindLong(2, childId)
-                stmt.step()
-            }
+            conn.execute("UPDATE collections SET parent_id = ? WHERE id = ?", parentId, childId)
         }
     }
 
     private fun importGameOverrides(romIdsByRelative: Map<String, Long>) {
-        val overrides = platformConfig.snapshotGameOverrides()
-        for ((absolutePath, override) in overrides) {
-            val relative = relativizeRom(File(absolutePath))
-            val romId = relative?.let { romIdsByRelative[it] }
+        for ((absolutePath, override) in platformConfig.snapshotGameOverrides()) {
+            val romId = relativizeRom(File(absolutePath))?.let { romIdsByRelative[it] }
             if (romId == null) {
                 orphan("game_override", absolutePath)
                 continue
             }
-            conn.prepare("""
+            conn.execute(
+                """
                 INSERT OR REPLACE INTO game_overrides (rom_id, core_id, runner, app_package, ra_package)
                 VALUES (?, ?, ?, ?, ?)
-            """.trimIndent()).use { stmt ->
-                stmt.bindLong(1, romId)
-                if (override.coreId.isNotEmpty()) stmt.bindText(2, override.coreId) else stmt.bindNull(2)
-                if (override.runner != null) stmt.bindText(3, override.runner) else stmt.bindNull(3)
-                if (override.appPackage != null) stmt.bindText(4, override.appPackage) else stmt.bindNull(4)
-                if (override.raPackage != null) stmt.bindText(5, override.raPackage) else stmt.bindNull(5)
-                stmt.step()
-            }
+                """.trimIndent(),
+                romId,
+                override.coreId.takeIf { it.isNotEmpty() },
+                override.runner,
+                override.appPackage,
+                override.raPackage,
+            )
         }
     }
 
@@ -306,19 +278,16 @@ class Importer(
                 if (eq < 0) continue
                 val absolutePath = line.substring(0, eq).trim()
                 val gameId = line.substring(eq + 1).trim().toIntOrNull() ?: continue
-                val relative = relativizeRom(File(absolutePath))
-                val romId = relative?.let { romIdsByRelative[it] }
+                val romId = relativizeRom(File(absolutePath))?.let { romIdsByRelative[it] }
                 if (romId == null) {
                     orphan("ra_game_id", absolutePath)
                     continue
                 }
-                conn.prepare("UPDATE roms SET ra_game_id = ? WHERE id = ?").use { stmt ->
-                    stmt.bindLong(1, gameId.toLong())
-                    stmt.bindLong(2, romId)
-                    stmt.step()
-                }
+                conn.execute("UPDATE roms SET ra_game_id = ? WHERE id = ?", gameId, romId)
             }
-        } catch (_: Throwable) { }
+        } catch (t: Throwable) {
+            ScanLog.write("WARN ra_game_ids import failed: ${t.message}")
+        }
     }
 
     private fun importRecentlyPlayed(
@@ -332,16 +301,8 @@ class Importer(
         for ((index, path) in paths.withIndex()) {
             val timestamp = now - index
             when (val ref = resolveLegacyPath(path, romIdsByRelative, toolNames, portNames)) {
-                is MemberRef.Rom -> conn.prepare("UPDATE roms SET last_played_at = ? WHERE id = ?").use { stmt ->
-                    stmt.bindLong(1, timestamp)
-                    stmt.bindLong(2, ref.id)
-                    stmt.step()
-                }
-                is MemberRef.App -> conn.prepare("UPDATE apps SET last_played_at = ? WHERE id = ?").use { stmt ->
-                    stmt.bindLong(1, timestamp)
-                    stmt.bindLong(2, ref.id)
-                    stmt.step()
-                }
+                is LibraryRef.Rom -> conn.execute("UPDATE roms SET last_played_at = ? WHERE id = ?", timestamp, ref.id)
+                is LibraryRef.App -> conn.execute("UPDATE apps SET last_played_at = ? WHERE id = ?", timestamp, ref.id)
                 null -> orphan("recently_played", path)
             }
         }
@@ -350,24 +311,12 @@ class Importer(
     private fun importOrdering(collectionIdsByStem: Map<String, Long>) {
         for ((index, rawTag) in readLegacyOrderingFile("platform_order.txt").withIndex()) {
             val tag = rawTag.uppercase()
-            conn.prepare("INSERT OR IGNORE INTO platforms (tag, display_name) VALUES (?, ?)").use { stmt ->
-                stmt.bindText(1, tag)
-                stmt.bindText(2, tag)
-                stmt.step()
-            }
-            conn.prepare("UPDATE platforms SET sort_order = ? WHERE tag = ?").use { stmt ->
-                stmt.bindLong(1, index.toLong())
-                stmt.bindText(2, tag)
-                stmt.step()
-            }
+            ensurePlatformRow(tag)
+            conn.execute("UPDATE platforms SET sort_order = ? WHERE tag = ?", index.toLong(), tag)
         }
         for ((index, stem) in readLegacyOrderingFile("collection_order.txt").withIndex()) {
             val id = collectionIdsByStem[stem] ?: continue
-            conn.prepare("UPDATE collections SET sort_order = ? WHERE id = ?").use { stmt ->
-                stmt.bindLong(1, index.toLong())
-                stmt.bindLong(2, id)
-                stmt.step()
-            }
+            conn.execute("UPDATE collections SET sort_order = ? WHERE id = ?", index.toLong(), id)
         }
     }
 
@@ -376,18 +325,18 @@ class Importer(
         romIdsByRelative: Map<String, Long>,
         toolNames: Map<String, Long>,
         portNames: Map<String, Long>,
-    ): MemberRef? {
+    ): LibraryRef? {
         val relative = relativizeRom(File(absolutePath))
         if (relative != null) {
-            romIdsByRelative[relative]?.let { return MemberRef.Rom(it) }
+            romIdsByRelative[relative]?.let { return LibraryRef.Rom(it) }
         }
         val toolsRoot = toolsDir.absolutePath + File.separator
         val portsRoot = portsDir.absolutePath + File.separator
         if (absolutePath.startsWith(toolsRoot)) {
-            toolNames[File(absolutePath).nameWithoutExtension]?.let { return MemberRef.App(it) }
+            toolNames[File(absolutePath).nameWithoutExtension]?.let { return LibraryRef.App(it) }
         }
         if (absolutePath.startsWith(portsRoot)) {
-            portNames[File(absolutePath).nameWithoutExtension]?.let { return MemberRef.App(it) }
+            portNames[File(absolutePath).nameWithoutExtension]?.let { return LibraryRef.App(it) }
         }
         return null
     }
@@ -473,9 +422,11 @@ class Importer(
             val dest = File(backupDir, src.relativeTo(cannoliRoot).path)
             try {
                 dest.parentFile?.mkdirs()
-                if (src.isDirectory) src.copyRecursively(dest, overwrite = true)
-                else src.copyTo(dest, overwrite = true)
-                if (src.isDirectory) src.deleteRecursively() else src.delete()
+                if (!src.renameTo(dest)) {
+                    if (src.isDirectory) src.copyRecursively(dest, overwrite = true)
+                    else src.copyTo(dest, overwrite = true)
+                    if (src.isDirectory) src.deleteRecursively() else src.delete()
+                }
                 pruneEmptyParents(src)
             } catch (t: Throwable) {
                 ScanLog.write("WARN failed to archive ${src.absolutePath}: ${t.message}")
@@ -494,10 +445,10 @@ class Importer(
     }
 
     private fun countRoms(): Int =
-        conn.prepare("SELECT COUNT(*) FROM roms").use { it.step(); it.getInt(0) }
+        conn.query("SELECT COUNT(*) FROM roms") { it.step(); it.getInt(0) }
 
     private fun countApps(): Int =
-        conn.prepare("SELECT COUNT(*) FROM apps").use { it.step(); it.getInt(0) }
+        conn.query("SELECT COUNT(*) FROM apps") { it.step(); it.getInt(0) }
 
     private fun orphan(source: String, value: String) {
         orphans++
