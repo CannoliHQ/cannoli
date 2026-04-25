@@ -9,9 +9,7 @@ import dev.cannoli.scorza.library.RomLibrary
 import dev.cannoli.scorza.library.RomScanner
 import dev.cannoli.scorza.model.AppType
 import dev.cannoli.scorza.model.Collection
-import dev.cannoli.scorza.model.Game
 import dev.cannoli.scorza.model.ListItem
-import dev.cannoli.scorza.model.toLaunchGame
 import dev.cannoli.scorza.config.PlatformConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -346,8 +344,6 @@ class GameListViewModel(
         val current = _state.value
         return current.items.getOrNull(current.selectedIndex)
     }
-
-    fun getSelectedGame(): Game? = getSelectedItem()?.toLaunchGame()
 
     fun toggleFavorite(onDone: () -> Unit = {}) {
         val current = _state.value

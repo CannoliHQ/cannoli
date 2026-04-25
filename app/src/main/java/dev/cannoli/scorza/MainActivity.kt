@@ -41,9 +41,7 @@ import dev.cannoli.scorza.launcher.RetroArchLauncher
 import dev.cannoli.scorza.libretro.LibretroActivity
 import dev.cannoli.scorza.libretro.LibretroInput
 import dev.cannoli.scorza.libretro.RetroAchievementsManager
-import dev.cannoli.scorza.model.Game
 import dev.cannoli.scorza.model.recentKey
-import dev.cannoli.scorza.model.toLaunchGame
 import dev.cannoli.scorza.navigation.AppNavGraph
 import dev.cannoli.scorza.navigation.BrowsePurpose
 import dev.cannoli.scorza.navigation.LauncherScreen
@@ -238,12 +236,11 @@ class MainActivity : ComponentActivity() {
         nameMapLookup.invalidateAll()
     }
 
-    private fun deleteRomByGame(game: Game) {
-        val rom = romLibrary.gameByPath(game.file.absolutePath)
-        try { game.file.delete() } catch (_: Throwable) {}
-        game.discFiles?.forEach { try { it.delete() } catch (_: Throwable) {} }
-        if (rom != null) romLibrary.deleteRom(rom.id)
-        romScanner.invalidatePlatform(game.platformTag)
+    private fun deleteRom(rom: dev.cannoli.scorza.model.Rom) {
+        try { rom.path.delete() } catch (_: Throwable) {}
+        rom.discFiles?.forEach { try { it.delete() } catch (_: Throwable) {} }
+        romLibrary.deleteRom(rom.id)
+        romScanner.invalidatePlatform(rom.platformTag)
     }
 
     private fun resolvePathToRef(path: String): dev.cannoli.scorza.library.LibraryRef? {
@@ -370,7 +367,7 @@ class MainActivity : ComponentActivity() {
         data class Bulk(val gamePaths: List<String>, val options: List<String>) : ContextReturn
     }
     private var pendingContextReturn: ContextReturn? = null
-    private var pendingFghGame: dev.cannoli.scorza.model.Game? = null
+    private var pendingFghItem: dev.cannoli.scorza.model.ListItem? = null
 
     private val storagePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -2308,8 +2305,7 @@ class MainActivity : ComponentActivity() {
     private fun onSystemListContextMenu() {
         val item = systemListViewModel.getSelectedItem() ?: return
         if (item is SystemListViewModel.ListItem.GameItem) {
-            val game = item.item.toLaunchGame() ?: return
-            pendingFghGame = game
+            pendingFghItem = item.item
             val ref = resolvePathToRef(item.recentKey)
             val isFav = ref?.let {
                 when (it) {
@@ -2339,24 +2335,32 @@ class MainActivity : ComponentActivity() {
         )
     }
 
-    private fun onFghContextMenuConfirm(game: dev.cannoli.scorza.model.Game, state: DialogState.ContextMenu) {
+    private fun onFghContextMenuConfirm(item: dev.cannoli.scorza.model.ListItem, state: DialogState.ContextMenu) {
         val selected = state.options[state.selectedOption]
+        val path = item.recentKey() ?: return
+        val displayName = when (item) {
+            is dev.cannoli.scorza.model.ListItem.RomItem -> item.rom.displayName
+            is dev.cannoli.scorza.model.ListItem.AppItem -> item.app.displayName
+            else -> return
+        }
+        val rom = (item as? dev.cannoli.scorza.model.ListItem.RomItem)?.rom
         when {
             selected == MENU_ADD_FAVORITE || selected == MENU_REMOVE_FAVORITE -> {
-                val path = game.file.absolutePath
                 ioScope.launch {
-                    val isFav = game.displayName.startsWith(STAR)
-                    if (isFav) removePathFromCollectionByName("Favorites", path)
-                    else addPathToCollectionByName("Favorites", path)
+                    val ref = resolvePathToRef(path) ?: return@launch
+                    val favId = collectionsRepository.favoritesId() ?: return@launch
+                    if (collectionsRepository.isMember(favId, ref)) collectionsRepository.removeMember(favId, ref)
+                    else collectionsRepository.addMember(favId, ref)
                     rescanSystemList()
                 }
                 dialogState.value = DialogState.None
             }
             selected == MENU_MANAGE_COLLECTIONS -> {
-                openCollectionManager(listOf(game.file.absolutePath), game.displayName.removePrefix("$STAR "))
+                openCollectionManager(listOf(path), displayName)
             }
             selected == MENU_EMULATOR_OVERRIDE || selected.startsWith("$MENU_EMULATOR_OVERRIDE\t") -> {
-                val tag = game.platformTag
+                if (rom == null) return
+                val tag = rom.platformTag
                 val bundledCoresDir2 = LaunchManager.extractBundledCores(this@MainActivity)
                 val options = platformConfig.getCorePickerOptions(tag, packageManager,
                     installedRaCores = installedCoreService.installedCores, embeddedCoresDir = bundledCoresDir2,
@@ -2366,7 +2370,7 @@ class MainActivity : ComponentActivity() {
                 val defaultLabel = if (platformCoreName.isNotEmpty()) "Platform Setting ($platformCoreName)" else "Platform Setting"
                 val defaultOption = CorePickerOption("", defaultLabel, "")
                 val allOptions = listOf(defaultOption) + options
-                val override = platformConfig.getGameOverride(game.file.absolutePath)
+                val override = platformConfig.getGameOverride(rom.path.absolutePath)
                 val selectedIdx = if (override?.appPackage != null) {
                     allOptions.indexOfFirst { it.appPackage == override.appPackage }.coerceAtLeast(0)
                 } else if (override != null) {
@@ -2378,15 +2382,15 @@ class MainActivity : ComponentActivity() {
                 dialogState.value = DialogState.None
                 screenStack.add(LauncherScreen.CorePicker(
                     tag = tag,
-                    platformName = game.displayName.removePrefix("$STAR "),
+                    platformName = rom.displayName,
                     cores = allOptions,
                     selectedIndex = selectedIdx,
-                    gamePath = game.file.absolutePath,
+                    gamePath = rom.path.absolutePath,
                     activeIndex = selectedIdx
                 ))
             }
             selected == MENU_DELETE || selected == MENU_DELETE_GAME -> {
-                dialogState.value = DialogState.DeleteConfirm(gameName = game.displayName.removePrefix("$STAR "))
+                dialogState.value = DialogState.DeleteConfirm(gameName = displayName)
             }
         }
     }
@@ -2670,10 +2674,10 @@ class MainActivity : ComponentActivity() {
             return
         }
         if (currentScreen == LauncherScreen.SystemList) {
-            val fghGame = pendingFghGame
-            if (fghGame != null) {
-                pendingFghGame = null
-                onFghContextMenuConfirm(fghGame, state)
+            val fghItem = pendingFghItem
+            if (fghItem != null) {
+                pendingFghItem = null
+                onFghContextMenuConfirm(fghItem, state)
             } else {
                 when (state.options[state.selectedOption]) {
                     MENU_RENAME -> {
@@ -2687,15 +2691,29 @@ class MainActivity : ComponentActivity() {
             }
             return
         }
-        val game = gameListViewModel.getSelectedGame() ?: return
+        val item = gameListViewModel.getSelectedItem() ?: return
         val glState = gameListViewModel.state.value
+        val rom = (item as? dev.cannoli.scorza.model.ListItem.RomItem)?.rom
+        val app = (item as? dev.cannoli.scorza.model.ListItem.AppItem)?.app
+        val collection = when (item) {
+            is dev.cannoli.scorza.model.ListItem.CollectionItem -> item.collection
+            is dev.cannoli.scorza.model.ListItem.ChildCollectionItem -> item.collection
+            else -> null
+        }
+        val displayName = when (item) {
+            is dev.cannoli.scorza.model.ListItem.RomItem -> item.rom.displayName
+            is dev.cannoli.scorza.model.ListItem.AppItem -> item.app.displayName
+            is dev.cannoli.scorza.model.ListItem.SubfolderItem -> item.name
+            is dev.cannoli.scorza.model.ListItem.CollectionItem -> item.collection.displayName
+            is dev.cannoli.scorza.model.ListItem.ChildCollectionItem -> item.collection.displayName
+        }
         pendingContextReturn = ContextReturn.Single(state.gameName, state.options, state.selectedOption)
         val selected = state.options[state.selectedOption]
         when {
             selected == MENU_REMOVE_FROM_RECENTS -> {
                 pendingContextReturn = null
                 dialogState.value = DialogState.None
-                clearRecentlyPlayedByPath(game.file.absolutePath)
+                item.recentKey()?.let { clearRecentlyPlayedByPath(it) }
                 ioScope.launch {
                     gameListViewModel.loadRecentlyPlayed()
                     rescanSystemList()
@@ -2703,64 +2721,63 @@ class MainActivity : ComponentActivity() {
                 return
             }
             selected == MENU_RENAME -> {
-                if (glState.isCollectionsList || game.isChildCollection) {
-                    val stem = if (game.isChildCollection) game.file.name else game.file.nameWithoutExtension
-                    val displayName = dev.cannoli.scorza.model.Collection.stemToDisplayName(stem)
+                if (collection != null) {
                     dialogState.value = DialogState.CollectionRenameInput(
-                        oldStem = stem,
+                        oldStem = collection.stem,
                         currentName = displayName,
                         cursorPos = displayName.length
                     )
                 } else {
-                    val name = game.displayName.removePrefix("$STAR ")
                     dialogState.value = DialogState.RenameInput(
-                        gameName = name,
-                        currentName = name,
-                        cursorPos = name.length
+                        gameName = displayName,
+                        currentName = displayName,
+                        cursorPos = displayName.length
                     )
                 }
             }
             selected == MENU_DELETE || selected == MENU_DELETE_GAME -> {
-                if (glState.isCollectionsList || game.isChildCollection) {
-                    val stem = if (game.isChildCollection) game.file.name else game.file.nameWithoutExtension
-                    dialogState.value = DialogState.DeleteCollectionConfirm(collectionStem = stem)
+                if (collection != null) {
+                    dialogState.value = DialogState.DeleteCollectionConfirm(collectionStem = collection.stem)
                 } else {
-                    dialogState.value = DialogState.DeleteConfirm(gameName = game.displayName.removePrefix("$STAR "))
+                    dialogState.value = DialogState.DeleteConfirm(gameName = displayName)
                 }
             }
             selected == MENU_MANAGE_COLLECTIONS -> {
-                openCollectionManager(listOf(game.file.absolutePath), game.displayName)
+                val path = item.recentKey() ?: return
+                openCollectionManager(listOf(path), displayName)
             }
             selected == MENU_CHILD_COLLECTIONS -> {
-                val stem = if (game.isChildCollection) game.file.name else game.file.nameWithoutExtension
-                openChildPicker(stem)
+                if (collection != null) openChildPicker(collection.stem)
             }
             selected == MENU_DELETE_ART -> {
-                pendingContextReturn = null
-                game.artFile?.delete()
-                artworkLookup.invalidate(game.platformTag)
-                gameListViewModel.reload()
-                dialogState.value = DialogState.None
+                if (rom != null) {
+                    pendingContextReturn = null
+                    rom.artFile?.delete()
+                    artworkLookup.invalidate(rom.platformTag)
+                    gameListViewModel.reload()
+                    dialogState.value = DialogState.None
+                }
             }
             selected == MENU_RA_GAME_ID -> {
-                val current = romLibrary.gameByPath(game.file.absolutePath)?.raGameId?.toString() ?: ""
-                dialogState.value = DialogState.RenameInput(
-                    gameName = "ra_game_id:${game.file.absolutePath}",
-                    currentName = current,
-                    cursorPos = current.length
-                )
+                if (rom != null) {
+                    val current = rom.raGameId?.toString() ?: ""
+                    dialogState.value = DialogState.RenameInput(
+                        gameName = "ra_game_id:${rom.path.absolutePath}",
+                        currentName = current,
+                        cursorPos = current.length
+                    )
+                }
             }
             selected == MENU_REMOVE -> {
-                pendingContextReturn = null
-                val appType = if (glState.platformTag == "tools") dev.cannoli.scorza.model.AppType.TOOL else dev.cannoli.scorza.model.AppType.PORT
-                ioScope.launch {
-                    appsRepository.byDisplayName(appType, game.displayName.removePrefix("$STAR "))?.let {
-                        appsRepository.delete(it.id)
+                if (app != null) {
+                    pendingContextReturn = null
+                    ioScope.launch {
+                        appsRepository.delete(app.id)
+                        gameListViewModel.reload()
+                        rescanSystemList()
                     }
-                    gameListViewModel.reload()
-                    rescanSystemList()
+                    dialogState.value = DialogState.None
                 }
-                dialogState.value = DialogState.None
             }
             selected == MENU_ADD_FAVORITE || selected == MENU_REMOVE_FAVORITE -> {
                 pendingContextReturn = null
@@ -2768,7 +2785,8 @@ class MainActivity : ComponentActivity() {
                 dialogState.value = DialogState.None
             }
             selected == MENU_EMULATOR_OVERRIDE || selected.startsWith("$MENU_EMULATOR_OVERRIDE\t") -> {
-                val tag = game.platformTag
+                if (rom == null) return
+                val tag = rom.platformTag
                 val bundledCoresDir2 = LaunchManager.extractBundledCores(this@MainActivity)
                 val options = platformConfig.getCorePickerOptions(tag, packageManager,
                     installedRaCores = installedCoreService.installedCores, embeddedCoresDir = bundledCoresDir2,
@@ -2778,7 +2796,7 @@ class MainActivity : ComponentActivity() {
                 val defaultLabel = if (platformCoreName.isNotEmpty()) "Platform Setting ($platformCoreName)" else "Platform Setting"
                 val defaultOption = CorePickerOption("", defaultLabel, "")
                 val allOptions = listOf(defaultOption) + options
-                val override = platformConfig.getGameOverride(game.file.absolutePath)
+                val override = platformConfig.getGameOverride(rom.path.absolutePath)
                 val selectedIdx = if (override?.appPackage != null) {
                     allOptions.indexOfFirst { it.appPackage == override.appPackage }.coerceAtLeast(0)
                 } else if (override != null) {
@@ -2790,10 +2808,10 @@ class MainActivity : ComponentActivity() {
                 dialogState.value = DialogState.None
                 screenStack.add(LauncherScreen.CorePicker(
                     tag = tag,
-                    platformName = game.displayName,
+                    platformName = rom.displayName,
                     cores = allOptions,
                     selectedIndex = selectedIdx,
-                    gamePath = game.file.absolutePath,
+                    gamePath = rom.path.absolutePath,
                     activeIndex = selectedIdx
                 ))
             }
@@ -2805,20 +2823,21 @@ class MainActivity : ComponentActivity() {
         if (state.bulkPaths != null) {
             val pathSet = state.bulkPaths.toSet()
             val toDelete = gameListViewModel.state.value.items
-                .mapNotNull { it.toLaunchGame() }
-                .filter { it.file.absolutePath in pathSet }
+                .filterIsInstance<dev.cannoli.scorza.model.ListItem.RomItem>()
+                .filter { it.rom.path.absolutePath in pathSet }
+                .map { it.rom }
             ioScope.launch {
-                toDelete.forEach { deleteRomByGame(it) }
+                toDelete.forEach { deleteRom(it) }
                 gameListViewModel.reload()
                 rescanSystemList()
                 withContext(Dispatchers.Main) { dialogState.value = DialogState.None }
             }
         } else {
-            val game = gameListViewModel.getSelectedGame()
-                ?: (systemListViewModel.getSelectedItem() as? SystemListViewModel.ListItem.GameItem)?.item?.toLaunchGame()
-                ?: return
+            val item = gameListViewModel.getSelectedItem()
+                ?: (systemListViewModel.getSelectedItem() as? SystemListViewModel.ListItem.GameItem)?.item
+            val rom = (item as? dev.cannoli.scorza.model.ListItem.RomItem)?.rom ?: return
             ioScope.launch {
-                deleteRomByGame(game)
+                deleteRom(rom)
                 gameListViewModel.reload()
                 rescanSystemList()
                 withContext(Dispatchers.Main) { dialogState.value = DialogState.None }
