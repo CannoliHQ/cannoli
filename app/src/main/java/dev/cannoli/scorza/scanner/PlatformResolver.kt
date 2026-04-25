@@ -252,6 +252,8 @@ class PlatformResolver(
 
     fun getGameOverride(gamePath: String): GameCoreOverride? = gameOverrides[gamePath]
 
+    fun snapshotGameOverrides(): Map<String, GameCoreOverride> = gameOverrides.toMap()
+
     fun setGameOverride(gamePath: String, coreId: String?, runner: String?, raPackage: String? = null) {
         if (coreId == null) {
             gameOverrides.remove(gamePath)
