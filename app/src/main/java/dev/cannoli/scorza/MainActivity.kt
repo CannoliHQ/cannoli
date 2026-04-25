@@ -3172,9 +3172,14 @@ class MainActivity : ComponentActivity() {
             onSystemListRename(state)
             return
         }
-        val game = gameListViewModel.getSelectedGame() ?: return
+        val item = gameListViewModel.getSelectedItem() ?: return
         val newName = state.currentName.trim()
-        if (newName.isEmpty() || newName == game.displayName) {
+        val currentName = when (item) {
+            is dev.cannoli.scorza.model.ListItem.RomItem -> item.rom.displayName
+            is dev.cannoli.scorza.model.ListItem.SubfolderItem -> item.name
+            else -> return
+        }
+        if (newName.isEmpty() || newName == currentName) {
             pendingContextReturn = null
             dialogState.value = DialogState.None
             return
@@ -3183,28 +3188,36 @@ class MainActivity : ComponentActivity() {
         pendingContextReturn = null
         dialogState.value = DialogState.None
         ioScope.launch {
-            if (game.isSubfolder) {
-                val newDir = File(game.file.parentFile, newName)
-                val oldPrefix = relativeRomPath(game.file)
-                val ok = game.file.renameTo(newDir)
+            if (item is dev.cannoli.scorza.model.ListItem.SubfolderItem) {
+                val tag = gameListViewModel.state.value.platformTag
+                val romDir = settings.romDirectory.takeIf { it.isNotEmpty() }?.let { File(it) } ?: File(File(settings.sdCardRoot), "Roms")
+                val oldDir = File(romDir, "$tag${File.separator}${item.path}")
+                val newDir = File(oldDir.parentFile, newName)
+                val oldPrefix = relativeRomPath(oldDir)
+                val ok = oldDir.renameTo(newDir)
                 if (ok) {
                     val newPrefix = relativeRomPath(newDir)
                     if (oldPrefix != null && newPrefix != null) {
-                        romLibrary.updateRomPathsUnderPrefix(game.platformTag, oldPrefix, newPrefix)
+                        romLibrary.updateRomPathsUnderPrefix(tag, oldPrefix, newPrefix)
                     }
                 } else {
                     withContext(Dispatchers.Main) {
                         dialogState.value = DialogState.RenameResult(false, "Failed to rename directory")
                     }
                 }
-            } else {
-                val romId = romLibrary.gameByPath(game.file.absolutePath)?.id
-                val result = atomicRename.rename(game.file, newName, game.platformTag)
+                artworkLookup.invalidate(tag)
+                romScanner.invalidatePlatform(tag)
+                gameListViewModel.reload()
+                return@launch
+            }
+            val rom = (item as? dev.cannoli.scorza.model.ListItem.RomItem)?.rom ?: return@launch
+            run {
+                val result = atomicRename.rename(rom.path, newName, rom.platformTag)
                 if (result.success) {
-                    val newRomFile = File(game.file.parentFile, "$newName.${game.file.extension}")
+                    val newRomFile = File(rom.path.parentFile, "$newName.${rom.path.extension}")
                     val newRelative = relativeRomPath(newRomFile)
-                    if (romId != null && newRelative != null) {
-                        romLibrary.updateRomPath(romId, newRelative)
+                    if (newRelative != null) {
+                        romLibrary.updateRomPath(rom.id, newRelative)
                     }
                 } else {
                     withContext(Dispatchers.Main) {
@@ -3212,9 +3225,9 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
-            artworkLookup.invalidate(game.platformTag)
-            game.file.parentFile?.let { nameMapLookup.invalidate(it) }
-            romScanner.invalidatePlatform(game.platformTag)
+            artworkLookup.invalidate(rom.platformTag)
+            rom.path.parentFile?.let { nameMapLookup.invalidate(it) }
+            romScanner.invalidatePlatform(rom.platformTag)
             gameListViewModel.reload()
         }
     }
