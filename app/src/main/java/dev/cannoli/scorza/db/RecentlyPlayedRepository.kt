@@ -1,8 +1,4 @@
-package dev.cannoli.scorza.library
-
-import dev.cannoli.scorza.db.CannoliDatabase
-import dev.cannoli.scorza.db.execute
-import dev.cannoli.scorza.db.query
+package dev.cannoli.scorza.db
 
 class RecentlyPlayedRepository(private val db: CannoliDatabase) {
     data class Entry(val ref: LibraryRef, val lastPlayedAt: Long)

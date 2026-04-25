@@ -1,4 +1,4 @@
-package dev.cannoli.scorza.library
+package dev.cannoli.scorza.util
 
 import java.io.File
 import java.io.IOException

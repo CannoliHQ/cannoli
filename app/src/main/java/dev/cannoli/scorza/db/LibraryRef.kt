@@ -1,4 +1,4 @@
-package dev.cannoli.scorza.library
+package dev.cannoli.scorza.db
 
 sealed interface LibraryRef {
     val id: Long

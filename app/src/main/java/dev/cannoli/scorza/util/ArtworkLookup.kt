@@ -1,4 +1,4 @@
-package dev.cannoli.scorza.library
+package dev.cannoli.scorza.util
 
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
@@ -18,11 +18,6 @@ class ArtworkLookup(private val cannoliRoot: File) {
 
     fun invalidateAll() {
         cache.clear()
-    }
-
-    fun lastModifiedFor(platformTag: String): Long {
-        val tagDir = File(artDir, platformTag)
-        return if (tagDir.exists()) tagDir.lastModified() else 0L
     }
 
     private fun buildMap(platformTag: String): Map<String, File> {

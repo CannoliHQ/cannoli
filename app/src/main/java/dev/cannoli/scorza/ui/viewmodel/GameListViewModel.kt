@@ -1,12 +1,12 @@
 package dev.cannoli.scorza.ui.viewmodel
 
 import dev.cannoli.scorza.R
-import dev.cannoli.scorza.library.AppsRepository
-import dev.cannoli.scorza.library.CollectionsRepository
-import dev.cannoli.scorza.library.LibraryRef
-import dev.cannoli.scorza.library.RecentlyPlayedRepository
-import dev.cannoli.scorza.library.RomLibrary
-import dev.cannoli.scorza.library.RomScanner
+import dev.cannoli.scorza.db.AppsRepository
+import dev.cannoli.scorza.db.CollectionsRepository
+import dev.cannoli.scorza.db.LibraryRef
+import dev.cannoli.scorza.db.RecentlyPlayedRepository
+import dev.cannoli.scorza.db.RomScanner
+import dev.cannoli.scorza.db.RomsRepository
 import dev.cannoli.scorza.model.AppType
 import dev.cannoli.scorza.model.Collection
 import dev.cannoli.scorza.model.ListItem
@@ -23,7 +23,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 class GameListViewModel(
-    private val romLibrary: RomLibrary,
+    private val romsRepository: RomsRepository,
     private val romScanner: RomScanner,
     private val appsRepository: AppsRepository,
     private val collectionsRepository: CollectionsRepository,
@@ -159,7 +159,7 @@ class GameListViewModel(
         val childItems = children.map { ListItem.ChildCollectionItem(childCollection(it.id, it.displayName)) }
         val romIds = collectionsRepository.romIdsIn(collectionId)
         val appIds = collectionsRepository.appIdsIn(collectionId)
-        val romItems = romIds.mapNotNull { romLibrary.gameById(it) }.map { ListItem.RomItem(it) }
+        val romItems = romIds.mapNotNull { romsRepository.gameById(it) }.map { ListItem.RomItem(it) }
         val appItems = appIds.mapNotNull { appsRepository.byId(it) }.map { ListItem.AppItem(it) }
         val items = childItems + romItems + appItems
         val parent = row.parentId?.let { collectionsRepository.byId(it) }
@@ -211,7 +211,7 @@ class GameListViewModel(
                 val entries = recentlyPlayedRepository.recent(limit = 50)
                 val items = entries.mapNotNull { entry ->
                     when (val ref = entry.ref) {
-                        is LibraryRef.Rom -> romLibrary.gameById(ref.id)?.let { ListItem.RomItem(it) }
+                        is LibraryRef.Rom -> romsRepository.gameById(ref.id)?.let { ListItem.RomItem(it) }
                         is LibraryRef.App -> appsRepository.byId(ref.id)?.let { ListItem.AppItem(it) }
                     }
                 }
@@ -364,7 +364,7 @@ class GameListViewModel(
                 val children = collectionsRepository.children(current.collectionId).map {
                     ListItem.ChildCollectionItem(childCollection(it.id, it.displayName))
                 }
-                val roms = romIds.mapNotNull { romLibrary.gameById(it) }.map { ListItem.RomItem(it) }
+                val roms = romIds.mapNotNull { romsRepository.gameById(it) }.map { ListItem.RomItem(it) }
                 val apps = appIds.mapNotNull { appsRepository.byId(it) }.map { ListItem.AppItem(it) }
                 children + roms + apps
             } else if (current.platformTag == "tools" || current.platformTag == "ports") {
@@ -553,7 +553,7 @@ class GameListViewModel(
 
     private fun scanAndLoadPlatform(tag: String, tags: List<String>, subfolder: String?): List<ListItem> {
         for (t in tags) romScanner.scanPlatform(t.uppercase(), isArcade = isArcadeTag(t))
-        return tags.flatMap { romLibrary.gamesForPlatform(it.uppercase(), subfolder) }
+        return tags.flatMap { romsRepository.gamesForPlatform(it.uppercase(), subfolder) }
     }
 
     private fun resolveCollectionByName(name: String): Long? {

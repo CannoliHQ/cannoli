@@ -8,7 +8,7 @@ import androidx.compose.ui.text.font.FontFamily
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.model.Collection
-import dev.cannoli.scorza.library.CollectionsRepository
+import dev.cannoli.scorza.db.CollectionsRepository
 import dev.cannoli.scorza.model.CollectionType
 import dev.cannoli.scorza.settings.ArtScale
 import dev.cannoli.scorza.settings.ContentMode

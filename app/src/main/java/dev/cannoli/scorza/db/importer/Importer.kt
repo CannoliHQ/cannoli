@@ -3,11 +3,11 @@ package dev.cannoli.scorza.db.importer
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
 import dev.cannoli.scorza.db.CannoliDatabase
+import dev.cannoli.scorza.db.LibraryRef
+import dev.cannoli.scorza.db.RomScanner
 import dev.cannoli.scorza.db.execute
 import dev.cannoli.scorza.db.executeReturningId
 import dev.cannoli.scorza.db.query
-import dev.cannoli.scorza.library.LibraryRef
-import dev.cannoli.scorza.library.RomScanner
 import dev.cannoli.scorza.model.Collection
 import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.util.ScanLog

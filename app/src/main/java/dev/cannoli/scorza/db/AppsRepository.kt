@@ -1,10 +1,6 @@
-package dev.cannoli.scorza.library
+package dev.cannoli.scorza.db
 
 import androidx.sqlite.SQLiteStatement
-import dev.cannoli.scorza.db.CannoliDatabase
-import dev.cannoli.scorza.db.execute
-import dev.cannoli.scorza.db.query
-import dev.cannoli.scorza.db.transaction
 import dev.cannoli.scorza.model.App
 import dev.cannoli.scorza.model.AppType
 

@@ -1,10 +1,8 @@
-package dev.cannoli.scorza.library
+package dev.cannoli.scorza.db
 
 import android.content.res.AssetManager
-import dev.cannoli.scorza.db.CannoliDatabase
-import dev.cannoli.scorza.db.execute
-import dev.cannoli.scorza.db.query
-import dev.cannoli.scorza.db.transaction
+import dev.cannoli.scorza.util.ArtworkLookup
+import dev.cannoli.scorza.util.NameMapLookup
 import dev.cannoli.scorza.util.ScanLog
 import org.json.JSONArray
 import java.io.File

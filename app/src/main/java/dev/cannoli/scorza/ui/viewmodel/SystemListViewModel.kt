@@ -1,10 +1,10 @@
 package dev.cannoli.scorza.ui.viewmodel
 
-import dev.cannoli.scorza.library.AppsRepository
-import dev.cannoli.scorza.library.CollectionsRepository
-import dev.cannoli.scorza.library.RecentlyPlayedRepository
-import dev.cannoli.scorza.library.RomLibrary
-import dev.cannoli.scorza.library.RomScanner
+import dev.cannoli.scorza.db.AppsRepository
+import dev.cannoli.scorza.db.CollectionsRepository
+import dev.cannoli.scorza.db.RecentlyPlayedRepository
+import dev.cannoli.scorza.db.RomScanner
+import dev.cannoli.scorza.db.RomsRepository
 import dev.cannoli.scorza.model.AppType
 import dev.cannoli.scorza.model.Platform
 import dev.cannoli.scorza.config.PlatformConfig
@@ -21,7 +21,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 class SystemListViewModel(
-    private val romLibrary: RomLibrary,
+    private val romsRepository: RomsRepository,
     private val romScanner: RomScanner,
     private val appsRepository: AppsRepository,
     private val collectionsRepository: CollectionsRepository,
@@ -88,8 +88,8 @@ class SystemListViewModel(
 
         scope.launch(Dispatchers.IO) {
             scanAllPlatformDirs()
-            val countsByTag = romLibrary.platformCounts().mapKeys { it.key.uppercase() }
-            val knownTagsInDb = romLibrary.knownPlatformTags()
+            val countsByTag = romsRepository.platformCounts().mapKeys { it.key.uppercase() }
+            val knownTagsInDb = romsRepository.knownPlatformTags()
             val knownTags = (knownTagsInDb + countsByTag.keys).distinct()
                 .filter { it != TAG_TOOLS && it != TAG_PORTS }
 
@@ -124,7 +124,7 @@ class SystemListViewModel(
                     currentFghCollectionId = fghId
                     if (fghId != null) {
                         collectionsRepository.romIdsIn(fghId)
-                            .mapNotNull { romLibrary.gameById(it) }
+                            .mapNotNull { romsRepository.gameById(it) }
                             .forEach { rom -> items.add(ListItem.GameItem(dev.cannoli.scorza.model.ListItem.RomItem(rom))) }
                         collectionsRepository.appIdsIn(fghId)
                             .mapNotNull { appsRepository.byId(it) }
@@ -170,7 +170,7 @@ class SystemListViewModel(
                 if (toolCount > 0) reorderableItems.add(ListItem.ToolsFolder(toolsName, toolCount))
             }
             if (reorderableItems.isNotEmpty()) {
-                val ordered = applyCustomOrder(reorderableItems, romLibrary.knownPlatformTags())
+                val ordered = applyCustomOrder(reorderableItems, romsRepository.knownPlatformTags())
                 items.addAll(ordered)
             }
 
@@ -281,8 +281,8 @@ class SystemListViewModel(
             if (fghId != null) {
                 val refs = gameItems.mapNotNull { gameItem ->
                     when (val inner = gameItem.item) {
-                        is dev.cannoli.scorza.model.ListItem.RomItem -> dev.cannoli.scorza.library.LibraryRef.Rom(inner.rom.id)
-                        is dev.cannoli.scorza.model.ListItem.AppItem -> dev.cannoli.scorza.library.LibraryRef.App(inner.app.id)
+                        is dev.cannoli.scorza.model.ListItem.RomItem -> dev.cannoli.scorza.db.LibraryRef.Rom(inner.rom.id)
+                        is dev.cannoli.scorza.model.ListItem.AppItem -> dev.cannoli.scorza.db.LibraryRef.App(inner.app.id)
                         else -> null
                     }
                 }
@@ -303,7 +303,7 @@ class SystemListViewModel(
                 ensureReservedTag(TAG_TOOLS)
                 ensureReservedTag(TAG_PORTS)
                 scope.launch(Dispatchers.IO) {
-                    romLibrary.setPlatformOrder(tags)
+                    romsRepository.setPlatformOrder(tags)
                 }
             }
         }

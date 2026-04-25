@@ -1,7 +1,4 @@
-package dev.cannoli.scorza.library
-
-import dev.cannoli.scorza.db.CannoliDatabase
-import dev.cannoli.scorza.db.query
+package dev.cannoli.scorza.db
 
 class GameOverridesRepository(private val db: CannoliDatabase) {
     data class Override(

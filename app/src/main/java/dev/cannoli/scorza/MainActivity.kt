@@ -206,7 +206,7 @@ class MainActivity : ComponentActivity() {
 
     private fun collectionsContainingPaths(
         paths: List<String>,
-        candidates: List<dev.cannoli.scorza.library.CollectionsRepository.CollectionRow>
+        candidates: List<dev.cannoli.scorza.db.CollectionsRepository.CollectionRow>
     ): Set<String> {
         if (paths.isEmpty()) return emptySet()
         val sets = paths.map { path ->
@@ -240,19 +240,19 @@ class MainActivity : ComponentActivity() {
     private fun deleteRom(rom: dev.cannoli.scorza.model.Rom) {
         try { rom.path.delete() } catch (_: Throwable) {}
         rom.discFiles?.forEach { try { it.delete() } catch (_: Throwable) {} }
-        romLibrary.deleteRom(rom.id)
+        romsRepository.deleteRom(rom.id)
         romScanner.invalidatePlatform(rom.platformTag)
     }
 
-    private fun resolvePathToRef(path: String): dev.cannoli.scorza.library.LibraryRef? {
+    private fun resolvePathToRef(path: String): dev.cannoli.scorza.db.LibraryRef? {
         return if (path.startsWith("/apps/")) {
             val parts = path.removePrefix("/apps/").split("/", limit = 2)
             if (parts.size == 2) {
                 val type = runCatching { dev.cannoli.scorza.model.AppType.valueOf(parts[0]) }.getOrNull()
-                type?.let { appsRepository.byPackage(it, parts[1]) }?.let { dev.cannoli.scorza.library.LibraryRef.App(it.id) }
+                type?.let { appsRepository.byPackage(it, parts[1]) }?.let { dev.cannoli.scorza.db.LibraryRef.App(it.id) }
             } else null
         } else {
-            romLibrary.gameByPath(path)?.let { dev.cannoli.scorza.library.LibraryRef.Rom(it.id) }
+            romsRepository.gameByPath(path)?.let { dev.cannoli.scorza.db.LibraryRef.Rom(it.id) }
         }
     }
 
@@ -759,26 +759,26 @@ class MainActivity : ComponentActivity() {
         ioScope.launch { dev.cannoli.scorza.util.DirectoryLayout.ensure(root, romDir, assets, platformConfig) }
 
         cannoliDatabase = dev.cannoli.scorza.db.CannoliDatabase(root)
-        artworkLookup = dev.cannoli.scorza.library.ArtworkLookup(root)
-        nameMapLookup = dev.cannoli.scorza.library.NameMapLookup(root)
-        romLibrary = dev.cannoli.scorza.library.RomLibrary(romDir, cannoliDatabase, artworkLookup)
-        romScanner = dev.cannoli.scorza.library.RomScanner(root, romDir, cannoliDatabase, nameMapLookup, artworkLookup).also {
+        artworkLookup = dev.cannoli.scorza.util.ArtworkLookup(root)
+        nameMapLookup = dev.cannoli.scorza.util.NameMapLookup(root)
+        romsRepository = dev.cannoli.scorza.db.RomsRepository(romDir, cannoliDatabase, artworkLookup)
+        romScanner = dev.cannoli.scorza.db.RomScanner(root, romDir, cannoliDatabase, nameMapLookup, artworkLookup).also {
             it.loadIgnoreLists(assets)
         }
-        appsRepository = dev.cannoli.scorza.library.AppsRepository(cannoliDatabase)
-        collectionsRepository = dev.cannoli.scorza.library.CollectionsRepository(cannoliDatabase)
-        recentlyPlayedRepository = dev.cannoli.scorza.library.RecentlyPlayedRepository(cannoliDatabase)
+        appsRepository = dev.cannoli.scorza.db.AppsRepository(cannoliDatabase)
+        collectionsRepository = dev.cannoli.scorza.db.CollectionsRepository(cannoliDatabase)
+        recentlyPlayedRepository = dev.cannoli.scorza.db.RecentlyPlayedRepository(cannoliDatabase)
         runImporterThenContinue(root, romDir)
     }
 
     private lateinit var cannoliDatabase: dev.cannoli.scorza.db.CannoliDatabase
-    private lateinit var artworkLookup: dev.cannoli.scorza.library.ArtworkLookup
-    private lateinit var nameMapLookup: dev.cannoli.scorza.library.NameMapLookup
-    private lateinit var romLibrary: dev.cannoli.scorza.library.RomLibrary
-    private lateinit var romScanner: dev.cannoli.scorza.library.RomScanner
-    private lateinit var appsRepository: dev.cannoli.scorza.library.AppsRepository
-    private lateinit var collectionsRepository: dev.cannoli.scorza.library.CollectionsRepository
-    private lateinit var recentlyPlayedRepository: dev.cannoli.scorza.library.RecentlyPlayedRepository
+    private lateinit var artworkLookup: dev.cannoli.scorza.util.ArtworkLookup
+    private lateinit var nameMapLookup: dev.cannoli.scorza.util.NameMapLookup
+    private lateinit var romsRepository: dev.cannoli.scorza.db.RomsRepository
+    private lateinit var romScanner: dev.cannoli.scorza.db.RomScanner
+    private lateinit var appsRepository: dev.cannoli.scorza.db.AppsRepository
+    private lateinit var collectionsRepository: dev.cannoli.scorza.db.CollectionsRepository
+    private lateinit var recentlyPlayedRepository: dev.cannoli.scorza.db.RecentlyPlayedRepository
 
     private fun runImporterThenContinue(root: File, romDir: File) {
         val importer = dev.cannoli.scorza.db.importer.Importer(
@@ -834,7 +834,7 @@ class MainActivity : ComponentActivity() {
 
         val romDir = settings.romDirectory.takeIf { it.isNotEmpty() }?.let { File(it) } ?: File(root, "Roms")
         systemListViewModel = SystemListViewModel(
-            romLibrary = romLibrary,
+            romsRepository = romsRepository,
             romScanner = romScanner,
             appsRepository = appsRepository,
             collectionsRepository = collectionsRepository,
@@ -843,7 +843,7 @@ class MainActivity : ComponentActivity() {
             romDirectory = romDir,
         )
         gameListViewModel = GameListViewModel(
-            romLibrary = romLibrary,
+            romsRepository = romsRepository,
             romScanner = romScanner,
             appsRepository = appsRepository,
             collectionsRepository = collectionsRepository,
@@ -894,7 +894,7 @@ class MainActivity : ComponentActivity() {
                 val romFile = File(lines[0])
                 val tag = lines[1]
                 if (romFile.exists()) {
-                    val rom = romLibrary.gameByPath(romFile.absolutePath)
+                    val rom = romsRepository.gameByPath(romFile.absolutePath)
                     if (rom != null) {
                         val errorDialog = launchManager.resumeRom(rom)
                         if (errorDialog != null) {
@@ -1793,8 +1793,8 @@ class MainActivity : ComponentActivity() {
                                 val paths = checkedItems.mapNotNull { it.recentKey() }
                                 val allFav = paths.all { resolvePathToRef(it)?.let { ref ->
                                     when (ref) {
-                                        is dev.cannoli.scorza.library.LibraryRef.Rom -> ref.id in glState.favoriteRomIds
-                                        is dev.cannoli.scorza.library.LibraryRef.App -> ref.id in glState.favoriteAppIds
+                                        is dev.cannoli.scorza.db.LibraryRef.Rom -> ref.id in glState.favoriteRomIds
+                                        is dev.cannoli.scorza.db.LibraryRef.App -> ref.id in glState.favoriteAppIds
                                     }
                                 } == true }
                                 val isApkList = glState.platformTag == "tools" || glState.platformTag == "ports"
@@ -2312,8 +2312,8 @@ class MainActivity : ComponentActivity() {
             val ref = resolvePathToRef(item.recentKey)
             val isFav = ref?.let {
                 when (it) {
-                    is dev.cannoli.scorza.library.LibraryRef.Rom -> collectionsRepository.isRomFavorited(it.id)
-                    is dev.cannoli.scorza.library.LibraryRef.App -> collectionsRepository.isAppFavorited(it.id)
+                    is dev.cannoli.scorza.db.LibraryRef.Rom -> collectionsRepository.isRomFavorited(it.id)
+                    is dev.cannoli.scorza.db.LibraryRef.App -> collectionsRepository.isAppFavorited(it.id)
                 }
             } == true
             val menuName = item.displayName
@@ -3045,8 +3045,8 @@ class MainActivity : ComponentActivity() {
                     glState.items.forEach { item ->
                         if (item.recentKey() !in pathSet) return@forEach
                         val ref = when (item) {
-                            is dev.cannoli.scorza.model.ListItem.RomItem -> dev.cannoli.scorza.library.LibraryRef.Rom(item.rom.id)
-                            is dev.cannoli.scorza.model.ListItem.AppItem -> dev.cannoli.scorza.library.LibraryRef.App(item.app.id)
+                            is dev.cannoli.scorza.model.ListItem.RomItem -> dev.cannoli.scorza.db.LibraryRef.Rom(item.rom.id)
+                            is dev.cannoli.scorza.model.ListItem.AppItem -> dev.cannoli.scorza.db.LibraryRef.App(item.app.id)
                             else -> null
                         }
                         if (ref != null) collectionsRepository.removeMember(collectionId, ref)
@@ -3185,7 +3185,7 @@ class MainActivity : ComponentActivity() {
             val romPath = state.gameName.removePrefix("ra_game_id:")
             val gameId = state.currentName.trim().toIntOrNull()
             ioScope.launch {
-                romLibrary.gameByPath(romPath)?.let { romLibrary.setRaGameId(it.id, gameId) }
+                romsRepository.gameByPath(romPath)?.let { romsRepository.setRaGameId(it.id, gameId) }
             }
             restoreContextMenu()
             return
@@ -3220,7 +3220,7 @@ class MainActivity : ComponentActivity() {
                 if (ok) {
                     val newPrefix = relativeRomPath(newDir)
                     if (oldPrefix != null && newPrefix != null) {
-                        romLibrary.updateRomPathsUnderPrefix(tag, oldPrefix, newPrefix)
+                        romsRepository.updateRomPathsUnderPrefix(tag, oldPrefix, newPrefix)
                     }
                 } else {
                     withContext(Dispatchers.Main) {
@@ -3239,7 +3239,7 @@ class MainActivity : ComponentActivity() {
                     val newRomFile = File(rom.path.parentFile, "$newName.${rom.path.extension}")
                     val newRelative = relativeRomPath(newRomFile)
                     if (newRelative != null) {
-                        romLibrary.updateRomPath(rom.id, newRelative)
+                        romsRepository.updateRomPath(rom.id, newRelative)
                     }
                 } else {
                     withContext(Dispatchers.Main) {

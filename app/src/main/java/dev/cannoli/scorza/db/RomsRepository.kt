@@ -1,17 +1,14 @@
-package dev.cannoli.scorza.library
+package dev.cannoli.scorza.db
 
 import androidx.sqlite.SQLiteStatement
-import dev.cannoli.scorza.db.CannoliDatabase
-import dev.cannoli.scorza.db.execute
-import dev.cannoli.scorza.db.query
-import dev.cannoli.scorza.db.transaction
 import dev.cannoli.scorza.model.LaunchTarget
 import dev.cannoli.scorza.model.ListItem
 import dev.cannoli.scorza.model.Rom
+import dev.cannoli.scorza.util.ArtworkLookup
 import org.json.JSONArray
 import java.io.File
 
-class RomLibrary(
+class RomsRepository(
     private val romDirectory: File,
     private val db: CannoliDatabase,
     private val artwork: ArtworkLookup,
