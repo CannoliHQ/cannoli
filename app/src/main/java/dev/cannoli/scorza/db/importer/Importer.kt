@@ -366,10 +366,16 @@ class Importer(
 
     private fun importOrdering(collectionIdsByStem: Map<String, Long>) {
         val platformOrder = orderingManager.loadPlatformOrder()
-        for ((index, tag) in platformOrder.withIndex()) {
+        for ((index, rawTag) in platformOrder.withIndex()) {
+            val tag = rawTag.uppercase()
+            conn.prepare("INSERT OR IGNORE INTO platforms (tag, display_name) VALUES (?, ?)").use { stmt ->
+                stmt.bindText(1, tag)
+                stmt.bindText(2, tag)
+                stmt.step()
+            }
             conn.prepare("UPDATE platforms SET sort_order = ? WHERE tag = ?").use { stmt ->
                 stmt.bindLong(1, index.toLong())
-                stmt.bindText(2, tag.uppercase())
+                stmt.bindText(2, tag)
                 stmt.step()
             }
         }
