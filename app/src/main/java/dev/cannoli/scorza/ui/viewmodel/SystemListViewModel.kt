@@ -5,10 +5,7 @@ import dev.cannoli.scorza.library.CollectionsRepository
 import dev.cannoli.scorza.library.RecentlyPlayedRepository
 import dev.cannoli.scorza.library.RomLibrary
 import dev.cannoli.scorza.library.RomScanner
-import dev.cannoli.scorza.model.App
 import dev.cannoli.scorza.model.AppType
-import dev.cannoli.scorza.model.Game
-import dev.cannoli.scorza.model.LaunchTarget
 import dev.cannoli.scorza.model.Platform
 import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.settings.ContentMode
@@ -31,7 +28,6 @@ class SystemListViewModel(
     private val recentlyPlayedRepository: RecentlyPlayedRepository,
     private val platformConfig: PlatformConfig,
     private val romDirectory: File,
-    private val appPackageToFile: (App) -> File = { File("/apps/${it.type.name}/${it.packageName}") },
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
@@ -41,7 +37,19 @@ class SystemListViewModel(
         data object CollectionsFolder : ListItem()
         data class PlatformItem(val platform: Platform) : ListItem()
         data class CollectionItem(val name: String, val count: Int) : ListItem()
-        data class GameItem(val game: Game) : ListItem()
+        data class GameItem(val item: dev.cannoli.scorza.model.ListItem) : ListItem() {
+            val displayName: String get() = when (val i = item) {
+                is dev.cannoli.scorza.model.ListItem.RomItem -> i.rom.displayName
+                is dev.cannoli.scorza.model.ListItem.AppItem -> i.app.displayName
+                else -> ""
+            }
+            val artFile: java.io.File? get() = (item as? dev.cannoli.scorza.model.ListItem.RomItem)?.rom?.artFile
+            val recentKey: String get() = when (val i = item) {
+                is dev.cannoli.scorza.model.ListItem.RomItem -> i.rom.path.absolutePath
+                is dev.cannoli.scorza.model.ListItem.AppItem -> "/apps/${i.app.type.name}/${i.app.packageName}"
+                else -> ""
+            }
+        }
         data class ToolsFolder(val name: String, val count: Int) : ListItem()
         data class PortsFolder(val name: String, val count: Int) : ListItem()
     }
@@ -117,10 +125,10 @@ class SystemListViewModel(
                     if (fghId != null) {
                         collectionsRepository.romIdsIn(fghId)
                             .mapNotNull { romLibrary.gameById(it) }
-                            .forEach { rom -> items.add(ListItem.GameItem(romToGame(rom))) }
+                            .forEach { rom -> items.add(ListItem.GameItem(dev.cannoli.scorza.model.ListItem.RomItem(rom))) }
                         collectionsRepository.appIdsIn(fghId)
                             .mapNotNull { appsRepository.byId(it) }
-                            .forEach { app -> items.add(ListItem.GameItem(appToGame(app))) }
+                            .forEach { app -> items.add(ListItem.GameItem(dev.cannoli.scorza.model.ListItem.AppItem(app))) }
                     }
                 } else {
                     currentFghCollectionId = null
@@ -199,21 +207,6 @@ class SystemListViewModel(
         }
     }
 
-    private fun romToGame(rom: dev.cannoli.scorza.model.Rom): Game = Game(
-        file = rom.path,
-        displayName = rom.displayName,
-        platformTag = rom.platformTag,
-        artFile = rom.artFile,
-        launchTarget = rom.launchTarget,
-        discFiles = rom.discFiles,
-    )
-
-    private fun appToGame(app: App): Game = Game(
-        file = appPackageToFile(app),
-        displayName = app.displayName,
-        platformTag = if (app.type == AppType.TOOL) "tools" else "ports",
-        launchTarget = LaunchTarget.ApkLaunch(app.packageName),
-    )
 
     fun moveSelection(delta: Int) {
         _state.update { current ->
@@ -287,13 +280,10 @@ class SystemListViewModel(
             val fghId = currentFghCollectionId
             if (fghId != null) {
                 val refs = gameItems.mapNotNull { gameItem ->
-                    val game = gameItem.game
-                    if (game.platformTag == "tools" || game.platformTag == "ports") {
-                        val pkg = (game.launchTarget as? LaunchTarget.ApkLaunch)?.packageName
-                        val type = if (game.platformTag == "tools") AppType.TOOL else AppType.PORT
-                        pkg?.let { appsRepository.byPackage(type, it) }?.let { dev.cannoli.scorza.library.LibraryRef.App(it.id) }
-                    } else {
-                        romLibrary.gameByPath(game.file.absolutePath)?.let { dev.cannoli.scorza.library.LibraryRef.Rom(it.id) }
+                    when (val inner = gameItem.item) {
+                        is dev.cannoli.scorza.model.ListItem.RomItem -> dev.cannoli.scorza.library.LibraryRef.Rom(inner.rom.id)
+                        is dev.cannoli.scorza.model.ListItem.AppItem -> dev.cannoli.scorza.library.LibraryRef.App(inner.app.id)
+                        else -> null
                     }
                 }
                 scope.launch(Dispatchers.IO) {

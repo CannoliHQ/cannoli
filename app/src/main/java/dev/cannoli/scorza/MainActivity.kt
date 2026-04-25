@@ -42,6 +42,7 @@ import dev.cannoli.scorza.libretro.LibretroActivity
 import dev.cannoli.scorza.libretro.LibretroInput
 import dev.cannoli.scorza.libretro.RetroAchievementsManager
 import dev.cannoli.scorza.model.Game
+import dev.cannoli.scorza.model.toLaunchGame
 import dev.cannoli.scorza.navigation.AppNavGraph
 import dev.cannoli.scorza.navigation.BrowsePurpose
 import dev.cannoli.scorza.navigation.LauncherScreen
@@ -1960,21 +1961,14 @@ class MainActivity : ComponentActivity() {
                         val fgh = validateFghStem() != null
                         val item = systemListViewModel.getSelectedItem()
                         if (fgh && item is SystemListViewModel.ListItem.GameItem) {
-                            val game = item.game
-                            val isResumable = resumableGames.contains(game.file.absolutePath)
-                            if (isResumable && settings.swapPlayResume) {
-                                val errorDialog = launchManager.launchGame(game)
+                            val recentKey = item.recentKey
+                            val isResumable = resumableGames.contains(recentKey)
+                            if (isResumable) {
+                                val errorDialog = launchSelected(item.item, resume = !settings.swapPlayResume)
                                 if (errorDialog != null) {
                                     dialogState.value = errorDialog
                                 } else {
-                                    recordRecentlyPlayedByPath(game.file.absolutePath)
-                                }
-                            } else if (isResumable) {
-                                val errorDialog = launchManager.resumeGame(game)
-                                if (errorDialog != null) {
-                                    dialogState.value = errorDialog
-                                } else {
-                                    recordRecentlyPlayedByPath(game.file.absolutePath)
+                                    recordRecentlyPlayedByPath(recentKey)
                                 }
                             }
                         } else if (!fgh) {
@@ -2306,10 +2300,16 @@ class MainActivity : ComponentActivity() {
     private fun onSystemListContextMenu() {
         val item = systemListViewModel.getSelectedItem() ?: return
         if (item is SystemListViewModel.ListItem.GameItem) {
-            val game = item.game
+            val game = item.item.toLaunchGame() ?: return
             pendingFghGame = game
-            val isFav = game.displayName.startsWith(STAR)
-            val menuName = game.displayName.removePrefix("$STAR ")
+            val ref = resolvePathToRef(item.recentKey)
+            val isFav = ref?.let {
+                when (it) {
+                    is dev.cannoli.scorza.library.LibraryRef.Rom -> collectionsRepository.isRomFavorited(it.id)
+                    is dev.cannoli.scorza.library.LibraryRef.App -> collectionsRepository.isAppFavorited(it.id)
+                }
+            } == true
+            val menuName = item.displayName
             val options = buildList {
                 add(if (isFav) MENU_REMOVE_FAVORITE else MENU_ADD_FAVORITE)
                 add(MENU_MANAGE_COLLECTIONS)
@@ -2461,22 +2461,14 @@ class MainActivity : ComponentActivity() {
                 }
             }
             is SystemListViewModel.ListItem.GameItem -> {
-                val game = item.game
-                val isResumable = resumableGames.contains(game.file.absolutePath)
-                if (isResumable && settings.swapPlayResume) {
-                    val errorDialog = launchManager.resumeGame(game)
-                    if (errorDialog != null) {
-                        dialogState.value = errorDialog
-                    } else {
-                        recordRecentlyPlayedByPath(game.file.absolutePath)
-                    }
+                val recentKey = item.recentKey
+                val isResumable = resumableGames.contains(recentKey)
+                val resume = isResumable && settings.swapPlayResume
+                val errorDialog = launchSelected(item.item, resume = resume)
+                if (errorDialog != null) {
+                    dialogState.value = errorDialog
                 } else {
-                    val errorDialog = launchManager.launchGame(game)
-                    if (errorDialog != null) {
-                        dialogState.value = errorDialog
-                    } else {
-                        recordRecentlyPlayedByPath(game.file.absolutePath)
-                    }
+                    recordRecentlyPlayedByPath(recentKey)
                 }
             }
             is SystemListViewModel.ListItem.ToolsFolder -> {
@@ -2539,13 +2531,15 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun scanResumableGames() {
-        val gameListGames = gameListViewModel.state.value.games
-        val systemListGames = systemListViewModel.state.value.items
+        val gameListRoms = gameListViewModel.state.value.items
+            .filterIsInstance<dev.cannoli.scorza.model.ListItem.RomItem>()
+            .map { it.rom }
+        val systemListRoms = systemListViewModel.state.value.items
             .filterIsInstance<SystemListViewModel.ListItem.GameItem>()
-            .map { it.game }
-        val games = (gameListGames + systemListGames).distinctBy { it.file.absolutePath }
+            .mapNotNull { (it.item as? dev.cannoli.scorza.model.ListItem.RomItem)?.rom }
+        val roms = (gameListRoms + systemListRoms).distinctBy { it.path.absolutePath }
         ioScope.launch {
-            val result = launchManager.findResumableGames(games)
+            val result = launchManager.findResumableRoms(roms)
             withContext(Dispatchers.Main) { resumableGames = result }
         }
     }
@@ -2805,7 +2799,7 @@ class MainActivity : ComponentActivity() {
             }
         } else {
             val game = gameListViewModel.getSelectedGame()
-                ?: (systemListViewModel.getSelectedItem() as? SystemListViewModel.ListItem.GameItem)?.game
+                ?: (systemListViewModel.getSelectedItem() as? SystemListViewModel.ListItem.GameItem)?.item?.toLaunchGame()
                 ?: return
             ioScope.launch {
                 deleteRomByGame(game)

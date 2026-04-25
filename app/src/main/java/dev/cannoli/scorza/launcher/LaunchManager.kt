@@ -8,7 +8,6 @@ import dev.cannoli.scorza.libretro.LibretroActivity
 import dev.cannoli.scorza.libretro.SaveSlotManager
 import dev.cannoli.scorza.model.App
 import dev.cannoli.scorza.model.AppType
-import dev.cannoli.scorza.model.Game
 import dev.cannoli.scorza.model.Rom
 import dev.cannoli.scorza.model.LaunchTarget
 import dev.cannoli.scorza.config.PlatformConfig
@@ -354,22 +353,6 @@ class LaunchManager(
 
         return launchResultDialog(result)
     }
-
-    fun launchGame(game: Game): DialogState? = launchRom(gameToRom(game))
-
-    fun resumeGame(game: Game): DialogState? = resumeRom(gameToRom(game))
-
-    fun findResumableGames(games: List<Game>): Set<String> = findResumableRoms(games.map(::gameToRom))
-
-    private fun gameToRom(game: Game): Rom = Rom(
-        id = -1,
-        path = game.file,
-        platformTag = game.platformTag,
-        displayName = game.displayName,
-        artFile = game.artFile,
-        launchTarget = game.launchTarget,
-        discFiles = game.discFiles,
-    )
 
     fun launchApp(app: App): DialogState? {
         debugLog("launchApp entered: ${app.type} / ${app.packageName}")
