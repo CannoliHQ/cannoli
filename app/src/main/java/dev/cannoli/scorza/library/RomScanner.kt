@@ -1,7 +1,10 @@
 package dev.cannoli.scorza.library
 
-import androidx.sqlite.execSQL
+import android.content.res.AssetManager
 import dev.cannoli.scorza.db.CannoliDatabase
+import dev.cannoli.scorza.db.execute
+import dev.cannoli.scorza.db.query
+import dev.cannoli.scorza.db.transaction
 import dev.cannoli.scorza.util.ScanLog
 import org.json.JSONArray
 import java.io.File
@@ -19,7 +22,7 @@ class RomScanner(
     @Volatile private var ignoredExtensions: Set<String> = emptySet()
     @Volatile private var ignoredFiles: Set<String> = emptySet()
 
-    fun loadIgnoreLists(assets: android.content.res.AssetManager) {
+    fun loadIgnoreLists(assets: AssetManager) {
         seedFromAsset(assets, "ignore_extensions_roms.txt", File(cannoliRoot, "Config/ignore_extensions_roms.txt"))
         seedFromAsset(assets, "ignore_files_roms.txt", File(cannoliRoot, "Config/ignore_files_roms.txt"))
         ignoredExtensions = readSetLowercase(File(cannoliRoot, "Config/ignore_extensions_roms.txt")) { it.removePrefix(".") }
@@ -34,11 +37,11 @@ class RomScanner(
         }
         val mtime = computeTreeMtime(tagDir)
         val storedMtime = readLastScannedMtime(tag)
-        if (storedMtime > 0 && storedMtime == mtime) {
+        if (storedMtime != MTIME_UNSET && storedMtime == mtime) {
             return SyncCounts(0, 0, 0)
         }
         val collected = mutableListOf<ScannedRom>()
-        scanDir(tagDir, "$tag${File.separator}", isArcade, collected)
+        scanDir(tagDir, "$tag${File.separator}", isArcade, collected, depth = 0)
         artwork.invalidate(tag)
         nameMap.invalidate(tagDir)
         val counts = sync(tag, collected)
@@ -48,8 +51,21 @@ class RomScanner(
     }
 
     fun invalidatePlatform(platformTag: String) {
-        writeLastScannedMtime(platformTag.uppercase(), 0L)
+        writeLastScannedMtime(platformTag.uppercase(), MTIME_UNSET)
     }
+
+    fun ensureReservedPlatformTag(tag: String) = ensurePlatformRow(tag)
+
+    data class SyncCounts(val inserted: Int, val updated: Int, val removed: Int)
+
+    private data class ScannedRom(
+        val relativePath: String,
+        val displayName: String,
+        val tags: String?,
+        val discPaths: List<String>?,
+    )
+
+    private data class DirLaunch(val file: File, val discFiles: List<File>?)
 
     private fun computeTreeMtime(dir: File): Long {
         var max = dir.lastModified()
@@ -64,38 +80,29 @@ class RomScanner(
         return max
     }
 
-    private fun readLastScannedMtime(tag: String): Long {
-        db.conn.prepare("SELECT last_scanned_mtime FROM platforms WHERE tag = ?").use { stmt ->
-            stmt.bindText(1, tag)
-            return if (stmt.step()) stmt.getLong(0) else 0L
-        }
+    private fun readLastScannedMtime(tag: String): Long = db.conn.query(
+        "SELECT last_scanned_mtime FROM platforms WHERE tag = ?"
+    ) { stmt ->
+        stmt.bindText(1, tag)
+        if (stmt.step()) stmt.getLong(0) else MTIME_UNSET
     }
 
-    private fun writeLastScannedMtime(tag: String, mtime: Long) {
-        db.conn.prepare("UPDATE platforms SET last_scanned_mtime = ? WHERE tag = ?").use { stmt ->
-            stmt.bindLong(1, mtime)
-            stmt.bindText(2, tag)
-            stmt.step()
-        }
-    }
-
-    data class SyncCounts(val inserted: Int, val updated: Int, val removed: Int)
-
-    private data class ScannedRom(
-        val relativePath: String,
-        val displayName: String,
-        val tags: String?,
-        val discPaths: List<String>?,
+    private fun writeLastScannedMtime(tag: String, mtime: Long) = db.conn.execute(
+        "UPDATE platforms SET last_scanned_mtime = ? WHERE tag = ?",
+        mtime, tag,
     )
-
-    private data class DirLaunch(val file: File, val discFiles: List<File>?)
 
     private fun scanDir(
         dir: File,
         relPrefix: String,
         isArcade: Boolean,
         out: MutableList<ScannedRom>,
+        depth: Int,
     ) {
+        if (depth > MAX_DEPTH) {
+            ScanLog.write("WARN scanDir hit max depth at ${dir.absolutePath}")
+            return
+        }
         val entries = dir.listFiles()?.filter { !it.name.startsWith(".") && !isIgnored(it) } ?: return
         val (subdirs, files) = entries.partition { it.isDirectory }
 
@@ -106,7 +113,7 @@ class RomScanner(
                 val discRels = launch.discFiles?.map { "$relPrefix${subdir.name}${File.separator}${it.name}" }
                 out.add(ScannedRom(launchRel, subdir.name, null, discRels))
             } else if (subdir.listFiles()?.any { !it.name.startsWith(".") } == true) {
-                scanDir(subdir, "$relPrefix${subdir.name}${File.separator}", isArcade, out)
+                scanDir(subdir, "$relPrefix${subdir.name}${File.separator}", isArcade, out, depth + 1)
             }
         }
 
@@ -119,14 +126,12 @@ class RomScanner(
             .filter { it.extension.equals("m3u", ignoreCase = true) }
             .associateBy { it.nameWithoutExtension }
 
-        data class PendingRom(val relativePath: String, val rawName: String, val sourceFileName: String, val discPaths: List<String>?)
         val suppressed = mutableSetOf<String>()
         val pending = mutableListOf<PendingRom>()
         for ((baseName, discs) in discGroups) {
             if (discs.size <= 1) continue
             val sorted = discs.sortedBy { it.name }
-            val m3u = m3uByBase[baseName]
-            if (m3u != null) {
+            if (m3uByBase[baseName] != null) {
                 sorted.forEach { suppressed.add(it.absolutePath) }
             } else {
                 val discRels = sorted.map { "$relPrefix${it.name}" }
@@ -142,14 +147,12 @@ class RomScanner(
         val nameOverrides = nameMap.mapFor(dir, fallbackToArcade = isArcade)
         for (p in pending) {
             val override = nameOverrides[p.sourceFileName]
-            val (displayName, tags) = if (override != null) {
-                override to null
-            } else {
-                splitNameAndTags(p.rawName)
-            }
+            val (displayName, tags) = if (override != null) override to null else splitNameAndTags(p.rawName)
             out.add(ScannedRom(p.relativePath, displayName, tags, p.discPaths))
         }
     }
+
+    private data class PendingRom(val relativePath: String, val rawName: String, val sourceFileName: String, val discPaths: List<String>?)
 
     private fun splitNameAndTags(rawName: String): Pair<String, String?> {
         val base = tagRegex.replace(rawName, "").trim()
@@ -161,11 +164,10 @@ class RomScanner(
     private fun sync(tag: String, scanned: List<ScannedRom>): SyncCounts {
         data class ExistingRow(val id: Long, val displayName: String, val tags: String?, val discPaths: String?)
         val existing = mutableMapOf<String, ExistingRow>()
-        db.conn.prepare("SELECT id, path, display_name, tags, disc_paths FROM roms WHERE platform_tag = ?").use { stmt ->
+        db.conn.query("SELECT id, path, display_name, tags, disc_paths FROM roms WHERE platform_tag = ?") { stmt ->
             stmt.bindText(1, tag)
             while (stmt.step()) {
-                val path = stmt.getText(1)
-                existing[path] = ExistingRow(
+                existing[stmt.getText(1)] = ExistingRow(
                     id = stmt.getLong(0),
                     displayName = stmt.getText(2),
                     tags = if (stmt.isNull(3)) null else stmt.getText(3),
@@ -179,71 +181,61 @@ class RomScanner(
         var updated = 0
         var removed = 0
 
-        db.conn.execSQL("BEGIN")
-        try {
-            for (rom in scanned) {
-                val current = existing[rom.relativePath]
-                val discJson = rom.discPaths?.let { JSONArray(it).toString() }
-                if (current == null) {
-                    db.conn.prepare("INSERT INTO roms (path, platform_tag, display_name, tags, disc_paths) VALUES (?, ?, ?, ?, ?)").use { stmt ->
-                        stmt.bindText(1, rom.relativePath)
-                        stmt.bindText(2, tag)
-                        stmt.bindText(3, rom.displayName)
-                        if (rom.tags != null) stmt.bindText(4, rom.tags) else stmt.bindNull(4)
-                        if (discJson != null) stmt.bindText(5, discJson) else stmt.bindNull(5)
-                        stmt.step()
+        db.conn.transaction {
+            db.conn.prepare("INSERT INTO roms (path, platform_tag, display_name, tags, disc_paths) VALUES (?, ?, ?, ?, ?)").use { insertStmt ->
+                db.conn.prepare("UPDATE roms SET display_name = ?, tags = ?, disc_paths = ? WHERE id = ?").use { updateStmt ->
+                    db.conn.prepare("DELETE FROM roms WHERE id = ?").use { deleteStmt ->
+                        for (rom in scanned) {
+                            val current = existing[rom.relativePath]
+                            val discJson = rom.discPaths?.let { JSONArray(it).toString() }
+                            if (current == null) {
+                                insertStmt.reset()
+                                insertStmt.bindText(1, rom.relativePath)
+                                insertStmt.bindText(2, tag)
+                                insertStmt.bindText(3, rom.displayName)
+                                if (rom.tags != null) insertStmt.bindText(4, rom.tags) else insertStmt.bindNull(4)
+                                if (discJson != null) insertStmt.bindText(5, discJson) else insertStmt.bindNull(5)
+                                insertStmt.step()
+                                inserted++
+                            } else if (current.displayName != rom.displayName || current.tags != rom.tags || current.discPaths != discJson) {
+                                updateStmt.reset()
+                                updateStmt.bindText(1, rom.displayName)
+                                if (rom.tags != null) updateStmt.bindText(2, rom.tags) else updateStmt.bindNull(2)
+                                if (discJson != null) updateStmt.bindText(3, discJson) else updateStmt.bindNull(3)
+                                updateStmt.bindLong(4, current.id)
+                                updateStmt.step()
+                                updated++
+                            }
+                        }
+                        for ((path, row) in existing) {
+                            if (path in scannedByPath) continue
+                            deleteStmt.reset()
+                            deleteStmt.bindLong(1, row.id)
+                            deleteStmt.step()
+                            removed++
+                        }
                     }
-                    inserted++
-                } else if (current.displayName != rom.displayName || current.tags != rom.tags || current.discPaths != discJson) {
-                    db.conn.prepare("UPDATE roms SET display_name = ?, tags = ?, disc_paths = ? WHERE id = ?").use { stmt ->
-                        stmt.bindText(1, rom.displayName)
-                        if (rom.tags != null) stmt.bindText(2, rom.tags) else stmt.bindNull(2)
-                        if (discJson != null) stmt.bindText(3, discJson) else stmt.bindNull(3)
-                        stmt.bindLong(4, current.id)
-                        stmt.step()
-                    }
-                    updated++
                 }
             }
-            for ((path, row) in existing) {
-                if (path in scannedByPath) continue
-                db.conn.prepare("DELETE FROM roms WHERE id = ?").use { stmt ->
-                    stmt.bindLong(1, row.id)
-                    stmt.step()
-                }
-                removed++
-            }
-            db.conn.execSQL("COMMIT")
-        } catch (t: Throwable) {
-            db.conn.execSQL("ROLLBACK")
-            throw t
         }
 
         return SyncCounts(inserted, updated, removed)
     }
 
     private fun clearPlatform(tag: String): SyncCounts {
-        val count = db.conn.prepare("SELECT COUNT(*) FROM roms WHERE platform_tag = ?").use { stmt ->
+        val count = db.conn.query("SELECT COUNT(*) FROM roms WHERE platform_tag = ?") { stmt ->
             stmt.bindText(1, tag)
             stmt.step(); stmt.getInt(0)
         }
         if (count == 0) return SyncCounts(0, 0, 0)
-        db.conn.prepare("DELETE FROM roms WHERE platform_tag = ?").use { stmt ->
-            stmt.bindText(1, tag)
-            stmt.step()
-        }
+        db.conn.execute("DELETE FROM roms WHERE platform_tag = ?", tag)
         return SyncCounts(0, 0, count)
     }
 
-    fun ensureReservedPlatformTag(tag: String) = ensurePlatformRow(tag)
-
-    private fun ensurePlatformRow(tag: String) {
-        db.conn.prepare("INSERT OR IGNORE INTO platforms (tag, display_name) VALUES (?, ?)").use { stmt ->
-            stmt.bindText(1, tag)
-            stmt.bindText(2, tag)
-            stmt.step()
-        }
-    }
+    private fun ensurePlatformRow(tag: String) = db.conn.execute(
+        "INSERT OR IGNORE INTO platforms (tag, display_name) VALUES (?, ?)",
+        tag, tag,
+    )
 
     private fun resolveTagDir(tag: String): File? {
         val direct = File(romDirectory, tag)
@@ -252,10 +244,10 @@ class RomScanner(
     }
 
     private fun findDirLaunchFile(dir: File): DirLaunch? {
-        File(dir, "${dir.name}.m3u").takeIf { it.exists() }?.let { return DirLaunch(it, null) }
-        File(dir, "${dir.name}.cue").takeIf { it.exists() }?.let { return DirLaunch(it, null) }
-        dir.listFiles()?.firstOrNull { it.extension.equals("cue", ignoreCase = true) }?.let { return DirLaunch(it, null) }
-        val children = dir.listFiles()?.filter { it.isFile } ?: return null
+        File(dir, "${dir.name}.m3u").takeIf { it.exists() && !isIgnored(it) }?.let { return DirLaunch(it, null) }
+        File(dir, "${dir.name}.cue").takeIf { it.exists() && !isIgnored(it) }?.let { return DirLaunch(it, null) }
+        dir.listFiles()?.firstOrNull { it.extension.equals("cue", ignoreCase = true) && !isIgnored(it) }?.let { return DirLaunch(it, null) }
+        val children = dir.listFiles()?.filter { it.isFile && !isIgnored(it) } ?: return null
         val discs = children.filter { discRegex.containsMatchIn(it.nameWithoutExtension) }
         if (discs.size > 1) {
             val sorted = discs.sortedBy { it.name }
@@ -271,7 +263,7 @@ class RomScanner(
     private fun isIgnoredExtension(file: File): Boolean =
         file.extension.lowercase() in ignoredExtensions
 
-    private fun seedFromAsset(assets: android.content.res.AssetManager, name: String, target: File) {
+    private fun seedFromAsset(assets: AssetManager, name: String, target: File) {
         if (target.exists()) return
         try {
             target.parentFile?.mkdirs()
@@ -284,5 +276,10 @@ class RomScanner(
         return try {
             file.readLines().map { transform(it.trim().lowercase()) }.filter { it.isNotEmpty() }.toSet()
         } catch (_: Throwable) { emptySet() }
+    }
+
+    private companion object {
+        const val MTIME_UNSET = 0L
+        const val MAX_DEPTH = 16
     }
 }

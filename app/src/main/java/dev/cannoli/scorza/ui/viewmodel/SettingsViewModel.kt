@@ -9,6 +9,7 @@ import dev.cannoli.scorza.R
 import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.model.Collection
 import dev.cannoli.scorza.library.CollectionsRepository
+import dev.cannoli.scorza.model.CollectionType
 import dev.cannoli.scorza.settings.ArtScale
 import dev.cannoli.scorza.settings.ContentMode
 import dev.cannoli.scorza.settings.SettingsRepository
@@ -630,7 +631,7 @@ class SettingsViewModel(
 
     private fun fghCollectionStems(): List<String> {
         val cr = collectionsRepository ?: return emptyList()
-        return cr.all().filter { it.type == dev.cannoli.scorza.db.CollectionType.STANDARD }.map { it.displayName }
+        return cr.all().filter { it.type == CollectionType.STANDARD }.map { it.displayName }
     }
 
     private fun onOff(value: Boolean) = if (value) R.string.value_on else R.string.value_off

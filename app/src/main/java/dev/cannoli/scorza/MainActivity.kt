@@ -46,6 +46,7 @@ import dev.cannoli.scorza.navigation.AppNavGraph
 import dev.cannoli.scorza.navigation.BrowsePurpose
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.config.PlatformConfig
+import dev.cannoli.scorza.model.CollectionType
 import dev.cannoli.scorza.settings.ContentMode
 import dev.cannoli.scorza.settings.GlobalOverridesManager
 import dev.cannoli.scorza.settings.SettingsRepository
@@ -341,7 +342,7 @@ class MainActivity : ComponentActivity() {
     private fun refreshCollectionPickerOnStack() {
         val cp = currentScreen
         if (cp is LauncherScreen.CollectionPicker) {
-            val all = collectionsRepository.all().filter { it.type == dev.cannoli.scorza.db.CollectionType.STANDARD }
+            val all = collectionsRepository.all().filter { it.type == CollectionType.STANDARD }
             val stems = all.map { it.displayName }
             val displayNames = all.map { it.displayName }
             val alreadyIn = collectionsContainingPaths(cp.gamePaths, all)
@@ -760,7 +761,7 @@ class MainActivity : ComponentActivity() {
         cannoliDatabase = dev.cannoli.scorza.db.CannoliDatabase(root)
         artworkLookup = dev.cannoli.scorza.library.ArtworkLookup(root)
         nameMapLookup = dev.cannoli.scorza.library.NameMapLookup(root)
-        romLibrary = dev.cannoli.scorza.library.RomLibrary(root, romDir, cannoliDatabase, artworkLookup)
+        romLibrary = dev.cannoli.scorza.library.RomLibrary(romDir, cannoliDatabase, artworkLookup)
         romScanner = dev.cannoli.scorza.library.RomScanner(root, romDir, cannoliDatabase, nameMapLookup, artworkLookup).also {
             it.loadIgnoreLists(assets)
         }
@@ -2263,7 +2264,7 @@ class MainActivity : ComponentActivity() {
 
     private fun validateFghStem(): String? {
         if (settings.contentMode != ContentMode.FIVE_GAME_HANDHELD) return null
-        val all = collectionsRepository.all().filter { it.type == dev.cannoli.scorza.db.CollectionType.STANDARD }
+        val all = collectionsRepository.all().filter { it.type == CollectionType.STANDARD }
         val stem = settings.fghCollectionStem
         if (stem != null && all.any { it.displayName == stem }) return stem
         val fallback = all.firstOrNull()?.displayName
@@ -2899,7 +2900,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun openCollectionManager(gamePaths: List<String>, title: String) {
-        val all = collectionsRepository.all().filter { it.type == dev.cannoli.scorza.db.CollectionType.STANDARD }
+        val all = collectionsRepository.all().filter { it.type == CollectionType.STANDARD }
         val stems = all.map { it.displayName }
         val displayNames = all.map { it.displayName }
         val alreadyIn = collectionsContainingPaths(gamePaths, all)
@@ -2920,7 +2921,7 @@ class MainActivity : ComponentActivity() {
 
     private fun openChildPicker(collectionStem: String) {
         val parent = collectionsRepository.all().firstOrNull { it.displayName == collectionStem } ?: return
-        val all = collectionsRepository.all().filter { it.type == dev.cannoli.scorza.db.CollectionType.STANDARD }
+        val all = collectionsRepository.all().filter { it.type == CollectionType.STANDARD }
         val ancestorIds = collectionsRepository.ancestors(parent.id).map { it.id }.toSet() + parent.id
         val available = all.filter { it.id !in ancestorIds }
         val availableNames = available.map { it.displayName }

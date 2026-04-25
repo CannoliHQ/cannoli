@@ -2,9 +2,22 @@ package dev.cannoli.scorza.db
 
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.SQLiteStatement
+import androidx.sqlite.execSQL
 
 internal inline fun <T> SQLiteConnection.query(sql: String, block: (SQLiteStatement) -> T): T =
     prepare(sql).use(block)
+
+internal inline fun <T> SQLiteConnection.transaction(block: () -> T): T {
+    execSQL("BEGIN")
+    return try {
+        val result = block()
+        execSQL("COMMIT")
+        result
+    } catch (t: Throwable) {
+        execSQL("ROLLBACK")
+        throw t
+    }
+}
 
 internal fun SQLiteConnection.execute(sql: String, vararg args: Any?) {
     prepare(sql).use { stmt ->

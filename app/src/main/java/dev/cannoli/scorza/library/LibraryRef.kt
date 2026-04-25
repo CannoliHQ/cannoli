@@ -1,6 +1,8 @@
 package dev.cannoli.scorza.library
 
 sealed interface LibraryRef {
-    data class Rom(val id: Long) : LibraryRef
-    data class App(val id: Long) : LibraryRef
+    val id: Long
+
+    data class Rom(override val id: Long) : LibraryRef
+    data class App(override val id: Long) : LibraryRef
 }

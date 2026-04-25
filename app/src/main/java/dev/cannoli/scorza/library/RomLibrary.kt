@@ -1,7 +1,10 @@
 package dev.cannoli.scorza.library
 
-import androidx.sqlite.execSQL
+import androidx.sqlite.SQLiteStatement
 import dev.cannoli.scorza.db.CannoliDatabase
+import dev.cannoli.scorza.db.execute
+import dev.cannoli.scorza.db.query
+import dev.cannoli.scorza.db.transaction
 import dev.cannoli.scorza.model.LaunchTarget
 import dev.cannoli.scorza.model.ListItem
 import dev.cannoli.scorza.model.Rom
@@ -9,7 +12,6 @@ import org.json.JSONArray
 import java.io.File
 
 class RomLibrary(
-    private val cannoliRoot: File,
     private val romDirectory: File,
     private val db: CannoliDatabase,
     private val artwork: ArtworkLookup,
@@ -18,66 +20,44 @@ class RomLibrary(
         val tag = platformTag.uppercase()
         val roms = romsForPlatform(tag)
         val (matching, nested) = partitionForSubfolder(roms, subfolder)
-        val subfolderItems = subfolderItemsFrom(nested, subfolder)
-        val romItems = matching.map { ListItem.RomItem(it) }
-        return subfolderItems + romItems
+        return subfolderItemsFrom(nested, subfolder) + matching.map { ListItem.RomItem(it) }
     }
 
     fun gameByPath(absolutePath: String): Rom? {
         val relative = relativizePath(absolutePath) ?: return null
-        return queryRom("WHERE path = ?", listOf(relative)).firstOrNull()
+        return queryRom("WHERE path = ?", relative).firstOrNull()
     }
 
     fun gameById(romId: Long): Rom? =
-        queryRom("WHERE id = ?", listOf(romId.toString())).firstOrNull()
+        queryRom("WHERE id = ?", romId).firstOrNull()
 
     fun setRaGameId(romId: Long, raGameId: Int?) {
-        val sql = if (raGameId == null) "UPDATE roms SET ra_game_id = NULL WHERE id = ?"
-        else "UPDATE roms SET ra_game_id = ? WHERE id = ?"
-        db.conn.prepare(sql).use { stmt ->
-            if (raGameId == null) {
-                stmt.bindLong(1, romId)
-            } else {
-                stmt.bindLong(1, raGameId.toLong())
-                stmt.bindLong(2, romId)
-            }
-            stmt.step()
+        if (raGameId == null) {
+            db.conn.execute("UPDATE roms SET ra_game_id = NULL WHERE id = ?", romId)
+        } else {
+            db.conn.execute("UPDATE roms SET ra_game_id = ? WHERE id = ?", raGameId, romId)
         }
     }
 
-    fun updateRomPath(romId: Long, newRelativePath: String) {
-        db.conn.prepare("UPDATE roms SET path = ? WHERE id = ?").use { stmt ->
-            stmt.bindText(1, newRelativePath)
-            stmt.bindLong(2, romId)
-            stmt.step()
-        }
-    }
+    fun updateRomPath(romId: Long, newRelativePath: String) = db.conn.execute(
+        "UPDATE roms SET path = ? WHERE id = ?",
+        newRelativePath, romId,
+    )
 
-    fun updateRomPathsUnderPrefix(platformTag: String, oldPrefix: String, newPrefix: String) {
-        val pattern = "$oldPrefix%"
-        db.conn.prepare("""
-            UPDATE roms
-            SET path = ? || substr(path, ?)
-            WHERE platform_tag = ? AND path LIKE ?
-        """.trimIndent()).use { stmt ->
-            stmt.bindText(1, newPrefix)
-            stmt.bindLong(2, (oldPrefix.length + 1).toLong())
-            stmt.bindText(3, platformTag.uppercase())
-            stmt.bindText(4, pattern)
-            stmt.step()
-        }
-    }
+    fun updateRomPathsUnderPrefix(platformTag: String, oldPrefix: String, newPrefix: String) = db.conn.execute(
+        """
+        UPDATE roms
+        SET path = ? || substr(path, ?)
+        WHERE platform_tag = ? AND path LIKE ?
+        """.trimIndent(),
+        newPrefix, (oldPrefix.length + 1).toLong(), platformTag.uppercase(), "$oldPrefix%",
+    )
 
-    fun deleteRom(romId: Long) {
-        db.conn.prepare("DELETE FROM roms WHERE id = ?").use { stmt ->
-            stmt.bindLong(1, romId)
-            stmt.step()
-        }
-    }
+    fun deleteRom(romId: Long) = db.conn.execute("DELETE FROM roms WHERE id = ?", romId)
 
     fun platformCounts(): Map<String, Int> {
         val out = mutableMapOf<String, Int>()
-        db.conn.prepare("SELECT platform_tag, COUNT(*) FROM roms GROUP BY platform_tag").use { stmt ->
+        db.conn.query("SELECT platform_tag, COUNT(*) FROM roms GROUP BY platform_tag") { stmt ->
             while (stmt.step()) out[stmt.getText(0)] = stmt.getInt(1)
         }
         return out
@@ -85,47 +65,32 @@ class RomLibrary(
 
     fun knownPlatformTags(): List<String> {
         val out = mutableListOf<String>()
-        db.conn.prepare("SELECT tag FROM platforms ORDER BY sort_order, tag").use { stmt ->
+        db.conn.query("SELECT tag FROM platforms ORDER BY sort_order, tag") { stmt ->
             while (stmt.step()) out.add(stmt.getText(0))
         }
         return out
     }
 
-    fun setPlatformOrder(orderedTags: List<String>) {
-        db.conn.execSQL("BEGIN")
-        try {
-            orderedTags.forEachIndexed { index, tag ->
-                db.conn.prepare("UPDATE platforms SET sort_order = ? WHERE tag = ?").use { stmt ->
-                    stmt.bindLong(1, index.toLong())
-                    stmt.bindText(2, tag)
-                    stmt.step()
-                }
-            }
-            db.conn.execSQL("COMMIT")
-        } catch (t: Throwable) {
-            db.conn.execSQL("ROLLBACK")
-            throw t
+    fun setPlatformOrder(orderedTags: List<String>) = db.conn.transaction {
+        orderedTags.forEachIndexed { index, tag ->
+            db.conn.execute("UPDATE platforms SET sort_order = ? WHERE tag = ?", index.toLong(), tag)
         }
     }
 
     private fun romsForPlatform(platformTag: String): List<Rom> =
-        queryRom("WHERE platform_tag = ? ORDER BY display_name COLLATE NOCASE", listOf(platformTag))
+        queryRom("WHERE platform_tag = ? ORDER BY display_name COLLATE NOCASE", platformTag)
 
-    private fun partitionForSubfolder(
-        roms: List<Rom>,
-        subfolder: String?,
-    ): Pair<List<Rom>, List<Rom>> {
-        if (subfolder.isNullOrEmpty()) {
-            return roms.partition { !it.relativeFromRoot().contains(File.separatorChar.toString() + File.separator) && it.relativeFromRoot().count { c -> c == File.separatorChar } <= 1 }
-                .let { (top, _) -> Pair(top.filter { rom -> !rom.relativeAfterPlatform().contains(File.separatorChar) }, top.filter { rom -> rom.relativeAfterPlatform().contains(File.separatorChar) }) }
+    /** When a subfolder is selected, return roms inside it (here) and roms in deeper subdirs (deeper).
+     *  When no subfolder is selected, return roms at the platform root (here) and roms anywhere
+     *  inside subfolders (deeper) so the deeper set drives top-level subfolder pseudo-items. */
+    private fun partitionForSubfolder(roms: List<Rom>, subfolder: String?): Pair<List<Rom>, List<Rom>> {
+        val sep = File.separatorChar
+        val basePrefix = if (subfolder.isNullOrEmpty()) "" else "$subfolder$sep"
+        val matched = if (basePrefix.isEmpty()) roms
+        else roms.filter { it.relativeAfterPlatform().startsWith(basePrefix) }
+        return matched.partition { rom ->
+            !rom.relativeAfterPlatform().removePrefix(basePrefix).contains(sep)
         }
-        val prefix = "$subfolder${File.separator}"
-        val matched = roms.filter { it.relativeAfterPlatform().startsWith(prefix) }
-        val (here, deeper) = matched.partition { rom ->
-            val tail = rom.relativeAfterPlatform().removePrefix(prefix)
-            !tail.contains(File.separatorChar)
-        }
-        return here to deeper
     }
 
     private fun subfolderItemsFrom(roms: List<Rom>, subfolder: String?): List<ListItem.SubfolderItem> {
@@ -133,50 +98,54 @@ class RomLibrary(
         val basePrefix = if (subfolder.isNullOrEmpty()) "" else "$subfolder${File.separator}"
         val seen = linkedSetOf<String>()
         for (rom in roms) {
-            val tail = rom.relativeAfterPlatform().removePrefix(basePrefix)
-            val firstSeg = tail.substringBefore(File.separator)
+            val firstSeg = rom.relativeAfterPlatform().removePrefix(basePrefix).substringBefore(File.separator)
             if (firstSeg.isNotEmpty()) seen.add(firstSeg)
         }
-        return seen.map { name ->
-            ListItem.SubfolderItem(name = name, path = (basePrefix + name))
-        }
+        return seen.map { ListItem.SubfolderItem(name = it, path = basePrefix + it) }
     }
 
-    private fun queryRom(whereClause: String, args: List<String>): List<Rom> {
+    private fun queryRom(whereClause: String, vararg args: Any?): List<Rom> {
         val out = mutableListOf<Rom>()
-        val sql = """
+        db.conn.query(
+            """
             SELECT id, path, platform_tag, display_name, tags, disc_paths, ra_game_id
             FROM roms
             $whereClause
-        """.trimIndent()
-        db.conn.prepare(sql).use { stmt ->
-            args.forEachIndexed { index, value -> stmt.bindText(index + 1, value) }
-            while (stmt.step()) {
-                val id = stmt.getLong(0)
-                val relativePath = stmt.getText(1)
-                val platformTag = stmt.getText(2)
-                val displayName = stmt.getText(3)
-                val tags = if (stmt.isNull(4)) null else stmt.getText(4)
-                val discPaths = if (stmt.isNull(5)) null else parseDiscPaths(stmt.getText(5))
-                val raGameId = if (stmt.isNull(6)) null else stmt.getLong(6).toInt()
-                val absoluteFile = File(romDirectory, relativePath)
-                val basename = absoluteFile.nameWithoutExtension
-                out.add(
-                    Rom(
-                        id = id,
-                        path = absoluteFile,
-                        platformTag = platformTag,
-                        displayName = displayName,
-                        tags = tags,
-                        artFile = artwork.find(platformTag, basename),
-                        launchTarget = LaunchTarget.RetroArch,
-                        discFiles = discPaths?.map { File(romDirectory, it) },
-                        raGameId = raGameId,
-                    )
-                )
+            """.trimIndent()
+        ) { stmt ->
+            args.forEachIndexed { index, value ->
+                val pos = index + 1
+                when (value) {
+                    is Long -> stmt.bindLong(pos, value)
+                    is String -> stmt.bindText(pos, value)
+                    else -> error("unsupported queryRom arg ${value?.let { it::class.java.name }}")
+                }
             }
+            while (stmt.step()) out.add(rowToRom(stmt))
         }
         return out
+    }
+
+    private fun rowToRom(stmt: SQLiteStatement): Rom {
+        val id = stmt.getLong(0)
+        val relativePath = stmt.getText(1)
+        val platformTag = stmt.getText(2)
+        val displayName = stmt.getText(3)
+        val tags = if (stmt.isNull(4)) null else stmt.getText(4)
+        val discPaths = if (stmt.isNull(5)) null else parseDiscPaths(stmt.getText(5))
+        val raGameId = if (stmt.isNull(6)) null else stmt.getLong(6).toInt()
+        val absoluteFile = File(romDirectory, relativePath)
+        return Rom(
+            id = id,
+            path = absoluteFile,
+            platformTag = platformTag,
+            displayName = displayName,
+            tags = tags,
+            artFile = artwork.find(platformTag, absoluteFile.nameWithoutExtension),
+            launchTarget = LaunchTarget.RetroArch,
+            discFiles = discPaths?.map { File(romDirectory, it) },
+            raGameId = raGameId,
+        )
     }
 
     private fun parseDiscPaths(json: String): List<String>? {
@@ -184,11 +153,8 @@ class RomLibrary(
         return List(arr.length()) { arr.optString(it) }.filter { it.isNotEmpty() }
     }
 
-    private fun Rom.relativeFromRoot(): String =
-        path.absolutePath.removePrefix(romDirectory.absolutePath).removePrefix(File.separator)
-
     private fun Rom.relativeAfterPlatform(): String {
-        val rel = relativeFromRoot()
+        val rel = path.absolutePath.removePrefix(romDirectory.absolutePath).removePrefix(File.separator)
         val platformPrefix = "$platformTag${File.separator}"
         return if (rel.startsWith(platformPrefix, ignoreCase = true)) rel.substring(platformPrefix.length) else rel
     }

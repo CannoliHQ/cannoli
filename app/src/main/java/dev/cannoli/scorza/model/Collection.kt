@@ -20,15 +20,5 @@ data class Collection(
             }
         }
 
-        fun childDisplayName(childStem: String, parentStem: String): String {
-            val childName = stemToDisplayName(childStem)
-            val parentName = stemToDisplayName(parentStem)
-            val prefixWithHyphen = "$parentName - "
-            return if (childName.startsWith(prefixWithHyphen)) {
-                childName.removePrefix(prefixWithHyphen)
-            } else {
-                childName
-            }
-        }
     }
 }

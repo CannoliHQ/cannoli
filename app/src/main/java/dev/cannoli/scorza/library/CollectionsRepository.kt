@@ -1,8 +1,12 @@
 package dev.cannoli.scorza.library
 
-import androidx.sqlite.execSQL
+import androidx.sqlite.SQLiteStatement
 import dev.cannoli.scorza.db.CannoliDatabase
-import dev.cannoli.scorza.db.CollectionType
+import dev.cannoli.scorza.db.execute
+import dev.cannoli.scorza.db.executeReturningId
+import dev.cannoli.scorza.db.query
+import dev.cannoli.scorza.db.transaction
+import dev.cannoli.scorza.model.CollectionType
 
 class CollectionsRepository(private val db: CannoliDatabase) {
     data class CollectionRow(
@@ -13,80 +17,49 @@ class CollectionsRepository(private val db: CannoliDatabase) {
         val type: CollectionType,
     )
 
-    fun all(): List<CollectionRow> = query("ORDER BY sort_order, display_name COLLATE NOCASE")
+    fun all(): List<CollectionRow> =
+        select("ORDER BY sort_order, display_name COLLATE NOCASE")
 
     fun topLevel(): List<CollectionRow> =
-        query("WHERE parent_id IS NULL AND collection_type = 'STANDARD' ORDER BY sort_order, display_name COLLATE NOCASE")
+        select("WHERE parent_id IS NULL AND collection_type = 'STANDARD' ORDER BY sort_order, display_name COLLATE NOCASE")
 
-    fun favoritesId(): Long? {
-        db.conn.prepare("SELECT id FROM collections WHERE collection_type = 'FAVORITES' LIMIT 1").use { stmt ->
-            return if (stmt.step()) stmt.getLong(0) else null
-        }
-    }
-
-    fun byId(id: Long): CollectionRow? = query("WHERE id = ?", listOf(id.toString())).firstOrNull()
+    fun byId(id: Long): CollectionRow? =
+        select("WHERE id = ?", id).firstOrNull()
 
     fun children(parentId: Long): List<CollectionRow> =
-        query("WHERE parent_id = ? ORDER BY sort_order, display_name COLLATE NOCASE", listOf(parentId.toString()))
+        select("WHERE parent_id = ? ORDER BY sort_order, display_name COLLATE NOCASE", parentId)
 
-    fun romIdsIn(collectionId: Long): List<Long> {
-        val out = mutableListOf<Long>()
-        db.conn.prepare("SELECT rom_id FROM collection_members WHERE collection_id = ? AND rom_id IS NOT NULL ORDER BY sort_order").use { stmt ->
-            stmt.bindLong(1, collectionId)
-            while (stmt.step()) out.add(stmt.getLong(0))
-        }
-        return out
-    }
+    fun favoritesId(): Long? = db.conn.query(
+        "SELECT id FROM collections WHERE collection_type = 'FAVORITES' LIMIT 1"
+    ) { stmt -> if (stmt.step()) stmt.getLong(0) else null }
 
-    fun appIdsIn(collectionId: Long): List<Long> {
-        val out = mutableListOf<Long>()
-        db.conn.prepare("SELECT app_id FROM collection_members WHERE collection_id = ? AND app_id IS NOT NULL ORDER BY sort_order").use { stmt ->
-            stmt.bindLong(1, collectionId)
-            while (stmt.step()) out.add(stmt.getLong(0))
-        }
-        return out
-    }
+    fun romIdsIn(collectionId: Long): List<Long> =
+        readMemberIds("rom_id", collectionId)
 
-    fun favoriteRomIds(): Set<Long> {
-        val favId = favoritesId() ?: return emptySet()
-        return romIdsIn(favId).toSet()
-    }
+    fun appIdsIn(collectionId: Long): List<Long> =
+        readMemberIds("app_id", collectionId)
 
-    fun favoriteAppIds(): Set<Long> {
-        val favId = favoritesId() ?: return emptySet()
-        return appIdsIn(favId).toSet()
-    }
+    fun favoriteRomIds(): Set<Long> = favoritesId()?.let { romIdsIn(it).toSet() } ?: emptySet()
+    fun favoriteAppIds(): Set<Long> = favoritesId()?.let { appIdsIn(it).toSet() } ?: emptySet()
 
-    fun isRomFavorited(romId: Long): Boolean {
-        val favId = favoritesId() ?: return false
-        return isMember(favId, LibraryRef.Rom(romId))
-    }
+    fun isRomFavorited(romId: Long): Boolean =
+        favoritesId()?.let { isMember(it, LibraryRef.Rom(romId)) } == true
 
-    fun isAppFavorited(appId: Long): Boolean {
-        val favId = favoritesId() ?: return false
-        return isMember(favId, LibraryRef.App(appId))
-    }
+    fun isAppFavorited(appId: Long): Boolean =
+        favoritesId()?.let { isMember(it, LibraryRef.App(appId)) } == true
 
-    fun isMember(collectionId: Long, ref: LibraryRef): Boolean {
-        val sql = when (ref) {
-            is LibraryRef.Rom -> "SELECT 1 FROM collection_members WHERE collection_id = ? AND rom_id = ? LIMIT 1"
-            is LibraryRef.App -> "SELECT 1 FROM collection_members WHERE collection_id = ? AND app_id = ? LIMIT 1"
-        }
-        db.conn.prepare(sql).use { stmt ->
-            stmt.bindLong(1, collectionId)
-            stmt.bindLong(2, when (ref) { is LibraryRef.Rom -> ref.id; is LibraryRef.App -> ref.id })
-            return stmt.step()
-        }
+    fun isMember(collectionId: Long, ref: LibraryRef): Boolean = db.conn.query(
+        "SELECT 1 FROM collection_members WHERE collection_id = ? AND ${ref.column()} = ? LIMIT 1"
+    ) { stmt ->
+        stmt.bindLong(1, collectionId)
+        stmt.bindLong(2, ref.id)
+        stmt.step()
     }
 
     fun collectionsContaining(ref: LibraryRef): Set<Long> {
-        val sql = when (ref) {
-            is LibraryRef.Rom -> "SELECT collection_id FROM collection_members WHERE rom_id = ?"
-            is LibraryRef.App -> "SELECT collection_id FROM collection_members WHERE app_id = ?"
-        }
         val out = mutableSetOf<Long>()
-        db.conn.prepare(sql).use { stmt ->
-            stmt.bindLong(1, when (ref) { is LibraryRef.Rom -> ref.id; is LibraryRef.App -> ref.id })
+        db.conn.query("SELECT collection_id FROM collection_members WHERE ${ref.column()} = ?") { stmt ->
+            stmt.bindLong(1, ref.id)
             while (stmt.step()) out.add(stmt.getLong(0))
         }
         return out
@@ -95,87 +68,56 @@ class CollectionsRepository(private val db: CannoliDatabase) {
     fun addMember(collectionId: Long, ref: LibraryRef) {
         if (isMember(collectionId, ref)) return
         val nextOrder = nextSortOrder(collectionId)
-        db.conn.prepare(
-            "INSERT INTO collection_members (collection_id, rom_id, app_id, sort_order) VALUES (?, ?, ?, ?)"
-        ).use { stmt ->
-            stmt.bindLong(1, collectionId)
-            when (ref) {
-                is LibraryRef.Rom -> { stmt.bindLong(2, ref.id); stmt.bindNull(3) }
-                is LibraryRef.App -> { stmt.bindNull(2); stmt.bindLong(3, ref.id) }
-            }
-            stmt.bindLong(4, nextOrder.toLong())
-            stmt.step()
+        val (romId, appId) = when (ref) {
+            is LibraryRef.Rom -> ref.id to null
+            is LibraryRef.App -> null to ref.id
+        }
+        db.conn.execute(
+            "INSERT INTO collection_members (collection_id, rom_id, app_id, sort_order) VALUES (?, ?, ?, ?)",
+            collectionId, romId, appId, nextOrder.toLong(),
+        )
+    }
+
+    fun removeMember(collectionId: Long, ref: LibraryRef) = db.conn.execute(
+        "DELETE FROM collection_members WHERE collection_id = ? AND ${ref.column()} = ?",
+        collectionId, ref.id,
+    )
+
+    fun setMemberOrder(collectionId: Long, orderedRefs: List<LibraryRef>) = db.conn.transaction {
+        orderedRefs.forEachIndexed { index, ref ->
+            db.conn.execute(
+                "UPDATE collection_members SET sort_order = ? WHERE collection_id = ? AND ${ref.column()} = ?",
+                index.toLong(), collectionId, ref.id,
+            )
         }
     }
 
-    fun removeMember(collectionId: Long, ref: LibraryRef) {
-        val sql = when (ref) {
-            is LibraryRef.Rom -> "DELETE FROM collection_members WHERE collection_id = ? AND rom_id = ?"
-            is LibraryRef.App -> "DELETE FROM collection_members WHERE collection_id = ? AND app_id = ?"
-        }
-        db.conn.prepare(sql).use { stmt ->
-            stmt.bindLong(1, collectionId)
-            stmt.bindLong(2, when (ref) { is LibraryRef.Rom -> ref.id; is LibraryRef.App -> ref.id })
-            stmt.step()
-        }
-    }
+    fun create(displayName: String, type: CollectionType = CollectionType.STANDARD): Long =
+        db.conn.executeReturningId(
+            "INSERT INTO collections (display_name, collection_type) VALUES (?, ?)",
+            displayName, type.name,
+        )
 
-    fun setMemberOrder(collectionId: Long, orderedRefs: List<LibraryRef>) {
-        db.conn.execSQL("BEGIN")
-        try {
-            orderedRefs.forEachIndexed { index, ref ->
-                val sql = when (ref) {
-                    is LibraryRef.Rom -> "UPDATE collection_members SET sort_order = ? WHERE collection_id = ? AND rom_id = ?"
-                    is LibraryRef.App -> "UPDATE collection_members SET sort_order = ? WHERE collection_id = ? AND app_id = ?"
-                }
-                db.conn.prepare(sql).use { stmt ->
-                    stmt.bindLong(1, index.toLong())
-                    stmt.bindLong(2, collectionId)
-                    stmt.bindLong(3, when (ref) { is LibraryRef.Rom -> ref.id; is LibraryRef.App -> ref.id })
-                    stmt.step()
-                }
-            }
-            db.conn.execSQL("COMMIT")
-        } catch (t: Throwable) {
-            db.conn.execSQL("ROLLBACK")
-            throw t
-        }
-    }
-
-    fun create(displayName: String): Long {
-        db.conn.prepare("INSERT INTO collections (display_name, collection_type) VALUES (?, 'STANDARD')").use { stmt ->
-            stmt.bindText(1, displayName)
-            stmt.step()
-        }
-        return db.conn.prepare("SELECT last_insert_rowid()").use { it.step(); it.getLong(0) }
-    }
-
-    fun rename(collectionId: Long, newName: String) {
-        db.conn.prepare("UPDATE collections SET display_name = ? WHERE id = ?").use { stmt ->
-            stmt.bindText(1, newName)
-            stmt.bindLong(2, collectionId)
-            stmt.step()
-        }
-    }
+    fun rename(collectionId: Long, newName: String) = db.conn.execute(
+        "UPDATE collections SET display_name = ? WHERE id = ?",
+        newName, collectionId,
+    )
 
     fun setParent(collectionId: Long, parentId: Long?) {
-        val sql = if (parentId == null) "UPDATE collections SET parent_id = NULL WHERE id = ?"
-        else "UPDATE collections SET parent_id = ? WHERE id = ?"
-        db.conn.prepare(sql).use { stmt ->
-            if (parentId == null) {
-                stmt.bindLong(1, collectionId)
-            } else {
-                stmt.bindLong(1, parentId)
-                stmt.bindLong(2, collectionId)
-            }
-            stmt.step()
+        if (parentId == collectionId) return
+        if (parentId != null && wouldCycle(child = collectionId, candidateParent = parentId)) return
+        if (parentId == null) {
+            db.conn.execute("UPDATE collections SET parent_id = NULL WHERE id = ?", collectionId)
+        } else {
+            db.conn.execute("UPDATE collections SET parent_id = ? WHERE id = ?", parentId, collectionId)
         }
     }
 
     fun ancestors(collectionId: Long): List<CollectionRow> {
         val out = mutableListOf<CollectionRow>()
+        val seen = mutableSetOf(collectionId)
         var current = byId(collectionId)?.parentId
-        while (current != null) {
+        while (current != null && seen.add(current)) {
             val row = byId(current) ?: break
             out.add(row)
             current = row.parentId
@@ -183,55 +125,74 @@ class CollectionsRepository(private val db: CannoliDatabase) {
         return out
     }
 
-    fun delete(collectionId: Long) {
-        db.conn.prepare("DELETE FROM collections WHERE id = ?").use { stmt ->
+    fun delete(collectionId: Long) = db.conn.execute(
+        "DELETE FROM collections WHERE id = ?",
+        collectionId,
+    )
+
+    fun setCollectionOrder(orderedIds: List<Long>) = db.conn.transaction {
+        orderedIds.forEachIndexed { index, id ->
+            db.conn.execute("UPDATE collections SET sort_order = ? WHERE id = ?", index.toLong(), id)
+        }
+    }
+
+    private fun wouldCycle(child: Long, candidateParent: Long): Boolean {
+        val seen = mutableSetOf(child)
+        var current: Long? = candidateParent
+        while (current != null) {
+            if (!seen.add(current)) return true
+            current = byId(current)?.parentId
+        }
+        return false
+    }
+
+    private fun nextSortOrder(collectionId: Long): Int = db.conn.query(
+        "SELECT COALESCE(MAX(sort_order), -1) + 1 FROM collection_members WHERE collection_id = ?"
+    ) { stmt ->
+        stmt.bindLong(1, collectionId)
+        stmt.step()
+        stmt.getInt(0)
+    }
+
+    private fun readMemberIds(column: String, collectionId: Long): List<Long> {
+        val out = mutableListOf<Long>()
+        db.conn.query(
+            "SELECT $column FROM collection_members WHERE collection_id = ? AND $column IS NOT NULL ORDER BY sort_order"
+        ) { stmt ->
             stmt.bindLong(1, collectionId)
-            stmt.step()
-        }
-    }
-
-    fun setCollectionOrder(orderedIds: List<Long>) {
-        db.conn.execSQL("BEGIN")
-        try {
-            orderedIds.forEachIndexed { index, id ->
-                db.conn.prepare("UPDATE collections SET sort_order = ? WHERE id = ?").use { stmt ->
-                    stmt.bindLong(1, index.toLong())
-                    stmt.bindLong(2, id)
-                    stmt.step()
-                }
-            }
-            db.conn.execSQL("COMMIT")
-        } catch (t: Throwable) {
-            db.conn.execSQL("ROLLBACK")
-            throw t
-        }
-    }
-
-    private fun nextSortOrder(collectionId: Long): Int {
-        db.conn.prepare("SELECT COALESCE(MAX(sort_order), -1) + 1 FROM collection_members WHERE collection_id = ?").use { stmt ->
-            stmt.bindLong(1, collectionId)
-            stmt.step()
-            return stmt.getInt(0)
-        }
-    }
-
-    private fun query(suffix: String, args: List<String> = emptyList()): List<CollectionRow> {
-        val sql = "SELECT id, display_name, parent_id, sort_order, collection_type FROM collections $suffix"
-        val out = mutableListOf<CollectionRow>()
-        db.conn.prepare(sql).use { stmt ->
-            args.forEachIndexed { index, value -> stmt.bindText(index + 1, value) }
-            while (stmt.step()) {
-                out.add(
-                    CollectionRow(
-                        id = stmt.getLong(0),
-                        displayName = stmt.getText(1),
-                        parentId = if (stmt.isNull(2)) null else stmt.getLong(2),
-                        sortOrder = stmt.getInt(3),
-                        type = CollectionType.fromColumn(stmt.getText(4)),
-                    )
-                )
-            }
+            while (stmt.step()) out.add(stmt.getLong(0))
         }
         return out
+    }
+
+    private fun select(suffix: String, vararg args: Any?): List<CollectionRow> {
+        val out = mutableListOf<CollectionRow>()
+        db.conn.query("SELECT id, display_name, parent_id, sort_order, collection_type FROM collections $suffix") { stmt ->
+            args.forEachIndexed { index, value ->
+                val pos = index + 1
+                when (value) {
+                    null -> stmt.bindNull(pos)
+                    is Long -> stmt.bindLong(pos, value)
+                    is Int -> stmt.bindLong(pos, value.toLong())
+                    is String -> stmt.bindText(pos, value)
+                    else -> error("unsupported select arg ${value::class.java.name}")
+                }
+            }
+            while (stmt.step()) out.add(rowToCollection(stmt))
+        }
+        return out
+    }
+
+    private fun rowToCollection(stmt: SQLiteStatement) = CollectionRow(
+        id = stmt.getLong(0),
+        displayName = stmt.getText(1),
+        parentId = if (stmt.isNull(2)) null else stmt.getLong(2),
+        sortOrder = stmt.getInt(3),
+        type = CollectionType.from(stmt.getText(4)),
+    )
+
+    private fun LibraryRef.column(): String = when (this) {
+        is LibraryRef.Rom -> "rom_id"
+        is LibraryRef.App -> "app_id"
     }
 }

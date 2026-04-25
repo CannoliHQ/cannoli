@@ -54,4 +54,4 @@ class CannoliDatabase(cannoliRoot: File) {
         }
 }
 
-class DatabaseCorrupt(message: String) : RuntimeException(message)
+
