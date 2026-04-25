@@ -3178,15 +3178,28 @@ class MainActivity : ComponentActivity() {
         ioScope.launch {
             if (game.isSubfolder) {
                 val newDir = File(game.file.parentFile, newName)
+                val oldPrefix = relativeRomPath(game.file)
                 val ok = game.file.renameTo(newDir)
-                if (!ok) {
+                if (ok) {
+                    val newPrefix = relativeRomPath(newDir)
+                    if (oldPrefix != null && newPrefix != null) {
+                        romLibrary.updateRomPathsUnderPrefix(game.platformTag, oldPrefix, newPrefix)
+                    }
+                } else {
                     withContext(Dispatchers.Main) {
                         dialogState.value = DialogState.RenameResult(false, "Failed to rename directory")
                     }
                 }
             } else {
+                val romId = romLibrary.gameByPath(game.file.absolutePath)?.id
                 val result = atomicRename.rename(game.file, newName, game.platformTag)
-                if (!result.success) {
+                if (result.success) {
+                    val newRomFile = File(game.file.parentFile, "$newName.${game.file.extension}")
+                    val newRelative = relativeRomPath(newRomFile)
+                    if (romId != null && newRelative != null) {
+                        romLibrary.updateRomPath(romId, newRelative)
+                    }
+                } else {
                     withContext(Dispatchers.Main) {
                         dialogState.value = DialogState.RenameResult(false, result.error ?: "Rename failed")
                     }
@@ -3196,6 +3209,16 @@ class MainActivity : ComponentActivity() {
             game.file.parentFile?.let { nameMapLookup.invalidate(it) }
             romScanner.invalidatePlatform(game.platformTag)
             gameListViewModel.reload()
+        }
+    }
+
+    private fun relativeRomPath(file: File): String? {
+        val romDir = settings.romDirectory.takeIf { it.isNotEmpty() }?.let { File(it) } ?: File(File(settings.sdCardRoot), "Roms")
+        return try {
+            val relative = file.relativeTo(romDir).path
+            if (relative.startsWith("..")) null else relative
+        } catch (_: IllegalArgumentException) {
+            null
         }
     }
 

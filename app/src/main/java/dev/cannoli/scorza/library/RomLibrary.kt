@@ -45,6 +45,29 @@ class RomLibrary(
         }
     }
 
+    fun updateRomPath(romId: Long, newRelativePath: String) {
+        db.conn.prepare("UPDATE roms SET path = ? WHERE id = ?").use { stmt ->
+            stmt.bindText(1, newRelativePath)
+            stmt.bindLong(2, romId)
+            stmt.step()
+        }
+    }
+
+    fun updateRomPathsUnderPrefix(platformTag: String, oldPrefix: String, newPrefix: String) {
+        val pattern = "$oldPrefix%"
+        db.conn.prepare("""
+            UPDATE roms
+            SET path = ? || substr(path, ?)
+            WHERE platform_tag = ? AND path LIKE ?
+        """.trimIndent()).use { stmt ->
+            stmt.bindText(1, newPrefix)
+            stmt.bindLong(2, (oldPrefix.length + 1).toLong())
+            stmt.bindText(3, platformTag.uppercase())
+            stmt.bindText(4, pattern)
+            stmt.step()
+        }
+    }
+
     fun deleteRom(romId: Long) {
         db.conn.prepare("DELETE FROM roms WHERE id = ?").use { stmt ->
             stmt.bindLong(1, romId)

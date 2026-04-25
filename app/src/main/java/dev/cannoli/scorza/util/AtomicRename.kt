@@ -11,7 +11,6 @@ class AtomicRename(private val cannoliRoot: File) {
     private val savesDir get() = File(cannoliRoot, "Saves")
     private val statesDir get() = File(cannoliRoot, "Save States")
     private val artDir get() = File(cannoliRoot, "Art")
-    private val collectionsDir get() = File(cannoliRoot, "Collections")
 
     data class RenameResult(val success: Boolean, val error: String? = null)
 
@@ -65,7 +64,6 @@ class AtomicRename(private val cannoliRoot: File) {
             if (stateSubDir.isDirectory) {
                 stateSubDir.renameTo(File(File(statesDir, platformTag), newBaseName))
             }
-            updateCollectionReferences(romFile.absolutePath, newRomFile.absolutePath)
             updateMapFile(romDir, romFile.name, "$newBaseName.$extension")
         } catch (e: Exception) {
             try {
@@ -138,18 +136,4 @@ class AtomicRename(private val cannoliRoot: File) {
         } catch (_: java.io.IOException) { }
     }
 
-    private fun updateCollectionReferences(oldPath: String, newPath: String) {
-        if (!collectionsDir.exists()) return
-        collectionsDir.listFiles { f -> f.extension == "txt" }?.forEach { collFile ->
-            try {
-                val lines = collFile.readLines()
-                val updated = lines.map { line ->
-                    if (line.trim() == oldPath) newPath else line
-                }
-                if (updated != lines) {
-                    collFile.writeText(updated.joinToString("\n") + "\n")
-                }
-            } catch (_: Exception) { }
-        }
-    }
 }
