@@ -14,6 +14,7 @@ class RomScanner(
     private val artwork: ArtworkLookup,
 ) {
     private val discRegex = Regex("""\s*\((Disc|Disk)\s*\d+\)|\s*\(CD\d+\)""", RegexOption.IGNORE_CASE)
+    private val tagRegex = Regex("""\s*(\([^)]*\)|\[[^\]]*\])""")
 
     @Volatile private var ignoredExtensions: Set<String> = emptySet()
     @Volatile private var ignoredFiles: Set<String> = emptySet()
@@ -79,7 +80,9 @@ class RomScanner(
             .filter { it.extension.equals("m3u", ignoreCase = true) }
             .associateBy { it.nameWithoutExtension }
 
+        data class PendingRom(val relativePath: String, val rawName: String, val sourceFileName: String, val discPaths: List<String>?)
         val suppressed = mutableSetOf<String>()
+        val pending = mutableListOf<PendingRom>()
         for ((baseName, discs) in discGroups) {
             if (discs.size <= 1) continue
             val sorted = discs.sortedBy { it.name }
@@ -88,16 +91,29 @@ class RomScanner(
                 sorted.forEach { suppressed.add(it.absolutePath) }
             } else {
                 val discRels = sorted.map { "$relPrefix${it.name}" }
-                out.add(ScannedRom("$relPrefix${sorted.first().name}", baseName, discRels))
+                pending.add(PendingRom("$relPrefix${sorted.first().name}", baseName, sorted.first().name, discRels))
                 sorted.forEach { suppressed.add(it.absolutePath) }
             }
         }
-
-        val nameOverrides = nameMap.mapFor(dir, fallbackToArcade = isArcade)
         for (file in romFiles) {
             if (file.absolutePath in suppressed) continue
-            val displayName = nameOverrides[file.name] ?: file.nameWithoutExtension
-            out.add(ScannedRom("$relPrefix${file.name}", displayName, null))
+            pending.add(PendingRom("$relPrefix${file.name}", file.nameWithoutExtension, file.name, null))
+        }
+
+        val nameOverrides = nameMap.mapFor(dir, fallbackToArcade = isArcade)
+        val stripped = stripTagsForDir(pending.map { it.rawName })
+        for ((index, p) in pending.withIndex()) {
+            val displayName = nameOverrides[p.sourceFileName] ?: stripped[index]
+            out.add(ScannedRom(p.relativePath, displayName, p.discPaths))
+        }
+    }
+
+    private fun stripTagsForDir(names: List<String>): List<String> {
+        val stripped = names.map { it to tagRegex.replace(it, "").trim() }
+        val baseCounts = mutableMapOf<String, Int>()
+        for ((_, base) in stripped) baseCounts[base] = (baseCounts[base] ?: 0) + 1
+        return stripped.map { (raw, base) ->
+            if (base.isEmpty() || (baseCounts[base] ?: 0) > 1) raw else base
         }
     }
 
