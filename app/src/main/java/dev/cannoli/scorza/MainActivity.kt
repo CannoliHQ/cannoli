@@ -198,6 +198,19 @@ class MainActivity : ComponentActivity() {
     private lateinit var autoconfigMatcher: dev.cannoli.scorza.input.autoconfig.AutoconfigMatcher
     private lateinit var launchManager: LaunchManager
 
+    private fun launchSelected(item: dev.cannoli.scorza.model.ListItem, resume: Boolean = false): DialogState? = when (item) {
+        is dev.cannoli.scorza.model.ListItem.RomItem ->
+            if (resume) launchManager.resumeRom(item.rom) else launchManager.launchRom(item.rom)
+        is dev.cannoli.scorza.model.ListItem.AppItem -> launchManager.launchApp(item.app)
+        else -> null
+    }
+
+    private fun selectedRecentKey(item: dev.cannoli.scorza.model.ListItem): String? = when (item) {
+        is dev.cannoli.scorza.model.ListItem.RomItem -> item.rom.path.absolutePath
+        is dev.cannoli.scorza.model.ListItem.AppItem -> "/apps/${item.app.type.name}/${item.app.packageName}"
+        else -> null
+    }
+
     private fun pushScreen(new: LauncherScreen) {
         val current = currentScreen
         screenStack[screenStack.lastIndex] = saveScrollPosition(current)
@@ -213,7 +226,7 @@ class MainActivity : ComponentActivity() {
         val screen = currentScreen
         val (itemCount, selectedIndex) = when (screen) {
             LauncherScreen.SystemList -> systemListViewModel.state.value.let { it.items.size to it.selectedIndex }
-            LauncherScreen.GameList -> gameListViewModel.state.value.let { it.games.size to it.selectedIndex }
+            LauncherScreen.GameList -> gameListViewModel.state.value.let { it.items.size to it.selectedIndex }
             LauncherScreen.Settings -> settingsViewModel.state.value.let { it.categories.size to it.categoryIndex }
             is LauncherScreen.ScrollableScreen -> screen.itemCount to screen.selectedIndex
             else -> return
@@ -711,6 +724,13 @@ class MainActivity : ComponentActivity() {
     }
 
     private lateinit var cannoliDatabase: dev.cannoli.scorza.db.CannoliDatabase
+    private lateinit var artworkLookup: dev.cannoli.scorza.library.ArtworkLookup
+    private lateinit var nameMapLookup: dev.cannoli.scorza.library.NameMapLookup
+    private lateinit var romLibrary: dev.cannoli.scorza.library.RomLibrary
+    private lateinit var romScanner: dev.cannoli.scorza.library.RomScanner
+    private lateinit var appsRepository: dev.cannoli.scorza.library.AppsRepository
+    private lateinit var collectionsRepository: dev.cannoli.scorza.library.CollectionsRepository
+    private lateinit var recentlyPlayedRepository: dev.cannoli.scorza.library.RecentlyPlayedRepository
 
     private fun runImporterThenContinue(root: File, romDir: File) {
         val importer = dev.cannoli.scorza.db.importer.Importer(
@@ -768,7 +788,24 @@ class MainActivity : ComponentActivity() {
         }
 
         systemListViewModel = SystemListViewModel(scanner, collectionManager, orderingManager, recentlyPlayedManager)
-        gameListViewModel = GameListViewModel(scanner, collectionManager, orderingManager, recentlyPlayedManager, platformResolver, resources)
+        val romDir = settings.romDirectory.takeIf { it.isNotEmpty() }?.let { File(it) } ?: File(root, "Roms")
+        artworkLookup = dev.cannoli.scorza.library.ArtworkLookup(root)
+        nameMapLookup = dev.cannoli.scorza.library.NameMapLookup(root)
+        romLibrary = dev.cannoli.scorza.library.RomLibrary(root, romDir, cannoliDatabase, artworkLookup)
+        romScanner = dev.cannoli.scorza.library.RomScanner(root, romDir, cannoliDatabase, nameMapLookup, artworkLookup).also { it.loadIgnoreLists(assets) }
+        appsRepository = dev.cannoli.scorza.library.AppsRepository(cannoliDatabase)
+        collectionsRepository = dev.cannoli.scorza.library.CollectionsRepository(cannoliDatabase)
+        recentlyPlayedRepository = dev.cannoli.scorza.library.RecentlyPlayedRepository(cannoliDatabase)
+        gameListViewModel = GameListViewModel(
+            romLibrary = romLibrary,
+            romScanner = romScanner,
+            appsRepository = appsRepository,
+            collectionsRepository = collectionsRepository,
+            recentlyPlayedRepository = recentlyPlayedRepository,
+            platformResolver = platformResolver,
+            resources = resources,
+            isArcadeTag = { platformResolver.isArcade(it) },
+        )
         controllerManager = dev.cannoli.scorza.input.ControllerManager()
         controllerManager.loadBlacklist(this)
         controllerManager.initialize()
@@ -811,12 +848,14 @@ class MainActivity : ComponentActivity() {
                 val romFile = File(lines[0])
                 val tag = lines[1]
                 if (romFile.exists()) {
-                    val game = Game(romFile, romFile.nameWithoutExtension, tag)
-                    val errorDialog = launchManager.resumeGame(game)
-                    if (errorDialog != null) {
-                        dialogState.value = errorDialog
-                    } else {
-                        ioScope.launch { recentlyPlayedManager.record(romFile.absolutePath) }
+                    val rom = romLibrary.gameByPath(romFile.absolutePath)
+                    if (rom != null) {
+                        val errorDialog = launchManager.resumeRom(rom)
+                        if (errorDialog != null) {
+                            dialogState.value = errorDialog
+                        } else {
+                            ioScope.launch { recentlyPlayedManager.record(romFile.absolutePath) }
+                        }
                     }
                 }
             }

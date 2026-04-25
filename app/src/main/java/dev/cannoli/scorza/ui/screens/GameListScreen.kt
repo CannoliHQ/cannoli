@@ -35,12 +35,14 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
-import dev.cannoli.scorza.model.Game
+import dev.cannoli.scorza.model.AppType
+import dev.cannoli.scorza.model.ListItem
 import dev.cannoli.scorza.settings.ArtScale
 import dev.cannoli.scorza.ui.components.DialogOverlay
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.START_GLYPH
+import dev.cannoli.ui.STAR
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.ConfirmOverlay
 import dev.cannoli.ui.components.LaunchErrorDialog
@@ -61,6 +63,28 @@ import dev.cannoli.ui.theme.Spacing
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+private fun ListItem.rowDisplayName(showStar: Boolean): String = when (this) {
+    is ListItem.RomItem -> if (showStar) "$STAR ${rom.displayName}" else rom.displayName
+    is ListItem.AppItem -> if (showStar) "$STAR ${app.displayName}" else app.displayName
+    is ListItem.SubfolderItem -> name
+    is ListItem.CollectionItem -> collection.displayName
+    is ListItem.ChildCollectionItem -> "/${collection.displayName}"
+}
+
+private val ListItem.itemKey: String get() = when (this) {
+    is ListItem.RomItem -> "rom:${rom.id}"
+    is ListItem.AppItem -> "app:${app.id}"
+    is ListItem.SubfolderItem -> "sub:$path"
+    is ListItem.CollectionItem -> "coll:${collection.stem}"
+    is ListItem.ChildCollectionItem -> "child:${collection.stem}"
+}
+
+private val ListItem.isLeafSelectable: Boolean get() = this is ListItem.RomItem || this is ListItem.AppItem
+
+private val ListItem.artPath: String? get() = (this as? ListItem.RomItem)?.rom?.artFile?.absolutePath
+
+private val ListItem.resumeKey: String? get() = (this as? ListItem.RomItem)?.rom?.path?.absolutePath
+
 @Composable
 fun GameListScreen(
     viewModel: GameListViewModel,
@@ -79,10 +103,11 @@ fun GameListScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
-    val selectedGame = state.games.getOrNull(state.selectedIndex)
-    val hasResumeState = selectedGame != null && !selectedGame.isSubfolder && resumableGames.contains(selectedGame.file.absolutePath)
+    val selected = state.items.getOrNull(state.selectedIndex)
+    val resumeKey = selected?.resumeKey
+    val hasResumeState = resumeKey != null && resumableGames.contains(resumeKey)
 
-    val artPath = if (selectedGame != null && !selectedGame.isSubfolder) selectedGame.artFile?.absolutePath else null
+    val artPath = selected?.artPath
     val selectedArt by produceState<ImageBitmap?>(null, artPath) {
         value = if (artPath != null) {
             withContext(Dispatchers.IO) {
@@ -100,6 +125,10 @@ fun GameListScreen(
             }
         } else null
     }
+
+    val showFavoriteStars = viewModel.showFavoriteStars
+    val favoriteRomIds = state.favoriteRomIds
+    val favoriteAppIds = state.favoriteAppIds
 
     ScreenBackground(backgroundImagePath = backgroundImagePath, backgroundTint = backgroundTint) {
         Box(
@@ -119,7 +148,7 @@ fun GameListScreen(
                     lineHeight = listLineHeight,
                 )
                 Spacer(modifier = Modifier.height(Spacing.Sm))
-                if (state.games.isEmpty()) {
+                if (state.items.isEmpty()) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -141,7 +170,7 @@ fun GameListScreen(
                                 .then(if (showArt) Modifier.fillMaxWidth(1f - artWidth / 100f) else Modifier.fillMaxWidth())
                         ) {
                             List(
-                                items = state.games,
+                                items = state.items,
                                 selectedIndex = state.selectedIndex,
                                 itemHeight = itemHeight,
                                 scrollTarget = state.scrollTarget,
@@ -150,16 +179,22 @@ fun GameListScreen(
                                     viewModel.firstVisibleIndex = first
                                     onVisibleRangeChanged(first, count, full)
                                 },
-                                key = if (state.reorderMode) null else { _, game -> game.file.absolutePath }
-                            ) { index, game, isSelected ->
-                                GameRow(
-                                    game = game,
+                                key = if (state.reorderMode) null else { _, item -> item.itemKey }
+                            ) { index, item, isSelected ->
+                                val starred = showFavoriteStars && when (item) {
+                                    is ListItem.RomItem -> item.rom.id in favoriteRomIds
+                                    is ListItem.AppItem -> item.app.id in favoriteAppIds
+                                    else -> false
+                                }
+                                ItemRow(
+                                    item = item,
+                                    showFavoriteStar = starred,
                                     isSelected = isSelected,
                                     fontSize = listFontSize,
                                     lineHeight = listLineHeight,
                                     verticalPadding = listVerticalPadding,
                                     showReorderIcon = state.reorderMode && isSelected,
-                                    checkState = if (state.multiSelectMode && !game.isSubfolder && !game.isChildCollection) index in state.checkedIndices else null
+                                    checkState = if (state.multiSelectMode && item.isLeafSelectable) index in state.checkedIndices else null
                                 )
                             }
                         }
@@ -193,11 +228,12 @@ fun GameListScreen(
                 }
             }
 
+            val isToolApp = (selected as? ListItem.AppItem)?.app?.type == AppType.TOOL
             val actionLabel = if (state.multiSelectMode) {
                 stringResource(R.string.label_toggle)
-            } else if (selectedGame?.isSubfolder == true || state.isCollectionsList) {
+            } else if (selected is ListItem.SubfolderItem || state.isCollectionsList) {
                 stringResource(R.string.label_open)
-            } else if (selectedGame?.platformTag == "tools") {
+            } else if (isToolApp) {
                 stringResource(R.string.label_launch)
             } else {
                 stringResource(R.string.label_play)
@@ -208,7 +244,7 @@ fun GameListScreen(
                 add(buttonStyle.back to stringResource(R.string.label_back))
                 if (showNewButton) add(buttonStyle.west to stringResource(R.string.label_new))
             }
-            val rightItems = if (state.games.isEmpty()) {
+            val rightItems = if (state.items.isEmpty()) {
                 emptyList()
             } else if (state.multiSelectMode) {
                 listOf(buttonStyle.confirm to actionLabel, START_GLYPH to stringResource(R.string.label_confirm))
@@ -272,8 +308,9 @@ fun GameListScreen(
 }
 
 @Composable
-private fun GameRow(
-    game: Game,
+private fun ItemRow(
+    item: ListItem,
+    showFavoriteStar: Boolean,
     isSelected: Boolean,
     fontSize: TextUnit,
     lineHeight: TextUnit,
@@ -281,12 +318,14 @@ private fun GameRow(
     showReorderIcon: Boolean = false,
     checkState: Boolean? = null
 ) {
+    val displayName = item.rowDisplayName(showStar = false)
+    val rowText = if (showFavoriteStar) "$STAR $displayName" else displayName
     val textStyle = MaterialTheme.typography.bodyLarge.copy(
         fontSize = fontSize,
         lineHeight = lineHeight
     )
     val scrollState = rememberScrollState()
-    MarqueeEffect(scrollState, isSelected, key = game.displayName to isSelected)
+    MarqueeEffect(scrollState, isSelected, key = rowText to isSelected)
 
     val colors = LocalCannoliColors.current
     PillRow(isSelected = isSelected, verticalPadding = verticalPadding, lineHeight = lineHeight) {
@@ -313,7 +352,7 @@ private fun GameRow(
                     .horizontalScroll(scrollState),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (game.isSubfolder) {
+                if (item is ListItem.SubfolderItem) {
                     Text(
                         text = "/",
                         style = textStyle,
@@ -322,7 +361,7 @@ private fun GameRow(
                     Spacer(modifier = Modifier.width(4.dp))
                 }
                 Text(
-                    text = game.displayName,
+                    text = rowText,
                     style = textStyle,
                     color = if (isSelected) colors.highlightText else colors.text,
                     maxLines = 1,
