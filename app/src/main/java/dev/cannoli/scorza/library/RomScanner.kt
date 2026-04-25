@@ -32,13 +32,51 @@ class RomScanner(
         val tagDir = resolveTagDir(tag) ?: return clearPlatform(tag).also {
             ScanLog.write("scanPlatform $tag: no rom dir, cleared ${it.removed}")
         }
+        val mtime = computeTreeMtime(tagDir)
+        val storedMtime = readLastScannedMtime(tag)
+        if (storedMtime > 0 && storedMtime == mtime) {
+            return SyncCounts(0, 0, 0)
+        }
         val collected = mutableListOf<ScannedRom>()
         scanDir(tagDir, "$tag${File.separator}", isArcade, collected)
         artwork.invalidate(tag)
         nameMap.invalidate(tagDir)
         val counts = sync(tag, collected)
+        writeLastScannedMtime(tag, mtime)
         ScanLog.write("scanPlatform $tag: +${counts.inserted} -${counts.removed} ~${counts.updated}")
         return counts
+    }
+
+    fun invalidatePlatform(platformTag: String) {
+        writeLastScannedMtime(platformTag.uppercase(), 0L)
+    }
+
+    private fun computeTreeMtime(dir: File): Long {
+        var max = dir.lastModified()
+        val children = dir.listFiles() ?: return max
+        for (child in children) {
+            if (child.name.startsWith(".")) continue
+            if (child.isDirectory) {
+                val sub = computeTreeMtime(child)
+                if (sub > max) max = sub
+            }
+        }
+        return max
+    }
+
+    private fun readLastScannedMtime(tag: String): Long {
+        db.conn.prepare("SELECT last_scanned_mtime FROM platforms WHERE tag = ?").use { stmt ->
+            stmt.bindText(1, tag)
+            return if (stmt.step()) stmt.getLong(0) else 0L
+        }
+    }
+
+    private fun writeLastScannedMtime(tag: String, mtime: Long) {
+        db.conn.prepare("UPDATE platforms SET last_scanned_mtime = ? WHERE tag = ?").use { stmt ->
+            stmt.bindLong(1, mtime)
+            stmt.bindText(2, tag)
+            stmt.step()
+        }
     }
 
     data class SyncCounts(val inserted: Int, val updated: Int, val removed: Int)

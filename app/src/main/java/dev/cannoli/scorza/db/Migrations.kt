@@ -12,7 +12,8 @@ internal object Migrations {
                 CREATE TABLE platforms (
                     tag TEXT PRIMARY KEY,
                     display_name TEXT,
-                    sort_order INTEGER NOT NULL DEFAULT 0
+                    sort_order INTEGER NOT NULL DEFAULT 0,
+                    last_scanned_mtime INTEGER NOT NULL DEFAULT 0
                 )
             """.trimIndent())
 
