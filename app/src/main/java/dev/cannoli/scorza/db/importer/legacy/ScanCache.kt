@@ -1,4 +1,4 @@
-package dev.cannoli.scorza.scanner
+package dev.cannoli.scorza.db.importer.legacy
 
 import org.json.JSONArray
 import org.json.JSONObject

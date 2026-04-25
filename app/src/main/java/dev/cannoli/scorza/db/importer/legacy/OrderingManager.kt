@@ -1,4 +1,4 @@
-package dev.cannoli.scorza.scanner
+package dev.cannoli.scorza.db.importer.legacy
 
 import java.io.File
 

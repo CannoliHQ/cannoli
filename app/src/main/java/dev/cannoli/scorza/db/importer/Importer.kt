@@ -4,11 +4,11 @@ import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
 import android.content.res.AssetManager
 import dev.cannoli.scorza.db.CannoliDatabase
-import dev.cannoli.scorza.scanner.CollectionManager
-import dev.cannoli.scorza.scanner.FileScanner
-import dev.cannoli.scorza.scanner.OrderingManager
+import dev.cannoli.scorza.db.importer.legacy.CollectionManager
+import dev.cannoli.scorza.db.importer.legacy.FileScanner
+import dev.cannoli.scorza.db.importer.legacy.OrderingManager
+import dev.cannoli.scorza.db.importer.legacy.RecentlyPlayedManager
 import dev.cannoli.scorza.scanner.PlatformResolver
-import dev.cannoli.scorza.scanner.RecentlyPlayedManager
 import dev.cannoli.scorza.util.ScanLog
 import dev.cannoli.ui.STAR
 import org.json.JSONArray

@@ -1,4 +1,6 @@
-package dev.cannoli.scorza.scanner
+package dev.cannoli.scorza.db.importer.legacy
+
+import dev.cannoli.scorza.scanner.PlatformResolver
 
 import dev.cannoli.scorza.model.Game
 import dev.cannoli.scorza.model.LaunchTarget
