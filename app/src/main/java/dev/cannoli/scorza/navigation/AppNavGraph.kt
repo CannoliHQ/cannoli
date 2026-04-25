@@ -159,6 +159,11 @@ sealed class LauncherScreen {
         val statusLabel: String = "Kneading the dough$ELLIPSIS",
         val finished: Boolean = false
     ) : LauncherScreen()
+    data class Housekeeping(
+        val kind: dev.cannoli.scorza.ui.screens.HousekeepingKind,
+        val progress: Float = 0f,
+        val statusLabel: String = "",
+    ) : LauncherScreen()
 }
 
 @Composable
@@ -774,6 +779,13 @@ fun AppNavGraph(
                     finished = currentScreen.finished
                 )
             }
+            is LauncherScreen.Housekeeping -> {
+                dev.cannoli.scorza.ui.screens.HousekeepingScreen(
+                    kind = currentScreen.kind,
+                    progress = currentScreen.progress,
+                    statusLabel = currentScreen.statusLabel,
+                )
+            }
             is LauncherScreen.Credits -> {
                 CreditsOverlay(
                     selectedIndex = currentScreen.selectedIndex,
@@ -797,6 +809,7 @@ fun AppNavGraph(
                 || currentScreen is LauncherScreen.DirectoryBrowser
                 || currentScreen is LauncherScreen.Setup
                 || currentScreen is LauncherScreen.Installing
+                || currentScreen is LauncherScreen.Housekeeping
                 || currentScreen is LauncherScreen.InputTester
                 || (currentScreen is LauncherScreen.SystemList && systemListState?.isLoading == true)
         val hasContent = dev.cannoli.scorza.server.KitchenManager.isRunning

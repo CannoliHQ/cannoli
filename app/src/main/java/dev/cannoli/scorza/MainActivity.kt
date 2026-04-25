@@ -859,6 +859,7 @@ class MainActivity : ComponentActivity() {
                     }
                     is LauncherScreen.InputTester -> {}
                     is LauncherScreen.Installing -> {}
+                    is LauncherScreen.Housekeeping -> {}
                 }
                 else -> {}
             }
@@ -940,6 +941,7 @@ class MainActivity : ComponentActivity() {
                     }
                     is LauncherScreen.InputTester -> {}
                     is LauncherScreen.Installing -> {}
+                    is LauncherScreen.Housekeeping -> {}
                 }
                 else -> {}
             }
@@ -1431,6 +1433,7 @@ class MainActivity : ComponentActivity() {
                             initializeApp()
                         }
                     }
+                    is LauncherScreen.Housekeeping -> {}
                     is LauncherScreen.InputTester -> {}
                     is LauncherScreen.Credits -> {}
                     is LauncherScreen.InstalledCores -> {}
@@ -1621,6 +1624,7 @@ class MainActivity : ComponentActivity() {
                     is LauncherScreen.Setup -> finishAffinity()
                     is LauncherScreen.InputTester -> {}
                     is LauncherScreen.Installing -> {}
+                    is LauncherScreen.Housekeeping -> {}
                 }
             }
         }
