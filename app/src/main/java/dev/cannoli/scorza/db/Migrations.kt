@@ -12,26 +12,38 @@ internal object Migrations {
                 CREATE TABLE platforms (
                     tag TEXT PRIMARY KEY,
                     display_name TEXT,
-                    sort_order INTEGER NOT NULL DEFAULT 0,
-                    last_scan_mtime INTEGER NOT NULL DEFAULT 0
+                    sort_order INTEGER NOT NULL DEFAULT 0
                 )
             """.trimIndent())
 
             db.execSQL("""
                 CREATE TABLE roms (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    path TEXT NOT NULL UNIQUE,
-                    platform_tag TEXT NOT NULL REFERENCES platforms(tag) ON DELETE CASCADE,
+                    path TEXT NOT NULL,
+                    platform_tag TEXT NOT NULL REFERENCES platforms(tag) ON DELETE RESTRICT,
                     display_name TEXT NOT NULL,
-                    art_path TEXT,
-                    is_subfolder INTEGER NOT NULL DEFAULT 0,
                     disc_paths TEXT,
                     ra_game_id INTEGER,
-                    last_played_at INTEGER
+                    last_played_at INTEGER,
+                    UNIQUE(platform_tag, path)
                 )
             """.trimIndent())
             db.execSQL("CREATE INDEX roms_by_platform ON roms(platform_tag)")
             db.execSQL("CREATE INDEX roms_by_last_played ON roms(last_played_at) WHERE last_played_at IS NOT NULL")
+
+            db.execSQL("""
+                CREATE TABLE apps (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    type TEXT NOT NULL CHECK (type IN ('TOOL', 'PORT')),
+                    display_name TEXT NOT NULL,
+                    package_name TEXT NOT NULL,
+                    sort_order INTEGER NOT NULL DEFAULT 0,
+                    last_played_at INTEGER,
+                    UNIQUE(type, package_name)
+                )
+            """.trimIndent())
+            db.execSQL("CREATE INDEX apps_by_type ON apps(type)")
+            db.execSQL("CREATE INDEX apps_by_last_played ON apps(last_played_at) WHERE last_played_at IS NOT NULL")
 
             db.execSQL("""
                 CREATE TABLE collections (
@@ -47,13 +59,21 @@ internal object Migrations {
 
             db.execSQL("""
                 CREATE TABLE collection_members (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                     collection_id INTEGER NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
-                    rom_id INTEGER NOT NULL REFERENCES roms(id) ON DELETE CASCADE,
+                    rom_id INTEGER REFERENCES roms(id) ON DELETE CASCADE,
+                    app_id INTEGER REFERENCES apps(id) ON DELETE CASCADE,
                     sort_order INTEGER NOT NULL DEFAULT 0,
-                    PRIMARY KEY (collection_id, rom_id)
+                    CHECK (
+                        (rom_id IS NOT NULL AND app_id IS NULL) OR
+                        (rom_id IS NULL AND app_id IS NOT NULL)
+                    )
                 )
             """.trimIndent())
-            db.execSQL("CREATE INDEX members_by_rom ON collection_members(rom_id)")
+            db.execSQL("CREATE UNIQUE INDEX collection_members_unique_rom ON collection_members(collection_id, rom_id) WHERE rom_id IS NOT NULL")
+            db.execSQL("CREATE UNIQUE INDEX collection_members_unique_app ON collection_members(collection_id, app_id) WHERE app_id IS NOT NULL")
+            db.execSQL("CREATE INDEX collection_members_by_rom ON collection_members(rom_id) WHERE rom_id IS NOT NULL")
+            db.execSQL("CREATE INDEX collection_members_by_app ON collection_members(app_id) WHERE app_id IS NOT NULL")
 
             db.execSQL("""
                 CREATE TABLE game_overrides (
@@ -64,7 +84,6 @@ internal object Migrations {
                     ra_package TEXT
                 )
             """.trimIndent())
-
         },
     )
 

@@ -707,14 +707,15 @@ class MainActivity : ComponentActivity() {
         ioScope.launch { scanner.ensureDirectories() }
 
         cannoliDatabase = dev.cannoli.scorza.db.CannoliDatabase(root)
-        runImporterThenContinue(root)
+        runImporterThenContinue(root, romDir ?: File(root, "Roms"))
     }
 
     private lateinit var cannoliDatabase: dev.cannoli.scorza.db.CannoliDatabase
 
-    private fun runImporterThenContinue(root: File) {
+    private fun runImporterThenContinue(root: File, romDir: File) {
         val importer = dev.cannoli.scorza.db.importer.Importer(
             cannoliRoot = root,
+            romDirectory = romDir,
             db = cannoliDatabase,
             platformResolver = platformResolver,
             scanner = scanner,
