@@ -92,12 +92,12 @@ fun DialogState.withNameAndCursor(name: String, pos: Int): DialogState = when (t
 
 fun DialogState.withMenuDelta(delta: Int): DialogState? = when (this) {
     is DialogState.ContextMenu -> {
-        val newIdx = (selectedOption + delta).mod(options.size)
-        copy(selectedOption = newIdx)
+        if (options.isEmpty()) null
+        else copy(selectedOption = (selectedOption + delta).mod(options.size))
     }
     is DialogState.BulkContextMenu -> {
-        val newIdx = (selectedOption + delta).mod(options.size)
-        copy(selectedOption = newIdx)
+        if (options.isEmpty()) null
+        else copy(selectedOption = (selectedOption + delta).mod(options.size))
     }
     else -> null
 }

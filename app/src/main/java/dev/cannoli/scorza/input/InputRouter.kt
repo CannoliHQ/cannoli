@@ -45,6 +45,8 @@ class InputRouter @Inject constructor(
     var controlButtons: List<LibretroInput.ButtonDef> = emptyList()
 
     fun wire(inputHandler: InputHandler) {
+        gameListHandler.buildContextOptions = dialogHandler::buildGameContextOptions
+
         inputHandler.onUp    = { if (!dialogHandler.onUp())     currentHandler().onUp() }
         inputHandler.onDown  = { if (!dialogHandler.onDown())   currentHandler().onDown() }
         inputHandler.onLeft  = { if (!dialogHandler.onLeft())   currentHandler().onLeft() }
