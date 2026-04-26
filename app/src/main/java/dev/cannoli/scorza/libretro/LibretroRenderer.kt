@@ -55,7 +55,7 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
     private var overlayTextureId = 0
     private var overlayLoaded = false
 
-    val backendName = "GLES 3.0"
+    @Volatile var backendName = "GLES"; private set
     @Volatile var fps = 0f; private set
     @Volatile var frameTimeMs = 0f; private set
     @Volatile var viewportWidth = 0; private set
@@ -113,10 +113,18 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
         GLES20.glClearColor(0f, 0f, 0f, 1f)
         fpsTimestamp = System.nanoTime()
         loggedFirstFrame = false
+        val glVersion = GLES20.glGetString(GLES20.GL_VERSION) ?: ""
+        val parsedVersion = parseGlesVersion(glVersion)
+        backendName = "GLES $parsedVersion"
+        val actualEs3 = parsedVersion.startsWith("3") || parsedVersion.startsWith("4")
+        if (actualEs3 != ShaderPipeline.es3Supported) {
+            ShaderPipeline.es3Supported = actualEs3
+            logger?.invoke("es3Supported corrected to $actualEs3 from GL_VERSION (was ${!actualEs3})")
+        }
         logger?.invoke(
             "GL surface created: vendor=${GLES20.glGetString(GLES20.GL_VENDOR)}" +
                 " renderer=${GLES20.glGetString(GLES20.GL_RENDERER)}" +
-                " version=${GLES20.glGetString(GLES20.GL_VERSION)}" +
+                " version=$glVersion" +
                 " glsl=${GLES20.glGetString(GLES20.GL_SHADING_LANGUAGE_VERSION)}"
         )
 
@@ -422,11 +430,23 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
         pipeline = null
         val path = shaderPresetPath
         if (path.isNullOrEmpty() || screenEffect == ScreenEffect.NONE) return
+        logger?.invoke("loadPipeline: $path")
         val file = File(path)
         val preset = PresetParser.parse(file)
-        if (preset == null) { Log.w("LibretroRenderer", "Failed to parse: $path"); return }
+        if (preset == null) {
+            val msg = "shader parse failed (file exists=${file.exists()}): $path"
+            Log.w("LibretroRenderer", msg)
+            logger?.invoke(msg)
+            return
+        }
         pipeline = ShaderPipeline.compile(preset)
-        if (pipeline == null) { Log.w("LibretroRenderer", "Failed to compile: $path"); return }
+        if (pipeline == null) {
+            val msg = "shader compile failed: $path"
+            Log.w("LibretroRenderer", msg)
+            logger?.invoke(msg)
+            return
+        }
+        logger?.invoke("shader loaded: ${file.name} (${preset.passes.size} pass)")
         for ((key, value) in shaderParamOverrides) {
             pipeline!!.parameters[key] = value
         }
@@ -490,6 +510,12 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
             return 0
         }
         return program
+    }
+
+    private fun parseGlesVersion(versionString: String): String {
+        // GL_VERSION format: "OpenGL ES M.m ..." or "OpenGL ES-CM M.m ..."
+        val match = Regex("""OpenGL ES(?:-\w+)? (\d+\.\d+)""").find(versionString)
+        return match?.groupValues?.get(1) ?: versionString.ifEmpty { "?" }
     }
 
     private fun loadShader(type: Int, shaderCode: String): Int {
