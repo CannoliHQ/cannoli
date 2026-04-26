@@ -5,10 +5,11 @@ import android.content.pm.PackageManager
 import androidx.annotation.StringRes
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
+import dagger.hilt.android.scopes.ActivityScoped
 import dev.cannoli.scorza.R
+import dev.cannoli.scorza.db.CollectionsRepository
 import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.model.Collection
-import dev.cannoli.scorza.db.CollectionsRepository
 import dev.cannoli.scorza.model.CollectionType
 import dev.cannoli.scorza.settings.ArtScale
 import dev.cannoli.scorza.settings.ContentMode
@@ -17,23 +18,25 @@ import dev.cannoli.scorza.settings.TextSize
 import dev.cannoli.scorza.settings.TimeFormat
 import dev.cannoli.scorza.util.FontNameParser
 import dev.cannoli.scorza.util.sortedNatural
+import dev.cannoli.scorza.di.AppFonts
 import dev.cannoli.ui.BULLET
 import dev.cannoli.ui.ButtonLabelSet
 import dev.cannoli.ui.ConfirmButton
-import dev.cannoli.ui.theme.BPReplay
-import dev.cannoli.ui.theme.MPlus1Code
 import dev.cannoli.ui.theme.hexToColor
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+import javax.inject.Inject
 
-class SettingsViewModel(
+@ActivityScoped
+class SettingsViewModel @Inject constructor(
     private val settings: SettingsRepository,
-    private var cannoliRoot: java.io.File? = null,
-    private var packageManager: PackageManager? = null,
-    private var appPackageName: String? = null,
-    private var collectionsRepository: CollectionsRepository? = null
+    private val appFonts: AppFonts,
 ) {
+    private var cannoliRoot: java.io.File? = null
+    private var packageManager: PackageManager? = null
+    private var appPackageName: String? = null
+    private var collectionsRepository: CollectionsRepository? = null
 
     val isTelevision: Boolean
         get() = packageManager?.hasSystemFeature(PackageManager.FEATURE_LEANBACK) == true
@@ -50,8 +53,8 @@ class SettingsViewModel(
     private var fontOptions: List<FontOption> = buildFontOptions()
 
     private fun buildFontOptions(): List<FontOption> = buildList {
-        add(FontOption("default", "Default", MPlus1Code))
-        add(FontOption("the_og", "The OG", BPReplay))
+        add(FontOption("default", "Default", appFonts.mplus1Code))
+        add(FontOption("the_og", "The OG", appFonts.bpReplay))
         val fontsDir = cannoliRoot?.let { java.io.File(it, "Config/Fonts") }
         val exts = setOf("ttf", "otf")
         val customFiles = fontsDir?.listFiles()
@@ -67,7 +70,7 @@ class SettingsViewModel(
 
     private fun resolveFont(): FontFamily {
         val key = settings.font
-        return fontOptions.firstOrNull { it.key == key }?.fontFamily ?: MPlus1Code
+        return fontOptions.firstOrNull { it.key == key }?.fontFamily ?: appFonts.mplus1Code
     }
 
     data class SettingsItem(
@@ -113,7 +116,7 @@ class SettingsViewModel(
         val backgroundTint: Int = 0,
         val textSize: TextSize = TextSize.DEFAULT,
 
-        val fontFamily: FontFamily = MPlus1Code,
+        val fontFamily: FontFamily = FontFamily.Default,
         val title: String = "",
         val colorHighlight: Color = Color.White,
         val colorText: Color = Color.White,

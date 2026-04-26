@@ -1,20 +1,21 @@
 package dev.cannoli.scorza.input
 
+import dev.cannoli.scorza.config.CannoliPaths
 import dev.cannoli.scorza.util.IniParser
 import dev.cannoli.scorza.util.IniWriter
 import java.io.File
 
 class ProfileManager(private var cannoliRoot: String) {
 
-    private val profilesDir get() = File(cannoliRoot, "Config/Profiles")
+    private val paths get() = CannoliPaths(cannoliRoot)
+    private val profilesDir get() = paths.configProfiles
 
-    private fun profileFile(name: String) = File(profilesDir, "$name.ini")
+    private fun profileFile(name: String) = paths.profileFile(name)
 
-    private fun platformFile(platformTag: String) =
-        File(cannoliRoot, "Config/Overrides/systems/$platformTag.ini")
+    private fun platformFile(platformTag: String) = paths.systemOverrideFile(platformTag)
 
     private fun gameFile(platformTag: String, gameBaseName: String) =
-        File(cannoliRoot, "Config/Overrides/Games/$platformTag/$gameBaseName.ini")
+        paths.gameOverrideFile(platformTag, gameBaseName)
 
     fun ensureDefaults() {
         for (name in listOf(NAVIGATION, DEFAULT_GAME)) {

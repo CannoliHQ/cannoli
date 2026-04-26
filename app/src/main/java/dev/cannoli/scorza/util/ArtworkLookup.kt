@@ -1,10 +1,11 @@
 package dev.cannoli.scorza.util
 
+import dev.cannoli.scorza.config.CannoliPaths
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 class ArtworkLookup(private val cannoliRoot: File) {
-    private val artDir = File(cannoliRoot, "Art")
+    private val artDir = CannoliPaths(cannoliRoot).artDir
     private val cache = ConcurrentHashMap<String, Map<String, File>>()
 
     fun find(platformTag: String, basename: String): File? {

@@ -3,22 +3,26 @@ package dev.cannoli.scorza.setup
 import android.content.Context
 import android.os.Build
 import android.os.storage.StorageManager
+import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.cannoli.scorza.config.CoreInfoRepository
+import dev.cannoli.scorza.config.PlatformConfig
+import dev.cannoli.scorza.di.IoScope
 import dev.cannoli.scorza.launcher.ApkLauncher
 import dev.cannoli.scorza.launcher.EmuLauncher
 import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.LaunchManager
 import dev.cannoli.scorza.launcher.RetroArchLauncher
-import dev.cannoli.scorza.config.CoreInfoRepository
-import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.util.DirectoryLayout
 import dev.cannoli.scorza.util.NaturalSort
 import dev.cannoli.ui.ELLIPSIS
-import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
+import javax.inject.Inject
+import javax.inject.Singleton
 
 data class InstalledServices(
     val platformConfig: PlatformConfig,
@@ -29,10 +33,11 @@ data class InstalledServices(
     val launchManager: LaunchManager,
 )
 
-class SetupCoordinator(
-    private val context: Context,
+@Singleton
+class SetupCoordinator @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val settings: SettingsRepository,
-    private val ioScope: CoroutineScope,
+    @IoScope private val ioScope: CoroutineScope,
 ) {
     private var volumeMap: Map<String, String> = emptyMap()
 

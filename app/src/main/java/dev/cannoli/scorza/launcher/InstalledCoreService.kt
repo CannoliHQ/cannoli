@@ -6,10 +6,14 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Handler
 import android.os.Looper
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.suspendCancellableCoroutine
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlin.coroutines.resume
 
-class InstalledCoreService(private val context: Context) {
+@Singleton
+class InstalledCoreService @Inject constructor(@ApplicationContext private val context: Context) {
 
     private val handler = Handler(Looper.getMainLooper())
 

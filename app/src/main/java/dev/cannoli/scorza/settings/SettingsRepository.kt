@@ -4,12 +4,16 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.os.Handler
 import android.os.HandlerThread
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.cannoli.ui.ButtonLabelSet
 import dev.cannoli.ui.ConfirmButton
 import org.json.JSONObject
 import java.io.File
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class SettingsRepository(context: Context) {
+@Singleton
+class SettingsRepository @Inject constructor(@ApplicationContext context: Context) {
 
     private val prefs: SharedPreferences =
         context.getSharedPreferences("cannoli_settings", Context.MODE_PRIVATE)
@@ -31,7 +35,7 @@ class SettingsRepository(context: Context) {
     }
 
     private fun loadFromDisk() {
-        val file = File(sdCardRoot, "Config/settings.json")
+        val file = dev.cannoli.scorza.config.CannoliPaths(sdCardRoot).settingsJson
         settingsFile = file
         if (file.exists()) {
             try { synchronized(jsonLock) { json = JSONObject(file.readText()) } } catch (_: java.io.IOException) {} catch (_: org.json.JSONException) {}
@@ -92,7 +96,7 @@ class SettingsRepository(context: Context) {
         get() = prefs.getString(KEY_SD_ROOT, DEFAULT_ROOT) ?: DEFAULT_ROOT
         set(value) {
             prefs.edit().putString(KEY_SD_ROOT, value).apply()
-            settingsFile = File(value, "Config/settings.json")
+            settingsFile = dev.cannoli.scorza.config.CannoliPaths(value).settingsJson
             loadFromDisk()
         }
 

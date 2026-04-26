@@ -42,8 +42,8 @@ import dev.cannoli.scorza.settings.ArtScale
 import dev.cannoli.scorza.ui.components.DialogOverlay
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.ui.ButtonStyle
-import dev.cannoli.ui.START_GLYPH
 import dev.cannoli.ui.STAR
+import dev.cannoli.ui.START_GLYPH
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.ConfirmOverlay
 import dev.cannoli.ui.components.LaunchErrorDialog

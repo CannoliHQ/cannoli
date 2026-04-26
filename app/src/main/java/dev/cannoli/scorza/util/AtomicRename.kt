@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.util
 
+import dev.cannoli.scorza.config.CannoliPaths
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -7,10 +8,11 @@ import java.util.Locale
 
 class AtomicRename(private val cannoliRoot: File) {
 
-    private val backupDir get() = File(cannoliRoot, "Backup")
-    private val savesDir get() = File(cannoliRoot, "Saves")
-    private val statesDir get() = File(cannoliRoot, "Save States")
-    private val artDir get() = File(cannoliRoot, "Art")
+    private val paths = CannoliPaths(cannoliRoot)
+    private val backupDir get() = paths.backupDir
+    private val savesDir get() = paths.savesDir
+    private val statesDir get() = paths.saveStatesDir
+    private val artDir get() = paths.artDir
 
     data class RenameResult(val success: Boolean, val error: String? = null)
 

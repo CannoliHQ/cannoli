@@ -105,6 +105,7 @@ fun LibretroScreen(
     audioSampleRate: Int,
     osdMessage: String?,
     fastForwarding: Boolean,
+    settings: dev.cannoli.scorza.settings.SettingsRepository,
     guideFiles: List<GuideFile> = emptyList(),
     guidePageCount: Int = 0,
     guideScrollDir: Int = 0,
@@ -125,7 +126,6 @@ fun LibretroScreen(
     }
     val isGuideScreen = screen is IGMScreen.Guide
     val context = LocalContext.current
-    val settings = remember { dev.cannoli.scorza.settings.SettingsRepository(context) }
     val igmFontSize = settings.textSize.sp.sp
     val igmLineHeight = (settings.textSize.sp + 10).sp
     val igmScaleFactor = settings.textSize.sp / 22f

@@ -1,20 +1,24 @@
 package dev.cannoli.scorza.input.screen
 
+import dagger.hilt.android.scopes.ActivityScoped
+import dev.cannoli.scorza.input.ActivityActions
 import dev.cannoli.scorza.input.ScreenInputHandler
 import dev.cannoli.scorza.navigation.BrowsePurpose
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.setup.SetupCoordinator
+import javax.inject.Inject
 
-class SetupInputHandler(
+@ActivityScoped
+class SetupInputHandler @Inject constructor(
     private val nav: NavigationController,
     private val settings: SettingsRepository,
     private val setupCoordinator: SetupCoordinator,
-    private val onInitializeApp: () -> Unit,
-    private val onFinishAffinity: () -> Unit,
-    private val onStartInstalling: ((targetPath: String) -> Unit)? = null,
+    private val activityActions: ActivityActions,
 ) : ScreenInputHandler {
+
+    var onStartInstalling: ((targetPath: String) -> Unit)? = null
 
     override fun onUp() {
         val screen = nav.currentScreen as? LauncherScreen.Setup ?: return
@@ -64,7 +68,7 @@ class SetupInputHandler(
                 if (screen.finished) {
                     settings.sdCardRoot = screen.targetPath
                     settings.setupCompleted = true
-                    onInitializeApp()
+                    activityActions.restartApp()
                 }
             }
             is LauncherScreen.DirectoryBrowser -> {
@@ -101,7 +105,7 @@ class SetupInputHandler(
                     nav.replaceTop(screen.copy(currentPath = parent, entries = newEntries, selectedIndex = 0))
                 }
             }
-            is LauncherScreen.Setup -> onFinishAffinity()
+            is LauncherScreen.Setup -> activityActions.finishAffinity()
             else -> {}
         }
     }

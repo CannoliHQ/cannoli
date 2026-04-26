@@ -89,9 +89,10 @@ class PlatformConfig(
     private var userApps: MutableMap<String, String> = java.util.concurrent.ConcurrentHashMap()
     private var userPackages: MutableMap<String, String> = java.util.concurrent.ConcurrentHashMap()
     private var gameOverrides: MutableMap<String, GameCoreOverride> = java.util.concurrent.ConcurrentHashMap()
-    private val coresFile get() = File(cannoliRoot, "Config/cores.json")
+    private val paths = CannoliPaths(cannoliRoot)
+    private val coresFile get() = paths.coresJson
 
-    private fun romsTagDir(tag: String, romsDir: File = File(cannoliRoot, "Roms")): File {
+    private fun romsTagDir(tag: String, romsDir: File = paths.romsDir): File {
         val direct = File(romsDir, tag)
         if (direct.exists()) return direct
         return romsDir.listFiles()?.firstOrNull { it.isDirectory && it.name.equals(tag, ignoreCase = true) } ?: direct
@@ -99,7 +100,7 @@ class PlatformConfig(
 
     fun load() {
         loadPlatformsAsset()
-        val configFile = File(cannoliRoot, "Config/platforms.ini")
+        val configFile = paths.platformsIni
         if (!configFile.exists()) {
             writeDefaultIni(configFile)
         }
@@ -553,7 +554,7 @@ class PlatformConfig(
     }
 
     fun setDisplayName(tag: String, name: String) {
-        val configFile = File(cannoliRoot, "Config/platforms.ini")
+        val configFile = paths.platformsIni
         val currentNames = ini.getSection("platforms").toMutableMap()
         val defaultName = defaultPlatformNames[tag.uppercase()]
         if (name == defaultName || name == tag) {

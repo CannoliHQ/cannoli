@@ -4,17 +4,16 @@ import android.os.Handler
 import android.os.Looper
 import dev.cannoli.igm.ShortcutAction
 import dev.cannoli.scorza.libretro.LibretroInput
-import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.navigation.LauncherScreen
+import dev.cannoli.scorza.navigation.NavigationController
 
 class BindingController(
-    private val navProvider: () -> NavigationController,
+    private val nav: NavigationController,
     private val controlButtons: List<LibretroInput.ButtonDef>,
     private val swapConfirmBackProvider: () -> Boolean,
     private val showOsd: (String, Long) -> Unit,
     private val cannotStealConfirmText: String,
 ) {
-    private val nav get() = navProvider()
     private val handler = Handler(Looper.getMainLooper())
 
     private val shortcutHoldMs = 1500

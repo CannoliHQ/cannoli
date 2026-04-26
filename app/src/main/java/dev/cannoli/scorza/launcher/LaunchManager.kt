@@ -4,13 +4,13 @@ import android.app.ActivityOptions
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import dev.cannoli.scorza.config.CannoliPaths
+import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.libretro.LibretroActivity
 import dev.cannoli.scorza.libretro.SaveSlotManager
 import dev.cannoli.scorza.model.App
-import dev.cannoli.scorza.model.AppType
-import dev.cannoli.scorza.model.Rom
 import dev.cannoli.scorza.model.LaunchTarget
-import dev.cannoli.scorza.config.PlatformConfig
+import dev.cannoli.scorza.model.Rom
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.util.ArchiveExtractor
@@ -36,7 +36,7 @@ class LaunchManager(
     }
 
     fun syncRetroArchAssets(root: File) {
-        val fontDest = File(root, "Config/Assets/cannoli/font.ttf")
+        val fontDest = CannoliPaths(root).cannoliFont
         if (fontDest.exists()) return
         fontDest.parentFile?.mkdirs()
         try {
@@ -47,7 +47,7 @@ class LaunchManager(
     }
 
     fun syncRetroArchConfig(root: File) {
-        val raDir = File(root, "Config/RetroArch")
+        val raDir = CannoliPaths(root).configRetroArch
         raDir.mkdirs()
         val localConfig = File(raDir, "retroarch.cfg")
         val hashFile = File(raDir, ".ra_config_hash")
@@ -83,11 +83,11 @@ class LaunchManager(
     private fun buildGameConfig(rom: Rom, resume: Boolean = false, slot: Int = 0): String? {
         val base = raConfigPath ?: return null
         val baseConfig = try { File(base).readText() } catch (_: IOException) { return null }
-        val cannoliRoot = File(settings.sdCardRoot)
+        val paths = CannoliPaths(settings.sdCardRoot)
         val romName = normalizedRomName(rom)
-        val stateDir = File(cannoliRoot, "Save States/${rom.platformTag}/$romName")
+        val stateDir = paths.saveStateDir(rom.platformTag, romName)
         stateDir.mkdirs()
-        val biosDir = File(cannoliRoot, "BIOS/${rom.platformTag}")
+        val biosDir = paths.biosFor(rom.platformTag)
         biosDir.mkdirs()
         val raSlot = if (slot > 0) slot - 1 else 0
         val gameOverrides = buildMap {
@@ -100,7 +100,7 @@ class LaunchManager(
             }
         }
         val patched = applyOverrides(baseConfig, gameOverrides)
-        val launchConfig = File(cannoliRoot, "Config/RetroArch/retroarch_launch.cfg")
+        val launchConfig = paths.raLaunchCfg
         launchConfig.writeText(patched)
         return launchConfig.absolutePath
     }
@@ -200,9 +200,8 @@ class LaunchManager(
     }
 
     fun findMostRecentSlot(rom: Rom): Int? {
-        val cannoliRoot = File(settings.sdCardRoot)
         val romName = normalizedRomName(rom)
-        val stateBase = File(cannoliRoot, "Save States/${rom.platformTag}/$romName/$romName.state")
+        val stateBase = CannoliPaths(settings.sdCardRoot).saveStateBase(rom.platformTag, romName)
         val slotManager = SaveSlotManager(stateBase.absolutePath)
         return slotManager.slots
             .filter { File(slotManager.statePath(it)).exists() }
@@ -211,9 +210,8 @@ class LaunchManager(
     }
 
     private fun hasSaveState(rom: Rom): Boolean {
-        val cannoliRoot = File(settings.sdCardRoot)
         val romName = normalizedRomName(rom)
-        val stateDir = File(cannoliRoot, "Save States/${rom.platformTag}/$romName")
+        val stateDir = CannoliPaths(settings.sdCardRoot).saveStateDir(rom.platformTag, romName)
         if (!stateDir.exists()) return false
         return stateDir.listFiles()?.any {
             it.name.startsWith("$romName.state") && !it.name.endsWith(".png")
@@ -417,7 +415,7 @@ class LaunchManager(
     private fun debugLog(message: String) {
         if (!settings.debugLogging) return
         try {
-            val dir = File(File(settings.sdCardRoot), "Logs")
+            val dir = CannoliPaths(settings.sdCardRoot).logsDir
             dir.mkdirs()
             val f = File(dir, "launch_debug.log")
             f.appendText("${java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.US).format(java.util.Date())} $message\n")
@@ -425,40 +423,39 @@ class LaunchManager(
     }
 
     fun launchEmbedded(rom: Rom, corePath: String, resumeSlot: Int = -1, originalRomPath: String? = null) {
-        val cannoliRoot = File(settings.sdCardRoot)
+        val paths = CannoliPaths(settings.sdCardRoot)
         val romName = normalizedRomName(rom)
-        val saveDir = File(cannoliRoot, "Saves/${rom.platformTag}")
+        val saveDir = paths.savesFor(rom.platformTag)
         saveDir.mkdirs()
+        val stateDir = paths.saveStateDir(rom.platformTag, romName)
+        stateDir.mkdirs()
 
-        val intent = Intent(context, LibretroActivity::class.java).apply {
-            putExtra("game_title", rom.displayName)
-            putExtra("core_path", corePath)
-            putExtra("rom_path", rom.path.absolutePath)
-            if (originalRomPath != null && originalRomPath != rom.path.absolutePath) {
-                putExtra("original_rom_path", originalRomPath)
-            }
-            putExtra("sram_path", File(saveDir, "$romName.srm").absolutePath)
-            val stateDir = File(cannoliRoot, "Save States/${rom.platformTag}/$romName")
-            stateDir.mkdirs()
-            putExtra("state_path", File(stateDir, "$romName.state").absolutePath)
-            putExtra("platform_tag", rom.platformTag)
-            putExtra("platform_name", platformConfig.getDisplayName(rom.platformTag))
-            putExtra("cannoli_root", cannoliRoot.absolutePath)
-            putExtra("system_dir", File(cannoliRoot, "BIOS/${rom.platformTag}").absolutePath)
-            putExtra("save_dir", saveDir.absolutePath)
-            putExtra("color_highlight", settings.colorHighlight)
-            putExtra("color_text", settings.colorText)
-            putExtra("color_highlight_text", settings.colorHighlightText)
-            putExtra("color_accent", settings.colorAccent)
-            putExtra("color_title", settings.colorTitle)
-            putExtra("font", settings.font)
-            putExtra("debug_logging", settings.debugLogging)
-            putExtra("ra_username", settings.raUsername)
-            putExtra("ra_token", settings.raToken)
-            putExtra("ra_password", settings.raPassword)
-            rom.raGameId?.let { putExtra("ra_game_id", it) }
-            if (resumeSlot >= 0) putExtra("resume_slot", resumeSlot)
-        }
+        val args = LaunchArgs(
+            gameTitle = rom.displayName,
+            corePath = corePath,
+            romPath = rom.path.absolutePath,
+            originalRomPath = originalRomPath?.takeIf { it != rom.path.absolutePath },
+            sramPath = File(saveDir, "$romName.srm").absolutePath,
+            statePath = File(stateDir, "$romName.state").absolutePath,
+            systemDir = paths.biosFor(rom.platformTag).absolutePath,
+            saveDir = saveDir.absolutePath,
+            platformTag = rom.platformTag,
+            platformName = platformConfig.getDisplayName(rom.platformTag),
+            cannoliRoot = paths.root.absolutePath,
+            colorHighlight = settings.colorHighlight,
+            colorText = settings.colorText,
+            colorHighlightText = settings.colorHighlightText,
+            colorAccent = settings.colorAccent,
+            colorTitle = settings.colorTitle,
+            font = settings.font,
+            debugLogging = settings.debugLogging,
+            raUsername = settings.raUsername,
+            raToken = settings.raToken,
+            raPassword = settings.raPassword,
+            raGameId = rom.raGameId,
+            resumeSlot = resumeSlot,
+        )
+        val intent = args.writeTo(Intent(context, LibretroActivity::class.java))
         val opts = ActivityOptions.makeCustomAnimation(context, 0, 0).toBundle()
         context.startActivity(intent, opts)
     }
@@ -467,13 +464,13 @@ class LaunchManager(
         Normalizer.normalize(rom.path.nameWithoutExtension, Normalizer.Form.NFC)
 
     private fun buildIGMExtras(rom: Rom): IGMExtras {
-        val cannoliRoot = File(settings.sdCardRoot)
+        val paths = CannoliPaths(settings.sdCardRoot)
         val romName = normalizedRomName(rom)
-        val stateBase = File(cannoliRoot, "Save States/${rom.platformTag}/$romName/$romName.state")
+        val stateBase = paths.saveStateBase(rom.platformTag, romName)
         return IGMExtras(
             gameTitle = rom.displayName,
             stateBasePath = stateBase.absolutePath,
-            cannoliRoot = cannoliRoot.absolutePath,
+            cannoliRoot = paths.root.absolutePath,
             platformTag = rom.platformTag,
             colorHighlight = settings.colorHighlight,
             colorText = settings.colorText,

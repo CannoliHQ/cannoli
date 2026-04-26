@@ -1,6 +1,7 @@
 package dev.cannoli.scorza.libretro
 
 import dev.cannoli.igm.ShortcutAction
+import dev.cannoli.scorza.config.CannoliPaths
 import dev.cannoli.scorza.input.ProfileManager
 import dev.cannoli.scorza.util.IniParser
 import dev.cannoli.scorza.util.IniWriter
@@ -14,10 +15,11 @@ class OverrideManager(
     private val gameBaseName: String,
     coreName: String = ""
 ) {
-    private val overridesDir = File(cannoliRoot, "Config/Overrides")
+    private val paths = CannoliPaths(cannoliRoot)
+    private val overridesDir = paths.configOverrides
     private val globalFile = File(overridesDir, "global.ini")
-    private val platformFile = File(overridesDir, "systems/$platformTag.ini")
-    private val gameFile = File(overridesDir, "Games/$platformTag/$gameBaseName.ini")
+    private val platformFile = paths.systemOverrideFile(platformTag)
+    private val gameFile = paths.gameOverrideFile(platformTag, gameBaseName)
 
     init {
         if (coreName.isNotEmpty() && !platformFile.exists()) {

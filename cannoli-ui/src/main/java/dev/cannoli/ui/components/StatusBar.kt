@@ -34,7 +34,6 @@ import dev.cannoli.ui.R
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliFont
 import dev.cannoli.ui.theme.LocalScaleFactor
-import dev.cannoli.ui.theme.MPlus1Code
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -149,7 +148,7 @@ fun StatusBar(
     val fontSize = (textSizeSp * scaleFactor).sp
 
     val iconStyle = TextStyle(
-        fontFamily = MPlus1Code,
+        fontFamily = LocalCannoliFont.current,
         fontWeight = FontWeight.Normal,
         fontSize = fontSize,
         color = colors.text

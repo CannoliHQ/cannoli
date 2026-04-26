@@ -2,6 +2,8 @@ package dev.cannoli.scorza.db.importer
 
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
+import dev.cannoli.scorza.config.CannoliPaths
+import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.db.CannoliDatabase
 import dev.cannoli.scorza.db.LibraryRef
 import dev.cannoli.scorza.db.RomScanner
@@ -9,7 +11,6 @@ import dev.cannoli.scorza.db.execute
 import dev.cannoli.scorza.db.executeReturningId
 import dev.cannoli.scorza.db.query
 import dev.cannoli.scorza.model.Collection
-import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.util.ScanLog
 import java.io.File
 import java.io.IOException
@@ -35,12 +36,13 @@ class Importer(
     private val romScanner: RomScanner,
     private val onProgress: ImportProgress,
 ) {
-    private val collectionsDir = File(cannoliRoot, "Collections")
+    private val paths = CannoliPaths(cannoliRoot)
+    private val collectionsDir = paths.collectionsDir
     private val collectionParentsFile = File(collectionsDir, "collection_parents.txt")
-    private val orderingDir = File(cannoliRoot, "Config/Ordering")
-    private val recentlyPlayedFile = File(cannoliRoot, "Config/State/recently_played.txt")
-    private val toolsDir = File(cannoliRoot, "Config/Launch Scripts/Tools")
-    private val portsDir = File(cannoliRoot, "Config/Launch Scripts/Ports")
+    private val orderingDir = paths.configOrdering
+    private val recentlyPlayedFile = paths.recentlyPlayedFile
+    private val toolsDir = paths.toolsDir
+    private val portsDir = paths.portsDir
 
     private val conn: SQLiteConnection get() = db.conn
     private var orphans = 0
@@ -49,7 +51,7 @@ class Importer(
         if (countRoms() > 0 || countApps() > 0) return ImportResult.NotNeeded
 
         val timestamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
-        val backupDir = File(cannoliRoot, "Backup/import-$timestamp")
+        val backupDir = File(paths.backupDir, "import-$timestamp")
 
         ScanLog.startRun("database import")
         val toolNames = mutableMapOf<String, Long>()
@@ -269,8 +271,8 @@ class Importer(
     }
 
     private fun importRaGameIds(romIdsByRelative: Map<String, Long>) {
-        val file = File(cannoliRoot, "Config/RetroAchievements/ra_game_ids.txt")
-        val legacy = File(cannoliRoot, "Config/RetroArch/ra_game_ids.txt")
+        val file = paths.raGameIdsFile
+        val legacy = paths.raGameIdsLegacyFile
         val source = if (file.exists()) file else if (legacy.exists()) legacy else return
         try {
             for (line in source.readLines()) {
@@ -406,16 +408,16 @@ class Importer(
     private fun archiveLegacyFiles(backupDir: File) {
         backupDir.mkdirs()
         val candidates = listOf(
-            File(cannoliRoot, "Collections"),
-            File(cannoliRoot, "Config/cores.json"),
-            File(cannoliRoot, "Config/RetroAchievements/ra_game_ids.txt"),
-            File(cannoliRoot, "Config/RetroArch/ra_game_ids.txt"),
-            File(cannoliRoot, "Config/State/recently_played.txt"),
-            File(cannoliRoot, "Config/Ordering"),
-            File(cannoliRoot, "Config/Launch Scripts/Tools"),
-            File(cannoliRoot, "Config/Launch Scripts/Ports"),
-            File(cannoliRoot, "Config/Cache/.platform_cache.json"),
-            File(cannoliRoot, "Config/Cache/.game_cache"),
+            paths.collectionsDir,
+            paths.coresJson,
+            paths.raGameIdsFile,
+            paths.raGameIdsLegacyFile,
+            paths.recentlyPlayedFile,
+            paths.configOrdering,
+            paths.toolsDir,
+            paths.portsDir,
+            paths.platformCacheFile,
+            paths.gameCacheFile,
         )
         for (src in candidates) {
             if (!src.exists()) continue

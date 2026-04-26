@@ -1,6 +1,7 @@
 package dev.cannoli.scorza.util
 
 import android.content.res.AssetManager
+import dev.cannoli.scorza.config.CannoliPaths
 import java.io.File
 
 /**
@@ -27,10 +28,11 @@ class RomDirectoryWalker(
     )
 
     fun loadIgnoreLists(assets: AssetManager) {
-        seedFromAsset(assets, "ignore_extensions_roms.txt", File(cannoliRoot, "Config/ignore_extensions_roms.txt"))
-        seedFromAsset(assets, "ignore_files_roms.txt", File(cannoliRoot, "Config/ignore_files_roms.txt"))
-        ignoredExtensions = readSetLowercase(File(cannoliRoot, "Config/ignore_extensions_roms.txt")) { it.removePrefix(".") }
-        ignoredFiles = readSetLowercase(File(cannoliRoot, "Config/ignore_files_roms.txt")) { it }
+        val paths = CannoliPaths(cannoliRoot)
+        seedFromAsset(assets, "ignore_extensions_roms.txt", paths.ignoreExtensionsRoms)
+        seedFromAsset(assets, "ignore_files_roms.txt", paths.ignoreFilesRoms)
+        ignoredExtensions = readSetLowercase(paths.ignoreExtensionsRoms) { it.removePrefix(".") }
+        ignoredFiles = readSetLowercase(paths.ignoreFilesRoms) { it }
     }
 
     /** Returns null when the platform directory does not exist. */

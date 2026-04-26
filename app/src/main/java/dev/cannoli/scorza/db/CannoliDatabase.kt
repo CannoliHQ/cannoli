@@ -3,6 +3,7 @@ package dev.cannoli.scorza.db
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL
+import dev.cannoli.scorza.config.CannoliPaths
 import dev.cannoli.scorza.util.ScanLog
 import java.io.File
 
@@ -10,7 +11,7 @@ class CannoliDatabase(cannoliRoot: File) {
     val conn: SQLiteConnection
 
     init {
-        val dbFile = File(cannoliRoot, "Config/cannoli.db").apply { parentFile?.mkdirs() }
+        val dbFile = CannoliPaths(cannoliRoot).database.apply { parentFile?.mkdirs() }
         conn = BundledSQLiteDriver().open(dbFile.absolutePath)
         conn.execSQL("PRAGMA foreign_keys = ON")
         conn.execSQL("PRAGMA journal_mode = WAL")

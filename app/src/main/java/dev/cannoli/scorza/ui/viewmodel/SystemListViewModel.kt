@@ -1,13 +1,15 @@
 package dev.cannoli.scorza.ui.viewmodel
 
+import dagger.hilt.android.scopes.ActivityScoped
+import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.db.AppsRepository
 import dev.cannoli.scorza.db.CollectionsRepository
 import dev.cannoli.scorza.db.RecentlyPlayedRepository
 import dev.cannoli.scorza.db.RomScanner
 import dev.cannoli.scorza.db.RomsRepository
+import dev.cannoli.scorza.di.RomDir
 import dev.cannoli.scorza.model.AppType
 import dev.cannoli.scorza.model.Platform
-import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.settings.ContentMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -19,15 +21,17 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import javax.inject.Inject
 
-class SystemListViewModel(
+@ActivityScoped
+class SystemListViewModel @Inject constructor(
     private val romsRepository: RomsRepository,
     private val romScanner: RomScanner,
     private val appsRepository: AppsRepository,
     private val collectionsRepository: CollectionsRepository,
     private val recentlyPlayedRepository: RecentlyPlayedRepository,
     private val platformConfig: PlatformConfig,
-    private val romDirectory: File,
+    @RomDir private val romDirectory: File,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 

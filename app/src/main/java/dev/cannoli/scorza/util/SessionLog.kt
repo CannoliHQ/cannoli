@@ -24,7 +24,7 @@ class SessionLog(
             synchronized(lock) {
                 try {
                     val ts = SimpleDateFormat("yyyy-MM-dd_HHmmss", Locale.US).format(Date())
-                    val dir = File(cannoliRoot, "Logs/$coreName")
+                    val dir = dev.cannoli.scorza.config.CannoliPaths(cannoliRoot).coreLogDir(coreName)
                     dir.mkdirs()
                     val file = File(dir, "${ts}_${coreName}.log")
                     writer = FileWriter(file, true)

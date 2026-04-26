@@ -6,6 +6,8 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
 }
 
 fun gitCommitHash(): String = try {
@@ -112,6 +114,8 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.sqlite.bundled)
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
     implementation("com.google.zxing:core:3.5.3")
     implementation("org.apache.commons:commons-compress:1.27.1")
     implementation("org.tukaani:xz:1.10")

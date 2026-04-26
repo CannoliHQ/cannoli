@@ -1,10 +1,16 @@
 package dev.cannoli.scorza.input.screen
 
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import dagger.hilt.android.qualifiers.ApplicationContext
+import dagger.hilt.android.scopes.ActivityScoped
 import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.db.AppsRepository
+import dev.cannoli.scorza.di.IoScope
+import dev.cannoli.scorza.input.ActivityActions
 import dev.cannoli.scorza.input.InputTesterController
+import dev.cannoli.scorza.input.LauncherActions
 import dev.cannoli.scorza.input.ProfileManager
 import dev.cannoli.scorza.input.ScreenInputHandler
 import dev.cannoli.scorza.launcher.ApkLauncher
@@ -25,10 +31,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
-class SettingsInputHandler(
+@ActivityScoped
+class SettingsInputHandler @Inject constructor(
     private val nav: NavigationController,
-    private val ioScope: CoroutineScope,
+    @IoScope private val ioScope: CoroutineScope,
     private val settings: SettingsRepository,
     private val platformConfig: PlatformConfig,
     private val installedCoreService: InstalledCoreService,
@@ -39,11 +47,9 @@ class SettingsInputHandler(
     private val inputTesterController: InputTesterController,
     private val updateManager: UpdateManager,
     private val settingsViewModel: SettingsViewModel,
-    private val onRescanSystemList: () -> Unit,
-    private val onInvalidateAllLibraryCaches: () -> Unit,
-    private val onOpenColorPicker: (settingKey: String) -> Unit,
-    private val onStartRaLogin: (username: String, password: String) -> Unit,
-    private val context: android.content.Context,
+    private val launcherActions: LauncherActions,
+    private val activityActions: ActivityActions,
+    @ApplicationContext private val context: Context,
 ) : ScreenInputHandler {
 
     override fun onUp() {
@@ -124,8 +130,8 @@ class SettingsInputHandler(
             )
             "installed_cores" -> queryInstalledCores()
             "rebuild_cache" -> {
-                onInvalidateAllLibraryCaches()
-                onRescanSystemList()
+                launcherActions.invalidateAllLibraryCaches()
+                launcherActions.rescanSystemList()
             }
             "manage_tools" -> openAppPicker("tools")
             "manage_ports" -> openAppPicker("ports")
@@ -144,7 +150,7 @@ class SettingsInputHandler(
                     cursorPos = settingsViewModel.raPassword.length
                 )
             }
-            "ra_login" -> onStartRaLogin(settings.raUsername, settingsViewModel.raPassword)
+            "ra_login" -> activityActions.startRaLogin(settings.raUsername, settingsViewModel.raPassword)
             null -> {}
             else -> {
                 when {
@@ -153,13 +159,13 @@ class SettingsInputHandler(
                         settingsViewModel.selectFghCollectionStem(stem)
                         settingsViewModel.save()
                         settingsViewModel.exitSubList()
-                        onRescanSystemList()
+                        launcherActions.rescanSystemList()
                     }
                     key.startsWith("color_") -> {
                         val entries = settingsViewModel.getColorEntries()
                         val idx = entries.indexOfFirst { it.key == key }.coerceAtLeast(0)
                         nav.push(LauncherScreen.ColorList(colors = entries, selectedIndex = idx))
-                        onOpenColorPicker(key)
+                        launcherActions.openColorPicker(key)
                     }
                     else -> {
                         val displayValue = settingsViewModel.getSelectedItemDisplayValue()
@@ -178,7 +184,7 @@ class SettingsInputHandler(
         if (settingsViewModel.state.value.inSubList) {
             settingsViewModel.save()
             settingsViewModel.exitSubList()
-            onRescanSystemList()
+            launcherActions.rescanSystemList()
         } else {
             settingsViewModel.cancel()
             nav.pop()
@@ -189,7 +195,7 @@ class SettingsInputHandler(
         val item = settingsViewModel.getSelectedItem()
         if (item?.key == "rom_directory" && settings.romDirectory.isNotEmpty()) {
             settingsViewModel.clearRomDirectory()
-            onInvalidateAllLibraryCaches()
+            launcherActions.invalidateAllLibraryCaches()
             nav.dialogState.value = DialogState.RestartRequired
         }
     }
@@ -336,7 +342,7 @@ class SettingsInputHandler(
                 if (app.packageName !in keep) appsRepository.delete(app.id)
             }
             selected.forEach { (name, pkg) -> appsRepository.upsert(appType, name, pkg) }
-            onRescanSystemList()
+            launcherActions.rescanSystemList()
         }
         nav.pop()
     }

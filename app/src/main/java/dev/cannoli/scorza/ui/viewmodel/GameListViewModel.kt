@@ -1,6 +1,9 @@
 package dev.cannoli.scorza.ui.viewmodel
 
+import dagger.hilt.android.qualifiers.ApplicationContext
+import dagger.hilt.android.scopes.ActivityScoped
 import dev.cannoli.scorza.R
+import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.db.AppsRepository
 import dev.cannoli.scorza.db.CollectionsRepository
 import dev.cannoli.scorza.db.LibraryRef
@@ -10,7 +13,6 @@ import dev.cannoli.scorza.db.RomsRepository
 import dev.cannoli.scorza.model.AppType
 import dev.cannoli.scorza.model.Collection
 import dev.cannoli.scorza.model.ListItem
-import dev.cannoli.scorza.config.PlatformConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -21,17 +23,19 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import javax.inject.Inject
 
-class GameListViewModel(
+@ActivityScoped
+class GameListViewModel @Inject constructor(
     private val romsRepository: RomsRepository,
     private val romScanner: RomScanner,
     private val appsRepository: AppsRepository,
     private val collectionsRepository: CollectionsRepository,
     private val recentlyPlayedRepository: RecentlyPlayedRepository,
     private val platformConfig: PlatformConfig,
-    private val resources: android.content.res.Resources,
-    private val isArcadeTag: (String) -> Boolean = { false },
+    @ApplicationContext private val context: android.content.Context,
 ) {
+    private val resources: android.content.res.Resources get() = context.resources
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     @Volatile var showFavoriteStars: Boolean = true
@@ -552,7 +556,7 @@ class GameListViewModel(
     }
 
     private fun scanAndLoadPlatform(tag: String, tags: List<String>, subfolder: String?): List<ListItem> {
-        for (t in tags) romScanner.scanPlatform(t.uppercase(), isArcade = isArcadeTag(t))
+        for (t in tags) romScanner.scanPlatform(t.uppercase(), isArcade = platformConfig.isArcade(t))
         return tags.flatMap { romsRepository.gamesForPlatform(it.uppercase(), subfolder) }
     }
 

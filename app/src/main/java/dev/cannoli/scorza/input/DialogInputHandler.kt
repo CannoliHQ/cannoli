@@ -2,12 +2,15 @@ package dev.cannoli.scorza.input
 
 import android.os.Handler
 import android.os.Looper
+import dagger.hilt.android.qualifiers.ActivityContext
+import dagger.hilt.android.scopes.ActivityScoped
 import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.db.AppsRepository
 import dev.cannoli.scorza.db.CollectionsRepository
 import dev.cannoli.scorza.db.RecentlyPlayedRepository
 import dev.cannoli.scorza.db.RomScanner
 import dev.cannoli.scorza.db.RomsRepository
+import dev.cannoli.scorza.di.IoScope
 import dev.cannoli.scorza.input.autoconfig.AutoconfigMatcher
 import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.LaunchManager
@@ -18,11 +21,6 @@ import dev.cannoli.scorza.model.recentKey
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.settings.SettingsRepository
-import dev.cannoli.ui.components.COLOR_GRID_COLS
-import dev.cannoli.ui.components.HEX_KEYS
-import dev.cannoli.ui.components.HEX_ROW_SIZE
-import dev.cannoli.ui.components.getKeyboardRows
-import dev.cannoli.ui.components.handleKeyboardConfirm
 import dev.cannoli.scorza.ui.screens.ColorEntry
 import dev.cannoli.scorza.ui.screens.CorePickerOption
 import dev.cannoli.scorza.ui.screens.DialogState
@@ -41,17 +39,24 @@ import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
 import dev.cannoli.scorza.util.AtomicRename
 import dev.cannoli.ui.KEY_BACKSPACE
 import dev.cannoli.ui.KEY_ENTER
+import dev.cannoli.ui.components.COLOR_GRID_COLS
+import dev.cannoli.ui.components.HEX_KEYS
+import dev.cannoli.ui.components.HEX_ROW_SIZE
+import dev.cannoli.ui.components.getKeyboardRows
+import dev.cannoli.ui.components.handleKeyboardConfirm
 import dev.cannoli.ui.theme.COLOR_PRESETS
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import javax.inject.Inject
 
-class DialogInputHandler(
+@ActivityScoped
+class DialogInputHandler @Inject constructor(
     private val nav: NavigationController,
-    private val ioScope: CoroutineScope,
-    private val context: android.content.Context,
+    @IoScope private val ioScope: CoroutineScope,
+    @ActivityContext private val context: android.content.Context,
     private val settings: SettingsRepository,
     private val scanner: RomScanner,
     private val collectionManager: CollectionsRepository,
@@ -69,23 +74,16 @@ class DialogInputHandler(
     private val autoconfigMatcher: AutoconfigMatcher,
     private val romsRepository: RomsRepository,
     private val appsRepository: AppsRepository,
-    private val onRescanSystemList: () -> Unit,
-    private val onFinishAffinity: () -> Unit,
-    private val onRestartApp: () -> Unit,
-    private val openColorPickerFn: (settingKey: String) -> Unit,
-    private val onSystemListRename: (DialogState.RenameInput) -> Unit,
-    private val onStartRaLogin: (username: String, password: String) -> Unit,
+    private val launcherActions: LauncherActions,
+    private val activityActions: ActivityActions,
 ) {
-    var selectDown = false
-    var selectHeld = false
-    var capsBeforeSymbols = false
     private val selectHoldHandler = Handler(Looper.getMainLooper())
     private val selectHoldRunnable = Runnable {
-        selectHeld = true
+        nav.selectHeld = true
         val ds = nav.dialogState.value
         if (ds is KeyboardInputState) {
             val ks = ds.asKeyboardState()!!
-            if (!ks.symbols) capsBeforeSymbols = ks.caps
+            if (!ks.symbols) nav.capsBeforeSymbols = ks.caps
             nav.dialogState.value = ds.withCaps(false).withSymbols(!ks.symbols)
         }
     }
@@ -99,7 +97,6 @@ class DialogInputHandler(
         data class Bulk(val gamePaths: List<String>, val options: List<String>) : ContextReturn
     }
     private var pendingContextReturn: ContextReturn? = null
-    var pendingFghItem: ListItem? = null
 
     companion object {
         const val MENU_RENAME = "Rename"
@@ -307,7 +304,7 @@ class DialogInputHandler(
                 onEnter = { onNewFolderConfirm(ds) }
             )
             is DialogState.QuitConfirm -> {
-                onFinishAffinity()
+                activityActions.finishAffinity()
             }
             is DialogState.DeleteProfileConfirm -> {
                 profileManager.deleteProfile(ds.profileName)
@@ -365,7 +362,7 @@ class DialogInputHandler(
                         ioScope.launch {
                             appsRepository.delete(item.app.id)
                             gameListViewModel.reload()
-                            onRescanSystemList()
+                            launcherActions.rescanSystemList()
                         }
                     }
                 }
@@ -382,19 +379,19 @@ class DialogInputHandler(
                     if (id != null) collectionManager.delete(id)
                     if (deletingFromParent) {
                         gameListViewModel.reload()
-                        onRescanSystemList()
+                        launcherActions.rescanSystemList()
                     } else {
                         if (settings.contentMode == dev.cannoli.scorza.settings.ContentMode.COLLECTIONS) {
                             withContext(Dispatchers.Main) {
                                 nav.screenStack.removeAt(nav.screenStack.lastIndex)
-                                onRescanSystemList()
+                                launcherActions.rescanSystemList()
                             }
                         } else {
                             val remaining = collectionManager.topLevel()
                             if (remaining.isEmpty()) {
                                 withContext(Dispatchers.Main) {
                                     nav.screenStack.removeAt(nav.screenStack.lastIndex)
-                                    onRescanSystemList()
+                                    launcherActions.rescanSystemList()
                                 }
                             } else {
                                 gameListViewModel.loadCollectionsList(restoreIndex = true)
@@ -411,7 +408,7 @@ class DialogInputHandler(
                 }
             }
             is DialogState.RestartRequired -> {
-                onRestartApp()
+                activityActions.restartApp()
             }
             else -> {}
         }
@@ -471,7 +468,7 @@ class DialogInputHandler(
             is DialogState.About,
             is DialogState.Kitchen -> {
                 nav.dialogState.value = DialogState.None
-                onRescanSystemList()
+                launcherActions.rescanSystemList()
             }
             is DialogState.RAAccount -> {
                 nav.dialogState.value = DialogState.None
@@ -526,7 +523,7 @@ class DialogInputHandler(
             is DialogState.Kitchen -> {
                 dev.cannoli.scorza.server.KitchenManager.stop()
                 nav.dialogState.value = DialogState.None
-                onRescanSystemList()
+                launcherActions.rescanSystemList()
             }
             is DialogState.RAAccount -> {
                 settings.raUsername = ""
@@ -562,7 +559,7 @@ class DialogInputHandler(
                 nav.dialogState.value = DialogState.None
             }
             is DialogState.HexColorInput -> {
-                openColorPickerFn(ds.settingKey)
+                launcherActions.openColorPicker(ds.settingKey)
             }
             is DialogState.About -> {
                 val info = updateManager.updateAvailable.value
@@ -585,9 +582,9 @@ class DialogInputHandler(
             is DialogState.CollectionRenameInput,
             is DialogState.ProfileNameInput,
             is DialogState.NewFolderInput -> {
-                if (!selectDown) {
-                    selectDown = true
-                    selectHeld = false
+                if (!nav.selectDown) {
+                    nav.selectDown = true
+                    nav.selectHeld = false
                     selectHoldHandler.postDelayed(selectHoldRunnable, 400)
                 }
             }
@@ -601,16 +598,16 @@ class DialogInputHandler(
         if (ds == DialogState.None) return false
         if (ds is KeyboardInputState) {
             cancelSelectHold()
-            if (!selectHeld) {
+            if (!nav.selectHeld) {
                 val ks = ds.asKeyboardState()!!
                 if (ks.symbols) {
-                    nav.dialogState.value = ds.withCaps(capsBeforeSymbols).withSymbols(false)
+                    nav.dialogState.value = ds.withCaps(nav.capsBeforeSymbols).withSymbols(false)
                 } else {
                     nav.dialogState.value = ds.withCaps(!ks.caps)
                 }
             }
-            selectDown = false
-            selectHeld = false
+            nav.selectDown = false
+            nav.selectHeld = false
             return true
         }
         return false
@@ -699,9 +696,9 @@ class DialogInputHandler(
             return
         }
         if (nav.currentScreen == LauncherScreen.SystemList) {
-            val fghItem = pendingFghItem
+            val fghItem = nav.pendingFghItem
             if (fghItem != null) {
-                pendingFghItem = null
+                nav.pendingFghItem = null
                 onFghContextMenuConfirm(fghItem, state)
             } else {
                 when (state.options[state.selectedOption]) {
@@ -741,7 +738,7 @@ class DialogInputHandler(
                 item.recentKey()?.let { clearRecentlyPlayedByPath(it) }
                 ioScope.launch {
                     gameListViewModel.loadRecentlyPlayed()
-                    onRescanSystemList()
+                    launcherActions.rescanSystemList()
                 }
                 return
             }
@@ -799,14 +796,14 @@ class DialogInputHandler(
                     ioScope.launch {
                         appsRepository.delete(app.id)
                         gameListViewModel.reload()
-                        onRescanSystemList()
+                        launcherActions.rescanSystemList()
                     }
                     nav.dialogState.value = DialogState.None
                 }
             }
             selected == MENU_ADD_FAVORITE || selected == MENU_REMOVE_FAVORITE -> {
                 pendingContextReturn = null
-                gameListViewModel.toggleFavorite { onRescanSystemList() }
+                gameListViewModel.toggleFavorite { launcherActions.rescanSystemList() }
                 nav.dialogState.value = DialogState.None
             }
             selected == MENU_EMULATOR_OVERRIDE || selected.startsWith("$MENU_EMULATOR_OVERRIDE\t") -> {
@@ -852,7 +849,7 @@ class DialogInputHandler(
                 state.gamePaths.forEach { path -> clearRecentlyPlayedByPath(path) }
                 ioScope.launch {
                     gameListViewModel.loadRecentlyPlayed()
-                    onRescanSystemList()
+                    launcherActions.rescanSystemList()
                 }
                 return
             }
@@ -863,7 +860,7 @@ class DialogInputHandler(
                         addPathToCollectionByName("Favorites", path)
                     }
                     gameListViewModel.reload()
-                    onRescanSystemList()
+                    launcherActions.rescanSystemList()
                 }
                 nav.dialogState.value = DialogState.None
             }
@@ -874,7 +871,7 @@ class DialogInputHandler(
                         removePathFromCollectionByName("Favorites", path)
                     }
                     gameListViewModel.reload()
-                    onRescanSystemList()
+                    launcherActions.rescanSystemList()
                 }
                 nav.dialogState.value = DialogState.None
             }
@@ -913,7 +910,7 @@ class DialogInputHandler(
                         }
                     }
                     gameListViewModel.reload()
-                    onRescanSystemList()
+                    launcherActions.rescanSystemList()
                 }
                 nav.dialogState.value = DialogState.None
             }
@@ -933,7 +930,7 @@ class DialogInputHandler(
                         if (ref != null) collectionManager.removeMember(collectionId, ref)
                     }
                     gameListViewModel.reload()
-                    onRescanSystemList()
+                    launcherActions.rescanSystemList()
                 }
                 nav.dialogState.value = DialogState.None
             }
@@ -951,7 +948,7 @@ class DialogInputHandler(
             ioScope.launch {
                 toDelete.forEach { deleteRom(it) }
                 gameListViewModel.reload()
-                onRescanSystemList()
+                launcherActions.rescanSystemList()
                 withContext(Dispatchers.Main) { nav.dialogState.value = DialogState.None }
             }
         } else {
@@ -961,7 +958,7 @@ class DialogInputHandler(
             ioScope.launch {
                 deleteRom(rom)
                 gameListViewModel.reload()
-                onRescanSystemList()
+                launcherActions.rescanSystemList()
                 withContext(Dispatchers.Main) { nav.dialogState.value = DialogState.None }
             }
         }
@@ -979,7 +976,7 @@ class DialogInputHandler(
                     toRemove.forEach { collName -> removePathFromCollectionByName(collName, path) }
                 }
                 gameListViewModel.reload()
-                onRescanSystemList()
+                launcherActions.rescanSystemList()
             }
         }
         nav.screenStack.removeAt(nav.screenStack.lastIndex)
@@ -1001,7 +998,7 @@ class DialogInputHandler(
             (targetChildIds - currentChildIds).forEach { collectionManager.setParent(it, parent.id) }
             (currentChildIds - targetChildIds).forEach { collectionManager.setParent(it, null) }
             gameListViewModel.reload()
-            onRescanSystemList()
+            launcherActions.rescanSystemList()
         }
         nav.screenStack.removeAt(nav.screenStack.lastIndex)
         restoreContextMenu()
@@ -1180,7 +1177,7 @@ class DialogInputHandler(
                 resolvePathToRef(path)?.let { collectionManager.addMember(newId, it) }
             }
             gameListViewModel.reload()
-            onRescanSystemList()
+            launcherActions.rescanSystemList()
             withContext(Dispatchers.Main) { refreshCollectionPickerOnStack() }
         }
     }
@@ -1229,8 +1226,9 @@ class DialogInputHandler(
                 nav.osdMessage = "Prefilled with ${match.deviceName}"
             }
         } else {
-            val file = File(settings.sdCardRoot, "Config/Profiles/${state.originalName}.ini")
-            val dest = File(settings.sdCardRoot, "Config/Profiles/$name.ini")
+            val paths = dev.cannoli.scorza.config.CannoliPaths(settings.sdCardRoot)
+            val file = paths.profileFile(state.originalName)
+            val dest = paths.profileFile(name)
             if (dest.exists() && name != state.originalName) {
                 nav.dialogState.value = DialogState.None
                 return
@@ -1282,7 +1280,7 @@ class DialogInputHandler(
             return
         }
         if (state.gameName == "ra_login") {
-            onStartRaLogin(settings.raUsername, settingsViewModel.raPassword)
+            activityActions.startRaLogin(settings.raUsername, settingsViewModel.raPassword)
             nav.dialogState.value = DialogState.None
             return
         }
@@ -1303,7 +1301,7 @@ class DialogInputHandler(
             return
         }
         if (nav.currentScreen == LauncherScreen.SystemList) {
-            onSystemListRename(state)
+            launcherActions.handleSystemListRename(state)
             return
         }
         val item = gameListViewModel.getSelectedItem() ?: return
@@ -1379,7 +1377,7 @@ class DialogInputHandler(
                     val favId = collectionManager.favoritesId() ?: return@launch
                     if (collectionManager.isMember(favId, ref)) collectionManager.removeMember(favId, ref)
                     else collectionManager.addMember(favId, ref)
-                    onRescanSystemList()
+                    launcherActions.rescanSystemList()
                 }
                 nav.dialogState.value = DialogState.None
             }

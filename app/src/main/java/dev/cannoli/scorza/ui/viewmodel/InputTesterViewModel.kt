@@ -1,10 +1,12 @@
 package dev.cannoli.scorza.ui.viewmodel
 
 import androidx.compose.ui.geometry.Offset
+import dagger.hilt.android.scopes.ActivityScoped
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import javax.inject.Inject
 
 data class InputTesterState(
     val pressedButtons: Set<String> = emptySet(),
@@ -42,10 +44,15 @@ data class InputTesterUiState(
     val selectedProfile: String = "",
 )
 
-class InputTesterViewModel(
-    private val now: () -> Long = System::currentTimeMillis,
-    private val eventLogCapacity: Int = DEFAULT_EVENT_LOG_CAPACITY,
-) {
+@ActivityScoped
+class InputTesterViewModel @Inject constructor() {
+    constructor(now: () -> Long, eventLogCapacity: Int = DEFAULT_EVENT_LOG_CAPACITY) : this() {
+        this.now = now
+        this.eventLogCapacity = eventLogCapacity
+    }
+
+    private var now: () -> Long = System::currentTimeMillis
+    private var eventLogCapacity: Int = DEFAULT_EVENT_LOG_CAPACITY
     private val _state = MutableStateFlow(InputTesterUiState())
     val state: StateFlow<InputTesterUiState> = _state.asStateFlow()
 

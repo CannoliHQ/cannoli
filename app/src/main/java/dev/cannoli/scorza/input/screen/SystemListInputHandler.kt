@@ -1,7 +1,10 @@
 package dev.cannoli.scorza.input.screen
 
+import dagger.hilt.android.scopes.ActivityScoped
 import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.db.CollectionsRepository
+import dev.cannoli.scorza.di.IoScope
+import dev.cannoli.scorza.input.LauncherActions
 import dev.cannoli.scorza.input.ScreenInputHandler
 import dev.cannoli.scorza.model.ListItem
 import dev.cannoli.scorza.navigation.LauncherScreen
@@ -15,10 +18,12 @@ import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
 import dev.cannoli.scorza.updater.UpdateManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class SystemListInputHandler(
+@ActivityScoped
+class SystemListInputHandler @Inject constructor(
     private val nav: NavigationController,
-    private val ioScope: CoroutineScope,
+    @IoScope private val ioScope: CoroutineScope,
     private val settings: SettingsRepository,
     private val collectionsRepository: CollectionsRepository,
     private val platformConfig: PlatformConfig,
@@ -26,13 +31,7 @@ class SystemListInputHandler(
     private val systemListViewModel: SystemListViewModel,
     private val gameListViewModel: GameListViewModel,
     private val settingsViewModel: SettingsViewModel,
-    private val onRescanSystemList: () -> Unit,
-    private val onScanResumableGames: () -> Unit,
-    private val onValidateFghStem: () -> String?,
-    private val onLaunchSelected: (item: ListItem, resume: Boolean) -> DialogState?,
-    private val onRecordRecentlyPlayedByPath: (path: String) -> Unit,
-    private val onOpenKitchen: () -> Unit,
-    private val onSetPendingFghItem: (item: ListItem) -> Unit,
+    private val launcherActions: LauncherActions,
 ) : ScreenInputHandler {
 
     private var selectDown = false
@@ -70,7 +69,7 @@ class SystemListInputHandler(
                 showRecentlyPlayed = settings.showRecentlyPlayed,
                 showEmpty = settings.showEmpty,
                 contentMode = settings.contentMode,
-                fghCollectionStem = onValidateFghStem(),
+                fghCollectionStem = launcherActions.validateFghStem(),
                 toolsName = settings.toolsName,
                 portsName = settings.portsName
             )
@@ -96,17 +95,17 @@ class SystemListInputHandler(
     }
 
     override fun onNorth() {
-        val fgh = onValidateFghStem() != null
+        val fgh = launcherActions.validateFghStem() != null
         val item = systemListViewModel.getSelectedItem()
         if (fgh && item is SystemListViewModel.ListItem.GameItem) {
             val recentKey = item.recentKey
             val isResumable = nav.resumableGames.contains(recentKey)
             if (isResumable) {
-                val errorDialog = onLaunchSelected(item.item, !settings.swapPlayResume)
+                val errorDialog = launcherActions.launchSelected(item.item, !settings.swapPlayResume)
                 if (errorDialog != null) {
                     nav.dialogState.value = errorDialog
                 } else {
-                    onRecordRecentlyPlayedByPath(recentKey)
+                    launcherActions.recordRecentlyPlayedByPath(recentKey)
                 }
             }
         } else if (!fgh) {
@@ -130,13 +129,13 @@ class SystemListInputHandler(
         } else {
             val km = dev.cannoli.scorza.server.KitchenManager
             if (km.isRunning || systemListViewModel.state.value.items.isEmpty()) {
-                onOpenKitchen()
+                launcherActions.openKitchen()
             }
         }
     }
 
     fun handleRename(state: DialogState.RenameInput) {
-        onSystemListRename(state)
+        launcherActions.handleSystemListRename(state)
     }
 
     private fun pageJump(direction: Int) {
@@ -180,7 +179,7 @@ class SystemListInputHandler(
             is SystemListViewModel.ListItem.RecentlyPlayedItem -> {
                 nav.navigating = true
                 gameListViewModel.loadRecentlyPlayed {
-                    onScanResumableGames()
+                    launcherActions.scanResumableGames()
                     nav.screenStack.add(LauncherScreen.GameList)
                     nav.navigating = false
                 }
@@ -188,7 +187,7 @@ class SystemListInputHandler(
             is SystemListViewModel.ListItem.FavoritesItem -> {
                 nav.navigating = true
                 gameListViewModel.loadCollection("Favorites") {
-                    onScanResumableGames()
+                    launcherActions.scanResumableGames()
                     nav.screenStack.add(LauncherScreen.GameList)
                     nav.navigating = false
                 }
@@ -203,7 +202,7 @@ class SystemListInputHandler(
             is SystemListViewModel.ListItem.PlatformItem -> {
                 nav.navigating = true
                 gameListViewModel.loadPlatform(item.platform.tag, item.platform.allTags) {
-                    onScanResumableGames()
+                    launcherActions.scanResumableGames()
                     nav.screenStack.add(LauncherScreen.GameList)
                     nav.navigating = false
                 }
@@ -211,7 +210,7 @@ class SystemListInputHandler(
             is SystemListViewModel.ListItem.CollectionItem -> {
                 nav.navigating = true
                 gameListViewModel.loadCollection(item.name) {
-                    onScanResumableGames()
+                    launcherActions.scanResumableGames()
                     nav.screenStack.add(LauncherScreen.GameList)
                     nav.navigating = false
                 }
@@ -220,11 +219,11 @@ class SystemListInputHandler(
                 val recentKey = item.recentKey
                 val isResumable = nav.resumableGames.contains(recentKey)
                 val resume = isResumable && settings.swapPlayResume
-                val errorDialog = onLaunchSelected(item.item, resume)
+                val errorDialog = launcherActions.launchSelected(item.item, resume)
                 if (errorDialog != null) {
                     nav.dialogState.value = errorDialog
                 } else {
-                    onRecordRecentlyPlayedByPath(recentKey)
+                    launcherActions.recordRecentlyPlayedByPath(recentKey)
                 }
             }
             is SystemListViewModel.ListItem.ToolsFolder -> {
@@ -255,7 +254,7 @@ class SystemListInputHandler(
                     is dev.cannoli.scorza.db.LibraryRef.App -> collectionsRepository.isAppFavorited(r.id)
                 }
             } == true
-            onSetPendingFghItem(item.item)
+            nav.pendingFghItem = item.item
             val menuName = item.displayName
             val options = buildList {
                 add(if (isFav) MENU_REMOVE_FAVORITE else MENU_ADD_FAVORITE)
@@ -289,22 +288,22 @@ class SystemListInputHandler(
             is SystemListViewModel.ListItem.PlatformItem -> {
                 ioScope.launch {
                     platformConfig.setDisplayName(item.platform.tag, newName)
-                    onRescanSystemList()
+                    launcherActions.rescanSystemList()
                 }
             }
             is SystemListViewModel.ListItem.ToolsFolder -> {
                 settings.toolsName = newName
-                onRescanSystemList()
+                launcherActions.rescanSystemList()
             }
             is SystemListViewModel.ListItem.PortsFolder -> {
                 settings.portsName = newName
-                onRescanSystemList()
+                launcherActions.rescanSystemList()
             }
             is SystemListViewModel.ListItem.CollectionItem -> {
                 ioScope.launch {
                     val id = collectionsRepository.all().firstOrNull { it.displayName == item.name }?.id
                     if (id != null) collectionsRepository.rename(id, newName)
-                    onRescanSystemList()
+                    launcherActions.rescanSystemList()
                 }
             }
             else -> {}

@@ -9,9 +9,13 @@ import android.os.Environment
 import android.os.StrictMode
 import android.provider.Settings
 import androidx.core.content.FileProvider
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class ApkLauncher(private val context: Context) {
+@Singleton
+class ApkLauncher @Inject constructor(@ApplicationContext private val context: Context) {
 
     var debugLog: (String) -> Unit = {}
 

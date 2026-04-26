@@ -23,6 +23,7 @@
     <uses-feature android:name="android.hardware.gamepad" android:required="false" />
 
     <application
+        android:name=".CannoliApp"
         android:banner="@drawable/tv_banner"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"

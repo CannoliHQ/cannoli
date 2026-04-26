@@ -1,7 +1,5 @@
 package dev.cannoli.ui.theme
 
-import android.content.res.AssetManager
-import android.graphics.Typeface
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
@@ -9,20 +7,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.text.font.Typeface as ComposeTypeface
-
-lateinit var MPlus1Code: FontFamily
-    private set
-
-lateinit var BPReplay: FontFamily
-    private set
-
-fun initFonts(assets: AssetManager) {
-    val mplus = Typeface.createFromAsset(assets, "fonts/MPlus-1c-NerdFont-Bold.ttf")
-    MPlus1Code = FontFamily(ComposeTypeface(mplus))
-    val bp = Typeface.createFromAsset(assets, "fonts/BPreplayBold-unhinted.otf")
-    BPReplay = FontFamily(ComposeTypeface(bp))
-}
 
 data class CannoliTypography(
     val titleLarge: TextStyle,
@@ -32,7 +16,7 @@ data class CannoliTypography(
     val labelSmall: TextStyle
 )
 
-fun buildCannoliTypography(baseSizeSp: Int = 22, fontFamily: FontFamily = MPlus1Code): CannoliTypography {
+fun buildCannoliTypography(baseSizeSp: Int = 22, fontFamily: FontFamily = FontFamily.Default): CannoliTypography {
     val scale = baseSizeSp / 22f
     return CannoliTypography(
         titleLarge = TextStyle(fontFamily = fontFamily, fontWeight = FontWeight.Black, fontSize = (28 * scale).sp, lineHeight = (36 * scale).sp),
@@ -47,7 +31,7 @@ val LocalCannoliTypography = staticCompositionLocalOf {
     buildCannoliTypography()
 }
 
-fun buildTypography(fontFamily: FontFamily = MPlus1Code): Typography {
+fun buildTypography(fontFamily: FontFamily = FontFamily.Default): Typography {
     return Typography(
         headlineLarge = TextStyle(
             fontFamily = fontFamily,

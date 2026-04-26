@@ -96,7 +96,7 @@ class CoreInfoRepository(private val assets: AssetManager, private val cacheDir:
                 }
             } catch (_: Exception) {}
             if (displayName != null) {
-                result.add(CoreInfo(id, displayName!!, databases))
+                result.add(CoreInfo(id, displayName, databases))
             }
         }
         cores = result

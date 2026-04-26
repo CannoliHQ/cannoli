@@ -2,10 +2,12 @@ package dev.cannoli.scorza.input.screen
 
 import android.os.Handler
 import android.os.Looper
+import dagger.hilt.android.scopes.ActivityScoped
+import dev.cannoli.scorza.di.IoScope
+import dev.cannoli.scorza.input.LauncherActions
 import dev.cannoli.scorza.input.ScreenInputHandler
 import dev.cannoli.scorza.model.ListItem
 import dev.cannoli.scorza.model.recentKey
-import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.settings.ContentMode
 import dev.cannoli.scorza.settings.SettingsRepository
@@ -13,21 +15,19 @@ import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
 import kotlinx.coroutines.CoroutineScope
+import javax.inject.Inject
 
-class GameListInputHandler(
+@ActivityScoped
+class GameListInputHandler @Inject constructor(
     private val nav: NavigationController,
-    private val ioScope: CoroutineScope,
+    @IoScope private val ioScope: CoroutineScope,
     private val settings: SettingsRepository,
     private val systemListViewModel: SystemListViewModel,
     private val gameListViewModel: GameListViewModel,
-    private val isSelectHeld: () -> Boolean,
-    private val onRescanSystemList: () -> Unit,
-    private val onScanResumableGames: () -> Unit,
-    private val onLaunchSelected: (item: ListItem, resume: Boolean) -> DialogState?,
-    private val onRecordRecentlyPlayedByPath: (path: String) -> Unit,
-    private val onSetPendingRecentlyPlayedReorder: (Boolean) -> Unit,
-    private val onBuildContextOptions: (item: ListItem, glState: GameListViewModel.State) -> List<String>,
+    private val launcherActions: LauncherActions,
 ) : ScreenInputHandler {
+
+    var buildContextOptions: ((item: ListItem, glState: GameListViewModel.State) -> List<String>)? = null
 
     var selectHandled = false
     private var collectionSelectHeld = false
@@ -85,7 +85,7 @@ class GameListInputHandler(
             !nav.navigating -> {
                 val glState = gameListViewModel.state.value
                 if (!gameListViewModel.exitSubfolder()) {
-                    if (gameListViewModel.exitChildCollection { onScanResumableGames() }) {
+                    if (gameListViewModel.exitChildCollection { launcherActions.scanResumableGames() }) {
                         // navigated back to parent collection
                     } else if (settings.contentMode == ContentMode.PLATFORMS
                         && glState.isCollection && glState.collectionName != null
@@ -93,7 +93,7 @@ class GameListInputHandler(
                         gameListViewModel.loadCollectionsList(restoreIndex = true)
                     } else {
                         nav.screenStack.removeAt(nav.screenStack.lastIndex)
-                        onRescanSystemList()
+                        launcherActions.rescanSystemList()
                     }
                 }
             }
@@ -149,7 +149,7 @@ class GameListInputHandler(
                 }
                 nav.dialogState.value = DialogState.ContextMenu(
                     gameName = menuName,
-                    options = onBuildContextOptions(item, glState)
+                    options = buildContextOptions?.invoke(item, glState) ?: emptyList()
                 )
             }
         }
@@ -197,7 +197,7 @@ class GameListInputHandler(
 
     override fun onSelectUp() {
         cancelSelectHoldTimer()
-        if (!isSelectHeld() && !collectionSelectHeld && !selectHandled) {
+        if (!nav.selectHeld && !collectionSelectHeld && !selectHandled) {
             val glState = gameListViewModel.state.value
             val isApkList = glState.platformTag == "tools" || glState.platformTag == "ports"
             if (((glState.isCollection && !glState.isCollectionsList && glState.subfolderPath == null) || isApkList)
@@ -218,11 +218,11 @@ class GameListInputHandler(
         val isResumable = nav.resumableGames.contains(recentKey)
         if (isResumable) {
             val trackRecent = glState.platformTag != "tools"
-            val errorDialog = onLaunchSelected(item, !settings.swapPlayResume)
+            val errorDialog = launcherActions.launchSelected(item, !settings.swapPlayResume)
             if (errorDialog != null) {
                 nav.dialogState.value = errorDialog
             } else if (trackRecent) {
-                onRecordRecentlyPlayedByPath(recentKey)
+                launcherActions.recordRecentlyPlayedByPath(recentKey)
             }
         }
     }
@@ -252,7 +252,7 @@ class GameListInputHandler(
             is ListItem.CollectionItem -> {
                 nav.navigating = true
                 gameListViewModel.loadCollection(item.collection.displayName) {
-                    onScanResumableGames()
+                    launcherActions.scanResumableGames()
                     nav.navigating = false
                 }
                 return
@@ -260,7 +260,7 @@ class GameListInputHandler(
             is ListItem.ChildCollectionItem -> {
                 nav.navigating = true
                 gameListViewModel.enterChildCollection(item.collection.displayName) {
-                    onScanResumableGames()
+                    launcherActions.scanResumableGames()
                     nav.navigating = false
                 }
                 return
@@ -276,12 +276,12 @@ class GameListInputHandler(
         val isResumable = nav.resumableGames.contains(recentKey)
         val tag = gameListViewModel.state.value.platformTag
         val trackRecent = tag != "tools"
-        val errorDialog = onLaunchSelected(item, isResumable && settings.swapPlayResume)
+        val errorDialog = launcherActions.launchSelected(item, isResumable && settings.swapPlayResume)
         if (errorDialog != null) {
             nav.dialogState.value = errorDialog
         } else if (trackRecent) {
-            onRecordRecentlyPlayedByPath(recentKey)
-            if (tag == "recently_played") onSetPendingRecentlyPlayedReorder(true)
+            launcherActions.recordRecentlyPlayedByPath(recentKey)
+            if (tag == "recently_played") nav.pendingRecentlyPlayedReorder = true
         }
     }
 
@@ -313,13 +313,13 @@ class GameListInputHandler(
         when (val target = items[newIndex]) {
             is SystemListViewModel.ListItem.RecentlyPlayedItem -> {
                 gameListViewModel.loadRecentlyPlayed {
-                    onScanResumableGames()
+                    launcherActions.scanResumableGames()
                     nav.navigating = false
                 }
             }
             is SystemListViewModel.ListItem.FavoritesItem -> {
                 gameListViewModel.loadCollection("Favorites") {
-                    onScanResumableGames()
+                    launcherActions.scanResumableGames()
                     nav.navigating = false
                 }
             }
@@ -330,13 +330,13 @@ class GameListInputHandler(
             }
             is SystemListViewModel.ListItem.PlatformItem -> {
                 gameListViewModel.loadPlatform(target.platform.tag, target.platform.allTags) {
-                    onScanResumableGames()
+                    launcherActions.scanResumableGames()
                     nav.navigating = false
                 }
             }
             is SystemListViewModel.ListItem.CollectionItem -> {
                 gameListViewModel.loadCollection(target.name) {
-                    onScanResumableGames()
+                    launcherActions.scanResumableGames()
                     nav.navigating = false
                 }
             }

@@ -15,7 +15,7 @@ object DebugLog {
         if (!enabled) return
         synchronized(lock) {
             try {
-                val dir = File(cannoliRoot, "Logs")
+                val dir = dev.cannoli.scorza.config.CannoliPaths(cannoliRoot).logsDir
                 dir.mkdirs()
                 val file = File(dir, "filescanner.log")
                 writer = FileWriter(file, false)

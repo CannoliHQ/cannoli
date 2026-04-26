@@ -30,6 +30,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
+import dagger.hilt.android.AndroidEntryPoint
 import dev.cannoli.igm.AchievementInfo
 import dev.cannoli.igm.GuideType
 import dev.cannoli.igm.IGMScreen
@@ -45,23 +46,25 @@ import dev.cannoli.scorza.libretro.shader.ShaderPipeline
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.util.SessionLog
 import dev.cannoli.ui.STAR
-import dev.cannoli.ui.theme.BPReplay
 import dev.cannoli.ui.theme.CannoliColors
 import dev.cannoli.ui.theme.CannoliTheme
 import dev.cannoli.ui.theme.LocalCannoliColors
-import dev.cannoli.ui.theme.MPlus1Code
 import dev.cannoli.ui.theme.hexToColor
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class LibretroActivity : ComponentActivity() {
+
+    @Inject lateinit var settings: SettingsRepository
+    @Inject lateinit var controllerManager: ControllerManager
+    @Inject lateinit var profileManager: ProfileManager
 
     private lateinit var runner: LibretroRunner
     private lateinit var renderer: LibretroRenderer
     private lateinit var input: LibretroInput
-    private lateinit var controllerManager: ControllerManager
-    private lateinit var profileManager: ProfileManager
     private lateinit var autoconfigLoader: dev.cannoli.scorza.input.autoconfig.AutoconfigLoader
     private lateinit var autoconfigMatcher: dev.cannoli.scorza.input.autoconfig.AutoconfigMatcher
     private lateinit var slotManager: SaveSlotManager
@@ -185,7 +188,7 @@ class LibretroActivity : ComponentActivity() {
     private val currentSlot get() = slotManager.slots[selectedSlotIndex]
     private val currentScreen get() = screenStack.lastOrNull()
     private val hasDiscs get() = diskCount > 1
-    private val alwaysSaveOnQuit: Boolean by lazy { dev.cannoli.scorza.settings.SettingsRepository(this).alwaysSaveOnQuit }
+    private val alwaysSaveOnQuit: Boolean get() = settings.alwaysSaveOnQuit
 
     @androidx.compose.runtime.Composable
     private fun MissingBiosScreen(entries: List<dev.cannoli.scorza.config.FirmwareEntry>) {
@@ -273,19 +276,20 @@ class LibretroActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        gameTitle = (intent.getStringExtra("game_title") ?: "").removePrefix("$STAR ")
-        corePath = intent.getStringExtra("core_path") ?: run { finish(); return }
-        romPath = intent.getStringExtra("rom_path") ?: run { finish(); return }
-        originalRomPath = intent.getStringExtra("original_rom_path")
-        sramPath = intent.getStringExtra("sram_path") ?: ""
-        stateBasePath = intent.getStringExtra("state_path") ?: ""
-        systemDir = intent.getStringExtra("system_dir") ?: ""
-        saveDir = intent.getStringExtra("save_dir") ?: ""
-        platformTag = intent.getStringExtra("platform_tag") ?: ""
-        platformName = intent.getStringExtra("platform_name") ?: platformTag
-        cannoliRoot = intent.getStringExtra("cannoli_root") ?: ""
+        val args = dev.cannoli.scorza.launcher.LaunchArgs.from(intent) ?: run { finish(); return }
+        gameTitle = args.gameTitle.removePrefix("$STAR ")
+        corePath = args.corePath
+        romPath = args.romPath
+        originalRomPath = args.originalRomPath
+        sramPath = args.sramPath
+        stateBasePath = args.statePath
+        systemDir = args.systemDir
+        saveDir = args.saveDir
+        platformTag = args.platformTag
+        platformName = args.platformName
+        cannoliRoot = args.cannoliRoot
         val coreName = File(corePath).nameWithoutExtension
-        val debugLogging = intent.getBooleanExtra("debug_logging", false)
+        val debugLogging = args.debugLogging
         sessionLog = SessionLog(
             enabled = debugLogging,
             cannoliRoot = cannoliRoot,
@@ -309,9 +313,8 @@ class LibretroActivity : ComponentActivity() {
         es3Supported = reqGlEs >= 0x30000
         ShaderPipeline.es3Supported = es3Supported
         sessionLog.log("device GLES: 0x${Integer.toHexString(reqGlEs)} (${glEsMajor}.${glEsMinor}) es3Supported=$es3Supported")
-        val bootSettings = SettingsRepository(this)
-        confirmButton = bootSettings.confirmButton
-        buttonLabelSet = bootSettings.buttonLabelSet
+        confirmButton = settings.confirmButton
+        buttonLabelSet = settings.buttonLabelSet
         isRunning = true
         window.setBackgroundDrawableResource(android.R.color.black)
         goFullscreen()
@@ -321,14 +324,12 @@ class LibretroActivity : ComponentActivity() {
         sessionLog.log("platform_tag=$platformTag")
         slotManager = SaveSlotManager(stateBasePath)
         guideManager = GuideManager(cannoliRoot, platformTag, File(romPath).nameWithoutExtension)
-        profileManager = ProfileManager(cannoliRoot)
-        profileManager.ensureDefaults()
+        profileManager.reinitialize(cannoliRoot)
         defaultProfileControls = profileManager.readControls(ProfileManager.NAVIGATION)
         autoconfigLoader = dev.cannoli.scorza.input.autoconfig.AutoconfigLoader(
             dev.cannoli.scorza.input.autoconfig.AssetCfgSource(this)
         )
         autoconfigMatcher = dev.cannoli.scorza.input.autoconfig.AutoconfigMatcher(autoconfigLoader.entries())
-        controllerManager = ControllerManager()
         controllerManager.loadBlacklist(this)
         controllerManager.onDeviceDisconnected = { port -> onControllerDisconnected(port) }
         controllerManager.onDeviceConnected = { port, _ ->
@@ -342,26 +343,27 @@ class LibretroActivity : ComponentActivity() {
         inputManager.registerInputDeviceListener(controllerManager, Handler(Looper.getMainLooper()))
 
         val colors = CannoliColors(
-            highlight = hexToColor(intent.getStringExtra("color_highlight") ?: "#FFFFFF") ?: Color.White,
-            text = hexToColor(intent.getStringExtra("color_text") ?: "#FFFFFF") ?: Color.White,
-            highlightText = hexToColor(intent.getStringExtra("color_highlight_text") ?: "#000000") ?: Color.Black,
-            accent = hexToColor(intent.getStringExtra("color_accent") ?: "#FFFFFF") ?: Color.White,
-            title = hexToColor(intent.getStringExtra("color_title") ?: "#FFFFFF") ?: Color.White
+            highlight = hexToColor(args.colorHighlight) ?: Color.White,
+            text = hexToColor(args.colorText) ?: Color.White,
+            highlightText = hexToColor(args.colorHighlightText) ?: Color.Black,
+            accent = hexToColor(args.colorAccent) ?: Color.White,
+            title = hexToColor(args.colorTitle) ?: Color.White
         )
 
         val fontFamily = run {
-            val fontKey = intent.getStringExtra("font") ?: "default"
+            val fontKey = args.font
+            val appFonts = (application as dev.cannoli.scorza.CannoliApp).appFonts
             when (fontKey) {
-                "default" -> MPlus1Code
-                "the_og" -> BPReplay
+                "default" -> appFonts.mplus1Code
+                "the_og" -> appFonts.bpReplay
                 else -> {
-                    val fontFile = File(cannoliRoot, "Config/Fonts/$fontKey")
+                    val fontFile = File(dev.cannoli.scorza.config.CannoliPaths(cannoliRoot).configFonts, fontKey)
                     if (fontFile.exists()) {
                         try {
                             val typeface = android.graphics.Typeface.createFromFile(fontFile)
                             androidx.compose.ui.text.font.FontFamily(androidx.compose.ui.text.font.Typeface(typeface))
-                        } catch (_: Exception) { MPlus1Code }
-                    } else MPlus1Code
+                        } catch (_: Exception) { appFonts.mplus1Code }
+                    } else appFonts.mplus1Code
                 }
             }
         }
@@ -402,6 +404,7 @@ class LibretroActivity : ComponentActivity() {
                                 audioSampleRate = audioSampleRate,
                                 osdMessage = osdMessage,
                                 fastForwarding = fastForwarding,
+                                settings = settings,
                                 guideFiles = guideFiles,
                                 guidePageCount = guidePageCount,
                                 guideScrollDir = guideScrollDir,
@@ -452,7 +455,7 @@ class LibretroActivity : ComponentActivity() {
             }
         })
 
-        val resumeSlot = intent.getIntExtra("resume_slot", -1)
+        val resumeSlot = args.resumeSlot
         val activity = this
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             sessionLog.log("loadCore: $corePath")
@@ -541,7 +544,6 @@ class LibretroActivity : ComponentActivity() {
                 val shaderCacheDir = File(cacheDir, "shader_cache")
                 ShaderPipeline.cacheDir = shaderCacheDir
 
-                val globalSettings = SettingsRepository(activity)
                 fun configureBackend(backend: LibretroRenderer) {
                     backend.coreAspectRatio = runner.getAspectRatio()
                     backend.scalingMode = scalingMode
@@ -550,7 +552,7 @@ class LibretroActivity : ComponentActivity() {
                     backend.debugHud = debugHud
                     backend.overlayPath = resolveOverlayPath()
                     backend.shaderPresetPath = resolveShaderPresetPath()
-                    backend.portraitMarginPx = globalSettings.portraitMarginPx
+                    backend.portraitMarginPx = settings.portraitMarginPx
                 }
 
                 val glesBackend = LibretroRenderer(runner)
@@ -605,13 +607,13 @@ class LibretroActivity : ComponentActivity() {
                 loading = false
                 sessionLog.log("render loop starting")
 
-                val raUser = intent.getStringExtra("ra_username") ?: ""
-                val raToken = intent.getStringExtra("ra_token") ?: ""
-                val raPassword = intent.getStringExtra("ra_password") ?: ""
+                val raUser = args.raUsername
+                val raToken = args.raToken
+                val raPassword = args.raPassword
                 val consoleId = RetroAchievementsManager.CONSOLE_MAP[platformTag.uppercase()]
                 sessionLog.log("RA init: user=${raUser.isNotEmpty()} token=${raToken.isNotEmpty()} password=${raPassword.isNotEmpty()} consoleId=$consoleId platformTag=$platformTag")
                 if (consoleId != null && raUser.isNotEmpty() && (raToken.isNotEmpty() || raPassword.isNotEmpty())) {
-                    val raGameIdOverride = intent.getIntExtra("ra_game_id", 0)
+                    val raGameIdOverride = args.raGameId ?: 0
                     var tokenRetryAttempted = false
                     lateinit var ra: RetroAchievementsManager
                     ra = RetroAchievementsManager(
@@ -625,9 +627,8 @@ class LibretroActivity : ComponentActivity() {
                             sessionLog.log("RA onLogin: success=$success name=$nameOrError tokenReceived=${newToken != null}")
                             if (success && newToken != null) {
                                 if (tokenRetryAttempted) {
-                                    val repo = SettingsRepository(activity)
-                                    repo.raToken = newToken
-                                    repo.flush()
+                                    settings.raToken = newToken
+                                    settings.flush()
                                     sessionLog.log("RA token refreshed via password retry")
                                 }
                             } else if (!tokenRetryAttempted && raPassword.isNotEmpty()) {
@@ -637,10 +638,9 @@ class LibretroActivity : ComponentActivity() {
                             } else {
                                 sessionLog.logError("RA login failed: $nameOrError")
                                 if (ra.isOnline) {
-                                    val repo = SettingsRepository(activity)
-                                    repo.raToken = ""
-                                    repo.raPassword = ""
-                                    repo.flush()
+                                    settings.raToken = ""
+                                    settings.raPassword = ""
+                                    settings.flush()
                                     sessionLog.log("RA credentials cleared -- user must re-authenticate")
                                 }
                                 showOsd(getString(R.string.ra_login_failed))
@@ -1359,10 +1359,10 @@ class LibretroActivity : ComponentActivity() {
     private fun overlayLabel() = if (overlay.isEmpty()) "None" else File(overlay).nameWithoutExtension
 
     private fun resolveOverlayPath(): String? =
-        if (overlay.isEmpty()) null else File(cannoliRoot, "Overlays/$platformTag/$overlay").absolutePath
+        if (overlay.isEmpty()) null else File(dev.cannoli.scorza.config.CannoliPaths(cannoliRoot).overlaysFor(platformTag), overlay).absolutePath
 
     private fun scanOverlayImages() {
-        val dir = File(cannoliRoot, "Overlays/$platformTag")
+        val dir = dev.cannoli.scorza.config.CannoliPaths(cannoliRoot).overlaysFor(platformTag)
         val exts = setOf("png", "jpg", "jpeg")
         overlayImages = dir.listFiles()
             ?.filter { it.isFile && it.extension.lowercase(java.util.Locale.ROOT) in exts }
@@ -1372,7 +1372,7 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun copyBundledShaders() {
-        val destDir = File(cannoliRoot, "Shaders")
+        val destDir = dev.cannoli.scorza.config.CannoliPaths(cannoliRoot).shadersDir
         val versionFile = File(destDir, ".bundled_version")
         val currentVersion = try {
             packageManager.getPackageInfo(packageName, 0).longVersionCode.toString()
@@ -1412,7 +1412,7 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun scanShaderPresets() {
-        val dir = File(cannoliRoot, "Shaders")
+        val dir = dev.cannoli.scorza.config.CannoliPaths(cannoliRoot).shadersDir
         val exts = setOf("glslp")
         shaderPresets = dir.walk()
             .filter { it.isFile && it.extension.lowercase(java.util.Locale.ROOT) in exts }
@@ -1424,7 +1424,7 @@ class LibretroActivity : ComponentActivity() {
 
     private fun resolveShaderPresetPath(): String? =
         if (shaderPreset.isEmpty()) null
-        else File(cannoliRoot, "Shaders/$shaderPreset").absolutePath
+        else File(dev.cannoli.scorza.config.CannoliPaths(cannoliRoot).shadersDir, shaderPreset).absolutePath
 
     private fun refreshShaderParams() {
         val path = resolveShaderPresetPath()
@@ -2076,8 +2076,9 @@ class LibretroActivity : ComponentActivity() {
             if (!profileManager.createProfile(name, controls)) { pop(); return }
             if (match != null) showOsd("Prefilled with ${match.deviceName}")
         } else {
-            val file = java.io.File(cannoliRoot, "Config/Profiles/${screen.originalName}.ini")
-            val dest = java.io.File(cannoliRoot, "Config/Profiles/$name.ini")
+            val paths = dev.cannoli.scorza.config.CannoliPaths(cannoliRoot)
+            val file = paths.profileFile(screen.originalName)
+            val dest = paths.profileFile(name)
             if (dest.exists() && name != screen.originalName) { pop(); return }
             file.renameTo(dest)
             if (currentProfileName == screen.originalName) currentProfileName = name
@@ -2453,7 +2454,7 @@ class LibretroActivity : ComponentActivity() {
 
     private fun quit() {
         isRunning = false
-        if (cannoliRoot.isNotEmpty()) File(cannoliRoot, "Config/State/quick_resume.txt").delete()
+        if (cannoliRoot.isNotEmpty()) dev.cannoli.scorza.config.CannoliPaths(cannoliRoot).quickResumeFile.delete()
         cleanup()
         finish()
     }
@@ -2479,7 +2480,7 @@ class LibretroActivity : ComponentActivity() {
             // }
             autoSavedOnStop = true
             if (cannoliRoot.isNotEmpty() && romPath.isNotEmpty()) {
-                val f = File(cannoliRoot, "Config/State/quick_resume.txt")
+                val f = dev.cannoli.scorza.config.CannoliPaths(cannoliRoot).quickResumeFile
                 f.parentFile?.mkdirs()
                 f.writeText("$romPath\n$platformTag")
             }
@@ -2490,7 +2491,7 @@ class LibretroActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume(); overridePendingTransition(0, 0); glSurfaceView?.onResume(); startVsyncPacer(); goFullscreen()
         if (::sessionLog.isInitialized) sessionLog.log("onResume")
-        if (autoSavedOnStop && cannoliRoot.isNotEmpty()) File(cannoliRoot, "Config/State/quick_resume.txt").delete()
+        if (autoSavedOnStop && cannoliRoot.isNotEmpty()) dev.cannoli.scorza.config.CannoliPaths(cannoliRoot).quickResumeFile.delete()
         autoSavedOnStop = false
     }
 

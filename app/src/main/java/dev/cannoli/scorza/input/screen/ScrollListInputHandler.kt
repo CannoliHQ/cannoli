@@ -1,17 +1,32 @@
 package dev.cannoli.scorza.input.screen
 
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
 import dev.cannoli.scorza.input.ScreenInputHandler
 import dev.cannoli.scorza.navigation.NavigationController
 
-class ScrollListInputHandler(
+class ScrollListInputHandler @AssistedInject constructor(
     private val nav: NavigationController,
-    private val itemCount: () -> Int,
-    private val selectedIndex: () -> Int,
-    private val onMove: (newIndex: Int) -> Unit,
-    private val onConfirm: () -> Unit,
-    private val onBack: () -> Unit,
-    private val onStart: (() -> Unit)? = null,
+    @Assisted("itemCount") val itemCount: () -> Int,
+    @Assisted("selectedIndex") val selectedIndex: () -> Int,
+    @Assisted("onMove") val onMove: (newIndex: Int) -> Unit,
+    @Assisted("onConfirm") val onConfirm: () -> Unit,
+    @Assisted("onBack") val onBack: () -> Unit,
+    @Assisted("onStart") val onStart: (() -> Unit)?,
 ) : ScreenInputHandler {
+
+    @AssistedFactory
+    interface Factory {
+        fun create(
+            @Assisted("itemCount") itemCount: () -> Int,
+            @Assisted("selectedIndex") selectedIndex: () -> Int,
+            @Assisted("onMove") onMove: (newIndex: Int) -> Unit,
+            @Assisted("onConfirm") onConfirm: () -> Unit,
+            @Assisted("onBack") onBack: () -> Unit,
+            @Assisted("onStart") onStart: (() -> Unit)?,
+        ): ScrollListInputHandler
+    }
 
     private fun wrap(delta: Int): Int {
         val count = itemCount()

@@ -17,7 +17,7 @@ object ScanLog {
     fun init(cannoliRoot: String) {
         synchronized(lock) {
             try {
-                val dir = File(cannoliRoot, "Logs")
+                val dir = dev.cannoli.scorza.config.CannoliPaths(cannoliRoot).logsDir
                 dir.mkdirs()
                 file = File(dir, "scan.log")
             } catch (_: Exception) {

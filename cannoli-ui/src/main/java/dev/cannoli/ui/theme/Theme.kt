@@ -18,7 +18,7 @@ private val CannoliColorScheme = darkColorScheme(
 )
 
 @Composable
-fun CannoliTheme(fontFamily: FontFamily = MPlus1Code, content: @Composable () -> Unit) {
+fun CannoliTheme(fontFamily: FontFamily = FontFamily.Default, content: @Composable () -> Unit) {
     CompositionLocalProvider(LocalCannoliFont provides fontFamily) {
         MaterialTheme(
             colorScheme = CannoliColorScheme,
