@@ -31,7 +31,6 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
-import dev.cannoli.igm.ShortcutAction
 import dev.cannoli.scorza.input.InputHandler
 import dev.cannoli.scorza.launcher.ApkLauncher
 import dev.cannoli.scorza.launcher.EmuLauncher
@@ -41,40 +40,23 @@ import dev.cannoli.scorza.launcher.RetroArchLauncher
 import dev.cannoli.scorza.libretro.LibretroActivity
 import dev.cannoli.scorza.libretro.LibretroInput
 import dev.cannoli.scorza.libretro.RetroAchievementsManager
-import dev.cannoli.scorza.model.recentKey
 import dev.cannoli.scorza.navigation.AppNavGraph
 import dev.cannoli.scorza.navigation.BrowsePurpose
 import dev.cannoli.scorza.navigation.LauncherScreen
+import dev.cannoli.scorza.navigation.NavigationController
+import dev.cannoli.scorza.input.InputRouter
 import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.model.CollectionType
 import dev.cannoli.scorza.settings.ContentMode
 import dev.cannoli.scorza.settings.GlobalOverridesManager
 import dev.cannoli.scorza.settings.SettingsRepository
-import dev.cannoli.scorza.ui.components.CREDITS
-import dev.cannoli.scorza.ui.screens.ColorEntry
-import dev.cannoli.scorza.ui.screens.CorePickerOption
 import dev.cannoli.scorza.ui.screens.DialogState
-import dev.cannoli.scorza.ui.screens.KeyboardInputState
 import dev.cannoli.scorza.ui.screens.PermissionScreen
-import dev.cannoli.scorza.ui.screens.asKeyboardState
-import dev.cannoli.scorza.ui.screens.withBackspace
-import dev.cannoli.scorza.ui.screens.withCaps
-import dev.cannoli.scorza.ui.screens.withCursor
-import dev.cannoli.scorza.ui.screens.withInsertedChar
-import dev.cannoli.scorza.ui.screens.withKeyboard
-import dev.cannoli.scorza.ui.screens.withMenuDelta
-import dev.cannoli.scorza.ui.screens.withSymbols
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
 import dev.cannoli.scorza.util.AtomicRename
-import dev.cannoli.ui.KEY_BACKSPACE
-import dev.cannoli.ui.KEY_ENTER
 import dev.cannoli.ui.components.COLOR_GRID_COLS
-import dev.cannoli.ui.components.HEX_KEYS
-import dev.cannoli.ui.components.HEX_ROW_SIZE
-import dev.cannoli.ui.components.getKeyboardRows
-import dev.cannoli.ui.components.handleKeyboardConfirm
 import dev.cannoli.ui.theme.COLOR_PRESETS
 import dev.cannoli.ui.theme.CannoliTheme
 import dev.cannoli.ui.theme.colorToArgbLong
@@ -114,37 +96,15 @@ class MainActivity : ComponentActivity() {
     private val isTv: Boolean by lazy { packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) }
 
     private val screenStack = mutableStateListOf<LauncherScreen>(LauncherScreen.SystemList)
-    private val currentScreen: LauncherScreen get() = screenStack.lastOrNull() ?: LauncherScreen.SystemList
-    private var resumableGames by mutableStateOf(emptySet<String>())
-    private val dialogState = MutableStateFlow<DialogState>(DialogState.None)
+
+    private val preInitScreenStack = mutableStateListOf<LauncherScreen>(LauncherScreen.SystemList)
+    private val preInitDialogState = MutableStateFlow<DialogState>(DialogState.None)
+    private lateinit var nav: NavigationController
+    private lateinit var router: InputRouter
+
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val controlButtons = LibretroInput().buttons
     private val controlButtonCount = controlButtons.size
-    private val selectHoldHandler = Handler(Looper.getMainLooper())
-    private var selectDown = false
-    private var selectHeld = false
-    private var selectHandled = false
-    private var capsBeforeSymbols = false
-    private val selectHoldRunnable = Runnable {
-        selectHeld = true
-        val ds = dialogState.value
-        if (ds is KeyboardInputState) {
-            val ks = ds.asKeyboardState()!!
-            if (!ks.symbols) capsBeforeSymbols = ks.caps
-            dialogState.value = ds.withCaps(false).withSymbols(!ks.symbols)
-        }
-    }
-    private val collectionSelectHoldRunnable = Runnable {
-        selectHeld = true
-        val glState = gameListViewModel.state.value
-        val isApkList = glState.platformTag == "tools" || glState.platformTag == "ports"
-        if ((glState.isCollection && !glState.isCollectionsList && glState.subfolderPath == null) || isApkList) {
-            if (!gameListViewModel.isReorderMode() && !gameListViewModel.isMultiSelectMode()) {
-                gameListViewModel.enterMultiSelect()
-            }
-        }
-    }
-    @Volatile private var navigating = false
     private var pendingRecentlyPlayedReorder = false
     private var coreQueryReceiver: android.content.BroadcastReceiver? = null
     private var loginManager: RetroAchievementsManager? = null
@@ -160,13 +120,14 @@ class MainActivity : ComponentActivity() {
     private var permissionGranted by mutableStateOf(false)
     private var coldStart = true
 
-    private var osdMessage by mutableStateOf<String?>(null)
     private val osdHandler = Handler(Looper.getMainLooper())
-    private val clearOsdRunnable = Runnable { osdMessage = null }
+    private val clearOsdRunnable = Runnable {
+        if (::nav.isInitialized) nav.osdMessage = null
+    }
 
     private fun showOsd(message: String, durationMs: Long = 3000) {
         osdHandler.removeCallbacks(clearOsdRunnable)
-        osdMessage = message
+        if (::nav.isInitialized) nav.osdMessage = message
         osdHandler.postDelayed(clearOsdRunnable, durationMs)
     }
 
@@ -174,7 +135,7 @@ class MainActivity : ComponentActivity() {
 
     private val bindingController by lazy {
         dev.cannoli.scorza.input.BindingController(
-            screenStack = screenStack,
+            navProvider = { if (::nav.isInitialized) nav else NavigationController() },
             controlButtons = controlButtons,
             swapConfirmBackProvider = { inputHandler.swapConfirmBack },
             showOsd = { text, durationMs -> showOsd(text, durationMs = durationMs) },
@@ -196,50 +157,9 @@ class MainActivity : ComponentActivity() {
         else -> null
     }
 
-    private fun selectedRecentKey(item: dev.cannoli.scorza.model.ListItem): String? = when (item) {
-        is dev.cannoli.scorza.model.ListItem.RomItem -> item.rom.path.absolutePath
-        is dev.cannoli.scorza.model.ListItem.AppItem -> "/apps/${item.app.type.name}/${item.app.packageName}"
-        else -> null
-    }
-
-    private fun collectionsContainingPaths(
-        paths: List<String>,
-        candidates: List<dev.cannoli.scorza.db.CollectionsRepository.CollectionRow>
-    ): Set<String> {
-        if (paths.isEmpty()) return emptySet()
-        val sets = paths.map { path ->
-            val ref = resolvePathToRef(path) ?: return@map emptySet<String>()
-            val ids = collectionsRepository.collectionsContaining(ref)
-            candidates.asSequence().filter { it.id in ids }.map { it.displayName }.toSet()
-        }
-        return if (paths.size == 1) sets.first()
-        else sets.reduceOrNull { acc, set -> acc intersect set } ?: emptySet()
-    }
-
-    private fun addPathToCollectionByName(collectionName: String, path: String) {
-        val id = if (collectionName.equals("Favorites", ignoreCase = true)) collectionsRepository.favoritesId()
-        else collectionsRepository.all().firstOrNull { it.displayName == collectionName }?.id
-        val ref = resolvePathToRef(path)
-        if (id != null && ref != null) collectionsRepository.addMember(id, ref)
-    }
-
-    private fun removePathFromCollectionByName(collectionName: String, path: String) {
-        val id = if (collectionName.equals("Favorites", ignoreCase = true)) collectionsRepository.favoritesId()
-        else collectionsRepository.all().firstOrNull { it.displayName == collectionName }?.id
-        val ref = resolvePathToRef(path)
-        if (id != null && ref != null) collectionsRepository.removeMember(id, ref)
-    }
-
     private fun invalidateAllLibraryCaches() {
         artworkLookup.invalidateAll()
         arcadeTitleLookup.invalidateAll()
-    }
-
-    private fun deleteRom(rom: dev.cannoli.scorza.model.Rom) {
-        try { rom.path.delete() } catch (_: Throwable) {}
-        rom.discFiles?.forEach { try { it.delete() } catch (_: Throwable) {} }
-        romsRepository.deleteRom(rom.id)
-        romScanner.invalidatePlatform(rom.platformTag)
     }
 
     private fun resolvePathToRef(path: String): dev.cannoli.scorza.db.LibraryRef? {
@@ -259,114 +179,6 @@ class MainActivity : ComponentActivity() {
             resolvePathToRef(path)?.let { recentlyPlayedRepository.record(it) }
         }
     }
-
-    private fun clearRecentlyPlayedByPath(path: String) {
-        ioScope.launch {
-            resolvePathToRef(path)?.let { recentlyPlayedRepository.clear(it) }
-        }
-    }
-
-    private fun pushScreen(new: LauncherScreen) {
-        val current = currentScreen
-        screenStack[screenStack.lastIndex] = saveScrollPosition(current)
-        screenStack.add(new)
-    }
-
-    private fun saveScrollPosition(screen: LauncherScreen): LauncherScreen =
-        if (screen is LauncherScreen.ScrollableScreen) screen.withScroll(screen.selectedIndex, currentFirstVisible) else screen
-
-    private fun pageJump(direction: Int) {
-        val page = currentPageSize.coerceAtLeast(1)
-
-        val screen = currentScreen
-        val (itemCount, selectedIndex) = when (screen) {
-            LauncherScreen.SystemList -> systemListViewModel.state.value.let { it.items.size to it.selectedIndex }
-            LauncherScreen.GameList -> gameListViewModel.state.value.let { it.items.size to it.selectedIndex }
-            LauncherScreen.Settings -> settingsViewModel.state.value.let { it.categories.size to it.categoryIndex }
-            is LauncherScreen.ScrollableScreen -> screen.itemCount to screen.selectedIndex
-            else -> return
-        }
-
-        if (itemCount == 0) return
-        val lastIndex = itemCount - 1
-
-        val newIdx: Int
-        val newScroll: Int
-
-        if (direction > 0) {
-            val lastVisible = currentFirstVisible + page - 1
-            if (lastVisible >= lastIndex) {
-                if (selectedIndex >= lastIndex) return
-                newIdx = lastIndex
-                newScroll = currentFirstVisible
-            } else {
-                newIdx = (currentFirstVisible + page).coerceAtMost(lastIndex)
-                newScroll = newIdx
-            }
-        } else {
-            if (currentFirstVisible <= 0) {
-                if (selectedIndex <= 0) return
-                newIdx = 0
-                newScroll = 0
-            } else {
-                newIdx = (currentFirstVisible - page).coerceAtLeast(0)
-                newScroll = newIdx
-            }
-        }
-
-        applyPageJump(screen, newIdx, newScroll)
-    }
-
-    private fun applyPageJump(screen: LauncherScreen, newIdx: Int, newScroll: Int) {
-        when (screen) {
-            LauncherScreen.SystemList -> systemListViewModel.jumpToIndex(newIdx, newScroll)
-            LauncherScreen.GameList -> gameListViewModel.jumpToIndex(newIdx, newScroll)
-            LauncherScreen.Settings -> settingsViewModel.setCategoryIndex(newIdx)
-            is LauncherScreen.ScrollableScreen -> screenStack[screenStack.lastIndex] = screen.withScroll(newIdx, newScroll)
-            else -> {}
-        }
-    }
-
-    private fun updateColorListOnStack(settingKey: String, entries: List<ColorEntry>) {
-        val cl = currentScreen
-        if (cl is LauncherScreen.ColorList) {
-            screenStack[screenStack.lastIndex] = cl.copy(
-                colors = entries,
-                selectedIndex = entries.indexOfFirst { it.key == settingKey }.coerceAtLeast(0)
-            )
-        }
-    }
-
-    private fun refreshCollectionPickerOnStack() {
-        val cp = currentScreen
-        if (cp is LauncherScreen.CollectionPicker) {
-            val all = collectionsRepository.all().filter { it.type == CollectionType.STANDARD }
-            val stems = all.map { it.displayName }
-            val displayNames = all.map { it.displayName }
-            val alreadyIn = collectionsContainingPaths(cp.gamePaths, all)
-            val newInitialChecked = stems.indices
-                .filter { stems[it] in alreadyIn }
-                .toSet()
-            val oldCheckedStems = cp.checkedIndices.mapNotNull { cp.collections.getOrNull(it) }.toSet()
-            val newCheckedIndices = stems.indices
-                .filter { stems[it] in oldCheckedStems || stems[it] in alreadyIn }
-                .toSet()
-            screenStack[screenStack.lastIndex] = cp.copy(
-                collections = stems,
-                displayNames = displayNames,
-                checkedIndices = newCheckedIndices,
-                initialChecked = newInitialChecked
-            )
-        }
-    }
-
-    // Tracks context menu to return to after sub-dialog actions
-    private sealed interface ContextReturn {
-        data class Single(val gameName: String, val options: List<String>, val selectedOption: Int = 0) : ContextReturn
-        data class Bulk(val gamePaths: List<String>, val options: List<String>) : ContextReturn
-    }
-    private var pendingContextReturn: ContextReturn? = null
-    private var pendingFghItem: dev.cannoli.scorza.model.ListItem? = null
 
     private val storagePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -410,12 +222,13 @@ class MainActivity : ComponentActivity() {
         autoconfigMatcher = dev.cannoli.scorza.input.autoconfig.AutoconfigMatcher(autoconfigLoader.entries())
         inputHandler = InputHandler(
             getButtonMappings = {
-                val screen = screenStack.lastOrNull() as? LauncherScreen.ControlBinding
+                val activeStack = if (::nav.isInitialized) nav.screenStack else screenStack
+                val screen = activeStack.lastOrNull() as? LauncherScreen.ControlBinding
                 if (screen != null && screen.profileName == dev.cannoli.scorza.input.ProfileManager.NAVIGATION) screen.controls
                 else profileManager.readControls(dev.cannoli.scorza.input.ProfileManager.NAVIGATION)
             }
         )
-        wireInput()
+        setupWireInput()
 
         lifecycleScope.launch {
             settingsViewModel.appSettings.collect { appSettings ->
@@ -442,29 +255,46 @@ class MainActivity : ComponentActivity() {
                         val updateInfo = if (::updateManager.isInitialized) updateManager.updateAvailable.collectAsState().value else null
                         val dlProgress = if (::updateManager.isInitialized) updateManager.downloadProgress.collectAsState().value else 0f
                         val dlError = if (::updateManager.isInitialized) updateManager.downloadError.collectAsState().value else null
+                        val navScreen = if (::nav.isInitialized) nav.currentScreen else preInitScreenStack.lastOrNull() ?: LauncherScreen.SystemList
+                        val navDialogState = if (::nav.isInitialized) nav.dialogState else preInitDialogState
+                        val navResumableGames = if (::nav.isInitialized) nav.resumableGames else emptySet()
+                        val navOsdMessage = if (::nav.isInitialized) nav.osdMessage else null
                         AppNavGraph(
-                            currentScreen = currentScreen,
+                            currentScreen = navScreen,
                             systemListViewModel = if (::systemListViewModel.isInitialized) systemListViewModel else null,
                             gameListViewModel = if (::gameListViewModel.isInitialized) gameListViewModel else null,
                             inputTesterViewModel = inputTesterViewModel,
-                            onExitInputTester = { if (screenStack.size > 1) screenStack.removeAt(screenStack.lastIndex) },
-                            settingsViewModel = settingsViewModel,
-                            dialogState = dialogState,
-                            onVisibleRangeChanged = { first, count, full ->
-                                currentFirstVisible = first
-                                if (full) currentPageSize = count
+                            onExitInputTester = {
+                                if (::nav.isInitialized) {
+                                    if (nav.screenStack.size > 1) nav.screenStack.removeAt(nav.screenStack.lastIndex)
+                                } else {
+                                    if (screenStack.size > 1) screenStack.removeAt(screenStack.lastIndex)
+                                }
                             },
-                            resumableGames = resumableGames,
+                            settingsViewModel = settingsViewModel,
+                            dialogState = navDialogState,
+                            onVisibleRangeChanged = { first, count, full ->
+                                if (::nav.isInitialized) {
+                                    nav.currentFirstVisible = first
+                                    if (full) nav.currentPageSize = count
+                                } else {
+                                    currentFirstVisible = first
+                                    if (full) currentPageSize = count
+                                }
+                            },
+                            resumableGames = navResumableGames,
                             updateAvailable = updateInfo != null,
                             downloadProgress = dlProgress ?: 0f,
                             downloadError = dlError,
-                            osdMessage = osdMessage,
+                            osdMessage = navOsdMessage,
                         )
                     }
                 }
             }
         }
     }
+
+    private fun activeScreenStack() = if (::nav.isInitialized) nav.screenStack else preInitScreenStack
 
     private fun afterPermissionGranted() {
         if (settings.setupCompleted) {
@@ -480,15 +310,16 @@ class MainActivity : ComponentActivity() {
                 initializeApp()
             } else {
                 val volumes = setupCoordinator.detectStorageVolumes() + ("Custom" to "")
-                screenStack.clear()
-                screenStack.add(LauncherScreen.Setup(volumes = volumes))
+                val stack = activeScreenStack()
+                stack.clear()
+                stack.add(LauncherScreen.Setup(volumes = volumes))
             }
         }
     }
 
     private fun pushDirectoryBrowser(purpose: BrowsePurpose, startPath: String) {
         val entries = setupCoordinator.listDirectories(startPath)
-        screenStack.add(LauncherScreen.DirectoryBrowser(
+        activeScreenStack().add(LauncherScreen.DirectoryBrowser(
             purpose = purpose,
             currentPath = startPath,
             entries = entries
@@ -497,22 +328,25 @@ class MainActivity : ComponentActivity() {
 
     private fun onDirectoryBrowserResult(purpose: BrowsePurpose, path: String) {
         val resolved = if (setupCoordinator.isVolumeRoot(path)) path + "Cannoli/" else path
+        val stack = activeScreenStack()
         when (purpose) {
             BrowsePurpose.SD_ROOT -> {
                 settings.sdCardRoot = resolved
-                dialogState.value = DialogState.RestartRequired
+                val activeDialogState = if (::nav.isInitialized) nav.dialogState else preInitDialogState
+                activeDialogState.value = DialogState.RestartRequired
             }
             BrowsePurpose.ROM_DIRECTORY -> {
                 settings.romDirectory = resolved
                 invalidateAllLibraryCaches()
-                dialogState.value = DialogState.RestartRequired
+                val activeDialogState = if (::nav.isInitialized) nav.dialogState else preInitDialogState
+                activeDialogState.value = DialogState.RestartRequired
             }
             BrowsePurpose.SETUP -> {
-                val idx = screenStack.indexOfLast { it is LauncherScreen.Setup }
+                val idx = stack.indexOfLast { it is LauncherScreen.Setup }
                 if (idx >= 0) {
-                    val setup = screenStack[idx] as LauncherScreen.Setup
-                    val path = if (resolved.endsWith("/")) resolved else "$resolved/"
-                    screenStack[idx] = setup.copy(customPath = path)
+                    val setup = stack[idx] as LauncherScreen.Setup
+                    val resolvedPath = if (resolved.endsWith("/")) resolved else "$resolved/"
+                    stack[idx] = setup.copy(customPath = resolvedPath)
                 }
             }
         }
@@ -522,8 +356,9 @@ class MainActivity : ComponentActivity() {
         setupCoordinator.startInstalling(
             targetPath = targetPath,
             onProgress = { progress, label ->
-                val screen = screenStack.lastOrNull() as? LauncherScreen.Installing ?: return@startInstalling
-                screenStack[screenStack.lastIndex] = screen.copy(progress = progress, statusLabel = label)
+                val stack = activeScreenStack()
+                val screen = stack.lastOrNull() as? LauncherScreen.Installing ?: return@startInstalling
+                stack[stack.lastIndex] = screen.copy(progress = progress, statusLabel = label)
             },
             onFinished = { services ->
                 platformConfig = services.platformConfig
@@ -532,8 +367,9 @@ class MainActivity : ComponentActivity() {
                 apkLauncher = services.apkLauncher
                 installedCoreService = services.installedCoreService
                 launchManager = services.launchManager
-                val screen = screenStack.lastOrNull() as? LauncherScreen.Installing ?: return@startInstalling
-                screenStack[screenStack.lastIndex] = screen.copy(
+                val stack = activeScreenStack()
+                val screen = stack.lastOrNull() as? LauncherScreen.Installing ?: return@startInstalling
+                stack[stack.lastIndex] = screen.copy(
                     progress = 1f,
                     statusLabel = "Cannoli is now ready to be garnished!",
                     finished = true
@@ -564,13 +400,15 @@ class MainActivity : ComponentActivity() {
         if (::settings.isInitialized) {
             settings.reload()
             if (::settingsViewModel.isInitialized) settingsViewModel.load()
-            if (dialogState.value is DialogState.RAAccount && settings.raToken.isEmpty()) {
-                dialogState.value = DialogState.None
+            val activeDialogState = if (::nav.isInitialized) nav.dialogState else preInitDialogState
+            if (activeDialogState.value is DialogState.RAAccount && settings.raToken.isEmpty()) {
+                activeDialogState.value = DialogState.None
             }
         }
         if (::systemListViewModel.isInitialized) {
             rescanSystemList()
-            if (screenStack.lastOrNull() is LauncherScreen.GameList) {
+            val activeScreen = if (::nav.isInitialized) nav.currentScreen else screenStack.lastOrNull()
+            if (activeScreen is LauncherScreen.GameList) {
                 gameListViewModel.reload { scanResumableGames() }
             }
         }
@@ -578,8 +416,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
-        if (pendingRecentlyPlayedReorder) {
-            pendingRecentlyPlayedReorder = false
+        val pending = if (::nav.isInitialized) nav.pendingRecentlyPlayedReorder else pendingRecentlyPlayedReorder
+        if (pending) {
+            if (::nav.isInitialized) nav.pendingRecentlyPlayedReorder = false else pendingRecentlyPlayedReorder = false
             gameListViewModel.moveSelectedToTop()
         }
     }
@@ -606,7 +445,8 @@ class MainActivity : ComponentActivity() {
         if (!InputHandler.isGamepadEvent(event)) {
             when (event.keyCode) {
                 KeyEvent.KEYCODE_BACK -> {
-                    if (screenStack.lastOrNull() is LauncherScreen.InputTester) {
+                    val currentScreenForKey = if (::nav.isInitialized) nav.currentScreen else preInitScreenStack.lastOrNull()
+                    if (currentScreenForKey is LauncherScreen.InputTester) {
                         inputTesterController.dispatchKey(event, down = event.action == KeyEvent.ACTION_DOWN)
                     } else if (isTv && event.action == KeyEvent.ACTION_DOWN && permissionGranted) {
                         inputHandler.onBack()
@@ -623,18 +463,22 @@ class MainActivity : ComponentActivity() {
             requestStoragePermission()
             return true
         }
-        if (screenStack.lastOrNull() is LauncherScreen.InputTester) {
+        val currentScreenForKey = if (::nav.isInitialized) nav.currentScreen else preInitScreenStack.lastOrNull()
+        if (currentScreenForKey is LauncherScreen.InputTester) {
             inputTesterController.dispatchKey(event, down = true)
             return true
         }
-        if (bindingController.handleKeyDown(keyCode)) {
+        if (::router.isInitialized && bindingController.handleKeyDown(keyCode)) {
             return true
         }
-        val screen = screenStack.lastOrNull()
-        if (event.repeatCount > 0 && screen is LauncherScreen.ShortcutBinding && !screen.listening) {
+        if (event.repeatCount > 0 && currentScreenForKey is LauncherScreen.ShortcutBinding && !currentScreenForKey.listening) {
             return true
         }
-        lastKeyRepeatCount = event.repeatCount
+        if (::nav.isInitialized) {
+            nav.lastKeyRepeatCount = event.repeatCount
+        } else {
+            lastKeyRepeatCount = event.repeatCount
+        }
         if (isTv && !InputHandler.isGamepadEvent(event)) {
             when (keyCode) {
                 KeyEvent.KEYCODE_MEDIA_REWIND -> { inputHandler.onWest(); return true }
@@ -649,37 +493,16 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
-        if (screenStack.lastOrNull() is LauncherScreen.InputTester) {
+        val currentScreenForKey = if (::nav.isInitialized) nav.currentScreen else preInitScreenStack.lastOrNull()
+        if (currentScreenForKey is LauncherScreen.InputTester) {
             inputTesterController.dispatchKey(event, down = false)
             return true
         }
         if (inputHandler.resolveButton(event) == "btn_select") {
-            selectHoldHandler.removeCallbacks(selectHoldRunnable)
-            selectHoldHandler.removeCallbacks(collectionSelectHoldRunnable)
-            if (!selectHeld && dialogState.value is KeyboardInputState) {
-                val ds = dialogState.value
-                val ks = ds.asKeyboardState()!!
-                if (ks.symbols) {
-                    dialogState.value = ds.withCaps(capsBeforeSymbols).withSymbols(false)
-                } else {
-                    dialogState.value = ds.withCaps(!ks.caps)
-                }
-            } else if (!selectHeld && !selectHandled && dialogState.value == DialogState.None
-                && currentScreen == LauncherScreen.GameList) {
-                val glState = gameListViewModel.state.value
-                val isApkList = glState.platformTag == "tools" || glState.platformTag == "ports"
-                if (((glState.isCollection && !glState.isCollectionsList && glState.subfolderPath == null) || isApkList)
-                    && !gameListViewModel.isReorderMode() && !gameListViewModel.isMultiSelectMode()) {
-                    gameListViewModel.enterReorderMode()
-                }
-            }
-            selectDown = false
-            selectHeld = false
-            selectHandled = false
+            if (::router.isInitialized) router.onSelectUp()
             return true
         }
-        val screen = screenStack.lastOrNull()
-        if (screen is LauncherScreen.ShortcutBinding && screen.listening && screen.heldKeys.contains(keyCode)) {
+        if (currentScreenForKey is LauncherScreen.ShortcutBinding && currentScreenForKey.listening && currentScreenForKey.heldKeys.contains(keyCode)) {
             cancelShortcutListening()
             return true
         }
@@ -696,8 +519,8 @@ class MainActivity : ComponentActivity() {
             bindingController.handleKeyDown(keyCode)
         } else if (value < 0.3f && wasHeld) {
             held.remove(deviceId)
-            val screen = screenStack.lastOrNull()
-            if (screen is LauncherScreen.ShortcutBinding && screen.listening && screen.heldKeys.contains(keyCode)) {
+            val currentScreenForTrigger = if (::nav.isInitialized) nav.currentScreen else preInitScreenStack.lastOrNull()
+            if (currentScreenForTrigger is LauncherScreen.ShortcutBinding && currentScreenForTrigger.listening && currentScreenForTrigger.heldKeys.contains(keyCode)) {
                 cancelShortcutListening()
             }
         }
@@ -710,8 +533,8 @@ class MainActivity : ComponentActivity() {
             source and android.view.InputDevice.SOURCE_GAMEPAD == android.view.InputDevice.SOURCE_GAMEPAD
         if (!isJoystick) return super.dispatchGenericMotionEvent(event)
 
-        val screen = screenStack.lastOrNull()
-        if (screen is LauncherScreen.ShortcutBinding || screen is LauncherScreen.ControlBinding) {
+        val currentScreenForMotion = if (::nav.isInitialized) nav.currentScreen else preInitScreenStack.lastOrNull()
+        if (currentScreenForMotion is LauncherScreen.ShortcutBinding || currentScreenForMotion is LauncherScreen.ControlBinding) {
             val lt = maxOf(
                 event.getAxisValue(android.view.MotionEvent.AXIS_LTRIGGER),
                 event.getAxisValue(android.view.MotionEvent.AXIS_BRAKE),
@@ -724,7 +547,7 @@ class MainActivity : ComponentActivity() {
             syncBindingTrigger(event.deviceId, KeyEvent.KEYCODE_BUTTON_R2, rt, triggerR2HeldDevices)
         }
 
-        if (screenStack.lastOrNull() is LauncherScreen.InputTester) {
+        if (currentScreenForMotion is LauncherScreen.InputTester) {
             inputTesterController.dispatchMotion(event)
             return true
         }
@@ -788,16 +611,17 @@ class MainActivity : ComponentActivity() {
             romScanner = romScanner,
             onProgress = dev.cannoli.scorza.db.importer.ImportProgress { progress, label ->
                 runOnUiThread {
-                    val top = screenStack.lastOrNull()
+                    val stack = activeScreenStack()
+                    val top = stack.lastOrNull()
                     if (top is LauncherScreen.Housekeeping &&
                         top.kind == dev.cannoli.scorza.ui.screens.HousekeepingKind.DATABASE_MIGRATION) {
-                        screenStack[screenStack.lastIndex] = top.copy(progress = progress, statusLabel = label)
+                        stack[stack.lastIndex] = top.copy(progress = progress, statusLabel = label)
                     }
                 }
             },
         )
 
-        screenStack.add(
+        activeScreenStack().add(
             LauncherScreen.Housekeeping(
                 kind = dev.cannoli.scorza.ui.screens.HousekeepingKind.DATABASE_MIGRATION,
                 progress = 0f,
@@ -808,8 +632,9 @@ class MainActivity : ComponentActivity() {
         ioScope.launch {
             val result = importer.run()
             withContext(Dispatchers.Main) {
-                val top = screenStack.lastOrNull()
-                if (top is LauncherScreen.Housekeeping) screenStack.removeAt(screenStack.lastIndex)
+                val stack = activeScreenStack()
+                val top = stack.lastOrNull()
+                if (top is LauncherScreen.Housekeeping) stack.removeAt(stack.lastIndex)
                 if (result is dev.cannoli.scorza.db.importer.ImportResult.Failure) {
                     dev.cannoli.scorza.util.ScanLog.write("ERROR import returned Failure: ${result.cause.message}")
                 }
@@ -885,19 +710,22 @@ class MainActivity : ComponentActivity() {
 
         rescanSystemList()
 
+        nav = dev.cannoli.scorza.navigation.NavigationController()
+        nav.screenStack.clear()
+        nav.screenStack.add(LauncherScreen.SystemList)
+
         val quickResume = File(root, "Config/State/quick_resume.txt")
         if (quickResume.exists()) {
             val lines = try { quickResume.readLines() } catch (_: Exception) { emptyList() }
             quickResume.delete()
             if (lines.size >= 2) {
                 val romFile = File(lines[0])
-                val tag = lines[1]
                 if (romFile.exists()) {
                     val rom = romsRepository.gameByPath(romFile.absolutePath)
                     if (rom != null) {
                         val errorDialog = launchManager.resumeRom(rom)
                         if (errorDialog != null) {
-                            dialogState.value = errorDialog
+                            nav.dialogState.value = errorDialog
                         } else {
                             recordRecentlyPlayedByPath(romFile.absolutePath)
                         }
@@ -906,572 +734,166 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-    }
+        val rescanSystemListLambda: () -> Unit = { rescanSystemList() }
+        val scanResumableGamesLambda: () -> Unit = { scanResumableGames() }
+        val invalidateAllLibraryCachesLambda: () -> Unit = { invalidateAllLibraryCaches() }
+        val validateFghStemLambda: () -> String? = { validateFghStem() }
+        val hasActiveVpnLambda: () -> Boolean = { hasActiveVpn() }
 
-    private fun wrapIndex(current: Int, delta: Int, size: Int): Int =
-        if (size == 0) 0 else (current + delta).mod(size)
-
-    private fun wireInput() {
-        inputHandler.onUp = {
-            when (val ds = dialogState.value) {
-                is DialogState.ContextMenu,
-                is DialogState.BulkContextMenu -> {
-                    ds.withMenuDelta(-1)?.let { dialogState.value = it }
-                }
-                is DialogState.RenameInput,
-                is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput,
-                is DialogState.ProfileNameInput,
-                is DialogState.NewFolderInput -> {
-                    val ks = ds.asKeyboardState()!!
-                    val rows = getKeyboardRows(ks.caps, ks.symbols)
-                    val newRow = if (ks.keyRow <= 0) rows.lastIndex else ks.keyRow - 1
-                    val newCol = ks.keyCol.coerceAtMost(rows[newRow].lastIndex)
-                    dialogState.value = ds.withKeyboard(newRow, newCol)
-                }
-                is DialogState.ColorPicker -> {
-                    val totalRows = (COLOR_PRESETS.size + COLOR_GRID_COLS - 1) / COLOR_GRID_COLS
-                    val newRow = if (ds.selectedRow <= 0) totalRows - 1 else ds.selectedRow - 1
-                    dialogState.value = ds.copy(selectedRow = newRow)
-                }
-                is DialogState.HexColorInput -> {
-                    val rowSize = HEX_ROW_SIZE
-                    val curRow = ds.selectedIndex / rowSize
-                    val col = ds.selectedIndex % rowSize
-                    val totalRows = (HEX_KEYS.size + rowSize - 1) / rowSize
-                    val newRow = if (curRow <= 0) totalRows - 1 else curRow - 1
-                    val newIdx = (newRow * rowSize + col).coerceAtMost(HEX_KEYS.lastIndex)
-                    dialogState.value = ds.copy(selectedIndex = newIdx)
-                }
-                DialogState.None -> when (val screen = currentScreen) {
-                    LauncherScreen.SystemList -> {
-                        if (systemListViewModel.isReorderMode()) systemListViewModel.reorderMoveUp()
-                        else systemListViewModel.moveSelection(-1)
+        val startRaLogin: (String, String) -> Unit = { username, password ->
+            val ra = RetroAchievementsManager(
+                onLogin = { success, nameOrError, token ->
+                    if (success && token != null) {
+                        settings.raUsername = nameOrError
+                        settings.raToken = token
+                        settings.raPassword = password
+                        settingsViewModel.raPassword = ""
+                        nav.dialogState.value = DialogState.RAAccount(username = nameOrError)
+                    } else {
+                        nav.dialogState.value = DialogState.RALoggingIn(message = "Invalid username or password")
                     }
-                    LauncherScreen.GameList -> {
-                        if (gameListViewModel.isReorderMode()) gameListViewModel.reorderMoveUp()
-                        else gameListViewModel.moveSelection(-1)
-                    }
-                    LauncherScreen.Settings -> settingsViewModel.moveSelection(-1)
-                    is LauncherScreen.CoreMapping -> if (screen.mappings.isNotEmpty())
-                        screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, -1, screen.mappings.size))
-                    is LauncherScreen.CorePicker -> if (screen.cores.isNotEmpty())
-                        screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, -1, screen.cores.size))
-                    is LauncherScreen.AppPicker -> if (screen.apps.isNotEmpty())
-                        screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, -1, screen.apps.size))
-                    is LauncherScreen.ColorList -> if (screen.colors.isNotEmpty())
-                        screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, -1, screen.colors.size))
-                    is LauncherScreen.CollectionPicker -> if (screen.collections.isNotEmpty())
-                        screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, -1, screen.collections.size))
-                    is LauncherScreen.ChildPicker -> if (screen.collections.isNotEmpty())
-                        screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, -1, screen.collections.size))
-                    is LauncherScreen.ProfileList -> if (screen.profiles.isNotEmpty())
-                        screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, -1, screen.profiles.size))
-                    is LauncherScreen.ControlBinding ->
-                        screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, -1, controlButtonCount))
-                    is LauncherScreen.ShortcutBinding -> if (!screen.listening)
-                        screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, -1, ShortcutAction.entries.size))
-                    is LauncherScreen.Credits ->
-                        screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, -1, CREDITS.size))
-                    is LauncherScreen.InstalledCores -> if (screen.cores.isNotEmpty())
-                        screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, -1, screen.cores.size))
-                    is LauncherScreen.DirectoryBrowser -> {
-                        val hasSelect = screen.currentPath != "/storage/"
-                        val count = screen.entries.size + if (hasSelect) 1 else 0
-                        if (count > 0) screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, -1, count))
-                    }
-                    is LauncherScreen.Setup -> {
-                        val maxIndex = if (screen.volumes.getOrNull(screen.volumeIndex)?.first == "Custom") 1 else 0
-                        screenStack[screenStack.lastIndex] = screen.copy(
-                            selectedIndex = (screen.selectedIndex - 1).coerceAtLeast(0)
-                        )
-                    }
-                    is LauncherScreen.InputTester -> {}
-                    is LauncherScreen.Installing -> {}
-                    is LauncherScreen.Housekeeping -> {}
+                    loginPollHandler.removeCallbacks(loginPollRunnable)
+                    loginManager?.destroy()
+                    loginManager = null
                 }
-                else -> {}
-            }
+            )
+            ra.init()
+            ra.loginWithPassword(username, password)
+            loginManager = ra
+            loginPollHandler.postDelayed(loginPollRunnable, 100)
+            nav.dialogState.value = DialogState.RALoggingIn()
         }
 
-        inputHandler.onDown = {
-            when (val ds = dialogState.value) {
-                is DialogState.ContextMenu,
-                is DialogState.BulkContextMenu -> {
-                    ds.withMenuDelta(1)?.let { dialogState.value = it }
-                }
-                is DialogState.RenameInput,
-                is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput,
-                is DialogState.ProfileNameInput,
-                is DialogState.NewFolderInput -> {
-                    val ks = ds.asKeyboardState()!!
-                    val rows = getKeyboardRows(ks.caps, ks.symbols)
-                    val newRow = if (ks.keyRow >= rows.lastIndex) 0 else ks.keyRow + 1
-                    val newCol = ks.keyCol.coerceAtMost(rows[newRow].lastIndex)
-                    dialogState.value = ds.withKeyboard(newRow, newCol)
-                }
-                is DialogState.ColorPicker -> {
-                    val totalRows = (COLOR_PRESETS.size + COLOR_GRID_COLS - 1) / COLOR_GRID_COLS
-                    val newRow = if (ds.selectedRow >= totalRows - 1) 0 else ds.selectedRow + 1
-                    dialogState.value = ds.copy(selectedRow = newRow)
-                }
-                is DialogState.HexColorInput -> {
-                    val rowSize = HEX_ROW_SIZE
-                    val curRow = ds.selectedIndex / rowSize
-                    val col = ds.selectedIndex % rowSize
-                    val totalRows = (HEX_KEYS.size + rowSize - 1) / rowSize
-                    val newRow = if (curRow >= totalRows - 1) 0 else curRow + 1
-                    val newIdx = (newRow * rowSize + col).coerceAtMost(HEX_KEYS.lastIndex)
-                    dialogState.value = ds.copy(selectedIndex = newIdx)
-                }
-                DialogState.None -> when (val screen = currentScreen) {
-                    LauncherScreen.SystemList -> {
-                        if (systemListViewModel.isReorderMode()) systemListViewModel.reorderMoveDown()
-                        else systemListViewModel.moveSelection(1)
-                    }
-                    LauncherScreen.GameList -> {
-                        if (gameListViewModel.isReorderMode()) gameListViewModel.reorderMoveDown()
-                        else gameListViewModel.moveSelection(1)
-                    }
-                    LauncherScreen.Settings -> settingsViewModel.moveSelection(1)
-                    is LauncherScreen.CoreMapping -> if (screen.mappings.isNotEmpty())
-                        screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, 1, screen.mappings.size))
-                    is LauncherScreen.CorePicker -> if (screen.cores.isNotEmpty())
-                        screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, 1, screen.cores.size))
-                    is LauncherScreen.AppPicker -> if (screen.apps.isNotEmpty())
-                        screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, 1, screen.apps.size))
-                    is LauncherScreen.ColorList -> if (screen.colors.isNotEmpty())
-                        screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, 1, screen.colors.size))
-                    is LauncherScreen.CollectionPicker -> if (screen.collections.isNotEmpty())
-                        screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, 1, screen.collections.size))
-                    is LauncherScreen.ChildPicker -> if (screen.collections.isNotEmpty())
-                        screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, 1, screen.collections.size))
-                    is LauncherScreen.ProfileList -> if (screen.profiles.isNotEmpty())
-                        screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, 1, screen.profiles.size))
-                    is LauncherScreen.ControlBinding ->
-                        screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, 1, controlButtonCount))
-                    is LauncherScreen.ShortcutBinding -> if (!screen.listening)
-                        screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, 1, ShortcutAction.entries.size))
-                    is LauncherScreen.Credits ->
-                        screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, 1, CREDITS.size))
-                    is LauncherScreen.InstalledCores -> if (screen.cores.isNotEmpty())
-                        screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, 1, screen.cores.size))
-                    is LauncherScreen.DirectoryBrowser -> {
-                        val hasSelect = screen.currentPath != "/storage/"
-                        val count = screen.entries.size + if (hasSelect) 1 else 0
-                        if (count > 0) screenStack[screenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, 1, count))
-                    }
-                    is LauncherScreen.Setup -> {
-                        val maxIndex = if (screen.volumes.getOrNull(screen.volumeIndex)?.first == "Custom") 1 else 0
-                        screenStack[screenStack.lastIndex] = screen.copy(
-                            selectedIndex = (screen.selectedIndex + 1).coerceAtMost(maxIndex)
-                        )
-                    }
-                    is LauncherScreen.InputTester -> {}
-                    is LauncherScreen.Installing -> {}
-                    is LauncherScreen.Housekeeping -> {}
-                }
-                else -> {}
-            }
-        }
+        val openColorPickerLambda: (String) -> Unit = { settingKey -> openColorPicker(settingKey) }
 
-        inputHandler.onLeft = {
-            when (val ds = dialogState.value) {
-                is DialogState.Kitchen -> {
-                    if (ds.urls.size > 1) {
-                        val newIdx = (ds.selectedIndex - 1 + ds.urls.size) % ds.urls.size
-                        dialogState.value = ds.copy(selectedIndex = newIdx)
-                    }
-                }
-                is DialogState.RenameInput,
-                is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput,
-                is DialogState.ProfileNameInput,
-                is DialogState.NewFolderInput -> {
-                    val ks = ds.asKeyboardState()!!
-                    val rows = getKeyboardRows(ks.caps, ks.symbols)
-                    val rowSize = rows[ks.keyRow.coerceIn(0, rows.lastIndex)].size
-                    val newCol = if (ks.keyCol <= 0) rowSize - 1 else ks.keyCol - 1
-                    dialogState.value = ds.withKeyboard(ks.keyRow, newCol)
-                }
-                is DialogState.ColorPicker -> {
-                    val newCol = if (ds.selectedCol <= 0) COLOR_GRID_COLS - 1 else ds.selectedCol - 1
-                    dialogState.value = ds.copy(selectedCol = newCol)
-                }
-                is DialogState.HexColorInput -> {
-                    val rowSize = HEX_ROW_SIZE
-                    val curRow = ds.selectedIndex / rowSize
-                    val col = ds.selectedIndex % rowSize
-                    val newCol = if (col <= 0) rowSize - 1 else col - 1
-                    dialogState.value = ds.copy(selectedIndex = (curRow * rowSize + newCol).coerceAtMost(HEX_KEYS.lastIndex))
-                }
-                DialogState.None -> when (val screen = currentScreen) {
-                    LauncherScreen.SystemList -> if (!systemListViewModel.isReorderMode()) pageJump(-1)
-                    LauncherScreen.GameList -> if (!gameListViewModel.isReorderMode()) pageJump(-1)
-                    LauncherScreen.Settings -> {
-                        if (settingsViewModel.state.value.inSubList) {
-                            settingsViewModel.cycleSelected(-1, repeatCount = lastKeyRepeatCount)
-                            if (settingsViewModel.getSelectedItem()?.key == "release_channel") {
-                                ioScope.launch { updateManager.checkForUpdate() }
-                            }
-                        } else pageJump(-1)
-                    }
-                    is LauncherScreen.Setup -> {
-                        if (screen.selectedIndex == 0 && screen.volumes.size > 1) {
-                            screenStack[screenStack.lastIndex] = screen.copy(
-                                volumeIndex = (screen.volumeIndex - 1 + screen.volumes.size) % screen.volumes.size,
-                                customPath = null
-                            )
-                        }
-                    }
-                    else -> pageJump(-1)
-                }
-                else -> {}
-            }
-        }
+        var systemListRenameCallback: ((DialogState.RenameInput) -> Unit) = {}
 
-        inputHandler.onRight = {
-            when (val ds = dialogState.value) {
-                is DialogState.Kitchen -> {
-                    if (ds.urls.size > 1) {
-                        val newIdx = (ds.selectedIndex + 1) % ds.urls.size
-                        dialogState.value = ds.copy(selectedIndex = newIdx)
-                    }
+        val dialogHandler = dev.cannoli.scorza.input.DialogInputHandler(
+            nav = nav,
+            ioScope = ioScope,
+            context = this,
+            settings = settings,
+            scanner = romScanner,
+            collectionManager = collectionsRepository,
+            recentlyPlayedManager = recentlyPlayedRepository,
+            platformResolver = platformConfig,
+            installedCoreService = installedCoreService,
+            launchManager = launchManager,
+            updateManager = updateManager,
+            profileManager = profileManager,
+            atomicRename = atomicRename,
+            settingsViewModel = settingsViewModel,
+            gameListViewModel = gameListViewModel,
+            systemListViewModel = systemListViewModel,
+            controllerManager = controllerManager,
+            autoconfigMatcher = autoconfigMatcher,
+            romsRepository = romsRepository,
+            appsRepository = appsRepository,
+            onRescanSystemList = rescanSystemListLambda,
+            onFinishAffinity = { finishAffinity() },
+            onRestartApp = {
+                val intent = packageManager.getLaunchIntentForPackage(packageName)
+                if (intent != null) {
+                    intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                    val opts = android.app.ActivityOptions.makeCustomAnimation(this, 0, 0).toBundle()
+                    startActivity(intent, opts)
+                    Runtime.getRuntime().exit(0)
                 }
-                is DialogState.RenameInput,
-                is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput,
-                is DialogState.ProfileNameInput,
-                is DialogState.NewFolderInput -> {
-                    val ks = ds.asKeyboardState()!!
-                    val rows = getKeyboardRows(ks.caps, ks.symbols)
-                    val rowSize = rows[ks.keyRow.coerceIn(0, rows.lastIndex)].size
-                    val newCol = if (ks.keyCol >= rowSize - 1) 0 else ks.keyCol + 1
-                    dialogState.value = ds.withKeyboard(ks.keyRow, newCol)
-                }
-                is DialogState.ColorPicker -> {
-                    val newCol = if (ds.selectedCol >= COLOR_GRID_COLS - 1) 0 else ds.selectedCol + 1
-                    dialogState.value = ds.copy(selectedCol = newCol)
-                }
-                is DialogState.HexColorInput -> {
-                    val rowSize = HEX_ROW_SIZE
-                    val curRow = ds.selectedIndex / rowSize
-                    val col = ds.selectedIndex % rowSize
-                    val newCol = if (col >= rowSize - 1) 0 else col + 1
-                    dialogState.value = ds.copy(selectedIndex = (curRow * rowSize + newCol).coerceAtMost(HEX_KEYS.lastIndex))
-                }
-                DialogState.None -> when (val screen = currentScreen) {
-                    LauncherScreen.SystemList -> if (!systemListViewModel.isReorderMode()) pageJump(1)
-                    LauncherScreen.GameList -> if (!gameListViewModel.isReorderMode()) pageJump(1)
-                    LauncherScreen.Settings -> {
-                        if (settingsViewModel.state.value.inSubList) {
-                            settingsViewModel.cycleSelected(1, repeatCount = lastKeyRepeatCount)
-                            if (settingsViewModel.getSelectedItem()?.key == "release_channel") {
-                                ioScope.launch { updateManager.checkForUpdate() }
-                            }
-                        } else pageJump(1)
-                    }
-                    is LauncherScreen.Setup -> {
-                        if (screen.selectedIndex == 0 && screen.volumes.size > 1) {
-                            screenStack[screenStack.lastIndex] = screen.copy(
-                                volumeIndex = (screen.volumeIndex + 1) % screen.volumes.size,
-                                customPath = null
-                            )
-                        }
-                    }
-                    else -> pageJump(1)
-                }
-                else -> {}
-            }
-        }
+            },
+            openColorPickerFn = openColorPickerLambda,
+            onSystemListRename = { state -> systemListRenameCallback(state) },
+            onStartRaLogin = startRaLogin,
+        )
 
-        inputHandler.onConfirm = {
-            when (val ds = dialogState.value) {
-                is DialogState.ContextMenu -> onContextMenuConfirm(ds)
-                is DialogState.BulkContextMenu -> onBulkContextMenuConfirm(ds)
-                is DialogState.DeleteConfirm -> onDeleteConfirm(ds)
-                is DialogState.RenameInput -> handleKeyboardConfirm(ds.caps, ds.symbols, ds.keyRow, ds.keyCol, ds.currentName, ds.cursorPos,
-                    onChar = { name, pos -> dialogState.value = ds.copy(currentName = name, cursorPos = pos) },
-                    onShift = { dialogState.value = ds.copy(caps = !ds.caps) },
-                    onSymbols = { dialogState.value = ds.copy(symbols = !ds.symbols) },
-                    onEnter = { onRenameConfirm(ds) }
+        val systemListHandler = dev.cannoli.scorza.input.screen.SystemListInputHandler(
+            nav = nav,
+            ioScope = ioScope,
+            settings = settings,
+            collectionsRepository = collectionsRepository,
+            platformConfig = platformConfig,
+            updateManager = updateManager,
+            systemListViewModel = systemListViewModel,
+            gameListViewModel = gameListViewModel,
+            settingsViewModel = settingsViewModel,
+            onRescanSystemList = rescanSystemListLambda,
+            onScanResumableGames = scanResumableGamesLambda,
+            onValidateFghStem = validateFghStemLambda,
+            onLaunchSelected = { item, resume -> launchSelected(item, resume) },
+            onRecordRecentlyPlayedByPath = { path -> recordRecentlyPlayedByPath(path) },
+            onOpenKitchen = {
+                val km = dev.cannoli.scorza.server.KitchenManager
+                val sdRoot = File(settings.sdCardRoot)
+                if (!km.isRunning) km.toggle(sdRoot, assets, settings.kitchenCodeBypass)
+                else km.setCodeBypass(settings.kitchenCodeBypass)
+                nav.dialogState.value = DialogState.Kitchen(
+                    urls = km.getUrls(hasActiveVpnLambda()),
+                    pin = km.pin,
+                    requirePin = !settings.kitchenCodeBypass
                 )
-                is DialogState.NewCollectionInput -> handleKeyboardConfirm(ds.caps, ds.symbols, ds.keyRow, ds.keyCol, ds.currentName, ds.cursorPos,
-                    onChar = { name, pos -> dialogState.value = ds.copy(currentName = name, cursorPos = pos) },
-                    onShift = { dialogState.value = ds.copy(caps = !ds.caps) },
-                    onSymbols = { dialogState.value = ds.copy(symbols = !ds.symbols) },
-                    onEnter = { onNewCollectionConfirm(ds) }
-                )
-                is DialogState.CollectionRenameInput -> handleKeyboardConfirm(ds.caps, ds.symbols, ds.keyRow, ds.keyCol, ds.currentName, ds.cursorPos,
-                    onChar = { name, pos -> dialogState.value = ds.copy(currentName = name, cursorPos = pos) },
-                    onShift = { dialogState.value = ds.copy(caps = !ds.caps) },
-                    onSymbols = { dialogState.value = ds.copy(symbols = !ds.symbols) },
-                    onEnter = { onCollectionRenameConfirm(ds) }
-                )
-                is DialogState.ProfileNameInput -> handleKeyboardConfirm(ds.caps, ds.symbols, ds.keyRow, ds.keyCol, ds.currentName, ds.cursorPos,
-                    onChar = { name, pos -> dialogState.value = ds.copy(currentName = name, cursorPos = pos) },
-                    onShift = { dialogState.value = ds.copy(caps = !ds.caps) },
-                    onSymbols = { dialogState.value = ds.copy(symbols = !ds.symbols) },
-                    onEnter = { onProfileNameConfirm(ds) }
-                )
-                is DialogState.NewFolderInput -> handleKeyboardConfirm(ds.caps, ds.symbols, ds.keyRow, ds.keyCol, ds.currentName, ds.cursorPos,
-                    onChar = { name, pos -> dialogState.value = ds.copy(currentName = name, cursorPos = pos) },
-                    onShift = { dialogState.value = ds.copy(caps = !ds.caps) },
-                    onSymbols = { dialogState.value = ds.copy(symbols = !ds.symbols) },
-                    onEnter = { onNewFolderConfirm(ds) }
-                )
-                is DialogState.QuitConfirm -> {
-                    finishAffinity()
-                }
-                is DialogState.DeleteProfileConfirm -> {
-                    profileManager.deleteProfile(ds.profileName)
-                    val updated = profileManager.listProfiles()
-                    val screen = currentScreen as? LauncherScreen.ProfileList
-                    if (screen != null) {
-                        screenStack[screenStack.lastIndex] = screen.copy(
-                            profiles = updated,
-                            selectedIndex = screen.selectedIndex.coerceAtMost(updated.lastIndex)
-                        )
-                    }
-                    dialogState.value = DialogState.None
-                }
-                is DialogState.ColorPicker -> {
-                    val idx = ds.selectedRow * COLOR_GRID_COLS + ds.selectedCol
-                    val preset = COLOR_PRESETS.getOrNull(idx)
-                    if (preset != null) {
-                        val hex = "#%06X".format(preset.color and 0xFFFFFF)
-                        settingsViewModel.setColor(ds.settingKey, hex)
-                        val entries = settingsViewModel.getColorEntries()
-                        updateColorListOnStack(ds.settingKey, entries)
-                        dialogState.value = DialogState.None
-                    }
-                }
-                is DialogState.HexColorInput -> {
-                    val key = HEX_KEYS.getOrNull(ds.selectedIndex) ?: ""
-                    when (key) {
-                        "" -> {}
-                        KEY_BACKSPACE -> {
-                            if (ds.currentHex.isNotEmpty()) {
-                                dialogState.value = ds.copy(currentHex = ds.currentHex.dropLast(1))
-                            }
-                        }
-                        KEY_ENTER -> {
-                            if (ds.currentHex.length == 6) {
-                                settingsViewModel.setColor(ds.settingKey, "#${ds.currentHex}")
-                                val entries = settingsViewModel.getColorEntries()
-                                updateColorListOnStack(ds.settingKey, entries)
-                                dialogState.value = DialogState.None
-                            }
-                        }
-                        else -> {
-                            if (ds.currentHex.length < 6) {
-                                dialogState.value = ds.copy(currentHex = ds.currentHex + key)
-                            }
-                        }
-                    }
-                }
-                is DialogState.MissingApp -> {
-                    val glState = gameListViewModel.state.value
-                    if (glState.platformTag == "tools" || glState.platformTag == "ports") {
-                        val item = gameListViewModel.getSelectedItem()
-                        if (item is dev.cannoli.scorza.model.ListItem.AppItem) {
-                            dialogState.value = DialogState.None
-                            ioScope.launch {
-                                appsRepository.delete(item.app.id)
-                                gameListViewModel.reload()
-                                rescanSystemList()
-                            }
-                        }
-                    }
-                }
-                is DialogState.DeleteCollectionConfirm -> {
-                    val stem = ds.collectionStem
-                    val glState = gameListViewModel.state.value
-                    val deletingFromParent = glState.isCollection && !glState.isCollectionsList
-                    pendingContextReturn = null
-                    dialogState.value = DialogState.None
-                    if (!deletingFromParent) gameListViewModel.saveCollectionsPosition()
-                    ioScope.launch {
-                        val id = collectionsRepository.all().firstOrNull { it.displayName == stem }?.id
-                        if (id != null) collectionsRepository.delete(id)
-                        if (deletingFromParent) {
-                            gameListViewModel.reload()
-                            rescanSystemList()
-                        } else {
-                            if (settings.contentMode == ContentMode.COLLECTIONS) {
-                                withContext(Dispatchers.Main) {
-                                    screenStack.removeAt(screenStack.lastIndex)
-                                    rescanSystemList()
-                                }
-                            } else {
-                                val remaining = collectionsRepository.topLevel()
-                                if (remaining.isEmpty()) {
-                                    withContext(Dispatchers.Main) {
-                                        screenStack.removeAt(screenStack.lastIndex)
-                                        rescanSystemList()
-                                    }
-                                } else {
-                                    gameListViewModel.loadCollectionsList(restoreIndex = true)
-                                }
-                            }
-                        }
-                    }
-                }
-                is DialogState.UpdateDownload -> {
-                    val info = updateManager.updateAvailable.value
-                    if (info != null) {
-                        updateManager.clearError()
-                        ioScope.launch { updateManager.downloadAndInstall(info) }
-                    }
-                }
-                is DialogState.RestartRequired -> {
-                    val intent = packageManager.getLaunchIntentForPackage(packageName)
-                    if (intent != null) {
-                        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                        val opts = ActivityOptions.makeCustomAnimation(this, 0, 0).toBundle()
-                        startActivity(intent, opts)
-                        Runtime.getRuntime().exit(0)
-                    }
-                }
-                DialogState.None -> when (val screen = currentScreen) {
-                    LauncherScreen.SystemList -> {
-                        if (systemListViewModel.isReorderMode()) systemListViewModel.confirmReorder()
-                        else onSystemListConfirm()
-                    }
-                    LauncherScreen.GameList -> {
-                        if (gameListViewModel.isMultiSelectMode()) gameListViewModel.toggleChecked()
-                        else if (gameListViewModel.isReorderMode()) gameListViewModel.confirmReorder()
-                        else onGameListConfirm()
-                    }
-                    LauncherScreen.Settings -> {
-                        if (!settingsViewModel.state.value.inSubList) {
-                            val cat = settingsViewModel.state.value.categories.getOrNull(settingsViewModel.state.value.categoryIndex)
-                            if (cat?.key == "about") {
-                                dialogState.value = DialogState.About()
-                            } else if (cat?.key == "retroachievements" && settings.raToken.isNotEmpty()) {
-                                dialogState.value = DialogState.RAAccount(username = settings.raUsername)
-                            } else if (cat?.key == "kitchen") {
-                                val root = File(settings.sdCardRoot)
-                                val km = dev.cannoli.scorza.server.KitchenManager
-                                if (!km.isRunning) km.toggle(root, assets, settings.kitchenCodeBypass)
-                                else km.setCodeBypass(settings.kitchenCodeBypass)
-                                dialogState.value = DialogState.Kitchen(
-                                    urls = km.getUrls(hasActiveVpn()),
-                                    pin = km.pin,
-                                    requirePin = !settings.kitchenCodeBypass
-                                )
-                            } else {
-                                settingsViewModel.enterCategory()
-                            }
-                        } else {
-                            when (val key = settingsViewModel.enterSelected()) {
-                                "status_bar" -> settingsViewModel.enterSubCategory("status_bar", R.string.settings_status_bar)
-                                "fgh_collection" -> settingsViewModel.enterSubCategory(
-                                    "fgh_collection_picker",
-                                    R.string.setting_fgh_collection,
-                                    settingsViewModel.fghPickerInitialIndex()
-                                )
-                                "sd_root" -> pushDirectoryBrowser(BrowsePurpose.SD_ROOT, settings.sdCardRoot)
-                                "rom_directory" -> {
-                                    val startPath = settings.romDirectory.ifEmpty { settings.sdCardRoot }
-                                    pushDirectoryBrowser(BrowsePurpose.ROM_DIRECTORY, startPath)
-                                }
-                                "colors" -> screenStack.add(LauncherScreen.ColorList(
-                                    colors = settingsViewModel.getColorEntries()
-                                ))
-                                "profiles" -> pushScreen(LauncherScreen.ProfileList(profiles = profileManager.listProfiles()))
-                                "shortcuts" -> pushScreen(LauncherScreen.ShortcutBinding(shortcuts = globalOverrides.readShortcuts()))
-                                "input_tester" -> {
-                                    inputTesterController.enter()
-                                    pushScreen(LauncherScreen.InputTester)
-                                }
-                                "core_mapping" -> {
-                                    val initial = platformConfig.getDetailedMappings(packageManager, installedCoreService.installedCores, LaunchManager.extractBundledCores(this@MainActivity), installedCoreService.unresponsivePackages)
-                                    screenStack.add(LauncherScreen.CoreMapping(mappings = initial, allMappings = initial))
-                                    ioScope.launch {
-                                        installedCoreService.queryAllPackages()
-                                        withContext(Dispatchers.Main) {
-                                            val cm = screenStack.lastOrNull() as? LauncherScreen.CoreMapping ?: return@withContext
-                                            val all = platformConfig.getDetailedMappings(packageManager, installedCoreService.installedCores, LaunchManager.extractBundledCores(this@MainActivity), installedCoreService.unresponsivePackages)
-                                            screenStack[screenStack.lastIndex] = cm.copy(mappings = filterCoreMappings(all, cm.filter), allMappings = all)
-                                        }
-                                    }
-                                }
-                                "set_default_launcher" -> startActivity(android.content.Intent(android.provider.Settings.ACTION_HOME_SETTINGS))
-                                "installed_cores" -> queryInstalledCores()
-                                "rebuild_cache" -> {
-                                    invalidateAllLibraryCaches()
-                                    rescanSystemList()
-                                }
-                                "manage_tools" -> openAppPicker("tools")
-                                "manage_ports" -> openAppPicker("ports")
-                                "ra_username" -> {
-                                    val current = settings.raUsername
-                                    dialogState.value = DialogState.RenameInput(
-                                        gameName = "ra_username",
-                                        currentName = current,
-                                        cursorPos = current.length
-                                    )
-                                }
-                                "ra_password" -> {
-                                    dialogState.value = DialogState.RenameInput(
-                                        gameName = "ra_password",
-                                        currentName = settingsViewModel.raPassword,
-                                        cursorPos = settingsViewModel.raPassword.length
-                                    )
-                                }
-                                "ra_login" -> {
-                                    val passwordForLogin = settingsViewModel.raPassword
-                                    val ra = RetroAchievementsManager(
-                                        onLogin = { success, nameOrError, token ->
-                                            if (success && token != null) {
-                                                settings.raUsername = nameOrError
-                                                settings.raToken = token
-                                                settings.raPassword = passwordForLogin
-                                                settingsViewModel.raPassword = ""
-                                                dialogState.value = DialogState.RAAccount(username = nameOrError)
-                                            } else {
-                                                dialogState.value = DialogState.RALoggingIn(message = "Invalid username or password")
-                                            }
-                                            loginPollHandler.removeCallbacks(loginPollRunnable)
-                                            loginManager?.destroy()
-                                            loginManager = null
-                                        }
-                                    )
-                                    ra.init()
-                                    ra.loginWithPassword(settings.raUsername, settingsViewModel.raPassword)
-                                    loginManager = ra
-                                    loginPollHandler.postDelayed(loginPollRunnable, 100)
-                                    dialogState.value = DialogState.RALoggingIn()
-                                }
-                                null -> {}
-                                else -> {
-                                    if (key.startsWith("fgh_pick:")) {
-                                        val stem = key.removePrefix("fgh_pick:")
-                                        settingsViewModel.selectFghCollectionStem(stem)
-                                        settingsViewModel.save()
-                                        settingsViewModel.exitSubList()
-                                        rescanSystemList()
-                                    } else if (key.startsWith("color_")) {
-                                        val entries = settingsViewModel.getColorEntries()
-                                        val idx = entries.indexOfFirst { it.key == key }.coerceAtLeast(0)
-                                        screenStack.add(LauncherScreen.ColorList(colors = entries, selectedIndex = idx))
-                                        openColorPicker(key)
-                                    } else {
-                                        val displayValue = settingsViewModel.getSelectedItemDisplayValue()
-                                        dialogState.value = DialogState.RenameInput(
-                                            gameName = key,
-                                            currentName = displayValue,
-                                            cursorPos = displayValue.length
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    is LauncherScreen.CoreMapping -> {
-                        screen.mappings.getOrNull(screen.selectedIndex)?.let { entry ->
+            },
+            onSetPendingFghItem = { item -> dialogHandler.pendingFghItem = item },
+        )
+        systemListRenameCallback = { state -> systemListHandler.handleRename(state) }
+
+        val gameListHandler = dev.cannoli.scorza.input.screen.GameListInputHandler(
+            nav = nav,
+            ioScope = ioScope,
+            settings = settings,
+            systemListViewModel = systemListViewModel,
+            gameListViewModel = gameListViewModel,
+            isSelectHeld = { dialogHandler.selectHeld },
+            onRescanSystemList = rescanSystemListLambda,
+            onScanResumableGames = scanResumableGamesLambda,
+            onLaunchSelected = { item, resume -> launchSelected(item, resume) },
+            onRecordRecentlyPlayedByPath = { path -> recordRecentlyPlayedByPath(path) },
+            onSetPendingRecentlyPlayedReorder = { value -> nav.pendingRecentlyPlayedReorder = value },
+            onBuildContextOptions = { item, glState -> dialogHandler.buildGameContextOptions(item, glState) },
+        )
+
+        val settingsHandler = dev.cannoli.scorza.input.screen.SettingsInputHandler(
+            nav = nav,
+            ioScope = ioScope,
+            settings = settings,
+            platformConfig = platformConfig,
+            installedCoreService = installedCoreService,
+            profileManager = profileManager,
+            globalOverrides = globalOverrides,
+            appsRepository = appsRepository,
+            setupCoordinator = setupCoordinator,
+            inputTesterController = inputTesterController,
+            updateManager = updateManager,
+            settingsViewModel = settingsViewModel,
+            onRescanSystemList = rescanSystemListLambda,
+            onInvalidateAllLibraryCaches = invalidateAllLibraryCachesLambda,
+            onOpenColorPicker = openColorPickerLambda,
+            onStartRaLogin = startRaLogin,
+            context = this,
+        )
+
+        val setupHandler = dev.cannoli.scorza.input.screen.SetupInputHandler(
+            nav = nav,
+            settings = settings,
+            setupCoordinator = setupCoordinator,
+            onInitializeApp = { initializeApp() },
+            onFinishAffinity = { finishAffinity() },
+            onStartInstalling = { targetPath -> startInstalling(targetPath) },
+        )
+
+        val inputTesterHandler = dev.cannoli.scorza.input.screen.InputTesterInputHandler(
+            nav = nav,
+            controller = inputTesterController,
+        )
+
+        fun makeScrollListHandler(screen: LauncherScreen): dev.cannoli.scorza.input.ScreenInputHandler {
+            return when (screen) {
+                is LauncherScreen.CoreMapping -> dev.cannoli.scorza.input.screen.ScrollListInputHandler(
+                    nav = nav,
+                    itemCount = { screen.mappings.size },
+                    selectedIndex = { (nav.currentScreen as? LauncherScreen.CoreMapping)?.selectedIndex ?: 0 },
+                    onMove = { idx -> nav.replaceTop((nav.currentScreen as? LauncherScreen.CoreMapping)?.copy(selectedIndex = idx) ?: return@ScrollListInputHandler) },
+                    onConfirm = {
+                        val s = nav.currentScreen as? LauncherScreen.CoreMapping ?: return@ScrollListInputHandler
+                        s.mappings.getOrNull(s.selectedIndex)?.let { entry ->
                             val bundledCoresDir = LaunchManager.extractBundledCores(this@MainActivity)
                             val options = platformConfig.getCorePickerOptions(
                                 entry.tag, packageManager,
@@ -1488,7 +910,7 @@ class MainActivity : ComponentActivity() {
                                 options.indexOfFirst { it.coreId == currentCore && it.runnerLabel == currentRunner }
                                     .coerceAtLeast(options.indexOfFirst { it.coreId == currentCore }.coerceAtLeast(0))
                             }
-                            pushScreen(LauncherScreen.CorePicker(
+                            nav.push(LauncherScreen.CorePicker(
                                 tag = entry.tag,
                                 platformName = entry.platformName,
                                 cores = options,
@@ -1496,745 +918,341 @@ class MainActivity : ComponentActivity() {
                                 activeIndex = selectedIdx
                             ))
                         }
-                    }
-                    is LauncherScreen.CorePicker -> onCorePickerConfirm(screen)
-                    is LauncherScreen.ColorList -> {
-                        screen.colors.getOrNull(screen.selectedIndex)?.let { entry ->
-                            openColorPicker(entry.key)
-                        }
-                    }
-                    is LauncherScreen.CollectionPicker -> {
-                        if (screen.collections.isNotEmpty()) {
-                            val newChecked = if (screen.selectedIndex in screen.checkedIndices) {
-                                screen.checkedIndices - screen.selectedIndex
-                            } else {
-                                screen.checkedIndices + screen.selectedIndex
-                            }
-                            screenStack[screenStack.lastIndex] = screen.copy(checkedIndices = newChecked)
-                        }
-                    }
-                    is LauncherScreen.ChildPicker -> {
-                        if (screen.collections.isNotEmpty()) {
-                            val newChecked = if (screen.selectedIndex in screen.checkedIndices) {
-                                screen.checkedIndices - screen.selectedIndex
-                            } else {
-                                screen.checkedIndices + screen.selectedIndex
-                            }
-                            screenStack[screenStack.lastIndex] = screen.copy(checkedIndices = newChecked)
-                        }
-                    }
-                    is LauncherScreen.AppPicker -> {
-                        val newChecked = if (screen.selectedIndex in screen.checkedIndices) {
-                            screen.checkedIndices - screen.selectedIndex
+                    },
+                    onBack = {
+                        platformConfig.saveCoreMappings()
+                        nav.pop()
+                    },
+                    onStart = {
+                        val s = nav.currentScreen as? LauncherScreen.CoreMapping ?: return@ScrollListInputHandler
+                        val newFilter = (s.filter + 1) % 4
+                        nav.replaceTop(s.copy(
+                            mappings = filterCoreMappings(s.allMappings, newFilter),
+                            filter = newFilter, selectedIndex = 0, scrollTarget = 0
+                        ))
+                    },
+                )
+                is LauncherScreen.CorePicker -> dev.cannoli.scorza.input.screen.ScrollListInputHandler(
+                    nav = nav,
+                    itemCount = { screen.cores.size },
+                    selectedIndex = { (nav.currentScreen as? LauncherScreen.CorePicker)?.selectedIndex ?: 0 },
+                    onMove = { idx -> nav.replaceTop((nav.currentScreen as? LauncherScreen.CorePicker)?.copy(selectedIndex = idx) ?: return@ScrollListInputHandler) },
+                    onConfirm = {
+                        val s = nav.currentScreen as? LauncherScreen.CorePicker ?: return@ScrollListInputHandler
+                        dialogHandler.onCorePickerConfirm(s)
+                    },
+                    onBack = {
+                        val s = nav.currentScreen as? LauncherScreen.CorePicker ?: run { nav.pop(); return@ScrollListInputHandler }
+                        nav.pop()
+                        if (s.gamePath != null) {
+                            dialogHandler.restoreContextMenu()
                         } else {
-                            screen.checkedIndices + screen.selectedIndex
-                        }
-                        screenStack[screenStack.lastIndex] = screen.copy(checkedIndices = newChecked)
-                    }
-                    is LauncherScreen.ProfileList -> {
-                        val name = screen.profiles.getOrNull(screen.selectedIndex)
-                        if (name != null) {
-                            pushScreen(LauncherScreen.ControlBinding(
-                                controls = profileManager.readControls(name),
-                                profileName = name
-                            ))
-                        }
-                    }
-                    is LauncherScreen.ControlBinding -> bindingController.startControlListening()
-                    is LauncherScreen.ShortcutBinding -> {
-                        if (!screen.listening) {
-                            screenStack[screenStack.lastIndex] = screen.copy(
-                                listening = true, heldKeys = emptySet(), countdownMs = 0
-                            )
-                        }
-                    }
-                    is LauncherScreen.Setup -> {
-                        val isCustom = screen.volumes.getOrNull(screen.volumeIndex)?.first == "Custom"
-                        val folderIndex = if (isCustom) 1 else -1
-                        if (screen.selectedIndex == folderIndex) {
-                            pushDirectoryBrowser(BrowsePurpose.SETUP, "/storage/")
-                        }
-                    }
-                    is LauncherScreen.Installing -> {
-                        if (screen.finished) {
-                            settings.sdCardRoot = screen.targetPath
-                            settings.setupCompleted = true
-                            initializeApp()
-                        }
-                    }
-                    is LauncherScreen.Housekeeping -> {}
-                    is LauncherScreen.InputTester -> {}
-                    is LauncherScreen.Credits -> {}
-                    is LauncherScreen.InstalledCores -> {}
-                    is LauncherScreen.DirectoryBrowser -> {
-                        val hasSelect = screen.currentPath != "/storage/"
-                        val selectIndex = if (hasSelect) 0 else -1
-                        if (screen.selectedIndex == selectIndex) {
-                            onDirectoryBrowserResult(screen.purpose, screen.currentPath)
-                            screenStack.removeAt(screenStack.lastIndex)
-                        } else {
-                            val entryIdx = screen.selectedIndex - if (hasSelect) 1 else 0
-                            val folderName = screen.entries[entryIdx]
-                            val newPath = setupCoordinator.resolveDirectoryEntry(screen.currentPath, folderName)
-                            val newEntries = setupCoordinator.listDirectories(newPath)
-                            screenStack[screenStack.lastIndex] = LauncherScreen.DirectoryBrowser(
-                                purpose = screen.purpose,
-                                currentPath = newPath,
-                                entries = newEntries
-                            )
-                        }
-                    }
-                }
-                else -> {}
-            }
-        }
-
-        inputHandler.onBack = {
-            when (val ds = dialogState.value) {
-                is DialogState.RenameInput,
-                is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput,
-                is DialogState.ProfileNameInput,
-                is DialogState.NewFolderInput -> {
-                    ds.withBackspace()?.let { dialogState.value = it }
-                }
-                is DialogState.ColorPicker -> {
-                    val entries = settingsViewModel.getColorEntries()
-                    updateColorListOnStack(ds.settingKey, entries)
-                    dialogState.value = DialogState.None
-                }
-                is DialogState.HexColorInput -> {
-                    if (ds.currentHex.isNotEmpty()) {
-                        dialogState.value = ds.copy(currentHex = ds.currentHex.dropLast(1))
-                    }
-                }
-                is DialogState.ContextMenu, is DialogState.BulkContextMenu -> {
-                    pendingContextReturn = null
-                    dialogState.value = DialogState.None
-                }
-                is DialogState.DeleteConfirm,
-                is DialogState.DeleteCollectionConfirm -> {
-                    restoreContextMenu()
-                }
-                is DialogState.DeleteProfileConfirm,
-                is DialogState.QuitConfirm -> {
-                    dialogState.value = DialogState.None
-                }
-                is DialogState.CollectionCreated -> {
-                    refreshCollectionPickerOnStack()
-                    dialogState.value = DialogState.None
-                }
-                is DialogState.RenameResult -> {
-                    dialogState.value = DialogState.None
-                }
-                is DialogState.MissingCore,
-                is DialogState.MissingApp,
-                is DialogState.LaunchError -> {
-                    dialogState.value = DialogState.None
-                }
-                is DialogState.UpdateDownload -> {
-                    updateManager.cancelDownload()
-                    updateManager.clearError()
-                    dialogState.value = DialogState.About()
-                }
-                is DialogState.About,
-                is DialogState.Kitchen -> {
-                    dialogState.value = DialogState.None
-                    rescanSystemList()
-                }
-                is DialogState.RAAccount -> {
-                    dialogState.value = DialogState.None
-                    if (settingsViewModel.state.value.inSubList) settingsViewModel.exitSubList()
-                }
-                is DialogState.RALoggingIn -> {
-                    dialogState.value = DialogState.None
-                }
-                is DialogState.RestartRequired -> {}
-                DialogState.None -> when (val screen = currentScreen) {
-                    LauncherScreen.SystemList -> {
-                        if (systemListViewModel.isReorderMode()) systemListViewModel.cancelReorder(showRecentlyPlayed = settings.showRecentlyPlayed, showEmpty = settings.showEmpty, contentMode = settings.contentMode, fghCollectionStem = validateFghStem(), toolsName = settings.toolsName, portsName = settings.portsName)
-                        else if (settings.mainMenuQuit) dialogState.value = DialogState.QuitConfirm
-                    }
-                    LauncherScreen.GameList -> {
-                        if (gameListViewModel.isMultiSelectMode()) {
-                            gameListViewModel.cancelMultiSelect()
-                        } else if (gameListViewModel.isReorderMode()) {
-                            gameListViewModel.cancelReorder()
-                        } else if (!navigating) {
-                            val glState = gameListViewModel.state.value
-                            if (!gameListViewModel.exitSubfolder()) {
-                                if (gameListViewModel.exitChildCollection { scanResumableGames() }) {
-                                    // navigated back to parent collection
-                                } else if (settings.contentMode == ContentMode.PLATFORMS
-                                    && glState.isCollection && glState.collectionName != null
-                                    && !glState.collectionName.equals("Favorites", ignoreCase = true)) {
-                                    gameListViewModel.loadCollectionsList(restoreIndex = true)
-                                } else {
-                                    screenStack.removeAt(screenStack.lastIndex)
-                                    rescanSystemList()
-                                }
-                            }
-                        }
-                    }
-                    LauncherScreen.Settings -> {
-                        if (settingsViewModel.state.value.inSubList) {
-                            settingsViewModel.save()
-                            settingsViewModel.exitSubList()
-                            rescanSystemList()
-                        } else {
-                            settingsViewModel.cancel()
-                            screenStack.removeAt(screenStack.lastIndex)
-                        }
-                    }
-                    is LauncherScreen.CorePicker -> {
-                        screenStack.removeAt(screenStack.lastIndex)
-                        if (screen.gamePath != null) {
-                            restoreContextMenu()
-                        } else {
-                            val cm = screenStack.lastOrNull()
+                            val cm = nav.screenStack.lastOrNull()
                             if (cm is LauncherScreen.CoreMapping) {
                                 val all = platformConfig.getDetailedMappings(packageManager, installedCoreService.installedCores, LaunchManager.extractBundledCores(this@MainActivity), installedCoreService.unresponsivePackages)
                                 val filtered = filterCoreMappings(all, cm.filter)
-                                val idx = filtered.indexOfFirst { it.tag == screen.tag }.coerceAtLeast(0)
-                                screenStack[screenStack.lastIndex] = cm.copy(mappings = filtered, allMappings = all, selectedIndex = idx)
+                                val idx = filtered.indexOfFirst { it.tag == s.tag }.coerceAtLeast(0)
+                                nav.screenStack[nav.screenStack.lastIndex] = cm.copy(mappings = filtered, allMappings = all, selectedIndex = idx)
                             }
                         }
-                    }
-                    is LauncherScreen.CoreMapping -> {
-                        platformConfig.saveCoreMappings()
-                        screenStack.removeAt(screenStack.lastIndex)
-                    }
-                    is LauncherScreen.AppPicker -> {
-                        onAppPickerConfirm(screen)
-                    }
-                    is LauncherScreen.ColorList -> {
-                        screenStack.removeAt(screenStack.lastIndex)
-                    }
-                    is LauncherScreen.CollectionPicker -> {
-                        onCollectionPickerConfirm(screen)
-                    }
-                    is LauncherScreen.ChildPicker -> {
-                        onChildPickerConfirm(screen)
-                    }
-                    is LauncherScreen.ProfileList -> {
-                        screenStack.removeAt(screenStack.lastIndex)
-                    }
-                    is LauncherScreen.ControlBinding -> {
-                        profileManager.saveControls(screen.profileName, screen.controls)
-                        screenStack.removeAt(screenStack.lastIndex)
-                        val prev = screenStack.lastOrNull()
-                        if (prev is LauncherScreen.ProfileList) {
-                            screenStack[screenStack.lastIndex] = prev.copy(profiles = profileManager.listProfiles())
+                    },
+                )
+                is LauncherScreen.ColorList -> dev.cannoli.scorza.input.screen.ScrollListInputHandler(
+                    nav = nav,
+                    itemCount = { screen.colors.size },
+                    selectedIndex = { (nav.currentScreen as? LauncherScreen.ColorList)?.selectedIndex ?: 0 },
+                    onMove = { idx -> nav.replaceTop((nav.currentScreen as? LauncherScreen.ColorList)?.copy(selectedIndex = idx) ?: return@ScrollListInputHandler) },
+                    onConfirm = {
+                        val s = nav.currentScreen as? LauncherScreen.ColorList ?: return@ScrollListInputHandler
+                        s.colors.getOrNull(s.selectedIndex)?.let { entry -> openColorPicker(entry.key) }
+                    },
+                    onBack = { nav.pop() },
+                )
+                is LauncherScreen.CollectionPicker -> dev.cannoli.scorza.input.screen.ScrollListInputHandler(
+                    nav = nav,
+                    itemCount = { screen.collections.size },
+                    selectedIndex = { (nav.currentScreen as? LauncherScreen.CollectionPicker)?.selectedIndex ?: 0 },
+                    onMove = { idx -> nav.replaceTop((nav.currentScreen as? LauncherScreen.CollectionPicker)?.copy(selectedIndex = idx) ?: return@ScrollListInputHandler) },
+                    onConfirm = {
+                        val s = nav.currentScreen as? LauncherScreen.CollectionPicker ?: return@ScrollListInputHandler
+                        if (s.collections.isNotEmpty()) {
+                            val newChecked = if (s.selectedIndex in s.checkedIndices) s.checkedIndices - s.selectedIndex else s.checkedIndices + s.selectedIndex
+                            nav.replaceTop(s.copy(checkedIndices = newChecked))
                         }
-                    }
-                    is LauncherScreen.ShortcutBinding -> {
-                        cancelShortcutListening()
-                        globalOverrides.saveShortcuts(screen.shortcuts)
-                        screenStack.removeAt(screenStack.lastIndex)
-                    }
-                    is LauncherScreen.Credits -> {
-                        screenStack.removeAt(screenStack.lastIndex)
-                    }
-                    is LauncherScreen.InstalledCores -> {
-                        unregisterCoreQueryReceiver()
-                        screenStack.removeAt(screenStack.lastIndex)
-                    }
-                    is LauncherScreen.DirectoryBrowser -> {
-                        val parent = setupCoordinator.parentDirectory(screen.currentPath)
-                        if (parent != null) {
-                            val newEntries = setupCoordinator.listDirectories(parent)
-                            screenStack[screenStack.lastIndex] = LauncherScreen.DirectoryBrowser(
-                                purpose = screen.purpose,
-                                currentPath = parent,
-                                entries = newEntries
-                            )
+                    },
+                    onBack = {
+                        val s = nav.currentScreen as? LauncherScreen.CollectionPicker ?: run { nav.pop(); return@ScrollListInputHandler }
+                        dialogHandler.onCollectionPickerConfirm(s)
+                    },
+                    onStart = {
+                        val s = nav.currentScreen as? LauncherScreen.CollectionPicker ?: return@ScrollListInputHandler
+                        nav.dialogState.value = DialogState.NewCollectionInput(gamePaths = s.gamePaths)
+                    },
+                )
+                is LauncherScreen.ChildPicker -> dev.cannoli.scorza.input.screen.ScrollListInputHandler(
+                    nav = nav,
+                    itemCount = { screen.collections.size },
+                    selectedIndex = { (nav.currentScreen as? LauncherScreen.ChildPicker)?.selectedIndex ?: 0 },
+                    onMove = { idx -> nav.replaceTop((nav.currentScreen as? LauncherScreen.ChildPicker)?.copy(selectedIndex = idx) ?: return@ScrollListInputHandler) },
+                    onConfirm = {
+                        val s = nav.currentScreen as? LauncherScreen.ChildPicker ?: return@ScrollListInputHandler
+                        if (s.collections.isNotEmpty()) {
+                            val newChecked = if (s.selectedIndex in s.checkedIndices) s.checkedIndices - s.selectedIndex else s.checkedIndices + s.selectedIndex
+                            nav.replaceTop(s.copy(checkedIndices = newChecked))
                         }
-                    }
-                    is LauncherScreen.Setup -> finishAffinity()
-                    is LauncherScreen.InputTester -> {}
-                    is LauncherScreen.Installing -> {}
-                    is LauncherScreen.Housekeeping -> {}
-                }
-            }
-        }
-
-        inputHandler.onStart = {
-            when (val ds = dialogState.value) {
-                is DialogState.RenameInput -> onRenameConfirm(ds)
-                is DialogState.NewCollectionInput -> onNewCollectionConfirm(ds)
-                is DialogState.CollectionRenameInput -> onCollectionRenameConfirm(ds)
-                is DialogState.ProfileNameInput -> onProfileNameConfirm(ds)
-                is DialogState.NewFolderInput -> onNewFolderConfirm(ds)
-                is DialogState.HexColorInput -> {
-                    if (ds.currentHex.length == 6) {
-                        settingsViewModel.setColor(ds.settingKey, "#${ds.currentHex}")
-                        val entries = settingsViewModel.getColorEntries()
-                        updateColorListOnStack(ds.settingKey, entries)
-                        dialogState.value = DialogState.None
-                    }
-                }
-                DialogState.None -> when (val screen = currentScreen) {
-                    LauncherScreen.SystemList -> {
-                        if (systemListViewModel.isReorderMode()) {
-                            systemListViewModel.confirmReorder()
-                        } else {
-                            onSystemListContextMenu()
+                    },
+                    onBack = {
+                        val s = nav.currentScreen as? LauncherScreen.ChildPicker ?: run { nav.pop(); return@ScrollListInputHandler }
+                        dialogHandler.onChildPickerConfirm(s)
+                    },
+                )
+                is LauncherScreen.AppPicker -> dev.cannoli.scorza.input.screen.ScrollListInputHandler(
+                    nav = nav,
+                    itemCount = { screen.apps.size },
+                    selectedIndex = { (nav.currentScreen as? LauncherScreen.AppPicker)?.selectedIndex ?: 0 },
+                    onMove = { idx -> nav.replaceTop((nav.currentScreen as? LauncherScreen.AppPicker)?.copy(selectedIndex = idx) ?: return@ScrollListInputHandler) },
+                    onConfirm = {
+                        val s = nav.currentScreen as? LauncherScreen.AppPicker ?: return@ScrollListInputHandler
+                        val newChecked = if (s.selectedIndex in s.checkedIndices) s.checkedIndices - s.selectedIndex else s.checkedIndices + s.selectedIndex
+                        nav.replaceTop(s.copy(checkedIndices = newChecked))
+                    },
+                    onBack = {
+                        val s = nav.currentScreen as? LauncherScreen.AppPicker ?: run { nav.pop(); return@ScrollListInputHandler }
+                        settingsHandler.confirmAppPicker(s)
+                    },
+                )
+                is LauncherScreen.ProfileList -> dev.cannoli.scorza.input.screen.ScrollListInputHandler(
+                    nav = nav,
+                    itemCount = { screen.profiles.size },
+                    selectedIndex = { (nav.currentScreen as? LauncherScreen.ProfileList)?.selectedIndex ?: 0 },
+                    onMove = { idx -> nav.replaceTop((nav.currentScreen as? LauncherScreen.ProfileList)?.copy(selectedIndex = idx) ?: return@ScrollListInputHandler) },
+                    onConfirm = {
+                        val s = nav.currentScreen as? LauncherScreen.ProfileList ?: return@ScrollListInputHandler
+                        val name = s.profiles.getOrNull(s.selectedIndex)
+                        if (name != null) {
+                            nav.push(LauncherScreen.ControlBinding(controls = profileManager.readControls(name), profileName = name))
                         }
-                    }
-                    LauncherScreen.GameList -> {
-                        if (gameListViewModel.isMultiSelectMode()) {
-                            val glState = gameListViewModel.state.value
-                            val checkedItems = glState.checkedIndices
-                                .mapNotNull { glState.items.getOrNull(it) }
-                                .filterIsInstance<dev.cannoli.scorza.model.ListItem>()
-                                .filter { it !is dev.cannoli.scorza.model.ListItem.SubfolderItem && it !is dev.cannoli.scorza.model.ListItem.ChildCollectionItem }
-                            if (checkedItems.isNotEmpty()) {
-                                val paths = checkedItems.mapNotNull { it.recentKey() }
-                                val allFav = paths.all { resolvePathToRef(it)?.let { ref ->
-                                    when (ref) {
-                                        is dev.cannoli.scorza.db.LibraryRef.Rom -> ref.id in glState.favoriteRomIds
-                                        is dev.cannoli.scorza.db.LibraryRef.App -> ref.id in glState.favoriteAppIds
-                                    }
-                                } == true }
-                                val isApkList = glState.platformTag == "tools" || glState.platformTag == "ports"
-                                val options = mutableListOf<String>()
-                                if (glState.platformTag == "recently_played") options.add(MENU_REMOVE_FROM_RECENTS)
-                                options.add(if (allFav) MENU_REMOVE_FAVORITE else MENU_ADD_FAVORITE)
-                                if (glState.isCollection && glState.collectionName != null) {
-                                    options.add(MENU_REMOVE_FROM_COLLECTION)
-                                }
-                                if (isApkList) {
-                                    options.addAll(listOf(MENU_MANAGE_COLLECTIONS, MENU_REMOVE))
-                                } else {
-                                    options.addAll(listOf(MENU_MANAGE_COLLECTIONS, MENU_DELETE_ART, MENU_DELETE_GAME))
-                                }
-                                gameListViewModel.confirmMultiSelect()
-                                dialogState.value = DialogState.BulkContextMenu(
-                                    gamePaths = paths,
-                                    options = options
-                                )
-                            } else {
-                                gameListViewModel.cancelMultiSelect()
-                            }
-                        } else if (gameListViewModel.isReorderMode()) {
-                            gameListViewModel.confirmReorder()
-                        } else {
-                        val glState = gameListViewModel.state.value
-                        val item = gameListViewModel.getSelectedItem()
-                        if (item != null) {
-                            val menuName = when (item) {
-                                is dev.cannoli.scorza.model.ListItem.RomItem -> item.rom.displayName
-                                is dev.cannoli.scorza.model.ListItem.AppItem -> item.app.displayName
-                                is dev.cannoli.scorza.model.ListItem.SubfolderItem -> item.name
-                                is dev.cannoli.scorza.model.ListItem.CollectionItem -> item.collection.displayName
-                                is dev.cannoli.scorza.model.ListItem.ChildCollectionItem -> item.collection.displayName
-                            }
-                            dialogState.value = DialogState.ContextMenu(
-                                gameName = menuName,
-                                options = buildItemContextOptions(item, glState)
-                            )
-                        }
-                        }
-                    }
-                    is LauncherScreen.Setup -> {
-                        val isCustom = screen.volumes.getOrNull(screen.volumeIndex)?.first == "Custom"
-                        val continueEnabled = !isCustom || screen.customPath != null
-                        if (continueEnabled) {
-                            val targetPath = if (isCustom) screen.customPath!! else screen.volumes[screen.volumeIndex].second + "Cannoli/"
-                            screenStack[screenStack.lastIndex] = LauncherScreen.Installing(targetPath = targetPath)
-                            startInstalling(targetPath)
-                        }
-                    }
-                    is LauncherScreen.ProfileList -> {
-                        val pl = currentScreen as LauncherScreen.ProfileList
-                        val name = pl.profiles.getOrNull(pl.selectedIndex)
+                    },
+                    onBack = { nav.pop() },
+                    onStart = {
+                        val s = nav.currentScreen as? LauncherScreen.ProfileList ?: return@ScrollListInputHandler
+                        val name = s.profiles.getOrNull(s.selectedIndex)
                         if (name != null && !dev.cannoli.scorza.input.ProfileManager.isProtected(name)) {
-                            dialogState.value = DialogState.ContextMenu(
-                                gameName = name,
-                                options = listOf("Rename", "Delete")
-                            )
+                            nav.dialogState.value = DialogState.ContextMenu(gameName = name, options = listOf("Rename", "Delete"))
                         }
-                    }
-                    else -> {}
+                    },
+                )
+                is LauncherScreen.ControlBinding -> dev.cannoli.scorza.input.screen.ScrollListInputHandler(
+                    nav = nav,
+                    itemCount = { controlButtonCount },
+                    selectedIndex = { (nav.currentScreen as? LauncherScreen.ControlBinding)?.selectedIndex ?: 0 },
+                    onMove = { idx -> nav.replaceTop((nav.currentScreen as? LauncherScreen.ControlBinding)?.copy(selectedIndex = idx) ?: return@ScrollListInputHandler) },
+                    onConfirm = { bindingController.startControlListening() },
+                    onBack = {
+                        val s = nav.currentScreen as? LauncherScreen.ControlBinding ?: run { nav.pop(); return@ScrollListInputHandler }
+                        profileManager.saveControls(s.profileName, s.controls)
+                        nav.pop()
+                        val prev = nav.screenStack.lastOrNull()
+                        if (prev is LauncherScreen.ProfileList) {
+                            nav.screenStack[nav.screenStack.lastIndex] = prev.copy(profiles = profileManager.listProfiles())
+                        }
+                    },
+                    onStart = {
+                        val s = nav.currentScreen as? LauncherScreen.ControlBinding ?: return@ScrollListInputHandler
+                        if (s.listeningIndex < 0) {
+                            val btn = controlButtons.getOrNull(s.selectedIndex)
+                            if (btn != null && btn.prefKey != "btn_menu") {
+                                val currentKeyCode = s.controls[btn.prefKey] ?: btn.defaultKeyCode
+                                if (currentKeyCode != LibretroInput.UNMAPPED) {
+                                    nav.replaceTop(s.copy(controls = s.controls + (btn.prefKey to LibretroInput.UNMAPPED)))
+                                }
+                            }
+                        }
+                    },
+                )
+                is LauncherScreen.ShortcutBinding -> dev.cannoli.scorza.input.screen.ScrollListInputHandler(
+                    nav = nav,
+                    itemCount = { dev.cannoli.igm.ShortcutAction.entries.size },
+                    selectedIndex = { (nav.currentScreen as? LauncherScreen.ShortcutBinding)?.selectedIndex ?: 0 },
+                    onMove = { idx ->
+                        val s = nav.currentScreen as? LauncherScreen.ShortcutBinding ?: return@ScrollListInputHandler
+                        if (!s.listening) nav.replaceTop(s.copy(selectedIndex = idx))
+                    },
+                    onConfirm = {
+                        val s = nav.currentScreen as? LauncherScreen.ShortcutBinding ?: return@ScrollListInputHandler
+                        if (!s.listening) {
+                            nav.replaceTop(s.copy(listening = true, heldKeys = emptySet(), countdownMs = 0))
+                        }
+                    },
+                    onBack = {
+                        val s = nav.currentScreen as? LauncherScreen.ShortcutBinding ?: run { nav.pop(); return@ScrollListInputHandler }
+                        cancelShortcutListening()
+                        globalOverrides.saveShortcuts(s.shortcuts)
+                        nav.pop()
+                    },
+                    onStart = {
+                        val s = nav.currentScreen as? LauncherScreen.ShortcutBinding ?: return@ScrollListInputHandler
+                        if (!s.listening) {
+                            dev.cannoli.igm.ShortcutAction.entries.getOrNull(s.selectedIndex)?.let { action ->
+                                nav.replaceTop(s.copy(shortcuts = s.shortcuts + (action to emptySet())))
+                            }
+                        }
+                    },
+                )
+                is LauncherScreen.Credits -> dev.cannoli.scorza.input.screen.ScrollListInputHandler(
+                    nav = nav,
+                    itemCount = { dev.cannoli.scorza.ui.components.CREDITS.size },
+                    selectedIndex = { (nav.currentScreen as? LauncherScreen.Credits)?.selectedIndex ?: 0 },
+                    onMove = { idx -> nav.replaceTop((nav.currentScreen as? LauncherScreen.Credits)?.copy(selectedIndex = idx) ?: return@ScrollListInputHandler) },
+                    onConfirm = {},
+                    onBack = { nav.pop() },
+                )
+                is LauncherScreen.InstalledCores -> dev.cannoli.scorza.input.screen.ScrollListInputHandler(
+                    nav = nav,
+                    itemCount = { (nav.currentScreen as? LauncherScreen.InstalledCores)?.cores?.size ?: 0 },
+                    selectedIndex = { (nav.currentScreen as? LauncherScreen.InstalledCores)?.selectedIndex ?: 0 },
+                    onMove = { idx -> nav.replaceTop((nav.currentScreen as? LauncherScreen.InstalledCores)?.copy(selectedIndex = idx) ?: return@ScrollListInputHandler) },
+                    onConfirm = {},
+                    onBack = {
+                        unregisterCoreQueryReceiver()
+                        nav.pop()
+                    },
+                )
+                else -> object : dev.cannoli.scorza.input.ScreenInputHandler {}
+            }
+        }
+
+        router = dev.cannoli.scorza.input.InputRouter(
+            nav = nav,
+            dialogHandler = dialogHandler,
+            systemListHandler = systemListHandler,
+            gameListHandler = gameListHandler,
+            settingsHandler = settingsHandler,
+            setupHandler = setupHandler,
+            inputTesterHandler = inputTesterHandler,
+            scrollListHandlerFor = { screen -> makeScrollListHandler(screen) },
+        )
+        router.wire(inputHandler)
+    }
+
+    private fun setupWireInput() {
+        // Minimal wiring for the setup/permission flow before the router is initialized.
+        // The router.wire() call in finishInitializeApp() overwrites these once ready.
+        inputHandler.onUp = {
+            when (val screen = preInitScreenStack.lastOrNull()) {
+                is LauncherScreen.Setup -> preInitScreenStack[preInitScreenStack.lastIndex] = screen.copy(selectedIndex = (screen.selectedIndex - 1).coerceAtLeast(0))
+                is LauncherScreen.DirectoryBrowser -> {
+                    val hasSelect = screen.currentPath != "/storage/"
+                    val count = screen.entries.size + if (hasSelect) 1 else 0
+                    if (count > 0) preInitScreenStack[preInitScreenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, -1, count))
                 }
                 else -> {}
             }
         }
-
-        inputHandler.onSelect = {
-            when (val ds = dialogState.value) {
-                is DialogState.RenameInput,
-                is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput,
-                is DialogState.ProfileNameInput,
-                is DialogState.NewFolderInput -> {
-                    if (!selectDown) {
-                        selectDown = true
-                        selectHeld = false
-                        selectHoldHandler.postDelayed(selectHoldRunnable, 400)
-                    }
+        inputHandler.onDown = {
+            when (val screen = preInitScreenStack.lastOrNull()) {
+                is LauncherScreen.Setup -> {
+                    val maxIndex = if (screen.volumes.getOrNull(screen.volumeIndex)?.first == "Custom") 1 else 0
+                    preInitScreenStack[preInitScreenStack.lastIndex] = screen.copy(selectedIndex = (screen.selectedIndex + 1).coerceAtMost(maxIndex))
                 }
-                DialogState.None -> if (!selectDown) {
-                    selectDown = true
-                    selectHeld = false
-                    selectHandled = false
-                    when (currentScreen) {
-                        LauncherScreen.SystemList -> {
-                            if (systemListViewModel.isReorderMode()) {
-                                systemListViewModel.confirmReorder()
-                            } else {
-                                systemListViewModel.enterReorderMode()
-                            }
-                        }
-                        LauncherScreen.GameList -> {
-                            val glState = gameListViewModel.state.value
-                            val isApkList = glState.platformTag == "tools" || glState.platformTag == "ports"
-                            if (glState.isCollection && !glState.isCollectionsList && glState.subfolderPath == null) {
-                                if (gameListViewModel.isReorderMode()) {
-                                    gameListViewModel.confirmReorder()
-                                    selectHandled = true
-                                } else if (gameListViewModel.isMultiSelectMode()) {
-                                    gameListViewModel.confirmMultiSelect()
-                                    selectHandled = true
-                                } else {
-                                    selectHoldHandler.postDelayed(collectionSelectHoldRunnable, 400)
-                                }
-                            } else if (isApkList) {
-                                if (gameListViewModel.isReorderMode()) {
-                                    gameListViewModel.confirmReorder()
-                                    selectHandled = true
-                                } else if (gameListViewModel.isMultiSelectMode()) {
-                                    gameListViewModel.confirmMultiSelect()
-                                    selectHandled = true
-                                } else {
-                                    selectHoldHandler.postDelayed(collectionSelectHoldRunnable, 400)
-                                }
-                            } else if (glState.isCollectionsList) {
-                                if (gameListViewModel.isReorderMode()) {
-                                    gameListViewModel.confirmReorder()
-                                } else {
-                                    gameListViewModel.enterReorderMode()
-                                }
-                            } else if (glState.subfolderPath == null) {
-                                if (gameListViewModel.isMultiSelectMode()) {
-                                    gameListViewModel.confirmMultiSelect()
-                                } else {
-                                    gameListViewModel.enterMultiSelect()
-                                }
-                            }
-                        }
-                        else -> {}
-                    }
+                is LauncherScreen.DirectoryBrowser -> {
+                    val hasSelect = screen.currentPath != "/storage/"
+                    val count = screen.entries.size + if (hasSelect) 1 else 0
+                    if (count > 0) preInitScreenStack[preInitScreenStack.lastIndex] = screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, 1, count))
                 }
                 else -> {}
             }
         }
-
-        inputHandler.onNorth = {
-            when (val ds = dialogState.value) {
-                is DialogState.RenameInput,
-                is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput,
-                is DialogState.ProfileNameInput,
-                is DialogState.NewFolderInput -> {
-                    ds.withInsertedChar(" ")?.let { dialogState.value = it }
-                }
-                is DialogState.About -> {
-                    dialogState.value = DialogState.None
-                    screenStack.add(LauncherScreen.Credits())
-                }
-                is DialogState.Kitchen -> {
-                    dev.cannoli.scorza.server.KitchenManager.stop()
-                    dialogState.value = DialogState.None
-                    rescanSystemList()
-                }
-                is DialogState.RAAccount -> {
-                    settings.raUsername = ""
-                    settings.raToken = ""
-                    settings.raPassword = ""
-                    settingsViewModel.load()
-                    dialogState.value = DialogState.None
-                }
-                is DialogState.ColorPicker -> {
-                    val currentHex = settingsViewModel.getColorHex(ds.settingKey).removePrefix("#")
-                    dialogState.value = DialogState.HexColorInput(
-                        settingKey = ds.settingKey,
-                        title = ds.title,
-                        currentHex = currentHex
+        inputHandler.onLeft = {
+            (preInitScreenStack.lastOrNull() as? LauncherScreen.Setup)?.let { screen ->
+                if (screen.selectedIndex == 0 && screen.volumes.size > 1) {
+                    preInitScreenStack[preInitScreenStack.lastIndex] = screen.copy(
+                        volumeIndex = (screen.volumeIndex - 1 + screen.volumes.size) % screen.volumes.size,
+                        customPath = null
                     )
                 }
-                DialogState.None -> when (val screen = currentScreen) {
-                    LauncherScreen.SystemList -> {
-                        val fgh = validateFghStem() != null
-                        val item = systemListViewModel.getSelectedItem()
-                        if (fgh && item is SystemListViewModel.ListItem.GameItem) {
-                            val recentKey = item.recentKey
-                            val isResumable = resumableGames.contains(recentKey)
-                            if (isResumable) {
-                                val errorDialog = launchSelected(item.item, resume = !settings.swapPlayResume)
-                                if (errorDialog != null) {
-                                    dialogState.value = errorDialog
-                                } else {
-                                    recordRecentlyPlayedByPath(recentKey)
-                                }
-                            }
-                        } else if (!fgh) {
-                            systemListViewModel.savePosition()
-                            settingsViewModel.load()
-                            screenStack.add(LauncherScreen.Settings)
-                            if (updateManager.isOnline()) {
-                                ioScope.launch { updateManager.checkForUpdate() }
-                            }
-                        }
-                    }
-                    LauncherScreen.Settings -> {
-                        val item = settingsViewModel.getSelectedItem()
-                        if (item?.key == "rom_directory" && settings.romDirectory.isNotEmpty()) {
-                            settingsViewModel.clearRomDirectory()
-                            invalidateAllLibraryCaches()
-                            dialogState.value = DialogState.RestartRequired
-                        }
-                    }
-                    LauncherScreen.GameList -> {
-                        val glState = gameListViewModel.state.value
-                        if (!glState.isCollectionsList) {
-                            val item = gameListViewModel.getSelectedItem()
-                            val recentKey = item?.let(::selectedRecentKey)
-                            if (recentKey != null) {
-                                val isResumable = resumableGames.contains(recentKey)
-                                val trackRecent = glState.platformTag != "tools"
-                                if (isResumable) {
-                                    val errorDialog = launchSelected(item, resume = !settings.swapPlayResume)
-                                    if (errorDialog != null) {
-                                        dialogState.value = errorDialog
-                                    } else if (trackRecent) {
-                                        recordRecentlyPlayedByPath(recentKey)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    is LauncherScreen.ProfileList -> {
-                        dialogState.value = DialogState.ProfileNameInput(isNew = true)
-                    }
-                    is LauncherScreen.ControlBinding -> {
-                        if (screen.listeningIndex < 0) {
-                            val btn = controlButtons.getOrNull(screen.selectedIndex)
-                            if (btn != null && btn.prefKey != "btn_menu") {
-                                val currentKeyCode = screen.controls[btn.prefKey] ?: btn.defaultKeyCode
-                                if (currentKeyCode != LibretroInput.UNMAPPED) {
-                                    screenStack[screenStack.lastIndex] = screen.copy(
-                                        controls = screen.controls + (btn.prefKey to LibretroInput.UNMAPPED)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    is LauncherScreen.ShortcutBinding -> {
-                        if (!screen.listening) {
-                            ShortcutAction.entries.getOrNull(screen.selectedIndex)?.let { action ->
-                                screenStack[screenStack.lastIndex] = screen.copy(
-                                    shortcuts = screen.shortcuts + (action to emptySet())
-                                )
-                            }
-                        }
-                    }
-                    is LauncherScreen.DirectoryBrowser -> {
-                        if (screen.currentPath != "/storage/") {
-                            dialogState.value = DialogState.NewFolderInput(parentPath = screen.currentPath)
-                        }
-                    }
-                    else -> {}
-                }
-                else -> {}
             }
         }
-
-        inputHandler.onWest = {
-            when (val ds = dialogState.value) {
-                is DialogState.RenameInput,
-                is DialogState.CollectionRenameInput -> {
-                    restoreContextMenu()
+        inputHandler.onRight = {
+            (preInitScreenStack.lastOrNull() as? LauncherScreen.Setup)?.let { screen ->
+                if (screen.selectedIndex == 0 && screen.volumes.size > 1) {
+                    preInitScreenStack[preInitScreenStack.lastIndex] = screen.copy(
+                        volumeIndex = (screen.volumeIndex + 1) % screen.volumes.size,
+                        customPath = null
+                    )
                 }
-                is DialogState.NewCollectionInput,
-                is DialogState.ProfileNameInput,
-                is DialogState.NewFolderInput -> {
-                    dialogState.value = DialogState.None
-                }
-                is DialogState.HexColorInput -> {
-                    openColorPicker(ds.settingKey)
-                }
-                is DialogState.About -> {
-                    val info = updateManager.updateAvailable.value
-                    if (info != null) {
-                        dialogState.value = DialogState.UpdateDownload(info.versionName, info.changelog)
-                        ioScope.launch { updateManager.downloadAndInstall(info) }
+            }
+        }
+        inputHandler.onConfirm = {
+            when (val screen = preInitScreenStack.lastOrNull()) {
+                is LauncherScreen.Setup -> {
+                    val isCustom = screen.volumes.getOrNull(screen.volumeIndex)?.first == "Custom"
+                    val folderIndex = if (isCustom) 1 else -1
+                    if (screen.selectedIndex == folderIndex) {
+                        pushDirectoryBrowser(BrowsePurpose.SETUP, "/storage/")
                     }
                 }
-                DialogState.None -> {
-                    when (currentScreen) {
-                        LauncherScreen.SystemList -> {
-                            if (settings.contentMode == ContentMode.FIVE_GAME_HANDHELD) {
-                                systemListViewModel.savePosition()
-                                settingsViewModel.load()
-                                screenStack.add(LauncherScreen.Settings)
-                                if (updateManager.isOnline()) {
-                                    ioScope.launch { updateManager.checkForUpdate() }
-                                }
-                            } else {
-                                val km = dev.cannoli.scorza.server.KitchenManager
-                                if (km.isRunning || systemListViewModel.state.value.items.isEmpty()) {
-                                    val root = File(settings.sdCardRoot)
-                                    if (!km.isRunning) km.toggle(root, assets, settings.kitchenCodeBypass)
-                                    else km.setCodeBypass(settings.kitchenCodeBypass)
-                                    dialogState.value = DialogState.Kitchen(
-                                        urls = km.getUrls(hasActiveVpn()),
-                                        pin = km.pin,
-                                        requirePin = !settings.kitchenCodeBypass
-                                    )
-                                }
-                            }
-                        }
-                        LauncherScreen.GameList -> {
-                            val glState = gameListViewModel.state.value
-                            if (glState.isCollectionsList) {
-                                dialogState.value = DialogState.NewCollectionInput(gamePaths = emptyList())
-                            } else if (glState.isCollection && glState.collectionName != null) {
-                                dialogState.value = DialogState.NewCollectionInput(gamePaths = emptyList(), parentStem = glState.collectionName)
-                            }
-                        }
-                        is LauncherScreen.CollectionPicker -> {
-                            val screen = currentScreen as LauncherScreen.CollectionPicker
-                            dialogState.value = DialogState.NewCollectionInput(gamePaths = screen.gamePaths)
-                        }
-                        is LauncherScreen.CoreMapping -> {
-                            val screen = currentScreen as LauncherScreen.CoreMapping
-                            val newFilter = (screen.filter + 1) % 4
-                            screenStack[screenStack.lastIndex] = screen.copy(
-                                mappings = filterCoreMappings(screen.allMappings, newFilter),
-                                filter = newFilter, selectedIndex = 0, scrollTarget = 0
-                            )
-                        }
-                        is LauncherScreen.DirectoryBrowser -> {
-                            screenStack.removeAt(screenStack.lastIndex)
-                        }
-                        else -> {}
+                is LauncherScreen.Installing -> {
+                    if (screen.finished) {
+                        settings.sdCardRoot = screen.targetPath
+                        settings.setupCompleted = true
+                        initializeApp()
+                    }
+                }
+                is LauncherScreen.DirectoryBrowser -> {
+                    val hasSelect = screen.currentPath != "/storage/"
+                    val selectIndex = if (hasSelect) 0 else -1
+                    if (screen.selectedIndex == selectIndex) {
+                        onDirectoryBrowserResult(screen.purpose, screen.currentPath)
+                        preInitScreenStack.removeAt(preInitScreenStack.lastIndex)
+                    } else {
+                        val entryIdx = screen.selectedIndex - if (hasSelect) 1 else 0
+                        val folderName = screen.entries[entryIdx]
+                        val newPath = setupCoordinator.resolveDirectoryEntry(screen.currentPath, folderName)
+                        val newEntries = setupCoordinator.listDirectories(newPath)
+                        preInitScreenStack[preInitScreenStack.lastIndex] = LauncherScreen.DirectoryBrowser(
+                            purpose = screen.purpose,
+                            currentPath = newPath,
+                            entries = newEntries
+                        )
                     }
                 }
                 else -> {}
             }
         }
-
-        inputHandler.onL1 = {
-            when (val ds = dialogState.value) {
-                is DialogState.RenameInput,
-                is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput,
-                is DialogState.ProfileNameInput,
-                is DialogState.NewFolderInput -> {
-                    val ks = ds.asKeyboardState()!!
-                    if (ks.cursorPos > 0) dialogState.value = ds.withCursor(ks.cursorPos - 1)
+        inputHandler.onBack = {
+            when (val screen = preInitScreenStack.lastOrNull()) {
+                is LauncherScreen.DirectoryBrowser -> {
+                    val parent = setupCoordinator.parentDirectory(screen.currentPath)
+                    if (parent != null) {
+                        val newEntries = setupCoordinator.listDirectories(parent)
+                        preInitScreenStack[preInitScreenStack.lastIndex] = LauncherScreen.DirectoryBrowser(
+                            purpose = screen.purpose,
+                            currentPath = parent,
+                            entries = newEntries
+                        )
+                    }
                 }
-                DialogState.None -> if (currentScreen == LauncherScreen.GameList && settings.platformSwitching) switchPlatform(-1)
+                is LauncherScreen.Setup -> finishAffinity()
                 else -> {}
             }
         }
-
-        inputHandler.onR1 = {
-            when (val ds = dialogState.value) {
-                is DialogState.RenameInput,
-                is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput,
-                is DialogState.ProfileNameInput,
-                is DialogState.NewFolderInput -> {
-                    val ks = ds.asKeyboardState()!!
-                    if (ks.cursorPos < ks.currentName.length) dialogState.value = ds.withCursor(ks.cursorPos + 1)
+        inputHandler.onStart = {
+            (preInitScreenStack.lastOrNull() as? LauncherScreen.Setup)?.let { screen ->
+                val isCustom = screen.volumes.getOrNull(screen.volumeIndex)?.first == "Custom"
+                val continueEnabled = !isCustom || screen.customPath != null
+                if (continueEnabled) {
+                    val targetPath = if (isCustom) screen.customPath!! else screen.volumes[screen.volumeIndex].second + "Cannoli/"
+                    preInitScreenStack[preInitScreenStack.lastIndex] = LauncherScreen.Installing(targetPath = targetPath)
+                    startInstalling(targetPath)
                 }
-                DialogState.None -> if (currentScreen == LauncherScreen.GameList && settings.platformSwitching) switchPlatform(1)
-                else -> {}
-            }
-        }
-
-        inputHandler.onL2 = {
-            when (val ds = dialogState.value) {
-                is DialogState.RenameInput,
-                is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput -> {
-                    dialogState.value = ds.withCursor(0)
-                }
-                else -> {}
-            }
-        }
-
-        inputHandler.onR2 = {
-            when (val ds = dialogState.value) {
-                is DialogState.RenameInput,
-                is DialogState.NewCollectionInput,
-                is DialogState.CollectionRenameInput,
-                is DialogState.ProfileNameInput,
-                is DialogState.NewFolderInput -> {
-                    val ks = ds.asKeyboardState()!!
-                    dialogState.value = ds.withCursor(ks.currentName.length)
-                }
-                else -> {}
             }
         }
     }
 
-    private fun getInstalledLauncherApps(): List<Pair<String, String>> {
-        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-        val resolveInfos = packageManager.queryIntentActivities(intent, 0)
-        return resolveInfos
-            .mapNotNull { ri ->
-                val pkg = ri.activityInfo.packageName
-                if (pkg == packageName) return@mapNotNull null
-                val label = ri.loadLabel(packageManager).toString()
-                label to pkg
-            }
-            .distinctBy { it.second }
-            .sortedBy { it.first.lowercase(java.util.Locale.ROOT) }
-    }
+    private fun wrapIndex(current: Int, delta: Int, size: Int): Int =
+        if (size == 0) 0 else (current + delta).mod(size)
 
-    private fun openAppPicker(type: String) {
-        val installed = getInstalledLauncherApps()
-        val allApps = buildList {
-            if (type == "tools" && packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)) {
-                add("Android TV Settings" to ApkLauncher.VIRTUAL_TV_SETTINGS_PACKAGE)
-            }
-            addAll(installed)
-        }
-        val appType = if (type == "tools") dev.cannoli.scorza.model.AppType.TOOL else dev.cannoli.scorza.model.AppType.PORT
-        val existing = appsRepository.all(appType).map { it.packageName }.toSet()
-        val initialChecked = allApps.indices.filter { allApps[it].second in existing }.toSet()
-        val title = if (type == "tools") "Manage Tools" else "Manage Ports"
-        screenStack.add(LauncherScreen.AppPicker(
-            type = type,
-            title = title,
-            apps = allApps.map { it.first },
-            packages = allApps.map { it.second },
-            selectedIndex = 0,
-            checkedIndices = initialChecked,
-            initialChecked = initialChecked
-        ))
-    }
-
-    private fun onAppPickerConfirm(state: LauncherScreen.AppPicker) {
-        val selected = state.checkedIndices.mapNotNull { idx ->
-            val name = state.apps.getOrNull(idx) ?: return@mapNotNull null
-            val pkg = state.packages.getOrNull(idx) ?: return@mapNotNull null
-            name to pkg
-        }
-        val appType = if (state.type == "tools") dev.cannoli.scorza.model.AppType.TOOL else dev.cannoli.scorza.model.AppType.PORT
-        ioScope.launch {
-            val keep = selected.map { it.second }.toSet()
-            appsRepository.all(appType).forEach { app ->
-                if (app.packageName !in keep) appsRepository.delete(app.id)
-            }
-            selected.forEach { (name, pkg) -> appsRepository.upsert(appType, name, pkg) }
-            rescanSystemList()
-        }
-        screenStack.removeAt(screenStack.lastIndex)
-    }
 
     private fun hasActiveVpn(): Boolean {
         val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return false
@@ -2271,11 +1289,6 @@ class MainActivity : ComponentActivity() {
         return fallback
     }
 
-    private fun adoptLegacyFghCollectionIfNeeded() {
-        if (settings.contentMode != ContentMode.FIVE_GAME_HANDHELD) return
-        validateFghStem()
-    }
-
     private fun colorSettingTitle(settingKey: String): String {
         val labelRes = when (settingKey) {
             "color_accent" -> R.string.setting_color_accent
@@ -2295,253 +1308,13 @@ class MainActivity : ComponentActivity() {
         val idx = COLOR_PRESETS.indexOfFirst { it.color == argb }
         val row = if (idx >= 0) idx / COLOR_GRID_COLS else 0
         val col = if (idx >= 0) idx % COLOR_GRID_COLS else 0
-        dialogState.value = DialogState.ColorPicker(
+        nav.dialogState.value = DialogState.ColorPicker(
             settingKey = settingKey,
             title = colorSettingTitle(settingKey),
             currentColor = argb,
             selectedRow = row,
             selectedCol = col
         )
-    }
-
-    private fun onSystemListContextMenu() {
-        val item = systemListViewModel.getSelectedItem() ?: return
-        if (item is SystemListViewModel.ListItem.GameItem) {
-            pendingFghItem = item.item
-            val ref = resolvePathToRef(item.recentKey)
-            val isFav = ref?.let {
-                when (it) {
-                    is dev.cannoli.scorza.db.LibraryRef.Rom -> collectionsRepository.isRomFavorited(it.id)
-                    is dev.cannoli.scorza.db.LibraryRef.App -> collectionsRepository.isAppFavorited(it.id)
-                }
-            } == true
-            val menuName = item.displayName
-            val options = buildList {
-                add(if (isFav) MENU_REMOVE_FAVORITE else MENU_ADD_FAVORITE)
-                add(MENU_MANAGE_COLLECTIONS)
-                add(MENU_EMULATOR_OVERRIDE)
-                add(MENU_DELETE_GAME)
-            }
-            dialogState.value = DialogState.ContextMenu(gameName = menuName, options = options)
-            return
-        }
-        val name = when (item) {
-            is SystemListViewModel.ListItem.PlatformItem -> item.platform.displayName
-            is SystemListViewModel.ListItem.ToolsFolder -> item.name
-            is SystemListViewModel.ListItem.PortsFolder -> item.name
-            else -> return
-        }
-        dialogState.value = DialogState.ContextMenu(
-            gameName = name,
-            options = listOf(MENU_RENAME)
-        )
-    }
-
-    private fun onFghContextMenuConfirm(item: dev.cannoli.scorza.model.ListItem, state: DialogState.ContextMenu) {
-        val selected = state.options[state.selectedOption]
-        val path = item.recentKey() ?: return
-        val displayName = when (item) {
-            is dev.cannoli.scorza.model.ListItem.RomItem -> item.rom.displayName
-            is dev.cannoli.scorza.model.ListItem.AppItem -> item.app.displayName
-            else -> return
-        }
-        val rom = (item as? dev.cannoli.scorza.model.ListItem.RomItem)?.rom
-        when {
-            selected == MENU_ADD_FAVORITE || selected == MENU_REMOVE_FAVORITE -> {
-                ioScope.launch {
-                    val ref = resolvePathToRef(path) ?: return@launch
-                    val favId = collectionsRepository.favoritesId() ?: return@launch
-                    if (collectionsRepository.isMember(favId, ref)) collectionsRepository.removeMember(favId, ref)
-                    else collectionsRepository.addMember(favId, ref)
-                    rescanSystemList()
-                }
-                dialogState.value = DialogState.None
-            }
-            selected == MENU_MANAGE_COLLECTIONS -> {
-                openCollectionManager(listOf(path), displayName)
-            }
-            selected == MENU_EMULATOR_OVERRIDE || selected.startsWith("$MENU_EMULATOR_OVERRIDE\t") -> {
-                if (rom == null) return
-                val tag = rom.platformTag
-                val bundledCoresDir2 = LaunchManager.extractBundledCores(this@MainActivity)
-                val options = platformConfig.getCorePickerOptions(tag, packageManager,
-                    installedRaCores = installedCoreService.installedCores, embeddedCoresDir = bundledCoresDir2,
-                    unresponsivePackages = installedCoreService.unresponsivePackages)
-                val platformCoreId = platformConfig.getCoreMapping(tag)
-                val platformCoreName = options.firstOrNull { it.coreId == platformCoreId }?.displayName ?: platformCoreId
-                val defaultLabel = if (platformCoreName.isNotEmpty()) "Platform Setting ($platformCoreName)" else "Platform Setting"
-                val defaultOption = CorePickerOption("", defaultLabel, "")
-                val allOptions = listOf(defaultOption) + options
-                val override = platformConfig.getGameOverride(rom.path.absolutePath)
-                val selectedIdx = if (override?.appPackage != null) {
-                    allOptions.indexOfFirst { it.appPackage == override.appPackage }.coerceAtLeast(0)
-                } else if (override != null) {
-                    allOptions.indexOfFirst { it.coreId == override.coreId && (it.runnerLabel == override.runner || override.runner == null) }
-                        .coerceAtLeast(0)
-                } else {
-                    0
-                }
-                dialogState.value = DialogState.None
-                screenStack.add(LauncherScreen.CorePicker(
-                    tag = tag,
-                    platformName = rom.displayName,
-                    cores = allOptions,
-                    selectedIndex = selectedIdx,
-                    gamePath = rom.path.absolutePath,
-                    activeIndex = selectedIdx
-                ))
-            }
-            selected == MENU_DELETE || selected == MENU_DELETE_GAME -> {
-                dialogState.value = DialogState.DeleteConfirm(gameName = displayName)
-            }
-        }
-    }
-
-    private fun onSystemListRename(state: DialogState.RenameInput) {
-        val newName = state.currentName.trim()
-        if (newName.isEmpty() || newName == state.gameName) {
-            dialogState.value = DialogState.None
-            return
-        }
-        val item = systemListViewModel.getSelectedItem()
-        when (item) {
-            is SystemListViewModel.ListItem.PlatformItem -> {
-                ioScope.launch {
-                    platformConfig.setDisplayName(item.platform.tag, newName)
-                    rescanSystemList()
-                }
-            }
-            is SystemListViewModel.ListItem.ToolsFolder -> {
-                settings.toolsName = newName
-                rescanSystemList()
-            }
-            is SystemListViewModel.ListItem.PortsFolder -> {
-                settings.portsName = newName
-                rescanSystemList()
-            }
-            is SystemListViewModel.ListItem.CollectionItem -> {
-                ioScope.launch {
-                    val id = collectionsRepository.all().firstOrNull { it.displayName == item.name }?.id
-                    if (id != null) collectionsRepository.rename(id, newName)
-                    rescanSystemList()
-                }
-            }
-            else -> {}
-        }
-        dialogState.value = DialogState.None
-    }
-
-    private fun onSystemListConfirm() {
-        if (navigating) return
-        systemListViewModel.savePosition()
-        when (val item = systemListViewModel.getSelectedItem()) {
-            is SystemListViewModel.ListItem.RecentlyPlayedItem -> {
-                navigating = true
-                gameListViewModel.loadRecentlyPlayed {
-                    scanResumableGames()
-                    screenStack.add(LauncherScreen.GameList)
-                    navigating = false
-                }
-            }
-            is SystemListViewModel.ListItem.FavoritesItem -> {
-                navigating = true
-                gameListViewModel.loadCollection("Favorites") {
-                    scanResumableGames()
-                    screenStack.add(LauncherScreen.GameList)
-                    navigating = false
-                }
-            }
-            is SystemListViewModel.ListItem.CollectionsFolder -> {
-                navigating = true
-                gameListViewModel.loadCollectionsList {
-                    screenStack.add(LauncherScreen.GameList)
-                    navigating = false
-                }
-            }
-            is SystemListViewModel.ListItem.PlatformItem -> {
-                navigating = true
-                gameListViewModel.loadPlatform(item.platform.tag, item.platform.allTags) {
-                    scanResumableGames()
-                    screenStack.add(LauncherScreen.GameList)
-                    navigating = false
-                }
-            }
-            is SystemListViewModel.ListItem.CollectionItem -> {
-                navigating = true
-                gameListViewModel.loadCollection(item.name) {
-                    scanResumableGames()
-                    screenStack.add(LauncherScreen.GameList)
-                    navigating = false
-                }
-            }
-            is SystemListViewModel.ListItem.GameItem -> {
-                val recentKey = item.recentKey
-                val isResumable = resumableGames.contains(recentKey)
-                val resume = isResumable && settings.swapPlayResume
-                val errorDialog = launchSelected(item.item, resume = resume)
-                if (errorDialog != null) {
-                    dialogState.value = errorDialog
-                } else {
-                    recordRecentlyPlayedByPath(recentKey)
-                }
-            }
-            is SystemListViewModel.ListItem.ToolsFolder -> {
-                navigating = true
-                gameListViewModel.loadApkList("tools", item.name) {
-                    screenStack.add(LauncherScreen.GameList)
-                    navigating = false
-                }
-            }
-            is SystemListViewModel.ListItem.PortsFolder -> {
-                navigating = true
-                gameListViewModel.loadApkList("ports", item.name) {
-                    screenStack.add(LauncherScreen.GameList)
-                    navigating = false
-                }
-            }
-            else -> {}
-        }
-    }
-
-    private fun onGameListConfirm() {
-        if (navigating) return
-        val item = gameListViewModel.getSelectedItem() ?: return
-
-        when (item) {
-            is dev.cannoli.scorza.model.ListItem.CollectionItem -> {
-                navigating = true
-                gameListViewModel.loadCollection(item.collection.displayName) {
-                    scanResumableGames()
-                    navigating = false
-                }
-                return
-            }
-            is dev.cannoli.scorza.model.ListItem.ChildCollectionItem -> {
-                navigating = true
-                gameListViewModel.enterChildCollection(item.collection.displayName) {
-                    scanResumableGames()
-                    navigating = false
-                }
-                return
-            }
-            is dev.cannoli.scorza.model.ListItem.SubfolderItem -> {
-                gameListViewModel.enterSubfolder(item.name)
-                return
-            }
-            else -> {}
-        }
-
-        val recentKey = selectedRecentKey(item) ?: return
-        val isResumable = resumableGames.contains(recentKey)
-        val tag = gameListViewModel.state.value.platformTag
-        val trackRecent = tag != "tools"
-        val errorDialog = launchSelected(item, resume = isResumable && settings.swapPlayResume)
-        if (errorDialog != null) {
-            dialogState.value = errorDialog
-        } else if (trackRecent) {
-            recordRecentlyPlayedByPath(recentKey)
-            if (tag == "recently_played") pendingRecentlyPlayedReorder = true
-        }
     }
 
     private fun scanResumableGames() {
@@ -2554,781 +1327,7 @@ class MainActivity : ComponentActivity() {
         val roms = (gameListRoms + systemListRoms).distinctBy { it.path.absolutePath }
         ioScope.launch {
             val result = launchManager.findResumableRoms(roms)
-            withContext(Dispatchers.Main) { resumableGames = result }
-        }
-    }
-
-    private fun onCorePickerConfirm(screen: LauncherScreen.CorePicker) {
-        val chosen = screen.cores.getOrNull(screen.selectedIndex) ?: return
-        if (screen.gamePath != null) {
-            if (chosen.coreId.isEmpty() && chosen.appPackage == null) {
-                platformConfig.setGameOverride(screen.gamePath, null, null)
-                platformConfig.setGameAppOverride(screen.gamePath, null)
-            } else if (chosen.appPackage != null) {
-                platformConfig.setGameAppOverride(screen.gamePath, chosen.appPackage)
-            } else {
-                platformConfig.setGameOverride(screen.gamePath, chosen.coreId, chosen.runnerLabel, chosen.raPackage)
-            }
-            screenStack.removeAt(screenStack.lastIndex)
-            restoreContextMenu()
-        } else {
-            if (chosen.appPackage != null) {
-                platformConfig.setAppMapping(screen.tag, chosen.appPackage)
-            } else {
-                platformConfig.setCoreMapping(screen.tag, chosen.coreId, chosen.runnerLabel, chosen.raPackage)
-            }
-            platformConfig.saveCoreMappings()
-            screenStack.removeAt(screenStack.lastIndex)
-            val cm = screenStack.lastOrNull()
-            if (cm is LauncherScreen.CoreMapping) {
-                val all = platformConfig.getDetailedMappings(packageManager, installedCoreService.installedCores, LaunchManager.extractBundledCores(this@MainActivity), installedCoreService.unresponsivePackages)
-                val filtered = filterCoreMappings(all, cm.filter)
-                val idx = filtered.indexOfFirst { it.tag == screen.tag }.coerceAtLeast(0)
-                screenStack[screenStack.lastIndex] = cm.copy(mappings = filtered, allMappings = all, selectedIndex = idx)
-            }
-        }
-    }
-
-    private fun buildItemContextOptions(item: dev.cannoli.scorza.model.ListItem, glState: dev.cannoli.scorza.ui.viewmodel.GameListViewModel.State): List<String> {
-        if (glState.isCollectionsList || item is dev.cannoli.scorza.model.ListItem.ChildCollectionItem) return listOf(MENU_RENAME, MENU_CHILD_COLLECTIONS, MENU_DELETE)
-        if (item is dev.cannoli.scorza.model.ListItem.SubfolderItem) return listOf(MENU_RENAME, MENU_DELETE)
-        val rom = (item as? dev.cannoli.scorza.model.ListItem.RomItem)?.rom
-        val app = (item as? dev.cannoli.scorza.model.ListItem.AppItem)?.app
-        val isApk = app != null
-        val platformTag = rom?.platformTag ?: (if (app?.type == dev.cannoli.scorza.model.AppType.TOOL) "tools" else "ports")
-        val romPath = rom?.path?.absolutePath
-        val isFav = when {
-            rom != null -> rom.id in glState.favoriteRomIds
-            app != null -> app.id in glState.favoriteAppIds
-            else -> false
-        } || (glState.isCollection && glState.collectionName == "Favorites")
-        return buildList {
-            if (glState.platformTag == "recently_played") add(MENU_REMOVE_FROM_RECENTS)
-            add(if (isFav) MENU_REMOVE_FAVORITE else MENU_ADD_FAVORITE)
-            if (isApk) {
-                add(MENU_MANAGE_COLLECTIONS)
-                add(MENU_REMOVE)
-            } else {
-                addAll(gameContextOptions.map { menuItem ->
-                    if (menuItem == MENU_EMULATOR_OVERRIDE && romPath != null) {
-                        val bundledCoresDir = LaunchManager.extractBundledCores(this@MainActivity)
-                        val options = platformConfig.getCorePickerOptions(platformTag, packageManager,
-                            installedRaCores = installedCoreService.installedCores, embeddedCoresDir = bundledCoresDir,
-                            unresponsivePackages = installedCoreService.unresponsivePackages)
-                        val override = platformConfig.getGameOverride(romPath)
-                        if (override != null) {
-                            val match = if (override.appPackage != null) {
-                                options.firstOrNull { it.appPackage == override.appPackage }
-                            } else {
-                                options.firstOrNull { it.coreId == override.coreId && (override.runner == null || it.runnerLabel == override.runner) }
-                            }
-                            if (match != null) {
-                                val desc = if (match.appPackage != null) match.displayName
-                                    else "${match.runnerLabel} (${match.displayName})"
-                                "$MENU_EMULATOR_OVERRIDE\t$desc"
-                            } else menuItem
-                        } else {
-                            "$MENU_EMULATOR_OVERRIDE\tPlatform Default"
-                        }
-                    } else menuItem
-                })
-                if (rom?.artFile != null) {
-                    val idx = indexOf(MENU_DELETE_GAME)
-                    if (idx >= 0) add(idx, MENU_DELETE_ART) else add(MENU_DELETE_ART)
-                }
-            }
-        }
-    }
-
-    companion object {
-        private const val MENU_RENAME = "Rename"
-        private const val MENU_DELETE = "Delete"
-        private const val MENU_DELETE_GAME = "Delete Game"
-        private const val MENU_DELETE_ART = "Delete Art"
-        private const val MENU_MANAGE_COLLECTIONS = "Manage Collections"
-        private const val MENU_EMULATOR_OVERRIDE = "Emulator Override"
-        private const val MENU_REMOVE_FROM_COLLECTION = "Remove From Collection"
-        private const val MENU_CHILD_COLLECTIONS = "Child Collections"
-        private const val MENU_RA_GAME_ID = "RA Game ID"
-        private const val MENU_ADD_FAVORITE = "Add To Favorites"
-        private const val MENU_REMOVE_FAVORITE = "Remove From Favorites"
-        private const val MENU_REMOVE = "Remove Shortcut"
-        private const val MENU_REMOVE_FROM_RECENTS = "Remove From Recently Played"
-    }
-
-    private val gameContextOptions = listOf(MENU_MANAGE_COLLECTIONS, MENU_EMULATOR_OVERRIDE, MENU_RA_GAME_ID, MENU_RENAME, MENU_DELETE_GAME)
-
-    private fun onContextMenuConfirm(state: DialogState.ContextMenu) {
-        if (currentScreen is LauncherScreen.ProfileList) {
-            when (state.options[state.selectedOption]) {
-                "Rename" -> {
-                    dialogState.value = DialogState.ProfileNameInput(
-                        isNew = false,
-                        originalName = state.gameName,
-                        currentName = state.gameName,
-                        cursorPos = state.gameName.length
-                    )
-                }
-                "Delete" -> {
-                    dialogState.value = DialogState.DeleteProfileConfirm(state.gameName)
-                }
-            }
-            return
-        }
-        if (currentScreen == LauncherScreen.SystemList) {
-            val fghItem = pendingFghItem
-            if (fghItem != null) {
-                pendingFghItem = null
-                onFghContextMenuConfirm(fghItem, state)
-            } else {
-                when (state.options[state.selectedOption]) {
-                    MENU_RENAME -> {
-                        dialogState.value = DialogState.RenameInput(
-                            gameName = state.gameName,
-                            currentName = state.gameName,
-                            cursorPos = state.gameName.length
-                        )
-                    }
-                }
-            }
-            return
-        }
-        val item = gameListViewModel.getSelectedItem() ?: return
-        val glState = gameListViewModel.state.value
-        val rom = (item as? dev.cannoli.scorza.model.ListItem.RomItem)?.rom
-        val app = (item as? dev.cannoli.scorza.model.ListItem.AppItem)?.app
-        val collection = when (item) {
-            is dev.cannoli.scorza.model.ListItem.CollectionItem -> item.collection
-            is dev.cannoli.scorza.model.ListItem.ChildCollectionItem -> item.collection
-            else -> null
-        }
-        val displayName = when (item) {
-            is dev.cannoli.scorza.model.ListItem.RomItem -> item.rom.displayName
-            is dev.cannoli.scorza.model.ListItem.AppItem -> item.app.displayName
-            is dev.cannoli.scorza.model.ListItem.SubfolderItem -> item.name
-            is dev.cannoli.scorza.model.ListItem.CollectionItem -> item.collection.displayName
-            is dev.cannoli.scorza.model.ListItem.ChildCollectionItem -> item.collection.displayName
-        }
-        pendingContextReturn = ContextReturn.Single(state.gameName, state.options, state.selectedOption)
-        val selected = state.options[state.selectedOption]
-        when {
-            selected == MENU_REMOVE_FROM_RECENTS -> {
-                pendingContextReturn = null
-                dialogState.value = DialogState.None
-                item.recentKey()?.let { clearRecentlyPlayedByPath(it) }
-                ioScope.launch {
-                    gameListViewModel.loadRecentlyPlayed()
-                    rescanSystemList()
-                }
-                return
-            }
-            selected == MENU_RENAME -> {
-                if (collection != null) {
-                    dialogState.value = DialogState.CollectionRenameInput(
-                        oldStem = collection.stem,
-                        currentName = displayName,
-                        cursorPos = displayName.length
-                    )
-                } else {
-                    dialogState.value = DialogState.RenameInput(
-                        gameName = displayName,
-                        currentName = displayName,
-                        cursorPos = displayName.length
-                    )
-                }
-            }
-            selected == MENU_DELETE || selected == MENU_DELETE_GAME -> {
-                if (collection != null) {
-                    dialogState.value = DialogState.DeleteCollectionConfirm(collectionStem = collection.stem)
-                } else {
-                    dialogState.value = DialogState.DeleteConfirm(gameName = displayName)
-                }
-            }
-            selected == MENU_MANAGE_COLLECTIONS -> {
-                val path = item.recentKey() ?: return
-                openCollectionManager(listOf(path), displayName)
-            }
-            selected == MENU_CHILD_COLLECTIONS -> {
-                if (collection != null) openChildPicker(collection.stem)
-            }
-            selected == MENU_DELETE_ART -> {
-                if (rom != null) {
-                    pendingContextReturn = null
-                    rom.artFile?.delete()
-                    artworkLookup.invalidate(rom.platformTag)
-                    gameListViewModel.reload()
-                    dialogState.value = DialogState.None
-                }
-            }
-            selected == MENU_RA_GAME_ID -> {
-                if (rom != null) {
-                    val current = rom.raGameId?.toString() ?: ""
-                    dialogState.value = DialogState.RenameInput(
-                        gameName = "ra_game_id:${rom.path.absolutePath}",
-                        currentName = current,
-                        cursorPos = current.length
-                    )
-                }
-            }
-            selected == MENU_REMOVE -> {
-                if (app != null) {
-                    pendingContextReturn = null
-                    ioScope.launch {
-                        appsRepository.delete(app.id)
-                        gameListViewModel.reload()
-                        rescanSystemList()
-                    }
-                    dialogState.value = DialogState.None
-                }
-            }
-            selected == MENU_ADD_FAVORITE || selected == MENU_REMOVE_FAVORITE -> {
-                pendingContextReturn = null
-                gameListViewModel.toggleFavorite { rescanSystemList() }
-                dialogState.value = DialogState.None
-            }
-            selected == MENU_EMULATOR_OVERRIDE || selected.startsWith("$MENU_EMULATOR_OVERRIDE\t") -> {
-                if (rom == null) return
-                val tag = rom.platformTag
-                val bundledCoresDir2 = LaunchManager.extractBundledCores(this@MainActivity)
-                val options = platformConfig.getCorePickerOptions(tag, packageManager,
-                    installedRaCores = installedCoreService.installedCores, embeddedCoresDir = bundledCoresDir2,
-                    unresponsivePackages = installedCoreService.unresponsivePackages)
-                val platformCoreId = platformConfig.getCoreMapping(tag)
-                val platformCoreName = options.firstOrNull { it.coreId == platformCoreId }?.displayName ?: platformCoreId
-                val defaultLabel = if (platformCoreName.isNotEmpty()) "Platform Setting ($platformCoreName)" else "Platform Setting"
-                val defaultOption = CorePickerOption("", defaultLabel, "")
-                val allOptions = listOf(defaultOption) + options
-                val override = platformConfig.getGameOverride(rom.path.absolutePath)
-                val selectedIdx = if (override?.appPackage != null) {
-                    allOptions.indexOfFirst { it.appPackage == override.appPackage }.coerceAtLeast(0)
-                } else if (override != null) {
-                    allOptions.indexOfFirst { it.coreId == override.coreId && (it.runnerLabel == override.runner || override.runner == null) }
-                        .coerceAtLeast(0)
-                } else {
-                    0
-                }
-                dialogState.value = DialogState.None
-                screenStack.add(LauncherScreen.CorePicker(
-                    tag = tag,
-                    platformName = rom.displayName,
-                    cores = allOptions,
-                    selectedIndex = selectedIdx,
-                    gamePath = rom.path.absolutePath,
-                    activeIndex = selectedIdx
-                ))
-            }
-        }
-    }
-
-    private fun onDeleteConfirm(state: DialogState.DeleteConfirm) {
-        pendingContextReturn = null
-        if (state.bulkPaths != null) {
-            val pathSet = state.bulkPaths.toSet()
-            val toDelete = gameListViewModel.state.value.items
-                .filterIsInstance<dev.cannoli.scorza.model.ListItem.RomItem>()
-                .filter { it.rom.path.absolutePath in pathSet }
-                .map { it.rom }
-            ioScope.launch {
-                toDelete.forEach { deleteRom(it) }
-                gameListViewModel.reload()
-                rescanSystemList()
-                withContext(Dispatchers.Main) { dialogState.value = DialogState.None }
-            }
-        } else {
-            val item = gameListViewModel.getSelectedItem()
-                ?: (systemListViewModel.getSelectedItem() as? SystemListViewModel.ListItem.GameItem)?.item
-            val rom = (item as? dev.cannoli.scorza.model.ListItem.RomItem)?.rom ?: return
-            ioScope.launch {
-                deleteRom(rom)
-                gameListViewModel.reload()
-                rescanSystemList()
-                withContext(Dispatchers.Main) { dialogState.value = DialogState.None }
-            }
-        }
-    }
-
-    private fun onCollectionPickerConfirm(state: LauncherScreen.CollectionPicker) {
-        val added = state.checkedIndices - state.initialChecked
-        val removed = state.initialChecked - state.checkedIndices
-        val toAdd = added.mapNotNull { state.collections.getOrNull(it) }
-        val toRemove = removed.mapNotNull { state.collections.getOrNull(it) }
-        if (toAdd.isNotEmpty() || toRemove.isNotEmpty()) {
-            ioScope.launch {
-                for (path in state.gamePaths) {
-                    toAdd.forEach { collName -> addPathToCollectionByName(collName, path) }
-                    toRemove.forEach { collName -> removePathFromCollectionByName(collName, path) }
-                }
-                gameListViewModel.reload()
-                rescanSystemList()
-            }
-        }
-        screenStack.removeAt(screenStack.lastIndex)
-        restoreContextMenu()
-    }
-
-    private fun restoreContextMenu() {
-        when (val ret = pendingContextReturn) {
-            is ContextReturn.Single -> {
-                val item = gameListViewModel.getSelectedItem()
-                if (item != null) {
-                    val glState = gameListViewModel.state.value
-                    val newOptions = buildItemContextOptions(item, glState)
-                    val oldSelected = ret.options.getOrNull(ret.selectedOption)
-                    val restoredIdx = if (oldSelected != null) {
-                        val key = oldSelected.substringBefore('\t')
-                        newOptions.indexOfFirst { it.startsWith(key) }.coerceAtLeast(0)
-                    } else 0
-                    dialogState.value = DialogState.ContextMenu(
-                        gameName = ret.gameName,
-                        selectedOption = restoredIdx,
-                        options = newOptions
-                    )
-                } else {
-                    pendingContextReturn = null
-                    dialogState.value = DialogState.None
-                }
-            }
-            is ContextReturn.Bulk -> {
-                dialogState.value = DialogState.BulkContextMenu(
-                    gamePaths = ret.gamePaths,
-                    options = ret.options
-                )
-            }
-            null -> dialogState.value = DialogState.None
-        }
-    }
-
-    private fun openCollectionManager(gamePaths: List<String>, title: String) {
-        val all = collectionsRepository.all().filter { it.type == CollectionType.STANDARD }
-        val stems = all.map { it.displayName }
-        val displayNames = all.map { it.displayName }
-        val alreadyIn = collectionsContainingPaths(gamePaths, all)
-        val initialChecked = stems.indices
-            .filter { stems[it] in alreadyIn }
-            .toSet()
-        dialogState.value = DialogState.None
-        screenStack.add(LauncherScreen.CollectionPicker(
-            gamePaths = gamePaths,
-            title = title,
-            collections = stems,
-            displayNames = displayNames,
-            selectedIndex = 0,
-            checkedIndices = initialChecked,
-            initialChecked = initialChecked
-        ))
-    }
-
-    private fun openChildPicker(collectionStem: String) {
-        val parent = collectionsRepository.all().firstOrNull { it.displayName == collectionStem } ?: return
-        val all = collectionsRepository.all().filter { it.type == CollectionType.STANDARD }
-        val ancestorIds = collectionsRepository.ancestors(parent.id).map { it.id }.toSet() + parent.id
-        val available = all.filter { it.id !in ancestorIds }
-        val availableNames = available.map { it.displayName }
-        val displayNames = available.map { it.displayName }
-        val currentChildIds = collectionsRepository.children(parent.id).map { it.id }.toSet()
-        val initialChecked = available.indices
-            .filter { available[it].id in currentChildIds }
-            .toSet()
-        dialogState.value = DialogState.None
-        screenStack.add(LauncherScreen.ChildPicker(
-            collectionName = collectionStem,
-            collections = availableNames,
-            displayNames = displayNames,
-            selectedIndex = 0,
-            checkedIndices = initialChecked,
-            initialChecked = initialChecked
-        ))
-    }
-
-    private fun onChildPickerConfirm(screen: LauncherScreen.ChildPicker) {
-        val parent = collectionsRepository.all().firstOrNull { it.displayName == screen.collectionName }
-        if (parent == null) {
-            screenStack.removeAt(screenStack.lastIndex)
-            restoreContextMenu()
-            return
-        }
-        val selectedNames = screen.checkedIndices.mapNotNull { screen.collections.getOrNull(it) }.toSet()
-        val all = collectionsRepository.all()
-        val targetChildIds = all.filter { it.displayName in selectedNames }.map { it.id }.toSet()
-        val currentChildIds = collectionsRepository.children(parent.id).map { it.id }.toSet()
-        ioScope.launch {
-            (targetChildIds - currentChildIds).forEach { collectionsRepository.setParent(it, parent.id) }
-            (currentChildIds - targetChildIds).forEach { collectionsRepository.setParent(it, null) }
-            gameListViewModel.reload()
-            rescanSystemList()
-        }
-        screenStack.removeAt(screenStack.lastIndex)
-        restoreContextMenu()
-    }
-
-    private fun onBulkContextMenuConfirm(state: DialogState.BulkContextMenu) {
-        pendingContextReturn = ContextReturn.Bulk(state.gamePaths, state.options)
-        when (state.options[state.selectedOption]) {
-            MENU_REMOVE_FROM_RECENTS -> {
-                pendingContextReturn = null
-                dialogState.value = DialogState.None
-                state.gamePaths.forEach { path -> clearRecentlyPlayedByPath(path) }
-                ioScope.launch {
-                    gameListViewModel.loadRecentlyPlayed()
-                    rescanSystemList()
-                }
-                return
-            }
-            MENU_ADD_FAVORITE -> {
-                pendingContextReturn = null
-                ioScope.launch {
-                    state.gamePaths.forEach { path ->
-                        addPathToCollectionByName("Favorites", path)
-                    }
-                    gameListViewModel.reload()
-                    rescanSystemList()
-                }
-                dialogState.value = DialogState.None
-            }
-            MENU_REMOVE_FAVORITE -> {
-                pendingContextReturn = null
-                ioScope.launch {
-                    state.gamePaths.forEach { path ->
-                        removePathFromCollectionByName("Favorites", path)
-                    }
-                    gameListViewModel.reload()
-                    rescanSystemList()
-                }
-                dialogState.value = DialogState.None
-            }
-            MENU_MANAGE_COLLECTIONS -> {
-                openCollectionManager(state.gamePaths, "${state.gamePaths.size} Selected")
-            }
-            MENU_DELETE_GAME -> {
-                pendingContextReturn = null
-                dialogState.value = DialogState.DeleteConfirm(
-                    gameName = "${state.gamePaths.size} items",
-                    bulkPaths = state.gamePaths
-                )
-            }
-            MENU_DELETE_ART -> {
-                pendingContextReturn = null
-                val pathSet = state.gamePaths.toSet()
-                val tagsToInvalidate = mutableSetOf<String>()
-                gameListViewModel.state.value.items
-                    .filterIsInstance<dev.cannoli.scorza.model.ListItem.RomItem>()
-                    .filter { it.rom.path.absolutePath in pathSet }
-                    .forEach { romItem ->
-                        romItem.rom.artFile?.delete()
-                        tagsToInvalidate.add(romItem.rom.platformTag)
-                    }
-                tagsToInvalidate.forEach { artworkLookup.invalidate(it) }
-                gameListViewModel.reload()
-                dialogState.value = DialogState.None
-            }
-            MENU_REMOVE -> {
-                pendingContextReturn = null
-                val pathSet = state.gamePaths.toSet()
-                ioScope.launch {
-                    gameListViewModel.state.value.items.forEach { item ->
-                        if (item is dev.cannoli.scorza.model.ListItem.AppItem && item.recentKey() in pathSet) {
-                            appsRepository.delete(item.app.id)
-                        }
-                    }
-                    gameListViewModel.reload()
-                    rescanSystemList()
-                }
-                dialogState.value = DialogState.None
-            }
-            MENU_REMOVE_FROM_COLLECTION -> {
-                pendingContextReturn = null
-                val glState = gameListViewModel.state.value
-                val collectionId = glState.collectionId ?: return
-                val pathSet = state.gamePaths.toSet()
-                ioScope.launch {
-                    glState.items.forEach { item ->
-                        if (item.recentKey() !in pathSet) return@forEach
-                        val ref = when (item) {
-                            is dev.cannoli.scorza.model.ListItem.RomItem -> dev.cannoli.scorza.db.LibraryRef.Rom(item.rom.id)
-                            is dev.cannoli.scorza.model.ListItem.AppItem -> dev.cannoli.scorza.db.LibraryRef.App(item.app.id)
-                            else -> null
-                        }
-                        if (ref != null) collectionsRepository.removeMember(collectionId, ref)
-                    }
-                    gameListViewModel.reload()
-                    rescanSystemList()
-                }
-                dialogState.value = DialogState.None
-            }
-        }
-    }
-
-
-    private fun onNewCollectionConfirm(state: DialogState.NewCollectionInput) {
-        val name = state.currentName.trim()
-        if (name.isEmpty()) {
-            dialogState.value = DialogState.None
-            return
-        }
-        dialogState.value = DialogState.None
-        ioScope.launch {
-            val newId = collectionsRepository.create(name)
-            if (state.parentStem != null) {
-                val parentId = collectionsRepository.all().firstOrNull { it.displayName == state.parentStem }?.id
-                if (parentId != null) collectionsRepository.setParent(newId, parentId)
-            }
-            state.gamePaths.forEach { path ->
-                resolvePathToRef(path)?.let { collectionsRepository.addMember(newId, it) }
-            }
-            gameListViewModel.reload()
-            rescanSystemList()
-            runOnUiThread { refreshCollectionPickerOnStack() }
-        }
-    }
-
-    private fun onCollectionRenameConfirm(state: DialogState.CollectionRenameInput) {
-        val newName = state.currentName.trim()
-        if (newName.isEmpty() || newName == dev.cannoli.scorza.model.Collection.stemToDisplayName(state.oldStem)) {
-            restoreContextMenu()
-            return
-        }
-        val glState = gameListViewModel.state.value
-        val renamingFromParent = glState.isCollection && !glState.isCollectionsList
-        dialogState.value = DialogState.None
-        ioScope.launch {
-            val id = collectionsRepository.all().firstOrNull { it.displayName == state.oldStem }?.id
-            if (id != null) collectionsRepository.rename(id, newName)
-            if (renamingFromParent) {
-                gameListViewModel.reload()
-            } else {
-                gameListViewModel.loadCollectionsList(restoreIndex = true)
-            }
-        }
-    }
-
-    private fun onProfileNameConfirm(state: DialogState.ProfileNameInput) {
-        val name = state.currentName.trim()
-        if (name.isBlank() || dev.cannoli.scorza.input.ProfileManager.isProtected(name)) {
-            dialogState.value = DialogState.None
-            return
-        }
-        if (state.isNew) {
-            val identity = controllerManager.slots[0]
-            val device = controllerManager.getDeviceIdForPort(0)?.let { android.view.InputDevice.getDevice(it) }
-            val verifier: (IntArray) -> BooleanArray = if (device != null) {
-                { codes -> device.hasKeys(*codes) }
-            } else {
-                { codes -> BooleanArray(codes.size) { true } }
-            }
-            val match = identity?.let { profileManager.autoProfileControlsFor(it, autoconfigMatcher, verifier) }
-            val controls = match?.controls ?: emptyMap()
-            if (!profileManager.createProfile(name, controls)) {
-                dialogState.value = DialogState.None
-                return
-            }
-            if (match != null) {
-                showOsd("Prefilled with ${match.deviceName}")
-            }
-        } else {
-            val file = java.io.File(settings.sdCardRoot, "Config/Profiles/${state.originalName}.ini")
-            val dest = java.io.File(settings.sdCardRoot, "Config/Profiles/$name.ini")
-            if (dest.exists() && name != state.originalName) {
-                dialogState.value = DialogState.None
-                return
-            }
-            file.renameTo(dest)
-        }
-        val updated = profileManager.listProfiles()
-        val screen = currentScreen as? LauncherScreen.ProfileList
-        if (screen != null) {
-            screenStack[screenStack.lastIndex] = screen.copy(
-                profiles = updated,
-                selectedIndex = updated.indexOf(name).coerceAtLeast(0)
-            )
-        }
-        dialogState.value = DialogState.None
-    }
-
-    private fun onNewFolderConfirm(state: DialogState.NewFolderInput) {
-        val name = state.currentName.trim()
-        if (name.isBlank()) {
-            dialogState.value = DialogState.None
-            return
-        }
-        val newDir = java.io.File(state.parentPath, name)
-        newDir.mkdirs()
-        dialogState.value = DialogState.None
-        val screen = currentScreen
-        if (screen is LauncherScreen.DirectoryBrowser && screen.currentPath == state.parentPath) {
-            val newEntries = setupCoordinator.listDirectories(screen.currentPath)
-            screenStack[screenStack.lastIndex] = screen.copy(entries = newEntries)
-        }
-    }
-
-    private fun onRenameConfirm(state: DialogState.RenameInput) {
-        if (state.gameName == "ra_username") {
-            settings.raUsername = state.currentName.trim()
-            settingsViewModel.refreshSubList()
-            dialogState.value = DialogState.None
-            return
-        }
-        if (state.gameName == "ra_password") {
-            settingsViewModel.raPassword = state.currentName.trim()
-            settingsViewModel.refreshSubList()
-            dialogState.value = DialogState.None
-            return
-        }
-        if (state.gameName == "title") {
-            settings.title = state.currentName.trim()
-            settingsViewModel.refreshSubList()
-            settingsViewModel.load()
-            dialogState.value = DialogState.None
-            return
-        }
-        if (state.gameName.startsWith("ra_game_id:")) {
-            val romPath = state.gameName.removePrefix("ra_game_id:")
-            val gameId = state.currentName.trim().toIntOrNull()
-            ioScope.launch {
-                romsRepository.gameByPath(romPath)?.let { romsRepository.setRaGameId(it.id, gameId) }
-            }
-            restoreContextMenu()
-            return
-        }
-        if (currentScreen == LauncherScreen.SystemList) {
-            onSystemListRename(state)
-            return
-        }
-        val item = gameListViewModel.getSelectedItem() ?: return
-        val newName = state.currentName.trim()
-        val currentName = when (item) {
-            is dev.cannoli.scorza.model.ListItem.RomItem -> item.rom.displayName
-            is dev.cannoli.scorza.model.ListItem.SubfolderItem -> item.name
-            else -> return
-        }
-        if (newName.isEmpty() || newName == currentName) {
-            pendingContextReturn = null
-            dialogState.value = DialogState.None
-            return
-        }
-
-        pendingContextReturn = null
-        dialogState.value = DialogState.None
-        ioScope.launch {
-            if (item is dev.cannoli.scorza.model.ListItem.SubfolderItem) {
-                val tag = gameListViewModel.state.value.platformTag
-                val romDir = settings.romDirectory.takeIf { it.isNotEmpty() }?.let { File(it) } ?: File(File(settings.sdCardRoot), "Roms")
-                val oldDir = File(romDir, "$tag${File.separator}${item.path}")
-                val newDir = File(oldDir.parentFile, newName)
-                val oldPrefix = relativeRomPath(oldDir)
-                val ok = oldDir.renameTo(newDir)
-                if (ok) {
-                    val newPrefix = relativeRomPath(newDir)
-                    if (oldPrefix != null && newPrefix != null) {
-                        romsRepository.updateRomPathsUnderPrefix(tag, oldPrefix, newPrefix)
-                    }
-                } else {
-                    withContext(Dispatchers.Main) {
-                        dialogState.value = DialogState.RenameResult(false, "Failed to rename directory")
-                    }
-                }
-                artworkLookup.invalidate(tag)
-                romScanner.invalidatePlatform(tag)
-                gameListViewModel.reload()
-                return@launch
-            }
-            val rom = (item as? dev.cannoli.scorza.model.ListItem.RomItem)?.rom ?: return@launch
-            run {
-                val result = atomicRename.rename(rom.path, newName, rom.platformTag)
-                if (result.success) {
-                    val newRomFile = File(rom.path.parentFile, "$newName.${rom.path.extension}")
-                    val newRelative = relativeRomPath(newRomFile)
-                    if (newRelative != null) {
-                        romsRepository.updateRomPath(rom.id, newRelative)
-                    }
-                } else {
-                    withContext(Dispatchers.Main) {
-                        dialogState.value = DialogState.RenameResult(false, result.error ?: "Rename failed")
-                    }
-                }
-            }
-            artworkLookup.invalidate(rom.platformTag)
-            rom.path.parentFile?.let { arcadeTitleLookup.invalidate(it) }
-            romScanner.invalidatePlatform(rom.platformTag)
-            gameListViewModel.reload()
-        }
-    }
-
-    private fun relativeRomPath(file: File): String? {
-        val romDir = settings.romDirectory.takeIf { it.isNotEmpty() }?.let { File(it) } ?: File(File(settings.sdCardRoot), "Roms")
-        return try {
-            val relative = file.relativeTo(romDir).path
-            if (relative.startsWith("..")) null else relative
-        } catch (_: IllegalArgumentException) {
-            null
-        }
-    }
-
-    private fun switchPlatform(delta: Int) {
-        if (navigating) return
-        val items = systemListViewModel.getNavigableItems()
-        if (items.size < 2) return
-
-        val gs = gameListViewModel.state.value
-        val currentIndex = items.indexOfFirst { item ->
-            when {
-                gs.platformTag == "recently_played" -> item is SystemListViewModel.ListItem.RecentlyPlayedItem
-                gs.isCollectionsList -> item is SystemListViewModel.ListItem.CollectionsFolder
-                gs.isCollection && gs.collectionName.equals("Favorites", ignoreCase = true) -> item is SystemListViewModel.ListItem.FavoritesItem
-                gs.isCollection && gs.collectionName != null -> {
-                    (item is SystemListViewModel.ListItem.CollectionsFolder) ||
-                    (item is SystemListViewModel.ListItem.CollectionItem && item.name == gs.collectionName)
-                }
-                gs.platformTag == "tools" -> item is SystemListViewModel.ListItem.ToolsFolder
-                gs.platformTag == "ports" -> item is SystemListViewModel.ListItem.PortsFolder
-                gs.platformTag.isNotEmpty() -> item is SystemListViewModel.ListItem.PlatformItem && item.platform.tag == gs.platformTag
-                else -> false
-            }
-        }
-        if (currentIndex == -1) return
-
-        val newIndex = (currentIndex + delta).mod(items.size)
-        navigating = true
-        when (val target = items[newIndex]) {
-            is SystemListViewModel.ListItem.RecentlyPlayedItem -> {
-                gameListViewModel.loadRecentlyPlayed {
-                    scanResumableGames()
-                    navigating = false
-                }
-            }
-            is SystemListViewModel.ListItem.FavoritesItem -> {
-                gameListViewModel.loadCollection("Favorites") {
-                    scanResumableGames()
-                    navigating = false
-                }
-            }
-            is SystemListViewModel.ListItem.CollectionsFolder -> {
-                gameListViewModel.loadCollectionsList {
-                    navigating = false
-                }
-            }
-            is SystemListViewModel.ListItem.PlatformItem -> {
-                gameListViewModel.loadPlatform(target.platform.tag, target.platform.allTags) {
-                    scanResumableGames()
-                    navigating = false
-                }
-            }
-            is SystemListViewModel.ListItem.CollectionItem -> {
-                gameListViewModel.loadCollection(target.name) {
-                    scanResumableGames()
-                    navigating = false
-                }
-            }
-            is SystemListViewModel.ListItem.ToolsFolder -> {
-                gameListViewModel.loadApkList("tools", target.name) {
-                    navigating = false
-                }
-            }
-            is SystemListViewModel.ListItem.PortsFolder -> {
-                gameListViewModel.loadApkList("ports", target.name) {
-                    navigating = false
-                }
-            }
-            else -> { navigating = false }
+            withContext(Dispatchers.Main) { if (::nav.isInitialized) nav.resumableGames = result }
         }
     }
 
@@ -3338,24 +1337,6 @@ class MainActivity : ComponentActivity() {
         controller.hide(WindowInsetsCompat.Type.systemBars())
         controller.systemBarsBehavior =
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-    }
-
-    private fun queryInstalledCores() {
-        unregisterCoreQueryReceiver()
-        val selectedPkg = settings.retroArchPackage
-        val pkgLabel = InstalledCoreService.getPackageLabel(selectedPkg)
-        pushScreen(LauncherScreen.InstalledCores(title = "$pkgLabel Installed Cores"))
-
-        ioScope.launch {
-            installedCoreService.queryAllPackages()
-            val cores = (installedCoreService.installedCores[selectedPkg] ?: emptySet())
-                .map { coreId -> platformConfig.getCoreDisplayName(coreId) }
-                .sorted()
-            withContext(Dispatchers.Main) {
-                val screen = screenStack.lastOrNull() as? LauncherScreen.InstalledCores ?: return@withContext
-                screenStack[screenStack.lastIndex] = screen.copy(cores = cores, loading = false)
-            }
-        }
     }
 
     private fun unregisterCoreQueryReceiver() {
