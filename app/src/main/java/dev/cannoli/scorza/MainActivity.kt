@@ -139,7 +139,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        if (android.os.Build.VERSION.SDK_INT >= 31) {
+        if (Build.VERSION.SDK_INT >= 31) {
             splashScreen.setOnExitAnimationListener { it.remove() }
         }
         super.onCreate(savedInstanceState)
