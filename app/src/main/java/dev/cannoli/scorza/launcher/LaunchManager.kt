@@ -456,6 +456,7 @@ class LaunchManager(
             resumeSlot = resumeSlot,
         )
         val intent = args.writeTo(Intent(context, LibretroActivity::class.java))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         val opts = ActivityOptions.makeCustomAnimation(context, 0, 0).toBundle()
         context.startActivity(intent, opts)
     }
