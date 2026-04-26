@@ -1419,6 +1419,7 @@ class LibretroActivity : ComponentActivity() {
             .map { it.relativeTo(dir).path }
             .sorted()
             .toList()
+        sessionLog.log("scanShaderPresets: ${shaderPresets.size} presets found in ${dir.absolutePath}")
     }
 
     private fun resolveShaderPresetPath(): String? =

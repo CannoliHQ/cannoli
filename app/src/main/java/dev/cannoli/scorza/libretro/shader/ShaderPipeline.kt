@@ -269,12 +269,6 @@ class ShaderPipeline private constructor(
 
         fun compile(preset: ShaderPreset): ShaderPipeline? {
             if (preset.passes.isEmpty()) return null
-            if (!es3Supported) {
-                val msg = "Shader pipeline requires OpenGL ES 3.0; skipping preset ${preset.basePath}"
-                Log.w(TAG, msg)
-                logger?.invoke(msg)
-                return null
-            }
 
             if (passthroughProgram == 0) {
                 passthroughProgram = compileProgram(PASSTHROUGH_VERTEX, PASSTHROUGH_FRAGMENT)
@@ -339,11 +333,14 @@ class ShaderPipeline private constructor(
         }
 
         private fun prepareSource(source: String): String {
-            var result = source
-            if (source.contains("#pragma parameter")) {
-                result = "#define PARAMETER_UNIFORM 1\n$result"
-            }
-            return result
+            val hasParams = source.contains("#pragma parameter")
+            // Strip #pragma parameter lines before compilation — they are metadata for the
+            // parameter system (already parsed by PresetParser) and have no GLSL meaning.
+            // Some Mali drivers tokenize unknown pragmas and reject the quoted label strings.
+            val stripped = if (hasParams)
+                source.lines().filter { !it.trimStart().startsWith("#pragma parameter") }.joinToString("\n")
+            else source
+            return if (hasParams) "#define PARAMETER_UNIFORM 1\n$stripped" else stripped
         }
 
         private fun ensurePrecision(fragment: String): String {
@@ -479,7 +476,7 @@ class ShaderPipeline private constructor(
 
         private fun recreateFbo(fbo: Int, tex: Int, w: Int, h: Int, linear: Boolean, floatFbo: Boolean) {
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, tex)
-            if (floatFbo) {
+            if (floatFbo && es3Supported) {
                 GLES20.glTexImage2D(
                     GLES20.GL_TEXTURE_2D, 0, GLES30.GL_RGBA16F,
                     w, h, 0, GLES20.GL_RGBA, GLES20.GL_FLOAT, null
