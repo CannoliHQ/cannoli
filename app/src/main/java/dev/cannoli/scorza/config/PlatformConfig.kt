@@ -138,19 +138,6 @@ class PlatformConfig(
                 }
             }
         } catch (_: java.io.IOException) {} catch (_: org.json.JSONException) {}
-        migrateStaleInternalRunners()
-    }
-
-    private fun migrateStaleInternalRunners() {
-        var dirty = false
-        for ((tag, runner) in userRunners.toMap()) {
-            if (runner != "Internal") continue
-            if (defaultCores.containsKey(tag)) continue
-            userRunners.remove(tag)
-            userCores.remove(tag)
-            dirty = true
-        }
-        if (dirty) saveCoreMappings()
     }
 
     fun reloadCoreMappings() {
