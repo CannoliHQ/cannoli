@@ -10,7 +10,6 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.components.ActivityComponent
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.scopes.ActivityScoped
-import dagger.hilt.components.SingletonComponent
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.input.BindingController
 import dev.cannoli.scorza.input.ControllerManager
@@ -21,19 +20,13 @@ import dev.cannoli.scorza.libretro.LibretroInput
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.ui.viewmodel.InputTesterViewModel
-import javax.inject.Singleton
-
-@Module
-@InstallIn(SingletonComponent::class)
-object InputSingletonModule {
-
-    @Provides @Singleton
-    fun provideControllerManager(): ControllerManager = ControllerManager()
-}
 
 @Module
 @InstallIn(ActivityComponent::class)
 object InputModule {
+
+    @Provides @ActivityScoped
+    fun provideControllerManager(): ControllerManager = ControllerManager()
 
     @Provides @ActivityScoped
     fun provideInputHandler(
