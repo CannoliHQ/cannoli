@@ -22,27 +22,27 @@ class RomsRepository(
 
     fun gameByPath(absolutePath: String): Rom? {
         val relative = relativizePath(absolutePath) ?: return null
-        return db.conn.queryOne("$BASE_SELECT WHERE path = ?", relative, mapper = ::rowToRom)
+        return db.queryOne("$BASE_SELECT WHERE path = ?", relative, mapper = ::rowToRom)
     }
 
-    fun gameById(romId: Long): Rom? = db.conn.queryOne(
+    fun gameById(romId: Long): Rom? = db.queryOne(
         "$BASE_SELECT WHERE id = ?", romId, mapper = ::rowToRom,
     )
 
     fun setRaGameId(romId: Long, raGameId: Int?) {
         if (raGameId == null) {
-            db.conn.execute("UPDATE roms SET ra_game_id = NULL WHERE id = ?", romId)
+            db.execute("UPDATE roms SET ra_game_id = NULL WHERE id = ?", romId)
         } else {
-            db.conn.execute("UPDATE roms SET ra_game_id = ? WHERE id = ?", raGameId, romId)
+            db.execute("UPDATE roms SET ra_game_id = ? WHERE id = ?", raGameId, romId)
         }
     }
 
-    fun updateRomPath(romId: Long, newRelativePath: String) = db.conn.execute(
+    fun updateRomPath(romId: Long, newRelativePath: String) = db.execute(
         "UPDATE roms SET path = ? WHERE id = ?",
         newRelativePath, romId,
     )
 
-    fun updateRomPathsUnderPrefix(platformTag: String, oldPrefix: String, newPrefix: String) = db.conn.execute(
+    fun updateRomPathsUnderPrefix(platformTag: String, oldPrefix: String, newPrefix: String) = db.execute(
         """
         UPDATE roms
         SET path = ? || substr(path, ?)
@@ -51,23 +51,23 @@ class RomsRepository(
         newPrefix, (oldPrefix.length + 1).toLong(), platformTag.uppercase(), "$oldPrefix%",
     )
 
-    fun deleteRom(romId: Long) = db.conn.execute("DELETE FROM roms WHERE id = ?", romId)
+    fun deleteRom(romId: Long) = db.execute("DELETE FROM roms WHERE id = ?", romId)
 
-    fun platformCounts(): Map<String, Int> = db.conn.queryAll(
+    fun platformCounts(): Map<String, Int> = db.queryAll(
         "SELECT platform_tag, COUNT(*) FROM roms GROUP BY platform_tag",
     ) { it.getText(0) to it.getInt(1) }.toMap()
 
-    fun knownPlatformTags(): List<String> = db.conn.queryAll(
+    fun knownPlatformTags(): List<String> = db.queryAll(
         "SELECT tag FROM platforms ORDER BY sort_order, tag",
     ) { it.getText(0) }
 
-    fun setPlatformOrder(orderedTags: List<String>) = db.conn.transaction {
+    fun setPlatformOrder(orderedTags: List<String>) = db.transaction { conn ->
         orderedTags.forEachIndexed { index, tag ->
-            db.conn.execute("UPDATE platforms SET sort_order = ? WHERE tag = ?", index.toLong(), tag)
+            conn.execute("UPDATE platforms SET sort_order = ? WHERE tag = ?", index.toLong(), tag)
         }
     }
 
-    private fun romsForPlatform(platformTag: String): List<Rom> = db.conn.queryAll(
+    private fun romsForPlatform(platformTag: String): List<Rom> = db.queryAll(
         "$BASE_SELECT WHERE platform_tag = ? ORDER BY display_name COLLATE NOCASE",
         platformTag, mapper = ::rowToRom,
     )

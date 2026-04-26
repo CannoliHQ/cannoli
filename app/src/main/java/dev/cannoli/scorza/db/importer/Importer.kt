@@ -10,6 +10,7 @@ import dev.cannoli.scorza.db.RomScanner
 import dev.cannoli.scorza.db.execute
 import dev.cannoli.scorza.db.executeReturningId
 import dev.cannoli.scorza.db.query
+import dev.cannoli.scorza.db.transaction
 import dev.cannoli.scorza.model.Collection
 import dev.cannoli.scorza.util.ScanLog
 import java.io.File
@@ -47,8 +48,8 @@ class Importer(
     private val conn: SQLiteConnection get() = db.conn
     private var orphans = 0
 
-    fun run(): ImportResult {
-        if (countRoms() > 0 || countApps() > 0) return ImportResult.NotNeeded
+    fun run(): ImportResult = db.withConn { _ ->
+        if (countRoms() > 0 || countApps() > 0) return@withConn ImportResult.NotNeeded
 
         val timestamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
         val backupDir = File(paths.backupDir, "import-$timestamp")
@@ -58,15 +59,14 @@ class Importer(
         val portNames = mutableMapOf<String, Long>()
         val romIdsByRelative = mutableMapOf<String, Long>()
 
-        return try {
+        try {
             announce(Phase.PLATFORMS)
             importPlatforms()
 
             announce(Phase.ROMS)
             importRoms(romIdsByRelative)
 
-            conn.execSQL("BEGIN")
-            try {
+            conn.transaction {
                 announce(Phase.APPS)
                 importApps(toolNames, portNames)
 
@@ -90,11 +90,6 @@ class Importer(
 
                 announce(Phase.ORDERING)
                 importOrdering(collectionIdsByStem)
-
-                conn.execSQL("COMMIT")
-            } catch (t: Throwable) {
-                conn.execSQL("ROLLBACK")
-                throw t
             }
             conn.execSQL("PRAGMA wal_checkpoint(TRUNCATE)")
 

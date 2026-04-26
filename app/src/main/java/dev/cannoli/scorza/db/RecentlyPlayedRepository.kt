@@ -3,7 +3,7 @@ package dev.cannoli.scorza.db
 class RecentlyPlayedRepository(private val db: CannoliDatabase) {
     data class Entry(val ref: LibraryRef, val lastPlayedAt: Long)
 
-    fun recent(limit: Int = 10): List<Entry> = db.conn.queryAll(
+    fun recent(limit: Int = 10): List<Entry> = db.queryAll(
         """
         SELECT 'rom' AS kind, id, last_played_at FROM roms WHERE last_played_at IS NOT NULL
         UNION ALL
@@ -23,7 +23,7 @@ class RecentlyPlayedRepository(private val db: CannoliDatabase) {
             is LibraryRef.Rom -> "UPDATE roms SET last_played_at = ? WHERE id = ?"
             is LibraryRef.App -> "UPDATE apps SET last_played_at = ? WHERE id = ?"
         }
-        db.conn.execute(sql, timestamp, ref.id)
+        db.execute(sql, timestamp, ref.id)
     }
 
     fun clear(ref: LibraryRef) {
@@ -31,10 +31,10 @@ class RecentlyPlayedRepository(private val db: CannoliDatabase) {
             is LibraryRef.Rom -> "UPDATE roms SET last_played_at = NULL WHERE id = ?"
             is LibraryRef.App -> "UPDATE apps SET last_played_at = NULL WHERE id = ?"
         }
-        db.conn.execute(sql, ref.id)
+        db.execute(sql, ref.id)
     }
 
-    fun hasAny(): Boolean = db.conn.queryOne(
+    fun hasAny(): Boolean = db.queryOne(
         """
         SELECT 1 WHERE EXISTS(SELECT 1 FROM roms WHERE last_played_at IS NOT NULL)
             OR EXISTS(SELECT 1 FROM apps WHERE last_played_at IS NOT NULL)

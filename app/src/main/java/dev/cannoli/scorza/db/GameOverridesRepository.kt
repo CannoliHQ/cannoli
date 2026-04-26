@@ -8,7 +8,7 @@ class GameOverridesRepository(private val db: CannoliDatabase) {
         val raPackage: String? = null,
     )
 
-    fun get(romId: Long): Override? = db.conn.queryOne(
+    fun get(romId: Long): Override? = db.queryOne(
         "SELECT core_id, runner, app_package, ra_package FROM game_overrides WHERE rom_id = ?",
         romId,
     ) { stmt ->

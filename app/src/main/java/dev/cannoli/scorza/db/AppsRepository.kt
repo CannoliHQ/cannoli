@@ -6,33 +6,33 @@ import dev.cannoli.scorza.model.AppType
 
 class AppsRepository(private val db: CannoliDatabase) {
     fun all(type: AppType? = null): List<App> = if (type != null) {
-        db.conn.queryAll(
+        db.queryAll(
             "SELECT $COLUMNS FROM apps WHERE type = ? ORDER BY sort_order, display_name COLLATE NOCASE",
             type.name,
             mapper = ::rowToApp,
         )
     } else {
-        db.conn.queryAll(
+        db.queryAll(
             "SELECT $COLUMNS FROM apps ORDER BY type, sort_order, display_name COLLATE NOCASE",
             mapper = ::rowToApp,
         )
     }
 
-    fun byId(appId: Long): App? = db.conn.queryOne(
+    fun byId(appId: Long): App? = db.queryOne(
         "SELECT $COLUMNS FROM apps WHERE id = ?", appId, mapper = ::rowToApp,
     )
 
-    fun byPackage(type: AppType, packageName: String): App? = db.conn.queryOne(
+    fun byPackage(type: AppType, packageName: String): App? = db.queryOne(
         "SELECT $COLUMNS FROM apps WHERE type = ? AND package_name = ?",
         type.name, packageName, mapper = ::rowToApp,
     )
 
-    fun count(type: AppType): Int = db.conn.queryOne(
+    fun count(type: AppType): Int = db.queryOne(
         "SELECT COUNT(*) FROM apps WHERE type = ?", type.name,
     ) { it.getInt(0) } ?: 0
 
     fun upsert(type: AppType, displayName: String, packageName: String): Long {
-        db.conn.execute(
+        db.execute(
             """
             INSERT INTO apps (type, display_name, package_name) VALUES (?, ?, ?)
             ON CONFLICT(type, package_name) DO UPDATE SET display_name = excluded.display_name
@@ -42,11 +42,11 @@ class AppsRepository(private val db: CannoliDatabase) {
         return byPackage(type, packageName)!!.id
     }
 
-    fun delete(appId: Long) = db.conn.execute("DELETE FROM apps WHERE id = ?", appId)
+    fun delete(appId: Long) = db.execute("DELETE FROM apps WHERE id = ?", appId)
 
-    fun setOrder(type: AppType, orderedIds: List<Long>) = db.conn.transaction {
+    fun setOrder(type: AppType, orderedIds: List<Long>) = db.transaction { conn ->
         orderedIds.forEachIndexed { index, id ->
-            db.conn.execute("UPDATE apps SET sort_order = ? WHERE id = ?", index.toLong(), id)
+            conn.execute("UPDATE apps SET sort_order = ? WHERE id = ?", index.toLong(), id)
         }
     }
 

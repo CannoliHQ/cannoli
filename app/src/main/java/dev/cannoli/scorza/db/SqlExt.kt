@@ -64,3 +64,53 @@ internal fun SQLiteStatement.bindAll(args: Array<out Any?>) {
         }
     }
 }
+
+internal fun <T> CannoliDatabase.query(sql: String, block: (SQLiteStatement) -> T): T =
+    withConn { it.query(sql, block) }
+
+internal fun <T> CannoliDatabase.queryOne(sql: String, vararg args: Any?, mapper: (SQLiteStatement) -> T): T? =
+    withConn { conn ->
+        conn.prepare(sql).use { stmt ->
+            stmt.bindAll(args)
+            if (stmt.step()) mapper(stmt) else null
+        }
+    }
+
+internal fun <T> CannoliDatabase.queryAll(sql: String, vararg args: Any?, mapper: (SQLiteStatement) -> T): List<T> =
+    withConn { conn ->
+        conn.prepare(sql).use { stmt ->
+            stmt.bindAll(args)
+            val out = mutableListOf<T>()
+            while (stmt.step()) out.add(mapper(stmt))
+            out
+        }
+    }
+
+internal fun CannoliDatabase.execute(sql: String, vararg args: Any?) =
+    withConn { conn ->
+        conn.prepare(sql).use { stmt ->
+            stmt.bindAll(args)
+            stmt.step()
+        }
+    }
+
+internal fun CannoliDatabase.executeReturningId(sql: String, vararg args: Any?): Long =
+    withConn { conn ->
+        conn.prepare(sql).use { stmt ->
+            stmt.bindAll(args)
+            stmt.step()
+        }
+        conn.prepare("SELECT last_insert_rowid()").use { it.step(); it.getLong(0) }
+    }
+
+internal fun <T> CannoliDatabase.transaction(block: (SQLiteConnection) -> T): T = withConn { conn ->
+    conn.execSQL("BEGIN")
+    try {
+        val result = block(conn)
+        conn.execSQL("COMMIT")
+        result
+    } catch (t: Throwable) {
+        conn.execSQL("ROLLBACK")
+        throw t
+    }
+}

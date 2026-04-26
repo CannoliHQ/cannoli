@@ -13,23 +13,23 @@ class CollectionsRepository(private val db: CannoliDatabase) {
     )
 
     fun all(): List<CollectionRow> =
-        db.conn.queryAll("$BASE_SELECT ORDER BY sort_order, display_name COLLATE NOCASE", mapper = ::rowToCollection)
+        db.queryAll("$BASE_SELECT ORDER BY sort_order, display_name COLLATE NOCASE", mapper = ::rowToCollection)
 
-    fun topLevel(): List<CollectionRow> = db.conn.queryAll(
+    fun topLevel(): List<CollectionRow> = db.queryAll(
         "$BASE_SELECT WHERE parent_id IS NULL AND collection_type = 'STANDARD' ORDER BY sort_order, display_name COLLATE NOCASE",
         mapper = ::rowToCollection,
     )
 
-    fun byId(id: Long): CollectionRow? = db.conn.queryOne(
+    fun byId(id: Long): CollectionRow? = db.queryOne(
         "$BASE_SELECT WHERE id = ?", id, mapper = ::rowToCollection,
     )
 
-    fun children(parentId: Long): List<CollectionRow> = db.conn.queryAll(
+    fun children(parentId: Long): List<CollectionRow> = db.queryAll(
         "$BASE_SELECT WHERE parent_id = ? ORDER BY sort_order, display_name COLLATE NOCASE",
         parentId, mapper = ::rowToCollection,
     )
 
-    fun favoritesId(): Long? = db.conn.queryOne(
+    fun favoritesId(): Long? = db.queryOne(
         "SELECT id FROM collections WHERE collection_type = 'FAVORITES' LIMIT 1",
     ) { it.getLong(0) }
 
@@ -45,12 +45,12 @@ class CollectionsRepository(private val db: CannoliDatabase) {
     fun isAppFavorited(appId: Long): Boolean =
         favoritesId()?.let { isMember(it, LibraryRef.App(appId)) } == true
 
-    fun isMember(collectionId: Long, ref: LibraryRef): Boolean = db.conn.queryOne(
+    fun isMember(collectionId: Long, ref: LibraryRef): Boolean = db.queryOne(
         "SELECT 1 FROM collection_members WHERE collection_id = ? AND ${ref.column()} = ? LIMIT 1",
         collectionId, ref.id,
     ) { true } ?: false
 
-    fun collectionsContaining(ref: LibraryRef): Set<Long> = db.conn.queryAll(
+    fun collectionsContaining(ref: LibraryRef): Set<Long> = db.queryAll(
         "SELECT collection_id FROM collection_members WHERE ${ref.column()} = ?",
         ref.id,
     ) { it.getLong(0) }.toSet()
@@ -62,20 +62,20 @@ class CollectionsRepository(private val db: CannoliDatabase) {
             is LibraryRef.Rom -> ref.id to null
             is LibraryRef.App -> null to ref.id
         }
-        db.conn.execute(
+        db.execute(
             "INSERT INTO collection_members (collection_id, rom_id, app_id, sort_order) VALUES (?, ?, ?, ?)",
             collectionId, romId, appId, nextOrder.toLong(),
         )
     }
 
-    fun removeMember(collectionId: Long, ref: LibraryRef) = db.conn.execute(
+    fun removeMember(collectionId: Long, ref: LibraryRef) = db.execute(
         "DELETE FROM collection_members WHERE collection_id = ? AND ${ref.column()} = ?",
         collectionId, ref.id,
     )
 
-    fun setMemberOrder(collectionId: Long, orderedRefs: List<LibraryRef>) = db.conn.transaction {
+    fun setMemberOrder(collectionId: Long, orderedRefs: List<LibraryRef>) = db.transaction { conn ->
         orderedRefs.forEachIndexed { index, ref ->
-            db.conn.execute(
+            conn.execute(
                 "UPDATE collection_members SET sort_order = ? WHERE collection_id = ? AND ${ref.column()} = ?",
                 index.toLong(), collectionId, ref.id,
             )
@@ -83,12 +83,12 @@ class CollectionsRepository(private val db: CannoliDatabase) {
     }
 
     fun create(displayName: String, type: CollectionType = CollectionType.STANDARD): Long =
-        db.conn.executeReturningId(
+        db.executeReturningId(
             "INSERT INTO collections (display_name, collection_type) VALUES (?, ?)",
             displayName, type.name,
         )
 
-    fun rename(collectionId: Long, newName: String) = db.conn.execute(
+    fun rename(collectionId: Long, newName: String) = db.execute(
         "UPDATE collections SET display_name = ? WHERE id = ?",
         newName, collectionId,
     )
@@ -97,9 +97,9 @@ class CollectionsRepository(private val db: CannoliDatabase) {
         if (parentId == collectionId) return
         if (parentId != null && wouldCycle(child = collectionId, candidateParent = parentId)) return
         if (parentId == null) {
-            db.conn.execute("UPDATE collections SET parent_id = NULL WHERE id = ?", collectionId)
+            db.execute("UPDATE collections SET parent_id = NULL WHERE id = ?", collectionId)
         } else {
-            db.conn.execute("UPDATE collections SET parent_id = ? WHERE id = ?", parentId, collectionId)
+            db.execute("UPDATE collections SET parent_id = ? WHERE id = ?", parentId, collectionId)
         }
     }
 
@@ -115,11 +115,11 @@ class CollectionsRepository(private val db: CannoliDatabase) {
         return out
     }
 
-    fun delete(collectionId: Long) = db.conn.execute("DELETE FROM collections WHERE id = ?", collectionId)
+    fun delete(collectionId: Long) = db.execute("DELETE FROM collections WHERE id = ?", collectionId)
 
-    fun setCollectionOrder(orderedIds: List<Long>) = db.conn.transaction {
+    fun setCollectionOrder(orderedIds: List<Long>) = db.transaction { conn ->
         orderedIds.forEachIndexed { index, id ->
-            db.conn.execute("UPDATE collections SET sort_order = ? WHERE id = ?", index.toLong(), id)
+            conn.execute("UPDATE collections SET sort_order = ? WHERE id = ?", index.toLong(), id)
         }
     }
 
@@ -133,12 +133,12 @@ class CollectionsRepository(private val db: CannoliDatabase) {
         return false
     }
 
-    private fun nextSortOrder(collectionId: Long): Int = db.conn.queryOne(
+    private fun nextSortOrder(collectionId: Long): Int = db.queryOne(
         "SELECT COALESCE(MAX(sort_order), -1) + 1 FROM collection_members WHERE collection_id = ?",
         collectionId,
     ) { it.getInt(0) } ?: 0
 
-    private fun readMemberIds(column: String, collectionId: Long): List<Long> = db.conn.queryAll(
+    private fun readMemberIds(column: String, collectionId: Long): List<Long> = db.queryAll(
         "SELECT $column FROM collection_members WHERE collection_id = ? AND $column IS NOT NULL ORDER BY sort_order",
         collectionId,
     ) { it.getLong(0) }

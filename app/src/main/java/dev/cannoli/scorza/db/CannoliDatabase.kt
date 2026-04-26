@@ -20,9 +20,16 @@ class CannoliDatabase(cannoliRoot: File) {
         conn.execSQL("PRAGMA wal_checkpoint(TRUNCATE)")
     }
 
-    fun close() {
-        conn.close()
-    }
+    /**
+     * Serializes access to the underlying connection. BundledSQLiteDriver
+     * connections are not safe for concurrent use across threads, so every
+     * code path that touches [conn] must do so inside this lock (directly or
+     * via the [CannoliDatabase] extension helpers in SqlExt). The monitor is
+     * reentrant, so transactions can call locked helpers without deadlocking.
+     */
+    inline fun <T> withConn(block: (SQLiteConnection) -> T): T = synchronized(this) { block(conn) }
+
+    fun close() = synchronized(this) { conn.close() }
 
     private fun runMigrations(conn: SQLiteConnection) {
         val current = readUserVersion(conn)

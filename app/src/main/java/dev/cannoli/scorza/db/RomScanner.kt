@@ -40,18 +40,18 @@ class RomScanner(
 
     fun ensureReservedPlatformTag(tag: String) = ensurePlatformRow(tag)
 
-    private fun readLastScannedMtime(tag: String): Long = db.conn.queryOne(
+    private fun readLastScannedMtime(tag: String): Long = db.queryOne(
         "SELECT last_scanned_mtime FROM platforms WHERE tag = ?", tag,
     ) { it.getLong(0) } ?: MTIME_UNSET
 
-    private fun writeLastScannedMtime(tag: String, mtime: Long) = db.conn.execute(
+    private fun writeLastScannedMtime(tag: String, mtime: Long) = db.execute(
         "UPDATE platforms SET last_scanned_mtime = ? WHERE tag = ?",
         mtime, tag,
     )
 
     private fun sync(tag: String, scanned: List<RomDirectoryWalker.ScannedRom>): SyncCounts {
         data class ExistingRow(val id: Long, val displayName: String, val tags: String?, val discPaths: String?)
-        val existing = db.conn.queryAll(
+        val existing = db.queryAll(
             "SELECT id, path, display_name, tags, disc_paths FROM roms WHERE platform_tag = ?", tag,
         ) { stmt ->
             stmt.getText(1) to ExistingRow(
@@ -67,10 +67,10 @@ class RomScanner(
         var updated = 0
         var removed = 0
 
-        db.conn.transaction {
-            db.conn.prepare("INSERT INTO roms (path, platform_tag, display_name, tags, disc_paths) VALUES (?, ?, ?, ?, ?)").use { insertStmt ->
-                db.conn.prepare("UPDATE roms SET display_name = ?, tags = ?, disc_paths = ? WHERE id = ?").use { updateStmt ->
-                    db.conn.prepare("DELETE FROM roms WHERE id = ?").use { deleteStmt ->
+        db.transaction { conn ->
+            conn.prepare("INSERT INTO roms (path, platform_tag, display_name, tags, disc_paths) VALUES (?, ?, ?, ?, ?)").use { insertStmt ->
+                conn.prepare("UPDATE roms SET display_name = ?, tags = ?, disc_paths = ? WHERE id = ?").use { updateStmt ->
+                    conn.prepare("DELETE FROM roms WHERE id = ?").use { deleteStmt ->
                         for (rom in scanned) {
                             val current = existing[rom.relativePath]
                             val discJson = rom.discPaths?.let { JSONArray(it).toString() }
@@ -109,13 +109,13 @@ class RomScanner(
     }
 
     private fun clearPlatform(tag: String): SyncCounts {
-        val count = db.conn.queryOne("SELECT COUNT(*) FROM roms WHERE platform_tag = ?", tag) { it.getInt(0) } ?: 0
+        val count = db.queryOne("SELECT COUNT(*) FROM roms WHERE platform_tag = ?", tag) { it.getInt(0) } ?: 0
         if (count == 0) return SyncCounts(0, 0, 0)
-        db.conn.execute("DELETE FROM roms WHERE platform_tag = ?", tag)
+        db.execute("DELETE FROM roms WHERE platform_tag = ?", tag)
         return SyncCounts(0, 0, count)
     }
 
-    private fun ensurePlatformRow(tag: String) = db.conn.execute(
+    private fun ensurePlatformRow(tag: String) = db.execute(
         "INSERT OR IGNORE INTO platforms (tag, display_name) VALUES (?, ?)",
         tag, tag,
     )
