@@ -631,6 +631,10 @@ class LibretroActivity : ComponentActivity() {
                                     settings.flush()
                                     sessionLog.log("RA token refreshed via password retry")
                                 }
+                                val status = getString(
+                                    if (raManager?.isOnline == true) R.string.ra_status_online else R.string.ra_status_offline
+                                )
+                                showOsd(getString(R.string.ra_login_success, nameOrError, status))
                             } else if (!tokenRetryAttempted && raPassword.isNotEmpty()) {
                                 tokenRetryAttempted = true
                                 sessionLog.log("RA token login failed, retrying with password")

@@ -234,6 +234,9 @@
     <string name="ra_title">RetroAchievements</string>
     <string name="ra_logged_in_as">Logged in as</string>
     <string name="ra_login_failed">RetroAchievements Login Failed</string>
+    <string name="ra_login_success">RetroAchievements: %1$s (%2$s)</string>
+    <string name="ra_status_online">Online</string>
+    <string name="ra_status_offline">Offline</string>
 
     <!-- Credits -->
     <string name="credits_title">Credits and Licenses</string>
