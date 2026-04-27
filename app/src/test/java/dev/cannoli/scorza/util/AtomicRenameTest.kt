@@ -113,21 +113,67 @@ class AtomicRenameTest {
         assertFalse(rom.exists())
     }
 
-    @Test fun `rename overwrites a colliding target file via POSIX rename semantics`() {
-        // Documents a known footgun: AtomicRename calls File.renameTo, which on
-        // POSIX silently replaces a file at the target path. The pre-rename
-        // backup of the source is taken, but the clobbered file at the target
-        // name is not preserved.
-        val rom = File(romsDir("PS"), "Source.bin").writeWith("source")
-        File(romsDir("PS"), "Target.bin").writeWith("blocking-target")
+    @Test fun `colliding target rom is preserved in the target subdirectory of the backup`() {
+        val rom = File(romsDir("PS"), "Source.bin").writeWith("source-content")
+        File(romsDir("PS"), "Target.bin").writeWith("target-content")
 
         val result = renamer.rename(rom, "Target", "PS")
         assertTrue(result.success)
 
-        val target = File(romsDir("PS"), "Target.bin")
-        assertTrue(target.exists())
-        assertEquals("source", target.readText())
-        assertFalse("source rom should be gone after move", rom.exists())
+        // Rename still succeeds — the source moves to the target name.
+        val movedRom = File(romsDir("PS"), "Target.bin")
+        assertEquals("source-content", movedRom.readText())
+
+        // The clobbered target rom is captured under <backup>/target/ for recovery.
+        val tagBackups = File(backupDir(), "PS").listFiles().orEmpty()
+        assertEquals(1, tagBackups.size)
+        val targetBackup = File(tagBackups.first(), "target")
+        assertTrue("expected target backup directory", targetBackup.isDirectory)
+        assertEquals("target-content", File(targetBackup, "Target.bin").readText())
+    }
+
+    @Test fun `colliding target saves and states are preserved in the target backup`() {
+        val rom = File(romsDir("PS"), "Source.bin").writeWith("rom")
+        File(savesDir("PS"), "Source.srm").writeWith("source-save")
+        File(statesDir("PS"), "Source.state").writeWith("source-state")
+        // Files already at the target name that would be silently clobbered:
+        File(savesDir("PS"), "Target.srm").writeWith("target-save")
+        File(statesDir("PS"), "Target.state").writeWith("target-state")
+
+        val result = renamer.rename(rom, "Target", "PS")
+        assertTrue(result.success)
+
+        val tagBackups = File(backupDir(), "PS").listFiles().orEmpty()
+        val targetBackup = File(tagBackups.first(), "target")
+        assertTrue(targetBackup.isDirectory)
+        assertEquals("target-save", File(targetBackup, "saves_Target.srm").readText())
+        assertEquals("target-state", File(targetBackup, "states_Target.state").readText())
+    }
+
+    @Test fun `colliding target state subdirectory is preserved`() {
+        val rom = File(romsDir("PS"), "Source.bin").writeWith("rom")
+        val targetSub = File(statesDir("PS"), "Target").also { it.mkdirs() }
+        File(targetSub, "slot1.state").writeWith("inside-target")
+
+        val result = renamer.rename(rom, "Target", "PS")
+        assertTrue(result.success)
+
+        val tagBackups = File(backupDir(), "PS").listFiles().orEmpty()
+        val targetBackup = File(tagBackups.first(), "target")
+        val savedSub = File(targetBackup, "statedir_Target")
+        assertTrue(savedSub.isDirectory)
+        assertEquals("inside-target", File(savedSub, "slot1.state").readText())
+    }
+
+    @Test fun `target subdirectory is omitted when nothing collides at the new name`() {
+        val rom = File(romsDir("PS"), "Source.bin").writeWith("rom")
+
+        val result = renamer.rename(rom, "Pristine", "PS")
+        assertTrue(result.success)
+
+        val tagBackups = File(backupDir(), "PS").listFiles().orEmpty()
+        val targetBackup = File(tagBackups.first(), "target")
+        assertFalse("no collisions should mean no target backup dir", targetBackup.exists())
     }
 
     @Test fun `map_txt is updated in place when present`() {

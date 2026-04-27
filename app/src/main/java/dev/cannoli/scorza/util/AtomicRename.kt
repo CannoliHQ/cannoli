@@ -40,6 +40,8 @@ class AtomicRename(private val cannoliRoot: File) {
             if (stateSubDir.isDirectory) {
                 stateSubDir.copyRecursively(File(backupTagDir, "statedir_$oldBaseName"), overwrite = true)
             }
+            // Back up anything at the target name that the rename phase would clobber.
+            backupTargetCollateral(backupTagDir, romDir, extension, newBaseName, platformTag)
         } catch (e: Exception) {
             backupTagDir.deleteRecursively()
             return RenameResult(false, "Backup failed: ${e.message}")
@@ -77,9 +79,50 @@ class AtomicRename(private val cannoliRoot: File) {
         return RenameResult(true)
     }
 
+    private fun backupTargetCollateral(
+        rootBackupDir: File,
+        romDir: File,
+        romExt: String,
+        newBaseName: String,
+        tag: String
+    ) {
+        val targetRom = File(romDir, "$newBaseName.$romExt")
+        val targetArt = findArtFile(tag, newBaseName)
+        val targetSaves = findMatchingFiles(File(savesDir, tag), newBaseName)
+        val targetStates = findMatchingFiles(File(statesDir, tag), newBaseName)
+        val targetStateSub = File(File(statesDir, tag), newBaseName)
+
+        val anyTarget = targetRom.exists() || targetArt != null ||
+            targetSaves.isNotEmpty() || targetStates.isNotEmpty() ||
+            targetStateSub.isDirectory
+        if (!anyTarget) return
+
+        val targetBackup = File(rootBackupDir, "target")
+        targetBackup.mkdirs()
+        if (targetRom.exists()) {
+            targetRom.copyTo(File(targetBackup, targetRom.name), overwrite = true)
+        }
+        targetArt?.let { artFile ->
+            artFile.copyTo(File(targetBackup, artFile.name), overwrite = true)
+        }
+        targetSaves.forEach { save ->
+            save.copyTo(File(targetBackup, "saves_${save.name}"), overwrite = true)
+        }
+        targetStates.forEach { state ->
+            state.copyTo(File(targetBackup, "states_${state.name}"), overwrite = true)
+        }
+        if (targetStateSub.isDirectory) {
+            targetStateSub.copyRecursively(File(targetBackup, "statedir_$newBaseName"), overwrite = true)
+        }
+    }
+
     private fun rollback(backupDir: File, originalRom: File, tag: String, oldBaseName: String) {
         val romDir = originalRom.parentFile ?: return
         backupDir.listFiles()?.forEach { backup ->
+            // The "target" subdir holds files that lived at the new name before
+            // the rename clobbered them. Rollback only restores source-side state,
+            // so leave target-side captures alone.
+            if (backup.isDirectory && backup.name == "target") return@forEach
             when {
                 backup.name.startsWith("saves_") -> {
                     val origName = backup.name.removePrefix("saves_")
