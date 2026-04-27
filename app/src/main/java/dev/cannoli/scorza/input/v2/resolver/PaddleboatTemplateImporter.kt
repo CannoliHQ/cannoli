@@ -7,6 +7,6 @@ interface PaddleboatTemplateImporter {
     fun importFor(device: ConnectedDevice): DeviceTemplate?
 }
 
-class NoopPaddleboatTemplateImporter : PaddleboatTemplateImporter {
+class NoopPaddleboatTemplateImporter @javax.inject.Inject constructor() : PaddleboatTemplateImporter {
     override fun importFor(device: ConnectedDevice): DeviceTemplate? = null
 }
