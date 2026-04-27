@@ -1296,6 +1296,7 @@ class DialogInputHandler @Inject constructor(
             val gameId = state.currentName.trim().toIntOrNull()
             ioScope.launch {
                 romsRepository.gameByPath(romPath)?.let { romsRepository.setRaGameId(it.id, gameId) }
+                gameListViewModel.reload()
             }
             restoreContextMenu()
             return
