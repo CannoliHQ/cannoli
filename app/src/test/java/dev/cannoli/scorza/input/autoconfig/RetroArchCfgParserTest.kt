@@ -81,4 +81,20 @@ class RetroArchCfgParserTest {
         assertEquals("Test", entry.deviceName)
         assertEquals(1, entry.buttonBindings["b_btn"])
     }
+
+    @Test
+    fun parsesAxisLinesForL2AndSticks() {
+        val cfg = """
+            input_device = "Test"
+            input_vendor_id = "1"
+            input_product_id = "2"
+            input_l2_axis = "+5"
+            input_l_x_plus_axis = "+0"
+            input_l_x_minus_axis = "-0"
+        """.trimIndent()
+        val entry = RetroArchCfgParser.parse(cfg)
+        org.junit.Assert.assertEquals(AxisRef(5, +1), entry.axisBindings["l2_axis"])
+        org.junit.Assert.assertEquals(AxisRef(0, +1), entry.axisBindings["l_x_plus_axis"])
+        org.junit.Assert.assertEquals(AxisRef(0, -1), entry.axisBindings["l_x_minus_axis"])
+    }
 }
