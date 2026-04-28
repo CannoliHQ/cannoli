@@ -98,6 +98,19 @@ class PortEvaluator(
 
     fun analogValue(role: AnalogRole): Float = analog[role] ?: 0f
 
+    fun snapshot(): PortSnapshot = PortSnapshot(
+        pressed = pressed.toSet(),
+        analog = analog.toMap(),
+    )
+
+    fun resetState(): List<CanonicalEvent> {
+        val deltas = pressed.map { CanonicalEvent.Released(it) }
+        pressed.clear()
+        asserters.clear()
+        analog.clear()
+        return deltas
+    }
+
     private inline fun forEachBinding(action: (CanonicalButton, InputBinding) -> Unit) {
         for ((canonical, bindings) in template.bindings) {
             for (binding in bindings) action(canonical, binding)

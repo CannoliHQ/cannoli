@@ -241,4 +241,46 @@ class PortEvaluatorTest {
         assertTrue(firstReleased.isEmpty())
         assertEquals(listOf(CanonicalEvent.Released(CanonicalButton.BTN_L2)), secondReleased)
     }
+
+    @Test
+    fun snapshot_matches_currently_pressed_and_analog_value() {
+        val e = PortEvaluator(
+            template(mapOf(
+                CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96)),
+                CanonicalButton.BTN_L3 to listOf(InputBinding.Axis(
+                    axis = 0, restingValue = 0f, activeMin = -1f, activeMax = 1f,
+                    digitalThreshold = 0.5f,
+                    analogRole = AnalogRole.LEFT_STICK_X,
+                )),
+            ))
+        )
+        e.evaluateKeyDown(96, isAndroidRepeat = false)
+        e.evaluateAxis(mapOf(0 to 0.6f))
+        val snap = e.snapshot()
+        assertEquals(setOf(CanonicalButton.BTN_SOUTH), snap.pressed)
+        assertEquals(0.6f, snap.analog[AnalogRole.LEFT_STICK_X]!!, 0.001f)
+    }
+
+    @Test
+    fun reset_state_emits_released_for_each_held_button_and_clears_state() {
+        val e = PortEvaluator(template(mapOf(
+            CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96)),
+            CanonicalButton.BTN_EAST to listOf(InputBinding.Button(97)),
+        )))
+        e.evaluateKeyDown(96, isAndroidRepeat = false)
+        e.evaluateKeyDown(97, isAndroidRepeat = false)
+        val deltas = e.resetState()
+        assertEquals(2, deltas.size)
+        assertTrue(deltas.contains(CanonicalEvent.Released(CanonicalButton.BTN_SOUTH)))
+        assertTrue(deltas.contains(CanonicalEvent.Released(CanonicalButton.BTN_EAST)))
+        assertTrue(e.currentlyPressed().isEmpty())
+    }
+
+    @Test
+    fun reset_state_when_nothing_held_emits_nothing() {
+        val e = PortEvaluator(template(mapOf(
+            CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96)),
+        )))
+        assertTrue(e.resetState().isEmpty())
+    }
 }
