@@ -31,7 +31,7 @@ class PortRouterTest {
         match = DeviceMatchRule(),
         bindings = mapOf(CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96))),
         excludeFromGameplay = excluded,
-        source = TemplateSource.PADDLEBOAT_DB,
+        source = TemplateSource.RETROARCH_AUTOCONFIG,
     )
 
     @Test

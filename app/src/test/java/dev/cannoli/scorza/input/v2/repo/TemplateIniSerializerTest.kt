@@ -42,7 +42,7 @@ class TemplateIniSerializerTest {
         glyphStyle = GlyphStyle.GENERIC,
         excludeFromGameplay = false,
         defaultControllerTypeId = null,
-        source = TemplateSource.PADDLEBOAT_DB,
+        source = TemplateSource.RETROARCH_AUTOCONFIG,
         userEdited = false,
     )
 

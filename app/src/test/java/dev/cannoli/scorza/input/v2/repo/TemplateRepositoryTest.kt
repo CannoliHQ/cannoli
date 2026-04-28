@@ -24,7 +24,7 @@ class TemplateRepositoryTest {
         displayName = id,
         match = DeviceMatchRule(name = id, vendorId = 1, productId = 2),
         bindings = mapOf(CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96))),
-        source = TemplateSource.PADDLEBOAT_DB,
+        source = TemplateSource.RETROARCH_AUTOCONFIG,
     )
 
     @Test

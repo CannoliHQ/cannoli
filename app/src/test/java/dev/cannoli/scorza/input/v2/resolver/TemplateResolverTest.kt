@@ -35,9 +35,8 @@ class TemplateResolverTest {
 
     private fun makeResolver(
         repo: TemplateRepository,
-        paddleboat: PaddleboatTemplateImporter = NoopPaddleboatTemplateImporter(),
         bundledRa: List<RetroArchCfgEntry> = emptyList(),
-    ) = TemplateResolver(repo, paddleboat, bundledRa, tempFolder.root)
+    ) = TemplateResolver(repo, bundledRa, tempFolder.root)
 
     @Test
     fun returns_existing_on_disk_template_when_match_rule_scores_above_zero() {
@@ -52,8 +51,7 @@ class TemplateResolverTest {
         )
         repo.save(saved)
 
-        val resolver = makeResolver(repo)
-        val resolved = resolver.resolve(device)
+        val resolved = makeResolver(repo).resolve(device)
 
         assertEquals("stadia_user", resolved.template.id)
         assertTrue(resolved.persistent)
@@ -68,7 +66,7 @@ class TemplateResolverTest {
                 displayName = "older",
                 match = DeviceMatchRule(name = "Stadia Controller"),
                 bindings = mapOf(CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96))),
-                source = TemplateSource.PADDLEBOAT_DB,
+                source = TemplateSource.RETROARCH_AUTOCONFIG,
             )
         )
         Thread.sleep(20)
@@ -78,7 +76,7 @@ class TemplateResolverTest {
                 displayName = "newer",
                 match = DeviceMatchRule(name = "Stadia Controller"),
                 bindings = mapOf(CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96))),
-                source = TemplateSource.PADDLEBOAT_DB,
+                source = TemplateSource.RETROARCH_AUTOCONFIG,
             )
         )
 
@@ -87,26 +85,7 @@ class TemplateResolverTest {
     }
 
     @Test
-    fun no_match_uses_paddleboat_importer_and_persists_result() {
-        val repo = makeRepo()
-        val pb = object : PaddleboatTemplateImporter {
-            override fun importFor(device: ConnectedDevice): DeviceTemplate =
-                DeviceTemplate(
-                    id = "pb_stadia",
-                    displayName = "Stadia (Paddleboat)",
-                    match = DeviceMatchRule(vendorId = 6353, productId = 37888),
-                    bindings = mapOf(CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96))),
-                    source = TemplateSource.PADDLEBOAT_DB,
-                )
-        }
-        val resolved = makeResolver(repo, paddleboat = pb).resolve(device)
-        assertEquals("pb_stadia", resolved.template.id)
-        assertTrue(resolved.persistent)
-        assertNotNull(repo.findById("pb_stadia"))
-    }
-
-    @Test
-    fun no_match_falls_through_paddleboat_to_ra_autoconfig_when_bundled_entry_matches() {
+    fun no_disk_match_falls_through_to_ra_autoconfig_when_bundled_entry_matches() {
         val repo = makeRepo()
         val ra = listOf(
             RetroArchCfgEntry(
@@ -132,7 +111,7 @@ class TemplateResolverTest {
     }
 
     @Test
-    fun resolver_priority_is_disk_then_paddleboat_then_ra_then_default() {
+    fun resolver_priority_is_disk_then_ra_then_default() {
         val repo = makeRepo()
         val saved = DeviceTemplate(
             id = "disk_wins",
@@ -142,23 +121,13 @@ class TemplateResolverTest {
             source = TemplateSource.RETROARCH_AUTOCONFIG,
         )
         repo.save(saved)
-        val pb = object : PaddleboatTemplateImporter {
-            override fun importFor(device: ConnectedDevice) =
-                DeviceTemplate(
-                    id = "pb_loses",
-                    displayName = "Paddleboat loses",
-                    match = DeviceMatchRule(vendorId = 6353, productId = 37888),
-                    bindings = mapOf(CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96))),
-                    source = TemplateSource.PADDLEBOAT_DB,
-                )
-        }
         val ra = listOf(
             RetroArchCfgEntry(
                 deviceName = "Stadia Controller", vendorId = 6353, productId = 37888,
                 buttonBindings = mapOf("b_btn" to 96),
             )
         )
-        val resolved = makeResolver(repo, paddleboat = pb, bundledRa = ra).resolve(device)
+        val resolved = makeResolver(repo, bundledRa = ra).resolve(device)
         assertEquals("disk_wins", resolved.template.id)
     }
 }

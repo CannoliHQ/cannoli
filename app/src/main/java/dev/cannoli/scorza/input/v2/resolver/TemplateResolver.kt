@@ -13,7 +13,6 @@ data class ResolvedTemplate(
 
 class TemplateResolver(
     private val repository: TemplateRepository,
-    private val paddleboatImporter: PaddleboatTemplateImporter,
     private val bundledRetroArchEntries: List<RetroArchCfgEntry>,
     private val templatesDir: File? = null,
 ) {
@@ -23,20 +22,13 @@ class TemplateResolver(
 
         val candidates = repository.list()
             .map { it to it.match.score(matchInput) }
-            .filter { (_, score) -> score > 0 }
+            .filter { it.second > 0 }
         if (candidates.isNotEmpty()) {
             val best = candidates.maxWithOrNull(
-                compareBy<Pair<DeviceTemplate, Int>> { (_, score) -> score }
-                    .thenBy { (template, _) ->
-                        templatesDir?.let { dir -> File(dir, "${template.id}.ini").lastModified() } ?: 0L
-                    }
+                compareBy<Pair<DeviceTemplate, Int>>({ it.second })
+                    .thenBy { templatesDir?.let { dir -> File(dir, "${it.first.id}.ini").lastModified() } ?: 0L }
             )
             if (best != null) return ResolvedTemplate(best.first, persistent = true)
-        }
-
-        paddleboatImporter.importFor(device)?.let { template ->
-            repository.save(template)
-            return ResolvedTemplate(template, persistent = true)
         }
 
         val raMatch = bestRetroArchEntry(device)

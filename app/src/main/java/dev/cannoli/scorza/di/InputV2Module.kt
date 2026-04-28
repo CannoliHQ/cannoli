@@ -1,7 +1,6 @@
 package dev.cannoli.scorza.di
 
 import android.content.Context
-import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -12,8 +11,6 @@ import dev.cannoli.scorza.input.autoconfig.AssetCfgSource
 import dev.cannoli.scorza.input.autoconfig.AutoconfigLoader
 import dev.cannoli.scorza.input.autoconfig.RetroArchCfgEntry
 import dev.cannoli.scorza.input.v2.repo.TemplateRepository
-import dev.cannoli.scorza.input.v2.resolver.NoopPaddleboatTemplateImporter
-import dev.cannoli.scorza.input.v2.resolver.PaddleboatTemplateImporter
 import dev.cannoli.scorza.input.v2.resolver.TemplateResolver
 import dev.cannoli.scorza.input.v2.runtime.ActiveTemplateHolder
 import dev.cannoli.scorza.input.v2.runtime.PortRouter
@@ -46,12 +43,10 @@ object InputV2Module {
     @Singleton
     fun provideTemplateResolver(
         repository: TemplateRepository,
-        paddleboat: PaddleboatTemplateImporter,
         @BundledRetroArchAutoconfig bundled: List<RetroArchCfgEntry>,
         @CannoliRoot root: File,
     ): TemplateResolver = TemplateResolver(
         repository = repository,
-        paddleboatImporter = paddleboat,
         bundledRetroArchEntries = bundled,
         templatesDir = CannoliPaths(root).configInputTemplates,
     )
@@ -63,13 +58,4 @@ object InputV2Module {
     @Provides
     @Singleton
     fun provideActiveTemplateHolder(): ActiveTemplateHolder = ActiveTemplateHolder()
-}
-
-@Module
-@InstallIn(SingletonComponent::class)
-abstract class InputV2BindingsModule {
-
-    @Binds
-    @Singleton
-    abstract fun bindPaddleboatImporter(impl: NoopPaddleboatTemplateImporter): PaddleboatTemplateImporter
 }
