@@ -127,7 +127,9 @@ fun GameListScreen(
         } else null
     }
 
-    val showFavoriteStars = viewModel.showFavoriteStars
+    val inFavoritesCollection = state.isCollection &&
+        state.collectionName?.equals("Favorites", ignoreCase = true) == true
+    val showFavoriteStars = viewModel.showFavoriteStars && !inFavoritesCollection
     val favoriteRomIds = state.favoriteRomIds
     val favoriteAppIds = state.favoriteAppIds
     val duplicateRomNames = remember(state.items) {
