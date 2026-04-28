@@ -511,6 +511,18 @@ static void ra_try_init_memory(void) {
         ra_log_to_kotlin("memory init: SUCCESS after %d attempts, result=%d mmap=%s regions=%u totalSize=%u",
             g_memory_init_attempts, result, mmap ? "present" : "NULL",
             g_memory_regions.count, g_memory_regions.total_size);
+        if (g_jvm && g_manager && g_onEvent) {
+            JNIEnv *env;
+            int attached = 0;
+            if ((*g_jvm)->GetEnv(g_jvm, (void **)&env, JNI_VERSION_1_6) != JNI_OK) {
+                (*g_jvm)->AttachCurrentThread(g_jvm, &env, NULL);
+                attached = 1;
+            }
+            jstring empty = (*env)->NewStringUTF(env, "");
+            (*env)->CallVoidMethod(env, g_manager, g_onEvent, 1000, 0, empty, empty, 0);
+            (*env)->DeleteLocalRef(env, empty);
+            if (attached) (*g_jvm)->DetachCurrentThread(g_jvm);
+        }
     } else if (g_memory_init_attempts == 1 || g_memory_init_attempts == 60 || g_memory_init_attempts == 300) {
         ra_log_to_kotlin("memory init: PENDING attempt=%d result=%d mmap=%s regions=%u totalSize=%u",
             g_memory_init_attempts, result, mmap ? "present" : "NULL",
@@ -648,6 +660,12 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeGetGameTitle(JNI
         }
     }
     return (*env)->NewStringUTF(env, title);
+}
+
+JNIEXPORT jboolean JNICALL
+Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeIsMemoryInitialized(JNIEnv *env, jobject thiz) {
+    (void)env; (void)thiz;
+    return g_memory_initialized ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT jstring JNICALL

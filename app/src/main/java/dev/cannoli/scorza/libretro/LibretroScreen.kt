@@ -80,7 +80,8 @@ data class GameInfo(
     val originalRomPath: String? = null,
     val rendererName: String = "",
     val raStatus: String? = null,
-    val raGameId: String? = null
+    val raGameId: String? = null,
+    val raDetection: String? = null
 )
 
 @Composable
@@ -371,6 +372,10 @@ fun LibretroScreen(
                                 if (gameInfo.raGameId != null) {
                                     Spacer(modifier = Modifier.height(12.dp))
                                     InfoRow(stringResource(R.string.info_game_id), gameInfo.raGameId, infoModifier)
+                                }
+                                if (gameInfo.raDetection != null) {
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    InfoRow(stringResource(R.string.info_ra_detection), gameInfo.raDetection, infoModifier)
                                 }
                             }
                         }

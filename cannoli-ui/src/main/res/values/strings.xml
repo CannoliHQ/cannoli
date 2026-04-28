@@ -235,6 +235,7 @@
     <string name="ra_logged_in_as">Logged in as</string>
     <string name="ra_login_failed">RetroAchievements Login Failed</string>
     <string name="ra_login_success">RetroAchievements: %1$s (%2$s)</string>
+    <string name="ra_init_failed">Achievement Initialization Failed!</string>
     <string name="ra_status_online">Online</string>
     <string name="ra_status_offline">Offline</string>
 
@@ -276,6 +277,7 @@
     <string name="info_save">Save</string>
     <string name="info_renderer">Renderer</string>
     <string name="info_game_id">Game ID</string>
+    <string name="info_ra_detection">Achievement Detection</string>
 
     <!-- IGM dialogs -->
     <string name="igm_delete_slot">Delete %1$s?</string>

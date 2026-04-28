@@ -17,6 +17,7 @@ class RetroAchievementsManager(
     private val onEvent: (type: Int, title: String, description: String, points: Int) -> Unit = { _, _, _, _ -> },
     private val onLogin: (success: Boolean, displayName: String, token: String?) -> Unit = { _, _, _ -> },
     private val onSyncStatus: (message: String) -> Unit = {},
+    private val onDetectionReady: () -> Unit = {},
     private val logger: (String) -> Unit = {}
 ) {
     private val httpExecutor = Executors.newFixedThreadPool(2)
@@ -302,6 +303,17 @@ class RetroAchievementsManager(
         }
     }
 
+    val isMemoryInitialized: Boolean get() = nativeIsMemoryInitialized()
+
+    fun getDetectionStatus(): String {
+        if (!nativeIsLoggedIn()) return "Not logged in"
+        if (gameId <= 0) return "Game not recognized"
+        val achievementCount = getAchievements().size
+        if (achievementCount == 0) return "No achievements published"
+        if (!isMemoryInitialized) return "Memory init failed"
+        return "Active \u2022 $achievementCount achievements"
+    }
+
     @Suppress("unused")
     private fun onAchievementEvent(type: Int, achievementId: Int, title: String, description: String, points: Int) {
         logger("RA achievement event: type=$type id=$achievementId title=$title points=$points")
@@ -314,6 +326,12 @@ class RetroAchievementsManager(
         if (type == EVENT_DISCONNECTED) {
             logger("RA disconnected: rcheevos has pending awards that will retry")
             mainHandler.postDelayed({ onSyncStatus("Offline: Will Sync Later") }, 3500)
+            return
+        }
+
+        if (type == EVENT_DETECTION_READY) {
+            logger("RA detection ready: memory init complete")
+            mainHandler.post { onDetectionReady() }
             return
         }
 
@@ -387,6 +405,7 @@ class RetroAchievementsManager(
     private external fun nativeDeserializeProgress(data: ByteArray): Boolean
     private external fun nativeQueueUnlock(achievementId: Int, gameHash: String)
     private external fun nativeGetGameHash(): String
+    private external fun nativeIsMemoryInitialized(): Boolean
     private external fun nativeSetPendingReset()
 
     companion object {
@@ -397,6 +416,7 @@ class RetroAchievementsManager(
         private const val RC_SERVER_ERROR = 503
         private const val EVENT_DISCONNECTED = 17
         private const val EVENT_RECONNECTED = 18
+        private const val EVENT_DETECTION_READY = 1000
         private val CACHE_KEY_STRIP_REGEX = Regex("[&?](t|u)=[^&]+")
 
         val CONSOLE_MAP = mapOf(

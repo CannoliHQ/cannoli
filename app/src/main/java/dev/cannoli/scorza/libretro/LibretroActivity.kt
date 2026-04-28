@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -433,7 +434,8 @@ class LibretroActivity : ComponentActivity() {
                                             val title = ra.gameTitle
                                             if (title.isNotEmpty()) "$id — $title" else "$id"
                                         } else null
-                                    }
+                                    },
+                                    raDetection = raManager?.takeIf { it.isLoggedIn }?.getDetectionStatus()
                                 )
                             )
                             if (!revealed) {
@@ -630,8 +632,7 @@ class LibretroActivity : ComponentActivity() {
                                     settings.flush()
                                     sessionLog.log("RA token refreshed via password retry")
                                 }
-                                val status = raManager?.getStatus() ?: getString(R.string.ra_status_offline)
-                                showOsd(getString(R.string.ra_login_success, nameOrError, status))
+                                scheduleRaStartupOsd(nameOrError)
                             } else if (!tokenRetryAttempted && raPassword.isNotEmpty()) {
                                 tokenRetryAttempted = true
                                 sessionLog.log("RA token login failed, retrying with password")
@@ -648,6 +649,7 @@ class LibretroActivity : ComponentActivity() {
                             }
                         },
                         onSyncStatus = { msg -> showOsd(msg) },
+                        onDetectionReady = { onRaDetectionReady() },
                         logger = { msg -> sessionLog.log(msg) }
                     )
                     ra.init()
@@ -2402,6 +2404,42 @@ class LibretroActivity : ComponentActivity() {
         osdHandler.postDelayed(clearOsdRunnable, 3000)
     }
 
+    private val raStartupHandler = Handler(Looper.getMainLooper())
+    private var raStartupTimeout: Runnable? = null
+    private var raStartupDisplayName: String? = null
+
+    private fun scheduleRaStartupOsd(displayName: String) {
+        raStartupTimeout?.let { raStartupHandler.removeCallbacks(it) }
+        raStartupDisplayName = displayName
+        val ra = raManager
+        if (ra != null && ra.isMemoryInitialized && ra.gameId > 0 && ra.getAchievements().isNotEmpty()) {
+            onRaDetectionReady()
+            return
+        }
+        val timeout = Runnable {
+            if (raStartupDisplayName != null) {
+                showOsd(getString(R.string.ra_init_failed))
+                raStartupDisplayName = null
+                raStartupTimeout = null
+            }
+        }
+        raStartupTimeout = timeout
+        raStartupHandler.postDelayed(timeout, 8000L)
+    }
+
+    private fun onRaDetectionReady() {
+        val name = raStartupDisplayName ?: return
+        raStartupTimeout?.let { raStartupHandler.removeCallbacks(it) }
+        raStartupTimeout = null
+        raStartupDisplayName = null
+        val ra = raManager
+        if (ra == null || ra.gameId <= 0 || ra.getAchievements().isEmpty()) {
+            showOsd(getString(R.string.ra_init_failed))
+            return
+        }
+        showOsd(getString(R.string.ra_login_success, name, ra.getStatus()))
+    }
+
     private fun startUndoTimer(durationMs: Long = 60_000) {
         undoHandler.removeCallbacks(clearUndoRunnable)
         undoHandler.postDelayed(clearUndoRunnable, durationMs)
@@ -2503,6 +2541,7 @@ class LibretroActivity : ComponentActivity() {
 
     override fun onDestroy() {
         audioStatsHandler.removeCallbacks(audioStatsRunnable)
+        raStartupTimeout?.let { raStartupHandler.removeCallbacks(it) }
         if (::sessionLog.isInitialized) {
             sessionLog.log("onDestroy (isFinishing=$isFinishing, isChangingConfigurations=$isChangingConfigurations)")
             sessionLog.close()
