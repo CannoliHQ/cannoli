@@ -46,6 +46,7 @@ import dev.cannoli.scorza.input.InputRouter
 import dev.cannoli.scorza.input.InputTesterController
 import dev.cannoli.scorza.input.LauncherActions
 import dev.cannoli.scorza.input.ProfileManager
+import dev.cannoli.scorza.input.v2.runtime.ControllerV2Bridge
 import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.LaunchManager
 import dev.cannoli.scorza.libretro.LibretroActivity
@@ -82,6 +83,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var router: InputRouter
     @Inject lateinit var inputHandler: InputHandler
     @Inject lateinit var controllerManager: ControllerManager
+    @Inject lateinit var controllerV2Bridge: ControllerV2Bridge
     @Inject lateinit var bindingController: BindingController
     @Inject lateinit var inputTesterController: InputTesterController
     @Inject lateinit var updateManager: UpdateManager
@@ -150,6 +152,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
         )
 
         hideSystemUI()
+        controllerV2Bridge.start(this)
 
         setupWireInput()
 
@@ -327,6 +330,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     override fun onDestroy() {
         (getSystemService(INPUT_SERVICE) as android.hardware.input.InputManager)
             .unregisterInputDeviceListener(controllerManager)
+        controllerV2Bridge.stop(this)
         super.onDestroy()
         unregisterCoreQueryReceiver()
         settings.shutdown()

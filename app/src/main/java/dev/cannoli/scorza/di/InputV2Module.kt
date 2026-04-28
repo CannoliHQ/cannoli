@@ -13,6 +13,7 @@ import dev.cannoli.scorza.input.autoconfig.RetroArchCfgEntry
 import dev.cannoli.scorza.input.v2.repo.TemplateRepository
 import dev.cannoli.scorza.input.v2.resolver.TemplateResolver
 import dev.cannoli.scorza.input.v2.runtime.ActiveTemplateHolder
+import dev.cannoli.scorza.input.v2.runtime.ControllerV2Bridge
 import dev.cannoli.scorza.input.v2.runtime.PortRouter
 import java.io.File
 import javax.inject.Qualifier
@@ -58,4 +59,16 @@ object InputV2Module {
     @Provides
     @Singleton
     fun provideActiveTemplateHolder(): ActiveTemplateHolder = ActiveTemplateHolder()
+
+    @Provides
+    @Singleton
+    fun provideControllerV2Bridge(
+        resolver: TemplateResolver,
+        portRouter: PortRouter,
+        activeTemplateHolder: ActiveTemplateHolder,
+    ): ControllerV2Bridge = ControllerV2Bridge(
+        resolver = resolver,
+        portRouter = portRouter,
+        activeTemplateHolder = activeTemplateHolder,
+    )
 }
