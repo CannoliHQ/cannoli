@@ -107,4 +107,138 @@ class PortEvaluatorTest {
         e.evaluateKeyUp(96)
         assertEquals(setOf(CanonicalButton.BTN_EAST), e.currentlyPressed())
     }
+
+    @Test
+    fun axis_trigger_above_threshold_emits_pressed() {
+        val e = PortEvaluator(
+            template(mapOf(
+                CanonicalButton.BTN_L2 to listOf(InputBinding.Axis(
+                    axis = 17, restingValue = -1f, activeMin = 0f, activeMax = 1f,
+                    digitalThreshold = 0.5f,
+                )),
+            ))
+        )
+        val deltas = e.evaluateAxis(mapOf(17 to 0.8f))
+        assertEquals(listOf(CanonicalEvent.Pressed(CanonicalButton.BTN_L2)), deltas)
+    }
+
+    @Test
+    fun axis_trigger_with_negative_resting_value_handles_issue_151() {
+        // Stadia LTRIGGER: rests at -1.0, active 0..1.
+        val e = PortEvaluator(
+            template(mapOf(
+                CanonicalButton.BTN_L2 to listOf(InputBinding.Axis(
+                    axis = 17, restingValue = -1f, activeMin = 0f, activeMax = 1f,
+                    digitalThreshold = 0.5f,
+                )),
+            ))
+        )
+        val resting = e.evaluateAxis(mapOf(17 to -1f))
+        val partial = e.evaluateAxis(mapOf(17 to 0f))
+        val full = e.evaluateAxis(mapOf(17 to 1f))
+        assertTrue(resting.isEmpty())
+        // At raw=0, normalized=0.5, exactly at threshold -> pressed.
+        assertEquals(listOf(CanonicalEvent.Pressed(CanonicalButton.BTN_L2)), partial)
+        // At raw=1, still pressed; no duplicate event.
+        assertTrue(full.isEmpty())
+    }
+
+    @Test
+    fun axis_falling_below_threshold_emits_released() {
+        val e = PortEvaluator(
+            template(mapOf(
+                CanonicalButton.BTN_L2 to listOf(InputBinding.Axis(
+                    axis = 17, restingValue = -1f, activeMin = 0f, activeMax = 1f,
+                    digitalThreshold = 0.5f,
+                )),
+            ))
+        )
+        e.evaluateAxis(mapOf(17 to 1f))
+        val deltas = e.evaluateAxis(mapOf(17 to -1f))
+        assertEquals(listOf(CanonicalEvent.Released(CanonicalButton.BTN_L2)), deltas)
+    }
+
+    @Test
+    fun hat_axis_emits_pressed_for_directional_canonical_button() {
+        val e = PortEvaluator(
+            template(mapOf(
+                CanonicalButton.BTN_UP to listOf(
+                    InputBinding.Hat(axis = 16, direction = HatDirection.UP, threshold = 0.5f),
+                ),
+                CanonicalButton.BTN_DOWN to listOf(
+                    InputBinding.Hat(axis = 16, direction = HatDirection.DOWN, threshold = 0.5f),
+                ),
+            ))
+        )
+        val up = e.evaluateAxis(mapOf(16 to -1f))
+        val center = e.evaluateAxis(mapOf(16 to 0f))
+        val down = e.evaluateAxis(mapOf(16 to 1f))
+        assertEquals(listOf(CanonicalEvent.Pressed(CanonicalButton.BTN_UP)), up)
+        assertEquals(listOf(CanonicalEvent.Released(CanonicalButton.BTN_UP)), center)
+        assertEquals(listOf(CanonicalEvent.Pressed(CanonicalButton.BTN_DOWN)), down)
+    }
+
+    @Test
+    fun analog_stick_emits_changed_only_when_delta_exceeds_noise_threshold() {
+        val e = PortEvaluator(
+            template(mapOf(
+                CanonicalButton.BTN_L3 to listOf(InputBinding.Axis(
+                    axis = 0, restingValue = 0f, activeMin = -1f, activeMax = 1f,
+                    digitalThreshold = 0.5f,
+                    analogRole = AnalogRole.LEFT_STICK_X,
+                )),
+            )),
+            analogNoiseThreshold = 0.05f,
+        )
+        val first = e.evaluateAxis(mapOf(0 to 0.5f))
+        val noise = e.evaluateAxis(mapOf(0 to 0.51f))
+        val real = e.evaluateAxis(mapOf(0 to 0.6f))
+        assertEquals(1, first.size)
+        assertTrue(first.first() is CanonicalEvent.AnalogChanged)
+        assertTrue(noise.isEmpty())
+        assertEquals(1, real.size)
+    }
+
+    @Test
+    fun analog_value_returns_last_normalized_value() {
+        val e = PortEvaluator(
+            template(mapOf(
+                CanonicalButton.BTN_L3 to listOf(InputBinding.Axis(
+                    axis = 0, restingValue = 0f, activeMin = -1f, activeMax = 1f,
+                    digitalThreshold = 0.5f,
+                    analogRole = AnalogRole.LEFT_STICK_X,
+                )),
+            ))
+        )
+        e.evaluateAxis(mapOf(0 to 0.7f))
+        // normalize: (0.7 - 0) / (1 - 0) = 0.7, clamped to [0,1]
+        assertEquals(0.7f, e.analogValue(AnalogRole.LEFT_STICK_X), 0.001f)
+    }
+
+    @Test
+    fun two_axis_bindings_for_same_canonical_button_are_independent() {
+        // BTN_L2 bound to both axis-17-positive and axis-18-positive (unusual but legal).
+        val e = PortEvaluator(
+            template(mapOf(
+                CanonicalButton.BTN_L2 to listOf(
+                    InputBinding.Axis(
+                        axis = 17, restingValue = -1f, activeMin = 0f, activeMax = 1f,
+                        digitalThreshold = 0.5f,
+                    ),
+                    InputBinding.Axis(
+                        axis = 18, restingValue = -1f, activeMin = 0f, activeMax = 1f,
+                        digitalThreshold = 0.5f,
+                    ),
+                ),
+            ))
+        )
+        val first = e.evaluateAxis(mapOf(17 to 1f))
+        val second = e.evaluateAxis(mapOf(18 to 1f))
+        val firstReleased = e.evaluateAxis(mapOf(17 to -1f))
+        val secondReleased = e.evaluateAxis(mapOf(18 to -1f))
+        assertEquals(listOf(CanonicalEvent.Pressed(CanonicalButton.BTN_L2)), first)
+        assertTrue(second.isEmpty())
+        assertTrue(firstReleased.isEmpty())
+        assertEquals(listOf(CanonicalEvent.Released(CanonicalButton.BTN_L2)), secondReleased)
+    }
 }
