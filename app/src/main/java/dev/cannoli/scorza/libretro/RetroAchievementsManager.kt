@@ -95,7 +95,10 @@ class RetroAchievementsManager(
     val gameTitle: String get() = nativeGetGameTitle()
     val isOnline: Boolean get() {
         val cm = context?.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return false
-        return cm.activeNetwork != null
+        val network = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(network) ?: return false
+        return caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     }
 
     private var cachedAchievements: List<Achievement>? = null

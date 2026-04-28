@@ -424,8 +424,7 @@ class LibretroActivity : ComponentActivity() {
                                     rendererName = renderer.backendName,
                                     raStatus = raManager?.let { ra ->
                                         if (ra.isLoggedIn) {
-                                            val status = if (ra.isOnline) "Online" else "Offline"
-                                            "${ra.username} ($status)"
+                                            "${ra.username} (${ra.getStatus()})"
                                         } else null
                                     },
                                     raGameId = raManager?.let { ra ->
@@ -631,9 +630,7 @@ class LibretroActivity : ComponentActivity() {
                                     settings.flush()
                                     sessionLog.log("RA token refreshed via password retry")
                                 }
-                                val status = getString(
-                                    if (raManager?.isOnline == true) R.string.ra_status_online else R.string.ra_status_offline
-                                )
+                                val status = raManager?.getStatus() ?: getString(R.string.ra_status_offline)
                                 showOsd(getString(R.string.ra_login_success, nameOrError, status))
                             } else if (!tokenRetryAttempted && raPassword.isNotEmpty()) {
                                 tokenRetryAttempted = true
