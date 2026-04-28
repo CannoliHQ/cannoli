@@ -1,5 +1,7 @@
 package dev.cannoli.scorza.input.v2.runtime
 
+import dev.cannoli.scorza.input.v2.AnalogRole
+import dev.cannoli.scorza.input.v2.CanonicalButton
 import dev.cannoli.scorza.input.v2.ConnectedDevice
 import dev.cannoli.scorza.input.v2.DeviceTemplate
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,6 +14,7 @@ class PortRouter(private val maxPorts: Int = 4) {
         val device: ConnectedDevice,
         val template: DeviceTemplate,
         var port: Int?,
+        val evaluator: PortEvaluator,
     )
 
     private val entries = linkedMapOf<Int, Entry>()
@@ -22,7 +25,7 @@ class PortRouter(private val maxPorts: Int = 4) {
 
     fun onConnect(device: ConnectedDevice, template: DeviceTemplate) {
         if (entries.containsKey(device.androidDeviceId)) return
-        entries[device.androidDeviceId] = Entry(device, template, port = null)
+        entries[device.androidDeviceId] = Entry(device, template, port = null, evaluator = PortEvaluator(template))
         recompute()
     }
 
@@ -83,5 +86,21 @@ class PortRouter(private val maxPorts: Int = 4) {
         _routes.value = entries.values
             .mapNotNull { it.port?.let { p -> it.device.androidDeviceId to p } }
             .toMap()
+    }
+
+    fun evaluatorFor(androidDeviceId: Int): PortEvaluator? =
+        entries[androidDeviceId]?.evaluator
+
+    fun snapshotForPort(port: Int): PortSnapshot? =
+        entries.values.firstOrNull { it.port == port }?.evaluator?.snapshot()
+
+    fun isCanonicalPressedAt(port: Int, button: CanonicalButton): Boolean {
+        val entry = entries.values.firstOrNull { it.port == port } ?: return false
+        return entry.evaluator.currentlyPressed().contains(button)
+    }
+
+    fun analogValueAt(port: Int, role: AnalogRole): Float {
+        val entry = entries.values.firstOrNull { it.port == port } ?: return 0f
+        return entry.evaluator.analogValue(role)
     }
 }

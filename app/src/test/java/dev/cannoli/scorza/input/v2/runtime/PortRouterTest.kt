@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.input.v2.runtime
 
+import dev.cannoli.scorza.input.v2.AnalogRole
 import dev.cannoli.scorza.input.v2.CanonicalButton
 import dev.cannoli.scorza.input.v2.ConnectedDevice
 import dev.cannoli.scorza.input.v2.DeviceMatchRule
@@ -118,5 +119,51 @@ class PortRouterTest {
         r.onConnect(device(2, 1), template())
         r.onConnect(device(3, 2), template())
         assertNull(r.portFor(3))
+    }
+
+    @Test
+    fun evaluator_is_created_on_connect_and_dropped_on_disconnect() {
+        val r = PortRouter()
+        val device = device(1, 0)
+        val tmpl = template()
+        r.onConnect(device, tmpl)
+        val first = r.evaluatorFor(1)
+        org.junit.Assert.assertNotNull(first)
+        r.onDisconnect(1)
+        org.junit.Assert.assertNull(r.evaluatorFor(1))
+    }
+
+    @Test
+    fun isCanonicalPressedAt_reflects_current_evaluator_state() {
+        val r = PortRouter()
+        r.onConnect(device(1, 0), template())
+        r.markLaunchTrigger(1)
+        // The default template fixture only binds BTN_SOUTH to keycode 96.
+        val ev = r.evaluatorFor(1)!!
+        ev.evaluateKeyDown(96, isAndroidRepeat = false)
+        assertEquals(true, r.isCanonicalPressedAt(0, CanonicalButton.BTN_SOUTH))
+        assertEquals(false, r.isCanonicalPressedAt(0, CanonicalButton.BTN_EAST))
+    }
+
+    @Test
+    fun analogValueAt_returns_last_emitted_normalized_value() {
+        val r = PortRouter()
+        val analogTemplate = DeviceTemplate(
+            id = "t",
+            displayName = "T",
+            match = DeviceMatchRule(),
+            bindings = mapOf(
+                CanonicalButton.BTN_L3 to listOf(InputBinding.Axis(
+                    axis = 0, restingValue = 0f, activeMin = -1f, activeMax = 1f,
+                    digitalThreshold = 0.5f,
+                    analogRole = AnalogRole.LEFT_STICK_X,
+                )),
+            ),
+            source = TemplateSource.RETROARCH_AUTOCONFIG,
+        )
+        r.onConnect(device(1, 0), analogTemplate)
+        r.markLaunchTrigger(1)
+        r.evaluatorFor(1)!!.evaluateAxis(mapOf(0 to 0.7f))
+        assertEquals(0.7f, r.analogValueAt(0, AnalogRole.LEFT_STICK_X), 0.001f)
     }
 }
