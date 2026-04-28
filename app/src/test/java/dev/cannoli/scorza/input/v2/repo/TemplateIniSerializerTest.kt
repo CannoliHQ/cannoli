@@ -39,7 +39,7 @@ class TemplateIniSerializerTest {
         ),
         menuConfirm = CanonicalButton.BTN_EAST,
         menuBack = CanonicalButton.BTN_SOUTH,
-        glyphStyle = GlyphStyle.GENERIC,
+        glyphStyle = GlyphStyle.PLUMBER,
         excludeFromGameplay = false,
         defaultControllerTypeId = null,
         source = TemplateSource.RETROARCH_AUTOCONFIG,

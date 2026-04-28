@@ -7,7 +7,7 @@ data class DeviceTemplate(
     val bindings: Map<CanonicalButton, List<InputBinding>>,
     val menuConfirm: CanonicalButton = CanonicalButton.BTN_EAST,
     val menuBack: CanonicalButton = CanonicalButton.BTN_SOUTH,
-    val glyphStyle: GlyphStyle = GlyphStyle.GENERIC,
+    val glyphStyle: GlyphStyle = GlyphStyle.PLUMBER,
     val excludeFromGameplay: Boolean = false,
     val defaultControllerTypeId: Int? = null,
     val source: TemplateSource,

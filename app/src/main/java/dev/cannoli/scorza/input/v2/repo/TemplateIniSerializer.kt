@@ -99,7 +99,7 @@ object TemplateIniSerializer {
                 ?: CanonicalButton.BTN_SOUTH,
             glyphStyle = glyph["style"]
                 ?.let { runCatching { GlyphStyle.valueOf(it) }.getOrNull() }
-                ?: GlyphStyle.GENERIC,
+                ?: GlyphStyle.PLUMBER,
             excludeFromGameplay = behavior["exclude_from_gameplay"]?.toBoolean() ?: false,
             defaultControllerTypeId = behavior["default_controller_type"]?.toIntOrNull(),
             source = meta["source"]
