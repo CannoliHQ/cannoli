@@ -165,7 +165,9 @@ class GameListViewModel @Inject constructor(
         val appIds = collectionsRepository.appIdsIn(collectionId)
         val romItems = romIds.mapNotNull { romsRepository.gameById(it) }.map { ListItem.RomItem(it) }
         val appItems = appIds.mapNotNull { appsRepository.byId(it) }.map { ListItem.AppItem(it) }
-        val items = childItems + romItems + appItems
+        val combined = childItems + romItems + appItems
+        val items = if (row.displayName.equals("Favorites", ignoreCase = true)) combined
+        else sortFavoritesFirst(combined)
         val parent = row.parentId?.let { collectionsRepository.byId(it) }
         val breadcrumb = if (parent != null) "/${row.displayName}" else row.displayName
         _state.value = State(
@@ -370,7 +372,9 @@ class GameListViewModel @Inject constructor(
                 }
                 val roms = romIds.mapNotNull { romsRepository.gameById(it) }.map { ListItem.RomItem(it) }
                 val apps = appIds.mapNotNull { appsRepository.byId(it) }.map { ListItem.AppItem(it) }
-                children + roms + apps
+                val combined = children + roms + apps
+                if (current.collectionName.equals("Favorites", ignoreCase = true)) combined
+                else sortFavoritesFirst(combined)
             } else if (current.platformTag == "tools" || current.platformTag == "ports") {
                 val type = if (current.platformTag == "tools") AppType.TOOL else AppType.PORT
                 appsRepository.all(type).map { ListItem.AppItem(it) }
@@ -557,7 +561,22 @@ class GameListViewModel @Inject constructor(
 
     private fun scanAndLoadPlatform(tag: String, tags: List<String>, subfolder: String?): List<ListItem> {
         for (t in tags) romScanner.scanPlatform(t.uppercase(), isArcade = platformConfig.isArcade(t))
-        return tags.flatMap { romsRepository.gamesForPlatform(it.uppercase(), subfolder) }
+        val items = tags.flatMap { romsRepository.gamesForPlatform(it.uppercase(), subfolder) }
+        return sortFavoritesFirst(items)
+    }
+
+    private fun sortFavoritesFirst(items: List<ListItem>): List<ListItem> {
+        val favRoms = collectionsRepository.favoriteRomIds()
+        val favApps = collectionsRepository.favoriteAppIds()
+        val (subfolders, others) = items.partition { it is ListItem.SubfolderItem || it is ListItem.ChildCollectionItem }
+        val (favs, rest) = others.partition { item ->
+            when (item) {
+                is ListItem.RomItem -> item.rom.id in favRoms
+                is ListItem.AppItem -> item.app.id in favApps
+                else -> false
+            }
+        }
+        return subfolders + favs + rest
     }
 
     private fun resolveCollectionByName(name: String): Long? {
