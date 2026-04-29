@@ -4,6 +4,11 @@ import android.os.Handler
 import android.os.Looper
 import android.view.KeyEvent
 import android.view.MotionEvent
+import dev.cannoli.scorza.input.v2.AnalogRole
+import dev.cannoli.scorza.input.v2.CanonicalButton
+import dev.cannoli.scorza.input.v2.DeviceTemplate
+import dev.cannoli.scorza.input.v2.InputBinding
+import dev.cannoli.scorza.input.v2.runtime.PortRouter
 import dev.cannoli.scorza.ui.viewmodel.DeviceInfo
 import dev.cannoli.scorza.ui.viewmodel.InputTesterViewModel
 
@@ -11,6 +16,7 @@ class InputTesterController(
     private val viewModel: InputTesterViewModel,
     private val controllerManager: ControllerManager,
     private val profileManager: ProfileManager,
+    private val portRouter: PortRouter,
     private val unknownDeviceName: String,
     private val keyboardDeviceName: String,
 ) {
@@ -78,18 +84,21 @@ class InputTesterController(
         val deviceId = event.deviceId
         val port = controllerManager.getPortForDeviceId(deviceId) ?: 0
         val name = event.device?.name ?: unknownDeviceName
-        val leftX = event.getAxisValue(MotionEvent.AXIS_X)
-        val leftY = event.getAxisValue(MotionEvent.AXIS_Y)
-        val rightX = event.getAxisValue(MotionEvent.AXIS_Z)
-        val rightY = event.getAxisValue(MotionEvent.AXIS_RZ)
-        val leftTrigger = maxOf(
-            event.getAxisValue(MotionEvent.AXIS_LTRIGGER),
-            event.getAxisValue(MotionEvent.AXIS_BRAKE),
-        )
-        val rightTrigger = maxOf(
-            event.getAxisValue(MotionEvent.AXIS_RTRIGGER),
-            event.getAxisValue(MotionEvent.AXIS_GAS),
-        )
+        val template = portRouter.templateForPort(port)
+        val leftX = templateStickValue(template, AnalogRole.LEFT_STICK_X, event) ?: event.getAxisValue(MotionEvent.AXIS_X)
+        val leftY = templateStickValue(template, AnalogRole.LEFT_STICK_Y, event) ?: event.getAxisValue(MotionEvent.AXIS_Y)
+        val rightX = templateStickValue(template, AnalogRole.RIGHT_STICK_X, event) ?: event.getAxisValue(MotionEvent.AXIS_Z)
+        val rightY = templateStickValue(template, AnalogRole.RIGHT_STICK_Y, event) ?: event.getAxisValue(MotionEvent.AXIS_RZ)
+        val leftTrigger = templateTriggerValue(template, CanonicalButton.BTN_L2, event)
+            ?: maxOf(
+                event.getAxisValue(MotionEvent.AXIS_LTRIGGER),
+                event.getAxisValue(MotionEvent.AXIS_BRAKE),
+            )
+        val rightTrigger = templateTriggerValue(template, CanonicalButton.BTN_R2, event)
+            ?: maxOf(
+                event.getAxisValue(MotionEvent.AXIS_RTRIGGER),
+                event.getAxisValue(MotionEvent.AXIS_GAS),
+            )
         val hatX = event.getAxisValue(MotionEvent.AXIS_HAT_X)
         val hatY = event.getAxisValue(MotionEvent.AXIS_HAT_Y)
         viewModel.onMotion(
@@ -154,6 +163,37 @@ class InputTesterController(
             viewModel.onKeyUp(0, kc, keyName, -1, "", resolved)
             pressedKeycodes.remove(kc)
         }
+    }
+
+    private fun templateTriggerValue(
+        template: DeviceTemplate?,
+        canonical: CanonicalButton,
+        event: MotionEvent,
+    ): Float? {
+        val axisBinding = template?.bindings?.get(canonical)
+            ?.firstNotNullOfOrNull { it as? InputBinding.Axis }
+            ?.takeIf { it.analogRole == AnalogRole.DIGITAL_BUTTON }
+            ?: return null
+        return axisBinding.normalize(event.getAxisValue(axisBinding.axis))
+    }
+
+    private fun templateStickValue(
+        template: DeviceTemplate?,
+        role: AnalogRole,
+        event: MotionEvent,
+    ): Float? {
+        val axisBinding = template?.bindings?.values
+            ?.flatten()
+            ?.firstNotNullOfOrNull {
+                (it as? InputBinding.Axis)?.takeIf { axis -> axis.analogRole == role }
+            }
+            ?: return null
+        val raw = event.getAxisValue(axisBinding.axis)
+        val span = axisBinding.activeMax - axisBinding.restingValue
+        if (span == 0f) return 0f
+        val ratio = (raw - axisBinding.restingValue) / span
+        val signed = (ratio * 2f - 1f).coerceIn(-1f, 1f)
+        return if (axisBinding.invert) -signed else signed
     }
 
     private fun refreshPorts() {
