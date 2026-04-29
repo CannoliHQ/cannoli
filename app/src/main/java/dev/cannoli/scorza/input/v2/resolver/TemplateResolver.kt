@@ -34,8 +34,7 @@ class TemplateResolver(
         val raMatch = bestRetroArchEntry(device)
         if (raMatch != null) {
             val template = RetroArchAutoconfigImporter.import(raMatch, device)
-            repository.save(template)
-            return ResolvedTemplate(template, persistent = true)
+            return ResolvedTemplate(template, persistent = false)
         }
 
         val fallback = AndroidDefaultTemplateFactory.create(device)

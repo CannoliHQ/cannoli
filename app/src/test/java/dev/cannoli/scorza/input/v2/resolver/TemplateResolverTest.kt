@@ -97,8 +97,8 @@ class TemplateResolverTest {
         )
         val resolved = makeResolver(repo, bundledRa = ra).resolve(device)
         assertEquals(TemplateSource.RETROARCH_AUTOCONFIG, resolved.template.source)
-        assertTrue(resolved.persistent)
-        assertNotNull(repo.findById(resolved.template.id))
+        assertFalse(resolved.persistent)
+        assertEquals(0, repo.list().size)
     }
 
     @Test
