@@ -50,8 +50,9 @@ class InputDispatcher @Inject constructor(
         val evaluator = portRouter.evaluatorFor(deviceId) ?: return false
         val template = portRouter.templateFor(deviceId) ?: return false
         return when (action) {
-            KeyEvent.ACTION_DOWN -> {
-                if (repeatCount > 0) {
+            KeyEvent.ACTION_DOWN, KeyEvent.ACTION_MULTIPLE -> {
+                val isRepeat = action == KeyEvent.ACTION_MULTIPLE || repeatCount > 0
+                if (isRepeat) {
                     val direct = evaluator.canonicalsHeldByKeyCode(keyCode)
                     val fallback = if (direct.isEmpty()) dpadFallbackForRepeat(evaluator, keyCode) else emptyList()
                     val canonicals = if (direct.isNotEmpty()) direct else fallback
