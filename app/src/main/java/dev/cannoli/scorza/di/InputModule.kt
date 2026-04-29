@@ -43,7 +43,6 @@ object InputModule {
     @Provides @ActivityScoped
     fun provideBindingController(
         nav: NavigationController,
-        inputHandler: InputHandler,
         @ApplicationContext context: Context,
     ): BindingController {
         val osdHandler = Handler(Looper.getMainLooper())
@@ -51,7 +50,7 @@ object InputModule {
         return BindingController(
             nav = nav,
             controlButtons = LibretroInput().buttons,
-            swapConfirmBackProvider = { inputHandler.swapConfirmBack },
+            swapConfirmBackProvider = { false },
             showOsd = { text, durationMs ->
                 osdHandler.removeCallbacks(clearOsd)
                 nav.osdMessage = text
@@ -67,12 +66,10 @@ object InputModule {
         viewModel: InputTesterViewModel,
         controllerManager: ControllerManager,
         profileManager: ProfileManager,
-        inputHandler: InputHandler,
     ): InputTesterController = InputTesterController(
         viewModel = viewModel,
         controllerManager = controllerManager,
         profileManager = profileManager,
-        inputHandler = inputHandler,
         unknownDeviceName = activity.getString(R.string.input_tester_device_unknown),
         keyboardDeviceName = activity.getString(R.string.input_tester_device_keyboard),
     )

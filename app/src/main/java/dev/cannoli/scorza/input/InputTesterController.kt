@@ -11,7 +11,6 @@ class InputTesterController(
     private val viewModel: InputTesterViewModel,
     private val controllerManager: ControllerManager,
     private val profileManager: ProfileManager,
-    private val inputHandler: InputHandler,
     private val unknownDeviceName: String,
     private val keyboardDeviceName: String,
 ) {
@@ -35,7 +34,7 @@ class InputTesterController(
         val port = if (device != null) controllerManager.getPortForDeviceId(deviceId) ?: 0 else 0
         val name = device?.name ?: keyboardDeviceName
         val keyName = KeyEvent.keyCodeToString(event.keyCode).removePrefix("KEYCODE_")
-        val navButton = inputHandler.resolveButton(event)
+        val navButton = AndroidGamepadKeyNames.DEFAULT_KEY_MAP[event.keyCode]
 
         if (down) {
             val isRepeat = event.repeatCount > 0
@@ -133,7 +132,7 @@ class InputTesterController(
     private fun loadProfile(name: String) {
         val controls = profileManager.readControls(name)
         val profileInverse = controls.entries.associate { (prefKey, keyCode) -> keyCode to prefKey }
-        profileMap = InputHandler.DEFAULT_KEY_MAP + profileInverse
+        profileMap = AndroidGamepadKeyNames.DEFAULT_KEY_MAP + profileInverse
     }
 
     private fun initProfiles() {
