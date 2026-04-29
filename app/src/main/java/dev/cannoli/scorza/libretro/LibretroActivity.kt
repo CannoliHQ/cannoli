@@ -788,16 +788,16 @@ class LibretroActivity : ComponentActivity() {
         }
 
         val template = portRouter.templateForPort(port)
-        val leftTrigger = templateTriggerValue(template, dev.cannoli.scorza.input.v2.CanonicalButton.BTN_L2, event)
-            ?: maxOf(
-                event.getAxisValue(android.view.MotionEvent.AXIS_LTRIGGER),
-                event.getAxisValue(android.view.MotionEvent.AXIS_BRAKE),
-            )
-        val rightTrigger = templateTriggerValue(template, dev.cannoli.scorza.input.v2.CanonicalButton.BTN_R2, event)
-            ?: maxOf(
-                event.getAxisValue(android.view.MotionEvent.AXIS_RTRIGGER),
-                event.getAxisValue(android.view.MotionEvent.AXIS_GAS),
-            )
+        val leftTrigger = maxOf(
+            templateTriggerValue(template, dev.cannoli.scorza.input.v2.CanonicalButton.BTN_L2, event) ?: 0f,
+            event.getAxisValue(android.view.MotionEvent.AXIS_LTRIGGER).coerceIn(0f, 1f),
+            event.getAxisValue(android.view.MotionEvent.AXIS_BRAKE).coerceIn(0f, 1f),
+        )
+        val rightTrigger = maxOf(
+            templateTriggerValue(template, dev.cannoli.scorza.input.v2.CanonicalButton.BTN_R2, event) ?: 0f,
+            event.getAxisValue(android.view.MotionEvent.AXIS_RTRIGGER).coerceIn(0f, 1f),
+            event.getAxisValue(android.view.MotionEvent.AXIS_GAS).coerceIn(0f, 1f),
+        )
         if (leftTrigger > 0.5f) axes = axes or LibretroInput.RETRO_L2
         if (rightTrigger > 0.5f) axes = axes or LibretroInput.RETRO_R2
 
@@ -807,17 +807,26 @@ class LibretroActivity : ComponentActivity() {
         controllerManager.portInputMasks[port] = (controllerManager.portInputMasks[port] and axisMask.inv()) or axes
         runner.setInput(port, controllerManager.portInputMasks[port])
 
-        val lStickX = templateStickValue(template, dev.cannoli.scorza.input.v2.AnalogRole.LEFT_STICK_X, event) ?: stickX
-        val lStickY = templateStickValue(template, dev.cannoli.scorza.input.v2.AnalogRole.LEFT_STICK_Y, event) ?: stickY
+        val lStickX = mostActiveStick(templateStickValue(template, dev.cannoli.scorza.input.v2.AnalogRole.LEFT_STICK_X, event), stickX)
+        val lStickY = mostActiveStick(templateStickValue(template, dev.cannoli.scorza.input.v2.AnalogRole.LEFT_STICK_Y, event), stickY)
         runner.setAnalog(port, 0, (lStickX * 32767).toInt().coerceIn(-32768, 32767),
             (lStickY * 32767).toInt().coerceIn(-32768, 32767))
-        val rStickX = templateStickValue(template, dev.cannoli.scorza.input.v2.AnalogRole.RIGHT_STICK_X, event)
-            ?: event.getAxisValue(android.view.MotionEvent.AXIS_Z)
-        val rStickY = templateStickValue(template, dev.cannoli.scorza.input.v2.AnalogRole.RIGHT_STICK_Y, event)
-            ?: event.getAxisValue(android.view.MotionEvent.AXIS_RZ)
+        val rStickX = mostActiveStick(
+            templateStickValue(template, dev.cannoli.scorza.input.v2.AnalogRole.RIGHT_STICK_X, event),
+            event.getAxisValue(android.view.MotionEvent.AXIS_Z),
+        )
+        val rStickY = mostActiveStick(
+            templateStickValue(template, dev.cannoli.scorza.input.v2.AnalogRole.RIGHT_STICK_Y, event),
+            event.getAxisValue(android.view.MotionEvent.AXIS_RZ),
+        )
         runner.setAnalog(port, 1, (rStickX * 32767).toInt().coerceIn(-32768, 32767),
             (rStickY * 32767).toInt().coerceIn(-32768, 32767))
         return true
+    }
+
+    private fun mostActiveStick(template: Float?, fallback: Float): Float {
+        if (template == null) return fallback
+        return if (kotlin.math.abs(template) >= kotlin.math.abs(fallback)) template else fallback
     }
 
     private fun templateTriggerValue(
@@ -1038,6 +1047,7 @@ class LibretroActivity : ComponentActivity() {
         val mappedMask = portInput.keyCodeToRetroMask(keyCode)
         val isMenuKey = keyCode == KeyEvent.KEYCODE_MENU ||
                 keyCode == KeyEvent.KEYCODE_BACK ||
+                keyCode == KeyEvent.KEYCODE_BUTTON_MODE ||
                 keyCode == menuCode
         if (isMenuKey && mappedMask == null) { openMenu(); return true }
         if (isSyntheticTriggerHeld(event.deviceId, keyCode)) return true
