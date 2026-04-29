@@ -31,7 +31,10 @@ class TemplateResolver(
                 compareBy<Pair<DeviceTemplate, Int>>({ it.second })
                     .thenBy { templatesDir?.let { dir -> File(dir, "${it.first.id}.ini").lastModified() } ?: 0L }
             )
-            if (best != null) return ResolvedTemplate(best.first, persistent = true)
+            if (best != null) {
+                val template = if (best.first.userEdited) best.first else applyMenuConvention(best.first)
+                return ResolvedTemplate(template, persistent = true)
+            }
         }
 
         val raMatch = bestRetroArchEntry(device)
