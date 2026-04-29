@@ -91,8 +91,10 @@ private fun DrawScope.drawDiagram(
         cornerRadius = androidx.compose.ui.geometry.CornerRadius(8f * unit, 8f * unit),
     )
     drawShoulderPill(p(14f, 8f), unit, "L1", fill("btn_l"), outline, label("btn_l"), textMeasurer)
-    drawAnalogShoulderPill(p(26f, 8f), unit, "L2", fill("btn_l2"), highlight, outline, label("btn_l2"), input.leftTrigger, textMeasurer)
-    drawAnalogShoulderPill(p(64f, 8f), unit, "R2", fill("btn_r2"), highlight, outline, label("btn_r2"), input.rightTrigger, textMeasurer)
+    drawTriggerFillBar(p(26f, 5.5f), unit, input.leftTrigger, highlight, outline)
+    drawShoulderPill(p(26f, 8f), unit, "L2", fill("btn_l2"), outline, label("btn_l2"), textMeasurer)
+    drawTriggerFillBar(p(64f, 5.5f), unit, input.rightTrigger, highlight, outline)
+    drawShoulderPill(p(64f, 8f), unit, "R2", fill("btn_r2"), outline, label("btn_r2"), textMeasurer)
     drawShoulderPill(p(76f, 8f), unit, "R1", fill("btn_r"), outline, label("btn_r"), textMeasurer)
 
     val dpadCenter = p(22f, 26f)
@@ -130,26 +132,34 @@ private fun DrawScope.drawShoulderPill(
     drawCenteredText(tm, label, Offset(topLeft.x + size.width / 2f, topLeft.y + size.height / 2f), textColor, (unit * 1.6f).sp)
 }
 
-private fun DrawScope.drawAnalogShoulderPill(
-    topLeft: Offset, unit: Float, label: String,
-    fill: Color, analogFill: Color, outline: Color, textColor: Color,
-    analogValue: Float, tm: TextMeasurer,
+private fun DrawScope.drawTriggerFillBar(
+    topLeft: Offset, unit: Float, value: Float, fillColor: Color, outline: Color,
 ) {
-    val size = Size(10f * unit, 4f * unit)
-    val cornerRadius = androidx.compose.ui.geometry.CornerRadius(2f * unit, 2f * unit)
-    drawRoundRect(color = fill, topLeft = topLeft, size = size, cornerRadius = cornerRadius)
-    val clamped = analogValue.coerceIn(0f, 1f)
+    val width = 10f * unit
+    val height = 1.5f * unit
+    val cornerRadius = androidx.compose.ui.geometry.CornerRadius(0.5f * unit, 0.5f * unit)
+    drawRoundRect(
+        color = outline.copy(alpha = 0.25f),
+        topLeft = topLeft,
+        size = Size(width, height),
+        cornerRadius = cornerRadius,
+    )
+    val clamped = value.coerceIn(0f, 1f)
     if (clamped > 0f) {
-        val analogHeight = size.height * clamped
         drawRoundRect(
-            color = analogFill.copy(alpha = 0.45f),
-            topLeft = Offset(topLeft.x, topLeft.y + size.height - analogHeight),
-            size = Size(size.width, analogHeight),
+            color = fillColor,
+            topLeft = topLeft,
+            size = Size(width * clamped, height),
             cornerRadius = cornerRadius,
         )
     }
-    drawRoundRect(color = outline, topLeft = topLeft, size = size, cornerRadius = cornerRadius, style = Stroke(width = unit * 0.3f))
-    drawCenteredText(tm, label, Offset(topLeft.x + size.width / 2f, topLeft.y + size.height / 2f), textColor, (unit * 1.6f).sp)
+    drawRoundRect(
+        color = outline,
+        topLeft = topLeft,
+        size = Size(width, height),
+        cornerRadius = cornerRadius,
+        style = Stroke(width = unit * 0.2f),
+    )
 }
 
 private fun DrawScope.drawCenterPill(
