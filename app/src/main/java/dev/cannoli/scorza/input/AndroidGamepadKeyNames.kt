@@ -22,6 +22,8 @@ object AndroidGamepadKeyNames {
         KeyEvent.KEYCODE_DPAD_DOWN to "btn_down",
         KeyEvent.KEYCODE_DPAD_LEFT to "btn_left",
         KeyEvent.KEYCODE_DPAD_RIGHT to "btn_right",
+        KeyEvent.KEYCODE_BACK to "btn_menu",
+        KeyEvent.KEYCODE_BUTTON_MODE to "btn_menu",
     )
 
     fun isGamepadEvent(event: KeyEvent): Boolean {
