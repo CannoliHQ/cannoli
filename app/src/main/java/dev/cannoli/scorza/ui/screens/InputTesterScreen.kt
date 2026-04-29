@@ -128,6 +128,31 @@ fun InputTesterScreen(
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
             )
+            if (uiState.axisDumpEnabled) {
+                AxisDumpPanel(
+                    axisValues = activePortState?.axisValues ?: emptyMap(),
+                    textColor = colors.text,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AxisDumpPanel(axisValues: Map<Int, Float>, textColor: Color) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 6.dp),
+    ) {
+        axisValues.entries.sortedBy { it.key }.forEach { (axis, value) ->
+            Text(
+                text = "$axis=${"%.2f".format(value)}",
+                color = textColor.copy(alpha = 0.85f),
+                fontSize = 11.sp,
+                fontFamily = FontFamily.Monospace,
+                modifier = Modifier.padding(end = 10.dp),
+            )
         }
     }
 }

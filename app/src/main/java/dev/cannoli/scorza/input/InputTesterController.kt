@@ -63,6 +63,9 @@ class InputTesterController(
                 )
                 loadProfile(newProfile)
             }
+            if (!isRepeat && selectHeld && navButton == "btn_north") {
+                viewModel.toggleAxisDump()
+            }
             val resolved = templateNav ?: profileMap[event.keyCode]
             pressedKeycodes[event.keyCode] = resolved
             viewModel.onKeyDown(port, event.keyCode, keyName, deviceId, name, resolved)
@@ -88,20 +91,20 @@ class InputTesterController(
         val port = controllerManager.getPortForDeviceId(deviceId) ?: 0
         val name = event.device?.name ?: unknownDeviceName
         val template = portRouter.templateForPort(port)
-        val leftX = templateStickValue(template, AnalogRole.LEFT_STICK_X, event) ?: event.getAxisValue(MotionEvent.AXIS_X)
-        val leftY = templateStickValue(template, AnalogRole.LEFT_STICK_Y, event) ?: event.getAxisValue(MotionEvent.AXIS_Y)
-        val rightX = templateStickValue(template, AnalogRole.RIGHT_STICK_X, event) ?: event.getAxisValue(MotionEvent.AXIS_Z)
-        val rightY = templateStickValue(template, AnalogRole.RIGHT_STICK_Y, event) ?: event.getAxisValue(MotionEvent.AXIS_RZ)
-        val leftTrigger = templateTriggerDisplayValue(template, CanonicalButton.BTN_L2, event)
-            ?: maxOf(
-                event.getAxisValue(MotionEvent.AXIS_LTRIGGER),
-                event.getAxisValue(MotionEvent.AXIS_BRAKE),
-            ).coerceIn(0f, 1f)
-        val rightTrigger = templateTriggerDisplayValue(template, CanonicalButton.BTN_R2, event)
-            ?: maxOf(
-                event.getAxisValue(MotionEvent.AXIS_RTRIGGER),
-                event.getAxisValue(MotionEvent.AXIS_GAS),
-            ).coerceIn(0f, 1f)
+        val leftX = mostActive(templateStickValue(template, AnalogRole.LEFT_STICK_X, event), event.getAxisValue(MotionEvent.AXIS_X))
+        val leftY = mostActive(templateStickValue(template, AnalogRole.LEFT_STICK_Y, event), event.getAxisValue(MotionEvent.AXIS_Y))
+        val rightX = mostActive(templateStickValue(template, AnalogRole.RIGHT_STICK_X, event), event.getAxisValue(MotionEvent.AXIS_Z))
+        val rightY = mostActive(templateStickValue(template, AnalogRole.RIGHT_STICK_Y, event), event.getAxisValue(MotionEvent.AXIS_RZ))
+        val leftTrigger = maxOf(
+            templateTriggerDisplayValue(template, CanonicalButton.BTN_L2, event) ?: 0f,
+            event.getAxisValue(MotionEvent.AXIS_LTRIGGER).coerceIn(0f, 1f),
+            event.getAxisValue(MotionEvent.AXIS_BRAKE).coerceIn(0f, 1f),
+        )
+        val rightTrigger = maxOf(
+            templateTriggerDisplayValue(template, CanonicalButton.BTN_R2, event) ?: 0f,
+            event.getAxisValue(MotionEvent.AXIS_RTRIGGER).coerceIn(0f, 1f),
+            event.getAxisValue(MotionEvent.AXIS_GAS).coerceIn(0f, 1f),
+        )
         val hatX = event.getAxisValue(MotionEvent.AXIS_HAT_X)
         val hatY = event.getAxisValue(MotionEvent.AXIS_HAT_Y)
         viewModel.onMotion(
@@ -110,6 +113,9 @@ class InputTesterController(
             leftTrigger = leftTrigger, rightTrigger = rightTrigger,
             hatX = hatX, hatY = hatY,
         )
+
+        val dumpAxes = event.device?.motionRanges?.map { it.axis }?.distinct() ?: emptyList()
+        viewModel.recordAxisValues(port, dumpAxes.associateWith { event.getAxisValue(it) })
 
         syncAxisTrigger(port, deviceId, name, KeyEvent.KEYCODE_BUTTON_L2, leftTrigger, axisTriggerL2Held, "btn_l2")
         syncAxisTrigger(port, deviceId, name, KeyEvent.KEYCODE_BUTTON_R2, rightTrigger, axisTriggerR2Held, "btn_r2")
@@ -169,6 +175,11 @@ class InputTesterController(
             viewModel.onKeyUp(0, kc, keyName, -1, "", resolved)
             pressedKeycodes.remove(kc)
         }
+    }
+
+    private fun mostActive(template: Float?, fallback: Float): Float {
+        if (template == null) return fallback
+        return if (kotlin.math.abs(template) >= kotlin.math.abs(fallback)) template else fallback
     }
 
     private fun syncAxisTrigger(

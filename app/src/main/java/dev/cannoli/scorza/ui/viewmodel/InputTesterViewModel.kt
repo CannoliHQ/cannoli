@@ -15,6 +15,7 @@ data class InputTesterState(
     val leftTrigger: Float = 0f,
     val rightTrigger: Float = 0f,
     val firstPressedAtMs: Long? = null,
+    val axisValues: Map<Int, Float> = emptyMap(),
 )
 
 data class EventLogEntry(
@@ -42,6 +43,7 @@ data class InputTesterUiState(
     val exitRequested: Boolean = false,
     val availableProfiles: List<String> = emptyList(),
     val selectedProfile: String = "",
+    val axisDumpEnabled: Boolean = false,
 )
 
 @ActivityScoped
@@ -86,6 +88,18 @@ class InputTesterViewModel @Inject constructor() {
     }
 
     private val heldKeyCodes = mutableSetOf<Int>()
+
+    fun toggleAxisDump() {
+        _state.update { it.copy(axisDumpEnabled = !it.axisDumpEnabled) }
+    }
+
+    fun recordAxisValues(port: Int, values: Map<Int, Float>) {
+        _state.update { current ->
+            val prev = current.portStates[port] ?: InputTesterState()
+            val updatedPort = prev.copy(axisValues = values)
+            current.copy(portStates = current.portStates + (port to updatedPort))
+        }
+    }
 
     fun requestExit() {
         _state.update { it.copy(exitRequested = true) }
