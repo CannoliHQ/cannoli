@@ -40,8 +40,8 @@ class InputTesterController(
         val port = if (device != null) controllerManager.getPortForDeviceId(deviceId) ?: 0 else 0
         val name = device?.name ?: keyboardDeviceName
         val keyName = KeyEvent.keyCodeToString(event.keyCode).removePrefix("KEYCODE_")
-        val navButton = templateNavButtonFor(portRouter.templateForPort(port), event.keyCode)
-            ?: AndroidGamepadKeyNames.DEFAULT_KEY_MAP[event.keyCode]
+        val templateNav = templateNavButtonFor(portRouter.templateForPort(port), event.keyCode)
+        val navButton = templateNav ?: AndroidGamepadKeyNames.DEFAULT_KEY_MAP[event.keyCode]
 
         if (down) {
             val isRepeat = event.repeatCount > 0
@@ -61,7 +61,7 @@ class InputTesterController(
                 )
                 loadProfile(newProfile)
             }
-            val resolved = profileMap[event.keyCode]
+            val resolved = templateNav ?: profileMap[event.keyCode]
             pressedKeycodes[event.keyCode] = resolved
             viewModel.onKeyDown(port, event.keyCode, keyName, deviceId, name, resolved)
             if (!isRepeat) viewModel.setActivePort(port)
