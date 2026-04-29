@@ -91,8 +91,8 @@ private fun DrawScope.drawDiagram(
         cornerRadius = androidx.compose.ui.geometry.CornerRadius(8f * unit, 8f * unit),
     )
     drawShoulderPill(p(14f, 8f), unit, "L1", fill("btn_l"), outline, label("btn_l"), textMeasurer)
-    drawShoulderPill(p(26f, 8f), unit, "L2", fill("btn_l2"), outline, label("btn_l2"), textMeasurer)
-    drawShoulderPill(p(64f, 8f), unit, "R2", fill("btn_r2"), outline, label("btn_r2"), textMeasurer)
+    drawAnalogShoulderPill(p(26f, 8f), unit, "L2", fill("btn_l2"), highlight, outline, label("btn_l2"), input.leftTrigger, textMeasurer)
+    drawAnalogShoulderPill(p(64f, 8f), unit, "R2", fill("btn_r2"), highlight, outline, label("btn_r2"), input.rightTrigger, textMeasurer)
     drawShoulderPill(p(76f, 8f), unit, "R1", fill("btn_r"), outline, label("btn_r"), textMeasurer)
 
     val dpadCenter = p(22f, 26f)
@@ -127,6 +127,28 @@ private fun DrawScope.drawShoulderPill(
         cornerRadius = androidx.compose.ui.geometry.CornerRadius(2f * unit, 2f * unit),
         style = Stroke(width = unit * 0.3f),
     )
+    drawCenteredText(tm, label, Offset(topLeft.x + size.width / 2f, topLeft.y + size.height / 2f), textColor, (unit * 1.6f).sp)
+}
+
+private fun DrawScope.drawAnalogShoulderPill(
+    topLeft: Offset, unit: Float, label: String,
+    fill: Color, analogFill: Color, outline: Color, textColor: Color,
+    analogValue: Float, tm: TextMeasurer,
+) {
+    val size = Size(10f * unit, 4f * unit)
+    val cornerRadius = androidx.compose.ui.geometry.CornerRadius(2f * unit, 2f * unit)
+    drawRoundRect(color = fill, topLeft = topLeft, size = size, cornerRadius = cornerRadius)
+    val clamped = analogValue.coerceIn(0f, 1f)
+    if (clamped > 0f) {
+        val analogHeight = size.height * clamped
+        drawRoundRect(
+            color = analogFill.copy(alpha = 0.45f),
+            topLeft = Offset(topLeft.x, topLeft.y + size.height - analogHeight),
+            size = Size(size.width, analogHeight),
+            cornerRadius = cornerRadius,
+        )
+    }
+    drawRoundRect(color = outline, topLeft = topLeft, size = size, cornerRadius = cornerRadius, style = Stroke(width = unit * 0.3f))
     drawCenteredText(tm, label, Offset(topLeft.x + size.width / 2f, topLeft.y + size.height / 2f), textColor, (unit * 1.6f).sp)
 }
 
