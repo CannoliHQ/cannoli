@@ -316,6 +316,9 @@ class LibretroActivity : ComponentActivity() {
         sessionLog.log("device GLES: 0x${Integer.toHexString(reqGlEs)} (${glEsMajor}.${glEsMinor}) es3Supported=$es3Supported")
         confirmButton = settings.confirmButton
         buttonLabelSet = settings.buttonLabelSet
+        // Keep legacy IGM/gameplay InputHandler's confirm/back convention in sync with the user's
+        // global preference. Phase 2c will replace the legacy InputHandler entirely.
+        navInputHandler.swapConfirmBack = settings.confirmButton == dev.cannoli.ui.ConfirmButton.EAST
         isRunning = true
         window.setBackgroundDrawableResource(android.R.color.black)
         goFullscreen()

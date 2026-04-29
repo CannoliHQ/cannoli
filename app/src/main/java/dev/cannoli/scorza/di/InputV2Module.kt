@@ -46,9 +46,11 @@ object InputV2Module {
         repository: TemplateRepository,
         @BundledRetroArchAutoconfig bundled: List<RetroArchCfgEntry>,
         @CannoliRoot root: File,
+        settings: dev.cannoli.scorza.settings.SettingsRepository,
     ): TemplateResolver = TemplateResolver(
         repository = repository,
         bundledRetroArchEntries = bundled,
+        menuConvention = { settings.confirmButton },
         templatesDir = CannoliPaths(root).configInputTemplates,
     )
 

@@ -1,9 +1,11 @@
 package dev.cannoli.scorza.input.v2.resolver
 
 import dev.cannoli.scorza.input.autoconfig.RetroArchCfgEntry
+import dev.cannoli.scorza.input.v2.CanonicalButton
 import dev.cannoli.scorza.input.v2.ConnectedDevice
 import dev.cannoli.scorza.input.v2.DeviceTemplate
 import dev.cannoli.scorza.input.v2.repo.TemplateRepository
+import dev.cannoli.ui.ConfirmButton
 import java.io.File
 
 data class ResolvedTemplate(
@@ -14,6 +16,7 @@ data class ResolvedTemplate(
 class TemplateResolver(
     private val repository: TemplateRepository,
     private val bundledRetroArchEntries: List<RetroArchCfgEntry>,
+    private val menuConvention: () -> ConfirmButton,
     private val templatesDir: File? = null,
 ) {
 
@@ -33,12 +36,25 @@ class TemplateResolver(
 
         val raMatch = bestRetroArchEntry(device)
         if (raMatch != null) {
-            val template = RetroArchAutoconfigImporter.import(raMatch, device)
+            val template = applyMenuConvention(RetroArchAutoconfigImporter.import(raMatch, device))
             return ResolvedTemplate(template, persistent = false)
         }
 
-        val fallback = AndroidDefaultTemplateFactory.create(device)
+        val fallback = applyMenuConvention(AndroidDefaultTemplateFactory.create(device))
         return ResolvedTemplate(fallback, persistent = false)
+    }
+
+    private fun applyMenuConvention(template: DeviceTemplate): DeviceTemplate {
+        return when (menuConvention()) {
+            ConfirmButton.EAST -> template.copy(
+                menuConfirm = CanonicalButton.BTN_EAST,
+                menuBack = CanonicalButton.BTN_SOUTH,
+            )
+            ConfirmButton.SOUTH -> template.copy(
+                menuConfirm = CanonicalButton.BTN_SOUTH,
+                menuBack = CanonicalButton.BTN_EAST,
+            )
+        }
     }
 
     private fun bestRetroArchEntry(device: ConnectedDevice): RetroArchCfgEntry? {

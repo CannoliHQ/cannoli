@@ -42,7 +42,7 @@ class ControllerV2BridgeTest {
                 buttonBindings = mapOf("b_btn" to 96),
             ),
         )
-        return TemplateResolver(repo, ra, tempFolder.root)
+        return TemplateResolver(repo, ra, { dev.cannoli.ui.ConfirmButton.EAST }, tempFolder.root)
     }
 
     private fun makeBridge(

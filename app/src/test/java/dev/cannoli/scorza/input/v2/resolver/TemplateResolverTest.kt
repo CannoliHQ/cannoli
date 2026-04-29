@@ -36,7 +36,8 @@ class TemplateResolverTest {
     private fun makeResolver(
         repo: TemplateRepository,
         bundledRa: List<RetroArchCfgEntry> = emptyList(),
-    ) = TemplateResolver(repo, bundledRa, tempFolder.root)
+        menuConvention: () -> dev.cannoli.ui.ConfirmButton = { dev.cannoli.ui.ConfirmButton.EAST },
+    ) = TemplateResolver(repo, bundledRa, menuConvention, tempFolder.root)
 
     @Test
     fun returns_existing_on_disk_template_when_match_rule_scores_above_zero() {
@@ -129,5 +130,26 @@ class TemplateResolverTest {
         )
         val resolved = makeResolver(repo, bundledRa = ra).resolve(device)
         assertEquals("disk_wins", resolved.template.id)
+    }
+
+    @Test
+    fun ra_imported_template_menu_confirm_follows_global_convention() {
+        val repo = makeRepo()
+        val ra = listOf(
+            RetroArchCfgEntry(
+                deviceName = "Stadia Controller",
+                vendorId = 6353,
+                productId = 37888,
+                buttonBindings = mapOf("b_btn" to 96),
+            )
+        )
+
+        val resolvedEast = makeResolver(repo, bundledRa = ra, menuConvention = { dev.cannoli.ui.ConfirmButton.EAST }).resolve(device)
+        org.junit.Assert.assertEquals(CanonicalButton.BTN_EAST, resolvedEast.template.menuConfirm)
+        org.junit.Assert.assertEquals(CanonicalButton.BTN_SOUTH, resolvedEast.template.menuBack)
+
+        val resolvedSouth = makeResolver(repo, bundledRa = ra, menuConvention = { dev.cannoli.ui.ConfirmButton.SOUTH }).resolve(device)
+        org.junit.Assert.assertEquals(CanonicalButton.BTN_SOUTH, resolvedSouth.template.menuConfirm)
+        org.junit.Assert.assertEquals(CanonicalButton.BTN_EAST, resolvedSouth.template.menuBack)
     }
 }
