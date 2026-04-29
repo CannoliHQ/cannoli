@@ -787,14 +787,17 @@ class LibretroActivity : ComponentActivity() {
             if (stickY > 0.5f) axes = axes or (portInput.keyCodeToRetroMask(KeyEvent.KEYCODE_DPAD_DOWN) ?: LibretroInput.RETRO_DOWN)
         }
 
-        val leftTrigger = maxOf(
-            event.getAxisValue(android.view.MotionEvent.AXIS_LTRIGGER),
-            event.getAxisValue(android.view.MotionEvent.AXIS_BRAKE),
-        )
-        val rightTrigger = maxOf(
-            event.getAxisValue(android.view.MotionEvent.AXIS_RTRIGGER),
-            event.getAxisValue(android.view.MotionEvent.AXIS_GAS),
-        )
+        val template = portRouter.templateForPort(port)
+        val leftTrigger = templateTriggerValue(template, dev.cannoli.scorza.input.v2.CanonicalButton.BTN_L2, event)
+            ?: maxOf(
+                event.getAxisValue(android.view.MotionEvent.AXIS_LTRIGGER),
+                event.getAxisValue(android.view.MotionEvent.AXIS_BRAKE),
+            )
+        val rightTrigger = templateTriggerValue(template, dev.cannoli.scorza.input.v2.CanonicalButton.BTN_R2, event)
+            ?: maxOf(
+                event.getAxisValue(android.view.MotionEvent.AXIS_RTRIGGER),
+                event.getAxisValue(android.view.MotionEvent.AXIS_GAS),
+            )
         if (leftTrigger > 0.5f) axes = axes or LibretroInput.RETRO_L2
         if (rightTrigger > 0.5f) axes = axes or LibretroInput.RETRO_R2
 
@@ -804,13 +807,48 @@ class LibretroActivity : ComponentActivity() {
         controllerManager.portInputMasks[port] = (controllerManager.portInputMasks[port] and axisMask.inv()) or axes
         runner.setInput(port, controllerManager.portInputMasks[port])
 
-        runner.setAnalog(port, 0, (stickX * 32767).toInt().coerceIn(-32768, 32767),
-            (stickY * 32767).toInt().coerceIn(-32768, 32767))
-        val rStickX = event.getAxisValue(android.view.MotionEvent.AXIS_Z)
-        val rStickY = event.getAxisValue(android.view.MotionEvent.AXIS_RZ)
+        val lStickX = templateStickValue(template, dev.cannoli.scorza.input.v2.AnalogRole.LEFT_STICK_X, event) ?: stickX
+        val lStickY = templateStickValue(template, dev.cannoli.scorza.input.v2.AnalogRole.LEFT_STICK_Y, event) ?: stickY
+        runner.setAnalog(port, 0, (lStickX * 32767).toInt().coerceIn(-32768, 32767),
+            (lStickY * 32767).toInt().coerceIn(-32768, 32767))
+        val rStickX = templateStickValue(template, dev.cannoli.scorza.input.v2.AnalogRole.RIGHT_STICK_X, event)
+            ?: event.getAxisValue(android.view.MotionEvent.AXIS_Z)
+        val rStickY = templateStickValue(template, dev.cannoli.scorza.input.v2.AnalogRole.RIGHT_STICK_Y, event)
+            ?: event.getAxisValue(android.view.MotionEvent.AXIS_RZ)
         runner.setAnalog(port, 1, (rStickX * 32767).toInt().coerceIn(-32768, 32767),
             (rStickY * 32767).toInt().coerceIn(-32768, 32767))
         return true
+    }
+
+    private fun templateTriggerValue(
+        template: dev.cannoli.scorza.input.v2.DeviceTemplate?,
+        canonical: dev.cannoli.scorza.input.v2.CanonicalButton,
+        event: android.view.MotionEvent,
+    ): Float? {
+        val axisBinding = template?.bindings?.get(canonical)
+            ?.firstNotNullOfOrNull { it as? dev.cannoli.scorza.input.v2.InputBinding.Axis }
+            ?.takeIf { it.analogRole == dev.cannoli.scorza.input.v2.AnalogRole.DIGITAL_BUTTON }
+            ?: return null
+        return axisBinding.normalize(event.getAxisValue(axisBinding.axis))
+    }
+
+    private fun templateStickValue(
+        template: dev.cannoli.scorza.input.v2.DeviceTemplate?,
+        role: dev.cannoli.scorza.input.v2.AnalogRole,
+        event: android.view.MotionEvent,
+    ): Float? {
+        val axisBinding = template?.bindings?.values
+            ?.flatten()
+            ?.firstNotNullOfOrNull {
+                (it as? dev.cannoli.scorza.input.v2.InputBinding.Axis)?.takeIf { axis -> axis.analogRole == role }
+            }
+            ?: return null
+        val raw = event.getAxisValue(axisBinding.axis)
+        val span = axisBinding.activeMax - axisBinding.restingValue
+        if (span == 0f) return 0f
+        val ratio = (raw - axisBinding.restingValue) / span
+        val signed = (ratio * 2f - 1f).coerceIn(-1f, 1f)
+        return if (axisBinding.invert) -signed else signed
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
