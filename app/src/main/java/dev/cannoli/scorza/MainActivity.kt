@@ -41,7 +41,9 @@ import dev.cannoli.scorza.di.RomDir
 import dev.cannoli.scorza.input.ActivityActions
 import dev.cannoli.scorza.input.BindingController
 import dev.cannoli.scorza.input.ControllerManager
-import dev.cannoli.scorza.input.InputHandler
+import dev.cannoli.scorza.input.AndroidGamepadKeyNames
+import dev.cannoli.scorza.input.v2.runtime.InputDispatcher
+import dev.cannoli.scorza.input.v2.migration.LegacyInputMigration
 import dev.cannoli.scorza.input.InputRouter
 import dev.cannoli.scorza.input.InputTesterController
 import dev.cannoli.scorza.input.LauncherActions
@@ -81,7 +83,8 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var platformConfig: PlatformConfig
     @Inject lateinit var nav: NavigationController
     @Inject lateinit var router: InputRouter
-    @Inject lateinit var inputHandler: InputHandler
+    @Inject lateinit var inputDispatcher: InputDispatcher
+    @Inject lateinit var legacyInputMigration: LegacyInputMigration
     @Inject lateinit var controllerManager: ControllerManager
     @Inject lateinit var controllerV2Bridge: ControllerV2Bridge
     @Inject lateinit var bindingController: BindingController
@@ -145,6 +148,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
             splashScreen.setOnExitAnimationListener { it.remove() }
         }
         super.onCreate(savedInstanceState)
+        legacyInputMigration.runIfNeeded()
 
         @Suppress("DEPRECATION")
         setTaskDescription(
@@ -155,12 +159,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
         controllerV2Bridge.start(this)
 
         setupWireInput()
-
-        lifecycleScope.launch {
-            settingsViewModel.appSettings.collect { appSettings ->
-                inputHandler.swapConfirmBack = appSettings.confirmButton == dev.cannoli.ui.ConfirmButton.EAST
-            }
-        }
 
         onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {}
@@ -344,14 +342,14 @@ class MainActivity : ComponentActivity(), ActivityActions {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (!InputHandler.isGamepadEvent(event)) {
+        if (!AndroidGamepadKeyNames.isGamepadEvent(event)) {
             when (event.keyCode) {
                 KeyEvent.KEYCODE_BACK -> {
                     val currentScreenForKey = nav.currentScreen
                     if (currentScreenForKey is LauncherScreen.InputTester) {
                         inputTesterController.dispatchKey(event, down = event.action == KeyEvent.ACTION_DOWN)
                     } else if (isTv && event.action == KeyEvent.ACTION_DOWN && permissionGranted) {
-                        inputHandler.onBack()
+                        inputDispatcher.onBack()
                     }
                     return true
                 }
@@ -377,14 +375,14 @@ class MainActivity : ComponentActivity(), ActivityActions {
             return true
         }
         nav.lastKeyRepeatCount = event.repeatCount
-        if (isTv && !InputHandler.isGamepadEvent(event)) {
+        if (isTv && !AndroidGamepadKeyNames.isGamepadEvent(event)) {
             when (keyCode) {
-                KeyEvent.KEYCODE_MEDIA_REWIND -> { inputHandler.onWest(); return true }
-                KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> { inputHandler.onNorth(); return true }
-                KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> { inputHandler.onStart(); return true }
+                KeyEvent.KEYCODE_MEDIA_REWIND -> { inputDispatcher.onWest(); return true }
+                KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> { inputDispatcher.onNorth(); return true }
+                KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> { inputDispatcher.onStart(); return true }
             }
         }
-        if (inputHandler.handleKeyEvent(event)) {
+        if (inputDispatcher.handleKeyEvent(event)) {
             return true
         }
         return super.onKeyDown(keyCode, event)
@@ -396,8 +394,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
             inputTesterController.dispatchKey(event, down = false)
             return true
         }
-        if (inputHandler.resolveButton(event) == "btn_select") {
-            router.onSelectUp()
+        if (inputDispatcher.handleKeyEvent(event)) {
             return true
         }
         if (currentScreenForKey is LauncherScreen.ShortcutBinding && currentScreenForKey.listening && currentScreenForKey.heldKeys.contains(keyCode)) {
@@ -405,6 +402,16 @@ class MainActivity : ComponentActivity(), ActivityActions {
             return true
         }
         return super.onKeyUp(keyCode, event)
+    }
+
+    override fun onGenericMotionEvent(event: MotionEvent): Boolean {
+        if (!permissionGranted) return super.onGenericMotionEvent(event)
+        val currentScreenForMotion = nav.currentScreen
+        if (currentScreenForMotion is LauncherScreen.InputTester) {
+            inputTesterController.dispatchMotion(event)
+            return true
+        }
+        return inputDispatcher.handleMotionEvent(event) || super.onGenericMotionEvent(event)
     }
 
     private val triggerL2HeldDevices = mutableSetOf<Int>()
@@ -543,7 +550,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
         router.startControlListening = { bindingController.startControlListening() }
         router.unregisterCoreQueryReceiver = { unregisterCoreQueryReceiver() }
         router.controlButtons = controlButtons
-        router.wire(inputHandler)
+        router.wire(inputDispatcher)
 
         nav.screenStack.clear()
         nav.screenStack.add(LauncherScreen.SystemList)
@@ -620,7 +627,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     }
 
     private fun setupWireInput() {
-        inputHandler.onUp = {
+        inputDispatcher.onUp = {
             when (val screen = preInitScreenStack.lastOrNull()) {
                 is LauncherScreen.Setup -> preInitScreenStack[preInitScreenStack.lastIndex] = screen.copy(selectedIndex = (screen.selectedIndex - 1).coerceAtLeast(0))
                 is LauncherScreen.DirectoryBrowser -> {
@@ -631,7 +638,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
                 else -> {}
             }
         }
-        inputHandler.onDown = {
+        inputDispatcher.onDown = {
             when (val screen = preInitScreenStack.lastOrNull()) {
                 is LauncherScreen.Setup -> {
                     val maxIndex = if (screen.volumes.getOrNull(screen.volumeIndex)?.first == "Custom") 1 else 0
@@ -645,7 +652,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
                 else -> {}
             }
         }
-        inputHandler.onLeft = {
+        inputDispatcher.onLeft = {
             (preInitScreenStack.lastOrNull() as? LauncherScreen.Setup)?.let { screen ->
                 if (screen.selectedIndex == 0 && screen.volumes.size > 1) {
                     preInitScreenStack[preInitScreenStack.lastIndex] = screen.copy(
@@ -655,7 +662,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
                 }
             }
         }
-        inputHandler.onRight = {
+        inputDispatcher.onRight = {
             (preInitScreenStack.lastOrNull() as? LauncherScreen.Setup)?.let { screen ->
                 if (screen.selectedIndex == 0 && screen.volumes.size > 1) {
                     preInitScreenStack[preInitScreenStack.lastIndex] = screen.copy(
@@ -665,7 +672,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
                 }
             }
         }
-        inputHandler.onConfirm = {
+        inputDispatcher.onConfirm = {
             when (val screen = preInitScreenStack.lastOrNull()) {
                 is LauncherScreen.Setup -> {
                     val isCustom = screen.volumes.getOrNull(screen.volumeIndex)?.first == "Custom"
@@ -702,7 +709,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
                 else -> {}
             }
         }
-        inputHandler.onBack = {
+        inputDispatcher.onBack = {
             when (val screen = preInitScreenStack.lastOrNull()) {
                 is LauncherScreen.DirectoryBrowser -> {
                     val parent = setupCoordinator.parentDirectory(screen.currentPath)
@@ -719,7 +726,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
                 else -> {}
             }
         }
-        inputHandler.onStart = {
+        inputDispatcher.onStart = {
             (preInitScreenStack.lastOrNull() as? LauncherScreen.Setup)?.let { screen ->
                 val isCustom = screen.volumes.getOrNull(screen.volumeIndex)?.first == "Custom"
                 val continueEnabled = !isCustom || screen.customPath != null

@@ -10,8 +10,12 @@ import javax.inject.Singleton
 @Singleton
 class LegacyInputMigration @Inject constructor(
     @CannoliRoot private val root: File,
-    private val clock: () -> String = { Instant.now().toString().replace(":", "-") },
 ) {
+    internal var clock: () -> String = { Instant.now().toString().replace(":", "-") }
+
+    internal constructor(root: File, clock: () -> String) : this(root) {
+        this.clock = clock
+    }
 
     fun runIfNeeded(): Boolean {
         val paths = CannoliPaths(root)

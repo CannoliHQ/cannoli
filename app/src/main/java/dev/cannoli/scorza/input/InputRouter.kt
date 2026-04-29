@@ -20,6 +20,7 @@ import dev.cannoli.scorza.settings.GlobalOverridesManager
 import dev.cannoli.scorza.ui.components.CREDITS
 import dev.cannoli.scorza.ui.screens.CoreMappingEntry
 import dev.cannoli.scorza.ui.screens.DialogState
+import dev.cannoli.scorza.input.v2.runtime.InputDispatcher
 import javax.inject.Inject
 
 @ActivityScoped
@@ -44,23 +45,24 @@ class InputRouter @Inject constructor(
     var unregisterCoreQueryReceiver: () -> Unit = {}
     var controlButtons: List<LibretroInput.ButtonDef> = emptyList()
 
-    fun wire(inputHandler: InputHandler) {
+    fun wire(dispatcher: InputDispatcher) {
         gameListHandler.buildContextOptions = dialogHandler::buildGameContextOptions
 
-        inputHandler.onUp    = { if (!dialogHandler.onUp())     currentHandler().onUp() }
-        inputHandler.onDown  = { if (!dialogHandler.onDown())   currentHandler().onDown() }
-        inputHandler.onLeft  = { if (!dialogHandler.onLeft())   currentHandler().onLeft() }
-        inputHandler.onRight = { if (!dialogHandler.onRight())  currentHandler().onRight() }
-        inputHandler.onConfirm = { if (!dialogHandler.onConfirm()) currentHandler().onConfirm() }
-        inputHandler.onBack  = { if (!dialogHandler.onBack())   currentHandler().onBack() }
-        inputHandler.onStart = { if (!dialogHandler.onStart())  currentHandler().onStart() }
-        inputHandler.onSelect = { if (!dialogHandler.onSelect()) currentHandler().onSelect() }
-        inputHandler.onNorth = { if (!dialogHandler.onNorth())  currentHandler().onNorth() }
-        inputHandler.onWest  = { if (!dialogHandler.onWest())   currentHandler().onWest() }
-        inputHandler.onL1    = { if (!dialogHandler.onL1())     currentHandler().onL1() }
-        inputHandler.onR1    = { if (!dialogHandler.onR1())     currentHandler().onR1() }
-        inputHandler.onL2    = { if (!dialogHandler.onL2())     currentHandler().onL2() }
-        inputHandler.onR2    = { if (!dialogHandler.onR2())     currentHandler().onR2() }
+        dispatcher.onUp    = { if (!dialogHandler.onUp())     currentHandler().onUp() }
+        dispatcher.onDown  = { if (!dialogHandler.onDown())   currentHandler().onDown() }
+        dispatcher.onLeft  = { if (!dialogHandler.onLeft())   currentHandler().onLeft() }
+        dispatcher.onRight = { if (!dialogHandler.onRight())  currentHandler().onRight() }
+        dispatcher.onConfirm = { if (!dialogHandler.onConfirm()) currentHandler().onConfirm() }
+        dispatcher.onBack  = { if (!dialogHandler.onBack())   currentHandler().onBack() }
+        dispatcher.onStart = { if (!dialogHandler.onStart())  currentHandler().onStart() }
+        dispatcher.onSelect = { if (!dialogHandler.onSelect()) currentHandler().onSelect() }
+        dispatcher.onSelectUp = { onSelectUp() }
+        dispatcher.onNorth = { if (!dialogHandler.onNorth())  currentHandler().onNorth() }
+        dispatcher.onWest  = { if (!dialogHandler.onWest())   currentHandler().onWest() }
+        dispatcher.onL1    = { if (!dialogHandler.onL1())     currentHandler().onL1() }
+        dispatcher.onR1    = { if (!dialogHandler.onR1())     currentHandler().onR1() }
+        dispatcher.onL2    = { if (!dialogHandler.onL2())     currentHandler().onL2() }
+        dispatcher.onR2    = { if (!dialogHandler.onR2())     currentHandler().onR2() }
     }
 
     fun onSelectUp() {

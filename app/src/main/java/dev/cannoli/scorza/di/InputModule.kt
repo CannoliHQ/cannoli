@@ -13,11 +13,9 @@ import dagger.hilt.android.scopes.ActivityScoped
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.input.BindingController
 import dev.cannoli.scorza.input.ControllerManager
-import dev.cannoli.scorza.input.InputHandler
 import dev.cannoli.scorza.input.InputTesterController
 import dev.cannoli.scorza.input.ProfileManager
 import dev.cannoli.scorza.libretro.LibretroInput
-import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.ui.viewmodel.InputTesterViewModel
 
@@ -27,18 +25,6 @@ object InputModule {
 
     @Provides @ActivityScoped
     fun provideControllerManager(): ControllerManager = ControllerManager()
-
-    @Provides @ActivityScoped
-    fun provideInputHandler(
-        nav: NavigationController,
-        profileManager: ProfileManager,
-    ): InputHandler = InputHandler(
-        getButtonMappings = {
-            val screen = nav.currentScreen as? LauncherScreen.ControlBinding
-            if (screen != null && screen.profileName == ProfileManager.NAVIGATION) screen.controls
-            else profileManager.readControls(ProfileManager.NAVIGATION)
-        }
-    )
 
     @Provides @ActivityScoped
     fun provideBindingController(
