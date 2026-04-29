@@ -1,7 +1,10 @@
 package dev.cannoli.scorza.input.v2.resolver
 
 import dev.cannoli.scorza.input.autoconfig.AxisRef
+import dev.cannoli.scorza.input.autoconfig.CfgHatDirection
+import dev.cannoli.scorza.input.autoconfig.HatRef
 import dev.cannoli.scorza.input.autoconfig.RetroArchCfgEntry
+import dev.cannoli.scorza.input.v2.HatDirection
 import dev.cannoli.scorza.input.v2.AnalogRole
 import dev.cannoli.scorza.input.v2.CanonicalButton
 import dev.cannoli.scorza.input.v2.ConnectedDevice
@@ -58,6 +61,19 @@ object RetroArchAutoconfigImporter {
                 )
         }
 
+        for ((btnKey, hatRef) in entry.hatBindings) {
+            val canonical = BTN_TO_CANONICAL[btnKey] ?: continue
+            val (axis, direction) = mapHatRefToAxisAndDirection(hatRef) ?: continue
+            bindings.getOrPut(canonical) { mutableListOf() }
+                .add(
+                    InputBinding.Hat(
+                        axis = axis,
+                        direction = direction,
+                        threshold = 0.5f,
+                    )
+                )
+        }
+
         val safeId = stableIdFor(device, entry)
         return DeviceTemplate(
             id = safeId,
@@ -71,6 +87,19 @@ object RetroArchAutoconfigImporter {
             source = TemplateSource.RETROARCH_AUTOCONFIG,
         )
     }
+
+    private fun mapHatRefToAxisAndDirection(ref: HatRef): Pair<Int, HatDirection>? {
+        if (ref.hat != 0) return null
+        return when (ref.direction) {
+            CfgHatDirection.UP -> ANDROID_AXIS_HAT_Y to HatDirection.UP
+            CfgHatDirection.DOWN -> ANDROID_AXIS_HAT_Y to HatDirection.DOWN
+            CfgHatDirection.LEFT -> ANDROID_AXIS_HAT_X to HatDirection.LEFT
+            CfgHatDirection.RIGHT -> ANDROID_AXIS_HAT_X to HatDirection.RIGHT
+        }
+    }
+
+    private const val ANDROID_AXIS_HAT_X: Int = 15
+    private const val ANDROID_AXIS_HAT_Y: Int = 16
 
     private fun mapAxisKeyToCanonicalAndRole(key: String): Pair<CanonicalButton, AnalogRole>? = when (key) {
         "l2_axis" -> CanonicalButton.BTN_L2 to AnalogRole.DIGITAL_BUTTON

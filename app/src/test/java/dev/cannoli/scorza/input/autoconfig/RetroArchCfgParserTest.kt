@@ -97,4 +97,28 @@ class RetroArchCfgParserTest {
         org.junit.Assert.assertEquals(AxisRef(0, +1), entry.axisBindings["l_x_plus_axis"])
         org.junit.Assert.assertEquals(AxisRef(0, -1), entry.axisBindings["l_x_minus_axis"])
     }
+
+    @Test
+    fun parsesHatNotationForDpadButtons() {
+        val cfg = """
+            input_device = "Test"
+            input_vendor_id = "1"
+            input_product_id = "2"
+            input_up_btn = "h0up"
+            input_down_btn = "h0down"
+            input_left_btn = "h0left"
+            input_right_btn = "h0right"
+            input_a_btn = "97"
+        """.trimIndent()
+        val entry = RetroArchCfgParser.parse(cfg)
+        org.junit.Assert.assertEquals(HatRef(0, CfgHatDirection.UP), entry.hatBindings["up_btn"])
+        org.junit.Assert.assertEquals(HatRef(0, CfgHatDirection.DOWN), entry.hatBindings["down_btn"])
+        org.junit.Assert.assertEquals(HatRef(0, CfgHatDirection.LEFT), entry.hatBindings["left_btn"])
+        org.junit.Assert.assertEquals(HatRef(0, CfgHatDirection.RIGHT), entry.hatBindings["right_btn"])
+        // Integer-valued button still parses as a normal button binding.
+        org.junit.Assert.assertEquals(97, entry.buttonBindings["a_btn"])
+        // Up/Down/Left/Right are NOT in buttonBindings (their values were hat values).
+        org.junit.Assert.assertNull(entry.buttonBindings["up_btn"])
+        org.junit.Assert.assertNull(entry.buttonBindings["down_btn"])
+    }
 }

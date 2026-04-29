@@ -1,5 +1,12 @@
 package dev.cannoli.scorza.input.autoconfig
 
+enum class CfgHatDirection { UP, DOWN, LEFT, RIGHT }
+
+data class HatRef(
+    val hat: Int,
+    val direction: CfgHatDirection,
+)
+
 data class AxisRef(
     val axis: Int,
     val direction: Int, // +1 or -1
@@ -11,6 +18,7 @@ data class RetroArchCfgEntry(
     val productId: Int?,
     val buttonBindings: Map<String, Int>,
     val axisBindings: Map<String, AxisRef> = emptyMap(),
+    val hatBindings: Map<String, HatRef> = emptyMap(),
 ) {
     companion object {
         val SUPPORTED_BUTTON_KEYS = setOf(

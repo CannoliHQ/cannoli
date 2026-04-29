@@ -1,7 +1,10 @@
 package dev.cannoli.scorza.input.v2.resolver
 
 import dev.cannoli.scorza.input.autoconfig.AxisRef
+import dev.cannoli.scorza.input.autoconfig.CfgHatDirection
+import dev.cannoli.scorza.input.autoconfig.HatRef
 import dev.cannoli.scorza.input.autoconfig.RetroArchCfgEntry
+import dev.cannoli.scorza.input.v2.HatDirection
 import dev.cannoli.scorza.input.v2.AnalogRole
 import dev.cannoli.scorza.input.v2.CanonicalButton
 import dev.cannoli.scorza.input.v2.ConnectedDevice
@@ -87,5 +90,32 @@ class RetroArchAutoconfigImporterTest {
         assertEquals("Stadia Controller", t.match.name)
         assertEquals(6353, t.match.vendorId)
         assertEquals(37888, t.match.productId)
+    }
+
+    @Test
+    fun hat_notation_dpad_becomes_canonical_directional_hat_bindings() {
+        val entry = RetroArchCfgEntry(
+            deviceName = "Retroid Pocket Controller",
+            vendorId = 8226,
+            productId = 12289,
+            buttonBindings = mapOf("b_btn" to 96),
+            hatBindings = mapOf(
+                "up_btn" to HatRef(0, CfgHatDirection.UP),
+                "down_btn" to HatRef(0, CfgHatDirection.DOWN),
+                "left_btn" to HatRef(0, CfgHatDirection.LEFT),
+                "right_btn" to HatRef(0, CfgHatDirection.RIGHT),
+            ),
+        )
+        val t = RetroArchAutoconfigImporter.import(entry, device)
+
+        val up = t.bindings[CanonicalButton.BTN_UP]?.firstOrNull()
+        val down = t.bindings[CanonicalButton.BTN_DOWN]?.firstOrNull()
+        val left = t.bindings[CanonicalButton.BTN_LEFT]?.firstOrNull()
+        val right = t.bindings[CanonicalButton.BTN_RIGHT]?.firstOrNull()
+
+        org.junit.Assert.assertTrue(up is InputBinding.Hat && up.axis == 16 && up.direction == HatDirection.UP)
+        org.junit.Assert.assertTrue(down is InputBinding.Hat && down.axis == 16 && down.direction == HatDirection.DOWN)
+        org.junit.Assert.assertTrue(left is InputBinding.Hat && left.axis == 15 && left.direction == HatDirection.LEFT)
+        org.junit.Assert.assertTrue(right is InputBinding.Hat && right.axis == 15 && right.direction == HatDirection.RIGHT)
     }
 }
