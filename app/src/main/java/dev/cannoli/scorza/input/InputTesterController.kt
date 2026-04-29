@@ -92,16 +92,16 @@ class InputTesterController(
         val leftY = templateStickValue(template, AnalogRole.LEFT_STICK_Y, event) ?: event.getAxisValue(MotionEvent.AXIS_Y)
         val rightX = templateStickValue(template, AnalogRole.RIGHT_STICK_X, event) ?: event.getAxisValue(MotionEvent.AXIS_Z)
         val rightY = templateStickValue(template, AnalogRole.RIGHT_STICK_Y, event) ?: event.getAxisValue(MotionEvent.AXIS_RZ)
-        val leftTrigger = templateTriggerValue(template, CanonicalButton.BTN_L2, event)
+        val leftTrigger = templateTriggerDisplayValue(template, CanonicalButton.BTN_L2, event)
             ?: maxOf(
                 event.getAxisValue(MotionEvent.AXIS_LTRIGGER),
                 event.getAxisValue(MotionEvent.AXIS_BRAKE),
-            )
-        val rightTrigger = templateTriggerValue(template, CanonicalButton.BTN_R2, event)
+            ).coerceIn(0f, 1f)
+        val rightTrigger = templateTriggerDisplayValue(template, CanonicalButton.BTN_R2, event)
             ?: maxOf(
                 event.getAxisValue(MotionEvent.AXIS_RTRIGGER),
                 event.getAxisValue(MotionEvent.AXIS_GAS),
-            )
+            ).coerceIn(0f, 1f)
         val hatX = event.getAxisValue(MotionEvent.AXIS_HAT_X)
         val hatY = event.getAxisValue(MotionEvent.AXIS_HAT_Y)
         viewModel.onMotion(
@@ -226,6 +226,18 @@ class InputTesterController(
             ?.takeIf { it.analogRole == AnalogRole.DIGITAL_BUTTON }
             ?: return null
         return axisBinding.normalize(event.getAxisValue(axisBinding.axis))
+    }
+
+    private fun templateTriggerDisplayValue(
+        template: DeviceTemplate?,
+        canonical: CanonicalButton,
+        event: MotionEvent,
+    ): Float? {
+        val axisBinding = template?.bindings?.get(canonical)
+            ?.firstNotNullOfOrNull { it as? InputBinding.Axis }
+            ?.takeIf { it.analogRole == AnalogRole.DIGITAL_BUTTON }
+            ?: return null
+        return event.getAxisValue(axisBinding.axis).coerceIn(0f, 1f)
     }
 
     private fun templateStickValue(
