@@ -98,6 +98,16 @@ class PortEvaluator(
 
     fun analogValue(role: AnalogRole): Float = analog[role] ?: 0f
 
+    fun canonicalsHeldByKeyCode(keyCode: Int): List<CanonicalButton> {
+        val out = mutableListOf<CanonicalButton>()
+        for ((canonical, bindings) in template.bindings) {
+            if (canonical !in pressed) continue
+            val asserts = bindings.any { it is InputBinding.Button && it.keyCode == keyCode }
+            if (asserts) out += canonical
+        }
+        return out
+    }
+
     fun snapshot(): PortSnapshot = PortSnapshot(
         pressed = pressed.toSet(),
         analog = analog.toMap(),

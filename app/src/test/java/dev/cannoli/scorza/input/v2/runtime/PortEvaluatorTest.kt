@@ -283,4 +283,20 @@ class PortEvaluatorTest {
         )))
         assertTrue(e.resetState().isEmpty())
     }
+
+    @Test
+    fun canonicalsHeldByKeyCode_returns_canonical_buttons_held_via_that_keycode() {
+        val e = PortEvaluator(template(mapOf(
+            CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96)),
+            CanonicalButton.BTN_EAST to listOf(InputBinding.Button(97)),
+            CanonicalButton.BTN_L2 to listOf(InputBinding.Button(96), InputBinding.Button(104)),
+        )))
+        e.evaluateKeyDown(96, isAndroidRepeat = false)
+        val held96 = e.canonicalsHeldByKeyCode(96)
+        val held97 = e.canonicalsHeldByKeyCode(97)
+        val held99 = e.canonicalsHeldByKeyCode(99)
+        org.junit.Assert.assertEquals(setOf(CanonicalButton.BTN_SOUTH, CanonicalButton.BTN_L2), held96.toSet())
+        assertTrue(held97.isEmpty())
+        assertTrue(held99.isEmpty())
+    }
 }
