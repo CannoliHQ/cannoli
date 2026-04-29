@@ -86,15 +86,50 @@ class ControllerV2BridgeTest {
     }
 
     @Test
-    fun connect_with_zero_vendor_and_product_is_ignored() {
+    fun connect_with_zero_vendor_and_product_and_empty_name_is_ignored() {
         val portRouter = PortRouter()
         val bridge = makeBridge(portRouter = portRouter)
 
         bridge.handleDeviceAdded(
-            stadiaFacts.copy(vendorId = 0, productId = 0)
+            stadiaFacts.copy(vendorId = 0, productId = 0, name = "")
         )
 
         assertNull(portRouter.portFor(stadiaFacts.androidDeviceId))
+    }
+
+    @Test
+    fun built_in_handheld_with_zero_vid_pid_is_accepted_and_marked_builtin() {
+        val portRouter = PortRouter()
+        val active = ActiveTemplateHolder()
+        val bridge = makeBridge(portRouter = portRouter, activeTemplateHolder = active)
+        val builtin = ControllerV2Bridge.DeviceFacts(
+            androidDeviceId = 1001,
+            descriptor = "builtin-1",
+            name = "RP4PRO-keypad",
+            vendorId = 0,
+            productId = 0,
+            sourceMask = ControllerV2Bridge.SOURCE_GAMEPAD,
+        )
+        bridge.handleDeviceAdded(builtin)
+        bridge.markLaunchTrigger(1001)
+        assertEquals(0, portRouter.portFor(1001))
+        assertNotNull(active.active.value)
+    }
+
+    @Test
+    fun device_with_zero_vid_pid_and_empty_name_is_still_rejected() {
+        val portRouter = PortRouter()
+        val bridge = makeBridge(portRouter = portRouter)
+        val degenerate = ControllerV2Bridge.DeviceFacts(
+            androidDeviceId = 5,
+            descriptor = "ghost",
+            name = "",
+            vendorId = 0,
+            productId = 0,
+            sourceMask = ControllerV2Bridge.SOURCE_GAMEPAD,
+        )
+        bridge.handleDeviceAdded(degenerate)
+        assertNull(portRouter.portFor(5))
     }
 
     @Test

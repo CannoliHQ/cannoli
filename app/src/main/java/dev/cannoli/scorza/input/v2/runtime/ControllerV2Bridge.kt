@@ -62,7 +62,8 @@ class ControllerV2Bridge(
 
     fun handleDeviceAdded(facts: DeviceFacts) {
         if (!isGamepad(facts)) return
-        if (facts.vendorId == 0 && facts.productId == 0) return
+        val zeroVidPid = facts.vendorId == 0 && facts.productId == 0
+        if (zeroVidPid && facts.name.isNullOrEmpty()) return
         if (!knownDeviceIds.add(facts.androidDeviceId)) return
         val connected = ConnectedDeviceFactory.fromFields(
             androidDeviceId = facts.androidDeviceId,
@@ -73,6 +74,7 @@ class ControllerV2Bridge(
             androidBuildModel = buildModel,
             sourceMask = facts.sourceMask,
             connectedAtMillis = clock(),
+            isBuiltIn = zeroVidPid,
         )
         val resolved = resolver.resolve(connected)
         portRouter.onConnect(connected, resolved.template)
