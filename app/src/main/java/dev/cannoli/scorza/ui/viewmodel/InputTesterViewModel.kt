@@ -156,16 +156,12 @@ class InputTesterViewModel @Inject constructor() {
                 if (hatY < -0.5f) add("btn_up")
                 if (hatY > 0.5f) add("btn_down")
             }
-            val triggerButtons = buildSet {
-                if (leftTrigger > 0.5f) add("btn_l2")
-                if (rightTrigger > 0.5f) add("btn_r2")
-            }
-            val axisPressed = hatButtons + triggerButtons
+            val axisPressed = hatButtons
 
-            val nonAxis = prev.pressedButtons - HAT_BUTTONS - TRIGGER_BUTTONS
+            val nonAxis = prev.pressedButtons - HAT_BUTTONS
             val newPressed = nonAxis + axisPressed
 
-            val newlyPressed = axisPressed - (prev.pressedButtons intersect HAT_BUTTONS) - (prev.pressedButtons intersect TRIGGER_BUTTONS)
+            val newlyPressed = axisPressed - (prev.pressedButtons intersect HAT_BUTTONS)
             val synthLogEntries = newlyPressed.map { btn ->
                 EventLogEntry(
                     keyCode = -1,

@@ -115,11 +115,14 @@ class InputTesterViewModelTest {
     }
 
     @Test
-    fun triggerAxisAbove05_addsShoulderButton() {
+    fun triggerAxisDoesNotAffectPressedButtonsInOnMotion() {
+        // Trigger button state is now managed via synthetic key events from the controller, not
+        // motion events. The motion event still records the analog leftTrigger value but does not
+        // toggle btn_l2 / btn_r2 in pressedButtons.
         val vm = vm()
-        vm.onMotion(0, 10, "Test Pad", 0f, 0f, 0f, 0f, leftTrigger = 0.6f, rightTrigger = 0f, 0f, 0f)
+        vm.onMotion(0, 10, "Test Pad", 0f, 0f, 0f, 0f, leftTrigger = 0.9f, rightTrigger = 0f, 0f, 0f)
         val pressed = vm.state.value.portStates[0]?.pressedButtons ?: emptySet()
-        assertTrue("btn_l2" in pressed)
+        assertTrue("btn_l2" !in pressed)
     }
 
     @Test

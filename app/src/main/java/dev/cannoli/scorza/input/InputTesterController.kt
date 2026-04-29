@@ -25,6 +25,8 @@ class InputTesterController(
     private var selectHeld = false
     private var startHeld = false
     private var hatChordState: Int = 0
+    private val axisTriggerL2Held = mutableSetOf<Int>()
+    private val axisTriggerR2Held = mutableSetOf<Int>()
     private val exitHandler = Handler(Looper.getMainLooper())
     private val exitRunnable = Runnable { viewModel.requestExit() }
 
@@ -109,6 +111,9 @@ class InputTesterController(
             hatX = hatX, hatY = hatY,
         )
 
+        syncAxisTrigger(port, deviceId, name, KeyEvent.KEYCODE_BUTTON_L2, leftTrigger, axisTriggerL2Held, "btn_l2")
+        syncAxisTrigger(port, deviceId, name, KeyEvent.KEYCODE_BUTTON_R2, rightTrigger, axisTriggerR2Held, "btn_r2")
+
         if (selectHeld) {
             val dir = when {
                 hatX < -0.5f || leftX < -0.5f -> -1
@@ -163,6 +168,26 @@ class InputTesterController(
             val keyName = KeyEvent.keyCodeToString(kc).removePrefix("KEYCODE_")
             viewModel.onKeyUp(0, kc, keyName, -1, "", resolved)
             pressedKeycodes.remove(kc)
+        }
+    }
+
+    private fun syncAxisTrigger(
+        port: Int,
+        deviceId: Int,
+        deviceName: String,
+        syntheticKeyCode: Int,
+        value: Float,
+        held: MutableSet<Int>,
+        legacyKey: String,
+    ) {
+        val keyName = KeyEvent.keyCodeToString(syntheticKeyCode).removePrefix("KEYCODE_")
+        val wasHeld = deviceId in held
+        if (value > 0.5f && !wasHeld) {
+            held.add(deviceId)
+            viewModel.onKeyDown(port, syntheticKeyCode, keyName, deviceId, deviceName, legacyKey)
+        } else if (value < 0.3f && wasHeld) {
+            held.remove(deviceId)
+            viewModel.onKeyUp(port, syntheticKeyCode, keyName, deviceId, deviceName, legacyKey)
         }
     }
 
