@@ -62,6 +62,7 @@ class LibretroActivity : ComponentActivity() {
     @Inject lateinit var settings: SettingsRepository
     @Inject lateinit var controllerManager: ControllerManager
     @Inject lateinit var profileManager: ProfileManager
+    @Inject lateinit var portRouter: dev.cannoli.scorza.input.v2.runtime.PortRouter
 
     private lateinit var runner: LibretroRunner
     private lateinit var renderer: LibretroRenderer
@@ -329,7 +330,11 @@ class LibretroActivity : ComponentActivity() {
         slotManager = SaveSlotManager(stateBasePath)
         guideManager = GuideManager(cannoliRoot, platformTag, File(romPath).nameWithoutExtension)
         profileManager.reinitialize(cannoliRoot)
-        defaultProfileControls = profileManager.readControls(ProfileManager.NAVIGATION)
+        val port0Template = portRouter.templateForPort(0)
+        defaultProfileControls = deriveLegacyMappingFromV2Template(port0Template).ifEmpty {
+            profileManager.readControls(ProfileManager.NAVIGATION)
+        }
+        applyV2TemplateToAllPorts()
         autoconfigLoader = dev.cannoli.scorza.input.autoconfig.AutoconfigLoader(
             dev.cannoli.scorza.input.autoconfig.AssetCfgSource(this)
         )
@@ -2118,6 +2123,55 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
+    private fun deriveLegacyMappingFromV2Template(template: dev.cannoli.scorza.input.v2.DeviceTemplate?): Map<String, Int> {
+        if (template == null) return emptyMap()
+        val out = mutableMapOf<String, Int>()
+        for ((canonical, bindings) in template.bindings) {
+            val keyCode = bindings.firstNotNullOfOrNull { (it as? dev.cannoli.scorza.input.v2.InputBinding.Button)?.keyCode }
+                ?: continue
+            val legacyKey = canonicalToLegacyKey(canonical) ?: continue
+            out[legacyKey] = keyCode
+        }
+        return out
+    }
+
+    private fun canonicalToLegacyKey(canonical: dev.cannoli.scorza.input.v2.CanonicalButton): String? = when (canonical) {
+        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_SOUTH -> "btn_south"
+        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_EAST -> "btn_east"
+        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_WEST -> "btn_west"
+        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_NORTH -> "btn_north"
+        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_L -> "btn_l"
+        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_R -> "btn_r"
+        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_L2 -> "btn_l2"
+        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_R2 -> "btn_r2"
+        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_L3 -> "btn_l3"
+        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_R3 -> "btn_r3"
+        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_START -> "btn_start"
+        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_SELECT -> "btn_select"
+        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_MENU -> "btn_menu"
+        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_UP -> "btn_up"
+        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_DOWN -> "btn_down"
+        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_LEFT -> "btn_left"
+        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_RIGHT -> "btn_right"
+    }
+
+    private fun applyV2TemplateToLegacyPortInput(port: Int) {
+        val template = portRouter.templateForPort(port) ?: return
+        val mapping = deriveLegacyMappingFromV2Template(template)
+        if (mapping.isEmpty()) return
+        val portInput = controllerManager.portInputs[port]
+        for ((legacyKey, keyCode) in mapping) {
+            val btn = portInput.buttons.firstOrNull { it.prefKey == legacyKey } ?: continue
+            portInput.assign(btn, keyCode)
+        }
+    }
+
+    private fun applyV2TemplateToAllPorts() {
+        for (port in 0 until controllerManager.portInputs.size) {
+            applyV2TemplateToLegacyPortInput(port)
+        }
+    }
+
 
     // --- Shortcuts ---
 
@@ -2373,7 +2427,11 @@ class LibretroActivity : ComponentActivity() {
         shortcuts = settings.shortcuts
 
         applyProfileToAllPorts(settings.controls)
-        defaultProfileControls = profileManager.readControls(ProfileManager.NAVIGATION)
+        val port0Template = portRouter.templateForPort(0)
+        defaultProfileControls = deriveLegacyMappingFromV2Template(port0Template).ifEmpty {
+            profileManager.readControls(ProfileManager.NAVIGATION)
+        }
+        applyV2TemplateToAllPorts()
 
         for ((key, value) in settings.coreOptions) {
             runner.setCoreOption(key, value)

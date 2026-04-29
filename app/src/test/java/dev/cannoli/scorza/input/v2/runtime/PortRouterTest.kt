@@ -146,6 +146,16 @@ class PortRouterTest {
     }
 
     @Test
+    fun templateForPort_returns_template_assigned_to_that_port() {
+        val r = PortRouter()
+        val tmpl = template()
+        r.onConnect(device(1, 0), tmpl)
+        r.markLaunchTrigger(1)
+        org.junit.Assert.assertEquals(tmpl, r.templateForPort(0))
+        org.junit.Assert.assertNull(r.templateForPort(1))
+    }
+
+    @Test
     fun templateFor_returns_template_for_connected_device() {
         val r = PortRouter()
         val tmpl = template()
