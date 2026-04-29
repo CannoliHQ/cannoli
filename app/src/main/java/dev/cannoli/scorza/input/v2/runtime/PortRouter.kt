@@ -91,6 +91,9 @@ class PortRouter(private val maxPorts: Int = 4) {
     fun evaluatorFor(androidDeviceId: Int): PortEvaluator? =
         entries[androidDeviceId]?.evaluator
 
+    fun templateFor(androidDeviceId: Int): DeviceTemplate? =
+        entries[androidDeviceId]?.template
+
     fun snapshotForPort(port: Int): PortSnapshot? =
         entries.values.firstOrNull { it.port == port }?.evaluator?.snapshot()
 

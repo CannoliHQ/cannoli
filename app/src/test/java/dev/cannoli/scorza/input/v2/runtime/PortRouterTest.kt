@@ -146,6 +146,15 @@ class PortRouterTest {
     }
 
     @Test
+    fun templateFor_returns_template_for_connected_device() {
+        val r = PortRouter()
+        val tmpl = template()
+        r.onConnect(device(1, 0), tmpl)
+        org.junit.Assert.assertEquals(tmpl, r.templateFor(1))
+        org.junit.Assert.assertNull(r.templateFor(99))
+    }
+
+    @Test
     fun analogValueAt_returns_last_emitted_normalized_value() {
         val r = PortRouter()
         val analogTemplate = DeviceTemplate(
