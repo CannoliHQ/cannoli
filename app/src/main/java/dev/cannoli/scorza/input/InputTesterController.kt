@@ -40,7 +40,8 @@ class InputTesterController(
         val port = if (device != null) controllerManager.getPortForDeviceId(deviceId) ?: 0 else 0
         val name = device?.name ?: keyboardDeviceName
         val keyName = KeyEvent.keyCodeToString(event.keyCode).removePrefix("KEYCODE_")
-        val navButton = AndroidGamepadKeyNames.DEFAULT_KEY_MAP[event.keyCode]
+        val navButton = templateNavButtonFor(portRouter.templateForPort(port), event.keyCode)
+            ?: AndroidGamepadKeyNames.DEFAULT_KEY_MAP[event.keyCode]
 
         if (down) {
             val isRepeat = event.repeatCount > 0
@@ -162,6 +163,31 @@ class InputTesterController(
             val keyName = KeyEvent.keyCodeToString(kc).removePrefix("KEYCODE_")
             viewModel.onKeyUp(0, kc, keyName, -1, "", resolved)
             pressedKeycodes.remove(kc)
+        }
+    }
+
+    private fun templateNavButtonFor(template: DeviceTemplate?, keyCode: Int): String? {
+        val canonical = template?.bindings?.entries?.firstOrNull { (_, bindings) ->
+            bindings.any { it is InputBinding.Button && it.keyCode == keyCode }
+        }?.key ?: return null
+        return when (canonical) {
+            CanonicalButton.BTN_SOUTH -> "btn_south"
+            CanonicalButton.BTN_EAST -> "btn_east"
+            CanonicalButton.BTN_WEST -> "btn_west"
+            CanonicalButton.BTN_NORTH -> "btn_north"
+            CanonicalButton.BTN_L -> "btn_l"
+            CanonicalButton.BTN_R -> "btn_r"
+            CanonicalButton.BTN_L2 -> "btn_l2"
+            CanonicalButton.BTN_R2 -> "btn_r2"
+            CanonicalButton.BTN_L3 -> "btn_l3"
+            CanonicalButton.BTN_R3 -> "btn_r3"
+            CanonicalButton.BTN_START -> "btn_start"
+            CanonicalButton.BTN_SELECT -> "btn_select"
+            CanonicalButton.BTN_MENU -> "btn_menu"
+            CanonicalButton.BTN_UP -> "btn_up"
+            CanonicalButton.BTN_DOWN -> "btn_down"
+            CanonicalButton.BTN_LEFT -> "btn_left"
+            CanonicalButton.BTN_RIGHT -> "btn_right"
         }
     }
 
