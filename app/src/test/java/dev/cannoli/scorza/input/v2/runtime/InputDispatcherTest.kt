@@ -6,6 +6,7 @@ import dev.cannoli.scorza.input.v2.ConnectedDevice
 import dev.cannoli.scorza.input.v2.DeviceMatchRule
 import dev.cannoli.scorza.input.v2.DeviceTemplate
 import dev.cannoli.scorza.input.v2.GlyphStyle
+import dev.cannoli.scorza.input.v2.HatDirection
 import dev.cannoli.scorza.input.v2.InputBinding
 import dev.cannoli.scorza.input.v2.TemplateSource
 import org.junit.Assert.assertEquals
@@ -197,5 +198,30 @@ class InputDispatcherTest {
         d.onL2 = { l2++ }
         d.handleMotionEventForTest(deviceId = 7, axisValues = mapOf(17 to 0.8f))
         assertEquals(1, l2)
+    }
+
+    @Test
+    fun repeat_event_for_hat_bound_dpad_re_fires_callback_via_keycode_fallback() {
+        // Template binds BTN_UP via Hat (axis 16, UP) — no Button binding for keycode 19.
+        val template = westernTemplate().copy(
+            bindings = westernTemplate().bindings + (CanonicalButton.BTN_UP to listOf(
+                InputBinding.Hat(axis = 16, direction = HatDirection.UP, threshold = 0.5f)
+            ))
+        )
+        val router = PortRouter()
+        router.onConnect(device(7), template)
+        router.markLaunchTrigger(7)
+        val d = InputDispatcher(router, ActiveTemplateHolder())
+        var up = 0
+        d.onUp = { up++ }
+
+        // Initial press via motion (the hat axis crossing).
+        d.handleMotionEventForTest(deviceId = 7, axisValues = mapOf(16 to -1f))
+        org.junit.Assert.assertEquals(1, up)
+
+        // Native auto-repeat arrives as KEYCODE_DPAD_UP with repeatCount > 0.
+        d.handleKeyEventForTest(deviceId = 7, keyCode = android.view.KeyEvent.KEYCODE_DPAD_UP, action = android.view.KeyEvent.ACTION_DOWN, repeatCount = 1)
+        d.handleKeyEventForTest(deviceId = 7, keyCode = android.view.KeyEvent.KEYCODE_DPAD_UP, action = android.view.KeyEvent.ACTION_DOWN, repeatCount = 2)
+        org.junit.Assert.assertEquals(3, up)
     }
 }

@@ -7,6 +7,7 @@ import dev.cannoli.scorza.input.v2.DeviceTemplate
 import javax.inject.Inject
 import javax.inject.Singleton
 
+
 @Singleton
 class InputDispatcher @Inject constructor(
     private val portRouter: PortRouter,
@@ -51,7 +52,9 @@ class InputDispatcher @Inject constructor(
         return when (action) {
             KeyEvent.ACTION_DOWN -> {
                 if (repeatCount > 0) {
-                    val canonicals = evaluator.canonicalsHeldByKeyCode(keyCode)
+                    val direct = evaluator.canonicalsHeldByKeyCode(keyCode)
+                    val fallback = if (direct.isEmpty()) dpadFallbackForRepeat(evaluator, keyCode) else emptyList()
+                    val canonicals = if (direct.isNotEmpty()) direct else fallback
                     if (canonicals.isEmpty()) return false
                     activeTemplateHolder.set(template)
                     var fired = false
@@ -102,6 +105,17 @@ class InputDispatcher @Inject constructor(
             }
         }
         return fired
+    }
+
+    private fun dpadFallbackForRepeat(evaluator: PortEvaluator, keyCode: Int): List<CanonicalButton> {
+        val canonical = when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_UP -> CanonicalButton.BTN_UP
+            KeyEvent.KEYCODE_DPAD_DOWN -> CanonicalButton.BTN_DOWN
+            KeyEvent.KEYCODE_DPAD_LEFT -> CanonicalButton.BTN_LEFT
+            KeyEvent.KEYCODE_DPAD_RIGHT -> CanonicalButton.BTN_RIGHT
+            else -> return emptyList()
+        }
+        return if (evaluator.currentlyPressed().contains(canonical)) listOf(canonical) else emptyList()
     }
 
     private fun dispatchPressed(canonical: CanonicalButton, template: DeviceTemplate): Boolean {
