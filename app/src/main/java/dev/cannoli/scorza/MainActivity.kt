@@ -52,7 +52,6 @@ import dev.cannoli.scorza.input.v2.runtime.ControllerV2Bridge
 import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.LaunchManager
 import dev.cannoli.scorza.libretro.LibretroActivity
-import dev.cannoli.scorza.libretro.LibretroInput
 import dev.cannoli.scorza.libretro.RetroAchievementsManager
 import dev.cannoli.scorza.navigation.AppNavGraph
 import dev.cannoli.scorza.navigation.BrowsePurpose
@@ -114,7 +113,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
 
     private val preInitScreenStack = mutableStateListOf<LauncherScreen>(LauncherScreen.SystemList)
 
-    private val controlButtons = LibretroInput().buttons
     private var coreQueryReceiver: android.content.BroadcastReceiver? = null
     private var loginManager: RetroAchievementsManager? = null
     private val loginPollHandler = Handler(Looper.getMainLooper())
@@ -556,7 +554,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
         if (!isJoystick) return super.dispatchGenericMotionEvent(event)
 
         val currentScreenForMotion = nav.currentScreen
-        if (currentScreenForMotion is LauncherScreen.ShortcutBinding || currentScreenForMotion is LauncherScreen.ControlBinding) {
+        if (currentScreenForMotion is LauncherScreen.ShortcutBinding) {
             val lt = maxOf(
                 event.getAxisValue(android.view.MotionEvent.AXIS_LTRIGGER),
                 event.getAxisValue(android.view.MotionEvent.AXIS_BRAKE),
@@ -664,9 +662,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
         }
 
         router.cancelShortcutListening = { cancelShortcutListening() }
-        router.startControlListening = { bindingController.startControlListening() }
         router.unregisterCoreQueryReceiver = { unregisterCoreQueryReceiver() }
-        router.controlButtons = controlButtons
         router.wire(inputDispatcher)
 
         nav.screenStack.clear()

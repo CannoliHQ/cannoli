@@ -30,9 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.igm.ShortcutAction
 import dev.cannoli.scorza.R
-import dev.cannoli.scorza.input.ProfileManager
 import dev.cannoli.scorza.input.v2.runtime.confirmButton
-import dev.cannoli.scorza.libretro.ControlsScreen
 import dev.cannoli.scorza.libretro.LibretroInput
 import dev.cannoli.scorza.ui.LocalPortraitMargin
 import dev.cannoli.scorza.ui.PortraitMarginState
@@ -64,7 +62,6 @@ import dev.cannoli.scorza.ui.viewmodel.InputTesterViewModel
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
 import dev.cannoli.ui.ELLIPSIS
-import dev.cannoli.ui.components.ConfirmOverlay
 import dev.cannoli.ui.components.List
 import dev.cannoli.ui.components.LocalStatusBarLeftEdge
 import dev.cannoli.ui.components.MessageOverlay
@@ -120,14 +117,6 @@ sealed class LauncherScreen {
     }
     data class ChildPicker(val collectionName: String, val collections: List<String>, val displayNames: List<String> = emptyList(), override val selectedIndex: Int = 0, val checkedIndices: Set<Int> = emptySet(), val initialChecked: Set<Int> = emptySet(), override val scrollTarget: Int = 0) : LauncherScreen(), ScrollableScreen {
         override val itemCount: Int get() = collections.size
-        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
-    }
-    data class ProfileList(val profiles: List<String> = emptyList(), override val selectedIndex: Int = 0, override val scrollTarget: Int = 0) : LauncherScreen(), ScrollableScreen {
-        override val itemCount: Int get() = profiles.size
-        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
-    }
-    data class ControlBinding(override val selectedIndex: Int = 0, override val scrollTarget: Int = 0, val controls: Map<String, Int> = emptyMap(), val listeningIndex: Int = -1, val listenCountdownMs: Int = 0, val profileName: String = ProfileManager.DEFAULT_GAME) : LauncherScreen(), ScrollableScreen {
-        override val itemCount: Int get() = LibretroInput().buttons.size
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
     }
     data class Controllers(
@@ -568,80 +557,6 @@ fun AppNavGraph(
                         )
                     }
                 }
-            }
-            is LauncherScreen.ProfileList -> {
-                ListDialogScreen(
-                    backgroundImagePath = appSettings.backgroundImagePath,
-                    backgroundTint = appSettings.backgroundTint,
-                    title = stringResource(R.string.title_profiles),
-                    listFontSize = listFontSize,
-                    listLineHeight = listLineHeight,
-                    rightBottomItems = listOf(labels.north to stringResource(R.string.label_new), labels.confirm to stringResource(R.string.label_edit)),
-                    buttonStyle = labels
-                ) {
-                    List(
-                        items = currentScreen.profiles,
-                        selectedIndex = currentScreen.selectedIndex,
-                        itemHeight = itemHeight,
-                        scrollTarget = currentScreen.scrollTarget,
-                        onVisibleRangeChanged = onVisibleRangeChanged
-                    ) { _, name, isSelected ->
-                        PillRowText(
-                            label = name,
-                            isSelected = isSelected,
-                            fontSize = listFontSize,
-                            lineHeight = listLineHeight,
-                            verticalPadding = listVerticalPadding
-                        )
-                    }
-                }
-                if (dialog is DialogState.DeleteProfileConfirm) {
-                    ConfirmOverlay(message = stringResource(R.string.dialog_delete_profile, (dialog as DialogState.DeleteProfileConfirm).profileName))
-                }
-                if (dialog.isFullScreen) {
-                    DialogOverlay(
-                        dialogState = dialog,
-                        backgroundImagePath = appSettings.backgroundImagePath,
-                        backgroundTint = appSettings.backgroundTint,
-                        listFontSize = listFontSize,
-                        listLineHeight = listLineHeight,
-                        listVerticalPadding = listVerticalPadding,
-                        buttonStyle = labels
-                    )
-                }
-            }
-            is LauncherScreen.ControlBinding -> {
-                val tempInput = remember(currentScreen.controls) {
-                    LibretroInput().also { input ->
-                        for ((key, keyCode) in currentScreen.controls) {
-                            val btn = input.buttons.find { it.prefKey == key } ?: continue
-                            input.assign(btn, keyCode)
-                        }
-                    }
-                }
-                val selectedBtn = tempInput.buttons.getOrNull(currentScreen.selectedIndex)
-                val canUnmap = selectedBtn != null
-                        && selectedBtn.prefKey != "btn_menu"
-                        && tempInput.getKeyCodeFor(selectedBtn) != LibretroInput.UNMAPPED
-                        && currentScreen.listeningIndex < 0
-                val swapConfirmBack = activeMapping?.menuConfirm == dev.cannoli.scorza.input.v2.CanonicalButton.BTN_EAST
-                val isNavProfile = currentScreen.profileName == ProfileManager.NAVIGATION
-                ControlsScreen(
-                    input = tempInput,
-                    selectedIndex = currentScreen.selectedIndex,
-                    listeningIndex = currentScreen.listeningIndex,
-                    listenCountdownMs = currentScreen.listenCountdownMs,
-                    titleRes = R.string.title_button_mapping,
-                    canUnmapSelected = canUnmap,
-                    labelSuffix = { btn ->
-                        if (!isNavProfile) null
-                        else when (btn.prefKey) {
-                            "btn_south" -> if (swapConfirmBack) "(Back)" else "(Confirm)"
-                            "btn_east" -> if (swapConfirmBack) "(Confirm)" else "(Back)"
-                            else -> null
-                        }
-                    }
-                )
             }
             is LauncherScreen.ShortcutBinding -> {
                 ListDialogScreen(

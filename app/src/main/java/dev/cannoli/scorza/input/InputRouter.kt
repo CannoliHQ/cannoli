@@ -16,7 +16,6 @@ import dev.cannoli.scorza.input.screen.SetupInputHandler
 import dev.cannoli.scorza.input.screen.SystemListInputHandler
 import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.LaunchManager
-import dev.cannoli.scorza.libretro.LibretroInput
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.settings.GlobalOverridesManager
@@ -41,15 +40,12 @@ class InputRouter @Inject constructor(
     private val scrollListFactory: ScrollListInputHandler.Factory,
     private val platformConfig: PlatformConfig,
     private val installedCoreService: InstalledCoreService,
-    private val profileManager: ProfileManager,
     private val globalOverrides: GlobalOverridesManager,
     private val launcherActions: LauncherActions,
     @ApplicationContext private val context: Context,
 ) {
     var cancelShortcutListening: () -> Unit = {}
-    var startControlListening: () -> Unit = {}
     var unregisterCoreQueryReceiver: () -> Unit = {}
-    var controlButtons: List<LibretroInput.ButtonDef> = emptyList()
 
     fun wire(dispatcher: InputDispatcher) {
         gameListHandler.buildContextOptions = dialogHandler::buildGameContextOptions
@@ -112,8 +108,6 @@ class InputRouter @Inject constructor(
         is LauncherScreen.CollectionPicker  -> collectionPickerHandler()
         is LauncherScreen.ChildPicker       -> childPickerHandler()
         is LauncherScreen.AppPicker         -> appPickerHandler()
-        is LauncherScreen.ProfileList       -> profileListHandler()
-        is LauncherScreen.ControlBinding    -> controlBindingHandler()
         is LauncherScreen.ShortcutBinding   -> shortcutBindingHandler()
         is LauncherScreen.Credits           -> creditsHandler()
         is LauncherScreen.InstalledCores    -> installedCoresHandler()
@@ -239,44 +233,6 @@ class InputRouter @Inject constructor(
             nav.replaceTop(copy(checkedIndices = newChecked))
         },
         onBack = { settingsHandler.confirmAppPicker(this) },
-    )
-
-    private fun profileListHandler() = scrollable<LauncherScreen.ProfileList>(
-        onConfirm = {
-            profiles.getOrNull(selectedIndex)?.let { name ->
-                nav.push(LauncherScreen.ControlBinding(controls = profileManager.readControls(name), profileName = name))
-            }
-        },
-        onStart = {
-            profiles.getOrNull(selectedIndex)?.let { name ->
-                if (!ProfileManager.isProtected(name)) {
-                    nav.dialogState.value = DialogState.ContextMenu(gameName = name, options = listOf("Rename", "Delete"))
-                }
-            }
-        },
-    )
-
-    private fun controlBindingHandler() = scrollable<LauncherScreen.ControlBinding>(
-        onConfirm = { startControlListening() },
-        onBack = {
-            profileManager.saveControls(profileName, controls)
-            nav.pop()
-            val prev = nav.screenStack.lastOrNull()
-            if (prev is LauncherScreen.ProfileList) {
-                nav.screenStack[nav.screenStack.lastIndex] = prev.copy(profiles = profileManager.listProfiles())
-            }
-        },
-        onStart = {
-            if (listeningIndex < 0) {
-                val btn = controlButtons.getOrNull(selectedIndex)
-                if (btn != null && btn.prefKey != "btn_menu") {
-                    val currentKeyCode = controls[btn.prefKey] ?: btn.defaultKeyCode
-                    if (currentKeyCode != LibretroInput.UNMAPPED) {
-                        nav.replaceTop(copy(controls = controls + (btn.prefKey to LibretroInput.UNMAPPED)))
-                    }
-                }
-            }
-        },
     )
 
     private fun shortcutBindingHandler() = scrollable<LauncherScreen.ShortcutBinding>(

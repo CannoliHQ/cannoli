@@ -308,14 +308,6 @@ class DialogInputHandler @Inject constructor(
             }
             is DialogState.DeleteProfileConfirm -> {
                 profileManager.deleteProfile(ds.profileName)
-                val updated = profileManager.listProfiles()
-                val screen = nav.currentScreen as? LauncherScreen.ProfileList
-                if (screen != null) {
-                    nav.screenStack[nav.screenStack.lastIndex] = screen.copy(
-                        profiles = updated,
-                        selectedIndex = screen.selectedIndex.coerceAtMost(updated.lastIndex)
-                    )
-                }
                 nav.dialogState.value = DialogState.None
             }
             is DialogState.ColorPicker -> {
@@ -679,22 +671,6 @@ class DialogInputHandler @Inject constructor(
     }
 
     private fun onContextMenuConfirm(state: DialogState.ContextMenu) {
-        if (nav.currentScreen is LauncherScreen.ProfileList) {
-            when (state.options[state.selectedOption]) {
-                "Rename" -> {
-                    nav.dialogState.value = DialogState.ProfileNameInput(
-                        isNew = false,
-                        originalName = state.gameName,
-                        currentName = state.gameName,
-                        cursorPos = state.gameName.length
-                    )
-                }
-                "Delete" -> {
-                    nav.dialogState.value = DialogState.DeleteProfileConfirm(state.gameName)
-                }
-            }
-            return
-        }
         if (nav.currentScreen == LauncherScreen.SystemList) {
             val fghItem = nav.pendingFghItem
             if (fghItem != null) {
@@ -1234,14 +1210,6 @@ class DialogInputHandler @Inject constructor(
                 return
             }
             file.renameTo(dest)
-        }
-        val updated = profileManager.listProfiles()
-        val screen = nav.currentScreen as? LauncherScreen.ProfileList
-        if (screen != null) {
-            nav.screenStack[nav.screenStack.lastIndex] = screen.copy(
-                profiles = updated,
-                selectedIndex = updated.indexOf(name).coerceAtLeast(0)
-            )
         }
         nav.dialogState.value = DialogState.None
     }
