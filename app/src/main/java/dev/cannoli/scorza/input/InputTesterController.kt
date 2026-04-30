@@ -6,7 +6,7 @@ import android.view.KeyEvent
 import android.view.MotionEvent
 import dev.cannoli.scorza.input.v2.AnalogRole
 import dev.cannoli.scorza.input.v2.CanonicalButton
-import dev.cannoli.scorza.input.v2.DeviceTemplate
+import dev.cannoli.scorza.input.v2.DeviceMapping
 import dev.cannoli.scorza.input.v2.InputBinding
 import dev.cannoli.scorza.input.v2.runtime.PortRouter
 import dev.cannoli.scorza.ui.viewmodel.DeviceInfo
@@ -42,8 +42,8 @@ class InputTesterController(
         val port = if (device != null) controllerManager.getPortForDeviceId(deviceId) ?: 0 else 0
         val name = device?.name ?: keyboardDeviceName
         val keyName = KeyEvent.keyCodeToString(event.keyCode).removePrefix("KEYCODE_")
-        val templateNav = templateNavButtonFor(portRouter.templateForPort(port), event.keyCode)
-        val navButton = templateNav ?: AndroidGamepadKeyNames.DEFAULT_KEY_MAP[event.keyCode]
+        val mappingNav = mappingNavButtonFor(portRouter.mappingForPort(port), event.keyCode)
+        val navButton = mappingNav ?: AndroidGamepadKeyNames.DEFAULT_KEY_MAP[event.keyCode]
 
         if (down) {
             val isRepeat = event.repeatCount > 0
@@ -66,7 +66,7 @@ class InputTesterController(
             if (!isRepeat && selectHeld && navButton == "btn_north") {
                 viewModel.toggleAxisDump()
             }
-            val resolved = templateNav ?: profileMap[event.keyCode]
+            val resolved = mappingNav ?: profileMap[event.keyCode]
             pressedKeycodes[event.keyCode] = resolved
             viewModel.onKeyDown(port, event.keyCode, keyName, deviceId, name, resolved)
             if (!isRepeat) viewModel.setActivePort(port)
@@ -90,18 +90,18 @@ class InputTesterController(
         val deviceId = event.deviceId
         val port = controllerManager.getPortForDeviceId(deviceId) ?: 0
         val name = event.device?.name ?: unknownDeviceName
-        val template = portRouter.templateForPort(port)
-        val leftX = mostActive(templateStickValue(template, AnalogRole.LEFT_STICK_X, event), event.getAxisValue(MotionEvent.AXIS_X))
-        val leftY = mostActive(templateStickValue(template, AnalogRole.LEFT_STICK_Y, event), event.getAxisValue(MotionEvent.AXIS_Y))
-        val rightX = mostActive(templateStickValue(template, AnalogRole.RIGHT_STICK_X, event), event.getAxisValue(MotionEvent.AXIS_Z))
-        val rightY = mostActive(templateStickValue(template, AnalogRole.RIGHT_STICK_Y, event), event.getAxisValue(MotionEvent.AXIS_RZ))
+        val mapping = portRouter.mappingForPort(port)
+        val leftX = mostActive(mappingStickValue(mapping, AnalogRole.LEFT_STICK_X, event), event.getAxisValue(MotionEvent.AXIS_X))
+        val leftY = mostActive(mappingStickValue(mapping, AnalogRole.LEFT_STICK_Y, event), event.getAxisValue(MotionEvent.AXIS_Y))
+        val rightX = mostActive(mappingStickValue(mapping, AnalogRole.RIGHT_STICK_X, event), event.getAxisValue(MotionEvent.AXIS_Z))
+        val rightY = mostActive(mappingStickValue(mapping, AnalogRole.RIGHT_STICK_Y, event), event.getAxisValue(MotionEvent.AXIS_RZ))
         val leftTrigger = maxOf(
-            templateTriggerDisplayValue(template, CanonicalButton.BTN_L2, event) ?: 0f,
+            mappingTriggerDisplayValue(mapping, CanonicalButton.BTN_L2, event) ?: 0f,
             event.getAxisValue(MotionEvent.AXIS_LTRIGGER).coerceIn(0f, 1f),
             event.getAxisValue(MotionEvent.AXIS_BRAKE).coerceIn(0f, 1f),
         )
         val rightTrigger = maxOf(
-            templateTriggerDisplayValue(template, CanonicalButton.BTN_R2, event) ?: 0f,
+            mappingTriggerDisplayValue(mapping, CanonicalButton.BTN_R2, event) ?: 0f,
             event.getAxisValue(MotionEvent.AXIS_RTRIGGER).coerceIn(0f, 1f),
             event.getAxisValue(MotionEvent.AXIS_GAS).coerceIn(0f, 1f),
         )
@@ -177,9 +177,9 @@ class InputTesterController(
         }
     }
 
-    private fun mostActive(template: Float?, fallback: Float): Float {
-        if (template == null) return fallback
-        return if (kotlin.math.abs(template) >= kotlin.math.abs(fallback)) template else fallback
+    private fun mostActive(mapping: Float?, fallback: Float): Float {
+        if (mapping == null) return fallback
+        return if (kotlin.math.abs(mapping) >= kotlin.math.abs(fallback)) mapping else fallback
     }
 
     private fun syncAxisTrigger(
@@ -202,8 +202,8 @@ class InputTesterController(
         }
     }
 
-    private fun templateNavButtonFor(template: DeviceTemplate?, keyCode: Int): String? {
-        val canonical = template?.bindings?.entries?.firstOrNull { (_, bindings) ->
+    private fun mappingNavButtonFor(mapping: DeviceMapping?, keyCode: Int): String? {
+        val canonical = mapping?.bindings?.entries?.firstOrNull { (_, bindings) ->
             bindings.any { it is InputBinding.Button && it.keyCode == keyCode }
         }?.key ?: return null
         return when (canonical) {
@@ -227,36 +227,36 @@ class InputTesterController(
         }
     }
 
-    private fun templateTriggerValue(
-        template: DeviceTemplate?,
+    private fun mappingTriggerValue(
+        mapping: DeviceMapping?,
         canonical: CanonicalButton,
         event: MotionEvent,
     ): Float? {
-        val axisBinding = template?.bindings?.get(canonical)
+        val axisBinding = mapping?.bindings?.get(canonical)
             ?.firstNotNullOfOrNull { it as? InputBinding.Axis }
             ?.takeIf { it.analogRole == AnalogRole.DIGITAL_BUTTON }
             ?: return null
         return axisBinding.normalize(event.getAxisValue(axisBinding.axis))
     }
 
-    private fun templateTriggerDisplayValue(
-        template: DeviceTemplate?,
+    private fun mappingTriggerDisplayValue(
+        mapping: DeviceMapping?,
         canonical: CanonicalButton,
         event: MotionEvent,
     ): Float? {
-        val axisBinding = template?.bindings?.get(canonical)
+        val axisBinding = mapping?.bindings?.get(canonical)
             ?.firstNotNullOfOrNull { it as? InputBinding.Axis }
             ?.takeIf { it.analogRole == AnalogRole.DIGITAL_BUTTON }
             ?: return null
         return event.getAxisValue(axisBinding.axis).coerceIn(0f, 1f)
     }
 
-    private fun templateStickValue(
-        template: DeviceTemplate?,
+    private fun mappingStickValue(
+        mapping: DeviceMapping?,
         role: AnalogRole,
         event: MotionEvent,
     ): Float? {
-        val axisBinding = template?.bindings?.values
+        val axisBinding = mapping?.bindings?.values
             ?.flatten()
             ?.firstNotNullOfOrNull {
                 (it as? InputBinding.Axis)?.takeIf { axis -> axis.analogRole == role }

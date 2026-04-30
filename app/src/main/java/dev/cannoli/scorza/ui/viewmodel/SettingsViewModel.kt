@@ -21,7 +21,6 @@ import dev.cannoli.scorza.util.sortedNatural
 import dev.cannoli.scorza.di.AppFonts
 import dev.cannoli.ui.BULLET
 import dev.cannoli.ui.ButtonLabelSet
-import dev.cannoli.ui.ConfirmButton
 import dev.cannoli.ui.theme.hexToColor
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -135,7 +134,6 @@ class SettingsViewModel @Inject constructor(
         val artWidth: Int = 40,
         val artScale: ArtScale = ArtScale.DEFAULT,
         val buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER,
-        val confirmButton: ConfirmButton = ConfirmButton.EAST,
         val contentMode: ContentMode = ContentMode.PLATFORMS,
         val fghCollectionStem: String? = null,
         val portraitMarginPx: Int = 0,
@@ -171,7 +169,6 @@ class SettingsViewModel @Inject constructor(
         artWidth = settings.artWidth,
         artScale = settings.artScale,
         buttonLabelSet = settings.buttonLabelSet,
-        confirmButton = settings.confirmButton,
         contentMode = settings.contentMode,
         fghCollectionStem = settings.fghCollectionStem,
         portraitMarginPx = settings.portraitMarginPx,
@@ -364,11 +361,6 @@ class SettingsViewModel @Inject constructor(
                 val entries = ButtonLabelSet.entries
                 val cur = entries.indexOf(settings.buttonLabelSet).coerceAtLeast(0)
                 settings.buttonLabelSet = entries[((cur + direction) % entries.size + entries.size) % entries.size]
-            }
-            "confirm_button" -> {
-                val entries = ConfirmButton.entries
-                val cur = entries.indexOf(settings.confirmButton).coerceAtLeast(0)
-                settings.confirmButton = entries[((cur + direction) % entries.size + entries.size) % entries.size]
             }
             "font" -> {
                 val cur = fontOptions.indexOfFirst { it.key == settings.font }.coerceAtLeast(0)
@@ -733,10 +725,9 @@ class SettingsViewModel @Inject constructor(
             add(SettingsItem("show_wifi", R.string.setting_wifi, valueRes = showHide(settings.showWifi)))
         }
         "input" -> listOf(
-            SettingsItem("profiles", R.string.setting_profiles, isEditable = true),
+            SettingsItem("controllers", R.string.setting_controllers, isEditable = true),
             SettingsItem("shortcuts", R.string.setting_shortcuts, isEditable = true),
             SettingsItem("button_labels", R.string.setting_button_labels, valueText = settings.buttonLabelSet.name.lowercase().replaceFirstChar { it.uppercase() }),
-            SettingsItem("confirm_button", R.string.setting_confirm_button, valueText = settings.confirmButton.name.lowercase().replaceFirstChar { it.uppercase() }),
             SettingsItem("platform_switching", R.string.setting_platform_switching, valueRes = onOff(settings.platformSwitching)),
             SettingsItem("swap_play_resume", R.string.setting_swap_play_resume, valueRes = onOff(settings.swapPlayResume)),
             SettingsItem("main_menu_quit", R.string.setting_main_menu_quit, valueRes = onOff(settings.mainMenuQuit)),

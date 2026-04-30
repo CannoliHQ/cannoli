@@ -3,47 +3,47 @@ package dev.cannoli.scorza.input.v2.repo
 import dev.cannoli.scorza.input.v2.AnalogRole
 import dev.cannoli.scorza.input.v2.CanonicalButton
 import dev.cannoli.scorza.input.v2.DeviceMatchRule
-import dev.cannoli.scorza.input.v2.DeviceTemplate
+import dev.cannoli.scorza.input.v2.DeviceMapping
 import dev.cannoli.scorza.input.v2.GlyphStyle
 import dev.cannoli.scorza.input.v2.HatDirection
 import dev.cannoli.scorza.input.v2.InputBinding
-import dev.cannoli.scorza.input.v2.TemplateSource
+import dev.cannoli.scorza.input.v2.MappingSource
 import dev.cannoli.scorza.util.IniParser
 
-object TemplateIniSerializer {
+object MappingIniSerializer {
 
-    fun toIni(template: DeviceTemplate): String {
+    fun toIni(mapping: DeviceMapping): String {
         val sb = StringBuilder()
 
         sb.appendLine("[meta]")
-        sb.appendLine("display_name=${template.displayName}")
-        sb.appendLine("source=${template.source.name}")
-        sb.appendLine("user_edited=${template.userEdited}")
+        sb.appendLine("display_name=${mapping.displayName}")
+        sb.appendLine("source=${mapping.source.name}")
+        sb.appendLine("user_edited=${mapping.userEdited}")
         sb.appendLine()
 
         sb.appendLine("[match]")
-        template.match.name?.let { sb.appendLine("name=$it") }
-        template.match.vendorId?.let { sb.appendLine("vendor_id=$it") }
-        template.match.productId?.let { sb.appendLine("product_id=$it") }
-        template.match.androidBuildModel?.let { sb.appendLine("android_build_model=$it") }
-        template.match.sourceMask?.let { sb.appendLine("source_mask=$it") }
+        mapping.match.name?.let { sb.appendLine("name=$it") }
+        mapping.match.vendorId?.let { sb.appendLine("vendor_id=$it") }
+        mapping.match.productId?.let { sb.appendLine("product_id=$it") }
+        mapping.match.androidBuildModel?.let { sb.appendLine("android_build_model=$it") }
+        mapping.match.sourceMask?.let { sb.appendLine("source_mask=$it") }
         sb.appendLine()
 
         sb.appendLine("[menu]")
-        sb.appendLine("confirm=${template.menuConfirm.name}")
-        sb.appendLine("back=${template.menuBack.name}")
+        sb.appendLine("confirm=${mapping.menuConfirm.name}")
+        sb.appendLine("back=${mapping.menuBack.name}")
         sb.appendLine()
 
         sb.appendLine("[glyph]")
-        sb.appendLine("style=${template.glyphStyle.name}")
+        sb.appendLine("style=${mapping.glyphStyle.name}")
         sb.appendLine()
 
         sb.appendLine("[behavior]")
-        sb.appendLine("exclude_from_gameplay=${template.excludeFromGameplay}")
-        template.defaultControllerTypeId?.let { sb.appendLine("default_controller_type=$it") }
+        sb.appendLine("exclude_from_gameplay=${mapping.excludeFromGameplay}")
+        mapping.defaultControllerTypeId?.let { sb.appendLine("default_controller_type=$it") }
         sb.appendLine()
 
-        for ((button, bindings) in template.bindings) {
+        for ((button, bindings) in mapping.bindings) {
             sb.appendLine("[binding.${button.name}]")
             bindings.forEachIndexed { index, binding ->
                 sb.appendLine("$index=${encodeBinding(binding)}")
@@ -54,7 +54,7 @@ object TemplateIniSerializer {
         return sb.toString()
     }
 
-    fun fromIni(id: String, ini: String): DeviceTemplate {
+    fun fromIni(id: String, ini: String): DeviceMapping {
         val data = IniParser.parse(ini)
 
         val meta = data.getSection("meta")
@@ -80,7 +80,7 @@ object TemplateIniSerializer {
             if (ordered.isNotEmpty()) bindings[canonical] = ordered
         }
 
-        return DeviceTemplate(
+        return DeviceMapping(
             id = id,
             displayName = meta["display_name"] ?: id,
             match = DeviceMatchRule(
@@ -103,8 +103,8 @@ object TemplateIniSerializer {
             excludeFromGameplay = behavior["exclude_from_gameplay"]?.toBoolean() ?: false,
             defaultControllerTypeId = behavior["default_controller_type"]?.toIntOrNull(),
             source = meta["source"]
-                ?.let { runCatching { TemplateSource.valueOf(it) }.getOrNull() }
-                ?: TemplateSource.USER_WIZARD,
+                ?.let { runCatching { MappingSource.valueOf(it) }.getOrNull() }
+                ?: MappingSource.USER_WIZARD,
             userEdited = meta["user_edited"]?.toBoolean() ?: false,
         )
     }

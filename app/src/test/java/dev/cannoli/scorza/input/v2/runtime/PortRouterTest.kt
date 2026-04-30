@@ -4,9 +4,9 @@ import dev.cannoli.scorza.input.v2.AnalogRole
 import dev.cannoli.scorza.input.v2.CanonicalButton
 import dev.cannoli.scorza.input.v2.ConnectedDevice
 import dev.cannoli.scorza.input.v2.DeviceMatchRule
-import dev.cannoli.scorza.input.v2.DeviceTemplate
+import dev.cannoli.scorza.input.v2.DeviceMapping
 import dev.cannoli.scorza.input.v2.InputBinding
-import dev.cannoli.scorza.input.v2.TemplateSource
+import dev.cannoli.scorza.input.v2.MappingSource
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -26,13 +26,13 @@ class PortRouterTest {
             isBuiltIn = builtIn,
         )
 
-    private fun template(excluded: Boolean = false) = DeviceTemplate(
+    private fun template(excluded: Boolean = false) = DeviceMapping(
         id = "t",
         displayName = "T",
         match = DeviceMatchRule(),
         bindings = mapOf(CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96))),
         excludeFromGameplay = excluded,
-        source = TemplateSource.RETROARCH_AUTOCONFIG,
+        source = MappingSource.RETROARCH_AUTOCONFIG,
     )
 
     @Test
@@ -146,13 +146,13 @@ class PortRouterTest {
     }
 
     @Test
-    fun templateForPort_returns_template_assigned_to_that_port() {
+    fun mappingForPort_returns_template_assigned_to_that_port() {
         val r = PortRouter()
         val tmpl = template()
         r.onConnect(device(1, 0), tmpl)
         r.markLaunchTrigger(1)
-        org.junit.Assert.assertEquals(tmpl, r.templateForPort(0))
-        org.junit.Assert.assertNull(r.templateForPort(1))
+        org.junit.Assert.assertEquals(tmpl, r.mappingForPort(0))
+        org.junit.Assert.assertNull(r.mappingForPort(1))
     }
 
     @Test
@@ -160,14 +160,14 @@ class PortRouterTest {
         val r = PortRouter()
         val tmpl = template()
         r.onConnect(device(1, 0), tmpl)
-        org.junit.Assert.assertEquals(tmpl, r.templateFor(1))
-        org.junit.Assert.assertNull(r.templateFor(99))
+        org.junit.Assert.assertEquals(tmpl, r.mappingFor(1))
+        org.junit.Assert.assertNull(r.mappingFor(99))
     }
 
     @Test
     fun analogValueAt_returns_last_emitted_normalized_value() {
         val r = PortRouter()
-        val analogTemplate = DeviceTemplate(
+        val analogTemplate = DeviceMapping(
             id = "t",
             displayName = "T",
             match = DeviceMatchRule(),
@@ -178,7 +178,7 @@ class PortRouterTest {
                     analogRole = AnalogRole.LEFT_STICK_X,
                 )),
             ),
-            source = TemplateSource.RETROARCH_AUTOCONFIG,
+            source = MappingSource.RETROARCH_AUTOCONFIG,
         )
         r.onConnect(device(1, 0), analogTemplate)
         r.markLaunchTrigger(1)

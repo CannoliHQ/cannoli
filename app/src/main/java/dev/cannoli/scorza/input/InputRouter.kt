@@ -5,6 +5,9 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.scopes.ActivityScoped
 import dev.cannoli.igm.ShortcutAction
 import dev.cannoli.scorza.config.PlatformConfig
+import dev.cannoli.scorza.input.screen.ControllerDetailInputHandler
+import dev.cannoli.scorza.input.screen.ControllersInputHandler
+import dev.cannoli.scorza.input.screen.EditButtonsInputHandler
 import dev.cannoli.scorza.input.screen.GameListInputHandler
 import dev.cannoli.scorza.input.screen.InputTesterInputHandler
 import dev.cannoli.scorza.input.screen.ScrollListInputHandler
@@ -32,6 +35,9 @@ class InputRouter @Inject constructor(
     private val settingsHandler: SettingsInputHandler,
     private val setupHandler: SetupInputHandler,
     private val inputTesterHandler: InputTesterInputHandler,
+    private val controllerDetailHandler: ControllerDetailInputHandler,
+    private val controllersHandler: ControllersInputHandler,
+    private val editButtonsHandler: EditButtonsInputHandler,
     private val scrollListFactory: ScrollListInputHandler.Factory,
     private val platformConfig: PlatformConfig,
     private val installedCoreService: InstalledCoreService,
@@ -81,6 +87,9 @@ class InputRouter @Inject constructor(
         LauncherScreen.GameList    -> gameListHandler
         LauncherScreen.Settings    -> settingsHandler
         LauncherScreen.InputTester -> inputTesterHandler
+        is LauncherScreen.Controllers -> controllersHandler
+        is LauncherScreen.ControllerDetail -> controllerDetailHandler
+        is LauncherScreen.EditButtons -> editButtonsHandler
         is LauncherScreen.Setup,
         is LauncherScreen.Installing,
         is LauncherScreen.Housekeeping,

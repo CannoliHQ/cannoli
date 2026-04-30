@@ -19,6 +19,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -37,6 +39,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import dev.cannoli.scorza.input.v2.runtime.confirmButton
 import dev.cannoli.igm.GuideScreen
 import dev.cannoli.igm.GuideType
 import dev.cannoli.igm.IGMScreen
@@ -117,7 +120,12 @@ fun LibretroScreen(
     guideInitialScrollX: Int = 0,
     onGuideScrollChanged: (y: Int, x: Int) -> Unit = { _, _ -> },
     infoScrollDir: Int = 0,
-    gameInfo: GameInfo = GameInfo("", "", null)
+    gameInfo: GameInfo = GameInfo("", "", null),
+    activeMapping: dev.cannoli.scorza.input.v2.DeviceMapping? = null,
+    controllersViewModel: dev.cannoli.scorza.ui.viewmodel.ControllersViewModel? = null,
+    mappingRepository: dev.cannoli.scorza.input.v2.repo.MappingRepository? = null,
+    editButtonsController: dev.cannoli.scorza.input.EditButtonsController? = null,
+    onClearListening: () -> Unit = {},
 ) {
     val overlayVisible = screen != null
     val showDescription = when (screen) {
@@ -131,7 +139,7 @@ fun LibretroScreen(
     val igmLineHeight = (settings.textSize.sp + 10).sp
     val igmScaleFactor = settings.textSize.sp / 22f
     val igmTypography = buildCannoliTypography(baseSizeSp = settings.textSize.sp, fontFamily = LocalCannoliFont.current)
-    val labels = ButtonStyle(settings.buttonLabelSet, settings.confirmButton)
+    val labels = ButtonStyle(settings.buttonLabelSet, activeMapping.confirmButton())
     val statusBarEnabled = (settings.showWifi || settings.showBluetooth || settings.showClock || settings.showBattery || settings.showVpn) && !showDescription && !isGuideScreen
     val statusBarLeftEdge = remember { mutableIntStateOf(Int.MAX_VALUE) }
 
@@ -511,6 +519,74 @@ fun LibretroScreen(
                         )
                     }
                 }
+            }
+            is IGMScreen.Controllers -> {
+                if (controllersViewModel != null) {
+                    dev.cannoli.scorza.ui.screens.ControllersScreen(
+                        screen = dev.cannoli.scorza.navigation.LauncherScreen.Controllers(selectedIndex = screen.selectedIndex),
+                        viewModel = controllersViewModel,
+                        modifier = Modifier.fillMaxSize(),
+                        listFontSize = igmFontSize,
+                        listLineHeight = igmLineHeight,
+                        buttonStyle = labels,
+                    )
+                }
+            }
+            is IGMScreen.ControllerDetail -> {
+                if (controllersViewModel != null) {
+                    val controllersState = controllersViewModel.state.collectAsState().value
+                    val mapping = controllersState.connected.firstOrNull { it.mapping.id == screen.mappingId }?.mapping
+                        ?: controllersState.savedMappings.firstOrNull { it.id == screen.mappingId }
+                    dev.cannoli.scorza.ui.screens.ControllerDetailScreen(
+                        screen = dev.cannoli.scorza.navigation.LauncherScreen.ControllerDetail(
+                            mappingId = screen.mappingId,
+                            androidDeviceId = screen.androidDeviceId,
+                            selectedIndex = screen.selectedIndex,
+                        ),
+                        mapping = mapping,
+                        modifier = Modifier.fillMaxSize(),
+                        listFontSize = igmFontSize,
+                        listLineHeight = igmLineHeight,
+                        buttonStyle = labels,
+                    )
+                }
+            }
+            is IGMScreen.EditButtons -> {
+                val parsedListening = screen.listeningCanonical?.let { name ->
+                    runCatching { dev.cannoli.scorza.input.v2.CanonicalButton.valueOf(name) }.getOrNull()
+                }
+                val ebState = controllersViewModel?.state?.collectAsState()?.value
+                val mapping = ebState?.connected?.firstOrNull { it.mapping.id == screen.mappingId }?.mapping
+                    ?: ebState?.savedMappings?.firstOrNull { it.id == screen.mappingId }
+                    ?: mappingRepository?.findById(screen.mappingId)
+                if (editButtonsController != null) {
+                    LaunchedEffect(screen.listeningCanonical) {
+                        if (parsedListening != null) {
+                            while (true) {
+                                kotlinx.coroutines.delay(50)
+                                val finalized = editButtonsController.tickAndMaybeFinalize()
+                                if (finalized != null || !editButtonsController.isListening) {
+                                    onClearListening()
+                                    if (finalized != null) controllersViewModel?.refreshFromRouter()
+                                    break
+                                }
+                            }
+                        }
+                    }
+                }
+                dev.cannoli.scorza.ui.screens.EditButtonsScreen(
+                    screen = dev.cannoli.scorza.navigation.LauncherScreen.EditButtons(
+                        mappingId = screen.mappingId,
+                        listeningCanonical = parsedListening,
+                        countdownMs = screen.countdownMs,
+                        selectedIndex = screen.selectedIndex,
+                    ),
+                    mapping = mapping,
+                    modifier = Modifier.fillMaxSize(),
+                    listFontSize = igmFontSize,
+                    listLineHeight = igmLineHeight,
+                    buttonStyle = labels,
+                )
             }
             null -> {}
         }

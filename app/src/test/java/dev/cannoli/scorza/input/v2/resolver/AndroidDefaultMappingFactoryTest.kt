@@ -3,12 +3,16 @@ package dev.cannoli.scorza.input.v2.resolver
 import dev.cannoli.scorza.input.v2.CanonicalButton
 import dev.cannoli.scorza.input.v2.ConnectedDevice
 import dev.cannoli.scorza.input.v2.InputBinding
-import dev.cannoli.scorza.input.v2.TemplateSource
+import dev.cannoli.scorza.input.v2.MappingSource
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class AndroidDefaultTemplateFactoryTest {
+class AndroidDefaultMappingFactoryTest {
+
+    private val defaultHints = dev.cannoli.scorza.input.v2.hints.ControllerHintTable.fromJson(
+        """{"default":{"menuConfirm":"BTN_EAST","glyphStyle":"PLUMBER"}}"""
+    )
 
     private val device = ConnectedDevice(
         androidDeviceId = 7,
@@ -23,15 +27,15 @@ class AndroidDefaultTemplateFactoryTest {
 
     @Test
     fun template_id_is_derived_from_device_name_and_marked_runtime() {
-        val t = AndroidDefaultTemplateFactory.create(device)
-        assertEquals(TemplateSource.ANDROID_DEFAULT, t.source)
+        val t = AndroidDefaultMappingFactory.create(device, defaultHints)
+        assertEquals(MappingSource.ANDROID_DEFAULT, t.source)
         assertEquals("Unknown Pad", t.displayName)
         assertTrue(t.id.startsWith("android_default_"))
     }
 
     @Test
     fun face_buttons_are_bound_to_standard_keycodes() {
-        val t = AndroidDefaultTemplateFactory.create(device)
+        val t = AndroidDefaultMappingFactory.create(device, defaultHints)
         assertEquals(InputBinding.Button(96), t.bindings[CanonicalButton.BTN_SOUTH]!![0])
         assertEquals(InputBinding.Button(97), t.bindings[CanonicalButton.BTN_EAST]!![0])
         assertEquals(InputBinding.Button(99), t.bindings[CanonicalButton.BTN_WEST]!![0])
@@ -40,7 +44,7 @@ class AndroidDefaultTemplateFactoryTest {
 
     @Test
     fun shoulders_triggers_thumbs_start_select_dpad_are_all_bound() {
-        val t = AndroidDefaultTemplateFactory.create(device)
+        val t = AndroidDefaultMappingFactory.create(device, defaultHints)
         assertEquals(InputBinding.Button(102), t.bindings[CanonicalButton.BTN_L]!![0])
         assertEquals(InputBinding.Button(103), t.bindings[CanonicalButton.BTN_R]!![0])
         assertEquals(InputBinding.Button(104), t.bindings[CanonicalButton.BTN_L2]!![0])
@@ -56,14 +60,17 @@ class AndroidDefaultTemplateFactoryTest {
     }
 
     @Test
-    fun btn_menu_is_unbound() {
-        val t = AndroidDefaultTemplateFactory.create(device)
-        assertTrue(!t.bindings.containsKey(CanonicalButton.BTN_MENU))
+    fun btn_menu_defaults_to_back_and_mode_keycodes() {
+        val t = AndroidDefaultMappingFactory.create(device, defaultHints)
+        val menu = t.bindings[CanonicalButton.BTN_MENU].orEmpty()
+        val keys = menu.filterIsInstance<dev.cannoli.scorza.input.v2.InputBinding.Button>().map { it.keyCode }
+        assertTrue(4 in keys)
+        assertTrue(110 in keys)
     }
 
     @Test
     fun match_rule_carries_the_device_identity() {
-        val t = AndroidDefaultTemplateFactory.create(device)
+        val t = AndroidDefaultMappingFactory.create(device, defaultHints)
         assertEquals("Unknown Pad", t.match.name)
         assertEquals(1, t.match.vendorId)
         assertEquals(2, t.match.productId)

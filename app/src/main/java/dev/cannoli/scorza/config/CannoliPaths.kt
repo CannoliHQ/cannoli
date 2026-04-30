@@ -39,9 +39,9 @@ class CannoliPaths(val root: File) {
     val configRetroAchievements: File get() = File(configDir, "RetroAchievements")
     val configAssets: File get() = File(configDir, "Assets")
     val configInput: File get() = File(configDir, "Input")
-    val configInputTemplates: File get() = File(configInput, "Templates")
+    val configInputMappings: File get() = File(configInput, "Mappings")
 
-    fun inputTemplateFile(id: String): File = File(configInputTemplates, "$id.ini")
+    fun inputMappingFile(id: String): File = File(configInputMappings, "$id.ini")
 
     // Specific config files
     val database: File get() = File(configDir, "cannoli.db")

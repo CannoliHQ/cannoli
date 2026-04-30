@@ -1,6 +1,6 @@
 package dev.cannoli.scorza.input.v2
 
-data class DeviceTemplate(
+data class DeviceMapping(
     val id: String,
     val displayName: String,
     val match: DeviceMatchRule,
@@ -10,6 +10,6 @@ data class DeviceTemplate(
     val glyphStyle: GlyphStyle = GlyphStyle.PLUMBER,
     val excludeFromGameplay: Boolean = false,
     val defaultControllerTypeId: Int? = null,
-    val source: TemplateSource,
+    val source: MappingSource,
     val userEdited: Boolean = false,
 )

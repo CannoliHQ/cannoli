@@ -1,0 +1,40 @@
+{
+  "vid_pid": [
+    {
+      "vendor_id": 1356,
+      "menuConfirm": "BTN_SOUTH",
+      "glyphStyle": "SHAPES"
+    },
+    {
+      "vendor_id": 1118,
+      "menuConfirm": "BTN_SOUTH",
+      "glyphStyle": "REDMOND"
+    },
+    {
+      "vendor_id": 1406,
+      "menuConfirm": "BTN_EAST",
+      "glyphStyle": "PLUMBER"
+    },
+    {
+      "vendor_id": 11720,
+      "menuConfirm": "BTN_EAST",
+      "glyphStyle": "PLUMBER"
+    },
+    {
+      "vendor_id": 9414,
+      "menuConfirm": "BTN_EAST",
+      "glyphStyle": "PLUMBER"
+    }
+  ],
+  "build_model": [
+    {
+      "model_prefix": "Retroid",
+      "menuConfirm": "BTN_EAST",
+      "glyphStyle": "PLUMBER"
+    }
+  ],
+  "default": {
+    "menuConfirm": "BTN_SOUTH",
+    "glyphStyle": "REDMOND"
+  }
+}

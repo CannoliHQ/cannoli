@@ -2,14 +2,14 @@ package dev.cannoli.scorza.input.v2.runtime
 
 import dev.cannoli.scorza.input.v2.AnalogRole
 import dev.cannoli.scorza.input.v2.CanonicalButton
-import dev.cannoli.scorza.input.v2.DeviceTemplate
+import dev.cannoli.scorza.input.v2.DeviceMapping
 import dev.cannoli.scorza.input.v2.HatDirection
 import dev.cannoli.scorza.input.v2.InputBinding
 import kotlin.math.abs
 import kotlin.math.sign
 
 class PortEvaluator(
-    private val template: DeviceTemplate,
+    private val mapping: DeviceMapping,
     private val analogNoiseThreshold: Float = 0.05f,
 ) {
 
@@ -100,7 +100,7 @@ class PortEvaluator(
 
     fun canonicalsHeldByKeyCode(keyCode: Int): List<CanonicalButton> {
         val out = mutableListOf<CanonicalButton>()
-        for ((canonical, bindings) in template.bindings) {
+        for ((canonical, bindings) in mapping.bindings) {
             if (canonical !in pressed) continue
             val asserts = bindings.any { it is InputBinding.Button && it.keyCode == keyCode }
             if (asserts) out += canonical
@@ -122,7 +122,7 @@ class PortEvaluator(
     }
 
     private inline fun forEachBinding(action: (CanonicalButton, InputBinding) -> Unit) {
-        for ((canonical, bindings) in template.bindings) {
+        for ((canonical, bindings) in mapping.bindings) {
             for (binding in bindings) action(canonical, binding)
         }
     }

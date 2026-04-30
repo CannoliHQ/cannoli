@@ -19,6 +19,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -85,6 +86,8 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var inputDispatcher: InputDispatcher
     @Inject lateinit var controllerManager: ControllerManager
     @Inject lateinit var controllerV2Bridge: ControllerV2Bridge
+    @Inject lateinit var portRouter: dev.cannoli.scorza.input.v2.runtime.PortRouter
+    @Inject lateinit var activeMappingHolder: dev.cannoli.scorza.input.v2.runtime.ActiveMappingHolder
     @Inject lateinit var bindingController: BindingController
     @Inject lateinit var inputTesterController: InputTesterController
     @Inject lateinit var updateManager: UpdateManager
@@ -101,6 +104,9 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var gameListViewModel: GameListViewModel
     @Inject lateinit var settingsViewModel: SettingsViewModel
     @Inject lateinit var inputTesterViewModel: InputTesterViewModel
+    @Inject lateinit var controllersViewModel: dev.cannoli.scorza.ui.viewmodel.ControllersViewModel
+    @Inject lateinit var editButtonsController: dev.cannoli.scorza.input.EditButtonsController
+    @Inject lateinit var mappingRepository: dev.cannoli.scorza.input.v2.repo.MappingRepository
     @Inject @RomDir lateinit var romDir: File
     @Inject @IoScope lateinit var ioScope: CoroutineScope
 
@@ -153,6 +159,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
         )
 
         hideSystemUI()
+        editButtonsController.cancelListening()
         controllerV2Bridge.start(this)
 
         setupWireInput()
@@ -180,6 +187,12 @@ class MainActivity : ComponentActivity(), ActivityActions {
                         val navDialogState = nav.dialogState
                         val navResumableGames = nav.resumableGames
                         val navOsdMessage = nav.osdMessage
+                        val activeMapping by activeMappingHolder.active.collectAsState()
+                        LaunchedEffect(navScreen) {
+                            if (navScreen is LauncherScreen.Controllers) {
+                                controllersViewModel.refresh(buildConnectedRows())
+                            }
+                        }
                         AppNavGraph(
                             currentScreen = navScreen,
                             systemListViewModel = systemListViewModel,
@@ -189,6 +202,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
                                 if (nav.screenStack.size > 1) nav.screenStack.removeAt(nav.screenStack.lastIndex)
                             },
                             settingsViewModel = settingsViewModel,
+                            controllersViewModel = controllersViewModel,
                             dialogState = navDialogState,
                             onVisibleRangeChanged = { first, count, full ->
                                 nav.currentFirstVisible = first
@@ -199,6 +213,10 @@ class MainActivity : ComponentActivity(), ActivityActions {
                             downloadProgress = dlProgress ?: 0f,
                             downloadError = dlError,
                             osdMessage = navOsdMessage,
+                            activeMapping = activeMapping,
+                            mappingRepository = mappingRepository,
+                            editButtonsController = editButtonsController,
+                            nav = nav,
                         )
                     }
                 }
@@ -280,9 +298,44 @@ class MainActivity : ComponentActivity(), ActivityActions {
         )
     }
 
+    private fun buildConnectedRows(): List<dev.cannoli.scorza.ui.viewmodel.ConnectedRow> {
+        val routes = portRouter.routes.value
+        val deviceIds = android.view.InputDevice.getDeviceIds().toList()
+        return deviceIds.mapNotNull { id ->
+            val device = android.view.InputDevice.getDevice(id) ?: return@mapNotNull null
+            val mapping = portRouter.mappingFor(id) ?: return@mapNotNull null
+            dev.cannoli.scorza.ui.viewmodel.ConnectedRow(
+                androidDeviceId = id,
+                mapping = mapping,
+                port = routes[id],
+                isBuiltIn = device.vendorId == 0 && device.productId == 0,
+            )
+        }
+    }
+
+    private val osdHandler = Handler(Looper.getMainLooper())
+    private val clearOsd = Runnable { nav.osdMessage = null }
+
+    private fun registerControllerOsd() {
+        controllerV2Bridge.onDeviceAdded = { device ->
+            val port = portRouter.portFor(device.androidDeviceId)
+            val portLabel = port?.let { "P${it + 1}" } ?: "-"
+            val name = device.name.ifEmpty { "Controller" }
+            osdHandler.removeCallbacks(clearOsd)
+            nav.osdMessage = "$name connected to $portLabel"
+            osdHandler.postDelayed(clearOsd, 3000)
+        }
+        controllerV2Bridge.onDeviceRemoved = {
+            osdHandler.removeCallbacks(clearOsd)
+            nav.osdMessage = "Controller disconnected"
+            osdHandler.postDelayed(clearOsd, 3000)
+        }
+    }
+
     @Suppress("DEPRECATION")
     override fun onResume() {
         super.onResume()
+        registerControllerOsd()
         if (!permissionGranted && hasStoragePermission()) {
             permissionGranted = true
             afterPermissionGranted()
@@ -316,6 +369,8 @@ class MainActivity : ComponentActivity(), ActivityActions {
 
     override fun onPause() {
         super.onPause()
+        controllerV2Bridge.onDeviceAdded = null
+        controllerV2Bridge.onDeviceRemoved = null
         if (nav.pendingRecentlyPlayedReorder) {
             nav.pendingRecentlyPlayedReorder = false
             gameListViewModel.moveSelectedToTop()
@@ -325,6 +380,8 @@ class MainActivity : ComponentActivity(), ActivityActions {
     override fun onDestroy() {
         (getSystemService(INPUT_SERVICE) as android.hardware.input.InputManager)
             .unregisterInputDeviceListener(controllerManager)
+        controllerV2Bridge.onDeviceAdded = null
+        controllerV2Bridge.onDeviceRemoved = null
         controllerV2Bridge.stop(this)
         super.onDestroy()
         unregisterCoreQueryReceiver()
@@ -339,6 +396,12 @@ class MainActivity : ComponentActivity(), ActivityActions {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        val cs = nav.currentScreen
+        if (cs is LauncherScreen.EditButtons && editButtonsController.isListening
+            && event.action == KeyEvent.ACTION_DOWN) {
+            editButtonsController.captureRawKeyEvent(event.keyCode)
+            return true
+        }
         if (!AndroidGamepadKeyNames.isGamepadEvent(event)) {
             when (event.keyCode) {
                 KeyEvent.KEYCODE_BACK -> {
@@ -472,6 +535,20 @@ class MainActivity : ComponentActivity(), ActivityActions {
     }
 
     override fun dispatchGenericMotionEvent(event: android.view.MotionEvent): Boolean {
+        val csForListen = nav.currentScreen
+        if (csForListen is LauncherScreen.EditButtons && editButtonsController.isListening) {
+            val axes = listOf(0, 1, 11, 14, 15, 16, 17, 18, 22, 23)
+            val axisValues = axes.associateWith { event.getAxisValue(it) }
+            editButtonsController.captureRawAxisEvent(axisValues)
+            return true
+        }
+        if (csForListen is LauncherScreen.EditButtons) {
+            val hatX = event.getAxisValue(android.view.MotionEvent.AXIS_HAT_X)
+            val hatY = event.getAxisValue(android.view.MotionEvent.AXIS_HAT_Y)
+            if (kotlin.math.abs(hatX) > 0.3f || kotlin.math.abs(hatY) > 0.3f) {
+                dev.cannoli.scorza.util.DebugLog.write("[edit-nav] motion hatX=$hatX hatY=$hatY")
+            }
+        }
         val source = event.source
         val isJoystick =
             source and android.view.InputDevice.SOURCE_JOYSTICK == android.view.InputDevice.SOURCE_JOYSTICK ||

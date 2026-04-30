@@ -1,20 +1,23 @@
 package dev.cannoli.scorza.input.v2.runtime
 
-import dev.cannoli.scorza.input.v2.DeviceTemplate
+import dev.cannoli.scorza.input.v2.DeviceMapping
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class ActiveTemplateHolder {
+class ActiveMappingHolder {
 
-    private val _active = MutableStateFlow<DeviceTemplate?>(null)
-    val active: StateFlow<DeviceTemplate?> = _active.asStateFlow()
+    private val _active = MutableStateFlow<DeviceMapping?>(null)
+    val active: StateFlow<DeviceMapping?> = _active.asStateFlow()
 
-    fun set(template: DeviceTemplate) {
-        _active.value = template
+    fun set(mapping: DeviceMapping) {
+        _active.value = mapping
     }
 
     fun clear() {
         _active.value = null
     }
 }
+
+fun DeviceMapping?.confirmButton(): dev.cannoli.ui.ConfirmButton =
+    if (this?.menuConfirm == dev.cannoli.scorza.input.v2.CanonicalButton.BTN_EAST) dev.cannoli.ui.ConfirmButton.EAST else dev.cannoli.ui.ConfirmButton.SOUTH

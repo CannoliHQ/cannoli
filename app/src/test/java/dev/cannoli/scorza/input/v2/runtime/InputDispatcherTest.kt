@@ -4,11 +4,11 @@ import dev.cannoli.scorza.input.v2.AnalogRole
 import dev.cannoli.scorza.input.v2.CanonicalButton
 import dev.cannoli.scorza.input.v2.ConnectedDevice
 import dev.cannoli.scorza.input.v2.DeviceMatchRule
-import dev.cannoli.scorza.input.v2.DeviceTemplate
+import dev.cannoli.scorza.input.v2.DeviceMapping
 import dev.cannoli.scorza.input.v2.GlyphStyle
 import dev.cannoli.scorza.input.v2.HatDirection
 import dev.cannoli.scorza.input.v2.InputBinding
-import dev.cannoli.scorza.input.v2.TemplateSource
+import dev.cannoli.scorza.input.v2.MappingSource
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -17,7 +17,7 @@ import org.junit.Test
 
 class InputDispatcherTest {
 
-    private fun westernTemplate() = DeviceTemplate(
+    private fun westernTemplate() = DeviceMapping(
         id = "western",
         displayName = "Western",
         match = DeviceMatchRule(),
@@ -30,10 +30,10 @@ class InputDispatcherTest {
         menuConfirm = CanonicalButton.BTN_EAST,
         menuBack = CanonicalButton.BTN_SOUTH,
         glyphStyle = GlyphStyle.REDMOND,
-        source = TemplateSource.RETROARCH_AUTOCONFIG,
+        source = MappingSource.RETROARCH_AUTOCONFIG,
     )
 
-    private fun nintendoTemplate() = DeviceTemplate(
+    private fun nintendoTemplate() = DeviceMapping(
         id = "nintendo",
         displayName = "Nintendo",
         match = DeviceMatchRule(),
@@ -44,7 +44,7 @@ class InputDispatcherTest {
         menuConfirm = CanonicalButton.BTN_SOUTH,
         menuBack = CanonicalButton.BTN_EAST,
         glyphStyle = GlyphStyle.PLUMBER,
-        source = TemplateSource.RETROARCH_AUTOCONFIG,
+        source = MappingSource.RETROARCH_AUTOCONFIG,
     )
 
     private fun device(id: Int) = ConnectedDevice(
@@ -58,9 +58,9 @@ class InputDispatcherTest {
         connectedAtMillis = id.toLong(),
     )
 
-    private fun setup(template: DeviceTemplate, deviceId: Int = 7): Triple<InputDispatcher, PortRouter, ActiveTemplateHolder> {
+    private fun setup(template: DeviceMapping, deviceId: Int = 7): Triple<InputDispatcher, PortRouter, ActiveMappingHolder> {
         val router = PortRouter()
-        val active = ActiveTemplateHolder()
+        val active = ActiveMappingHolder()
         router.onConnect(device(deviceId), template)
         router.markLaunchTrigger(deviceId)
         val dispatcher = InputDispatcher(router, active)
@@ -132,7 +132,7 @@ class InputDispatcherTest {
     @Test
     fun active_template_updates_to_last_pressing_controller() {
         val router = PortRouter()
-        val active = ActiveTemplateHolder()
+        val active = ActiveMappingHolder()
         router.onConnect(device(7), westernTemplate())
         router.onConnect(device(8), nintendoTemplate())
         router.markLaunchTrigger(7)
@@ -158,7 +158,7 @@ class InputDispatcherTest {
     @Test
     fun unknown_deviceId_returns_false() {
         val router = PortRouter()
-        val d = InputDispatcher(router, ActiveTemplateHolder())
+        val d = InputDispatcher(router, ActiveMappingHolder())
         val handled = d.handleKeyEventForTest(deviceId = 999, keyCode = 96, action = android.view.KeyEvent.ACTION_DOWN, repeatCount = 0)
         assertFalse(handled)
     }
@@ -193,7 +193,7 @@ class InputDispatcherTest {
         val router = PortRouter()
         router.onConnect(device(7), template)
         router.markLaunchTrigger(7)
-        val d = InputDispatcher(router, ActiveTemplateHolder())
+        val d = InputDispatcher(router, ActiveMappingHolder())
         var l2 = 0
         d.onL2 = { l2++ }
         d.handleMotionEventForTest(deviceId = 7, axisValues = mapOf(17 to 0.8f))
@@ -211,7 +211,7 @@ class InputDispatcherTest {
         val router = PortRouter()
         router.onConnect(device(7), template)
         router.markLaunchTrigger(7)
-        val d = InputDispatcher(router, ActiveTemplateHolder())
+        val d = InputDispatcher(router, ActiveMappingHolder())
         var up = 0
         d.onUp = { up++ }
 

@@ -3,7 +3,7 @@ package dev.cannoli.scorza.input.v2.runtime
 import android.view.KeyEvent
 import android.view.MotionEvent
 import dev.cannoli.scorza.input.v2.CanonicalButton
-import dev.cannoli.scorza.input.v2.DeviceTemplate
+import dev.cannoli.scorza.input.v2.DeviceMapping
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -11,7 +11,7 @@ import javax.inject.Singleton
 @Singleton
 class InputDispatcher @Inject constructor(
     private val portRouter: PortRouter,
-    private val activeTemplateHolder: ActiveTemplateHolder,
+    private val activeMappingHolder: ActiveMappingHolder,
 ) {
 
     var onUp: () -> Unit = {}
@@ -48,7 +48,7 @@ class InputDispatcher @Inject constructor(
 
     internal fun handleKeyEventForTest(deviceId: Int, keyCode: Int, action: Int, repeatCount: Int): Boolean {
         val evaluator = portRouter.evaluatorFor(deviceId) ?: return false
-        val template = portRouter.templateFor(deviceId) ?: return false
+        val mapping = portRouter.mappingFor(deviceId) ?: return false
         return when (action) {
             KeyEvent.ACTION_DOWN, KeyEvent.ACTION_MULTIPLE -> {
                 val isRepeat = action == KeyEvent.ACTION_MULTIPLE || repeatCount > 0
@@ -57,19 +57,19 @@ class InputDispatcher @Inject constructor(
                     val fallback = if (direct.isEmpty()) dpadFallbackForRepeat(evaluator, keyCode) else emptyList()
                     val canonicals = if (direct.isNotEmpty()) direct else fallback
                     if (canonicals.isEmpty()) return false
-                    activeTemplateHolder.set(template)
+                    activeMappingHolder.set(mapping)
                     var fired = false
                     for (canonical in canonicals) {
-                        if (dispatchPressed(canonical, template)) fired = true
+                        if (dispatchPressed(canonical, mapping)) fired = true
                     }
                     fired
                 } else {
                     val deltas = evaluator.evaluateKeyDown(keyCode, isAndroidRepeat = false)
                     if (deltas.isEmpty()) return false
-                    activeTemplateHolder.set(template)
+                    activeMappingHolder.set(mapping)
                     var fired = false
                     for (delta in deltas) {
-                        if (delta is CanonicalEvent.Pressed && dispatchPressed(delta.button, template)) fired = true
+                        if (delta is CanonicalEvent.Pressed && dispatchPressed(delta.button, mapping)) fired = true
                     }
                     fired
                 }
@@ -92,14 +92,14 @@ class InputDispatcher @Inject constructor(
 
     internal fun handleMotionEventForTest(deviceId: Int, axisValues: Map<Int, Float>): Boolean {
         val evaluator = portRouter.evaluatorFor(deviceId) ?: return false
-        val template = portRouter.templateFor(deviceId) ?: return false
+        val mapping = portRouter.mappingFor(deviceId) ?: return false
         val deltas = evaluator.evaluateAxis(axisValues)
         if (deltas.isEmpty()) return false
         var fired = false
         for (delta in deltas) {
             if (delta is CanonicalEvent.Pressed) {
-                activeTemplateHolder.set(template)
-                if (dispatchPressed(delta.button, template)) fired = true
+                activeMappingHolder.set(mapping)
+                if (dispatchPressed(delta.button, mapping)) fired = true
             } else if (delta is CanonicalEvent.Released && delta.button == CanonicalButton.BTN_SELECT) {
                 onSelectUp()
                 fired = true
@@ -119,20 +119,20 @@ class InputDispatcher @Inject constructor(
         return if (evaluator.currentlyPressed().contains(canonical)) listOf(canonical) else emptyList()
     }
 
-    private fun dispatchPressed(canonical: CanonicalButton, template: DeviceTemplate): Boolean {
+    private fun dispatchPressed(canonical: CanonicalButton, mapping: DeviceMapping): Boolean {
         when (canonical) {
             CanonicalButton.BTN_UP -> onUp()
             CanonicalButton.BTN_DOWN -> onDown()
             CanonicalButton.BTN_LEFT -> onLeft()
             CanonicalButton.BTN_RIGHT -> onRight()
             CanonicalButton.BTN_EAST -> when {
-                template.menuConfirm == CanonicalButton.BTN_EAST -> onConfirm()
-                template.menuBack == CanonicalButton.BTN_EAST -> onBack()
+                mapping.menuConfirm == CanonicalButton.BTN_EAST -> onConfirm()
+                mapping.menuBack == CanonicalButton.BTN_EAST -> onBack()
                 else -> return false
             }
             CanonicalButton.BTN_SOUTH -> when {
-                template.menuConfirm == CanonicalButton.BTN_SOUTH -> onConfirm()
-                template.menuBack == CanonicalButton.BTN_SOUTH -> onBack()
+                mapping.menuConfirm == CanonicalButton.BTN_SOUTH -> onConfirm()
+                mapping.menuBack == CanonicalButton.BTN_SOUTH -> onBack()
                 else -> return false
             }
             CanonicalButton.BTN_WEST -> onWest()

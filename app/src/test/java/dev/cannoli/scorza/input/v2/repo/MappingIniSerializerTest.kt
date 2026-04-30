@@ -3,17 +3,17 @@ package dev.cannoli.scorza.input.v2.repo
 import dev.cannoli.scorza.input.v2.AnalogRole
 import dev.cannoli.scorza.input.v2.CanonicalButton
 import dev.cannoli.scorza.input.v2.DeviceMatchRule
-import dev.cannoli.scorza.input.v2.DeviceTemplate
+import dev.cannoli.scorza.input.v2.DeviceMapping
 import dev.cannoli.scorza.input.v2.GlyphStyle
 import dev.cannoli.scorza.input.v2.HatDirection
 import dev.cannoli.scorza.input.v2.InputBinding
-import dev.cannoli.scorza.input.v2.TemplateSource
+import dev.cannoli.scorza.input.v2.MappingSource
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-class TemplateIniSerializerTest {
+class MappingIniSerializerTest {
 
-    private val sample = DeviceTemplate(
+    private val sample = DeviceMapping(
         id = "stadia_controller",
         displayName = "Stadia Controller",
         match = DeviceMatchRule(
@@ -42,20 +42,20 @@ class TemplateIniSerializerTest {
         glyphStyle = GlyphStyle.PLUMBER,
         excludeFromGameplay = false,
         defaultControllerTypeId = null,
-        source = TemplateSource.RETROARCH_AUTOCONFIG,
+        source = MappingSource.RETROARCH_AUTOCONFIG,
         userEdited = false,
     )
 
     @Test
     fun round_trip_preserves_all_fields() {
-        val ini = TemplateIniSerializer.toIni(sample)
-        val parsed = TemplateIniSerializer.fromIni(id = "stadia_controller", ini = ini)
+        val ini = MappingIniSerializer.toIni(sample)
+        val parsed = MappingIniSerializer.fromIni(id = "stadia_controller", ini = ini)
         assertEquals(sample, parsed)
     }
 
     @Test
     fun ini_text_uses_expected_section_names() {
-        val ini = TemplateIniSerializer.toIni(sample)
+        val ini = MappingIniSerializer.toIni(sample)
         assertEquals(true, ini.contains("[meta]"))
         assertEquals(true, ini.contains("[match]"))
         assertEquals(true, ini.contains("[menu]"))
@@ -93,7 +93,7 @@ class TemplateIniSerializerTest {
             [binding.NOT_A_REAL_BUTTON]
             0=button:99
         """.trimIndent()
-        val t = TemplateIniSerializer.fromIni("test", ini)
+        val t = MappingIniSerializer.fromIni("test", ini)
         assertEquals(setOf(CanonicalButton.BTN_SOUTH), t.bindings.keys)
     }
 
@@ -113,8 +113,8 @@ class TemplateIniSerializerTest {
                 )
             )
         )
-        val ini = TemplateIniSerializer.toIni(template)
-        val parsed = TemplateIniSerializer.fromIni("stadia_controller", ini)
+        val ini = MappingIniSerializer.toIni(template)
+        val parsed = MappingIniSerializer.fromIni("stadia_controller", ini)
         val axis = parsed.bindings[CanonicalButton.BTN_L3]!![0] as InputBinding.Axis
         assertEquals(AnalogRole.LEFT_STICK_X, axis.analogRole)
     }

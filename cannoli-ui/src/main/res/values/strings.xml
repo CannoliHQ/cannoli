@@ -98,6 +98,64 @@
     <string name="setting_updater">Updater</string>
     <string name="setting_time_format">Time Format</string>
     <string name="setting_profiles">Profiles</string>
+    <string name="setting_controllers">Controllers</string>
+    <string name="controllers_connected_now">Connected Now</string>
+    <string name="controllers_saved_mappings">Saved Mappings</string>
+    <string name="controllers_empty_connected">Connect a controller to start.</string>
+    <string name="controllers_built_in">Built-in Controls</string>
+    <string name="controllers_mapping_not_found">Mapping not found.</string>
+    <string name="controllers_edit_buttons">Edit Buttons</string>
+    <string name="controllers_confirm_button">Confirm Button</string>
+    <string name="controllers_glyph_style">Glyph Style</string>
+    <string name="controllers_exclude_from_gameplay">Exclude From Gameplay</string>
+    <string name="controllers_forget">Forget Controller</string>
+    <string name="controllers_reset_defaults">Reset Defaults</string>
+    <string name="controllers_not_bound">Not bound</string>
+
+    <!-- Confirm button values -->
+    <string name="value_east" translatable="false">EAST</string>
+    <string name="value_south" translatable="false">SOUTH</string>
+
+    <!-- Canonical button labels -->
+    <string name="canonical_dpad_up">D-Pad Up</string>
+    <string name="canonical_dpad_down">D-Pad Down</string>
+    <string name="canonical_dpad_left">D-Pad Left</string>
+    <string name="canonical_dpad_right">D-Pad Right</string>
+    <string name="canonical_l1" translatable="false">L1</string>
+    <string name="canonical_r1" translatable="false">R1</string>
+    <string name="canonical_l2" translatable="false">L2</string>
+    <string name="canonical_r2" translatable="false">R2</string>
+    <string name="canonical_l3">L3</string>
+    <string name="canonical_r3">R3</string>
+    <string name="canonical_start">Start</string>
+    <string name="canonical_select">Select</string>
+    <string name="canonical_menu">Menu</string>
+
+    <!-- Glyph face button labels -->
+    <string name="glyph_plumber_south" translatable="false">B</string>
+    <string name="glyph_plumber_east" translatable="false">A</string>
+    <string name="glyph_plumber_west" translatable="false">Y</string>
+    <string name="glyph_plumber_north" translatable="false">X</string>
+    <string name="glyph_redmond_south" translatable="false">A</string>
+    <string name="glyph_redmond_east" translatable="false">B</string>
+    <string name="glyph_redmond_west" translatable="false">X</string>
+    <string name="glyph_redmond_north" translatable="false">Y</string>
+    <string name="glyph_shapes_south">Cross</string>
+    <string name="glyph_shapes_east">Circle</string>
+    <string name="glyph_shapes_west">Square</string>
+    <string name="glyph_shapes_north">Triangle</string>
+
+    <!-- Hat directions -->
+    <string name="hat_up">Up</string>
+    <string name="hat_down">Down</string>
+    <string name="hat_left">Left</string>
+    <string name="hat_right">Right</string>
+
+    <!-- Binding formatters -->
+    <string name="binding_key">Key %1$d</string>
+    <string name="binding_hat">Hat %1$s</string>
+    <string name="binding_axis_pos">Axis %1$d+</string>
+    <string name="binding_axis_neg">Axis %1$d-</string>
     <string name="setting_controls">Button Mapping</string>
     <string name="setting_shortcuts">Shortcuts</string>
     <string name="setting_button_labels">Button Labels</string>

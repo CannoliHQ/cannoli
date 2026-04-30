@@ -1,11 +1,12 @@
 package dev.cannoli.scorza.input.v2.runtime
 
 import dev.cannoli.scorza.input.autoconfig.RetroArchCfgEntry
-import dev.cannoli.scorza.input.v2.repo.TemplateRepository
-import dev.cannoli.scorza.input.v2.resolver.TemplateResolver
+import dev.cannoli.scorza.input.v2.repo.MappingRepository
+import dev.cannoli.scorza.input.v2.resolver.MappingResolver
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -32,8 +33,8 @@ class ControllerV2BridgeTest {
         sourceMask = 0x2002,
     )
 
-    private fun makeResolver(): TemplateResolver {
-        val repo = TemplateRepository(tempFolder.root)
+    private fun makeResolver(): MappingResolver {
+        val repo = MappingRepository(tempFolder.root)
         val ra = listOf(
             RetroArchCfgEntry(
                 deviceName = "Stadia Controller",
@@ -42,19 +43,22 @@ class ControllerV2BridgeTest {
                 buttonBindings = mapOf("b_btn" to 96),
             ),
         )
-        return TemplateResolver(repo, ra, { dev.cannoli.ui.ConfirmButton.EAST }, tempFolder.root)
+        val hints = dev.cannoli.scorza.input.v2.hints.ControllerHintTable.fromJson(
+            """{"default":{"menuConfirm":"BTN_EAST","glyphStyle":"PLUMBER"}}"""
+        )
+        return MappingResolver(repo, ra, hints, tempFolder.root)
     }
 
     private fun makeBridge(
-        resolver: TemplateResolver = makeResolver(),
+        resolver: MappingResolver = makeResolver(),
         portRouter: PortRouter = PortRouter(),
-        activeTemplateHolder: ActiveTemplateHolder = ActiveTemplateHolder(),
+        activeMappingHolder: ActiveMappingHolder = ActiveMappingHolder(),
         clock: () -> Long = { 1_000L },
         buildModel: String = "Pixel",
     ): ControllerV2Bridge = ControllerV2Bridge(
         resolver = resolver,
         portRouter = portRouter,
-        activeTemplateHolder = activeTemplateHolder,
+        activeMappingHolder = activeMappingHolder,
         clock = clock,
         buildModel = buildModel,
     )
@@ -62,8 +66,8 @@ class ControllerV2BridgeTest {
     @Test
     fun connect_real_controller_routes_through_resolver_router_active_holder() {
         val portRouter = PortRouter()
-        val active = ActiveTemplateHolder()
-        val bridge = makeBridge(portRouter = portRouter, activeTemplateHolder = active)
+        val active = ActiveMappingHolder()
+        val bridge = makeBridge(portRouter = portRouter, activeMappingHolder = active)
 
         bridge.handleDeviceAdded(stadiaFacts)
         bridge.markLaunchTrigger(stadiaFacts.androidDeviceId)
@@ -76,8 +80,8 @@ class ControllerV2BridgeTest {
     @Test
     fun connect_non_gamepad_device_is_ignored() {
         val portRouter = PortRouter()
-        val active = ActiveTemplateHolder()
-        val bridge = makeBridge(portRouter = portRouter, activeTemplateHolder = active)
+        val active = ActiveMappingHolder()
+        val bridge = makeBridge(portRouter = portRouter, activeMappingHolder = active)
 
         bridge.handleDeviceAdded(mouseFacts)
 
@@ -100,8 +104,8 @@ class ControllerV2BridgeTest {
     @Test
     fun built_in_handheld_with_zero_vid_pid_is_accepted_and_marked_builtin() {
         val portRouter = PortRouter()
-        val active = ActiveTemplateHolder()
-        val bridge = makeBridge(portRouter = portRouter, activeTemplateHolder = active)
+        val active = ActiveMappingHolder()
+        val bridge = makeBridge(portRouter = portRouter, activeMappingHolder = active)
         val builtin = ControllerV2Bridge.DeviceFacts(
             androidDeviceId = 1001,
             descriptor = "builtin-1",
@@ -164,7 +168,7 @@ class ControllerV2BridgeTest {
         val bridge = ControllerV2Bridge(
             resolver = makeResolver(),
             portRouter = portRouter,
-            activeTemplateHolder = ActiveTemplateHolder(),
+            activeMappingHolder = ActiveMappingHolder(),
             clock = { ticks },
             buildModel = "Pixel",
         )
@@ -176,5 +180,26 @@ class ControllerV2BridgeTest {
         bridge.markLaunchTrigger(7)
         assertEquals(0, portRouter.portFor(7))
         assertEquals(1, portRouter.portFor(9))
+    }
+
+    @Test
+    fun device_added_and_removed_callbacks_fire_only_after_initial_enumeration() {
+        val added = mutableListOf<Int>()
+        val removed = mutableListOf<Int>()
+        val bridge = makeBridge()
+        bridge.onDeviceAdded = { d -> added.add(d.androidDeviceId) }
+        bridge.onDeviceRemoved = { id -> removed.add(id) }
+
+        bridge.handleDeviceAdded(stadiaFacts)
+        assertTrue(added.isEmpty())
+
+        bridge.markInitialEnumerationDone()
+
+        val second = stadiaFacts.copy(androidDeviceId = 2, descriptor = "stadia-2")
+        bridge.handleDeviceAdded(second)
+        assertEquals(listOf(2), added)
+
+        bridge.handleDeviceRemoved(2)
+        assertEquals(listOf(2), removed)
     }
 }

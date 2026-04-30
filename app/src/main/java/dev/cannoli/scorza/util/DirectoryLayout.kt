@@ -23,7 +23,7 @@ object DirectoryLayout {
             paths.configOverridesCores,
             paths.configOverridesSystems,
             paths.configOverridesGames,
-            paths.configInputTemplates,
+            paths.configInputMappings,
             paths.backupDir,
             paths.guidesDir,
             paths.wallpapersDir,

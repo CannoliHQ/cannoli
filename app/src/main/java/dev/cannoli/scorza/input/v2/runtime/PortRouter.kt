@@ -3,7 +3,7 @@ package dev.cannoli.scorza.input.v2.runtime
 import dev.cannoli.scorza.input.v2.AnalogRole
 import dev.cannoli.scorza.input.v2.CanonicalButton
 import dev.cannoli.scorza.input.v2.ConnectedDevice
-import dev.cannoli.scorza.input.v2.DeviceTemplate
+import dev.cannoli.scorza.input.v2.DeviceMapping
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,9 +12,9 @@ class PortRouter(private val maxPorts: Int = 4) {
 
     private data class Entry(
         val device: ConnectedDevice,
-        val template: DeviceTemplate,
+        var mapping: DeviceMapping,
         var port: Int?,
-        val evaluator: PortEvaluator,
+        var evaluator: PortEvaluator,
     )
 
     private val entries = linkedMapOf<Int, Entry>()
@@ -23,9 +23,9 @@ class PortRouter(private val maxPorts: Int = 4) {
     private val _routes = MutableStateFlow<Map<Int, Int>>(emptyMap())
     val routes: StateFlow<Map<Int, Int>> = _routes.asStateFlow()
 
-    fun onConnect(device: ConnectedDevice, template: DeviceTemplate) {
+    fun onConnect(device: ConnectedDevice, mapping: DeviceMapping) {
         if (entries.containsKey(device.androidDeviceId)) return
-        entries[device.androidDeviceId] = Entry(device, template, port = null, evaluator = PortEvaluator(template))
+        entries[device.androidDeviceId] = Entry(device, mapping, port = null, evaluator = PortEvaluator(mapping))
         recompute()
     }
 
@@ -60,19 +60,19 @@ class PortRouter(private val maxPorts: Int = 4) {
             .toMutableList()
         val launchEntry = launcherTriggerDeviceId?.let { entries[it] }
 
-        val externalPresent = entries.values.any { !it.device.isBuiltIn && !it.template.excludeFromGameplay }
+        val externalPresent = entries.values.any { !it.device.isBuiltIn && !it.mapping.excludeFromGameplay }
         val externalLaunched = launchEntry != null && !launchEntry.device.isBuiltIn
 
         val occupied = BooleanArray(maxPorts)
 
-        if (launchEntry != null && !launchEntry.template.excludeFromGameplay) {
+        if (launchEntry != null && !launchEntry.mapping.excludeFromGameplay) {
             launchEntry.port = 0
             occupied[0] = true
         }
 
         for (entry in ordered) {
             if (entry == launchEntry) continue
-            if (entry.template.excludeFromGameplay) continue
+            if (entry.mapping.excludeFromGameplay) continue
             if (entry.device.isBuiltIn && externalPresent && externalLaunched) continue
             val nextFree = (0 until maxPorts).firstOrNull { !occupied[it] } ?: continue
             entry.port = nextFree
@@ -91,11 +91,32 @@ class PortRouter(private val maxPorts: Int = 4) {
     fun evaluatorFor(androidDeviceId: Int): PortEvaluator? =
         entries[androidDeviceId]?.evaluator
 
-    fun templateFor(androidDeviceId: Int): DeviceTemplate? =
-        entries[androidDeviceId]?.template
+    fun mappingFor(androidDeviceId: Int): DeviceMapping? =
+        entries[androidDeviceId]?.mapping
 
-    fun templateForPort(port: Int): DeviceTemplate? =
-        entries.values.firstOrNull { it.port == port }?.template
+    data class Snapshot(
+        val androidDeviceId: Int,
+        val device: ConnectedDevice,
+        val mapping: DeviceMapping,
+        val port: Int?,
+    )
+
+    fun snapshotEntries(): List<Snapshot> = entries.values.map {
+        Snapshot(it.device.androidDeviceId, it.device, it.mapping, it.port)
+    }
+
+    fun updateMapping(mapping: DeviceMapping, rebuildEvaluator: Boolean = false) {
+        for (entry in entries.values) {
+            if (entry.mapping.id == mapping.id) {
+                entry.mapping = mapping
+                if (rebuildEvaluator) entry.evaluator = PortEvaluator(mapping)
+            }
+        }
+        recompute()
+    }
+
+    fun mappingForPort(port: Int): DeviceMapping? =
+        entries.values.firstOrNull { it.port == port }?.mapping
 
     fun snapshotForPort(port: Int): PortSnapshot? =
         entries.values.firstOrNull { it.port == port }?.evaluator?.snapshot()

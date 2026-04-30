@@ -118,7 +118,7 @@ class SettingsInputHandler @Inject constructor(
                 pushDirectoryBrowser(BrowsePurpose.ROM_DIRECTORY, startPath)
             }
             "colors" -> nav.push(LauncherScreen.ColorList(colors = settingsViewModel.getColorEntries()))
-            "profiles" -> nav.push(LauncherScreen.ProfileList(profiles = profileManager.listProfiles()))
+            "controllers" -> nav.push(LauncherScreen.Controllers())
             "shortcuts" -> nav.push(LauncherScreen.ShortcutBinding(shortcuts = globalOverrides.readShortcuts()))
             "input_tester" -> {
                 inputTesterController.enter()

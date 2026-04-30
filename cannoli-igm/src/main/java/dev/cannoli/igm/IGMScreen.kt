@@ -21,4 +21,17 @@ sealed class IGMScreen {
     data class AchievementDetail(override val selectedIndex: Int = 0, val achievement: AchievementInfo, val parentIndex: Int = 0) : IGMScreen()
     data class GuidePicker(override val selectedIndex: Int = 0) : IGMScreen()
     data class Guide(override val selectedIndex: Int = 0, val filePath: String, val page: Int = 0, val textZoom: Int = 1) : IGMScreen()
+
+    data class Controllers(override val selectedIndex: Int = 0) : IGMScreen()
+    data class ControllerDetail(
+        override val selectedIndex: Int = 0,
+        val mappingId: String,
+        val androidDeviceId: Int? = null,
+    ) : IGMScreen()
+    data class EditButtons(
+        override val selectedIndex: Int = 0,
+        val mappingId: String,
+        val listeningCanonical: String? = null,
+        val countdownMs: Int = 0,
+    ) : IGMScreen()
 }

@@ -1,6 +1,6 @@
 package dev.cannoli.scorza.input.v2
 
-enum class TemplateSource {
+enum class MappingSource {
     BUNDLED,
     RETROARCH_AUTOCONFIG,
     USER_WIZARD,

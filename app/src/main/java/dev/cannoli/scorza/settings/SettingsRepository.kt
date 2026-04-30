@@ -6,7 +6,6 @@ import android.os.Handler
 import android.os.HandlerThread
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.cannoli.ui.ButtonLabelSet
-import dev.cannoli.ui.ConfirmButton
 import org.json.JSONObject
 import java.io.File
 import javax.inject.Inject
@@ -139,10 +138,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext context: Contex
     var buttonLabelSet: ButtonLabelSet
         get() = ButtonLabelSet.fromString(jsonRead { if (has(KEY_BUTTON_LABEL_SET)) optString(KEY_BUTTON_LABEL_SET) else null })
         set(value) = jsonWrite { put(KEY_BUTTON_LABEL_SET, value.name) }
-
-    var confirmButton: ConfirmButton
-        get() = ConfirmButton.fromString(jsonRead { if (has(KEY_CONFIRM_BUTTON)) optString(KEY_CONFIRM_BUTTON) else null })
-        set(value) = jsonWrite { put(KEY_CONFIRM_BUTTON, value.name) }
 
     var mainMenuQuit: Boolean
         get() = jsonRead { optBoolean(KEY_MAIN_MENU_QUIT, false) }
@@ -344,7 +339,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext context: Contex
         private const val KEY_CACHED_UPDATE_APK = "cached_update_apk"
         private const val KEY_CACHED_UPDATE_CHANGELOG = "cached_update_changelog"
         private const val KEY_BUTTON_LABEL_SET = "button_label_set"
-        private const val KEY_CONFIRM_BUTTON = "confirm_button"
         private const val KEY_CONTENT_MODE = "content_mode"
         private const val KEY_DEBUG_LOGGING = "debug_logging"
         private const val KEY_ALWAYS_SAVE_ON_QUIT = "always_save_on_quit"

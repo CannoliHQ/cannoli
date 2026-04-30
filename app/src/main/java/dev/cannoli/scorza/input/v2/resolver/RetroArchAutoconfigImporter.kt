@@ -9,9 +9,10 @@ import dev.cannoli.scorza.input.v2.AnalogRole
 import dev.cannoli.scorza.input.v2.CanonicalButton
 import dev.cannoli.scorza.input.v2.ConnectedDevice
 import dev.cannoli.scorza.input.v2.DeviceMatchRule
-import dev.cannoli.scorza.input.v2.DeviceTemplate
+import dev.cannoli.scorza.input.v2.DeviceMapping
 import dev.cannoli.scorza.input.v2.InputBinding
-import dev.cannoli.scorza.input.v2.TemplateSource
+import dev.cannoli.scorza.input.v2.MappingSource
+import dev.cannoli.scorza.input.v2.hints.ControllerHintTable
 
 object RetroArchAutoconfigImporter {
 
@@ -35,7 +36,11 @@ object RetroArchAutoconfigImporter {
         "menu_toggle_btn" to CanonicalButton.BTN_MENU,
     )
 
-    fun import(entry: RetroArchCfgEntry, device: ConnectedDevice): DeviceTemplate {
+    fun import(
+        entry: RetroArchCfgEntry,
+        device: ConnectedDevice,
+        hints: ControllerHintTable,
+    ): DeviceMapping {
         val bindings = mutableMapOf<CanonicalButton, MutableList<InputBinding>>()
 
         for ((raKey, keyCode) in entry.buttonBindings) {
@@ -74,8 +79,21 @@ object RetroArchAutoconfigImporter {
                 )
         }
 
+        // Seed BTN_MENU with KEYCODE_BACK (4) + KEYCODE_BUTTON_MODE (110) if cfg didn't supply one.
+        val menuBindings = bindings.getOrPut(CanonicalButton.BTN_MENU) { mutableListOf() }
+        for (defaultKey in listOf(4, 110)) {
+            if (menuBindings.none { it is InputBinding.Button && it.keyCode == defaultKey }) {
+                menuBindings.add(InputBinding.Button(defaultKey))
+            }
+        }
+
         val safeId = stableIdFor(device, entry)
-        return DeviceTemplate(
+        val hint = hints.lookup(
+            vendorId = device.vendorId,
+            productId = device.productId,
+            buildModel = device.androidBuildModel,
+        )
+        return DeviceMapping(
             id = safeId,
             displayName = entry.deviceName.ifEmpty { device.name.ifEmpty { "Controller" } },
             match = DeviceMatchRule(
@@ -84,8 +102,17 @@ object RetroArchAutoconfigImporter {
                 productId = entry.productId ?: device.productId.takeIf { it != 0 },
             ),
             bindings = bindings,
-            source = TemplateSource.RETROARCH_AUTOCONFIG,
+            menuConfirm = hint.menuConfirm,
+            menuBack = oppositeOf(hint.menuConfirm),
+            glyphStyle = hint.glyphStyle,
+            source = MappingSource.RETROARCH_AUTOCONFIG,
         )
+    }
+
+    private fun oppositeOf(button: CanonicalButton): CanonicalButton = when (button) {
+        CanonicalButton.BTN_EAST -> CanonicalButton.BTN_SOUTH
+        CanonicalButton.BTN_SOUTH -> CanonicalButton.BTN_EAST
+        else -> CanonicalButton.BTN_SOUTH
     }
 
     private fun mapHatRefToAxisAndDirection(ref: HatRef): Pair<Int, HatDirection>? {

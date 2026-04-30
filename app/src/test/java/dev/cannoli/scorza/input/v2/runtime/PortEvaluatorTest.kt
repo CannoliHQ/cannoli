@@ -3,10 +3,10 @@ package dev.cannoli.scorza.input.v2.runtime
 import dev.cannoli.scorza.input.v2.AnalogRole
 import dev.cannoli.scorza.input.v2.CanonicalButton
 import dev.cannoli.scorza.input.v2.DeviceMatchRule
-import dev.cannoli.scorza.input.v2.DeviceTemplate
+import dev.cannoli.scorza.input.v2.DeviceMapping
 import dev.cannoli.scorza.input.v2.HatDirection
 import dev.cannoli.scorza.input.v2.InputBinding
-import dev.cannoli.scorza.input.v2.TemplateSource
+import dev.cannoli.scorza.input.v2.MappingSource
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -15,12 +15,12 @@ class PortEvaluatorTest {
 
     private fun template(
         bindings: Map<CanonicalButton, List<InputBinding>>,
-    ) = DeviceTemplate(
+    ) = DeviceMapping(
         id = "t",
         displayName = "T",
         match = DeviceMatchRule(),
         bindings = bindings,
-        source = TemplateSource.RETROARCH_AUTOCONFIG,
+        source = MappingSource.RETROARCH_AUTOCONFIG,
     )
 
     @Test

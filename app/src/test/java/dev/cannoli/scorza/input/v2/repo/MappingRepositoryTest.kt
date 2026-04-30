@@ -2,9 +2,9 @@ package dev.cannoli.scorza.input.v2.repo
 
 import dev.cannoli.scorza.input.v2.CanonicalButton
 import dev.cannoli.scorza.input.v2.DeviceMatchRule
-import dev.cannoli.scorza.input.v2.DeviceTemplate
+import dev.cannoli.scorza.input.v2.DeviceMapping
 import dev.cannoli.scorza.input.v2.InputBinding
-import dev.cannoli.scorza.input.v2.TemplateSource
+import dev.cannoli.scorza.input.v2.MappingSource
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -13,18 +13,18 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 
-class TemplateRepositoryTest {
+class MappingRepositoryTest {
 
     @get:Rule val tempFolder = TemporaryFolder()
 
-    private fun makeRepo() = TemplateRepository(tempFolder.root)
+    private fun makeRepo() = MappingRepository(tempFolder.root)
 
-    private fun makeTemplate(id: String) = DeviceTemplate(
+    private fun makeTemplate(id: String) = DeviceMapping(
         id = id,
         displayName = id,
         match = DeviceMatchRule(name = id, vendorId = 1, productId = 2),
         bindings = mapOf(CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96))),
-        source = TemplateSource.RETROARCH_AUTOCONFIG,
+        source = MappingSource.RETROARCH_AUTOCONFIG,
     )
 
     @Test

@@ -1,26 +1,25 @@
 package dev.cannoli.scorza.input.v2.resolver
 
 import dev.cannoli.scorza.input.autoconfig.RetroArchCfgEntry
-import dev.cannoli.scorza.input.v2.CanonicalButton
 import dev.cannoli.scorza.input.v2.ConnectedDevice
-import dev.cannoli.scorza.input.v2.DeviceTemplate
-import dev.cannoli.scorza.input.v2.repo.TemplateRepository
-import dev.cannoli.ui.ConfirmButton
+import dev.cannoli.scorza.input.v2.DeviceMapping
+import dev.cannoli.scorza.input.v2.hints.ControllerHintTable
+import dev.cannoli.scorza.input.v2.repo.MappingRepository
 import java.io.File
 
-data class ResolvedTemplate(
-    val template: DeviceTemplate,
+data class ResolvedMapping(
+    val mapping: DeviceMapping,
     val persistent: Boolean,
 )
 
-class TemplateResolver(
-    private val repository: TemplateRepository,
+class MappingResolver(
+    private val repository: MappingRepository,
     private val bundledRetroArchEntries: List<RetroArchCfgEntry>,
-    private val menuConvention: () -> ConfirmButton,
-    private val templatesDir: File? = null,
+    private val hints: ControllerHintTable,
+    private val mappingsDir: File? = null,
 ) {
 
-    fun resolve(device: ConnectedDevice): ResolvedTemplate {
+    fun resolve(device: ConnectedDevice): ResolvedMapping {
         val matchInput = device.toMatchInput()
 
         val candidates = repository.list()
@@ -28,36 +27,24 @@ class TemplateResolver(
             .filter { it.second > 0 }
         if (candidates.isNotEmpty()) {
             val best = candidates.maxWithOrNull(
-                compareBy<Pair<DeviceTemplate, Int>>({ it.second })
-                    .thenBy { templatesDir?.let { dir -> File(dir, "${it.first.id}.ini").lastModified() } ?: 0L }
+                compareBy<Pair<DeviceMapping, Int>>({ it.second })
+                    .thenBy { mappingsDir?.let { dir -> File(dir, "${it.first.id}.ini").lastModified() } ?: 0L }
             )
-            if (best != null) {
-                val template = if (best.first.userEdited) best.first else applyMenuConvention(best.first)
-                return ResolvedTemplate(template, persistent = true)
-            }
+            if (best != null) return ResolvedMapping(best.first, persistent = true)
         }
 
         val raMatch = bestRetroArchEntry(device)
         if (raMatch != null) {
-            val template = applyMenuConvention(RetroArchAutoconfigImporter.import(raMatch, device))
-            return ResolvedTemplate(template, persistent = false)
-        }
-
-        val fallback = applyMenuConvention(AndroidDefaultTemplateFactory.create(device))
-        return ResolvedTemplate(fallback, persistent = false)
-    }
-
-    private fun applyMenuConvention(template: DeviceTemplate): DeviceTemplate {
-        return when (menuConvention()) {
-            ConfirmButton.EAST -> template.copy(
-                menuConfirm = CanonicalButton.BTN_EAST,
-                menuBack = CanonicalButton.BTN_SOUTH,
-            )
-            ConfirmButton.SOUTH -> template.copy(
-                menuConfirm = CanonicalButton.BTN_SOUTH,
-                menuBack = CanonicalButton.BTN_EAST,
+            return ResolvedMapping(
+                RetroArchAutoconfigImporter.import(raMatch, device, hints),
+                persistent = false,
             )
         }
+
+        return ResolvedMapping(
+            AndroidDefaultMappingFactory.create(device, hints),
+            persistent = false,
+        )
     }
 
     private fun bestRetroArchEntry(device: ConnectedDevice): RetroArchCfgEntry? {
