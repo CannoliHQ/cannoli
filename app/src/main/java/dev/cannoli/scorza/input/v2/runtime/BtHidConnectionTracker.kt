@@ -79,15 +79,33 @@ class BtHidConnectionTracker(
     }
 
     /**
-     * Pop the queue entry whose bondedName equals [inputDeviceName] and return its MAC, or null
-     * when there's no name match. Used in pass 1 of the bridge settle so honest controllers
-     * claim their own MAC regardless of enumeration order.
+     * Pop the best name-match for [inputDeviceName] from the queue and return its MAC.
+     *
+     * Match priority:
+     *   1) exact equality (e.g. "DualSense Wireless Controller" == bondedName)
+     *   2) bondedName is a substring of inputDeviceName, picking the longest match. Handles
+     *      kernel-decorated names like "Gamepad Consumer Control" carrying bonded "Gamepad",
+     *      or "Nintendo Switch Pro Controller" carrying bonded "Pro Controller".
+     *
+     * Substring matches require the bondedName to be at least 4 chars to avoid spurious hits
+     * on single-word entries like "Pad" or "Joy".
      */
     fun claimByName(inputDeviceName: String): String? {
         drainStale()
-        val match = queue.firstOrNull { it.bondedName == inputDeviceName } ?: return null
-        queue.remove(match)
-        return match.mac
+        if (inputDeviceName.isEmpty()) return null
+        val exact = queue.firstOrNull { it.bondedName == inputDeviceName }
+        if (exact != null) {
+            queue.remove(exact)
+            return exact.mac
+        }
+        val best = queue
+            .filter { it.bondedName.length >= 4 && inputDeviceName.contains(it.bondedName, ignoreCase = true) }
+            .maxByOrNull { it.bondedName.length }
+        if (best != null) {
+            queue.remove(best)
+            return best.mac
+        }
+        return null
     }
 
     /**
