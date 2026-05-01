@@ -18,13 +18,13 @@ import dev.cannoli.ui.theme.Radius
 @Composable
 fun BoxScope.OsdPill(
     message: String,
-    bottomPadding: androidx.compose.ui.unit.Dp = 25.dp
+    topPadding: androidx.compose.ui.unit.Dp = 50.dp,
 ) {
     val colors = LocalCannoliColors.current
     Box(
         modifier = Modifier
-            .align(Alignment.BottomCenter)
-            .padding(bottom = bottomPadding)
+            .align(Alignment.TopCenter)
+            .padding(top = topPadding)
             .clip(Radius.Pill)
             .background(colors.highlight)
             .padding(horizontal = 16.dp, vertical = 6.dp)
