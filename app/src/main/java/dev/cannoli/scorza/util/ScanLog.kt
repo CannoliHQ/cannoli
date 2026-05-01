@@ -31,6 +31,7 @@ object ScanLog {
     }
 
     fun write(message: String) {
+        if (!LoggingPrefs.romScan) return
         synchronized(lock) {
             val f = file ?: return
             try {

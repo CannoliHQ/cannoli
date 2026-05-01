@@ -196,7 +196,12 @@
     <string name="setting_ra_logout">Logout</string>
     <string name="setting_ra_status">Logged in as</string>
     <string name="setting_kitchen_toggle">File Server</string>
-    <string name="setting_debug_logging">Debug Logging</string>
+    <string name="setting_logging">Logging</string>
+    <string name="logging_title">Logging</string>
+    <string name="logging_file_scanner">File Scanner</string>
+    <string name="logging_rom_scan">ROM Scan</string>
+    <string name="logging_input">Input</string>
+    <string name="logging_session">Game Session</string>
     <string name="setting_input_tester">Input Tester</string>
     <string name="input_tester_none">—</string>
     <string name="input_tester_device_format">P%1$d • %2$s • dev%3$d</string>

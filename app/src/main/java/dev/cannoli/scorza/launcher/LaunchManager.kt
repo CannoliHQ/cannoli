@@ -413,7 +413,7 @@ class LaunchManager(
     }
 
     private fun debugLog(message: String) {
-        if (!settings.debugLogging) return
+        if (!dev.cannoli.scorza.util.LoggingPrefs.session) return
         try {
             val dir = CannoliPaths(settings.sdCardRoot).logsDir
             dir.mkdirs()
@@ -448,7 +448,7 @@ class LaunchManager(
             colorAccent = settings.colorAccent,
             colorTitle = settings.colorTitle,
             font = settings.font,
-            debugLogging = settings.debugLogging,
+            debugLogging = settings.loggingSession,
             raUsername = settings.raUsername,
             raToken = settings.raToken,
             raPassword = settings.raPassword,

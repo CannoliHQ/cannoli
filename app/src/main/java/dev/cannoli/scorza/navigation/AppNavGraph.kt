@@ -50,6 +50,7 @@ import dev.cannoli.scorza.ui.screens.DirectoryBrowserScreen
 import dev.cannoli.scorza.ui.screens.GameListScreen
 import dev.cannoli.scorza.ui.screens.InputTesterScreen
 import dev.cannoli.scorza.ui.screens.InstallingScreen
+import dev.cannoli.scorza.ui.screens.LoggingSettingsScreen
 import dev.cannoli.scorza.ui.screens.KeyboardInputState
 import dev.cannoli.scorza.ui.screens.PortraitMarginOverlay
 import dev.cannoli.scorza.ui.screens.SettingsScreen
@@ -143,6 +144,13 @@ sealed class LauncherScreen {
         override val scrollTarget: Int = 0,
     ) : LauncherScreen(), ScrollableScreen {
         override val itemCount: Int get() = dev.cannoli.scorza.input.v2.CanonicalButton.entries.size
+        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
+    }
+    data class LoggingSettings(
+        override val selectedIndex: Int = 0,
+        override val scrollTarget: Int = 0,
+    ) : LauncherScreen(), ScrollableScreen {
+        override val itemCount: Int get() = dev.cannoli.scorza.util.LoggingPrefs.Category.entries.size
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
     }
     data class ShortcutBinding(override val selectedIndex: Int = 0, override val scrollTarget: Int = 0, val shortcuts: Map<ShortcutAction, Set<Int>> = emptyMap(), val listening: Boolean = false, val heldKeys: Set<Int> = emptySet(), val countdownMs: Int = 0) : LauncherScreen(), ScrollableScreen {
@@ -819,6 +827,16 @@ fun AppNavGraph(
                     buttonStyle = labels,
                 )
             }
+            is LauncherScreen.LoggingSettings -> LoggingSettingsScreen(
+                screen = currentScreen,
+                modifier = Modifier.fillMaxSize(),
+                backgroundImagePath = appSettings.backgroundImagePath,
+                backgroundTint = appSettings.backgroundTint,
+                listFontSize = listFontSize,
+                listLineHeight = listLineHeight,
+                listVerticalPadding = listVerticalPadding,
+                buttonStyle = labels,
+            )
         }
 
         val systemListState = systemListViewModel?.state?.collectAsState()?.value

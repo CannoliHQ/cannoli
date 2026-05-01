@@ -119,6 +119,7 @@ class SettingsInputHandler @Inject constructor(
             }
             "colors" -> nav.push(LauncherScreen.ColorList(colors = settingsViewModel.getColorEntries()))
             "controllers" -> nav.push(LauncherScreen.Controllers())
+            "logging" -> nav.push(LauncherScreen.LoggingSettings())
             "shortcuts" -> nav.push(LauncherScreen.ShortcutBinding(shortcuts = globalOverrides.readShortcuts()))
             "input_tester" -> {
                 inputTesterController.enter()

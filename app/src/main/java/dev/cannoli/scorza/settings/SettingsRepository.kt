@@ -279,9 +279,21 @@ class SettingsRepository @Inject constructor(@ApplicationContext context: Contex
         get() = jsonRead { optString(KEY_CACHED_UPDATE_CHANGELOG, "") }
         set(value) = jsonWrite { if (value.isEmpty()) remove(KEY_CACHED_UPDATE_CHANGELOG) else put(KEY_CACHED_UPDATE_CHANGELOG, value) }
 
-    var debugLogging: Boolean
-        get() = jsonRead { optBoolean(KEY_DEBUG_LOGGING, false) }
-        set(value) = jsonWrite { put(KEY_DEBUG_LOGGING, value) }
+    var loggingFileScanner: Boolean
+        get() = jsonRead { optBoolean(KEY_LOGGING_FILE_SCANNER, false) }
+        set(value) = jsonWrite { put(KEY_LOGGING_FILE_SCANNER, value) }
+
+    var loggingRomScan: Boolean
+        get() = jsonRead { optBoolean(KEY_LOGGING_ROM_SCAN, false) }
+        set(value) = jsonWrite { put(KEY_LOGGING_ROM_SCAN, value) }
+
+    var loggingInput: Boolean
+        get() = jsonRead { optBoolean(KEY_LOGGING_INPUT, false) }
+        set(value) = jsonWrite { put(KEY_LOGGING_INPUT, value) }
+
+    var loggingSession: Boolean
+        get() = jsonRead { optBoolean(KEY_LOGGING_SESSION, false) }
+        set(value) = jsonWrite { put(KEY_LOGGING_SESSION, value) }
 
     var alwaysSaveOnQuit: Boolean
         get() = jsonRead { optBoolean(KEY_ALWAYS_SAVE_ON_QUIT, false) }
@@ -340,7 +352,10 @@ class SettingsRepository @Inject constructor(@ApplicationContext context: Contex
         private const val KEY_CACHED_UPDATE_CHANGELOG = "cached_update_changelog"
         private const val KEY_BUTTON_LABEL_SET = "button_label_set"
         private const val KEY_CONTENT_MODE = "content_mode"
-        private const val KEY_DEBUG_LOGGING = "debug_logging"
+        private const val KEY_LOGGING_FILE_SCANNER = "logging_file_scanner"
+        private const val KEY_LOGGING_ROM_SCAN = "logging_rom_scan"
+        private const val KEY_LOGGING_INPUT = "logging_input"
+        private const val KEY_LOGGING_SESSION = "logging_session"
         private const val KEY_ALWAYS_SAVE_ON_QUIT = "always_save_on_quit"
         private const val KEY_PORTRAIT_MARGIN_PX = "portrait_margin_px"
         private const val KEY_FGH_COLLECTION = "fgh_collection"

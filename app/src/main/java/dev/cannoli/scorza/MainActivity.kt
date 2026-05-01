@@ -155,6 +155,13 @@ class MainActivity : ComponentActivity(), ActivityActions {
         }
     }
 
+    private fun loadLoggingPrefs() {
+        dev.cannoli.scorza.util.LoggingPrefs.fileScanner = settings.loggingFileScanner
+        dev.cannoli.scorza.util.LoggingPrefs.romScan = settings.loggingRomScan
+        dev.cannoli.scorza.util.LoggingPrefs.input = settings.loggingInput
+        dev.cannoli.scorza.util.LoggingPrefs.session = settings.loggingSession
+    }
+
     private fun maybeRequestBluetoothConnect() {
         if (Build.VERSION.SDK_INT < 31) return
         val granted = ContextCompat.checkSelfPermission(
@@ -176,9 +183,9 @@ class MainActivity : ComponentActivity(), ActivityActions {
 
         hideSystemUI()
         editButtonsController.cancelListening()
-        // InputLog must be initialised BEFORE the bridge starts so the initial-enumeration
-        // log lines are captured. The other logs (DebugLog, ScanLog) are still init'd in
-        // initializeApp() once storage permission lands.
+        // InputLog (and the runtime logging gates) must be set up BEFORE the bridge starts so
+        // the initial-enumeration log lines are captured.
+        loadLoggingPrefs()
         if (settings.sdCardRoot.isNotEmpty()) {
             dev.cannoli.scorza.util.InputLog.init(settings.sdCardRoot)
         }
@@ -602,7 +609,8 @@ class MainActivity : ComponentActivity(), ActivityActions {
 
     private fun initializeApp() {
         val root = File(settings.sdCardRoot)
-        dev.cannoli.scorza.util.DebugLog.init(root.absolutePath, settings.debugLogging)
+        loadLoggingPrefs()
+        dev.cannoli.scorza.util.DebugLog.init(root.absolutePath)
         dev.cannoli.scorza.util.ScanLog.init(root.absolutePath)
         dev.cannoli.scorza.util.InputLog.init(root.absolutePath)
         launchManager.syncRetroArchAssets(root)

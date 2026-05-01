@@ -27,6 +27,7 @@ object InputLog {
     }
 
     fun write(message: String) {
+        if (!LoggingPrefs.input) return
         synchronized(lock) {
             val f = file ?: return
             try {

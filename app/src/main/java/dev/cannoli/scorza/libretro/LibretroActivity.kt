@@ -298,9 +298,8 @@ class LibretroActivity : ComponentActivity() {
         platformName = args.platformName
         cannoliRoot = args.cannoliRoot
         val coreName = File(corePath).nameWithoutExtension
-        val debugLogging = args.debugLogging
         sessionLog = SessionLog(
-            enabled = debugLogging,
+            enabled = dev.cannoli.scorza.util.LoggingPrefs.session,
             cannoliRoot = cannoliRoot,
             coreName = coreName,
             corePath = corePath,
@@ -562,7 +561,7 @@ class LibretroActivity : ComponentActivity() {
                 sessionLog.log("audio init: requested sampleRate=${avInfo.sampleRate}")
                 runner.initAudio(avInfo.sampleRate)
                 runner.setAudioMuted(true)
-                if (debugLogging) {
+                if (dev.cannoli.scorza.util.LoggingPrefs.session) {
                     sessionLog.log("audio ${runner.getAudioDiagnostics()}")
                     audioStatsHandler.postDelayed(audioStatsRunnable, 5000)
                 }
@@ -583,7 +582,7 @@ class LibretroActivity : ComponentActivity() {
 
                 val glesBackend = LibretroRenderer(runner)
                 glesBackend.coreTargetFps = avInfo.fps
-                if (debugLogging) {
+                if (dev.cannoli.scorza.util.LoggingPrefs.session) {
                     glesBackend.logger = { msg -> sessionLog.log(msg) }
                     ShaderPipeline.logger = { msg -> sessionLog.log(msg) }
                 }
@@ -613,7 +612,7 @@ class LibretroActivity : ComponentActivity() {
                 renderer = glesBackend
                 pushShaderParamsToRenderer()
 
-                val eglLog: (String) -> Unit = { msg -> if (debugLogging) sessionLog.log(msg) }
+                val eglLog: (String) -> Unit = { msg -> if (dev.cannoli.scorza.util.LoggingPrefs.session) sessionLog.log(msg) }
                 val glVersion = if (es3Supported) 3 else 2
                 glSurfaceView = GLSurfaceView(activity).apply {
                     setEGLContextClientVersion(glVersion)

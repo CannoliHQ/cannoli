@@ -422,7 +422,6 @@ class SettingsViewModel @Inject constructor(
             "show_update" -> settings.showUpdate = !settings.showUpdate
             "main_menu_quit" -> settings.mainMenuQuit = !settings.mainMenuQuit
             "retroarch_diy_mode" -> settings.retroArchDiyMode = !settings.retroArchDiyMode
-            "debug_logging" -> settings.debugLogging = !settings.debugLogging
             "always_save_on_quit" -> settings.alwaysSaveOnQuit = !settings.alwaysSaveOnQuit
             "portrait_margin" -> {
                 val step = when {
@@ -746,7 +745,7 @@ class SettingsViewModel @Inject constructor(
             }
         }
         "advanced" -> buildList {
-            add(SettingsItem("debug_logging", R.string.setting_debug_logging, valueRes = onOff(settings.debugLogging)))
+            add(SettingsItem("logging", R.string.setting_logging, isEditable = true))
             add(SettingsItem("retroarch_diy_mode", R.string.setting_retroarch_diy_mode, valueRes = onOff(settings.retroArchDiyMode)))
             add(SettingsItem("kitchen_code_bypass", R.string.setting_kitchen_code_bypass, valueRes = onOff(settings.kitchenCodeBypass)))
             val pkgs = detectInstalledRaPackages()

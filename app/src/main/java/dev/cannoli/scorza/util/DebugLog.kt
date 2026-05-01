@@ -11,8 +11,7 @@ object DebugLog {
     private val fmt = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
     private val lock = Any()
 
-    fun init(cannoliRoot: String, enabled: Boolean) {
-        if (!enabled) return
+    fun init(cannoliRoot: String) {
         synchronized(lock) {
             try {
                 val dir = dev.cannoli.scorza.config.CannoliPaths(cannoliRoot).logsDir
@@ -27,6 +26,7 @@ object DebugLog {
     }
 
     fun write(msg: String) {
+        if (!LoggingPrefs.fileScanner) return
         synchronized(lock) {
             val w = writer ?: return
             w.appendLine("${fmt.format(Date())} $msg")
