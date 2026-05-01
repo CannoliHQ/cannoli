@@ -82,6 +82,11 @@ class ControllersViewModel @Inject constructor(
         return persist(updated, rebuildEvaluator = false)
     }
 
+    fun renameMapping(mapping: DeviceMapping, newName: String): DeviceMapping {
+        val updated = mapping.copy(displayName = newName, userEdited = true)
+        return persist(updated, rebuildEvaluator = false)
+    }
+
     fun resetMapping(mapping: DeviceMapping) {
         repository.delete(mapping.id)
         val connected = portRouter.snapshotEntries().firstOrNull { it.mapping.id == mapping.id }

@@ -5,6 +5,7 @@ import dev.cannoli.scorza.input.ScreenInputHandler
 import dev.cannoli.scorza.input.v2.DeviceMapping
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
+import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.viewmodel.ControllersViewModel
 import javax.inject.Inject
 
@@ -26,7 +27,8 @@ class ControllerDetailInputHandler @Inject constructor(
     private fun rowCount(): Int {
         val screen = current() ?: return 0
         val mapping = resolveMapping(screen) ?: return 0
-        return if (mapping.userEdited) 5 else 4
+        // 0 edit buttons, 1 confirm, 2 glyph, 3 exclude, 4 name, 5 reset (when userEdited)
+        return if (mapping.userEdited) 6 else 5
     }
 
     override fun onUp() {
@@ -48,7 +50,12 @@ class ControllerDetailInputHandler @Inject constructor(
         val mapping = resolveMapping(screen) ?: return
         when (screen.selectedIndex) {
             0 -> nav.push(LauncherScreen.EditButtons(mappingId = mapping.id))
-            4 -> if (mapping.userEdited) {
+            4 -> nav.dialogState.value = DialogState.RenameInput(
+                gameName = "$RENAME_KEY_PREFIX${mapping.id}",
+                currentName = mapping.displayName,
+                cursorPos = mapping.displayName.length,
+            )
+            5 -> if (mapping.userEdited) {
                 viewModel.resetMapping(mapping)
                 nav.pop()
             }
@@ -78,5 +85,9 @@ class ControllerDetailInputHandler @Inject constructor(
             if (row.mapping.id == updated.id) row.copy(mapping = updated) else row
         }
         viewModel.refresh(connected)
+    }
+
+    companion object {
+        const val RENAME_KEY_PREFIX = "controller_mapping:"
     }
 }

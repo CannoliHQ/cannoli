@@ -76,6 +76,7 @@ class DialogInputHandler @Inject constructor(
     private val appsRepository: AppsRepository,
     private val launcherActions: LauncherActions,
     private val activityActions: ActivityActions,
+    private val controllersViewModel: dev.cannoli.scorza.ui.viewmodel.ControllersViewModel,
 ) {
     private val selectHoldHandler = Handler(Looper.getMainLooper())
     private val selectHoldRunnable = Runnable {
@@ -1235,6 +1236,22 @@ class DialogInputHandler @Inject constructor(
     }
 
     private fun onRenameConfirm(state: DialogState.RenameInput) {
+        if (state.gameName.startsWith(dev.cannoli.scorza.input.screen.ControllerDetailInputHandler.RENAME_KEY_PREFIX)) {
+            val mappingId = state.gameName.removePrefix(dev.cannoli.scorza.input.screen.ControllerDetailInputHandler.RENAME_KEY_PREFIX)
+            val newName = state.currentName.trim()
+            val vm = controllersViewModel
+            val mapping = vm.state.value.connected.firstOrNull { it.mapping.id == mappingId }?.mapping
+                ?: vm.state.value.savedMappings.firstOrNull { it.id == mappingId }
+            if (mapping != null && newName.isNotEmpty() && newName != mapping.displayName) {
+                val updated = vm.renameMapping(mapping, newName)
+                val connected = vm.state.value.connected.map { row ->
+                    if (row.mapping.id == updated.id) row.copy(mapping = updated) else row
+                }
+                vm.refresh(connected)
+            }
+            nav.dialogState.value = DialogState.None
+            return
+        }
         if (state.gameName == "ra_username") {
             settings.raUsername = state.currentName.trim()
             settingsViewModel.refreshSubList()

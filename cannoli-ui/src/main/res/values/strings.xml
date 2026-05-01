@@ -105,6 +105,7 @@
     <string name="controllers_built_in">Built-in Controls</string>
     <string name="controllers_mapping_not_found">Mapping not found.</string>
     <string name="controllers_edit_buttons">Edit Buttons</string>
+    <string name="controllers_name">Name</string>
     <string name="controllers_confirm_button">Confirm Button</string>
     <string name="controllers_glyph_style">Glyph Style</string>
     <string name="controllers_exclude_from_gameplay">Exclude From Gameplay</string>

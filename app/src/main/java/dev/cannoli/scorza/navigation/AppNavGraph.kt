@@ -787,6 +787,17 @@ fun AppNavGraph(
                     listVerticalPadding = listVerticalPadding,
                     buttonStyle = labels,
                 )
+                if (dialog.isFullScreen) {
+                    DialogOverlay(
+                        dialogState = dialog,
+                        backgroundImagePath = appSettings.backgroundImagePath,
+                        backgroundTint = appSettings.backgroundTint,
+                        listFontSize = listFontSize,
+                        listLineHeight = listLineHeight,
+                        listVerticalPadding = listVerticalPadding,
+                        buttonStyle = labels
+                    )
+                }
             }
             is LauncherScreen.EditButtons -> {
                 val editState by controllersViewModel.state.collectAsState()

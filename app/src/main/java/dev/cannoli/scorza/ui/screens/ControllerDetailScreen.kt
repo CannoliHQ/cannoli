@@ -37,6 +37,7 @@ import dev.cannoli.ui.theme.Spacing
 
 private sealed interface ControllerDetailEntry {
     data class KeyValue(val label: String, val value: String) : ControllerDetailEntry
+    data class Editable(val label: String, val value: String) : ControllerDetailEntry
     data class Chevron(val label: String) : ControllerDetailEntry
     data class Destructive(val label: String) : ControllerDetailEntry
 }
@@ -113,6 +114,12 @@ fun ControllerDetailScreen(
                             stringResource(R.string.value_off)
                     )
                 )
+                add(
+                    ControllerDetailEntry.Editable(
+                        label = stringResource(R.string.controllers_name),
+                        value = mapping.displayName
+                    )
+                )
                 if (mapping.userEdited) {
                     add(ControllerDetailEntry.Destructive(stringResource(R.string.controllers_reset_defaults)))
                 }
@@ -136,6 +143,14 @@ fun ControllerDetailScreen(
                 ) { _, entry, isSelected ->
                     when (entry) {
                         is ControllerDetailEntry.KeyValue -> PillRowKeyValue(
+                            label = entry.label,
+                            value = entry.value,
+                            isSelected = isSelected,
+                            fontSize = listFontSize,
+                            lineHeight = listLineHeight,
+                            verticalPadding = listVerticalPadding,
+                        )
+                        is ControllerDetailEntry.Editable -> PillRowKeyValue(
                             label = entry.label,
                             value = entry.value,
                             isSelected = isSelected,
