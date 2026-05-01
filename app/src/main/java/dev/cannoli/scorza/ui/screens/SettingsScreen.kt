@@ -112,12 +112,19 @@ fun SettingsScreen(
                 listOf(buttonStyle.back to stringResource(R.string.label_back))
             }
             val showClear = selectedItem?.key == "rom_directory" && selectedItem.valueText != null
+            val isNavInto = selectedItem?.isEditable == true
+                && selectedItem.valueText == null
+                && selectedItem.valueRes == null
+                && selectedItem.swatchColor == null
+                && !isFghCollection
             val rightItems = if (isColorItem) {
                 listOf(buttonStyle.confirm to stringResource(R.string.label_select))
             } else if (isFghCollection) {
                 listOf(buttonStyle.confirm to stringResource(R.string.label_choose))
             } else if (showClear) {
                 listOf(buttonStyle.north to stringResource(R.string.label_clear))
+            } else if (isNavInto) {
+                listOf(buttonStyle.confirm to stringResource(R.string.label_open))
             } else {
                 emptyList()
             }
