@@ -39,7 +39,7 @@ class InputTesterController(
     fun dispatchKey(event: KeyEvent, down: Boolean): Boolean {
         val device = event.device
         val deviceId = event.deviceId
-        val port = if (device != null) controllerManager.getPortForDeviceId(deviceId) ?: 0 else 0
+        val port = if (device != null) portRouter.portFor(deviceId) ?: 0 else 0
         val name = device?.name ?: keyboardDeviceName
         val keyName = KeyEvent.keyCodeToString(event.keyCode).removePrefix("KEYCODE_")
         val mappingNav = mappingNavButtonFor(portRouter.mappingForPort(port), event.keyCode)
@@ -88,7 +88,7 @@ class InputTesterController(
 
     fun dispatchMotion(event: MotionEvent): Boolean {
         val deviceId = event.deviceId
-        val port = controllerManager.getPortForDeviceId(deviceId) ?: 0
+        val port = portRouter.portFor(deviceId) ?: 0
         val name = event.device?.name ?: unknownDeviceName
         val mapping = portRouter.mappingForPort(port)
         val leftX = mostActive(mappingStickValue(mapping, AnalogRole.LEFT_STICK_X, event), event.getAxisValue(MotionEvent.AXIS_X))
@@ -271,15 +271,16 @@ class InputTesterController(
     }
 
     private fun refreshPorts() {
-        val slots = controllerManager.slots
-        val ports = slots.indices.mapNotNull { i ->
-            val slot = slots[i] ?: return@mapNotNull null
-            DeviceInfo(
-                port = i,
-                deviceId = controllerManager.getDeviceIdForPort(i) ?: -1,
-                name = slot.name,
-            )
-        }
+        val ports = portRouter.snapshotEntries()
+            .filter { it.port != null }
+            .sortedBy { it.port }
+            .map { snap ->
+                DeviceInfo(
+                    port = snap.port ?: 0,
+                    deviceId = snap.androidDeviceId,
+                    name = snap.mapping.displayName.ifEmpty { snap.device.name },
+                )
+            }
         viewModel.setConnectedPorts(ports)
     }
 }

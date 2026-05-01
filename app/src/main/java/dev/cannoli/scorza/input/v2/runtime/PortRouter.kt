@@ -18,10 +18,13 @@ class PortRouter(private val maxPorts: Int = 4) {
     )
 
     private val entries = linkedMapOf<Int, Entry>()
+    private val aliases = mutableMapOf<Int, Int>()  // alias id -> primary id
     private var launcherTriggerDeviceId: Int? = null
 
     private val _routes = MutableStateFlow<Map<Int, Int>>(emptyMap())
     val routes: StateFlow<Map<Int, Int>> = _routes.asStateFlow()
+
+    private fun resolveId(deviceId: Int): Int = aliases[deviceId] ?: deviceId
 
     fun onConnect(device: ConnectedDevice, mapping: DeviceMapping) {
         if (entries.containsKey(device.androidDeviceId)) return
@@ -30,9 +33,23 @@ class PortRouter(private val maxPorts: Int = 4) {
     }
 
     fun onDisconnect(androidDeviceId: Int) {
+        if (aliases.remove(androidDeviceId) != null) return
         entries.remove(androidDeviceId)
+        // Drop any aliases that pointed to this primary id.
+        aliases.entries.removeAll { it.value == androidDeviceId }
         if (launcherTriggerDeviceId == androidDeviceId) launcherTriggerDeviceId = null
         recompute()
+    }
+
+    fun addAlias(primaryId: Int, aliasId: Int) {
+        if (primaryId == aliasId) return
+        if (!entries.containsKey(primaryId)) return
+        // Clean up any prior entry for the alias id so we don't double-track it.
+        if (entries.containsKey(aliasId)) {
+            entries.remove(aliasId)
+            recompute()
+        }
+        aliases[aliasId] = primaryId
     }
 
     fun markLaunchTrigger(androidDeviceId: Int) {
@@ -40,7 +57,7 @@ class PortRouter(private val maxPorts: Int = 4) {
         recompute()
     }
 
-    fun portFor(androidDeviceId: Int): Int? = entries[androidDeviceId]?.port
+    fun portFor(androidDeviceId: Int): Int? = entries[resolveId(androidDeviceId)]?.port
 
     fun reassign(deviceId: Int, toPort: Int) {
         if (toPort < 0 || toPort >= maxPorts) return
@@ -89,10 +106,10 @@ class PortRouter(private val maxPorts: Int = 4) {
     }
 
     fun evaluatorFor(androidDeviceId: Int): PortEvaluator? =
-        entries[androidDeviceId]?.evaluator
+        entries[resolveId(androidDeviceId)]?.evaluator
 
     fun mappingFor(androidDeviceId: Int): DeviceMapping? =
-        entries[androidDeviceId]?.mapping
+        entries[resolveId(androidDeviceId)]?.mapping
 
     data class Snapshot(
         val androidDeviceId: Int,

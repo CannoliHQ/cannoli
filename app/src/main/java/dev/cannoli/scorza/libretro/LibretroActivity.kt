@@ -1415,7 +1415,7 @@ class LibretroActivity : ComponentActivity() {
                         push(IGMScreen.Controls(selectedIndex = profileNames.indexOf(currentProfileName).coerceAtLeast(0)))
                     }
                     IGMSettings.CONTROLLERS -> {
-                        controllersViewModel.refresh(buildConnectedRowsForIgm())
+                        controllersViewModel.refreshFromRouter()
                         push(IGMScreen.Controllers())
                     }
                     IGMSettings.SHORTCUTS -> push(IGMScreen.Shortcuts())

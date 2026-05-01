@@ -1,6 +1,7 @@
 package dev.cannoli.scorza.input.v2.runtime
 
 import dev.cannoli.scorza.input.autoconfig.RetroArchCfgEntry
+import dev.cannoli.scorza.input.v2.ConnectedDevice
 import dev.cannoli.scorza.input.v2.repo.MappingRepository
 import dev.cannoli.scorza.input.v2.resolver.MappingResolver
 import org.junit.Assert.assertEquals
@@ -49,16 +50,31 @@ class ControllerV2BridgeTest {
         return MappingResolver(repo, ra, hints, tempFolder.root)
     }
 
+    private class StubPhysicalIdentityResolver(
+        private val byKey: (ConnectedDevice) -> PhysicalIdentity? = { null },
+    ) : PhysicalIdentityResolver {
+        override fun identify(device: ConnectedDevice): PhysicalIdentity? = byKey(device)
+    }
+
+    private fun wiredFromDevice(device: ConnectedDevice): PhysicalIdentity? {
+        if (device.vendorId != 0 && device.productId != 0 && device.descriptor.isNotEmpty()) {
+            return PhysicalIdentity.Wired(device.vendorId, device.productId, device.descriptor)
+        }
+        return null
+    }
+
     private fun makeBridge(
         resolver: MappingResolver = makeResolver(),
         portRouter: PortRouter = PortRouter(),
         activeMappingHolder: ActiveMappingHolder = ActiveMappingHolder(),
+        physicalIdentityResolver: PhysicalIdentityResolver = StubPhysicalIdentityResolver { wiredFromDevice(it) },
         clock: () -> Long = { 1_000L },
         buildModel: String = "Pixel",
     ): ControllerV2Bridge = ControllerV2Bridge(
         resolver = resolver,
         portRouter = portRouter,
         activeMappingHolder = activeMappingHolder,
+        physicalIdentityResolver = physicalIdentityResolver,
         clock = clock,
         buildModel = buildModel,
     )
@@ -169,6 +185,7 @@ class ControllerV2BridgeTest {
             resolver = makeResolver(),
             portRouter = portRouter,
             activeMappingHolder = ActiveMappingHolder(),
+            physicalIdentityResolver = StubPhysicalIdentityResolver { wiredFromDevice(it) },
             clock = { ticks },
             buildModel = "Pixel",
         )

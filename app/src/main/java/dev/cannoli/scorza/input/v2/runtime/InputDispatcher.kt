@@ -65,6 +65,15 @@ class InputDispatcher @Inject constructor(
                     fired
                 } else {
                     val deltas = evaluator.evaluateKeyDown(keyCode, isAndroidRepeat = false)
+                    if (deltas.isNotEmpty()) {
+                        dev.cannoli.scorza.util.InputLog.write(
+                            "key id=$deviceId code=$keyCode -> " + deltas.joinToString(",") {
+                                if (it is CanonicalEvent.Pressed) it.button.name else "release"
+                            }
+                        )
+                    } else {
+                        dev.cannoli.scorza.util.InputLog.write("key id=$deviceId code=$keyCode -> unbound")
+                    }
                     if (deltas.isEmpty()) return false
                     activeMappingHolder.set(mapping)
                     var fired = false

@@ -145,6 +145,24 @@ class MainActivity : ComponentActivity(), ActivityActions {
         }
     }
 
+    private val bluetoothPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        dev.cannoli.scorza.util.InputLog.write("BLUETOOTH_CONNECT permission ${if (granted) "granted" else "denied"}")
+        if (granted) {
+            controllerV2Bridge.reSettleIdentities()
+            controllersViewModel.refreshFromRouter()
+        }
+    }
+
+    private fun maybeRequestBluetoothConnect() {
+        if (Build.VERSION.SDK_INT < 31) return
+        val granted = ContextCompat.checkSelfPermission(
+            this, Manifest.permission.BLUETOOTH_CONNECT
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!granted) bluetoothPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         if (Build.VERSION.SDK_INT >= 31) {
             splashScreen.setOnExitAnimationListener { it.remove() }
@@ -158,6 +176,13 @@ class MainActivity : ComponentActivity(), ActivityActions {
 
         hideSystemUI()
         editButtonsController.cancelListening()
+        // InputLog must be initialised BEFORE the bridge starts so the initial-enumeration
+        // log lines are captured. The other logs (DebugLog, ScanLog) are still init'd in
+        // initializeApp() once storage permission lands.
+        if (settings.sdCardRoot.isNotEmpty()) {
+            dev.cannoli.scorza.util.InputLog.init(settings.sdCardRoot)
+        }
+        maybeRequestBluetoothConnect()
         controllerV2Bridge.start(this)
 
         setupWireInput()
@@ -188,7 +213,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
                         val activeMapping by activeMappingHolder.active.collectAsState()
                         LaunchedEffect(navScreen) {
                             if (navScreen is LauncherScreen.Controllers) {
-                                controllersViewModel.refresh(buildConnectedRows())
+                                controllersViewModel.refreshFromRouter()
                             }
                         }
                         AppNavGraph(
@@ -579,6 +604,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
         val root = File(settings.sdCardRoot)
         dev.cannoli.scorza.util.DebugLog.init(root.absolutePath, settings.debugLogging)
         dev.cannoli.scorza.util.ScanLog.init(root.absolutePath)
+        dev.cannoli.scorza.util.InputLog.init(root.absolutePath)
         launchManager.syncRetroArchAssets(root)
         launchManager.syncRetroArchConfig(root)
         ioScope.launch { dev.cannoli.scorza.util.DirectoryLayout.ensure(root, romDir, assets, platformConfig) }

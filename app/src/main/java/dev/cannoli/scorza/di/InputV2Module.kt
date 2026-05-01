@@ -13,7 +13,9 @@ import dev.cannoli.scorza.input.autoconfig.RetroArchCfgEntry
 import dev.cannoli.scorza.input.v2.repo.MappingRepository
 import dev.cannoli.scorza.input.v2.resolver.MappingResolver
 import dev.cannoli.scorza.input.v2.runtime.ActiveMappingHolder
+import dev.cannoli.scorza.input.v2.runtime.BluetoothPhysicalIdentityResolver
 import dev.cannoli.scorza.input.v2.runtime.ControllerV2Bridge
+import dev.cannoli.scorza.input.v2.runtime.PhysicalIdentityResolver
 import dev.cannoli.scorza.input.v2.runtime.PortRouter
 import java.io.File
 import javax.inject.Qualifier
@@ -71,13 +73,23 @@ object InputV2Module {
 
     @Provides
     @Singleton
+    fun providePhysicalIdentityResolver(
+        @ApplicationContext context: Context,
+    ): PhysicalIdentityResolver = BluetoothPhysicalIdentityResolver(context)
+
+    @Provides
+    @Singleton
     fun provideControllerV2Bridge(
         resolver: MappingResolver,
         portRouter: PortRouter,
         activeMappingHolder: ActiveMappingHolder,
+        physicalIdentityResolver: PhysicalIdentityResolver,
+        @BundledRetroArchAutoconfig bundled: List<RetroArchCfgEntry>,
     ): ControllerV2Bridge = ControllerV2Bridge(
         resolver = resolver,
         portRouter = portRouter,
         activeMappingHolder = activeMappingHolder,
+        physicalIdentityResolver = physicalIdentityResolver,
+        bundledCfgs = bundled,
     )
 }
