@@ -24,6 +24,12 @@
       "vendor_id": 9414,
       "menuConfirm": "BTN_EAST",
       "glyphStyle": "PLUMBER"
+    },
+    {
+      "vendor_id": 6353,
+      "product_id": 37888,
+      "menuConfirm": "BTN_SOUTH",
+      "glyphStyle": "REDMOND"
     }
   ],
   "build_model": [
