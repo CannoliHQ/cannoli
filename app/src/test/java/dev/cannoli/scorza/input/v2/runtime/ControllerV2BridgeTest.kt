@@ -205,7 +205,7 @@ class ControllerV2BridgeTest {
         val removed = mutableListOf<Int>()
         val bridge = makeBridge()
         bridge.onDeviceAdded = { d -> added.add(d.androidDeviceId) }
-        bridge.onDeviceRemoved = { id -> removed.add(id) }
+        bridge.onDeviceRemoved = { departed -> removed.add(departed.androidDeviceId) }
 
         bridge.settleSyncForTest(listOf(stadiaFacts))
         assertTrue(added.isEmpty())

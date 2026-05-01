@@ -357,9 +357,10 @@ class MainActivity : ComponentActivity(), ActivityActions {
                 osdHandler.postDelayed(clearOsd, 3000)
             }
         }
-        controllerV2Bridge.onDeviceRemoved = { _ ->
+        controllerV2Bridge.onDeviceRemoved = { departed ->
             osdHandler.removeCallbacks(clearOsd)
-            nav.osdMessage = "Controller disconnected"
+            val portLabel = departed.port?.let { "P${it + 1}: " } ?: ""
+            nav.osdMessage = "$portLabel${departed.displayName} disconnected"
             osdHandler.postDelayed(clearOsd, 3000)
         }
     }

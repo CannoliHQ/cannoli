@@ -48,7 +48,13 @@ class ControllerV2Bridge(
     }
 
     var onDeviceAdded: ((ConnectedDevice) -> Unit)? = null
-    var onDeviceRemoved: ((Int) -> Unit)? = null
+    var onDeviceRemoved: ((DepartedDevice) -> Unit)? = null
+
+    data class DepartedDevice(
+        val androidDeviceId: Int,
+        val displayName: String,
+        val port: Int?,
+    )
 
     fun markInitialEnumerationDone() { initialEnumerationDone = true }
 
@@ -197,10 +203,18 @@ class ControllerV2Bridge(
         val existingEntryIds = portRouter.snapshotEntries().map { it.androidDeviceId }.toSet()
         val targetEntryIds = targetEntries.keys
 
+        val existingSnaps = portRouter.snapshotEntries()
         for (id in existingEntryIds - targetEntryIds) {
-            dev.cannoli.scorza.util.InputLog.write("  removed id=$id")
+            val snap = existingSnaps.firstOrNull { it.androidDeviceId == id }
+            val displayName = snap?.mapping?.displayName?.takeIf { it.isNotEmpty() }
+                ?: snap?.device?.name?.takeIf { it.isNotEmpty() }
+                ?: "Controller"
+            val port = snap?.port
+            dev.cannoli.scorza.util.InputLog.write("  removed id=$id name='$displayName' port=${port?.let { "P${it + 1}" } ?: "-"}")
             portRouter.onDisconnect(id)
-            if (initialEnumerationDone) onDeviceRemoved?.invoke(id)
+            if (initialEnumerationDone) {
+                onDeviceRemoved?.invoke(DepartedDevice(id, displayName, port))
+            }
         }
 
         for (id in targetEntryIds - existingEntryIds) {

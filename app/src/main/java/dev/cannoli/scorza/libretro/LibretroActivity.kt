@@ -2689,9 +2689,10 @@ class LibretroActivity : ComponentActivity() {
                 osdMessage = "$name connected to $portLabel"
                 osdHandler.postDelayed(clearOsdRunnable, 3000)
             }
-            controllerV2Bridge.onDeviceRemoved = {
+            controllerV2Bridge.onDeviceRemoved = { departed ->
                 osdHandler.removeCallbacks(clearOsdRunnable)
-                osdMessage = "Controller disconnected"
+                val portLabel = departed.port?.let { "P${it + 1}: " } ?: ""
+                osdMessage = "$portLabel${departed.displayName} disconnected"
                 osdHandler.postDelayed(clearOsdRunnable, 3000)
             }
         }
