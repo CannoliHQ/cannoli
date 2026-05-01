@@ -25,6 +25,15 @@ class MappingResolver(
         val candidates = repository.list()
             .map { it to it.match.score(matchInput) }
             .filter { it.second > 0 }
+            .filter { (mapping, _) ->
+                // Don't let a clone with the same VID/PID grab the handheld built-in's saved
+                // mapping. If a non-BT mapping's displayName is in the wired-only list, it
+                // represents the built-in pad (or another wired-only device). Require the
+                // InputDevice's name to match so a renamed liar can't ride in on VID/PID alone.
+                val isBuiltInMapping = mapping.match.bluetoothMac.isNullOrEmpty() &&
+                    hints.isWiredOnly(mapping.displayName)
+                !isBuiltInMapping || matchInput.name.equals(mapping.displayName, ignoreCase = true)
+            }
         if (candidates.isNotEmpty()) {
             val best = candidates.maxWithOrNull(
                 compareBy<Pair<DeviceMapping, Int>>({ it.second })

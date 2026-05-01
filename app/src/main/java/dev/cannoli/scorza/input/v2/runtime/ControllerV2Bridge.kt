@@ -278,24 +278,20 @@ class ControllerV2Bridge(
             // Re-apply the hint table using the ORIGINAL device VID/PID (not the cfg-corrected
             // one), so a Sony VID gets SHAPES even when the cfg-vidpid override pointed at a
             // Retroid cfg. User-edited mappings keep their stored hint values.
-            //
-            // Always compute the cfg-corrected device for hint lookup, even when the resolver
-            // path skipped the override (saved MAC mapping case). The hint chain wants the cfg's
-            // honest VID as a fallback when the kernel-reported VID is the AMICON (8226) family.
-            val cfgCorrectedForHint = if (identity is PhysicalIdentity.Bluetooth) {
-                cfgCorrectedDevice(connected)
-            } else {
-                connected
-            }
-            val hintApplied = applyHintFromOriginalIdentity(resolved.mapping, connected, cfgCorrectedForHint)
+            val hintApplied = applyHintFromOriginalIdentity(resolved.mapping, connected)
             // Stamp the BT MAC onto the mapping's match rule so future re-pairs hit by MAC even
-            // if the kernel decorates the InputDevice with a different name/VID. Persist
-            // immediately so the MAC sticks across app restarts even if the user never edits.
+            // if the kernel decorates the InputDevice with a different name/VID.
             val needsMacStamp = btMac != null && hintApplied.match.bluetoothMac != btMac
             val finalMapping = if (needsMacStamp) {
                 hintApplied.copy(match = hintApplied.match.copy(bluetoothMac = btMac))
             } else hintApplied
-            if (needsMacStamp) mappingRepository?.save(finalMapping)
+            // Persist when our auto-applied logic changed something (new MAC stamp, or a
+            // corrected glyph/confirm from the hint pass) so the change sticks across restarts.
+            // Never write back over a userEdited mapping — the user curated it, leave it alone.
+            val hintChanged = hintApplied !== resolved.mapping
+            if (!finalMapping.userEdited && (needsMacStamp || hintChanged)) {
+                mappingRepository?.save(finalMapping)
+            }
             portRouter.onConnect(connected, finalMapping)
             activeMappingHolder.set(finalMapping)
             val port = portRouter.portFor(connected.androidDeviceId)
@@ -343,26 +339,28 @@ class ControllerV2Bridge(
     private fun applyHintFromOriginalIdentity(
         mapping: dev.cannoli.scorza.input.v2.DeviceMapping,
         connected: ConnectedDevice,
-        deviceForResolver: ConnectedDevice,
     ): dev.cannoli.scorza.input.v2.DeviceMapping {
         if (mapping.userEdited) return mapping
         val table = hints ?: return mapping
         // Try the device's reported VID/PID first (real brand identity for controllers like
-        // Xbox where the kernel reports the manufacturer VID). If that doesn't match, try the
-        // cfg-corrected VID/PID (catches devices like DualSense whose gamepad endpoint reports
-        // a borrowed Retroid VID). Finally fall through to Build.MODEL / default.
+        // Xbox where the kernel reports the manufacturer VID). If that doesn't match, walk
+        // through every bundled cfg whose deviceName equals this device's name and try each
+        // one's VID/PID against the hint table. This catches the case where the kernel reports
+        // an AMICON-fallback VID (8226) and our cfg picker happens to grab a Retroid-flavored
+        // cfg with the same fallback VID, missing a separate cfg with the controller's real
+        // manufacturer VID. Finally fall through to Build.MODEL / default.
         val hintBySource = table.lookupVidPid(connected.vendorId, connected.productId)
-        val hintByCfg = if (hintBySource == null && deviceForResolver !== connected) {
-            table.lookupVidPid(deviceForResolver.vendorId, deviceForResolver.productId)
+        val nameCfgHint = if (hintBySource == null) {
+            cfgHintForName(table, connected.name, connected.vendorId, connected.productId)
         } else null
-        val hint = hintBySource ?: hintByCfg
+        val hint = hintBySource ?: nameCfgHint?.first
             ?: table.lookup(connected.vendorId, connected.productId, connected.androidBuildModel)
         if (mapping.menuConfirm == hint.menuConfirm && mapping.glyphStyle == hint.glyphStyle) {
             return mapping
         }
         val source = when {
             hintBySource != null -> "reported vid=${connected.vendorId} pid=${connected.productId}"
-            hintByCfg != null -> "cfg vid=${deviceForResolver.vendorId} pid=${deviceForResolver.productId}"
+            nameCfgHint != null -> "cfg vid=${nameCfgHint.second.first} pid=${nameCfgHint.second.second}"
             else -> "Build.MODEL"
         }
         dev.cannoli.scorza.util.InputLog.write(
@@ -374,6 +372,29 @@ class ControllerV2Bridge(
             menuBack = menuBack,
             glyphStyle = hint.glyphStyle,
         )
+    }
+
+    /**
+     * Walk every bundled cfg whose deviceName equals [name] (skipping the reported VID/PID we
+     * already tried) and return the first cfg's hint that matches the hint table. Returns the
+     * matched hint plus the (vid, pid) used for logging, or null if no cfg yields a hint.
+     */
+    private fun cfgHintForName(
+        table: ControllerHintTable,
+        name: String,
+        skipVendorId: Int,
+        skipProductId: Int,
+    ): Pair<dev.cannoli.scorza.input.v2.hints.ControllerHint, Pair<Int, Int>>? {
+        if (name.isEmpty()) return null
+        for (entry in bundledCfgs) {
+            if (entry.deviceName != name) continue
+            val vid = entry.vendorId ?: continue
+            val pid = entry.productId ?: continue
+            if (vid == skipVendorId && pid == skipProductId) continue
+            val hint = table.lookupVidPid(vid, pid) ?: continue
+            return hint to (vid to pid)
+        }
+        return null
     }
 
     private fun isGamepad(facts: DeviceFacts): Boolean {
