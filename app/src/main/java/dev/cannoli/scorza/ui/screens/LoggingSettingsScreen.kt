@@ -71,8 +71,11 @@ fun LoggingSettingsScreen(
             }
             BottomBar(
                 modifier = Modifier.align(Alignment.BottomCenter),
-                leftItems = listOf(buttonStyle.back to stringResource(R.string.label_back)),
-                rightItems = listOf(DPAD_HORIZONTAL to stringResource(R.string.label_toggle)),
+                leftItems = listOf(
+                    buttonStyle.back to stringResource(R.string.label_back),
+                    DPAD_HORIZONTAL to stringResource(R.string.label_toggle),
+                ),
+                rightItems = emptyList(),
             )
         }
     }

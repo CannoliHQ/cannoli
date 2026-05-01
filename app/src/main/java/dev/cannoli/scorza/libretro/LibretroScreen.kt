@@ -286,13 +286,18 @@ fun LibretroScreen(
                     (screen is IGMScreen.Emulator && settingsItems.all { it.value != null })
                 val changeLabel = stringResource(R.string.label_change)
                 val selectLabel = stringResource(R.string.label_select)
+                val showsCycleHint = isOptionList ||
+                    (screen is IGMScreen.Shortcuts && screen.selectedIndex == 0) ||
+                    screen is IGMScreen.Video ||
+                    screen is IGMScreen.Advanced ||
+                    screen is IGMScreen.ShaderSettings
                 val bottomBarRight = when {
-                    isOptionList -> listOf(labels.confirm to stringResource(R.string.label_info), DPAD_HORIZONTAL to changeLabel)
-                    screen is IGMScreen.Shortcuts && screen.selectedIndex == 0 -> listOf(DPAD_HORIZONTAL to changeLabel)
+                    isOptionList -> listOf(labels.confirm to stringResource(R.string.label_info))
+                    screen is IGMScreen.Shortcuts && screen.selectedIndex == 0 -> emptyList()
                     screen is IGMScreen.Shortcuts -> listOf(labels.north to stringResource(R.string.label_clear), labels.confirm to stringResource(R.string.label_set))
-                    screen is IGMScreen.Video -> listOf(labels.confirm to selectLabel, DPAD_HORIZONTAL to changeLabel)
-                    screen is IGMScreen.Advanced -> listOf(DPAD_HORIZONTAL to changeLabel)
-                    screen is IGMScreen.ShaderSettings -> listOf(DPAD_HORIZONTAL to changeLabel)
+                    screen is IGMScreen.Video -> listOf(labels.confirm to selectLabel)
+                    screen is IGMScreen.Advanced -> emptyList()
+                    screen is IGMScreen.ShaderSettings -> emptyList()
                     else -> listOf(labels.confirm to selectLabel)
                 }
                 val emulatorLabel = stringResource(R.string.igm_emulator)
@@ -307,11 +312,15 @@ fun LibretroScreen(
                     is IGMScreen.SavePrompt -> stringResource(R.string.igm_save_changes)
                     else -> stringResource(R.string.igm_settings)
                 }
+                val bottomBarLeft = buildList {
+                    add(labels.back to stringResource(R.string.label_back))
+                    if (showsCycleHint) add(DPAD_HORIZONTAL to changeLabel)
+                }
                 IGMSettingsScreen(
                     title = title,
                     items = settingsItems,
                     selectedIndex = screen.selectedIndex,
-                    bottomBarLeft = listOf(labels.back to stringResource(R.string.label_back)),
+                    bottomBarLeft = bottomBarLeft,
                     bottomBarRight = bottomBarRight,
                     coreInfo = coreInfo,
                     description = description,

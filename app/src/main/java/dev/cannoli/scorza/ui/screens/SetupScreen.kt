@@ -119,10 +119,13 @@ fun SetupScreen(
             }
         }
 
+        val leftItems = mutableListOf(buttonStyle.back to stringResource(R.string.label_quit))
+        if (selectedIndex == 0) {
+            leftItems.add(DPAD_HORIZONTAL to stringResource(R.string.label_change))
+        }
         val rightItems = mutableListOf<Pair<String, String>>()
-        when (selectedIndex) {
-            0 -> rightItems.add(DPAD_HORIZONTAL to stringResource(R.string.label_change))
-            folderIndex -> rightItems.add(buttonStyle.confirm to stringResource(R.string.label_select))
+        if (selectedIndex == folderIndex) {
+            rightItems.add(buttonStyle.confirm to stringResource(R.string.label_select))
         }
         if (continueEnabled) {
             rightItems.add(START_GLYPH to stringResource(R.string.label_continue))
@@ -130,7 +133,7 @@ fun SetupScreen(
 
         BottomBar(
             modifier = Modifier.align(Alignment.BottomCenter),
-            leftItems = listOf(buttonStyle.back to stringResource(R.string.label_quit)),
+            leftItems = leftItems,
             rightItems = rightItems
         )
     }

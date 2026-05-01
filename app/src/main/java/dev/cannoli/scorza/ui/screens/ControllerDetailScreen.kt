@@ -178,15 +178,19 @@ fun ControllerDetailScreen(
             }
 
             val coercedIndex = screen.selectedIndex.coerceIn(0, entries.size - 1)
-            val isCycleRow = entries.getOrNull(coercedIndex) is ControllerDetailEntry.KeyValue
-            val rightItems = buildList {
-                add(buttonStyle.confirm to stringResource(R.string.label_select))
+            val selectedEntry = entries.getOrNull(coercedIndex)
+            val isCycleRow = selectedEntry is ControllerDetailEntry.KeyValue
+            val isEditableRow = selectedEntry is ControllerDetailEntry.Editable
+            val confirmLabel = if (isEditableRow) R.string.label_rename else R.string.label_select
+            val leftItems = buildList {
+                add(buttonStyle.back to stringResource(R.string.label_back))
                 if (isCycleRow) add(DPAD_HORIZONTAL to stringResource(R.string.label_change))
             }
+            val rightItems = listOf(buttonStyle.confirm to stringResource(confirmLabel))
 
             BottomBar(
                 modifier = Modifier.align(Alignment.BottomCenter),
-                leftItems = listOf(buttonStyle.back to stringResource(R.string.label_back)),
+                leftItems = leftItems,
                 rightItems = rightItems
             )
         }
