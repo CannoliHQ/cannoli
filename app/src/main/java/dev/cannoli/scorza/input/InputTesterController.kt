@@ -115,6 +115,10 @@ class InputTesterController(
             hatX = hatX, hatY = hatY,
         )
 
+        val activatesPort = leftTrigger > 0.1f || rightTrigger > 0.1f ||
+            kotlin.math.abs(hatX) > 0.5f || kotlin.math.abs(hatY) > 0.5f
+        if (activatesPort) viewModel.setActivePort(port)
+
         val dumpAxes = event.device?.motionRanges?.map { it.axis }?.distinct() ?: emptyList()
         viewModel.recordAxisValues(port, dumpAxes.associateWith { event.getAxisValue(it) })
 
