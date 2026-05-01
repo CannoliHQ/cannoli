@@ -230,6 +230,17 @@ class SettingsViewModel @Inject constructor(
     private var snapshot: SettingsSnapshot? = null
 
     fun load() {
+        val current = _state.value
+        if (current.inSubList) {
+            // Lock/unlock or any onResume mid-settings: refresh values without wiping nav
+            // state. Keep the existing cancel snapshot so revert still points at pre-edit
+            // values rather than the just-resumed state.
+            val cat = current.activeCategory ?: return
+            val items = buildItemsForCategory(cat)
+            _state.update { it.copy(categories = buildCategoryList(), items = items) }
+            _appSettings.value = readAppSettings()
+            return
+        }
         snapshot = captureSettings()
         _state.value = State(categories = buildCategoryList(), categoryIndex = 0)
         _appSettings.value = readAppSettings()
