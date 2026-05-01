@@ -1,12 +1,16 @@
 package dev.cannoli.scorza.util
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+
 object LoggingPrefs {
     enum class Category { FILE_SCANNER, ROM_SCAN, INPUT, SESSION }
 
-    @Volatile var fileScanner: Boolean = false
-    @Volatile var romScan: Boolean = false
-    @Volatile var input: Boolean = false
-    @Volatile var session: Boolean = false
+    var fileScanner: Boolean by mutableStateOf(false)
+    var romScan: Boolean by mutableStateOf(false)
+    var input: Boolean by mutableStateOf(false)
+    var session: Boolean by mutableStateOf(false)
 
     fun isEnabled(category: Category): Boolean = when (category) {
         Category.FILE_SCANNER -> fileScanner
