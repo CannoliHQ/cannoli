@@ -1687,7 +1687,7 @@ class LibretroActivity : ComponentActivity() {
     private fun handleAchievementsInput(screen: IGMScreen.Achievements, button: String?): Boolean {
         val filtered = filteredAchievements(screen)
         val count = filtered.size
-        if (count == 0 && button != "btn_north") return when (button) {
+        if (count == 0 && button != "btn_north" && button != "btn_west") return when (button) {
             "btn_east" -> { pop(); true }
             else -> true
         }
@@ -2329,9 +2329,7 @@ class LibretroActivity : ComponentActivity() {
                 true
             }
             "btn_south" -> {
-                if (screen.selectedIndex == 0) {
-                    cycleShortcutSource(1)
-                } else {
+                if (screen.selectedIndex > 0) {
                     replaceTop(screen.copy(listening = true, heldKeys = emptySet(), countdownMs = 0))
                 }
                 true

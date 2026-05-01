@@ -6,8 +6,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -26,15 +24,16 @@ import dev.cannoli.scorza.ui.viewmodel.ConnectedRow
 import dev.cannoli.scorza.ui.viewmodel.ControllersViewModel
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.components.BottomBar
+import dev.cannoli.ui.components.HintRow
 import dev.cannoli.ui.components.List
 import dev.cannoli.ui.components.PillRowKeyValue
 import dev.cannoli.ui.components.PillRowText
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
+import dev.cannoli.ui.components.SectionHeader
 import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.screenPadding
-import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.Spacing
 
 sealed interface ControllersListEntry {
@@ -158,52 +157,3 @@ fun ControllersScreen(
     }
 }
 
-@Composable
-private fun SectionHeader(
-    text: String,
-    fontSize: TextUnit,
-    lineHeight: TextUnit,
-    verticalPadding: Dp,
-) {
-    val colors = LocalCannoliColors.current
-    Box(
-        modifier = Modifier
-            .height(pillItemHeight(lineHeight, verticalPadding))
-            .padding(horizontal = 14.dp, vertical = verticalPadding),
-        contentAlignment = Alignment.CenterStart
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium.copy(
-                fontSize = (fontSize.value * 0.72f).sp,
-                lineHeight = lineHeight,
-                color = colors.text.copy(alpha = 0.6f)
-            )
-        )
-    }
-}
-
-@Composable
-private fun HintRow(
-    text: String,
-    fontSize: TextUnit,
-    lineHeight: TextUnit,
-    verticalPadding: Dp,
-) {
-    val colors = LocalCannoliColors.current
-    Box(
-        modifier = Modifier
-            .height(pillItemHeight(lineHeight, verticalPadding))
-            .padding(horizontal = 14.dp, vertical = verticalPadding),
-        contentAlignment = Alignment.CenterStart
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyLarge.copy(
-                fontSize = fontSize,
-                lineHeight = lineHeight,
-                color = colors.text.copy(alpha = 0.6f)
-            )
-        )
-    }
-}

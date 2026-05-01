@@ -21,6 +21,7 @@ import dev.cannoli.scorza.input.v2.CanonicalButton
 import dev.cannoli.scorza.input.v2.DeviceMapping
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.ui.ButtonStyle
+import dev.cannoli.ui.DPAD_HORIZONTAL
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.List
 import dev.cannoli.ui.components.PillRow
@@ -161,10 +162,17 @@ fun ControllerDetailScreen(
                 }
             }
 
+            val coercedIndex = screen.selectedIndex.coerceIn(0, entries.size - 1)
+            val isCycleRow = entries.getOrNull(coercedIndex) is ControllerDetailEntry.KeyValue
+            val rightItems = buildList {
+                add(buttonStyle.confirm to stringResource(R.string.label_select))
+                if (isCycleRow) add(DPAD_HORIZONTAL to stringResource(R.string.label_change))
+            }
+
             BottomBar(
                 modifier = Modifier.align(Alignment.BottomCenter),
                 leftItems = listOf(buttonStyle.back to stringResource(R.string.label_back)),
-                rightItems = listOf(buttonStyle.confirm to stringResource(R.string.label_select))
+                rightItems = rightItems
             )
         }
     }
