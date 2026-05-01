@@ -130,6 +130,11 @@
     <string name="canonical_start">Start</string>
     <string name="canonical_select">Select</string>
     <string name="canonical_menu">Menu</string>
+    <string name="canonical_south">South</string>
+    <string name="canonical_east">East</string>
+    <string name="canonical_west">West</string>
+    <string name="canonical_north">North</string>
+    <string name="canonical_face_with_glyph" translatable="false">%1$s (%2$s)</string>
 
     <!-- Glyph face button labels -->
     <string name="glyph_plumber_south" translatable="false">B</string>
@@ -140,10 +145,10 @@
     <string name="glyph_redmond_east" translatable="false">B</string>
     <string name="glyph_redmond_west" translatable="false">X</string>
     <string name="glyph_redmond_north" translatable="false">Y</string>
-    <string name="glyph_shapes_south">Cross</string>
-    <string name="glyph_shapes_east">Circle</string>
-    <string name="glyph_shapes_west">Square</string>
-    <string name="glyph_shapes_north">Triangle</string>
+    <string name="glyph_shapes_south" translatable="false">✕</string>
+    <string name="glyph_shapes_east" translatable="false">○</string>
+    <string name="glyph_shapes_west" translatable="false">□</string>
+    <string name="glyph_shapes_north" translatable="false">△</string>
 
     <!-- Hat directions -->
     <string name="hat_up">Up</string>

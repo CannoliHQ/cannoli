@@ -20,7 +20,7 @@ class EditButtonsController @Inject constructor(
 ) {
     var clock: () -> Long = { System.currentTimeMillis() }
     companion object {
-        const val CAPTURE_WINDOW_MS = 500L
+        const val CAPTURE_WINDOW_MS = 150L
         const val CAPTURE_TIMEOUT_MS = 5000L
         private const val AXIS_DETECT_THRESHOLD = 0.6f
     }

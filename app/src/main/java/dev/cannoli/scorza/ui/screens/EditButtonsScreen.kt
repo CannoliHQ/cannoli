@@ -219,30 +219,33 @@ fun EditButtonsScreen(
 
 @Composable
 private fun friendlyCanonicalLabel(button: CanonicalButton, style: GlyphStyle): String {
-    val faceRes = when (button) {
-        CanonicalButton.BTN_SOUTH -> when (style) {
+    val face = when (button) {
+        CanonicalButton.BTN_SOUTH -> R.string.canonical_south to when (style) {
             GlyphStyle.PLUMBER -> R.string.glyph_plumber_south
             GlyphStyle.REDMOND -> R.string.glyph_redmond_south
             GlyphStyle.SHAPES -> R.string.glyph_shapes_south
         }
-        CanonicalButton.BTN_EAST -> when (style) {
+        CanonicalButton.BTN_EAST -> R.string.canonical_east to when (style) {
             GlyphStyle.PLUMBER -> R.string.glyph_plumber_east
             GlyphStyle.REDMOND -> R.string.glyph_redmond_east
             GlyphStyle.SHAPES -> R.string.glyph_shapes_east
         }
-        CanonicalButton.BTN_WEST -> when (style) {
+        CanonicalButton.BTN_WEST -> R.string.canonical_west to when (style) {
             GlyphStyle.PLUMBER -> R.string.glyph_plumber_west
             GlyphStyle.REDMOND -> R.string.glyph_redmond_west
             GlyphStyle.SHAPES -> R.string.glyph_shapes_west
         }
-        CanonicalButton.BTN_NORTH -> when (style) {
+        CanonicalButton.BTN_NORTH -> R.string.canonical_north to when (style) {
             GlyphStyle.PLUMBER -> R.string.glyph_plumber_north
             GlyphStyle.REDMOND -> R.string.glyph_redmond_north
             GlyphStyle.SHAPES -> R.string.glyph_shapes_north
         }
         else -> null
     }
-    if (faceRes != null) return stringResource(faceRes)
+    if (face != null) {
+        val (cardinalRes, glyphRes) = face
+        return stringResource(R.string.canonical_face_with_glyph, stringResource(cardinalRes), stringResource(glyphRes))
+    }
     val res = when (button) {
         CanonicalButton.BTN_UP -> R.string.canonical_dpad_up
         CanonicalButton.BTN_DOWN -> R.string.canonical_dpad_down
