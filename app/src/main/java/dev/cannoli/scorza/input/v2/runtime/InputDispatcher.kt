@@ -47,6 +47,7 @@ class InputDispatcher @Inject constructor(
     }
 
     internal fun handleKeyEventForTest(deviceId: Int, keyCode: Int, action: Int, repeatCount: Int): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_UNKNOWN) return false
         val evaluator = portRouter.evaluatorFor(deviceId) ?: return false
         val mapping = portRouter.mappingFor(deviceId) ?: return false
         return when (action) {

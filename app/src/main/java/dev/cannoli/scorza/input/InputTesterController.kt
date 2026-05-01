@@ -37,6 +37,7 @@ class InputTesterController(
     }
 
     fun dispatchKey(event: KeyEvent, down: Boolean): Boolean {
+        if (event.keyCode == KeyEvent.KEYCODE_UNKNOWN) return true
         val device = event.device
         val deviceId = event.deviceId
         val port = if (device != null) portRouter.portFor(deviceId) ?: 0 else 0

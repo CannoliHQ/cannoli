@@ -54,6 +54,7 @@ class EditButtonsController @Inject constructor(
 
     fun captureRawKeyEvent(keyCode: Int) {
         if (pendingCanonical == null) return
+        if (keyCode == android.view.KeyEvent.KEYCODE_UNKNOWN) return
         if (firstEventAtMillis < 0) firstEventAtMillis = clock()
         capturedKeys.add(keyCode)
         dev.cannoli.scorza.util.DebugLog.write("[edit] captureRawKeyEvent keyCode=$keyCode firstAt=$firstEventAtMillis now=${clock()}")
