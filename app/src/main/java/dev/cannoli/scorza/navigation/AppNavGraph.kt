@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import dev.cannoli.igm.ShortcutAction
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.input.v2.runtime.confirmButton
+import dev.cannoli.scorza.input.v2.runtime.labelSet
 import dev.cannoli.scorza.libretro.LibretroInput
 import dev.cannoli.scorza.ui.LocalPortraitMargin
 import dev.cannoli.scorza.ui.PortraitMarginState
@@ -222,7 +223,10 @@ fun AppNavGraph(
     val listLineHeight = (appSettings.textSize.sp + 10).sp
     val listVerticalPadding = 6.dp
 
-    val labels = dev.cannoli.ui.ButtonStyle(appSettings.buttonLabelSet, activeMapping.confirmButton())
+    val labels = dev.cannoli.ui.ButtonStyle(
+        activeMapping.labelSet(appSettings.buttonLabelSet),
+        activeMapping.confirmButton(),
+    )
 
     val cannoliColors = CannoliColors(
         highlight = appSettings.colorHighlight,

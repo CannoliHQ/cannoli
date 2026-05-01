@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import dev.cannoli.scorza.input.v2.runtime.confirmButton
+import dev.cannoli.scorza.input.v2.runtime.labelSet
 import dev.cannoli.igm.GuideScreen
 import dev.cannoli.igm.GuideType
 import dev.cannoli.igm.IGMScreen
@@ -139,7 +140,7 @@ fun LibretroScreen(
     val igmLineHeight = (settings.textSize.sp + 10).sp
     val igmScaleFactor = settings.textSize.sp / 22f
     val igmTypography = buildCannoliTypography(baseSizeSp = settings.textSize.sp, fontFamily = LocalCannoliFont.current)
-    val labels = ButtonStyle(settings.buttonLabelSet, activeMapping.confirmButton())
+    val labels = ButtonStyle(activeMapping.labelSet(settings.buttonLabelSet), activeMapping.confirmButton())
     val statusBarEnabled = (settings.showWifi || settings.showBluetooth || settings.showClock || settings.showBattery || settings.showVpn) && !showDescription && !isGuideScreen
     val statusBarLeftEdge = remember { mutableIntStateOf(Int.MAX_VALUE) }
 

@@ -52,6 +52,7 @@ import dev.cannoli.ui.theme.CannoliTheme
 import dev.cannoli.ui.theme.LocalCannoliColors
 import androidx.compose.runtime.collectAsState
 import dev.cannoli.scorza.input.v2.runtime.confirmButton
+import dev.cannoli.scorza.input.v2.runtime.labelSet
 import dev.cannoli.ui.theme.hexToColor
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -322,7 +323,7 @@ class LibretroActivity : ComponentActivity() {
         ShaderPipeline.es3Supported = es3Supported
         sessionLog.log("device GLES: 0x${Integer.toHexString(reqGlEs)} (${glEsMajor}.${glEsMinor}) es3Supported=$es3Supported")
         confirmButton = activeMappingHolder.active.value.confirmButton()
-        buttonLabelSet = settings.buttonLabelSet
+        buttonLabelSet = activeMappingHolder.active.value.labelSet(settings.buttonLabelSet)
         // Keep legacy IGM/gameplay InputHandler's confirm/back convention in sync with the user's
         // global preference. Phase 2c will replace the legacy InputHandler entirely.
         navInputHandler.swapConfirmBack = activeMappingHolder.active.value?.menuConfirm == dev.cannoli.scorza.input.v2.CanonicalButton.BTN_EAST
