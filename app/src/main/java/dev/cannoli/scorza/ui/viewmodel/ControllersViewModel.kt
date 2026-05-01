@@ -37,8 +37,14 @@ class ControllersViewModel @Inject constructor(
 
     fun refresh(connectedRows: List<ConnectedRow>) {
         val connectedIds = connectedRows.map { it.mapping.id }.toSet()
-        val saved = repository.list().filter { it.id !in connectedIds }
-        _state.value = ControllersUiState(connected = connectedRows, savedMappings = saved)
+        val sortedConnected = connectedRows.sortedWith(
+            compareBy<ConnectedRow> { it.port ?: Int.MAX_VALUE }
+                .thenBy(String.CASE_INSENSITIVE_ORDER) { it.mapping.displayName }
+        )
+        val saved = repository.list()
+            .filter { it.id !in connectedIds }
+            .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.displayName })
+        _state.value = ControllersUiState(connected = sortedConnected, savedMappings = saved)
     }
 
     fun refreshFromRouter() {
