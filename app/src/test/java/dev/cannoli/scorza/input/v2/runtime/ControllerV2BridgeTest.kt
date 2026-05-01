@@ -85,7 +85,7 @@ class ControllerV2BridgeTest {
         val active = ActiveMappingHolder()
         val bridge = makeBridge(portRouter = portRouter, activeMappingHolder = active)
 
-        bridge.handleDeviceAdded(stadiaFacts)
+        bridge.settleSyncForTest(listOf(stadiaFacts))
         bridge.markLaunchTrigger(stadiaFacts.androidDeviceId)
 
         assertEquals(0, portRouter.portFor(stadiaFacts.androidDeviceId))
@@ -99,7 +99,7 @@ class ControllerV2BridgeTest {
         val active = ActiveMappingHolder()
         val bridge = makeBridge(portRouter = portRouter, activeMappingHolder = active)
 
-        bridge.handleDeviceAdded(mouseFacts)
+        bridge.settleSyncForTest(listOf(mouseFacts))
 
         assertNull(portRouter.portFor(mouseFacts.androidDeviceId))
         assertNull(active.active.value)
@@ -110,8 +110,8 @@ class ControllerV2BridgeTest {
         val portRouter = PortRouter()
         val bridge = makeBridge(portRouter = portRouter)
 
-        bridge.handleDeviceAdded(
-            stadiaFacts.copy(vendorId = 0, productId = 0, name = "")
+        bridge.settleSyncForTest(
+            listOf(stadiaFacts.copy(vendorId = 0, productId = 0, name = ""))
         )
 
         assertNull(portRouter.portFor(stadiaFacts.androidDeviceId))
@@ -130,7 +130,7 @@ class ControllerV2BridgeTest {
             productId = 0,
             sourceMask = ControllerV2Bridge.SOURCE_GAMEPAD,
         )
-        bridge.handleDeviceAdded(builtin)
+        bridge.settleSyncForTest(listOf(builtin))
         bridge.markLaunchTrigger(1001)
         assertEquals(0, portRouter.portFor(1001))
         assertNotNull(active.active.value)
@@ -148,7 +148,7 @@ class ControllerV2BridgeTest {
             productId = 0,
             sourceMask = ControllerV2Bridge.SOURCE_GAMEPAD,
         )
-        bridge.handleDeviceAdded(degenerate)
+        bridge.settleSyncForTest(listOf(degenerate))
         assertNull(portRouter.portFor(5))
     }
 
@@ -157,11 +157,11 @@ class ControllerV2BridgeTest {
         val portRouter = PortRouter()
         val bridge = makeBridge(portRouter = portRouter)
 
-        bridge.handleDeviceAdded(stadiaFacts)
+        bridge.settleSyncForTest(listOf(stadiaFacts))
         bridge.markLaunchTrigger(stadiaFacts.androidDeviceId)
         assertEquals(0, portRouter.portFor(stadiaFacts.androidDeviceId))
 
-        bridge.handleDeviceRemoved(stadiaFacts.androidDeviceId)
+        bridge.settleSyncForTest(emptyList())
         assertNull(portRouter.portFor(stadiaFacts.androidDeviceId))
     }
 
@@ -170,15 +170,15 @@ class ControllerV2BridgeTest {
         val portRouter = PortRouter()
         val bridge = makeBridge(portRouter = portRouter)
 
-        bridge.handleDeviceAdded(stadiaFacts)
-        bridge.handleDeviceAdded(stadiaFacts) // duplicate add, should be a no-op
+        bridge.settleSyncForTest(listOf(stadiaFacts))
+        bridge.settleSyncForTest(listOf(stadiaFacts))
         bridge.markLaunchTrigger(stadiaFacts.androidDeviceId)
 
         assertEquals(0, portRouter.portFor(stadiaFacts.androidDeviceId))
     }
 
     @Test
-    fun connected_at_millis_uses_clock_for_each_add() {
+    fun two_distinct_controllers_get_separate_ports() {
         var ticks = 1_000L
         val portRouter = PortRouter()
         val bridge = ControllerV2Bridge(
@@ -189,11 +189,11 @@ class ControllerV2BridgeTest {
             clock = { ticks },
             buildModel = "Pixel",
         )
-        bridge.handleDeviceAdded(stadiaFacts)
+        val second = stadiaFacts.copy(androidDeviceId = 9, descriptor = "stadia-2")
+        bridge.settleSyncForTest(listOf(stadiaFacts))
         ticks = 2_000L
-        bridge.handleDeviceAdded(stadiaFacts.copy(androidDeviceId = 9, descriptor = "stadia-2"))
+        bridge.settleSyncForTest(listOf(stadiaFacts, second))
 
-        // Connect order is asserted via PortRouter: device 7 connected first, device 9 second.
         bridge.markLaunchTrigger(7)
         assertEquals(0, portRouter.portFor(7))
         assertEquals(1, portRouter.portFor(9))
@@ -207,16 +207,14 @@ class ControllerV2BridgeTest {
         bridge.onDeviceAdded = { d -> added.add(d.androidDeviceId) }
         bridge.onDeviceRemoved = { id -> removed.add(id) }
 
-        bridge.handleDeviceAdded(stadiaFacts)
+        bridge.settleSyncForTest(listOf(stadiaFacts))
         assertTrue(added.isEmpty())
 
-        bridge.markInitialEnumerationDone()
-
         val second = stadiaFacts.copy(androidDeviceId = 2, descriptor = "stadia-2")
-        bridge.handleDeviceAdded(second)
+        bridge.settleSyncForTest(listOf(stadiaFacts, second))
         assertEquals(listOf(2), added)
 
-        bridge.handleDeviceRemoved(2)
+        bridge.settleSyncForTest(listOf(stadiaFacts))
         assertEquals(listOf(2), removed)
     }
 }

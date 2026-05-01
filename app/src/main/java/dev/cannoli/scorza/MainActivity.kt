@@ -150,7 +150,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     ) { granted ->
         dev.cannoli.scorza.util.InputLog.write("BLUETOOTH_CONNECT permission ${if (granted) "granted" else "denied"}")
         if (granted) {
-            controllerV2Bridge.reSettleIdentities()
+            controllerV2Bridge.settleNow()
             controllersViewModel.refreshFromRouter()
         }
     }
@@ -349,13 +349,14 @@ class MainActivity : ComponentActivity(), ActivityActions {
     private fun registerControllerOsd() {
         controllerV2Bridge.onDeviceAdded = { device ->
             val port = portRouter.portFor(device.androidDeviceId)
-            val portLabel = port?.let { "P${it + 1}" } ?: "-"
-            val name = device.name.ifEmpty { "Controller" }
-            osdHandler.removeCallbacks(clearOsd)
-            nav.osdMessage = "$name connected to $portLabel"
-            osdHandler.postDelayed(clearOsd, 3000)
+            if (port != null) {
+                val name = device.name.ifEmpty { "Controller" }
+                osdHandler.removeCallbacks(clearOsd)
+                nav.osdMessage = "P${port + 1}: $name"
+                osdHandler.postDelayed(clearOsd, 3000)
+            }
         }
-        controllerV2Bridge.onDeviceRemoved = {
+        controllerV2Bridge.onDeviceRemoved = { _ ->
             osdHandler.removeCallbacks(clearOsd)
             nav.osdMessage = "Controller disconnected"
             osdHandler.postDelayed(clearOsd, 3000)

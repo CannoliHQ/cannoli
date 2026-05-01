@@ -3,7 +3,10 @@ package dev.cannoli.scorza.input.v2.runtime
 import android.content.Context
 import android.hardware.input.InputManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.view.InputDevice
+import androidx.annotation.VisibleForTesting
 import dev.cannoli.scorza.input.autoconfig.RetroArchCfgEntry
 import dev.cannoli.scorza.input.v2.ConnectedDevice
 import dev.cannoli.scorza.input.v2.resolver.MappingResolver
@@ -27,10 +30,19 @@ class ControllerV2Bridge(
         val sourceMask: Int,
     )
 
-    private val knownDeviceIds = mutableSetOf<Int>()
     private val identityToPrimary = mutableMapOf<PhysicalIdentity, Int>()
     private var listener: InputManager.InputDeviceListener? = null
     private var initialEnumerationDone = false
+    private var appContext: Context? = null
+
+    private val settleHandler: Handler by lazy { Handler(Looper.getMainLooper()) }
+    private val settleRunnable = Runnable {
+        settle()
+        if (!initialEnumerationDone) {
+            initialEnumerationDone = true
+            dev.cannoli.scorza.util.InputLog.write("--- initial enumeration done ---")
+        }
+    }
 
     var onDeviceAdded: ((ConnectedDevice) -> Unit)? = null
     var onDeviceRemoved: ((Int) -> Unit)? = null
@@ -39,12 +51,13 @@ class ControllerV2Bridge(
 
     fun start(context: Context) {
         if (listener != null) return
+        appContext = context.applicationContext
         dev.cannoli.scorza.util.InputLog.write("--- bridge start (Build.MODEL='$buildModel') ---")
         val inputManager = context.getSystemService(Context.INPUT_SERVICE) as InputManager
         val l = object : InputManager.InputDeviceListener {
             override fun onInputDeviceAdded(deviceId: Int) {
-                val device = InputDevice.getDevice(deviceId) ?: return
-                handleDeviceAdded(device.toFacts())
+                val facts = InputDevice.getDevice(deviceId)?.toFacts() ?: return
+                handleDeviceAdded(facts)
             }
 
             override fun onInputDeviceRemoved(deviceId: Int) {
@@ -60,20 +73,17 @@ class ControllerV2Bridge(
         }
         listener = l
         inputManager.registerInputDeviceListener(l, null)
-        for (id in InputDevice.getDeviceIds()) {
-            val device = InputDevice.getDevice(id) ?: continue
-            handleDeviceAdded(device.toFacts())
-        }
-        markInitialEnumerationDone()
-        dev.cannoli.scorza.util.InputLog.write("--- initial enumeration done ---")
+        scheduleSettle()
     }
 
     fun stop(context: Context) {
         val l = listener ?: return
+        settleHandler.removeCallbacks(settleRunnable)
         val inputManager = context.getSystemService(Context.INPUT_SERVICE) as InputManager
         inputManager.unregisterInputDeviceListener(l)
         initialEnumerationDone = false
         listener = null
+        appContext = null
     }
 
     fun markLaunchTrigger(androidDeviceId: Int) {
@@ -82,106 +92,146 @@ class ControllerV2Bridge(
 
     fun handleDeviceAdded(facts: DeviceFacts) {
         dev.cannoli.scorza.util.InputLog.write(
-            "added id=${facts.androidDeviceId} desc='${facts.descriptor}' name='${facts.name}' vid=${facts.vendorId} pid=${facts.productId} src=0x${facts.sourceMask.toString(16)} initEnum=$initialEnumerationDone"
+            "event added id=${facts.androidDeviceId} desc='${facts.descriptor}' name='${facts.name}' vid=${facts.vendorId} pid=${facts.productId} src=0x${facts.sourceMask.toString(16)}"
         )
-        if (!isGamepad(facts)) {
-            dev.cannoli.scorza.util.InputLog.write("  skip: not gamepad")
-            return
-        }
-        val zeroVidPid = facts.vendorId == 0 && facts.productId == 0
-        if (zeroVidPid && facts.name.isNullOrEmpty()) {
-            dev.cannoli.scorza.util.InputLog.write("  skip: zero vid/pid and empty name")
-            return
-        }
-        if (!knownDeviceIds.add(facts.androidDeviceId)) {
-            dev.cannoli.scorza.util.InputLog.write("  skip: id already known")
-            return
-        }
-        val connected = ConnectedDeviceFactory.fromFields(
-            androidDeviceId = facts.androidDeviceId,
-            descriptor = facts.descriptor,
-            name = facts.name,
-            vendorId = facts.vendorId,
-            productId = facts.productId,
-            androidBuildModel = buildModel,
-            sourceMask = facts.sourceMask,
-            connectedAtMillis = clock(),
-            isBuiltIn = zeroVidPid,
-        )
-
-        val identity = physicalIdentityResolver.identify(connected)
-        if (identity != null) {
-            val existingPrimary = identityToPrimary[identity]
-            if (existingPrimary != null && existingPrimary != connected.androidDeviceId) {
-                dev.cannoli.scorza.util.InputLog.write(
-                    "  phantom-alias: incoming id=${connected.androidDeviceId} identity=$identity -> existing id=$existingPrimary"
-                )
-                portRouter.addAlias(existingPrimary, connected.androidDeviceId)
-                return
-            }
-            identityToPrimary[identity] = connected.androidDeviceId
-        }
-
-        // The kernel sometimes reports the wrong VID/PID for a BT controller (the gamepad
-        // endpoint borrows the built-in's HID descriptor, observed on Retroid handhelds). When
-        // we have a BT identity, prefer a cfg whose deviceName matches the InputDevice's name --
-        // even if the cfg's VID/PID disagrees with what the kernel reported. This routes the
-        // device to the right autoconfig.
-        val deviceForResolver = if (identity is PhysicalIdentity.Bluetooth) {
-            cfgCorrectedDevice(connected)
-        } else {
-            connected
-        }
-
-        val resolved = resolver.resolve(deviceForResolver)
-        portRouter.onConnect(connected, resolved.mapping)
-        activeMappingHolder.set(resolved.mapping)
-        val port = portRouter.portFor(connected.androidDeviceId)
-        dev.cannoli.scorza.util.InputLog.write(
-            "  enrolled: mapping=${resolved.mapping.id} persistent=${resolved.persistent} port=${port?.let { "P${it + 1}" } ?: "-"}"
-        )
-        if (initialEnumerationDone) onDeviceAdded?.invoke(connected)
-    }
-
-    /**
-     * Re-evaluate physical identities for all currently-enrolled devices and alias any
-     * duplicates to a single primary. Useful after BLUETOOTH_CONNECT is granted so previously-
-     * enrolled phantoms can be merged.
-     */
-    fun reSettleIdentities() {
-        dev.cannoli.scorza.util.InputLog.write("--- reSettleIdentities ---")
-        val byIdentity = mutableMapOf<PhysicalIdentity, MutableList<Int>>()
-        val unidentified = mutableListOf<Int>()
-        for (snap in portRouter.snapshotEntries().sortedBy { it.androidDeviceId }) {
-            val identity = physicalIdentityResolver.identify(snap.device)
-            if (identity == null) {
-                unidentified += snap.androidDeviceId
-            } else {
-                byIdentity.getOrPut(identity) { mutableListOf() } += snap.androidDeviceId
-            }
-        }
-        identityToPrimary.clear()
-        for ((identity, ids) in byIdentity) {
-            val primary = ids.first()
-            identityToPrimary[identity] = primary
-            for (other in ids.drop(1)) {
-                dev.cannoli.scorza.util.InputLog.write(
-                    "  reSettle alias: id=$other identity=$identity -> primary id=$primary"
-                )
-                portRouter.addAlias(primary, other)
-            }
-        }
+        scheduleSettle()
     }
 
     fun handleDeviceRemoved(androidDeviceId: Int) {
-        if (!knownDeviceIds.remove(androidDeviceId)) {
-            dev.cannoli.scorza.util.InputLog.write("removed id=$androidDeviceId (was not tracked)")
-            return
+        dev.cannoli.scorza.util.InputLog.write("event removed id=$androidDeviceId")
+        scheduleSettle()
+    }
+
+    /**
+     * Cancel any pending settle and run one immediately. Used after BLUETOOTH_CONNECT is granted
+     * so previously-enrolled phantoms can be merged without waiting for the next kernel event.
+     */
+    fun settleNow() {
+        settleHandler.removeCallbacks(settleRunnable)
+        settleHandler.post(settleRunnable)
+    }
+
+    private fun scheduleSettle() {
+        settleHandler.removeCallbacks(settleRunnable)
+        settleHandler.postDelayed(settleRunnable, SETTLE_DELAY_MS)
+    }
+
+    @VisibleForTesting
+    fun settleSyncForTest(facts: List<DeviceFacts>) {
+        settle(facts)
+        if (!initialEnumerationDone) {
+            initialEnumerationDone = true
         }
-        dev.cannoli.scorza.util.InputLog.write("removed id=$androidDeviceId")
-        identityToPrimary.entries.removeAll { it.value == androidDeviceId }
-        portRouter.onDisconnect(androidDeviceId)
-        if (initialEnumerationDone) onDeviceRemoved?.invoke(androidDeviceId)
+    }
+
+    private fun enumerateGamepadFacts(): List<DeviceFacts> {
+        val out = mutableListOf<DeviceFacts>()
+        for (id in InputDevice.getDeviceIds()) {
+            val device = InputDevice.getDevice(id) ?: continue
+            out += device.toFacts()
+        }
+        return out
+    }
+
+    private fun settle(forcedFacts: List<DeviceFacts>? = null) {
+        dev.cannoli.scorza.util.InputLog.write("--- settle ---")
+
+        val factsList = forcedFacts ?: enumerateGamepadFacts()
+
+        val currentDevices = mutableListOf<ConnectedDevice>()
+        for (facts in factsList) {
+            if (!isGamepad(facts)) continue
+            val zeroVidPid = facts.vendorId == 0 && facts.productId == 0
+            if (zeroVidPid && facts.name.isNullOrEmpty()) continue
+            val connected = ConnectedDeviceFactory.fromFields(
+                androidDeviceId = facts.androidDeviceId,
+                descriptor = facts.descriptor,
+                name = facts.name,
+                vendorId = facts.vendorId,
+                productId = facts.productId,
+                androidBuildModel = buildModel,
+                sourceMask = facts.sourceMask,
+                connectedAtMillis = clock(),
+                isBuiltIn = zeroVidPid,
+            )
+            currentDevices += connected
+            dev.cannoli.scorza.util.InputLog.write(
+                "  identify id=${connected.androidDeviceId} name='${connected.name}' vid=${connected.vendorId} pid=${connected.productId}"
+            )
+        }
+
+        val byIdentity = mutableMapOf<PhysicalIdentity, MutableList<ConnectedDevice>>()
+        val unidentified = mutableListOf<ConnectedDevice>()
+        for (device in currentDevices) {
+            val id = physicalIdentityResolver.identify(device)
+            if (id != null) {
+                byIdentity.getOrPut(id) { mutableListOf() } += device
+            } else {
+                unidentified += device
+            }
+        }
+
+        val targetEntries = mutableMapOf<Int, ConnectedDevice>()
+        val targetAliases = mutableMapOf<Int, Int>()
+        val targetIdentityToPrimary = mutableMapOf<PhysicalIdentity, Int>()
+        for ((identity, group) in byIdentity) {
+            val primary = group.minBy { it.androidDeviceId }
+            targetEntries[primary.androidDeviceId] = primary
+            targetIdentityToPrimary[identity] = primary.androidDeviceId
+            for (other in group) {
+                if (other.androidDeviceId != primary.androidDeviceId) {
+                    targetAliases[other.androidDeviceId] = primary.androidDeviceId
+                    dev.cannoli.scorza.util.InputLog.write(
+                        "  phantom-alias: id=${other.androidDeviceId} identity=$identity -> primary id=${primary.androidDeviceId}"
+                    )
+                }
+            }
+        }
+        for (device in unidentified) {
+            targetEntries[device.androidDeviceId] = device
+        }
+
+        val existingEntryIds = portRouter.snapshotEntries().map { it.androidDeviceId }.toSet()
+        val targetEntryIds = targetEntries.keys
+
+        for (id in existingEntryIds - targetEntryIds) {
+            dev.cannoli.scorza.util.InputLog.write("  removed id=$id")
+            portRouter.onDisconnect(id)
+            if (initialEnumerationDone) onDeviceRemoved?.invoke(id)
+        }
+
+        for (id in targetEntryIds - existingEntryIds) {
+            val connected = targetEntries.getValue(id)
+            val identity = physicalIdentityResolver.identify(connected)
+            val deviceForResolver = if (identity is PhysicalIdentity.Bluetooth) {
+                cfgCorrectedDevice(connected)
+            } else {
+                connected
+            }
+            val resolved = resolver.resolve(deviceForResolver)
+            portRouter.onConnect(connected, resolved.mapping)
+            activeMappingHolder.set(resolved.mapping)
+            val port = portRouter.portFor(connected.androidDeviceId)
+            dev.cannoli.scorza.util.InputLog.write(
+                "  enrolled id=${connected.androidDeviceId} mapping=${resolved.mapping.id} persistent=${resolved.persistent} port=${port?.let { "P${it + 1}" } ?: "-"}"
+            )
+            if (initialEnumerationDone) onDeviceAdded?.invoke(connected)
+        }
+
+        val currentAliases = portRouter.aliasesSnapshot()
+        for ((aliasId, primaryId) in currentAliases) {
+            if (targetAliases[aliasId] != primaryId) {
+                portRouter.removeAlias(aliasId)
+            }
+        }
+        for ((aliasId, primaryId) in targetAliases) {
+            if (currentAliases[aliasId] != primaryId) {
+                portRouter.addAlias(primaryId, aliasId)
+            }
+        }
+
+        identityToPrimary.clear()
+        identityToPrimary.putAll(targetIdentityToPrimary)
     }
 
     private fun cfgCorrectedDevice(connected: ConnectedDevice): ConnectedDevice {
@@ -221,5 +271,6 @@ class ControllerV2Bridge(
     companion object {
         const val SOURCE_GAMEPAD: Int = InputDevice.SOURCE_GAMEPAD
         const val SOURCE_JOYSTICK: Int = InputDevice.SOURCE_JOYSTICK
+        private const val SETTLE_DELAY_MS = 500L
     }
 }
