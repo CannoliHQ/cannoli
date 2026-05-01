@@ -85,11 +85,13 @@ object InputV2Module {
         activeMappingHolder: ActiveMappingHolder,
         physicalIdentityResolver: PhysicalIdentityResolver,
         @BundledRetroArchAutoconfig bundled: List<RetroArchCfgEntry>,
+        hints: dev.cannoli.scorza.input.v2.hints.ControllerHintTable,
     ): ControllerV2Bridge = ControllerV2Bridge(
         resolver = resolver,
         portRouter = portRouter,
         activeMappingHolder = activeMappingHolder,
         physicalIdentityResolver = physicalIdentityResolver,
         bundledCfgs = bundled,
+        hints = hints,
     )
 }

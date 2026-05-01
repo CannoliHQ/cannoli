@@ -8,7 +8,9 @@ import android.os.Looper
 import android.view.InputDevice
 import androidx.annotation.VisibleForTesting
 import dev.cannoli.scorza.input.autoconfig.RetroArchCfgEntry
+import dev.cannoli.scorza.input.v2.CanonicalButton
 import dev.cannoli.scorza.input.v2.ConnectedDevice
+import dev.cannoli.scorza.input.v2.hints.ControllerHintTable
 import dev.cannoli.scorza.input.v2.resolver.MappingResolver
 
 class ControllerV2Bridge(
@@ -17,6 +19,7 @@ class ControllerV2Bridge(
     private val activeMappingHolder: ActiveMappingHolder,
     private val physicalIdentityResolver: PhysicalIdentityResolver,
     private val bundledCfgs: List<RetroArchCfgEntry> = emptyList(),
+    private val hints: ControllerHintTable? = null,
     private val clock: () -> Long = { System.currentTimeMillis() },
     private val buildModel: String = Build.MODEL ?: "",
 ) {
@@ -209,11 +212,15 @@ class ControllerV2Bridge(
                 connected
             }
             val resolved = resolver.resolve(deviceForResolver)
-            portRouter.onConnect(connected, resolved.mapping)
-            activeMappingHolder.set(resolved.mapping)
+            // Re-apply the hint table using the ORIGINAL device VID/PID (not the cfg-corrected
+            // one), so a Sony VID gets SHAPES even when the cfg-vidpid override pointed at a
+            // Retroid cfg. User-edited mappings keep their stored hint values.
+            val finalMapping = applyHintFromOriginalIdentity(resolved.mapping, connected, deviceForResolver)
+            portRouter.onConnect(connected, finalMapping)
+            activeMappingHolder.set(finalMapping)
             val port = portRouter.portFor(connected.androidDeviceId)
             dev.cannoli.scorza.util.InputLog.write(
-                "  enrolled id=${connected.androidDeviceId} mapping=${resolved.mapping.id} persistent=${resolved.persistent} port=${port?.let { "P${it + 1}" } ?: "-"}"
+                "  enrolled id=${connected.androidDeviceId} mapping=${finalMapping.id} persistent=${resolved.persistent} glyph=${finalMapping.glyphStyle} port=${port?.let { "P${it + 1}" } ?: "-"}"
             )
             if (initialEnumerationDone) onDeviceAdded?.invoke(connected)
         }
@@ -251,6 +258,42 @@ class ControllerV2Bridge(
             "  cfg-vidpid-override: id=${connected.androidDeviceId} name='${connected.name}' reported vid=${connected.vendorId} pid=${connected.productId} -> cfg vid=$newVid pid=$newPid"
         )
         return connected.copy(vendorId = newVid, productId = newPid)
+    }
+
+    private fun applyHintFromOriginalIdentity(
+        mapping: dev.cannoli.scorza.input.v2.DeviceMapping,
+        connected: ConnectedDevice,
+        deviceForResolver: ConnectedDevice,
+    ): dev.cannoli.scorza.input.v2.DeviceMapping {
+        if (mapping.userEdited) return mapping
+        val table = hints ?: return mapping
+        // Try the device's reported VID/PID first (real brand identity for controllers like
+        // Xbox where the kernel reports the manufacturer VID). If that doesn't match, try the
+        // cfg-corrected VID/PID (catches devices like DualSense whose gamepad endpoint reports
+        // a borrowed Retroid VID). Finally fall through to Build.MODEL / default.
+        val hintBySource = table.lookupVidPid(connected.vendorId, connected.productId)
+        val hintByCfg = if (hintBySource == null && deviceForResolver !== connected) {
+            table.lookupVidPid(deviceForResolver.vendorId, deviceForResolver.productId)
+        } else null
+        val hint = hintBySource ?: hintByCfg
+            ?: table.lookup(connected.vendorId, connected.productId, connected.androidBuildModel)
+        if (mapping.menuConfirm == hint.menuConfirm && mapping.glyphStyle == hint.glyphStyle) {
+            return mapping
+        }
+        val source = when {
+            hintBySource != null -> "reported vid=${connected.vendorId} pid=${connected.productId}"
+            hintByCfg != null -> "cfg vid=${deviceForResolver.vendorId} pid=${deviceForResolver.productId}"
+            else -> "Build.MODEL"
+        }
+        dev.cannoli.scorza.util.InputLog.write(
+            "  hint-rebind: id=${connected.androidDeviceId} via $source -> confirm=${hint.menuConfirm} glyph=${hint.glyphStyle}"
+        )
+        val menuBack = if (hint.menuConfirm == CanonicalButton.BTN_EAST) CanonicalButton.BTN_SOUTH else CanonicalButton.BTN_EAST
+        return mapping.copy(
+            menuConfirm = hint.menuConfirm,
+            menuBack = menuBack,
+            glyphStyle = hint.glyphStyle,
+        )
     }
 
     private fun isGamepad(facts: DeviceFacts): Boolean {

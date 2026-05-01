@@ -26,6 +26,21 @@ class ControllerHintTable internal constructor(
         val hint: ControllerHint,
     )
 
+    /**
+     * Look up a hint by VID/PID only. Returns null if no VID-based entry matches; never falls
+     * back to Build.MODEL or the default.
+     */
+    fun lookupVidPid(vendorId: Int, productId: Int): ControllerHint? {
+        if (vendorId == 0 || productId == 0) return null
+        val exact = vidPidEntries.firstOrNull {
+            it.vendorId == vendorId && it.productId != null && it.productId == productId
+        }
+        if (exact != null) return exact.hint
+        return vidPidEntries.firstOrNull {
+            it.vendorId == vendorId && it.productId == null
+        }?.hint
+    }
+
     fun lookup(vendorId: Int, productId: Int, buildModel: String): ControllerHint {
         val exact = vidPidEntries.firstOrNull {
             it.vendorId == vendorId && it.productId != null && it.productId == productId
