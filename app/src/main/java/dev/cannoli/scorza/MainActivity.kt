@@ -351,7 +351,8 @@ class MainActivity : ComponentActivity(), ActivityActions {
         controllerV2Bridge.onDeviceAdded = { device ->
             val port = portRouter.portFor(device.androidDeviceId)
             if (port != null) {
-                val name = device.name.ifEmpty { "Controller" }
+                val name = portRouter.mappingForPort(port)?.displayName?.takeIf { it.isNotEmpty() }
+                    ?: device.name.ifEmpty { "Controller" }
                 osdHandler.removeCallbacks(clearOsd)
                 nav.osdMessage = "P${port + 1}: $name"
                 osdHandler.postDelayed(clearOsd, 3000)

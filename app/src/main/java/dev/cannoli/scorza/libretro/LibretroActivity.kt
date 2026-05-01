@@ -2684,7 +2684,8 @@ class LibretroActivity : ComponentActivity() {
             controllerV2Bridge.onDeviceAdded = { device ->
                 val port = portRouter.portFor(device.androidDeviceId)
                 val portLabel = port?.let { "P${it + 1}" } ?: "-"
-                val name = device.name.ifEmpty { "Controller" }
+                val name = port?.let { portRouter.mappingForPort(it)?.displayName?.takeIf { n -> n.isNotEmpty() } }
+                    ?: device.name.ifEmpty { "Controller" }
                 osdHandler.removeCallbacks(clearOsdRunnable)
                 osdMessage = "$name connected to $portLabel"
                 osdHandler.postDelayed(clearOsdRunnable, 3000)
