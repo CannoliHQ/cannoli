@@ -46,7 +46,9 @@ class InputTesterController(
         val device = event.device
         val deviceId = event.deviceId
         val port = if (device != null) portRouter.portFor(deviceId) ?: 0 else 0
-        val name = device?.name ?: keyboardDeviceName
+        val name = portRouter.mappingForPort(port)?.displayName?.takeIf { it.isNotEmpty() }
+            ?: device?.name?.takeIf { it.isNotEmpty() }
+            ?: keyboardDeviceName
         val keyName = KeyEvent.keyCodeToString(event.keyCode).removePrefix("KEYCODE_")
         val mappingNav = mappingNavButtonFor(portRouter.mappingForPort(port), event.keyCode)
         val navButton = mappingNav ?: AndroidGamepadKeyNames.DEFAULT_KEY_MAP[event.keyCode]
@@ -95,8 +97,10 @@ class InputTesterController(
     fun dispatchMotion(event: MotionEvent): Boolean {
         val deviceId = event.deviceId
         val port = portRouter.portFor(deviceId) ?: 0
-        val name = event.device?.name ?: unknownDeviceName
         val mapping = portRouter.mappingForPort(port)
+        val name = mapping?.displayName?.takeIf { it.isNotEmpty() }
+            ?: event.device?.name?.takeIf { it.isNotEmpty() }
+            ?: unknownDeviceName
         val leftX = mostActive(mappingStickValue(mapping, AnalogRole.LEFT_STICK_X, event), event.getAxisValue(MotionEvent.AXIS_X))
         val leftY = mostActive(mappingStickValue(mapping, AnalogRole.LEFT_STICK_Y, event), event.getAxisValue(MotionEvent.AXIS_Y))
         val rightX = mostActive(mappingStickValue(mapping, AnalogRole.RIGHT_STICK_X, event), event.getAxisValue(MotionEvent.AXIS_Z))
