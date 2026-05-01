@@ -18,6 +18,8 @@ class ControllerV2Bridge(
     private val portRouter: PortRouter,
     private val activeMappingHolder: ActiveMappingHolder,
     private val physicalIdentityResolver: PhysicalIdentityResolver,
+    private val btTracker: BtHidConnectionTracker? = null,
+    private val mappingRepository: dev.cannoli.scorza.input.v2.repo.MappingRepository? = null,
     private val bundledCfgs: List<RetroArchCfgEntry> = emptyList(),
     private val hints: ControllerHintTable? = null,
     private val clock: () -> Long = { System.currentTimeMillis() },
@@ -31,9 +33,11 @@ class ControllerV2Bridge(
         val vendorId: Int,
         val productId: Int,
         val sourceMask: Int,
+        val isExternal: Boolean = true,
     )
 
     private val identityToPrimary = mutableMapOf<PhysicalIdentity, Int>()
+    private val identityCache = mutableMapOf<Int, PhysicalIdentity>()
     private var listener: InputManager.InputDeviceListener? = null
     private var initialEnumerationDone = false
     private var appContext: Context? = null
@@ -55,8 +59,6 @@ class ControllerV2Bridge(
         val displayName: String,
         val port: Int?,
     )
-
-    fun markInitialEnumerationDone() { initialEnumerationDone = true }
 
     fun start(context: Context) {
         if (listener != null) return
@@ -82,6 +84,7 @@ class ControllerV2Bridge(
         }
         listener = l
         inputManager.registerInputDeviceListener(l, null)
+        btTracker?.start()
         scheduleSettle()
     }
 
@@ -90,6 +93,8 @@ class ControllerV2Bridge(
         settleHandler.removeCallbacks(settleRunnable)
         val inputManager = context.getSystemService(Context.INPUT_SERVICE) as InputManager
         inputManager.unregisterInputDeviceListener(l)
+        btTracker?.stop()
+        identityCache.clear()
         initialEnumerationDone = false
         listener = null
         appContext = null
@@ -162,6 +167,7 @@ class ControllerV2Bridge(
                 sourceMask = facts.sourceMask,
                 connectedAtMillis = clock(),
                 isBuiltIn = zeroVidPid,
+                isExternal = facts.isExternal,
             )
             currentDevices += connected
             dev.cannoli.scorza.util.InputLog.write(
@@ -169,13 +175,48 @@ class ControllerV2Bridge(
             )
         }
 
-        val byIdentity = mutableMapOf<PhysicalIdentity, MutableList<ConnectedDevice>>()
+        // Pass 1: per-device identify. Only name-match consumes BT queue entries here; FIFO
+        // claims happen in pass 2 below so iteration order can't let an early device steal a
+        // later device's MAC.
+        val identityByDeviceId = mutableMapOf<Int, PhysicalIdentity>()
         val unidentified = mutableListOf<ConnectedDevice>()
         for (device in currentDevices) {
-            val id = physicalIdentityResolver.identify(device)
+            val cached = identityCache[device.androidDeviceId]
+            val id = cached ?: physicalIdentityResolver.identify(device)
+            if (id != null) {
+                identityByDeviceId[device.androidDeviceId] = id
+            } else {
+                unidentified += device
+            }
+        }
+
+        // Pass 2: for any device that landed on Wired but is plausibly a BT controller in
+        // disguise (external + cache miss + queue still has entries), upgrade to BT by claiming
+        // the next FIFO MAC. Skip if:
+        //   - already cached (don't redraw on re-settles)
+        //   - !isExternal (best-effort; on some handhelds the built-in still reports external)
+        //   - the curated wired-only list matches (handheld built-in keypads)
+        val wiredOnlyResolver = physicalIdentityResolver as? BluetoothPhysicalIdentityResolver
+        for (device in currentDevices) {
+            if (identityCache.containsKey(device.androidDeviceId)) continue
+            if (!device.isExternal) continue
+            if (wiredOnlyResolver?.isWiredOnly(device.name) == true) continue
+            val current = identityByDeviceId[device.androidDeviceId]
+            if (current is PhysicalIdentity.Bluetooth) continue
+            val mac = physicalIdentityResolver.claimFifoMac() ?: break
+            dev.cannoli.scorza.util.InputLog.write(
+                "  identify id=${device.androidDeviceId} name='${device.name}' -> BT mac=$mac (fifo)"
+            )
+            identityByDeviceId[device.androidDeviceId] = PhysicalIdentity.Bluetooth(mac)
+        }
+
+        val byIdentity = mutableMapOf<PhysicalIdentity, MutableList<ConnectedDevice>>()
+        for (device in currentDevices) {
+            val id = identityByDeviceId[device.androidDeviceId]
             if (id != null) {
                 byIdentity.getOrPut(id) { mutableListOf() } += device
-            } else {
+                identityCache[device.androidDeviceId] = id
+            } else if (device !in unidentified) {
                 unidentified += device
             }
         }
@@ -212,6 +253,7 @@ class ControllerV2Bridge(
             val port = snap?.port
             dev.cannoli.scorza.util.InputLog.write("  removed id=$id name='$displayName' port=${port?.let { "P${it + 1}" } ?: "-"}")
             portRouter.onDisconnect(id)
+            identityCache.remove(id)
             if (initialEnumerationDone) {
                 onDeviceRemoved?.invoke(DepartedDevice(id, displayName, port))
             }
@@ -219,22 +261,46 @@ class ControllerV2Bridge(
 
         for (id in targetEntryIds - existingEntryIds) {
             val connected = targetEntries.getValue(id)
-            val identity = physicalIdentityResolver.identify(connected)
-            val deviceForResolver = if (identity is PhysicalIdentity.Bluetooth) {
+            val identity = identityByDeviceId[id]
+            val btMac = (identity as? PhysicalIdentity.Bluetooth)?.macAddress
+            // cfg-vidpid-override is only useful for finding an RA cfg on first pair. Once we
+            // have a saved mapping keyed on this MAC, the resolver hits it via MAC score and
+            // doesn't need the override at all. Skip the override in that case.
+            val hasSavedMacMapping = btMac != null && mappingRepository?.list()?.any {
+                it.match.bluetoothMac.equals(btMac, ignoreCase = true)
+            } == true
+            val deviceForResolver = if (identity is PhysicalIdentity.Bluetooth && !hasSavedMacMapping) {
                 cfgCorrectedDevice(connected)
             } else {
                 connected
             }
-            val resolved = resolver.resolve(deviceForResolver)
+            val resolved = resolver.resolve(deviceForResolver, btMac)
             // Re-apply the hint table using the ORIGINAL device VID/PID (not the cfg-corrected
             // one), so a Sony VID gets SHAPES even when the cfg-vidpid override pointed at a
             // Retroid cfg. User-edited mappings keep their stored hint values.
-            val finalMapping = applyHintFromOriginalIdentity(resolved.mapping, connected, deviceForResolver)
+            //
+            // Always compute the cfg-corrected device for hint lookup, even when the resolver
+            // path skipped the override (saved MAC mapping case). The hint chain wants the cfg's
+            // honest VID as a fallback when the kernel-reported VID is the AMICON (8226) family.
+            val cfgCorrectedForHint = if (identity is PhysicalIdentity.Bluetooth) {
+                cfgCorrectedDevice(connected)
+            } else {
+                connected
+            }
+            val hintApplied = applyHintFromOriginalIdentity(resolved.mapping, connected, cfgCorrectedForHint)
+            // Stamp the BT MAC onto the mapping's match rule so future re-pairs hit by MAC even
+            // if the kernel decorates the InputDevice with a different name/VID. Persist
+            // immediately so the MAC sticks across app restarts even if the user never edits.
+            val needsMacStamp = btMac != null && hintApplied.match.bluetoothMac != btMac
+            val finalMapping = if (needsMacStamp) {
+                hintApplied.copy(match = hintApplied.match.copy(bluetoothMac = btMac))
+            } else hintApplied
+            if (needsMacStamp) mappingRepository?.save(finalMapping)
             portRouter.onConnect(connected, finalMapping)
             activeMappingHolder.set(finalMapping)
             val port = portRouter.portFor(connected.androidDeviceId)
             dev.cannoli.scorza.util.InputLog.write(
-                "  enrolled id=${connected.androidDeviceId} mapping=${finalMapping.id} persistent=${resolved.persistent} glyph=${finalMapping.glyphStyle} port=${port?.let { "P${it + 1}" } ?: "-"}"
+                "  enrolled id=${connected.androidDeviceId} mapping=${finalMapping.id} persistent=${resolved.persistent} glyph=${finalMapping.glyphStyle} mac=${btMac ?: "-"} port=${port?.let { "P${it + 1}" } ?: "-"}"
             )
             if (initialEnumerationDone) onDeviceAdded?.invoke(connected)
         }
@@ -323,6 +389,7 @@ class ControllerV2Bridge(
         vendorId = vendorId,
         productId = productId,
         sourceMask = sources,
+        isExternal = isExternal,
     )
 
     companion object {

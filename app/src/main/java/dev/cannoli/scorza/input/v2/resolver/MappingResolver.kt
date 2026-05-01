@@ -19,8 +19,8 @@ class MappingResolver(
     private val mappingsDir: File? = null,
 ) {
 
-    fun resolve(device: ConnectedDevice): ResolvedMapping {
-        val matchInput = device.toMatchInput()
+    fun resolve(device: ConnectedDevice, bluetoothMac: String? = null): ResolvedMapping {
+        val matchInput = device.toMatchInput(bluetoothMac)
 
         val candidates = repository.list()
             .map { it to it.match.score(matchInput) }

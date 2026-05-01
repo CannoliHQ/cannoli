@@ -6,6 +6,7 @@ data class MatchInput(
     val productId: Int,
     val androidBuildModel: String,
     val sourceMask: Int,
+    val bluetoothMac: String? = null,
 )
 
 data class DeviceMatchRule(
@@ -14,9 +15,20 @@ data class DeviceMatchRule(
     val productId: Int? = null,
     val androidBuildModel: String? = null,
     val sourceMask: Int? = null,
+    val bluetoothMac: String? = null,
 ) {
     fun score(input: MatchInput): Int {
         var score = 0
+
+        // MAC match wins over everything else for BT controllers. The MAC is the only stable
+        // identifier across pairings; InputDevice.name and VID/PID can change at every re-pair
+        // when the controller's HID firmware lies about its identity (CRKD, cheap clones).
+        val ruleMac = bluetoothMac
+        val macMatched = ruleMac != null && ruleMac.isNotEmpty() &&
+            input.bluetoothMac != null && input.bluetoothMac.equals(ruleMac, ignoreCase = true)
+        if (macMatched) {
+            score += 200
+        }
 
         val ruleVid = vendorId
         val rulePid = productId

@@ -1,22 +1,41 @@
 package dev.cannoli.scorza.input.v2.runtime
 
-import android.content.Context
-import android.bluetooth.BluetoothManager
 import dev.cannoli.scorza.input.v2.ConnectedDevice
 
 interface PhysicalIdentityResolver {
+    /**
+     * Identify [device] using only signals available without consuming a BT queue entry: name
+     * equality against the tracker's currently-queued bondedNames, then a wired fallback.
+     *
+     * The bridge orchestrates a second pass for un-identified external InputDevices via
+     * [claimFifoMac] so iteration order doesn't let one device steal another's BT MAC.
+     */
     fun identify(device: ConnectedDevice): PhysicalIdentity?
+
+    /** Claim the next FIFO MAC from the BT tracker, or null when none remain. */
+    fun claimFifoMac(): String? = null
 }
 
 class BluetoothPhysicalIdentityResolver(
-    private val context: Context,
+    private val tracker: BtHidConnectionTracker,
+    private val hints: dev.cannoli.scorza.input.v2.hints.ControllerHintTable? = null,
 ) : PhysicalIdentityResolver {
 
     override fun identify(device: ConnectedDevice): PhysicalIdentity? {
-        val mac = lookupBluetoothMac(device.name)
+        // Curated wired-only list (e.g. handheld built-in keypads) bypass BT identification
+        // entirely. This is more reliable than any heuristic because handheld OEMs don't ship
+        // BT controllers under their own handheld brand.
+        if (hints?.isWiredOnly(device.name) == true) {
+            dev.cannoli.scorza.util.InputLog.write(
+                "  identify id=${device.androidDeviceId} name='${device.name}' -> Wired (hint: wired-only)"
+            )
+            return wiredFor(device)
+        }
+
+        val mac = tracker.claimByName(device.name)
         if (mac != null) {
             dev.cannoli.scorza.util.InputLog.write(
-                "  identify id=${device.androidDeviceId} name='${device.name}' -> BT mac=$mac"
+                "  identify id=${device.androidDeviceId} name='${device.name}' -> BT mac=$mac (name match)"
             )
             return PhysicalIdentity.Bluetooth(mac)
         }
@@ -33,45 +52,12 @@ class BluetoothPhysicalIdentityResolver(
         return null
     }
 
-    private fun lookupBluetoothMac(deviceName: String): String? {
-        if (deviceName.isEmpty()) return null
-        return try {
-            val mgr = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
-            val adapter = mgr?.adapter
-            if (adapter == null) {
-                dev.cannoli.scorza.util.InputLog.write("  BT lookup: no adapter")
-                return null
-            }
-            if (!adapter.isEnabled) {
-                dev.cannoli.scorza.util.InputLog.write("  BT lookup: adapter disabled")
-                return null
-            }
-            val bonded = adapter.bondedDevices
-            if (bonded == null) {
-                dev.cannoli.scorza.util.InputLog.write("  BT lookup: bondedDevices=null")
-                return null
-            }
-            dev.cannoli.scorza.util.InputLog.write(
-                "  BT lookup for '$deviceName': bonded=${bonded.joinToString { "'${it.name}'(${it.address})" }}"
-            )
-            val matches = bonded.filter { it.name == deviceName }
-            if (matches.size != 1) {
-                dev.cannoli.scorza.util.InputLog.write(
-                    "  BT lookup: ${matches.size} matches for '$deviceName' -> giving up"
-                )
-                return null
-            }
-            matches[0].address
-        } catch (e: SecurityException) {
-            dev.cannoli.scorza.util.InputLog.write(
-                "  BT lookup: SecurityException (${e.message})"
-            )
-            null
-        } catch (e: Exception) {
-            dev.cannoli.scorza.util.InputLog.write(
-                "  BT lookup: error (${e.message})"
-            )
-            null
-        }
-    }
+    override fun claimFifoMac(): String? = tracker.claimNextFifo()
+
+    fun isWiredOnly(name: String): Boolean = hints?.isWiredOnly(name) == true
+
+    private fun wiredFor(device: ConnectedDevice): PhysicalIdentity? =
+        if (device.vendorId != 0 && device.productId != 0 && device.descriptor.isNotEmpty()) {
+            PhysicalIdentity.Wired(device.vendorId, device.productId, device.descriptor)
+        } else null
 }

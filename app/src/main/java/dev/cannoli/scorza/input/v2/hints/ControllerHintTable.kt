@@ -14,7 +14,20 @@ class ControllerHintTable internal constructor(
     private val vidPidEntries: List<VidPidEntry>,
     private val buildModelEntries: List<BuildModelEntry>,
     private val default: ControllerHint,
+    private val wiredOnlyNames: Set<String> = emptySet(),
 ) {
+
+    /**
+     * Returns true when [inputDeviceName] matches a curated entry of always-wired controllers.
+     *
+     * Used to suppress BT identification for built-in handheld pads (e.g. "Retroid Pocket
+     * Controller") where the kernel reports them as HID devices without distinguishing them
+     * from BT-paired controllers. Liars that impersonate one of these names also get treated
+     * as wired, which is the correct outcome since they're claiming to be a non-existent BT
+     * product (handheld OEMs don't sell BT controllers under their handheld brand).
+     */
+    fun isWiredOnly(inputDeviceName: String): Boolean =
+        inputDeviceName.isNotEmpty() && wiredOnlyNames.any { it.equals(inputDeviceName, ignoreCase = true) }
     internal data class VidPidEntry(
         val vendorId: Int,
         val productId: Int?,
@@ -102,10 +115,15 @@ class ControllerHintTable internal constructor(
                 }
             }
             val defaultObj = root.getJSONObject("default")
+            val wiredOnly = mutableSetOf<String>()
+            root.optJSONArray("wired_only_names")?.let { arr ->
+                for (i in 0 until arr.length()) wiredOnly += arr.getString(i)
+            }
             return ControllerHintTable(
                 vidPidEntries = vidPid,
                 buildModelEntries = byModel,
                 default = parseHint(defaultObj),
+                wiredOnlyNames = wiredOnly,
             )
         }
 

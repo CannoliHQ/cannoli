@@ -16,6 +16,7 @@ object ConnectedDeviceFactory {
         sourceMask: Int,
         connectedAtMillis: Long,
         isBuiltIn: Boolean = false,
+        isExternal: Boolean = true,
     ): ConnectedDevice = ConnectedDevice(
         androidDeviceId = androidDeviceId,
         descriptor = descriptor ?: "",
@@ -26,6 +27,7 @@ object ConnectedDeviceFactory {
         sourceMask = sourceMask,
         connectedAtMillis = connectedAtMillis,
         isBuiltIn = isBuiltIn,
+        isExternal = isExternal,
     )
 
     fun fromInputDevice(
@@ -42,5 +44,6 @@ object ConnectedDeviceFactory {
         sourceMask = device.sources,
         connectedAtMillis = connectedAtMillis,
         isBuiltIn = isBuiltIn,
+        isExternal = device.isExternal,
     )
 }

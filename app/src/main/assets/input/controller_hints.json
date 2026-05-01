@@ -42,5 +42,8 @@
   "default": {
     "menuConfirm": "BTN_SOUTH",
     "glyphStyle": "REDMOND"
-  }
+  },
+  "wired_only_names": [
+    "Retroid Pocket Controller"
+  ]
 }
