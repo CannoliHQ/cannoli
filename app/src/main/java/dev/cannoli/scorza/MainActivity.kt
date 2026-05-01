@@ -229,6 +229,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
                             gameListViewModel = gameListViewModel,
                             inputTesterViewModel = inputTesterViewModel,
                             onExitInputTester = {
+                                inputTesterController.exit()
                                 if (nav.screenStack.size > 1) nav.screenStack.removeAt(nav.screenStack.lastIndex)
                             },
                             settingsViewModel = settingsViewModel,

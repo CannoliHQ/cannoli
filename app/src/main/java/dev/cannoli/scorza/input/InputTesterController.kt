@@ -31,9 +31,14 @@ class InputTesterController(
     private val exitRunnable = Runnable { viewModel.requestExit() }
 
     fun enter() {
+        portRouter.resetAllEvaluators()
         viewModel.reset()
         initProfiles()
         refreshPorts()
+    }
+
+    fun exit() {
+        portRouter.resetAllEvaluators()
     }
 
     fun dispatchKey(event: KeyEvent, down: Boolean): Boolean {

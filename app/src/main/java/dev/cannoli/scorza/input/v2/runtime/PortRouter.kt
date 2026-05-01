@@ -178,4 +178,8 @@ class PortRouter(private val maxPorts: Int = 4) {
         val entry = entries.values.firstOrNull { it.port == port } ?: return 0f
         return entry.evaluator.analogValue(role)
     }
+
+    fun resetAllEvaluators() {
+        for (entry in entries.values) entry.evaluator.resetState()
+    }
 }
