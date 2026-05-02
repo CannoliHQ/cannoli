@@ -334,7 +334,6 @@ class LibretroActivity : ComponentActivity() {
         sessionLog.log("platform_tag=$platformTag")
         slotManager = SaveSlotManager(stateBasePath)
         guideManager = GuideManager(cannoliRoot, platformTag, File(romPath).nameWithoutExtension)
-        applyV2MappingToAllPorts()
         controllerManager.loadBlacklist(this)
         controllerManager.onDeviceDisconnected = { port -> onControllerDisconnected(port) }
         controllerManager.onDeviceConnected = { port, _ ->
@@ -529,9 +528,6 @@ class LibretroActivity : ComponentActivity() {
                 loadOverrides()
                 controllerTypes = runner.getControllerTypes(0).filter { it.id != 0 }
                 applyPortDeviceTypes()
-                for (p in 0 until LibretroRunner.MAX_PORTS) {
-                    if (controllerManager.slots[p] != null) runner.setControllerPortDevice(p, LibretroRunner.DEVICE_JOYPAD)
-                }
                 scanOverlayImages()
                 copyBundledShaders()
                 scanShaderPresets()
@@ -696,10 +692,6 @@ class LibretroActivity : ComponentActivity() {
 
     // --- Input ---
 
-    private val axisMask = LibretroInput.RETRO_UP or LibretroInput.RETRO_DOWN or
-            LibretroInput.RETRO_LEFT or LibretroInput.RETRO_RIGHT or
-            LibretroInput.RETRO_L2 or LibretroInput.RETRO_R2
-
     private var menuHeldKey = 0
 
     private val triggerL2HeldDevices = mutableSetOf<Int>()
@@ -769,27 +761,15 @@ class LibretroActivity : ComponentActivity() {
         }
 
         val port = controllerManager.getPortForDeviceId(event.deviceId) ?: 0
-        val portInput = controllerManager.portInputs[port]
-        var axes = 0
+        val mapping = portRouter.mappingForPort(port)
+        val evaluator = evaluatorForPort(port)
 
-        val hatX = event.getAxisValue(android.view.MotionEvent.AXIS_HAT_X)
-        val hatY = event.getAxisValue(android.view.MotionEvent.AXIS_HAT_Y)
-        if (hatX < -0.5f) axes = axes or (portInput.keyCodeToRetroMask(KeyEvent.KEYCODE_DPAD_LEFT) ?: LibretroInput.RETRO_LEFT)
-        if (hatX > 0.5f) axes = axes or (portInput.keyCodeToRetroMask(KeyEvent.KEYCODE_DPAD_RIGHT) ?: LibretroInput.RETRO_RIGHT)
-        if (hatY < -0.5f) axes = axes or (portInput.keyCodeToRetroMask(KeyEvent.KEYCODE_DPAD_UP) ?: LibretroInput.RETRO_UP)
-        if (hatY > 0.5f) axes = axes or (portInput.keyCodeToRetroMask(KeyEvent.KEYCODE_DPAD_DOWN) ?: LibretroInput.RETRO_DOWN)
-
-        val stickX = event.getAxisValue(android.view.MotionEvent.AXIS_X)
-        val stickY = event.getAxisValue(android.view.MotionEvent.AXIS_Y)
-        val analogMode = controllerTypes.getOrNull(controllerTypeIndex)?.let { it.id > 1 } == true
-        if (!analogMode) {
-            if (stickX < -0.5f) axes = axes or (portInput.keyCodeToRetroMask(KeyEvent.KEYCODE_DPAD_LEFT) ?: LibretroInput.RETRO_LEFT)
-            if (stickX > 0.5f) axes = axes or (portInput.keyCodeToRetroMask(KeyEvent.KEYCODE_DPAD_RIGHT) ?: LibretroInput.RETRO_RIGHT)
-            if (stickY < -0.5f) axes = axes or (portInput.keyCodeToRetroMask(KeyEvent.KEYCODE_DPAD_UP) ?: LibretroInput.RETRO_UP)
-            if (stickY > 0.5f) axes = axes or (portInput.keyCodeToRetroMask(KeyEvent.KEYCODE_DPAD_DOWN) ?: LibretroInput.RETRO_DOWN)
+        if (evaluator != null) {
+            val axisValues = collectMotionAxes(mapping, event)
+            evaluator.evaluateAxis(axisValues)
+            pushPortMask(port)
         }
 
-        val mapping = portRouter.mappingForPort(port)
         val leftTrigger = maxOf(
             mappingTriggerValue(mapping, dev.cannoli.scorza.input.v2.CanonicalButton.BTN_L2, event) ?: 0f,
             event.getAxisValue(android.view.MotionEvent.AXIS_LTRIGGER).coerceIn(0f, 1f),
@@ -800,15 +780,11 @@ class LibretroActivity : ComponentActivity() {
             event.getAxisValue(android.view.MotionEvent.AXIS_RTRIGGER).coerceIn(0f, 1f),
             event.getAxisValue(android.view.MotionEvent.AXIS_GAS).coerceIn(0f, 1f),
         )
-        if (leftTrigger > 0.5f) axes = axes or LibretroInput.RETRO_L2
-        if (rightTrigger > 0.5f) axes = axes or LibretroInput.RETRO_R2
-
         syncSyntheticTrigger(event.deviceId, port, KeyEvent.KEYCODE_BUTTON_L2, leftTrigger, triggerL2HeldDevices)
         syncSyntheticTrigger(event.deviceId, port, KeyEvent.KEYCODE_BUTTON_R2, rightTrigger, triggerR2HeldDevices)
 
-        controllerManager.portInputMasks[port] = (controllerManager.portInputMasks[port] and axisMask.inv()) or axes
-        runner.setInput(port, controllerManager.portInputMasks[port])
-
+        val stickX = event.getAxisValue(android.view.MotionEvent.AXIS_X)
+        val stickY = event.getAxisValue(android.view.MotionEvent.AXIS_Y)
         val lStickX = mostActiveStick(mappingStickValue(mapping, dev.cannoli.scorza.input.v2.AnalogRole.LEFT_STICK_X, event), stickX)
         val lStickY = mostActiveStick(mappingStickValue(mapping, dev.cannoli.scorza.input.v2.AnalogRole.LEFT_STICK_Y, event), stickY)
         runner.setAnalog(port, 0, (lStickX * 32767).toInt().coerceIn(-32768, 32767),
@@ -824,6 +800,44 @@ class LibretroActivity : ComponentActivity() {
         runner.setAnalog(port, 1, (rStickX * 32767).toInt().coerceIn(-32768, 32767),
             (rStickY * 32767).toInt().coerceIn(-32768, 32767))
         return true
+    }
+
+    private fun evaluatorForPort(port: Int): dev.cannoli.scorza.input.v2.runtime.PortEvaluator? {
+        val deviceId = controllerManager.getDeviceIdForPort(port) ?: return null
+        return portRouter.evaluatorFor(deviceId)
+    }
+
+    private fun pushPortMask(port: Int) {
+        val eval = evaluatorForPort(port) ?: run {
+            controllerManager.portInputMasks[port] = 0
+            runner.setInput(port, 0)
+            return
+        }
+        var mask = 0
+        for (cb in eval.currentlyPressed()) {
+            mask = mask or dev.cannoli.scorza.input.v2.runtime.CanonicalRetroMap.maskOf(cb)
+        }
+        controllerManager.portInputMasks[port] = mask
+        runner.setInput(port, mask)
+    }
+
+    private fun collectMotionAxes(
+        mapping: dev.cannoli.scorza.input.v2.DeviceMapping?,
+        event: android.view.MotionEvent,
+    ): Map<Int, Float> {
+        val axes = mutableSetOf<Int>()
+        if (mapping != null) {
+            for ((_, bindings) in mapping.bindings) {
+                for (binding in bindings) {
+                    when (binding) {
+                        is dev.cannoli.scorza.input.v2.InputBinding.Axis -> axes.add(binding.axis)
+                        is dev.cannoli.scorza.input.v2.InputBinding.Hat -> axes.add(binding.axis)
+                        is dev.cannoli.scorza.input.v2.InputBinding.Button -> Unit
+                    }
+                }
+            }
+        }
+        return axes.associateWith { event.getAxisValue(it) }
     }
 
     private fun mostActiveStick(mapping: Float?, fallback: Float): Float {
@@ -968,10 +982,10 @@ class LibretroActivity : ComponentActivity() {
             }
         }
 
-        val portInput = controllerManager.portInputs[port]
-        val mask = portInput.keyCodeToRetroMask(keyCode) ?: return super.onKeyUp(keyCode, event)
-        controllerManager.portInputMasks[port] = controllerManager.portInputMasks[port] and mask.inv()
-        runner.setInput(port, controllerManager.portInputMasks[port])
+        val evaluator = evaluatorForPort(port) ?: return super.onKeyUp(keyCode, event)
+        if (!evaluator.keyCodeIsBound(keyCode)) return super.onKeyUp(keyCode, event)
+        evaluator.evaluateKeyUp(keyCode)
+        pushPortMask(port)
         return true
     }
 
@@ -1037,23 +1051,26 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun handleGameplayInput(keyCode: Int, event: KeyEvent): Boolean {
-        val menuCode = KeyEvent.KEYCODE_BACK
         val port = controllerManager.getPortForDeviceId(event.deviceId) ?: 0
-        val portInput = controllerManager.portInputs[port]
-        val mappedMask = portInput.keyCodeToRetroMask(keyCode)
-        val isMenuKey = keyCode == KeyEvent.KEYCODE_MENU ||
+        val evaluator = evaluatorForPort(port)
+        val mapping = portRouter.mappingForPort(port)
+        val mapsToCanonical = evaluator?.keyCodeIsBound(keyCode) == true
+        val opensMenu = mapping?.bindings?.get(dev.cannoli.scorza.input.v2.CanonicalButton.BTN_MENU)
+            ?.any { it is dev.cannoli.scorza.input.v2.InputBinding.Button && it.keyCode == keyCode } == true
+        val isUnboundMenuKey = !mapsToCanonical && (
+            keyCode == KeyEvent.KEYCODE_MENU ||
                 keyCode == KeyEvent.KEYCODE_BACK ||
-                keyCode == KeyEvent.KEYCODE_BUTTON_MODE ||
-                keyCode == menuCode
-        if (isMenuKey && mappedMask == null) { openMenu(); return true }
+                keyCode == KeyEvent.KEYCODE_BUTTON_MODE
+        )
+        if (opensMenu || isUnboundMenuKey) { openMenu(); return true }
         if (isSyntheticTriggerHeld(event.deviceId, keyCode)) return true
         val portKeys = controllerManager.portPressedKeys[port]
         val isNewPress = portKeys.add(keyCode)
         if (isNewPress) checkShortcuts(port)
         if (keyCode in portConsumedKeys[port]) return true
-        val mask = mappedMask ?: return super.onKeyDown(keyCode, event)
-        controllerManager.portInputMasks[port] = controllerManager.portInputMasks[port] or mask
-        runner.setInput(port, controllerManager.portInputMasks[port])
+        if (evaluator == null || !mapsToCanonical) return super.onKeyDown(keyCode, event)
+        evaluator.evaluateKeyDown(keyCode, event.repeatCount > 0)
+        pushPortMask(port)
         return true
     }
 
@@ -1128,13 +1145,11 @@ class LibretroActivity : ComponentActivity() {
                 }
             }
             consumed.addAll(chord)
-            var inputMask = controllerManager.portInputMasks[port]
-            val portInput = controllerManager.portInputs[port]
-            for (key in chord) {
-                portInput.keyCodeToRetroMask(key)?.let { inputMask = inputMask and it.inv() }
+            val evaluator = evaluatorForPort(port)
+            if (evaluator != null) {
+                for (key in chord) evaluator.evaluateKeyUp(key)
             }
-            controllerManager.portInputMasks[port] = inputMask
-            runner.setInput(port, inputMask)
+            pushPortMask(port)
             break
         }
     }
@@ -1159,7 +1174,6 @@ class LibretroActivity : ComponentActivity() {
         screenStack.clear()
         menuRepeatHandler.removeCallbacks(menuRepeatRunnable)
         menuHeldKey = 0
-        applyV2MappingToAllPorts()
         controllerManager.resetAllInput()
         triggerL2HeldDevices.clear()
         triggerR2HeldDevices.clear()
@@ -1952,54 +1966,6 @@ class LibretroActivity : ComponentActivity() {
     }
 
 
-    private fun deriveLegacyMappingFromV2Mapping(mapping: dev.cannoli.scorza.input.v2.DeviceMapping?): Map<String, Int> {
-        if (mapping == null) return emptyMap()
-        val out = mutableMapOf<String, Int>()
-        for ((canonical, bindings) in mapping.bindings) {
-            val keyCode = bindings.firstNotNullOfOrNull { (it as? dev.cannoli.scorza.input.v2.InputBinding.Button)?.keyCode }
-                ?: continue
-            val legacyKey = canonicalToLegacyKey(canonical) ?: continue
-            out[legacyKey] = keyCode
-        }
-        return out
-    }
-
-    private fun canonicalToLegacyKey(canonical: dev.cannoli.scorza.input.v2.CanonicalButton): String? = when (canonical) {
-        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_SOUTH -> "btn_south"
-        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_EAST -> "btn_east"
-        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_WEST -> "btn_west"
-        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_NORTH -> "btn_north"
-        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_L -> "btn_l"
-        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_R -> "btn_r"
-        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_L2 -> "btn_l2"
-        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_R2 -> "btn_r2"
-        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_L3 -> "btn_l3"
-        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_R3 -> "btn_r3"
-        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_START -> "btn_start"
-        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_SELECT -> "btn_select"
-        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_MENU -> "btn_menu"
-        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_UP -> "btn_up"
-        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_DOWN -> "btn_down"
-        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_LEFT -> "btn_left"
-        dev.cannoli.scorza.input.v2.CanonicalButton.BTN_RIGHT -> "btn_right"
-    }
-
-    private fun applyV2MappingToLegacyPortInput(port: Int) {
-        val mapping = portRouter.mappingForPort(port) ?: return
-        val legacyMap = deriveLegacyMappingFromV2Mapping(mapping)
-        if (legacyMap.isEmpty()) return
-        val portInput = controllerManager.portInputs[port]
-        for ((legacyKey, keyCode) in legacyMap) {
-            val btn = portInput.buttons.firstOrNull { it.prefKey == legacyKey } ?: continue
-            portInput.assign(btn, keyCode)
-        }
-    }
-
-    private fun applyV2MappingToAllPorts() {
-        for (port in 0 until controllerManager.portInputs.size) {
-            applyV2MappingToLegacyPortInput(port)
-        }
-    }
 
 
     // --- Shortcuts ---
@@ -2247,8 +2213,6 @@ class LibretroActivity : ComponentActivity() {
         shortcutSource = settings.shortcutSource
         shortcuts = settings.shortcuts
         portDeviceTypes = settings.portDeviceTypes
-
-        applyV2MappingToAllPorts()
 
         for ((key, value) in settings.coreOptions) {
             runner.setCoreOption(key, value)

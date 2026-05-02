@@ -98,6 +98,15 @@ class PortEvaluator(
 
     fun analogValue(role: AnalogRole): Float = analog[role] ?: 0f
 
+    fun keyCodeIsBound(keyCode: Int): Boolean {
+        for ((_, bindings) in mapping.bindings) {
+            for (binding in bindings) {
+                if (binding is InputBinding.Button && binding.keyCode == keyCode) return true
+            }
+        }
+        return false
+    }
+
     fun canonicalsHeldByKeyCode(keyCode: Int): List<CanonicalButton> {
         val out = mutableListOf<CanonicalButton>()
         for ((canonical, bindings) in mapping.bindings) {
