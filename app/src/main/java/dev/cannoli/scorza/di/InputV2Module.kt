@@ -94,6 +94,7 @@ object InputV2Module {
         physicalIdentityResolver: PhysicalIdentityResolver,
         btTracker: BtHidConnectionTracker,
         mappingRepository: MappingRepository,
+        blacklist: dev.cannoli.scorza.input.ControllerBlacklist,
         @BundledRetroArchAutoconfig bundled: List<RetroArchCfgEntry>,
         hints: dev.cannoli.scorza.input.v2.hints.ControllerHintTable,
     ): ControllerV2Bridge = ControllerV2Bridge(
@@ -103,6 +104,7 @@ object InputV2Module {
         physicalIdentityResolver = physicalIdentityResolver,
         btTracker = btTracker,
         mappingRepository = mappingRepository,
+        blacklist = blacklist,
         bundledCfgs = bundled,
         hints = hints,
     )

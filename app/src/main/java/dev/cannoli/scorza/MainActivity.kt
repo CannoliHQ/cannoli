@@ -121,6 +121,8 @@ class MainActivity : ComponentActivity(), ActivityActions {
         }
     }
     private var permissionGranted by mutableStateOf(false)
+    private var pendingStoragePrompt = false
+    private var pendingBtPrompt = false
     private var coldStart = true
 
     private fun cancelShortcutListening() = bindingController.cancelShortcutListening()
@@ -128,29 +130,27 @@ class MainActivity : ComponentActivity(), ActivityActions {
     private val storagePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) {
-        if (hasStoragePermission()) {
-            permissionGranted = true
-            afterPermissionGranted()
-        }
+        pendingStoragePrompt = false
+        ensurePermissionsOrRequest()
     }
 
     private val legacyPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { grants ->
-        if (grants.values.all { it }) {
-            permissionGranted = true
-            afterPermissionGranted()
-        }
+    ) {
+        pendingStoragePrompt = false
+        ensurePermissionsOrRequest()
     }
 
     private val bluetoothPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
+        pendingBtPrompt = false
         dev.cannoli.scorza.util.InputLog.write("BLUETOOTH_CONNECT permission ${if (granted) "granted" else "denied"}")
-        if (granted) {
+        if (granted && storageDependentStarted) {
             controllerV2Bridge.settleNow()
             controllersViewModel.refreshFromRouter()
         }
+        ensurePermissionsOrRequest()
     }
 
     private fun loadLoggingPrefs() {
@@ -160,12 +160,40 @@ class MainActivity : ComponentActivity(), ActivityActions {
         dev.cannoli.scorza.util.LoggingPrefs.session = settings.loggingSession
     }
 
-    private fun maybeRequestBluetoothConnect() {
-        if (Build.VERSION.SDK_INT < 31) return
-        val granted = ContextCompat.checkSelfPermission(
+    private fun hasBluetoothConnectPermission(): Boolean {
+        if (Build.VERSION.SDK_INT < 31) return true
+        return ContextCompat.checkSelfPermission(
             this, Manifest.permission.BLUETOOTH_CONNECT
         ) == PackageManager.PERMISSION_GRANTED
-        if (!granted) bluetoothPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
+    }
+
+    /**
+     * Permission gate: only proceeds when MANAGE_EXTERNAL_STORAGE and (on API 31+)
+     * BLUETOOTH_CONNECT are both granted. If a permission is missing, requests it (one at a
+     * time). If both are granted, kicks off the storage-dependent boot path. Safe to call from
+     * lifecycle callbacks repeatedly — pending-prompt flags prevent duplicate launches.
+     */
+    private fun ensurePermissionsOrRequest() {
+        val hasStorage = hasStoragePermission()
+        val hasBt = hasBluetoothConnectPermission()
+        if (hasStorage && hasBt) {
+            permissionGranted = true
+            startStorageDependent()
+            afterPermissionGranted()
+            return
+        }
+        permissionGranted = false
+        if (!hasStorage) {
+            if (!pendingStoragePrompt) {
+                pendingStoragePrompt = true
+                requestStoragePermission()
+            }
+            return
+        }
+        if (!hasBt && !pendingBtPrompt && Build.VERSION.SDK_INT >= 31) {
+            pendingBtPrompt = true
+            bluetoothPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -181,14 +209,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
 
         hideSystemUI()
         editButtonsController.cancelListening()
-        // InputLog (and the runtime logging gates) must be set up BEFORE the bridge starts so
-        // the initial-enumeration log lines are captured.
         loadLoggingPrefs()
-        if (settings.sdCardRoot.isNotEmpty()) {
-            dev.cannoli.scorza.util.InputLog.init(settings.sdCardRoot)
-        }
-        maybeRequestBluetoothConnect()
-        controllerV2Bridge.start(this)
 
         setupWireInput()
 
@@ -196,17 +217,22 @@ class MainActivity : ComponentActivity(), ActivityActions {
             override fun handleOnBackPressed() {}
         })
 
-        if (hasStoragePermission()) {
-            permissionGranted = true
-            afterPermissionGranted()
-        }
+        // Permission gate: PermissionScreen renders until MANAGE_EXTERNAL_STORAGE and (on
+        // API 31+) BLUETOOTH_CONNECT are both granted. ensurePermissionsOrRequest re-checks
+        // and re-prompts for whichever is still missing on every entry — onCreate, every
+        // launcher callback, and onResume — so returning from system settings or denying once
+        // never gets stuck.
+        ensurePermissionsOrRequest()
 
         setContent {
             val appFont by settingsViewModel.appSettings.collectAsState()
             CannoliTheme(fontFamily = appFont.fontFamily) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     if (!permissionGranted) {
-                        PermissionScreen()
+                        PermissionScreen(
+                            storageGranted = hasStoragePermission(),
+                            bluetoothGranted = hasBluetoothConnectPermission(),
+                        )
                     } else {
                         val updateInfo = updateManager.updateAvailable.collectAsState().value
                         val dlProgress = updateManager.downloadProgress.collectAsState().value
@@ -251,6 +277,25 @@ class MainActivity : ComponentActivity(), ActivityActions {
                 }
             }
         }
+    }
+
+    /**
+     * Wire up everything that needs MANAGE_EXTERNAL_STORAGE access. Idempotent — guarded so
+     * subsequent permission re-grants (or onResume after the user toggled the OS setting) don't
+     * re-start the bridge. Logging, the controller bridge, and the BT runtime permission ask
+     * all live here so they only run once we can actually open files under Cannoli/.
+     */
+    @Inject lateinit var controllerBlacklist: dev.cannoli.scorza.input.ControllerBlacklist
+
+    private var storageDependentStarted = false
+    private fun startStorageDependent() {
+        if (storageDependentStarted) return
+        storageDependentStarted = true
+        if (settings.sdCardRoot.isNotEmpty()) {
+            dev.cannoli.scorza.util.InputLog.init(settings.sdCardRoot)
+        }
+        controllerBlacklist.load(this)
+        controllerV2Bridge.start(this)
     }
 
     private fun afterPermissionGranted() {
@@ -370,9 +415,8 @@ class MainActivity : ComponentActivity(), ActivityActions {
     override fun onResume() {
         super.onResume()
         registerControllerOsd()
-        if (!permissionGranted && hasStoragePermission()) {
-            permissionGranted = true
-            afterPermissionGranted()
+        if (!permissionGranted) {
+            ensurePermissionsOrRequest()
             return
         }
         if (!coldStart) overridePendingTransition(0, 0)
@@ -617,6 +661,9 @@ class MainActivity : ComponentActivity(), ActivityActions {
         dev.cannoli.scorza.util.DebugLog.init(root.absolutePath)
         dev.cannoli.scorza.util.ScanLog.init(root.absolutePath)
         dev.cannoli.scorza.util.InputLog.init(root.absolutePath)
+        // Re-load now that storage permission is in hand. The DI-time load() degrades to bundled
+        // asset defaults if the user override INI couldn't be read (no permission yet).
+        platformConfig.load()
         launchManager.syncRetroArchAssets(root)
         launchManager.syncRetroArchConfig(root)
         ioScope.launch { dev.cannoli.scorza.util.DirectoryLayout.ensure(root, romDir, assets, platformConfig) }

@@ -8,16 +8,21 @@ import dev.cannoli.scorza.util.ScanLog
 import java.io.File
 
 class CannoliDatabase(cannoliRoot: File) {
-    val conn: SQLiteConnection
+    private val dbPath: String = CannoliPaths(cannoliRoot).database.absolutePath
+    private val dbDir: File? = CannoliPaths(cannoliRoot).database.parentFile
 
-    init {
-        val dbFile = CannoliPaths(cannoliRoot).database.apply { parentFile?.mkdirs() }
-        conn = BundledSQLiteDriver().open(dbFile.absolutePath)
-        conn.execSQL("PRAGMA foreign_keys = ON")
-        conn.execSQL("PRAGMA journal_mode = WAL")
-        runMigrations(conn)
-        runIntegrityCheck(conn)
-        conn.execSQL("PRAGMA wal_checkpoint(TRUNCATE)")
+    // Open lazily so DI can construct the database singleton before storage permission has
+    // been granted. The actual SQLite open / migration runs on first access, which only
+    // happens after MainActivity.initializeApp() has confirmed permission.
+    val conn: SQLiteConnection by lazy {
+        dbDir?.mkdirs()
+        val c = BundledSQLiteDriver().open(dbPath)
+        c.execSQL("PRAGMA foreign_keys = ON")
+        c.execSQL("PRAGMA journal_mode = WAL")
+        runMigrations(c)
+        runIntegrityCheck(c)
+        c.execSQL("PRAGMA wal_checkpoint(TRUNCATE)")
+        c
     }
 
     /**

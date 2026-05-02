@@ -22,7 +22,10 @@ import dev.cannoli.ui.theme.LocalCannoliTypography
 import dev.cannoli.ui.theme.Spacing
 
 @Composable
-fun PermissionScreen() {
+fun PermissionScreen(
+    storageGranted: Boolean = false,
+    bluetoothGranted: Boolean = false,
+) {
     val typo = LocalCannoliTypography.current
     Column(
         modifier = Modifier
@@ -53,6 +56,19 @@ fun PermissionScreen() {
             color = GrayText
         )
 
+        Spacer(modifier = Modifier.height(Spacing.Md))
+
+        PermissionStatusRow(
+            label = stringResource(R.string.permission_storage_label),
+            granted = storageGranted,
+            typo = typo,
+        )
+        PermissionStatusRow(
+            label = stringResource(R.string.permission_bluetooth_label),
+            granted = bluetoothGranted,
+            typo = typo,
+        )
+
         Spacer(modifier = Modifier.height(Spacing.Lg))
 
         Text(
@@ -61,4 +77,19 @@ fun PermissionScreen() {
             color = GrayText
         )
     }
+}
+
+@Composable
+private fun PermissionStatusRow(
+    label: String,
+    granted: Boolean,
+    typo: dev.cannoli.ui.theme.CannoliTypography,
+) {
+    val marker = if (granted) "✓" else "•"
+    val color = if (granted) Color(0xFF4CAF50) else GrayText
+    Text(
+        text = "$marker  $label",
+        style = typo.bodyMedium,
+        color = color,
+    )
 }

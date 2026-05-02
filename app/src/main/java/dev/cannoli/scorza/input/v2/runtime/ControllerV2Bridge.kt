@@ -20,6 +20,7 @@ class ControllerV2Bridge(
     private val physicalIdentityResolver: PhysicalIdentityResolver,
     private val btTracker: BtHidConnectionTracker? = null,
     private val mappingRepository: dev.cannoli.scorza.input.v2.repo.MappingRepository? = null,
+    private val blacklist: dev.cannoli.scorza.input.ControllerBlacklist? = null,
     private val bundledCfgs: List<RetroArchCfgEntry> = emptyList(),
     private val hints: ControllerHintTable? = null,
     private val clock: () -> Long = { System.currentTimeMillis() },
@@ -155,6 +156,12 @@ class ControllerV2Bridge(
         val currentDevices = mutableListOf<ConnectedDevice>()
         for (facts in factsList) {
             if (!isGamepad(facts)) continue
+            if (blacklist?.isBlocked(facts.name, facts.vendorId) == true) {
+                dev.cannoli.scorza.util.InputLog.write(
+                    "  blacklisted id=${facts.androidDeviceId} name='${facts.name}' vid=${facts.vendorId}"
+                )
+                continue
+            }
             val zeroVidPid = facts.vendorId == 0 && facts.productId == 0
             if (zeroVidPid && facts.name.isNullOrEmpty()) continue
             val connected = ConnectedDeviceFactory.fromFields(

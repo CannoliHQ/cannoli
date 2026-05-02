@@ -267,9 +267,11 @@
     <string name="battery_level">%1$d%%</string>
 
     <!-- Permission screen -->
-    <string name="permission_title">All Files Access Required</string>
-    <string name="permission_description">Cannoli needs permission to read your games, BIOS files, etc.</string>
-    <string name="permission_grant">Press any button to grant access</string>
+    <string name="permission_title">Permissions Required</string>
+    <string name="permission_description">Cannoli needs permission to read your games and pair controllers.</string>
+    <string name="permission_grant">Waiting for system permission dialogs</string>
+    <string name="permission_storage_label">All files access</string>
+    <string name="permission_bluetooth_label">Nearby devices (Bluetooth)</string>
 
     <!-- Setup screen -->
     <string name="setup_welcome">Welcome to Cannoli!</string>

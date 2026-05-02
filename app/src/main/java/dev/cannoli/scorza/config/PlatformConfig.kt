@@ -101,11 +101,22 @@ class PlatformConfig(
     fun load() {
         loadPlatformsAsset()
         val configFile = paths.platformsIni
-        if (!configFile.exists()) {
-            writeDefaultIni(configFile)
+        try {
+            if (!configFile.exists()) {
+                writeDefaultIni(configFile)
+            }
+            ini = IniParser.parse(configFile)
+        } catch (_: java.io.IOException) {
+            // Storage permission likely not yet granted (EACCES on shared storage). Stick with
+            // the bundled asset defaults; MainActivity calls load() again after permission grant.
+        } catch (_: SecurityException) {
+            // Same as above on stricter platforms.
         }
-        ini = IniParser.parse(configFile)
-        loadCoreMappings()
+        try {
+            loadCoreMappings()
+        } catch (_: java.io.IOException) {
+        } catch (_: SecurityException) {
+        }
     }
 
     private fun loadCoreMappings() {

@@ -3,6 +3,8 @@
     { "id": 6353, "name": "Google (Android TV virtual devices)" }
   ],
   "name_prefixes": [
-    "Onn"
+    "Onn",
+    "virtual-remote",
+    "virtual-search"
   ]
 }
