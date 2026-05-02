@@ -170,9 +170,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext context: Contex
         get() = jsonRead { optBoolean(KEY_SHOW_UPDATE, true) }
         set(value) = jsonWrite { put(KEY_SHOW_UPDATE, value) }
 
-    var showEmpty: Boolean
-        get() = jsonRead { optBoolean(KEY_SHOW_EMPTY, false) }
-        set(value) = jsonWrite { put(KEY_SHOW_EMPTY, value) }
 
     var showTools: Boolean
         get() = jsonRead { optBoolean(KEY_SHOW_TOOLS, false) }
@@ -323,7 +320,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext context: Contex
         private const val KEY_MAIN_MENU_QUIT = "main_menu_quit"
         private const val KEY_KITCHEN_CODE_BYPASS = "kitchen_code_bypass"
         private const val KEY_RETROARCH_DIY_MODE = "retroarch_diy_mode"
-        private const val KEY_SHOW_EMPTY = "show_empty"
         private const val KEY_SHOW_WIFI = "show_wifi"
         private const val KEY_SHOW_BLUETOOTH = "show_bluetooth"
         private const val KEY_SHOW_VPN = "show_vpn"

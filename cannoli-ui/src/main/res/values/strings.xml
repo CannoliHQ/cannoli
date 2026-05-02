@@ -170,7 +170,6 @@
     <string name="setting_retroarch_diy_mode">RetroArch DIY Mode</string>
     <string name="setting_kitchen_code_bypass">Kitchen Code Bypass</string>
     <string name="setting_set_default_launcher">Set as Default Launcher</string>
-    <string name="setting_show_empty">Empty Platforms</string>
     <string name="setting_content_mode">Content Mode</string>
     <string name="setting_fgh_collection">5GH Collection</string>
     <string name="setting_scroll_speed">Marquee Speed</string>

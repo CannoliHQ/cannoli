@@ -81,7 +81,7 @@ class SystemListViewModel @Inject constructor(
         savedPosition = _state.value.selectedIndex to firstVisibleIndex
     }
 
-    fun scan(showRecentlyPlayed: Boolean = true, showEmpty: Boolean = false, contentMode: ContentMode = ContentMode.PLATFORMS, fghCollectionStem: String? = null, toolsName: String = "Tools", portsName: String = "Ports", onReady: () -> Unit = {}) {
+    fun scan(showRecentlyPlayed: Boolean = true, contentMode: ContentMode = ContentMode.PLATFORMS, fghCollectionStem: String? = null, toolsName: String = "Tools", portsName: String = "Ports", onReady: () -> Unit = {}) {
         val prev = _state.value
         val prevItemCount = prev.items.size
         val restored = savedPosition
@@ -156,8 +156,7 @@ class SystemListViewModel @Inject constructor(
             val reorderableItems = mutableListOf<ListItem>()
             when (contentMode) {
                 ContentMode.PLATFORMS -> {
-                    val visiblePlatforms = if (showEmpty) groupedPlatforms else groupedPlatforms.filter { it.gameCount > 0 }
-                    visiblePlatforms.sortedBy { it.displayName }.forEach {
+                    groupedPlatforms.filter { it.gameCount > 0 }.sortedBy { it.displayName }.forEach {
                         reorderableItems.add(ListItem.PlatformItem(it))
                     }
                 }
@@ -318,10 +317,10 @@ class SystemListViewModel @Inject constructor(
         romScanner.ensureReservedPlatformTag(tag)
     }
 
-    fun cancelReorder(showRecentlyPlayed: Boolean = true, showEmpty: Boolean = false, contentMode: ContentMode = ContentMode.PLATFORMS, fghCollectionStem: String? = null, toolsName: String = "Tools", portsName: String = "Ports") {
+    fun cancelReorder(showRecentlyPlayed: Boolean = true, contentMode: ContentMode = ContentMode.PLATFORMS, fghCollectionStem: String? = null, toolsName: String = "Tools", portsName: String = "Ports") {
         val current = _state.value
         if (!current.reorderMode) return
-        scan(showRecentlyPlayed, showEmpty, contentMode, fghCollectionStem, toolsName, portsName)
+        scan(showRecentlyPlayed, contentMode, fghCollectionStem, toolsName, portsName)
     }
 
     private fun ListItem.isReorderable(): Boolean = this is ListItem.PlatformItem || this is ListItem.ToolsFolder || this is ListItem.PortsFolder || this is ListItem.CollectionItem || this is ListItem.GameItem

@@ -61,7 +61,6 @@ class LauncherActions @Inject constructor(
         gameListViewModel.showFavoriteStars = settings.contentMode != ContentMode.FIVE_GAME_HANDHELD
         systemListViewModel.scan(
             showRecentlyPlayed = settings.showRecentlyPlayed,
-            showEmpty = settings.showEmpty,
             contentMode = settings.contentMode,
             fghCollectionStem = fghStem,
             toolsName = settings.toolsName,

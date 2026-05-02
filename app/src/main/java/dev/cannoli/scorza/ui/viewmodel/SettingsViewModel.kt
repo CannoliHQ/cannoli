@@ -208,7 +208,6 @@ class SettingsViewModel @Inject constructor(
         val showVpn: Boolean,
         val showClock: Boolean,
         val showBattery: Boolean,
-        val showEmpty: Boolean,
         val showRecentlyPlayed: Boolean,
         val contentMode: ContentMode,
         val fghCollectionStem: String?,
@@ -416,7 +415,6 @@ class SettingsViewModel @Inject constructor(
                     settings.fghCollectionStem = stems[next]
                 }
             }
-            "show_empty" -> settings.showEmpty = !settings.showEmpty
             "show_recently_played" -> settings.showRecentlyPlayed = !settings.showRecentlyPlayed
             "show_wifi" -> settings.showWifi = !settings.showWifi
             "show_bluetooth" -> settings.showBluetooth = !settings.showBluetooth
@@ -575,7 +573,6 @@ class SettingsViewModel @Inject constructor(
         showVpn = settings.showVpn,
         showClock = settings.showClock,
         showBattery = settings.showBattery,
-        showEmpty = settings.showEmpty,
         showRecentlyPlayed = settings.showRecentlyPlayed,
         contentMode = settings.contentMode,
         fghCollectionStem = settings.fghCollectionStem,
@@ -610,7 +607,6 @@ class SettingsViewModel @Inject constructor(
         settings.showVpn = snap.showVpn
         settings.showClock = snap.showClock
         settings.showBattery = snap.showBattery
-        settings.showEmpty = snap.showEmpty
         settings.showRecentlyPlayed = snap.showRecentlyPlayed
         settings.contentMode = snap.contentMode
         settings.fghCollectionStem = snap.fghCollectionStem
@@ -690,7 +686,6 @@ class SettingsViewModel @Inject constructor(
                 add(SettingsItem("show_recently_played", R.string.setting_show_recently_played, valueRes = showHide(settings.showRecentlyPlayed)))
             }
             if (settings.contentMode == ContentMode.PLATFORMS) {
-                add(SettingsItem("show_empty", R.string.setting_show_empty, valueRes = showHide(settings.showEmpty)))
             }
             add(SettingsItem("manage_ports", R.string.setting_manage_ports, isEditable = true))
             add(SettingsItem("manage_tools", R.string.setting_manage_tools, isEditable = true))
