@@ -20,6 +20,15 @@ sealed class IGMScreen {
     data class Guide(override val selectedIndex: Int = 0, val filePath: String, val page: Int = 0, val textZoom: Int = 1) : IGMScreen()
 
     data class Controllers(override val selectedIndex: Int = 0) : IGMScreen()
+    /**
+     * In-game multi-controller seat reassignment. [selectedIndex] picks one of the four port
+     * rows. [swapWithIndex] is the row currently being held in 'swap mode' (set when the user
+     * confirmed on a row to start a swap; the next confirm picks the partner). -1 means idle.
+     */
+    data class ReassignPlayers(
+        override val selectedIndex: Int = 0,
+        val swapWithIndex: Int = -1,
+    ) : IGMScreen()
     data class ControllerDetail(
         override val selectedIndex: Int = 0,
         val mappingId: String,

@@ -534,6 +534,34 @@ fun LibretroScreen(
                     buttonStyle = labels,
                 )
             }
+            is IGMScreen.ReassignPlayers -> {
+                val controllersState = controllersViewModel?.state?.collectAsState()?.value
+                val portToName = (controllersState?.connected.orEmpty())
+                    .filter { it.port != null }
+                    .associate { it.port!! to it.mapping.displayName }
+                val items = (0 until 4).map { port ->
+                    val name = portToName[port] ?: "—"
+                    val display = if (port == screen.swapWithIndex) "→ $name" else name
+                    IGMSettingsItem(
+                        label = "Player ${port + 1}",
+                        value = display,
+                    )
+                }
+                val confirmLabel = when {
+                    screen.swapWithIndex < 0 -> stringResource(R.string.label_swap)
+                    screen.swapWithIndex == screen.selectedIndex -> stringResource(R.string.label_cancel)
+                    else -> stringResource(R.string.label_swap_with)
+                }
+                IGMSettingsScreen(
+                    title = stringResource(R.string.igm_reassign_players),
+                    items = items,
+                    selectedIndex = screen.selectedIndex,
+                    bottomBarLeft = listOf(labels.back to stringResource(R.string.label_back)),
+                    bottomBarRight = listOf(labels.confirm to confirmLabel),
+                    fontSize = igmFontSize,
+                    lineHeight = igmLineHeight,
+                )
+            }
             null -> {}
         }
 

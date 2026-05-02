@@ -242,8 +242,12 @@ class LibretroActivity : ComponentActivity() {
         diskLabel(currentDiskIndex),
         raHasAchievements,
         guideFiles.isNotEmpty(),
+        hasReassign = nonExcludedConnectedCount() > 1,
         quitLabel = if (alwaysSaveOnQuit) getString(R.string.igm_save_and_quit) else "Quit"
     )
+
+    private fun nonExcludedConnectedCount(): Int =
+        portRouter.snapshotEntries().count { !it.mapping.excludeFromGameplay }
 
     private fun refreshDiskInfo() {
         if (!romPath.endsWith(".m3u", ignoreCase = true)) return
@@ -925,6 +929,7 @@ class LibretroActivity : ComponentActivity() {
             is IGMScreen.Controllers -> handleControllersInput(screen, button)
             is IGMScreen.ControllerDetail -> handleControllerDetailInput(screen, button)
             is IGMScreen.EditButtons -> handleEditButtonsInput(screen, keyCode, button)
+            is IGMScreen.ReassignPlayers -> handleReassignPlayersInput(screen, button)
         }
     }
 
@@ -1308,6 +1313,9 @@ class LibretroActivity : ComponentActivity() {
                 frontendSnapshot = buildCurrentSettings()
                 shaderParamsDirty = false
                 push(IGMScreen.Settings())
+            }
+            menu.reassignIndex -> {
+                push(IGMScreen.ReassignPlayers())
             }
             menu.resetIndex -> {
                 if (stateBasePath.isNotEmpty()) {
@@ -2446,6 +2454,52 @@ class LibretroActivity : ComponentActivity() {
         return s.connected.map { it.mapping.id to it.androidDeviceId } +
             s.savedMappings.map { it.id to null }
     }
+
+    /** Order of port slot rows on the Reassign Players screen: P1 .. P4. */
+    private val reassignPortCount = 4
+
+    private fun handleReassignPlayersInput(screen: IGMScreen.ReassignPlayers, button: String?): Boolean {
+        val count = reassignPortCount
+        return when (button) {
+            "btn_up" -> {
+                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count))
+                true
+            }
+            "btn_down" -> {
+                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count))
+                true
+            }
+            "btn_south" -> {
+                if (screen.swapWithIndex < 0) {
+                    // Begin a swap: arm the row currently selected.
+                    if (deviceForPort(screen.selectedIndex) != null) {
+                        replaceTop(screen.copy(swapWithIndex = screen.selectedIndex))
+                    }
+                } else {
+                    val from = screen.swapWithIndex
+                    val to = screen.selectedIndex
+                    if (from != to) {
+                        val deviceId = deviceForPort(from)
+                        if (deviceId != null) portRouter.reassign(deviceId, to)
+                    }
+                    replaceTop(screen.copy(swapWithIndex = -1))
+                }
+                true
+            }
+            "btn_east" -> {
+                if (screen.swapWithIndex >= 0) {
+                    replaceTop(screen.copy(swapWithIndex = -1))
+                } else {
+                    pop()
+                }
+                true
+            }
+            else -> true
+        }
+    }
+
+    private fun deviceForPort(port: Int): Int? =
+        portRouter.snapshotEntries().firstOrNull { it.port == port }?.androidDeviceId
 
     private fun handleControllersInput(screen: IGMScreen.Controllers, button: String?): Boolean {
         return when (button) {

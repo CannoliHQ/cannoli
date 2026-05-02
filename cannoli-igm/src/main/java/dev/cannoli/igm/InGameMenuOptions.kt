@@ -5,6 +5,7 @@ class InGameMenuOptions(
     val discLabel: String,
     hasAchievements: Boolean = false,
     hasGuides: Boolean = false,
+    hasReassign: Boolean = false,
     quitLabel: String = "Quit"
 ) {
     val options: List<String>
@@ -15,6 +16,7 @@ class InGameMenuOptions(
     val guideIndex: Int
     val settingsIndex: Int
     val switchDiscIndex: Int
+    val reassignIndex: Int
     val resetIndex: Int
     val quitIndex: Int
 
@@ -39,6 +41,12 @@ class InGameMenuOptions(
             list.add("Switch Disc")
         } else {
             switchDiscIndex = -1
+        }
+        if (hasReassign) {
+            reassignIndex = list.size
+            list.add("Reassign Players")
+        } else {
+            reassignIndex = -1
         }
         resetIndex = list.size
         list.add("Reset")

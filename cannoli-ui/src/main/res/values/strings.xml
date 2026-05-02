@@ -51,6 +51,9 @@
     <string name="label_reset_all">RESET ALL</string>
     <string name="label_remap">REMAP</string>
     <string name="label_unmap">UNMAP</string>
+    <string name="label_swap">SWAP</string>
+    <string name="label_swap_with">SWAP WITH</string>
+    <string name="igm_reassign_players">Reassign Players</string>
 
     <string name="osd_cannot_steal_confirm">Remap the confirm button first to free this button</string>
 
