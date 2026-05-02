@@ -548,9 +548,9 @@ fun LibretroScreen(
                     )
                 }
                 val confirmLabel = when {
-                    screen.swapWithIndex < 0 -> stringResource(R.string.label_swap)
+                    screen.swapWithIndex < 0 -> stringResource(R.string.label_select)
                     screen.swapWithIndex == screen.selectedIndex -> stringResource(R.string.label_cancel)
-                    else -> stringResource(R.string.label_swap_with)
+                    else -> stringResource(R.string.label_swap)
                 }
                 IGMSettingsScreen(
                     title = stringResource(R.string.igm_reassign_players),

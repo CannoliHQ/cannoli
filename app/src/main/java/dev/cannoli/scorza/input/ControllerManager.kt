@@ -129,6 +129,31 @@ class ControllerManager(
     fun getDeviceIdForPort(port: Int): Int? =
         deviceToPort.entries.firstOrNull { it.value == port }?.key
 
+    fun reassign(deviceId: Int, toPort: Int) {
+        if (toPort < 0 || toPort >= maxPorts) return
+        val fromPort = deviceToPort[deviceId] ?: return
+        if (fromPort == toPort) return
+
+        val targetIdentity = slots[fromPort]
+        val displacedIdentity = slots[toPort]
+        slots[toPort] = targetIdentity
+        slots[fromPort] = displacedIdentity
+
+        // A single physical controller (e.g. a handheld's built-in pad) can register multiple
+        // Android sub-devices (face buttons, keyboard sub-device, etc.). Move every deviceId
+        // pointing at fromPort/toPort, not just the requested one, otherwise the sibling
+        // sub-devices keep routing to the old port after a swap.
+        val movingFromPort = deviceToPort.entries.filter { it.value == fromPort }.map { it.key }
+        val movingFromToPort = deviceToPort.entries.filter { it.value == toPort }.map { it.key }
+        for (id in movingFromPort) deviceToPort[id] = toPort
+        for (id in movingFromToPort) deviceToPort[id] = fromPort
+
+        for (p in listOf(fromPort, toPort)) {
+            portInputMasks[p] = 0
+            portPressedKeys[p].clear()
+        }
+    }
+
     fun resetAllInput() {
         for (p in 0 until maxPorts) {
             portInputMasks[p] = 0

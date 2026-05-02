@@ -1317,6 +1317,7 @@ class LibretroActivity : ComponentActivity() {
                 push(IGMScreen.Settings())
             }
             menu.reassignIndex -> {
+                controllersViewModel.refreshFromRouter()
                 push(IGMScreen.ReassignPlayers())
             }
             menu.resetIndex -> {
@@ -2522,7 +2523,13 @@ class LibretroActivity : ComponentActivity() {
                     val to = screen.selectedIndex
                     if (from != to) {
                         val deviceId = deviceForPort(from)
-                        if (deviceId != null) portRouter.reassign(deviceId, to)
+                        if (deviceId != null) {
+                            portRouter.reassign(deviceId, to)
+                            controllerManager.reassign(deviceId, to)
+                            runner.setInput(from, 0)
+                            runner.setInput(to, 0)
+                            controllersViewModel.refreshFromRouter()
+                        }
                     }
                     replaceTop(screen.copy(swapWithIndex = -1))
                 }
