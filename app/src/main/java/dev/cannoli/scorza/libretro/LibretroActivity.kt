@@ -73,8 +73,6 @@ class LibretroActivity : ComponentActivity() {
     private lateinit var runner: LibretroRunner
     private lateinit var renderer: LibretroRenderer
     private lateinit var input: LibretroInput
-    private lateinit var autoconfigLoader: dev.cannoli.scorza.input.autoconfig.AutoconfigLoader
-    private lateinit var autoconfigMatcher: dev.cannoli.scorza.input.autoconfig.AutoconfigMatcher
     private lateinit var slotManager: SaveSlotManager
     private lateinit var overrideManager: OverrideManager
     private var glSurfaceView: GLSurfaceView? = null
@@ -332,10 +330,6 @@ class LibretroActivity : ComponentActivity() {
         slotManager = SaveSlotManager(stateBasePath)
         guideManager = GuideManager(cannoliRoot, platformTag, File(romPath).nameWithoutExtension)
         applyV2MappingToAllPorts()
-        autoconfigLoader = dev.cannoli.scorza.input.autoconfig.AutoconfigLoader(
-            dev.cannoli.scorza.input.autoconfig.AssetCfgSource(this)
-        )
-        autoconfigMatcher = dev.cannoli.scorza.input.autoconfig.AutoconfigMatcher(autoconfigLoader.entries())
         controllerManager.loadBlacklist(this)
         controllerManager.onDeviceDisconnected = { port -> onControllerDisconnected(port) }
         controllerManager.onDeviceConnected = { port, _ ->

@@ -3,9 +3,7 @@ package dev.cannoli.scorza.input
 import android.view.InputDevice
 import android.view.KeyEvent
 
-class InputHandler(
-    private val getButtonMappings: () -> Map<String, Int> = { emptyMap() }
-) {
+class InputHandler {
 
     var onUp: () -> Unit = {}
     var onDown: () -> Unit = {}
@@ -45,16 +43,7 @@ class InputHandler(
         }
     }
 
-    fun resolveButton(keyCode: Int): String? {
-        val mappings = getButtonMappings()
-        if (mappings.isEmpty()) return DEFAULT_KEY_MAP[keyCode]
-        for ((prefKey, mapped) in mappings) {
-            if (mapped == keyCode) return prefKey
-        }
-        val defaultPrefKey = DEFAULT_KEY_MAP[keyCode] ?: return null
-        if (defaultPrefKey in mappings) return null
-        return defaultPrefKey
-    }
+    fun resolveButton(keyCode: Int): String? = DEFAULT_KEY_MAP[keyCode]
 
     fun resolveButton(event: KeyEvent): String? = resolveButton(event.keyCode)
 
