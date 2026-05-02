@@ -2,7 +2,6 @@ package dev.cannoli.scorza.libretro
 
 import dev.cannoli.igm.ShortcutAction
 import dev.cannoli.scorza.config.CannoliPaths
-import dev.cannoli.scorza.input.ProfileManager
 import dev.cannoli.scorza.util.IniParser
 import dev.cannoli.scorza.util.IniWriter
 import java.io.File
@@ -48,11 +47,8 @@ class OverrideManager(
         var crtNoise: Float = 0.15f,
         var shaderPreset: String = "",
         var overlay: String = "",
-        var profileName: String = ProfileManager.DEFAULT_GAME,
         var shortcutSource: OverrideSource = OverrideSource.GLOBAL,
-        var controls: Map<String, Int> = emptyMap(),
         var shortcuts: Map<ShortcutAction, Set<Int>> = emptyMap(),
-        var controllerTypeId: Int = -1,
         var coreOptions: Map<String, String> = emptyMap(),
         var shaderParams: Map<String, Float> = emptyMap()
     ) {
@@ -73,12 +69,11 @@ class OverrideManager(
             crtNoise == other.crtNoise &&
             shaderPreset == other.shaderPreset &&
             overlay == other.overlay &&
-            controllerTypeId == other.controllerTypeId &&
             coreOptions == other.coreOptions &&
             shaderParams == other.shaderParams
     }
 
-    fun load(profileManager: ProfileManager): Settings {
+    fun load(): Settings {
         val settings = Settings()
         applyFrontend(platformFile, settings)
         applyOptions(platformFile, settings)
@@ -86,8 +81,6 @@ class OverrideManager(
         applyFrontend(gameFile, settings)
         applyOptions(gameFile, settings)
         applyShaderParams(gameFile, settings)
-        settings.profileName = profileManager.resolveProfile(platformTag, gameBaseName)
-        settings.controls = profileManager.readControls(settings.profileName)
         resolveShortcutSource(settings)
         loadShortcutsFrom(sourceFile(settings.shortcutSource), settings)
         return settings
@@ -197,7 +190,6 @@ class OverrideManager(
         s["crt_noise"]?.toFloatOrNull()?.let { settings.crtNoise = it }
         s["shader_preset"]?.let { settings.shaderPreset = it }
         s["overlay"]?.let { settings.overlay = it }
-        s["controller_type"]?.toIntOrNull()?.let { settings.controllerTypeId = it }
     }
 
     private fun applyOptions(file: File, settings: Settings) {
@@ -254,7 +246,6 @@ class OverrideManager(
         "crt_noise" to settings.crtNoise.toString(),
         "shader_preset" to settings.shaderPreset,
         "overlay" to settings.overlay,
-        "controller_type" to settings.controllerTypeId.toString()
     )
 
     private fun buildFrontendDelta(settings: Settings, baseline: Settings): Map<String, String> {
@@ -275,7 +266,6 @@ class OverrideManager(
         if (settings.crtNoise != baseline.crtNoise) delta["crt_noise"] = settings.crtNoise.toString()
         if (settings.shaderPreset != baseline.shaderPreset) delta["shader_preset"] = settings.shaderPreset
         if (settings.overlay != baseline.overlay) delta["overlay"] = settings.overlay
-        if (settings.controllerTypeId != baseline.controllerTypeId) delta["controller_type"] = settings.controllerTypeId.toString()
         return delta
     }
 

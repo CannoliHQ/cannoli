@@ -102,8 +102,6 @@ fun LibretroScreen(
     settingsItems: List<IGMSettingsItem>,
     coreInfo: String,
     input: LibretroInput,
-    profileName: String = "",
-    profileNames: List<String> = emptyList(),
     debugHud: Boolean,
     renderer: LibretroRenderer,
     runner: LibretroRunner,
@@ -212,68 +210,6 @@ fun LibretroScreen(
                         )
                     }
                 }
-            }
-            is IGMScreen.Controls -> {
-                val activeLabel = stringResource(R.string.value_active)
-                if (screen.menuOpen) {
-                    val menuItems = listOf(
-                        IGMSettingsItem(label = stringResource(R.string.context_rename)),
-                        IGMSettingsItem(label = stringResource(R.string.context_delete))
-                    )
-                    IGMSettingsScreen(
-                        title = profileNames.getOrNull(screen.selectedIndex) ?: "",
-                        items = menuItems,
-                        selectedIndex = screen.menuIndex,
-                        bottomBarLeft = listOf(labels.back to stringResource(R.string.label_cancel)),
-                        bottomBarRight = listOf(labels.confirm to stringResource(R.string.label_select)),
-                        fontSize = igmFontSize,
-                        lineHeight = igmLineHeight
-                    )
-                } else {
-                    val items = profileNames.map { name ->
-                        IGMSettingsItem(
-                            label = name,
-                            value = if (name == profileName) activeLabel else null
-                        )
-                    }
-                    IGMSettingsScreen(
-                        title = stringResource(R.string.title_controls),
-                        items = items,
-                        selectedIndex = screen.selectedIndex,
-                        bottomBarLeft = listOf(labels.back to stringResource(R.string.label_back), labels.west to stringResource(R.string.label_new)),
-                        bottomBarRight = listOf(labels.north to stringResource(R.string.label_edit), labels.confirm to stringResource(R.string.label_select)),
-                        fontSize = igmFontSize,
-                        lineHeight = igmLineHeight
-                    )
-                }
-            }
-            is IGMScreen.ControlEdit -> {
-                val selectedBtn = input.buttons.getOrNull(screen.selectedIndex)
-                val canUnmap = selectedBtn != null
-                        && selectedBtn.prefKey != "btn_menu"
-                        && input.getKeyCodeFor(selectedBtn) != LibretroInput.UNMAPPED
-                        && screen.listeningIndex < 0
-                ControlsScreen(
-                    input = input,
-                    selectedIndex = screen.selectedIndex,
-                    listeningIndex = screen.listeningIndex,
-                    listenCountdownMs = screen.listenCountdownMs,
-                    profileName = profileName,
-                    canUnmapSelected = canUnmap,
-                    fontSize = igmFontSize,
-                    lineHeight = igmLineHeight,
-                    buttonStyle = labels
-                )
-            }
-            is IGMScreen.ProfileName -> {
-                dev.cannoli.ui.components.KeyboardOverlay(
-                    text = screen.name,
-                    cursorPos = screen.cursorPos,
-                    keyRow = screen.keyRow,
-                    keyCol = screen.keyCol,
-                    caps = screen.caps,
-                    symbols = screen.symbols
-                )
             }
             is IGMScreen.Settings, is IGMScreen.Video, is IGMScreen.Advanced,
             is IGMScreen.ShaderSettings,

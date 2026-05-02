@@ -41,7 +41,6 @@ import dev.cannoli.igm.InGameMenuOptions
 import dev.cannoli.igm.ShortcutAction
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.input.ControllerManager
-import dev.cannoli.scorza.input.ProfileManager
 import dev.cannoli.scorza.libretro.shader.PresetParser
 import dev.cannoli.scorza.libretro.shader.ShaderPipeline
 import dev.cannoli.scorza.settings.SettingsRepository
@@ -64,7 +63,6 @@ class LibretroActivity : ComponentActivity() {
 
     @Inject lateinit var settings: SettingsRepository
     @Inject lateinit var controllerManager: ControllerManager
-    @Inject lateinit var profileManager: ProfileManager
     @Inject lateinit var portRouter: dev.cannoli.scorza.input.v2.runtime.PortRouter
     @Inject lateinit var controllerV2Bridge: dev.cannoli.scorza.input.v2.runtime.ControllerV2Bridge
     @Inject lateinit var activeMappingHolder: dev.cannoli.scorza.input.v2.runtime.ActiveMappingHolder
@@ -133,8 +131,6 @@ class LibretroActivity : ComponentActivity() {
     private var coreCategories by mutableStateOf(emptyList<LibretroRunner.CoreOptionCategory>())
     private var controllerTypes by mutableStateOf(emptyList<LibretroRunner.ControllerType>())
     private var controllerTypeIndex by mutableIntStateOf(0)
-    private var currentProfileName by mutableStateOf(ProfileManager.DEFAULT_GAME)
-    private var profileNames by mutableStateOf(listOf(ProfileManager.DEFAULT_GAME))
     private var shortcutSource by mutableStateOf(OverrideSource.GLOBAL)
     private var shortcuts by mutableStateOf(mapOf<ShortcutAction, Set<Int>>())
     private val shortcutChordKeys = mutableSetOf<Int>()
@@ -147,8 +143,7 @@ class LibretroActivity : ComponentActivity() {
     private var shaderParamsDirty = false
     private var lastShaderCycleMs = 0L
     private var platformBaseline: OverrideManager.Settings? = null
-    private var defaultProfileControls = emptyMap<String, Int>()
-    private val navInputHandler = dev.cannoli.scorza.input.InputHandler { defaultProfileControls }
+    private val navInputHandler = dev.cannoli.scorza.input.InputHandler()
 
     private var diskCount by mutableIntStateOf(0)
     private var currentDiskIndex by mutableIntStateOf(0)
@@ -336,11 +331,6 @@ class LibretroActivity : ComponentActivity() {
         sessionLog.log("platform_tag=$platformTag")
         slotManager = SaveSlotManager(stateBasePath)
         guideManager = GuideManager(cannoliRoot, platformTag, File(romPath).nameWithoutExtension)
-        profileManager.reinitialize(cannoliRoot)
-        val port0Mapping = portRouter.mappingForPort(0)
-        defaultProfileControls = deriveLegacyMappingFromV2Mapping(port0Mapping).ifEmpty {
-            profileManager.readControls(ProfileManager.NAVIGATION)
-        }
         applyV2MappingToAllPorts()
         autoconfigLoader = dev.cannoli.scorza.input.autoconfig.AutoconfigLoader(
             dev.cannoli.scorza.input.autoconfig.AssetCfgSource(this)
@@ -412,8 +402,6 @@ class LibretroActivity : ComponentActivity() {
                                 settingsItems = if (screen is IGMScreen.Menu) emptyList() else buildSettingsItems(),
                                 coreInfo = coreInfoText,
                                 input = controllerManager.portInputs[0],
-                                profileName = currentProfileName,
-                                profileNames = profileNames,
                                 debugHud = debugHud,
                                 renderer = renderer,
                                 runner = runner,
@@ -541,18 +529,8 @@ class LibretroActivity : ComponentActivity() {
 
                 loadOverrides()
                 controllerTypes = runner.getControllerTypes(0).filter { it.id != 0 }
-                val savedTypeId = overrideManager.load(profileManager).controllerTypeId
-                val savedIdx = if (savedTypeId >= 0) controllerTypes.indexOfFirst { it.id == savedTypeId } else -1
-                if (savedIdx >= 0) {
-                    controllerTypeIndex = savedIdx
-                    applyForceAnalog(savedTypeId > 1)
-                    for (p in 0 until LibretroRunner.MAX_PORTS) {
-                        if (controllerManager.slots[p] != null) runner.setControllerPortDevice(p, savedTypeId)
-                    }
-                } else {
-                    for (p in 0 until LibretroRunner.MAX_PORTS) {
-                        if (controllerManager.slots[p] != null) runner.setControllerPortDevice(p, LibretroRunner.DEVICE_JOYPAD)
-                    }
+                for (p in 0 until LibretroRunner.MAX_PORTS) {
+                    if (controllerManager.slots[p] != null) runner.setControllerPortDevice(p, LibretroRunner.DEVICE_JOYPAD)
                 }
                 scanOverlayImages()
                 copyBundledShaders()
@@ -936,9 +914,6 @@ class LibretroActivity : ComponentActivity() {
             is IGMScreen.ShaderSettings -> handleShaderSettingsInput(screen, button)
             is IGMScreen.Emulator -> handleEmulatorInput(screen, button)
             is IGMScreen.EmulatorCategory -> handleEmulatorCategoryInput(screen, button)
-            is IGMScreen.Controls -> handleProfilePickerInput(screen, button)
-            is IGMScreen.ControlEdit -> handleControlEditInput(screen, keyCode, button)
-            is IGMScreen.ProfileName -> handleProfileNameInput(screen, button)
             is IGMScreen.Shortcuts -> handleShortcutsInput(screen, keyCode, button)
             is IGMScreen.SavePrompt -> handleSavePromptInput(screen, button)
             is IGMScreen.Info -> {
@@ -964,19 +939,6 @@ class LibretroActivity : ComponentActivity() {
         if (isSystemMediaKey(keyCode)) return super.onKeyUp(keyCode, event)
         if (screenStack.isNotEmpty()) {
             val cs = currentScreen
-            if (cs is IGMScreen.ProfileName && resolveNavButton(keyCode) == "btn_select") {
-                shortcutCountdownHandler.removeCallbacks(keyboardSelectHoldRunnable)
-                if (!keyboardSelectHeld) {
-                    if (cs.symbols) {
-                        replaceTop(cs.copy(caps = keyboardCapsBeforeSymbols, symbols = false))
-                    } else {
-                        replaceTop(cs.copy(caps = !cs.caps))
-                    }
-                }
-                keyboardSelectDown = false
-                keyboardSelectHeld = false
-                return true
-            }
             if (cs is IGMScreen.Guide) {
                 when (resolveNavButton(keyCode)) {
                     "btn_up", "btn_down" -> guideScrollDir = 0
@@ -1074,7 +1036,7 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun handleGameplayInput(keyCode: Int, event: KeyEvent): Boolean {
-        val menuCode = defaultProfileControls["btn_menu"] ?: KeyEvent.KEYCODE_BACK
+        val menuCode = KeyEvent.KEYCODE_BACK
         val port = controllerManager.getPortForDeviceId(event.deviceId) ?: 0
         val portInput = controllerManager.portInputs[port]
         val mappedMask = portInput.keyCodeToRetroMask(keyCode)
@@ -1196,7 +1158,7 @@ class LibretroActivity : ComponentActivity() {
         screenStack.clear()
         menuRepeatHandler.removeCallbacks(menuRepeatRunnable)
         menuHeldKey = 0
-        applyProfileToAllPorts(profileManager.readControls(currentProfileName))
+        applyV2MappingToAllPorts()
         controllerManager.resetAllInput()
         triggerL2HeldDevices.clear()
         triggerR2HeldDevices.clear()
@@ -1410,9 +1372,6 @@ class LibretroActivity : ComponentActivity() {
                         coreOptions = runner.getCoreOptions()
                         coreCategories = runner.getCoreCategories()
                         push(IGMScreen.Emulator())
-                    }
-                    IGMSettings.CONTROLS -> {
-                        push(IGMScreen.Controls(selectedIndex = profileNames.indexOf(currentProfileName).coerceAtLeast(0)))
                     }
                     IGMSettings.CONTROLLERS -> {
                         controllersViewModel.refreshFromRouter()
@@ -1965,248 +1924,6 @@ class LibretroActivity : ComponentActivity() {
         coreOptions = runner.getCoreOptions()
     }
 
-    // --- Controls ---
-
-    private val controlListenTimeoutMs = 3000
-    private val controlListenTickMs = 100L
-
-    private val controlListenRunnable = object : Runnable {
-        override fun run() {
-            val screen = currentScreen as? IGMScreen.ControlEdit ?: return
-            if (screen.listeningIndex < 0) return
-            val newMs = screen.listenCountdownMs + controlListenTickMs.toInt()
-            if (newMs >= controlListenTimeoutMs) {
-                replaceTop(screen.copy(listeningIndex = -1, listenCountdownMs = 0))
-            } else {
-                replaceTop(screen.copy(listenCountdownMs = newMs))
-                shortcutCountdownHandler.postDelayed(this, controlListenTickMs)
-            }
-        }
-    }
-
-    private fun handleProfilePickerInput(screen: IGMScreen.Controls, button: String?): Boolean {
-        if (screen.menuOpen) {
-            return when (button) {
-                "btn_up" -> { replaceTop(screen.copy(menuIndex = if (screen.menuIndex <= 0) 1 else 0)); true }
-                "btn_down" -> { replaceTop(screen.copy(menuIndex = if (screen.menuIndex >= 1) 0 else 1)); true }
-                "btn_south" -> {
-                    val name = profileNames.getOrNull(screen.selectedIndex) ?: return true
-                    when (screen.menuIndex) {
-                        0 -> {
-                            replaceTop(screen.copy(menuOpen = false))
-                            push(IGMScreen.ProfileName(name = name, cursorPos = name.length, isNew = false, originalName = name))
-                        }
-                        1 -> {
-                            profileManager.deleteProfile(name)
-                            profileNames = profileManager.listGameProfiles()
-                            if (currentProfileName == name) {
-                                currentProfileName = ProfileManager.DEFAULT_GAME
-                                profileManager.saveProfileSelection(platformTag, gameBaseName, currentProfileName)
-                            }
-                            replaceTop(IGMScreen.Controls(selectedIndex = screen.selectedIndex.coerceAtMost(profileNames.lastIndex)))
-                        }
-                    }
-                    true
-                }
-                else -> { replaceTop(screen.copy(menuOpen = false)); true }
-            }
-        }
-        val count = profileNames.size
-        return when (button) {
-            "btn_up" -> {
-                if (count > 0) replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
-            }
-            "btn_down" -> {
-                if (count > 0) replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
-            }
-            "btn_south" -> {
-                val name = profileNames.getOrNull(screen.selectedIndex) ?: return true
-                currentProfileName = name
-                profileManager.saveProfileSelection(platformTag, gameBaseName, name)
-                replaceTop(screen)
-                true
-            }
-            "btn_west" -> {
-                push(IGMScreen.ProfileName(isNew = true))
-                true
-            }
-            "btn_north" -> {
-                val name = profileNames.getOrNull(screen.selectedIndex) ?: return true
-                currentProfileName = name
-                profileManager.saveProfileSelection(platformTag, gameBaseName, name)
-                applyProfileToAllPorts(profileManager.readControls(name))
-                push(IGMScreen.ControlEdit())
-                true
-            }
-            "btn_start" -> {
-                val name = profileNames.getOrNull(screen.selectedIndex)
-                if (name != null && !ProfileManager.isProtected(name)) {
-                    replaceTop(screen.copy(menuOpen = true, menuIndex = 0))
-                }
-                true
-            }
-            "btn_east" -> { pop(); true }
-            else -> true
-        }
-    }
-
-    private fun handleControlEditInput(screen: IGMScreen.ControlEdit, rawKeyCode: Int, button: String?): Boolean {
-        val inp = controllerManager.portInputs[0]
-        if (screen.listeningIndex >= 0) {
-            shortcutCountdownHandler.removeCallbacks(controlListenRunnable)
-            inp.assign(inp.buttons[screen.listeningIndex], rawKeyCode)
-            saveCurrentProfile()
-            replaceTop(screen.copy(listeningIndex = -1, listenCountdownMs = 0))
-            return true
-        }
-        val count = inp.buttons.size
-        return when (button) {
-            "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
-            }
-            "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
-            }
-            "btn_south" -> {
-                replaceTop(screen.copy(listeningIndex = screen.selectedIndex, listenCountdownMs = 0))
-                shortcutCountdownHandler.postDelayed(controlListenRunnable, controlListenTickMs)
-                true
-            }
-            "btn_north" -> {
-                if (screen.listeningIndex < 0) {
-                    val btn = inp.buttons.getOrNull(screen.selectedIndex)
-                    if (btn != null && btn.prefKey != "btn_menu" && inp.getKeyCodeFor(btn) != LibretroInput.UNMAPPED) {
-                        inp.unmap(btn)
-                        saveCurrentProfile()
-                        replaceTop(screen.copy(revision = screen.revision + 1))
-                    }
-                }
-                true
-            }
-            "btn_east" -> { pop(); true }
-            else -> true
-        }
-    }
-
-    private fun handleProfileNameInput(screen: IGMScreen.ProfileName, button: String?): Boolean {
-        val rows = dev.cannoli.ui.components.getKeyboardRows(screen.caps, screen.symbols)
-        val maxRow = rows.lastIndex
-        val maxCol = rows[screen.keyRow.coerceIn(0, maxRow)].lastIndex
-        return when (button) {
-            "btn_up" -> {
-                val newRow = if (screen.keyRow <= 0) maxRow else screen.keyRow - 1
-                replaceTop(screen.copy(keyRow = newRow, keyCol = screen.keyCol.coerceAtMost(rows[newRow].lastIndex))); true
-            }
-            "btn_down" -> {
-                val newRow = if (screen.keyRow >= maxRow) 0 else screen.keyRow + 1
-                replaceTop(screen.copy(keyRow = newRow, keyCol = screen.keyCol.coerceAtMost(rows[newRow].lastIndex))); true
-            }
-            "btn_left" -> {
-                replaceTop(screen.copy(keyCol = if (screen.keyCol <= 0) maxCol else screen.keyCol - 1)); true
-            }
-            "btn_right" -> {
-                replaceTop(screen.copy(keyCol = if (screen.keyCol >= maxCol) 0 else screen.keyCol + 1)); true
-            }
-            "btn_south" -> {
-                dev.cannoli.ui.components.handleKeyboardConfirm(
-                    screen.caps, screen.symbols, screen.keyRow, screen.keyCol,
-                    screen.name, screen.cursorPos,
-                    onChar = { newName, newPos -> replaceTop(screen.copy(name = newName, cursorPos = newPos)) },
-                    onShift = { replaceTop(screen.copy(caps = !screen.caps)) },
-                    onSymbols = { replaceTop(screen.copy(symbols = !screen.symbols)) },
-                    onEnter = { finishProfileName(screen) }
-                )
-                true
-            }
-            "btn_l" -> {
-                if (screen.cursorPos > 0) replaceTop(screen.copy(cursorPos = screen.cursorPos - 1)); true
-            }
-            "btn_r" -> {
-                if (screen.cursorPos < screen.name.length) replaceTop(screen.copy(cursorPos = screen.cursorPos + 1)); true
-            }
-            "btn_north" -> {
-                val newName = screen.name.substring(0, screen.cursorPos) + " " + screen.name.substring(screen.cursorPos)
-                replaceTop(screen.copy(name = newName, cursorPos = screen.cursorPos + 1))
-                true
-            }
-            "btn_east" -> {
-                if (screen.cursorPos > 0) {
-                    val newName = screen.name.removeRange(screen.cursorPos - 1, screen.cursorPos)
-                    replaceTop(screen.copy(name = newName, cursorPos = screen.cursorPos - 1))
-                }
-                true
-            }
-            "btn_select" -> {
-                if (!keyboardSelectDown) {
-                    keyboardSelectDown = true
-                    keyboardSelectHeld = false
-                    shortcutCountdownHandler.removeCallbacks(keyboardSelectHoldRunnable)
-                    shortcutCountdownHandler.postDelayed(keyboardSelectHoldRunnable, 400)
-                }
-                true
-            }
-            "btn_start" -> { finishProfileName(screen); true }
-            "btn_west" -> { pop(); true }
-            else -> true
-        }
-    }
-
-    private fun finishProfileName(screen: IGMScreen.ProfileName) {
-        val name = screen.name.trim()
-        if (name.isBlank() || ProfileManager.isProtected(name)) { pop(); return }
-        if (screen.isNew) {
-            val identity = controllerManager.slots[0]
-            val device = controllerManager.getDeviceIdForPort(0)?.let { android.view.InputDevice.getDevice(it) }
-            val verifier: (IntArray) -> BooleanArray = if (device != null) {
-                { codes -> device.hasKeys(*codes) }
-            } else {
-                { codes -> BooleanArray(codes.size) { true } }
-            }
-            val match = identity?.let { profileManager.autoProfileControlsFor(it, autoconfigMatcher, verifier) }
-            val controls = if (match != null) {
-                match.controls
-            } else {
-                val inp = controllerManager.portInputs[0]
-                buildMap { for (btn in inp.buttons) put(btn.prefKey, inp.getKeyCodeFor(btn)) }
-            }
-            if (!profileManager.createProfile(name, controls)) { pop(); return }
-            if (match != null) showOsd("Prefilled with ${match.deviceName}")
-        } else {
-            val paths = dev.cannoli.scorza.config.CannoliPaths(cannoliRoot)
-            val file = paths.profileFile(screen.originalName)
-            val dest = paths.profileFile(name)
-            if (dest.exists() && name != screen.originalName) { pop(); return }
-            file.renameTo(dest)
-            if (currentProfileName == screen.originalName) currentProfileName = name
-        }
-        profileNames = profileManager.listGameProfiles()
-        pop()
-        val controlsScreen = screenStack.lastOrNull() as? IGMScreen.Controls
-        if (controlsScreen != null) {
-            replaceTop(controlsScreen.copy(selectedIndex = profileNames.indexOf(name).coerceAtLeast(0)))
-        }
-    }
-
-    private fun saveCurrentProfile() {
-        val inp = controllerManager.portInputs[0]
-        val controlMap = mutableMapOf<String, Int>()
-        for (btn in inp.buttons) controlMap[btn.prefKey] = inp.getKeyCodeFor(btn)
-        profileManager.saveControls(currentProfileName, controlMap)
-        applyProfileToAllPorts(controlMap)
-    }
-
-    private fun applyProfileToAllPorts(controls: Map<String, Int>) {
-        controllerManager.resetAllInput()
-        for (p in 0 until LibretroRunner.MAX_PORTS) {
-            runner.setInput(p, 0)
-            val portInput = controllerManager.portInputs[p]
-            portInput.resetDefaults()
-            for ((key, keyCode) in controls) {
-                val btn = portInput.buttons.find { it.prefKey == key } ?: continue
-                portInput.assign(btn, keyCode)
-            }
-        }
-    }
 
     private fun deriveLegacyMappingFromV2Mapping(mapping: dev.cannoli.scorza.input.v2.DeviceMapping?): Map<String, Int> {
         if (mapping == null) return emptyMap()
@@ -2263,16 +1980,6 @@ class LibretroActivity : ComponentActivity() {
     private val shortcutCountdownHandler = Handler(Looper.getMainLooper())
     private val shortcutHoldMs = 1500
     private val shortcutTickMs = 100L
-
-    private var keyboardSelectDown = false
-    private var keyboardSelectHeld = false
-    private var keyboardCapsBeforeSymbols = false
-    private val keyboardSelectHoldRunnable = Runnable {
-        val s = currentScreen as? IGMScreen.ProfileName ?: return@Runnable
-        keyboardSelectHeld = true
-        if (!s.symbols) keyboardCapsBeforeSymbols = s.caps
-        replaceTop(s.copy(caps = false, symbols = !s.symbols))
-    }
 
     private val shortcutCountdownRunnable = object : Runnable {
         override fun run() {
@@ -2471,7 +2178,6 @@ class LibretroActivity : ComponentActivity() {
             maxFfSpeed = maxFfSpeed,
             shaderPreset = shaderPreset,
             overlay = overlay,
-            controllerTypeId = controllerTypes.getOrNull(controllerTypeIndex)?.id ?: -1,
             coreOptions = optionMap,
             shaderParams = paramMap
         )
@@ -2496,7 +2202,7 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun loadOverrides() {
-        val settings = overrideManager.load(profileManager)
+        val settings = overrideManager.load()
         scalingMode = settings.scalingMode
         screenEffect = settings.screenEffect
         sharpness = settings.sharpness
@@ -2504,16 +2210,9 @@ class LibretroActivity : ComponentActivity() {
         maxFfSpeed = settings.maxFfSpeed
         shaderPreset = settings.shaderPreset
         overlay = settings.overlay
-        currentProfileName = settings.profileName
-        profileNames = profileManager.listGameProfiles()
         shortcutSource = settings.shortcutSource
         shortcuts = settings.shortcuts
 
-        applyProfileToAllPorts(settings.controls)
-        val port0Mapping = portRouter.mappingForPort(0)
-        defaultProfileControls = deriveLegacyMappingFromV2Mapping(port0Mapping).ifEmpty {
-            profileManager.readControls(ProfileManager.NAVIGATION)
-        }
         applyV2MappingToAllPorts()
 
         for ((key, value) in settings.coreOptions) {

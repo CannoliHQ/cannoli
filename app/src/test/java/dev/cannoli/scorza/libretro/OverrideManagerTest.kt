@@ -2,7 +2,6 @@ package dev.cannoli.scorza.libretro
 
 import dev.cannoli.igm.ShortcutAction
 import dev.cannoli.scorza.config.CannoliPaths
-import dev.cannoli.scorza.input.ProfileManager
 import dev.cannoli.scorza.util.IniParser
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -20,12 +19,10 @@ class OverrideManagerTest {
 
     private lateinit var rootStr: String
     private lateinit var paths: CannoliPaths
-    private lateinit var profiles: ProfileManager
 
     @Before fun setUp() {
         rootStr = tempFolder.root.absolutePath
         paths = CannoliPaths(rootStr)
-        profiles = ProfileManager(rootStr)
     }
 
     private fun manager(platformTag: String = "PS", gameBaseName: String = "Game") =
@@ -46,7 +43,7 @@ class OverrideManagerTest {
     // ---- load: defaults and cascade ----
 
     @Test fun `load returns defaults when no overrides exist`() {
-        val s = manager().load(profiles)
+        val s = manager().load()
         assertEquals(ScalingMode.CORE_REPORTED, s.scalingMode)
         assertEquals(ScreenEffect.NONE, s.screenEffect)
         assertEquals(Sharpness.SHARP, s.sharpness)
@@ -69,7 +66,7 @@ class OverrideManagerTest {
             shader_preset=foo.glslp
             """
         )
-        val s = manager().load(profiles)
+        val s = manager().load()
         assertEquals(ScalingMode.FULLSCREEN, s.scalingMode)
         assertEquals(Sharpness.SOFT, s.sharpness)
         assertEquals(8, s.maxFfSpeed)
@@ -93,7 +90,7 @@ class OverrideManagerTest {
             scaling=INTEGER
             """
         )
-        val s = manager().load(profiles)
+        val s = manager().load()
         assertEquals(ScalingMode.INTEGER, s.scalingMode)
         // Untouched fields fall back to platform
         assertEquals(8, s.maxFfSpeed)
@@ -116,7 +113,7 @@ class OverrideManagerTest {
             swanstation_GPU_TrueColor=true
             """
         )
-        val s = manager().load(profiles)
+        val s = manager().load()
         assertEquals("Software", s.coreOptions["swanstation_GPU_Renderer"])
         assertEquals("4", s.coreOptions["swanstation_GPU_ResolutionScale"])
         assertEquals("true", s.coreOptions["swanstation_GPU_TrueColor"])
@@ -139,7 +136,7 @@ class OverrideManagerTest {
             ignored_garbage=not-a-float
             """
         )
-        val s = manager().load(profiles)
+        val s = manager().load()
         assertEquals(0.5f, s.shaderParams["scanlines"]!!, 0f)
         assertEquals(2.5f, s.shaderParams["curvature"]!!, 0f)
         assertNull(s.shaderParams["ignored_garbage"])
@@ -154,7 +151,7 @@ class OverrideManagerTest {
             sharpness=SHARP
             """
         )
-        val s = manager().load(profiles)
+        val s = manager().load()
         assertEquals(ScalingMode.CORE_REPORTED, s.scalingMode)
         assertEquals(Sharpness.SHARP, s.sharpness)
     }
@@ -162,7 +159,7 @@ class OverrideManagerTest {
     // ---- shortcut source cascade ----
 
     @Test fun `shortcut source defaults to GLOBAL when nothing is set`() {
-        val s = manager().load(profiles)
+        val s = manager().load()
         assertEquals(OverrideSource.GLOBAL, s.shortcutSource)
     }
 
@@ -174,7 +171,7 @@ class OverrideManagerTest {
             shortcut_source=PLATFORM
             """
         )
-        val s = manager().load(profiles)
+        val s = manager().load()
         assertEquals(OverrideSource.PLATFORM, s.shortcutSource)
     }
 
@@ -193,7 +190,7 @@ class OverrideManagerTest {
             shortcut_source=GAME
             """
         )
-        val s = manager().load(profiles)
+        val s = manager().load()
         assertEquals(OverrideSource.GAME, s.shortcutSource)
     }
 

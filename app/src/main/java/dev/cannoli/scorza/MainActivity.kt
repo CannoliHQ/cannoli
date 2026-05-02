@@ -47,7 +47,6 @@ import dev.cannoli.scorza.input.v2.runtime.InputDispatcher
 import dev.cannoli.scorza.input.InputRouter
 import dev.cannoli.scorza.input.InputTesterController
 import dev.cannoli.scorza.input.LauncherActions
-import dev.cannoli.scorza.input.ProfileManager
 import dev.cannoli.scorza.input.v2.runtime.ControllerV2Bridge
 import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.LaunchManager
@@ -92,7 +91,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var updateManager: UpdateManager
     @Inject lateinit var setupCoordinator: SetupCoordinator
     @Inject lateinit var launchManager: LaunchManager
-    @Inject lateinit var profileManager: ProfileManager
     @Inject lateinit var installedCoreService: InstalledCoreService
     @Inject lateinit var romsRepository: RomsRepository
     @Inject lateinit var romScanner: RomScanner
@@ -688,8 +686,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
             .registerInputDeviceListener(controllerManager,
                 Handler(android.os.Looper.getMainLooper())
             )
-
-        profileManager.reinitialize(settings.sdCardRoot)
 
         if (updateManager.shouldAutoCheck()) {
             ioScope.launch { updateManager.checkForUpdate() }

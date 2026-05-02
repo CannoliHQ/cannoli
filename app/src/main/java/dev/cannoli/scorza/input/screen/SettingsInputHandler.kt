@@ -11,7 +11,6 @@ import dev.cannoli.scorza.di.IoScope
 import dev.cannoli.scorza.input.ActivityActions
 import dev.cannoli.scorza.input.InputTesterController
 import dev.cannoli.scorza.input.LauncherActions
-import dev.cannoli.scorza.input.ProfileManager
 import dev.cannoli.scorza.input.ScreenInputHandler
 import dev.cannoli.scorza.launcher.ApkLauncher
 import dev.cannoli.scorza.launcher.InstalledCoreService
@@ -40,7 +39,6 @@ class SettingsInputHandler @Inject constructor(
     private val settings: SettingsRepository,
     private val platformConfig: PlatformConfig,
     private val installedCoreService: InstalledCoreService,
-    private val profileManager: ProfileManager,
     private val globalOverrides: GlobalOverridesManager,
     private val appsRepository: AppsRepository,
     private val setupCoordinator: SetupCoordinator,

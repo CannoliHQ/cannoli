@@ -6,7 +6,6 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import dev.cannoli.scorza.input.ProfileManager
 import dev.cannoli.scorza.input.autoconfig.AssetCfgSource
 import dev.cannoli.scorza.input.autoconfig.AutoconfigLoader
 import dev.cannoli.scorza.input.autoconfig.AutoconfigMatcher
@@ -23,10 +22,6 @@ object AppModule {
     @Provides @Singleton
     fun provideGlobalOverridesManager(settings: SettingsRepository): GlobalOverridesManager =
         GlobalOverridesManager { settings.sdCardRoot }
-
-    @Provides @Singleton
-    fun provideProfileManager(settings: SettingsRepository): ProfileManager =
-        ProfileManager(settings.sdCardRoot)
 
     @Provides @Singleton
     fun provideAutoconfigLoader(@ApplicationContext context: Context): AutoconfigLoader =

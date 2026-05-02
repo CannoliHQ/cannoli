@@ -126,9 +126,6 @@ class DialogStateTest {
         val collRename = DialogState.CollectionRenameInput(oldStem = "old", currentName = "abc")
         assertEquals(2, (collRename.withCursor(2) as DialogState.CollectionRenameInput).cursorPos)
 
-        val profile = DialogState.ProfileNameInput(isNew = true, currentName = "abc")
-        assertEquals(2, (profile.withCursor(2) as DialogState.ProfileNameInput).cursorPos)
-
         val newFolder = DialogState.NewFolderInput(parentPath = "/", currentName = "abc")
         assertEquals(2, (newFolder.withCursor(2) as DialogState.NewFolderInput).cursorPos)
     }
