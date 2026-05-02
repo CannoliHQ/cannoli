@@ -5,7 +5,6 @@ import android.content.SharedPreferences
 import android.os.Handler
 import android.os.HandlerThread
 import dagger.hilt.android.qualifiers.ApplicationContext
-import dev.cannoli.ui.ButtonLabelSet
 import org.json.JSONObject
 import java.io.File
 import javax.inject.Inject
@@ -134,10 +133,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext context: Contex
     var swapPlayResume: Boolean
         get() = jsonRead { optBoolean(KEY_SWAP_PLAY_RESUME, false) }
         set(value) = jsonWrite { put(KEY_SWAP_PLAY_RESUME, value) }
-
-    var buttonLabelSet: ButtonLabelSet
-        get() = ButtonLabelSet.fromString(jsonRead { if (has(KEY_BUTTON_LABEL_SET)) optString(KEY_BUTTON_LABEL_SET) else null })
-        set(value) = jsonWrite { put(KEY_BUTTON_LABEL_SET, value.name) }
 
     var mainMenuQuit: Boolean
         get() = jsonRead { optBoolean(KEY_MAIN_MENU_QUIT, false) }
@@ -350,7 +345,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext context: Contex
         private const val KEY_CACHED_UPDATE_TAG = "cached_update_tag"
         private const val KEY_CACHED_UPDATE_APK = "cached_update_apk"
         private const val KEY_CACHED_UPDATE_CHANGELOG = "cached_update_changelog"
-        private const val KEY_BUTTON_LABEL_SET = "button_label_set"
         private const val KEY_CONTENT_MODE = "content_mode"
         private const val KEY_LOGGING_FILE_SCANNER = "logging_file_scanner"
         private const val KEY_LOGGING_ROM_SCAN = "logging_rom_scan"

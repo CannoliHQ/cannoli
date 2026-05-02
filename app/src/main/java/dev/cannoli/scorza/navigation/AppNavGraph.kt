@@ -224,7 +224,7 @@ fun AppNavGraph(
     val listVerticalPadding = 6.dp
 
     val labels = dev.cannoli.ui.ButtonStyle(
-        activeMapping.labelSet(appSettings.buttonLabelSet),
+        activeMapping.labelSet(dev.cannoli.ui.ButtonLabelSet.PLUMBER),
         activeMapping.confirmButton(),
     )
 

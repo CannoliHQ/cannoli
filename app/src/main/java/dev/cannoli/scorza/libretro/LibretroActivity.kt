@@ -316,7 +316,7 @@ class LibretroActivity : ComponentActivity() {
         ShaderPipeline.es3Supported = es3Supported
         sessionLog.log("device GLES: 0x${Integer.toHexString(reqGlEs)} (${glEsMajor}.${glEsMinor}) es3Supported=$es3Supported")
         confirmButton = activeMappingHolder.active.value.confirmButton()
-        buttonLabelSet = activeMappingHolder.active.value.labelSet(settings.buttonLabelSet)
+        buttonLabelSet = activeMappingHolder.active.value.labelSet(dev.cannoli.ui.ButtonLabelSet.PLUMBER)
         // Keep legacy IGM/gameplay InputHandler's confirm/back convention in sync with the user's
         // global preference. Phase 2c will replace the legacy InputHandler entirely.
         navInputHandler.swapConfirmBack = activeMappingHolder.active.value?.menuConfirm == dev.cannoli.scorza.input.v2.CanonicalButton.BTN_EAST

@@ -138,7 +138,7 @@ fun LibretroScreen(
     val igmLineHeight = (settings.textSize.sp + 10).sp
     val igmScaleFactor = settings.textSize.sp / 22f
     val igmTypography = buildCannoliTypography(baseSizeSp = settings.textSize.sp, fontFamily = LocalCannoliFont.current)
-    val labels = ButtonStyle(activeMapping.labelSet(settings.buttonLabelSet), activeMapping.confirmButton())
+    val labels = ButtonStyle(activeMapping.labelSet(dev.cannoli.ui.ButtonLabelSet.PLUMBER), activeMapping.confirmButton())
     val statusBarEnabled = (settings.showWifi || settings.showBluetooth || settings.showClock || settings.showBattery || settings.showVpn) && !showDescription && !isGuideScreen
     val statusBarLeftEdge = remember { mutableIntStateOf(Int.MAX_VALUE) }
 

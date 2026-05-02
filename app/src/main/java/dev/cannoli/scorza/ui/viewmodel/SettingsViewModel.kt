@@ -20,7 +20,6 @@ import dev.cannoli.scorza.util.FontNameParser
 import dev.cannoli.scorza.util.sortedNatural
 import dev.cannoli.scorza.di.AppFonts
 import dev.cannoli.ui.BULLET
-import dev.cannoli.ui.ButtonLabelSet
 import dev.cannoli.ui.theme.hexToColor
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -133,7 +132,6 @@ class SettingsViewModel @Inject constructor(
         val retroArchDiyMode: Boolean = true,
         val artWidth: Int = 40,
         val artScale: ArtScale = ArtScale.DEFAULT,
-        val buttonLabelSet: ButtonLabelSet = ButtonLabelSet.PLUMBER,
         val contentMode: ContentMode = ContentMode.PLATFORMS,
         val fghCollectionStem: String? = null,
         val portraitMarginPx: Int = 0,
@@ -168,7 +166,6 @@ class SettingsViewModel @Inject constructor(
         retroArchDiyMode = settings.retroArchDiyMode,
         artWidth = settings.artWidth,
         artScale = settings.artScale,
-        buttonLabelSet = settings.buttonLabelSet,
         contentMode = settings.contentMode,
         fghCollectionStem = settings.fghCollectionStem,
         portraitMarginPx = settings.portraitMarginPx,
@@ -367,11 +364,6 @@ class SettingsViewModel @Inject constructor(
                 val entries = TextSize.entries
                 val cur = entries.indexOf(settings.textSize).coerceAtLeast(0)
                 settings.textSize = entries[((cur + direction) % entries.size + entries.size) % entries.size]
-            }
-            "button_labels" -> {
-                val entries = ButtonLabelSet.entries
-                val cur = entries.indexOf(settings.buttonLabelSet).coerceAtLeast(0)
-                settings.buttonLabelSet = entries[((cur + direction) % entries.size + entries.size) % entries.size]
             }
             "font" -> {
                 val cur = fontOptions.indexOfFirst { it.key == settings.font }.coerceAtLeast(0)
@@ -737,7 +729,6 @@ class SettingsViewModel @Inject constructor(
         "input" -> listOf(
             SettingsItem("controllers", R.string.setting_controllers, isEditable = true),
             SettingsItem("shortcuts", R.string.setting_shortcuts, isEditable = true),
-            SettingsItem("button_labels", R.string.setting_button_labels, valueText = settings.buttonLabelSet.name.lowercase().replaceFirstChar { it.uppercase() }),
             SettingsItem("platform_switching", R.string.setting_platform_switching, valueRes = onOff(settings.platformSwitching)),
             SettingsItem("swap_play_resume", R.string.setting_swap_play_resume, valueRes = onOff(settings.swapPlayResume)),
             SettingsItem("main_menu_quit", R.string.setting_main_menu_quit, valueRes = onOff(settings.mainMenuQuit)),
