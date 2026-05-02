@@ -23,6 +23,17 @@ class MappingResolver(
         val matchInput = device.toMatchInput(bluetoothMac)
 
         val candidates = repository.list()
+            .filter { mapping ->
+                // Hard reject: saved BT mapping with a different MAC than the current device's
+                // is a different physical controller. Two 8BitDo Lites share name+VID/PID but
+                // are distinct hardware identified by MAC; one's saved INI must not adopt the
+                // other.
+                val savedMac = mapping.match.bluetoothMac
+                val inputMac = matchInput.bluetoothMac
+                !(savedMac != null && savedMac.isNotEmpty() &&
+                    inputMac != null && inputMac.isNotEmpty() &&
+                    !savedMac.equals(inputMac, ignoreCase = true))
+            }
             .map { it to it.match.score(matchInput) }
             .filter { it.second > 0 }
             .filter { (mapping, _) ->
@@ -45,13 +56,13 @@ class MappingResolver(
         val raMatch = bestRetroArchEntry(device)
         if (raMatch != null) {
             return ResolvedMapping(
-                RetroArchAutoconfigImporter.import(raMatch, device, hints),
+                RetroArchAutoconfigImporter.import(raMatch, device, hints, bluetoothMac),
                 persistent = false,
             )
         }
 
         return ResolvedMapping(
-            AndroidDefaultMappingFactory.create(device, hints),
+            AndroidDefaultMappingFactory.create(device, hints, bluetoothMac),
             persistent = false,
         )
     }

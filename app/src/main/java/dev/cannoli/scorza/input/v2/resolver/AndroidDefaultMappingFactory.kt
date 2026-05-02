@@ -31,15 +31,26 @@ object AndroidDefaultMappingFactory {
         CanonicalButton.BTN_MENU to listOf(4, 110),
     )
 
-    fun create(device: ConnectedDevice, hints: ControllerHintTable): DeviceMapping {
+    fun create(
+        device: ConnectedDevice,
+        hints: ControllerHintTable,
+        bluetoothMac: String? = null,
+    ): DeviceMapping {
         val hint = hints.lookup(
             vendorId = device.vendorId,
             productId = device.productId,
             buildModel = device.androidBuildModel,
         )
-        val safeId = "android_default_" + device.descriptor.ifEmpty {
+        val baseId = "android_default_" + device.descriptor.ifEmpty {
             "${device.vendorId}_${device.productId}_${device.name.hashCode()}"
         }
+        // Distinguish identical-name controllers by MAC suffix (matches RetroArch importer).
+        val suffix = bluetoothMac
+            ?.replace(":", "")
+            ?.takeIf { it.isNotEmpty() }
+            ?.takeLast(6)
+            ?.lowercase()
+        val safeId = if (suffix != null) "${baseId}_$suffix" else baseId
         return DeviceMapping(
             id = safeId,
             displayName = device.name.ifEmpty { "Generic Controller" },

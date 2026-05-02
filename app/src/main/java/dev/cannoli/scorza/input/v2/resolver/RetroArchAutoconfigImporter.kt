@@ -40,6 +40,7 @@ object RetroArchAutoconfigImporter {
         entry: RetroArchCfgEntry,
         device: ConnectedDevice,
         hints: ControllerHintTable,
+        bluetoothMac: String? = null,
     ): DeviceMapping {
         val bindings = mutableMapOf<CanonicalButton, MutableList<InputBinding>>()
 
@@ -87,7 +88,7 @@ object RetroArchAutoconfigImporter {
             }
         }
 
-        val safeId = stableIdFor(device, entry)
+        val safeId = stableIdFor(device, entry, bluetoothMac)
         val hint = hints.lookup(
             vendorId = device.vendorId,
             productId = device.productId,
@@ -141,8 +142,21 @@ object RetroArchAutoconfigImporter {
     private fun axisRange(direction: Int): Triple<Float, Float, Float> =
         if (direction >= 0) Triple(-1f, 0f, 1f) else Triple(1f, 0f, -1f)
 
-    private fun stableIdFor(device: ConnectedDevice, entry: RetroArchCfgEntry): String {
+    private fun stableIdFor(
+        device: ConnectedDevice,
+        entry: RetroArchCfgEntry,
+        bluetoothMac: String?,
+    ): String {
         val base = entry.deviceName.ifEmpty { device.name.ifEmpty { "controller" } }
-        return "ra_" + base.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_')
+        val slug = "ra_" + base.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_')
+        // Append a MAC-derived suffix so two physically distinct controllers with the same
+        // name+VID/PID (e.g. a pair of 8BitDo Lites) end up in separate INI files instead of
+        // sharing one and overwriting each other on rename.
+        val suffix = bluetoothMac
+            ?.replace(":", "")
+            ?.takeIf { it.isNotEmpty() }
+            ?.takeLast(6)
+            ?.lowercase()
+        return if (suffix != null) "${slug}_$suffix" else slug
     }
 }
