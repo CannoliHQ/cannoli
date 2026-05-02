@@ -77,11 +77,6 @@ fun InputTesterScreen(
     val deviceLabel = deviceInfo?.let {
         stringResource(R.string.input_tester_device_format, it.port + 1, it.name, it.deviceId)
     } ?: noneText
-    val profileLabel = stringResource(
-        R.string.input_tester_profile_label,
-        uiState.selectedProfile.ifEmpty { noneText },
-    )
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -91,7 +86,6 @@ fun InputTesterScreen(
         Column(modifier = Modifier.fillMaxSize()) {
             Header(
                 activeDevice = deviceLabel,
-                profileLabel = profileLabel,
                 highlight = colors.highlight,
                 text = colors.text,
                 highlightText = colors.highlightText,
@@ -114,13 +108,6 @@ fun InputTesterScreen(
                 }
             }
             Spacer(Modifier.height(Spacing.Sm))
-            Text(
-                text = stringResource(R.string.input_tester_cycle_hint),
-                color = colors.text.copy(alpha = 0.6f),
-                fontSize = 12.sp,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-            )
             Text(
                 text = stringResource(R.string.input_tester_exit_hint),
                 color = colors.text.copy(alpha = 0.6f),
@@ -160,7 +147,6 @@ private fun AxisDumpPanel(axisValues: Map<Int, Float>, textColor: Color) {
 @Composable
 private fun Header(
     activeDevice: String,
-    profileLabel: String,
     highlight: Color,
     text: Color,
     highlightText: Color,
@@ -176,15 +162,6 @@ private fun Header(
                 .padding(horizontal = 12.dp, vertical = 6.dp)
         ) {
             Text(text = activeDevice, color = highlightText, fontSize = 14.sp)
-        }
-        Spacer(Modifier.fillMaxWidth().weight(1f, fill = true))
-        Box(
-            modifier = Modifier
-                .clip(Radius.Pill)
-                .background(Color.White.copy(alpha = 0.08f))
-                .padding(horizontal = 12.dp, vertical = 6.dp)
-        ) {
-            Text(text = profileLabel, color = text, fontSize = 14.sp)
         }
     }
 }

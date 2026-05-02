@@ -41,8 +41,6 @@ data class InputTesterUiState(
     val lastEventDevice: DeviceInfo? = null,
     val eventLog: List<EventLogEntry> = emptyList(),
     val exitRequested: Boolean = false,
-    val availableProfiles: List<String> = emptyList(),
-    val selectedProfile: String = "",
     val axisDumpEnabled: Boolean = false,
 )
 
@@ -61,30 +59,6 @@ class InputTesterViewModel @Inject constructor() {
     fun reset() {
         _state.value = InputTesterUiState()
         heldKeyCodes.clear()
-    }
-
-    fun setProfiles(available: List<String>, selected: String) {
-        _state.update { it.copy(availableProfiles = available, selectedProfile = selected) }
-    }
-
-    fun cycleProfile(forward: Boolean, keepPressed: Set<String> = emptySet()): String {
-        var result = _state.value.selectedProfile
-        _state.update { current ->
-            val list = current.availableProfiles
-            if (list.isEmpty()) return@update current
-            val idx = list.indexOf(current.selectedProfile).let { if (it < 0) 0 else it }
-            val step = if (forward) 1 else -1
-            val next = list[((idx + step) + list.size) % list.size]
-            result = next
-            val clearedPorts = current.portStates.mapValues { (_, s) ->
-                s.copy(
-                    pressedButtons = s.pressedButtons intersect keepPressed,
-                    firstPressedAtMs = if ((s.pressedButtons intersect keepPressed).isNotEmpty()) s.firstPressedAtMs else null,
-                )
-            }
-            current.copy(selectedProfile = next, portStates = clearedPorts)
-        }
-        return result
     }
 
     private val heldKeyCodes = mutableSetOf<Int>()

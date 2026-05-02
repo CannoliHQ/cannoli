@@ -97,7 +97,6 @@
     <string name="setting_battery">Battery</string>
     <string name="setting_updater">Updater</string>
     <string name="setting_time_format">Time Format</string>
-    <string name="setting_profiles">Profiles</string>
     <string name="setting_controllers">Controllers</string>
     <string name="controllers_connected_now">Connected Now</string>
     <string name="controllers_saved_mappings">Saved Mappings</string>
@@ -162,7 +161,6 @@
     <string name="binding_hat">Hat %1$s</string>
     <string name="binding_axis_pos">Axis %1$d+</string>
     <string name="binding_axis_neg">Axis %1$d-</string>
-    <string name="setting_controls">Button Mapping</string>
     <string name="setting_shortcuts">Shortcuts</string>
     <string name="setting_button_labels">Button Labels</string>
     <string name="setting_confirm_button">Confirm Button</string>
@@ -211,8 +209,6 @@
     <string name="setting_input_tester">Input Tester</string>
     <string name="input_tester_none">—</string>
     <string name="input_tester_device_format">P%1$d • %2$s • dev%3$d</string>
-    <string name="input_tester_profile_label">Profile: %1$s</string>
-    <string name="input_tester_cycle_hint">Hold Select + D-Pad ← / → To Cycle Profiles</string>
     <string name="input_tester_exit_hint">Hold Start + Select To Exit</string>
     <string name="input_tester_device_keyboard">keyboard</string>
     <string name="input_tester_device_unknown">unknown</string>
@@ -258,7 +254,6 @@
     <string name="dialog_rename_success">Renamed successfully</string>
     <string name="dialog_rename_failed">Rename failed: %1$s</string>
     <string name="dialog_quit_confirm">Are you sure you want to quit?</string>
-    <string name="dialog_delete_profile">Delete profile \"%1$s\"?</string>
 
     <!-- Context menu options -->
     <string name="context_rename">Rename</string>
@@ -315,7 +310,6 @@
     <string name="no_compatible_cores">No compatible cores found</string>
     <string name="no_collections">No collections</string>
     <string name="title_child_collections">Child Collections</string>
-    <string name="title_profiles">Profiles</string>
     <string name="title_button_mapping">Button Mapping</string>
     <string name="title_shortcuts">Shortcuts</string>
     <string name="shortcut_hold_prompt" tools:ignore="TypographyEllipsis">Hold one or more buttons...</string>
@@ -336,7 +330,6 @@
     <string name="igm_emulator">Emulator</string>
     <string name="igm_save_changes">Save Changes</string>
     <string name="igm_save_and_quit">Save and Quit</string>
-    <string name="title_controls">Controls</string>
     <string name="title_guide">Guide</string>
 
     <!-- IGM info labels -->
@@ -350,7 +343,6 @@
 
     <!-- IGM dialogs -->
     <string name="igm_delete_slot">Delete %1$s?</string>
-    <string name="igm_delete_profile">Delete Profile?</string>
     <string name="igm_press_button" tools:ignore="TypographyEllipsis">PRESS A BUTTON... %1$d</string>
     <string name="press_button_prompt" tools:ignore="TypographyEllipsis">Press any button...</string>
 
