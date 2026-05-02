@@ -15,16 +15,13 @@ import dev.cannoli.scorza.ui.viewmodel.InputTesterViewModel
 class InputTesterController(
     private val viewModel: InputTesterViewModel,
     private val controllerManager: ControllerManager,
-    private val profileManager: ProfileManager,
     private val portRouter: PortRouter,
     private val unknownDeviceName: String,
     private val keyboardDeviceName: String,
 ) {
-    private var profileMap: Map<Int, String> = emptyMap()
     private val pressedKeycodes = mutableMapOf<Int, String?>()
     private var selectHeld = false
     private var startHeld = false
-    private var hatChordState: Int = 0
     private val axisTriggerL2Held = mutableSetOf<Int>()
     private val axisTriggerR2Held = mutableSetOf<Int>()
     private val exitHandler = Handler(Looper.getMainLooper())
@@ -33,7 +30,10 @@ class InputTesterController(
     fun enter() {
         portRouter.resetAllEvaluators()
         viewModel.reset()
-        initProfiles()
+        pressedKeycodes.clear()
+        selectHeld = false
+        startHeld = false
+        exitHandler.removeCallbacks(exitRunnable)
         refreshPorts()
     }
 
@@ -63,18 +63,10 @@ class InputTesterController(
                 startHeld = true
                 updateExitCountdown()
             }
-            if (!isRepeat && selectHeld && (navButton == "btn_left" || navButton == "btn_right")) {
-                releaseAllKeys(except = setOf("btn_select"))
-                val newProfile = viewModel.cycleProfile(
-                    forward = navButton == "btn_right",
-                    keepPressed = setOf("btn_select"),
-                )
-                loadProfile(newProfile)
-            }
             if (!isRepeat && selectHeld && navButton == "btn_north") {
                 viewModel.toggleAxisDump()
             }
-            val resolved = mappingNav ?: profileMap[event.keyCode]
+            val resolved = mappingNav ?: AndroidGamepadKeyNames.DEFAULT_KEY_MAP[event.keyCode]
             pressedKeycodes[event.keyCode] = resolved
             viewModel.onKeyDown(port, event.keyCode, keyName, deviceId, name, resolved)
             if (!isRepeat) viewModel.setActivePort(port)
@@ -134,24 +126,6 @@ class InputTesterController(
         syncAxisTrigger(port, deviceId, name, KeyEvent.KEYCODE_BUTTON_L2, leftTrigger, axisTriggerL2Held, "btn_l2")
         syncAxisTrigger(port, deviceId, name, KeyEvent.KEYCODE_BUTTON_R2, rightTrigger, axisTriggerR2Held, "btn_r2")
 
-        if (selectHeld) {
-            val dir = when {
-                hatX < -0.5f || leftX < -0.5f -> -1
-                hatX >  0.5f || leftX >  0.5f ->  1
-                else -> 0
-            }
-            if (dir != 0 && dir != hatChordState) {
-                releaseAllKeys(except = setOf("btn_select"))
-                val newProfile = viewModel.cycleProfile(
-                    forward = dir == 1,
-                    keepPressed = setOf("btn_select"),
-                )
-                loadProfile(newProfile)
-            }
-            hatChordState = dir
-        } else {
-            hatChordState = 0
-        }
         return true
     }
 
@@ -162,23 +136,6 @@ class InputTesterController(
         } else {
             exitHandler.removeCallbacks(exitRunnable)
         }
-    }
-
-    private fun loadProfile(name: String) {
-        val controls = profileManager.readControls(name)
-        val profileInverse = controls.entries.associate { (prefKey, keyCode) -> keyCode to prefKey }
-        profileMap = AndroidGamepadKeyNames.DEFAULT_KEY_MAP + profileInverse
-    }
-
-    private fun initProfiles() {
-        val profiles = profileManager.listProfiles()
-        val initial = profiles.firstOrNull() ?: ProfileManager.NAVIGATION
-        viewModel.setProfiles(profiles, initial)
-        loadProfile(initial)
-        pressedKeycodes.clear()
-        selectHeld = false
-        startHeld = false
-        exitHandler.removeCallbacks(exitRunnable)
     }
 
     private fun releaseAllKeys(except: Set<String> = emptySet()) {

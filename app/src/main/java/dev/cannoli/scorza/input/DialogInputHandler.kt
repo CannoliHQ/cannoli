@@ -11,7 +11,6 @@ import dev.cannoli.scorza.db.RecentlyPlayedRepository
 import dev.cannoli.scorza.db.RomScanner
 import dev.cannoli.scorza.db.RomsRepository
 import dev.cannoli.scorza.di.IoScope
-import dev.cannoli.scorza.input.autoconfig.AutoconfigMatcher
 import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.LaunchManager
 import dev.cannoli.scorza.model.AppType
@@ -65,13 +64,11 @@ class DialogInputHandler @Inject constructor(
     private val installedCoreService: InstalledCoreService,
     private val launchManager: LaunchManager,
     private val updateManager: dev.cannoli.scorza.updater.UpdateManager,
-    private val profileManager: ProfileManager,
     private val atomicRename: AtomicRename,
     private val settingsViewModel: SettingsViewModel,
     private val gameListViewModel: GameListViewModel,
     private val systemListViewModel: SystemListViewModel,
     private val controllerManager: ControllerManager,
-    private val autoconfigMatcher: AutoconfigMatcher,
     private val romsRepository: RomsRepository,
     private val appsRepository: AppsRepository,
     private val launcherActions: LauncherActions,
@@ -128,7 +125,6 @@ class DialogInputHandler @Inject constructor(
             is DialogState.RenameInput,
             is DialogState.NewCollectionInput,
             is DialogState.CollectionRenameInput,
-            is DialogState.ProfileNameInput,
             is DialogState.NewFolderInput -> {
                 val ks = ds.asKeyboardState()!!
                 val rows = getKeyboardRows(ks.caps, ks.symbols)
@@ -166,7 +162,6 @@ class DialogInputHandler @Inject constructor(
             is DialogState.RenameInput,
             is DialogState.NewCollectionInput,
             is DialogState.CollectionRenameInput,
-            is DialogState.ProfileNameInput,
             is DialogState.NewFolderInput -> {
                 val ks = ds.asKeyboardState()!!
                 val rows = getKeyboardRows(ks.caps, ks.symbols)
@@ -206,7 +201,6 @@ class DialogInputHandler @Inject constructor(
             is DialogState.RenameInput,
             is DialogState.NewCollectionInput,
             is DialogState.CollectionRenameInput,
-            is DialogState.ProfileNameInput,
             is DialogState.NewFolderInput -> {
                 val ks = ds.asKeyboardState()!!
                 val rows = getKeyboardRows(ks.caps, ks.symbols)
@@ -243,7 +237,6 @@ class DialogInputHandler @Inject constructor(
             is DialogState.RenameInput,
             is DialogState.NewCollectionInput,
             is DialogState.CollectionRenameInput,
-            is DialogState.ProfileNameInput,
             is DialogState.NewFolderInput -> {
                 val ks = ds.asKeyboardState()!!
                 val rows = getKeyboardRows(ks.caps, ks.symbols)
@@ -292,12 +285,6 @@ class DialogInputHandler @Inject constructor(
                 onSymbols = { nav.dialogState.value = ds.copy(symbols = !ds.symbols) },
                 onEnter = { onCollectionRenameConfirm(ds) }
             )
-            is DialogState.ProfileNameInput -> handleKeyboardConfirm(ds.caps, ds.symbols, ds.keyRow, ds.keyCol, ds.currentName, ds.cursorPos,
-                onChar = { name, pos -> nav.dialogState.value = ds.copy(currentName = name, cursorPos = pos) },
-                onShift = { nav.dialogState.value = ds.copy(caps = !ds.caps) },
-                onSymbols = { nav.dialogState.value = ds.copy(symbols = !ds.symbols) },
-                onEnter = { onProfileNameConfirm(ds) }
-            )
             is DialogState.NewFolderInput -> handleKeyboardConfirm(ds.caps, ds.symbols, ds.keyRow, ds.keyCol, ds.currentName, ds.cursorPos,
                 onChar = { name, pos -> nav.dialogState.value = ds.copy(currentName = name, cursorPos = pos) },
                 onShift = { nav.dialogState.value = ds.copy(caps = !ds.caps) },
@@ -306,10 +293,6 @@ class DialogInputHandler @Inject constructor(
             )
             is DialogState.QuitConfirm -> {
                 activityActions.finishAffinity()
-            }
-            is DialogState.DeleteProfileConfirm -> {
-                profileManager.deleteProfile(ds.profileName)
-                nav.dialogState.value = DialogState.None
             }
             is DialogState.ColorPicker -> {
                 val idx = ds.selectedRow * COLOR_GRID_COLS + ds.selectedCol
@@ -415,7 +398,6 @@ class DialogInputHandler @Inject constructor(
             is DialogState.RenameInput,
             is DialogState.NewCollectionInput,
             is DialogState.CollectionRenameInput,
-            is DialogState.ProfileNameInput,
             is DialogState.NewFolderInput -> {
                 ds.withBackspace()?.let { nav.dialogState.value = it }
             }
@@ -437,7 +419,6 @@ class DialogInputHandler @Inject constructor(
             is DialogState.DeleteCollectionConfirm -> {
                 restoreContextMenu()
             }
-            is DialogState.DeleteProfileConfirm,
             is DialogState.QuitConfirm -> {
                 nav.dialogState.value = DialogState.None
             }
@@ -483,7 +464,6 @@ class DialogInputHandler @Inject constructor(
             is DialogState.RenameInput -> onRenameConfirm(ds)
             is DialogState.NewCollectionInput -> onNewCollectionConfirm(ds)
             is DialogState.CollectionRenameInput -> onCollectionRenameConfirm(ds)
-            is DialogState.ProfileNameInput -> onProfileNameConfirm(ds)
             is DialogState.NewFolderInput -> onNewFolderConfirm(ds)
             is DialogState.HexColorInput -> {
                 if (ds.currentHex.length == 6) {
@@ -505,7 +485,6 @@ class DialogInputHandler @Inject constructor(
             is DialogState.RenameInput,
             is DialogState.NewCollectionInput,
             is DialogState.CollectionRenameInput,
-            is DialogState.ProfileNameInput,
             is DialogState.NewFolderInput -> {
                 ds.withInsertedChar(" ")?.let { nav.dialogState.value = it }
             }
@@ -547,7 +526,6 @@ class DialogInputHandler @Inject constructor(
                 restoreContextMenu()
             }
             is DialogState.NewCollectionInput,
-            is DialogState.ProfileNameInput,
             is DialogState.NewFolderInput -> {
                 nav.dialogState.value = DialogState.None
             }
@@ -573,7 +551,6 @@ class DialogInputHandler @Inject constructor(
             is DialogState.RenameInput,
             is DialogState.NewCollectionInput,
             is DialogState.CollectionRenameInput,
-            is DialogState.ProfileNameInput,
             is DialogState.NewFolderInput -> {
                 if (!nav.selectDown) {
                     nav.selectDown = true
@@ -613,7 +590,6 @@ class DialogInputHandler @Inject constructor(
             is DialogState.RenameInput,
             is DialogState.NewCollectionInput,
             is DialogState.CollectionRenameInput,
-            is DialogState.ProfileNameInput,
             is DialogState.NewFolderInput -> {
                 val ks = ds.asKeyboardState()!!
                 if (ks.cursorPos > 0) nav.dialogState.value = ds.withCursor(ks.cursorPos - 1)
@@ -630,7 +606,6 @@ class DialogInputHandler @Inject constructor(
             is DialogState.RenameInput,
             is DialogState.NewCollectionInput,
             is DialogState.CollectionRenameInput,
-            is DialogState.ProfileNameInput,
             is DialogState.NewFolderInput -> {
                 val ks = ds.asKeyboardState()!!
                 if (ks.cursorPos < ks.currentName.length) nav.dialogState.value = ds.withCursor(ks.cursorPos + 1)
@@ -661,7 +636,6 @@ class DialogInputHandler @Inject constructor(
             is DialogState.RenameInput,
             is DialogState.NewCollectionInput,
             is DialogState.CollectionRenameInput,
-            is DialogState.ProfileNameInput,
             is DialogState.NewFolderInput -> {
                 val ks = ds.asKeyboardState()!!
                 nav.dialogState.value = ds.withCursor(ks.currentName.length)
@@ -1177,42 +1151,6 @@ class DialogInputHandler @Inject constructor(
                 gameListViewModel.loadCollectionsList(restoreIndex = true)
             }
         }
-    }
-
-    private fun onProfileNameConfirm(state: DialogState.ProfileNameInput) {
-        val name = state.currentName.trim()
-        if (name.isBlank() || ProfileManager.isProtected(name)) {
-            nav.dialogState.value = DialogState.None
-            return
-        }
-        if (state.isNew) {
-            val identity = controllerManager.slots[0]
-            val device = controllerManager.getDeviceIdForPort(0)?.let { android.view.InputDevice.getDevice(it) }
-            val verifier: (IntArray) -> BooleanArray = if (device != null) {
-                { codes -> device.hasKeys(*codes) }
-            } else {
-                { codes -> BooleanArray(codes.size) { true } }
-            }
-            val match = identity?.let { profileManager.autoProfileControlsFor(it, autoconfigMatcher, verifier) }
-            val controls = match?.controls ?: emptyMap()
-            if (!profileManager.createProfile(name, controls)) {
-                nav.dialogState.value = DialogState.None
-                return
-            }
-            if (match != null) {
-                nav.osdMessage = "Prefilled with ${match.deviceName}"
-            }
-        } else {
-            val paths = dev.cannoli.scorza.config.CannoliPaths(settings.sdCardRoot)
-            val file = paths.profileFile(state.originalName)
-            val dest = paths.profileFile(name)
-            if (dest.exists() && name != state.originalName) {
-                nav.dialogState.value = DialogState.None
-                return
-            }
-            file.renameTo(dest)
-        }
-        nav.dialogState.value = DialogState.None
     }
 
     private fun onNewFolderConfirm(state: DialogState.NewFolderInput) {

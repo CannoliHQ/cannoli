@@ -10,7 +10,6 @@ import dev.cannoli.scorza.R
 import dev.cannoli.scorza.input.BindingController
 import dev.cannoli.scorza.input.ControllerManager
 import dev.cannoli.scorza.input.InputTesterController
-import dev.cannoli.scorza.input.ProfileManager
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.ui.viewmodel.InputTesterViewModel
 
@@ -31,12 +30,10 @@ object InputModule {
         activity: Activity,
         viewModel: InputTesterViewModel,
         controllerManager: ControllerManager,
-        profileManager: ProfileManager,
         portRouter: dev.cannoli.scorza.input.v2.runtime.PortRouter,
     ): InputTesterController = InputTesterController(
         viewModel = viewModel,
         controllerManager = controllerManager,
-        profileManager = profileManager,
         portRouter = portRouter,
         unknownDeviceName = activity.getString(R.string.input_tester_device_unknown),
         keyboardDeviceName = activity.getString(R.string.input_tester_device_keyboard),

@@ -143,7 +143,6 @@ fun DialogOverlay(
         is DialogState.RenameInput,
         is DialogState.NewCollectionInput,
         is DialogState.CollectionRenameInput,
-        is DialogState.ProfileNameInput,
         is DialogState.NewFolderInput -> {
             val ks = dialogState as KeyboardInputState
             KeyboardOverlay(
