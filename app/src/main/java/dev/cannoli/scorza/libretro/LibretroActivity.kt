@@ -129,6 +129,7 @@ class LibretroActivity : ComponentActivity() {
     private var coreCategories by mutableStateOf(emptyList<LibretroRunner.CoreOptionCategory>())
     private var controllerTypes by mutableStateOf(emptyList<LibretroRunner.ControllerType>())
     private var controllerTypeIndex by mutableIntStateOf(0)
+    private var portDeviceTypes by mutableStateOf<Map<Int, Int>>(emptyMap())
     private var shortcutSource by mutableStateOf(OverrideSource.GLOBAL)
     private var shortcuts by mutableStateOf(mapOf<ShortcutAction, Set<Int>>())
     private val shortcutChordKeys = mutableSetOf<Int>()
@@ -527,6 +528,7 @@ class LibretroActivity : ComponentActivity() {
 
                 loadOverrides()
                 controllerTypes = runner.getControllerTypes(0).filter { it.id != 0 }
+                applyPortDeviceTypes()
                 for (p in 0 until LibretroRunner.MAX_PORTS) {
                     if (controllerManager.slots[p] != null) runner.setControllerPortDevice(p, LibretroRunner.DEVICE_JOYPAD)
                 }
@@ -1586,20 +1588,42 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
+    private fun occupiedPorts(): List<Int> = portRouter.snapshotEntries()
+        .filter { it.port != null && !it.mapping.excludeFromGameplay }
+        .mapNotNull { it.port }
+        .sorted()
+
+    private fun deviceTypeLabel(port: Int): String {
+        val typeId = portDeviceTypes[port] ?: LibretroRunner.DEVICE_JOYPAD
+        return controllerTypes.firstOrNull { it.id == typeId }?.desc ?: "Standard"
+    }
+
+    private fun cyclePortDeviceType(port: Int, direction: Int) {
+        if (controllerTypes.isEmpty()) return
+        val currentTypeId = portDeviceTypes[port] ?: LibretroRunner.DEVICE_JOYPAD
+        val currentIdx = controllerTypes.indexOfFirst { it.id == currentTypeId }.coerceAtLeast(0)
+        val newIdx = ((currentIdx + direction) + controllerTypes.size) % controllerTypes.size
+        val ct = controllerTypes[newIdx]
+        portDeviceTypes = portDeviceTypes.toMutableMap().also { it[port] = ct.id }
+        if (port == 0) {
+            controllerTypeIndex = newIdx
+            applyForceAnalog(ct.id > 1)
+        }
+        runner.setControllerPortDevice(port, ct.id)
+    }
+
     private fun cycleAdvancedValue(index: Int, direction: Int) {
-        val offset = if (controllerTypes.size > 1) 1 else 0
-        when (index) {
-            0 -> if (offset == 1) {
-                val newIdx = ((controllerTypeIndex + direction) + controllerTypes.size) % controllerTypes.size
-                controllerTypeIndex = newIdx
-                val ct = controllerTypes[newIdx]
-                applyForceAnalog(ct.id > 1)
-                runner.setControllerPortDevice(0, ct.id)
-            } else {
-                cycleFfSpeed(direction)
-            }
-            offset -> { cycleFfSpeed(direction) }
-            offset + 1 -> { debugHud = !debugHud; renderer.debugHud = debugHud }
+        val portRows = if (controllerTypes.size > 1) {
+            val ports = occupiedPorts()
+            if (ports.size <= 1) listOf(0) else ports
+        } else emptyList()
+        if (index < portRows.size) {
+            cyclePortDeviceType(portRows[index], direction)
+            return
+        }
+        when (index - portRows.size) {
+            0 -> cycleFfSpeed(direction)
+            1 -> { debugHud = !debugHud; renderer.debugHud = debugHud }
         }
     }
 
@@ -2114,8 +2138,14 @@ class LibretroActivity : ComponentActivity() {
             add(IGMSettingsItem("Overlay", overlayLabel()))
         }
         is IGMScreen.Advanced -> buildList {
-            if (controllerTypes.size > 1)
-                add(IGMSettingsItem("Controller Type", controllerTypes.getOrNull(controllerTypeIndex)?.desc ?: "Standard"))
+            if (controllerTypes.size > 1) {
+                val ports = occupiedPorts()
+                if (ports.size <= 1) {
+                    add(IGMSettingsItem("Controller Type", deviceTypeLabel(0)))
+                } else {
+                    for (p in ports) add(IGMSettingsItem("P${p + 1} Controller", deviceTypeLabel(p)))
+                }
+            }
             add(IGMSettingsItem("Max FF Speed", "${maxFfSpeed}x"))
             add(IGMSettingsItem("Debug HUD", if (debugHud) "On" else "Off"))
         }
@@ -2181,7 +2211,8 @@ class LibretroActivity : ComponentActivity() {
             shaderPreset = shaderPreset,
             overlay = overlay,
             coreOptions = optionMap,
-            shaderParams = paramMap
+            shaderParams = paramMap,
+            portDeviceTypes = portDeviceTypes,
         )
     }
 
@@ -2214,6 +2245,7 @@ class LibretroActivity : ComponentActivity() {
         overlay = settings.overlay
         shortcutSource = settings.shortcutSource
         shortcuts = settings.shortcuts
+        portDeviceTypes = settings.portDeviceTypes
 
         applyV2MappingToAllPorts()
 
@@ -2225,6 +2257,16 @@ class LibretroActivity : ComponentActivity() {
         refreshShaderParams()
         applySavedShaderParams(settings.shaderParams)
         platformBaseline = overrideManager.loadPlatformBaseline()
+    }
+
+    private fun applyPortDeviceTypes() {
+        val entries = portRouter.snapshotEntries()
+        val occupied = entries.filter { !it.mapping.excludeFromGameplay }.map { it.port }.toSet()
+        for (p in 0 until LibretroRunner.MAX_PORTS) {
+            if (p !in occupied) continue
+            val typeId = portDeviceTypes[p] ?: LibretroRunner.DEVICE_JOYPAD
+            runner.setControllerPortDevice(p, typeId)
+        }
     }
 
     private fun prepareVerticalModeReinit(): Pair<() -> Unit, () -> Unit>? {

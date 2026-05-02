@@ -50,7 +50,10 @@ class OverrideManager(
         var shortcutSource: OverrideSource = OverrideSource.GLOBAL,
         var shortcuts: Map<ShortcutAction, Set<Int>> = emptyMap(),
         var coreOptions: Map<String, String> = emptyMap(),
-        var shaderParams: Map<String, Float> = emptyMap()
+        var shaderParams: Map<String, Float> = emptyMap(),
+        // Per-port libretro RETRO_DEVICE_* override. Missing entry means "use core default
+        // (Joypad)". Keys are 0-indexed ports (P1=0). Values come from runner.getControllerTypes().
+        var portDeviceTypes: Map<Int, Int> = emptyMap(),
     ) {
         fun frontendEquals(other: Settings): Boolean =
             scalingMode == other.scalingMode &&
@@ -70,7 +73,8 @@ class OverrideManager(
             shaderPreset == other.shaderPreset &&
             overlay == other.overlay &&
             coreOptions == other.coreOptions &&
-            shaderParams == other.shaderParams
+            shaderParams == other.shaderParams &&
+            portDeviceTypes == other.portDeviceTypes
     }
 
     fun load(): Settings {
@@ -78,9 +82,11 @@ class OverrideManager(
         applyFrontend(platformFile, settings)
         applyOptions(platformFile, settings)
         applyShaderParams(platformFile, settings)
+        applyPortDeviceTypes(platformFile, settings)
         applyFrontend(gameFile, settings)
         applyOptions(gameFile, settings)
         applyShaderParams(gameFile, settings)
+        applyPortDeviceTypes(gameFile, settings)
         resolveShortcutSource(settings)
         loadShortcutsFrom(sourceFile(settings.shortcutSource), settings)
         return settings
@@ -98,6 +104,7 @@ class OverrideManager(
         applyFrontend(platformFile, settings)
         applyOptions(platformFile, settings)
         applyShaderParams(platformFile, settings)
+        applyPortDeviceTypes(platformFile, settings)
         return settings
     }
 
@@ -110,6 +117,11 @@ class OverrideManager(
             existing["shader_params"] = settings.shaderParams.mapValues { it.value.toString() }
         } else {
             existing.remove("shader_params")
+        }
+        if (settings.portDeviceTypes.isNotEmpty()) {
+            existing["port_devices"] = portDeviceTypesToIni(settings.portDeviceTypes)
+        } else {
+            existing.remove("port_devices")
         }
         IniWriter.write(platformFile, existing)
     }
@@ -134,6 +146,18 @@ class OverrideManager(
         }
         if (shaderDelta.isNotEmpty()) existing["shader_params"] = shaderDelta
         else existing.remove("shader_params")
+
+        // Per-port device types: write only ports that differ from the platform baseline.
+        val portsDelta = mutableMapOf<Int, Int>()
+        val allPorts = settings.portDeviceTypes.keys + baseline.portDeviceTypes.keys
+        for (port in allPorts) {
+            val gameValue = settings.portDeviceTypes[port]
+            if (gameValue != null && gameValue != baseline.portDeviceTypes[port]) {
+                portsDelta[port] = gameValue
+            }
+        }
+        if (portsDelta.isNotEmpty()) existing["port_devices"] = portDeviceTypesToIni(portsDelta)
+        else existing.remove("port_devices")
 
         if (existing.any { it.value.isNotEmpty() }) IniWriter.write(gameFile, existing)
         else if (gameFile.exists()) gameFile.delete()
@@ -213,6 +237,23 @@ class OverrideManager(
             settings.shaderParams = merged
         }
     }
+
+    private fun applyPortDeviceTypes(file: File, settings: Settings) {
+        if (!file.exists()) return
+        val s = IniParser.parse(file).getSection("port_devices")
+        if (s.isEmpty()) return
+        val merged = settings.portDeviceTypes.toMutableMap()
+        for ((key, value) in s) {
+            // Keys are like "p1".."p4"; convert to 0-indexed port int.
+            val portIdx = key.removePrefix("p").toIntOrNull()?.let { it - 1 } ?: continue
+            val typeId = value.toIntOrNull() ?: continue
+            merged[portIdx] = typeId
+        }
+        settings.portDeviceTypes = merged
+    }
+
+    private fun portDeviceTypesToIni(map: Map<Int, Int>): Map<String, String> =
+        map.entries.associate { (port, type) -> "p${port + 1}" to type.toString() }
 
     private fun loadShortcutsFrom(file: File, settings: Settings) {
         if (!file.exists()) return
