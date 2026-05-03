@@ -123,6 +123,7 @@ class InputRouter @Inject constructor(
         crossinline onMove: T.(Int) -> LauncherScreen = { idx -> withScroll(selectedIndex = idx, scrollTarget = scrollTarget) },
         noinline onStart: (T.() -> Unit)? = null,
         noinline onWest: (T.() -> Unit)? = null,
+        noinline onNorth: (T.() -> Unit)? = null,
     ): ScrollListInputHandler where T : LauncherScreen, T : LauncherScreen.ScrollableScreen {
         val current: () -> T? = { nav.currentScreen as? T }
         return scrollListFactory.create(
@@ -133,6 +134,7 @@ class InputRouter @Inject constructor(
             onBack = { current()?.onBack() ?: nav.pop() },
             onStart = onStart?.let { fn -> { current()?.fn() ?: Unit } },
             onWest = onWest?.let { fn -> { current()?.fn() ?: Unit } },
+            onNorth = onNorth?.let { fn -> { current()?.fn() ?: Unit } },
         )
     }
 
@@ -251,7 +253,7 @@ class InputRouter @Inject constructor(
             globalOverrides.saveShortcuts(shortcuts)
             nav.pop()
         },
-        onStart = {
+        onNorth = {
             if (!listening) {
                 ShortcutAction.entries.getOrNull(selectedIndex)?.let { action ->
                     nav.replaceTop(copy(shortcuts = shortcuts + (action to emptySet())))

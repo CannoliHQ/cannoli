@@ -15,6 +15,7 @@ class ScrollListInputHandler @AssistedInject constructor(
     @Assisted("onBack") val onBack: () -> Unit,
     @Assisted("onStart") val onStart: (() -> Unit)?,
     @Assisted("onWest") val onWest: (() -> Unit)?,
+    @Assisted("onNorth") val onNorth: (() -> Unit)?,
 ) : ScreenInputHandler {
 
     @AssistedFactory
@@ -27,6 +28,7 @@ class ScrollListInputHandler @AssistedInject constructor(
             @Assisted("onBack") onBack: () -> Unit,
             @Assisted("onStart") onStart: (() -> Unit)?,
             @Assisted("onWest") onWest: (() -> Unit)? = null,
+            @Assisted("onNorth") onNorth: (() -> Unit)? = null,
         ): ScrollListInputHandler
     }
 
@@ -61,4 +63,5 @@ class ScrollListInputHandler @AssistedInject constructor(
     override fun onBack() = onBack.invoke()
     override fun onStart() = onStart?.invoke() ?: Unit
     override fun onWest() = onWest?.invoke() ?: Unit
+    override fun onNorth() = onNorth?.invoke() ?: Unit
 }
