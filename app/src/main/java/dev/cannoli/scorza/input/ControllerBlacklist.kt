@@ -7,9 +7,8 @@ import javax.inject.Singleton
 
 /**
  * Loads `assets/controller_blacklist.json` and answers whether a device should be ignored as a
- * controller. Used by both the legacy [ControllerManager] (gameplay port assignment) and the
- * v2 [dev.cannoli.scorza.input.v2.runtime.ControllerV2Bridge] (identity / port routing) so the
- * two stay in sync.
+ * controller. Consumed by [dev.cannoli.scorza.input.v2.runtime.ControllerV2Bridge] during
+ * device identification.
  */
 @Singleton
 class ControllerBlacklist @Inject constructor() {

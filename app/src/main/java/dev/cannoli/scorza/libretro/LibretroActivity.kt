@@ -40,7 +40,6 @@ import dev.cannoli.igm.IGMSettingsItem
 import dev.cannoli.igm.InGameMenuOptions
 import dev.cannoli.igm.ShortcutAction
 import dev.cannoli.scorza.R
-import dev.cannoli.scorza.input.ControllerManager
 import dev.cannoli.scorza.libretro.shader.PresetParser
 import dev.cannoli.scorza.libretro.shader.ShaderPipeline
 import dev.cannoli.scorza.settings.SettingsRepository
@@ -62,7 +61,6 @@ import javax.inject.Inject
 class LibretroActivity : ComponentActivity() {
 
     @Inject lateinit var settings: SettingsRepository
-    @Inject lateinit var controllerManager: ControllerManager
     @Inject lateinit var portRouter: dev.cannoli.scorza.input.v2.runtime.PortRouter
     @Inject lateinit var controllerV2Bridge: dev.cannoli.scorza.input.v2.runtime.ControllerV2Bridge
     @Inject lateinit var activeMappingHolder: dev.cannoli.scorza.input.v2.runtime.ActiveMappingHolder
@@ -350,16 +348,7 @@ class LibretroActivity : ComponentActivity() {
         sessionLog.log("platform_tag=$platformTag")
         slotManager = SaveSlotManager(stateBasePath)
         guideManager = GuideManager(cannoliRoot, platformTag, File(romPath).nameWithoutExtension)
-        controllerManager.loadBlacklist(this)
-        controllerManager.onDeviceDisconnected = { port -> onControllerDisconnected(port) }
-        controllerManager.onDeviceConnected = { port, _ ->
-            if (::runner.isInitialized) runner.setControllerPortDevice(port, LibretroRunner.DEVICE_JOYPAD)
-            onControllerReconnected(port)
-        }
-        controllerManager.initialize()
         runner = LibretroRunner()
-        val inputManager = getSystemService(Context.INPUT_SERVICE) as InputManager
-        inputManager.registerInputDeviceListener(controllerManager, Handler(Looper.getMainLooper()))
 
         val colors = CannoliColors(
             highlight = hexToColor(args.colorHighlight) ?: Color.White,
@@ -711,6 +700,7 @@ class LibretroActivity : ComponentActivity() {
     private val triggerL2HeldDevices = mutableSetOf<Int>()
     private val triggerR2HeldDevices = mutableSetOf<Int>()
     private val portConsumedKeys = Array(LibretroRunner.MAX_PORTS) { mutableSetOf<Int>() }
+    private val portPressedKeys = Array(LibretroRunner.MAX_PORTS) { mutableSetOf<Int>() }
     private val menuRepeatHandler = Handler(Looper.getMainLooper())
     private val menuRepeatDelay = 400L
     private val menuRepeatInterval = 80L
@@ -774,7 +764,7 @@ class LibretroActivity : ComponentActivity() {
             return true
         }
 
-        val port = controllerManager.getPortForDeviceId(event.deviceId) ?: 0
+        val port = portRouter.portFor(event.deviceId) ?: 0
         val mapping = portRouter.mappingForPort(port)
         val evaluator = evaluatorForPort(port)
 
@@ -817,8 +807,8 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun evaluatorForPort(port: Int): dev.cannoli.scorza.input.v2.runtime.PortEvaluator? {
-        val deviceId = controllerManager.getDeviceIdForPort(port) ?: return null
-        return portRouter.evaluatorFor(deviceId)
+        val snap = portRouter.snapshotEntries().firstOrNull { it.port == port } ?: return null
+        return portRouter.evaluatorFor(snap.androidDeviceId)
     }
 
     private fun pushPortMask(port: Int) {
@@ -980,9 +970,9 @@ class LibretroActivity : ComponentActivity() {
             handleShortcutKeyUp(keyCode)
             return true
         }
-        val port = controllerManager.getPortForDeviceId(event.deviceId) ?: 0
+        val port = portRouter.portFor(event.deviceId) ?: 0
         if (isSyntheticTriggerHeld(event.deviceId, keyCode)) return true
-        val portKeys = controllerManager.portPressedKeys[port]
+        val portKeys = portPressedKeys[port]
         portKeys.remove(keyCode)
         portConsumedKeys[port].remove(keyCode)
 
@@ -1071,11 +1061,11 @@ class LibretroActivity : ComponentActivity() {
         val wasHeld = deviceId in held
         if (value > TRIGGER_PRESS_THRESHOLD && !wasHeld) {
             held.add(deviceId)
-            val portKeys = controllerManager.portPressedKeys[port]
+            val portKeys = portPressedKeys[port]
             if (portKeys.add(keyCode)) checkShortcuts(port)
         } else if (value < TRIGGER_RELEASE_THRESHOLD && wasHeld) {
             held.remove(deviceId)
-            val portKeys = controllerManager.portPressedKeys[port]
+            val portKeys = portPressedKeys[port]
             portKeys.remove(keyCode)
             portConsumedKeys[port].remove(keyCode)
             if (holdingFf) {
@@ -1089,7 +1079,7 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun handleGameplayInput(keyCode: Int, event: KeyEvent): Boolean {
-        val port = controllerManager.getPortForDeviceId(event.deviceId) ?: 0
+        val port = portRouter.portFor(event.deviceId) ?: 0
         val evaluator = evaluatorForPort(port)
         val mapping = portRouter.mappingForPort(port)
         val mapsToCanonical = evaluator?.keyCodeIsBound(keyCode) == true
@@ -1102,7 +1092,7 @@ class LibretroActivity : ComponentActivity() {
         )
         if (opensMenu || isUnboundMenuKey) { openMenu(); return true }
         if (isSyntheticTriggerHeld(event.deviceId, keyCode)) return true
-        val portKeys = controllerManager.portPressedKeys[port]
+        val portKeys = portPressedKeys[port]
         val isNewPress = portKeys.add(keyCode)
         if (isNewPress) checkShortcuts(port)
         if (keyCode in portConsumedKeys[port]) return true
@@ -1113,7 +1103,7 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun checkShortcuts(port: Int) {
-        val portKeys = controllerManager.portPressedKeys[port]
+        val portKeys = portPressedKeys[port]
         val consumed = portConsumedKeys[port]
         for ((action, chord) in shortcuts) {
             if (chord.isEmpty() || !portKeys.containsAll(chord)) continue
@@ -1212,7 +1202,7 @@ class LibretroActivity : ComponentActivity() {
         screenStack.clear()
         menuRepeatHandler.removeCallbacks(menuRepeatRunnable)
         menuHeldKey = 0
-        controllerManager.resetAllInput()
+        for (set in portPressedKeys) set.clear()
         triggerL2HeldDevices.clear()
         triggerR2HeldDevices.clear()
         for (set in portConsumedKeys) set.clear()
@@ -1224,18 +1214,6 @@ class LibretroActivity : ComponentActivity() {
         renderer.paused = false
         runner.resumeAudio()
         startVsyncPacer()
-    }
-
-    private fun onControllerDisconnected(port: Int) {
-        if (loading) return
-        runner.setInput(port, 0)
-        runner.setControllerPortDevice(port, LibretroRunner.DEVICE_NONE)
-        showOsd("Player ${port + 1} Disconnected")
-    }
-
-    private fun onControllerReconnected(port: Int) {
-        runner.setControllerPortDevice(port, LibretroRunner.DEVICE_JOYPAD)
-        if (!loading) showOsd("Player ${port + 1} connected")
     }
 
     private fun refreshSlotInfo() {
@@ -2435,12 +2413,21 @@ class LibretroActivity : ComponentActivity() {
                 osdHandler.removeCallbacks(clearOsdRunnable)
                 osdMessage = "$name connected to $portLabel"
                 osdHandler.postDelayed(clearOsdRunnable, 3000)
+                if (port != null && ::runner.isInitialized) {
+                    val typeId = portDeviceTypes[port] ?: LibretroRunner.DEVICE_JOYPAD
+                    runner.setControllerPortDevice(port, typeId)
+                }
             }
             controllerV2Bridge.onDeviceRemoved = { departed ->
                 osdHandler.removeCallbacks(clearOsdRunnable)
                 val portLabel = departed.port?.let { "P${it + 1}: " } ?: ""
                 osdMessage = "$portLabel${departed.displayName} disconnected"
                 osdHandler.postDelayed(clearOsdRunnable, 3000)
+                val port = departed.port
+                if (port != null && ::runner.isInitialized && !loading) {
+                    runner.setInput(port, 0)
+                    runner.setControllerPortDevice(port, LibretroRunner.DEVICE_NONE)
+                }
             }
         }
     }
@@ -2458,10 +2445,6 @@ class LibretroActivity : ComponentActivity() {
             sessionLog.close()
         }
         isRunning = false
-        if (::controllerManager.isInitialized) {
-            val inputManager = getSystemService(Context.INPUT_SERVICE) as InputManager
-            inputManager.unregisterInputDeviceListener(controllerManager)
-        }
         if (::controllerV2Bridge.isInitialized) {
             controllerV2Bridge.onDeviceAdded = null
             controllerV2Bridge.onDeviceRemoved = null
@@ -2527,7 +2510,8 @@ class LibretroActivity : ComponentActivity() {
                         val deviceId = deviceForPort(from)
                         if (deviceId != null) {
                             portRouter.reassign(deviceId, to)
-                            controllerManager.reassign(deviceId, to)
+                            portPressedKeys[from].clear()
+                            portPressedKeys[to].clear()
                             runner.setInput(from, 0)
                             runner.setInput(to, 0)
                             controllersViewModel.refreshFromRouter()

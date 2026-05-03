@@ -92,7 +92,7 @@ class PortRouter(private val maxPorts: Int = 4) {
 
     fun reassign(deviceId: Int, toPort: Int) {
         if (toPort < 0 || toPort >= maxPorts) return
-        val target = entries[deviceId] ?: return
+        val target = entries[resolveId(deviceId)] ?: return
         val displaced = entries.values.firstOrNull { it.port == toPort && it != target }
         val previous = target.port
         target.port = toPort

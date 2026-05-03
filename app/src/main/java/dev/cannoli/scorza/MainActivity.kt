@@ -41,7 +41,6 @@ import dev.cannoli.scorza.di.IoScope
 import dev.cannoli.scorza.di.RomDir
 import dev.cannoli.scorza.input.ActivityActions
 import dev.cannoli.scorza.input.BindingController
-import dev.cannoli.scorza.input.ControllerManager
 import dev.cannoli.scorza.input.AndroidGamepadKeyNames
 import dev.cannoli.scorza.input.v2.runtime.InputDispatcher
 import dev.cannoli.scorza.input.InputRouter
@@ -82,7 +81,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var nav: NavigationController
     @Inject lateinit var router: InputRouter
     @Inject lateinit var inputDispatcher: InputDispatcher
-    @Inject lateinit var controllerManager: ControllerManager
     @Inject lateinit var controllerV2Bridge: ControllerV2Bridge
     @Inject lateinit var portRouter: dev.cannoli.scorza.input.v2.runtime.PortRouter
     @Inject lateinit var activeMappingHolder: dev.cannoli.scorza.input.v2.runtime.ActiveMappingHolder
@@ -456,8 +454,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
     }
 
     override fun onDestroy() {
-        (getSystemService(INPUT_SERVICE) as android.hardware.input.InputManager)
-            .unregisterInputDeviceListener(controllerManager)
         controllerV2Bridge.onDeviceAdded = null
         controllerV2Bridge.onDeviceRemoved = null
         controllerV2Bridge.stop(this)
@@ -726,13 +722,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
 
         gameListViewModel.showFavoriteStars = settings.contentMode != ContentMode.FIVE_GAME_HANDHELD
         settingsViewModel.reinitialize(root, packageManager, packageName, collectionsRepository)
-
-        controllerManager.loadBlacklist(this)
-        controllerManager.initialize()
-        (getSystemService(INPUT_SERVICE) as android.hardware.input.InputManager)
-            .registerInputDeviceListener(controllerManager,
-                Handler(android.os.Looper.getMainLooper())
-            )
 
         if (updateManager.shouldAutoCheck()) {
             ioScope.launch { updateManager.checkForUpdate() }
