@@ -2256,8 +2256,11 @@ class LibretroActivity : ComponentActivity() {
 
     // --- OSD / Undo ---
 
-    private fun showOsd(message: String) {
-        osdController.show(message)
+    private fun showOsd(
+        message: String,
+        position: dev.cannoli.ui.components.OsdPosition = dev.cannoli.ui.components.OsdPosition.TopCenter,
+    ) {
+        osdController.show(message, position)
     }
 
     private val raStartupHandler = Handler(Looper.getMainLooper())
