@@ -32,8 +32,8 @@ import dev.cannoli.igm.ShortcutAction
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.input.v2.runtime.confirmButton
 import dev.cannoli.scorza.input.v2.runtime.labelSet
-import dev.cannoli.scorza.libretro.LibretroInput
 import dev.cannoli.scorza.ui.LocalPortraitMargin
+import dev.cannoli.scorza.util.keyCodeName
 import dev.cannoli.scorza.ui.PortraitMarginState
 import dev.cannoli.scorza.ui.components.CREDITS
 import dev.cannoli.scorza.ui.components.CreditsOverlay
@@ -592,7 +592,7 @@ fun AppNavGraph(
                     ) { _, action, isSelected ->
                         val chord = currentScreen.shortcuts[action]
                         val value = if (chord.isNullOrEmpty()) stringResource(R.string.value_none)
-                        else chord.joinToString(" + ") { LibretroInput.keyCodeName(it) }
+                        else chord.joinToString(" + ") { keyCodeName(it) }
                         PillRowKeyValue(
                             label = stringResource(action.labelRes),
                             value = value,
@@ -627,7 +627,7 @@ fun AppNavGraph(
                             Spacer(modifier = Modifier.height(Spacing.Sm))
                             Text(
                                 text = if (currentScreen.heldKeys.isEmpty()) stringResource(R.string.shortcut_hold_prompt)
-                                else currentScreen.heldKeys.joinToString(" + ") { LibretroInput.keyCodeName(it) },
+                                else currentScreen.heldKeys.joinToString(" + ") { keyCodeName(it) },
                                 style = MaterialTheme.typography.bodyMedium.copy(
                                     fontSize = 16.sp,
                                     color = colors.text.copy(alpha = 0.6f)

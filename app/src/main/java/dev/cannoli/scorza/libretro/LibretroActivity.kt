@@ -267,6 +267,27 @@ class LibretroActivity : ComponentActivity() {
         private const val TRIGGER_PRESS_THRESHOLD = 0.5f
         private const val TRIGGER_RELEASE_THRESHOLD = 0.3f
         @Volatile var isRunning = false
+
+        // Last-resort keycode -> nav button mapping for IGM nav, used only when the device
+        // is not enrolled in v2 PortRouter (no DeviceMapping available).
+        private val NAV_FALLBACK_KEY_MAP = mapOf(
+            KeyEvent.KEYCODE_BUTTON_A to "btn_south",
+            KeyEvent.KEYCODE_BUTTON_B to "btn_east",
+            KeyEvent.KEYCODE_BUTTON_X to "btn_west",
+            KeyEvent.KEYCODE_BUTTON_Y to "btn_north",
+            KeyEvent.KEYCODE_BUTTON_L1 to "btn_l",
+            KeyEvent.KEYCODE_BUTTON_R1 to "btn_r",
+            KeyEvent.KEYCODE_BUTTON_L2 to "btn_l2",
+            KeyEvent.KEYCODE_BUTTON_R2 to "btn_r2",
+            KeyEvent.KEYCODE_BUTTON_THUMBL to "btn_l3",
+            KeyEvent.KEYCODE_BUTTON_THUMBR to "btn_r3",
+            KeyEvent.KEYCODE_BUTTON_START to "btn_start",
+            KeyEvent.KEYCODE_BUTTON_SELECT to "btn_select",
+            KeyEvent.KEYCODE_DPAD_UP to "btn_up",
+            KeyEvent.KEYCODE_DPAD_DOWN to "btn_down",
+            KeyEvent.KEYCODE_DPAD_LEFT to "btn_left",
+            KeyEvent.KEYCODE_DPAD_RIGHT to "btn_right",
+        )
     }
 
     private fun push(screen: IGMScreen) { screenStack.add(screen) }
@@ -1003,7 +1024,7 @@ class LibretroActivity : ComponentActivity() {
             bindings.any { it is dev.cannoli.scorza.input.v2.InputBinding.Button && it.keyCode == keyCode }
         }?.key
         val pref = canonical?.let { canonicalToNavName(it) }
-            ?: dev.cannoli.scorza.input.InputHandler.DEFAULT_KEY_MAP[keyCode]
+            ?: NAV_FALLBACK_KEY_MAP[keyCode]
             ?: return null
         return if (confirmButton == dev.cannoli.ui.ConfirmButton.EAST) {
             when (pref) {
@@ -2167,7 +2188,7 @@ class LibretroActivity : ComponentActivity() {
             for (action in ShortcutAction.entries) {
                 val chord = shortcuts[action]
                 val label = if (chord.isNullOrEmpty()) "None"
-                else chord.joinToString(" + ") { LibretroInput.keyCodeName(it) }
+                else chord.joinToString(" + ") { dev.cannoli.scorza.util.keyCodeName(it) }
                 add(IGMSettingsItem(getString(action.labelRes), label))
             }
         }

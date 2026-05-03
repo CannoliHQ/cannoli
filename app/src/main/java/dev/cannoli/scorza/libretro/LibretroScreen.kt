@@ -587,7 +587,7 @@ fun LibretroScreen(
                     Spacer(modifier = Modifier.height(Spacing.Sm))
                     Text(
                         text = if (screen.heldKeys.isEmpty()) stringResource(R.string.shortcut_hold_prompt)
-                        else screen.heldKeys.joinToString(" + ") { LibretroInput.keyCodeName(it) },
+                        else screen.heldKeys.joinToString(" + ") { dev.cannoli.scorza.util.keyCodeName(it) },
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontSize = 16.sp,
                             color = colors.text.copy(alpha = 0.6f)

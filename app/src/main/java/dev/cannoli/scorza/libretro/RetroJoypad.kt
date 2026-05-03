@@ -1,8 +1,6 @@
 package dev.cannoli.scorza.libretro
 
-import android.view.KeyEvent
-
-object LibretroInput {
+object RetroJoypad {
     const val UNMAPPED     = -1
     const val RETRO_B      = 1 shl 0
     const val RETRO_Y      = 1 shl 1
@@ -20,14 +18,4 @@ object LibretroInput {
     const val RETRO_R2     = 1 shl 13
     const val RETRO_L3     = 1 shl 14
     const val RETRO_R3     = 1 shl 15
-
-    fun keyCodeName(keyCode: Int): String {
-        if (keyCode == UNMAPPED) return "UNMAPPED"
-        return KeyEvent.keyCodeToString(keyCode)
-            .removePrefix("KEYCODE_")
-            .replace("BUTTON_", "")
-            .split("_")
-            .joinToString(" ") { word -> word.lowercase(java.util.Locale.ROOT).replaceFirstChar { it.uppercase() } }
-            .replace("Dpad ", "D-Pad ")
-    }
 }
