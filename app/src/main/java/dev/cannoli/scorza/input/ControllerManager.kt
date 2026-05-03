@@ -3,7 +3,6 @@ package dev.cannoli.scorza.input
 import android.content.Context
 import android.hardware.input.InputManager
 import android.view.InputDevice
-import dev.cannoli.scorza.libretro.LibretroInput
 import dev.cannoli.scorza.libretro.LibretroRunner
 import org.json.JSONObject
 
@@ -19,7 +18,6 @@ class ControllerManager(
 ) : InputManager.InputDeviceListener {
 
     val slots = arrayOfNulls<ControllerIdentity>(maxPorts)
-    val portInputs = Array(maxPorts) { LibretroInput() }
     val portPressedKeys = Array(maxPorts) { mutableSetOf<Int>() }
 
     private val deviceToPort = mutableMapOf<Int, Int>()

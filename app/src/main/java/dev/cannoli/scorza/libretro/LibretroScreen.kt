@@ -101,7 +101,6 @@ fun LibretroScreen(
     undoLabel: String?,
     settingsItems: List<IGMSettingsItem>,
     coreInfo: String,
-    input: LibretroInput,
     debugHud: Boolean,
     renderer: LibretroRenderer,
     runner: LibretroRunner,

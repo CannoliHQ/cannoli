@@ -72,7 +72,6 @@ class LibretroActivity : ComponentActivity() {
 
     private lateinit var runner: LibretroRunner
     private lateinit var renderer: LibretroRenderer
-    private lateinit var input: LibretroInput
     private lateinit var slotManager: SaveSlotManager
     private lateinit var overrideManager: OverrideManager
     private var glSurfaceView: GLSurfaceView? = null
@@ -337,7 +336,6 @@ class LibretroActivity : ComponentActivity() {
             onControllerReconnected(port)
         }
         controllerManager.initialize()
-        input = controllerManager.portInputs[0]
         runner = LibretroRunner()
         val inputManager = getSystemService(Context.INPUT_SERVICE) as InputManager
         inputManager.registerInputDeviceListener(controllerManager, Handler(Looper.getMainLooper()))
@@ -395,7 +393,6 @@ class LibretroActivity : ComponentActivity() {
                                 },
                                 settingsItems = if (screen is IGMScreen.Menu) emptyList() else buildSettingsItems(),
                                 coreInfo = coreInfoText,
-                                input = controllerManager.portInputs[0],
                                 debugHud = debugHud,
                                 renderer = renderer,
                                 runner = runner,
