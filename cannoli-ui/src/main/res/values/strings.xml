@@ -299,9 +299,12 @@
     <!-- RetroAchievements -->
     <string name="ra_title">RetroAchievements</string>
     <string name="ra_logged_in_as">Logged in as</string>
-    <string name="ra_login_failed">RetroAchievements Login Failed</string>
-    <string name="ra_login_success">RetroAchievements: %1$s (%2$s)</string>
-    <string name="ra_init_failed">Achievement Initialization Failed!</string>
+    <string name="ra_login_failed">RA: Login failed</string>
+    <string name="ra_login_success">RA: %1$s (%2$s) · %3$d/%4$d unlocked</string>
+    <string name="ra_init_failed">RA: Initialization failed</string>
+    <string name="ra_load_not_recognized">RA: Game not recognized</string>
+    <string name="ra_load_no_achievements">RA: No achievements for this game</string>
+    <string name="ra_load_offline_pending">RA: Offline (game data unavailable)</string>
     <string name="ra_status_online">Online</string>
     <string name="ra_status_offline">Offline</string>
 

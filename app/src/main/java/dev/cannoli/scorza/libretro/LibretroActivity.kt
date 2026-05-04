@@ -2276,13 +2276,23 @@ class LibretroActivity : ComponentActivity() {
         }
         val timeout = Runnable {
             if (raStartupDisplayName != null) {
-                showOsd(getString(R.string.ra_init_failed), OsdPosition.TopCenter)
+                showOsd(raTimeoutOsdText(), OsdPosition.TopCenter)
                 raStartupDisplayName = null
                 raStartupTimeout = null
             }
         }
         raStartupTimeout = timeout
-        raStartupHandler.postDelayed(timeout, 8000L)
+        raStartupHandler.postDelayed(timeout, 5000L)
+    }
+
+    private fun raTimeoutOsdText(): String {
+        val ra = raManager ?: return getString(R.string.ra_init_failed)
+        return when {
+            ra.isOffline && ra.gameId <= 0 -> getString(R.string.ra_load_offline_pending)
+            ra.gameId <= 0 -> getString(R.string.ra_load_not_recognized)
+            ra.getAchievements().isEmpty() -> getString(R.string.ra_load_no_achievements)
+            else -> getString(R.string.ra_init_failed)
+        }
     }
 
     private fun onRaDetectionReady() {
@@ -2291,11 +2301,20 @@ class LibretroActivity : ComponentActivity() {
         raStartupTimeout = null
         raStartupDisplayName = null
         val ra = raManager
-        if (ra == null || ra.gameId <= 0 || ra.getAchievements().isEmpty()) {
-            showOsd(getString(R.string.ra_init_failed), OsdPosition.TopCenter)
+        if (ra == null || ra.gameId <= 0) {
+            showOsd(getString(R.string.ra_load_not_recognized), OsdPosition.TopCenter)
             return
         }
-        showOsd(getString(R.string.ra_login_success, name, ra.getStatus()), OsdPosition.TopStart)
+        val achievements = ra.getAchievements()
+        if (achievements.isEmpty()) {
+            showOsd(getString(R.string.ra_load_no_achievements), OsdPosition.TopCenter)
+            return
+        }
+        val unlocked = achievements.count { it.unlocked }
+        showOsd(
+            getString(R.string.ra_login_success, name, ra.getStatus(), unlocked, achievements.size),
+            OsdPosition.TopStart
+        )
     }
 
     private fun startUndoTimer(durationMs: Long = 60_000) {
