@@ -77,8 +77,9 @@ class SystemListViewModel @Inject constructor(
     private var currentFghStem: String? = null
     private var currentFghCollectionId: Long? = null
 
-    fun savePosition() {
-        savedPosition = _state.value.selectedIndex to firstVisibleIndex
+    fun savePosition(scrollIdx: Int = firstVisibleIndex) {
+        savedPosition = _state.value.selectedIndex to scrollIdx
+        _state.update { it.copy(scrollTarget = scrollIdx) }
     }
 
     fun scan(showRecentlyPlayed: Boolean = true, contentMode: ContentMode = ContentMode.PLATFORMS, fghCollectionStem: String? = null, toolsName: String = "Tools", portsName: String = "Ports", onProgress: ((tag: String, current: Int, total: Int) -> Unit)? = null, onReady: () -> Unit = {}) {

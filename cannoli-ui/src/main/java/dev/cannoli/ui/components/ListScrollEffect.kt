@@ -17,7 +17,10 @@ fun ListScrollEffect(
 ) {
     LaunchedEffect(itemCount, scrollTarget) {
         if (itemCount > 0 && scrollTarget >= 0) {
-            listState.scrollToItem(scrollTarget.coerceIn(0, itemCount - 1))
+            val target = scrollTarget.coerceIn(0, itemCount - 1)
+            if (listState.firstVisibleItemIndex != target) {
+                listState.scrollToItem(target)
+            }
         }
     }
 

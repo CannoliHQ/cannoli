@@ -13,10 +13,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -76,6 +78,11 @@ fun SystemListScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = state.scrollTarget.coerceAtLeast(0))
+
+    DisposableEffect(Unit) {
+        onDispose { viewModel.savePosition(listState.firstVisibleItemIndex) }
+    }
 
     val recentlyPlayedLabel = stringResource(R.string.label_recently_played)
     val favoritesLabel = stringResource(R.string.label_favorites)
@@ -159,6 +166,7 @@ fun SystemListScreen(
                     selectedIndex = state.selectedIndex,
                     itemHeight = itemHeight,
                     scrollTarget = state.scrollTarget,
+                    listState = listState,
                     reorderMode = state.reorderMode,
                     onVisibleRangeChanged = { first, count, full ->
                         viewModel.firstVisibleIndex = first

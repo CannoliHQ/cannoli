@@ -72,6 +72,10 @@ class GameListViewModel @Inject constructor(
     private var collectionsListItemCount: Int = 0
     private val collectionStack = mutableListOf<Triple<Long, Int, Int>>()
 
+    fun savePosition(scrollIdx: Int = firstVisibleIndex) {
+        _state.update { it.copy(scrollTarget = scrollIdx) }
+    }
+
     fun saveCollectionsPosition() {
         val current = _state.value
         if (current.isCollectionsList) {
