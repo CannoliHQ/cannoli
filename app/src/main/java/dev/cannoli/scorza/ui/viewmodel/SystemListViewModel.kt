@@ -180,14 +180,24 @@ class SystemListViewModel @Inject constructor(
                 items.addAll(ordered)
             }
 
-            val canRestore = (restored != null || items.size == prevItemCount) && prevItemCount > 0
-            val (safeIndex, scrollTo) = if (canRestore) {
-                val idx = when {
-                    items.isEmpty() -> 0
-                    prevSelectedIndex in items.indices -> prevSelectedIndex
-                    else -> items.lastIndex
+            val current = _state.value
+            if (items == current.items && groupedPlatforms == current.platforms) {
+                if (current.isLoading) {
+                    _state.update { it.copy(isLoading = false) }
                 }
-                idx to prevFirstVisible.coerceAtMost(items.lastIndex.coerceAtLeast(0))
+                withContext(Dispatchers.Main) { onReady() }
+                return@launch
+            }
+
+            val canRestore = (restored != null || items.size == prevItemCount) && prevItemCount > 0
+            val (safeIndex, scrollTo) = if (canRestore && items.isNotEmpty()) {
+                val maxIdx = items.lastIndex
+                val idx = when {
+                    current.selectedIndex in items.indices -> current.selectedIndex
+                    prevSelectedIndex in items.indices -> prevSelectedIndex
+                    else -> maxIdx
+                }
+                idx to prevFirstVisible.coerceIn(0, maxIdx)
             } else {
                 0 to 0
             }
