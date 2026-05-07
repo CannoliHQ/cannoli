@@ -123,6 +123,8 @@ class SettingsViewModel @Inject constructor(
         val colorHighlightText: Color = Color.Black,
         val colorAccent: Color = Color.White,
         val colorTitle: Color = Color.White,
+        val colorBackground: Color = Color.Black,
+        val colorStatusBar: Color = Color.White,
         val showWifi: Boolean = true,
         val showBluetooth: Boolean = true,
         val showVpn: Boolean = false,
@@ -157,6 +159,8 @@ class SettingsViewModel @Inject constructor(
         colorHighlightText = hexToColor(settings.colorHighlightText) ?: Color.Black,
         colorAccent = hexToColor(settings.colorAccent) ?: Color.White,
         colorTitle = hexToColor(settings.colorTitle) ?: Color.White,
+        colorBackground = hexToColor(settings.colorBackground) ?: Color.Black,
+        colorStatusBar = hexToColor(settings.colorStatusBar) ?: Color.White,
         showWifi = settings.showWifi,
         showBluetooth = settings.showBluetooth,
         showVpn = settings.showVpn,
@@ -203,6 +207,8 @@ class SettingsViewModel @Inject constructor(
         val colorHighlightText: String,
         val colorAccent: String,
         val colorTitle: String,
+        val colorBackground: String,
+        val colorStatusBar: String,
         val platformSwitching: Boolean,
         val swapPlayResume: Boolean,
         val showWifi: Boolean,
@@ -521,8 +527,10 @@ class SettingsViewModel @Inject constructor(
     fun getColorEntries(): List<dev.cannoli.scorza.ui.screens.ColorEntry> {
         val names = mapOf(
             "color_accent" to R.string.setting_color_accent,
+            "color_background" to R.string.setting_color_background,
             "color_highlight" to R.string.setting_color_highlight,
             "color_highlight_text" to R.string.setting_color_highlight_text,
+            "color_status_bar" to R.string.setting_color_status_bar,
             "color_text" to R.string.setting_color_text,
             "color_title" to R.string.setting_color_title
         )
@@ -544,6 +552,8 @@ class SettingsViewModel @Inject constructor(
         "color_highlight_text" -> settings.colorHighlightText
         "color_accent" -> settings.colorAccent
         "color_title" -> settings.colorTitle
+        "color_background" -> settings.colorBackground
+        "color_status_bar" -> settings.colorStatusBar
         else -> "#FFFFFF"
     }
 
@@ -554,6 +564,8 @@ class SettingsViewModel @Inject constructor(
             "color_highlight_text" -> settings.colorHighlightText = hex
             "color_accent" -> settings.colorAccent = hex
             "color_title" -> settings.colorTitle = hex
+            "color_background" -> settings.colorBackground = hex
+            "color_status_bar" -> settings.colorStatusBar = hex
         }
         val catKey = _state.value.activeCategory ?: return
         _state.update { it.copy(items = buildItemsForCategory(catKey)) }
@@ -572,6 +584,8 @@ class SettingsViewModel @Inject constructor(
         colorHighlightText = settings.colorHighlightText,
         colorAccent = settings.colorAccent,
         colorTitle = settings.colorTitle,
+        colorBackground = settings.colorBackground,
+        colorStatusBar = settings.colorStatusBar,
         platformSwitching = settings.platformSwitching,
         swapPlayResume = settings.swapPlayResume,
         showWifi = settings.showWifi,
@@ -606,6 +620,8 @@ class SettingsViewModel @Inject constructor(
         settings.colorHighlightText = snap.colorHighlightText
         settings.colorAccent = snap.colorAccent
         settings.colorTitle = snap.colorTitle
+        settings.colorBackground = snap.colorBackground
+        settings.colorStatusBar = snap.colorStatusBar
         settings.platformSwitching = snap.platformSwitching
         settings.swapPlayResume = snap.swapPlayResume
         settings.showWifi = snap.showWifi
@@ -714,7 +730,9 @@ class SettingsViewModel @Inject constructor(
             }
         }
         "colors" -> listOf(
+            SettingsItem("color_background", R.string.setting_color_background, valueText = settings.colorBackground.uppercase(), isEditable = true, swatchColor = hexToColor(settings.colorBackground)),
             SettingsItem("color_text", R.string.setting_color_text, valueText = settings.colorText.uppercase(), isEditable = true, swatchColor = hexToColor(settings.colorText)),
+            SettingsItem("color_status_bar", R.string.setting_color_status_bar, valueText = settings.colorStatusBar.uppercase(), isEditable = true, swatchColor = hexToColor(settings.colorStatusBar)),
             SettingsItem("color_highlight", R.string.setting_color_highlight, valueText = settings.colorHighlight.uppercase(), isEditable = true, swatchColor = hexToColor(settings.colorHighlight)),
             SettingsItem("color_highlight_text", R.string.setting_color_highlight_text, valueText = settings.colorHighlightText.uppercase(), isEditable = true, swatchColor = hexToColor(settings.colorHighlightText)),
             SettingsItem("color_accent", R.string.setting_color_accent, valueText = settings.colorAccent.uppercase(), isEditable = true, swatchColor = hexToColor(settings.colorAccent))

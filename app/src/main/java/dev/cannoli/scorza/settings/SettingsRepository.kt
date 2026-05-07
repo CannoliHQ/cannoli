@@ -254,6 +254,14 @@ class SettingsRepository @Inject constructor(@ApplicationContext context: Contex
         get() = jsonRead { optString(KEY_COLOR_TITLE, "#FFFFFF") }
         set(value) = jsonWrite { put(KEY_COLOR_TITLE, value) }
 
+    var colorBackground: String
+        get() = jsonRead { optString(KEY_COLOR_BACKGROUND, "#000000") }
+        set(value) = jsonWrite { put(KEY_COLOR_BACKGROUND, value) }
+
+    var colorStatusBar: String
+        get() = jsonRead { optString(KEY_COLOR_STATUS_BAR, "#FFFFFF") }
+        set(value) = jsonWrite { put(KEY_COLOR_STATUS_BAR, value) }
+
     var raUsername: String
         get() = jsonRead { optString(KEY_RA_USERNAME, "") }
         set(value) = jsonWrite { if (value.isEmpty()) remove(KEY_RA_USERNAME) else put(KEY_RA_USERNAME, value) }
@@ -342,6 +350,8 @@ class SettingsRepository @Inject constructor(@ApplicationContext context: Contex
         private const val KEY_COLOR_HIGHLIGHT_TEXT = "color_highlight_text"
         private const val KEY_COLOR_ACCENT = "color_accent"
         private const val KEY_COLOR_TITLE = "color_title"
+        private const val KEY_COLOR_BACKGROUND = "color_background"
+        private const val KEY_COLOR_STATUS_BAR = "color_status_bar"
         private const val KEY_PLATFORM_SWITCHING = "platform_switching"
         private const val KEY_SWAP_PLAY_RESUME = "swap_play_resume"
         private const val KEY_MAIN_MENU_QUIT = "main_menu_quit"

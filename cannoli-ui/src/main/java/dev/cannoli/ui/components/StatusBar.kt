@@ -178,14 +178,14 @@ fun StatusBar(
         fontFamily = LocalCannoliFont.current,
         fontWeight = FontWeight.Normal,
         fontSize = fontSize,
-        color = colors.text
+        color = colors.statusBar
     )
 
     val textStyle = TextStyle(
         fontFamily = LocalCannoliFont.current,
         fontWeight = FontWeight.Normal,
         fontSize = fontSize,
-        color = colors.text
+        color = colors.statusBar
     )
 
     val showUpdateIcon = updateAvailable && showUpdate

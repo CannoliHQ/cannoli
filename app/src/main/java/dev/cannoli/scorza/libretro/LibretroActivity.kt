@@ -405,7 +405,9 @@ class LibretroActivity : ComponentActivity() {
             text = hexToColor(args.colorText) ?: Color.White,
             highlightText = hexToColor(args.colorHighlightText) ?: Color.Black,
             accent = hexToColor(args.colorAccent) ?: Color.White,
-            title = hexToColor(args.colorTitle) ?: Color.White
+            title = hexToColor(args.colorTitle) ?: Color.White,
+            background = hexToColor(args.colorBackground) ?: Color.Black,
+            statusBar = hexToColor(args.colorStatusBar) ?: Color.White
         )
 
         val fontFamily = run {

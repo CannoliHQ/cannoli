@@ -233,7 +233,9 @@ fun AppNavGraph(
         text = appSettings.colorText,
         highlightText = appSettings.colorHighlightText,
         accent = appSettings.colorAccent,
-        title = appSettings.colorTitle
+        title = appSettings.colorTitle,
+        background = appSettings.colorBackground,
+        statusBar = appSettings.colorStatusBar
     )
 
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)

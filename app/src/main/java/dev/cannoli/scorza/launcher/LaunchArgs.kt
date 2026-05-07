@@ -19,6 +19,8 @@ data class LaunchArgs(
     val colorHighlightText: String,
     val colorAccent: String,
     val colorTitle: String,
+    val colorBackground: String,
+    val colorStatusBar: String,
     val font: String,
     val debugLogging: Boolean,
     val raUsername: String,
@@ -44,6 +46,8 @@ data class LaunchArgs(
         putExtra(EXTRA_COLOR_HIGHLIGHT_TEXT, colorHighlightText)
         putExtra(EXTRA_COLOR_ACCENT, colorAccent)
         putExtra(EXTRA_COLOR_TITLE, colorTitle)
+        putExtra(EXTRA_COLOR_BACKGROUND, colorBackground)
+        putExtra(EXTRA_COLOR_STATUS_BAR, colorStatusBar)
         putExtra(EXTRA_FONT, font)
         putExtra(EXTRA_DEBUG_LOGGING, debugLogging)
         putExtra(EXTRA_RA_USERNAME, raUsername)
@@ -70,6 +74,8 @@ data class LaunchArgs(
         private const val EXTRA_COLOR_HIGHLIGHT_TEXT = "color_highlight_text"
         private const val EXTRA_COLOR_ACCENT = "color_accent"
         private const val EXTRA_COLOR_TITLE = "color_title"
+        private const val EXTRA_COLOR_BACKGROUND = "color_background"
+        private const val EXTRA_COLOR_STATUS_BAR = "color_status_bar"
         private const val EXTRA_FONT = "font"
         private const val EXTRA_DEBUG_LOGGING = "debug_logging"
         private const val EXTRA_RA_USERNAME = "ra_username"
@@ -99,6 +105,8 @@ data class LaunchArgs(
                 colorHighlightText = intent.getStringExtra(EXTRA_COLOR_HIGHLIGHT_TEXT) ?: "#000000",
                 colorAccent = intent.getStringExtra(EXTRA_COLOR_ACCENT) ?: "#FFFFFF",
                 colorTitle = intent.getStringExtra(EXTRA_COLOR_TITLE) ?: "#FFFFFF",
+                colorBackground = intent.getStringExtra(EXTRA_COLOR_BACKGROUND) ?: "#000000",
+                colorStatusBar = intent.getStringExtra(EXTRA_COLOR_STATUS_BAR) ?: "#FFFFFF",
                 font = intent.getStringExtra(EXTRA_FONT) ?: "default",
                 debugLogging = intent.getBooleanExtra(EXTRA_DEBUG_LOGGING, false),
                 raUsername = intent.getStringExtra(EXTRA_RA_USERNAME) ?: "",

@@ -426,6 +426,8 @@ class LaunchManager(
             colorHighlightText = settings.colorHighlightText,
             colorAccent = settings.colorAccent,
             colorTitle = settings.colorTitle,
+            colorBackground = settings.colorBackground,
+            colorStatusBar = settings.colorStatusBar,
             font = settings.font,
             debugLogging = settings.loggingSession,
             raUsername = settings.raUsername,

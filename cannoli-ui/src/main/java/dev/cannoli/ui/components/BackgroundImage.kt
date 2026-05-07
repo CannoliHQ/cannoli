@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import dev.cannoli.ui.theme.LocalCannoliColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -27,8 +28,9 @@ fun ScreenBackground(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
+    val backgroundColor = LocalCannoliColors.current.background
     Box(modifier = modifier.fillMaxSize()) {
-        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = backgroundAlpha)))
+        Box(modifier = Modifier.fillMaxSize().background(backgroundColor.copy(alpha = backgroundAlpha)))
 
         if (backgroundImagePath != null) {
             val bitmap by produceState(
