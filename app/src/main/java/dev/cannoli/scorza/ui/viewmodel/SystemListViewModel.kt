@@ -73,12 +73,14 @@ class SystemListViewModel @Inject constructor(
     val state: StateFlow<State> = _state
 
     var firstVisibleIndex: Int = 0
-    private var savedPosition: Pair<Int, Int>? = null
+    private data class Saved(val item: ListItem?, val index: Int, val scroll: Int)
+    private var savedPosition: Saved? = null
     private var currentFghStem: String? = null
     private var currentFghCollectionId: Long? = null
 
     fun savePosition(scrollIdx: Int = firstVisibleIndex) {
-        savedPosition = _state.value.selectedIndex to scrollIdx
+        val current = _state.value
+        savedPosition = Saved(current.items.getOrNull(current.selectedIndex), current.selectedIndex, scrollIdx)
         _state.update { it.copy(scrollTarget = scrollIdx) }
     }
 
@@ -87,8 +89,9 @@ class SystemListViewModel @Inject constructor(
         val prevItemCount = prev.items.size
         val restored = savedPosition
         savedPosition = null
-        val prevSelectedIndex = restored?.first ?: prev.selectedIndex
-        val prevFirstVisible = restored?.second ?: firstVisibleIndex
+        val prevSelectedItem = restored?.item ?: prev.items.getOrNull(prev.selectedIndex)
+        val prevSelectedIndex = restored?.index ?: prev.selectedIndex
+        val prevFirstVisible = restored?.scroll ?: firstVisibleIndex
         currentFghStem = fghCollectionStem
 
         scope.launch(Dispatchers.IO) {
@@ -194,7 +197,9 @@ class SystemListViewModel @Inject constructor(
             val canRestore = (restored != null || items.size == prevItemCount) && prevItemCount > 0
             val (safeIndex, scrollTo) = if (canRestore && items.isNotEmpty()) {
                 val maxIdx = items.lastIndex
+                val remapped = prevSelectedItem?.let { items.indexOf(it).takeIf { idx -> idx >= 0 } }
                 val idx = when {
+                    remapped != null -> remapped
                     current.selectedIndex in items.indices -> current.selectedIndex
                     prevSelectedIndex in items.indices -> prevSelectedIndex
                     else -> maxIdx
