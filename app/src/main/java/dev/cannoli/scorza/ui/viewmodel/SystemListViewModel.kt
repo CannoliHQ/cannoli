@@ -146,7 +146,9 @@ class SystemListViewModel @Inject constructor(
                     items.add(ListItem.RecentlyPlayedItem)
                 }
                 if (favoritesId != null) {
-                    items.add(ListItem.FavoritesItem)
+                    val hasFavorites = collectionsRepository.romIdsIn(favoritesId).isNotEmpty() ||
+                        collectionsRepository.appIdsIn(favoritesId).isNotEmpty()
+                    if (hasFavorites) items.add(ListItem.FavoritesItem)
                 }
                 if (contentMode == ContentMode.PLATFORMS) {
                     val hasTopLevelStandard = collectionsRepository.topLevel().isNotEmpty()
