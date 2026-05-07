@@ -22,6 +22,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -108,6 +109,14 @@ fun SystemListScreen(
         } else null
     }
     val showArt = state.hasGameItems && selectedArt != null && artWidth > 0
+    val duplicateGameNames = remember(state.items) {
+        state.items.asSequence()
+            .filterIsInstance<ListItem.GameItem>()
+            .groupingBy { it.displayName }
+            .eachCount()
+            .filterValues { it > 1 }
+            .keys
+    }
 
     ScreenBackground(backgroundImagePath = backgroundImagePath, backgroundTint = backgroundTint) {
         if (state.isLoading) {
@@ -196,13 +205,17 @@ fun SystemListScreen(
                         is ListItem.PortsFolder -> item.name
                     }
                     val showReorder = state.reorderMode && isSelected && (item is ListItem.PlatformItem || item is ListItem.ToolsFolder || item is ListItem.PortsFolder || item is ListItem.CollectionItem || item is ListItem.GameItem)
+                    val tagSuffix = (item as? ListItem.GameItem)
+                        ?.takeIf { it.displayName in duplicateGameNames }
+                        ?.tags
                     PillRowText(
                         label = label,
                         isSelected = isSelected,
                         fontSize = listFontSize,
                         lineHeight = listLineHeight,
                         verticalPadding = listVerticalPadding,
-                        showReorderIcon = showReorder
+                        showReorderIcon = showReorder,
+                        tagSuffix = tagSuffix,
                     )
                 }
                 }
