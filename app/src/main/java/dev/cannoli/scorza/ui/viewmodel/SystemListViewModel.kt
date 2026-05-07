@@ -229,6 +229,9 @@ class SystemListViewModel @Inject constructor(
             onProgress?.invoke(tag, i, known.size)
             romScanner.scanPlatform(tag, isArcade = platformConfig.isArcade(tag))
         }
+        if (known.isNotEmpty()) {
+            onProgress?.invoke(known.last().name.uppercase(), known.size, known.size)
+        }
     }
 
 

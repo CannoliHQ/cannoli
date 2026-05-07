@@ -1,7 +1,5 @@
 package dev.cannoli.scorza.ui.screens
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -14,7 +12,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -41,11 +38,6 @@ fun HousekeepingScreen(
     statusLabel: String,
 ) {
     val typo = LocalCannoliTypography.current
-    val animatedProgress by animateFloatAsState(
-        targetValue = progress,
-        animationSpec = tween(durationMillis = 600),
-        label = "housekeepingProgress"
-    )
 
     Box(
         modifier = Modifier
@@ -89,7 +81,7 @@ fun HousekeepingScreen(
             Spacer(modifier = Modifier.height(Spacing.Md))
 
             CannoliProgressBar(
-                progress = animatedProgress,
+                progress = progress,
                 modifier = Modifier.widthIn(max = 320.dp)
             )
         }
