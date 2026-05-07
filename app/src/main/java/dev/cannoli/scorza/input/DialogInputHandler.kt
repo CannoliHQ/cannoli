@@ -691,8 +691,8 @@ class DialogInputHandler @Inject constructor(
             selected == MENU_REMOVE_FROM_RECENTS -> {
                 pendingContextReturn = null
                 nav.dialogState.value = DialogState.None
-                item.recentKey()?.let { clearRecentlyPlayedByPath(it) }
                 ioScope.launch {
+                    item.recentKey()?.let { clearRecentlyPlayedByPath(it) }
                     gameListViewModel.loadRecentlyPlayed()
                     launcherActions.rescanSystemList()
                 }
@@ -802,8 +802,8 @@ class DialogInputHandler @Inject constructor(
             MENU_REMOVE_FROM_RECENTS -> {
                 pendingContextReturn = null
                 nav.dialogState.value = DialogState.None
-                state.gamePaths.forEach { path -> clearRecentlyPlayedByPath(path) }
                 ioScope.launch {
+                    state.gamePaths.forEach { path -> clearRecentlyPlayedByPath(path) }
                     gameListViewModel.loadRecentlyPlayed()
                     launcherActions.rescanSystemList()
                 }
@@ -1416,10 +1416,8 @@ class DialogInputHandler @Inject constructor(
         }
     }
 
-    private fun clearRecentlyPlayedByPath(path: String) {
-        ioScope.launch {
-            resolvePathToRef(path)?.let { recentlyPlayedManager.clear(it) }
-        }
+    private suspend fun clearRecentlyPlayedByPath(path: String) {
+        resolvePathToRef(path)?.let { recentlyPlayedManager.clear(it) }
     }
 
     private fun deleteRom(rom: dev.cannoli.scorza.model.Rom) {
