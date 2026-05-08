@@ -2660,7 +2660,7 @@ class LibretroActivity : ComponentActivity() {
 
     private fun handleControllerDetailInput(screen: IGMScreen.ControllerDetail, button: String?): Boolean {
         val mapping = resolveDetailMapping(screen)
-        val rowCount = if (mapping?.userEdited == true) 5 else 4
+        val rowCount = if (mapping?.userEdited == true) 6 else 5
         return when (button) {
             "btn_up" -> {
                 replaceTop(screen.copy(selectedIndex = (screen.selectedIndex - 1).mod(rowCount)))
@@ -2690,7 +2690,7 @@ class LibretroActivity : ComponentActivity() {
                 if (mapping == null) return true
                 when (screen.selectedIndex) {
                     0 -> push(IGMScreen.EditButtons(mappingId = mapping.id))
-                    4 -> if (mapping.userEdited) {
+                    5 -> if (mapping.userEdited) {
                         controllersViewModel.resetMapping(mapping)
                         pop()
                     }
