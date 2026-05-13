@@ -25,6 +25,7 @@ class OnboardingInputHandler @Inject constructor(
     var onStartInstalling: ((targetPath: String) -> Unit)? = null
     var onInstallFinished: (() -> Unit)? = null
     var onRequestPermission: ((OnboardingPermission) -> Unit)? = null
+    var onContinue: (() -> Unit)? = null
 
     override fun onUp() {
         when (val screen = nav.currentScreen) {
@@ -177,6 +178,7 @@ class OnboardingInputHandler @Inject constructor(
 
     override fun onStart() {
         when (val screen = nav.currentScreen) {
+            is LauncherScreen.OnboardingPermissions -> if (screen.allGranted) onContinue?.invoke()
             is LauncherScreen.Setup -> {
                 val isCustom = screen.volumes.getOrNull(screen.volumeIndex)?.first == "Custom"
                 val continueEnabled = !isCustom || screen.customPath != null

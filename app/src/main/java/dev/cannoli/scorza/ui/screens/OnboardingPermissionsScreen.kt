@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.navigation.OnboardingPermission
 import dev.cannoli.ui.ButtonStyle
+import dev.cannoli.ui.START_GLYPH
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.components.screenPadding
@@ -91,6 +92,9 @@ fun OnboardingPermissionsScreen(
         val focused = permissions.getOrNull(selectedIndex)
         if (focused != null && focused !in granted) {
             rightItems.add(buttonStyle.confirm to stringResource(R.string.label_grant))
+        }
+        if (granted.containsAll(permissions)) {
+            rightItems.add(START_GLYPH to stringResource(R.string.label_continue))
         }
         BottomBar(
             modifier = Modifier.align(Alignment.BottomCenter),

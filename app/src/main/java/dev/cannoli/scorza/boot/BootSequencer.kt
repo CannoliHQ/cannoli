@@ -27,18 +27,27 @@ class BootSequencer(
 
     private var initJob: Job? = null
     private var storageDependentStarted = false
+    private var permissionStepShown = false
+    private var permissionsConfirmed = false
 
     /** Idempotent. Call from onCreate, onResume, and every permission/picker result. */
     fun advance() {
         val before = _state.value
         if (before is BootState.Initializing) return
-        val after = nextState(
+        var after = nextState(
             current = before,
             hasStorage = permissionStatus.hasStorage(),
             hasBluetooth = permissionStatus.hasBluetooth(),
             setupResolved = isSetupResolved(),
             volumes = detectVolumes(),
         )
+        // Once the permissions wizard has been shown, hold on it (all granted) until the user
+        // presses Continue, rather than auto-advancing the instant the last grant lands.
+        if (after is BootState.NeedsPermission) {
+            permissionStepShown = true
+        } else if (permissionStepShown && !permissionsConfirmed) {
+            after = BootState.NeedsPermission(storageGranted = true, bluetoothGranted = true)
+        }
         when (after) {
             is BootState.NeedsPermission, is BootState.NeedsSetup, is BootState.Error, BootState.Ready, BootState.Resolving -> {
                 _state.value = after
@@ -56,6 +65,11 @@ class BootSequencer(
     fun onStoragePermissionResult() = advance()
     fun onBluetoothPermissionResult(@Suppress("UNUSED_PARAMETER") granted: Boolean) = advance()
     fun onInstallFinished() = advance()
+
+    fun confirmPermissions() {
+        permissionsConfirmed = true
+        advance()
+    }
 
     fun retry() {
         if (_state.value is BootState.Error) {

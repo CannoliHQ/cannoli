@@ -172,6 +172,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
                     bluetoothPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
             }
         }
+        onboardingHandler.onContinue = { bootSequencer.confirmPermissions() }
         router.unregisterCoreQueryReceiver = { unregisterCoreQueryReceiver() }
         router.wire(inputDispatcher)
 

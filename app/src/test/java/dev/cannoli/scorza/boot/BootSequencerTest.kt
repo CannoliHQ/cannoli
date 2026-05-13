@@ -78,6 +78,25 @@ class BootSequencerTest {
         assertTrue(s.state.value is BootState.NeedsPermission)
     }
 
+    @Test fun granted_permissions_hold_on_wizard_until_confirmed() = runTest {
+        val runs = AtomicInteger(0)
+        val perms = FakePerms(storage = false)
+        val s = sequencer(perms, setupResolved = true, runs, scope = this)
+        s.advance()
+        assertTrue(s.state.value is BootState.NeedsPermission)
+
+        perms.storage = true
+        s.onStoragePermissionResult()
+        val held = s.state.value
+        assertTrue(held is BootState.NeedsPermission && held.storageGranted && held.bluetoothGranted)
+        assertEquals(0, runs.get())
+
+        s.confirmPermissions()
+        advanceUntilIdle()
+        assertEquals(BootState.Ready, s.state.value)
+        assertEquals(1, runs.get())
+    }
+
     @Test fun setup_unresolved_goes_to_needs_setup_then_folder_choice_initializes() = runTest {
         val runs = AtomicInteger(0)
         var resolved = false
