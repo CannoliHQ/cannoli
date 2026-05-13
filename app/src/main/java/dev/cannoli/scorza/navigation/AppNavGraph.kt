@@ -865,7 +865,14 @@ fun AppNavGraph(
                 listVerticalPadding = listVerticalPadding,
                 buttonStyle = labels,
             )
-            is LauncherScreen.OnboardingPermissions -> Unit
+            is LauncherScreen.OnboardingPermissions -> {
+                dev.cannoli.scorza.ui.screens.OnboardingPermissionsScreen(
+                    permissions = currentScreen.permissions,
+                    granted = currentScreen.granted,
+                    selectedIndex = currentScreen.selectedIndex,
+                    buttonStyle = labels,
+                )
+            }
         }
 
         val systemListState = systemListViewModel?.state?.collectAsState()?.value
@@ -879,6 +886,7 @@ fun AppNavGraph(
                 || currentScreen is LauncherScreen.Installing
                 || currentScreen is LauncherScreen.Housekeeping
                 || currentScreen is LauncherScreen.InputTester
+                || currentScreen is LauncherScreen.OnboardingPermissions
                 || (currentScreen is LauncherScreen.SystemList && systemListState?.isLoading == true)
         val hasContent = dev.cannoli.scorza.server.KitchenManager.isRunning
                 || appSettings.showWifi

@@ -29,6 +29,7 @@ import dev.cannoli.ui.components.PillRowKeyValue
 import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.components.screenPadding
 import dev.cannoli.ui.theme.GrayText
+import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliTypography
 import dev.cannoli.ui.theme.Spacing
 
@@ -42,6 +43,7 @@ fun SetupScreen(
     buttonStyle: ButtonStyle = ButtonStyle()
 ) {
     val typo = LocalCannoliTypography.current
+    val colors = LocalCannoliColors.current
     val fontSize = typo.bodyLarge.fontSize
     val lineHeight = typo.bodyLarge.lineHeight
     val verticalPadding = 4.dp
@@ -64,6 +66,12 @@ fun SetupScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                Text(
+                    text = stringResource(R.string.onboarding_header),
+                    style = typo.labelSmall,
+                    color = colors.text.copy(alpha = 0.6f),
+                )
+                Spacer(modifier = Modifier.height(Spacing.Sm))
                 Image(
                     painter = painterResource(R.drawable.logo),
                     contentDescription = null,
