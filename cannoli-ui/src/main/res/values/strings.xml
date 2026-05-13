@@ -276,11 +276,11 @@
 
     <!-- Onboarding permissions step -->
     <string name="onboarding_header">SET UP CANNOLI</string>
-    <string name="onboarding_permissions_title">Permissions</string>
+    <string name="onboarding_permissions_title">Required Permissions</string>
     <string name="onboarding_storage_label">Storage access</string>
-    <string name="onboarding_storage_rationale">Cannoli reads your game files and writes saves, box art and config to your storage. It can\'t find your games without this.</string>
+    <string name="onboarding_storage_rationale">Cannoli needs access to your ROMs, saves, art, and more. Without it, Cannoli can\'t do anything.</string>
     <string name="onboarding_bluetooth_label">Bluetooth</string>
-    <string name="onboarding_bluetooth_rationale">Lets Cannoli recognize your wireless controller by name so button mappings stay attached to the right pad.</string>
+    <string name="onboarding_bluetooth_rationale">Cannoli needs this to tell your wireless controllers apart so each one keeps its own button mapping.</string>
     <string name="onboarding_status_granted">Granted</string>
     <string name="onboarding_status_not_granted">Not granted</string>
     <string name="onboarding_press_a_to_grant">Press A to grant</string>
