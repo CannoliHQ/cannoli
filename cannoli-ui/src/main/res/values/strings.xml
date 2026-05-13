@@ -280,6 +280,10 @@
     <string name="permission_storage_label">All files access</string>
     <string name="permission_bluetooth_label">Nearby devices (Bluetooth)</string>
 
+    <!-- Boot error screen -->
+    <string name="boot_error_title">Something went wrong</string>
+    <string name="label_retry">RETRY</string>
+
     <!-- Setup screen -->
     <string name="setup_welcome">Welcome to Cannoli!</string>
     <string name="setup_description">Select where to create your Cannoli folder.</string>

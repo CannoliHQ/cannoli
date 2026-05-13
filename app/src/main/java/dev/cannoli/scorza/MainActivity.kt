@@ -17,26 +17,27 @@ import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
+import dev.cannoli.scorza.boot.BootSequencer
+import dev.cannoli.scorza.boot.BootState
+import dev.cannoli.scorza.boot.StartStorageDependentHolder
 import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.db.CannoliDatabase
 import dev.cannoli.scorza.db.CollectionsRepository
 import dev.cannoli.scorza.db.RomScanner
 import dev.cannoli.scorza.db.RomsRepository
-import dev.cannoli.scorza.di.IoScope
+import dev.cannoli.scorza.di.AppFonts
 import dev.cannoli.scorza.di.RomDir
 import dev.cannoli.scorza.input.ActivityActions
 import dev.cannoli.scorza.input.BindingController
@@ -53,9 +54,9 @@ import dev.cannoli.scorza.libretro.RetroAchievementsManager
 import dev.cannoli.scorza.navigation.AppNavGraph
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
-import dev.cannoli.scorza.settings.ContentMode
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.setup.SetupCoordinator
+import dev.cannoli.scorza.ui.screens.BootErrorScreen
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.screens.PermissionScreen
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
@@ -64,18 +65,15 @@ import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
 import dev.cannoli.scorza.updater.UpdateManager
 import dev.cannoli.ui.theme.CannoliTheme
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
+import javax.inject.Provider
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity(), ActivityActions {
 
     @Inject lateinit var settings: SettingsRepository
-    @Inject lateinit var platformConfig: PlatformConfig
+    @Inject lateinit var platformConfig: Provider<PlatformConfig>
     @Inject lateinit var nav: NavigationController
     @Inject lateinit var router: InputRouter
     @Inject lateinit var setupHandler: dev.cannoli.scorza.input.screen.SetupInputHandler
@@ -88,24 +86,29 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var inputTesterController: InputTesterController
     @Inject lateinit var updateManager: UpdateManager
     @Inject lateinit var setupCoordinator: SetupCoordinator
-    @Inject lateinit var launchManager: LaunchManager
-    @Inject lateinit var installedCoreService: InstalledCoreService
-    @Inject lateinit var romsRepository: RomsRepository
-    @Inject lateinit var romScanner: RomScanner
-    @Inject lateinit var collectionsRepository: CollectionsRepository
-    @Inject lateinit var cannoliDatabase: CannoliDatabase
-    @Inject lateinit var launcherActions: LauncherActions
-    @Inject lateinit var systemListViewModel: SystemListViewModel
-    @Inject lateinit var gameListViewModel: GameListViewModel
-    @Inject lateinit var settingsViewModel: SettingsViewModel
-    @Inject lateinit var inputTesterViewModel: InputTesterViewModel
-    @Inject lateinit var controllersViewModel: dev.cannoli.scorza.ui.viewmodel.ControllersViewModel
+    @Inject lateinit var launchManager: Provider<LaunchManager>
+    @Inject lateinit var installedCoreService: Provider<InstalledCoreService>
+    @Inject lateinit var romsRepository: Provider<RomsRepository>
+    @Inject lateinit var romScanner: Provider<RomScanner>
+    @Inject lateinit var collectionsRepository: Provider<CollectionsRepository>
+    @Inject lateinit var cannoliDatabase: Provider<CannoliDatabase>
+    @Inject lateinit var launcherActions: Provider<LauncherActions>
+    @Inject lateinit var systemListViewModel: Provider<SystemListViewModel>
+    @Inject lateinit var gameListViewModel: Provider<GameListViewModel>
+    @Inject lateinit var settingsViewModel: Provider<SettingsViewModel>
+    @Inject lateinit var inputTesterViewModel: Provider<InputTesterViewModel>
+    @Inject lateinit var controllersViewModel: Provider<dev.cannoli.scorza.ui.viewmodel.ControllersViewModel>
     @Inject lateinit var editButtonsController: dev.cannoli.scorza.input.EditButtonsController
-    @Inject lateinit var mappingRepository: dev.cannoli.scorza.input.v2.repo.MappingRepository
-    @Inject @RomDir lateinit var romDir: File
-    @Inject @IoScope lateinit var ioScope: CoroutineScope
+    @Inject lateinit var mappingRepository: Provider<dev.cannoli.scorza.input.v2.repo.MappingRepository>
+    @Inject @RomDir lateinit var romDir: Provider<File>
+    @Inject lateinit var bootSequencer: BootSequencer
+    @Inject lateinit var startStorageDependentHolder: StartStorageDependentHolder
+    @Inject lateinit var appFonts: AppFonts
+    @Inject lateinit var controllerBlacklist: dev.cannoli.scorza.input.ControllerBlacklist
 
     private val isTv: Boolean by lazy { packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) }
+
+    private val isReady: Boolean get() = bootSequencer.state.value is BootState.Ready
 
     private var coreQueryReceiver: android.content.BroadcastReceiver? = null
     private var loginManager: RetroAchievementsManager? = null
@@ -116,24 +119,22 @@ class MainActivity : ComponentActivity(), ActivityActions {
             if (loginManager != null) loginPollHandler.postDelayed(this, 100)
         }
     }
-    private var permissionGranted by mutableStateOf(false)
     private var pendingStoragePrompt = false
     private var pendingBtPrompt = false
     private var coldStart = true
-
 
     private val storagePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) {
         pendingStoragePrompt = false
-        ensurePermissionsOrRequest()
+        bootSequencer.onStoragePermissionResult()
     }
 
     private val legacyPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) {
         pendingStoragePrompt = false
-        ensurePermissionsOrRequest()
+        bootSequencer.onStoragePermissionResult()
     }
 
     private val bluetoothPermissionLauncher = registerForActivityResult(
@@ -141,52 +142,14 @@ class MainActivity : ComponentActivity(), ActivityActions {
     ) { granted ->
         pendingBtPrompt = false
         dev.cannoli.scorza.util.InputLog.write("BLUETOOTH_CONNECT permission ${if (granted) "granted" else "denied"}")
-        if (granted && storageDependentStarted) {
-            controllerV2Bridge.settleNow()
-        }
-        ensurePermissionsOrRequest()
+        if (granted) controllerV2Bridge.settleNow()
+        bootSequencer.onBluetoothPermissionResult(granted)
     }
 
     private fun loadLoggingPrefs() {
         dev.cannoli.scorza.util.LoggingPrefs.romScan = settings.loggingRomScan
         dev.cannoli.scorza.util.LoggingPrefs.input = settings.loggingInput
         dev.cannoli.scorza.util.LoggingPrefs.session = settings.loggingSession
-    }
-
-    private fun hasBluetoothConnectPermission(): Boolean {
-        if (Build.VERSION.SDK_INT < 31) return true
-        return ContextCompat.checkSelfPermission(
-            this, Manifest.permission.BLUETOOTH_CONNECT
-        ) == PackageManager.PERMISSION_GRANTED
-    }
-
-    /**
-     * Permission gate: only proceeds when MANAGE_EXTERNAL_STORAGE and (on API 31+)
-     * BLUETOOTH_CONNECT are both granted. If a permission is missing, requests it (one at a
-     * time). If both are granted, kicks off the storage-dependent boot path. Safe to call from
-     * lifecycle callbacks repeatedly — pending-prompt flags prevent duplicate launches.
-     */
-    private fun ensurePermissionsOrRequest() {
-        val hasStorage = hasStoragePermission()
-        val hasBt = hasBluetoothConnectPermission()
-        if (hasStorage && hasBt) {
-            permissionGranted = true
-            startStorageDependent()
-            afterPermissionGranted()
-            return
-        }
-        permissionGranted = false
-        if (!hasStorage) {
-            if (!pendingStoragePrompt) {
-                pendingStoragePrompt = true
-                requestStoragePermission()
-            }
-            return
-        }
-        if (!hasBt && !pendingBtPrompt && Build.VERSION.SDK_INT >= 31) {
-            pendingBtPrompt = true
-            bluetoothPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
-        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -204,8 +167,9 @@ class MainActivity : ComponentActivity(), ActivityActions {
         editButtonsController.cancelListening()
         loadLoggingPrefs()
 
+        startStorageDependentHolder.register { startStorageDependent() }
         setupHandler.onStartInstalling = { targetPath -> startInstalling(targetPath) }
-        setupHandler.onInstallFinished = { initializeApp() }
+        setupHandler.onInstallFinished = { bootSequencer.onInstallFinished() }
         router.unregisterCoreQueryReceiver = { unregisterCoreQueryReceiver() }
         router.wire(inputDispatcher)
 
@@ -213,101 +177,124 @@ class MainActivity : ComponentActivity(), ActivityActions {
             override fun handleOnBackPressed() {}
         })
 
-        // Permission gate: PermissionScreen renders until MANAGE_EXTERNAL_STORAGE and (on
-        // API 31+) BLUETOOTH_CONNECT are both granted. ensurePermissionsOrRequest re-checks
-        // and re-prompts for whichever is still missing on every entry — onCreate, every
-        // launcher callback, and onResume — so returning from system settings or denying once
-        // never gets stuck.
-        ensurePermissionsOrRequest()
+        bootSequencer.advance()
 
         setContent {
-            val appFont by settingsViewModel.appSettings.collectAsState()
-            CannoliTheme(fontFamily = appFont.fontFamily) {
+            val boot by bootSequencer.state.collectAsState()
+
+            LaunchedEffect(boot) {
+                val s = boot
+                if (s is BootState.NeedsPermission) {
+                    if (!s.storageGranted && !pendingStoragePrompt) {
+                        pendingStoragePrompt = true
+                        requestStoragePermission()
+                    } else if (s.storageGranted && !s.bluetoothGranted && !pendingBtPrompt && Build.VERSION.SDK_INT >= 31) {
+                        pendingBtPrompt = true
+                        bluetoothPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
+                    }
+                }
+            }
+
+            val themeFont = if (boot is BootState.Ready) {
+                settingsViewModel.get().appSettings.collectAsState().value.fontFamily
+            } else {
+                appFonts.mplus1Code
+            }
+            CannoliTheme(fontFamily = themeFont) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    if (!permissionGranted) {
-                        PermissionScreen(
-                            storageGranted = hasStoragePermission(),
-                            bluetoothGranted = hasBluetoothConnectPermission(),
+                    when (val s = boot) {
+                        is BootState.Resolving -> Box(modifier = Modifier.fillMaxSize()) {}
+                        is BootState.NeedsPermission -> PermissionScreen(
+                            storageGranted = s.storageGranted,
+                            bluetoothGranted = s.bluetoothGranted,
                         )
-                    } else {
-                        val updateInfo = updateManager.updateAvailable.collectAsState().value
-                        val dlProgress = updateManager.downloadProgress.collectAsState().value
-                        val dlError = updateManager.downloadError.collectAsState().value
-                        val navScreen = nav.currentScreen
-                        val navDialogState = nav.dialogState
-                        val navResumableGames = nav.resumableGames
-                        val activeMapping by activeMappingHolder.active.collectAsState()
-                        LaunchedEffect(navScreen) {
+                        is BootState.NeedsSetup -> {
+                            LaunchedEffect(s.volumes) {
+                                val top = nav.currentScreen
+                                if (top !is LauncherScreen.Setup
+                                    && top !is LauncherScreen.Installing
+                                    && top !is LauncherScreen.DirectoryBrowser) {
+                                    nav.screenStack.clear()
+                                    nav.screenStack.add(LauncherScreen.Setup(volumes = s.volumes))
+                                }
+                            }
+                            ReadyNavGraph()
                         }
-                        AppNavGraph(
-                            currentScreen = navScreen,
-                            systemListViewModel = systemListViewModel,
-                            gameListViewModel = gameListViewModel,
-                            inputTesterViewModel = inputTesterViewModel,
-                            onExitInputTester = {
-                                inputTesterController.exit()
-                                if (nav.screenStack.size > 1) nav.screenStack.removeAt(nav.screenStack.lastIndex)
-                            },
-                            settingsViewModel = settingsViewModel,
-                            controllersViewModel = controllersViewModel,
-                            dialogState = navDialogState,
-                            onVisibleRangeChanged = { first, count, full ->
-                                nav.currentFirstVisible = first
-                                if (full) nav.currentPageSize = count
-                            },
-                            resumableGames = navResumableGames,
-                            updateAvailable = updateInfo != null,
-                            downloadProgress = dlProgress ?: 0f,
-                            downloadError = dlError,
-                            osdController = osdController,
-                            activeMapping = activeMapping,
-                            mappingRepository = mappingRepository,
-                            editButtonsController = editButtonsController,
-                            nav = nav,
-                        )
+                        is BootState.Initializing -> {
+                            val kind = when (s.phase) {
+                                dev.cannoli.scorza.boot.BootPhase.IMPORT ->
+                                    dev.cannoli.scorza.ui.screens.HousekeepingKind.DATABASE_MIGRATION
+                                dev.cannoli.scorza.boot.BootPhase.LIBRARY_REFRESH ->
+                                    dev.cannoli.scorza.ui.screens.HousekeepingKind.LIBRARY_REFRESH
+                            }
+                            dev.cannoli.scorza.ui.screens.HousekeepingScreen(
+                                kind = kind,
+                                progress = s.progress,
+                                statusLabel = s.label,
+                            )
+                        }
+                        is BootState.Error -> BootErrorScreen(message = s.message)
+                        is BootState.Ready -> ReadyNavGraph()
                     }
                 }
             }
         }
     }
 
-    /**
-     * Wire up everything that needs MANAGE_EXTERNAL_STORAGE access. Idempotent — guarded so
-     * subsequent permission re-grants (or onResume after the user toggled the OS setting) don't
-     * re-start the bridge. Logging, the controller bridge, and the BT runtime permission ask
-     * all live here so they only run once we can actually open files under Cannoli/.
-     */
-    @Inject lateinit var controllerBlacklist: dev.cannoli.scorza.input.ControllerBlacklist
+    @androidx.compose.runtime.Composable
+    private fun ReadyNavGraph() {
+        val svm = settingsViewModel.get()
+        val slvm = systemListViewModel.get()
+        val glvm = gameListViewModel.get()
+        val itvm = inputTesterViewModel.get()
+        val cvm = controllersViewModel.get()
+        val updateInfo = updateManager.updateAvailable.collectAsState().value
+        val dlProgress = updateManager.downloadProgress.collectAsState().value
+        val dlError = updateManager.downloadError.collectAsState().value
+        val navScreen = nav.currentScreen
+        val navDialogState = nav.dialogState
+        val navResumableGames = nav.resumableGames
+        val activeMapping by activeMappingHolder.active.collectAsState()
+        LaunchedEffect(navScreen) {
+        }
+        AppNavGraph(
+            currentScreen = navScreen,
+            systemListViewModel = slvm,
+            gameListViewModel = glvm,
+            inputTesterViewModel = itvm,
+            onExitInputTester = {
+                inputTesterController.exit()
+                if (nav.screenStack.size > 1) nav.screenStack.removeAt(nav.screenStack.lastIndex)
+            },
+            settingsViewModel = svm,
+            controllersViewModel = cvm,
+            dialogState = navDialogState,
+            onVisibleRangeChanged = { first, count, full ->
+                nav.currentFirstVisible = first
+                if (full) nav.currentPageSize = count
+            },
+            resumableGames = navResumableGames,
+            updateAvailable = updateInfo != null,
+            downloadProgress = dlProgress ?: 0f,
+            downloadError = dlError,
+            osdController = osdController,
+            activeMapping = activeMapping,
+            mappingRepository = mappingRepository.get(),
+            editButtonsController = editButtonsController,
+            nav = nav,
+        )
+    }
 
-    private var storageDependentStarted = false
+    /**
+     * Wire up everything that needs MANAGE_EXTERNAL_STORAGE access. Idempotent — BootSequencer
+     * only invokes this once, on the NeedsPermission -> Initializing edge.
+     */
     private fun startStorageDependent() {
-        if (storageDependentStarted) return
-        storageDependentStarted = true
         if (settings.sdCardRoot.isNotEmpty()) {
             dev.cannoli.scorza.util.InputLog.init(settings.sdCardRoot)
         }
         controllerBlacklist.load(this)
         controllerV2Bridge.start(this)
-    }
-
-    private fun afterPermissionGranted() {
-        if (settings.setupCompleted) {
-            initializeApp()
-        } else if (dev.cannoli.scorza.config.CannoliPaths(settings.sdCardRoot).settingsJson.exists()) {
-            settings.setupCompleted = true
-            initializeApp()
-        } else {
-            val detected = setupCoordinator.detectExistingCannoli()
-            if (detected != null) {
-                settings.sdCardRoot = detected
-                settings.setupCompleted = true
-                initializeApp()
-            } else {
-                val volumes = setupCoordinator.detectStorageVolumes() + ("Custom" to "")
-                nav.screenStack.clear()
-                nav.screenStack.add(LauncherScreen.Setup(volumes = volumes))
-            }
-        }
     }
 
     private fun startInstalling(targetPath: String) {
@@ -362,14 +349,12 @@ class MainActivity : ComponentActivity(), ActivityActions {
     override fun onResume() {
         super.onResume()
         registerControllerOsd()
-        if (!permissionGranted) {
-            ensurePermissionsOrRequest()
-            return
-        }
+        bootSequencer.advance()
         if (!coldStart) overridePendingTransition(0, 0)
         coldStart = false
         hideSystemUI()
-        launchManager.launching = false
+        if (!isReady) return
+        launchManager.get().launching = false
         if (LibretroActivity.isRunning) {
             val intent = Intent(this, LibretroActivity::class.java)
             intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
@@ -378,16 +363,16 @@ class MainActivity : ComponentActivity(), ActivityActions {
             return
         }
         settings.reload()
-        settingsViewModel.load()
+        settingsViewModel.get().load()
         val activeDialogState = nav.dialogState
         if (activeDialogState.value is DialogState.RAAccount && settings.raToken.isEmpty()) {
             activeDialogState.value = DialogState.None
         }
-        if (permissionGranted && !systemListViewModel.state.value.isLoading) {
+        if (!systemListViewModel.get().state.value.isLoading) {
             rescanSystemList()
             val activeScreen = nav.currentScreen
             if (activeScreen is LauncherScreen.GameList) {
-                gameListViewModel.reload { launcherActions.scanResumableGames() }
+                gameListViewModel.get().reload { launcherActions.get().scanResumableGames() }
             }
         }
     }
@@ -396,9 +381,9 @@ class MainActivity : ComponentActivity(), ActivityActions {
         super.onPause()
         controllerV2Bridge.onDeviceAdded = null
         controllerV2Bridge.onDeviceRemoved = null
-        if (nav.pendingRecentlyPlayedReorder) {
+        if (isReady && nav.pendingRecentlyPlayedReorder) {
             nav.pendingRecentlyPlayedReorder = false
-            gameListViewModel.moveSelectedToTop()
+            gameListViewModel.get().moveSelectedToTop()
         }
     }
 
@@ -409,8 +394,10 @@ class MainActivity : ComponentActivity(), ActivityActions {
         super.onDestroy()
         unregisterCoreQueryReceiver()
         settings.shutdown()
-        systemListViewModel.close()
-        gameListViewModel.close()
+        if (isReady) {
+            systemListViewModel.get().close()
+            gameListViewModel.get().close()
+        }
         dev.cannoli.scorza.server.KitchenManager.stop()
     }
 
@@ -419,6 +406,16 @@ class MainActivity : ComponentActivity(), ActivityActions {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (!isReady) {
+            if (event.action == KeyEvent.ACTION_DOWN
+                && bootSequencer.state.value is BootState.Error
+                && AndroidGamepadKeyNames.isGamepadEvent(event)) {
+                bootSequencer.retry()
+            }
+            // While in NeedsSetup the launcher screen stack drives Setup/Installing via
+            // the normal input pipeline, so fall through; everything else is swallowed.
+            if (bootSequencer.state.value !is BootState.NeedsSetup) return true
+        }
         val cs = nav.currentScreen
         if (cs is LauncherScreen.EditButtons && editButtonsController.isListening
             && event.action == KeyEvent.ACTION_DOWN) {
@@ -431,7 +428,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
                     val currentScreenForKey = nav.currentScreen
                     if (currentScreenForKey is LauncherScreen.InputTester) {
                         inputTesterController.dispatchKey(event, down = event.action == KeyEvent.ACTION_DOWN)
-                    } else if (isTv && event.action == KeyEvent.ACTION_DOWN && permissionGranted) {
+                    } else if (isTv && event.action == KeyEvent.ACTION_DOWN) {
                         inputDispatcher.onBack()
                     }
                     return true
@@ -442,8 +439,10 @@ class MainActivity : ComponentActivity(), ActivityActions {
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
-        if (!permissionGranted) {
-            requestStoragePermission()
+        if (!isReady && bootSequencer.state.value !is BootState.NeedsSetup) {
+            if (bootSequencer.state.value is BootState.Error && AndroidGamepadKeyNames.isGamepadEvent(event)) {
+                bootSequencer.retry()
+            }
             return true
         }
         val currentScreenForKey = nav.currentScreen
@@ -472,6 +471,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        if (!isReady && bootSequencer.state.value !is BootState.NeedsSetup) return true
         val currentScreenForKey = nav.currentScreen
         if (currentScreenForKey is LauncherScreen.InputTester) {
             inputTesterController.dispatchKey(event, down = false)
@@ -487,7 +487,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     }
 
     override fun onGenericMotionEvent(event: MotionEvent): Boolean {
-        if (!permissionGranted) return super.onGenericMotionEvent(event)
+        if (!isReady && bootSequencer.state.value !is BootState.NeedsSetup) return super.onGenericMotionEvent(event)
         val currentScreenForMotion = nav.currentScreen
         if (currentScreenForMotion is LauncherScreen.InputTester) {
             inputTesterController.dispatchMotion(event)
@@ -589,158 +589,8 @@ class MainActivity : ComponentActivity(), ActivityActions {
         return super.dispatchGenericMotionEvent(event)
     }
 
-    private fun initializeApp() {
-        val root = File(settings.sdCardRoot)
-        loadLoggingPrefs()
-        dev.cannoli.scorza.util.ScanLog.init(root.absolutePath)
-        dev.cannoli.scorza.util.InputLog.init(root.absolutePath)
-        platformConfig.load()
-        launchManager.syncRetroArchAssets(root)
-        launchManager.syncRetroArchConfig(root)
-        ioScope.launch { dev.cannoli.scorza.util.DirectoryLayout.ensure(root, romDir, assets, platformConfig) }
-        runImporterThenContinue(root, romDir)
-    }
-
-    private fun runImporterThenContinue(root: File, romDirectory: File) {
-        val importer = dev.cannoli.scorza.db.importer.Importer(
-            cannoliRoot = root,
-            romDirectory = romDirectory,
-            db = cannoliDatabase,
-            platformConfig = platformConfig,
-            romScanner = romScanner,
-            onProgress = dev.cannoli.scorza.db.importer.ImportProgress { progress, label ->
-                runOnUiThread {
-                    val top = nav.currentScreen
-                    if (top is LauncherScreen.Housekeeping &&
-                        top.kind == dev.cannoli.scorza.ui.screens.HousekeepingKind.DATABASE_MIGRATION) {
-                        nav.replaceTop(top.copy(progress = progress, statusLabel = label))
-                    }
-                }
-            },
-        )
-
-        nav.screenStack.add(
-            LauncherScreen.Housekeeping(
-                kind = dev.cannoli.scorza.ui.screens.HousekeepingKind.DATABASE_MIGRATION,
-                progress = 0f,
-                statusLabel = "Preparing",
-            )
-        )
-
-        ioScope.launch {
-            val result = importer.run()
-            withContext(Dispatchers.Main) {
-                val top = nav.currentScreen
-                if (top is LauncherScreen.Housekeeping) nav.pop()
-                if (result is dev.cannoli.scorza.db.importer.ImportResult.Failure) {
-                    dev.cannoli.scorza.util.ScanLog.write("ERROR import returned Failure: ${result.cause.message}")
-                }
-                finishInitializeApp()
-            }
-        }
-    }
-
-    private fun finishInitializeApp() {
-        val root = File(settings.sdCardRoot)
-
-        ioScope.launch {
-            installedCoreService.queryAllPackages()
-            platformConfig.purgeStaleRaMappings(installedCoreService.installedCores)
-        }
-
-        gameListViewModel.showFavoriteStars = settings.contentMode != ContentMode.FIVE_GAME_HANDHELD
-        settingsViewModel.reinitialize(root, packageManager, packageName, collectionsRepository)
-
-        if (updateManager.shouldAutoCheck()) {
-            ioScope.launch { updateManager.checkForUpdate() }
-        }
-
-        ioScope.launch {
-            updateManager.updateAvailable.collect { info ->
-                settingsViewModel.updateInfo = info
-            }
-        }
-
-        bindingController.onProgress = { keys, elapsedMs ->
-            val cs = nav.currentScreen
-            if (cs is LauncherScreen.ShortcutBinding) {
-                nav.replaceTop(cs.copy(heldKeys = keys, countdownMs = elapsedMs))
-            }
-        }
-        bindingController.onCommit = { chord ->
-            val cs = nav.currentScreen
-            if (cs is LauncherScreen.ShortcutBinding) {
-                val action = dev.cannoli.igm.ShortcutAction.entries.getOrNull(cs.selectedIndex)
-                if (action != null) {
-                    val cleared = cs.shortcuts.filterValues { it != chord }
-                    nav.replaceTop(cs.copy(
-                        shortcuts = cleared + (action to chord),
-                        listening = false, heldKeys = emptySet(), countdownMs = 0,
-                    ))
-                }
-            }
-        }
-        bindingController.onCancel = {
-            val cs = nav.currentScreen
-            if (cs is LauncherScreen.ShortcutBinding && cs.listening) {
-                nav.replaceTop(cs.copy(listening = false, heldKeys = emptySet(), countdownMs = 0))
-            }
-        }
-
-        nav.screenStack.clear()
-        nav.screenStack.add(LauncherScreen.SystemList)
-        nav.screenStack.add(LauncherScreen.Housekeeping(
-            kind = dev.cannoli.scorza.ui.screens.HousekeepingKind.LIBRARY_REFRESH,
-            progress = 0f,
-            statusLabel = "",
-        ))
-
-        launcherActions.rescanSystemList(
-            onProgress = { tag, current, total ->
-                val top = nav.currentScreen
-                if (top is LauncherScreen.Housekeeping &&
-                    top.kind == dev.cannoli.scorza.ui.screens.HousekeepingKind.LIBRARY_REFRESH) {
-                    nav.replaceTop(top.copy(progress = current.toFloat() / total, statusLabel = tag))
-                }
-            },
-            onComplete = {
-                if (nav.currentScreen is LauncherScreen.Housekeeping) nav.pop()
-            },
-        )
-
-        val quickResume = dev.cannoli.scorza.config.CannoliPaths(root).quickResumeFile
-        if (quickResume.exists()) {
-            val lines = try { quickResume.readLines() } catch (_: Exception) { emptyList() }
-            quickResume.delete()
-            if (lines.size >= 2) {
-                val romFile = File(lines[0])
-                if (romFile.exists()) {
-                    val rom = romsRepository.gameByPath(romFile.absolutePath)
-                    if (rom != null) {
-                        val errorDialog = launchManager.resumeRom(rom)
-                        if (errorDialog != null) {
-                            nav.dialogState.value = errorDialog
-                        } else {
-                            launcherActions.recordRecentlyPlayedByPath(romFile.absolutePath)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     private fun rescanSystemList() {
-        launcherActions.rescanSystemList()
-    }
-
-    private fun hasStoragePermission(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            Environment.isExternalStorageManager()
-        } else {
-            ContextCompat.checkSelfPermission(
-                this, Manifest.permission.READ_EXTERNAL_STORAGE
-            ) == PackageManager.PERMISSION_GRANTED
-        }
+        launcherActions.get().rescanSystemList()
     }
 
     private fun requestStoragePermission() {
@@ -791,7 +641,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
                     settings.raUsername = nameOrError
                     settings.raToken = token
                     settings.raPassword = password
-                    settingsViewModel.raPassword = ""
+                    settingsViewModel.get().raPassword = ""
                     nav.dialogState.value = DialogState.RAAccount(username = nameOrError)
                 } else {
                     nav.dialogState.value = DialogState.RALoggingIn(message = "Invalid username or password")

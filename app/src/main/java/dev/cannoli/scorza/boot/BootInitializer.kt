@@ -67,6 +67,13 @@ class BootInitializer @Inject constructor(
 
         val root = File(settings.sdCardRoot)
 
+        ScanLog.init(root.absolutePath)
+        dev.cannoli.scorza.util.InputLog.init(root.absolutePath)
+        platformConfig.load()
+        launchManager.syncRetroArchAssets(root)
+        launchManager.syncRetroArchConfig(root)
+        ioScope.launch { dev.cannoli.scorza.util.DirectoryLayout.ensure(root, romDir, context.assets, platformConfig) }
+
         val importer = Importer(
             cannoliRoot = root,
             romDirectory = romDir,
@@ -90,59 +97,61 @@ class BootInitializer @Inject constructor(
             platformConfig.purgeStaleRaMappings(installedCoreService.installedCores)
         }
 
-        gameListViewModel.showFavoriteStars = settings.contentMode != ContentMode.FIVE_GAME_HANDHELD
-        settingsViewModel.reinitialize(root, context.packageManager, context.packageName, collectionsRepository)
+        withContext(Dispatchers.Main) {
+            gameListViewModel.showFavoriteStars = settings.contentMode != ContentMode.FIVE_GAME_HANDHELD
+            settingsViewModel.reinitialize(root, context.packageManager, context.packageName, collectionsRepository)
 
-        if (updateManager.shouldAutoCheck()) {
-            ioScope.launch { updateManager.checkForUpdate() }
-        }
-
-        ioScope.launch {
-            updateManager.updateAvailable.collect { info ->
-                settingsViewModel.updateInfo = info
+            if (updateManager.shouldAutoCheck()) {
+                ioScope.launch { updateManager.checkForUpdate() }
             }
-        }
 
-        bindingController.onProgress = { keys, elapsedMs ->
-            val cs = nav.currentScreen
-            if (cs is LauncherScreen.ShortcutBinding) {
-                nav.replaceTop(cs.copy(heldKeys = keys, countdownMs = elapsedMs))
-            }
-        }
-        bindingController.onCommit = { chord ->
-            val cs = nav.currentScreen
-            if (cs is LauncherScreen.ShortcutBinding) {
-                val action = dev.cannoli.igm.ShortcutAction.entries.getOrNull(cs.selectedIndex)
-                if (action != null) {
-                    val cleared = cs.shortcuts.filterValues { it != chord }
-                    nav.replaceTop(cs.copy(
-                        shortcuts = cleared + (action to chord),
-                        listening = false, heldKeys = emptySet(), countdownMs = 0,
-                    ))
+            ioScope.launch {
+                updateManager.updateAvailable.collect { info ->
+                    settingsViewModel.updateInfo = info
                 }
             }
-        }
-        bindingController.onCancel = {
-            val cs = nav.currentScreen
-            if (cs is LauncherScreen.ShortcutBinding && cs.listening) {
-                nav.replaceTop(cs.copy(listening = false, heldKeys = emptySet(), countdownMs = 0))
-            }
-        }
 
-        val quickResume = CannoliPaths(root).quickResumeFile
-        if (quickResume.exists()) {
-            val lines = try { quickResume.readLines() } catch (_: Exception) { emptyList() }
-            quickResume.delete()
-            if (lines.size >= 2) {
-                val romFile = File(lines[0])
-                if (romFile.exists()) {
-                    val rom = romsRepository.gameByPath(romFile.absolutePath)
-                    if (rom != null) {
-                        val errorDialog = launchManager.resumeRom(rom)
-                        if (errorDialog != null) {
-                            nav.dialogState.value = errorDialog
-                        } else {
-                            launcherActions.recordRecentlyPlayedByPath(romFile.absolutePath)
+            bindingController.onProgress = { keys, elapsedMs ->
+                val cs = nav.currentScreen
+                if (cs is LauncherScreen.ShortcutBinding) {
+                    nav.replaceTop(cs.copy(heldKeys = keys, countdownMs = elapsedMs))
+                }
+            }
+            bindingController.onCommit = { chord ->
+                val cs = nav.currentScreen
+                if (cs is LauncherScreen.ShortcutBinding) {
+                    val action = dev.cannoli.igm.ShortcutAction.entries.getOrNull(cs.selectedIndex)
+                    if (action != null) {
+                        val cleared = cs.shortcuts.filterValues { it != chord }
+                        nav.replaceTop(cs.copy(
+                            shortcuts = cleared + (action to chord),
+                            listening = false, heldKeys = emptySet(), countdownMs = 0,
+                        ))
+                    }
+                }
+            }
+            bindingController.onCancel = {
+                val cs = nav.currentScreen
+                if (cs is LauncherScreen.ShortcutBinding && cs.listening) {
+                    nav.replaceTop(cs.copy(listening = false, heldKeys = emptySet(), countdownMs = 0))
+                }
+            }
+
+            val quickResume = CannoliPaths(root).quickResumeFile
+            if (quickResume.exists()) {
+                val lines = try { quickResume.readLines() } catch (_: Exception) { emptyList() }
+                quickResume.delete()
+                if (lines.size >= 2) {
+                    val romFile = File(lines[0])
+                    if (romFile.exists()) {
+                        val rom = romsRepository.gameByPath(romFile.absolutePath)
+                        if (rom != null) {
+                            val errorDialog = launchManager.resumeRom(rom)
+                            if (errorDialog != null) {
+                                nav.dialogState.value = errorDialog
+                            } else {
+                                launcherActions.recordRecentlyPlayedByPath(romFile.absolutePath)
+                            }
                         }
                     }
                 }
