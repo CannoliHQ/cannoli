@@ -75,7 +75,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var platformConfig: Provider<PlatformConfig>
     @Inject lateinit var nav: NavigationController
     @Inject lateinit var router: InputRouter
-    @Inject lateinit var setupHandler: dev.cannoli.scorza.input.screen.SetupInputHandler
+    @Inject lateinit var onboardingHandler: dev.cannoli.scorza.input.screen.OnboardingInputHandler
     @Inject lateinit var inputDispatcher: InputDispatcher
     @Inject lateinit var controllerV2Bridge: ControllerV2Bridge
     @Inject lateinit var portRouter: dev.cannoli.scorza.input.v2.runtime.PortRouter
@@ -166,8 +166,8 @@ class MainActivity : ComponentActivity(), ActivityActions {
         loadLoggingPrefs()
 
         startStorageDependentHolder.register { startStorageDependent() }
-        setupHandler.onStartInstalling = { targetPath -> startInstalling(targetPath) }
-        setupHandler.onInstallFinished = { bootSequencer.onInstallFinished() }
+        onboardingHandler.onStartInstalling = { targetPath -> startInstalling(targetPath) }
+        onboardingHandler.onInstallFinished = { bootSequencer.onInstallFinished() }
         router.unregisterCoreQueryReceiver = { unregisterCoreQueryReceiver() }
         router.wire(inputDispatcher)
 

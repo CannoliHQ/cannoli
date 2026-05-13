@@ -13,7 +13,7 @@ import dev.cannoli.scorza.ui.screens.DialogState
 import javax.inject.Inject
 
 @ActivityScoped
-class SetupInputHandler @Inject constructor(
+class OnboardingInputHandler @Inject constructor(
     private val nav: NavigationController,
     private val settings: SettingsRepository,
     private val setupCoordinator: SetupCoordinator,

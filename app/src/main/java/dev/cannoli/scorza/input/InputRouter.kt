@@ -13,7 +13,7 @@ import dev.cannoli.scorza.input.screen.LoggingSettingsInputHandler
 import dev.cannoli.scorza.input.screen.InputTesterInputHandler
 import dev.cannoli.scorza.input.screen.ScrollListInputHandler
 import dev.cannoli.scorza.input.screen.SettingsInputHandler
-import dev.cannoli.scorza.input.screen.SetupInputHandler
+import dev.cannoli.scorza.input.screen.OnboardingInputHandler
 import dev.cannoli.scorza.input.screen.SystemListInputHandler
 import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.LaunchManager
@@ -33,7 +33,7 @@ class InputRouter @Inject constructor(
     private val systemListHandler: SystemListInputHandler,
     private val gameListHandler: GameListInputHandler,
     private val settingsHandler: SettingsInputHandler,
-    private val setupHandler: SetupInputHandler,
+    private val onboardingHandler: OnboardingInputHandler,
     private val inputTesterHandler: InputTesterInputHandler,
     private val controllerDetailHandler: ControllerDetailInputHandler,
     private val controllersHandler: ControllersInputHandler,
@@ -92,7 +92,7 @@ class InputRouter @Inject constructor(
         is LauncherScreen.Setup,
         is LauncherScreen.Installing,
         is LauncherScreen.Housekeeping,
-        is LauncherScreen.DirectoryBrowser -> setupHandler
+        is LauncherScreen.DirectoryBrowser -> onboardingHandler
         is LauncherScreen.ScrollableScreen -> scrollableHandlerFor(screen)
         else -> object : ScreenInputHandler {}
     }
