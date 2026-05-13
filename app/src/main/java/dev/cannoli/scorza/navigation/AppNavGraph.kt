@@ -85,6 +85,8 @@ import kotlinx.coroutines.flow.StateFlow
 
 enum class BrowsePurpose { SD_ROOT, ROM_DIRECTORY, SETUP }
 
+enum class OnboardingPermission { STORAGE, BLUETOOTH }
+
 sealed class LauncherScreen {
     interface ScrollableScreen {
         val selectedIndex: Int
@@ -188,6 +190,16 @@ sealed class LauncherScreen {
         val statusLabel: String = "Kneading the dough$ELLIPSIS",
         val finished: Boolean = false
     ) : LauncherScreen()
+    data class OnboardingPermissions(
+        val permissions: List<OnboardingPermission>,
+        val granted: Set<OnboardingPermission>,
+        val selectedIndex: Int = 0,
+    ) : LauncherScreen() {
+        val focusedPermission: OnboardingPermission get() = permissions[selectedIndex]
+        val isFocusedGranted: Boolean get() = focusedPermission in granted
+        val allGranted: Boolean get() = granted.containsAll(permissions)
+        fun moved(delta: Int) = copy(selectedIndex = (selectedIndex + delta).coerceIn(0, permissions.lastIndex))
+    }
     data class Housekeeping(
         val kind: dev.cannoli.scorza.ui.screens.HousekeepingKind,
         val progress: Float = 0f,
@@ -853,6 +865,7 @@ fun AppNavGraph(
                 listVerticalPadding = listVerticalPadding,
                 buttonStyle = labels,
             )
+            is LauncherScreen.OnboardingPermissions -> Unit
         }
 
         val systemListState = systemListViewModel?.state?.collectAsState()?.value
