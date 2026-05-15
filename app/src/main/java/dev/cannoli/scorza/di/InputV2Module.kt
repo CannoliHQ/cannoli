@@ -13,12 +13,8 @@ import dev.cannoli.scorza.input.autoconfig.RetroArchCfgEntry
 import dev.cannoli.scorza.input.v2.repo.MappingRepository
 import dev.cannoli.scorza.input.v2.resolver.MappingResolver
 import dev.cannoli.scorza.input.v2.runtime.ActiveMappingHolder
-import dev.cannoli.scorza.input.v2.runtime.BluetoothPhysicalIdentityResolver
-import dev.cannoli.scorza.input.v2.runtime.BtHidConnectionTracker
 import dev.cannoli.scorza.input.v2.runtime.ControllerV2Bridge
-import dev.cannoli.scorza.input.v2.runtime.PhysicalIdentityResolver
 import dev.cannoli.scorza.input.v2.runtime.PortRouter
-import java.io.File
 import javax.inject.Qualifier
 import javax.inject.Singleton
 
@@ -74,25 +70,10 @@ object InputV2Module {
 
     @Provides
     @Singleton
-    fun provideBtHidConnectionTracker(
-        @ApplicationContext context: Context,
-    ): BtHidConnectionTracker = BtHidConnectionTracker(context)
-
-    @Provides
-    @Singleton
-    fun providePhysicalIdentityResolver(
-        tracker: BtHidConnectionTracker,
-        hints: dev.cannoli.scorza.input.v2.hints.ControllerHintTable,
-    ): PhysicalIdentityResolver = BluetoothPhysicalIdentityResolver(tracker, hints)
-
-    @Provides
-    @Singleton
     fun provideControllerV2Bridge(
         resolver: MappingResolver,
         portRouter: PortRouter,
         activeMappingHolder: ActiveMappingHolder,
-        physicalIdentityResolver: PhysicalIdentityResolver,
-        btTracker: BtHidConnectionTracker,
         mappingRepository: MappingRepository,
         blacklist: dev.cannoli.scorza.input.ControllerBlacklist,
         @BundledRetroArchAutoconfig bundled: List<RetroArchCfgEntry>,
@@ -101,8 +82,6 @@ object InputV2Module {
         resolver = resolver,
         portRouter = portRouter,
         activeMappingHolder = activeMappingHolder,
-        physicalIdentityResolver = physicalIdentityResolver,
-        btTracker = btTracker,
         mappingRepository = mappingRepository,
         blacklist = blacklist,
         bundledCfgs = bundled,

@@ -134,10 +134,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         dev.cannoli.scorza.util.InputLog.write("BLUETOOTH_CONNECT permission ${if (granted) "granted" else "denied"}")
-        if (granted) {
-            controllerV2Bridge.startBtTracker()
-            controllerV2Bridge.settleNow()
-        }
         bootSequencer.onBluetoothPermissionResult(granted)
     }
 
@@ -175,10 +171,10 @@ class MainActivity : ComponentActivity(), ActivityActions {
         router.wire(inputDispatcher)
 
         controllerBlacklist.load(this)
-        val btReady = Build.VERSION.SDK_INT < 31 || ContextCompat.checkSelfPermission(
+        @Suppress("UNUSED_VARIABLE") val btReady = Build.VERSION.SDK_INT < 31 || ContextCompat.checkSelfPermission(
             this, Manifest.permission.BLUETOOTH_CONNECT
         ) == PackageManager.PERMISSION_GRANTED
-        controllerV2Bridge.start(this, includeBtTracker = btReady)
+        controllerV2Bridge.start(this)
 
         onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {}

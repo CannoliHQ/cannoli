@@ -6,7 +6,7 @@ data class MatchInput(
     val productId: Int,
     val androidBuildModel: String,
     val sourceMask: Int,
-    val bluetoothMac: String? = null,
+    val descriptor: String? = null,
 )
 
 data class DeviceMatchRule(
@@ -15,18 +15,21 @@ data class DeviceMatchRule(
     val productId: Int? = null,
     val androidBuildModel: String? = null,
     val sourceMask: Int? = null,
-    val bluetoothMac: String? = null,
+    val descriptor: String? = null,
 ) {
     fun score(input: MatchInput): Int {
         var score = 0
 
-        // MAC match wins over everything else for BT controllers. The MAC is the only stable
-        // identifier across pairings; InputDevice.name and VID/PID can change at every re-pair
-        // when the controller's HID firmware lies about its identity (CRKD, cheap clones).
-        val ruleMac = bluetoothMac
-        val macMatched = ruleMac != null && ruleMac.isNotEmpty() &&
-            input.bluetoothMac != null && input.bluetoothMac.equals(ruleMac, ignoreCase = true)
-        if (macMatched) {
+        // Descriptor match is the canonical signal for "same physical pad". Wins over everything
+        // else when present, because two pads of the same make/model report identical name+vid+pid
+        // but produce different InputDevice descriptors (Android hashes the kernel uniqueId into
+        // the descriptor for BT devices, and for phantom-rewrite hosts the sibling descriptors
+        // carry the uniqueness — see ControllerV2Bridge.settle for the sibling-folding logic).
+        val ruleDescriptor = descriptor
+        val inputDescriptor = input.descriptor
+        val descriptorMatched = ruleDescriptor != null && ruleDescriptor.isNotEmpty() &&
+            inputDescriptor != null && inputDescriptor == ruleDescriptor
+        if (descriptorMatched) {
             score += 200
         }
 

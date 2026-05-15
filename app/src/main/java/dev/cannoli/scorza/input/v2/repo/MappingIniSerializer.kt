@@ -27,7 +27,7 @@ object MappingIniSerializer {
         mapping.match.productId?.let { sb.appendLine("product_id=$it") }
         mapping.match.androidBuildModel?.let { sb.appendLine("android_build_model=$it") }
         mapping.match.sourceMask?.let { sb.appendLine("source_mask=$it") }
-        mapping.match.bluetoothMac?.let { sb.appendLine("bluetooth_mac=$it") }
+        mapping.match.descriptor?.let { sb.appendLine("descriptor=$it") }
         sb.appendLine()
 
         sb.appendLine("[menu]")
@@ -90,7 +90,7 @@ object MappingIniSerializer {
                 productId = match["product_id"]?.toIntOrNull(),
                 androidBuildModel = match["android_build_model"],
                 sourceMask = match["source_mask"]?.toIntOrNull(),
-                bluetoothMac = match["bluetooth_mac"],
+                descriptor = match["descriptor"],
             ),
             bindings = bindings,
             menuConfirm = menu["confirm"]

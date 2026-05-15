@@ -34,22 +34,20 @@ object AndroidDefaultMappingFactory {
     fun create(
         device: ConnectedDevice,
         hints: ControllerHintTable,
-        bluetoothMac: String? = null,
+        persistenceDescriptor: String? = null,
     ): DeviceMapping {
         val hint = hints.lookup(
             vendorId = device.vendorId,
             productId = device.productId,
             buildModel = device.androidBuildModel,
         )
-        val baseId = "android_default_" + device.descriptor.ifEmpty {
-            "${device.vendorId}_${device.productId}_${device.name.hashCode()}"
-        }
-        // Distinguish identical-name controllers by MAC suffix (matches RetroArch importer).
-        val suffix = bluetoothMac
-            ?.replace(":", "")
-            ?.takeIf { it.isNotEmpty() }
-            ?.takeLast(6)
-            ?.lowercase()
+        val effectiveDescriptor = persistenceDescriptor?.takeIf { it.isNotEmpty() }
+            ?: device.descriptor.takeIf { it.isNotEmpty() }
+        val baseId = "android_default_" + (effectiveDescriptor
+            ?: "${device.vendorId}_${device.productId}_${device.name.hashCode()}")
+        // Distinguish identical-name controllers via descriptor (matches RetroArch importer).
+        val suffix = effectiveDescriptor
+            ?.let { Integer.toHexString(it.hashCode()).takeLast(6).lowercase() }
         val safeId = if (suffix != null) "${baseId}_$suffix" else baseId
         return DeviceMapping(
             id = safeId,
@@ -58,6 +56,7 @@ object AndroidDefaultMappingFactory {
                 name = device.name.ifEmpty { null },
                 vendorId = device.vendorId.takeIf { it != 0 },
                 productId = device.productId.takeIf { it != 0 },
+                descriptor = effectiveDescriptor,
             ),
             bindings = DEFAULT_BINDINGS.mapValues { (_, keyCodes) ->
                 keyCodes.map { InputBinding.Button(it) }

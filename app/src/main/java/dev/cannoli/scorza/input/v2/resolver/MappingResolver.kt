@@ -19,32 +19,24 @@ class MappingResolver(
     private val mappingsDir: File? = null,
 ) {
 
-    fun resolve(device: ConnectedDevice, bluetoothMac: String? = null): ResolvedMapping {
-        val matchInput = device.toMatchInput(bluetoothMac)
+    /**
+     * Resolve a connected device to its mapping.
+     *
+     * [persistenceDescriptor] is the identifier the caller wants the resulting mapping to be
+     * persisted under. Callers (the bridge) compute this from sibling-folded InputDevices — the
+     * gamepad's own descriptor when it's unique, or a sibling's descriptor on Retroid-style
+     * phantom-rewrite hosts where the gamepad endpoint has a degenerate (empty-uniqueId) hash.
+     * Null means "use the device's own descriptor (or none)".
+     */
+    fun resolve(device: ConnectedDevice, persistenceDescriptor: String? = null): ResolvedMapping {
+        val matchInput = device.toMatchInput(
+            descriptor = persistenceDescriptor?.takeIf { it.isNotEmpty() }
+                ?: device.descriptor.takeIf { it.isNotEmpty() }
+        )
 
         val candidates = repository.list()
-            .filter { mapping ->
-                // Hard reject: saved BT mapping with a different MAC than the current device's
-                // is a different physical controller. Two 8BitDo Lites share name+VID/PID but
-                // are distinct hardware identified by MAC; one's saved INI must not adopt the
-                // other.
-                val savedMac = mapping.match.bluetoothMac
-                val inputMac = matchInput.bluetoothMac
-                !(savedMac != null && savedMac.isNotEmpty() &&
-                    inputMac != null && inputMac.isNotEmpty() &&
-                    !savedMac.equals(inputMac, ignoreCase = true))
-            }
             .map { it to it.match.score(matchInput) }
             .filter { it.second > 0 }
-            .filter { (mapping, _) ->
-                // Don't let a clone with the same VID/PID grab the handheld built-in's saved
-                // mapping. If a non-BT mapping's displayName is in the wired-only list, it
-                // represents the built-in pad (or another wired-only device). Require the
-                // InputDevice's name to match so a renamed liar can't ride in on VID/PID alone.
-                val isBuiltInMapping = mapping.match.bluetoothMac.isNullOrEmpty() &&
-                    hints.isWiredOnly(mapping.displayName)
-                !isBuiltInMapping || matchInput.name.equals(mapping.displayName, ignoreCase = true)
-            }
         if (candidates.isNotEmpty()) {
             val best = candidates.maxWithOrNull(
                 compareBy<Pair<DeviceMapping, Int>>({ it.second })
@@ -56,13 +48,13 @@ class MappingResolver(
         val raMatch = bestRetroArchEntry(device)
         if (raMatch != null) {
             return ResolvedMapping(
-                RetroArchAutoconfigImporter.import(raMatch, device, hints, bluetoothMac),
+                RetroArchAutoconfigImporter.import(raMatch, device, hints, persistenceDescriptor),
                 persistent = false,
             )
         }
 
         return ResolvedMapping(
-            AndroidDefaultMappingFactory.create(device, hints, bluetoothMac),
+            AndroidDefaultMappingFactory.create(device, hints, persistenceDescriptor),
             persistent = false,
         )
     }

@@ -12,12 +12,12 @@ data class ConnectedDevice(
     val isBuiltIn: Boolean = false,
     val isExternal: Boolean = true,
 ) {
-    fun toMatchInput(bluetoothMac: String? = null): MatchInput = MatchInput(
+    fun toMatchInput(descriptor: String? = this.descriptor.takeIf { it.isNotEmpty() }): MatchInput = MatchInput(
         name = name,
         vendorId = vendorId,
         productId = productId,
         androidBuildModel = androidBuildModel,
         sourceMask = sourceMask,
-        bluetoothMac = bluetoothMac,
+        descriptor = descriptor,
     )
 }

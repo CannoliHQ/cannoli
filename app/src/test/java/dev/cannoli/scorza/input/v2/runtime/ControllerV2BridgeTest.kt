@@ -1,7 +1,6 @@
 package dev.cannoli.scorza.input.v2.runtime
 
 import dev.cannoli.scorza.input.autoconfig.RetroArchCfgEntry
-import dev.cannoli.scorza.input.v2.ConnectedDevice
 import dev.cannoli.scorza.input.v2.repo.MappingRepository
 import dev.cannoli.scorza.input.v2.resolver.MappingResolver
 import org.junit.Assert.assertEquals
@@ -50,31 +49,16 @@ class ControllerV2BridgeTest {
         return MappingResolver(repo, ra, hints, tempFolder.root)
     }
 
-    private class StubPhysicalIdentityResolver(
-        private val byKey: (ConnectedDevice) -> PhysicalIdentity? = { null },
-    ) : PhysicalIdentityResolver {
-        override fun identify(device: ConnectedDevice): PhysicalIdentity? = byKey(device)
-    }
-
-    private fun wiredFromDevice(device: ConnectedDevice): PhysicalIdentity? {
-        if (device.vendorId != 0 && device.productId != 0 && device.descriptor.isNotEmpty()) {
-            return PhysicalIdentity.Wired(device.vendorId, device.productId, device.descriptor)
-        }
-        return null
-    }
-
     private fun makeBridge(
         resolver: MappingResolver = makeResolver(),
         portRouter: PortRouter = PortRouter(),
         activeMappingHolder: ActiveMappingHolder = ActiveMappingHolder(),
-        physicalIdentityResolver: PhysicalIdentityResolver = StubPhysicalIdentityResolver { wiredFromDevice(it) },
         clock: () -> Long = { 1_000L },
         buildModel: String = "Pixel",
     ): ControllerV2Bridge = ControllerV2Bridge(
         resolver = resolver,
         portRouter = portRouter,
         activeMappingHolder = activeMappingHolder,
-        physicalIdentityResolver = physicalIdentityResolver,
         clock = clock,
         buildModel = buildModel,
     )
@@ -185,18 +169,18 @@ class ControllerV2BridgeTest {
             resolver = makeResolver(),
             portRouter = portRouter,
             activeMappingHolder = ActiveMappingHolder(),
-            physicalIdentityResolver = StubPhysicalIdentityResolver { wiredFromDevice(it) },
             clock = { ticks },
             buildModel = "Pixel",
         )
-        val second = stadiaFacts.copy(androidDeviceId = 9, descriptor = "stadia-2")
+        // Non-adjacent device IDs ensure SiblingFolder treats them as separate clusters.
+        val second = stadiaFacts.copy(androidDeviceId = 12, descriptor = "stadia-2")
         bridge.settleSyncForTest(listOf(stadiaFacts))
         ticks = 2_000L
         bridge.settleSyncForTest(listOf(stadiaFacts, second))
 
         bridge.markLaunchTrigger(7)
         assertEquals(0, portRouter.portFor(7))
-        assertEquals(1, portRouter.portFor(9))
+        assertEquals(1, portRouter.portFor(12))
     }
 
     @Test
@@ -210,11 +194,91 @@ class ControllerV2BridgeTest {
         bridge.settleSyncForTest(listOf(stadiaFacts))
         assertTrue(added.isEmpty())
 
-        val second = stadiaFacts.copy(androidDeviceId = 2, descriptor = "stadia-2")
+        val second = stadiaFacts.copy(androidDeviceId = 12, descriptor = "stadia-2")
         bridge.settleSyncForTest(listOf(stadiaFacts, second))
-        assertEquals(listOf(2), added)
+        assertEquals(listOf(12), added)
 
         bridge.settleSyncForTest(listOf(stadiaFacts))
-        assertEquals(listOf(2), removed)
+        assertEquals(listOf(12), removed)
+    }
+
+    @Test
+    fun retroid_phantom_endpoints_fold_to_single_port_with_sibling_descriptor() {
+        // Mirrors the DualSense-on-Retroid case: gamepad endpoint has Retroid vid/pid and empty
+        // descriptor (post-folding it should carry the sibling's stable descriptor); siblings have
+        // real Sony vid/pid + populated descriptor (MAC-derived hash).
+        val portRouter = PortRouter()
+        val active = ActiveMappingHolder()
+        val bridge = makeBridge(portRouter = portRouter, activeMappingHolder = active)
+
+        val motion = ControllerV2Bridge.DeviceFacts(
+            androidDeviceId = 10,
+            descriptor = "ds-motion-mac-A",
+            name = "DualSense Wireless Controller Motion Sensors",
+            vendorId = 0x054c,
+            productId = 0x0ce6,
+            sourceMask = 0x0,
+        )
+        val touchpad = ControllerV2Bridge.DeviceFacts(
+            androidDeviceId = 11,
+            descriptor = "ds-touch-mac-A",
+            name = "DualSense Wireless Controller Touchpad",
+            vendorId = 0x054c,
+            productId = 0x0ce6,
+            sourceMask = 0x2002,
+        )
+        val gamepad = ControllerV2Bridge.DeviceFacts(
+            androidDeviceId = 12,
+            descriptor = "",
+            name = "DualSense Wireless Controller",
+            vendorId = 8226,
+            productId = 12289,
+            sourceMask = ControllerV2Bridge.SOURCE_GAMEPAD,
+        )
+
+        bridge.settleSyncForTest(listOf(motion, touchpad, gamepad))
+        bridge.markLaunchTrigger(12)
+
+        // Only the gamepad endpoint gets a port; the siblings alias onto it.
+        assertEquals(0, portRouter.portFor(12))
+        assertEquals(0, portRouter.portFor(11))
+        assertEquals(0, portRouter.portFor(10))
+        // The persisted mapping carries the sibling's descriptor so the file is unique per pad.
+        val saved = active.active.value
+        assertNotNull(saved)
+        val savedDescriptor = saved?.match?.descriptor
+        assertTrue("expected sibling descriptor, got '$savedDescriptor'",
+            savedDescriptor == "ds-motion-mac-A" || savedDescriptor == "ds-touch-mac-A")
+    }
+
+    @Test
+    fun two_same_model_phantom_clusters_get_separate_ports() {
+        // Two DualSenses on Retroid: ids {10,11,12} and {13,14,15}. ID-adjacency keeps clusters
+        // separated even though all six InputDevices share name prefix "DualSense Wireless Controller".
+        val portRouter = PortRouter()
+        val bridge = makeBridge(portRouter = portRouter)
+
+        val padA = listOf(
+            ControllerV2Bridge.DeviceFacts(10, "ds-A-motion", "DualSense Wireless Controller Motion Sensors", 0x054c, 0x0ce6, 0x0),
+            ControllerV2Bridge.DeviceFacts(11, "ds-A-touch", "DualSense Wireless Controller Touchpad", 0x054c, 0x0ce6, 0x2002),
+            ControllerV2Bridge.DeviceFacts(12, "", "DualSense Wireless Controller", 8226, 12289, ControllerV2Bridge.SOURCE_GAMEPAD),
+        )
+        val padB = listOf(
+            ControllerV2Bridge.DeviceFacts(13, "ds-B-motion", "DualSense Wireless Controller Motion Sensors", 0x054c, 0x0ce6, 0x0),
+            ControllerV2Bridge.DeviceFacts(14, "ds-B-touch", "DualSense Wireless Controller Touchpad", 0x054c, 0x0ce6, 0x2002),
+            ControllerV2Bridge.DeviceFacts(15, "", "DualSense Wireless Controller", 8226, 12289, ControllerV2Bridge.SOURCE_GAMEPAD),
+        )
+
+        bridge.settleSyncForTest(padA + padB)
+        bridge.markLaunchTrigger(12)
+
+        assertEquals(0, portRouter.portFor(12))
+        assertEquals(1, portRouter.portFor(15))
+        // Siblings of pad A route to pad A's gamepad.
+        assertEquals(0, portRouter.portFor(10))
+        assertEquals(0, portRouter.portFor(11))
+        // Siblings of pad B route to pad B's gamepad.
+        assertEquals(1, portRouter.portFor(13))
+        assertEquals(1, portRouter.portFor(14))
     }
 }
