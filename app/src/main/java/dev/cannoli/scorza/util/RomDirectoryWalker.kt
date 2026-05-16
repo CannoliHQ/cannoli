@@ -218,6 +218,7 @@ class RomDirectoryWalker(
         tag: String,
         moves: MutableList<RekeyMove>,
     ): Boolean {
+        if (parent.name == baseName) return false
         val subdir = File(parent, baseName)
         if (!createSubdir(subdir, tag, baseName)) return false
 
@@ -265,6 +266,7 @@ class RomDirectoryWalker(
         moves: MutableList<RekeyMove>,
     ) {
         val baseName = cue.nameWithoutExtension
+        if (parent.name == baseName) return
         val subdir = File(parent, baseName)
         if (!createSubdir(subdir, tag, baseName)) return
 
