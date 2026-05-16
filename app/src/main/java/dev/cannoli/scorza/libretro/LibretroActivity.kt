@@ -225,9 +225,10 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private suspend fun maybeReportMissingBios(corePath: String, logs: List<String>): Boolean {
+        val problemKeywords = listOf("missing", "not found", "no bios", "no such", "couldn't find", "could not find", "cannot find", "can't find", "required", "failed to load", "failed to open bios", "failed to open firmware", "unable to load", "unable to find")
         val matched = logs.any { line ->
             val lower = line.lowercase()
-            "bios" in lower || "firmware" in lower
+            ("bios" in lower || "firmware" in lower) && problemKeywords.any { it in lower }
         }
         if (!matched) return false
         val coreId = File(corePath).name.removeSuffix("_android.so")
