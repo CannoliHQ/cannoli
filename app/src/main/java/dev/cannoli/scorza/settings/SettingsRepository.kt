@@ -2,16 +2,20 @@ package dev.cannoli.scorza.settings
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.os.Build
+import android.os.Environment
 import android.os.Handler
 import android.os.HandlerThread
+import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import org.json.JSONObject
 import java.io.File
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class SettingsRepository @Inject constructor(@ApplicationContext context: Context) {
+class SettingsRepository @Inject constructor(@ApplicationContext private val context: Context) {
 
     private val prefs: SharedPreferences =
         context.getSharedPreferences("cannoli_settings", Context.MODE_PRIVATE)
@@ -68,11 +72,25 @@ class SettingsRepository @Inject constructor(@ApplicationContext context: Contex
         saveHandler.postDelayed(saveRunnable, 100)
     }
 
+    private fun hasStoragePermission(): Boolean =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Environment.isExternalStorageManager()
+        } else {
+            ContextCompat.checkSelfPermission(
+                context, android.Manifest.permission.READ_EXTERNAL_STORAGE
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        }
+
     private fun saveToDisk() {
         settingsFile?.let { file ->
             if (!setupCompleted) return
-            file.parentFile?.mkdirs()
-            synchronized(jsonLock) { file.writeText(json.toString(2)) }
+            if (!hasStoragePermission()) return
+            try {
+                file.parentFile?.mkdirs()
+                synchronized(jsonLock) { file.writeText(json.toString(2)) }
+            } catch (_: IOException) {
+            } catch (_: SecurityException) {
+            }
         }
     }
 
