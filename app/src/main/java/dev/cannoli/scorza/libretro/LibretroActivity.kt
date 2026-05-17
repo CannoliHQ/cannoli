@@ -795,13 +795,6 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
-    private fun dispatchSyntheticKey(keyCode: Int, action: Int, deviceId: Int) {
-        // Build a KeyEvent with the real deviceId so InputDispatcher's evaluator lookup succeeds.
-        val now = android.os.SystemClock.uptimeMillis()
-        val ev = KeyEvent(now, now, action, keyCode, 0, 0, deviceId, 0, 0, android.view.InputDevice.SOURCE_GAMEPAD)
-        inputDispatcher.handleKeyEvent(ev)
-    }
-
     private fun fireMenuNavForKey(keyCode: Int) {
         // Bypass keycode synthesis (deviceId would be virtual and the dispatcher would skip it).
         // Calling the wired callback directly routes through registry top or legacyNavigate.
@@ -813,37 +806,14 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
-    private var menuHeldHatKey = 0
-
     private fun handleMenuMotion(event: android.view.MotionEvent) {
-        // The Retroid Pocket Classic built-in pad emits ONLY hat motion for the D-pad; no key
-        // events. Consuming this MotionEvent in dispatchGenericMotionEvent suppresses Android's
-        // own hat-to-keycode synthesis, so we synthesize a real KeyEvent ourselves with the
-        // device's actual deviceId and route it through inputDispatcher. The evaluator's
-        // assertSource semantics are idempotent, so pads that emit both hat and native keycode
-        // (GameSir Pocket Taco) do not double-fire.
-        val hatX = event.getAxisValue(android.view.MotionEvent.AXIS_HAT_X)
-        val hatY = event.getAxisValue(android.view.MotionEvent.AXIS_HAT_Y)
-        val hatKey = when {
-            hatY < -0.5f -> KeyEvent.KEYCODE_DPAD_UP
-            hatY > 0.5f -> KeyEvent.KEYCODE_DPAD_DOWN
-            hatX < -0.5f -> KeyEvent.KEYCODE_DPAD_LEFT
-            hatX > 0.5f -> KeyEvent.KEYCODE_DPAD_RIGHT
-            else -> 0
-        }
-        if (hatKey != menuHeldHatKey) {
-            if (menuHeldHatKey != 0) {
-                dispatchSyntheticKey(menuHeldHatKey, KeyEvent.ACTION_UP, event.deviceId)
-            }
-            menuHeldHatKey = hatKey
-            if (hatKey != 0) {
-                dispatchSyntheticKey(hatKey, KeyEvent.ACTION_DOWN, event.deviceId)
-            }
-        }
+        // Route through the dispatcher first so the evaluator can react to Hat bindings (e.g.
+        // Retroid Pocket Controller's D-pad uses hat axes 15/16). The dispatcher will fire
+        // BTN_UP/DOWN/LEFT/RIGHT via the wired callback; PortRouter held-state is updated so
+        // MenuNavigationPoller drives auto-repeat. Stick fallback below covers devices whose
+        // mapping doesn't bind sticks as canonical navigation.
+        if (::inputDispatcher.isInitialized) inputDispatcher.handleMotionEvent(event)
 
-        // Stick axes still bypass the dispatcher (mappings rarely bind sticks to canonical nav
-        // buttons) and drive auto-repeat via menuRepeatRunnable. Hat directions get auto-repeat
-        // from MenuNavigationPoller via PortRouter held state.
         val stickX = event.getAxisValue(android.view.MotionEvent.AXIS_X)
         val stickY = event.getAxisValue(android.view.MotionEvent.AXIS_Y)
         val key = when {
