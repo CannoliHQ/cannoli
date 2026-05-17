@@ -125,6 +125,7 @@ dependencies {
     implementation("io.legere:pdfiumandroid:1.0.35")
     implementation("com.google.oboe:oboe:1.9.3")
     testImplementation(libs.junit)
+    testImplementation("io.mockk:mockk:1.13.11")
     testImplementation("org.json:json:20240303")
     testImplementation("org.robolectric:robolectric:4.13")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
