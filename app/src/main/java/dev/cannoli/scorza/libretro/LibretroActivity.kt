@@ -65,6 +65,8 @@ class LibretroActivity : ComponentActivity() {
     @Inject lateinit var portRouter: dev.cannoli.scorza.input.runtime.PortRouter
     @Inject lateinit var controllerBridge: dev.cannoli.scorza.input.runtime.ControllerBridge
     @Inject lateinit var screenInputRegistry: dev.cannoli.scorza.input.runtime.ScreenInputRegistry
+    @Inject lateinit var inputDispatcher: dev.cannoli.scorza.input.runtime.InputDispatcher
+    @Inject lateinit var menuNavigationPoller: dev.cannoli.scorza.input.runtime.MenuNavigationPoller
     @Inject lateinit var activeMappingHolder: dev.cannoli.scorza.input.runtime.ActiveMappingHolder
     @Inject lateinit var controllersViewModel: dev.cannoli.scorza.ui.viewmodel.ControllersViewModel
     @Inject lateinit var bindingController: dev.cannoli.scorza.input.BindingController
