@@ -45,6 +45,7 @@ class InputRouter @Inject constructor(
     private val globalOverrides: GlobalOverridesManager,
     private val launcherActions: LauncherActions,
     private val bindingController: BindingController,
+    private val screenInputRegistry: dev.cannoli.scorza.input.runtime.ScreenInputRegistry,
     @ApplicationContext private val context: Context,
 ) {
     var unregisterCoreQueryReceiver: () -> Unit = {}
@@ -52,21 +53,80 @@ class InputRouter @Inject constructor(
     fun wire(dispatcher: InputDispatcher) {
         gameListHandler.buildContextOptions = dialogHandler::buildGameContextOptions
 
-        dispatcher.onUp    = { if (!dialogHandler.onUp())     currentHandler().onUp() }
-        dispatcher.onDown  = { if (!dialogHandler.onDown())   currentHandler().onDown() }
-        dispatcher.onLeft  = { if (!dialogHandler.onLeft())   currentHandler().onLeft() }
-        dispatcher.onRight = { if (!dialogHandler.onRight())  currentHandler().onRight() }
-        dispatcher.onConfirm = { if (!dialogHandler.onConfirm()) currentHandler().onConfirm() }
-        dispatcher.onBack  = { if (!dialogHandler.onBack())   currentHandler().onBack() }
-        dispatcher.onStart = { if (!dialogHandler.onStart())  currentHandler().onStart() }
-        dispatcher.onSelect = { if (!dialogHandler.onSelect()) currentHandler().onSelect() }
+        // Migration shim: when a screen composable has registered a ScreenInput handler, that
+        // handler is the source of truth and the legacy dialog/currentHandler path is skipped.
+        // Removed once every screen has been converted (Tasks 11-23 of the migration plan).
+        dispatcher.onUp = {
+            val h = screenInputRegistry.top
+            if (h !== dev.cannoli.scorza.input.screen.EmptyScreenInputHandler) h.onUp()
+            else if (!dialogHandler.onUp()) currentHandler().onUp()
+        }
+        dispatcher.onDown = {
+            val h = screenInputRegistry.top
+            if (h !== dev.cannoli.scorza.input.screen.EmptyScreenInputHandler) h.onDown()
+            else if (!dialogHandler.onDown()) currentHandler().onDown()
+        }
+        dispatcher.onLeft = {
+            val h = screenInputRegistry.top
+            if (h !== dev.cannoli.scorza.input.screen.EmptyScreenInputHandler) h.onLeft()
+            else if (!dialogHandler.onLeft()) currentHandler().onLeft()
+        }
+        dispatcher.onRight = {
+            val h = screenInputRegistry.top
+            if (h !== dev.cannoli.scorza.input.screen.EmptyScreenInputHandler) h.onRight()
+            else if (!dialogHandler.onRight()) currentHandler().onRight()
+        }
+        dispatcher.onConfirm = {
+            val h = screenInputRegistry.top
+            if (h !== dev.cannoli.scorza.input.screen.EmptyScreenInputHandler) h.onConfirm()
+            else if (!dialogHandler.onConfirm()) currentHandler().onConfirm()
+        }
+        dispatcher.onBack = {
+            val h = screenInputRegistry.top
+            if (h !== dev.cannoli.scorza.input.screen.EmptyScreenInputHandler) h.onBack()
+            else if (!dialogHandler.onBack()) currentHandler().onBack()
+        }
+        dispatcher.onStart = {
+            val h = screenInputRegistry.top
+            if (h !== dev.cannoli.scorza.input.screen.EmptyScreenInputHandler) h.onStart()
+            else if (!dialogHandler.onStart()) currentHandler().onStart()
+        }
+        dispatcher.onSelect = {
+            val h = screenInputRegistry.top
+            if (h !== dev.cannoli.scorza.input.screen.EmptyScreenInputHandler) h.onSelect()
+            else if (!dialogHandler.onSelect()) currentHandler().onSelect()
+        }
         dispatcher.onSelectUp = { onSelectUp() }
-        dispatcher.onNorth = { if (!dialogHandler.onNorth())  currentHandler().onNorth() }
-        dispatcher.onWest  = { if (!dialogHandler.onWest())   currentHandler().onWest() }
-        dispatcher.onL1    = { if (!dialogHandler.onL1())     currentHandler().onL1() }
-        dispatcher.onR1    = { if (!dialogHandler.onR1())     currentHandler().onR1() }
-        dispatcher.onL2    = { if (!dialogHandler.onL2())     currentHandler().onL2() }
-        dispatcher.onR2    = { if (!dialogHandler.onR2())     currentHandler().onR2() }
+        dispatcher.onNorth = {
+            val h = screenInputRegistry.top
+            if (h !== dev.cannoli.scorza.input.screen.EmptyScreenInputHandler) h.onNorth()
+            else if (!dialogHandler.onNorth()) currentHandler().onNorth()
+        }
+        dispatcher.onWest = {
+            val h = screenInputRegistry.top
+            if (h !== dev.cannoli.scorza.input.screen.EmptyScreenInputHandler) h.onWest()
+            else if (!dialogHandler.onWest()) currentHandler().onWest()
+        }
+        dispatcher.onL1 = {
+            val h = screenInputRegistry.top
+            if (h !== dev.cannoli.scorza.input.screen.EmptyScreenInputHandler) h.onL1()
+            else if (!dialogHandler.onL1()) currentHandler().onL1()
+        }
+        dispatcher.onR1 = {
+            val h = screenInputRegistry.top
+            if (h !== dev.cannoli.scorza.input.screen.EmptyScreenInputHandler) h.onR1()
+            else if (!dialogHandler.onR1()) currentHandler().onR1()
+        }
+        dispatcher.onL2 = {
+            val h = screenInputRegistry.top
+            if (h !== dev.cannoli.scorza.input.screen.EmptyScreenInputHandler) h.onL2()
+            else if (!dialogHandler.onL2()) currentHandler().onL2()
+        }
+        dispatcher.onR2 = {
+            val h = screenInputRegistry.top
+            if (h !== dev.cannoli.scorza.input.screen.EmptyScreenInputHandler) h.onR2()
+            else if (!dialogHandler.onR2()) currentHandler().onR2()
+        }
     }
 
     fun onSelectUp() {
