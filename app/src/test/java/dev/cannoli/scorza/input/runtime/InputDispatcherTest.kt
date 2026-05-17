@@ -145,14 +145,30 @@ class InputDispatcherTest {
     }
 
     @Test
-    fun repeat_event_re_fires_callback_via_canonicalsHeldByKeyCode() {
+    fun repeat_event_re_fires_callback_for_non_nav_canonicals() {
+        // Non-nav canonical (BTN_SOUTH) still repeats via the dispatcher. Nav canonicals
+        // (BTN_UP/DOWN/LEFT/RIGHT) intentionally do not -- MenuNavigationPoller drives those.
+        val (d, _, _) = setup(westernTemplate())
+        var back = 0
+        d.onBack = { back++ }  // western template: BTN_SOUTH -> back
+        d.handleKeyEventForTest(deviceId = 7, keyCode = 96, action = android.view.KeyEvent.ACTION_DOWN, repeatCount = 0)
+        d.handleKeyEventForTest(deviceId = 7, keyCode = 96, action = android.view.KeyEvent.ACTION_DOWN, repeatCount = 1)
+        d.handleKeyEventForTest(deviceId = 7, keyCode = 96, action = android.view.KeyEvent.ACTION_DOWN, repeatCount = 2)
+        assertEquals(3, back)
+    }
+
+    @Test
+    fun nav_repeat_events_are_suppressed_in_dispatcher() {
+        // Nav buttons auto-repeat via MenuNavigationPoller polling PortRouter held state.
+        // Android-supplied keycode repeats for nav buttons are dropped in the dispatcher so
+        // the poller is the sole repeat source. Initial press still fires.
         val (d, _, _) = setup(westernTemplate())
         var up = 0
         d.onUp = { up++ }
         d.handleKeyEventForTest(deviceId = 7, keyCode = 19, action = android.view.KeyEvent.ACTION_DOWN, repeatCount = 0)
         d.handleKeyEventForTest(deviceId = 7, keyCode = 19, action = android.view.KeyEvent.ACTION_DOWN, repeatCount = 1)
         d.handleKeyEventForTest(deviceId = 7, keyCode = 19, action = android.view.KeyEvent.ACTION_DOWN, repeatCount = 2)
-        assertEquals(3, up)
+        assertEquals(1, up)
     }
 
     @Test
@@ -266,8 +282,11 @@ class InputDispatcherTest {
     }
 
     @Test
-    fun repeat_event_for_hat_bound_dpad_re_fires_callback_via_keycode_fallback() {
-        // Template binds BTN_UP via Hat (axis 16, UP) — no Button binding for keycode 19.
+    fun hat_bound_dpad_fires_initial_press_only_in_dispatcher() {
+        // Template binds BTN_UP via Hat (axis 16, UP) -- no Button binding for keycode 19. The
+        // dispatcher fires once on the initial axis crossing; subsequent Android keycode repeats
+        // for the synthesized KEYCODE_DPAD_UP are dropped because nav auto-repeat is owned by
+        // MenuNavigationPoller (held-state poll, source-agnostic).
         val template = westernTemplate().copy(
             bindings = westernTemplate().bindings + (CanonicalButton.BTN_UP to listOf(
                 InputBinding.Hat(axis = 16, direction = HatDirection.UP, threshold = 0.5f)
@@ -280,13 +299,11 @@ class InputDispatcherTest {
         var up = 0
         d.onUp = { up++ }
 
-        // Initial press via motion (the hat axis crossing).
         d.handleMotionEventForTest(deviceId = 7, axisValues = mapOf(16 to -1f))
         org.junit.Assert.assertEquals(1, up)
 
-        // Native auto-repeat arrives as KEYCODE_DPAD_UP with repeatCount > 0.
         d.handleKeyEventForTest(deviceId = 7, keyCode = android.view.KeyEvent.KEYCODE_DPAD_UP, action = android.view.KeyEvent.ACTION_DOWN, repeatCount = 1)
         d.handleKeyEventForTest(deviceId = 7, keyCode = android.view.KeyEvent.KEYCODE_DPAD_UP, action = android.view.KeyEvent.ACTION_DOWN, repeatCount = 2)
-        org.junit.Assert.assertEquals(3, up)
+        org.junit.Assert.assertEquals(1, up)
     }
 }

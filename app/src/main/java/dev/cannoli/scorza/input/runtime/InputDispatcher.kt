@@ -59,10 +59,12 @@ class InputDispatcher @Inject constructor(
                 if (isRepeat) {
                     val direct = evaluator.canonicalsHeldByKeyCode(keyCode)
                     val fallback = if (direct.isEmpty()) dpadFallbackForRepeat(evaluator, keyCode) else emptyList()
-                    val canonicals = if (direct.isNotEmpty()) direct else fallback
-                    dev.cannoli.scorza.util.InputLog.write(
-                        "repeat id=$deviceId code=$keyCode rc=$repeatCount direct=${direct.map { it.name }} fallback=${fallback.map { it.name }} -> ${canonicals.map { it.name }}"
-                    )
+                    val canonicals = (if (direct.isNotEmpty()) direct else fallback)
+                        .filter { it !in NAV_CANONICALS }
+                    // Nav auto-repeat is driven by MenuNavigationPoller (held-state poll on
+                    // PortRouter). Android keycode auto-repeats for nav buttons are dropped here
+                    // so pads that emit both hat motion and synthesized KEYCODE_DPAD_* (GameSir
+                    // Pocket Taco) do not double-navigate.
                     if (canonicals.isEmpty()) return false
                     maybeActivate(deviceId)
                     activeMappingHolder.set(mapping)
@@ -173,5 +175,14 @@ class InputDispatcher @Inject constructor(
             CanonicalButton.BTN_MENU -> onMenu()
         }
         return true
+    }
+
+    companion object {
+        private val NAV_CANONICALS = setOf(
+            CanonicalButton.BTN_UP,
+            CanonicalButton.BTN_DOWN,
+            CanonicalButton.BTN_LEFT,
+            CanonicalButton.BTN_RIGHT,
+        )
     }
 }

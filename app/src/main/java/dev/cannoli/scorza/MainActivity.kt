@@ -80,6 +80,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var onboardingHandler: dev.cannoli.scorza.input.screen.OnboardingInputHandler
     @Inject lateinit var inputDispatcher: InputDispatcher
     @Inject lateinit var screenInputRegistry: dev.cannoli.scorza.input.runtime.ScreenInputRegistry
+    @Inject lateinit var menuNavigationPoller: dev.cannoli.scorza.input.runtime.MenuNavigationPoller
     @Inject lateinit var controllerBridge: ControllerBridge
     @Inject lateinit var portRouter: dev.cannoli.scorza.input.runtime.PortRouter
     @Inject lateinit var activeMappingHolder: dev.cannoli.scorza.input.runtime.ActiveMappingHolder
@@ -334,6 +335,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     override fun onResume() {
         super.onResume()
         registerControllerOsd()
+        menuNavigationPoller.start()
         bootSequencer.advance()
         if (!isReady) return
         if (!coldStart) overridePendingTransition(0, 0)
@@ -364,6 +366,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
 
     override fun onPause() {
         super.onPause()
+        menuNavigationPoller.stop()
         controllerBridge.onDeviceAdded = null
         controllerBridge.onDeviceRemoved = null
         if (isReady && nav.pendingRecentlyPlayedReorder) {
