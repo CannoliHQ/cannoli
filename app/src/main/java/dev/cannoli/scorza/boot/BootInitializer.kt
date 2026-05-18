@@ -71,8 +71,10 @@ class BootInitializer @Inject constructor(
         ScanLog.init(root.absolutePath)
         dev.cannoli.scorza.util.InputLog.init(root.absolutePath)
         platformConfig.load()
-        launchManager.syncRetroArchAssets(root)
-        launchManager.syncRetroArchConfig(root)
+        ioScope.launch {
+            launchManager.syncRetroArchAssets(root)
+            launchManager.syncRetroArchConfig(root)
+        }
         ioScope.launch { dev.cannoli.scorza.util.DirectoryLayout.ensure(root, romDir, context.assets, platformConfig) }
 
         val importer = Importer(
