@@ -3,6 +3,7 @@ package dev.cannoli.scorza.launcher
 import android.database.Cursor
 import android.database.MatrixCursor
 import android.net.Uri
+import android.os.Environment
 import android.provider.OpenableColumns
 import android.webkit.MimeTypeMap
 import androidx.core.content.FileProvider
@@ -36,13 +37,22 @@ class CannoliFileProvider : FileProvider() {
         return MatrixCursor(projection, 1).apply { addRow(row) }
     }
 
+    // Reverse the FileProvider path mapping declared in res/xml/file_paths.xml.
+    // The androidx FileProvider strips the on-disk prefix and exposes paths as
+    // <name>/<relative>, where <name> is the path element's `name` attribute.
+    // Stock androidx doesn't expose a public way to invert this, so we hardcode
+    // the two entries we ship: "root" -> "/", "external_files" -> external storage root.
     private fun resolveFile(uri: Uri): File? {
         val rawPath = uri.encodedPath ?: return null
         val decoded = Uri.decode(rawPath) ?: return null
         val segments = decoded.trimStart('/').split('/', limit = 2)
         if (segments.size < 2) return null
-        val absolute = "/" + segments[1]
-        return File(absolute).takeIf { it.exists() }
+        val base: File = when (segments[0]) {
+            "external_files" -> Environment.getExternalStorageDirectory()
+            "root" -> File("/")
+            else -> return null
+        }
+        return File(base, segments[1]).takeIf { it.exists() }
     }
 
     private fun valueFor(column: String, file: File, uri: Uri): Any? = when (column) {
