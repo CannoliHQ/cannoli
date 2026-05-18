@@ -64,11 +64,11 @@
   "N64": {
     "name": "Nintendo 64",
     "app": [
-      { "package": "org.mupen64plusae.v3.fzurita.pro", "activity": "paulscode.android.mupen64plusae.SplashActivity", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } },
-      { "package": "org.mupen64plusae.v3.fzurita", "activity": "paulscode.android.mupen64plusae.SplashActivity", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } },
-      { "package": "org.mupen64plusae.v3.fzurita.amazon", "activity": "paulscode.android.mupen64plusae.SplashActivity", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } },
-      { "package": "com.m64.fx.plus.emulate", "activity": "paulscode.android.mupen64plusae.SplashActivity", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } },
-      { "package": "org.mupen64plusae.v3.alpha", "activity": "paulscode.android.mupen64plusae.SplashActivity", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } }
+      { "package": "org.mupen64plusae.v3.fzurita.pro", "activity": "paulscode.android.mupen64plusae.SplashActivity", "action": "android.intent.action.VIEW", "data": { "kind": "absolute_path" } },
+      { "package": "org.mupen64plusae.v3.fzurita", "activity": "paulscode.android.mupen64plusae.SplashActivity", "action": "android.intent.action.VIEW", "data": { "kind": "absolute_path" } },
+      { "package": "org.mupen64plusae.v3.fzurita.amazon", "activity": "paulscode.android.mupen64plusae.SplashActivity", "action": "android.intent.action.VIEW", "data": { "kind": "absolute_path" } },
+      { "package": "com.m64.fx.plus.emulate", "activity": "paulscode.android.mupen64plusae.SplashActivity", "action": "android.intent.action.VIEW", "data": { "kind": "absolute_path" } },
+      { "package": "org.mupen64plusae.v3.alpha", "activity": "paulscode.android.mupen64plusae.SplashActivity", "action": "android.intent.action.VIEW", "data": { "kind": "absolute_path" } }
     ]
   },
   "NDS": {
