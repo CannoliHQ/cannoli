@@ -141,6 +141,13 @@ class SettingsInputHandler @Inject constructor(
             }
             "manage_tools" -> openAppPicker("tools")
             "manage_ports" -> openAppPicker("ports")
+            "refresh_library" -> {
+                settingsViewModel.save()
+                settingsViewModel.exitSubList()
+                nav.screenStack.clear()
+                nav.screenStack.add(LauncherScreen.SystemList)
+                launcherActions.rescanSystemList()
+            }
             "ra_username" -> {
                 val current = settings.raUsername
                 nav.dialogState.value = DialogState.RenameInput(

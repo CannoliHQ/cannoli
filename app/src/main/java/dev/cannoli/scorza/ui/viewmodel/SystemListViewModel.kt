@@ -115,7 +115,7 @@ class SystemListViewModel @Inject constructor(
         _state.update { it.copy(scrollTarget = scrollIdx) }
     }
 
-    fun scan(showRecentlyPlayed: Boolean = true, contentMode: ContentMode = ContentMode.PLATFORMS, fghCollectionId: Long? = null, toolsName: String = "Tools", portsName: String = "Ports", onProgress: ((tag: String, current: Int, total: Int) -> Unit)? = null, onReady: () -> Unit = {}) {
+    fun scan(showRecentlyPlayed: Boolean = true, contentMode: ContentMode = ContentMode.PLATFORMS, fghCollectionId: Long? = null, toolsName: String = "Tools", portsName: String = "Ports", scanDisk: Boolean = true, onProgress: ((tag: String, current: Int, total: Int) -> Unit)? = null, onReady: () -> Unit = {}) {
         val prev = _state.value
         val prevItemCount = prev.items.size
         val restored = savedPosition
@@ -126,8 +126,10 @@ class SystemListViewModel @Inject constructor(
         currentFghCollectionId = fghCollectionId
 
         scope.launch(Dispatchers.IO) {
-            scanAllPlatformDirs { tag, current, total ->
-                withContext(Dispatchers.Main) { onProgress?.invoke(tag, current, total) }
+            if (scanDisk) {
+                scanAllPlatformDirs { tag, current, total ->
+                    withContext(Dispatchers.Main) { onProgress?.invoke(tag, current, total) }
+                }
             }
             val knownTagsInDb = romsRepository.knownPlatformTags()
             val watcherTags = knownTagsInDb

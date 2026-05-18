@@ -66,7 +66,7 @@ class BootInitializer @Inject constructor(
         val root = cannoliPaths.root
         val romDir = cannoliPaths.romDir
         val importPhase = if (hasLegacyData(root)) BootPhase.IMPORT else BootPhase.INITIAL_SCAN
-        onPhase(importPhase, 0f, "Preparing")
+        onPhase(BootPhase.LIBRARY_REFRESH, 0f, "Preparing")
 
         ScanLog.init(root.absolutePath)
         dev.cannoli.scorza.util.InputLog.init(root.absolutePath)
@@ -84,6 +84,7 @@ class BootInitializer @Inject constructor(
             onProgress = ImportProgress { progress, label ->
                 onPhase(importPhase, progress, label)
             },
+            scanDisk = settings.scanLibraryAutomatically,
         )
 
         val result = withContext(Dispatchers.IO) { importer.run() }
@@ -162,8 +163,10 @@ class BootInitializer @Inject constructor(
             nav.screenStack.add(LauncherScreen.SystemList)
         }
 
+        val shouldScanDisk = settings.scanLibraryAutomatically
         return suspendCancellableCoroutine { cont ->
             launcherActions.rescanSystemList(
+                scanDisk = shouldScanDisk,
                 onProgress = { tag, current, total ->
                     onPhase(BootPhase.LIBRARY_REFRESH, current.toFloat() / total.coerceAtLeast(1), tag)
                 },

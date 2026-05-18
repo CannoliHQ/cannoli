@@ -224,6 +224,10 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         get() = jsonRead { optBoolean(KEY_SHOW_RECENTLY_PLAYED, true) }
         set(value) = jsonWrite { put(KEY_SHOW_RECENTLY_PLAYED, value) }
 
+    var scanLibraryAutomatically: Boolean
+        get() = jsonRead { optBoolean(KEY_SCAN_LIBRARY_AUTOMATICALLY, true) }
+        set(value) = jsonWrite { put(KEY_SCAN_LIBRARY_AUTOMATICALLY, value) }
+
     var toolsName: String
         get() = jsonRead { optString(KEY_TOOLS_NAME, "Tools").ifEmpty { "Tools" } }
         set(value) = jsonWrite { if (value == "Tools") remove(KEY_TOOLS_NAME) else put(KEY_TOOLS_NAME, value) }
@@ -384,6 +388,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         private const val KEY_SHOW_TOOLS = "show_tools"
         private const val KEY_SHOW_PORTS = "show_ports"
         private const val KEY_SHOW_RECENTLY_PLAYED = "show_recently_played"
+        private const val KEY_SCAN_LIBRARY_AUTOMATICALLY = "scan_library_automatically"
         private const val KEY_TOOLS_NAME = "tools_name"
         private const val KEY_PORTS_NAME = "ports_name"
         private const val KEY_RA_USERNAME = "ra_username"

@@ -57,6 +57,7 @@ class LauncherActions @Inject constructor(
 ) {
 
     fun rescanSystemList(
+        scanDisk: Boolean = true,
         onProgress: ((String, Int, Int) -> Unit)? = null,
         onComplete: (() -> Unit)? = null,
     ) {
@@ -68,6 +69,7 @@ class LauncherActions @Inject constructor(
             fghCollectionId = fghId,
             toolsName = settings.toolsName,
             portsName = settings.portsName,
+            scanDisk = scanDisk,
             onProgress = onProgress,
             onReady = {
                 onComplete?.invoke()

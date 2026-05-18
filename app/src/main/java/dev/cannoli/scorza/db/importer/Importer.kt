@@ -35,6 +35,7 @@ class Importer(
     private val platformConfig: PlatformConfig,
     private val scanScheduler: ScanScheduler,
     private val onProgress: ImportProgress,
+    private val scanDisk: Boolean = true,
 ) {
     private val paths = CannoliPaths(cannoliRoot)
     private val collectionsDir = paths.collectionsDir
@@ -148,10 +149,12 @@ class Importer(
         val tags = platformConfig.getAllTags()
         for ((index, tag) in tags.withIndex()) {
             val upperTag = tag.uppercase()
-            try {
-                scanScheduler.runNow(upperTag)
-            } catch (t: Throwable) {
-                ScanLog.write("WARN scanPlatform $upperTag failed during import: ${t.message}")
+            if (scanDisk) {
+                try {
+                    scanScheduler.runNow(upperTag)
+                } catch (t: Throwable) {
+                    ScanLog.write("WARN scanPlatform $upperTag failed during import: ${t.message}")
+                }
             }
             conn.query("SELECT id, path FROM roms WHERE platform_tag = ?") { stmt ->
                 stmt.bindText(1, upperTag)

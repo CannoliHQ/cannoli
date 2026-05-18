@@ -8,6 +8,7 @@
     <string name="label_play">PLAY</string>
     <string name="label_launch">LAUNCH</string>
     <string name="label_open">OPEN</string>
+    <string name="label_scan">SCAN</string>
     <string name="label_save">SAVE</string>
     <string name="label_load">LOAD</string>
     <string name="label_change">CHANGE</string>
@@ -201,6 +202,10 @@
     <string name="setting_rom_directory">ROM Directory</string>
     <string name="setting_ra_package">RetroArch Package</string>
     <string name="setting_rebuild_cache">Rebuild Cache</string>
+    <string name="setting_scan_library">Scan Library</string>
+    <string name="setting_refresh_library">Refresh Library</string>
+    <string name="value_automatically">Automatically</string>
+    <string name="value_manually">Manually</string>
     <string name="setting_ra_username">Username</string>
     <string name="setting_ra_password">Password</string>
     <string name="setting_ra_login">Login</string>

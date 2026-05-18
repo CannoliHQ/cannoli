@@ -427,6 +427,7 @@ class SettingsViewModel @Inject constructor(
                 }
             }
             "show_recently_played" -> settings.showRecentlyPlayed = !settings.showRecentlyPlayed
+            "scan_library" -> settings.scanLibraryAutomatically = !settings.scanLibraryAutomatically
             "show_wifi" -> settings.showWifi = !settings.showWifi
             "show_bluetooth" -> settings.showBluetooth = !settings.showBluetooth
             "show_vpn" -> settings.showVpn = !settings.showVpn
@@ -717,6 +718,9 @@ class SettingsViewModel @Inject constructor(
             add(SettingsItem("sd_root", R.string.setting_sd_root, valueText = settings.sdCardRoot, isEditable = true))
             val romDir = settings.romDirectory
             add(SettingsItem("rom_directory", R.string.setting_rom_directory, valueText = romDir.ifEmpty { null }, valueRes = if (romDir.isEmpty()) R.string.value_cannoli_root else null, isEditable = true, canCycle = false))
+            val scanRes = if (settings.scanLibraryAutomatically) R.string.value_automatically else R.string.value_manually
+            add(SettingsItem("scan_library", R.string.setting_scan_library, valueRes = scanRes))
+            add(SettingsItem("refresh_library", R.string.setting_refresh_library, isEditable = true, canCycle = false))
         }
         "fgh_collection_picker" -> buildList {
             val rows = fghCollections()
