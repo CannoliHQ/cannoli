@@ -845,11 +845,16 @@ class LibretroActivity : ComponentActivity() {
         // we hand the event off to super so ViewRootImpl's SyntheticJoystickHandler can
         // generate KEYCODE_DPAD_* KeyEvents from the unbound HAT motion. Those reach
         // dispatchKeyEvent and fire the Button bindings.
+        //
+        // Only Pressed/Released count as "axis bound"; AnalogChanged deltas from a bound
+        // analog stick must NOT block the framework's HAT-to-keycode synthesis on a device
+        // that also emits unbound HAT axes in the same MotionEvent (bound-stick + unbound-HAT
+        // corner case).
         var axisBoundDeltas = false
         if (evaluator != null) {
             val axisValues = collectMotionAxes(mapping, event)
             val deltas = evaluator.evaluateAxis(axisValues)
-            axisBoundDeltas = deltas.isNotEmpty()
+            axisBoundDeltas = dev.cannoli.scorza.input.runtime.MotionDeltas.anyDigitalChange(deltas)
             pushPortMask(port)
         }
 
