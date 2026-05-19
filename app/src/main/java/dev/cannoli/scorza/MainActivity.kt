@@ -309,6 +309,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
      * wizard is operable. BootSequencer invokes this once, on the edge into Initializing.
      */
     private fun startStorageDependent() {
+        settings.reload()
         if (settings.sdCardRoot.isNotEmpty()) {
             dev.cannoli.scorza.util.InputLog.init(settings.sdCardRoot)
         }
