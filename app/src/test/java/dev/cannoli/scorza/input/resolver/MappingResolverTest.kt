@@ -348,6 +348,57 @@ class MappingResolverTest {
     }
 
     @Test
+    fun cfg_vid_pid_drives_hint_lookup_over_phantom_device_identity() {
+        // Phantom-rewrite hosts (Retroid family) report a BT pad's gamepad endpoint with the
+        // built-in's VID/PID while keeping the pad's real name. The bundled cfg matches by
+        // name, but its header carries the pad's true VID. Hint lookup must prefer the cfg's
+        // VID/PID over the device's reported (phantom) VID/PID so a DualSense connected via
+        // such a host doesn't inherit the host's hint (e.g. Nintendo BTN_EAST/PLUMBER).
+        val sonyAwareHints = dev.cannoli.scorza.input.hints.ControllerHintTable.fromJson(
+            """
+            {
+              "vid_pid": [
+                {"vendor_id": 1356, "menuConfirm": "BTN_SOUTH", "glyphStyle": "SHAPES"}
+              ],
+              "build_model": [
+                {"model_prefix": "Retroid", "menuConfirm": "BTN_EAST", "glyphStyle": "PLUMBER"}
+              ],
+              "default": {"menuConfirm": "BTN_SOUTH", "glyphStyle": "REDMOND"}
+            }
+            """.trimIndent()
+        )
+        val raEntry = RetroArchCfgEntry(
+            deviceName = "DualSense Wireless Controller",
+            vendorId = 1356,
+            productId = 3302,
+            buttonBindings = mapOf("a_btn" to 96, "b_btn" to 97),
+        )
+        val resolver = MappingResolver(
+            makeRepo(),
+            dev.cannoli.scorza.input.autoconfig.BundledAutoconfigEntries.forTest(listOf(raEntry)),
+            sonyAwareHints,
+            tempFolder.root,
+        )
+        val phantomDualsense = ConnectedDevice(
+            androidDeviceId = 11,
+            descriptor = "phantom-bt",
+            name = "DualSense Wireless Controller",
+            // Phantom-rewritten to the Retroid built-in's VID/PID instead of Sony's.
+            vendorId = 8226,
+            productId = 12289,
+            androidBuildModel = "Retroid Pocket Classic",
+            sourceMask = 0,
+            connectedAtMillis = 0L,
+        )
+
+        val resolved = resolver.resolve(phantomDualsense)
+
+        assertEquals(dev.cannoli.scorza.input.CanonicalButton.BTN_SOUTH, resolved.mapping.menuConfirm)
+        assertEquals(dev.cannoli.scorza.input.GlyphStyle.SHAPES, resolved.mapping.glyphStyle)
+        assertEquals(dev.cannoli.scorza.input.MappingSource.RETROARCH_AUTOCONFIG, resolved.mapping.source)
+    }
+
+    @Test
     fun saved_ANDROID_DEFAULT_wins_tier_3_when_no_bundled_cfg_matches() {
         // When no bundled cfg matches (tier 2 misses), a saved ANDROID_DEFAULT mapping is
         // preferred over regenerating a fresh baseline at tier 4 -- preserves the user's

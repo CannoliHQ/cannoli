@@ -91,7 +91,17 @@ object RetroArchAutoconfigImporter {
         val effectiveDescriptor = persistenceDescriptor?.takeIf { it.isNotEmpty() }
             ?: device.descriptor.takeIf { it.isNotEmpty() }
         val safeId = stableIdFor(device, entry, effectiveDescriptor)
-        val hint = hints.lookup(
+        // Phantom-rewrite handling: on hosts that rewrite a paired BT pad's VID/PID to the
+        // built-in's values (Retroid family), the device's reported vid/pid don't match the
+        // pad's real brand. The matched cfg has the right brand vid/pid in its header, so try
+        // the cfg's vid/pid against the hint table first; only fall through to the device's
+        // reported vid/pid + Build.MODEL when the cfg's vid/pid isn't known to the hint table.
+        val cfgHint = entry.vendorId?.let { cfgVid ->
+            entry.productId?.let { cfgPid ->
+                hints.lookupVidPid(cfgVid, cfgPid)
+            }
+        }
+        val hint = cfgHint ?: hints.lookup(
             vendorId = device.vendorId,
             productId = device.productId,
             buildModel = device.androidBuildModel,
