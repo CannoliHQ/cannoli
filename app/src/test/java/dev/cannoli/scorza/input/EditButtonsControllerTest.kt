@@ -141,4 +141,19 @@ class EditButtonsControllerTest {
         assertEquals(listOf(InputBinding.Button(97)), finalized.bindings[CanonicalButton.BTN_EAST])
         assertEquals(listOf(InputBinding.Button(96)), finalized.bindings[CanonicalButton.BTN_SOUTH])
     }
+
+    @Test fun `binding edit promotes source from ANDROID_DEFAULT to USER_WIZARD`() {
+        // ANDROID_DEFAULT-sourced mappings are bumped to tier 3 in MappingResolver so a
+        // bundled RA cfg can win for the device. When the user actually customizes a button
+        // binding, the resulting saved mapping must promote to USER_WIZARD so it wins tier 1
+        // and the user's customization is never silently replaced.
+        val template = emptyTemplate().copy(source = MappingSource.ANDROID_DEFAULT)
+        controller.startListening(template, CanonicalButton.BTN_SOUTH)
+        clockMs = 0
+        controller.captureRawKeyEvent(96)
+        clockMs = 500
+        val finalized = controller.tickAndMaybeFinalize() ?: error("expected finalized")
+        assertEquals(MappingSource.USER_WIZARD, finalized.source)
+        assertTrue(finalized.userEdited)
+    }
 }

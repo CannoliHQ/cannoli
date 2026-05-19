@@ -280,4 +280,100 @@ class MappingResolverTest {
         assertTrue(resolved.persistent)
     }
 
+    @Test
+    fun bundled_ra_cfg_outranks_saved_ANDROID_DEFAULT_with_matching_identity() {
+        // The cold-boot race could persist an ANDROID_DEFAULT mapping that matches a device
+        // for which a bundled RA cfg also exists. Tier 1 excludes ANDROID_DEFAULT, tier 2
+        // picks the bundled cfg, so the user gets device-correct bindings (e.g. Nintendo
+        // face buttons) instead of the AKEYCODE baseline.
+        val repo = makeRepo()
+        repo.save(
+            DeviceMapping(
+                id = "stadia_default",
+                displayName = "Stadia (default)",
+                match = DeviceMatchRule(
+                    name = "Stadia Controller",
+                    vendorId = 6353,
+                    productId = 37888,
+                ),
+                bindings = mapOf(CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96))),
+                source = MappingSource.ANDROID_DEFAULT,
+                userEdited = false,
+            )
+        )
+        val raEntry = RetroArchCfgEntry(
+            deviceName = "Stadia Controller",
+            vendorId = 6353,
+            productId = 37888,
+            buttonBindings = mapOf("a_btn" to 96, "b_btn" to 97),
+        )
+
+        val resolved = makeResolver(repo, bundledRa = listOf(raEntry)).resolve(device)
+
+        assertEquals(MappingSource.RETROARCH_AUTOCONFIG, resolved.mapping.source)
+        assertFalse(resolved.persistent)
+    }
+
+    @Test
+    fun saved_USER_WIZARD_outranks_bundled_ra_cfg() {
+        // User customization (USER_WIZARD source) must always beat the bundled cfg, even
+        // when both match. Without this guarantee, a user's edits would be silently reverted
+        // by an update that ships a new bundled cfg.
+        val repo = makeRepo()
+        repo.save(
+            DeviceMapping(
+                id = "stadia_user_custom",
+                displayName = "Stadia (user)",
+                match = DeviceMatchRule(
+                    name = "Stadia Controller",
+                    vendorId = 6353,
+                    productId = 37888,
+                ),
+                bindings = mapOf(CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96))),
+                source = MappingSource.USER_WIZARD,
+                userEdited = true,
+            )
+        )
+        val raEntry = RetroArchCfgEntry(
+            deviceName = "Stadia Controller",
+            vendorId = 6353,
+            productId = 37888,
+            buttonBindings = mapOf("a_btn" to 96, "b_btn" to 97),
+        )
+
+        val resolved = makeResolver(repo, bundledRa = listOf(raEntry)).resolve(device)
+
+        assertEquals("stadia_user_custom", resolved.mapping.id)
+        assertTrue(resolved.persistent)
+    }
+
+    @Test
+    fun saved_ANDROID_DEFAULT_wins_tier_3_when_no_bundled_cfg_matches() {
+        // When no bundled cfg matches (tier 2 misses), a saved ANDROID_DEFAULT mapping is
+        // preferred over regenerating a fresh baseline at tier 4 -- preserves the user's
+        // cosmetic toggles (glyph style, menu confirm side, display name) across sessions.
+        val repo = makeRepo()
+        repo.save(
+            DeviceMapping(
+                id = "stadia_default_with_cosmetic",
+                displayName = "Stadia",
+                match = DeviceMatchRule(
+                    name = "Stadia Controller",
+                    vendorId = 6353,
+                    productId = 37888,
+                ),
+                bindings = mapOf(CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96))),
+                source = MappingSource.ANDROID_DEFAULT,
+                userEdited = true,
+                glyphStyle = dev.cannoli.scorza.input.GlyphStyle.REDMOND,
+            )
+        )
+
+        val resolved = makeResolver(repo).resolve(device)
+
+        assertEquals("stadia_default_with_cosmetic", resolved.mapping.id)
+        assertEquals(dev.cannoli.scorza.input.GlyphStyle.REDMOND, resolved.mapping.glyphStyle)
+        assertTrue(resolved.persistent)
+    }
+
 }
