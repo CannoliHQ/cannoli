@@ -73,7 +73,7 @@ class DialogInputHandler @Inject constructor(
     private val launcherActions: LauncherActions,
     private val activityActions: ActivityActions,
     private val controllersViewModel: dev.cannoli.scorza.ui.viewmodel.ControllersViewModel,
-) {
+) : DialogPrecedence {
     private val selectHoldHandler = Handler(Looper.getMainLooper())
     private val selectHoldRunnable = Runnable {
         nav.selectHeld = true
@@ -85,7 +85,7 @@ class DialogInputHandler @Inject constructor(
         }
     }
 
-    fun cancelSelectHold() {
+    override fun cancelSelectHold() {
         selectHoldHandler.removeCallbacks(selectHoldRunnable)
     }
 
@@ -113,7 +113,7 @@ class DialogInputHandler @Inject constructor(
 
     private val gameContextOptions = listOf(MENU_MANAGE_COLLECTIONS, MENU_EMULATOR_OVERRIDE, MENU_RA_GAME_ID, MENU_RENAME, MENU_DELETE_GAME)
 
-    fun onUp(): Boolean {
+    override fun onUp(): Boolean {
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
         when (ds) {
@@ -150,7 +150,7 @@ class DialogInputHandler @Inject constructor(
         return true
     }
 
-    fun onDown(): Boolean {
+    override fun onDown(): Boolean {
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
         when (ds) {
@@ -187,7 +187,7 @@ class DialogInputHandler @Inject constructor(
         return true
     }
 
-    fun onLeft(): Boolean {
+    override fun onLeft(): Boolean {
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
         when (ds) {
@@ -223,7 +223,7 @@ class DialogInputHandler @Inject constructor(
         return true
     }
 
-    fun onRight(): Boolean {
+    override fun onRight(): Boolean {
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
         when (ds) {
@@ -259,7 +259,7 @@ class DialogInputHandler @Inject constructor(
         return true
     }
 
-    fun onConfirm(): Boolean {
+    override fun onConfirm(): Boolean {
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
         when (ds) {
@@ -391,7 +391,7 @@ class DialogInputHandler @Inject constructor(
         return true
     }
 
-    fun onBack(): Boolean {
+    override fun onBack(): Boolean {
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
         when (ds) {
@@ -460,7 +460,7 @@ class DialogInputHandler @Inject constructor(
         return true
     }
 
-    fun onStart(): Boolean {
+    override fun onStart(): Boolean {
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
         when (ds) {
@@ -481,7 +481,7 @@ class DialogInputHandler @Inject constructor(
         return true
     }
 
-    fun onNorth(): Boolean {
+    override fun onNorth(): Boolean {
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
         when (ds) {
@@ -520,7 +520,7 @@ class DialogInputHandler @Inject constructor(
         return true
     }
 
-    fun onWest(): Boolean {
+    override fun onWest(): Boolean {
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
         when (ds) {
@@ -547,7 +547,7 @@ class DialogInputHandler @Inject constructor(
         return true
     }
 
-    fun onSelect(): Boolean {
+    override fun onSelect(): Boolean {
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
         when (ds) {
@@ -566,7 +566,7 @@ class DialogInputHandler @Inject constructor(
         return true
     }
 
-    fun onSelectUp(): Boolean {
+    override fun onSelectUp(): Boolean {
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
         if (ds is KeyboardInputState) {
@@ -586,7 +586,7 @@ class DialogInputHandler @Inject constructor(
         return false
     }
 
-    fun onL1(): Boolean {
+    override fun onL1(): Boolean {
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
         when (ds) {
@@ -602,7 +602,7 @@ class DialogInputHandler @Inject constructor(
         return true
     }
 
-    fun onR1(): Boolean {
+    override fun onR1(): Boolean {
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
         when (ds) {
@@ -618,7 +618,7 @@ class DialogInputHandler @Inject constructor(
         return true
     }
 
-    fun onL2(): Boolean {
+    override fun onL2(): Boolean {
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
         when (ds) {
@@ -632,7 +632,7 @@ class DialogInputHandler @Inject constructor(
         return true
     }
 
-    fun onR2(): Boolean {
+    override fun onR2(): Boolean {
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
         when (ds) {

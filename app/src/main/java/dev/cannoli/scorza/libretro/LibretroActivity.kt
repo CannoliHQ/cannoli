@@ -1092,27 +1092,15 @@ class LibretroActivity : ComponentActivity() {
     }
 
     /**
-     * Wires the shared InputDispatcher's canonical-event callbacks for IGM dispatch. Every IGM
-     * screen registers a handler via ScreenInput in setContent (see igmHandlerFor), so the
-     * registry's top is always the active IGM screen's handler. EmptyScreenInputHandler defaults
-     * all methods to no-ops, so the no-screen case (gameplay) is a safe no-op.
+     * Wires the shared InputDispatcher's canonical-event callbacks for IGM dispatch. The IGM has
+     * no dialog precedence layer, so the helper is called with dialogHandler = null. Every IGM
+     * screen registers a handler via ScreenInput in setContent (see igmHandlerFor); the registry's
+     * top is always the active IGM screen's handler.
      */
     private fun wireDispatcherForIGM() {
-        inputDispatcher.onUp = { screenInputRegistry.top.onUp() }
-        inputDispatcher.onDown = { screenInputRegistry.top.onDown() }
-        inputDispatcher.onLeft = { screenInputRegistry.top.onLeft() }
-        inputDispatcher.onRight = { screenInputRegistry.top.onRight() }
-        inputDispatcher.onConfirm = { screenInputRegistry.top.onConfirm() }
-        inputDispatcher.onBack = { screenInputRegistry.top.onBack() }
-        inputDispatcher.onStart = { screenInputRegistry.top.onStart() }
-        inputDispatcher.onSelect = { screenInputRegistry.top.onSelect() }
-        inputDispatcher.onSelectUp = { screenInputRegistry.top.onSelectUp() }
-        inputDispatcher.onNorth = { screenInputRegistry.top.onNorth() }
-        inputDispatcher.onWest = { screenInputRegistry.top.onWest() }
-        inputDispatcher.onL1 = { screenInputRegistry.top.onL1() }
-        inputDispatcher.onR1 = { screenInputRegistry.top.onR1() }
-        inputDispatcher.onL2 = { screenInputRegistry.top.onL2() }
-        inputDispatcher.onR2 = { screenInputRegistry.top.onR2() }
+        inputDispatcher.wireToRegistry(
+            dialogHandler = null,
+        )
     }
 
     /**

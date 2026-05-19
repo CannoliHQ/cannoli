@@ -53,27 +53,12 @@ class InputRouter @Inject constructor(
     fun wire(dispatcher: InputDispatcher) {
         gameListHandler.buildContextOptions = dialogHandler::buildGameContextOptions
 
-        // Dialog handler gets first crack and returns true if it consumed the input. When no
-        // dialog is active, dispatch goes to whichever ScreenInputHandler is at the top of the
-        // registry (every launcher screen pushes one via ScreenInput in AppNavGraph; if the
-        // registry is briefly empty during a transition, EmptyScreenInputHandler's defaults are
-        // safe no-ops).
-        fun screen(): dev.cannoli.scorza.input.ScreenInputHandler = screenInputRegistry.top
-        dispatcher.onUp = { if (!dialogHandler.onUp()) screen().onUp() }
-        dispatcher.onDown = { if (!dialogHandler.onDown()) screen().onDown() }
-        dispatcher.onLeft = { if (!dialogHandler.onLeft()) screen().onLeft() }
-        dispatcher.onRight = { if (!dialogHandler.onRight()) screen().onRight() }
-        dispatcher.onConfirm = { if (!dialogHandler.onConfirm()) screen().onConfirm() }
-        dispatcher.onBack = { if (!dialogHandler.onBack()) screen().onBack() }
-        dispatcher.onStart = { if (!dialogHandler.onStart()) screen().onStart() }
-        dispatcher.onSelect = { if (!dialogHandler.onSelect()) screen().onSelect() }
-        dispatcher.onSelectUp = { onSelectUp() }
-        dispatcher.onNorth = { if (!dialogHandler.onNorth()) screen().onNorth() }
-        dispatcher.onWest = { if (!dialogHandler.onWest()) screen().onWest() }
-        dispatcher.onL1 = { if (!dialogHandler.onL1()) screen().onL1() }
-        dispatcher.onR1 = { if (!dialogHandler.onR1()) screen().onR1() }
-        dispatcher.onL2 = { if (!dialogHandler.onL2()) screen().onL2() }
-        dispatcher.onR2 = { if (!dialogHandler.onR2()) screen().onR2() }
+        // Launcher overrides onSelectUp because the select-hold cancel + nav-flag reset is
+        // specific to launcher state; the generic helper cannot know about it.
+        dispatcher.wireToRegistry(
+            dialogHandler = dialogHandler,
+            onSelectUpOverride = { onSelectUp() },
+        )
     }
 
     fun onSelectUp() {

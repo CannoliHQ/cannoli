@@ -192,6 +192,44 @@ class InputDispatcher @Inject constructor(
         return true
     }
 
+    /**
+     * Wires the dispatcher's canonical-event callbacks to its [ScreenInputRegistry]. Every
+     * subscriber Activity (MainActivity for the launcher, LibretroActivity for the IGM) calls
+     * this once during initialization so the two contexts share one wiring path and cannot drift.
+     *
+     * [dialogHandler] is consulted before the registry's top handler. Pass null on the IGM
+     * (no dialog layer) and the launcher's DialogInputHandler on the launcher. The handler
+     * returns true to consume the event; on false, dispatch falls through to the screen handler.
+     *
+     * The launcher passes [onSelectUpOverride] because it owns select-hold nav-flag state that
+     * the generic helper cannot know about; on the IGM and in tests the override stays null and
+     * the helper's default body (cancel-hold then dialog-or-screen) is used.
+     */
+    fun wireToRegistry(
+        dialogHandler: dev.cannoli.scorza.input.DialogPrecedence? = null,
+        onSelectUpOverride: (() -> Unit)? = null,
+    ) {
+        fun screen(): dev.cannoli.scorza.input.ScreenInputHandler = screenInputRegistry.top
+        onUp = { if (dialogHandler?.onUp() != true) screen().onUp() }
+        onDown = { if (dialogHandler?.onDown() != true) screen().onDown() }
+        onLeft = { if (dialogHandler?.onLeft() != true) screen().onLeft() }
+        onRight = { if (dialogHandler?.onRight() != true) screen().onRight() }
+        onConfirm = { if (dialogHandler?.onConfirm() != true) screen().onConfirm() }
+        onBack = { if (dialogHandler?.onBack() != true) screen().onBack() }
+        onStart = { if (dialogHandler?.onStart() != true) screen().onStart() }
+        onSelect = { if (dialogHandler?.onSelect() != true) screen().onSelect() }
+        onSelectUp = onSelectUpOverride ?: {
+            dialogHandler?.cancelSelectHold()
+            if (dialogHandler?.onSelectUp() != true) screen().onSelectUp()
+        }
+        onNorth = { if (dialogHandler?.onNorth() != true) screen().onNorth() }
+        onWest = { if (dialogHandler?.onWest() != true) screen().onWest() }
+        onL1 = { if (dialogHandler?.onL1() != true) screen().onL1() }
+        onR1 = { if (dialogHandler?.onR1() != true) screen().onR1() }
+        onL2 = { if (dialogHandler?.onL2() != true) screen().onL2() }
+        onR2 = { if (dialogHandler?.onR2() != true) screen().onR2() }
+    }
+
     companion object {
         private val NAV_CANONICALS = setOf(
             CanonicalButton.BTN_UP,
