@@ -176,4 +176,108 @@ class MappingResolverTest {
         assertEquals(3302, resolved.mapping.match.productId)
     }
 
+    @Test
+    fun saved_mapping_still_wins_when_descriptor_changes_across_reconnect() {
+        // First connect: user saves a mapping. Mapping's DeviceMatchRule captures the current
+        // descriptor along with name+VID/PID. Later, Android rotates the descriptor (BT nonce flip,
+        // phantom rewrite, or simply a fresh InputDevice id for the same physical pad). The saved
+        // mapping must still resolve.
+        val repo = makeRepo()
+        val saved = DeviceMapping(
+            id = "stadia_user",
+            displayName = "Stadia (user)",
+            match = DeviceMatchRule(
+                name = "Stadia Controller",
+                vendorId = 6353,
+                productId = 37888,
+                descriptor = "first-session-descriptor",
+            ),
+            bindings = mapOf(CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96))),
+            source = MappingSource.USER_WIZARD,
+            userEdited = true,
+        )
+        repo.save(saved)
+
+        val reconnect = device.copy(descriptor = "second-session-descriptor")
+        val resolved = makeResolver(repo).resolve(reconnect)
+
+        assertEquals("stadia_user", resolved.mapping.id)
+        assertTrue(resolved.persistent)
+    }
+
+    @Test
+    fun two_same_model_pads_both_resolve_to_same_saved_mapping() {
+        // Two physically distinct Pro pads of the same make/model. Both score 150 against the
+        // saved mapping (name +50, VID/PID +100) regardless of descriptor. After the descriptor
+        // demotion, either pad's connect resolves to the same template.
+        val repo = makeRepo()
+        repo.save(
+            DeviceMapping(
+                id = "switch_pro_user",
+                displayName = "Switch Pro (user)",
+                match = DeviceMatchRule(
+                    name = "Nintendo Switch Pro Controller",
+                    vendorId = 1406,
+                    productId = 8201,
+                    descriptor = "first-pad-descriptor",
+                ),
+                bindings = mapOf(CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96))),
+                source = MappingSource.USER_WIZARD,
+                userEdited = true,
+            )
+        )
+
+        val padOne = ConnectedDevice(
+            androidDeviceId = 7,
+            descriptor = "first-pad-descriptor",
+            name = "Nintendo Switch Pro Controller",
+            vendorId = 1406,
+            productId = 8201,
+            androidBuildModel = "Pixel",
+            sourceMask = 0,
+            connectedAtMillis = 0L,
+        )
+        val padTwo = padOne.copy(androidDeviceId = 8, descriptor = "second-pad-descriptor")
+
+        val resolver = makeResolver(repo)
+        assertEquals("switch_pro_user", resolver.resolve(padOne).mapping.id)
+        assertEquals("switch_pro_user", resolver.resolve(padTwo).mapping.id)
+    }
+
+    @Test
+    fun saved_mapping_resolves_for_bluetooth_pad_with_zero_vid_pid() {
+        // Common BT controller failure mode: kernel reports VID 0, PID 0. The saved mapping must
+        // still resolve via name alone.
+        val repo = makeRepo()
+        repo.save(
+            DeviceMapping(
+                id = "bt_pad_user",
+                displayName = "Bluetooth Gamepad (user)",
+                match = DeviceMatchRule(
+                    name = "Bluetooth Gamepad",
+                    vendorId = null,
+                    productId = null,
+                ),
+                bindings = mapOf(CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96))),
+                source = MappingSource.USER_WIZARD,
+                userEdited = true,
+            )
+        )
+
+        val btPad = ConnectedDevice(
+            androidDeviceId = 9,
+            descriptor = "some-bt-descriptor",
+            name = "Bluetooth Gamepad",
+            vendorId = 0,
+            productId = 0,
+            androidBuildModel = "Pixel",
+            sourceMask = 0,
+            connectedAtMillis = 0L,
+        )
+
+        val resolved = makeResolver(repo).resolve(btPad)
+        assertEquals("bt_pad_user", resolved.mapping.id)
+        assertTrue(resolved.persistent)
+    }
+
 }
