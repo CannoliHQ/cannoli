@@ -911,6 +911,26 @@ class DialogInputHandler @Inject constructor(
         } else {
             val item = gameListViewModel.getSelectedItem()
                 ?: (systemListViewModel.getSelectedItem() as? SystemListViewModel.ListItem.GameItem)?.item
+            if (item is ListItem.SubfolderItem) {
+                val tag = gameListViewModel.state.value.platformTag
+                val romDir = settings.romDirectory.takeIf { it.isNotEmpty() }?.let { File(it) }
+                    ?: File(File(settings.sdCardRoot), "Roms")
+                val dir = File(romDir, "$tag${File.separator}${item.path}")
+                val prefix = relativeRomPath(dir)
+                if (prefix == null) {
+                    nav.dialogState.value = DialogState.None
+                    return
+                }
+                ioScope.launch {
+                    dir.deleteRecursively()
+                    romsRepository.deleteRomsUnderPrefix(tag, prefix)
+                    scanner.invalidatePlatform(tag)
+                    gameListViewModel.reload()
+                    launcherActions.rescanSystemList()
+                    withContext(Dispatchers.Main) { nav.dialogState.value = DialogState.None }
+                }
+                return
+            }
             val rom = (item as? ListItem.RomItem)?.rom ?: return
             ioScope.launch {
                 deleteRom(rom)

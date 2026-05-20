@@ -56,6 +56,11 @@ class RomsRepository(
 
     fun deleteRom(romId: Long) = db.execute("DELETE FROM roms WHERE id = ?", romId)
 
+    fun deleteRomsUnderPrefix(platformTag: String, dirPrefix: String) = db.execute(
+        "DELETE FROM roms WHERE platform_tag = ? AND path LIKE ?",
+        platformTag.uppercase(), "$dirPrefix${File.separator}%",
+    )
+
     fun platformCounts(): Map<String, Int> = db.queryAll(
         "SELECT platform_tag, COUNT(*) FROM roms GROUP BY platform_tag",
     ) { it.getText(0) to it.getInt(1) }.toMap()
