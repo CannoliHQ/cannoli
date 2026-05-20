@@ -18,6 +18,7 @@ class FileServer(
     private val port: Int = 1091,
     @Volatile var codeBypass: Boolean = false,
     private val romsRepository: dev.cannoli.scorza.db.RomsRepository? = null,
+    private val scanPlatform: ((String) -> Unit)? = null,
 ) {
     private var serverSocket: ServerSocket? = null
     @Volatile private var running = false
@@ -142,6 +143,15 @@ class FileServer(
                 resource == "games" -> {
                     val gameSegments = apiSegments.drop(1)
                     handleGames(method, gameSegments, queryParams, headers, input, output)
+                }
+                resource == "scan" -> {
+                    if (method != "POST") { sendJson(output, 405, """{"error":"method not allowed"}"""); return }
+                    val tag = apiSegments.getOrNull(1)
+                    if (tag.isNullOrBlank()) { sendJson(output, 400, """{"error":"platform required"}"""); return }
+                    val scan = scanPlatform
+                    if (scan == null) { sendJson(output, 503, """{"error":"scan not available"}"""); return }
+                    scan(tag)
+                    sendJson(output, 200, """{"ok":true}""")
                 }
                 resource == "slots" -> {
                     val slotSegments = apiSegments.drop(1)
@@ -539,9 +549,22 @@ class FileServer(
         val base = java.text.Normalizer.normalize(rom.path.nameWithoutExtension, java.text.Normalizer.Form.NFC)
 
         when (segments.size) {
-            2 -> {
-                if (method != "GET") { sendJson(output, 405, """{"error":"method not allowed"}"""); return }
-                sendJson(output, 200, GamesResponse.buildOne(repo, cannoliRoot, platformTag, platformTag, rom.id)!!)
+            2 -> when (method) {
+                "GET" -> sendJson(output, 200, GamesResponse.buildOne(repo, cannoliRoot, platformTag, platformTag, rom.id)!!)
+                "DELETE" -> {
+                    gameRomFiles(rom).forEach { if (isSecure(it)) it.delete() }
+                    if (query["purge"] == "true") {
+                        File(cannoliRoot, "Saves/$platformTag").listFiles { f ->
+                            f.isFile && f.nameWithoutExtension.equals(base, ignoreCase = true)
+                        }?.forEach { it.delete() }
+                        File(cannoliRoot, "Save States/$platformTag/$base").deleteRecursively()
+                        File(cannoliRoot, "Guides/$platformTag/$base").deleteRecursively()
+                        rom.artFile?.let { if (isSecure(it)) it.delete() }
+                    }
+                    repo.deleteRom(rom.id)
+                    sendJson(output, 200, """{"ok":true}""")
+                }
+                else -> sendJson(output, 405, """{"error":"method not allowed"}""")
             }
             3 -> when (segments[2]) {
                 "rom" -> {

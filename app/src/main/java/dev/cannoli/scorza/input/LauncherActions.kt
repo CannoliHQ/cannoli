@@ -11,6 +11,7 @@ import dev.cannoli.scorza.db.CollectionsRepository
 import dev.cannoli.scorza.db.LibraryRef
 import dev.cannoli.scorza.db.RecentlyPlayedRepository
 import dev.cannoli.scorza.db.RomsRepository
+import dev.cannoli.scorza.db.ScanScheduler
 import dev.cannoli.scorza.di.IoScope
 import dev.cannoli.scorza.launcher.LaunchManager
 import dev.cannoli.scorza.model.AppType
@@ -45,6 +46,7 @@ class LauncherActions @Inject constructor(
     private val collectionsRepository: CollectionsRepository,
     private val recentlyPlayedRepository: RecentlyPlayedRepository,
     private val romsRepository: RomsRepository,
+    private val scanScheduler: ScanScheduler,
     private val appsRepository: AppsRepository,
     private val launchManager: LaunchManager,
     private val platformConfig: PlatformConfig,
@@ -142,7 +144,7 @@ class LauncherActions @Inject constructor(
         val romsRootProvider = {
             settings.romDirectory.takeIf { it.isNotEmpty() }?.let { File(it) } ?: File(sdRoot, "Roms")
         }
-        if (!km.isRunning) km.toggle(sdRoot, context.assets, settings.kitchenCodeBypass, romsRootProvider, romsRepository)
+        if (!km.isRunning) km.toggle(sdRoot, context.assets, settings.kitchenCodeBypass, romsRootProvider, romsRepository) { tag -> scanScheduler.runNow(tag) }
         else km.setCodeBypass(settings.kitchenCodeBypass)
         nav.dialogState.value = DialogState.Kitchen(
             urls = km.getUrls(hasActiveVpn()),
