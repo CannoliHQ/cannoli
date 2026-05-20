@@ -620,7 +620,7 @@ class GameListViewModel @Inject constructor(
                 val items = loadPlatformItems(tag, tags, subfolder)
                 val displayName = platformConfig.getDisplayName(tag)
                 val breadcrumb = if (breadcrumbStack.isEmpty()) displayName
-                else (listOf(displayName) + breadcrumbStack).joinToString(" › ")
+                else "/${breadcrumbStack.last()}"
                 val sameSize = prevCount >= 0 && items.size == prevCount && prevCount > 0
                 val maxIdx = items.lastIndex.coerceAtLeast(0)
                 val (idx, scroll) = if (sameSize || prevCount < 0) {
