@@ -133,6 +133,7 @@ class RomsRepository(
             launchTarget = LaunchTarget.RetroArch,
             discFiles = discPaths?.map { File(romDirectory, it) },
             raGameId = if (stmt.isNull(6)) null else stmt.getLong(6).toInt(),
+            lastPlayedAt = if (stmt.isNull(7)) null else stmt.getLong(7),
         )
     }
 
@@ -154,6 +155,6 @@ class RomsRepository(
     }
 
     private companion object {
-        const val BASE_SELECT = "SELECT id, path, platform_tag, display_name, tags, disc_paths, ra_game_id FROM roms"
+        const val BASE_SELECT = "SELECT id, path, platform_tag, display_name, tags, disc_paths, ra_game_id, last_played_at FROM roms"
     }
 }

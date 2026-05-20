@@ -14,13 +14,14 @@ object KitchenManager {
         cannoliRoot: File,
         assets: AssetManager,
         codeBypass: Boolean = false,
-        romsRootProvider: () -> File = { File(cannoliRoot, "Roms") }
+        romsRootProvider: () -> File = { File(cannoliRoot, "Roms") },
+        romsRepository: dev.cannoli.scorza.db.RomsRepository? = null,
     ) {
         val s = server
         if (s != null && s.isRunning) {
             s.stop()
         } else {
-            val newServer = FileServer(cannoliRoot, assets, romsRootProvider, codeBypass = codeBypass)
+            val newServer = FileServer(cannoliRoot, assets, romsRootProvider, codeBypass = codeBypass, romsRepository = romsRepository)
             server = newServer
             newServer.start()
         }

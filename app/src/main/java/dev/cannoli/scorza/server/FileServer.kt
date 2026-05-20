@@ -16,7 +16,8 @@ class FileServer(
     private val assets: AssetManager,
     private val romsRootProvider: () -> File = { File(cannoliRoot, "Roms") },
     private val port: Int = 1091,
-    @Volatile var codeBypass: Boolean = false
+    @Volatile var codeBypass: Boolean = false,
+    private val romsRepository: dev.cannoli.scorza.db.RomsRepository? = null,
 ) {
     private var serverSocket: ServerSocket? = null
     @Volatile private var running = false
@@ -138,6 +139,10 @@ class FileServer(
             when {
                 method == "GET" && resource == "info" -> handleInfo(output)
                 method == "GET" && resource == "tags" -> handleTags(output)
+                resource == "games" -> {
+                    val gameSegments = apiSegments.drop(1)
+                    handleGames(method, gameSegments, queryParams, headers, input, output)
+                }
                 resource == "slots" -> {
                     val slotSegments = apiSegments.drop(1)
                     handleSlots(method, slotSegments, queryParams, headers, input, output)
@@ -390,19 +395,43 @@ class FileServer(
                 val platformTag = segments[0]
                 val romName = java.text.Normalizer.normalize(segments[1], java.text.Normalizer.Form.NFC)
                 val action = segments[2]
-                if (action == "thumbnail") {
-                    val slot = query["slot"]?.toIntOrNull()
-                    if (slot == null || slot < 0 || slot > 10) {
-                        sendJson(output, 400, """{"error":"slot param required (0-10)"}"""); return
+                when (action) {
+                    "thumbnail" -> {
+                        val slot = query["slot"]?.toIntOrNull()
+                        if (slot == null || slot < 0 || slot > 10) {
+                            sendJson(output, 400, """{"error":"slot param required (0-10)"}"""); return
+                        }
+                        val gameDir = File(statesDir, "$platformTag/$romName")
+                        val thumbFile = File(gameDir, "${raStateName(romName, slot)}.png")
+                        if (!isSecure(thumbFile) || !thumbFile.exists()) {
+                            sendJson(output, 404, """{"error":"not found"}"""); return
+                        }
+                        sendFile(output, thumbFile, "image/png")
                     }
-                    val gameDir = File(statesDir, "$platformTag/$romName")
-                    val thumbFile = File(gameDir, "${raStateName(romName, slot)}.png")
-                    if (!isSecure(thumbFile) || !thumbFile.exists()) {
-                        sendJson(output, 404, """{"error":"not found"}"""); return
+                    "file" -> {
+                        val slot = query["slot"]?.toIntOrNull()
+                        if (slot == null || slot < 0 || slot > 10) {
+                            sendJson(output, 400, """{"error":"slot param required (0-10)"}"""); return
+                        }
+                        val gameDir = File(statesDir, "$platformTag/$romName")
+                        val stateFile = File(gameDir, raStateName(romName, slot))
+                        if (!isSecure(stateFile) || !stateFile.exists()) {
+                            sendJson(output, 404, """{"error":"not found"}"""); return
+                        }
+                        sendFile(output, stateFile, "application/octet-stream")
                     }
-                    sendFile(output, thumbFile, "image/png")
-                } else {
-                    sendJson(output, 404, """{"error":"not found"}""")
+                    "zip" -> {
+                        val gameDir = File(statesDir, "$platformTag/$romName")
+                        if (!isSecure(gameDir)) {
+                            sendJson(output, 403, """{"error":"forbidden"}"""); return
+                        }
+                        val bytes = SlotsZip.build(gameDir, romName)
+                        if (bytes == null) {
+                            sendJson(output, 404, """{"error":"no states"}"""); return
+                        }
+                        sendBytes(output, bytes, "application/zip")
+                    }
+                    else -> sendJson(output, 404, """{"error":"not found"}""")
                 }
             }
             else -> sendJson(output, 404, """{"error":"not found"}""")
@@ -478,6 +507,301 @@ class FileServer(
         sendJson(output, 200, """{"ok":true}""")
     }
 
+    private fun handleGames(
+        method: String,
+        segments: List<String>,
+        query: Map<String, String>,
+        headers: Map<String, String>,
+        input: java.io.InputStream,
+        output: OutputStream,
+    ) {
+        val repo = romsRepository
+        if (repo == null) {
+            sendJson(output, 503, """{"error":"games not available"}"""); return
+        }
+        if (segments.isEmpty()) { sendJson(output, 404, """{"error":"not found"}"""); return }
+        val platformTag = segments[0]
+
+        if (segments.size == 1) {
+            if (method != "GET") { sendJson(output, 405, """{"error":"method not allowed"}"""); return }
+            if (platformTag !in repo.knownPlatformTags()) {
+                sendJson(output, 404, """{"error":"platform not found"}"""); return
+            }
+            sendJson(output, 200, GamesResponse.buildList(repo, cannoliRoot, platformTag, platformTag))
+            return
+        }
+
+        val romId = segments[1].toLongOrNull()
+        val rom = romId?.let { repo.gameById(it) }
+        if (rom == null || !rom.platformTag.equals(platformTag, ignoreCase = true)) {
+            sendJson(output, 404, """{"error":"game not found"}"""); return
+        }
+        val base = java.text.Normalizer.normalize(rom.path.nameWithoutExtension, java.text.Normalizer.Form.NFC)
+
+        when (segments.size) {
+            2 -> {
+                if (method != "GET") { sendJson(output, 405, """{"error":"method not allowed"}"""); return }
+                sendJson(output, 200, GamesResponse.buildOne(repo, cannoliRoot, platformTag, platformTag, rom.id)!!)
+            }
+            3 -> when (segments[2]) {
+                "rom" -> {
+                    val romFile = resolveRomFile(rom, query["file"])
+                    if (romFile == null || !romFile.exists()) {
+                        sendJson(output, 404, """{"error":"not found"}"""); return
+                    }
+                    when (method) {
+                        "GET" -> sendFile(output, romFile, "application/octet-stream")
+                        "DELETE" -> { romFile.delete(); sendJson(output, 200, """{"ok":true}""") }
+                        else -> sendJson(output, 405, """{"error":"method not allowed"}""")
+                    }
+                }
+                "roms" -> {
+                    if (method != "GET") { sendJson(output, 405, """{"error":"method not allowed"}"""); return }
+                    sendJson(output, 200, gameRomsJson(rom))
+                }
+                "art" -> when (method) {
+                    "GET" -> {
+                        val art = rom.artFile
+                        if (art == null || !art.exists() || !isSecure(art)) {
+                            sendJson(output, 404, """{"error":"not found"}"""); return
+                        }
+                        sendFile(output, art, artMime(art))
+                    }
+                    "POST" -> {
+                        val name = query["name"]
+                        if (name.isNullOrBlank()) { sendJson(output, 400, """{"error":"name param required"}"""); return }
+                        val ext = name.substringAfterLast('.', "png").lowercase(java.util.Locale.ROOT)
+                        val artDir = File(cannoliRoot, "Art/$platformTag")
+                        artDir.listFiles { f ->
+                            f.isFile && f.nameWithoutExtension.equals(base, ignoreCase = true)
+                        }?.forEach { it.delete() }
+                        val dest = File(artDir, "$base.$ext")
+                        if (!isSecure(dest)) { sendJson(output, 403, """{"error":"forbidden"}"""); return }
+                        streamUploadToFile(dest, headers["content-type"] ?: "", headers["content-length"]?.toLongOrNull() ?: 0L, input)
+                        sendJson(output, 200, """{"ok":true}""")
+                    }
+                    "DELETE" -> {
+                        val art = rom.artFile
+                        if (art == null || !art.exists()) { sendJson(output, 404, """{"error":"not found"}"""); return }
+                        if (!isSecure(art)) { sendJson(output, 403, """{"error":"forbidden"}"""); return }
+                        art.delete()
+                        sendJson(output, 200, """{"ok":true}""")
+                    }
+                    else -> sendJson(output, 405, """{"error":"method not allowed"}""")
+                }
+                "saves" -> when (method) {
+                    "GET" -> {
+                        val fileName = query["file"]
+                        if (fileName.isNullOrBlank()) {
+                            sendJson(output, 200, gameSavesJson(platformTag, base))
+                        } else {
+                            val target = File(File(cannoliRoot, "Saves/$platformTag"), File(fileName).name)
+                            if (!isSecure(target) || !target.exists()) {
+                                sendJson(output, 404, """{"error":"not found"}"""); return
+                            }
+                            sendFile(output, target, "application/octet-stream")
+                        }
+                    }
+                    "POST" -> {
+                        val name = query["name"]
+                        if (name.isNullOrBlank()) { sendJson(output, 400, """{"error":"name param required"}"""); return }
+                        val ext = name.substringAfterLast('.', "").lowercase(java.util.Locale.ROOT)
+                        if (ext.isEmpty()) { sendJson(output, 400, """{"error":"name needs an extension"}"""); return }
+                        val dest = File(cannoliRoot, "Saves/$platformTag/$base.$ext")
+                        if (!isSecure(dest)) { sendJson(output, 403, """{"error":"forbidden"}"""); return }
+                        streamUploadToFile(dest, headers["content-type"] ?: "", headers["content-length"]?.toLongOrNull() ?: 0L, input)
+                        sendJson(output, 200, """{"ok":true}""")
+                    }
+                    "DELETE" -> {
+                        val fileName = query["file"]
+                        if (fileName.isNullOrBlank()) { sendJson(output, 400, """{"error":"file param required"}"""); return }
+                        val target = File(File(cannoliRoot, "Saves/$platformTag"), File(fileName).name)
+                        if (!isSecure(target)) { sendJson(output, 403, """{"error":"forbidden"}"""); return }
+                        if (!target.exists()) { sendJson(output, 404, """{"error":"not found"}"""); return }
+                        target.delete()
+                        sendJson(output, 200, """{"ok":true}""")
+                    }
+                    else -> sendJson(output, 405, """{"error":"method not allowed"}""")
+                }
+                "guides" -> {
+                    val guideDir = File(cannoliRoot, "Guides/$platformTag/$base")
+                    when (method) {
+                        "GET" -> {
+                            val fileName = query["file"]
+                            if (fileName.isNullOrBlank()) {
+                                sendJson(output, 200, gameGuidesJson(platformTag, base))
+                            } else {
+                                val target = File(guideDir, File(fileName).name)
+                                if (!isSecure(target) || !target.exists()) {
+                                    sendJson(output, 404, """{"error":"not found"}"""); return
+                                }
+                                sendFile(output, target, "application/octet-stream")
+                            }
+                        }
+                        "POST" -> {
+                            val name = query["name"]
+                            if (name.isNullOrBlank()) { sendJson(output, 400, """{"error":"name param required"}"""); return }
+                            val dest = File(guideDir, File(name).name)
+                            if (!isSecure(dest)) { sendJson(output, 403, """{"error":"forbidden"}"""); return }
+                            streamUploadToFile(dest, headers["content-type"] ?: "", headers["content-length"]?.toLongOrNull() ?: 0L, input)
+                            sendJson(output, 200, """{"ok":true}""")
+                        }
+                        "DELETE" -> {
+                            val fileName = query["file"]
+                            if (fileName.isNullOrBlank()) { sendJson(output, 400, """{"error":"file param required"}"""); return }
+                            val target = File(guideDir, File(fileName).name)
+                            if (!isSecure(target)) { sendJson(output, 403, """{"error":"forbidden"}"""); return }
+                            if (!target.exists()) { sendJson(output, 404, """{"error":"not found"}"""); return }
+                            target.delete()
+                            sendJson(output, 200, """{"ok":true}""")
+                        }
+                        else -> sendJson(output, 405, """{"error":"method not allowed"}""")
+                    }
+                }
+                "states" -> {
+                    if (method != "GET") { sendJson(output, 405, """{"error":"method not allowed"}"""); return }
+                    val gameDir = File(cannoliRoot, "Save States/$platformTag/$base")
+                    handleSlotsList(output, gameDir, base)
+                }
+                else -> sendJson(output, 404, """{"error":"not found"}""")
+            }
+            4 -> {
+                if (segments[2] != "states") { sendJson(output, 404, """{"error":"not found"}"""); return }
+                val gameDir = File(cannoliRoot, "Save States/$platformTag/$base")
+                if (segments[3] == "zip") {
+                    if (method != "GET") { sendJson(output, 405, """{"error":"method not allowed"}"""); return }
+                    if (!isSecure(gameDir)) { sendJson(output, 403, """{"error":"forbidden"}"""); return }
+                    val bytes = SlotsZip.build(gameDir, base)
+                    if (bytes == null) { sendJson(output, 404, """{"error":"no states"}"""); return }
+                    sendBytes(output, bytes, "application/zip")
+                    return
+                }
+                val slot = segments[3].toIntOrNull()
+                if (slot == null || slot < 0 || slot > 10) {
+                    sendJson(output, 400, """{"error":"slot must be 0-10"}"""); return
+                }
+                if (!isSecure(gameDir)) { sendJson(output, 403, """{"error":"forbidden"}"""); return }
+                when (method) {
+                    "GET" -> {
+                        val stateFile = File(gameDir, raStateName(base, slot))
+                        if (!isSecure(stateFile) || !stateFile.exists()) {
+                            sendJson(output, 404, """{"error":"not found"}"""); return
+                        }
+                        sendFile(output, stateFile, "application/octet-stream")
+                    }
+                    "POST" -> {
+                        val contentLength = headers["content-length"]?.toLongOrNull() ?: 0L
+                        val contentType = headers["content-type"] ?: ""
+                        handleSlotUpload(output, gameDir, base, slot, contentType, contentLength, input)
+                    }
+                    "DELETE" -> handleSlotDelete(output, gameDir, base, slot)
+                    else -> sendJson(output, 405, """{"error":"method not allowed"}""")
+                }
+            }
+            5 -> {
+                if (segments[2] != "states" || segments[4] != "thumbnail") {
+                    sendJson(output, 404, """{"error":"not found"}"""); return
+                }
+                if (method != "GET") { sendJson(output, 405, """{"error":"method not allowed"}"""); return }
+                val slot = segments[3].toIntOrNull()
+                if (slot == null || slot < 0 || slot > 10) {
+                    sendJson(output, 400, """{"error":"slot must be 0-10"}"""); return
+                }
+                val gameDir = File(cannoliRoot, "Save States/$platformTag/$base")
+                val thumbFile = File(gameDir, "${raStateName(base, slot)}.png")
+                if (!isSecure(thumbFile) || !thumbFile.exists()) {
+                    sendJson(output, 404, """{"error":"not found"}"""); return
+                }
+                sendFile(output, thumbFile, "image/png")
+            }
+            else -> sendJson(output, 404, """{"error":"not found"}""")
+        }
+    }
+
+    private fun artMime(file: File): String = when (file.extension.lowercase(java.util.Locale.ROOT)) {
+        "png" -> "image/png"
+        "jpg", "jpeg" -> "image/jpeg"
+        "webp" -> "image/webp"
+        "gif" -> "image/gif"
+        "bmp" -> "image/bmp"
+        else -> "application/octet-stream"
+    }
+
+    private fun gameSavesJson(platformTag: String, base: String): String {
+        val dir = File(cannoliRoot, "Saves/$platformTag")
+        val files = dir.listFiles { f -> f.isFile && f.nameWithoutExtension.equals(base, ignoreCase = true) }
+            ?.sortedBy { it.name.lowercase(java.util.Locale.ROOT) } ?: emptyList()
+        val items = files.joinToString(",") { f ->
+            """{"name":"${escapeJson(f.name)}","size":${f.length()},"modified":${f.lastModified()}}"""
+        }
+        return """{"files":[$items]}"""
+    }
+
+    private fun gameGuidesJson(platformTag: String, base: String): String {
+        val dir = File(cannoliRoot, "Guides/$platformTag/$base")
+        val files = dir.listFiles { f -> f.isFile }
+            ?.sortedBy { it.name.lowercase(java.util.Locale.ROOT) } ?: emptyList()
+        val items = files.joinToString(",") { f ->
+            """{"name":"${escapeJson(f.name)}","size":${f.length()},"modified":${f.lastModified()}}"""
+        }
+        return """{"files":[$items]}"""
+    }
+
+    private fun gameRomFiles(rom: dev.cannoli.scorza.model.Rom): List<File> = buildList {
+        add(rom.path)
+        rom.discFiles?.let { addAll(it) }
+    }
+
+    private fun gameRomsJson(rom: dev.cannoli.scorza.model.Rom): String {
+        val romsRootPrefix = "${romsRootProvider().absolutePath}${File.separator}"
+        val items = gameRomFiles(rom).joinToString(",") { f ->
+            val rel = f.absolutePath.removePrefix(romsRootPrefix).replace(File.separatorChar, '/')
+            val size = if (f.exists()) f.length() else 0L
+            """{"name":"${escapeJson(f.name)}","path":"${escapeJson(rel)}","size":$size,"modified":${f.lastModified()}}"""
+        }
+        return """{"files":[$items]}"""
+    }
+
+    private fun resolveRomFile(rom: dev.cannoli.scorza.model.Rom, fileParam: String?): File? {
+        if (fileParam.isNullOrBlank()) return rom.path
+        val target = File(romsRootProvider(), fileParam)
+        if (!isSecure(target)) return null
+        return gameRomFiles(rom).firstOrNull { it.absolutePath == target.absolutePath }
+    }
+
+    private fun streamUploadToFile(
+        destFile: File,
+        contentType: String,
+        contentLength: Long,
+        input: java.io.InputStream,
+    ) {
+        destFile.parentFile?.mkdirs()
+        if (contentType.startsWith("multipart/form-data")) {
+            val boundary = contentType.substringAfter("boundary=", "").trim()
+            if (boundary.isEmpty()) return
+            val boundaryBytes = "--$boundary".toByteArray()
+            val stream = MultipartStream(input, contentLength)
+            stream.skipToBoundary(boundaryBytes)
+            if (!stream.isEndBoundary(boundaryBytes)) {
+                stream.readHeaderBlock()
+                destFile.outputStream().use { fos -> stream.streamBodyToBoundary(boundaryBytes, fos) }
+            }
+        } else {
+            destFile.outputStream().use { fos ->
+                val bos = java.io.BufferedOutputStream(fos, 262144)
+                val buf = ByteArray(262144)
+                var remaining = contentLength
+                while (remaining > 0) {
+                    val n = input.read(buf, 0, minOf(buf.size.toLong(), remaining).toInt())
+                    if (n <= 0) break
+                    bos.write(buf, 0, n)
+                    remaining -= n
+                }
+                bos.flush()
+            }
+        }
+    }
+
     private fun handleArtwork(segments: List<String>, output: OutputStream) {
         val artDir = File(cannoliRoot, "Art")
         when (segments.size) {
@@ -546,6 +870,22 @@ class FileServer(
                 output.write(buf, 0, n)
             }
         }
+        output.flush()
+    }
+
+    private fun sendBytes(output: OutputStream, bytes: ByteArray, contentType: String) {
+        val header = buildString {
+            append("HTTP/1.1 200 OK\r\n")
+            append("Content-Type: $contentType\r\n")
+            append("Content-Length: ${bytes.size}\r\n")
+            append("Access-Control-Allow-Origin: *\r\n")
+            append("Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS\r\n")
+            append("Access-Control-Allow-Headers: Content-Type, Authorization\r\n")
+            append("Connection: close\r\n")
+            append("\r\n")
+        }
+        output.write(header.toByteArray())
+        output.write(bytes)
         output.flush()
     }
 
@@ -847,8 +1187,11 @@ class FileServer(
         output.flush()
     }
 
-    private fun raStateName(romName: String, slot: Int): String =
-        if (slot == 0) "$romName.state" else "$romName.state$slot"
+    private fun raStateName(romName: String, slot: Int): String = when (slot) {
+        0 -> "$romName.state.auto"
+        1 -> "$romName.state"
+        else -> "$romName.state${slot - 1}"
+    }
 
     private fun escapeJson(s: String): String {
         val sb = StringBuilder(s.length)

@@ -12,4 +12,5 @@ data class Rom(
     val launchTarget: LaunchTarget = LaunchTarget.RetroArch,
     val discFiles: List<File>? = null,
     val raGameId: Int? = null,
+    val lastPlayedAt: Long? = null,
 )
