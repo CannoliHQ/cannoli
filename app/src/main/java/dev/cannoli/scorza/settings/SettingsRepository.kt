@@ -345,6 +345,10 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         get() = jsonRead { optBoolean(KEY_LOGGING_SESSION, false) }
         set(value) = jsonWrite { put(KEY_LOGGING_SESSION, value) }
 
+    var loggingKitchen: Boolean
+        get() = jsonRead { optBoolean(KEY_LOGGING_KITCHEN, false) }
+        set(value) = jsonWrite { put(KEY_LOGGING_KITCHEN, value) }
+
     var alwaysSaveOnQuit: Boolean
         get() = jsonRead { optBoolean(KEY_ALWAYS_SAVE_ON_QUIT, false) }
         set(value) = jsonWrite { put(KEY_ALWAYS_SAVE_ON_QUIT, value) }
@@ -406,6 +410,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         private const val KEY_LOGGING_ROM_SCAN = "logging_rom_scan"
         private const val KEY_LOGGING_INPUT = "logging_input"
         private const val KEY_LOGGING_SESSION = "logging_session"
+        private const val KEY_LOGGING_KITCHEN = "logging_kitchen"
         private const val KEY_ALWAYS_SAVE_ON_QUIT = "always_save_on_quit"
         private const val KEY_PORTRAIT_MARGIN_PX = "portrait_margin_px"
         private const val KEY_FGH_COLLECTION = "fgh_collection"

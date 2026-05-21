@@ -26,6 +26,7 @@ import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import dev.cannoli.scorza.updater.UpdateManager
+import dev.cannoli.scorza.util.KitchenLog
 import dev.cannoli.scorza.util.ScanLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -70,6 +71,7 @@ class BootInitializer @Inject constructor(
 
         ScanLog.init(root.absolutePath)
         dev.cannoli.scorza.util.InputLog.init(root.absolutePath)
+        KitchenLog.init(root.absolutePath)
         platformConfig.load()
         ioScope.launch {
             launchManager.syncRetroArchAssets(root)
