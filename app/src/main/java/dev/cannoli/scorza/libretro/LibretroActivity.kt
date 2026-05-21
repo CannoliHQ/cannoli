@@ -376,7 +376,8 @@ class LibretroActivity : ComponentActivity() {
             cannoliRoot = cannoliRoot,
             coreName = coreName,
             corePath = corePath,
-            romPath = romPath
+            romPath = romPath,
+            gameTitle = gameTitle
         )
 
         if (savedInstanceState != null) {
