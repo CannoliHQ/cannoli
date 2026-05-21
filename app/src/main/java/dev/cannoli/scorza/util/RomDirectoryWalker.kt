@@ -193,6 +193,13 @@ class RomDirectoryWalker(
         val discGroups = discCandidates.groupBy { discRegex.replace(it.nameWithoutExtension, "").trim() }
         for ((baseName, groupFiles) in discGroups) {
             val byStem = groupFiles.groupBy { it.nameWithoutExtension }
+            val existingSubdir = File(dir, baseName)
+            if (existingSubdir.isDirectory) {
+                if (mergeLooseDiscsIntoBundle(baseName, existingSubdir, groupFiles, romFiles, tag)) {
+                    processed.addAll(groupFiles)
+                }
+                continue
+            }
             if (byStem.size <= 1) continue
             if (m3uByBase[baseName] != null) continue
             if (organizeMultiDisc(dir, baseName, byStem, romFiles, relPrefix, tag, moves)) {
@@ -255,6 +262,46 @@ class RomDirectoryWalker(
         val newRel = "$relPrefix$baseName${File.separator}${m3uFile.name}"
         moves.add(RekeyMove(oldRel, newRel))
         ScanLog.write("organize $tag: bundled $baseName (${primaries.size} discs, ${toMove.size - primaries.size} companions)")
+        return true
+    }
+
+    // Moves late-arriving loose discs into an existing `<baseName>/` bundle and rewrites its m3u,
+    // so incremental uploads (a disc landing after the bundle was already organized) still converge.
+    private fun mergeLooseDiscsIntoBundle(
+        baseName: String,
+        subdir: File,
+        looseDiscs: List<File>,
+        siblings: List<File>,
+        tag: String,
+    ): Boolean {
+        val m3uFile = File(subdir, "$baseName.m3u")
+        if (!m3uFile.exists()) return false
+
+        val toMove = linkedSetOf<File>().apply {
+            addAll(looseDiscs)
+            for (file in looseDiscs) {
+                addAll(stemSiblings(file, siblings))
+                if (file.extension.equals("cue", ignoreCase = true)) {
+                    addAll(parseCueReferencedFiles(file))
+                }
+            }
+        }
+        val moved = mutableListOf<Pair<File, File>>()
+        if (!moveAll(toMove, subdir, moved, tag, baseName)) return false
+
+        val discFiles = subdir.listFiles()?.filter {
+            it.isFile && discRegex.containsMatchIn(it.nameWithoutExtension)
+        }.orEmpty()
+        val primaries = discFiles.groupBy { it.nameWithoutExtension }
+            .values.map { pickPrimary(it) }.sortedBy { it.name }
+        if (primaries.isNotEmpty()) {
+            try {
+                m3uFile.writeText(primaries.joinToString("\n") { it.name } + "\n")
+            } catch (e: Throwable) {
+                ScanLog.write("organize $tag: failed to rewrite $baseName.m3u: ${e.message}")
+            }
+        }
+        ScanLog.write("organize $tag: merged ${looseDiscs.size} loose disc(s) into $baseName/")
         return true
     }
 
