@@ -54,8 +54,9 @@ object GamesResponse {
         val statesCount = countStates(cannoliRoot, platformTag, baseName)
         val guidesCount = countGuides(cannoliRoot, platformTag, baseName)
         val relativeRomPath = romFile.absolutePath.removePrefix("${File(cannoliRoot, "Roms").absolutePath}${File.separator}")
-        val hasArt = rom.artFile != null
-        val artUrl = rom.artFile?.let {
+        val artFile = resolveArtFile(cannoliRoot, platformTag, baseName)
+        val hasArt = artFile != null
+        val artUrl = artFile?.let {
             val rel = it.absolutePath.removePrefix("${File(cannoliRoot, "Art").absolutePath}${File.separator}")
             "/files/art/${rel.replace(File.separatorChar, '/')}"
         }
@@ -82,6 +83,19 @@ object GamesResponse {
         )
         sb.append('}')
         return sb.toString()
+    }
+
+    internal fun resolveArtFile(cannoliRoot: File, platformTag: String, baseName: String): File? {
+        val dir = File(cannoliRoot, "Art/$platformTag")
+        if (!dir.isDirectory) return null
+        val base = java.text.Normalizer.normalize(baseName, java.text.Normalizer.Form.NFC)
+        return try {
+            dir.listFiles { f ->
+                f.isFile && java.text.Normalizer
+                    .normalize(f.nameWithoutExtension, java.text.Normalizer.Form.NFC)
+                    .equals(base, ignoreCase = true)
+            }?.minByOrNull { it.name.lowercase() }
+        } catch (_: Throwable) { null }
     }
 
     private fun countSaves(cannoliRoot: File, platformTag: String, baseName: String): Int {

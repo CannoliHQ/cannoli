@@ -38,6 +38,15 @@ internal fun KitchenHttpServer.gameRomFiles(rom: dev.cannoli.scorza.model.Rom): 
     rom.discFiles?.let { addAll(it) }
 }
 
+internal fun KitchenHttpServer.multiDiscGameDir(rom: dev.cannoli.scorza.model.Rom): File? {
+    if (rom.discFiles.isNullOrEmpty()) return null
+    val gameDir = rom.path.parentFile ?: return null
+    // Loose set: discs sit directly in the platform folder; never delete that.
+    if (gameDir.parentFile?.absolutePath == romsRootProvider().absolutePath) return null
+    if (!isSecure(gameDir)) return null
+    return gameDir
+}
+
 internal fun KitchenHttpServer.gameRomsJson(rom: dev.cannoli.scorza.model.Rom): String {
     val romsRootPrefix = "${romsRootProvider().absolutePath}${File.separator}"
     val items = gameRomFiles(rom).joinToString(",") { f ->
@@ -113,7 +122,9 @@ internal fun KitchenHttpServer.handleGames(
         2 -> return when (method) {
             "GET" -> jsonResponse(200, GamesResponse.buildOne(repo, cannoliRoot, platformTag, platformTag, rom.id)!!)
             "DELETE" -> {
-                gameRomFiles(rom).forEach { if (isSecure(it)) it.delete() }
+                val gameDir = multiDiscGameDir(rom)
+                if (gameDir != null) gameDir.deleteRecursively()
+                else gameRomFiles(rom).forEach { if (isSecure(it)) it.delete() }
                 if (query["purge"] == "true") {
                     File(cannoliRoot, "Saves/$platformTag").listFiles { f ->
                         f.isFile && f.nameWithoutExtension.equals(base, ignoreCase = true)
@@ -135,7 +146,12 @@ internal fun KitchenHttpServer.handleGames(
                 }
                 when (method) {
                     "GET" -> fileResponse(romFile, "application/octet-stream")
-                    "DELETE" -> { romFile.delete(); jsonResponse(200, """{"ok":true}""") }
+                    "DELETE" -> {
+                        val gameDir = multiDiscGameDir(rom)
+                        if (gameDir != null) gameDir.deleteRecursively() else romFile.delete()
+                        scanPlatform?.invoke(platformTag)
+                        jsonResponse(200, """{"ok":true}""")
+                    }
                     else -> jsonResponse(405, """{"error":"method not allowed"}""")
                 }
             }
@@ -145,7 +161,7 @@ internal fun KitchenHttpServer.handleGames(
             }
             "art" -> when (method) {
                 "GET" -> {
-                    val art = rom.artFile
+                    val art = GamesResponse.resolveArtFile(cannoliRoot, platformTag, base)
                     if (art == null || !art.exists() || !isSecure(art)) {
                         return jsonResponse(404, """{"error":"not found"}""")
                     }
@@ -165,7 +181,7 @@ internal fun KitchenHttpServer.handleGames(
                     jsonResponse(200, """{"ok":true}""")
                 }
                 "DELETE" -> {
-                    val art = rom.artFile
+                    val art = GamesResponse.resolveArtFile(cannoliRoot, platformTag, base)
                     if (art == null || !art.exists()) return jsonResponse(404, """{"error":"not found"}""")
                     if (!isSecure(art)) return jsonResponse(403, """{"error":"forbidden"}""")
                     art.delete()
