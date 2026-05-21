@@ -43,8 +43,6 @@ class SettingsInputHandler @Inject constructor(
     private val installedCoreService: InstalledCoreService,
     private val globalOverrides: GlobalOverridesManager,
     private val appsRepository: AppsRepository,
-    private val romsRepository: dev.cannoli.scorza.db.RomsRepository,
-    private val scanScheduler: dev.cannoli.scorza.db.ScanScheduler,
     private val setupCoordinator: SetupCoordinator,
     private val inputTesterController: InputTesterController,
     private val updateManager: UpdateManager,
@@ -93,12 +91,8 @@ class SettingsInputHandler @Inject constructor(
                 cat?.key == "retroachievements" && settings.raToken.isNotEmpty() ->
                     nav.dialogState.value = DialogState.RAAccount(username = settings.raUsername)
                 cat?.key == "kitchen" -> {
-                    val root = java.io.File(settings.sdCardRoot)
                     val km = dev.cannoli.scorza.server.KitchenManager
-                    val romsRootProvider = {
-                        settings.romDirectory.takeIf { it.isNotEmpty() }?.let { java.io.File(it) } ?: java.io.File(root, "Roms")
-                    }
-                    if (!km.isRunning) km.toggle(root, context.assets, settings.kitchenCodeBypass, romsRootProvider, romsRepository) { tag -> scanScheduler.runNow(tag) }
+                    if (!km.isRunning) km.start(context, settings.kitchenCodeBypass)
                     else km.setCodeBypass(settings.kitchenCodeBypass)
                     nav.dialogState.value = DialogState.Kitchen(
                         urls = km.getUrls(hasActiveVpn()),

@@ -145,6 +145,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
         dev.cannoli.scorza.util.LoggingPrefs.romScan = settings.loggingRomScan
         dev.cannoli.scorza.util.LoggingPrefs.input = settings.loggingInput
         dev.cannoli.scorza.util.LoggingPrefs.session = settings.loggingSession
+        dev.cannoli.scorza.util.LoggingPrefs.kitchen = settings.loggingKitchen
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -275,6 +276,15 @@ class MainActivity : ComponentActivity(), ActivityActions {
         val navResumableGames = nav.resumableGames
         val activeMapping by activeMappingHolder.active.collectAsState()
         LaunchedEffect(navScreen) {
+        }
+        val currentDialog by navDialogState.collectAsState()
+        val kitchenVisible = currentDialog is DialogState.Kitchen
+        LaunchedEffect(kitchenVisible) {
+            if (kitchenVisible) {
+                window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            } else {
+                window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }
         }
         AppNavGraph(
             currentScreen = navScreen,
@@ -410,7 +420,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
             systemListViewModel.get().close()
             gameListViewModel.get().close()
         }
-        dev.cannoli.scorza.server.KitchenManager.stop()
     }
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {

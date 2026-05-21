@@ -496,7 +496,7 @@ class DialogInputHandler @Inject constructor(
                 nav.screenStack.add(LauncherScreen.Credits())
             }
             is DialogState.Kitchen -> {
-                dev.cannoli.scorza.server.KitchenManager.stop()
+                dev.cannoli.scorza.server.KitchenManager.stop(context)
                 nav.dialogState.value = DialogState.None
                 launcherActions.rescanSystemList()
             }
