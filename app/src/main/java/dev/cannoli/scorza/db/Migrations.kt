@@ -103,6 +103,10 @@ internal object Migrations {
                 )
             """.trimIndent())
         },
+        Migration(3) { db ->
+            db.execSQL("ALTER TABLE roms DROP COLUMN disc_paths")
+            db.execSQL("UPDATE platforms SET last_scanned_mtime = 0")
+        },
     )
 
     val current: Int = all.maxOf { it.version }

@@ -75,12 +75,7 @@ object GamesResponse {
         sb.append(',').append("\"guidesCount\":").append(guidesCount)
         sb.append(',').append("\"raGameId\":").append(rom.raGameId ?: "null")
         sb.append(',').append("\"lastPlayedAt\":").append(rom.lastPlayedAt ?: "null")
-        sb.append(',').append("\"discPaths\":").append(
-            if (rom.discFiles.isNullOrEmpty()) "null"
-            else rom.discFiles!!.joinToString(prefix = "[", postfix = "]") {
-                "\"" + escapeJson(it.absolutePath.removePrefix("${File(cannoliRoot, "Roms").absolutePath}${File.separator}").replace(File.separatorChar, '/')) + "\""
-            }
-        )
+        sb.append(',').append("\"multiDisc\":").append(rom.isMultiDisc)
         sb.append('}')
         return sb.toString()
     }

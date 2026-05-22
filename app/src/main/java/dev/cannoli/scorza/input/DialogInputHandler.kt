@@ -1468,10 +1468,6 @@ class DialogInputHandler @Inject constructor(
                 }
                 romFile.delete()
             }
-            // Walker still produced a virtual multi-disc set (organizer was unable to move files).
-            rom.discFiles != null -> {
-                rom.discFiles.forEach { it.delete() }
-            }
             else -> romFile.delete()
         }
     }

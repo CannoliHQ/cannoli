@@ -91,4 +91,88 @@ class RomDirectoryWalkerTest {
             discs,
         )
     }
+
+    @Test
+    fun `relocates a loose m3u set into its own folder`() {
+        write("PS/Cool Game.m3u", "Cool Game (Disc 1).chd\nCool Game (Disc 2).chd\n")
+        write("PS/Cool Game (Disc 1).chd")
+        write("PS/Cool Game (Disc 2).chd")
+
+        val result = walker.walk("PS", isArcade = false)!!
+
+        assertEquals(1, result.roms.size)
+        assertEquals(m3uName("Cool Game"), result.roms.single().relativePath)
+        assertTrue(File(romsDir, "PS/Cool Game/Cool Game.m3u").exists())
+        assertTrue(File(romsDir, "PS/Cool Game/Cool Game (Disc 1).chd").exists())
+        assertTrue(File(romsDir, "PS/Cool Game/Cool Game (Disc 2).chd").exists())
+        assertFalse(File(romsDir, "PS/Cool Game.m3u").exists())
+        assertFalse(File(romsDir, "PS/Cool Game (Disc 1).chd").exists())
+        assertFalse(File(romsDir, "PS/Cool Game (Disc 2).chd").exists())
+    }
+
+    @Test
+    fun `writes an in-place m3u for discs in a game-named folder`() {
+        write("PS/Cool Game/Cool Game (Disc 1).chd")
+        write("PS/Cool Game/Cool Game (Disc 2).chd")
+
+        val result = walker.walk("PS", isArcade = false)!!
+
+        assertEquals(1, result.roms.size)
+        assertEquals(m3uName("Cool Game"), result.roms.single().relativePath)
+        val m3u = File(romsDir, "PS/Cool Game/Cool Game.m3u")
+        assertTrue(m3u.exists())
+        assertEquals(
+            listOf("Cool Game (Disc 1).chd", "Cool Game (Disc 2).chd"),
+            m3u.readLines().filter { it.isNotBlank() },
+        )
+    }
+
+    @Test
+    fun `gameFiles and gameDirectory resolve an m3u folder`() {
+        write("PS/Cool Game/Cool Game (Disc 1).chd")
+        write("PS/Cool Game/Cool Game (Disc 2).chd")
+        write("PS/Cool Game/Cool Game.m3u", "Cool Game (Disc 1).chd\nCool Game (Disc 2).chd\n")
+
+        val m3u = File(romsDir, "PS/Cool Game/Cool Game.m3u")
+        assertEquals(File(romsDir, "PS/Cool Game"), walker.gameDirectory(m3u))
+        assertEquals(
+            listOf("Cool Game (Disc 1).chd", "Cool Game (Disc 2).chd", "Cool Game.m3u"),
+            walker.gameFiles(m3u).map { it.name }.sorted(),
+        )
+        assertEquals(null, walker.gameDirectory(File(romsDir, "PS/Cool Game/Cool Game (Disc 1).chd")))
+    }
+
+    @Test
+    fun `gameFiles for a loose single file returns just that file`() {
+        write("NES/Mega Game.nes")
+        val rom = File(romsDir, "NES/Mega Game.nes")
+        assertEquals(null, walker.gameDirectory(rom))
+        assertEquals(listOf(rom), walker.gameFiles(rom))
+    }
+
+    @Test
+    fun `gameDirectory is null for a loose file in a category folder`() {
+        write("PS/RPGs/Some Game.iso")
+        val rom = File(romsDir, "PS/RPGs/Some Game.iso")
+        assertEquals(null, walker.gameDirectory(rom))
+        assertEquals(listOf(rom), walker.gameFiles(rom))
+    }
+
+    @Test
+    fun `merges a loose disc into a folder that holds discs but no m3u`() {
+        write("PS/Cool Game/Cool Game (Disc 1).chd")
+        write("PS/Cool Game (Disc 2).chd")
+
+        val result = walker.walk("PS", isArcade = false)!!
+
+        assertEquals(1, result.roms.size)
+        assertEquals(m3uName("Cool Game"), result.roms.single().relativePath)
+        assertTrue(File(romsDir, "PS/Cool Game/Cool Game (Disc 1).chd").exists())
+        assertTrue(File(romsDir, "PS/Cool Game/Cool Game (Disc 2).chd").exists())
+        assertFalse(File(romsDir, "PS/Cool Game (Disc 2).chd").exists())
+        assertEquals(
+            listOf("Cool Game (Disc 1).chd", "Cool Game (Disc 2).chd"),
+            File(romsDir, "PS/Cool Game/Cool Game.m3u").readLines().filter { it.isNotBlank() },
+        )
+    }
 }

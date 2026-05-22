@@ -165,21 +165,7 @@ class LaunchManager(
         return digest.digest().joinToString("") { "%02x".format(it) }
     }
 
-    /** Recovery path: only reached if the walker organizer was unable to move the discs into a
-     *  subfolder. Writes the m3u next to the discs (libretro cores resolve disc paths relative to
-     *  the m3u's directory) so the next scan picks it up via the m3u-by-base-name branch. */
-    fun createFallbackM3u(rom: Rom): File {
-        val discs = checkNotNull(rom.discFiles)
-        val first = discs.first()
-        val parent = first.parentFile ?: throw IOException("Cannot resolve disc directory")
-        val base = DISC_REGEX.replace(first.nameWithoutExtension, "").trim()
-        val m3uFile = File(parent, "$base.m3u")
-        m3uFile.writeText(discs.joinToString("\n") { it.name } + "\n")
-        return m3uFile
-    }
-
     fun resolveLaunchFile(rom: Rom, extractArchives: Boolean): File? {
-        if (rom.discFiles != null) return createFallbackM3u(rom)
         if (extractArchives && ArchiveExtractor.isArchive(rom.path) && !platformConfig.isArcade(rom.platformTag)) {
             return ArchiveExtractor.extract(rom.path, context.cacheDir)
         }
@@ -474,7 +460,6 @@ class LaunchManager(
 
     companion object {
         private const val CONFIG_VERSION = 5
-        private val DISC_REGEX = Regex("""\s*\((Disc|Disk)\s*\d+\)|\s*\(CD\d+\)""", RegexOption.IGNORE_CASE)
 
         fun extractBundledCores(context: Context): String {
             val coresDir = File(context.filesDir, "cores")

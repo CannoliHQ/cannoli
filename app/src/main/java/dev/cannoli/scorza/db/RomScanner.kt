@@ -4,7 +4,6 @@ import dev.cannoli.scorza.util.ArtworkLookup
 import dev.cannoli.scorza.util.NaturalSort
 import dev.cannoli.scorza.util.RomDirectoryWalker
 import dev.cannoli.scorza.util.ScanLog
-import org.json.JSONArray
 
 /**
  * Bridges the file-system view of a platform (via [RomDirectoryWalker]) into the roms table.
@@ -73,15 +72,14 @@ class RomScanner(
     )
 
     private fun sync(tag: String, scanned: List<RomDirectoryWalker.ScannedRom>): SyncCounts {
-        data class ExistingRow(val id: Long, val displayName: String, val tags: String?, val discPaths: String?)
+        data class ExistingRow(val id: Long, val displayName: String, val tags: String?)
         val existing = db.queryAll(
-            "SELECT id, path, display_name, tags, disc_paths FROM roms WHERE platform_tag = ?", tag,
+            "SELECT id, path, display_name, tags FROM roms WHERE platform_tag = ?", tag,
         ) { stmt ->
             stmt.getText(1) to ExistingRow(
                 id = stmt.getLong(0),
                 displayName = stmt.getText(2),
                 tags = if (stmt.isNull(3)) null else stmt.getText(3),
-                discPaths = if (stmt.isNull(4)) null else stmt.getText(4),
             )
         }.toMap()
 
@@ -91,12 +89,11 @@ class RomScanner(
         var removed = 0
 
         db.transaction { conn ->
-            conn.prepare("INSERT INTO roms (path, platform_tag, display_name, sort_key, tags, disc_paths) VALUES (?, ?, ?, ?, ?, ?)").use { insertStmt ->
-                conn.prepare("UPDATE roms SET display_name = ?, sort_key = ?, tags = ?, disc_paths = ? WHERE id = ?").use { updateStmt ->
+            conn.prepare("INSERT INTO roms (path, platform_tag, display_name, sort_key, tags) VALUES (?, ?, ?, ?, ?)").use { insertStmt ->
+                conn.prepare("UPDATE roms SET display_name = ?, sort_key = ?, tags = ? WHERE id = ?").use { updateStmt ->
                     conn.prepare("DELETE FROM roms WHERE id = ?").use { deleteStmt ->
                         for (rom in scannedByPath.values) {
                             val current = existing[rom.relativePath]
-                            val discJson = rom.discPaths?.let { JSONArray(it).toString() }
                             if (current == null) {
                                 insertStmt.reset()
                                 insertStmt.bindText(1, rom.relativePath)
@@ -104,16 +101,14 @@ class RomScanner(
                                 insertStmt.bindText(3, rom.displayName)
                                 insertStmt.bindText(4, NaturalSort.toSortKey(rom.displayName))
                                 if (rom.tags != null) insertStmt.bindText(5, rom.tags) else insertStmt.bindNull(5)
-                                if (discJson != null) insertStmt.bindText(6, discJson) else insertStmt.bindNull(6)
                                 insertStmt.step()
                                 inserted++
-                            } else if (current.displayName != rom.displayName || current.tags != rom.tags || current.discPaths != discJson) {
+                            } else if (current.displayName != rom.displayName || current.tags != rom.tags) {
                                 updateStmt.reset()
                                 updateStmt.bindText(1, rom.displayName)
                                 updateStmt.bindText(2, NaturalSort.toSortKey(rom.displayName))
                                 if (rom.tags != null) updateStmt.bindText(3, rom.tags) else updateStmt.bindNull(3)
-                                if (discJson != null) updateStmt.bindText(4, discJson) else updateStmt.bindNull(4)
-                                updateStmt.bindLong(5, current.id)
+                                updateStmt.bindLong(4, current.id)
                                 updateStmt.step()
                                 updated++
                             }

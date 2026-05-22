@@ -31,7 +31,6 @@ class RomDirectoryWalker(
         val relativePath: String,
         val displayName: String,
         val tags: String?,
-        val discPaths: List<String>?,
     )
 
     /** A multi-disc set that the organizer relocated; `oldRelPath` is what the DB previously
@@ -81,6 +80,40 @@ class RomDirectoryWalker(
 
     fun invalidateNameMap(tagDir: File) = arcadeTitleLookup.invalidate(tagDir)
 
+    /** The dedicated on-disk folder for the game launched by [primaryFile], or null when the game
+     *  is a loose file not contained in its own folder. */
+    fun gameDirectory(primaryFile: File): File? {
+        val parent = primaryFile.parentFile ?: return null
+        if (parent.parentFile == romDirectory) return null
+        val launch = findDirLaunchFile(parent) ?: return null
+        return if (launch.file == primaryFile) parent else null
+    }
+
+    /** Every on-disk file that makes up the game launched by [primaryFile]. */
+    fun gameFiles(primaryFile: File): List<File> {
+        gameDirectory(primaryFile)?.let { dir ->
+            return dir.listFiles { f -> f.isFile }?.sortedBy { it.name.lowercase() }
+                ?: listOf(primaryFile)
+        }
+        if (primaryFile.extension.equals("m3u", ignoreCase = true)) {
+            val parent = primaryFile.parentFile
+            if (parent != null) {
+                val out = linkedSetOf(primaryFile)
+                for (entry in readM3uEntries(primaryFile)) {
+                    val disc = File(parent, entry)
+                    if (disc.isFile) {
+                        out.add(disc)
+                        if (disc.extension.equals("cue", ignoreCase = true)) {
+                            out.addAll(parseCueReferencedFiles(disc))
+                        }
+                    }
+                }
+                return out.toList()
+            }
+        }
+        return listOf(primaryFile)
+    }
+
     data class WalkResult(
         val tagDir: File,
         val mtime: Long,
@@ -88,8 +121,7 @@ class RomDirectoryWalker(
         val rekeys: List<RekeyMove> = emptyList(),
     )
 
-    private data class DirLaunch(val file: File, val discFiles: List<File>?)
-    private data class PendingRom(val relativePath: String, val rawName: String, val sourceFileName: String, val discPaths: List<String>?)
+    private data class DirLaunch(val file: File)
 
     private fun scanDir(
         dir: File,
@@ -106,9 +138,8 @@ class RomDirectoryWalker(
             val launch = findDirLaunchFile(subdir)
             if (launch != null) {
                 val launchRel = "$relPrefix${subdir.name}${File.separator}${launch.file.name}"
-                val discRels = launch.discFiles?.map { "$relPrefix${subdir.name}${File.separator}${it.name}" }
                 val (displayName, tags) = splitNameAndTags(subdir.name)
-                out.add(ScannedRom(launchRel, displayName, tags, discRels))
+                out.add(ScannedRom(launchRel, displayName, tags))
             } else if (subdir.listFiles()?.any { !it.name.startsWith(".") } == true) {
                 scanDir(subdir, "$relPrefix${subdir.name}${File.separator}", isArcade, out, depth + 1)
             }
@@ -123,29 +154,18 @@ class RomDirectoryWalker(
             .filter { it.extension.equals("m3u", ignoreCase = true) }
             .associateBy { it.nameWithoutExtension }
 
-        val suppressed = mutableSetOf<String>()
-        val pending = mutableListOf<PendingRom>()
-        for ((baseName, discs) in discGroups) {
-            if (discs.size <= 1) continue
-            val sorted = discs.sortedBy { it.name }
-            if (m3uByBase[baseName] != null) {
-                sorted.forEach { suppressed.add(it.absolutePath) }
-            } else {
-                val discRels = sorted.map { "$relPrefix${it.name}" }
-                pending.add(PendingRom("$relPrefix${sorted.first().name}", baseName, sorted.first().name, discRels))
-                sorted.forEach { suppressed.add(it.absolutePath) }
-            }
-        }
-        for (file in romFiles) {
-            if (file.absolutePath in suppressed) continue
-            pending.add(PendingRom("$relPrefix${file.name}", file.nameWithoutExtension, file.name, null))
-        }
+        // Discs belonging to a loose m3u in the same directory are represented by that m3u.
+        val suppressed = discGroups
+            .filter { (baseName, discs) -> discs.size > 1 && m3uByBase[baseName] != null }
+            .values.flatten()
+            .mapTo(mutableSetOf()) { it.absolutePath }
 
         val nameOverrides = arcadeTitleLookup.mapFor(dir, fallbackToArcade = isArcade)
-        for (p in pending) {
-            val override = nameOverrides[p.sourceFileName]
-            val (displayName, tags) = if (override != null) override to null else splitNameAndTags(p.rawName)
-            out.add(ScannedRom(p.relativePath, displayName, tags, p.discPaths))
+        for (file in romFiles) {
+            if (file.absolutePath in suppressed) continue
+            val override = nameOverrides[file.name]
+            val (displayName, tags) = if (override != null) override to null else splitNameAndTags(file.nameWithoutExtension)
+            out.add(ScannedRom("$relPrefix${file.name}", displayName, tags))
         }
     }
 
@@ -157,14 +177,13 @@ class RomDirectoryWalker(
     }
 
     private fun findDirLaunchFile(dir: File): DirLaunch? {
-        File(dir, "${dir.name}.m3u").takeIf { it.exists() && !isIgnored(it) }?.let { return DirLaunch(it, null) }
-        File(dir, "${dir.name}.cue").takeIf { it.exists() && !isIgnored(it) }?.let { return DirLaunch(it, null) }
-        dir.listFiles()?.firstOrNull { it.extension.equals("cue", ignoreCase = true) && !isIgnored(it) }?.let { return DirLaunch(it, null) }
+        File(dir, "${dir.name}.m3u").takeIf { it.exists() && !isIgnored(it) }?.let { return DirLaunch(it) }
+        File(dir, "${dir.name}.cue").takeIf { it.exists() && !isIgnored(it) }?.let { return DirLaunch(it) }
+        dir.listFiles()?.firstOrNull { it.extension.equals("cue", ignoreCase = true) && !isIgnored(it) }?.let { return DirLaunch(it) }
         val children = dir.listFiles()?.filter { it.isFile && !isIgnored(it) } ?: return null
         val discs = children.filter { discRegex.containsMatchIn(it.nameWithoutExtension) }
         if (discs.size > 1) {
-            val sorted = discs.sortedBy { it.name }
-            return DirLaunch(sorted.first(), sorted)
+            return DirLaunch(discs.sortedBy { it.name }.first())
         }
         return null
     }
@@ -201,7 +220,20 @@ class RomDirectoryWalker(
                 continue
             }
             if (byStem.size <= 1) continue
-            if (m3uByBase[baseName] != null) continue
+            val looseM3u = m3uByBase[baseName]
+            if (looseM3u != null) {
+                if (relocateLooseM3uSet(dir, baseName, looseM3u, byStem, romFiles, relPrefix, tag, moves)) {
+                    processed.addAll(groupFiles)
+                    processed.add(looseM3u)
+                }
+                continue
+            }
+            if (dir.name == baseName) {
+                if (writeInPlaceM3u(dir, baseName, byStem, relPrefix, tag, moves)) {
+                    processed.addAll(groupFiles)
+                }
+                continue
+            }
             if (organizeMultiDisc(dir, baseName, byStem, romFiles, relPrefix, tag, moves)) {
                 processed.addAll(groupFiles)
             }
@@ -265,6 +297,76 @@ class RomDirectoryWalker(
         return true
     }
 
+    private fun readM3uEntries(m3u: File): List<String> = runCatching {
+        m3u.readLines().map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("#") }
+    }.getOrDefault(emptyList())
+
+    // Relocates a loose m3u set into its own folder; skips m3us whose entries are not flat siblings.
+    private fun relocateLooseM3uSet(
+        parent: File,
+        baseName: String,
+        m3u: File,
+        discsByStem: Map<String, List<File>>,
+        siblings: List<File>,
+        relPrefix: String,
+        tag: String,
+        moves: MutableList<RekeyMove>,
+    ): Boolean {
+        if (parent.name == baseName) return false
+        val entries = readM3uEntries(m3u)
+        if (entries.isEmpty() || entries.any { !File(parent, it).isFile }) return false
+
+        val subdir = File(parent, baseName)
+        if (!createSubdir(subdir, tag, baseName)) return false
+
+        val allDiscFiles = discsByStem.values.flatten()
+        val toMove = linkedSetOf<File>().apply {
+            add(m3u)
+            entries.forEach { add(File(parent, it)) }
+            addAll(allDiscFiles)
+            for (file in allDiscFiles) {
+                addAll(stemSiblings(file, siblings))
+                if (file.extension.equals("cue", ignoreCase = true)) {
+                    addAll(parseCueReferencedFiles(file))
+                }
+            }
+        }
+        val moved = mutableListOf<Pair<File, File>>()
+        if (!moveAll(toMove, subdir, moved, tag, baseName)) return false
+
+        val firstStem = allDiscFiles.sortedBy { it.name }.first().nameWithoutExtension
+        if (firstStem != baseName) migrateSidecarFiles(tag, firstStem, baseName)
+        moves.add(RekeyMove("$relPrefix${m3u.name}", "$relPrefix$baseName${File.separator}${m3u.name}"))
+        ScanLog.write("organize $tag: relocated loose m3u set $baseName (${allDiscFiles.size} discs)")
+        return true
+    }
+
+    private fun writeInPlaceM3u(
+        dir: File,
+        baseName: String,
+        discsByStem: Map<String, List<File>>,
+        relPrefix: String,
+        tag: String,
+        moves: MutableList<RekeyMove>,
+    ): Boolean {
+        val allDiscFiles = discsByStem.values.flatten()
+        val primaries = discsByStem.values.map { pickPrimary(it) }.sortedBy { it.name }
+        if (primaries.size <= 1) return false
+        val m3uFile = File(dir, "$baseName.m3u")
+        try {
+            m3uFile.writeText(primaries.joinToString("\n") { it.name } + "\n")
+        } catch (e: Throwable) {
+            ScanLog.write("organize $tag: failed to write in-place $baseName.m3u: ${e.message}")
+            return false
+        }
+        val firstDisc = allDiscFiles.sortedBy { it.name }.first()
+        val firstStem = firstDisc.nameWithoutExtension
+        if (firstStem != baseName) migrateSidecarFiles(tag, firstStem, baseName)
+        moves.add(RekeyMove("$relPrefix${firstDisc.name}", "$relPrefix${m3uFile.name}"))
+        ScanLog.write("organize $tag: wrote in-place m3u for $baseName (${primaries.size} discs)")
+        return true
+    }
+
     // Moves late-arriving loose discs into an existing `<baseName>/` bundle and rewrites its m3u,
     // so incremental uploads (a disc landing after the bundle was already organized) still converge.
     private fun mergeLooseDiscsIntoBundle(
@@ -275,7 +377,8 @@ class RomDirectoryWalker(
         tag: String,
     ): Boolean {
         val m3uFile = File(subdir, "$baseName.m3u")
-        if (!m3uFile.exists()) return false
+        // Also merge into a folder that already holds this game's discs but has no m3u yet.
+        if (!m3uFile.exists() && !folderHoldsDiscsOf(subdir, baseName)) return false
 
         val toMove = linkedSetOf<File>().apply {
             addAll(looseDiscs)
@@ -301,9 +404,19 @@ class RomDirectoryWalker(
                 ScanLog.write("organize $tag: failed to rewrite $baseName.m3u: ${e.message}")
             }
         }
+        for (disc in discFiles) {
+            val stem = disc.nameWithoutExtension
+            if (stem != baseName) migrateSidecarFiles(tag, stem, baseName)
+        }
         ScanLog.write("organize $tag: merged ${looseDiscs.size} loose disc(s) into $baseName/")
         return true
     }
+
+    private fun folderHoldsDiscsOf(subdir: File, baseName: String): Boolean =
+        subdir.listFiles()?.any {
+            it.isFile && discRegex.containsMatchIn(it.nameWithoutExtension) &&
+                discRegex.replace(it.nameWithoutExtension, "").trim() == baseName
+        } == true
 
     private fun organizeSingleCue(
         parent: File,

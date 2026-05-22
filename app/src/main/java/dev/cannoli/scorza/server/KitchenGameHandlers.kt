@@ -33,19 +33,8 @@ internal fun KitchenHttpServer.gameGuidesJson(platformTag: String, base: String)
     return """{"files":[$items]}"""
 }
 
-internal fun KitchenHttpServer.gameRomFiles(rom: dev.cannoli.scorza.model.Rom): List<File> = buildList {
-    add(rom.path)
-    rom.discFiles?.let { addAll(it) }
-}
-
-internal fun KitchenHttpServer.multiDiscGameDir(rom: dev.cannoli.scorza.model.Rom): File? {
-    if (rom.discFiles.isNullOrEmpty()) return null
-    val gameDir = rom.path.parentFile ?: return null
-    // Loose set: discs sit directly in the platform folder; never delete that.
-    if (gameDir.parentFile?.absolutePath == romsRootProvider().absolutePath) return null
-    if (!isSecure(gameDir)) return null
-    return gameDir
-}
+internal fun KitchenHttpServer.gameRomFiles(rom: dev.cannoli.scorza.model.Rom): List<File> =
+    romDirectoryWalker?.gameFiles(rom.path) ?: listOf(rom.path)
 
 internal fun KitchenHttpServer.gameRomsJson(rom: dev.cannoli.scorza.model.Rom): String {
     val romsRootPrefix = "${romsRootProvider().absolutePath}${File.separator}"
@@ -122,7 +111,7 @@ internal fun KitchenHttpServer.handleGames(
         2 -> return when (method) {
             "GET" -> jsonResponse(200, GamesResponse.buildOne(repo, cannoliRoot, platformTag, platformTag, rom.id)!!)
             "DELETE" -> {
-                val gameDir = multiDiscGameDir(rom)
+                val gameDir = romDirectoryWalker?.gameDirectory(rom.path)
                 if (gameDir != null) gameDir.deleteRecursively()
                 else gameRomFiles(rom).forEach { if (isSecure(it)) it.delete() }
                 if (query["purge"] == "true") {
@@ -147,7 +136,7 @@ internal fun KitchenHttpServer.handleGames(
                 when (method) {
                     "GET" -> fileResponse(romFile, "application/octet-stream")
                     "DELETE" -> {
-                        val gameDir = multiDiscGameDir(rom)
+                        val gameDir = romDirectoryWalker?.gameDirectory(rom.path)
                         if (gameDir != null) gameDir.deleteRecursively() else romFile.delete()
                         scanPlatform?.invoke(platformTag)
                         jsonResponse(200, """{"ok":true}""")

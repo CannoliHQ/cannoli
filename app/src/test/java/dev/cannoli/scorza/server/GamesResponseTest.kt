@@ -27,7 +27,6 @@ class GamesResponseTest {
         tags = null,
         artFile = art,
         launchTarget = LaunchTarget.RetroArch,
-        discFiles = null,
         raGameId = null,
     )
 
@@ -131,6 +130,28 @@ class GamesResponseTest {
         val game = JSONObject(GamesResponse.buildList(repo, tmp.root, "SNES", "Super Nintendo"))
             .getJSONArray("games").getJSONObject(0)
         assertEquals(3, game.getInt("statesCount"))
+    }
+
+    @Test
+    fun `gameToJson reports multiDisc from the rom path extension`() {
+        val romDir = File(tmp.root, "Roms/PS").also { it.mkdirs() }
+        File(romDir, "Metal Gear Solid").mkdirs()
+        File(romDir, "Metal Gear Solid/Metal Gear Solid.m3u").writeText("Metal Gear Solid (Disc 1).bin\n")
+        val rom = Rom(
+            id = 20,
+            path = File(romDir, "Metal Gear Solid/Metal Gear Solid.m3u"),
+            platformTag = "PS",
+            displayName = "Metal Gear Solid",
+            tags = null,
+            artFile = null,
+            launchTarget = dev.cannoli.scorza.model.LaunchTarget.RetroArch,
+            raGameId = null,
+        )
+        val repo = mockk<RomsRepository>()
+        every { repo.gamesForPlatform("PS", null) } returns listOf(ListItem.RomItem(rom))
+        val json = GamesResponse.buildList(repo, tmp.root, "PS", "PS")
+        assertTrue(json.contains("\"multiDisc\":true"))
+        assertFalse(json.contains("\"discPaths\""))
     }
 
     @Test

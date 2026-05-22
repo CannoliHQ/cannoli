@@ -25,6 +25,7 @@ class KitchenService : Service() {
     @Inject lateinit var romsRepository: RomsRepository
     @Inject lateinit var settings: SettingsRepository
     @Inject lateinit var scanScheduler: ScanScheduler
+    @Inject lateinit var romDirectoryWalker: dev.cannoli.scorza.util.RomDirectoryWalker
 
     private var server: KitchenHttpServer? = null
     private var wifiLock: WifiManager.WifiLock? = null
@@ -69,6 +70,7 @@ class KitchenService : Service() {
             pin = pin,
             romsRepository = romsRepository,
             scanPlatform = { tag -> scanScheduler.runNow(tag) },
+            romDirectoryWalker = romDirectoryWalker,
         )
         try {
             s.startServer()

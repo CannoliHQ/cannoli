@@ -14,6 +14,7 @@ class KitchenHttpServer(
     val pin: String,
     internal val romsRepository: dev.cannoli.scorza.db.RomsRepository? = null,
     internal val scanPlatform: ((String) -> Unit)? = null,
+    internal val romDirectoryWalker: dev.cannoli.scorza.util.RomDirectoryWalker? = null,
 ) : NanoHTTPD(port) {
 
     private val socketTimeoutMs = 30_000
