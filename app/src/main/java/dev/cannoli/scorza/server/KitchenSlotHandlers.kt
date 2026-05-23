@@ -14,50 +14,48 @@ internal fun KitchenHttpServer.handleSlots(
     val statesDir = File(cannoliRoot, "Save States")
     when (segments.size) {
         0 -> {
-            if (method != "GET") return jsonResponse(405, """{"error":"method not allowed"}""")
+            if (method != "GET") return errorResponse(405, "method not allowed")
             val tags = statesDir.listFiles { f -> f.isDirectory }
                 ?.filter { dir -> dir.listFiles { f -> f.isDirectory }?.isNotEmpty() == true }
                 ?.map { it.name }?.sorted() ?: emptyList()
-            val json = tags.joinToString(",") { "\"${escapeJson(it)}\"" }
-            return jsonResponse(200, """{"platforms":[$json]}""")
+            return jsonResponse(200, PlatformsResponse.serializer(), PlatformsResponse(tags))
         }
         1 -> {
-            if (method != "GET") return jsonResponse(405, """{"error":"method not allowed"}""")
+            if (method != "GET") return errorResponse(405, "method not allowed")
             val platformDir = File(statesDir, segments[0])
             if (!isSecure(platformDir) || !platformDir.isDirectory) {
-                return jsonResponse(404, """{"error":"not found"}""")
+                return errorResponse(404, "not found")
             }
             val games = platformDir.listFiles { f -> f.isDirectory }
                 ?.map { it.name }?.sorted() ?: emptyList()
-            val json = games.joinToString(",") { "\"${escapeJson(it)}\"" }
-            return jsonResponse(200, """{"platform":"${escapeJson(segments[0])}","games":[$json]}""")
+            return jsonResponse(200, SlotGamesResponse.serializer(), SlotGamesResponse(segments[0], games))
         }
         2 -> {
             val platformTag = segments[0]
             val romName = java.text.Normalizer.normalize(segments[1], java.text.Normalizer.Form.NFC)
             val gameDir = File(statesDir, "$platformTag/$romName")
-            if (!isSecure(gameDir)) return jsonResponse(403, """{"error":"forbidden"}""")
+            if (!isSecure(gameDir)) return errorResponse(403, "forbidden")
             return when (method) {
                 "GET" -> handleSlotsList(gameDir, romName)
                 "POST" -> {
                     val slot = query["slot"]?.toIntOrNull()
                     if (slot == null || slot < 0 || slot > 10) {
-                        return jsonResponse(400, """{"error":"slot param required (0-10)"}""")
+                        return errorResponse(400, "slot param required (0-10)")
                     }
                     handleSlotUpload(gameDir, romName, slot, session)
                 }
                 "DELETE" -> {
                     val slot = query["slot"]?.toIntOrNull()
                     if (slot == null || slot < 0 || slot > 10) {
-                        return jsonResponse(400, """{"error":"slot param required (0-10)"}""")
+                        return errorResponse(400, "slot param required (0-10)")
                     }
                     handleSlotDelete(gameDir, romName, slot)
                 }
-                else -> jsonResponse(405, """{"error":"method not allowed"}""")
+                else -> errorResponse(405, "method not allowed")
             }
         }
         3 -> {
-            if (method != "GET") return jsonResponse(405, """{"error":"method not allowed"}""")
+            if (method != "GET") return errorResponse(405, "method not allowed")
             val platformTag = segments[0]
             val romName = java.text.Normalizer.normalize(segments[1], java.text.Normalizer.Form.NFC)
             val action = segments[2]
@@ -65,55 +63,59 @@ internal fun KitchenHttpServer.handleSlots(
                 "thumbnail" -> {
                     val slot = query["slot"]?.toIntOrNull()
                     if (slot == null || slot < 0 || slot > 10) {
-                        return jsonResponse(400, """{"error":"slot param required (0-10)"}""")
+                        return errorResponse(400, "slot param required (0-10)")
                     }
                     val gameDir = File(statesDir, "$platformTag/$romName")
                     val thumbFile = File(gameDir, "${raStateName(romName, slot)}.png")
                     if (!isSecure(thumbFile) || !thumbFile.exists()) {
-                        return jsonResponse(404, """{"error":"not found"}""")
+                        return errorResponse(404, "not found")
                     }
                     fileResponse(thumbFile, "image/png")
                 }
                 "file" -> {
                     val slot = query["slot"]?.toIntOrNull()
                     if (slot == null || slot < 0 || slot > 10) {
-                        return jsonResponse(400, """{"error":"slot param required (0-10)"}""")
+                        return errorResponse(400, "slot param required (0-10)")
                     }
                     val gameDir = File(statesDir, "$platformTag/$romName")
                     val stateFile = File(gameDir, raStateName(romName, slot))
                     if (!isSecure(stateFile) || !stateFile.exists()) {
-                        return jsonResponse(404, """{"error":"not found"}""")
+                        return errorResponse(404, "not found")
                     }
                     fileResponse(stateFile, "application/octet-stream")
                 }
                 "zip" -> {
                     val gameDir = File(statesDir, "$platformTag/$romName")
                     if (!isSecure(gameDir)) {
-                        return jsonResponse(403, """{"error":"forbidden"}""")
+                        return errorResponse(403, "forbidden")
                     }
                     val bytes = SlotsZip.build(gameDir, romName)
-                        ?: return jsonResponse(404, """{"error":"no states"}""")
+                        ?: return errorResponse(404, "no states")
                     bytesResponse(200, "application/zip", bytes)
                 }
-                else -> jsonResponse(404, """{"error":"not found"}""")
+                else -> errorResponse(404, "not found")
             }
         }
-        else -> return jsonResponse(404, """{"error":"not found"}""")
+        else -> return errorResponse(404, "not found")
     }
 }
 
 internal fun KitchenHttpServer.handleSlotsList(gameDir: File, romName: String): Response {
     val slots = (0..10).map { n ->
-        val stateFile = File(gameDir, "${raStateName(romName, n)}")
+        val stateFile = File(gameDir, raStateName(romName, n))
         val thumbFile = File(gameDir, "${raStateName(romName, n)}.png")
         val label = if (n == 0) "Auto" else "Slot ${n - 1}"
         val exists = stateFile.exists()
-        val size = if (exists) stateFile.length() else 0
-        val modified = if (exists) stateFile.lastModified() else 0
-        val hasThumb = thumbFile.exists()
-        """{"slot":$n,"label":"$label","exists":$exists,"size":$size,"modified":$modified,"thumbnail":$hasThumb}"""
+        SlotEntry(
+            slot = n,
+            label = label,
+            exists = exists,
+            size = if (exists) stateFile.length() else 0L,
+            modified = if (exists) stateFile.lastModified() else 0L,
+            thumbnail = thumbFile.exists(),
+        )
     }
-    return jsonResponse(200, """{"game":"${escapeJson(romName)}","slots":[${slots.joinToString(",")}]}""")
+    return jsonResponse(200, SlotsListResponse.serializer(), SlotsListResponse(romName, slots))
 }
 
 internal fun KitchenHttpServer.handleSlotUpload(
@@ -122,13 +124,13 @@ internal fun KitchenHttpServer.handleSlotUpload(
     slot: Int,
     session: NanoHTTPD.IHTTPSession,
 ): Response {
-    if (!isSecure(gameDir)) return jsonResponse(403, """{"error":"forbidden"}""")
+    if (!isSecure(gameDir)) return errorResponse(403, "forbidden")
     gameDir.mkdirs()
-    val destFile = File(gameDir, "${raStateName(romName, slot)}")
+    val destFile = File(gameDir, raStateName(romName, slot))
 
     val contentType = session.headers["content-type"] ?: ""
     if (session.headers["transfer-encoding"]?.contains("chunked", true) == true) {
-        return jsonResponse(400, """{"error":"chunked upload not supported"}""")
+        return errorResponse(400, "chunked upload not supported")
     }
     val contentLength = session.headers["content-length"]?.toLongOrNull() ?: 0L
 
@@ -137,7 +139,7 @@ internal fun KitchenHttpServer.handleSlotUpload(
             KitchenUpload.streamTo(session.inputStream, contentType, contentLength) { destFile }
         } catch (e: Exception) {
             dev.cannoli.scorza.util.KitchenLog.logError("upload failed", e)
-            return jsonResponse(500, """{"error":"upload failed"}""")
+            return errorResponse(500, "upload failed")
         }
     } else {
         java.io.BufferedOutputStream(destFile.outputStream(), 262144).use { bos ->
@@ -153,15 +155,19 @@ internal fun KitchenHttpServer.handleSlotUpload(
         }
     }
 
-    return jsonResponse(200, """{"ok":true,"slot":$slot,"file":"${escapeJson(destFile.name)}"}""")
+    return jsonResponse(
+        200,
+        SlotUploadResponse.serializer(),
+        SlotUploadResponse(slot = slot, file = destFile.name),
+    )
 }
 
 internal fun KitchenHttpServer.handleSlotDelete(gameDir: File, romName: String, slot: Int): Response {
-    val stateFile = File(gameDir, "${raStateName(romName, slot)}")
+    val stateFile = File(gameDir, raStateName(romName, slot))
     val thumbFile = File(gameDir, "${raStateName(romName, slot)}.png")
-    if (!isSecure(stateFile)) return jsonResponse(403, """{"error":"forbidden"}""")
-    if (!stateFile.exists()) return jsonResponse(404, """{"error":"not found"}""")
+    if (!isSecure(stateFile)) return errorResponse(403, "forbidden")
+    if (!stateFile.exists()) return errorResponse(404, "not found")
     stateFile.delete()
     thumbFile.delete()
-    return jsonResponse(200, """{"ok":true}""")
+    return okResponse()
 }

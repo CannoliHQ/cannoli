@@ -36,7 +36,7 @@ class KitchenHttpServer(
             dispatch(session)
         } catch (e: Exception) {
             dev.cannoli.scorza.util.KitchenLog.logError("request failed", e)
-            jsonResponse(500, """{"error":"internal"}""")
+            errorResponse(500, "internal")
         }
         dev.cannoli.scorza.util.KitchenLog.log(
             "${session.remoteIpAddress} ${session.method} ${session.uri} " +
@@ -97,13 +97,13 @@ class KitchenHttpServer(
 
         if (segments.firstOrNull() != "api") {
             return if (method == "GET") serveStatic(rawPath)
-            else jsonResponse(404, """{"error":"not found"}""")
+            else errorResponse(404, "not found")
         }
         val apiSegments = segments.drop(1)
         val resource = apiSegments.firstOrNull() ?: ""
 
         if (method == "GET" && resource == "auth") return handleAuthStatus()
-        if (!checkAuth(headers)) return jsonResponse(401, """{"error":"unauthorized"}""")
+        if (!checkAuth(headers)) return errorResponse(401, "unauthorized")
 
         return route(method, resource, apiSegments, query, headers, session)
     }
@@ -124,20 +124,20 @@ class KitchenHttpServer(
                 handleGames(method, gameSegments, query, headers, session)
             }
             resource == "scan" -> {
-                if (method != "POST") return jsonResponse(405, """{"error":"method not allowed"}""")
+                if (method != "POST") return errorResponse(405, "method not allowed")
                 val tag = apiSegments.getOrNull(1)
-                if (tag.isNullOrBlank()) return jsonResponse(400, """{"error":"platform required"}""")
+                if (tag.isNullOrBlank()) return errorResponse(400, "platform required")
                 val scan = scanPlatform
-                    ?: return jsonResponse(503, """{"error":"scan not available"}""")
+                    ?: return errorResponse(503, "scan not available")
                 scan(tag)
-                jsonResponse(200, """{"ok":true}""")
+                okResponse()
             }
             resource == "slots" -> {
                 val slotSegments = apiSegments.drop(1)
                 handleSlots(method, slotSegments, query, headers, session)
             }
             resource == "artwork" -> {
-                if (method != "GET") return jsonResponse(405, """{"error":"method not allowed"}""")
+                if (method != "GET") return errorResponse(405, "method not allowed")
                 val artSegments = apiSegments.drop(1)
                 handleArtwork(artSegments)
             }
@@ -147,35 +147,42 @@ class KitchenHttpServer(
                 val displayPath = if (subpath.isEmpty()) baseDir else "$baseDir/$subpath"
                 val resourceRoot = if (resource == "roms") romsRootProvider() else File(cannoliRoot, baseDir)
                 val targetDir = if (subpath.isEmpty()) resourceRoot else File(resourceRoot, subpath)
-                when (method) {
+                val response = when (method) {
                     "GET" -> handleList(targetDir, displayPath, query["recursive"] == "true")
                     "POST" -> handleUpload(targetDir, session)
                     "PUT" -> {
                         if (subpath.isEmpty()) {
-                            jsonResponse(400, """{"error":"path required"}""")
+                            errorResponse(400, "path required")
                         } else {
                             handleMkdir(targetDir)
                         }
                     }
                     "DELETE" -> {
                         if (subpath.isEmpty()) {
-                            jsonResponse(400, """{"error":"path required"}""")
+                            errorResponse(400, "path required")
                         } else {
                             handleDelete(targetDir.parentFile ?: targetDir, targetDir.name)
                         }
                     }
                     "PATCH" -> {
                         if (subpath.isEmpty()) {
-                            jsonResponse(400, """{"error":"path required"}""")
+                            errorResponse(400, "path required")
                         } else {
                             val body = readBody(session)
                             handleMove(resourceRoot, subpath, body)
                         }
                     }
-                    else -> jsonResponse(405, """{"error":"method not allowed"}""")
+                    else -> errorResponse(405, "method not allowed")
                 }
+                if (resource == "roms" && method in setOf("POST", "PUT", "DELETE", "PATCH")) {
+                    val tag = apiSegments.getOrNull(1)
+                    if (!tag.isNullOrBlank() && response.status.requestStatus in 200..299) {
+                        scanPlatform?.invoke(tag)
+                    }
+                }
+                response
             }
-            else -> jsonResponse(404, """{"error":"not found"}""")
+            else -> errorResponse(404, "not found")
         }
     }
 
@@ -193,9 +200,8 @@ class KitchenHttpServer(
         return String(bytes, 0, read)
     }
 
-    private fun handleInfo(): Response {
-        return jsonResponse(200, """{"name":"Cannoli Kitchen","version":1}""")
-    }
+    private fun handleInfo(): Response =
+        jsonResponse(200, InfoResponse.serializer(), InfoResponse("Cannoli Kitchen", 1))
 
     private fun serveStatic(endpoint: String): Response {
         val path = if (endpoint == "/") "index.html" else endpoint.removePrefix("/")
@@ -223,7 +229,7 @@ class KitchenHttpServer(
     }
 
     private fun handleAuthStatus(): Response =
-        jsonResponse(200, """{"required":${!codeBypass}}""")
+        jsonResponse(200, AuthStatusResponse.serializer(), AuthStatusResponse(required = !codeBypass))
 
     internal fun isSecure(file: File): Boolean {
         if (java.nio.file.Files.isSymbolicLink(file.toPath())) return false
@@ -256,23 +262,6 @@ class KitchenHttpServer(
         0 -> "$romName.state.auto"
         1 -> "$romName.state"
         else -> "$romName.state${slot - 1}"
-    }
-
-    internal fun escapeJson(s: String): String {
-        val sb = StringBuilder(s.length)
-        for (c in s) {
-            when (c) {
-                '\\' -> sb.append("\\\\")
-                '"' -> sb.append("\\\"")
-                '\n' -> sb.append("\\n")
-                '\r' -> sb.append("\\r")
-                '\t' -> sb.append("\\t")
-                '\b' -> sb.append("\\b")
-                '\u000C' -> sb.append("\\f")
-                else -> if (c < ' ') sb.append("\\u%04x".format(c.code)) else sb.append(c)
-            }
-        }
-        return sb.toString()
     }
 
     companion object {

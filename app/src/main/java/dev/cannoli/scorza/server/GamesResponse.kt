@@ -1,83 +1,171 @@
 package dev.cannoli.scorza.server
 
 import dev.cannoli.scorza.db.RomsRepository
-import dev.cannoli.scorza.model.ListItem
 import dev.cannoli.scorza.model.Rom
+import dev.cannoli.scorza.util.RomDirectoryWalker
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import java.io.File
 
 object GamesResponse {
 
     private val SAVE_EXTENSIONS = setOf("srm", "sav", "fla", "rtc", "mcr", "mcd", "psm", "eep")
 
+    private val json = Json { explicitNulls = false }
+
+    @Serializable
+    data class GameJson(
+        val id: Long,
+        val rom: String,
+        val displayName: String,
+        val sortKey: String,
+        val path: String,
+        val folder: String,
+        val size: Long,
+        val modified: Long,
+        val hasArt: Boolean,
+        val artUrl: String? = null,
+        val savesCount: Int,
+        val statesCount: Int,
+        val guidesCount: Int,
+        val raGameId: Int? = null,
+        val lastPlayedAt: Long? = null,
+        val multiDisc: Boolean,
+    )
+
+    @Serializable
+    data class GamesListResponse(
+        val platform: String,
+        val displayName: String,
+        val games: List<GameJson>,
+        val folders: List<String>,
+    )
+
+    @Serializable
+    data class GameDetailResponse(
+        val platform: String,
+        @SerialName("platformDisplayName") val platformDisplayName: String,
+        val id: Long,
+        val rom: String,
+        val displayName: String,
+        val sortKey: String,
+        val path: String,
+        val folder: String,
+        val size: Long,
+        val modified: Long,
+        val hasArt: Boolean,
+        val artUrl: String? = null,
+        val savesCount: Int,
+        val statesCount: Int,
+        val guidesCount: Int,
+        val raGameId: Int? = null,
+        val lastPlayedAt: Long? = null,
+        val multiDisc: Boolean,
+    )
+
     fun buildList(
         roms: RomsRepository,
         cannoliRoot: File,
+        romsRoot: File,
         platformTag: String,
         platformDisplayName: String,
+        walker: RomDirectoryWalker? = null,
     ): String {
-        val items = roms.gamesForPlatform(platformTag, null)
-        val games = items.filterIsInstance<ListItem.RomItem>().map { it.rom }
-        val sb = StringBuilder()
-        sb.append("{\"platform\":\"").append(escapeJson(platformTag)).append("\",")
-        sb.append("\"displayName\":\"").append(escapeJson(platformDisplayName)).append("\",")
-        sb.append("\"games\":[")
-        games.forEachIndexed { idx, rom ->
-            if (idx > 0) sb.append(',')
-            sb.append(gameToJson(rom, cannoliRoot, platformTag))
-        }
-        sb.append("]}")
-        return sb.toString()
+        val games = roms.allRomsForPlatform(platformTag).map { gameJson(it, cannoliRoot, romsRoot, platformTag, walker) }
+        val folders = walker?.categoryFolders(platformTag) ?: emptyList()
+        return json.encodeToString(
+            GamesListResponse.serializer(),
+            GamesListResponse(platformTag, platformDisplayName, games, folders),
+        )
     }
 
     fun buildOne(
         roms: RomsRepository,
         cannoliRoot: File,
+        romsRoot: File,
         platformTag: String,
         platformDisplayName: String,
         romId: Long,
+        walker: RomDirectoryWalker? = null,
     ): String? {
         val rom = roms.gameById(romId) ?: return null
         if (!rom.platformTag.equals(platformTag, ignoreCase = true)) return null
-        val gameJson = gameToJson(rom, cannoliRoot, platformTag)
-        val inner = gameJson.removePrefix("{").removeSuffix("}")
-        val prefix = "{\"platform\":\"${escapeJson(platformTag)}\"," +
-            "\"platformDisplayName\":\"${escapeJson(platformDisplayName)}\""
-        return if (inner.isEmpty()) "$prefix}" else "$prefix,$inner}"
+        val game = gameJson(rom, cannoliRoot, romsRoot, platformTag, walker)
+        return json.encodeToString(
+            GameDetailResponse.serializer(),
+            GameDetailResponse(
+                platform = platformTag,
+                platformDisplayName = platformDisplayName,
+                id = game.id,
+                rom = game.rom,
+                displayName = game.displayName,
+                sortKey = game.sortKey,
+                path = game.path,
+                folder = game.folder,
+                size = game.size,
+                modified = game.modified,
+                hasArt = game.hasArt,
+                artUrl = game.artUrl,
+                savesCount = game.savesCount,
+                statesCount = game.statesCount,
+                guidesCount = game.guidesCount,
+                raGameId = game.raGameId,
+                lastPlayedAt = game.lastPlayedAt,
+                multiDisc = game.multiDisc,
+            ),
+        )
     }
 
-    private fun gameToJson(rom: Rom, cannoliRoot: File, platformTag: String): String {
+    private fun gameJson(
+        rom: Rom,
+        cannoliRoot: File,
+        romsRoot: File,
+        platformTag: String,
+        walker: RomDirectoryWalker?,
+    ): GameJson {
         val romFile = rom.path
         val size = try { if (romFile.exists()) romFile.length() else 0L } catch (_: Throwable) { 0L }
         val modified = try { if (romFile.exists()) romFile.lastModified() else 0L } catch (_: Throwable) { 0L }
         val baseName = romFile.nameWithoutExtension
-        val savesCount = countSaves(cannoliRoot, platformTag, baseName)
-        val statesCount = countStates(cannoliRoot, platformTag, baseName)
-        val guidesCount = countGuides(cannoliRoot, platformTag, baseName)
-        val relativeRomPath = romFile.absolutePath.removePrefix("${File(cannoliRoot, "Roms").absolutePath}${File.separator}")
+        val relativeRomPath = romFile.absolutePath.removePrefix("${romsRoot.absolutePath}${File.separator}")
         val artFile = resolveArtFile(cannoliRoot, platformTag, baseName)
-        val hasArt = artFile != null
+        val folderStr = if (walker == null) {
+            ""
+        } else {
+            val gameUnit = walker.gameDirectory(romFile) ?: romFile
+            val platformDir = File(romsRoot, platformTag)
+            val unitParent = gameUnit.parentFile
+            if (unitParent == null || unitParent == platformDir) {
+                ""
+            } else {
+                unitParent.absolutePath
+                    .removePrefix("${platformDir.absolutePath}${File.separator}")
+                    .replace(File.separatorChar, '/')
+            }
+        }
         val artUrl = artFile?.let {
             val rel = it.absolutePath.removePrefix("${File(cannoliRoot, "Art").absolutePath}${File.separator}")
             "/files/art/${rel.replace(File.separatorChar, '/')}"
         }
-        val sb = StringBuilder("{")
-        sb.append("\"id\":").append(rom.id).append(',')
-        sb.append("\"rom\":\"").append(escapeJson(romFile.name)).append("\",")
-        sb.append("\"displayName\":\"").append(escapeJson(rom.displayName)).append("\",")
-        sb.append("\"sortKey\":\"").append(escapeJson(rom.displayName.lowercase())).append("\",")
-        sb.append("\"path\":\"").append(escapeJson(relativeRomPath.replace(File.separatorChar, '/'))).append("\",")
-        sb.append("\"size\":").append(size).append(',')
-        sb.append("\"modified\":").append(modified).append(',')
-        sb.append("\"hasArt\":").append(hasArt)
-        if (artUrl != null) sb.append(',').append("\"artUrl\":\"").append(escapeJson(artUrl)).append('"')
-        sb.append(',').append("\"savesCount\":").append(savesCount)
-        sb.append(',').append("\"statesCount\":").append(statesCount)
-        sb.append(',').append("\"guidesCount\":").append(guidesCount)
-        sb.append(',').append("\"raGameId\":").append(rom.raGameId ?: "null")
-        sb.append(',').append("\"lastPlayedAt\":").append(rom.lastPlayedAt ?: "null")
-        sb.append(',').append("\"multiDisc\":").append(rom.isMultiDisc)
-        sb.append('}')
-        return sb.toString()
+        return GameJson(
+            id = rom.id,
+            rom = romFile.name,
+            displayName = rom.displayName,
+            sortKey = rom.displayName.lowercase(),
+            path = relativeRomPath.replace(File.separatorChar, '/'),
+            folder = folderStr,
+            size = size,
+            modified = modified,
+            hasArt = artFile != null,
+            artUrl = artUrl,
+            savesCount = countSaves(cannoliRoot, platformTag, baseName),
+            statesCount = countStates(cannoliRoot, platformTag, baseName),
+            guidesCount = countGuides(cannoliRoot, platformTag, baseName),
+            raGameId = rom.raGameId,
+            lastPlayedAt = rom.lastPlayedAt,
+            multiDisc = rom.isMultiDisc,
+        )
     }
 
     internal fun resolveArtFile(cannoliRoot: File, platformTag: String, baseName: String): File? {
@@ -126,20 +214,5 @@ object GamesResponse {
         return try {
             dir.listFiles { f -> f.isFile }?.size ?: 0
         } catch (_: Throwable) { 0 }
-    }
-
-    private fun escapeJson(s: String): String {
-        val sb = StringBuilder(s.length + 2)
-        for (c in s) {
-            when (c) {
-                '"' -> sb.append("\\\"")
-                '\\' -> sb.append("\\\\")
-                '\n' -> sb.append("\\n")
-                '\r' -> sb.append("\\r")
-                '\t' -> sb.append("\\t")
-                else -> if (c.code < 0x20) sb.append(String.format("\\u%04x", c.code)) else sb.append(c)
-            }
-        }
-        return sb.toString()
     }
 }

@@ -1,10 +1,15 @@
 package dev.cannoli.scorza.server
 
+import android.content.res.AssetManager
 import dev.cannoli.scorza.db.RomsRepository
+import dev.cannoli.scorza.di.CannoliPathsProvider
 import dev.cannoli.scorza.model.LaunchTarget
-import dev.cannoli.scorza.model.ListItem
 import dev.cannoli.scorza.model.Rom
+import dev.cannoli.scorza.util.ArcadeTitleLookup
+import dev.cannoli.scorza.util.RomDirectoryWalker
+import io.mockk.Runs
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -14,6 +19,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
+import java.io.FileNotFoundException
 
 class GamesResponseTest {
 
@@ -32,14 +38,14 @@ class GamesResponseTest {
 
     private fun mockRepo(items: List<Rom>): RomsRepository {
         val repo = mockk<RomsRepository>()
-        every { repo.gamesForPlatform("SNES", null) } returns items.map { ListItem.RomItem(it) }
+        every { repo.allRomsForPlatform("SNES") } returns items
         return repo
     }
 
     @Test
     fun `empty platform returns empty games array`() {
         val repo = mockRepo(emptyList())
-        val json = GamesResponse.buildList(repo, tmp.root, "SNES", "Super Nintendo")
+        val json = GamesResponse.buildList(repo, tmp.root, File(tmp.root, "Roms"), "SNES", "Super Nintendo")
         val parsed = JSONObject(json)
         assertEquals("SNES", parsed.getString("platform"))
         assertEquals("Super Nintendo", parsed.getString("displayName"))
@@ -53,7 +59,7 @@ class GamesResponseTest {
         val rom = fakeRom(42, "SNES/chrono.sfc", "Chrono Trigger")
         val repo = mockRepo(listOf(rom))
 
-        val json = GamesResponse.buildList(repo, tmp.root, "SNES", "Super Nintendo")
+        val json = GamesResponse.buildList(repo, tmp.root, File(tmp.root, "Roms"), "SNES", "Super Nintendo")
         val game = JSONObject(json).getJSONArray("games").getJSONObject(0)
 
         assertEquals(42, game.getLong("id"))
@@ -82,7 +88,7 @@ class GamesResponseTest {
         val rom = fakeRom(7, "SNES/earthbound.sfc", "EarthBound")
         val repo = mockRepo(listOf(rom))
 
-        val game = JSONObject(GamesResponse.buildList(repo, tmp.root, "SNES", "Super Nintendo"))
+        val game = JSONObject(GamesResponse.buildList(repo, tmp.root, File(tmp.root, "Roms"), "SNES", "Super Nintendo"))
             .getJSONArray("games").getJSONObject(0)
 
         assertEquals(1, game.getInt("savesCount"))
@@ -98,7 +104,7 @@ class GamesResponseTest {
         val rom = fakeRom(3, "SNES/zelda.sfc", "Zelda", art = artFile)
         val repo = mockRepo(listOf(rom))
 
-        val game = JSONObject(GamesResponse.buildList(repo, tmp.root, "SNES", "Super Nintendo"))
+        val game = JSONObject(GamesResponse.buildList(repo, tmp.root, File(tmp.root, "Roms"), "SNES", "Super Nintendo"))
             .getJSONArray("games").getJSONObject(0)
         assertTrue(game.getBoolean("hasArt"))
         assertEquals("/files/art/SNES/zelda.png", game.getString("artUrl"))
@@ -109,7 +115,7 @@ class GamesResponseTest {
         val rom = fakeRom(9, "SNES/phantom.sfc", "Phantom")
         val repo = mockRepo(listOf(rom))
 
-        val game = JSONObject(GamesResponse.buildList(repo, tmp.root, "SNES", "Super Nintendo"))
+        val game = JSONObject(GamesResponse.buildList(repo, tmp.root, File(tmp.root, "Roms"), "SNES", "Super Nintendo"))
             .getJSONArray("games").getJSONObject(0)
         assertEquals(0L, game.getLong("size"))
         assertEquals(0L, game.getLong("modified"))
@@ -127,7 +133,7 @@ class GamesResponseTest {
         val rom = fakeRom(5, "SNES/metroid.sfc", "Metroid")
         val repo = mockRepo(listOf(rom))
 
-        val game = JSONObject(GamesResponse.buildList(repo, tmp.root, "SNES", "Super Nintendo"))
+        val game = JSONObject(GamesResponse.buildList(repo, tmp.root, File(tmp.root, "Roms"), "SNES", "Super Nintendo"))
             .getJSONArray("games").getJSONObject(0)
         assertEquals(3, game.getInt("statesCount"))
     }
@@ -148,8 +154,8 @@ class GamesResponseTest {
             raGameId = null,
         )
         val repo = mockk<RomsRepository>()
-        every { repo.gamesForPlatform("PS", null) } returns listOf(ListItem.RomItem(rom))
-        val json = GamesResponse.buildList(repo, tmp.root, "PS", "PS")
+        every { repo.allRomsForPlatform("PS") } returns listOf(rom)
+        val json = GamesResponse.buildList(repo, tmp.root, File(tmp.root, "Roms"), "PS", "PS")
         assertTrue(json.contains("\"multiDisc\":true"))
         assertFalse(json.contains("\"discPaths\""))
     }
@@ -162,10 +168,70 @@ class GamesResponseTest {
         val repo = mockk<RomsRepository>()
         every { repo.gameById(11L) } returns rom
 
-        val json = GamesResponse.buildOne(repo, tmp.root, "SNES", "Super Nintendo", 11L)
+        val json = GamesResponse.buildOne(repo, tmp.root, File(tmp.root, "Roms"), "SNES", "Super Nintendo", 11L)
         val parsed = JSONObject(json!!)
         assertEquals("SNES", parsed.getString("platform"))
         assertEquals("Super Nintendo", parsed.getString("platformDisplayName"))
         assertEquals(11L, parsed.getLong("id"))
+    }
+
+    @Test
+    fun `buildList emits folder per game and top-level folders array`() {
+        val psRomsDir = File(tmp.root, "Roms/PS").also { it.mkdirs() }
+        val rpgsDir = File(psRomsDir, "RPGs").also { it.mkdirs() }
+        val subGame = File(rpgsDir, "Some Game.iso").also { it.writeBytes(ByteArray(4)) }
+        val looseGame = File(psRomsDir, "Loose Game.iso").also { it.writeBytes(ByteArray(4)) }
+
+        val romInFolder = Rom(
+            id = 1L,
+            path = subGame,
+            platformTag = "PS",
+            displayName = "Some Game",
+            tags = null,
+            artFile = null,
+            launchTarget = LaunchTarget.RetroArch,
+            raGameId = null,
+        )
+        val romLoose = Rom(
+            id = 2L,
+            path = looseGame,
+            platformTag = "PS",
+            displayName = "Loose Game",
+            tags = null,
+            artFile = null,
+            launchTarget = LaunchTarget.RetroArch,
+            raGameId = null,
+        )
+
+        val repo = mockk<RomsRepository>()
+        every { repo.allRomsForPlatform("PS") } returns listOf(romInFolder, romLoose)
+
+        val assets = mockk<AssetManager>()
+        every { assets.open(any()) } throws FileNotFoundException()
+        val paths = mockk<CannoliPathsProvider>()
+        every { paths.root } returns tmp.root
+        every { paths.romDir } returns File(tmp.root, "Roms")
+        val arcade = mockk<ArcadeTitleLookup>()
+        every { arcade.mapFor(any(), any()) } returns emptyMap()
+        every { arcade.invalidate(any()) } just Runs
+        val walker = RomDirectoryWalker(paths, assets, arcade)
+
+        val json = GamesResponse.buildList(repo, tmp.root, File(tmp.root, "Roms"), "PS", "PlayStation", walker)
+        val parsed = JSONObject(json)
+
+        val games = parsed.getJSONArray("games")
+        assertEquals(2, games.length())
+
+        val game0 = games.getJSONObject(0)
+        assertEquals(1L, game0.getLong("id"))
+        assertEquals("RPGs", game0.getString("folder"))
+
+        val game1 = games.getJSONObject(1)
+        assertEquals(2L, game1.getLong("id"))
+        assertEquals("", game1.getString("folder"))
+
+        val folders = parsed.getJSONArray("folders")
+        assertEquals(1, folders.length())
+        assertEquals("RPGs", folders.getString(0))
     }
 }
