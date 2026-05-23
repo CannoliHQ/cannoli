@@ -252,7 +252,8 @@ internal fun KitchenHttpServer.handleGames(
             "move" -> {
                 if (method != "POST") return errorResponse(405, "method not allowed")
                 val folder = query["folder"] ?: ""
-                val unit = romDirectoryWalker?.gameDirectory(rom.path) ?: rom.path
+                val gameDir = romDirectoryWalker?.gameDirectory(rom.path)
+                val unit = gameDir ?: rom.path
                 val romsRoot = romsRootProvider()
                 var platformDir = unit
                 while (platformDir.parentFile != null && platformDir.parentFile != romsRoot) {
@@ -265,6 +266,9 @@ internal fun KitchenHttpServer.handleGames(
                 if (target.canonicalPath == unit.canonicalPath) return okResponse()
                 if (target.exists()) return errorResponse(409, "a game with that name already exists in the destination")
                 if (!unit.renameTo(target)) return errorResponse(500, "move failed")
+                val newPrimary = if (gameDir == null) target else File(target, rom.path.name)
+                val newRelPath = newPrimary.absolutePath.removePrefix("${romsRoot.absolutePath}${File.separator}")
+                repo.updateRomPath(rom.id, newRelPath)
                 scanPlatform?.invoke(platformTag)
                 okResponse()
             }
@@ -275,8 +279,19 @@ internal fun KitchenHttpServer.handleGames(
                     return errorResponse(400, "invalid name")
                 }
                 if (!isSecure(rom.path)) return errorResponse(403, "forbidden")
+                val gameDirBefore = romDirectoryWalker?.gameDirectory(rom.path)
                 when (romDirectoryWalker?.renameGame(rom.path, name)) {
                     dev.cannoli.scorza.util.RomDirectoryWalker.RenameOutcome.RENAMED -> {
+                        val ext = rom.path.extension
+                        val newPrimary = if (gameDirBefore == null) {
+                            File(rom.path.parentFile, if (ext.isEmpty()) name else "$name.$ext")
+                        } else {
+                            val newDir = File(gameDirBefore.parentFile, name)
+                            File(newDir, if (ext.isEmpty()) name else "$name.$ext")
+                        }
+                        val romsRoot = romsRootProvider()
+                        val newRelPath = newPrimary.absolutePath.removePrefix("${romsRoot.absolutePath}${File.separator}")
+                        repo.updateRomPath(rom.id, newRelPath)
                         scanPlatform?.invoke(platformTag)
                         okResponse()
                     }

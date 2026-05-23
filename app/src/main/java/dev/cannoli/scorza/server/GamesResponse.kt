@@ -5,14 +5,11 @@ import dev.cannoli.scorza.model.Rom
 import dev.cannoli.scorza.util.RomDirectoryWalker
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import java.io.File
 
 object GamesResponse {
 
     private val SAVE_EXTENSIONS = setOf("srm", "sav", "fla", "rtc", "mcr", "mcd", "psm", "eep")
-
-    private val json = Json { explicitNulls = false }
 
     @Serializable
     data class GameJson(
@@ -74,7 +71,7 @@ object GamesResponse {
     ): String {
         val games = roms.allRomsForPlatform(platformTag).map { gameJson(it, cannoliRoot, romsRoot, platformTag, walker) }
         val folders = walker?.categoryFolders(platformTag) ?: emptyList()
-        return json.encodeToString(
+        return serverJson.encodeToString(
             GamesListResponse.serializer(),
             GamesListResponse(platformTag, platformDisplayName, games, folders),
         )
@@ -92,7 +89,7 @@ object GamesResponse {
         val rom = roms.gameById(romId) ?: return null
         if (!rom.platformTag.equals(platformTag, ignoreCase = true)) return null
         val game = gameJson(rom, cannoliRoot, romsRoot, platformTag, walker)
-        return json.encodeToString(
+        return serverJson.encodeToString(
             GameDetailResponse.serializer(),
             GameDetailResponse(
                 platform = platformTag,

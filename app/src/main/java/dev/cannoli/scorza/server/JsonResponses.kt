@@ -5,7 +5,10 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-internal val serverJson: Json = Json { explicitNulls = false }
+internal val serverJson: Json = Json {
+    explicitNulls = false
+    encodeDefaults = true
+}
 
 @Serializable
 internal data class OkResponse(
