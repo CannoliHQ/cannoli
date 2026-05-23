@@ -18,7 +18,7 @@ internal fun KitchenHttpServer.handleList(dir: File, displayPath: String, recurs
         return errorResponse(403, "forbidden")
     }
     if (!dir.exists() || !dir.isDirectory) {
-        return errorResponse(404, "not found")
+        return jsonResponse(200, DirListResponse.serializer(), DirListResponse(displayPath, emptyList()))
     }
     val entries: List<DirEntry> = if (recursive) {
         val dirPath = dir.toPath()

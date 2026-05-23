@@ -148,7 +148,13 @@ class KitchenHttpServer(
                 val resourceRoot = if (resource == "roms") romsRootProvider() else File(cannoliRoot, baseDir)
                 val targetDir = if (subpath.isEmpty()) resourceRoot else File(resourceRoot, subpath)
                 val response = when (method) {
-                    "GET" -> handleList(targetDir, displayPath, query["recursive"] == "true")
+                    "GET" -> {
+                        if (targetDir.isFile && isSecure(targetDir)) {
+                            fileResponse(targetDir, mimeForPath(targetDir.name))
+                        } else {
+                            handleList(targetDir, displayPath, query["recursive"] == "true")
+                        }
+                    }
                     "POST" -> handleUpload(targetDir, session)
                     "PUT" -> {
                         if (subpath.isEmpty()) {
@@ -252,6 +258,10 @@ class KitchenHttpServer(
         path.endsWith(".json") -> "application/json"
         path.endsWith(".svg") -> "image/svg+xml"
         path.endsWith(".png") -> "image/png"
+        path.endsWith(".jpg") || path.endsWith(".jpeg") -> "image/jpeg"
+        path.endsWith(".webp") -> "image/webp"
+        path.endsWith(".gif") -> "image/gif"
+        path.endsWith(".bmp") -> "image/bmp"
         path.endsWith(".ico") -> "image/x-icon"
         path.endsWith(".woff2") -> "font/woff2"
         path.endsWith(".woff") -> "font/woff"
@@ -268,6 +278,7 @@ class KitchenHttpServer(
         private val RESOURCE_DIRS = mapOf(
             "roms" to "Roms",
             "art" to "Art",
+            "overlays" to "Overlays",
             "saves" to "Saves",
             "states" to "Save States",
             "bios" to "BIOS",
