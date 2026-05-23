@@ -7,7 +7,8 @@ import dev.cannoli.scorza.util.ScanLog
 
 /**
  * Bridges the file-system view of a platform (via [RomDirectoryWalker]) into the roms table.
- * Owns the mtime gate and the diff-and-sync logic; the walker owns everything filesystem.
+ * Always walks and syncs; [sync] is idempotent and writes nothing when the walk output matches
+ * the existing rows.
  */
 class RomScanner(
     private val db: CannoliDatabase,
@@ -23,16 +24,9 @@ class RomScanner(
             ScanLog.write("scanPlatform $tag: no rom dir, cleared ${it.removed}")
         }
         applyRekeys(tag, result.rekeys)
-        // Invalidate before the mtime gate: art lives in a sibling directory the gate
-        // does not watch, so newly added art must refresh even when the ROM tree is unchanged.
         artwork.invalidate(tag)
-        val storedMtime = readLastScannedMtime(tag)
-        if (result.rekeys.isEmpty() && storedMtime != MTIME_UNSET && storedMtime == result.mtime) {
-            return SyncCounts(0, 0, 0)
-        }
         walker.invalidateNameMap(result.tagDir)
         val counts = sync(tag, result.roms)
-        writeLastScannedMtime(tag, result.mtime)
         ScanLog.write("scanPlatform $tag: +${counts.inserted} -${counts.removed} ~${counts.updated}")
         return counts
     }
@@ -52,24 +46,7 @@ class RomScanner(
         }
     }
 
-    fun invalidatePlatform(platformTag: String) {
-        val tag = platformTag.uppercase()
-        artwork.invalidate(tag)
-        writeLastScannedMtime(tag, MTIME_UNSET)
-    }
-
     fun ensureReservedPlatformTag(tag: String) = ensurePlatformRow(tag)
-
-    fun lastScannedMtime(platformTag: String): Long = readLastScannedMtime(platformTag.uppercase())
-
-    private fun readLastScannedMtime(tag: String): Long = db.queryOne(
-        "SELECT last_scanned_mtime FROM platforms WHERE tag = ?", tag,
-    ) { it.getLong(0) } ?: MTIME_UNSET
-
-    private fun writeLastScannedMtime(tag: String, mtime: Long) = db.execute(
-        "UPDATE platforms SET last_scanned_mtime = ? WHERE tag = ?",
-        mtime, tag,
-    )
 
     private fun sync(tag: String, scanned: List<RomDirectoryWalker.ScannedRom>): SyncCounts {
         data class ExistingRow(val id: Long, val displayName: String, val tags: String?)
@@ -139,8 +116,4 @@ class RomScanner(
         "INSERT OR IGNORE INTO platforms (tag, display_name) VALUES (?, ?)",
         tag, tag,
     )
-
-    private companion object {
-        const val MTIME_UNSET = 0L
-    }
 }

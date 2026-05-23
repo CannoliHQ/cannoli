@@ -56,20 +56,7 @@ class RomDirectoryWalker(
         organizeDir(tagDir, "$tag${File.separator}", tag, rekeys, depth = 0)
         val out = mutableListOf<ScannedRom>()
         scanDir(tagDir, "$tag${File.separator}", isArcade, out, depth = 0)
-        return WalkResult(tagDir = tagDir, mtime = computeTreeMtime(tagDir), roms = out, rekeys = rekeys)
-    }
-
-    fun computeTreeMtime(dir: File): Long {
-        var max = dir.lastModified()
-        val children = dir.listFiles() ?: return max
-        for (child in children) {
-            if (child.name.startsWith(".")) continue
-            if (child.isDirectory) {
-                val sub = computeTreeMtime(child)
-                if (sub > max) max = sub
-            }
-        }
-        return max
+        return WalkResult(tagDir = tagDir, roms = out, rekeys = rekeys)
     }
 
     fun resolveTagDir(tag: String): File? {
@@ -79,6 +66,25 @@ class RomDirectoryWalker(
     }
 
     fun invalidateNameMap(tagDir: File) = arcadeTitleLookup.invalidate(tagDir)
+
+    /** Every category (non-game) folder under the platform, as platform-relative slash paths. */
+    fun categoryFolders(platformTag: String): List<String> {
+        ensureIgnoreLists()
+        val tagDir = resolveTagDir(platformTag.uppercase()) ?: return emptyList()
+        val out = mutableListOf<String>()
+        fun walk(dir: File, prefix: String, depth: Int) {
+            if (depth > MAX_DEPTH) return
+            val subdirs = dir.listFiles { f -> f.isDirectory && !f.name.startsWith(".") } ?: return
+            for (sub in subdirs) {
+                if (findDirLaunchFile(sub) != null) continue
+                val rel = if (prefix.isEmpty()) sub.name else "$prefix/${sub.name}"
+                out.add(rel)
+                walk(sub, rel, depth + 1)
+            }
+        }
+        walk(tagDir, "", 0)
+        return out.sortedWith(compareBy { it.lowercase() })
+    }
 
     /** The dedicated on-disk folder for the game launched by [primaryFile], or null when the game
      *  is a loose file not contained in its own folder. */
@@ -114,9 +120,63 @@ class RomDirectoryWalker(
         return listOf(primaryFile)
     }
 
+    enum class RenameOutcome { RENAMED, NAME_TAKEN, FAILED }
+
+    /** Renames a game. For a single-file game, renames the rom file. For a folder game, cascades:
+     *  the folder, the launch file, the disc files, and the m3u contents all take the new name. */
+    fun renameGame(primaryFile: File, newName: String): RenameOutcome {
+        if (newName.isBlank()) return RenameOutcome.FAILED
+
+        val dir = gameDirectory(primaryFile)
+        if (dir == null) {
+            val currentBase = primaryFile.nameWithoutExtension
+            if (newName.equals(currentBase, ignoreCase = true)) return RenameOutcome.RENAMED
+            val ext = primaryFile.extension
+            val target = File(primaryFile.parentFile, if (ext.isEmpty()) newName else "$newName.$ext")
+            if (target.exists()) return RenameOutcome.NAME_TAKEN
+            return if (primaryFile.renameTo(target)) RenameOutcome.RENAMED else RenameOutcome.FAILED
+        }
+
+        val oldBase = dir.name
+        if (newName.equals(oldBase, ignoreCase = true)) return RenameOutcome.RENAMED
+        val newDir = File(dir.parentFile, newName)
+        if (newDir.exists()) return RenameOutcome.NAME_TAKEN
+
+        if (!dir.renameTo(newDir)) return RenameOutcome.FAILED
+
+        val prefixed = newDir.listFiles { f ->
+            f.isFile && f.name.startsWith(oldBase) && run {
+                val rest = f.name.substring(oldBase.length)
+                rest.isEmpty() || rest[0] == '.' || rest[0] == '(' || rest[0] == ' '
+            }
+        }.orEmpty()
+        val renamed = mutableListOf<Pair<File, File>>()
+        for (file in prefixed) {
+            val target = File(newDir, newName + file.name.removePrefix(oldBase))
+            if (file.renameTo(target)) {
+                renamed.add(file to target)
+            } else {
+                for ((from, to) in renamed.asReversed()) to.renameTo(from)
+                newDir.renameTo(dir)
+                return RenameOutcome.FAILED
+            }
+        }
+
+        val m3u = File(newDir, "$newName.m3u")
+        if (m3u.exists()) {
+            val discs = newDir.listFiles { f ->
+                f.isFile && discRegex.containsMatchIn(f.nameWithoutExtension)
+            }.orEmpty().toList()
+            val primaries = discs.groupBy { it.nameWithoutExtension }
+                .values.map { pickPrimary(it) }.sortedBy { it.name }
+            m3u.writeText(primaries.joinToString("\n") { it.name } + "\n")
+        }
+
+        return RenameOutcome.RENAMED
+    }
+
     data class WalkResult(
         val tagDir: File,
-        val mtime: Long,
         val roms: List<ScannedRom>,
         val rekeys: List<RekeyMove> = emptyList(),
     )

@@ -107,6 +107,9 @@ internal object Migrations {
             db.execSQL("ALTER TABLE roms DROP COLUMN disc_paths")
             db.execSQL("UPDATE platforms SET last_scanned_mtime = 0")
         },
+        Migration(4) { db ->
+            db.execSQL("ALTER TABLE platforms DROP COLUMN last_scanned_mtime")
+        },
     )
 
     val current: Int = all.maxOf { it.version }

@@ -8,7 +8,6 @@ import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.db.AppsRepository
 import dev.cannoli.scorza.db.CollectionsRepository
 import dev.cannoli.scorza.db.RecentlyPlayedRepository
-import dev.cannoli.scorza.db.RomScanner
 import dev.cannoli.scorza.db.RomsRepository
 import dev.cannoli.scorza.di.IoScope
 import dev.cannoli.scorza.launcher.InstalledCoreService
@@ -57,7 +56,6 @@ class DialogInputHandler @Inject constructor(
     @IoScope private val ioScope: CoroutineScope,
     @ActivityContext private val context: android.content.Context,
     private val settings: SettingsRepository,
-    private val scanner: RomScanner,
     private val collectionManager: CollectionsRepository,
     private val recentlyPlayedManager: RecentlyPlayedRepository,
     private val platformResolver: PlatformConfig,
@@ -730,7 +728,6 @@ class DialogInputHandler @Inject constructor(
                 if (rom != null) {
                     pendingContextReturn = null
                     rom.artFile?.delete()
-                    scanner.invalidatePlatform(rom.platformTag)
                     gameListViewModel.reload()
                     nav.dialogState.value = DialogState.None
                 }
@@ -845,15 +842,12 @@ class DialogInputHandler @Inject constructor(
             MENU_DELETE_ART -> {
                 pendingContextReturn = null
                 val pathSet = state.gamePaths.toSet()
-                val tagsToInvalidate = mutableSetOf<String>()
                 gameListViewModel.state.value.items
                     .filterIsInstance<ListItem.RomItem>()
                     .filter { it.rom.path.absolutePath in pathSet }
                     .forEach { romItem ->
                         romItem.rom.artFile?.delete()
-                        tagsToInvalidate.add(romItem.rom.platformTag)
                     }
-                tagsToInvalidate.forEach { scanner.invalidatePlatform(it) }
                 gameListViewModel.reload()
                 nav.dialogState.value = DialogState.None
             }
@@ -924,7 +918,6 @@ class DialogInputHandler @Inject constructor(
                 ioScope.launch {
                     dir.deleteRecursively()
                     romsRepository.deleteRomsUnderPrefix(tag, prefix)
-                    scanner.invalidatePlatform(tag)
                     gameListViewModel.reload()
                     launcherActions.rescanSystemList()
                     withContext(Dispatchers.Main) { nav.dialogState.value = DialogState.None }
@@ -1279,7 +1272,6 @@ class DialogInputHandler @Inject constructor(
                         nav.dialogState.value = DialogState.RenameResult(false, "Failed to rename directory")
                     }
                 }
-                scanner.invalidatePlatform(tag)
                 gameListViewModel.reload()
                 return@launch
             }
@@ -1298,7 +1290,6 @@ class DialogInputHandler @Inject constructor(
                     }
                 }
             }
-            scanner.invalidatePlatform(rom.platformTag)
             gameListViewModel.reload()
         }
     }
@@ -1436,7 +1427,6 @@ class DialogInputHandler @Inject constructor(
     private fun deleteRom(rom: dev.cannoli.scorza.model.Rom) {
         deleteRomFiles(rom)
         romsRepository.deleteRom(rom.id)
-        scanner.invalidatePlatform(rom.platformTag)
     }
 
     private fun deleteRomFiles(rom: dev.cannoli.scorza.model.Rom) {

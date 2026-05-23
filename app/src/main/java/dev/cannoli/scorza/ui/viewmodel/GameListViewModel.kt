@@ -8,7 +8,6 @@ import dev.cannoli.scorza.db.AppsRepository
 import dev.cannoli.scorza.db.CollectionsRepository
 import dev.cannoli.scorza.db.LibraryRef
 import dev.cannoli.scorza.db.RecentlyPlayedRepository
-import dev.cannoli.scorza.db.RomScanner
 import dev.cannoli.scorza.db.RomsRepository
 import dev.cannoli.scorza.db.ScanScheduler
 import dev.cannoli.scorza.di.CannoliPathsProvider
@@ -34,7 +33,6 @@ import javax.inject.Inject
 @ActivityScoped
 class GameListViewModel @Inject constructor(
     private val romsRepository: RomsRepository,
-    private val romScanner: RomScanner,
     private val appsRepository: AppsRepository,
     private val collectionsRepository: CollectionsRepository,
     private val recentlyPlayedRepository: RecentlyPlayedRepository,
@@ -168,7 +166,6 @@ class GameListViewModel @Inject constructor(
                     selectedIndex = 0,
                     isLoading = false
                 )
-                maybeBackstop(tags)
             } finally {
                 withContext(Dispatchers.Main) { onReady() }
             }
@@ -637,7 +634,6 @@ class GameListViewModel @Inject constructor(
                     subfolderPath = subfolder,
                     isLoading = false
                 )
-                maybeBackstop(tags)
             } finally {
                 withContext(Dispatchers.Main) { onReady() }
             }
@@ -647,18 +643,6 @@ class GameListViewModel @Inject constructor(
     private fun loadPlatformItems(tag: String, tags: List<String>, subfolder: String?): List<ListItem> {
         val items = tags.flatMap { romsRepository.gamesForPlatform(it.uppercase(), subfolder) }
         return sortFavoritesFirst(items)
-    }
-
-    private fun maybeBackstop(tags: List<String>) {
-        val romDir = cannoliPaths.romDir
-        for (t in tags) {
-            val tag = t.uppercase()
-            val dir = File(romDir, tag)
-            if (!dir.exists()) continue
-            val onDisk = dir.lastModified()
-            val stored = romScanner.lastScannedMtime(tag)
-            if (onDisk != stored) scanScheduler.enqueue(tag)
-        }
     }
 
     private fun sortFavoritesFirst(items: List<ListItem>): List<ListItem> {
