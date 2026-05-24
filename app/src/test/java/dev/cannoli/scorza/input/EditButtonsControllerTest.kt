@@ -142,6 +142,39 @@ class EditButtonsControllerTest {
         assertEquals(listOf(InputBinding.Button(96)), finalized.bindings[CanonicalButton.BTN_SOUTH])
     }
 
+    @Test fun `digital axis capture does not displace existing analog stick binding on the same axis`() {
+        val template = emptyTemplate().copy(
+            bindings = mapOf(
+                CanonicalButton.BTN_L3 to listOf(
+                    InputBinding.Axis(
+                        axis = 0,
+                        restingValue = 0f,
+                        activeMin = -1f,
+                        activeMax = 1f,
+                        digitalThreshold = 0.5f,
+                        analogRole = AnalogRole.LEFT_STICK_X,
+                    ),
+                ),
+            ),
+        )
+        controller.startListening(template, CanonicalButton.BTN_RIGHT)
+        clockMs = 0
+        controller.captureRawAxisEvent(mapOf(0 to 1f))
+        clockMs = 500
+        val finalized = controller.tickAndMaybeFinalize() ?: error("expected finalized")
+
+        val right = finalized.bindings[CanonicalButton.BTN_RIGHT] ?: emptyList()
+        assertEquals(1, right.size)
+        val rightAxis = right.first() as InputBinding.Axis
+        assertEquals(0, rightAxis.axis)
+        assertEquals(AnalogRole.DIGITAL_BUTTON, rightAxis.analogRole)
+
+        val l3 = finalized.bindings[CanonicalButton.BTN_L3] ?: emptyList()
+        assertEquals(1, l3.size)
+        val l3Axis = l3.first() as InputBinding.Axis
+        assertEquals(AnalogRole.LEFT_STICK_X, l3Axis.analogRole)
+    }
+
     @Test fun `binding edit promotes source from ANDROID_DEFAULT to USER_WIZARD`() {
         // ANDROID_DEFAULT-sourced mappings are bumped to tier 3 in MappingResolver so a
         // bundled RA cfg can win for the device. When the user actually customizes a button

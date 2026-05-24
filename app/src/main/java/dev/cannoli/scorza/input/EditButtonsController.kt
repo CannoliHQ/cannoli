@@ -164,7 +164,9 @@ class EditButtonsController @Inject constructor(
         a is InputBinding.Button && b is InputBinding.Button -> a.keyCode == b.keyCode
         a is InputBinding.Hat && b is InputBinding.Hat -> a.axis == b.axis && a.direction == b.direction
         a is InputBinding.Axis && b is InputBinding.Axis -> {
-            a.axis == b.axis && sameSign(a.activeMax, b.activeMax)
+            a.axis == b.axis &&
+                sameSign(a.activeMax, b.activeMax) &&
+                a.analogRole == b.analogRole
         }
         else -> false
     }
