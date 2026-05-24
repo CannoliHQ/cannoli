@@ -33,7 +33,7 @@ class StickAutoRepeat @Inject constructor(
         }
     }
 
-    fun handleMotion(event: MotionEvent) {
+    fun handleMotion(event: MotionEvent, dispatcherHandled: Boolean = false) {
         val stickX = event.getAxisValue(MotionEvent.AXIS_X)
         val stickY = event.getAxisValue(MotionEvent.AXIS_Y)
         val newDir = when {
@@ -46,7 +46,10 @@ class StickAutoRepeat @Inject constructor(
         if (newDir != heldDir) {
             handler.removeCallbacks(runnable)
             heldDir = newDir
-            if (newDir != 0) {
+            // When the dispatcher already handled this motion (stick is bound as a digital
+            // direction), the canonical's auto-repeat is owned by MenuNavigationPoller. Firing
+            // here would double-scroll, so we only track the transition.
+            if (newDir != 0 && !dispatcherHandled) {
                 fireForDir(newDir)
                 handler.postDelayed(runnable, INITIAL_DELAY_MS)
             }

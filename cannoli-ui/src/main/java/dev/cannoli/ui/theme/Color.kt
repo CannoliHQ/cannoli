@@ -31,6 +31,7 @@ data class CannoliColors(
 
 val LocalCannoliColors = staticCompositionLocalOf { CannoliColors() }
 val LocalCannoliFont = staticCompositionLocalOf<FontFamily> { FontFamily.Default }
+val LocalCannoliIconFont = staticCompositionLocalOf<FontFamily> { FontFamily.Default }
 val LocalScaleFactor = staticCompositionLocalOf { 1f }
 
 data class ColorPreset(val name: String, val color: Long)
