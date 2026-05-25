@@ -24,6 +24,7 @@ enum class OsdPosition {
     CenterEnd,
     BottomStart,
     BottomCenter,
+    BottomCenterLow,
     BottomEnd,
 }
 
@@ -58,6 +59,7 @@ private fun OsdPosition.alignment(): Alignment = when (this) {
     OsdPosition.CenterEnd -> Alignment.CenterEnd
     OsdPosition.BottomStart -> Alignment.BottomStart
     OsdPosition.BottomCenter -> Alignment.BottomCenter
+    OsdPosition.BottomCenterLow -> Alignment.BottomCenter
     OsdPosition.BottomEnd -> Alignment.BottomEnd
 }
 
@@ -66,10 +68,12 @@ private fun OsdPosition.alignment(): Alignment = when (this) {
 private fun OsdPosition.edgePadding(): androidx.compose.foundation.layout.PaddingValues {
     val zero = 0.dp
     val center = 50.dp
+    val centerLow = 12.dp
     val corner = 16.dp
     return when (this) {
         OsdPosition.TopCenter -> androidx.compose.foundation.layout.PaddingValues(top = center)
         OsdPosition.BottomCenter -> androidx.compose.foundation.layout.PaddingValues(bottom = center)
+        OsdPosition.BottomCenterLow -> androidx.compose.foundation.layout.PaddingValues(bottom = centerLow)
         OsdPosition.TopStart -> androidx.compose.foundation.layout.PaddingValues(top = corner, start = corner)
         OsdPosition.TopEnd -> androidx.compose.foundation.layout.PaddingValues(top = corner, end = corner)
         OsdPosition.BottomStart -> androidx.compose.foundation.layout.PaddingValues(bottom = corner, start = corner)
