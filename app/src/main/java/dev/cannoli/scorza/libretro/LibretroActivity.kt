@@ -716,7 +716,7 @@ class LibretroActivity : ComponentActivity() {
                         cacheDir = java.io.File(cacheDir, "ra_cache"),
                         onEvent = { _, title, _, _ ->
                             raHasAchievements = true
-                            showOsd("\uDB81\uDD38 $title", OsdPosition.BottomCenter)
+                            showOsd("\uDB81\uDD38 $title", OsdPosition.BottomCenterLow)
                         },
                         onLogin = { success, nameOrError, newToken ->
                             sessionLog.log("RA onLogin: success=$success name=$nameOrError tokenReceived=${newToken != null}")
