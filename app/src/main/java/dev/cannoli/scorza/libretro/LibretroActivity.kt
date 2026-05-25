@@ -419,9 +419,9 @@ class LibretroActivity : ComponentActivity() {
             statusBar = hexToColor(args.colorStatusBar) ?: Color.White
         )
 
+        val appFonts = (application as dev.cannoli.scorza.CannoliApp).appFonts
         val fontFamily = run {
             val fontKey = args.font
-            val appFonts = (application as dev.cannoli.scorza.CannoliApp).appFonts
             when (fontKey) {
                 "default" -> appFonts.mplus1Code
                 "the_og" -> appFonts.bpReplay
@@ -438,7 +438,7 @@ class LibretroActivity : ComponentActivity() {
         }
 
         setContent {
-            CannoliTheme(fontFamily = fontFamily) {
+            CannoliTheme(fontFamily = fontFamily, iconFontFamily = appFonts.mplus1Code) {
                 CompositionLocalProvider(
                     LocalCannoliColors provides colors,
                     dev.cannoli.scorza.input.screen.compose.LocalScreenInputRegistry provides screenInputRegistry,
@@ -801,7 +801,7 @@ class LibretroActivity : ComponentActivity() {
         // mapping doesn't bind sticks as canonical navigation.
         val consumed = if (::inputDispatcher.isInitialized)
             inputDispatcher.handleMotionEvent(event) else false
-        if (::stickAutoRepeat.isInitialized) stickAutoRepeat.handleMotion(event)
+        if (::stickAutoRepeat.isInitialized) stickAutoRepeat.handleMotion(event, dispatcherHandled = consumed)
 
         // Guide-screen special case: it owns its own continuous scroll mechanism (guideScrollDir
         // polled from a separate runnable). Reset it when BOTH stick AND hat return to neutral.
@@ -837,9 +837,20 @@ class LibretroActivity : ComponentActivity() {
             return super.dispatchGenericMotionEvent(event)
         }
 
-        val port = portRouter.portFor(event.deviceId) ?: 0
-        val mapping = portRouter.mappingForPort(port)
-        val evaluator = evaluatorForPort(port)
+        val deviceId = event.deviceId
+        val mapping = portRouter.mappingFor(deviceId)
+        val evaluator = portRouter.evaluatorFor(deviceId)
+
+        // Activate on first meaningful stick motion so an analog-only controller is assigned
+        // its own port rather than leaking input to port 0. Mirrors the launcher's first-press
+        // activation step (InputDispatcher.maybeActivate), extended to pure analog motion that
+        // never crosses a digital threshold.
+        if (mapping != null && !portRouter.isActivated(deviceId) &&
+            dev.cannoli.scorza.input.runtime.MotionActivation.shouldActivate(event)
+        ) {
+            portRouter.activate(deviceId, System.currentTimeMillis())
+        }
+        val port = portRouter.portFor(deviceId) ?: return super.dispatchGenericMotionEvent(event)
 
         // Track whether any axis binding actually matched. If nothing did (e.g. the active
         // mapping uses Button(19/20/21/22) for D-pad and the device emits HAT axes 15/16),
@@ -1357,6 +1368,7 @@ class LibretroActivity : ComponentActivity() {
         startRaPausedIdle()
         refreshSlotInfo()
         refreshDiskInfo()
+        setKeepScreenOnForGameplay(false)
     }
 
     private fun closeAll() {
@@ -1375,6 +1387,15 @@ class LibretroActivity : ComponentActivity() {
         renderer.paused = false
         runner.resumeAudio()
         startVsyncPacer()
+        setKeepScreenOnForGameplay(true)
+    }
+
+    private fun setKeepScreenOnForGameplay(enabled: Boolean) {
+        if (enabled) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
     }
 
     private fun refreshSlotInfo() {

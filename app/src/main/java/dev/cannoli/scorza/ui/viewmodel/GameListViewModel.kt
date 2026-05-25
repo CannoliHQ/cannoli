@@ -279,7 +279,7 @@ class GameListViewModel @Inject constructor(
         indexStack.clear()
         scope.launch(Dispatchers.IO) {
             try {
-                val entries = recentlyPlayedRepository.recent(limit = 50)
+                val entries = recentlyPlayedRepository.recent(limit = 15)
                 val items = entries.mapNotNull { entry ->
                     when (val ref = entry.ref) {
                         is LibraryRef.Rom -> romsRepository.gameById(ref.id)?.let { ListItem.RomItem(it) }

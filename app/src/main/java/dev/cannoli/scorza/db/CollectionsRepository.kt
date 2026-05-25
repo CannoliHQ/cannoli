@@ -82,11 +82,15 @@ class CollectionsRepository(private val db: CannoliDatabase) {
         }
     }
 
-    fun create(displayName: String, type: CollectionType = CollectionType.STANDARD): Long =
-        db.executeReturningId(
-            "INSERT INTO collections (display_name, collection_type) VALUES (?, ?)",
-            displayName, type.name,
+    fun create(displayName: String, type: CollectionType = CollectionType.STANDARD): Long {
+        val nextOrder = db.queryOne(
+            "SELECT COALESCE(MAX(sort_order), -1) + 1 FROM collections",
+        ) { it.getInt(0) } ?: 0
+        return db.executeReturningId(
+            "INSERT INTO collections (display_name, collection_type, sort_order) VALUES (?, ?, ?)",
+            displayName, type.name, nextOrder.toLong(),
         )
+    }
 
     fun rename(collectionId: Long, newName: String) = db.execute(
         "UPDATE collections SET display_name = ? WHERE id = ?",

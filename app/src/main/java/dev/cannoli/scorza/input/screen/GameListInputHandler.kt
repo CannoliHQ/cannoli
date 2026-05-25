@@ -232,7 +232,7 @@ class GameListInputHandler @Inject constructor(
         val glState = gameListViewModel.state.value
         if (glState.isCollectionsList) {
             nav.dialogState.value = DialogState.NewCollectionInput(gamePaths = emptyList())
-        } else if (glState.isCollection && glState.collectionId != null) {
+        } else if (glState.isCollection && glState.collectionId != null && !glState.isFavorites) {
             nav.dialogState.value = DialogState.NewCollectionInput(gamePaths = emptyList(), parentId = glState.collectionId)
         }
     }

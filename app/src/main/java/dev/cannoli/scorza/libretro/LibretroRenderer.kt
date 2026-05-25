@@ -59,14 +59,14 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
     private var overlayLoaded = false
 
     @Volatile var backendName = "GLES"; private set
-    @Volatile var fps = 0f; private set
-    @Volatile var frameTimeMs = 0f; private set
     @Volatile var viewportWidth = 0; private set
     @Volatile var viewportHeight = 0; private set
     @Volatile var portraitMarginPx: Int = 0
 
-    private var lastFpsNanos = 0L
-    private var emaFrameNs = 0.0
+    private val fpsMeter = FpsMeter(emaAlpha = FPS_EMA_ALPHA)
+    val fps: Float get() = fpsMeter.fps
+    val frameTimeMs: Float get() = fpsMeter.frameTimeMs
+
     private var lastDrawNanos = 0L
     private var frameAccumulatorNs = 0L
 
@@ -114,8 +114,7 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) = guard("onSurfaceCreated") {
         GLES20.glClearColor(0f, 0f, 0f, 1f)
-        lastFpsNanos = 0L
-        emaFrameNs = 0.0
+        fpsMeter.reset()
         loggedFirstFrame = false
         val glVersion = GLES20.glGetString(GLES20.GL_VERSION) ?: ""
         val parsedVersion = parseGlesVersion(glVersion)
@@ -204,16 +203,16 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
 
             val extra = fastForwardFrames
             if (extra > 0) {
-                runner.run()
-                for (i in 1 until extra) runner.run()
+                runEmulatedFrame()
+                for (i in 1 until extra) runEmulatedFrame()
             } else if (lockedToVsync) {
-                runner.run()
+                runEmulatedFrame()
             } else {
                 val frameDurationNs = (1_000_000_000.0 / coreTargetFps).toLong()
                 frameAccumulatorNs += delta
                 if (frameAccumulatorNs > frameDurationNs * 2) frameAccumulatorNs = frameDurationNs * 2
                 while (frameAccumulatorNs >= frameDurationNs) {
-                    runner.run()
+                    runEmulatedFrame()
                     frameAccumulatorNs -= frameDurationNs
                 }
             }
@@ -237,7 +236,6 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
         }
         if (w == 0 || h == 0) {
             GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
-            tickFps()
             onFrameRendered?.invoke()
             return
         }
@@ -316,7 +314,6 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
 
         if (surfaceWidth == 0 || surfaceHeight == 0) {
             GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
-            tickFps()
             onFrameRendered?.invoke()
             return
         }
@@ -389,7 +386,6 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
         }
         if (overlayLoaded) drawOverlay()
 
-        tickFps()
         onFrameRendered?.invoke()
     }
 
@@ -403,18 +399,9 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
         }
     }
 
-    private fun tickFps() {
-        val now = System.nanoTime()
-        if (lastFpsNanos != 0L) {
-            val delta = (now - lastFpsNanos).toDouble()
-            emaFrameNs = if (emaFrameNs == 0.0) delta
-                         else emaFrameNs * (1.0 - FPS_EMA_ALPHA) + delta * FPS_EMA_ALPHA
-            if (emaFrameNs > 0.0) {
-                fps = (1_000_000_000.0 / emaFrameNs).toFloat()
-                frameTimeMs = (emaFrameNs / 1_000_000.0).toFloat()
-            }
-        }
-        lastFpsNanos = now
+    private fun runEmulatedFrame() {
+        runner.run()
+        fpsMeter.tick(System.nanoTime())
     }
 
     private fun drawSimple(w: Int, h: Int, vpX: Int, vpY: Int, vpW: Int, vpH: Int) {

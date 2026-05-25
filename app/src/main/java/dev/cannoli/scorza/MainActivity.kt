@@ -14,6 +14,7 @@ import android.os.Looper
 import android.provider.Settings
 import android.view.KeyEvent
 import android.view.MotionEvent
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -161,6 +162,10 @@ class MainActivity : ComponentActivity(), ActivityActions {
         }
         super.onCreate(savedInstanceState)
 
+        // Belt-and-suspenders: ensure the launcher window does not hold FLAG_KEEP_SCREEN_ON,
+        // so the system display timeout applies. The IGM activity manages its own flag.
+        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
         @Suppress("DEPRECATION")
         setTaskDescription(
             ActivityManager.TaskDescription(getString(R.string.app_name), R.mipmap.ic_launcher)
@@ -196,7 +201,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
             } else {
                 appFonts.mplus1Code
             }
-            CannoliTheme(fontFamily = themeFont) {
+            CannoliTheme(fontFamily = themeFont, iconFontFamily = appFonts.mplus1Code) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     CompositionLocalProvider(
                         LocalPortraitMargin provides PortraitMarginState(marginPx = settings.portraitMarginPx),
@@ -542,7 +547,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
             return true
         }
         val handled = inputDispatcher.handleMotionEvent(event)
-        stickAutoRepeat.handleMotion(event)
+        stickAutoRepeat.handleMotion(event, dispatcherHandled = handled)
         return handled || super.onGenericMotionEvent(event)
     }
 

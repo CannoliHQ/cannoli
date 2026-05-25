@@ -279,7 +279,7 @@ fun GameListScreen(
                 stringResource(R.string.label_play)
             }
             val resumeLabel = stringResource(R.string.label_resume)
-            val showNewButton = state.isCollectionsList || state.isCollection
+            val showNewButton = state.isCollectionsList || (state.isCollection && !state.isFavorites)
             val leftItems = buildList {
                 add(buttonStyle.back to stringResource(R.string.label_back))
                 if (showNewButton) add(buttonStyle.west to stringResource(R.string.label_new))
