@@ -56,6 +56,7 @@ class GameMoveHandlerTest {
         val rom = makeRom(1L, romFile)
         val repo = mockk<RomsRepository>()
         every { repo.gameById(1L) } returns rom
+        every { repo.updateRomPath(any(), any()) } returns true
 
         val server = makeServer(tmp.root, repo)
         val response = server.handleGames(
@@ -85,6 +86,7 @@ class GameMoveHandlerTest {
 
         val repo = mockk<RomsRepository>()
         every { repo.gameById(2L) } returns rom
+        every { repo.updateRomPath(any(), any()) } returns true
 
         val walker = mockk<RomDirectoryWalker>()
         every { walker.gameDirectory(m3u) } returns gameFolder
@@ -158,6 +160,7 @@ class GameMoveHandlerTest {
         val rom = makeRom(5L, romFile)
         val repo = mockk<RomsRepository>()
         every { repo.gameById(5L) } returns rom
+        every { repo.updateRomPath(any(), any()) } returns true
 
         val server = makeServer(tmp.root, repo)
         val response = server.handleGames(
