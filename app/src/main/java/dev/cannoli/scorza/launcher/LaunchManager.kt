@@ -26,10 +26,10 @@ class LaunchManager(
     private val retroArchLauncher: RetroArchLauncher,
     private val emuLauncher: EmuLauncher,
     private val apkLauncher: ApkLauncher,
+    private val launchState: LaunchState,
     private val installedCoreService: InstalledCoreService? = null,
 ) {
     private var raConfigPath: String? = null
-    @Volatile var launching = false
 
     init {
         apkLauncher.debugLog = ::debugLog
@@ -224,8 +224,8 @@ class LaunchManager(
 
     fun launchRom(rom: Rom): DialogState? {
         debugLog("launchRom entered: ${rom.platformTag} / ${rom.path.name} target=${rom.launchTarget::class.simpleName}")
-        if (launching) return null
-        launching = true
+        if (launchState.launching) return null
+        launchState.launching = true
         val launchFile = resolveLaunchFile(rom, extractArchives = false)
             ?: return errorAndReset(DialogState.LaunchError("Failed to resolve launch file"))
 
@@ -328,25 +328,25 @@ class LaunchManager(
 
     fun launchApp(app: App): DialogState? {
         debugLog("launchApp entered: ${app.type} / ${app.packageName}")
-        if (launching) return null
-        launching = true
+        if (launchState.launching) return null
+        launchState.launching = true
         return launchResultDialog(apkLauncher.launch(app.packageName))
     }
 
     fun resumeRom(rom: Rom): DialogState? {
         debugLog("resumeRom entered: ${rom.platformTag} / ${rom.path.name}")
-        if (launching) return null
-        launching = true
+        if (launchState.launching) return null
+        launchState.launching = true
         val resumeSlot = findMostRecentSlot(rom) ?: 0
         val embeddedCorePath = getEmbeddedCorePath(rom)
         val launchFile = resolveLaunchFile(rom, extractArchives = embeddedCorePath != null)
-            ?: run { launching = false; return null }
+            ?: run { launchState.launching = false; return null }
         if (embeddedCorePath != null) {
             launchEmbedded(rom.copy(path = launchFile), embeddedCorePath, resumeSlot, originalRomPath = rom.path.absolutePath)
             return null
         }
         val gameOverride = platformConfig.getGameOverride(rom.path.absolutePath)
-        val core = gameOverride?.coreId ?: platformConfig.getCoreName(rom.platformTag) ?: run { launching = false; return null }
+        val core = gameOverride?.coreId ?: platformConfig.getCoreName(rom.platformTag) ?: run { launchState.launching = false; return null }
         val raPackage = gameOverride?.raPackage ?: platformConfig.getPackage(rom.platformTag)
         if (settings.retroArchDiyMode) {
             val raConfig = "/storage/emulated/0/Android/data/$raPackage/files/retroarch.cfg"
@@ -360,13 +360,13 @@ class LaunchManager(
     }
 
     private fun errorAndReset(dialog: DialogState): DialogState {
-        launching = false
+        launchState.launching = false
         return dialog
     }
 
     private fun launchResultDialog(result: LaunchResult): DialogState? {
         val dialog = toLaunchDialog(result)
-        if (dialog != null) launching = false
+        if (dialog != null) launchState.launching = false
         return dialog
     }
 

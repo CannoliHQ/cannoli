@@ -97,6 +97,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var updateManager: UpdateManager
     @Inject lateinit var setupCoordinator: SetupCoordinator
     @Inject lateinit var launchManager: Provider<LaunchManager>
+    @Inject lateinit var launchState: dev.cannoli.scorza.launcher.LaunchState
     @Inject lateinit var installedCoreService: Provider<InstalledCoreService>
     @Inject lateinit var romsRepository: Provider<RomsRepository>
     @Inject lateinit var romScanner: Provider<RomScanner>
@@ -373,11 +374,11 @@ class MainActivity : ComponentActivity(), ActivityActions {
         registerControllerOsd()
         menuNavigationPoller.start()
         bootSequencer.advance()
+        launchState.launching = false
         if (!isReady) return
         if (!coldStart) overridePendingTransition(0, 0)
         coldStart = false
         hideSystemUI()
-        launchManager.get().launching = false
         if (LibretroActivity.isRunning) {
             val intent = Intent(this, LibretroActivity::class.java)
             intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)

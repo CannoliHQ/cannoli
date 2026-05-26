@@ -11,6 +11,7 @@ import dev.cannoli.scorza.launcher.ApkLauncher
 import dev.cannoli.scorza.launcher.EmuLauncher
 import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.LaunchManager
+import dev.cannoli.scorza.launcher.LaunchState
 import dev.cannoli.scorza.launcher.RetroArchLauncher
 import dev.cannoli.scorza.settings.SettingsRepository
 import javax.inject.Singleton
@@ -33,9 +34,10 @@ object LaunchModule {
         retroArchLauncher: RetroArchLauncher,
         emuLauncher: EmuLauncher,
         apkLauncher: ApkLauncher,
+        launchState: LaunchState,
         installedCoreService: InstalledCoreService,
     ): LaunchManager = LaunchManager(
         context, settings, platformConfig,
-        retroArchLauncher, emuLauncher, apkLauncher, installedCoreService
+        retroArchLauncher, emuLauncher, apkLauncher, launchState, installedCoreService
     )
 }
