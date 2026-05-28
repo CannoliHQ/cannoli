@@ -208,6 +208,17 @@
     "name": "PC-FX",
     "core": "mednafen_pcfx_libretro"
   },
+  "PICO8": {
+    "name": "PICO-8",
+    "app": [
+      {
+        "package": "io.wip.pico8",
+        "activity": "com.godot.game.GodotAppLauncher",
+        "action": "android.intent.action.VIEW",
+        "data": { "kind": "external_storage_saf" }
+      }
+    ]
+  },
   "NGP": {
     "name": "Neo Geo Pocket",
     "core": "mednafen_ngp_libretro",

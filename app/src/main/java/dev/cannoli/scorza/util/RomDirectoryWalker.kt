@@ -138,7 +138,12 @@ class RomDirectoryWalker(
         }
         for (file in romFiles) {
             if (file.absolutePath in suppressed) continue
-            pending.add(PendingRom("$relPrefix${file.name}", file.nameWithoutExtension, file.name, null))
+            val rawName = if (file.name.endsWith(".p8.png", ignoreCase = true)) {
+                file.name.dropLast(".p8.png".length)
+            } else {
+                file.nameWithoutExtension
+            }
+            pending.add(PendingRom("$relPrefix${file.name}", rawName, file.name, null))
         }
 
         val nameOverrides = arcadeTitleLookup.mapFor(dir, fallbackToArcade = isArcade)
