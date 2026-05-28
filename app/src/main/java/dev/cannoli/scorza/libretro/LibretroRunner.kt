@@ -136,6 +136,7 @@ class LibretroRunner {
 
     fun setCoreOption(key: String, value: String) = nativeSetCoreOption(key, value)
 
+    fun hasDiskControl(): Boolean = nativeHasDiskControl()
     fun getDiskCount(): Int = nativeGetDiskCount()
     fun getDiskIndex(): Int = nativeGetDiskIndex()
     fun setDiskIndex(index: Int): Boolean = nativeSetDiskIndex(index)
@@ -179,6 +180,7 @@ class LibretroRunner {
     private external fun nativeGetCoreOptions(): Array<String>
     private external fun nativeGetCoreCategories(): Array<String>
     private external fun nativeSetCoreOption(key: String, value: String)
+    private external fun nativeHasDiskControl(): Boolean
     private external fun nativeGetDiskCount(): Int
     private external fun nativeGetDiskIndex(): Int
     private external fun nativeSetDiskIndex(index: Int): Boolean

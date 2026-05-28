@@ -56,6 +56,8 @@ import dev.cannoli.ui.theme.hexToColor
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -101,6 +103,35 @@ class LibretroActivity : ComponentActivity() {
         android.view.Choreographer.getInstance().removeFrameCallback(cb)
         vsyncCallback = null
     }
+
+    // Drain any in-flight retro_run on the GL thread before the main thread
+    // proceeds. Used at pause boundaries so the renderer is fully idle before
+    // we touch shared lifecycle state (audio, vsync pacer, screen-on flag).
+    private fun syncGlThread() {
+        val view = glSurfaceView ?: return
+        val latch = CountDownLatch(1)
+        view.queueEvent { latch.countDown() }
+        latch.await(100L, TimeUnit.MILLISECONDS)
+    }
+
+    // Run a block on the GL thread (the same thread that called retro_init /
+    // retro_run) and return its result. Some libretro callbacks --
+    // mednafen_pce_fast's disk_control in particular -- are only safe to
+    // invoke from the core's own thread; calling them from the main thread
+    // corrupts the calling stack. Used for any core query issued outside the
+    // render loop.
+    private inline fun <T> runOnGlThread(timeoutMs: Long, default: T, crossinline block: () -> T): T {
+        val view = glSurfaceView ?: return default
+        val latch = CountDownLatch(1)
+        var result: T = default
+        view.queueEvent {
+            result = block()
+            latch.countDown()
+        }
+        latch.await(timeoutMs, TimeUnit.MILLISECONDS)
+        return result
+    }
+
     private var loading by mutableStateOf(true)
     private var revealed by mutableStateOf(false)
     private var missingBios by mutableStateOf<List<dev.cannoli.scorza.config.FirmwareEntry>>(emptyList())
@@ -276,11 +307,23 @@ class LibretroActivity : ComponentActivity() {
         portRouter.snapshotEntries().count { !it.mapping.excludeFromGameplay }
 
     private fun refreshDiskInfo() {
-        diskCount = runner.getDiskCount()
-        currentDiskIndex = runner.getDiskIndex()
-        if (diskCount > 1) {
-            diskLabels = (0 until diskCount).map { runner.getDiskLabel(it) ?: "" }
+        val hasCtl = runner.hasDiskControl()
+        sessionLog.log("refreshDiskInfo: hasCtl=$hasCtl")
+        if (!hasCtl) return
+        if (CoreQuirks.has(corePath, CoreQuirk.UNSAFE_DISK_CONTROL_OUTSIDE_RETRO_RUN)) {
+            sessionLog.log("refreshDiskInfo: core quirk -- skipping disk_control queries")
+            return
         }
+        val snapshot = runOnGlThread(200L, Triple(0, 0, emptyList<String>())) {
+            val count = runner.getDiskCount()
+            val index = runner.getDiskIndex()
+            val labels = if (count > 1) (0 until count).map { runner.getDiskLabel(it) ?: "" } else emptyList()
+            Triple(count, index, labels)
+        }
+        diskCount = snapshot.first
+        currentDiskIndex = snapshot.second
+        diskLabels = snapshot.third
+        sessionLog.log("refreshDiskInfo: count=$diskCount index=$currentDiskIndex labels=${diskLabels.size}")
     }
 
     data class ShaderParamItem(
@@ -1301,7 +1344,9 @@ class LibretroActivity : ComponentActivity() {
                     showOsd("Reset", OsdPosition.BottomCenter)
                 }
                 ShortcutAction.SAVE_AND_QUIT -> {
+                    stopVsyncPacer()
                     renderer.paused = true
+                    syncGlThread()
                     runner.pauseAudio()
                     if (stateBasePath.isNotEmpty()) slotManager.saveState(runner, slotManager.slots[0])
                     quit()
@@ -1330,9 +1375,10 @@ class LibretroActivity : ComponentActivity() {
                 ShortcutAction.OPEN_GUIDE -> {
                     val guides = guideManager.findGuides()
                     if (guides.isNotEmpty()) {
-                        renderer.paused = true
-                        runner.pauseAudio()
                         stopVsyncPacer()
+                        renderer.paused = true
+                        syncGlThread()
+                        runner.pauseAudio()
                         startRaPausedIdle()
                         screenStack.clear()
                         guideFiles = guides
@@ -1354,20 +1400,33 @@ class LibretroActivity : ComponentActivity() {
     // --- Menu screen ---
 
     private fun openMenu() {
+        sessionLog.log("openMenu: enter")
         raManager?.idle()
+        sessionLog.log("openMenu: raIdle")
         if (!raHasAchievements) {
             raManager?.let { ra -> raHasAchievements = ra.isLoggedIn && ra.getAchievements().isNotEmpty() }
         }
+        sessionLog.log("openMenu: raAch")
         guideFiles = guideManager.findGuides()
+        sessionLog.log("openMenu: guides=${guideFiles.size}")
         screenStack.clear()
         push(IGMScreen.Menu())
-        renderer.paused = true
-        runner.pauseAudio()
+        sessionLog.log("openMenu: stack")
         stopVsyncPacer()
+        sessionLog.log("openMenu: vsync stopped")
+        renderer.paused = true
+        syncGlThread()
+        sessionLog.log("openMenu: glSynced")
+        runner.pauseAudio()
+        sessionLog.log("openMenu: audioPaused")
         startRaPausedIdle()
+        sessionLog.log("openMenu: raPausedIdle")
         refreshSlotInfo()
+        sessionLog.log("openMenu: slotInfo")
         refreshDiskInfo()
+        sessionLog.log("openMenu: diskInfo")
         setKeepScreenOnForGameplay(false)
+        sessionLog.log("openMenu: ready")
     }
 
     private fun closeAll() {
@@ -1400,8 +1459,11 @@ class LibretroActivity : ComponentActivity() {
     private fun refreshSlotInfo() {
         val slot = currentSlot
         slotExists = slotManager.stateExists(slot)
+        sessionLog.log("refreshSlotInfo: slot=${slot.label} exists=$slotExists")
         slotThumbnail = slotManager.loadThumbnail(slot)
+        sessionLog.log("refreshSlotInfo: thumb=${slotThumbnail != null}")
         slotOccupied = slotManager.slots.map { slotManager.stateExists(it) }
+        sessionLog.log("refreshSlotInfo: occupied=${slotOccupied.count { it }}/${slotOccupied.size}")
     }
 
     private fun cycleSlot(direction: Int) {
@@ -1412,7 +1474,9 @@ class LibretroActivity : ComponentActivity() {
 
     private fun cycleDisc(direction: Int) {
         val newIndex = ((currentDiskIndex + direction) + diskCount) % diskCount
-        if (newIndex != currentDiskIndex && runner.setDiskIndex(newIndex)) {
+        if (newIndex == currentDiskIndex) return
+        val ok = runOnGlThread(200L, false) { runner.setDiskIndex(newIndex) }
+        if (ok) {
             currentDiskIndex = newIndex
             showOsd("Switched to ${diskLabel(currentDiskIndex)}", OsdPosition.TopCenter)
         }
