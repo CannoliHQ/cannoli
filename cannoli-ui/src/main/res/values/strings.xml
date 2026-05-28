@@ -72,6 +72,7 @@
     <string name="shortcut_action_hold_ff">Hold Fast Forward</string>
     <string name="shortcut_action_open_guide">Open Guide</string>
     <string name="shortcut_action_open_menu">Open In-Game Menu</string>
+    <string name="shortcut_action_toggle_show_fps">Toggle FPS Display</string>
 
     <string name="settings_title">Settings</string>
 

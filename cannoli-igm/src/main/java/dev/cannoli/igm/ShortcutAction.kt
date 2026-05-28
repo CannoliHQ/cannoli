@@ -10,6 +10,7 @@ enum class ShortcutAction(@StringRes val labelRes: Int) {
     SAVE_AND_QUIT(R.string.shortcut_action_save_and_quit),
     CYCLE_SCALING(R.string.shortcut_action_cycle_scaling),
     CYCLE_EFFECT(R.string.shortcut_action_cycle_shader),
+    TOGGLE_SHOW_FPS(R.string.shortcut_action_toggle_show_fps),
     TOGGLE_FF(R.string.shortcut_action_toggle_ff),
     HOLD_FF(R.string.shortcut_action_hold_ff),
     OPEN_GUIDE(R.string.shortcut_action_open_guide),

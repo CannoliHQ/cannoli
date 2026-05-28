@@ -37,6 +37,7 @@ class OverrideManager(
         var screenEffect: ScreenEffect = ScreenEffect.NONE,
         var sharpness: Sharpness = Sharpness.SHARP,
         var debugHud: Boolean = false,
+        var showFps: Boolean = false,
         var maxFfSpeed: Int = 4,
         var crtCurvature: Float = 1.7f,
         var crtScanline: Float = 0.75f,
@@ -63,6 +64,7 @@ class OverrideManager(
             screenEffect == other.screenEffect &&
             sharpness == other.sharpness &&
             debugHud == other.debugHud &&
+            showFps == other.showFps &&
             maxFfSpeed == other.maxFfSpeed &&
             crtCurvature == other.crtCurvature &&
             crtScanline == other.crtScanline &&
@@ -216,6 +218,7 @@ class OverrideManager(
         s["effect"]?.let { v -> enumSafe<ScreenEffect>(v)?.let { settings.screenEffect = it } }
         s["sharpness"]?.let { v -> enumSafe<Sharpness>(v)?.let { settings.sharpness = it } }
         s["debug_hud"]?.let { settings.debugHud = it == "true" }
+        s["show_fps"]?.let { settings.showFps = it == "true" }
         s["max_ff_speed"]?.let { v -> v.toIntOrNull()?.let { settings.maxFfSpeed = it } }
         s["crt_curvature"]?.toFloatOrNull()?.let { settings.crtCurvature = it }
         s["crt_scanline"]?.toFloatOrNull()?.let { settings.crtScanline = it }
@@ -325,6 +328,7 @@ class OverrideManager(
         "effect" to settings.screenEffect.name,
         "sharpness" to settings.sharpness.name,
         "debug_hud" to settings.debugHud.toString(),
+        "show_fps" to settings.showFps.toString(),
         "max_ff_speed" to settings.maxFfSpeed.toString(),
         "crt_curvature" to settings.crtCurvature.toString(),
         "crt_scanline" to settings.crtScanline.toString(),
@@ -345,6 +349,7 @@ class OverrideManager(
         if (settings.screenEffect != baseline.screenEffect) delta["effect"] = settings.screenEffect.name
         if (settings.sharpness != baseline.sharpness) delta["sharpness"] = settings.sharpness.name
         if (settings.debugHud != baseline.debugHud) delta["debug_hud"] = settings.debugHud.toString()
+        if (settings.showFps != baseline.showFps) delta["show_fps"] = settings.showFps.toString()
         if (settings.maxFfSpeed != baseline.maxFfSpeed) delta["max_ff_speed"] = settings.maxFfSpeed.toString()
         if (settings.crtCurvature != baseline.crtCurvature) delta["crt_curvature"] = settings.crtCurvature.toString()
         if (settings.crtScanline != baseline.crtScanline) delta["crt_scanline"] = settings.crtScanline.toString()

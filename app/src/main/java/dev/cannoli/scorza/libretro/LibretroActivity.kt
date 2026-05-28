@@ -149,6 +149,8 @@ class LibretroActivity : ComponentActivity() {
     private var screenEffect by mutableStateOf(ScreenEffect.NONE)
     private var sharpness by mutableStateOf(Sharpness.SHARP)
     private var debugHud by mutableStateOf(false)
+    private var showFps by mutableStateOf(false)
+    private var showFpsBaseline by mutableStateOf(false)
     private var maxFfSpeed by mutableIntStateOf(4)
     private var overlay by mutableStateOf("")
     private var overlayImages = emptyList<String>()
@@ -519,6 +521,7 @@ class LibretroActivity : ComponentActivity() {
                                 settingsItems = if (screen is IGMScreen.Menu) emptyList() else buildSettingsItems(),
                                 coreInfo = coreInfoText,
                                 debugHud = debugHud,
+                                showFps = showFps,
                                 renderer = renderer,
                                 runner = runner,
                                 audioSampleRate = audioSampleRate,
@@ -1372,6 +1375,9 @@ class LibretroActivity : ComponentActivity() {
                 ShortcutAction.OPEN_MENU -> {
                     openMenu()
                 }
+                ShortcutAction.TOGGLE_SHOW_FPS -> {
+                    showFps = !showFps
+                }
                 ShortcutAction.OPEN_GUIDE -> {
                     val guides = guideManager.findGuides()
                     if (guides.isNotEmpty()) {
@@ -1898,7 +1904,11 @@ class LibretroActivity : ComponentActivity() {
         }
         when (index - portRows.size) {
             0 -> cycleFfSpeed(direction)
-            1 -> { debugHud = !debugHud; renderer.debugHud = debugHud }
+            1 -> {
+                showFpsBaseline = !showFpsBaseline
+                showFps = showFpsBaseline
+            }
+            2 -> { debugHud = !debugHud; renderer.debugHud = debugHud }
         }
     }
 
@@ -2377,6 +2387,7 @@ class LibretroActivity : ComponentActivity() {
                 }
             }
             add(IGMSettingsItem("Max FF Speed", "${maxFfSpeed}x"))
+            add(IGMSettingsItem("Show FPS", if (showFpsBaseline) "On" else "Off"))
             add(IGMSettingsItem("Debug HUD", if (debugHud) "On" else "Off"))
         }
         is IGMScreen.ShaderSettings -> {
@@ -2494,6 +2505,7 @@ class LibretroActivity : ComponentActivity() {
             screenEffect = screenEffect,
             sharpness = sharpness,
             debugHud = debugHud,
+            showFps = showFpsBaseline,
             maxFfSpeed = maxFfSpeed,
             shaderPreset = shaderPreset,
             overlay = overlay,
@@ -2530,6 +2542,8 @@ class LibretroActivity : ComponentActivity() {
         screenEffect = settings.screenEffect
         sharpness = settings.sharpness
         debugHud = settings.debugHud
+        showFps = settings.showFps
+        showFpsBaseline = settings.showFps
         maxFfSpeed = settings.maxFfSpeed
         shaderPreset = settings.shaderPreset
         overlay = settings.overlay

@@ -271,6 +271,18 @@ class OverrideManagerTest {
         assertTrue(parsed.getSection("shader_params").isEmpty())
     }
 
+    @Test fun `show_fps round-trips through platform and game files`() {
+        val mgr = manager()
+        mgr.savePlatform(OverrideManager.Settings(showFps = true))
+        assertTrue(mgr.load().showFps)
+
+        val baseline = mgr.loadPlatformBaseline()
+        mgr.saveGameDelta(baseline.copy(showFps = false), baseline)
+        val gameFrontend = IniParser.parse(paths.gameOverrideFile("PS", "Game")).getSection("frontend")
+        assertEquals("false", gameFrontend["show_fps"])
+        assertFalse(mgr.load().showFps)
+    }
+
     @Test fun `saveGameDelta deletes the file when no fields diverge`() {
         // Pre-create the game file
         writeGameIni(

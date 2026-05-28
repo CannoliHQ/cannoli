@@ -21,6 +21,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -102,6 +103,7 @@ fun LibretroScreen(
     settingsItems: List<IGMSettingsItem>,
     coreInfo: String,
     debugHud: Boolean,
+    showFps: Boolean,
     renderer: LibretroRenderer,
     runner: LibretroRunner,
     audioSampleRate: Int,
@@ -576,21 +578,13 @@ fun LibretroScreen(
             }
         }
 
-        if (fastForwarding && !overlayVisible) {
-            val colors = LocalCannoliColors.current
+        if ((showFps || fastForwarding) && !overlayVisible) {
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(top = 16.dp, end = 16.dp)
-                    .clip(Radius.Pill)
-                    .background(colors.highlight)
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
             ) {
-                Text(
-                    text = "▶▶",
-                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
-                    color = colors.highlightText
-                )
+                StatusPill(showFps = showFps, fastForwarding = fastForwarding, renderer = renderer)
             }
         }
 
@@ -619,6 +613,35 @@ fun LibretroScreen(
         }
         }
     }
+    }
+}
+
+@Composable
+private fun StatusPill(showFps: Boolean, fastForwarding: Boolean, renderer: LibretroRenderer) {
+    val colors = LocalCannoliColors.current
+    val fpsValue = remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(showFps) {
+        while (showFps) {
+            fpsValue.floatValue = renderer.fps
+            delay(500)
+        }
+    }
+    val text = buildString {
+        if (fastForwarding) append("▶▶")
+        if (fastForwarding && showFps) append("  ")
+        if (showFps) append("%.2f".format(fpsValue.floatValue))
+    }
+    Box(
+        modifier = Modifier
+            .clip(Radius.Pill)
+            .background(colors.highlight)
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+            color = colors.highlightText
+        )
     }
 }
 
