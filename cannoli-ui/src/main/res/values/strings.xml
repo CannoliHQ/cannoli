@@ -66,6 +66,7 @@
     <string name="shortcut_action_load_state">Load State</string>
     <string name="shortcut_action_reset_game">Reset Game</string>
     <string name="shortcut_action_save_and_quit">Save and Quit</string>
+    <string name="shortcut_action_save_and_quit_hold">Save and Quit (Hold)</string>
     <string name="shortcut_action_cycle_scaling">Cycle Scaling</string>
     <string name="shortcut_action_cycle_shader">Cycle Shader</string>
     <string name="shortcut_action_toggle_ff">Toggle Fast Forward</string>

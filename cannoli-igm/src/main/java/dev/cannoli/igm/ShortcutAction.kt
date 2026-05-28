@@ -8,6 +8,7 @@ enum class ShortcutAction(@StringRes val labelRes: Int) {
     LOAD_STATE(R.string.shortcut_action_load_state),
     RESET_GAME(R.string.shortcut_action_reset_game),
     SAVE_AND_QUIT(R.string.shortcut_action_save_and_quit),
+    SAVE_AND_QUIT_HOLD(R.string.shortcut_action_save_and_quit_hold),
     CYCLE_SCALING(R.string.shortcut_action_cycle_scaling),
     CYCLE_EFFECT(R.string.shortcut_action_cycle_shader),
     TOGGLE_SHOW_FPS(R.string.shortcut_action_toggle_show_fps),

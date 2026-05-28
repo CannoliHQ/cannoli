@@ -213,6 +213,12 @@ class LibretroActivity : ComponentActivity() {
     private var fastForwarding by mutableStateOf(false)
     private var holdingFf = false
 
+    private val pendingHoldHandler = Handler(Looper.getMainLooper())
+    private val pendingHoldRunnable = Runnable { firePendingHold() }
+    private var pendingHoldAction: ShortcutAction? = null
+    private var pendingHoldPort = -1
+    private var pendingHoldChord: Set<Int> = emptySet()
+
     private val audioStatsHandler = Handler(Looper.getMainLooper())
     private val audioStatsRunnable = object : Runnable {
         override fun run() {
@@ -225,6 +231,59 @@ class LibretroActivity : ComponentActivity() {
         fastForwarding = enabled
         renderer.fastForwardFrames = if (enabled) maxFfSpeed else 0
         runner.setAudioMuted(enabled)
+    }
+
+    private fun performSaveAndQuit() {
+        stopVsyncPacer()
+        renderer.paused = true
+        syncGlThread()
+        runner.pauseAudio()
+        if (stateBasePath.isNotEmpty()) slotManager.saveState(runner, slotManager.slots[0])
+        quit()
+    }
+
+    private fun holdDurationFor(action: ShortcutAction): Long = when (action) {
+        ShortcutAction.SAVE_AND_QUIT_HOLD -> 1250L
+        else -> 0L
+    }
+
+    private fun holdOsdMessageFor(action: ShortcutAction): String? = when (action) {
+        ShortcutAction.SAVE_AND_QUIT_HOLD -> "Hold To Save and Quit"
+        else -> null
+    }
+
+    private fun schedulePendingHold(action: ShortcutAction, port: Int, chord: Set<Int>) {
+        cancelPendingHold()
+        pendingHoldAction = action
+        pendingHoldPort = port
+        pendingHoldChord = chord
+        holdOsdMessageFor(action)?.let { osdController.show(it, OsdPosition.BottomCenter, durationMs = holdDurationFor(action) + 500L) }
+        pendingHoldHandler.postDelayed(pendingHoldRunnable, holdDurationFor(action))
+    }
+
+    private fun cancelPendingHold() {
+        if (pendingHoldAction == null) return
+        pendingHoldHandler.removeCallbacks(pendingHoldRunnable)
+        pendingHoldAction = null
+        pendingHoldPort = -1
+        pendingHoldChord = emptySet()
+        osdController.clear()
+    }
+
+    private fun firePendingHold() {
+        val action = pendingHoldAction ?: return
+        pendingHoldAction = null
+        pendingHoldPort = -1
+        pendingHoldChord = emptySet()
+        when (action) {
+            ShortcutAction.SAVE_AND_QUIT_HOLD -> performSaveAndQuit()
+            else -> Unit
+        }
+    }
+
+    private fun checkPendingHoldRelease(port: Int) {
+        if (pendingHoldAction == null || pendingHoldPort != port) return
+        if (!portPressedKeys[port].containsAll(pendingHoldChord)) cancelPendingHold()
     }
 
     private enum class UndoType { SAVE, LOAD, RESET }
@@ -1107,6 +1166,7 @@ class LibretroActivity : ComponentActivity() {
                 setFastForward(false)
             }
         }
+        checkPendingHoldRelease(port)
 
         // The evaluator's Button asserter for this keycode releases here; if an Axis
         // asserter is still tracking the canonical, BTN_* stays in currentlyPressed via
@@ -1290,6 +1350,7 @@ class LibretroActivity : ComponentActivity() {
                     setFastForward(false)
                 }
             }
+            checkPendingHoldRelease(port)
         }
     }
 
@@ -1347,12 +1408,11 @@ class LibretroActivity : ComponentActivity() {
                     showOsd("Reset", OsdPosition.BottomCenter)
                 }
                 ShortcutAction.SAVE_AND_QUIT -> {
-                    stopVsyncPacer()
-                    renderer.paused = true
-                    syncGlThread()
-                    runner.pauseAudio()
-                    if (stateBasePath.isNotEmpty()) slotManager.saveState(runner, slotManager.slots[0])
-                    quit()
+                    performSaveAndQuit()
+                }
+                ShortcutAction.SAVE_AND_QUIT_HOLD -> {
+                    if (pendingHoldAction == action) continue
+                    schedulePendingHold(action, port, chord)
                 }
                 ShortcutAction.CYCLE_SCALING -> {
                     val modes = ScalingMode.entries
@@ -1407,6 +1467,7 @@ class LibretroActivity : ComponentActivity() {
 
     private fun openMenu() {
         sessionLog.log("openMenu: enter")
+        cancelPendingHold()
         raManager?.idle()
         sessionLog.log("openMenu: raIdle")
         if (!raHasAchievements) {
@@ -1446,6 +1507,7 @@ class LibretroActivity : ComponentActivity() {
             holdingFf = false
             setFastForward(false)
         }
+        cancelPendingHold()
         for (p in 0 until LibretroRunner.MAX_PORTS) runner.setInput(p, 0)
         stopRaPausedIdle()
         renderer.paused = false
