@@ -208,6 +208,9 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         get() = BatteryDisplay.fromString(jsonRead { if (has(KEY_BATTERY_DISPLAY)) optString(KEY_BATTERY_DISPLAY) else null })
         set(value) = jsonWrite { put(KEY_BATTERY_DISPLAY, value.name) }
 
+    val batteryDisplaySet: Boolean
+        get() = jsonRead { has(KEY_BATTERY_DISPLAY) }
+
     var showUpdate: Boolean
         get() = jsonRead { optBoolean(KEY_SHOW_UPDATE, true) }
         set(value) = jsonWrite { put(KEY_SHOW_UPDATE, value) }

@@ -165,7 +165,7 @@ class SettingsViewModel @Inject constructor(
         showBluetooth = settings.showBluetooth,
         showVpn = settings.showVpn,
         showClock = settings.showClock,
-        batteryDisplay = if (isTelevision) BatteryDisplay.HIDE else settings.batteryDisplay,
+        batteryDisplay = settings.batteryDisplay,
         showUpdate = settings.showUpdate,
         swapPlayResume = settings.swapPlayResume,
         mainMenuQuit = settings.mainMenuQuit,
@@ -259,6 +259,7 @@ class SettingsViewModel @Inject constructor(
         appPackageName = pkgName
         if (cr != null) collectionsRepository = cr
         fontOptions = buildFontOptions()
+        if (isTelevision && !settings.batteryDisplaySet) settings.batteryDisplay = BatteryDisplay.HIDE
         load()
     }
 
@@ -745,14 +746,12 @@ class SettingsViewModel @Inject constructor(
             SettingsItem("color_accent", R.string.setting_color_accent, valueText = settings.colorAccent.uppercase(), isEditable = true, swatchColor = hexToColor(settings.colorAccent))
         )
         "status_bar" -> buildList {
-            if (!isTelevision) {
-                val batteryRes = when (settings.batteryDisplay) {
-                    BatteryDisplay.HIDE -> R.string.value_hide
-                    BatteryDisplay.PERCENT -> R.string.value_percent
-                    BatteryDisplay.ICON -> R.string.value_icon
-                }
-                add(SettingsItem("show_battery", R.string.setting_battery, valueRes = batteryRes))
+            val batteryRes = when (settings.batteryDisplay) {
+                BatteryDisplay.HIDE -> R.string.value_hide
+                BatteryDisplay.PERCENT -> R.string.value_percent
+                BatteryDisplay.ICON -> R.string.value_icon
             }
+            add(SettingsItem("show_battery", R.string.setting_battery, valueRes = batteryRes))
             add(SettingsItem("show_bluetooth", R.string.setting_bluetooth, valueRes = showHide(settings.showBluetooth)))
             add(SettingsItem("show_clock", R.string.setting_clock, valueRes = if (!settings.showClock) R.string.value_hide else if (settings.timeFormat == TimeFormat.TWELVE_HOUR) R.string.value_12h else R.string.value_24h))
             add(SettingsItem("show_update", R.string.setting_updater, valueRes = showHide(settings.showUpdate)))

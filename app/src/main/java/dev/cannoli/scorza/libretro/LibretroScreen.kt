@@ -32,7 +32,6 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -132,7 +131,6 @@ fun LibretroScreen(
         else -> false
     }
     val isGuideScreen = screen is IGMScreen.Guide
-    val context = LocalContext.current
     val igmFontSize = settings.textSize.sp.sp
     val igmLineHeight = (settings.textSize.sp + 10).sp
     val igmScaleFactor = settings.textSize.sp / 22f
@@ -605,7 +603,7 @@ fun LibretroScreen(
                     showBluetooth = settings.showBluetooth,
                     showVpn = settings.showVpn,
                     showClock = settings.showClock,
-                    showBattery = settings.batteryDisplay != dev.cannoli.scorza.settings.BatteryDisplay.HIDE && !context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK),
+                    showBattery = settings.batteryDisplay != dev.cannoli.scorza.settings.BatteryDisplay.HIDE,
                     batteryIconOnly = settings.batteryDisplay == dev.cannoli.scorza.settings.BatteryDisplay.ICON,
                     use24hTime = settings.timeFormat == dev.cannoli.scorza.settings.TimeFormat.TWENTY_FOUR_HOUR
                 )
