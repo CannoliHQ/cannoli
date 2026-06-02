@@ -1,0 +1,74 @@
+build:
+  maxIssues: -1
+
+config:
+  validation: true
+  warningsAsErrors: false
+
+# Dead-code scan config. Only rules that surface unused / unreachable code are
+# active; stylistic and complexity rules are silenced to keep the report focused.
+
+comments:
+  active: false
+
+complexity:
+  active: false
+
+coroutines:
+  active: false
+
+empty-blocks:
+  active: false
+
+exceptions:
+  active: false
+
+naming:
+  active: false
+
+performance:
+  active: false
+
+potential-bugs:
+  active: true
+  UnreachableCode:
+    active: true
+
+style:
+  active: true
+  UnusedImports:
+    active: true
+  UnusedParameter:
+    active: true
+  UnusedPrivateClass:
+    active: true
+  UnusedPrivateMember:
+    active: true
+    allowedNames: '(_|ignored|expected|serialVersionUID)'
+  UnusedPrivateProperty:
+    active: true
+  ThrowsCount:
+    active: false
+  CanBeNonNullable:
+    active: false
+  # everything else in style is noise for a dead-code pass
+  MagicNumber:
+    active: false
+  ReturnCount:
+    active: false
+  WildcardImport:
+    active: false
+  ForbiddenComment:
+    active: false
+  MaxLineLength:
+    active: false
+  NewLineAtEndOfFile:
+    active: false
+  FunctionOnlyReturningConstant:
+    active: false
+  UseDataClass:
+    active: false
+  DataClassContainsFunctions:
+    active: false
+  LoopWithTooManyJumpStatements:
+    active: false
