@@ -79,6 +79,9 @@ class CannoliPaths(val root: File) {
     fun saveStateBase(tag: String, romBaseName: String): File =
         File(saveStateDir(tag, romBaseName), "$romBaseName.state")
 
+    fun sramFile(tag: String, romBaseName: String): File =
+        File(savesFor(tag), "$romBaseName.srm")
+
     fun guideDir(tag: String, gameTitle: String): File =
         File(guidesFor(tag), gameTitle)
 

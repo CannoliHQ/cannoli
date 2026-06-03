@@ -181,7 +181,7 @@ class LaunchManager(
     fun resolveLaunchFile(rom: Rom, extractArchives: Boolean): File? {
         if (rom.discFiles != null) return createFallbackM3u(rom)
         if (extractArchives && ArchiveExtractor.isArchive(rom.path) && !platformConfig.isArcade(rom.platformTag)) {
-            return ArchiveExtractor.extract(rom.path, context.cacheDir)
+            return ArchiveExtractor.extract(rom.path, context.cacheDir, rom.path.nameWithoutExtension)
         }
         return rom.path
     }
@@ -214,14 +214,7 @@ class LaunchManager(
             ?.index
     }
 
-    private fun hasSaveState(rom: Rom): Boolean {
-        val romName = normalizedRomName(rom)
-        val stateDir = CannoliPaths(settings.sdCardRoot).saveStateDir(rom.platformTag, romName)
-        if (!stateDir.exists()) return false
-        return stateDir.listFiles()?.any {
-            it.name.startsWith("$romName.state") && !it.name.endsWith(".png")
-        } ?: false
-    }
+    private fun hasSaveState(rom: Rom): Boolean = findMostRecentSlot(rom) != null
 
     fun findResumableRoms(roms: List<Rom>): Set<String> {
         val result = mutableSetOf<String>()
@@ -414,18 +407,26 @@ class LaunchManager(
     fun launchEmbedded(rom: Rom, corePath: String, resumeSlot: Int = -1, originalRomPath: String? = null) {
         val paths = CannoliPaths(settings.sdCardRoot)
         val romName = normalizedRomName(rom)
+
+        originalRomPath?.let { orig ->
+            val archive = File(orig)
+            if (archive.absolutePath != rom.path.absolutePath && ArchiveExtractor.isArchive(archive)) {
+                SaveIdentityMigrator(File(settings.sdCardRoot)).migrateOnLaunch(rom.platformTag, romName, archive)
+            }
+        }
+
         val saveDir = paths.savesFor(rom.platformTag)
         saveDir.mkdirs()
-        val stateDir = paths.saveStateDir(rom.platformTag, romName)
-        stateDir.mkdirs()
+        val stateBase = paths.saveStateBase(rom.platformTag, romName)
+        stateBase.parentFile?.mkdirs()
 
         val args = LaunchArgs(
             gameTitle = rom.displayName,
             corePath = corePath,
             romPath = rom.path.absolutePath,
             originalRomPath = originalRomPath?.takeIf { it != rom.path.absolutePath },
-            sramPath = File(saveDir, "$romName.srm").absolutePath,
-            statePath = File(stateDir, "$romName.state").absolutePath,
+            sramPath = paths.sramFile(rom.platformTag, romName).absolutePath,
+            statePath = stateBase.absolutePath,
             systemDir = paths.biosFor(rom.platformTag).absolutePath,
             saveDir = saveDir.absolutePath,
             platformTag = rom.platformTag,
