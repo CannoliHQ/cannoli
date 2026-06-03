@@ -777,6 +777,7 @@ class SettingsViewModel @Inject constructor(
                 val pkgLabel = InstalledCoreService.getPackageLabel(settings.retroArchPackage)
                 add(SettingsItem("installed_cores", R.string.setting_installed_cores, labelText = "$pkgLabel Installed Cores", isEditable = true))
             }
+            add(SettingsItem("retroarch_diy_mode", R.string.setting_retroarch_diy_mode, valueRes = onOff(settings.retroArchDiyMode)))
             add(SettingsItem("always_save_on_quit", R.string.setting_always_save_on_quit, valueRes = onOff(settings.alwaysSaveOnQuit)))
         }
         "kitchen" -> emptyList()
@@ -789,7 +790,6 @@ class SettingsViewModel @Inject constructor(
         }
         "advanced" -> buildList {
             add(SettingsItem("logging", R.string.setting_logging, isEditable = true))
-            add(SettingsItem("retroarch_diy_mode", R.string.setting_retroarch_diy_mode, valueRes = onOff(settings.retroArchDiyMode)))
             add(SettingsItem("kitchen_code_bypass", R.string.setting_kitchen_code_bypass, valueRes = onOff(settings.kitchenCodeBypass)))
             add(SettingsItem(
                 "release_channel",
