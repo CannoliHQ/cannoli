@@ -149,6 +149,12 @@ bool AudioState::openStream() {
     builder.setChannelCount(CHANNELS)
            ->setDirection(oboe::Direction::Output)
            ->setFormat(oboe::AudioFormat::I16)
+           // Pin the output stream to 48 kHz and let Oboe/the HAL convert to the
+           // device rate. Opening at the device-native rate instead drives speex
+           // at 96 kHz on USB DACs, where its dynamic-rate path corrupts the heap
+           // and crashes mid-session. 48 kHz is lossless for retro-rate sources.
+           ->setSampleRate(OUTPUT_RATE)
+           ->setSampleRateConversionQuality(oboe::SampleRateConversionQuality::Medium)
            ->setDataCallback(this)
            ->setErrorCallback(this);
 
