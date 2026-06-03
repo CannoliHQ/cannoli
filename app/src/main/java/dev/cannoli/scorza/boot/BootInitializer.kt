@@ -97,7 +97,6 @@ class BootInitializer @Inject constructor(
 
         ioScope.launch {
             installedCoreService.queryAllPackages()
-            platformConfig.purgeStaleRaMappings(installedCoreService.installedCores)
         }
 
         withContext(Dispatchers.Main) {

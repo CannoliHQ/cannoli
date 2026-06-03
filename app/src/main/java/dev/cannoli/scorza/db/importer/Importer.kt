@@ -262,14 +262,13 @@ class Importer(
             }
             conn.execute(
                 """
-                INSERT OR REPLACE INTO game_overrides (rom_id, core_id, runner, app_package, ra_package)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT OR REPLACE INTO game_overrides (rom_id, core_id, runner, app_package)
+                VALUES (?, ?, ?, ?)
                 """.trimIndent(),
                 romId,
                 override.coreId.takeIf { it.isNotEmpty() },
                 override.runner,
                 override.appPackage,
-                override.raPackage,
             )
         }
     }

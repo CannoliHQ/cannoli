@@ -231,9 +231,9 @@ class SettingsInputHandler @Inject constructor(
     private fun openCoreMapping() {
         val initial = platformConfig.getDetailedMappings(
             context.packageManager,
-            installedCoreService.installedCores,
+            installedCoreService.configuredCores(),
             LaunchManager.extractBundledCores(context),
-            installedCoreService.unresponsivePackages
+            installedCoreService.configuredUnresponsive()
         )
         nav.push(LauncherScreen.CoreMapping(mappings = initial, allMappings = initial))
         ioScope.launch {
@@ -242,9 +242,9 @@ class SettingsInputHandler @Inject constructor(
                 val cm = nav.screenStack.lastOrNull() as? LauncherScreen.CoreMapping ?: return@withContext
                 val all = platformConfig.getDetailedMappings(
                     context.packageManager,
-                    installedCoreService.installedCores,
+                    installedCoreService.configuredCores(),
                     LaunchManager.extractBundledCores(context),
-                    installedCoreService.unresponsivePackages
+                    installedCoreService.configuredUnresponsive()
                 )
                 nav.screenStack[nav.screenStack.lastIndex] = cm.copy(
                     mappings = filterCoreMappings(all, cm.filter),

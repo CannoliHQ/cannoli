@@ -766,8 +766,8 @@ class DialogInputHandler @Inject constructor(
                 val tag = rom.platformTag
                 val bundledCoresDir2 = LaunchManager.extractBundledCores(context)
                 val options = platformResolver.getCorePickerOptions(tag, context.packageManager,
-                    installedRaCores = installedCoreService.installedCores, embeddedCoresDir = bundledCoresDir2,
-                    unresponsivePackages = installedCoreService.unresponsivePackages)
+                    installedRaCores = installedCoreService.configuredCores(), embeddedCoresDir = bundledCoresDir2,
+                    unresponsivePackages = installedCoreService.configuredUnresponsive())
                 val platformCoreId = platformResolver.getCoreMapping(tag)
                 val platformCoreName = options.firstOrNull { it.coreId == platformCoreId }?.displayName ?: platformCoreId
                 val defaultLabel = if (platformCoreName.isNotEmpty()) "Platform Setting ($platformCoreName)" else "Platform Setting"
@@ -988,7 +988,7 @@ class DialogInputHandler @Inject constructor(
             } else if (chosen.appPackage != null) {
                 platformResolver.setGameAppOverride(screen.gamePath, chosen.appPackage)
             } else {
-                platformResolver.setGameOverride(screen.gamePath, chosen.coreId, chosen.runnerLabel, chosen.raPackage)
+                platformResolver.setGameOverride(screen.gamePath, chosen.coreId, chosen.runnerLabel)
             }
             nav.screenStack.removeAt(nav.screenStack.lastIndex)
             restoreContextMenu()
@@ -996,13 +996,13 @@ class DialogInputHandler @Inject constructor(
             if (chosen.appPackage != null) {
                 platformResolver.setAppMapping(screen.tag, chosen.appPackage)
             } else {
-                platformResolver.setCoreMapping(screen.tag, chosen.coreId, chosen.runnerLabel, chosen.raPackage)
+                platformResolver.setCoreMapping(screen.tag, chosen.coreId, chosen.runnerLabel)
             }
             platformResolver.saveCoreMappings()
             nav.screenStack.removeAt(nav.screenStack.lastIndex)
             val cm = nav.screenStack.lastOrNull()
             if (cm is LauncherScreen.CoreMapping) {
-                val all = platformResolver.getDetailedMappings(context.packageManager, installedCoreService.installedCores, LaunchManager.extractBundledCores(context), installedCoreService.unresponsivePackages)
+                val all = platformResolver.getDetailedMappings(context.packageManager, installedCoreService.configuredCores(), LaunchManager.extractBundledCores(context), installedCoreService.configuredUnresponsive())
                 val filtered = filterCoreMappings(all, cm.filter)
                 val idx = filtered.indexOfFirst { it.tag == screen.tag }.coerceAtLeast(0)
                 nav.screenStack[nav.screenStack.lastIndex] = cm.copy(mappings = filtered, allMappings = all, selectedIndex = idx)
@@ -1035,8 +1035,8 @@ class DialogInputHandler @Inject constructor(
                     if (menuItem == MENU_EMULATOR_OVERRIDE && romPath != null) {
                         val bundledCoresDir = LaunchManager.extractBundledCores(context)
                         val options = platformResolver.getCorePickerOptions(platformTag, context.packageManager,
-                            installedRaCores = installedCoreService.installedCores, embeddedCoresDir = bundledCoresDir,
-                            unresponsivePackages = installedCoreService.unresponsivePackages)
+                            installedRaCores = installedCoreService.configuredCores(), embeddedCoresDir = bundledCoresDir,
+                            unresponsivePackages = installedCoreService.configuredUnresponsive())
                         val override = platformResolver.getGameOverride(romPath)
                         if (override != null) {
                             val match = if (override.appPackage != null) {
@@ -1339,8 +1339,8 @@ class DialogInputHandler @Inject constructor(
                 val tag = rom.platformTag
                 val bundledCoresDir2 = LaunchManager.extractBundledCores(context)
                 val options = platformResolver.getCorePickerOptions(tag, context.packageManager,
-                    installedRaCores = installedCoreService.installedCores, embeddedCoresDir = bundledCoresDir2,
-                    unresponsivePackages = installedCoreService.unresponsivePackages)
+                    installedRaCores = installedCoreService.configuredCores(), embeddedCoresDir = bundledCoresDir2,
+                    unresponsivePackages = installedCoreService.configuredUnresponsive())
                 val platformCoreId = platformResolver.getCoreMapping(tag)
                 val platformCoreName = options.firstOrNull { it.coreId == platformCoreId }?.displayName ?: platformCoreId
                 val defaultLabel = if (platformCoreName.isNotEmpty()) "Platform Setting ($platformCoreName)" else "Platform Setting"

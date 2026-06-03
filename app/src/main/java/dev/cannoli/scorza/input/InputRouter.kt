@@ -130,9 +130,9 @@ class InputRouter @Inject constructor(
                 val bundledCoresDir = LaunchManager.extractBundledCores(context)
                 val options = platformConfig.getCorePickerOptions(
                     entry.tag, context.packageManager,
-                    installedRaCores = installedCoreService.installedCores,
+                    installedRaCores = installedCoreService.configuredCores(),
                     embeddedCoresDir = bundledCoresDir,
-                    unresponsivePackages = installedCoreService.unresponsivePackages
+                    unresponsivePackages = installedCoreService.configuredUnresponsive()
                 )
                 val currentCore = platformConfig.getCoreMapping(entry.tag)
                 val currentApp = platformConfig.getAppPackage(entry.tag)
@@ -177,9 +177,9 @@ class InputRouter @Inject constructor(
                 if (cm is LauncherScreen.CoreMapping) {
                     val all = platformConfig.getDetailedMappings(
                         context.packageManager,
-                        installedCoreService.installedCores,
+                        installedCoreService.configuredCores(),
                         LaunchManager.extractBundledCores(context),
-                        installedCoreService.unresponsivePackages
+                        installedCoreService.configuredUnresponsive()
                     )
                     val filtered = filterCoreMappings(all, cm.filter)
                     val idx = filtered.indexOfFirst { it.tag == s.tag }.coerceAtLeast(0)

@@ -7,13 +7,17 @@ import android.content.IntentFilter
 import android.os.Handler
 import android.os.Looper
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.cannoli.scorza.settings.SettingsRepository
 import kotlinx.coroutines.suspendCancellableCoroutine
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
 
 @Singleton
-class InstalledCoreService @Inject constructor(@ApplicationContext private val context: Context) {
+class InstalledCoreService @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val settings: SettingsRepository,
+) {
 
     private val handler = Handler(Looper.getMainLooper())
 
@@ -84,6 +88,16 @@ class InstalledCoreService @Inject constructor(@ApplicationContext private val c
 
     fun hasCoreInPackage(coreId: String, pkg: String): Boolean =
         installedCores[pkg]?.contains(coreId) == true
+
+    fun configuredCores(): Map<String, Set<String>> {
+        val pkg = settings.retroArchPackage
+        return installedCores.filterKeys { it == pkg }
+    }
+
+    fun configuredUnresponsive(): Set<String> {
+        val pkg = settings.retroArchPackage
+        return if (pkg in unresponsivePackages) setOf(pkg) else emptySet()
+    }
 
     companion object {
         private val PACKAGE_LABELS = mapOf(

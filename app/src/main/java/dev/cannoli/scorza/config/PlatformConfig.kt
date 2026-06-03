@@ -13,7 +13,7 @@ import dev.cannoli.scorza.util.sortedNatural
 import org.json.JSONObject
 import java.io.File
 
-data class GameCoreOverride(val coreId: String = "", val runner: String? = null, val appPackage: String? = null, val raPackage: String? = null)
+data class GameCoreOverride(val coreId: String = "", val runner: String? = null, val appPackage: String? = null)
 
 class PlatformConfig(
     private val cannoliRootProvider: () -> File,
@@ -80,7 +80,6 @@ class PlatformConfig(
     private var userCores: MutableMap<String, String> = java.util.concurrent.ConcurrentHashMap()
     private var userRunners: MutableMap<String, String> = java.util.concurrent.ConcurrentHashMap()
     private var userApps: MutableMap<String, String> = java.util.concurrent.ConcurrentHashMap()
-    private var userPackages: MutableMap<String, String> = java.util.concurrent.ConcurrentHashMap()
     private var gameOverrides: MutableMap<String, GameCoreOverride> = java.util.concurrent.ConcurrentHashMap()
     private val paths: CannoliPaths get() = CannoliPaths(cannoliRootProvider())
     private val coresFile get() = paths.coresJson
@@ -105,7 +104,6 @@ class PlatformConfig(
         userCores.clear()
         userRunners.clear()
         userApps.clear()
-        userPackages.clear()
         gameOverrides.clear()
         if (!coresFile.exists()) return
         try {
@@ -116,8 +114,6 @@ class PlatformConfig(
             if (runners != null) for (key in runners.keys()) userRunners[key] = runners.getString(key)
             val apps = json.optJSONObject("apps")
             if (apps != null) for (key in apps.keys()) userApps[key] = apps.getString(key)
-            val packages = json.optJSONObject("packages")
-            if (packages != null) for (key in packages.keys()) userPackages[key] = packages.getString(key)
             val overrides = json.optJSONObject("gameOverrides")
             if (overrides != null) {
                 for (path in overrides.keys()) {
@@ -125,8 +121,7 @@ class PlatformConfig(
                     gameOverrides[path] = GameCoreOverride(
                         coreId = obj.optString("core", ""),
                         runner = obj.optString("runner", "").ifEmpty { null },
-                        appPackage = obj.optString("app", "").ifEmpty { null },
-                        raPackage = obj.optString("raPackage", "").ifEmpty { null }
+                        appPackage = obj.optString("app", "").ifEmpty { null }
                     )
                 }
             }
@@ -135,32 +130,6 @@ class PlatformConfig(
 
     fun reloadCoreMappings() {
         loadCoreMappings()
-    }
-
-    fun purgeStaleRaMappings(installedRaCores: Map<String, Set<String>>): Boolean {
-        var changed = false
-        for (tag in userPackages.keys.toList()) {
-            val pkg = userPackages[tag] ?: continue
-            val coreId = getCoreMapping(tag)
-            val cores = installedRaCores[pkg]
-            if (cores == null || coreId !in cores) {
-                userRunners.remove(tag)
-                userPackages.remove(tag)
-                changed = true
-            }
-        }
-        val staleOverrides = gameOverrides.entries.filter { (_, ov) ->
-            val pkg = ov.raPackage ?: return@filter false
-            val cores = installedRaCores[pkg]
-            val coreId = ov.coreId ?: return@filter false
-            cores == null || coreId !in cores
-        }.map { it.key }
-        for (path in staleOverrides) {
-            gameOverrides.remove(path)
-            changed = true
-        }
-        if (changed) saveCoreMappings()
-        return changed
     }
 
     fun saveCoreMappings() {
@@ -178,11 +147,6 @@ class PlatformConfig(
             for ((tag, app) in userApps) apps.put(tag, app)
             json.put("apps", apps)
         }
-        if (userPackages.isNotEmpty()) {
-            val packages = JSONObject()
-            for ((tag, pkg) in userPackages) packages.put(tag, pkg)
-            json.put("packages", packages)
-        }
         if (gameOverrides.isNotEmpty()) {
             val overrides = JSONObject()
             for ((path, ov) in gameOverrides) {
@@ -192,7 +156,6 @@ class PlatformConfig(
                 } else {
                     obj.put("core", ov.coreId)
                     if (ov.runner != null) obj.put("runner", ov.runner)
-                    if (ov.raPackage != null) obj.put("raPackage", ov.raPackage)
                 }
                 overrides.put(path, obj)
             }
@@ -207,7 +170,7 @@ class PlatformConfig(
         return userCores[tag] ?: defaultCores[upper] ?: ""
     }
 
-    fun setCoreMapping(tag: String, core: String, runner: String? = null, raPackage: String? = null) {
+    fun setCoreMapping(tag: String, core: String, runner: String? = null) {
         val defaultCore = defaultCores[tag.uppercase()]
         if (core.isBlank() || core == defaultCore) {
             userCores.remove(tag)
@@ -219,15 +182,8 @@ class PlatformConfig(
         } else {
             userRunners.remove(tag)
         }
-        if (raPackage != null) {
-            userPackages[tag] = raPackage
-        } else {
-            userPackages.remove(tag)
-        }
         userApps.remove(tag)
     }
-
-    fun getPackage(tag: String): String? = userPackages[tag]
 
     fun getRunnerPreference(tag: String): String? = userRunners[tag]
 
@@ -235,11 +191,11 @@ class PlatformConfig(
 
     fun snapshotGameOverrides(): Map<String, GameCoreOverride> = gameOverrides.toMap()
 
-    fun setGameOverride(gamePath: String, coreId: String?, runner: String?, raPackage: String? = null) {
+    fun setGameOverride(gamePath: String, coreId: String?, runner: String?) {
         if (coreId == null) {
             gameOverrides.remove(gamePath)
         } else {
-            gameOverrides[gamePath] = GameCoreOverride(coreId, runner, raPackage = raPackage)
+            gameOverrides[gamePath] = GameCoreOverride(coreId, runner)
         }
         saveCoreMappings()
     }
@@ -275,7 +231,6 @@ class PlatformConfig(
             userRunners[tag] = "Standalone"
         }
         userCores.remove(tag)
-        userPackages.remove(tag)
     }
 
     fun setGameAppOverride(gamePath: String, appPackage: String?) {
@@ -300,11 +255,8 @@ class PlatformConfig(
         val override = userRunners[tag]
         if (override == "App") return "Standalone"
         if (override != null) return override
-        val pkg = userPackages[tag]
-        if (pkg != null) return InstalledCoreService.getPackageLabel(pkg)
         if (nativeLibDir != null && File(nativeLibDir, "${coreId}_android.so").exists()) return "Internal"
-        if (installedRaCores.any { it.value.contains(coreId) }) return "RetroArch"
-        return "RetroArch"
+        return installedRaCores.keys.firstOrNull()?.let { InstalledCoreService.getPackageLabel(it) } ?: "RetroArch"
     }
 
     fun getDetailedMappings(
@@ -372,12 +324,6 @@ class PlatformConfig(
             return if (File(dir, "${coreId}_android.so").exists()) "Present" else "Missing"
         }
         if (runner == "External") return "Present"
-        val pkg = userPackages[tag]
-        if (pkg != null) {
-            if (installedRaCores[pkg]?.contains(coreId) == true) return "Present"
-            if (pkg in unresponsivePackages) return "Unknown"
-            return "Missing"
-        }
         if (installedRaCores.any { it.value.contains(coreId) }) return "Present"
         if (unresponsivePackages.isNotEmpty()) return "Unknown"
         return "Missing"
@@ -411,8 +357,7 @@ class PlatformConfig(
                 if (coreId in cores) {
                     options.add(dev.cannoli.scorza.ui.screens.CorePickerOption(
                         coreId = coreId, displayName = displayName,
-                        runnerLabel = InstalledCoreService.getPackageLabel(pkg),
-                        raPackage = pkg
+                        runnerLabel = InstalledCoreService.getPackageLabel(pkg)
                     ))
                 }
             }
@@ -422,8 +367,7 @@ class PlatformConfig(
                 val label = InstalledCoreService.getPackageLabel(pkg)
                 options.add(dev.cannoli.scorza.ui.screens.CorePickerOption(
                     coreId = coreId, displayName = displayName,
-                    runnerLabel = "$label (Unknown)",
-                    raPackage = pkg
+                    runnerLabel = "$label (Unknown)"
                 ))
             }
         }
