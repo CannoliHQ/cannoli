@@ -35,12 +35,16 @@ class AppsRepository(private val db: CannoliDatabase) {
         db.execute(
             """
             INSERT INTO apps (type, display_name, package_name) VALUES (?, ?, ?)
-            ON CONFLICT(type, package_name) DO UPDATE SET display_name = excluded.display_name
+            ON CONFLICT(type, package_name) DO NOTHING
             """.trimIndent(),
             type.name, displayName, packageName,
         )
         return byPackage(type, packageName)!!.id
     }
+
+    fun updateDisplayName(appId: Long, displayName: String) = db.execute(
+        "UPDATE apps SET display_name = ? WHERE id = ?", displayName, appId,
+    )
 
     fun delete(appId: Long) = db.execute("DELETE FROM apps WHERE id = ?", appId)
 

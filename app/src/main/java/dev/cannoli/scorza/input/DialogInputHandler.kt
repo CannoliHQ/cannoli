@@ -1028,6 +1028,7 @@ class DialogInputHandler @Inject constructor(
             add(if (isFav) MENU_REMOVE_FAVORITE else MENU_ADD_FAVORITE)
             if (isApk) {
                 add(MENU_MANAGE_COLLECTIONS)
+                add(MENU_RENAME)
                 add(MENU_REMOVE)
             } else {
                 addAll(gameContextOptions.map { menuItem ->
@@ -1251,6 +1252,7 @@ class DialogInputHandler @Inject constructor(
         val currentName = when (item) {
             is ListItem.RomItem -> item.rom.displayName
             is ListItem.SubfolderItem -> item.name
+            is ListItem.AppItem -> item.app.displayName
             else -> return
         }
         if (newName.isEmpty() || newName == currentName) {
@@ -1262,6 +1264,12 @@ class DialogInputHandler @Inject constructor(
         pendingContextReturn = null
         nav.dialogState.value = DialogState.None
         ioScope.launch {
+            if (item is ListItem.AppItem) {
+                appsRepository.updateDisplayName(item.app.id, newName)
+                gameListViewModel.reload()
+                launcherActions.rescanSystemList()
+                return@launch
+            }
             if (item is ListItem.SubfolderItem) {
                 val tag = gameListViewModel.state.value.platformTag
                 val romDir = settings.romDirectory.takeIf { it.isNotEmpty() }?.let { File(it) } ?: File(File(settings.sdCardRoot), "Roms")
