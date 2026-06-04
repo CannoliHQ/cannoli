@@ -17,6 +17,7 @@ sealed class ResolvedExtra {
     abstract val key: String
     data class StringExtra(override val key: String, val value: String) : ResolvedExtra()
     data class UriExtra(override val key: String, val value: Uri) : ResolvedExtra()
+    data class StringArrayExtra(override val key: String, val values: List<String>) : ResolvedExtra()
 }
 
 object ShellCommandFormatter {
@@ -37,6 +38,10 @@ object ShellCommandFormatter {
             for (extra in resolved.extras) when (extra) {
                 is ResolvedExtra.StringExtra -> { add("--es"); add(extra.key); add(extra.value) }
                 is ResolvedExtra.UriExtra    -> { add("--eu"); add(extra.key); add(extra.value.toString()) }
+                is ResolvedExtra.StringArrayExtra -> {
+                    add("--esa"); add(extra.key)
+                    add(extra.values.joinToString(",") { it.replace(",", "\\,") })
+                }
             }
         }
     }
@@ -53,6 +58,7 @@ object ShellCommandFormatter {
                 when (e) {
                     is ResolvedExtra.StringExtra -> add(e.value)
                     is ResolvedExtra.UriExtra    -> add(e.value.toString())
+                    is ResolvedExtra.StringArrayExtra -> addAll(e.values)
                 }
             }
         }

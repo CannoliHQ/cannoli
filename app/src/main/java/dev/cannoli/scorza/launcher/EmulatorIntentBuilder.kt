@@ -70,6 +70,8 @@ object EmulatorIntentBuilder {
                 context.grantUriPermission(config.packageName, extra.value, Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 if (clipDataUri == null) clipDataUri = extra.value
             }
+            is ResolvedExtra.StringArrayExtra ->
+                intent.putExtra(extra.key, extra.values.toTypedArray())
         }
         // Argosy pattern: when extras carry a content URI, attach it as ClipData
         // and add the intent-level grant flag. This routes emulators with
@@ -89,6 +91,15 @@ object EmulatorIntentBuilder {
             ResolvedExtra.StringExtra(spec.key, fileProviderUri(context, romFile).toString())
         ExtraValueKind.FILE_URI_PARCELABLE ->
             ResolvedExtra.UriExtra(spec.key, fileProviderUri(context, romFile))
+        ExtraValueKind.STRING_ARRAY -> {
+            val romContents by lazy {
+                romFile.readText().lineSequence().firstOrNull { it.isNotBlank() }?.trim().orEmpty()
+            }
+            val resolved = spec.values.orEmpty().map {
+                if (it == "{rom_contents}") romContents else it
+            }
+            ResolvedExtra.StringArrayExtra(spec.key, resolved)
+        }
     }
 
     private fun fileProviderUri(context: Context, romFile: File): Uri =

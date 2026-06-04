@@ -595,9 +595,15 @@ class PlatformConfig(
                 "path" -> ExtraValueKind.FILE_PATH
                 "uri_string" -> ExtraValueKind.FILE_URI_STRING
                 "uri_parcelable" -> ExtraValueKind.FILE_URI_PARCELABLE
+                "string_array" -> ExtraValueKind.STRING_ARRAY
                 else -> throw IllegalArgumentException("ExtraSpec `${key}`: unknown kind `${obj.optString("kind")}`")
             }
-            return ExtraSpec(key, kind)
+            val values = if (kind == ExtraValueKind.STRING_ARRAY) {
+                val arr = obj.optJSONArray("values")
+                    ?: throw IllegalArgumentException("ExtraSpec `${key}`: kind `string_array` requires `values`")
+                (0 until arr.length()).map { arr.getString(it) }
+            } else null
+            return ExtraSpec(key, kind, values)
         }
 
         private fun parseLaunchMethod(s: String): LaunchMethod = when (s) {

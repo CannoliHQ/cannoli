@@ -21,12 +21,13 @@ sealed class DataBinding {
     data class CustomScheme(val scheme: String, val authority: String) : DataBinding()
 }
 
-data class ExtraSpec(val key: String, val kind: ExtraValueKind)
+data class ExtraSpec(val key: String, val kind: ExtraValueKind, val values: List<String>? = null)
 
 enum class ExtraValueKind {
     FILE_PATH,
     FILE_URI_PARCELABLE,
     FILE_URI_STRING,
+    STRING_ARRAY,
 }
 
 enum class LaunchMethod { INTENT, SHELL }

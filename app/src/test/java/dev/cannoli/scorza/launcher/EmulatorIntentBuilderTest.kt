@@ -93,6 +93,21 @@ class EmulatorIntentBuilderTest {
         assertEquals(romFile.absolutePath, extra.value)
     }
 
+    @Test fun `string_array extra substitutes rom_contents with first non-blank line`() {
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val romFile = tmp.newFile("Pinball Arcade.psvita").apply { writeText("PCSE00065\n") }
+        val cfg = AppConfig(
+            packageName = "org.vita3k.emulator",
+            activity = "org.vita3k.emulator.Emulator",
+            action = "android.intent.action.MAIN",
+            extras = listOf(ExtraSpec("AppStartParameters", ExtraValueKind.STRING_ARRAY, listOf("-r", "{rom_contents}"))),
+        )
+        val resolved = EmulatorIntentBuilder.resolve(ctx, cfg, romFile)
+        val extra = resolved.extras[0] as ResolvedExtra.StringArrayExtra
+        assertEquals("AppStartParameters", extra.key)
+        assertEquals(listOf("-r", "PCSE00065"), extra.values)
+    }
+
     @Test fun `custom scheme builds scheme URI with rom path`() {
         val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
         val romFile = rom()

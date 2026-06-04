@@ -96,6 +96,26 @@ class ShellCommandFormatterTest {
         )
     }
 
+    @Test fun `string array extra uses --esa with comma joined values`() {
+        val resolved = ResolvedIntent(
+            component = ComponentName("org.vita3k.emulator", "org.vita3k.emulator.Emulator"),
+            packageName = null,
+            action = "android.intent.action.MAIN",
+            dataUri = null,
+            mimeType = null,
+            flagsHex = "0x10000000",
+            extras = listOf(ResolvedExtra.StringArrayExtra("AppStartParameters", listOf("-r", "PCSE00065")))
+        )
+        assertEquals(
+            listOf("am", "start",
+                "-n", "org.vita3k.emulator/org.vita3k.emulator.Emulator",
+                "-a", "android.intent.action.MAIN",
+                "-f", "0x10000000",
+                "--esa", "AppStartParameters", "-r,PCSE00065"),
+            ShellCommandFormatter.format(resolved)
+        )
+    }
+
     @Test fun `single quote in any value rejects with IllegalArgumentException`() {
         val resolved = ResolvedIntent(
             component = null,
