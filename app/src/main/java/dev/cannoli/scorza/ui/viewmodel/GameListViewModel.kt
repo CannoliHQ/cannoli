@@ -116,8 +116,10 @@ class GameListViewModel @Inject constructor(
                     scrollTarget = newIndex,
                 )
             }
-            withContext(Dispatchers.Main) {
-                osdController.show("Game list updated")
+            if (!result.silent) {
+                withContext(Dispatchers.Main) {
+                    osdController.show("Game list updated")
+                }
             }
         }
     }

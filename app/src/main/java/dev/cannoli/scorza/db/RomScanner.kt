@@ -17,6 +17,14 @@ class RomScanner(
 ) {
     data class SyncCounts(val inserted: Int, val updated: Int, val removed: Int)
 
+    // Tags the launcher itself just mutated (rename, delete, organize). The next scan of such a
+    // tag reconciles a change the user already saw happen in the UI, so it must not raise the
+    // "Game list updated" OSD the way a background/external change does.
+    private val launcherMutatedTags = java.util.Collections.synchronizedSet(mutableSetOf<String>())
+
+    fun consumeLauncherMutation(platformTag: String): Boolean =
+        launcherMutatedTags.remove(platformTag.uppercase())
+
     fun scanPlatform(platformTag: String, isArcade: Boolean = false): SyncCounts {
         val tag = platformTag.uppercase()
         ensurePlatformRow(tag)
@@ -57,6 +65,7 @@ class RomScanner(
         val tag = platformTag.uppercase()
         artwork.invalidate(tag)
         writeLastScannedMtime(tag, MTIME_UNSET)
+        launcherMutatedTags.add(tag)
     }
 
     fun ensureReservedPlatformTag(tag: String) = ensurePlatformRow(tag)

@@ -18,7 +18,11 @@ class ScanScheduler @Inject constructor(
     private val romScanner: RomScanner,
     private val platformConfig: PlatformConfig,
 ) {
-    data class ScanResult(val platformTag: String, val counts: RomScanner.SyncCounts)
+    data class ScanResult(
+        val platformTag: String,
+        val counts: RomScanner.SyncCounts,
+        val silent: Boolean = false,
+    )
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val requests = Channel<String>(capacity = Channel.UNLIMITED)
@@ -55,8 +59,9 @@ class ScanScheduler @Inject constructor(
             (mutex as java.lang.Object).notifyAll()
             rerun
         }
+        val silent = romScanner.consumeLauncherMutation(tag)
         if (counts.inserted + counts.updated + counts.removed > 0) {
-            scope.launch { _results.tryEmit(ScanResult(tag, counts)) }
+            scope.launch { _results.tryEmit(ScanResult(tag, counts, silent)) }
         }
         if (needsRerun) enqueue(tag)
         return counts
@@ -92,8 +97,9 @@ class ScanScheduler @Inject constructor(
                 (mutex as java.lang.Object).notifyAll()
                 rerun
             }
+            val silent = romScanner.consumeLauncherMutation(tag)
             if (counts.inserted + counts.updated + counts.removed > 0) {
-                _results.tryEmit(ScanResult(tag, counts))
+                _results.tryEmit(ScanResult(tag, counts, silent))
             }
             if (needsRerun) enqueue(tag)
         }
