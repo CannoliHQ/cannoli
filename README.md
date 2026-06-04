@@ -1,11 +1,6 @@
 <div align="center">
 
-<img src=".github/resources/logo.png" width="256px" alt="A cannoli you silly goose!">
-<h3 style="font-size:35px; padding-top:0px; padding-bottom:0px; margin-bottom: 0px; margin-top: 5px;">
-Cannoli
-</h3>
-
-<h4 style="font-size:18px; padding-top:0px; margin-top:0px;">A frontend with just the right amount of filling!</h4>
+<img src=".github/resources/banner.svg" width="100%" alt="Cannoli - A frontend with just the right amount of filling!">
 
 <a href="LICENSE"><img src="https://img.shields.io/github/license/CannoliHQ/cannoli?style=for-the-badge&labelColor=E8C896&color=555555" height="36" alt="License"></a>
 <a href="https://github.com/CannoliHQ/cannoli/stargazers"><img src="https://img.shields.io/github/stars/CannoliHQ/cannoli?style=for-the-badge&labelColor=E8C896&color=555555" height="36" alt="Stars"></a>

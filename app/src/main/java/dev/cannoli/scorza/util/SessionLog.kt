@@ -13,7 +13,8 @@ class SessionLog(
     private val cannoliRoot: String,
     private val coreName: String,
     private val corePath: String,
-    private val romPath: String
+    private val romPath: String,
+    private val gameTitle: String
 ) {
     private var writer: FileWriter? = null
     private val fmt = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
@@ -26,7 +27,8 @@ class SessionLog(
                     val ts = SimpleDateFormat("yyyy-MM-dd_HHmmss", Locale.US).format(Date())
                     val dir = dev.cannoli.scorza.config.CannoliPaths(cannoliRoot).coreLogDir(coreName)
                     dir.mkdirs()
-                    val file = File(dir, "${ts}_${coreName}.log")
+                    val name = normalizeGameName(gameTitle).ifEmpty { coreName }
+                    val file = File(dir, "${ts}_${name}.log")
                     writer = FileWriter(file, true)
                     writeHeader()
                 } catch (_: Exception) {
@@ -35,6 +37,11 @@ class SessionLog(
             }
         }
     }
+
+    private fun normalizeGameName(name: String): String =
+        name.trim()
+            .replace(Regex("\\s+"), "_")
+            .replace(Regex("[^A-Za-z0-9_]"), "")
 
     private fun writeHeader() {
         val w = writer ?: return

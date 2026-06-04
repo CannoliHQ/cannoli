@@ -91,6 +91,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var updateManager: UpdateManager
     @Inject lateinit var setupCoordinator: SetupCoordinator
     @Inject lateinit var launchManager: Provider<LaunchManager>
+    @Inject lateinit var launchState: dev.cannoli.scorza.launcher.LaunchState
     @Inject lateinit var installedCoreService: Provider<InstalledCoreService>
     @Inject lateinit var romsRepository: Provider<RomsRepository>
     @Inject lateinit var romScanner: Provider<RomScanner>
@@ -140,6 +141,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
         dev.cannoli.scorza.util.LoggingPrefs.romScan = settings.loggingRomScan
         dev.cannoli.scorza.util.LoggingPrefs.input = settings.loggingInput
         dev.cannoli.scorza.util.LoggingPrefs.session = settings.loggingSession
+        dev.cannoli.scorza.util.LoggingPrefs.kitchen = settings.loggingKitchen
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -275,6 +277,15 @@ class MainActivity : ComponentActivity(), ActivityActions {
         val activeMapping by activeMappingHolder.active.collectAsState()
         LaunchedEffect(navScreen) {
         }
+        val currentDialog by navDialogState.collectAsState()
+        val kitchenVisible = currentDialog is DialogState.Kitchen
+        LaunchedEffect(kitchenVisible) {
+            if (kitchenVisible) {
+                window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            } else {
+                window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }
+        }
         AppNavGraph(
             currentScreen = navScreen,
             systemListViewModel = slvm,
@@ -342,11 +353,11 @@ class MainActivity : ComponentActivity(), ActivityActions {
         registerControllerOsd()
         menuNavigationPoller.start()
         bootSequencer.advance()
+        launchState.launching = false
         if (!isReady) return
         if (!coldStart) overridePendingTransition(0, 0)
         coldStart = false
         hideSystemUI()
-        launchManager.get().launching = false
         if (LibretroActivity.isRunning) {
             val intent = Intent(this, LibretroActivity::class.java)
             intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
@@ -394,7 +405,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
             systemListViewModel.get().close()
             gameListViewModel.get().close()
         }
-        dev.cannoli.scorza.server.KitchenManager.stop()
     }
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {

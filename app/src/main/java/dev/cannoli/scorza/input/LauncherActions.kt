@@ -34,7 +34,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 import javax.inject.Inject
 
 @ActivityScoped
@@ -138,11 +137,7 @@ class LauncherActions @Inject constructor(
 
     fun openKitchen() {
         val km = KitchenManager
-        val sdRoot = File(settings.sdCardRoot)
-        val romsRootProvider = {
-            settings.romDirectory.takeIf { it.isNotEmpty() }?.let { File(it) } ?: File(sdRoot, "Roms")
-        }
-        if (!km.isRunning) km.toggle(sdRoot, context.assets, settings.kitchenCodeBypass, romsRootProvider)
+        if (!km.isRunning) km.start(context, settings.kitchenCodeBypass)
         else km.setCodeBypass(settings.kitchenCodeBypass)
         nav.dialogState.value = DialogState.Kitchen(
             urls = km.getUrls(hasActiveVpn()),

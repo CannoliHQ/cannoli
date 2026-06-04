@@ -7,7 +7,6 @@ import dev.cannoli.scorza.model.Rom
 import dev.cannoli.scorza.di.CannoliPathsProvider
 import dev.cannoli.scorza.util.ArtworkLookup
 import dev.cannoli.scorza.util.NaturalSort
-import org.json.JSONArray
 import java.io.File
 
 class RomsRepository(
@@ -76,6 +75,8 @@ class RomsRepository(
         }
     }
 
+    fun allRomsForPlatform(platformTag: String): List<Rom> = romsForPlatform(platformTag.uppercase())
+
     private fun romsForPlatform(platformTag: String): List<Rom> = db.queryAll(
         "$BASE_SELECT WHERE platform_tag = ? ORDER BY sort_key",
         platformTag, mapper = ::rowToRom,
@@ -123,7 +124,6 @@ class RomsRepository(
         val relativePath = stmt.getText(1)
         val platformTag = stmt.getText(2)
         val absoluteFile = File(romDirectory, relativePath)
-        val discPaths = if (stmt.isNull(5)) null else parseDiscPaths(stmt.getText(5))
         return Rom(
             id = stmt.getLong(0),
             path = absoluteFile,
@@ -132,14 +132,9 @@ class RomsRepository(
             tags = if (stmt.isNull(4)) null else stmt.getText(4),
             artFile = artwork.find(platformTag, absoluteFile),
             launchTarget = LaunchTarget.RetroArch,
-            discFiles = discPaths?.map { File(romDirectory, it) },
-            raGameId = if (stmt.isNull(6)) null else stmt.getLong(6).toInt(),
+            raGameId = if (stmt.isNull(5)) null else stmt.getLong(5).toInt(),
+            lastPlayedAt = if (stmt.isNull(6)) null else stmt.getLong(6),
         )
-    }
-
-    private fun parseDiscPaths(json: String): List<String>? {
-        val arr = try { JSONArray(json) } catch (_: Throwable) { return null }
-        return List(arr.length()) { arr.optString(it) }.filter { it.isNotEmpty() }
     }
 
     private fun Rom.relativeAfterPlatform(): String {
@@ -155,6 +150,6 @@ class RomsRepository(
     }
 
     private companion object {
-        const val BASE_SELECT = "SELECT id, path, platform_tag, display_name, tags, disc_paths, ra_game_id FROM roms"
+        const val BASE_SELECT = "SELECT id, path, platform_tag, display_name, tags, ra_game_id, last_played_at FROM roms"
     }
 }

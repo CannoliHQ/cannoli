@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 fun gitCommitHash(): String = try {
@@ -125,6 +126,9 @@ dependencies {
     implementation("org.tukaani:xz:1.10")
     implementation("io.legere:pdfiumandroid:1.0.35")
     implementation("com.google.oboe:oboe:1.9.3")
+    implementation(libs.nanohttpd)
+    implementation(libs.commons.fileupload.core)
+    implementation(libs.kotlinx.serialization.json)
     testImplementation(libs.junit)
     testImplementation("io.mockk:mockk:1.13.11")
     testImplementation("org.json:json:20240303")

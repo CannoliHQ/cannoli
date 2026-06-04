@@ -57,7 +57,6 @@ class DialogInputHandler @Inject constructor(
     @IoScope private val ioScope: CoroutineScope,
     @ActivityContext private val context: android.content.Context,
     private val settings: SettingsRepository,
-    private val scanner: RomScanner,
     private val collectionManager: CollectionsRepository,
     private val recentlyPlayedManager: RecentlyPlayedRepository,
     private val platformResolver: PlatformConfig,
@@ -65,6 +64,7 @@ class DialogInputHandler @Inject constructor(
     private val launchManager: LaunchManager,
     private val updateManager: dev.cannoli.scorza.updater.UpdateManager,
     private val atomicRename: AtomicRename,
+    private val scanner: RomScanner,
     private val settingsViewModel: SettingsViewModel,
     private val gameListViewModel: GameListViewModel,
     private val systemListViewModel: SystemListViewModel,
@@ -496,7 +496,7 @@ class DialogInputHandler @Inject constructor(
                 nav.screenStack.add(LauncherScreen.Credits())
             }
             is DialogState.Kitchen -> {
-                dev.cannoli.scorza.server.KitchenManager.stop()
+                dev.cannoli.scorza.server.KitchenManager.stop(context)
                 nav.dialogState.value = DialogState.None
                 launcherActions.rescanSystemList()
             }
@@ -730,7 +730,7 @@ class DialogInputHandler @Inject constructor(
                 if (rom != null) {
                     pendingContextReturn = null
                     rom.artFile?.delete()
-                    scanner.invalidatePlatform(rom.platformTag)
+                    scanner.markLauncherMutation(rom.platformTag)
                     gameListViewModel.reload()
                     nav.dialogState.value = DialogState.None
                 }
@@ -845,15 +845,13 @@ class DialogInputHandler @Inject constructor(
             MENU_DELETE_ART -> {
                 pendingContextReturn = null
                 val pathSet = state.gamePaths.toSet()
-                val tagsToInvalidate = mutableSetOf<String>()
                 gameListViewModel.state.value.items
                     .filterIsInstance<ListItem.RomItem>()
                     .filter { it.rom.path.absolutePath in pathSet }
                     .forEach { romItem ->
                         romItem.rom.artFile?.delete()
-                        tagsToInvalidate.add(romItem.rom.platformTag)
+                        scanner.markLauncherMutation(romItem.rom.platformTag)
                     }
-                tagsToInvalidate.forEach { scanner.invalidatePlatform(it) }
                 gameListViewModel.reload()
                 nav.dialogState.value = DialogState.None
             }
@@ -924,7 +922,7 @@ class DialogInputHandler @Inject constructor(
                 ioScope.launch {
                     dir.deleteRecursively()
                     romsRepository.deleteRomsUnderPrefix(tag, prefix)
-                    scanner.invalidatePlatform(tag)
+                    scanner.markLauncherMutation(tag)
                     gameListViewModel.reload()
                     launcherActions.rescanSystemList()
                     withContext(Dispatchers.Main) { nav.dialogState.value = DialogState.None }
@@ -1287,7 +1285,7 @@ class DialogInputHandler @Inject constructor(
                         nav.dialogState.value = DialogState.RenameResult(false, "Failed to rename directory")
                     }
                 }
-                scanner.invalidatePlatform(tag)
+                scanner.markLauncherMutation(tag)
                 gameListViewModel.reload()
                 return@launch
             }
@@ -1306,7 +1304,7 @@ class DialogInputHandler @Inject constructor(
                     }
                 }
             }
-            scanner.invalidatePlatform(rom.platformTag)
+            scanner.markLauncherMutation(rom.platformTag)
             gameListViewModel.reload()
         }
     }
@@ -1444,7 +1442,7 @@ class DialogInputHandler @Inject constructor(
     private fun deleteRom(rom: dev.cannoli.scorza.model.Rom) {
         deleteRomFiles(rom)
         romsRepository.deleteRom(rom.id)
-        scanner.invalidatePlatform(rom.platformTag)
+        scanner.markLauncherMutation(rom.platformTag)
     }
 
     private fun deleteRomFiles(rom: dev.cannoli.scorza.model.Rom) {
@@ -1475,10 +1473,6 @@ class DialogInputHandler @Inject constructor(
                     } catch (_: Throwable) { }
                 }
                 romFile.delete()
-            }
-            // Walker still produced a virtual multi-disc set (organizer was unable to move files).
-            rom.discFiles != null -> {
-                rom.discFiles.forEach { it.delete() }
             }
             else -> romFile.delete()
         }

@@ -90,20 +90,7 @@ class SettingsInputHandler @Inject constructor(
                 cat?.key == "about" -> nav.dialogState.value = DialogState.About()
                 cat?.key == "retroachievements" && settings.raToken.isNotEmpty() ->
                     nav.dialogState.value = DialogState.RAAccount(username = settings.raUsername)
-                cat?.key == "kitchen" -> {
-                    val root = java.io.File(settings.sdCardRoot)
-                    val km = dev.cannoli.scorza.server.KitchenManager
-                    val romsRootProvider = {
-                        settings.romDirectory.takeIf { it.isNotEmpty() }?.let { java.io.File(it) } ?: java.io.File(root, "Roms")
-                    }
-                    if (!km.isRunning) km.toggle(root, context.assets, settings.kitchenCodeBypass, romsRootProvider)
-                    else km.setCodeBypass(settings.kitchenCodeBypass)
-                    nav.dialogState.value = DialogState.Kitchen(
-                        urls = km.getUrls(hasActiveVpn()),
-                        pin = km.pin,
-                        requirePin = !settings.kitchenCodeBypass
-                    )
-                }
+                cat?.key == "kitchen" -> launcherActions.openKitchen()
                 else -> settingsViewModel.enterCategory()
             }
             return
@@ -344,12 +331,5 @@ class SettingsInputHandler @Inject constructor(
             launcherActions.rescanSystemList()
         }
         nav.pop()
-    }
-
-    private fun hasActiveVpn(): Boolean {
-        val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return false
-        val net = cm.activeNetwork ?: return false
-        val caps = cm.getNetworkCapabilities(net) ?: return false
-        return caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN)
     }
 }
