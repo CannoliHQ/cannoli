@@ -224,7 +224,12 @@ class RomDirectoryWalker(
         for (file in romFiles) {
             if (file.absolutePath in suppressed) continue
             val override = nameOverrides[file.name]
-            val (displayName, tags) = if (override != null) override to null else splitNameAndTags(file.nameWithoutExtension)
+            val rawName = if (file.name.endsWith(".p8.png", ignoreCase = true)) {
+                file.name.dropLast(".p8.png".length)
+            } else {
+                file.nameWithoutExtension
+            }
+            val (displayName, tags) = if (override != null) override to null else splitNameAndTags(rawName)
             out.add(ScannedRom("$relPrefix${file.name}", displayName, tags))
         }
     }
