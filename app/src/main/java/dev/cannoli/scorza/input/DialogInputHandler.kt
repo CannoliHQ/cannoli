@@ -21,7 +21,7 @@ import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.screens.ColorEntry
-import dev.cannoli.scorza.ui.screens.CorePickerOption
+import dev.cannoli.scorza.ui.screens.EmulatorPickerOption
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.screens.KeyboardInputState
 import dev.cannoli.scorza.ui.screens.asKeyboardState
@@ -73,6 +73,7 @@ class DialogInputHandler @Inject constructor(
     private val launcherActions: LauncherActions,
     private val activityActions: ActivityActions,
     private val controllersViewModel: dev.cannoli.scorza.ui.viewmodel.ControllersViewModel,
+    private val emulatorMappingBuilder: EmulatorMappingBuilder,
 ) : DialogPrecedence {
     private val selectHoldHandler = Handler(Looper.getMainLooper())
     private val selectHoldRunnable = Runnable {
@@ -386,6 +387,7 @@ class DialogInputHandler @Inject constructor(
             is DialogState.IntentAuditResult -> {
                 nav.dialogState.value = DialogState.None
             }
+            is DialogState.PlatformResetConfirm -> onPlatformReset(ds)
             else -> {}
         }
         return true
@@ -453,6 +455,9 @@ class DialogInputHandler @Inject constructor(
             }
             is DialogState.RestartRequired -> {}
             is DialogState.IntentAuditResult -> {
+                nav.dialogState.value = DialogState.None
+            }
+            is DialogState.PlatformResetConfirm -> {
                 nav.dialogState.value = DialogState.None
             }
             else -> {}
@@ -771,7 +776,7 @@ class DialogInputHandler @Inject constructor(
                 val platformCoreId = platformResolver.getCoreMapping(tag)
                 val platformCoreName = options.firstOrNull { it.coreId == platformCoreId }?.displayName ?: platformCoreId
                 val defaultLabel = if (platformCoreName.isNotEmpty()) "Platform Setting ($platformCoreName)" else "Platform Setting"
-                val defaultOption = CorePickerOption("", defaultLabel, "")
+                val defaultOption = EmulatorPickerOption("", defaultLabel, "")
                 val allOptions = listOf(defaultOption) + options
                 val override = platformResolver.getGameOverride(rom.path.absolutePath)
                 val selectedIdx = if (override?.appPackage != null) {
@@ -783,7 +788,7 @@ class DialogInputHandler @Inject constructor(
                     0
                 }
                 nav.dialogState.value = DialogState.None
-                nav.screenStack.add(LauncherScreen.CorePicker(
+                nav.screenStack.add(LauncherScreen.EmulatorPicker(
                     tag = tag,
                     platformName = rom.displayName,
                     cores = allOptions,
@@ -977,7 +982,7 @@ class DialogInputHandler @Inject constructor(
         restoreContextMenu()
     }
 
-    fun onCorePickerConfirm(screen: LauncherScreen.CorePicker) {
+    fun onEmulatorPickerConfirm(screen: LauncherScreen.EmulatorPicker) {
         val chosen = screen.cores.getOrNull(screen.selectedIndex) ?: return
         if (screen.gamePath != null) {
             if (chosen.coreId.isEmpty() && chosen.appPackage == null) {
@@ -999,14 +1004,50 @@ class DialogInputHandler @Inject constructor(
             platformResolver.saveCoreMappings()
             nav.screenStack.removeAt(nav.screenStack.lastIndex)
             val cm = nav.screenStack.lastOrNull()
-            if (cm is LauncherScreen.CoreMapping) {
-                val all = platformResolver.getDetailedMappings(context.packageManager, installedCoreService.configuredCores(), LaunchManager.extractBundledCores(context), installedCoreService.configuredUnresponsive())
-                val filtered = filterCoreMappings(all, cm.filter)
+            if (cm is LauncherScreen.EmulatorMapping) {
+                val all = emulatorMappingBuilder.detailedMappings()
+                val filtered = emulatorMappingBuilder.filter(all, cm.filter)
                 val idx = filtered.indexOfFirst { it.tag == screen.tag }.coerceAtLeast(0)
                 nav.screenStack[nav.screenStack.lastIndex] = cm.copy(mappings = filtered, allMappings = all, selectedIndex = idx)
             }
         }
     }
+
+    fun onEmulatorSourcePickerConfirm(screen: LauncherScreen.EmulatorSourcePicker) {
+        val chosen = screen.options.getOrNull(screen.selectedIndex) ?: return
+        nav.screenStack.removeAt(nav.screenStack.lastIndex)
+        val detail = nav.screenStack.lastOrNull() as? LauncherScreen.PlatformDetail ?: return
+        val sourceLabel = when {
+            chosen.appPackage != null -> dev.cannoli.scorza.config.EmulatorSource.Standalone.displayName
+            screen.source == dev.cannoli.scorza.config.EmulatorSource.RetroArch -> chosen.runnerLabel
+            else -> screen.source.displayName
+        }
+        nav.screenStack[nav.screenStack.lastIndex] = detail.copy(
+            currentSource = screen.source,
+            currentSourceLabel = sourceLabel,
+            currentEmulatorLabel = chosen.displayName,
+            pendingPick = chosen,
+            dirty = true,
+        )
+    }
+
+    private fun onPlatformReset(state: DialogState.PlatformResetConfirm) {
+        platformResolver.resetPlatformMapping(state.tag)
+        nav.dialogState.value = DialogState.None
+        val detail = nav.screenStack.lastOrNull() as? LauncherScreen.PlatformDetail ?: return
+        nav.screenStack[nav.screenStack.lastIndex] = rebuildPlatformDetail(detail)
+        val mappingIdx = nav.screenStack.indexOfLast { it is LauncherScreen.EmulatorMapping }
+        if (mappingIdx >= 0) {
+            val cm = nav.screenStack[mappingIdx] as LauncherScreen.EmulatorMapping
+            val all = emulatorMappingBuilder.detailedMappings()
+            val filtered = emulatorMappingBuilder.filter(all, cm.filter)
+            nav.screenStack[mappingIdx] = cm.copy(mappings = filtered, allMappings = all, selectedIndex = cm.selectedIndex.coerceAtMost((filtered.size - 1).coerceAtLeast(0)))
+        }
+    }
+
+    private fun rebuildPlatformDetail(state: LauncherScreen.PlatformDetail): LauncherScreen.PlatformDetail =
+        emulatorMappingBuilder.buildPlatformDetail(state.tag, state.platformName)
+            .copy(selectedIndex = state.selectedIndex, scrollTarget = state.scrollTarget)
 
     fun buildGameContextOptions(item: ListItem, glState: GameListViewModel.State): List<String> {
         if (glState.isCollectionsList || item is ListItem.ChildCollectionItem) return listOf(MENU_RENAME, MENU_CHILD_COLLECTIONS, MENU_DELETE)
@@ -1342,7 +1383,7 @@ class DialogInputHandler @Inject constructor(
                 val platformCoreId = platformResolver.getCoreMapping(tag)
                 val platformCoreName = options.firstOrNull { it.coreId == platformCoreId }?.displayName ?: platformCoreId
                 val defaultLabel = if (platformCoreName.isNotEmpty()) "Platform Setting ($platformCoreName)" else "Platform Setting"
-                val defaultOption = CorePickerOption("", defaultLabel, "")
+                val defaultOption = EmulatorPickerOption("", defaultLabel, "")
                 val allOptions = listOf(defaultOption) + options
                 val override = platformResolver.getGameOverride(rom.path.absolutePath)
                 val selectedIdx = if (override?.appPackage != null) {
@@ -1354,7 +1395,7 @@ class DialogInputHandler @Inject constructor(
                     0
                 }
                 nav.dialogState.value = DialogState.None
-                nav.screenStack.add(LauncherScreen.CorePicker(
+                nav.screenStack.add(LauncherScreen.EmulatorPicker(
                     tag = tag,
                     platformName = rom.displayName,
                     cores = allOptions,
@@ -1488,10 +1529,4 @@ class DialogInputHandler @Inject constructor(
         }
     }
 
-    private fun filterCoreMappings(all: List<dev.cannoli.scorza.ui.screens.CoreMappingEntry>, filter: Int): List<dev.cannoli.scorza.ui.screens.CoreMappingEntry> = when (filter) {
-        1 -> all.filter { it.coreDisplayName == "Missing" || it.coreDisplayName == "None" || it.runnerLabel == "Missing" || it.runnerLabel == "Unknown" }
-        2 -> all.filter { it.runnerLabel == "Internal" }
-        3 -> all.filter { it.runnerLabel != "Internal" && it.coreDisplayName != "Missing" && it.coreDisplayName != "None" && it.runnerLabel != "Missing" && it.runnerLabel != "Unknown" }
-        else -> all
-    }
 }

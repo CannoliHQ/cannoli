@@ -11,8 +11,9 @@ interface KeyboardInputState {
     val symbols: Boolean
 }
 
-data class CoreMappingEntry(val tag: String, val platformName: String, val coreDisplayName: String, val runnerLabel: String)
-data class CorePickerOption(val coreId: String, val displayName: String, val runnerLabel: String, val appPackage: String? = null)
+enum class EmulatorMappingStatus { READY, NOT_INSTALLED, NEEDS_SETUP }
+data class EmulatorMappingEntry(val tag: String, val platformName: String, val coreDisplayName: String, val runnerLabel: String, val status: EmulatorMappingStatus = EmulatorMappingStatus.READY)
+data class EmulatorPickerOption(val coreId: String, val displayName: String, val runnerLabel: String, val appPackage: String? = null, val available: Boolean = true)
 data class ColorEntry(val key: String, @androidx.annotation.StringRes val labelRes: Int, val hex: String, val color: Long)
 
 sealed interface DialogState {
@@ -40,6 +41,7 @@ sealed interface DialogState {
     data class UpdateDownload(val versionName: String, val changelog: String) : DialogState
     data object RestartRequired : DialogState
     data class IntentAuditResult(val message: String) : DialogState
+    data class PlatformResetConfirm(val tag: String, val platformName: String) : DialogState
 }
 
 fun DialogState.asKeyboardState(): KeyboardInputState? = this as? KeyboardInputState

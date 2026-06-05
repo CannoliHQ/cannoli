@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.ui.theme.LocalCannoliColors
+import dev.cannoli.ui.theme.LocalCannoliIconFont
 import dev.cannoli.ui.theme.LocalScaleFactor
 import dev.cannoli.ui.theme.Radius
 import kotlinx.coroutines.delay
@@ -182,7 +183,8 @@ fun PillRowKeyValue(
     fontSize: TextUnit,
     lineHeight: TextUnit,
     verticalPadding: Dp,
-    swatchColor: Color? = null
+    swatchColor: Color? = null,
+    valueIcon: String? = null
 ) {
     val colors = LocalCannoliColors.current
     val baseStyle = MaterialTheme.typography.bodyLarge
@@ -198,7 +200,7 @@ fun PillRowKeyValue(
     MarqueeEffect(scrollState, isSelected)
 
     val labelColor = if (isSelected) colors.highlightText else colors.text
-    val valueColor = if (isSelected) colors.highlightText.copy(alpha = 0.5f) else colors.text.copy(alpha = 0.6f)
+    val valueColor = if (isSelected) colors.highlightText else colors.accent
     val borderColor = if (isSelected) colors.highlightText.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.3f)
 
     PillRow(isSelected = isSelected, verticalPadding = verticalPadding, lineHeight = lineHeight, modifier = Modifier.fillMaxWidth()) {
@@ -230,6 +232,16 @@ fun PillRowKeyValue(
                         .border(1.dp, borderColor, RoundedCornerShape(Radius.Sm))
                 )
                 Spacer(modifier = Modifier.width(8.dp))
+            }
+            if (valueIcon != null) {
+                Text(
+                    text = valueIcon,
+                    fontFamily = LocalCannoliIconFont.current,
+                    fontSize = valueStyle.fontSize,
+                    color = labelColor,
+                    maxLines = 1
+                )
+                Spacer(modifier = Modifier.width(6.dp))
             }
             Text(
                 text = value,

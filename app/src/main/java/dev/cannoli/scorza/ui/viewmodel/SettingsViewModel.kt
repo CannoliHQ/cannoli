@@ -767,7 +767,7 @@ class SettingsViewModel @Inject constructor(
             SettingsItem("input_tester", R.string.setting_input_tester, isEditable = true)
         )
         "emulation" -> buildList {
-            add(SettingsItem("core_mapping", R.string.setting_core_mapping, isEditable = true))
+            add(SettingsItem("core_mapping", R.string.setting_emulator_mapping, isEditable = true))
             val pkgs = detectInstalledRaPackages()
             if (pkgs.isNotEmpty() && settings.retroArchPackage !in pkgs) {
                 settings.retroArchPackage = pkgs.first()

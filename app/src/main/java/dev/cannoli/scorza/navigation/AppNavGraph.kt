@@ -44,8 +44,8 @@ import dev.cannoli.scorza.ui.screens.ColorEntry
 import dev.cannoli.scorza.ui.screens.ControllerDetailScreen
 import dev.cannoli.scorza.ui.screens.ControllersScreen
 import dev.cannoli.scorza.ui.screens.EditButtonsScreen
-import dev.cannoli.scorza.ui.screens.CoreMappingEntry
-import dev.cannoli.scorza.ui.screens.CorePickerOption
+import dev.cannoli.scorza.ui.screens.EmulatorMappingEntry
+import dev.cannoli.scorza.ui.screens.EmulatorPickerOption
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.screens.DirectoryBrowserScreen
 import dev.cannoli.scorza.ui.screens.GameListScreen
@@ -61,6 +61,7 @@ import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.scorza.ui.viewmodel.InputTesterViewModel
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
+import dev.cannoli.ui.components.ConfirmOverlay
 import dev.cannoli.ui.components.List
 import dev.cannoli.ui.components.LocalStatusBarLeftEdge
 import dev.cannoli.ui.components.MessageOverlay
@@ -84,6 +85,9 @@ enum class BrowsePurpose { SD_ROOT, ROM_DIRECTORY, SETUP }
 
 enum class OnboardingPermission { STORAGE }
 
+// Nerd Font md-alert glyph; flags a mapped emulator we can confirm is not installed.
+private const val ICON_NOT_INSTALLED = "\uDB80\uDC26"
+
 sealed class LauncherScreen {
     interface ScrollableScreen {
         val selectedIndex: Int
@@ -96,12 +100,54 @@ sealed class LauncherScreen {
     data object GameList : LauncherScreen()
     data object Settings : LauncherScreen()
     data object InputTester : LauncherScreen()
-    data class CoreMapping(val mappings: List<CoreMappingEntry>, val allMappings: List<CoreMappingEntry> = mappings, override val selectedIndex: Int = 0, override val scrollTarget: Int = 0, val filter: Int = 0) : LauncherScreen(), ScrollableScreen {
+    data class EmulatorMapping(val mappings: List<EmulatorMappingEntry>, val allMappings: List<EmulatorMappingEntry> = mappings, override val selectedIndex: Int = 0, override val scrollTarget: Int = 0, val filter: Int = 0) : LauncherScreen(), ScrollableScreen {
         override val itemCount: Int get() = mappings.size
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
     }
-    data class CorePicker(val tag: String, val platformName: String, val cores: List<CorePickerOption>, override val selectedIndex: Int = 0, val gamePath: String? = null, override val scrollTarget: Int = 0, val activeIndex: Int = 0) : LauncherScreen(), ScrollableScreen {
+    data class EmulatorPicker(val tag: String, val platformName: String, val cores: List<EmulatorPickerOption>, override val selectedIndex: Int = 0, val gamePath: String? = null, override val scrollTarget: Int = 0, val activeIndex: Int = 0) : LauncherScreen(), ScrollableScreen {
         override val itemCount: Int get() = cores.size
+        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
+    }
+    data class PlatformDetail(
+        val tag: String,
+        val platformName: String,
+        val availableSources: List<dev.cannoli.scorza.config.EmulatorSource>,
+        val currentSource: dev.cannoli.scorza.config.EmulatorSource?,
+        val currentSourceLabel: String,
+        val currentEmulatorLabel: String,
+        val emulatorRowPickable: Boolean,
+        val biosStatus: String,
+        val overridesCount: Int,
+        val pendingPick: dev.cannoli.scorza.ui.screens.EmulatorPickerOption?,
+        val dirty: Boolean = false,
+        val resettable: Boolean = false,
+        override val selectedIndex: Int = 0,
+        override val scrollTarget: Int = 0,
+    ) : LauncherScreen(), ScrollableScreen {
+        override val itemCount: Int = 4
+        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
+    }
+    data class EmulatorSourcePicker(
+        val tag: String,
+        val platformName: String,
+        val source: dev.cannoli.scorza.config.EmulatorSource,
+        val options: List<dev.cannoli.scorza.ui.screens.EmulatorPickerOption>,
+        val showAll: Boolean,
+        val raUnresponsive: Boolean,
+        override val selectedIndex: Int = 0,
+        override val scrollTarget: Int = 0,
+    ) : LauncherScreen(), ScrollableScreen {
+        override val itemCount: Int = options.size
+        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
+    }
+    data class PlatformOverrides(
+        val tag: String,
+        val platformName: String,
+        val overrides: List<Pair<String, String>>,
+        override val selectedIndex: Int = 0,
+        override val scrollTarget: Int = 0,
+    ) : LauncherScreen(), ScrollableScreen {
+        override val itemCount: Int = overrides.size
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
     }
     data class ColorList(val colors: List<ColorEntry>, override val selectedIndex: Int = 0, override val scrollTarget: Int = 0) : LauncherScreen(), ScrollableScreen {
@@ -338,15 +384,14 @@ fun AppNavGraph(
                 buttonStyle = labels,
             )
             }
-            is LauncherScreen.CoreMapping -> {
+            is LauncherScreen.EmulatorMapping -> {
                 if (inputRouter != null) {
                     val handler = remember { inputRouter.currentHandler() }
                     dev.cannoli.scorza.input.screen.compose.ScreenInput(handler)
                 }
                 val filterLabel = when (currentScreen.filter) {
-                    1 -> "MISSING"
-                    2 -> "INTERNAL"
-                    3 -> "EXTERNAL"
+                    1 -> "NEEDS SETUP"
+                    2 -> "MAPPED"
                     else -> "ALL"
                 }
                 val selected = currentScreen.mappings.getOrNull(currentScreen.selectedIndex)
@@ -354,13 +399,13 @@ fun AppNavGraph(
                 ListDialogScreen(
                     backgroundImagePath = appSettings.backgroundImagePath,
                     backgroundTint = appSettings.backgroundTint,
-                    title = stringResource(R.string.setting_core_mapping),
+                    title = stringResource(R.string.setting_emulator_mapping),
                     listFontSize = listFontSize,
                     listLineHeight = listLineHeight,
                     fullWidth = true,
+                    leftBottomItems = listOf(labels.west to filterLabel),
                     rightBottomItems = buildList {
                         if (canSelect) add(labels.confirm to stringResource(R.string.label_select))
-                        add(labels.west to filterLabel)
                     },
                     buttonStyle = labels
                 ) {
@@ -371,21 +416,27 @@ fun AppNavGraph(
                         scrollTarget = currentScreen.scrollTarget,
                         onListStateChanged = onListStateChanged
                     ) { _, entry, isSelected ->
-                        val value = if (currentScreen.filter == 0 && entry.runnerLabel.isNotEmpty())
-                            "${entry.coreDisplayName} (${entry.runnerLabel})"
-                        else entry.coreDisplayName
+                        val value = when {
+                            entry.status == dev.cannoli.scorza.ui.screens.EmulatorMappingStatus.NEEDS_SETUP -> "Needs setup"
+                            entry.runnerLabel.isEmpty() -> entry.coreDisplayName
+                            else -> "${entry.coreDisplayName} (${entry.runnerLabel})"
+                        }
+                        val valueIcon = if (entry.status == dev.cannoli.scorza.ui.screens.EmulatorMappingStatus.NOT_INSTALLED) {
+                            ICON_NOT_INSTALLED
+                        } else null
                         PillRowKeyValue(
                             label = entry.platformName,
                             value = value,
                             isSelected = isSelected,
                             fontSize = listFontSize,
                             lineHeight = listLineHeight,
-                            verticalPadding = listVerticalPadding
+                            verticalPadding = listVerticalPadding,
+                            valueIcon = valueIcon
                         )
                     }
                 }
             }
-            is LauncherScreen.CorePicker -> {
+            is LauncherScreen.EmulatorPicker -> {
                 if (inputRouter != null) {
                     val handler = remember { inputRouter.currentHandler() }
                     dev.cannoli.scorza.input.screen.compose.ScreenInput(handler)
@@ -435,6 +486,192 @@ fun AppNavGraph(
                                     verticalPadding = listVerticalPadding
                                 )
                             }
+                        }
+                    }
+                }
+            }
+            is LauncherScreen.PlatformDetail -> {
+                if (inputRouter != null) {
+                    val handler = remember { inputRouter.currentHandler() }
+                    dev.cannoli.scorza.input.screen.compose.ScreenInput(handler)
+                }
+                val rows = remember(currentScreen) {
+                    listOf(
+                        "Source" to currentScreen.currentSourceLabel,
+                        "Emulator" to currentScreen.currentEmulatorLabel,
+                        "BIOS" to currentScreen.biosStatus,
+                        "Per-game overrides" to "${currentScreen.overridesCount} games"
+                    )
+                }
+                ListDialogScreen(
+                    backgroundImagePath = appSettings.backgroundImagePath,
+                    backgroundTint = appSettings.backgroundTint,
+                    title = currentScreen.platformName,
+                    listFontSize = listFontSize,
+                    listLineHeight = listLineHeight,
+                    fullWidth = true,
+                    leftBottomItems = buildList {
+                        if (currentScreen.selectedIndex == 0 && currentScreen.availableSources.size > 1) {
+                            add(dev.cannoli.ui.DPAD_HORIZONTAL to stringResource(R.string.label_change))
+                        }
+                    },
+                    rightBottomItems = buildList {
+                        when (currentScreen.selectedIndex) {
+                            1 -> if (currentScreen.emulatorRowPickable) add(labels.confirm to stringResource(R.string.label_select))
+                            3 -> if (currentScreen.overridesCount > 0) add(labels.confirm to stringResource(R.string.label_select))
+                            else -> Unit
+                        }
+                        if (currentScreen.resettable) add(labels.north to stringResource(R.string.label_reset))
+                        if (currentScreen.dirty) add(dev.cannoli.ui.START_GLYPH to stringResource(R.string.label_save))
+                    },
+                    buttonStyle = labels
+                ) {
+                    List(
+                        items = rows,
+                        selectedIndex = currentScreen.selectedIndex,
+                        itemHeight = itemHeight,
+                        scrollTarget = currentScreen.scrollTarget,
+                        onListStateChanged = onListStateChanged
+                    ) { _, item, isSelected ->
+                        PillRowKeyValue(
+                            label = item.first,
+                            value = item.second,
+                            isSelected = isSelected,
+                            fontSize = listFontSize,
+                            lineHeight = listLineHeight,
+                            verticalPadding = listVerticalPadding
+                        )
+                    }
+                }
+                when (dialog) {
+                    is DialogState.PlatformResetConfirm -> ConfirmOverlay(
+                        message = stringResource(
+                            R.string.dialog_reset_platform_confirm,
+                            (dialog as DialogState.PlatformResetConfirm).platformName
+                        ),
+                        confirmLabel = stringResource(R.string.label_reset),
+                        buttonStyle = labels
+                    )
+                    else -> {}
+                }
+            }
+            is LauncherScreen.EmulatorSourcePicker -> {
+                if (inputRouter != null) {
+                    val handler = remember { inputRouter.currentHandler() }
+                    dev.cannoli.scorza.input.screen.compose.ScreenInput(handler)
+                }
+                val yLabel = if (currentScreen.showAll)
+                    stringResource(R.string.label_show_installed)
+                else
+                    stringResource(R.string.label_show_all)
+                val bannerText = when {
+                    currentScreen.raUnresponsive && !currentScreen.showAll ->
+                        stringResource(R.string.ra_cannot_report_banner)
+                    currentScreen.raUnresponsive && currentScreen.showAll ->
+                        stringResource(R.string.ra_show_all_banner)
+                    else -> null
+                }
+                ListDialogScreen(
+                    backgroundImagePath = appSettings.backgroundImagePath,
+                    backgroundTint = appSettings.backgroundTint,
+                    title = currentScreen.platformName,
+                    listFontSize = listFontSize,
+                    listLineHeight = listLineHeight,
+                    fullWidth = true,
+                    rightBottomItems = buildList {
+                        if (currentScreen.options.isNotEmpty()) add(labels.confirm to stringResource(R.string.label_select))
+                        add(labels.north to yLabel)
+                    },
+                    buttonStyle = labels
+                ) {
+                    Column {
+                        if (bannerText != null) {
+                            Text(
+                                text = bannerText,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = cannoliColors.accent,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                            )
+                        }
+                        if (currentScreen.options.isEmpty()) {
+                            Text(
+                                text = if (currentScreen.raUnresponsive)
+                                    stringResource(R.string.ra_no_cores_reported)
+                                else
+                                    stringResource(currentScreen.source.emptyMessageRes),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = cannoliColors.text.copy(alpha = 0.6f),
+                                modifier = Modifier.padding(start = 14.dp)
+                            )
+                        } else {
+                            List(
+                                items = currentScreen.options,
+                                selectedIndex = currentScreen.selectedIndex,
+                                itemHeight = itemHeight,
+                                scrollTarget = currentScreen.scrollTarget,
+                                onListStateChanged = onListStateChanged
+                            ) { _, option, isSelected ->
+                                val tag = if (!option.available) {
+                                    val resId = when (option.runnerLabel) {
+                                        "Internal" -> R.string.value_not_bundled
+                                        else -> R.string.value_not_installed
+                                    }
+                                    stringResource(resId)
+                                } else ""
+                                PillRowKeyValue(
+                                    label = option.displayName,
+                                    value = tag,
+                                    isSelected = isSelected,
+                                    fontSize = listFontSize,
+                                    lineHeight = listLineHeight,
+                                    verticalPadding = listVerticalPadding
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            is LauncherScreen.PlatformOverrides -> {
+                if (inputRouter != null) {
+                    val handler = remember { inputRouter.currentHandler() }
+                    dev.cannoli.scorza.input.screen.compose.ScreenInput(handler)
+                }
+                ListDialogScreen(
+                    backgroundImagePath = appSettings.backgroundImagePath,
+                    backgroundTint = appSettings.backgroundTint,
+                    title = currentScreen.platformName,
+                    listFontSize = listFontSize,
+                    listLineHeight = listLineHeight,
+                    fullWidth = true,
+                    rightBottomItems = buildList {
+                        if (currentScreen.overrides.isNotEmpty()) add(labels.confirm to stringResource(R.string.label_clear_override))
+                    },
+                    buttonStyle = labels
+                ) {
+                    if (currentScreen.overrides.isEmpty()) {
+                        Text(
+                            text = stringResource(R.string.value_no_overrides),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = cannoliColors.text.copy(alpha = 0.6f),
+                            modifier = Modifier.padding(start = 14.dp)
+                        )
+                    } else {
+                        List(
+                            items = currentScreen.overrides,
+                            selectedIndex = currentScreen.selectedIndex,
+                            itemHeight = itemHeight,
+                            scrollTarget = currentScreen.scrollTarget,
+                            onListStateChanged = onListStateChanged
+                        ) { _, item, isSelected ->
+                            val romName = java.io.File(item.first).nameWithoutExtension
+                            PillRowKeyValue(
+                                label = romName,
+                                value = item.second,
+                                isSelected = isSelected,
+                                fontSize = listFontSize,
+                                lineHeight = listLineHeight,
+                                verticalPadding = listVerticalPadding
+                            )
                         }
                     }
                 }

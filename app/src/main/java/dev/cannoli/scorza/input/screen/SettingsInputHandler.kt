@@ -16,7 +16,6 @@ import dev.cannoli.scorza.input.ScreenInputHandler
 import dev.cannoli.scorza.launcher.ApkLauncher
 import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.IntentAuditor
-import dev.cannoli.scorza.launcher.LaunchManager
 import dev.cannoli.scorza.model.AppType
 import dev.cannoli.scorza.navigation.BrowsePurpose
 import dev.cannoli.scorza.navigation.LauncherScreen
@@ -24,7 +23,6 @@ import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.settings.GlobalOverridesManager
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.setup.SetupCoordinator
-import dev.cannoli.scorza.ui.screens.CoreMappingEntry
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import dev.cannoli.scorza.updater.UpdateManager
@@ -50,6 +48,7 @@ class SettingsInputHandler @Inject constructor(
     private val settingsViewModel: SettingsViewModel,
     private val launcherActions: LauncherActions,
     private val activityActions: ActivityActions,
+    private val emulatorMappingBuilder: dev.cannoli.scorza.input.EmulatorMappingBuilder,
     @ApplicationContext private val context: Context,
 ) : ScreenInputHandler {
 
@@ -117,7 +116,7 @@ class SettingsInputHandler @Inject constructor(
                 inputTesterController.enter()
                 nav.push(LauncherScreen.InputTester)
             }
-            "core_mapping" -> openCoreMapping()
+            "core_mapping" -> openEmulatorMapping()
             "set_default_launcher" -> context.startActivity(
                 Intent(android.provider.Settings.ACTION_HOME_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             )
@@ -215,26 +214,16 @@ class SettingsInputHandler @Inject constructor(
         ))
     }
 
-    private fun openCoreMapping() {
-        val initial = platformConfig.getDetailedMappings(
-            context.packageManager,
-            installedCoreService.configuredCores(),
-            LaunchManager.extractBundledCores(context),
-            installedCoreService.configuredUnresponsive()
-        )
-        nav.push(LauncherScreen.CoreMapping(mappings = initial, allMappings = initial))
+    private fun openEmulatorMapping() {
+        val initial = emulatorMappingBuilder.detailedMappings()
+        nav.push(LauncherScreen.EmulatorMapping(mappings = initial, allMappings = initial))
         ioScope.launch {
             installedCoreService.queryAllPackages()
             withContext(Dispatchers.Main) {
-                val cm = nav.screenStack.lastOrNull() as? LauncherScreen.CoreMapping ?: return@withContext
-                val all = platformConfig.getDetailedMappings(
-                    context.packageManager,
-                    installedCoreService.configuredCores(),
-                    LaunchManager.extractBundledCores(context),
-                    installedCoreService.configuredUnresponsive()
-                )
+                val cm = nav.screenStack.lastOrNull() as? LauncherScreen.EmulatorMapping ?: return@withContext
+                val all = emulatorMappingBuilder.detailedMappings()
                 nav.screenStack[nav.screenStack.lastIndex] = cm.copy(
-                    mappings = filterCoreMappings(all, cm.filter),
+                    mappings = emulatorMappingBuilder.filter(all, cm.filter),
                     allMappings = all
                 )
             }
@@ -306,13 +295,6 @@ class SettingsInputHandler @Inject constructor(
             }
             .distinctBy { it.second }
             .sortedBy { it.first.lowercase(java.util.Locale.ROOT) }
-    }
-
-    private fun filterCoreMappings(all: List<CoreMappingEntry>, filter: Int): List<CoreMappingEntry> = when (filter) {
-        1 -> all.filter { it.coreDisplayName == "Missing" || it.coreDisplayName == "None" || it.runnerLabel == "Missing" || it.runnerLabel == "Unknown" }
-        2 -> all.filter { it.runnerLabel == "Internal" }
-        3 -> all.filter { it.runnerLabel != "Internal" && it.coreDisplayName != "Missing" && it.coreDisplayName != "None" && it.runnerLabel != "Missing" && it.runnerLabel != "Unknown" }
-        else -> all
     }
 
     fun confirmAppPicker(state: LauncherScreen.AppPicker) {

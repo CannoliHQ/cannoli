@@ -196,7 +196,6 @@
     <string name="setting_color_accent">Accent</string>
     <string name="setting_color_background">Background</string>
     <string name="setting_color_status_bar">Status Bar</string>
-    <string name="setting_core_mapping">Core Mapping</string>
     <string name="setting_installed_cores">%s Installed Cores</string>
     <string name="title_installed_cores">%s Installed Cores</string>
     <string name="installed_cores_none">No cores found</string>
@@ -386,4 +385,19 @@
 
     <string name="setting_portrait_margin">Portrait Margin</string>
     <string name="portrait_margin_hud">Margin: %1$d px</string>
+
+    <!-- Emulator Mapping -->
+    <string name="setting_emulator_mapping">Emulator Mapping</string>
+    <string name="label_reset">RESET</string>
+    <string name="label_show_all">SHOW ALL</string>
+    <string name="label_show_installed">SHOW INSTALLED</string>
+    <string name="value_not_bundled">NOT BUNDLED</string>
+    <string name="value_no_options">No options available.</string>
+    <string name="value_no_overrides">No per-game overrides.</string>
+    <string name="value_no_cores_found">No Cores Found</string>
+    <string name="label_clear_override">CLEAR</string>
+    <string name="ra_no_cores_reported">No cores reported by this RetroArch install.</string>
+    <string name="ra_cannot_report_banner">RetroArch can\'t report installed cores. Update RetroArch, or press Y to pick from all known cores (may hang if not actually installed).</string>
+    <string name="ra_show_all_banner">Showing all known cores. Picking one that\'s not actually installed will hang RetroArch.</string>
+    <string name="dialog_reset_platform_confirm">Reset %1$s? This clears your emulator selection for this platform and restores the bundled default.</string>
 </resources>

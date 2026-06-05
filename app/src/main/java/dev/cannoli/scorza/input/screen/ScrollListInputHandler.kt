@@ -17,6 +17,8 @@ class ScrollListInputHandler @AssistedInject constructor(
     @Assisted("onStart") val onStart: (() -> Unit)?,
     @Assisted("onWest") val onWest: (() -> Unit)?,
     @Assisted("onNorth") val onNorth: (() -> Unit)?,
+    @Assisted("onLeft") val onLeftOverride: (() -> Unit)?,
+    @Assisted("onRight") val onRightOverride: (() -> Unit)?,
 ) : ScreenInputHandler {
 
     @AssistedFactory
@@ -30,6 +32,8 @@ class ScrollListInputHandler @AssistedInject constructor(
             @Assisted("onStart") onStart: (() -> Unit)?,
             @Assisted("onWest") onWest: (() -> Unit)? = null,
             @Assisted("onNorth") onNorth: (() -> Unit)? = null,
+            @Assisted("onLeft") onLeft: (() -> Unit)? = null,
+            @Assisted("onRight") onRight: (() -> Unit)? = null,
         ): ScrollListInputHandler
     }
 
@@ -43,11 +47,19 @@ class ScrollListInputHandler @AssistedInject constructor(
     override fun onDown() = onMove(wrap(1))
 
     override fun onLeft() {
+        if (onLeftOverride != null) {
+            onLeftOverride.invoke()
+            return
+        }
         val newIdx = PageJump.compute(-1, itemCount(), selectedIndex(), nav.activeListState)
         if (newIdx != selectedIndex()) onMove(newIdx)
     }
 
     override fun onRight() {
+        if (onRightOverride != null) {
+            onRightOverride.invoke()
+            return
+        }
         val newIdx = PageJump.compute(1, itemCount(), selectedIndex(), nav.activeListState)
         if (newIdx != selectedIndex()) onMove(newIdx)
     }
