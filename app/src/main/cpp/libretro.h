@@ -61,7 +61,8 @@ extern "C" {
 #define RETRO_ENVIRONMENT_SET_VARIABLES          16
 #define RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE    17
 #define RETRO_ENVIRONMENT_SET_SUPPORT_NO_GAME    18
-#define RETRO_ENVIRONMENT_SET_VARIABLE           21
+// Upstream value is 70; 21 is SET_FRAME_TIME_CALLBACK.
+#define RETRO_ENVIRONMENT_SET_VARIABLE           70
 #define RETRO_ENVIRONMENT_GET_RUMBLE_INTERFACE   23
 #define RETRO_ENVIRONMENT_GET_LOG_INTERFACE      27
 #define RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY     31
@@ -79,7 +80,10 @@ extern "C" {
 #define RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2        67
 #define RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2_INTL  68
 #define RETRO_ENVIRONMENT_SET_CORE_OPTIONS_UPDATE_DISPLAY_CALLBACK 69
-#define RETRO_ENVIRONMENT_SET_DISK_CONTROL_EXT_INTERFACE 65
+// Must match upstream libretro.h exactly. 65 is SET_CONTENT_INFO_OVERRIDE;
+// the ext disk-control interface is 58. Using 65 here makes content-info
+// overrides register a bogus disk interface with garbage callbacks.
+#define RETRO_ENVIRONMENT_SET_DISK_CONTROL_EXT_INTERFACE 58
 
 // Log levels
 enum retro_log_level {

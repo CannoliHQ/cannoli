@@ -4,11 +4,15 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.storage.StorageManager
 import android.os.storage.StorageVolume
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.cannoli.scorza.BuildConfig
+import dev.cannoli.scorza.util.LoggingPrefs
 import dev.cannoli.scorza.util.NaturalSort
+import dev.cannoli.scorza.util.StorageLog
 import java.io.File
 import java.util.concurrent.Executor
 import javax.inject.Inject
@@ -53,6 +57,60 @@ class SetupCoordinator @Inject constructor(
             }
         }
         return volumes
+    }
+
+    fun logStorageDiagnostics() {
+        if (!LoggingPrefs.storage) return
+        StorageLog.startRun("Storage scan")
+        StorageLog.write("App: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}) ${BuildConfig.GIT_HASH}")
+        StorageLog.write("Device: ${Build.MANUFACTURER} ${Build.MODEL}")
+        StorageLog.write("Android: ${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})")
+        val isTv = context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
+        StorageLog.write("Leanback (Android TV): $isTv")
+
+        val sm = context.getSystemService(StorageManager::class.java)
+        val volumes = try { sm.storageVolumes } catch (e: Exception) {
+            StorageLog.write("ERROR reading storageVolumes: ${e.message}")
+            emptyList()
+        }
+        StorageLog.write("StorageManager reports ${volumes.size} volume(s):")
+        for (sv in volumes) {
+            val dir30 = if (Build.VERSION.SDK_INT >= 30) sv.directory?.absolutePath else null
+            val dirReflect = try { sv.javaClass.getMethod("getPath").invoke(sv) as? String } catch (_: Exception) { null }
+            val removable = try { sv.isRemovable } catch (_: Exception) { null }
+            val emulated = try { sv.isEmulated } catch (_: Exception) { null }
+            StorageLog.write(
+                "  - desc=${sv.getDescription(context)} state=${sv.state} primary=${sv.isPrimary} " +
+                    "removable=$removable emulated=$emulated uuid=${sv.uuid} " +
+                    "directory=$dir30 getPath=$dirReflect"
+            )
+        }
+
+        StorageLog.write("getExternalFilesDirs:")
+        try {
+            context.getExternalFilesDirs(null).forEach { f ->
+                StorageLog.write("  - ${f?.absolutePath}")
+            }
+        } catch (e: Exception) {
+            StorageLog.write("  ERROR: ${e.message}")
+        }
+
+        StorageLog.write("/storage listing:")
+        val storageDir = File("/storage")
+        val entries = try { storageDir.listFiles() } catch (_: Exception) { null }
+        if (entries == null) {
+            StorageLog.write("  (unreadable or empty)")
+        } else {
+            for (dir in entries) {
+                StorageLog.write("  - ${dir.name} isDirectory=${dir.isDirectory} canRead=${dir.canRead()}")
+            }
+        }
+
+        val detected = detectStorageVolumes()
+        StorageLog.write("detectStorageVolumes (wizard candidates), ${detected.size} entry(ies):")
+        for ((label, path) in detected) {
+            StorageLog.write("  - \"$label\" -> $path")
+        }
     }
 
     fun listDirectories(path: String): List<String> {

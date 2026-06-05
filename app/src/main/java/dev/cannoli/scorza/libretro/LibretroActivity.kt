@@ -113,11 +113,10 @@ class LibretroActivity : ComponentActivity() {
     }
 
     // Run a block on the GL thread (the same thread that called retro_init /
-    // retro_run) and return its result. Some libretro callbacks --
-    // mednafen_pce_fast's disk_control in particular -- are only safe to
-    // invoke from the core's own thread; calling them from the main thread
-    // corrupts the calling stack. Used for any core query issued outside the
-    // render loop.
+    // retro_run) and return its result. Libretro cores expect their callbacks
+    // to be invoked from the thread that drives retro_run; calling them from
+    // the main thread risks corrupting core state. Used for any core query
+    // issued outside the render loop.
     private inline fun <T> runOnGlThread(timeoutMs: Long, default: T, crossinline block: () -> T): T {
         val view = glSurfaceView ?: return default
         val latch = CountDownLatch(1)
@@ -368,10 +367,6 @@ class LibretroActivity : ComponentActivity() {
         val hasCtl = runner.hasDiskControl()
         sessionLog.log("refreshDiskInfo: hasCtl=$hasCtl")
         if (!hasCtl) return
-        if (CoreQuirks.has(corePath, CoreQuirk.UNSAFE_DISK_CONTROL_OUTSIDE_RETRO_RUN)) {
-            sessionLog.log("refreshDiskInfo: core quirk -- skipping disk_control queries")
-            return
-        }
         val snapshot = runOnGlThread(200L, Triple(0, 0, emptyList<String>())) {
             val count = runner.getDiskCount()
             val index = runner.getDiskIndex()

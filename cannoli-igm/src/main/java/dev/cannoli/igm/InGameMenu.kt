@@ -148,15 +148,19 @@ fun InGameMenu(
             }
 
             val canDeleteSlot = showThumbnail && slotExists
+            val onSlotRow = selectedIndex == menuOptions.saveStateIndex ||
+                selectedIndex == menuOptions.loadStateIndex
             val leftItems = buildList {
                 add(buttonStyle.back to backLabel)
+                if (onDiscRow) add(DPAD_HORIZONTAL to discLabel)
+                if (onSlotRow) add(DPAD_HORIZONTAL to slotLabel)
                 if (undoLabel != null) add(buttonStyle.north to undoLabel.uppercase())
                 if (canDeleteSlot) add(buttonStyle.west to deleteLabel)
             }
             val rightItems = when {
-                selectedIndex == menuOptions.saveStateIndex -> listOf(DPAD_HORIZONTAL to slotLabel, buttonStyle.confirm to saveLabel)
-                selectedIndex == menuOptions.loadStateIndex -> listOf(DPAD_HORIZONTAL to slotLabel, buttonStyle.confirm to loadLabel)
-                onDiscRow -> listOf(DPAD_HORIZONTAL to discLabel, buttonStyle.confirm to selectLabel)
+                selectedIndex == menuOptions.saveStateIndex -> listOf(buttonStyle.confirm to saveLabel)
+                selectedIndex == menuOptions.loadStateIndex -> listOf(buttonStyle.confirm to loadLabel)
+                onDiscRow -> listOf(buttonStyle.confirm to selectLabel)
                 else -> listOf(buttonStyle.confirm to selectLabel)
             }
 

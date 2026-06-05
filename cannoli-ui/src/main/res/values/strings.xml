@@ -220,6 +220,7 @@
     <string name="logging_input">Input</string>
     <string name="logging_session">Game Session</string>
     <string name="logging_kitchen">Nonna\'s Kitchen</string>
+    <string name="logging_storage">Storage</string>
     <string name="setting_input_tester">Input Tester</string>
     <string name="input_tester_none">—</string>
     <string name="input_tester_device_format">P%1$d • %2$s • dev%3$d</string>
