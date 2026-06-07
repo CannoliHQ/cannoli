@@ -6,6 +6,10 @@ import android.os.Parcelable
 /** Bumped whenever the launch contract changes. Sender and receiver must match. */
 const val RICOTTA_PROTOCOL_VERSION = 1
 
+class ProtocolMismatchException(val found: Int, val expected: Int) : RuntimeException(
+    "Ricotta launch protocol mismatch: parcel=$found, app=$expected",
+)
+
 data class IgmColors(
     val highlight: String?,
     val text: String?,
@@ -71,8 +75,10 @@ data class RicottaLaunchParams(
         @JvmField
         val CREATOR = object : Parcelable.Creator<RicottaLaunchParams> {
             override fun createFromParcel(p: Parcel): RicottaLaunchParams {
-                // Read and discard the version for now; the guard is added in Task 2.
-                p.readInt()
+                val version = p.readInt()
+                if (version != RICOTTA_PROTOCOL_VERSION) {
+                    throw ProtocolMismatchException(version, RICOTTA_PROTOCOL_VERSION)
+                }
                 val coreId = p.readString()!!
                 val romPath = p.readString()!!
                 val configFilePath = p.readString()
