@@ -9,4 +9,5 @@ data class IgmGameInfo(
     val raStatus: String = "",
     val raGameId: String = "",
     val raDetection: String = "",
+    val rootPrefix: String = "",
 )
