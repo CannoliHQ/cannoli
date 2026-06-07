@@ -51,6 +51,11 @@ data class RicottaLaunchParams(
 ) : Parcelable {
     override fun describeContents() = 0
 
+    fun writeToIntent(intent: android.content.Intent) {
+        intent.putExtra(EXTRA_PROTOCOL, RICOTTA_PROTOCOL_VERSION)
+        intent.putExtra(EXTRA, this)
+    }
+
     override fun writeToParcel(dest: Parcel, flags: Int) {
         // protocolVersion is FIELD #1 and is always this build's version.
         dest.writeInt(RICOTTA_PROTOCOL_VERSION)
@@ -71,6 +76,15 @@ data class RicottaLaunchParams(
     companion object {
         /** Intent extra key carrying the parcelled params. */
         const val EXTRA = "RICOTTA_PARAMS"
+
+        /** Intent extra key carrying the plain-int protocol version for fast mismatch detection. */
+        const val EXTRA_PROTOCOL = "RICOTTA_PROTOCOL"
+
+        fun readFromIntent(intent: android.content.Intent): RicottaLaunchParams? {
+            if (intent.getIntExtra(EXTRA_PROTOCOL, -1) != RICOTTA_PROTOCOL_VERSION) return null
+            @Suppress("DEPRECATION")
+            return intent.getParcelableExtra(EXTRA)
+        }
 
         @JvmField
         val CREATOR = object : Parcelable.Creator<RicottaLaunchParams> {

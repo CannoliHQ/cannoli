@@ -81,4 +81,22 @@ class RicottaLaunchParamsTest {
         // Round-trip already exercises the matching path; assert it does not throw.
         roundTrip(sample())
     }
+
+    @Test fun `writeToIntent then readFromIntent round trips`() {
+        val intent = android.content.Intent()
+        val params = sample()
+        params.writeToIntent(intent)
+        assertEquals(RICOTTA_PROTOCOL_VERSION, intent.getIntExtra(RicottaLaunchParams.EXTRA_PROTOCOL, -1))
+        assertEquals(params, RicottaLaunchParams.readFromIntent(intent))
+    }
+
+    @Test fun `readFromIntent returns null on missing or mismatched protocol`() {
+        val empty = android.content.Intent()
+        org.junit.Assert.assertNull(RicottaLaunchParams.readFromIntent(empty))
+
+        val bad = android.content.Intent()
+        sample().writeToIntent(bad)
+        bad.putExtra(RicottaLaunchParams.EXTRA_PROTOCOL, RICOTTA_PROTOCOL_VERSION + 1)
+        org.junit.Assert.assertNull(RicottaLaunchParams.readFromIntent(bad))
+    }
 }
