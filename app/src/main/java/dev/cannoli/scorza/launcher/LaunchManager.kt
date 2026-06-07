@@ -4,8 +4,13 @@ import android.app.ActivityOptions
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import dev.cannoli.igm.BatteryDisplayMode
 import dev.cannoli.igm.IgmColors
+import dev.cannoli.igm.IgmDisplaySettings
+import dev.cannoli.igm.TimeFormatMode
 import dev.cannoli.scorza.config.CannoliPaths
+import dev.cannoli.scorza.input.runtime.confirmButton
+import dev.cannoli.scorza.input.runtime.labelSet
 import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.libretro.LibretroActivity
 import dev.cannoli.scorza.libretro.SaveSlotManager
@@ -460,6 +465,15 @@ class LaunchManager(
         val paths = CannoliPaths(settings.sdCardRoot)
         val romName = normalizedRomName(rom)
         val stateBase = paths.saveStateBase(rom.platformTag, romName)
+        val batteryDisplay = when (settings.batteryDisplay) {
+            dev.cannoli.scorza.settings.BatteryDisplay.HIDE -> BatteryDisplayMode.HIDE
+            dev.cannoli.scorza.settings.BatteryDisplay.PERCENT -> BatteryDisplayMode.PERCENT
+            dev.cannoli.scorza.settings.BatteryDisplay.ICON -> BatteryDisplayMode.ICON
+        }
+        val timeFormat = when (settings.timeFormat) {
+            dev.cannoli.scorza.settings.TimeFormat.TWELVE_HOUR -> TimeFormatMode.TWELVE_HOUR
+            dev.cannoli.scorza.settings.TimeFormat.TWENTY_FOUR_HOUR -> TimeFormatMode.TWENTY_FOUR_HOUR
+        }
         return RicottaIgm(
             gameTitle = rom.displayName,
             stateBasePath = stateBase.absolutePath,
@@ -472,6 +486,18 @@ class LaunchManager(
                 highlightText = settings.colorHighlightText,
                 accent = settings.colorAccent,
                 title = settings.colorTitle,
+            ),
+            displaySettings = IgmDisplaySettings(
+                fontSizeSp = settings.textSize.sp,
+                portraitMarginPx = settings.portraitMarginPx,
+                showWifi = settings.showWifi,
+                showBluetooth = settings.showBluetooth,
+                showVpn = settings.showVpn,
+                showClock = settings.showClock,
+                batteryDisplay = batteryDisplay,
+                timeFormat = timeFormat,
+                buttonLabelSet = activeMappingHolder.active.value.labelSet(dev.cannoli.ui.ButtonLabelSet.PLUMBER),
+                confirmButton = activeMappingHolder.active.value.confirmButton(),
             ),
         )
     }

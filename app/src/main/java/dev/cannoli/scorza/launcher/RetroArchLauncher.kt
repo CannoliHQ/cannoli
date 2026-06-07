@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import dev.cannoli.igm.IgmColors
+import dev.cannoli.igm.IgmDisplaySettings
 import dev.cannoli.igm.RICOTTA_PROTOCOL_VERSION
 import dev.cannoli.igm.RicottaLaunchParams
 import java.io.File
@@ -25,6 +26,7 @@ data class RicottaIgm(
     val quitOnFocusLoss: Boolean = true,
     val preferredRefreshRate: Int? = null,
     val colors: IgmColors? = null,
+    val displaySettings: IgmDisplaySettings,
 )
 
 class RetroArchLauncher(
@@ -59,6 +61,7 @@ class RetroArchLauncher(
             quitOnFocusLoss = igm.quitOnFocusLoss,
             preferredRefreshRate = igm.preferredRefreshRate,
             colors = igm.colors,
+            displaySettings = igm.displaySettings,
         )
 
         val intent = Intent().apply {

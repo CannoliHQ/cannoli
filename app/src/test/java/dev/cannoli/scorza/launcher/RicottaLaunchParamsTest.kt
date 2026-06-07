@@ -1,10 +1,15 @@
 package dev.cannoli.scorza.launcher
 
 import android.os.Parcel
+import dev.cannoli.igm.BatteryDisplayMode
 import dev.cannoli.igm.IgmColors
+import dev.cannoli.igm.IgmDisplaySettings
 import dev.cannoli.igm.ProtocolMismatchException
 import dev.cannoli.igm.RICOTTA_PROTOCOL_VERSION
 import dev.cannoli.igm.RicottaLaunchParams
+import dev.cannoli.igm.TimeFormatMode
+import dev.cannoli.ui.ButtonLabelSet
+import dev.cannoli.ui.ConfirmButton
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
@@ -33,6 +38,18 @@ class RicottaLaunchParamsTest {
             highlightText = "#000000",
             accent = "#E8C896",
             title = "#0AB9E6",
+        ),
+        displaySettings = IgmDisplaySettings(
+            fontSizeSp = 24,
+            portraitMarginPx = 0,
+            showWifi = true,
+            showBluetooth = true,
+            showVpn = true,
+            showClock = true,
+            batteryDisplay = BatteryDisplayMode.ICON,
+            timeFormat = TimeFormatMode.TWENTY_FOUR_HOUR,
+            buttonLabelSet = ButtonLabelSet.PLUMBER,
+            confirmButton = ConfirmButton.SOUTH,
         ),
     )
 

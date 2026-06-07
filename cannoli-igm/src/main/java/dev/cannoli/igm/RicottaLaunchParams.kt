@@ -48,6 +48,7 @@ data class RicottaLaunchParams(
     val quitOnFocusLoss: Boolean,
     val preferredRefreshRate: Int?,
     val colors: IgmColors?,
+    val displaySettings: IgmDisplaySettings,
 ) : Parcelable {
     override fun describeContents() = 0
 
@@ -71,6 +72,7 @@ data class RicottaLaunchParams(
         dest.writeInt(if (preferredRefreshRate != null) 1 else 0)
         if (preferredRefreshRate != null) dest.writeInt(preferredRefreshRate)
         dest.writeParcelable(colors, flags)
+        dest.writeParcelable(displaySettings, flags)
     }
 
     companion object {
@@ -106,10 +108,12 @@ data class RicottaLaunchParams(
                 val preferredRefreshRate = if (hasRefresh) p.readInt() else null
                 @Suppress("DEPRECATION")
                 val colors = p.readParcelable<IgmColors>(IgmColors::class.java.classLoader)
+                @Suppress("DEPRECATION")
+                val displaySettings = p.readParcelable<IgmDisplaySettings>(IgmDisplaySettings::class.java.classLoader)!!
                 return RicottaLaunchParams(
                     coreId, romPath, configFilePath, gameTitle, stateBasePath,
                     cannoliRoot, platformTag, igmTriggerKeycodes, quitOnFocusLoss,
-                    preferredRefreshRate, colors,
+                    preferredRefreshRate, colors, displaySettings,
                 )
             }
 
