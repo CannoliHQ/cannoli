@@ -152,13 +152,15 @@ class IGMController(
 
     private fun selectMenuItem(index: Int) {
         val opts = menuOptions ?: return
-        when (index) {
-            opts.resumeIndex -> onClose?.invoke()
-            opts.saveStateIndex -> { saveState(); onClose?.invoke() }
-            opts.loadStateIndex -> { loadState(); onClose?.invoke() }
-            opts.settingsIndex -> onOpenNativeMenu?.invoke()
-            opts.resetIndex -> { bridge.reset(); onClose?.invoke() }
-            opts.quitIndex -> { onClose?.invoke(); bridge.quit() }
+        when (opts.actionAt(index)) {
+            IgmMenuAction.RESUME -> onClose?.invoke()
+            IgmMenuAction.SAVE_STATE -> { saveState(); onClose?.invoke() }
+            IgmMenuAction.LOAD_STATE -> { loadState(); onClose?.invoke() }
+            IgmMenuAction.SETTINGS -> onOpenNativeMenu?.invoke()
+            IgmMenuAction.RESET -> { bridge.reset(); onClose?.invoke() }
+            IgmMenuAction.QUIT -> { onClose?.invoke(); bridge.quit() }
+            IgmMenuAction.ACHIEVEMENTS, IgmMenuAction.GUIDE, IgmMenuAction.SWITCH_DISC,
+            IgmMenuAction.REASSIGN, null -> {}
         }
     }
 }

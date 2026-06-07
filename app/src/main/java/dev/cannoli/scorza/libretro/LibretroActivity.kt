@@ -36,6 +36,7 @@ import dev.cannoli.igm.GuideType
 import dev.cannoli.igm.IGMScreen
 import dev.cannoli.igm.IGMSettings
 import dev.cannoli.igm.IGMSettingsItem
+import dev.cannoli.igm.IgmMenuAction
 import dev.cannoli.igm.InGameMenuOptions
 import dev.cannoli.igm.ShortcutAction
 import dev.cannoli.scorza.R
@@ -1608,9 +1609,9 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun handleMenuAction(menu: InGameMenuOptions, index: Int) {
-        when (index) {
-            menu.resumeIndex -> closeAll()
-            menu.saveStateIndex -> {
+        when (menu.actionAt(index)) {
+            IgmMenuAction.RESUME -> closeAll()
+            IgmMenuAction.SAVE_STATE -> {
                 if (stateBasePath.isNotEmpty()) {
                     val slot = currentSlot
                     if (slot.index != 0) {
@@ -1625,7 +1626,7 @@ class LibretroActivity : ComponentActivity() {
                 }
                 closeAll()
             }
-            menu.loadStateIndex -> {
+            IgmMenuAction.LOAD_STATE -> {
                 if (stateBasePath.isNotEmpty() && slotManager.stateExists(currentSlot)) {
                     val slot = currentSlot
                     slotManager.cacheForUndoLoad(runner)
@@ -1638,24 +1639,24 @@ class LibretroActivity : ComponentActivity() {
                 }
                 closeAll()
             }
-            menu.guideIndex -> {
+            IgmMenuAction.GUIDE -> {
                 if (guideFiles.size == 1) {
                     openGuide(guideFiles[0])
                 } else {
                     push(IGMScreen.GuidePicker())
                 }
             }
-            menu.settingsIndex -> {
+            IgmMenuAction.SETTINGS -> {
                 coreOptions = loadVisibleCoreOptions()
                 refreshShaderParams()
                 frontendSnapshot = buildCurrentSettings()
                 shaderParamsDirty = false
                 push(IGMScreen.Settings())
             }
-            menu.reassignIndex -> {
+            IgmMenuAction.REASSIGN -> {
                 push(IGMScreen.ReassignPlayers())
             }
-            menu.resetIndex -> {
+            IgmMenuAction.RESET -> {
                 if (stateBasePath.isNotEmpty()) {
                     slotManager.cacheForUndoLoad(runner)
                     undoType = UndoType.RESET
@@ -1668,7 +1669,7 @@ class LibretroActivity : ComponentActivity() {
                 showOsd("Reset", OsdPosition.BottomCenter)
                 closeAll()
             }
-            menu.achievementsIndex -> {
+            IgmMenuAction.ACHIEVEMENTS -> {
                 val ra = raManager ?: return
                 val pending = ra.pendingSyncIds
                 val local = ra.localUnlocks
@@ -1682,7 +1683,7 @@ class LibretroActivity : ComponentActivity() {
                 }
                 push(IGMScreen.Achievements(achievements = achievements, status = ra.getStatus()))
             }
-            menu.quitIndex -> {
+            IgmMenuAction.QUIT -> {
                 if (alwaysSaveOnQuit && stateBasePath.isNotEmpty()) {
                     try {
                         slotManager.saveState(runner, slotManager.slots[0])
@@ -1692,6 +1693,7 @@ class LibretroActivity : ComponentActivity() {
                 }
                 quit()
             }
+            IgmMenuAction.SWITCH_DISC, null -> {}
         }
     }
 
