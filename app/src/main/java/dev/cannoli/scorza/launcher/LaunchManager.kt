@@ -4,6 +4,7 @@ import android.app.ActivityOptions
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import dev.cannoli.igm.IgmColors
 import dev.cannoli.scorza.config.CannoliPaths
 import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.libretro.LibretroActivity
@@ -285,7 +286,7 @@ class LaunchManager(
                         }
                         if (settings.retroArchDiyMode) {
                             val raConfig = "/storage/emulated/0/Android/data/$raPackage/files/retroarch.cfg"
-                            retroArchLauncher.launch(launchFile, core, raConfig, raPackage, buildIGMExtras(rom))
+                            retroArchLauncher.launch(launchFile, core, raConfig, raPackage, buildRicottaIgm(rom))
                         } else {
                             if (installedCoreService != null
                                 && installedCoreService.cacheReady
@@ -296,7 +297,7 @@ class LaunchManager(
                             }
                             syncRetroArchConfig(File(settings.sdCardRoot))
                             val launchConfig = buildGameConfig(rom) ?: raConfigPath
-                            retroArchLauncher.launch(launchFile, core, launchConfig, raPackage, buildIGMExtras(rom))
+                            retroArchLauncher.launch(launchFile, core, launchConfig, raPackage, buildRicottaIgm(rom))
                         }
                     } else {
                         LaunchResult.CoreNotInstalled("unknown")
@@ -355,11 +356,11 @@ class LaunchManager(
         val raPackage = settings.retroArchPackage
         if (settings.retroArchDiyMode) {
             val raConfig = "/storage/emulated/0/Android/data/$raPackage/files/retroarch.cfg"
-            retroArchLauncher.launch(launchFile, core, raConfig, raPackage)
+            retroArchLauncher.launch(launchFile, core, raConfig, raPackage, buildRicottaIgm(rom))
         } else {
             syncRetroArchConfig(File(settings.sdCardRoot))
             val launchConfig = buildGameConfig(rom, resume = true, slot = resumeSlot) ?: raConfigPath
-            retroArchLauncher.launch(launchFile, core, launchConfig, raPackage)
+            retroArchLauncher.launch(launchFile, core, launchConfig, raPackage, buildRicottaIgm(rom))
         }
         return null
     }
@@ -454,20 +455,26 @@ class LaunchManager(
     private fun normalizedRomName(rom: Rom): String =
         Normalizer.normalize(rom.path.nameWithoutExtension, Normalizer.Form.NFC)
 
-    private fun buildIGMExtras(rom: Rom): IGMExtras {
+    private fun buildRicottaIgm(rom: Rom): RicottaIgm {
         val paths = CannoliPaths(settings.sdCardRoot)
         val romName = normalizedRomName(rom)
         val stateBase = paths.saveStateBase(rom.platformTag, romName)
-        return IGMExtras(
+        return RicottaIgm(
             gameTitle = rom.displayName,
             stateBasePath = stateBase.absolutePath,
             cannoliRoot = paths.root.absolutePath,
             platformTag = rom.platformTag,
-            colorHighlight = settings.colorHighlight,
-            colorText = settings.colorText,
-            colorHighlightText = settings.colorHighlightText,
-            colorAccent = settings.colorAccent,
-            colorTitle = settings.colorTitle
+            // v1: the launcher's IGM trigger is CanonicalButton.BTN_MENU, whose default
+            // keycode is KEYCODE_BUTTON_MODE. Resolving the user's actual BTN_MENU binding
+            // is a follow-up.
+            igmTriggerKeycode = android.view.KeyEvent.KEYCODE_BUTTON_MODE,
+            colors = IgmColors(
+                highlight = settings.colorHighlight,
+                text = settings.colorText,
+                highlightText = settings.colorHighlightText,
+                accent = settings.colorAccent,
+                title = settings.colorTitle,
+            ),
         )
     }
 
