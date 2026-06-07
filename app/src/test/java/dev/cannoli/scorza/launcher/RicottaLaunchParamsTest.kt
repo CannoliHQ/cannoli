@@ -24,7 +24,7 @@ class RicottaLaunchParamsTest {
         stateBasePath = "/sd/cannoli/states/zelda",
         cannoliRoot = "/sd/cannoli",
         platformTag = "GB",
-        igmTriggerKeycode = 110,
+        igmTriggerKeycodes = listOf(4, 110),
         quitOnFocusLoss = true,
         preferredRefreshRate = 60,
         colors = IgmColors(

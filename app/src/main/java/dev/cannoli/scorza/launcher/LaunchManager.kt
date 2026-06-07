@@ -27,6 +27,7 @@ class LaunchManager(
     private val retroArchLauncher: RetroArchLauncher,
     private val emuLauncher: EmuLauncher,
     private val apkLauncher: ApkLauncher,
+    private val activeMappingHolder: dev.cannoli.scorza.input.runtime.ActiveMappingHolder,
     private val installedCoreService: InstalledCoreService? = null,
 ) {
     private var raConfigPath: String? = null
@@ -464,10 +465,7 @@ class LaunchManager(
             stateBasePath = stateBase.absolutePath,
             cannoliRoot = paths.root.absolutePath,
             platformTag = rom.platformTag,
-            // v1: the launcher's IGM trigger is CanonicalButton.BTN_MENU, whose default
-            // keycode is KEYCODE_BUTTON_MODE. Resolving the user's actual BTN_MENU binding
-            // is a follow-up.
-            igmTriggerKeycode = android.view.KeyEvent.KEYCODE_BUTTON_MODE,
+            igmTriggerKeycodes = resolveMenuKeycodes(),
             colors = IgmColors(
                 highlight = settings.colorHighlight,
                 text = settings.colorText,
@@ -477,6 +475,21 @@ class LaunchManager(
             ),
         )
     }
+
+    // Keycodes bound to BTN_MENU in the active mapping open the Cannoli IGM in ricotta,
+    // mirroring how the launcher's own in-game menu opens. Falls back to the platform
+    // default (BACK + BUTTON_MODE) when no mapping is active.
+    private fun resolveMenuKeycodes(): List<Int> =
+        activeMappingHolder.active.value
+            ?.bindings
+            ?.get(dev.cannoli.scorza.input.CanonicalButton.BTN_MENU)
+            ?.filterIsInstance<dev.cannoli.scorza.input.InputBinding.Button>()
+            ?.map { it.keyCode }
+            ?.takeIf { it.isNotEmpty() }
+            ?: listOf(
+                android.view.KeyEvent.KEYCODE_BACK,
+                android.view.KeyEvent.KEYCODE_BUTTON_MODE,
+            )
 
     companion object {
         private const val CONFIG_VERSION = 5
