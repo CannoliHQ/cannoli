@@ -48,6 +48,9 @@ class BootSequencer(
     // Mount-wait bookkeeping: when setup can't be resolved yet (likely the SD card is still being
     // mounted, e.g. vold delaying the scan behind the secure keyguard), hold on the splash and wait
     // for a mount event rather than dropping the user into the storage-select wizard immediately.
+    // The hold only applies while still on the splash (Resolving). Once the user is in the
+    // interactive wizard, granting permission must show setup right away instead of a black wait;
+    // the mount watcher stays armed so a late mount still auto-proceeds.
     private var firstUnresolvedAt = 0L
     private var hasFirstUnresolved = false
     private var mountWatcherStarted = false
@@ -72,7 +75,8 @@ class BootSequencer(
                 mountWatcherStarted = true
                 mountWatcher.start { advance() }
             }
-            awaitingMount = now() - firstUnresolvedAt < MOUNT_WAIT_TIMEOUT_MS
+            awaitingMount = before is BootState.Resolving &&
+                now() - firstUnresolvedAt < MOUNT_WAIT_TIMEOUT_MS
             if (awaitingMount && !timeoutScheduled) {
                 timeoutScheduled = true
                 scheduleTimeout(MOUNT_WAIT_TIMEOUT_MS) { advance() }

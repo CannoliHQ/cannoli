@@ -228,11 +228,15 @@ sealed class LauncherScreen {
         val volumeIndex: Int = 0,
         val customPath: String? = null,
         val selectedIndex: Int = 0,
+        val existingInstallVolumeIndex: Int? = null,
     ) : LauncherScreen() {
         val allGranted: Boolean get() = granted.containsAll(permissions)
         val storageRowIndex: Int get() = permissions.size
-        val focusableCount: Int get() = permissions.size + if (allGranted) 1 else 0
+        val continueRowIndex: Int get() = storageRowIndex + 1
+        val focusableCount: Int
+            get() = permissions.size + (if (allGranted) 1 else 0) + (if (continueEnabled) 1 else 0)
         val isStorageRowFocused: Boolean get() = allGranted && selectedIndex == storageRowIndex
+        val isContinueRowFocused: Boolean get() = continueEnabled && selectedIndex == continueRowIndex
         val focusedPermission: OnboardingPermission?
             get() = if (selectedIndex in permissions.indices) permissions[selectedIndex] else null
         val isFocusedGranted: Boolean get() = focusedPermission?.let { it in granted } ?: false
@@ -1141,6 +1145,7 @@ fun AppNavGraph(
                     volumeIndex = currentScreen.volumeIndex,
                     customPath = currentScreen.customPath,
                     selectedIndex = currentScreen.selectedIndex,
+                    existingInstallVolumeIndex = currentScreen.existingInstallVolumeIndex,
                     buttonStyle = labels,
                 )
             }

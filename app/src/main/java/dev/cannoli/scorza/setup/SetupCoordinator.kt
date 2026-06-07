@@ -24,12 +24,13 @@ class SetupCoordinator @Inject constructor(
 ) {
     private var volumeMap: Map<String, String> = emptyMap()
 
-    fun detectExistingCannoli(): String? {
-        val volumes = detectStorageVolumes()
-        for ((_, path) in volumes.reversed()) {
+    fun existingCannoliVolumeIndex(volumes: List<Pair<String, String>>): Int? {
+        for (i in volumes.indices.reversed()) {
+            val path = volumes[i].second
+            if (path.isEmpty()) continue
             val cannoli = File(path, "Cannoli")
             if (cannoli.exists() && cannoli.isDirectory && File(cannoli, "Config/settings.json").exists()) {
-                return cannoli.absolutePath + "/"
+                return i
             }
         }
         return null

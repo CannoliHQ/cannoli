@@ -62,10 +62,21 @@ class OnboardingPermissionsTest {
         assertEquals(0, locked.moved(1).selectedIndex)
 
         val unlocked = screen(granted = allGranted, volumes = sampleVolumes, selectedIndex = 0)
-        assertEquals(2, unlocked.focusableCount)
+        assertEquals(3, unlocked.focusableCount)
         assertEquals(1, unlocked.moved(1).selectedIndex)
         assertTrue(unlocked.moved(1).isStorageRowFocused)
         assertEquals(null, unlocked.moved(1).focusedPermission)
+    }
+
+    @Test fun continueRowReachableOnlyWhenContinueEnabled() {
+        val ready = screen(granted = allGranted, volumes = sampleVolumes, volumeIndex = 0)
+        assertEquals(3, ready.focusableCount)
+        assertEquals(ready.continueRowIndex, ready.moved(1).moved(1).selectedIndex)
+        assertTrue(ready.moved(1).moved(1).isContinueRowFocused)
+
+        val customNoPath = screen(granted = allGranted, volumes = sampleVolumes, volumeIndex = 2)
+        assertEquals(2, customNoPath.focusableCount)
+        assertFalse(customNoPath.copy(selectedIndex = customNoPath.continueRowIndex).isContinueRowFocused)
     }
 
     @Test fun cycledVolumeWrapsAndResetsCustomPath() {

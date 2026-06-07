@@ -68,8 +68,10 @@ class OnboardingInputHandler @Inject constructor(
     override fun onConfirm() {
         when (val screen = nav.currentScreen) {
             is LauncherScreen.OnboardingPermissions -> {
-                if (screen.isStorageRowFocused) {
-                    if (screen.isCustomVolume) {
+                val perm = screen.focusedPermission
+                when {
+                    screen.isContinueRowFocused -> screen.targetPath?.let { onFolderChosen?.invoke(it) }
+                    screen.isStorageRowFocused && screen.isCustomVolume && screen.customPath == null -> {
                         val entries = setupCoordinator.listDirectories("/storage/")
                         nav.push(LauncherScreen.DirectoryBrowser(
                             purpose = BrowsePurpose.SETUP,
@@ -77,8 +79,7 @@ class OnboardingInputHandler @Inject constructor(
                             entries = entries
                         ))
                     }
-                } else if (!screen.isFocusedGranted) {
-                    screen.focusedPermission?.let { onRequestPermission?.invoke(it) }
+                    perm != null && !screen.isFocusedGranted -> onRequestPermission?.invoke(perm)
                 }
             }
             is LauncherScreen.DirectoryBrowser -> {

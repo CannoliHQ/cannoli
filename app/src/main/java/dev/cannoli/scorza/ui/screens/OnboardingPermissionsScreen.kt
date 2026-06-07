@@ -31,7 +31,6 @@ import dev.cannoli.scorza.R
 import dev.cannoli.scorza.navigation.OnboardingPermission
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.DPAD_HORIZONTAL
-import dev.cannoli.ui.START_GLYPH
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.components.screenPadding
@@ -52,6 +51,7 @@ fun OnboardingPermissionsScreen(
     volumeIndex: Int,
     customPath: String?,
     selectedIndex: Int,
+    existingInstallVolumeIndex: Int? = null,
     buttonStyle: ButtonStyle = ButtonStyle(),
 ) {
     val typo = LocalCannoliTypography.current
@@ -62,6 +62,10 @@ fun OnboardingPermissionsScreen(
     val isStorageRowFocused = allGranted && selectedIndex == storageRowIndex
     val selectedVolume = volumes.getOrNull(volumeIndex)
     val isCustom = selectedVolume?.first == "Custom"
+    val continueEnabled = allGranted && volumes.isNotEmpty() && (!isCustom || customPath != null)
+    val isContinueFocused = continueEnabled && selectedIndex == storageRowIndex + 1
+    val isExistingInstall = existingInstallVolumeIndex != null && volumeIndex == existingInstallVolumeIndex
+    val existingFolderPath = if (isExistingInstall) selectedVolume?.second?.plus("Cannoli/") else null
 
     Box(
         modifier = Modifier
@@ -111,6 +115,16 @@ fun OnboardingPermissionsScreen(
                 isLocked = !allGranted,
                 isFocused = isStorageRowFocused,
                 customPickPrompt = isStorageRowFocused && isCustom && customPath == null,
+                existingFolderPath = existingFolderPath,
+                accent = accent,
+                typo = typo,
+            )
+
+            Spacer(modifier = Modifier.height(Spacing.Md))
+
+            ContinueCard(
+                isEnabled = continueEnabled,
+                isFocused = isContinueFocused,
                 accent = accent,
                 typo = typo,
             )
@@ -128,9 +142,8 @@ fun OnboardingPermissionsScreen(
         if (isStorageRowFocused && isCustom && customPath == null) {
             rightItems.add(buttonStyle.confirm to stringResource(R.string.onboarding_select_folder))
         }
-        val continueEnabled = allGranted && volumes.isNotEmpty() && (!isCustom || customPath != null)
-        if (continueEnabled) {
-            rightItems.add(START_GLYPH to stringResource(R.string.label_continue))
+        if (isContinueFocused) {
+            rightItems.add(buttonStyle.confirm to stringResource(R.string.label_continue))
         }
         BottomBar(
             modifier = Modifier.align(Alignment.BottomCenter),
@@ -162,10 +175,6 @@ private fun PermissionCard(
         StatusRow(typo = typo, label = label, isGranted = isGranted)
         Spacer(modifier = Modifier.height(4.dp))
         Text(text = rationale, style = typo.bodyMedium, color = GrayText)
-        if (isFocused && !isGranted) {
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(text = stringResource(R.string.onboarding_press_a_to_grant), style = typo.bodyMedium, color = accent)
-        }
     }
 }
 
@@ -176,6 +185,7 @@ private fun StorageCard(
     isLocked: Boolean,
     isFocused: Boolean,
     customPickPrompt: Boolean,
+    existingFolderPath: String?,
     accent: Color,
     typo: CannoliTypography,
 ) {
@@ -193,7 +203,7 @@ private fun StorageCard(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text(text = stringResource(R.string.setup_storage), style = typo.bodyLarge, color = Color.White)
+            Text(text = stringResource(R.string.onboarding_location_label), style = typo.bodyLarge, color = Color.White)
             Text(text = value, style = typo.bodyMedium, color = GrayText)
         }
         if (isLocked) {
@@ -202,7 +212,37 @@ private fun StorageCard(
         } else if (customPickPrompt) {
             Spacer(modifier = Modifier.height(4.dp))
             Text(text = stringResource(R.string.onboarding_press_a_to_select_folder), style = typo.bodyMedium, color = accent)
+        } else if (existingFolderPath != null) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(text = existingFolderPath, style = typo.bodyMedium, color = GrantedGreen)
         }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ContinueCard(
+    isEnabled: Boolean,
+    isFocused: Boolean,
+    accent: Color,
+    typo: CannoliTypography,
+) {
+    val requester = remember { BringIntoViewRequester() }
+    LaunchedEffect(isFocused) { if (isFocused) requester.bringIntoView() }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .alpha(if (isEnabled) 1f else 0.35f)
+            .bringIntoViewRequester(requester)
+            .border(2.dp, if (isFocused) accent else UnfocusedBorder, RoundedCornerShape(8.dp))
+            .padding(horizontal = Spacing.Md, vertical = Spacing.Sm),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = stringResource(R.string.label_continue),
+            style = typo.bodyMedium,
+            color = if (isFocused) accent else Color.White,
+        )
     }
 }
 

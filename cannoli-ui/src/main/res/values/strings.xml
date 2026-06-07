@@ -289,16 +289,15 @@
     <string name="onboarding_storage_rationale">Cannoli needs access to your ROMs, saves, art, and more.\nWithout this, Cannoli cannot do anything.</string>
     <string name="onboarding_status_granted">Granted</string>
     <string name="onboarding_status_not_granted">Not granted</string>
-    <string name="onboarding_press_a_to_grant">Press A to grant</string>
     <string name="onboarding_press_a_to_select_folder">Press A to select folder</string>
     <string name="onboarding_storage_locked_hint">Configurable once permissions are granted.</string>
     <string name="onboarding_select_folder">SELECT FOLDER</string>
+    <string name="onboarding_location_label">Location</string>
 
     <!-- Boot error screen -->
     <string name="boot_error_title">Something went wrong</string>
 
     <!-- Storage row (shared with onboarding) -->
-    <string name="setup_storage">Storage</string>
     <string name="setup_folder_unset">Not selected</string>
 
     <!-- System list -->

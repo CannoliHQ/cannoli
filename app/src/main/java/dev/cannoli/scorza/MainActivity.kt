@@ -213,6 +213,8 @@ class MainActivity : ComponentActivity(), ActivityActions {
                                     if (storageGranted) add(dev.cannoli.scorza.navigation.OnboardingPermission.STORAGE)
                                 }
                                 val volumes = setupCoordinator.detectStorageVolumes() + ("Custom" to "")
+                                val existingIndex = setupCoordinator.existingCannoliVolumeIndex(volumes)
+                                val preselectIndex = existingIndex ?: 0
                                 val top = nav.currentScreen
                                 if (top is LauncherScreen.OnboardingPermissions) {
                                     val nowAllGranted = granted.containsAll(perms)
@@ -221,7 +223,9 @@ class MainActivity : ComponentActivity(), ActivityActions {
                                         permissions = perms,
                                         granted = granted,
                                         volumes = volumes,
+                                        volumeIndex = preselectIndex,
                                         selectedIndex = newSelected,
+                                        existingInstallVolumeIndex = existingIndex,
                                     ))
                                 } else if (top !is LauncherScreen.DirectoryBrowser) {
                                     nav.screenStack.clear()
@@ -229,6 +233,8 @@ class MainActivity : ComponentActivity(), ActivityActions {
                                         permissions = perms,
                                         granted = granted,
                                         volumes = volumes,
+                                        volumeIndex = preselectIndex,
+                                        existingInstallVolumeIndex = existingIndex,
                                     ))
                                 }
                             }

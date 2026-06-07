@@ -35,9 +35,10 @@ object LaunchModule {
         emuLauncher: EmuLauncher,
         apkLauncher: ApkLauncher,
         launchState: LaunchState,
+        activeMappingHolder: dev.cannoli.scorza.input.runtime.ActiveMappingHolder,
         installedCoreService: InstalledCoreService,
     ): LaunchManager = LaunchManager(
         context, settings, platformConfig,
-        retroArchLauncher, emuLauncher, apkLauncher, launchState, installedCoreService
+        retroArchLauncher, emuLauncher, apkLauncher, launchState, activeMappingHolder, installedCoreService
     )
 }

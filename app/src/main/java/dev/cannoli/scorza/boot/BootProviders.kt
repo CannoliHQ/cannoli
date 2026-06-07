@@ -36,14 +36,7 @@ object BootProviders {
                 CannoliPaths(settings.sdCardRoot).settingsJson.exists() -> {
                     settings.setupCompleted = true; true
                 }
-                else -> {
-                    val detected = setupCoordinator.detectExistingCannoli()
-                    if (detected != null) {
-                        settings.sdCardRoot = detected
-                        settings.setupCompleted = true
-                        true
-                    } else false
-                }
+                else -> false
             }
         },
         detectVolumes = { setupCoordinator.detectStorageVolumes() + ("Custom" to "") },
