@@ -1,79 +1,38 @@
 package dev.cannoli.scorza.libretro
 
 import android.graphics.Bitmap
-import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInWindow
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import dev.cannoli.scorza.input.runtime.confirmButton
-import dev.cannoli.scorza.input.runtime.labelSet
-import dev.cannoli.igm.GuideScreen
-import dev.cannoli.igm.GuideType
+import dev.cannoli.igm.BatteryDisplayMode
+import dev.cannoli.igm.CannoliIGM
+import dev.cannoli.igm.GuideFile
+import dev.cannoli.igm.IGMHostConfig
 import dev.cannoli.igm.IGMScreen
 import dev.cannoli.igm.IGMSettingsItem
-import dev.cannoli.igm.IGMSettingsScreen
-import dev.cannoli.igm.InGameMenu
+import dev.cannoli.igm.IgmGameInfo
 import dev.cannoli.igm.InGameMenuOptions
-import dev.cannoli.igm.PolaroidFrame
-import dev.cannoli.scorza.R
-import dev.cannoli.scorza.ui.LocalPortraitMargin
-import dev.cannoli.scorza.ui.PortraitMarginState
-import dev.cannoli.scorza.ui.effectivePortraitMarginDp
-import dev.cannoli.ui.BULLET
-import dev.cannoli.ui.ButtonStyle
-import dev.cannoli.ui.CIRCLE_EMPTY
-import dev.cannoli.ui.DPAD_HORIZONTAL
-import dev.cannoli.ui.HALF_CIRCLE
-import dev.cannoli.ui.components.BottomBar
-import dev.cannoli.ui.components.LocalStatusBarLeftEdge
+import dev.cannoli.igm.PlayerSlotInfo
+import dev.cannoli.igm.TimeFormatMode
+import dev.cannoli.scorza.input.runtime.confirmButton
+import dev.cannoli.scorza.input.runtime.labelSet
 import dev.cannoli.ui.components.OsdHost
-import dev.cannoli.ui.components.ScreenBackground
-import dev.cannoli.ui.components.ScreenTitle
-import dev.cannoli.ui.components.StatusBar
-import dev.cannoli.ui.components.footerReservation
-import dev.cannoli.ui.components.pillInternalH
-import dev.cannoli.ui.components.screenPadding
 import dev.cannoli.ui.theme.LocalCannoliColors
-import dev.cannoli.ui.theme.LocalCannoliFont
-import dev.cannoli.ui.theme.LocalCannoliTypography
-import dev.cannoli.ui.theme.LocalScaleFactor
 import dev.cannoli.ui.theme.Radius
-import dev.cannoli.ui.theme.Spacing
-import dev.cannoli.ui.theme.buildCannoliTypography
 import kotlinx.coroutines.delay
 
 data class GameInfo(
@@ -125,440 +84,81 @@ fun LibretroScreen(
     inputRemapHasChanges: Boolean = false,
 ) {
     val overlayVisible = screen != null
-    val showDescription = when (screen) {
-        is IGMScreen.Emulator -> screen.showDescription
-        is IGMScreen.EmulatorCategory -> screen.showDescription
-        else -> false
-    }
-    val isGuideScreen = screen is IGMScreen.Guide
-    val igmFontSize = settings.textSize.sp.sp
-    val igmLineHeight = (settings.textSize.sp + 10).sp
-    val igmScaleFactor = settings.textSize.sp / 22f
-    val igmTypography = buildCannoliTypography(baseSizeSp = settings.textSize.sp, fontFamily = LocalCannoliFont.current)
-    val labels = ButtonStyle(activeMapping.labelSet(dev.cannoli.ui.ButtonLabelSet.PLUMBER), activeMapping.confirmButton())
-    val statusBarEnabled = (settings.showWifi || settings.showBluetooth || settings.showClock || settings.batteryDisplay != dev.cannoli.scorza.settings.BatteryDisplay.HIDE || settings.showVpn) && !showDescription && !isGuideScreen
-    val statusBarLeftEdge = remember { mutableIntStateOf(Int.MAX_VALUE) }
 
-    val portraitMarginState = PortraitMarginState(
-        marginPx = settings.portraitMarginPx
+    val batteryDisplay = when (settings.batteryDisplay) {
+        dev.cannoli.scorza.settings.BatteryDisplay.HIDE -> BatteryDisplayMode.HIDE
+        dev.cannoli.scorza.settings.BatteryDisplay.PERCENT -> BatteryDisplayMode.PERCENT
+        dev.cannoli.scorza.settings.BatteryDisplay.ICON -> BatteryDisplayMode.ICON
+    }
+    val timeFormat = when (settings.timeFormat) {
+        dev.cannoli.scorza.settings.TimeFormat.TWELVE_HOUR -> TimeFormatMode.TWELVE_HOUR
+        dev.cannoli.scorza.settings.TimeFormat.TWENTY_FOUR_HOUR -> TimeFormatMode.TWENTY_FOUR_HOUR
+    }
+
+    val config = IGMHostConfig(
+        fontSizeSp = settings.textSize.sp,
+        lineHeightSp = settings.textSize.sp + 10,
+        scaleFactor = settings.textSize.sp / 22f,
+        portraitMarginPx = settings.portraitMarginPx,
+        showWifi = settings.showWifi,
+        showBluetooth = settings.showBluetooth,
+        showVpn = settings.showVpn,
+        showClock = settings.showClock,
+        batteryDisplay = batteryDisplay,
+        timeFormat = timeFormat,
+        buttonLabelSet = activeMapping.labelSet(dev.cannoli.ui.ButtonLabelSet.PLUMBER),
+        confirmButton = activeMapping.confirmButton(),
+        keyCodeName = { dev.cannoli.scorza.util.keyCodeName(it) },
     )
-    CompositionLocalProvider(LocalStatusBarLeftEdge provides statusBarLeftEdge, LocalScaleFactor provides igmScaleFactor, LocalCannoliTypography provides igmTypography, LocalPortraitMargin provides portraitMarginState) {
+
+    val igmGameInfo = IgmGameInfo(
+        coreName = gameInfo.coreName,
+        romPath = gameInfo.originalRomPath ?: gameInfo.romPath,
+        extractedPath = if (gameInfo.originalRomPath != null) gameInfo.romPath else "",
+        savePath = gameInfo.savePath ?: "",
+        rendererName = gameInfo.rendererName,
+        raStatus = gameInfo.raStatus ?: "",
+        raGameId = gameInfo.raGameId ?: "",
+        raDetection = gameInfo.raDetection ?: "",
+        rootPrefix = gameInfo.rootPrefix,
+    )
+
+    val controllersState = controllersViewModel?.state?.collectAsState()?.value
+    val players = (controllersState?.connected.orEmpty())
+        .map { PlayerSlotInfo(port = it.port ?: -1, displayName = it.mapping.displayName) }
+
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(
             factory = { glSurfaceView },
             modifier = Modifier.fillMaxSize()
         )
 
-        Box(modifier = Modifier.fillMaxSize().padding(bottom = effectivePortraitMarginDp())) {
-        when (screen) {
-            is IGMScreen.Menu -> {
-                InGameMenu(
-                    gameTitle = gameTitle,
-                    menuOptions = menuOptions,
-                    selectedIndex = screen.selectedIndex,
-                    selectedSlot = selectedSlot,
-                    slotThumbnail = slotThumbnail,
-                    slotExists = slotExists,
-                    slotOccupied = slotOccupied,
-                    undoLabel = undoLabel,
-                    backLabel = stringResource(R.string.label_back),
-                    deleteLabel = stringResource(R.string.label_delete),
-                    slotLabel = stringResource(R.string.label_slot),
-                    saveLabel = stringResource(R.string.label_save),
-                    loadLabel = stringResource(R.string.label_load),
-                    discLabel = stringResource(R.string.label_disc),
-                    selectLabel = stringResource(R.string.label_select),
-                    fontSize = igmFontSize,
-                    lineHeight = igmLineHeight,
-                    buttonStyle = labels
-                )
-                if (screen.confirmDeleteSlot) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.85f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.padding(24.dp)
-                        ) {
-                            Text(
-                                text = stringResource(R.string.igm_delete_slot, selectedSlot.label),
-                                style = MaterialTheme.typography.titleLarge,
-                                color = Color.White
-                            )
-                            Spacer(modifier = Modifier.height(Spacing.Lg))
-                            Box(modifier = Modifier.widthIn(max = 280.dp).fillMaxWidth()) {
-                                PolaroidFrame(
-                                    thumbnail = slotThumbnail,
-                                    selectedSlotIndex = selectedSlot.index,
-                                    slotOccupied = slotOccupied,
-                                    showIndicators = false
-                                )
-                            }
-                        }
-                        BottomBar(
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .padding(screenPadding),
-                            leftItems = listOf(labels.back to stringResource(R.string.label_cancel)),
-                            rightItems = listOf(labels.north to stringResource(R.string.label_delete))
-                        )
-                    }
-                }
-            }
-            is IGMScreen.Settings, is IGMScreen.Video, is IGMScreen.Advanced,
-            is IGMScreen.ShaderSettings,
-            is IGMScreen.Emulator, is IGMScreen.EmulatorCategory,
-            is IGMScreen.Shortcuts, is IGMScreen.SavePrompt,
-            is IGMScreen.Buttons -> {
-                val description = if (showDescription) {
-                    settingsItems.getOrNull(screen.selectedIndex)?.hint
-                } else null
-                val isOptionList = screen is IGMScreen.EmulatorCategory ||
-                    (screen is IGMScreen.Emulator && settingsItems.all { it.value != null })
-                val changeLabel = stringResource(R.string.label_change)
-                val selectLabel = stringResource(R.string.label_select)
-                val showsCycleHint = isOptionList ||
-                    (screen is IGMScreen.Shortcuts && screen.selectedIndex == 0) ||
-                    screen is IGMScreen.Video ||
-                    screen is IGMScreen.Advanced ||
-                    screen is IGMScreen.ShaderSettings
-                val bottomBarRight = when {
-                    isOptionList -> listOf(labels.confirm to stringResource(R.string.label_info))
-                    screen is IGMScreen.Shortcuts && screen.selectedIndex == 0 -> emptyList()
-                    screen is IGMScreen.Shortcuts -> listOf(labels.north to stringResource(R.string.label_clear), labels.confirm to stringResource(R.string.label_set))
-                    screen is IGMScreen.Video -> listOf(labels.confirm to selectLabel)
-                    screen is IGMScreen.Advanced -> emptyList()
-                    screen is IGMScreen.ShaderSettings -> emptyList()
-                    screen is IGMScreen.Buttons -> listOf(
-                        labels.north to stringResource(R.string.label_clear),
-                        labels.confirm to stringResource(R.string.label_press),
-                    )
-                    else -> listOf(labels.confirm to selectLabel)
-                }
-                val emulatorLabel = stringResource(R.string.igm_emulator)
-                val title = when (screen) {
-                    is IGMScreen.Settings -> stringResource(R.string.igm_settings)
-                    is IGMScreen.Video -> stringResource(R.string.igm_video)
-                    is IGMScreen.Advanced -> stringResource(R.string.igm_advanced)
-                    is IGMScreen.ShaderSettings -> stringResource(R.string.igm_shader_settings)
-                    is IGMScreen.Emulator -> emulatorLabel
-                    is IGMScreen.EmulatorCategory -> screen.categoryTitle.ifEmpty { emulatorLabel }
-                    is IGMScreen.Shortcuts -> stringResource(R.string.title_shortcuts)
-                    is IGMScreen.SavePrompt -> stringResource(R.string.igm_save_changes)
-                    is IGMScreen.Buttons -> stringResource(R.string.igm_buttons)
-                    else -> stringResource(R.string.igm_settings)
-                }
-                val bottomBarLeft = buildList {
-                    add(labels.back to stringResource(R.string.label_back))
-                    if (screen is IGMScreen.Buttons && inputRemapHasChanges) {
-                        add(labels.west to stringResource(R.string.label_reset_all))
-                    }
-                    if (showsCycleHint) add(DPAD_HORIZONTAL to changeLabel)
-                }
-                IGMSettingsScreen(
-                    title = title,
-                    items = settingsItems,
-                    selectedIndex = screen.selectedIndex,
-                    bottomBarLeft = bottomBarLeft,
-                    bottomBarRight = bottomBarRight,
-                    coreInfo = coreInfo,
-                    description = description,
-                    fontSize = igmFontSize,
-                    lineHeight = igmLineHeight
-                )
-            }
-            is IGMScreen.Info -> {
-                fun stripRoot(path: String): String {
-                    if (gameInfo.rootPrefix.isNotEmpty() && path.startsWith(gameInfo.rootPrefix)) {
-                        return path.removePrefix(gameInfo.rootPrefix).removePrefix("/")
-                    }
-                    return path
-                }
-                ScreenBackground(backgroundImagePath = null, backgroundAlpha = 0.85f, backgroundColor = Color.Black) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(screenPadding)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(bottom = footerReservation())
-                        ) {
-                            ScreenTitle(
-                                text = gameTitle,
-                                fontSize = igmFontSize,
-                                lineHeight = igmLineHeight
-                            )
-                            val infoModifier = Modifier.padding(start = pillInternalH)
-                            val infoScrollState = remember { ScrollState(0) }
-                            LaunchedEffect(infoScrollDir) {
-                                while (infoScrollDir != 0) {
-                                    infoScrollState.dispatchRawDelta(infoScrollDir * 14f)
-                                    delay(16L)
-                                }
-                            }
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clipToBounds()
-                                    .verticalScroll(infoScrollState)
-                            ) {
-                                Spacer(modifier = Modifier.height(Spacing.Md))
-                                InfoRow(stringResource(R.string.info_core), gameInfo.coreName, infoModifier)
-                                Spacer(modifier = Modifier.height(12.dp))
-                                if (gameInfo.originalRomPath != null) {
-                                    InfoRow(stringResource(R.string.info_rom), stripRoot(gameInfo.originalRomPath), infoModifier)
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    InfoRow(stringResource(R.string.info_extracted), stripRoot(gameInfo.romPath), infoModifier)
-                                } else {
-                                    InfoRow(stringResource(R.string.info_rom), stripRoot(gameInfo.romPath), infoModifier)
-                                }
-                                if (gameInfo.savePath != null) {
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    InfoRow(stringResource(R.string.info_save), stripRoot(gameInfo.savePath), infoModifier)
-                                }
-                                if (gameInfo.rendererName.isNotEmpty()) {
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    InfoRow(stringResource(R.string.info_renderer), gameInfo.rendererName, infoModifier)
-                                }
-                                if (gameInfo.raStatus != null) {
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    InfoRow(stringResource(R.string.ra_title), gameInfo.raStatus, infoModifier)
-                                }
-                                if (gameInfo.raGameId != null) {
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    InfoRow(stringResource(R.string.info_game_id), gameInfo.raGameId, infoModifier)
-                                }
-                                if (gameInfo.raDetection != null) {
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    InfoRow(stringResource(R.string.info_ra_detection), gameInfo.raDetection, infoModifier)
-                                }
-                            }
-                        }
-                        BottomBar(
-                            modifier = Modifier.align(Alignment.BottomCenter),
-                            leftItems = listOf(labels.back to stringResource(R.string.label_back)),
-                            rightItems = emptyList()
-                        )
-                    }
-                }
-            }
-            is IGMScreen.GuidePicker -> {
-                IGMSettingsScreen(
-                    title = stringResource(R.string.title_guide),
-                    items = guideFiles.map { IGMSettingsItem(it.name) },
-                    selectedIndex = screen.selectedIndex,
-                    bottomBarLeft = listOf(labels.back to stringResource(R.string.label_back)),
-                    bottomBarRight = listOf(labels.confirm to stringResource(R.string.label_select)),
-                    fontSize = igmFontSize,
-                    lineHeight = igmLineHeight
-                )
-            }
-            is IGMScreen.Guide -> {
-                val guide = guideFiles.firstOrNull { it.file.absolutePath == screen.filePath }
-                val type = guide?.type ?: GuideType.TXT
-                GuideScreen(
-                    filePath = screen.filePath,
-                    guideType = type,
-                    page = screen.page,
-                    initialScrollY = guideInitialScroll,
-                    initialScrollX = guideInitialScrollX,
-                    scrollDir = guideScrollDir,
-                    scrollXDir = guideScrollXDir,
-                    pageJump = guidePageJump,
-                    pageJumpDir = guidePageJumpDir,
-                    pageCount = guidePageCount,
-                    textZoom = screen.textZoom,
-                    onScrollPosChanged = onGuideScrollChanged
-                )
-            }
-            is IGMScreen.Achievements -> {
-                val filterLabel = when (screen.filter) {
-                    1 -> stringResource(R.string.label_unlocked)
-                    2 -> stringResource(R.string.label_locked)
-                    else -> stringResource(R.string.label_all)
-                }
-                val filtered = when (screen.filter) {
-                    1 -> screen.achievements.filter { it.unlocked }
-                    2 -> screen.achievements.filter { !it.unlocked }
-                    else -> screen.achievements
-                }
-                IGMSettingsScreen(
-                    title = stringResource(R.string.ach_title, screen.achievements.count { it.unlocked }, screen.achievements.size),
-                    items = filtered.map { ach ->
-                        val prefix = when {
-                            ach.pendingSync -> HALF_CIRCLE
-                            ach.unlocked -> BULLET
-                            else -> CIRCLE_EMPTY
-                        }
-                        IGMSettingsItem(
-                            label = "$prefix ${ach.title}",
-                            value = stringResource(R.string.ach_points_short, ach.points)
-                        )
-                    },
-                    selectedIndex = screen.selectedIndex.coerceAtMost((filtered.size - 1).coerceAtLeast(0)),
-                    bottomBarLeft = listOf(labels.back to stringResource(R.string.label_back)),
-                    bottomBarRight = listOf(labels.west to filterLabel, labels.confirm to stringResource(R.string.label_details)),
-                    coreInfo = screen.status,
-                    fontSize = igmFontSize,
-                    lineHeight = igmLineHeight
-                )
-            }
-            is IGMScreen.AchievementDetail -> {
-                val ach = screen.achievement
-                val unlockText = if (ach.pendingSync) {
-                    stringResource(R.string.ach_unlocked_pending)
-                } else if (ach.unlocked && ach.unlockTime > 0) {
-                    val date = java.text.SimpleDateFormat("MMM d, yyyy", java.util.Locale.getDefault())
-                        .format(java.util.Date(ach.unlockTime * 1000))
-                    stringResource(R.string.ach_unlocked_date, date)
-                } else if (ach.unlocked) stringResource(R.string.ach_unlocked) else stringResource(R.string.ach_locked)
-
-                ScreenBackground(backgroundImagePath = null, backgroundAlpha = 0.85f, backgroundColor = Color.Black) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(screenPadding),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center,
-                            modifier = Modifier.widthIn(max = 560.dp).fillMaxWidth()
-                        ) {
-                            Text(
-                                text = ach.title,
-                                style = TextStyle(
-                                    fontFamily = LocalCannoliFont.current,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 24.sp,
-                                    color = Color.White,
-                                    textAlign = TextAlign.Center
-                                )
-                            )
-                            Spacer(modifier = Modifier.height(Spacing.Xs))
-                            Text(
-                                text = unlockText,
-                                style = TextStyle(
-                                    fontFamily = LocalCannoliFont.current,
-                                    fontSize = 16.sp,
-                                    color = Color.White
-                                )
-                            )
-                            Spacer(modifier = Modifier.height(Spacing.Xs))
-                            Text(
-                                text = stringResource(R.string.ach_points, ach.points),
-                                style = TextStyle(
-                                    fontFamily = LocalCannoliFont.current,
-                                    fontSize = 16.sp,
-                                    color = Color.White
-                                )
-                            )
-                            Spacer(modifier = Modifier.height(Spacing.Md))
-                            Text(
-                                text = ach.description,
-                                style = TextStyle(
-                                    fontFamily = LocalCannoliFont.current,
-                                    fontSize = 18.sp,
-                                    color = Color.White,
-                                    textAlign = TextAlign.Center
-                                )
-                            )
-                        }
-                        BottomBar(
-                            modifier = Modifier.align(Alignment.BottomCenter),
-                            leftItems = listOf(labels.back to stringResource(R.string.label_back)),
-                            rightItems = emptyList()
-                        )
-                    }
-                }
-            }
-            is IGMScreen.ReassignPlayers -> {
-                val controllersState = controllersViewModel?.state?.collectAsState()?.value
-                val portToName = (controllersState?.connected.orEmpty())
-                    .filter { it.port != null }
-                    .associate { it.port!! to it.mapping.displayName }
-                val items = (0 until 4).map { port ->
-                    val name = portToName[port] ?: "—"
-                    val display = if (port == screen.swapWithIndex) "→ $name" else name
-                    IGMSettingsItem(
-                        label = "Player ${port + 1}",
-                        value = display,
-                    )
-                }
-                val confirmLabel = when {
-                    screen.swapWithIndex < 0 -> stringResource(R.string.label_select)
-                    screen.swapWithIndex == screen.selectedIndex -> stringResource(R.string.label_cancel)
-                    else -> stringResource(R.string.label_swap)
-                }
-                IGMSettingsScreen(
-                    title = stringResource(R.string.igm_reassign_players),
-                    items = items,
-                    selectedIndex = screen.selectedIndex,
-                    bottomBarLeft = listOf(labels.back to stringResource(R.string.label_back)),
-                    bottomBarRight = listOf(labels.confirm to confirmLabel),
-                    fontSize = igmFontSize,
-                    lineHeight = igmLineHeight,
-                )
-            }
-            null -> {}
-        }
-
-        if (screen is IGMScreen.Shortcuts && screen.listening) {
-            val colors = LocalCannoliColors.current
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.92f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth()
-                ) {
-                    val actionName = settingsItems.getOrNull(screen.selectedIndex)?.label ?: ""
-                    Text(
-                        text = actionName,
-                        style = MaterialTheme.typography.bodyLarge.copy(
-                            fontSize = 24.sp,
-                            color = colors.text
-                        )
-                    )
-                    Spacer(modifier = Modifier.height(Spacing.Sm))
-                    Text(
-                        text = if (screen.heldKeys.isEmpty()) stringResource(R.string.shortcut_hold_prompt)
-                        else screen.heldKeys.joinToString(" + ") { dev.cannoli.scorza.util.keyCodeName(it) },
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontSize = 16.sp,
-                            color = colors.text.copy(alpha = 0.6f)
-                        )
-                    )
-                    Spacer(modifier = Modifier.height(Spacing.Lg))
-                    if (screen.heldKeys.isNotEmpty()) {
-                        val progress = (screen.countdownMs / 1500f).coerceIn(0f, 1f)
-                        Box(
-                            modifier = Modifier
-                                .widthIn(max = 280.dp).fillMaxWidth()
-                                .height(8.dp)
-                                .clip(RoundedCornerShape(Radius.Sm))
-                                .background(colors.text.copy(alpha = 0.2f))
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth(progress)
-                                    .height(8.dp)
-                                    .clip(RoundedCornerShape(Radius.Sm))
-                                    .background(colors.highlight)
-                            )
-                        }
-                    }
-                }
-            }
-        }
+        CannoliIGM(
+            screen = screen,
+            config = config,
+            gameTitle = gameTitle,
+            menuOptions = menuOptions,
+            selectedSlot = selectedSlot,
+            slotThumbnail = slotThumbnail,
+            slotExists = slotExists,
+            slotOccupied = slotOccupied,
+            undoLabel = undoLabel,
+            settingsItems = settingsItems,
+            coreInfo = coreInfo,
+            gameInfo = igmGameInfo,
+            infoScrollDir = infoScrollDir,
+            guideFiles = guideFiles,
+            guidePageCount = guidePageCount,
+            guideScrollDir = guideScrollDir,
+            guideScrollXDir = guideScrollXDir,
+            guidePageJump = guidePageJump,
+            guidePageJumpDir = guidePageJumpDir,
+            guideInitialScroll = guideInitialScroll,
+            guideInitialScrollX = guideInitialScrollX,
+            onGuideScrollChanged = onGuideScrollChanged,
+            players = players,
+            inputRemapHasChanges = inputRemapHasChanges,
+        )
 
         val osdRequest = osdController.request.value
         if (debugHud && !overlayVisible && osdRequest == null) {
@@ -587,30 +187,6 @@ fun LibretroScreen(
         }
 
         OsdHost(controller = osdController)
-
-        if (statusBarEnabled) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(20.dp)
-                    .alpha(if (overlayVisible) 1f else 0f)
-                    .onGloballyPositioned { coords ->
-                        statusBarLeftEdge.intValue = coords.positionInWindow().x.toInt()
-                    }
-            ) {
-                StatusBar(
-                    showWifi = settings.showWifi,
-                    showBluetooth = settings.showBluetooth,
-                    showVpn = settings.showVpn,
-                    showClock = settings.showClock,
-                    showBattery = settings.batteryDisplay != dev.cannoli.scorza.settings.BatteryDisplay.HIDE,
-                    batteryIconOnly = settings.batteryDisplay == dev.cannoli.scorza.settings.BatteryDisplay.ICON,
-                    use24hTime = settings.timeFormat == dev.cannoli.scorza.settings.TimeFormat.TWENTY_FOUR_HOUR
-                )
-            }
-        }
-        }
-    }
     }
 }
 
@@ -639,27 +215,6 @@ private fun StatusPill(showFps: Boolean, fastForwarding: Boolean, renderer: Libr
             text = text,
             style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
             color = colors.highlightText
-        )
-    }
-}
-
-@Composable
-private fun InfoRow(label: String, value: String, modifier: Modifier = Modifier) {
-    val colors = LocalCannoliColors.current
-    Column(modifier = modifier) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium.copy(
-                fontSize = 14.sp,
-                color = colors.text.copy(alpha = 0.6f)
-            )
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium.copy(
-                fontSize = 18.sp,
-                color = Color.White
-            )
         )
     }
 }

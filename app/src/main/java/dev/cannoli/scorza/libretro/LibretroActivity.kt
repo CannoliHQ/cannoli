@@ -31,6 +31,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
 import dev.cannoli.igm.AchievementInfo
+import dev.cannoli.igm.GuideFile
 import dev.cannoli.igm.GuideType
 import dev.cannoli.igm.IGMScreen
 import dev.cannoli.igm.IGMSettings

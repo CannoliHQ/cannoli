@@ -1,14 +1,11 @@
 package dev.cannoli.scorza.libretro
 
+import dev.cannoli.igm.GuideFile
 import dev.cannoli.igm.GuideType
 import dev.cannoli.scorza.config.CannoliPaths
 import dev.cannoli.scorza.util.IniParser
 import dev.cannoli.scorza.util.IniWriter
 import java.io.File
-
-data class GuideFile(val file: File, val type: GuideType) {
-    val name: String get() = file.name
-}
 
 class GuideManager(
     cannoliRoot: String,
