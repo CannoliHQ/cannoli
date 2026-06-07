@@ -137,9 +137,10 @@ class BootSequencerTest {
         assertTrue(s.state.value is BootState.NeedsSetup)
     }
 
-    @Test fun timeout_re_arms_after_permission_lost_then_regained() = runTest {
-        val perms = FakePerms(storage = true)
+    @Test fun granting_permission_from_wizard_shows_setup_without_black_splash() = runTest {
+        val perms = FakePerms(storage = false)
         var scheduledCount = 0
+        val watcher = FakeMountWatcher()
         val s = BootSequencer(
             permissionStatus = perms,
             isSetupResolved = { false },
@@ -149,21 +150,20 @@ class BootSequencerTest {
             initRunner = BootSequencer.InitRunner { BootResult.Success },
             scope = this,
             now = { 0L },
-            mountWatcher = FakeMountWatcher(),
+            mountWatcher = watcher,
             scheduleTimeout = { _, _ -> scheduledCount++ },
         )
-        s.advance()
-        assertEquals(BootState.Resolving, s.state.value)
-        assertEquals(1, scheduledCount)
-        // Storage permission lost (leaves the unresolved-with-storage state), then regained.
-        perms.storage = false
+        // Wizard is showing the permission step.
         s.advance()
         assertTrue(s.state.value is BootState.NeedsPermission)
+        // User grants storage in the system prompt and returns.
         perms.storage = true
         s.advance()
-        // The wait must re-arm with a fresh timeout, not hang on the splash with no re-check.
-        assertEquals(2, scheduledCount)
-        assertEquals(BootState.Resolving, s.state.value)
+        // Setup must appear immediately, never a black mount-wait splash.
+        assertTrue(s.state.value is BootState.NeedsSetup)
+        assertEquals(0, scheduledCount)
+        // The watcher stays armed so a late SD mount can still auto-proceed.
+        assertTrue(watcher.started)
     }
 
     @Test fun setup_unresolved_goes_to_needs_setup_then_folder_choice_initializes() = runTest {
