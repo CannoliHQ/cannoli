@@ -28,6 +28,7 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import dev.cannoli.scorza.R
 import dev.cannoli.ui.ButtonStyle
+import dev.cannoli.ui.DPAD_HORIZONTAL
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.screenPadding
 import dev.cannoli.ui.theme.LocalCannoliTypography
@@ -115,7 +116,7 @@ fun KitchenOverlay(
                 .padding(horizontal = screenPadding, vertical = 16.dp),
             leftItems = buildList {
                 add(buttonStyle.back to stringResource(R.string.label_back))
-                if (urls.size > 1) add("\u25C0\u25B6" to stringResource(R.string.label_interface))
+                if (urls.size > 1) add(DPAD_HORIZONTAL to stringResource(R.string.label_interface))
             },
             rightItems = listOf(buttonStyle.north to stringResource(R.string.label_stop))
         )
