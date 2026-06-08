@@ -31,6 +31,12 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     private val saveHandler = Handler(saveThread.looper)
     private val saveRunnable = Runnable { saveToDisk() }
 
+    // True while an in-memory mutation has not yet been persisted. reload() must not
+    // clobber the json with the on-disk copy while this is set, or un-flushed edits
+    // are lost (the bug behind font/text-size/color changes silently reverting).
+    @Volatile
+    private var pendingSave = false
+
     private inline fun <T> jsonRead(block: JSONObject.() -> T): T = synchronized(jsonLock) { json.block() }
     private inline fun jsonWrite(block: JSONObject.() -> Unit) { synchronized(jsonLock) { json.block() }; scheduleSave() }
 
@@ -68,6 +74,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     }
 
     private fun scheduleSave() {
+        pendingSave = true
         saveHandler.removeCallbacks(saveRunnable)
         saveHandler.postDelayed(saveRunnable, 100)
     }
@@ -83,13 +90,22 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
 
     private fun saveToDisk() {
         settingsFile?.let { file ->
-            if (!setupCompleted) return
-            if (!hasStoragePermission()) return
+            if (!setupCompleted) {
+                dev.cannoli.scorza.util.ErrorLog.write("settings save skipped: setup not completed (${file.absolutePath})")
+                return
+            }
+            if (!hasStoragePermission()) {
+                dev.cannoli.scorza.util.ErrorLog.write("settings save skipped: no storage permission (${file.absolutePath})")
+                return
+            }
             try {
                 file.parentFile?.mkdirs()
                 synchronized(jsonLock) { file.writeText(json.toString(2)) }
-            } catch (_: IOException) {
-            } catch (_: SecurityException) {
+                pendingSave = false
+            } catch (e: IOException) {
+                dev.cannoli.scorza.util.ErrorLog.error("settings save failed writing ${file.absolutePath}", e)
+            } catch (e: SecurityException) {
+                dev.cannoli.scorza.util.ErrorLog.error("settings save failed writing ${file.absolutePath}", e)
             }
         }
     }
@@ -100,7 +116,9 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     }
 
     fun reload() {
-        loadFromDisk()
+        // Un-flushed local edits are newer than disk; persist them rather than letting
+        // loadFromDisk overwrite them. Only re-read external changes when nothing is pending.
+        if (pendingSave) flush() else loadFromDisk()
     }
 
     fun shutdown() {
