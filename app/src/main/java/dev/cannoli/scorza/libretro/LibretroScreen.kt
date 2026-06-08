@@ -186,7 +186,19 @@ fun LibretroScreen(
             }
         }
 
-        OsdHost(controller = osdController)
+        val osdConfiguration = androidx.compose.ui.platform.LocalConfiguration.current
+        val osdDensity = androidx.compose.ui.platform.LocalDensity.current
+        val osdBottomMargin = if (
+            settings.portraitMarginPx > 0 &&
+            osdConfiguration.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT
+        ) {
+            with(osdDensity) { settings.portraitMarginPx.toDp() }
+        } else {
+            0.dp
+        }
+        Box(modifier = Modifier.fillMaxSize().padding(bottom = osdBottomMargin)) {
+            OsdHost(controller = osdController)
+        }
     }
 }
 
