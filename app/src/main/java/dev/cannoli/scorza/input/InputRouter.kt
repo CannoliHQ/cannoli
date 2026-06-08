@@ -14,6 +14,7 @@ import dev.cannoli.scorza.input.screen.InputTesterInputHandler
 import dev.cannoli.scorza.input.screen.ScrollListInputHandler
 import dev.cannoli.scorza.input.screen.SettingsInputHandler
 import dev.cannoli.scorza.input.screen.OnboardingInputHandler
+import dev.cannoli.scorza.input.screen.SaveStatePickerInputHandler
 import dev.cannoli.scorza.input.screen.SystemListInputHandler
 import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.LaunchManager
@@ -33,6 +34,7 @@ class InputRouter @Inject constructor(
     val settingsHandler: SettingsInputHandler,
     val onboardingHandler: OnboardingInputHandler,
     val inputTesterHandler: InputTesterInputHandler,
+    val saveStatePickerHandler: SaveStatePickerInputHandler,
     val controllerDetailHandler: ControllerDetailInputHandler,
     val controllersHandler: ControllersInputHandler,
     val editButtonsHandler: EditButtonsInputHandler,
@@ -54,10 +56,33 @@ class InputRouter @Inject constructor(
 
         // Launcher overrides onSelectUp because the select-hold cancel + nav-flag reset is
         // specific to launcher state; the generic helper cannot know about it.
+        // Resolve dedicated screen handlers synchronously from nav state so input is not lost in
+        // the recompose gap when a screen is pushed off the input cadence (e.g. the save-state
+        // picker from a hold timer). Scrollable screens keep their registry-backed instances. The
+        // IGM wires without a resolver, which resets this so its registry-top dispatch is restored.
         dispatcher.wireToRegistry(
             dialogHandler = dialogHandler,
             onSelectUpOverride = { onSelectUp() },
+            screenResolver = { activeScreenHandler() },
         )
+    }
+
+    private fun activeScreenHandler(): ScreenInputHandler =
+        dedicatedHandlerFor(nav.currentScreen) ?: screenInputRegistry.top
+
+    private fun dedicatedHandlerFor(screen: LauncherScreen): ScreenInputHandler? = when (screen) {
+        is LauncherScreen.SystemList -> systemListHandler
+        is LauncherScreen.GameList -> gameListHandler
+        is LauncherScreen.Settings -> settingsHandler
+        is LauncherScreen.InputTester -> inputTesterHandler
+        is LauncherScreen.SaveStatePicker -> saveStatePickerHandler
+        is LauncherScreen.Controllers -> controllersHandler
+        is LauncherScreen.ControllerDetail -> controllerDetailHandler
+        is LauncherScreen.EditButtons -> editButtonsHandler
+        is LauncherScreen.LoggingSettings -> loggingSettingsHandler
+        is LauncherScreen.OnboardingPermissions -> onboardingHandler
+        is LauncherScreen.DirectoryBrowser -> onboardingHandler
+        else -> null
     }
 
     fun onSelectUp() {
@@ -65,7 +90,7 @@ class InputRouter @Inject constructor(
         gameListHandler.cancelSelectHoldTimer()
 
         val dialogConsumed = dialogHandler.onSelectUp()
-        if (!dialogConsumed) screenInputRegistry.top.onSelectUp()
+        if (!dialogConsumed) activeScreenHandler().onSelectUp()
 
         nav.selectDown = false
         nav.selectHeld = false

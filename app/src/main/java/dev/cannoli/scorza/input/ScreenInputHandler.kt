@@ -12,6 +12,8 @@ interface ScreenInputHandler {
     fun onStart() {}
     fun onSelect() {}
     fun onSelectUp() {}
+    fun onConfirmUp() {}
+    fun onNorthUp() {}
     fun onNorth() {}
     fun onWest() {}
     fun onL1() {}

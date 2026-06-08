@@ -10,6 +10,8 @@ interface DialogPrecedence {
     fun onStart(): Boolean = false
     fun onSelect(): Boolean = false
     fun onSelectUp(): Boolean = false
+    fun onConfirmUp(): Boolean = false
+    fun onNorthUp(): Boolean = false
     fun onNorth(): Boolean = false
     fun onWest(): Boolean = false
     fun onL1(): Boolean = false

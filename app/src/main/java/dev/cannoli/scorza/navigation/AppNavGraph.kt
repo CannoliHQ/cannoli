@@ -53,6 +53,7 @@ import dev.cannoli.scorza.ui.screens.InputTesterScreen
 import dev.cannoli.scorza.ui.screens.LoggingSettingsScreen
 import dev.cannoli.scorza.ui.screens.KeyboardInputState
 import dev.cannoli.scorza.ui.screens.PortraitMarginOverlay
+import dev.cannoli.scorza.ui.screens.SaveStatePickerScreen
 import dev.cannoli.scorza.ui.screens.SettingsScreen
 import dev.cannoli.scorza.ui.screens.SystemListScreen
 import dev.cannoli.scorza.ui.screens.isFullScreen
@@ -100,6 +101,13 @@ sealed class LauncherScreen {
     data object GameList : LauncherScreen()
     data object Settings : LauncherScreen()
     data object InputTester : LauncherScreen()
+    data class SaveStatePicker(
+        val rom: dev.cannoli.scorza.model.Rom,
+        val stateBasePath: String,
+        val slotOccupied: List<Boolean>,
+        val selectedSlotIndex: Int,
+        val awaitConfirmRelease: Boolean = false,
+    ) : LauncherScreen()
     data class EmulatorMapping(val mappings: List<EmulatorMappingEntry>, val allMappings: List<EmulatorMappingEntry> = mappings, override val selectedIndex: Int = 0, override val scrollTarget: Int = 0, val filter: Int = 0) : LauncherScreen(), ScrollableScreen {
         override val itemCount: Int get() = mappings.size
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
@@ -1146,6 +1154,20 @@ fun AppNavGraph(
                     customPath = currentScreen.customPath,
                     selectedIndex = currentScreen.selectedIndex,
                     existingInstallVolumeIndex = currentScreen.existingInstallVolumeIndex,
+                    buttonStyle = labels,
+                )
+            }
+            is LauncherScreen.SaveStatePicker -> {
+                inputRouter?.let { dev.cannoli.scorza.input.screen.compose.ScreenInput(it.saveStatePickerHandler) }
+                SaveStatePickerScreen(
+                    rom = currentScreen.rom,
+                    stateBasePath = currentScreen.stateBasePath,
+                    slotOccupied = currentScreen.slotOccupied,
+                    selectedSlotIndex = currentScreen.selectedSlotIndex,
+                    backgroundImagePath = appSettings.backgroundImagePath,
+                    backgroundTint = appSettings.backgroundTint,
+                    listFontSize = listFontSize,
+                    listLineHeight = listLineHeight,
                     buttonStyle = labels,
                 )
             }

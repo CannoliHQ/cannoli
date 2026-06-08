@@ -197,10 +197,21 @@ class LaunchManager(
         return findEmbeddedCore(core)
     }
 
-    fun findMostRecentSlot(rom: Rom): Int? {
+    fun saveStateBasePath(rom: Rom): String {
         val romName = normalizedRomName(rom)
-        val stateBase = CannoliPaths(settings.sdCardRoot).saveStateBase(rom.platformTag, romName)
-        val slotManager = SaveSlotManager(stateBase.absolutePath)
+        return CannoliPaths(settings.sdCardRoot).saveStateBase(rom.platformTag, romName).absolutePath
+    }
+
+    fun slotOccupancy(rom: Rom): List<Boolean> {
+        val slotManager = SaveSlotManager(saveStateBasePath(rom))
+        return (0..10).map { i ->
+            slotManager.slots.firstOrNull { it.index == i }
+                ?.let { File(slotManager.statePath(it)).exists() } ?: false
+        }
+    }
+
+    fun findMostRecentSlot(rom: Rom): Int? {
+        val slotManager = SaveSlotManager(saveStateBasePath(rom))
         return slotManager.slots
             .filter { File(slotManager.statePath(it)).exists() }
             .maxByOrNull { File(slotManager.statePath(it)).lastModified() }
@@ -331,11 +342,12 @@ class LaunchManager(
         return launchResultDialog(apkLauncher.launch(app.packageName))
     }
 
-    fun resumeRom(rom: Rom): DialogState? {
-        debugLog("resumeRom entered: ${rom.platformTag} / ${rom.path.name}")
+    fun resumeRom(rom: Rom): DialogState? = resumeRom(rom, findMostRecentSlot(rom) ?: 0)
+
+    fun resumeRom(rom: Rom, resumeSlot: Int): DialogState? {
+        debugLog("resumeRom entered: ${rom.platformTag} / ${rom.path.name} slot=$resumeSlot")
         if (launchState.launching) return null
         launchState.launching = true
-        val resumeSlot = findMostRecentSlot(rom) ?: 0
         val embeddedCorePath = getEmbeddedCorePath(rom)
         val launchFile = resolveLaunchFile(rom, extractArchives = embeddedCorePath != null)
             ?: run { launchState.launching = false; return null }

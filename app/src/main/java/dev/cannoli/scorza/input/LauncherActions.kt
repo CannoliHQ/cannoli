@@ -16,6 +16,8 @@ import dev.cannoli.scorza.launcher.LaunchManager
 import dev.cannoli.scorza.model.AppType
 import dev.cannoli.scorza.model.CollectionType
 import dev.cannoli.scorza.model.ListItem
+import dev.cannoli.scorza.model.Rom
+import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.server.KitchenManager
 import dev.cannoli.scorza.settings.ContentMode
@@ -112,6 +114,18 @@ class LauncherActions @Inject constructor(
         is ListItem.AppItem -> launchManager.launchApp(item.app)
         else -> null
     }
+
+    fun launchRomFromSlot(rom: Rom, slot: Int): DialogState? =
+        launchManager.resumeRom(rom, slot)
+
+    fun buildSaveStatePicker(rom: Rom, awaitConfirmRelease: Boolean): LauncherScreen.SaveStatePicker =
+        LauncherScreen.SaveStatePicker(
+            rom = rom,
+            stateBasePath = launchManager.saveStateBasePath(rom),
+            slotOccupied = launchManager.slotOccupancy(rom),
+            selectedSlotIndex = launchManager.findMostRecentSlot(rom) ?: 0,
+            awaitConfirmRelease = awaitConfirmRelease,
+        )
 
     fun recordRecentlyPlayedByPath(path: String) {
         ioScope.launch {

@@ -53,21 +53,58 @@ class GameListInputHandler @Inject constructor(
         selectHoldHandler.removeCallbacks(collectionSelectHoldRunnable)
     }
 
+    private enum class ResumeButton { CONFIRM, NORTH }
+    private var armedResumeButton: ResumeButton? = null
+    private var resumeHoldFired = false
+    private val resumeHoldHandler = Handler(Looper.getMainLooper())
+    val resumeHoldRunnable = Runnable {
+        val button = armedResumeButton ?: return@Runnable
+        armedResumeButton = null
+        resumeHoldFired = true
+        val item = gameListViewModel.getSelectedItem() as? ListItem.RomItem ?: return@Runnable
+        nav.push(launcherActions.buildSaveStatePicker(item.rom, awaitConfirmRelease = button == ResumeButton.CONFIRM))
+    }
+
+    private fun armResumeHold(button: ResumeButton) {
+        if (armedResumeButton == button) return
+        resumeHoldHandler.removeCallbacks(resumeHoldRunnable)
+        armedResumeButton = button
+        resumeHoldFired = false
+        resumeHoldHandler.postDelayed(resumeHoldRunnable, 400)
+    }
+
+    private fun cancelResumeHoldTimer() {
+        resumeHoldHandler.removeCallbacks(resumeHoldRunnable)
+        armedResumeButton = null
+        resumeHoldFired = false
+    }
+
+    private fun isResumableRomSelected(): Boolean {
+        val item = gameListViewModel.getSelectedItem() ?: return false
+        if (item !is ListItem.RomItem) return false
+        val key = selectedRecentKey(item) ?: return false
+        return nav.resumableGames.contains(key)
+    }
+
     override fun onUp() {
+        cancelResumeHoldTimer()
         if (gameListViewModel.isReorderMode()) gameListViewModel.reorderMoveUp()
         else gameListViewModel.moveSelection(-1)
     }
 
     override fun onDown() {
+        cancelResumeHoldTimer()
         if (gameListViewModel.isReorderMode()) gameListViewModel.reorderMoveDown()
         else gameListViewModel.moveSelection(1)
     }
 
     override fun onLeft() {
+        cancelResumeHoldTimer()
         if (!gameListViewModel.isReorderMode()) pageJump(-1)
     }
 
     override fun onRight() {
+        cancelResumeHoldTimer()
         if (!gameListViewModel.isReorderMode()) pageJump(1)
     }
 
@@ -75,11 +112,20 @@ class GameListInputHandler @Inject constructor(
         when {
             gameListViewModel.isMultiSelectMode() -> gameListViewModel.toggleChecked()
             gameListViewModel.isReorderMode() -> gameListViewModel.confirmReorder()
+            settings.swapPlayResume && isResumableRomSelected() -> armResumeHold(ResumeButton.CONFIRM)
             else -> onGameListConfirm()
         }
     }
 
+    override fun onConfirmUp() {
+        if (armedResumeButton != ResumeButton.CONFIRM) return
+        val fired = resumeHoldFired
+        cancelResumeHoldTimer()
+        if (!fired) onGameListConfirm()
+    }
+
     override fun onBack() {
+        cancelResumeHoldTimer()
         when {
             gameListViewModel.isMultiSelectMode() -> gameListViewModel.cancelMultiSelect()
             gameListViewModel.isReorderMode() -> gameListViewModel.cancelReorder()
@@ -102,6 +148,7 @@ class GameListInputHandler @Inject constructor(
     }
 
     override fun onStart() {
+        cancelResumeHoldTimer()
         val glState = gameListViewModel.state.value
         if (gameListViewModel.isMultiSelectMode()) {
             val checkedItems: List<ListItem> = glState.checkedIndices
@@ -157,6 +204,7 @@ class GameListInputHandler @Inject constructor(
     }
 
     override fun onSelect() {
+        cancelResumeHoldTimer()
         if (gameSelectDown) return
         gameSelectDown = true
         val glState = gameListViewModel.state.value
@@ -212,6 +260,21 @@ class GameListInputHandler @Inject constructor(
     }
 
     override fun onNorth() {
+        if (!settings.swapPlayResume && isResumableRomSelected()) {
+            armResumeHold(ResumeButton.NORTH)
+        } else {
+            northAction()
+        }
+    }
+
+    override fun onNorthUp() {
+        if (armedResumeButton != ResumeButton.NORTH) return
+        val fired = resumeHoldFired
+        cancelResumeHoldTimer()
+        if (!fired) northAction()
+    }
+
+    private fun northAction() {
         val glState = gameListViewModel.state.value
         if (glState.isCollectionsList) return
         val item = gameListViewModel.getSelectedItem() ?: return
