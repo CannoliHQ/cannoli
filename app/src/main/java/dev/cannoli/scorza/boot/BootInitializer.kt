@@ -75,6 +75,7 @@ class BootInitializer @Inject constructor(
         dev.cannoli.scorza.util.InputLog.init(root.absolutePath)
         KitchenLog.init(root.absolutePath)
         StorageLog.init(root.absolutePath)
+        dev.cannoli.scorza.util.ErrorLog.init(root.absolutePath)
         setupCoordinator.logStorageDiagnostics()
         platformConfig.load()
         ioScope.launch {
