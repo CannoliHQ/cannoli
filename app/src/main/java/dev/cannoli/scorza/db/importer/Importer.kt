@@ -1,7 +1,10 @@
 package dev.cannoli.scorza.db.importer
 
+import android.content.Context
+import androidx.annotation.StringRes
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
+import dev.cannoli.scorza.R
 import dev.cannoli.scorza.config.CannoliPaths
 import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.db.CannoliDatabase
@@ -29,6 +32,7 @@ fun interface ImportProgress {
 }
 
 class Importer(
+    private val context: Context,
     private val cannoliRoot: File,
     private val romDirectory: File,
     private val db: CannoliDatabase,
@@ -116,22 +120,22 @@ class Importer(
         }
     }
 
-    private enum class Phase(val start: Float, val end: Float, val label: String) {
-        PLATFORMS(0.00f, 0.10f, "Cataloging platforms"),
-        ROMS(0.10f, 0.55f, "Walking ROM directories"),
-        APPS(0.55f, 0.60f, "Cataloging apps"),
-        FAVORITES(0.60f, 0.62f, "Creating Favorites collection"),
-        COLLECTIONS(0.62f, 0.72f, "Migrating collections"),
-        COLLECTION_PARENTS(0.72f, 0.78f, "Migrating collection hierarchy"),
-        OVERRIDES(0.78f, 0.85f, "Migrating game overrides"),
-        RA_IDS(0.85f, 0.90f, "Migrating RetroAchievements IDs"),
-        RECENTLY_PLAYED(0.90f, 0.95f, "Migrating recently played"),
-        ORDERING(0.95f, 0.97f, "Migrating ordering"),
-        ARCHIVE(0.97f, 1.00f, "Archiving legacy files"),
-        DONE(1.00f, 1.00f, "Done"),
+    private enum class Phase(val start: Float, val end: Float, @StringRes val label: Int) {
+        PLATFORMS(0.00f, 0.10f, R.string.import_platforms),
+        ROMS(0.10f, 0.55f, R.string.import_roms),
+        APPS(0.55f, 0.60f, R.string.import_apps),
+        FAVORITES(0.60f, 0.62f, R.string.import_favorites),
+        COLLECTIONS(0.62f, 0.72f, R.string.import_collections),
+        COLLECTION_PARENTS(0.72f, 0.78f, R.string.import_collection_parents),
+        OVERRIDES(0.78f, 0.85f, R.string.import_overrides),
+        RA_IDS(0.85f, 0.90f, R.string.import_ra_ids),
+        RECENTLY_PLAYED(0.90f, 0.95f, R.string.import_recently_played),
+        ORDERING(0.95f, 0.97f, R.string.import_ordering),
+        ARCHIVE(0.97f, 1.00f, R.string.import_archive),
+        DONE(1.00f, 1.00f, R.string.import_done),
     }
 
-    private fun announce(phase: Phase) = onProgress.update(phase.start, phase.label)
+    private fun announce(phase: Phase) = onProgress.update(phase.start, context.getString(phase.label))
 
     private fun progressWithin(phase: Phase, fraction: Float): Float =
         phase.start + (phase.end - phase.start) * fraction.coerceIn(0f, 1f)
@@ -173,7 +177,7 @@ class Importer(
                 }
             }
             val fraction = (index + 1f) / tags.size.coerceAtLeast(1)
-            onProgress.update(progressWithin(Phase.ROMS, fraction), "Cataloging $upperTag")
+            onProgress.update(progressWithin(Phase.ROMS, fraction), context.getString(R.string.import_cataloging_tag, upperTag))
         }
     }
 

@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.boot
 
+import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import dagger.Lazy
@@ -7,7 +8,9 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.components.ActivityComponent
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.scopes.ActivityScoped
+import dev.cannoli.scorza.R
 import dev.cannoli.scorza.config.CannoliPaths
 import dev.cannoli.scorza.di.IoScope
 import dev.cannoli.scorza.settings.SettingsRepository
@@ -22,6 +25,7 @@ object BootProviders {
     @Provides
     @ActivityScoped
     fun provideBootSequencer(
+        @ApplicationContext context: Context,
         permissionStatus: PermissionStatus,
         settings: SettingsRepository,
         setupCoordinator: SetupCoordinator,
@@ -29,6 +33,7 @@ object BootProviders {
         startStorageDependentHolder: StartStorageDependentHolder,
         @IoScope ioScope: CoroutineScope,
     ): BootSequencer = BootSequencer(
+        preparingLabel = context.getString(R.string.boot_preparing),
         permissionStatus = permissionStatus,
         isSetupResolved = {
             when {

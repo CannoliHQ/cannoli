@@ -259,10 +259,26 @@
     <string name="dialog_delete_confirm">Delete \"%1$s\"?</string>
     <string name="dialog_add_to_collection">Add to Collection</string>
     <string name="dialog_new_collection">New Collection</string>
+    <string name="value_empty_override">(empty override)</string>
     <string name="emulator_platform_setting">Platform Setting</string>
     <string name="emulator_platform_setting_named">Platform Setting (%1$s)</string>
     <string name="rename_error_directory">Failed to rename directory</string>
     <string name="rename_error_generic">Rename failed</string>
+    <string name="boot_preparing">Preparing</string>
+    <string name="boot_import_failed">Database import failed</string>
+    <string name="import_platforms">Cataloging platforms</string>
+    <string name="import_roms">Walking ROM directories</string>
+    <string name="import_apps">Cataloging apps</string>
+    <string name="import_favorites">Creating Favorites collection</string>
+    <string name="import_collections">Migrating collections</string>
+    <string name="import_collection_parents">Migrating collection hierarchy</string>
+    <string name="import_overrides">Migrating game overrides</string>
+    <string name="import_ra_ids">Migrating RetroAchievements IDs</string>
+    <string name="import_recently_played">Migrating recently played</string>
+    <string name="import_ordering">Migrating ordering</string>
+    <string name="import_archive">Archiving legacy files</string>
+    <string name="import_done">Done</string>
+    <string name="import_cataloging_tag">Cataloging %1$s</string>
     <string name="housekeeping_db_title">Updating your library</string>
     <string name="housekeeping_db_subtitle">Migrating legacy data</string>
     <string name="housekeeping_initial_title">Setting up your library</string>
@@ -335,6 +351,24 @@
     <string name="ra_logged_in_as">Logged in as</string>
     <string name="ra_login_failed">RA: Login failed</string>
     <string name="ra_login_invalid">Invalid username or password</string>
+    <string name="ra_status_online">Online</string>
+    <string name="ra_status_offline">Offline</string>
+    <string name="ra_status_offline_pending">Offline • %1$d Pending Sync</string>
+    <string name="ra_detect_not_logged_in">Not logged in</string>
+    <string name="ra_detect_identifying">Identifying game…</string>
+    <string name="ra_detect_not_recognized">Game not recognized</string>
+    <string name="ra_detect_no_achievements">No achievements published</string>
+    <string name="ra_detect_initializing">Initializing…</string>
+    <string name="ra_detect_mem_failed">Memory init failed</string>
+    <plurals name="ra_detect_active">
+        <item quantity="one">Active • %d achievement</item>
+        <item quantity="other">Active • %d achievements</item>
+    </plurals>
+    <plurals name="ra_sync_done">
+        <item quantity="one">%d Achievement Synced</item>
+        <item quantity="other">%d Achievements Synced</item>
+    </plurals>
+    <string name="ra_sync_partial">%1$d Synced, %2$d Failed</string>
     <string name="osd_state_saved">Saved to %1$s</string>
     <string name="osd_state_loaded">Loaded %1$s</string>
     <string name="osd_state_deleted">Deleted %1$s</string>
@@ -364,8 +398,6 @@
     <string name="ra_load_not_recognized">RA: Game not recognized</string>
     <string name="ra_load_no_achievements">RA: No achievements for this game</string>
     <string name="ra_load_offline_pending">RA: Offline (game data unavailable)</string>
-    <string name="ra_status_online">Online</string>
-    <string name="ra_status_offline">Offline</string>
 
     <!-- Credits -->
     <string name="credits_title">Credits and Licenses</string>

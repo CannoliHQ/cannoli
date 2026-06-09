@@ -3,6 +3,7 @@ package dev.cannoli.scorza.boot
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.scopes.ActivityScoped
+import dev.cannoli.scorza.R
 import dev.cannoli.scorza.config.CannoliPaths
 import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.db.CannoliDatabase
@@ -69,7 +70,7 @@ class BootInitializer @Inject constructor(
         val root = cannoliPaths.root
         val romDir = cannoliPaths.romDir
         val importPhase = if (hasLegacyData(root)) BootPhase.IMPORT else BootPhase.INITIAL_SCAN
-        onPhase(BootPhase.LIBRARY_REFRESH, 0f, "Preparing")
+        onPhase(BootPhase.LIBRARY_REFRESH, 0f, context.getString(R.string.boot_preparing))
 
         ScanLog.init(root.absolutePath)
         dev.cannoli.scorza.util.InputLog.init(root.absolutePath)
@@ -85,6 +86,7 @@ class BootInitializer @Inject constructor(
         ioScope.launch { dev.cannoli.scorza.util.DirectoryLayout.ensure(root, romDir, context.assets, platformConfig) }
 
         val importer = Importer(
+            context = context,
             cannoliRoot = root,
             romDirectory = romDir,
             db = cannoliDatabase,
@@ -100,7 +102,7 @@ class BootInitializer @Inject constructor(
 
         if (result is ImportResult.Failure) {
             ScanLog.write("ERROR import returned Failure: ${result.cause.message}")
-            return BootResult.Failure(result.cause.message ?: "Database import failed")
+            return BootResult.Failure(result.cause.message ?: context.getString(R.string.boot_import_failed))
         }
 
         ioScope.launch {

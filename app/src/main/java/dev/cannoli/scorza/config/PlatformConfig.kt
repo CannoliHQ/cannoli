@@ -20,7 +20,9 @@ class PlatformConfig(
     private val cannoliRootProvider: () -> File,
     private val assets: AssetManager,
     private val coreInfo: CoreInfoRepository? = null,
-    private val nativeLibDir: String? = null
+    private val nativeLibDir: String? = null,
+    // Resolved string passed in because this class has no Context; defaulted for tests.
+    private val emptyOverrideLabel: String = "(empty override)",
 ) {
 
     constructor(
@@ -200,7 +202,7 @@ class PlatformConfig(
                 val label = when {
                     ov.appPackage != null -> "Standalone: ${knownAppLabels[ov.appPackage] ?: ov.appPackage}"
                     ov.coreId.isNotEmpty() -> "${ov.runner ?: "RetroArch"}: ${getCoreDisplayName(ov.coreId)}"
-                    else -> "(empty override)"
+                    else -> emptyOverrideLabel
                 }
                 path to label
             }

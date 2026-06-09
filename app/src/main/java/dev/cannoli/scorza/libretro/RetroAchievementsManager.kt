@@ -4,6 +4,7 @@ import android.os.Handler
 import android.os.Looper
 import dev.cannoli.igm.AchievementInfo
 import dev.cannoli.scorza.BuildConfig
+import dev.cannoli.scorza.R
 import java.io.IOException
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
@@ -12,7 +13,7 @@ import java.util.Collections
 import java.util.concurrent.Executors
 
 class RetroAchievementsManager(
-    private val context: android.content.Context? = null,
+    private val context: android.content.Context,
     private val cacheDir: java.io.File? = null,
     private val onEvent: (type: Int, title: String, description: String, points: Int) -> Unit = { _, _, _, _ -> },
     private val onLogin: (success: Boolean, displayName: String, token: String?) -> Unit = { _, _, _ -> },
@@ -309,25 +310,25 @@ class RetroAchievementsManager(
     fun getStatus(): String {
         val offline = !isOnline || isOffline
         return when {
-            !offline -> "Online"
-            pendingSyncIds.isEmpty() -> "Offline"
-            else -> "Offline \u2022 ${pendingSyncIds.size} Pending Sync"
+            !offline -> context.getString(R.string.ra_status_online)
+            pendingSyncIds.isEmpty() -> context.getString(R.string.ra_status_offline)
+            else -> context.getString(R.string.ra_status_offline_pending, pendingSyncIds.size)
         }
     }
 
     val isMemoryInitialized: Boolean get() = nativeIsMemoryInitialized()
 
     fun getDetectionStatus(): String {
-        if (!nativeIsLoggedIn()) return "Not logged in"
+        if (!nativeIsLoggedIn()) return context.getString(R.string.ra_detect_not_logged_in)
         if (gameId <= 0) {
-            return if (isResolving) "Identifying game\u2026" else "Game not recognized"
+            return if (isResolving) context.getString(R.string.ra_detect_identifying) else context.getString(R.string.ra_detect_not_recognized)
         }
         val achievementCount = getAchievements().size
-        if (achievementCount == 0) return "No achievements published"
+        if (achievementCount == 0) return context.getString(R.string.ra_detect_no_achievements)
         if (!isMemoryInitialized) {
-            return if (isResolving) "Initializing\u2026" else "Memory init failed"
+            return if (isResolving) context.getString(R.string.ra_detect_initializing) else context.getString(R.string.ra_detect_mem_failed)
         }
-        return "Active \u2022 $achievementCount achievements"
+        return context.resources.getQuantityString(R.plurals.ra_detect_active, achievementCount, achievementCount)
     }
 
     @Suppress("unused")
@@ -385,9 +386,9 @@ class RetroAchievementsManager(
         val done = syncSuccessCount + syncFailCount
         if (done >= syncExpectedCount && syncExpectedCount > 0) {
             val msg = if (syncFailCount == 0) {
-                "$syncSuccessCount ${if (syncSuccessCount == 1) "Achievement" else "Achievements"} Synced"
+                context.resources.getQuantityString(R.plurals.ra_sync_done, syncSuccessCount, syncSuccessCount)
             } else {
-                "$syncSuccessCount Synced, $syncFailCount Failed"
+                context.getString(R.string.ra_sync_partial, syncSuccessCount, syncFailCount)
             }
             logger("RA sync complete: $msg")
             syncExpectedCount = 0
