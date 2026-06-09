@@ -176,7 +176,11 @@ class InputRouter @Inject constructor(
         },
         onBack = { nav.pop() },
         onWest = {
-            val newFilter = (filter + 1) % 4
+            // Skip filter buckets that are currently empty; All (0) is the always-available fallback.
+            var newFilter = (filter + 1) % 4
+            while (newFilter != 0 && emulatorMappingBuilder.filter(allMappings, newFilter).isEmpty()) {
+                newFilter = (newFilter + 1) % 4
+            }
             nav.replaceTop(copy(
                 mappings = emulatorMappingBuilder.filter(allMappings, newFilter),
                 filter = newFilter, selectedIndex = 0, scrollTarget = 0
