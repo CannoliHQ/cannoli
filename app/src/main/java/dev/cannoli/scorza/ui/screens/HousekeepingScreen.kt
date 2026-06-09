@@ -15,7 +15,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.annotation.StringRes
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.ui.effectivePortraitMarginDp
@@ -25,10 +27,10 @@ import dev.cannoli.ui.theme.GrayText
 import dev.cannoli.ui.theme.LocalCannoliTypography
 import dev.cannoli.ui.theme.Spacing
 
-enum class HousekeepingKind(val title: String, val subtitle: String? = null) {
-    DATABASE_MIGRATION("Updating your library", "Migrating legacy data"),
-    INITIAL_SCAN("Setting up your library"),
-    LIBRARY_REFRESH("Refreshing library"),
+enum class HousekeepingKind(@StringRes val titleRes: Int, @StringRes val subtitleRes: Int? = null) {
+    DATABASE_MIGRATION(R.string.housekeeping_db_title, R.string.housekeeping_db_subtitle),
+    INITIAL_SCAN(R.string.housekeeping_initial_title),
+    LIBRARY_REFRESH(R.string.housekeeping_refresh_title),
 }
 
 @Composable
@@ -57,15 +59,15 @@ fun HousekeepingScreen(
             Spacer(modifier = Modifier.height(Spacing.Xl))
 
             Text(
-                text = kind.title,
+                text = stringResource(kind.titleRes),
                 style = typo.bodyLarge,
                 color = GrayText
             )
 
-            if (kind.subtitle != null) {
+            if (kind.subtitleRes != null) {
                 Spacer(modifier = Modifier.height(Spacing.Xs))
                 Text(
-                    text = kind.subtitle,
+                    text = stringResource(kind.subtitleRes),
                     style = typo.bodyMedium,
                     color = GrayText
                 )

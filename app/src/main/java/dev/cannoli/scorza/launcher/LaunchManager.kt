@@ -238,7 +238,7 @@ class LaunchManager(
         if (launchState.launching) return null
         launchState.launching = true
         val launchFile = resolveLaunchFile(rom, extractArchives = false)
-            ?: return errorAndReset(DialogState.LaunchError("Failed to resolve launch file"))
+            ?: return errorAndReset(DialogState.LaunchError(context.getString(dev.cannoli.scorza.R.string.launch_error_resolve_file)))
 
         val gameOverride = platformConfig.getGameOverride(rom.path.absolutePath)
         if (gameOverride?.appPackage != null) {
@@ -274,7 +274,7 @@ class LaunchManager(
                             debugLog("RetroArch target: core=$core runnerPref=$runnerPref embeddedCorePath=$embeddedCorePath")
                             if (embeddedCorePath != null) {
                                 val embeddedFile = resolveLaunchFile(rom, extractArchives = true)
-                                    ?: return errorAndReset(DialogState.LaunchError("Failed to extract archive"))
+                                    ?: return errorAndReset(DialogState.LaunchError(context.getString(dev.cannoli.scorza.R.string.launch_error_extract)))
                                 return launchEmbedded(rom.copy(path = embeddedFile), embeddedCorePath, originalRomPath = rom.path.absolutePath)
                             }
                         }
@@ -329,7 +329,7 @@ class LaunchManager(
             }
             is LaunchTarget.Embedded -> {
                 val embeddedFile = resolveLaunchFile(rom, extractArchives = true)
-                    ?: return errorAndReset(DialogState.LaunchError("Failed to extract archive"))
+                    ?: return errorAndReset(DialogState.LaunchError(context.getString(dev.cannoli.scorza.R.string.launch_error_extract)))
                 return launchEmbedded(rom.copy(path = embeddedFile), target.corePath, originalRomPath = rom.path.absolutePath)
             }
         }
@@ -458,7 +458,7 @@ class LaunchManager(
             context.startActivity(intent, opts)
             null
         } catch (t: Throwable) {
-            errorAndReset(DialogState.LaunchError("Failed to launch game"))
+            errorAndReset(DialogState.LaunchError(context.getString(dev.cannoli.scorza.R.string.launch_error_generic)))
         }
     }
 

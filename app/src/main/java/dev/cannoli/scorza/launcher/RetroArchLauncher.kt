@@ -47,8 +47,8 @@ class RetroArchLauncher(
 
         when (checkProtocol(readInstalledProtocol(pkg), RICOTTA_PROTOCOL_VERSION)) {
             ProtocolVerdict.Ok -> Unit
-            is ProtocolVerdict.UpdateRicotta -> return LaunchResult.Error("Update RicottaArch to continue")
-            is ProtocolVerdict.UpdateCannoli -> return LaunchResult.Error("Update Cannoli to continue")
+            is ProtocolVerdict.UpdateRicotta -> return LaunchResult.Error(context.getString(dev.cannoli.scorza.R.string.launch_error_update_ricotta))
+            is ProtocolVerdict.UpdateCannoli -> return LaunchResult.Error(context.getString(dev.cannoli.scorza.R.string.launch_error_update_cannoli))
         }
 
         val params = RicottaLaunchParams(

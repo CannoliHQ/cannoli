@@ -340,14 +340,16 @@ class MainActivity : ComponentActivity(), ActivityActions {
                 val port = portRouter.portFor(device.androidDeviceId)
                 if (port != null) {
                     val name = portRouter.mappingForPort(port)?.displayName?.takeIf { it.isNotEmpty() }
-                        ?: device.name.ifEmpty { "Controller" }
-                    osdController.show("P${port + 1}: $name")
+                        ?: device.name.ifEmpty { getString(R.string.device_controller) }
+                    osdController.show(getString(R.string.osd_controller_connected, port + 1, name))
                 }
             }
         }
         controllerBridge.onDeviceRemoved = { departed ->
-            val portLabel = departed.port?.let { "P${it + 1}: " } ?: ""
-            osdController.show("$portLabel${departed.displayName} disconnected")
+            val msg = departed.port?.let {
+                getString(R.string.osd_controller_disconnected_port, it + 1, departed.displayName)
+            } ?: getString(R.string.osd_controller_disconnected, departed.displayName)
+            osdController.show(msg)
         }
     }
 
@@ -647,7 +649,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
                     settingsViewModel.get().raPassword = ""
                     nav.dialogState.value = DialogState.RAAccount(username = nameOrError)
                 } else {
-                    nav.dialogState.value = DialogState.RALoggingIn(message = "Invalid username or password")
+                    nav.dialogState.value = DialogState.RALoggingIn(message = getString(R.string.ra_login_invalid))
                 }
                 loginPollHandler.removeCallbacks(loginPollRunnable)
                 loginManager?.destroy()

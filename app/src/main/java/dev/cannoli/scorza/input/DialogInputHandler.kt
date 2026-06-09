@@ -775,7 +775,7 @@ class DialogInputHandler @Inject constructor(
                     unresponsivePackages = installedCoreService.configuredUnresponsive())
                 val platformCoreId = platformResolver.getCoreMapping(tag)
                 val platformCoreName = options.firstOrNull { it.coreId == platformCoreId }?.displayName ?: platformCoreId
-                val defaultLabel = if (platformCoreName.isNotEmpty()) "Platform Setting ($platformCoreName)" else "Platform Setting"
+                val defaultLabel = if (platformCoreName.isNotEmpty()) context.getString(dev.cannoli.scorza.R.string.emulator_platform_setting_named, platformCoreName) else context.getString(dev.cannoli.scorza.R.string.emulator_platform_setting)
                 val defaultOption = EmulatorPickerOption("", defaultLabel, "")
                 val allOptions = listOf(defaultOption) + options
                 val override = platformResolver.getGameOverride(rom.path.absolutePath)
@@ -1304,7 +1304,7 @@ class DialogInputHandler @Inject constructor(
                     }
                 } else {
                     withContext(Dispatchers.Main) {
-                        nav.dialogState.value = DialogState.RenameResult(false, "Failed to rename directory")
+                        nav.dialogState.value = DialogState.RenameResult(false, context.getString(dev.cannoli.scorza.R.string.rename_error_directory))
                     }
                 }
                 scanner.markLauncherMutation(tag)
@@ -1322,7 +1322,7 @@ class DialogInputHandler @Inject constructor(
                     }
                 } else {
                     withContext(Dispatchers.Main) {
-                        nav.dialogState.value = DialogState.RenameResult(false, result.error ?: "Rename failed")
+                        nav.dialogState.value = DialogState.RenameResult(false, result.error ?: context.getString(dev.cannoli.scorza.R.string.rename_error_generic))
                     }
                 }
             }
@@ -1363,7 +1363,7 @@ class DialogInputHandler @Inject constructor(
                     unresponsivePackages = installedCoreService.configuredUnresponsive())
                 val platformCoreId = platformResolver.getCoreMapping(tag)
                 val platformCoreName = options.firstOrNull { it.coreId == platformCoreId }?.displayName ?: platformCoreId
-                val defaultLabel = if (platformCoreName.isNotEmpty()) "Platform Setting ($platformCoreName)" else "Platform Setting"
+                val defaultLabel = if (platformCoreName.isNotEmpty()) context.getString(dev.cannoli.scorza.R.string.emulator_platform_setting_named, platformCoreName) else context.getString(dev.cannoli.scorza.R.string.emulator_platform_setting)
                 val defaultOption = EmulatorPickerOption("", defaultLabel, "")
                 val allOptions = listOf(defaultOption) + options
                 val override = platformResolver.getGameOverride(rom.path.absolutePath)
