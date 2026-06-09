@@ -16,9 +16,6 @@ import dev.cannoli.scorza.input.screen.SettingsInputHandler
 import dev.cannoli.scorza.input.screen.OnboardingInputHandler
 import dev.cannoli.scorza.input.screen.SaveStatePickerInputHandler
 import dev.cannoli.scorza.input.screen.SystemListInputHandler
-import dev.cannoli.scorza.R
-import dev.cannoli.scorza.di.IoScope
-import dev.cannoli.scorza.launcher.CoreDownloadService
 import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.LaunchManager
 import dev.cannoli.scorza.navigation.LauncherScreen
@@ -27,11 +24,6 @@ import dev.cannoli.scorza.settings.GlobalOverridesManager
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.input.runtime.InputDispatcher
-import dev.cannoli.ui.components.OsdController
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @ActivityScoped
@@ -57,10 +49,8 @@ class InputRouter @Inject constructor(
     private val bindingController: BindingController,
     private val screenInputRegistry: dev.cannoli.scorza.input.runtime.ScreenInputRegistry,
     @ApplicationContext private val context: Context,
-    @IoScope private val ioScope: CoroutineScope,
     private val settings: SettingsRepository,
-    private val osdController: OsdController,
-    private val coreDownloadService: CoreDownloadService,
+    private val coreInstaller: CoreInstaller,
 ) {
     var unregisterCoreQueryReceiver: () -> Unit = {}
 
@@ -360,31 +350,17 @@ class InputRouter @Inject constructor(
         val pkg = settings.retroArchPackage
         val label = InstalledCoreService.getPackageLabel(pkg)
         val coreName = platformConfig.getCoreDisplayName(coreId)
-        osdController.show(
-            context.getString(R.string.osd_downloading_core, coreName),
-            durationMs = 120_000L,
-        )
-        ioScope.launch {
-            val result = coreDownloadService.downloadCore(pkg, coreId)
-            withContext(Dispatchers.Main) {
-                if (result.ok) {
-                    installedCoreService.markInstalled(pkg, coreId)
-                    platformConfig.setCoreMapping(tag, coreId, label)
-                    platformConfig.saveCoreMappings()
-                    osdController.show(context.getString(R.string.osd_core_downloaded, coreName))
-                    val top = nav.currentScreen as? LauncherScreen.PlatformMapping
-                    if (top != null && top.tag == tag) {
-                        nav.replaceTop(emulatorMappingBuilder.buildPlatformMapping(
-                            tag, platformName, showAll = showAll,
-                            selectedIndex = selectedIndex, scrollTarget = scrollTarget,
-                        ))
-                    }
-                    refreshEmulatorMappingOnStack()
-                } else {
-                    val err = result.error ?: context.getString(R.string.osd_core_download_unknown_error)
-                    osdController.show(context.getString(R.string.osd_core_download_failed, err))
-                }
+        coreInstaller.downloadCore(pkg, coreId, coreName) {
+            platformConfig.setCoreMapping(tag, coreId, label)
+            platformConfig.saveCoreMappings()
+            val top = nav.currentScreen as? LauncherScreen.PlatformMapping
+            if (top != null && top.tag == tag) {
+                nav.replaceTop(emulatorMappingBuilder.buildPlatformMapping(
+                    tag, platformName, showAll = showAll,
+                    selectedIndex = selectedIndex, scrollTarget = scrollTarget,
+                ))
             }
+            refreshEmulatorMappingOnStack()
         }
     }
 
