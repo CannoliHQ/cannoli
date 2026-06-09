@@ -1,6 +1,9 @@
 package dev.cannoli.scorza.ui.screens
 
+import dev.cannoli.scorza.model.Rom
 import dev.cannoli.ui.ELLIPSIS
+
+data class CoreDownloadRetry(val coreId: String, val packageName: String, val rom: Rom)
 
 interface KeyboardInputState {
     val currentName: String
@@ -37,7 +40,11 @@ data class ColorEntry(val key: String, @androidx.annotation.StringRes val labelR
 
 sealed interface DialogState {
     data object None : DialogState
-    data class MissingCore(val coreName: String) : DialogState
+    data class MissingCore(
+        val coreName: String,
+        val packageLabel: String? = null,
+        val retry: CoreDownloadRetry? = null,
+    ) : DialogState
     data class MissingApp(val appName: String, val packageName: String) : DialogState
     data class LaunchError(val message: String) : DialogState
     data class ContextMenu(val gameName: String, val selectedOption: Int = 0, val options: List<String>) : DialogState

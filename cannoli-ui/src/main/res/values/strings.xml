@@ -259,7 +259,9 @@
     <string name="dialog_delete_confirm">Delete \"%1$s\"?</string>
     <string name="dialog_add_to_collection">Add to Collection</string>
     <string name="dialog_new_collection">New Collection</string>
-    <string name="dialog_missing_core">%1$s is not available.\nNo bundled or RetroArch core found.</string>
+    <string name="dialog_missing_core_pkg">%1$s isn\'t installed in %2$s.</string>
+    <string name="dialog_missing_core_plain">%1$s isn\'t installed.</string>
+    <string name="dialog_missing_core_download_hint">Download it now, or pick another in Emulator Mapping.</string>
     <string name="dialog_missing_app">%1$s is not installed.</string>
     <string name="dialog_launch_error">%1$s</string>
     <string name="dialog_missing_bios_header">At least one BIOS file is required in %1$s:</string>

@@ -295,7 +295,11 @@ class LaunchManager(
                             && raPackage !in installedCoreService.unresponsivePackages
                             && !installedCoreService.hasCoreInPackage(core, raPackage)) {
                             val label = InstalledCoreService.getPackageLabel(raPackage)
-                            return errorAndReset(DialogState.MissingCore("$core not found in $label"))
+                            val coreName = platformConfig.getCoreDisplayName(core)
+                            val retry = if (RetroArchLauncher.isRicotta(raPackage)) {
+                                dev.cannoli.scorza.ui.screens.CoreDownloadRetry(core, raPackage, rom)
+                            } else null
+                            return errorAndReset(DialogState.MissingCore(coreName, label, retry))
                         }
                         if (RetroArchLauncher.isRicotta(raPackage)) {
                             syncRetroArchConfig(File(settings.sdCardRoot))

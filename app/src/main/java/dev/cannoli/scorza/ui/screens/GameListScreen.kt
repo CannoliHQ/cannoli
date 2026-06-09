@@ -319,7 +319,12 @@ fun GameListScreen(
     }
 
     when (dialogState) {
-        is DialogState.MissingCore -> MissingCoreDialog(dialogState.coreName)
+        is DialogState.MissingCore -> MissingCoreDialog(
+            coreName = dialogState.coreName,
+            packageLabel = dialogState.packageLabel,
+            downloadable = dialogState.retry != null,
+            buttonStyle = buttonStyle
+        )
         is DialogState.MissingApp -> MissingAppDialog(
             appName = dialogState.appName,
             showRemove = state.platformTag == "tools" || state.platformTag == "ports"
