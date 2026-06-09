@@ -55,8 +55,11 @@ class RomDirectoryWatcher @Inject constructor(
         debounceJobs.clear()
     }
 
+    // String-path constructor (deprecated but available since API 1); the File-based
+    // overload requires API 29 and would crash on minSdk 28.
+    @Suppress("DEPRECATION")
     private fun startRootObserver(romDir: File) {
-        val obs = object : FileObserver(romDir, rootMask) {
+        val obs = object : FileObserver(romDir.absolutePath, rootMask) {
             override fun onEvent(event: Int, path: String?) {
                 val name = path ?: return
                 val child = File(romDir, name)
@@ -77,10 +80,11 @@ class RomDirectoryWatcher @Inject constructor(
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun startPlatformObserver(romDir: File, tag: String) {
         val dir = File(romDir, tag)
         if (!dir.isDirectory) return
-        val obs = object : FileObserver(dir, perPlatformMask) {
+        val obs = object : FileObserver(dir.absolutePath, perPlatformMask) {
             override fun onEvent(event: Int, path: String?) {
                 scheduleScan(tag)
             }
