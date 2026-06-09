@@ -261,6 +261,7 @@
     <string name="dialog_new_collection">New Collection</string>
     <string name="dialog_missing_core_pkg">%1$s isn\'t installed in %2$s.</string>
     <string name="dialog_missing_core_plain">%1$s isn\'t installed.</string>
+    <string name="dialog_missing_core_hint">Set it up in Emulator Mapping.</string>
     <string name="dialog_missing_app">%1$s is not installed.</string>
     <string name="dialog_launch_error">%1$s</string>
     <string name="dialog_missing_bios_header">At least one BIOS file is required in %1$s:</string>

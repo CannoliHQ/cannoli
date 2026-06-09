@@ -74,7 +74,6 @@ class DialogInputHandler @Inject constructor(
     private val activityActions: ActivityActions,
     private val controllersViewModel: dev.cannoli.scorza.ui.viewmodel.ControllersViewModel,
     private val emulatorMappingBuilder: EmulatorMappingBuilder,
-    private val coreInstaller: CoreInstaller,
 ) : DialogPrecedence {
     private val selectHoldHandler = Handler(Looper.getMainLooper())
     private val selectHoldRunnable = Runnable {
@@ -327,15 +326,6 @@ class DialogInputHandler @Inject constructor(
                         if (ds.currentHex.length < 6) {
                             nav.dialogState.value = ds.copy(currentHex = ds.currentHex + key)
                         }
-                    }
-                }
-            }
-            is DialogState.MissingCore -> {
-                val retry = ds.retry
-                if (retry != null) {
-                    nav.dialogState.value = DialogState.None
-                    coreInstaller.downloadCore(retry.packageName, retry.coreId, ds.coreName) {
-                        launchManager.launchRom(retry.rom)?.let { nav.dialogState.value = it }
                     }
                 }
             }
