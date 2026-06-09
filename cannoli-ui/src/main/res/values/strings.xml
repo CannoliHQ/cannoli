@@ -264,6 +264,10 @@
     <string name="emulator_platform_setting_named">Platform Setting (%1$s)</string>
     <string name="rename_error_directory">Failed to rename directory</string>
     <string name="rename_error_generic">Rename failed</string>
+    <string name="rename_cannot_resolve_dir">Couldn\'t find the game folder</string>
+    <string name="rename_already_exists">A game with that name already exists</string>
+    <string name="rename_backup_failed">Couldn\'t back up save data</string>
+    <string name="rename_relocate_failed">Couldn\'t move save data</string>
     <string name="boot_preparing">Preparing</string>
     <string name="boot_import_failed">Database import failed</string>
     <string name="import_platforms">Cataloging platforms</string>

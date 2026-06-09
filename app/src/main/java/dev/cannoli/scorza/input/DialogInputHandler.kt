@@ -1321,8 +1321,15 @@ class DialogInputHandler @Inject constructor(
                         romsRepository.updateRomPath(rom.id, newRelative)
                     }
                 } else {
+                    val msg = when (result.error) {
+                        AtomicRename.RenameError.CANNOT_RESOLVE_DIR -> context.getString(dev.cannoli.scorza.R.string.rename_cannot_resolve_dir)
+                        AtomicRename.RenameError.ALREADY_EXISTS -> context.getString(dev.cannoli.scorza.R.string.rename_already_exists)
+                        AtomicRename.RenameError.BACKUP_FAILED -> context.getString(dev.cannoli.scorza.R.string.rename_backup_failed)
+                        AtomicRename.RenameError.RELOCATE_FAILED -> context.getString(dev.cannoli.scorza.R.string.rename_relocate_failed)
+                        AtomicRename.RenameError.RENAME_FAILED, null -> context.getString(dev.cannoli.scorza.R.string.rename_error_generic)
+                    }
                     withContext(Dispatchers.Main) {
-                        nav.dialogState.value = DialogState.RenameResult(false, result.error ?: context.getString(dev.cannoli.scorza.R.string.rename_error_generic))
+                        nav.dialogState.value = DialogState.RenameResult(false, msg)
                     }
                 }
             }
