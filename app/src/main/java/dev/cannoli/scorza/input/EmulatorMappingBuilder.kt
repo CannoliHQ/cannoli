@@ -82,7 +82,12 @@ class EmulatorMappingBuilder @Inject constructor(
                     EmulatorSource.Standalone -> EmulatorSource.Standalone.displayName.uppercase()
                 }
                 section.add(MappingItem.SectionHeader(header))
-                options.forEach { section.add(MappingItem.EmulatorOption(it, isCurrent(it))) }
+                options.forEach {
+                    section.add(MappingItem.EmulatorOption(
+                        it, isCurrent(it),
+                        downloadable = isDownloadable(source, it.available, settings.retroArchPackage),
+                    ))
+                }
             }
             return section
         }
@@ -149,5 +154,10 @@ class EmulatorMappingBuilder @Inject constructor(
             runnerLabel = runner,
             firmware = firmware,
         )
+    }
+
+    companion object {
+        fun isDownloadable(source: EmulatorSource, available: Boolean, raPackage: String): Boolean =
+            source == EmulatorSource.RetroArch && !available && RetroArchLauncher.isRicotta(raPackage)
     }
 }

@@ -21,7 +21,7 @@ sealed interface MappingItem {
     val isSelectable: Boolean
     data class SectionHeader(val label: String) : MappingItem { override val isSelectable = false }
     data class Divider(val id: Int = 0) : MappingItem { override val isSelectable = false }
-    data class EmulatorOption(val option: EmulatorPickerOption, val isCurrent: Boolean) : MappingItem {
+    data class EmulatorOption(val option: EmulatorPickerOption, val isCurrent: Boolean, val downloadable: Boolean = false) : MappingItem {
         override val isSelectable = true
     }
     data class Action(
