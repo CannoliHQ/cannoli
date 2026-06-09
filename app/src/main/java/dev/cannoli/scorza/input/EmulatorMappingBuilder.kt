@@ -91,19 +91,19 @@ class EmulatorMappingBuilder @Inject constructor(
             val firmware = platformConfig.getFirmwareStatus(currentCoreId, biosDir)
             val requiredMissing = firmware.count { (entry, present) -> !entry.optional && !present }
             val warning = requiredMissing > 0
-            val status = if (warning) "$requiredMissing required missing" else ""
-            items.add(MappingItem.Action(MappingActionKind.BIOS, "BIOS", status, warning))
+            val status = if (warning) context.getString(dev.cannoli.scorza.R.string.mapping_required_missing, requiredMissing) else ""
+            items.add(MappingItem.Action(MappingActionKind.BIOS, context.getString(dev.cannoli.scorza.R.string.mapping_action_bios), status, warning))
         }
 
         val overridesCount = platformConfig.getPlatformOverrides(tag).size
         val overridesLabel = context.resources.getQuantityString(
             dev.cannoli.scorza.R.plurals.override_game_count, overridesCount, overridesCount,
         )
-        items.add(MappingItem.Action(MappingActionKind.OVERRIDES, "Per-game overrides", overridesLabel))
+        items.add(MappingItem.Action(MappingActionKind.OVERRIDES, context.getString(dev.cannoli.scorza.R.string.mapping_action_overrides), overridesLabel))
 
         val resettable = platformConfig.hasUserMapping(tag)
         if (resettable) {
-            items.add(MappingItem.Action(MappingActionKind.RESET, "Reset to default"))
+            items.add(MappingItem.Action(MappingActionKind.RESET, context.getString(dev.cannoli.scorza.R.string.mapping_action_reset)))
         }
 
         val selectableCount = items.count { it.isSelectable }

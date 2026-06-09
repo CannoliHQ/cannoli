@@ -394,6 +394,14 @@
     <string name="value_no_options">No options available.</string>
     <string name="value_no_overrides">No per-game overrides.</string>
     <string name="value_no_firmware">No firmware required for this core.</string>
+    <string name="mapping_action_bios">BIOS</string>
+    <string name="mapping_action_overrides">Per-game overrides</string>
+    <string name="mapping_action_reset">Reset to default</string>
+    <string name="mapping_required_missing">%d required missing</string>
+    <string name="bios_required">REQUIRED</string>
+    <string name="bios_optional">OPTIONAL</string>
+    <string name="bios_present">Present</string>
+    <string name="bios_missing">Missing</string>
     <plurals name="override_game_count">
         <item quantity="one">%d game</item>
         <item quantity="other">%d games</item>

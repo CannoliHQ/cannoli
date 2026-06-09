@@ -644,8 +644,8 @@ fun AppNavGraph(
                                 modifier = Modifier.weight(1f)
                             ) { _, fw, _ ->
                                 val required = !fw.entry.optional
-                                val tag = if (required) "REQUIRED" else "OPTIONAL"
-                                val statusText = if (fw.present) "Present" else "Missing"
+                                val tag = stringResource(if (required) R.string.bios_required else R.string.bios_optional)
+                                val statusText = stringResource(if (fw.present) R.string.bios_present else R.string.bios_missing)
                                 val requiredMissing = required && !fw.present
                                 val rowColor = if (!fw.present && !required) cannoliColors.text.copy(alpha = 0.5f) else cannoliColors.text
                                 Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = listVerticalPadding)) {
