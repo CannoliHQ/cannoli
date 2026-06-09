@@ -247,7 +247,7 @@ class SettingsInputHandler @Inject constructor(
     private fun queryInstalledCores() {
         val selectedPkg = settings.retroArchPackage
         val pkgLabel = InstalledCoreService.getPackageLabel(selectedPkg)
-        nav.push(LauncherScreen.InstalledCores(title = "$pkgLabel Installed Cores"))
+        nav.push(LauncherScreen.InstalledCores(title = context.getString(dev.cannoli.scorza.R.string.title_installed_cores, pkgLabel)))
         ioScope.launch {
             installedCoreService.queryAllPackages()
             val cores = (installedCoreService.installedCores[selectedPkg] ?: emptySet())

@@ -398,6 +398,8 @@
     <string name="mapping_action_overrides">Per-game overrides</string>
     <string name="mapping_action_reset">Reset to default</string>
     <string name="mapping_required_missing">%d required missing</string>
+    <string name="title_platform_mapping">%s Mapping</string>
+    <string name="title_platform_bios">%s BIOS</string>
     <string name="bios_required">REQUIRED</string>
     <string name="bios_optional">OPTIONAL</string>
     <string name="bios_present">Present</string>
@@ -405,6 +407,11 @@
     <plurals name="override_game_count">
         <item quantity="one">%d game</item>
         <item quantity="other">%d games</item>
+    </plurals>
+    <string name="bulk_selected">%d Selected</string>
+    <plurals name="bulk_delete_count">
+        <item quantity="one">%d item</item>
+        <item quantity="other">%d items</item>
     </plurals>
     <string name="value_no_cores_found">No Cores Found</string>
     <string name="label_clear_override">CLEAR</string>

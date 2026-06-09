@@ -1,11 +1,13 @@
 package dev.cannoli.scorza.ui.viewmodel
 
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import dev.cannoli.scorza.BuildConfig
 import androidx.annotation.StringRes
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.scopes.ActivityScoped
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.db.CollectionsRepository
@@ -31,6 +33,7 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     private val settings: SettingsRepository,
     private val appFonts: AppFonts,
+    @ApplicationContext private val context: Context,
 ) {
     private var cannoliRoot: java.io.File? = null
     private var packageManager: PackageManager? = null
@@ -769,7 +772,7 @@ class SettingsViewModel @Inject constructor(
             add(SettingsItem("ra_package", R.string.setting_ra_package, valueText = if (pkgs.isEmpty()) null else settings.retroArchPackage, valueRes = if (pkgs.isEmpty()) R.string.value_none_installed else null, canCycle = pkgs.size > 1))
             if (pkgs.isNotEmpty()) {
                 val pkgLabel = InstalledCoreService.getPackageLabel(settings.retroArchPackage)
-                add(SettingsItem("installed_cores", R.string.setting_installed_cores, labelText = "$pkgLabel Installed Cores", isEditable = true))
+                add(SettingsItem("installed_cores", R.string.setting_installed_cores, labelText = context.getString(R.string.setting_installed_cores, pkgLabel), isEditable = true))
             }
             add(SettingsItem("always_save_on_quit", R.string.setting_always_save_on_quit, valueRes = onOff(settings.alwaysSaveOnQuit)))
         }

@@ -518,7 +518,7 @@ fun AppNavGraph(
                 ListDialogScreen(
                     backgroundImagePath = appSettings.backgroundImagePath,
                     backgroundTint = appSettings.backgroundTint,
-                    title = "${currentScreen.platformName} Mapping",
+                    title = stringResource(R.string.title_platform_mapping, currentScreen.platformName),
                     listFontSize = listFontSize,
                     listLineHeight = listLineHeight,
                     fullWidth = true,
@@ -613,7 +613,7 @@ fun AppNavGraph(
                 ListDialogScreen(
                     backgroundImagePath = appSettings.backgroundImagePath,
                     backgroundTint = appSettings.backgroundTint,
-                    title = "${currentScreen.platformName} BIOS",
+                    title = stringResource(R.string.title_platform_bios, currentScreen.platformName),
                     listFontSize = listFontSize,
                     listLineHeight = listLineHeight,
                     fullWidth = true,
