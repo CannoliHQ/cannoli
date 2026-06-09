@@ -89,6 +89,13 @@ class InstalledCoreService @Inject constructor(
     fun hasCoreInPackage(coreId: String, pkg: String): Boolean =
         installedCores[pkg]?.contains(coreId) == true
 
+    @Synchronized
+    fun markInstalled(pkg: String, coreId: String) {
+        val existing = installedCores[pkg].orEmpty()
+        installedCores = installedCores + (pkg to existing + coreId)
+        unresponsivePackages = unresponsivePackages - pkg
+    }
+
     fun configuredCores(): Map<String, Set<String>> {
         val pkg = settings.retroArchPackage
         return installedCores.filterKeys { it == pkg }
