@@ -335,7 +335,7 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun diskLabel(index: Int): String =
-        diskLabels.getOrNull(index)?.takeIf { it.isNotEmpty() } ?: "Disc ${index + 1}"
+        diskLabels.getOrNull(index)?.takeIf { it.isNotEmpty() } ?: getString(R.string.osd_disc_fallback, index + 1)
 
     @Volatile private var raHasAchievements = false
 
@@ -359,7 +359,7 @@ class LibretroActivity : ComponentActivity() {
         raHasAchievements,
         guideFiles.isNotEmpty(),
         hasReassign = nonExcludedConnectedCount() > 1,
-        quitLabel = if (alwaysSaveOnQuit) getString(R.string.igm_save_and_quit) else "Quit"
+        quitLabel = if (alwaysSaveOnQuit) getString(R.string.igm_save_and_quit) else getString(R.string.igm_quit)
     )
 
     private fun nonExcludedConnectedCount(): Int =
@@ -1382,14 +1382,14 @@ class LibretroActivity : ComponentActivity() {
                 ShortcutAction.SAVE_STATE -> {
                     if (stateBasePath.isNotEmpty()) {
                         slotManager.saveState(runner, currentSlot)
-                        showOsd("Saved to ${currentSlot.label}", OsdPosition.BottomCenter)
+                        showOsd(getString(R.string.osd_state_saved, currentSlot.label), OsdPosition.BottomCenter)
                     }
                 }
                 ShortcutAction.LOAD_STATE -> {
                     if (stateBasePath.isNotEmpty() && slotManager.stateExists(currentSlot)) {
                         slotManager.loadState(runner, currentSlot)
                         sessionLog.log("RA state load (shortcut): slot=${currentSlot.label}")
-                        showOsd("Loaded ${currentSlot.label}", OsdPosition.BottomCenter)
+                        showOsd(getString(R.string.osd_state_loaded, currentSlot.label), OsdPosition.BottomCenter)
                     }
                 }
                 ShortcutAction.RESET_GAME -> {
@@ -1400,7 +1400,7 @@ class LibretroActivity : ComponentActivity() {
                         startUndoTimer(30_000)
                     }
                     runner.reset()
-                    showOsd("Reset", OsdPosition.BottomCenter)
+                    showOsd(getString(R.string.osd_reset), OsdPosition.BottomCenter)
                 }
                 ShortcutAction.SAVE_AND_QUIT -> {
                     performSaveAndQuit()
@@ -1413,12 +1413,12 @@ class LibretroActivity : ComponentActivity() {
                     val modes = ScalingMode.entries
                     scalingMode = modes[(scalingMode.ordinal + 1) % modes.size]
                     renderer.scalingMode = scalingMode
-                    showOsd("Scaling: ${scalingLabel()}", OsdPosition.BottomCenter)
+                    showOsd(getString(R.string.osd_scaling, scalingLabel()), OsdPosition.BottomCenter)
                 }
                 ShortcutAction.CYCLE_EFFECT -> {
                     cycleShader(1)
                     val label = if (shaderPreset.isEmpty()) "Off" else File(shaderPreset).nameWithoutExtension
-                    showOsd("Shader: $label", OsdPosition.BottomCenter)
+                    showOsd(getString(R.string.osd_shader, label), OsdPosition.BottomCenter)
                 }
                 ShortcutAction.TOGGLE_FF -> {
                     setFastForward(!fastForwarding)
@@ -1541,7 +1541,7 @@ class LibretroActivity : ComponentActivity() {
         val ok = runOnGlThread(200L, false) { runner.setDiskIndex(newIndex) }
         if (ok) {
             currentDiskIndex = newIndex
-            showOsd("Switched to ${diskLabel(currentDiskIndex)}", OsdPosition.TopCenter)
+            showOsd(getString(R.string.osd_switched_to, diskLabel(currentDiskIndex)), OsdPosition.TopCenter)
         }
     }
 
@@ -1551,7 +1551,7 @@ class LibretroActivity : ComponentActivity() {
                 "btn_north" -> {
                     slotManager.deleteState(currentSlot)
                     refreshSlotInfo()
-                    showOsd("Deleted ${currentSlot.label}", OsdPosition.BottomCenter)
+                    showOsd(getString(R.string.osd_state_deleted, currentSlot.label), OsdPosition.BottomCenter)
                     replaceTop(screen.copy(confirmDeleteSlot = false))
                     true
                 }
@@ -1623,7 +1623,7 @@ class LibretroActivity : ComponentActivity() {
                     }
                     slotManager.saveState(runner, slot)
                     refreshSlotInfo()
-                    showOsd("Saved to ${slot.label}", OsdPosition.BottomCenter)
+                    showOsd(getString(R.string.osd_state_saved, slot.label), OsdPosition.BottomCenter)
                 }
                 closeAll()
             }
@@ -1636,7 +1636,7 @@ class LibretroActivity : ComponentActivity() {
                     startUndoTimer()
                     slotManager.loadState(runner, slot)
                     sessionLog.log("RA state load (IGM): slot=${slot.label}")
-                    showOsd("Loaded ${slot.label}", OsdPosition.BottomCenter)
+                    showOsd(getString(R.string.osd_state_loaded, slot.label), OsdPosition.BottomCenter)
                 }
                 closeAll()
             }
@@ -1667,7 +1667,7 @@ class LibretroActivity : ComponentActivity() {
                 runner.reset()
                 sessionLog.log("RA reset (IGM game reset)")
                 raManager?.reset()
-                showOsd("Reset", OsdPosition.BottomCenter)
+                showOsd(getString(R.string.osd_reset), OsdPosition.BottomCenter)
                 closeAll()
             }
             IgmMenuAction.ACHIEVEMENTS -> {
@@ -1742,11 +1742,11 @@ class LibretroActivity : ComponentActivity() {
     // --- Frontend ---
 
     private fun scalingLabel() = when (scalingMode) {
-        ScalingMode.CORE_REPORTED -> "Core Reported"
-        ScalingMode.INTEGER -> "Integer"
-        ScalingMode.INTEGER_OVERSCALE -> "Integer Overscale"
-        ScalingMode.ASPECT_SCREEN -> "Aspect Screen"
-        ScalingMode.FULLSCREEN -> "Fullscreen"
+        ScalingMode.CORE_REPORTED -> getString(R.string.scaling_core_reported)
+        ScalingMode.INTEGER -> getString(R.string.scaling_integer)
+        ScalingMode.INTEGER_OVERSCALE -> getString(R.string.scaling_integer_overscale)
+        ScalingMode.ASPECT_SCREEN -> getString(R.string.scaling_aspect_screen)
+        ScalingMode.FULLSCREEN -> getString(R.string.scaling_fullscreen)
     }
 
     private fun sharpnessLabel() = when (sharpness) {
@@ -2404,8 +2404,8 @@ class LibretroActivity : ComponentActivity() {
             }
             "btn_south" -> {
                 when (screen.selectedIndex) {
-                    0 -> { saveToPlatform(); showOsd("Saved for $platformName", OsdPosition.BottomCenter) }
-                    1 -> { saveToGame(); showOsd("Saved for this game", OsdPosition.BottomCenter) }
+                    0 -> { saveToPlatform(); showOsd(getString(R.string.osd_saved_for, platformName), OsdPosition.BottomCenter) }
+                    1 -> { saveToGame(); showOsd(getString(R.string.osd_saved_for_game), OsdPosition.BottomCenter) }
                 }
                 frontendSnapshot = null
                 shaderParamsDirty = false
@@ -2589,9 +2589,9 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun sourceLabel(source: OverrideSource): String = when (source) {
-        OverrideSource.GLOBAL -> "Global"
+        OverrideSource.GLOBAL -> getString(R.string.override_source_global)
         OverrideSource.PLATFORM -> platformName
-        OverrideSource.GAME -> "This Game"
+        OverrideSource.GAME -> getString(R.string.override_source_game)
     }
 
     private fun loadOverrides() {
@@ -2816,8 +2816,8 @@ class LibretroActivity : ComponentActivity() {
                 if (!device.isBuiltIn) {
                     val portLabel = port?.let { "P${it + 1}" } ?: "-"
                     val name = port?.let { portRouter.mappingForPort(it)?.displayName?.takeIf { n -> n.isNotEmpty() } }
-                        ?: device.name.ifEmpty { "Controller" }
-                    showOsd("$name connected to $portLabel")
+                        ?: device.name.ifEmpty { getString(R.string.device_controller) }
+                    showOsd(getString(R.string.osd_controller_connected_named, name, portLabel))
                 }
                 if (port != null && ::runner.isInitialized) {
                     val typeId = portDeviceTypes[port] ?: LibretroRunner.DEVICE_JOYPAD
@@ -2825,8 +2825,10 @@ class LibretroActivity : ComponentActivity() {
                 }
             }
             controllerBridge.onDeviceRemoved = { departed ->
-                val portLabel = departed.port?.let { "P${it + 1}: " } ?: ""
-                showOsd("$portLabel${departed.displayName} disconnected")
+                val msg = departed.port?.let {
+                    getString(R.string.osd_controller_disconnected_port, it + 1, departed.displayName)
+                } ?: getString(R.string.osd_controller_disconnected, departed.displayName)
+                showOsd(msg)
                 val port = departed.port
                 if (port != null && ::runner.isInitialized && !loading) {
                     runner.setInput(port, 0)
@@ -2973,7 +2975,7 @@ class LibretroActivity : ComponentActivity() {
             "btn_west" -> {
                 if (inputRemap.isNotEmpty()) {
                     inputRemap = emptyMap()
-                    showOsd("Buttons Reset To Default", OsdPosition.BottomCenter)
+                    showOsd(getString(R.string.osd_buttons_reset), OsdPosition.BottomCenter)
                 }
                 true
             }
