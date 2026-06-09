@@ -282,6 +282,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
         val navDialogState = nav.dialogState
         val navResumableGames = nav.resumableGames
         val activeMapping by activeMappingHolder.active.collectAsState()
+        LaunchedEffect(updateInfo) { svm.updateInfo = updateInfo }
         LaunchedEffect(navScreen) {
         }
         val currentDialog by navDialogState.collectAsState()
@@ -407,6 +408,9 @@ class MainActivity : ComponentActivity(), ActivityActions {
         controllerBridge.stop(this)
         super.onDestroy()
         unregisterCoreQueryReceiver()
+        loginPollHandler.removeCallbacks(loginPollRunnable)
+        loginManager?.destroy()
+        loginManager = null
         settings.shutdown()
         if (isReady) {
             systemListViewModel.get().close()

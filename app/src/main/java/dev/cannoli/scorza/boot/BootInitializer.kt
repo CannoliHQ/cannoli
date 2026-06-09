@@ -114,12 +114,8 @@ class BootInitializer @Inject constructor(
             if (updateManager.shouldAutoCheck()) {
                 ioScope.launch { updateManager.checkForUpdate() }
             }
-
-            ioScope.launch {
-                updateManager.updateAvailable.collect { info ->
-                    settingsViewModel.updateInfo = info
-                }
-            }
+            // updateAvailable -> settingsViewModel.updateInfo is now pushed lifecycle-bound
+            // from MainActivity.ReadyNavGraph so it cancels on Activity destroy.
 
             bindingController.onProgress = { keys, elapsedMs ->
                 val cs = nav.currentScreen
