@@ -132,7 +132,6 @@ class SettingsViewModel @Inject constructor(
         val showUpdate: Boolean = true,
         val swapPlayResume: Boolean = false,
         val mainMenuQuit: Boolean = false,
-        val retroArchDiyMode: Boolean = true,
         val artWidth: Int = 40,
         val artScale: ArtScale = ArtScale.DEFAULT,
         val contentMode: ContentMode = ContentMode.PLATFORMS,
@@ -169,7 +168,6 @@ class SettingsViewModel @Inject constructor(
         showUpdate = settings.showUpdate,
         swapPlayResume = settings.swapPlayResume,
         mainMenuQuit = settings.mainMenuQuit,
-        retroArchDiyMode = settings.retroArchDiyMode,
         artWidth = settings.artWidth,
         artScale = settings.artScale,
         contentMode = settings.contentMode,
@@ -230,7 +228,6 @@ class SettingsViewModel @Inject constructor(
         val releaseChannel: String,
         val artWidth: Int,
         val artScale: ArtScale,
-        val retroArchDiyMode: Boolean,
         val portraitMarginPx: Int,
     )
 
@@ -439,7 +436,6 @@ class SettingsViewModel @Inject constructor(
             }
             "show_update" -> settings.showUpdate = !settings.showUpdate
             "main_menu_quit" -> settings.mainMenuQuit = !settings.mainMenuQuit
-            "retroarch_diy_mode" -> settings.retroArchDiyMode = !settings.retroArchDiyMode
             "always_save_on_quit" -> settings.alwaysSaveOnQuit = !settings.alwaysSaveOnQuit
             "portrait_margin" -> {
                 val step = when {
@@ -609,7 +605,6 @@ class SettingsViewModel @Inject constructor(
         releaseChannel = settings.releaseChannel,
         artWidth = settings.artWidth,
         artScale = settings.artScale,
-        retroArchDiyMode = settings.retroArchDiyMode,
         portraitMarginPx = settings.portraitMarginPx,
     )
 
@@ -645,7 +640,6 @@ class SettingsViewModel @Inject constructor(
         settings.releaseChannel = snap.releaseChannel
         settings.artWidth = snap.artWidth
         settings.artScale = snap.artScale
-        settings.retroArchDiyMode = snap.retroArchDiyMode
         settings.portraitMarginPx = snap.portraitMarginPx
     }
 
@@ -777,7 +771,6 @@ class SettingsViewModel @Inject constructor(
                 val pkgLabel = InstalledCoreService.getPackageLabel(settings.retroArchPackage)
                 add(SettingsItem("installed_cores", R.string.setting_installed_cores, labelText = "$pkgLabel Installed Cores", isEditable = true))
             }
-            add(SettingsItem("retroarch_diy_mode", R.string.setting_retroarch_diy_mode, valueRes = onOff(settings.retroArchDiyMode)))
             add(SettingsItem("always_save_on_quit", R.string.setting_always_save_on_quit, valueRes = onOff(settings.alwaysSaveOnQuit)))
         }
         "kitchen" -> emptyList()
