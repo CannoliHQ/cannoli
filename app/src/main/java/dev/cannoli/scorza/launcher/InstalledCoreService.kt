@@ -41,8 +41,20 @@ class InstalledCoreService @Inject constructor(
             if (cores.isNotEmpty()) result[pkg] = cores
             else unresponsive.add(pkg)
         }
-        installedCores = result
-        unresponsivePackages = unresponsive
+        publishQueryResult(result, unresponsive)
+    }
+
+    // Synchronized on the same monitor as markInstalled so the two writers never interleave,
+    // and the query result is unioned with the current map so a core marked installed mid-query
+    // (right after a download) is not clobbered by a query that started before the install.
+    @Synchronized
+    private fun publishQueryResult(result: Map<String, Set<String>>, unresponsive: Set<String>) {
+        val merged = HashMap(result)
+        for ((pkg, cores) in installedCores) {
+            merged[pkg] = (merged[pkg] ?: emptySet()) + cores
+        }
+        installedCores = merged
+        unresponsivePackages = unresponsive - merged.keys
         cacheReady = true
     }
 
