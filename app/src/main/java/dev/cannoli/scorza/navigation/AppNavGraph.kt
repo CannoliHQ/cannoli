@@ -570,8 +570,7 @@ fun AppNavGraph(
                                     isSelected = isSelected,
                                     fontSize = listFontSize,
                                     lineHeight = listLineHeight,
-                                    verticalPadding = listVerticalPadding,
-                                    valueIcon = if (!opt.available) ICON_NOT_INSTALLED else null
+                                    verticalPadding = listVerticalPadding
                                 )
                             }
                             is dev.cannoli.scorza.ui.screens.MappingItem.Action -> {
