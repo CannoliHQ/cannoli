@@ -226,7 +226,7 @@ class LaunchManager(
             if (!hasSaveState(rom)) continue
             val target = rom.launchTarget
             val embedded = target is LaunchTarget.Embedded || getEmbeddedCorePath(rom) != null
-            if (embedded || (target is LaunchTarget.RetroArch && !settings.retroArchDiyMode)) {
+            if (embedded || (target is LaunchTarget.RetroArch && RetroArchLauncher.isRicotta(settings.retroArchPackage))) {
                 result.add(rom.path.absolutePath)
             }
         }
@@ -287,20 +287,23 @@ class LaunchManager(
                             } catch (_: PackageManager.NameNotFoundException) { raPackage }
                             return errorAndReset(DialogState.MissingApp(appName, raPackage))
                         }
-                        if (settings.retroArchDiyMode) {
-                            val raConfig = "/storage/emulated/0/Android/data/$raPackage/files/retroarch.cfg"
-                            retroArchLauncher.launch(launchFile, core, raConfig, raPackage, buildRicottaIgm(rom))
-                        } else {
-                            if (installedCoreService != null
-                                && installedCoreService.cacheReady
-                                && raPackage !in installedCoreService.unresponsivePackages
-                                && !installedCoreService.hasCoreInPackage(core, raPackage)) {
-                                val label = InstalledCoreService.getPackageLabel(raPackage)
-                                return errorAndReset(DialogState.MissingCore("$core not found in $label"))
-                            }
+                        // Core-install check applies to RicottaArch and to RetroArch installs
+                        // that report their cores; it self-skips for installs that cannot
+                        // (unresponsivePackages), since the user owns those.
+                        if (installedCoreService != null
+                            && installedCoreService.cacheReady
+                            && raPackage !in installedCoreService.unresponsivePackages
+                            && !installedCoreService.hasCoreInPackage(core, raPackage)) {
+                            val label = InstalledCoreService.getPackageLabel(raPackage)
+                            return errorAndReset(DialogState.MissingCore("$core not found in $label"))
+                        }
+                        if (RetroArchLauncher.isRicotta(raPackage)) {
                             syncRetroArchConfig(File(settings.sdCardRoot))
                             val launchConfig = buildGameConfig(rom) ?: raConfigPath
-                            retroArchLauncher.launch(launchFile, core, launchConfig, raPackage, buildRicottaIgm(rom))
+                            retroArchLauncher.launchRicotta(launchFile, core, launchConfig, raPackage, buildRicottaIgm(rom))
+                        } else {
+                            val raConfig = "/storage/emulated/0/Android/data/$raPackage/files/retroarch.cfg"
+                            retroArchLauncher.launchRetroArchIntent(launchFile, core, raConfig, raPackage)
                         }
                     } else {
                         LaunchResult.CoreNotInstalled("unknown")
@@ -358,13 +361,13 @@ class LaunchManager(
         val gameOverride = platformConfig.getGameOverride(rom.path.absolutePath)
         val core = gameOverride?.coreId ?: platformConfig.getCoreName(rom.platformTag) ?: run { launchState.launching = false; return null }
         val raPackage = settings.retroArchPackage
-        if (settings.retroArchDiyMode) {
-            val raConfig = "/storage/emulated/0/Android/data/$raPackage/files/retroarch.cfg"
-            retroArchLauncher.launch(launchFile, core, raConfig, raPackage, buildRicottaIgm(rom))
-        } else {
+        if (RetroArchLauncher.isRicotta(raPackage)) {
             syncRetroArchConfig(File(settings.sdCardRoot))
             val launchConfig = buildGameConfig(rom, resume = true, slot = resumeSlot) ?: raConfigPath
-            retroArchLauncher.launch(launchFile, core, launchConfig, raPackage, buildRicottaIgm(rom))
+            retroArchLauncher.launchRicotta(launchFile, core, launchConfig, raPackage, buildRicottaIgm(rom))
+        } else {
+            val raConfig = "/storage/emulated/0/Android/data/$raPackage/files/retroarch.cfg"
+            retroArchLauncher.launchRetroArchIntent(launchFile, core, raConfig, raPackage)
         }
         return null
     }

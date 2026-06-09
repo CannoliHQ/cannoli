@@ -33,7 +33,9 @@ class RetroArchLauncher(
     private val context: Context,
     private val getRetroArchPackage: () -> String,
 ) {
-    fun launch(
+    // Managed RicottaArch: structured, version-negotiated launch contract that drives the
+    // shared Cannoli in-game menu.
+    fun launchRicotta(
         romFile: File,
         coreId: String,
         configPath: String? = null,
@@ -79,6 +81,34 @@ class RetroArchLauncher(
         }
     }
 
+    // Stock RetroArch (DIY): the classic RetroActivityFuture intent. The user owns RetroArch,
+    // so there is no Cannoli in-game menu and no protocol negotiation.
+    fun launchRetroArchIntent(
+        romFile: File,
+        coreId: String,
+        configPath: String? = null,
+        targetPackage: String? = null,
+    ): LaunchResult {
+        val pkg = targetPackage ?: getRetroArchPackage()
+        if (!context.isPackageInstalled(pkg)) return LaunchResult.AppNotInstalled(pkg)
+
+        val intent = Intent().apply {
+            component = ComponentName(pkg, "com.retroarch.browser.retroactivity.RetroActivityFuture")
+            putExtra("LIBRETRO", "/data/data/$pkg/cores/${coreId}_android.so")
+            putExtra("ROM", romFile.absolutePath)
+            if (configPath != null) putExtra("CONFIGFILE", configPath)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+
+        return try {
+            val opts = ActivityOptions.makeCustomAnimation(context, 0, 0).toBundle()
+            context.startActivity(intent, opts)
+            LaunchResult.Success
+        } catch (e: Exception) {
+            LaunchResult.Error(e.message ?: "Failed to launch RetroArch")
+        }
+    }
+
     private fun readInstalledProtocol(pkg: String): Int = try {
         val ai = context.packageManager.getApplicationInfo(pkg, PackageManager.GET_META_DATA)
         ai.metaData?.getInt("cannoli.protocol", -1) ?: -1
@@ -87,6 +117,8 @@ class RetroArchLauncher(
     }
 
     companion object {
+        fun isRicotta(pkg: String): Boolean = pkg.startsWith("dev.cannoli.ricotta")
+
         fun checkProtocol(installedProtocol: Int, requiredProtocol: Int): ProtocolVerdict = when {
             installedProtocol == requiredProtocol -> ProtocolVerdict.Ok
             installedProtocol < requiredProtocol -> ProtocolVerdict.UpdateRicotta(installedProtocol, requiredProtocol)
