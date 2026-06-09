@@ -1013,29 +1013,14 @@ class DialogInputHandler @Inject constructor(
         }
     }
 
-    fun onEmulatorSourcePickerConfirm(screen: LauncherScreen.EmulatorSourcePicker) {
-        val chosen = screen.options.getOrNull(screen.selectedIndex) ?: return
-        nav.screenStack.removeAt(nav.screenStack.lastIndex)
-        val detail = nav.screenStack.lastOrNull() as? LauncherScreen.PlatformDetail ?: return
-        val sourceLabel = when {
-            chosen.appPackage != null -> dev.cannoli.scorza.config.EmulatorSource.Standalone.displayName
-            screen.source == dev.cannoli.scorza.config.EmulatorSource.RetroArch -> chosen.runnerLabel
-            else -> screen.source.displayName
-        }
-        nav.screenStack[nav.screenStack.lastIndex] = detail.copy(
-            currentSource = screen.source,
-            currentSourceLabel = sourceLabel,
-            currentEmulatorLabel = chosen.displayName,
-            pendingPick = chosen,
-            dirty = true,
-        )
-    }
-
     private fun onPlatformReset(state: DialogState.PlatformResetConfirm) {
         platformResolver.resetPlatformMapping(state.tag)
         nav.dialogState.value = DialogState.None
-        val detail = nav.screenStack.lastOrNull() as? LauncherScreen.PlatformDetail ?: return
-        nav.screenStack[nav.screenStack.lastIndex] = rebuildPlatformDetail(detail)
+        val mapping = nav.screenStack.lastOrNull() as? LauncherScreen.PlatformMapping ?: return
+        nav.screenStack[nav.screenStack.lastIndex] = emulatorMappingBuilder.buildPlatformMapping(
+            mapping.tag, mapping.platformName, showAll = mapping.showAll,
+            selectedIndex = mapping.selectedIndex, scrollTarget = mapping.scrollTarget,
+        )
         val mappingIdx = nav.screenStack.indexOfLast { it is LauncherScreen.EmulatorMapping }
         if (mappingIdx >= 0) {
             val cm = nav.screenStack[mappingIdx] as LauncherScreen.EmulatorMapping
@@ -1044,10 +1029,6 @@ class DialogInputHandler @Inject constructor(
             nav.screenStack[mappingIdx] = cm.copy(mappings = filtered, allMappings = all, selectedIndex = cm.selectedIndex.coerceAtMost((filtered.size - 1).coerceAtLeast(0)))
         }
     }
-
-    private fun rebuildPlatformDetail(state: LauncherScreen.PlatformDetail): LauncherScreen.PlatformDetail =
-        emulatorMappingBuilder.buildPlatformDetail(state.tag, state.platformName)
-            .copy(selectedIndex = state.selectedIndex, scrollTarget = state.scrollTarget)
 
     fun buildGameContextOptions(item: ListItem, glState: GameListViewModel.State): List<String> {
         if (glState.isCollectionsList || item is ListItem.ChildCollectionItem) return listOf(MENU_RENAME, MENU_CHILD_COLLECTIONS, MENU_DELETE)

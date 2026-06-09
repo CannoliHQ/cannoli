@@ -393,6 +393,11 @@
     <string name="value_not_bundled">NOT BUNDLED</string>
     <string name="value_no_options">No options available.</string>
     <string name="value_no_overrides">No per-game overrides.</string>
+    <string name="value_no_firmware">No firmware required for this core.</string>
+    <plurals name="override_game_count">
+        <item quantity="one">%d game</item>
+        <item quantity="other">%d games</item>
+    </plurals>
     <string name="value_no_cores_found">No Cores Found</string>
     <string name="label_clear_override">CLEAR</string>
     <string name="ra_no_cores_reported">No cores reported by this RetroArch install.</string>

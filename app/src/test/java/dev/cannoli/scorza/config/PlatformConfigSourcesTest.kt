@@ -43,4 +43,26 @@ class PlatformConfigSourcesTest {
         assertTrue(pc.isRetroArchUnresponsive("NES", emptyMap(), setOf("com.retroarch")))
         assertFalse(pc.isRetroArchUnresponsive("NES", mapOf("com.retroarch" to setOf(candidate)), emptySet()))
     }
+
+    @Test fun `getFirmwareStatus reports presence per firmware entry against the bios dir`() {
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val coreInfo = CoreInfoRepository(ctx.assets)
+        coreInfo.load()
+        val pc = PlatformConfig(File(ctx.cacheDir, "fw-root").apply { mkdirs() }, ctx.assets, coreInfo)
+
+        val coreId = "a5200_libretro"
+        val expected = coreInfo.getFirmwareFor(coreId)
+        assertTrue("a5200 core_info should declare firmware", expected.isNotEmpty())
+
+        val biosDir = File(ctx.cacheDir, "fw-bios").apply { mkdirs() }
+        val missing = pc.getFirmwareStatus(coreId, biosDir)
+        assertTrue(missing.isNotEmpty())
+        assertTrue("no firmware files present yet", missing.all { !it.second })
+
+        val firstPath = expected.first().path
+        File(biosDir, firstPath).apply { parentFile?.mkdirs() }.writeText("stub")
+        val afterPlacing = pc.getFirmwareStatus(coreId, biosDir)
+        assertTrue("placed firmware is reported present",
+            afterPlacing.first { it.first.path == firstPath }.second)
+    }
 }

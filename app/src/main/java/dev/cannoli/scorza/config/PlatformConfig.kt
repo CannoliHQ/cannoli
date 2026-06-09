@@ -281,6 +281,11 @@ class PlatformConfig(
         return coreInfo?.getMissingFirmware(coreId, biosDir) ?: emptyList()
     }
 
+    fun getFirmwareStatus(coreId: String, biosDir: File): List<Pair<FirmwareEntry, Boolean>> {
+        val all = coreInfo?.getFirmwareFor(coreId) ?: emptyList()
+        return all.map { it to File(biosDir, it.path).exists() }
+    }
+
     fun getRunnerLabel(tag: String, coreId: String, installedRaCores: Map<String, Set<String>> = emptyMap()): String {
         if (File(romsTagDir(tag), ".emu_launch").exists()) return "External"
         val override = userRunners[tag]

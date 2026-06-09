@@ -14,6 +14,25 @@ interface KeyboardInputState {
 enum class EmulatorMappingStatus { READY, NOT_INSTALLED, NEEDS_SETUP }
 data class EmulatorMappingEntry(val tag: String, val platformName: String, val coreDisplayName: String, val runnerLabel: String, val status: EmulatorMappingStatus = EmulatorMappingStatus.READY)
 data class EmulatorPickerOption(val coreId: String, val displayName: String, val runnerLabel: String, val appPackage: String? = null, val available: Boolean = true)
+
+enum class MappingActionKind { BIOS, OVERRIDES, RESET }
+
+sealed interface MappingItem {
+    val isSelectable: Boolean
+    data class SectionHeader(val label: String) : MappingItem { override val isSelectable = false }
+    data class Divider(val id: Int = 0) : MappingItem { override val isSelectable = false }
+    data class EmulatorOption(val option: EmulatorPickerOption, val isCurrent: Boolean) : MappingItem {
+        override val isSelectable = true
+    }
+    data class Action(
+        val kind: MappingActionKind,
+        val label: String,
+        val status: String = "",
+        val statusIsWarning: Boolean = false,
+    ) : MappingItem { override val isSelectable = true }
+}
+
+data class FirmwareStatus(val entry: dev.cannoli.scorza.config.FirmwareEntry, val present: Boolean)
 data class ColorEntry(val key: String, @androidx.annotation.StringRes val labelRes: Int, val hex: String, val color: Long)
 
 sealed interface DialogState {
