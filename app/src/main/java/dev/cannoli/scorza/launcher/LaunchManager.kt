@@ -275,8 +275,7 @@ class LaunchManager(
                             if (embeddedCorePath != null) {
                                 val embeddedFile = resolveLaunchFile(rom, extractArchives = true)
                                     ?: return errorAndReset(DialogState.LaunchError("Failed to extract archive"))
-                                launchEmbedded(rom.copy(path = embeddedFile), embeddedCorePath, originalRomPath = rom.path.absolutePath)
-                                return null
+                                return launchEmbedded(rom.copy(path = embeddedFile), embeddedCorePath, originalRomPath = rom.path.absolutePath)
                             }
                         }
                         val raPackage = settings.retroArchPackage
@@ -331,8 +330,7 @@ class LaunchManager(
             is LaunchTarget.Embedded -> {
                 val embeddedFile = resolveLaunchFile(rom, extractArchives = true)
                     ?: return errorAndReset(DialogState.LaunchError("Failed to extract archive"))
-                launchEmbedded(rom.copy(path = embeddedFile), target.corePath, originalRomPath = rom.path.absolutePath)
-                return null
+                return launchEmbedded(rom.copy(path = embeddedFile), target.corePath, originalRomPath = rom.path.absolutePath)
             }
         }
 
@@ -356,8 +354,7 @@ class LaunchManager(
         val launchFile = resolveLaunchFile(rom, extractArchives = embeddedCorePath != null)
             ?: run { launchState.launching = false; return null }
         if (embeddedCorePath != null) {
-            launchEmbedded(rom.copy(path = launchFile), embeddedCorePath, resumeSlot, originalRomPath = rom.path.absolutePath)
-            return null
+            return launchEmbedded(rom.copy(path = launchFile), embeddedCorePath, resumeSlot, originalRomPath = rom.path.absolutePath)
         }
         val gameOverride = platformConfig.getGameOverride(rom.path.absolutePath)
         val core = gameOverride?.coreId ?: platformConfig.getCoreName(rom.platformTag) ?: run { launchState.launching = false; return null }
@@ -411,7 +408,7 @@ class LaunchManager(
         } catch (_: Exception) {}
     }
 
-    fun launchEmbedded(rom: Rom, corePath: String, resumeSlot: Int = -1, originalRomPath: String? = null) {
+    fun launchEmbedded(rom: Rom, corePath: String, resumeSlot: Int = -1, originalRomPath: String? = null): DialogState? {
         val paths = CannoliPaths(settings.sdCardRoot)
         val romName = normalizedRomName(rom)
 
@@ -457,7 +454,12 @@ class LaunchManager(
         val intent = args.writeTo(Intent(context, LibretroActivity::class.java))
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         val opts = ActivityOptions.makeCustomAnimation(context, 0, 0).toBundle()
-        context.startActivity(intent, opts)
+        return try {
+            context.startActivity(intent, opts)
+            null
+        } catch (t: Throwable) {
+            errorAndReset(DialogState.LaunchError("Failed to launch game"))
+        }
     }
 
     private fun normalizedRomName(rom: Rom): String =
