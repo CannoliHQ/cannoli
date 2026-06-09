@@ -37,8 +37,9 @@ class RetroAchievementsManager(
     fun destroy() {
         logger("RA destroy")
         unregisterNetworkCallback()
-        httpExecutor.shutdown()
-        try { httpExecutor.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS) } catch (_: InterruptedException) {}
+        // shutdownNow + no await: never block the caller (this runs on the main thread from
+        // onDestroy/cleanup). The native side already tolerates late HTTP responses.
+        httpExecutor.shutdownNow()
         nativeDestroy()
     }
 
