@@ -406,8 +406,8 @@
     <string name="filter_mapped">MAPPED</string>
     <string name="value_unmapped">Unmapped</string>
     <string name="label_download">DOWNLOAD</string>
-    <string name="osd_downloading_core">Downloading %1$s for %2$s...</string>
-    <string name="osd_core_installed">Installed %1$s</string>
+    <string name="osd_downloading_core">Downloading %1$s</string>
+    <string name="osd_core_downloaded">Downloaded %1$s</string>
     <string name="osd_core_download_failed">Download failed: %1$s</string>
     <string name="osd_core_download_unknown_error">unknown error</string>
     <string name="bios_required">REQUIRED</string>

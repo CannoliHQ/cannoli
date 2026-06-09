@@ -361,7 +361,7 @@ class InputRouter @Inject constructor(
         val label = InstalledCoreService.getPackageLabel(pkg)
         val coreName = platformConfig.getCoreDisplayName(coreId)
         osdController.show(
-            context.getString(R.string.osd_downloading_core, coreName, label),
+            context.getString(R.string.osd_downloading_core, coreName),
             durationMs = 120_000L,
         )
         ioScope.launch {
@@ -371,7 +371,7 @@ class InputRouter @Inject constructor(
                     installedCoreService.markInstalled(pkg, coreId)
                     platformConfig.setCoreMapping(tag, coreId, label)
                     platformConfig.saveCoreMappings()
-                    osdController.show(context.getString(R.string.osd_core_installed, coreName))
+                    osdController.show(context.getString(R.string.osd_core_downloaded, coreName))
                     val top = nav.currentScreen as? LauncherScreen.PlatformMapping
                     if (top != null && top.tag == tag) {
                         nav.replaceTop(emulatorMappingBuilder.buildPlatformMapping(
