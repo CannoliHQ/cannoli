@@ -482,7 +482,7 @@ fun AppNavGraph(
                             if (index == currentScreen.activeIndex) {
                                 PillRowKeyValue(
                                     label = label,
-                                    value = stringResource(R.string.value_current),
+                                    value = stringResource(R.string.value_active),
                                     isSelected = isSelected,
                                     fontSize = listFontSize,
                                     lineHeight = listLineHeight,
@@ -554,7 +554,7 @@ fun AppNavGraph(
                             is dev.cannoli.scorza.ui.screens.MappingItem.EmulatorOption -> {
                                 val opt = item.option
                                 val value = when {
-                                    item.isCurrent -> stringResource(R.string.value_current)
+                                    item.isCurrent -> stringResource(R.string.value_active)
                                     !opt.available -> {
                                         val resId = when (opt.runnerLabel) {
                                             "Internal" -> R.string.value_not_bundled
@@ -570,7 +570,8 @@ fun AppNavGraph(
                                     isSelected = isSelected,
                                     fontSize = listFontSize,
                                     lineHeight = listLineHeight,
-                                    verticalPadding = listVerticalPadding
+                                    verticalPadding = listVerticalPadding,
+                                    valueIcon = if (item.isCurrent && !opt.available) ICON_NOT_INSTALLED else null
                                 )
                             }
                             is dev.cannoli.scorza.ui.screens.MappingItem.Action -> {

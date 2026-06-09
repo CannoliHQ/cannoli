@@ -250,7 +250,6 @@
     <string name="value_not_installed">Not Installed</string>
     <string name="value_none_installed">None Installed</string>
     <string name="value_active">Active</string>
-    <string name="value_current">Current</string>
     <string name="text_size_compact">Compact</string>
     <string name="text_size_default">Default</string>
 
