@@ -36,6 +36,8 @@ class UpdateManager @Inject constructor(
     @Volatile
     private var downloadCancelled = false
 
+    private val checking = java.util.concurrent.atomic.AtomicBoolean(false)
+
     private fun loadCached(): UpdateInfo? {
         val code = settings.cachedUpdateCode
         if (code <= BuildConfig.VERSION_CODE) return null
@@ -70,6 +72,10 @@ class UpdateManager @Inject constructor(
     }
 
     suspend fun checkForUpdate(): UpdateInfo? = withContext(Dispatchers.IO) {
+        // Skip when offline and dedupe concurrent checks (e.g. holding Left/Right on the
+        // release_channel row auto-repeats); otherwise each press would race a network fetch.
+        if (!isOnline()) return@withContext _updateAvailable.value
+        if (!checking.compareAndSet(false, true)) return@withContext _updateAvailable.value
         try {
             val channel = ReleaseChannel.fromString(settings.releaseChannel)
             val json = fetchJson("https://update.cannoli.dev/versions.json")
@@ -93,6 +99,8 @@ class UpdateManager @Inject constructor(
             result
         } catch (_: Exception) {
             null
+        } finally {
+            checking.set(false)
         }
     }
 
