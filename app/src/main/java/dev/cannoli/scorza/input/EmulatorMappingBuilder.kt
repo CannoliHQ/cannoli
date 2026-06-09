@@ -43,6 +43,7 @@ class EmulatorMappingBuilder @Inject constructor(
         showAll: Boolean,
         selectedIndex: Int = 0,
         scrollTarget: Int = 0,
+        defaultShowAllIfEmpty: Boolean = false,
     ): LauncherScreen.PlatformMapping {
         val bundled = LaunchManager.extractBundledCores(context)
         val installedRaCores = installedCoreService.configuredCores()
@@ -62,26 +63,41 @@ class EmulatorMappingBuilder @Inject constructor(
         }
 
         val raLabel = InstalledCoreService.getPackageLabel(settings.retroArchPackage).uppercase()
-        val items = mutableListOf<MappingItem>()
-        for (source in sources) {
-            // Internal cores are bundled-or-nothing; Show All never expands them since
-            // there is no install path for a core Cannoli does not ship.
-            val includeAll = showAll && source != EmulatorSource.Internal
-            val options = platformConfig.emulatorOptionsForSource(
-                tag = tag, source = source, includeAll = includeAll,
-                installedRaCores = installedRaCores,
-                embeddedCoresDir = bundled, pm = context.packageManager,
-            )
-            if (options.isEmpty()) continue
-            val header = when (source) {
-                EmulatorSource.Internal -> EmulatorSource.Internal.displayName.uppercase()
-                EmulatorSource.RetroArch -> raLabel
-                EmulatorSource.Standalone -> EmulatorSource.Standalone.displayName.uppercase()
+
+        fun emulatorSection(useShowAll: Boolean): List<MappingItem> {
+            val section = mutableListOf<MappingItem>()
+            for (source in sources) {
+                // Internal cores are bundled-or-nothing; Show All never expands them since
+                // there is no install path for a core Cannoli does not ship.
+                val includeAll = useShowAll && source != EmulatorSource.Internal
+                val options = platformConfig.emulatorOptionsForSource(
+                    tag = tag, source = source, includeAll = includeAll,
+                    installedRaCores = installedRaCores,
+                    embeddedCoresDir = bundled, pm = context.packageManager,
+                )
+                if (options.isEmpty()) continue
+                val header = when (source) {
+                    EmulatorSource.Internal -> EmulatorSource.Internal.displayName.uppercase()
+                    EmulatorSource.RetroArch -> raLabel
+                    EmulatorSource.Standalone -> EmulatorSource.Standalone.displayName.uppercase()
+                }
+                section.add(MappingItem.SectionHeader(header))
+                options.forEach { section.add(MappingItem.EmulatorOption(it, isCurrent(it))) }
             }
-            items.add(MappingItem.SectionHeader(header))
-            options.forEach { items.add(MappingItem.EmulatorOption(it, isCurrent(it))) }
+            return section
         }
 
+        var effectiveShowAll = showAll
+        var section = emulatorSection(effectiveShowAll)
+        if (defaultShowAllIfEmpty && !effectiveShowAll &&
+            section.none { it is MappingItem.EmulatorOption }
+        ) {
+            effectiveShowAll = true
+            section = emulatorSection(true)
+        }
+
+        val items = mutableListOf<MappingItem>()
+        items.addAll(section)
         items.add(MappingItem.Divider())
 
         val biosApplicable = currentSource == EmulatorSource.Internal ||
@@ -111,7 +127,7 @@ class EmulatorMappingBuilder @Inject constructor(
             tag = tag,
             platformName = platformName,
             items = items,
-            showAll = showAll,
+            showAll = effectiveShowAll,
             overridesCount = overridesCount,
             resettable = resettable,
             selectedIndex = selectedIndex.coerceIn(0, (selectableCount - 1).coerceAtLeast(0)),

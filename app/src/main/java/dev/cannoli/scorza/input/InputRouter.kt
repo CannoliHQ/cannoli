@@ -159,7 +159,7 @@ class InputRouter @Inject constructor(
     private fun emulatorMappingHandler() = scrollable<LauncherScreen.EmulatorMapping>(
         onConfirm = {
             val entry = mappings.getOrNull(selectedIndex) ?: return@scrollable
-            nav.push(emulatorMappingBuilder.buildPlatformMapping(entry.tag, entry.platformName, showAll = false))
+            nav.push(emulatorMappingBuilder.buildPlatformMapping(entry.tag, entry.platformName, showAll = false, defaultShowAllIfEmpty = true))
         },
         onBack = { nav.pop() },
         onWest = {
