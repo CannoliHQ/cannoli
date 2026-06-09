@@ -62,7 +62,7 @@ class EmulatorMappingBuilder @Inject constructor(
             }
         }
 
-        val raLabel = InstalledCoreService.getPackageLabel(settings.retroArchPackage).uppercase()
+        val raLabel = InstalledCoreService.getPackageLabel(settings.retroArchPackage)
 
         fun emulatorSection(useShowAll: Boolean): List<MappingItem> {
             val section = mutableListOf<MappingItem>()
@@ -77,9 +77,9 @@ class EmulatorMappingBuilder @Inject constructor(
                 )
                 if (options.isEmpty()) continue
                 val header = when (source) {
-                    EmulatorSource.Internal -> EmulatorSource.Internal.displayName.uppercase()
+                    EmulatorSource.Internal -> EmulatorSource.Internal.displayName
                     EmulatorSource.RetroArch -> raLabel
-                    EmulatorSource.Standalone -> EmulatorSource.Standalone.displayName.uppercase()
+                    EmulatorSource.Standalone -> EmulatorSource.Standalone.displayName
                 }
                 section.add(MappingItem.SectionHeader(header))
                 options.forEach {
