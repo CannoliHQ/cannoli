@@ -176,7 +176,7 @@ class InputRouter @Inject constructor(
         },
         onBack = { nav.pop() },
         onWest = {
-            val newFilter = (filter + 1) % 3
+            val newFilter = (filter + 1) % 4
             nav.replaceTop(copy(
                 mappings = emulatorMappingBuilder.filter(allMappings, newFilter),
                 filter = newFilter, selectedIndex = 0, scrollTarget = 0

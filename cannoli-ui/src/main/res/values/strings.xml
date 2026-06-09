@@ -400,6 +400,12 @@
     <string name="mapping_required_missing">%d required missing</string>
     <string name="title_platform_mapping">%s Mapping</string>
     <string name="title_platform_bios">%s BIOS</string>
+    <string name="filter_all">ALL</string>
+    <string name="filter_missing">MISSING</string>
+    <string name="filter_unmapped">UNMAPPED</string>
+    <string name="filter_mapped">MAPPED</string>
+    <string name="value_unmapped">Unmapped</string>
+    <string name="label_download">DOWNLOAD</string>
     <string name="osd_downloading_core">Downloading %1$s for %2$s...</string>
     <string name="osd_core_installed">Installed %1$s</string>
     <string name="osd_core_download_failed">Download failed: %1$s</string>

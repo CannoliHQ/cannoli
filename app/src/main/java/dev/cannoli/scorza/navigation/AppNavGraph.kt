@@ -400,9 +400,10 @@ fun AppNavGraph(
                     dev.cannoli.scorza.input.screen.compose.ScreenInput(handler)
                 }
                 val filterLabel = when (currentScreen.filter) {
-                    1 -> "NEEDS SETUP"
-                    2 -> "MAPPED"
-                    else -> "ALL"
+                    1 -> stringResource(R.string.filter_missing)
+                    2 -> stringResource(R.string.filter_unmapped)
+                    3 -> stringResource(R.string.filter_mapped)
+                    else -> stringResource(R.string.filter_all)
                 }
                 val selected = currentScreen.mappings.getOrNull(currentScreen.selectedIndex)
                 val canSelect = selected != null
@@ -427,7 +428,7 @@ fun AppNavGraph(
                         onListStateChanged = onListStateChanged
                     ) { _, entry, isSelected ->
                         val value = when {
-                            entry.status == dev.cannoli.scorza.ui.screens.EmulatorMappingStatus.NEEDS_SETUP -> "Needs setup"
+                            entry.status == dev.cannoli.scorza.ui.screens.EmulatorMappingStatus.NEEDS_SETUP -> stringResource(R.string.value_unmapped)
                             entry.runnerLabel.isEmpty() -> entry.coreDisplayName
                             else -> "${entry.coreDisplayName} (${entry.runnerLabel})"
                         }
@@ -515,6 +516,11 @@ fun AppNavGraph(
                     stringResource(R.string.label_show_installed)
                 else
                     stringResource(R.string.label_show_all)
+                val highlighted = currentScreen.items.getOrNull(highlightedIndex)
+                val confirmLabel = if ((highlighted as? dev.cannoli.scorza.ui.screens.MappingItem.EmulatorOption)?.downloadable == true)
+                    stringResource(R.string.label_download)
+                else
+                    stringResource(R.string.label_select)
                 ListDialogScreen(
                     backgroundImagePath = appSettings.backgroundImagePath,
                     backgroundTint = appSettings.backgroundTint,
@@ -524,7 +530,7 @@ fun AppNavGraph(
                     fullWidth = true,
                     rightBottomItems = buildList {
                         add(labels.north to yLabel)
-                        if (highlightedIndex >= 0) add(labels.confirm to stringResource(R.string.label_select))
+                        if (highlightedIndex >= 0) add(labels.confirm to confirmLabel)
                     },
                     buttonStyle = labels
                 ) {
@@ -564,7 +570,8 @@ fun AppNavGraph(
                                     isSelected = isSelected,
                                     fontSize = listFontSize,
                                     lineHeight = listLineHeight,
-                                    verticalPadding = listVerticalPadding
+                                    verticalPadding = listVerticalPadding,
+                                    valueIcon = if (!opt.available) ICON_NOT_INSTALLED else null
                                 )
                             }
                             is dev.cannoli.scorza.ui.screens.MappingItem.Action -> {

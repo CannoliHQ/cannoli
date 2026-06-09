@@ -32,8 +32,9 @@ class EmulatorMappingBuilder @Inject constructor(
     )
 
     fun filter(all: List<EmulatorMappingEntry>, filter: Int): List<EmulatorMappingEntry> = when (filter) {
-        1 -> all.filter { it.status != dev.cannoli.scorza.ui.screens.EmulatorMappingStatus.READY }
-        2 -> all.filter { it.status == dev.cannoli.scorza.ui.screens.EmulatorMappingStatus.READY }
+        1 -> all.filter { it.status == dev.cannoli.scorza.ui.screens.EmulatorMappingStatus.NOT_INSTALLED }
+        2 -> all.filter { it.status == dev.cannoli.scorza.ui.screens.EmulatorMappingStatus.NEEDS_SETUP }
+        3 -> all.filter { it.status == dev.cannoli.scorza.ui.screens.EmulatorMappingStatus.READY }
         else -> all
     }
 
@@ -70,11 +71,20 @@ class EmulatorMappingBuilder @Inject constructor(
                 // Internal cores are bundled-or-nothing; Show All never expands them since
                 // there is no install path for a core Cannoli does not ship.
                 val includeAll = useShowAll && source != EmulatorSource.Internal
-                val options = platformConfig.emulatorOptionsForSource(
+                var options = platformConfig.emulatorOptionsForSource(
                     tag = tag, source = source, includeAll = includeAll,
                     installedRaCores = installedRaCores,
                     embeddedCoresDir = bundled, pm = context.packageManager,
                 )
+                // Always surface the current mapping even when its core/app is not installed
+                // and Show All is off, so a missing or bundled-default mapping stays visible.
+                if (source == currentSource && options.none { isCurrent(it) }) {
+                    platformConfig.emulatorOptionsForSource(
+                        tag = tag, source = source, includeAll = true,
+                        installedRaCores = installedRaCores,
+                        embeddedCoresDir = bundled, pm = context.packageManager,
+                    ).firstOrNull { isCurrent(it) }?.let { options = options + it }
+                }
                 if (options.isEmpty()) continue
                 val header = when (source) {
                     EmulatorSource.Internal -> EmulatorSource.Internal.displayName
