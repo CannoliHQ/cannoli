@@ -838,12 +838,12 @@ class DialogInputHandler @Inject constructor(
                 nav.dialogState.value = DialogState.None
             }
             MENU_MANAGE_COLLECTIONS -> {
-                openCollectionManager(state.gamePaths, "${state.gamePaths.size} Selected")
+                openCollectionManager(state.gamePaths, context.getString(dev.cannoli.scorza.R.string.bulk_selected, state.gamePaths.size))
             }
             MENU_DELETE_GAME -> {
                 pendingContextReturn = null
                 nav.dialogState.value = DialogState.DeleteConfirm(
-                    gameName = "${state.gamePaths.size} items",
+                    gameName = context.resources.getQuantityString(dev.cannoli.scorza.R.plurals.bulk_delete_count, state.gamePaths.size, state.gamePaths.size),
                     bulkPaths = state.gamePaths
                 )
             }
