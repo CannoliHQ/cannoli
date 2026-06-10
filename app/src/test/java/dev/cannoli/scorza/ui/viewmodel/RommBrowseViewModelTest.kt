@@ -20,7 +20,9 @@ class RommBrowseViewModelTest {
 
     private fun vm(lib: RommLibrary) = RommBrowseViewModel(
         library = lib,
+        syncCoordinator = null,
         localFilesFor = { listOf(LocalFile("Mario.sfc", 100L)) },
+        linkedIdsProvider = { emptySet() },
     )
 
     @Test fun `loadPlatforms publishes mapped platforms`() = runTest {

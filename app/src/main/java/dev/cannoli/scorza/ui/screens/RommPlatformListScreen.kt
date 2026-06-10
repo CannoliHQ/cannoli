@@ -4,12 +4,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -25,6 +30,8 @@ import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.screenPadding
+import dev.cannoli.ui.theme.LocalCannoliColors
+import dev.cannoli.ui.theme.ProgressTrack
 import dev.cannoli.ui.theme.Spacing
 
 @Composable
@@ -32,6 +39,8 @@ fun RommPlatformListScreen(
     platforms: List<RommPlatform>,
     selectedIndex: Int,
     scrollTarget: Int,
+    emptyMessage: String? = null,
+    progress: Float? = null,
     backgroundImagePath: String?,
     backgroundTint: Int,
     listFontSize: TextUnit = 22.sp,
@@ -65,6 +74,42 @@ fun RommPlatformListScreen(
                         lineHeight = listLineHeight,
                         verticalPadding = listVerticalPadding,
                     )
+                }
+            }
+            if (platforms.isEmpty() && emptyMessage != null) {
+                val messageLines = emptyMessage.split("\n")
+                val titleFontSize = listFontSize * 1.2f
+                val titleLineHeight = listLineHeight * 1.2f
+                Column(
+                    modifier = Modifier.align(Alignment.Center).fillMaxWidth(0.85f),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text = messageLines.first(),
+                        textAlign = TextAlign.Center,
+                        fontSize = titleFontSize,
+                        lineHeight = titleLineHeight,
+                    )
+                    messageLines.getOrNull(1)?.let { subtitle ->
+                        Spacer(modifier = Modifier.height(Spacing.Sm))
+                        Text(
+                            text = subtitle,
+                            textAlign = TextAlign.Center,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            fontSize = listFontSize,
+                            lineHeight = listLineHeight,
+                        )
+                    }
+                    if (progress != null) {
+                        Spacer(modifier = Modifier.height(Spacing.Md))
+                        LinearProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier.fillMaxWidth(),
+                            color = LocalCannoliColors.current.highlight,
+                            trackColor = ProgressTrack,
+                        )
+                    }
                 }
             }
             BottomBar(
