@@ -135,6 +135,7 @@ class SettingsViewModel @Inject constructor(
         val showClock: Boolean = true,
         val batteryDisplay: BatteryDisplay = BatteryDisplay.DEFAULT,
         val showUpdate: Boolean = true,
+        val showKitchen: Boolean = true,
         val swapPlayResume: Boolean = false,
         val mainMenuQuit: Boolean = false,
         val artWidth: Int = 40,
@@ -171,6 +172,7 @@ class SettingsViewModel @Inject constructor(
         showClock = settings.showClock,
         batteryDisplay = settings.batteryDisplay,
         showUpdate = settings.showUpdate,
+        showKitchen = settings.showKitchen,
         swapPlayResume = settings.swapPlayResume,
         mainMenuQuit = settings.mainMenuQuit,
         artWidth = settings.artWidth,
@@ -188,9 +190,7 @@ class SettingsViewModel @Inject constructor(
         Category("library", R.string.settings_library),
         Category("input", R.string.settings_input),
         Category("emulation", R.string.settings_emulation),
-        Category("retroachievements", R.string.settings_retroachievements),
-        Category("romm", R.string.settings_romm),
-        Category("kitchen", R.string.settings_kitchen),
+        Category("integrations", R.string.settings_integrations),
         Category("advanced", R.string.settings_advanced),
         Category("about", R.string.settings_about),
     ) + if (BuildConfig.DEBUG) listOf(Category("debug", R.string.settings_debug)) else emptyList()
@@ -440,6 +440,7 @@ class SettingsViewModel @Inject constructor(
             "show_wifi" -> settings.showWifi = !settings.showWifi
             "show_bluetooth" -> settings.showBluetooth = !settings.showBluetooth
             "show_vpn" -> settings.showVpn = !settings.showVpn
+            "show_kitchen" -> settings.showKitchen = !settings.showKitchen
             "show_battery" -> {
                 val entries = BatteryDisplay.entries
                 val cur = entries.indexOf(settings.batteryDisplay).coerceAtLeast(0)
@@ -765,6 +766,7 @@ class SettingsViewModel @Inject constructor(
             add(SettingsItem("show_battery", R.string.setting_battery, valueRes = batteryRes))
             add(SettingsItem("show_bluetooth", R.string.setting_bluetooth, valueRes = showHide(settings.showBluetooth)))
             add(SettingsItem("show_clock", R.string.setting_clock, valueRes = if (!settings.showClock) R.string.value_hide else if (settings.timeFormat == TimeFormat.TWELVE_HOUR) R.string.value_12h else R.string.value_24h))
+            add(SettingsItem("show_kitchen", R.string.setting_kitchen_running, valueRes = showHide(settings.showKitchen)))
             add(SettingsItem("show_update", R.string.setting_updater, valueRes = showHide(settings.showUpdate)))
             add(SettingsItem("show_vpn", R.string.setting_vpn, valueRes = showHide(settings.showVpn)))
             add(SettingsItem("show_wifi", R.string.setting_wifi, valueRes = showHide(settings.showWifi)))
@@ -790,7 +792,10 @@ class SettingsViewModel @Inject constructor(
             }
             add(SettingsItem("always_save_on_quit", R.string.setting_always_save_on_quit, valueRes = onOff(settings.alwaysSaveOnQuit)))
         }
-        "kitchen" -> emptyList()
+        "integrations" -> buildList {
+            add(SettingsItem("integrations_ra", R.string.settings_retroachievements, isEditable = true))
+            add(SettingsItem("integrations_romm", R.string.settings_romm, isEditable = true))
+        }
         "retroachievements" -> buildList {
             add(SettingsItem("ra_username", R.string.setting_ra_username, valueText = settings.raUsername.ifEmpty { null }, valueRes = if (settings.raUsername.isEmpty()) R.string.value_not_set else null, isEditable = true))
             add(SettingsItem("ra_password", R.string.setting_ra_password, valueText = if (raPassword.isEmpty()) null else BULLET.repeat(raPassword.length), valueRes = if (raPassword.isEmpty()) R.string.value_not_set else null, isEditable = true))

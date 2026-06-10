@@ -88,15 +88,17 @@ class SettingsInputHandler @Inject constructor(
             val cat = settingsViewModel.state.value.categories.getOrNull(settingsViewModel.state.value.categoryIndex)
             when {
                 cat?.key == "about" -> nav.dialogState.value = DialogState.About()
-                cat?.key == "retroachievements" && settings.raToken.isNotEmpty() ->
-                    nav.dialogState.value = DialogState.RAAccount(username = settings.raUsername)
-                cat?.key == "kitchen" -> launcherActions.openKitchen()
                 else -> settingsViewModel.enterCategory()
             }
             return
         }
 
         when (val key = settingsViewModel.enterSelected()) {
+            "integrations_ra" -> {
+                if (settings.raToken.isNotEmpty()) nav.dialogState.value = DialogState.RAAccount(username = settings.raUsername)
+                else settingsViewModel.enterSubCategory("retroachievements", dev.cannoli.scorza.R.string.settings_retroachievements)
+            }
+            "integrations_romm" -> settingsViewModel.enterSubCategory("romm", dev.cannoli.scorza.R.string.settings_romm)
             "status_bar" -> settingsViewModel.enterSubCategory("status_bar", dev.cannoli.scorza.R.string.settings_status_bar)
             "fgh_collection" -> settingsViewModel.enterSubCategory(
                 "fgh_collection_picker",

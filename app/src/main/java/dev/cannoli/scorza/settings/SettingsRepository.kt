@@ -230,6 +230,10 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         get() = jsonRead { optBoolean(KEY_SHOW_UPDATE, true) }
         set(value) = jsonWrite { put(KEY_SHOW_UPDATE, value) }
 
+    var showKitchen: Boolean
+        get() = jsonRead { optBoolean(KEY_SHOW_KITCHEN, true) }
+        set(value) = jsonWrite { put(KEY_SHOW_KITCHEN, value) }
+
 
     var showTools: Boolean
         get() = jsonRead { optBoolean(KEY_SHOW_TOOLS, false) }
@@ -411,6 +415,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         private const val KEY_SHOW_CLOCK = "show_clock"
         private const val KEY_BATTERY_DISPLAY = "battery_display"
         private const val KEY_SHOW_UPDATE = "show_update"
+        private const val KEY_SHOW_KITCHEN = "show_kitchen"
         private const val KEY_SHOW_TOOLS = "show_tools"
         private const val KEY_SHOW_PORTS = "show_ports"
         private const val KEY_SHOW_RECENTLY_PLAYED = "show_recently_played"
