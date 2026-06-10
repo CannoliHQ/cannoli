@@ -126,6 +126,16 @@ internal object Migrations {
         Migration(5) { db ->
             db.execSQL("ALTER TABLE platforms DROP COLUMN last_scanned_mtime")
         },
+        Migration(6) { db ->
+            db.execSQL("""
+                CREATE TABLE romm_links (
+                    romm_id INTEGER PRIMARY KEY,
+                    relative_path TEXT NOT NULL,
+                    link_source TEXT NOT NULL CHECK (link_source IN ('download', 'manual')),
+                    created_at INTEGER
+                )
+            """.trimIndent())
+        },
     )
 
     val current: Int = all.maxOf { it.version }

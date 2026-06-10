@@ -45,8 +45,11 @@ class RommClient(
         return dto.rawToken
     }
 
-    fun getPlatforms(): List<PlatformDto> {
-        val request = Request.Builder().url(endpoint("/api/platforms")).get().build()
+    fun getPlatforms(updatedAfter: String? = null): List<PlatformDto> {
+        val url = endpoint("/api/platforms").newBuilder()
+            .apply { if (!updatedAfter.isNullOrBlank()) addQueryParameter("updated_after", updatedAfter) }
+            .build()
+        val request = Request.Builder().url(url).get().build()
         return execute(request, ListSerializer(PlatformDto.serializer()))
     }
 
@@ -60,9 +63,15 @@ class RommClient(
         execute(request, HeartbeatResponse.serializer()).system.version.ifEmpty { null }
     }.getOrNull()
 
-    fun getRoms(platformId: Int, limit: Int, offset: Int, search: String?): RomsPageDto {
+    fun getRoms(
+        platformId: Int?,
+        limit: Int,
+        offset: Int,
+        search: String?,
+        updatedAfter: String? = null,
+    ): RomsPageDto {
         val url = endpoint("/api/roms").newBuilder()
-            .addQueryParameter("platform_ids", platformId.toString())
+            .apply { if (platformId != null) addQueryParameter("platform_ids", platformId.toString()) }
             .addQueryParameter("limit", limit.toString())
             .addQueryParameter("offset", offset.toString())
             .addQueryParameter("order_by", "name")
@@ -71,6 +80,7 @@ class RommClient(
             .addQueryParameter("with_char_index", "false")
             .addQueryParameter("with_filter_values", "false")
             .apply { if (!search.isNullOrBlank()) addQueryParameter("search_term", search) }
+            .apply { if (!updatedAfter.isNullOrBlank()) addQueryParameter("updated_after", updatedAfter) }
             .build()
         val request = Request.Builder().url(url).get().build()
         return execute(request, RomsPageDto.serializer())

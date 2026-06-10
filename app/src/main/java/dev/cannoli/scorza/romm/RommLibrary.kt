@@ -36,7 +36,7 @@ class LiveRommLibrary(
         }
 }
 
-private fun SimpleRomDto.toDomain(): RommGame = RommGame(
+internal fun SimpleRomDto.toDomain(): RommGame = RommGame(
     id = id,
     platformId = platformId,
     name = name?.ifEmpty { null } ?: fsNameNoExt.ifEmpty { fsName },

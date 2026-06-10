@@ -20,6 +20,7 @@ data class PlatformDto(
     @SerialName("rom_count") val romCount: Int = 0,
     val name: String = "",
     @SerialName("display_name") val displayName: String = "",
+    @SerialName("updated_at") val updatedAt: String? = null,
 )
 
 @Serializable
@@ -53,6 +54,7 @@ data class SimpleRomDto(
     @SerialName("url_cover") val urlCover: String? = null,
     @SerialName("has_multiple_files") val hasMultipleFiles: Boolean = false,
     val files: List<RomFileDto> = emptyList(),
+    @SerialName("updated_at") val updatedAt: String? = null,
 )
 
 @Serializable

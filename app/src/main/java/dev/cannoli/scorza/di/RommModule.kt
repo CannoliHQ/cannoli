@@ -7,8 +7,9 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import dev.cannoli.scorza.config.CannoliPaths
 import dev.cannoli.scorza.config.PlatformConfig
-import dev.cannoli.scorza.romm.LiveRommLibrary
+import dev.cannoli.scorza.db.RommLinkRepository
 import dev.cannoli.scorza.romm.PlatformMap
 import dev.cannoli.scorza.romm.RommClient
 import dev.cannoli.scorza.romm.RommConnectionStore
@@ -17,6 +18,9 @@ import dev.cannoli.scorza.romm.RommHttp
 import dev.cannoli.scorza.romm.RommImageLoader
 import dev.cannoli.scorza.romm.RommLibrary
 import dev.cannoli.scorza.romm.RommSlugMap
+import dev.cannoli.scorza.romm.cache.CachedRommLibrary
+import dev.cannoli.scorza.romm.cache.RommDatabase
+import dev.cannoli.scorza.romm.cache.RommSyncCoordinator
 import dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel
 import javax.inject.Singleton
 
@@ -44,8 +48,19 @@ object RommModule {
         PlatformMap(slugMap, isSupported = { platformConfig.isKnownTag(it) })
 
     @Provides @Singleton
-    fun provideRommLibrary(client: RommClient, platformMap: PlatformMap): RommLibrary =
-        LiveRommLibrary(client, platformMap)
+    fun provideRommDatabase(paths: CannoliPathsProvider): RommDatabase =
+        RommDatabase { CannoliPaths(paths.root).rommDatabase }
+
+    @Provides @Singleton
+    fun provideRommSyncCoordinator(
+        client: RommClient,
+        platformMap: PlatformMap,
+        db: RommDatabase,
+    ): RommSyncCoordinator = RommSyncCoordinator(client, platformMap, db)
+
+    @Provides @Singleton
+    fun provideRommLibrary(db: RommDatabase): RommLibrary =
+        CachedRommLibrary(db)
 
     @Provides @Singleton
     fun provideRommFolderScanner(paths: CannoliPathsProvider): RommFolderScanner =
@@ -54,9 +69,16 @@ object RommModule {
     @Provides @Singleton
     fun provideRommBrowseViewModel(
         library: RommLibrary,
+        syncCoordinator: RommSyncCoordinator,
         scanner: RommFolderScanner,
+        linkRepository: RommLinkRepository,
     ): RommBrowseViewModel =
-        RommBrowseViewModel(library) { tag -> scanner.localFiles(tag) }
+        RommBrowseViewModel(
+            library = library,
+            syncCoordinator = syncCoordinator,
+            localFilesFor = { tag -> scanner.localFiles(tag) },
+            linkedIdsProvider = { linkRepository.presentRommIds() },
+        )
 
     @Provides @Singleton
     fun provideRommImageLoader(

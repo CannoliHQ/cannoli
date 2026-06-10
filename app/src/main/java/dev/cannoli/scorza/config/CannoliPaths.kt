@@ -45,6 +45,7 @@ class CannoliPaths(val root: File) {
 
     // Specific config files
     val database: File get() = File(configDir, "cannoli.db")
+    val rommDatabase: File get() = File(configDir, "romm.db")
     val settingsJson: File get() = File(configDir, "settings.json")
     val platformsIni: File get() = File(configDir, "platforms.ini")
     val coresJson: File get() = File(configDir, "cores.json")
