@@ -66,7 +66,6 @@ fun SystemListScreen(
     listVerticalPadding: Dp = 8.dp,
     dialogState: DialogState = DialogState.None,
     onListStateChanged: ((androidx.compose.foundation.lazy.LazyListState?) -> Unit)? = null,
-    kitchenRunning: Boolean = false,
     title: String = "",
     mainMenuQuit: Boolean = false,
     artWidth: Int = 40,
@@ -278,8 +277,6 @@ fun SystemListScreen(
                 }
             } else if (state.items.isEmpty()) {
                 listOf(buttonStyle.west to stringResource(R.string.label_kitchen))
-            } else if (kitchenRunning) {
-                listOf(buttonStyle.west to stringResource(R.string.label_kitchen), buttonStyle.confirm to stringResource(R.string.label_select))
             } else {
                 listOf(buttonStyle.confirm to stringResource(R.string.label_select))
             }

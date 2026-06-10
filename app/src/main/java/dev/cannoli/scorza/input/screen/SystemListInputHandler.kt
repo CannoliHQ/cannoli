@@ -127,8 +127,7 @@ class SystemListInputHandler @Inject constructor(
                 ioScope.launch { updateManager.checkForUpdate() }
             }
         } else {
-            val km = dev.cannoli.scorza.server.KitchenManager
-            if (km.isRunning || systemListViewModel.state.value.items.isEmpty()) {
+            if (systemListViewModel.state.value.items.isEmpty()) {
                 launcherActions.openKitchen()
             }
         }

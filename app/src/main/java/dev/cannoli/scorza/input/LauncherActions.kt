@@ -149,14 +149,15 @@ class LauncherActions @Inject constructor(
         )
     }
 
-    fun openKitchen() {
+    fun openKitchen(fromQuickMenu: Boolean = false) {
         val km = KitchenManager
         if (!km.isRunning) km.start(context, settings.kitchenCodeBypass)
         else km.setCodeBypass(settings.kitchenCodeBypass)
         nav.dialogState.value = DialogState.Kitchen(
             urls = km.getUrls(hasActiveVpn()),
             pin = km.pin,
-            requirePin = !settings.kitchenCodeBypass
+            requirePin = !settings.kitchenCodeBypass,
+            fromQuickMenu = fromQuickMenu
         )
     }
 

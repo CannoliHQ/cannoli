@@ -44,6 +44,7 @@ private const val ICON_BLUETOOTH = "\uDB80\uDCAF"
 private const val ICON_WIFI = "\uDB81\uDDA9"
 private const val ICON_VPN = "\uDB82\uDFC4"
 private const val ICON_UPDATE = "\uDB81\uDEB0"
+private const val ICON_KITCHEN = "\uF0F5"
 private const val ICON_CHARGING = "\uF0E7"
 
 private const val ICON_BATTERY_FULL = "\uDB80\uDC79"
@@ -75,6 +76,7 @@ private fun batteryLevelIcon(percent: Int): String = when {
 @Composable
 fun StatusBar(
     updateAvailable: Boolean = false,
+    kitchenRunning: Boolean = false,
     showWifi: Boolean = true,
     showBluetooth: Boolean = true,
     showVpn: Boolean = false,
@@ -193,7 +195,7 @@ fun StatusBar(
     val showBtIcon = showBluetooth && hasBluetooth
     val showWifiIcon = showWifi && wifiConnected
     val showVpnIcon = showVpn && hasVpn
-    val anyVisible = showUpdateIcon || showBtIcon || showWifiIcon || showVpnIcon || showBattery || showClock
+    val anyVisible = kitchenRunning || showUpdateIcon || showBtIcon || showWifiIcon || showVpnIcon || showBattery || showClock
 
     if (!anyVisible) return
 
@@ -202,6 +204,7 @@ fun StatusBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy((6 * scaleFactor).dp)
     ) {
+        if (kitchenRunning) Text(text = ICON_KITCHEN, style = iconStyle)
         if (showUpdateIcon) Text(text = ICON_UPDATE, style = iconStyle)
         if (showBtIcon) Text(text = ICON_BLUETOOTH, style = iconStyle)
         if (showWifiIcon) Text(text = ICON_WIFI, style = iconStyle)

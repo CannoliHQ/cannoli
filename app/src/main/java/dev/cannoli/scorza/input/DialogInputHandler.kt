@@ -118,18 +118,6 @@ class DialogInputHandler @Inject constructor(
         return caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
     }
 
-    private fun toggleQuickMenuKitchen(ds: DialogState.QuickMenu) {
-        if (ds.rows.getOrNull(ds.selectedIndex) != dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.KITCHEN) return
-        if (dev.cannoli.scorza.server.KitchenManager.isRunning) dev.cannoli.scorza.server.KitchenManager.stop(context)
-        else dev.cannoli.scorza.server.KitchenManager.start(context, settings.kitchenCodeBypass)
-        val rows = dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.visibleRows(rommStore.isConfigured, dev.cannoli.scorza.server.KitchenManager.isRunning)
-        nav.dialogState.value = DialogState.QuickMenu(
-            rows = rows,
-            kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
-            selectedIndex = ds.selectedIndex.coerceAtMost(rows.lastIndex),
-        )
-    }
-
     private sealed interface ContextReturn {
         data class Single(val gameName: String, val options: List<String>, val selectedOption: Int = 0) : ContextReturn
         data class Bulk(val gamePaths: List<String>, val options: List<String>) : ContextReturn
@@ -252,7 +240,6 @@ class DialogInputHandler @Inject constructor(
                     nav.dialogState.value = ds.copy(selectedIndex = newIdx)
                 }
             }
-            is DialogState.QuickMenu -> toggleQuickMenuKitchen(ds)
             is DialogState.RenameInput,
             is DialogState.NewCollectionInput,
             is DialogState.CollectionRenameInput,
@@ -295,7 +282,6 @@ class DialogInputHandler @Inject constructor(
                     nav.dialogState.value = ds.copy(selectedIndex = newIdx)
                 }
             }
-            is DialogState.QuickMenu -> toggleQuickMenuKitchen(ds)
             is DialogState.RenameInput,
             is DialogState.NewCollectionInput,
             is DialogState.CollectionRenameInput,
@@ -456,7 +442,7 @@ class DialogInputHandler @Inject constructor(
                         nav.dialogState.value = DialogState.None
                         nav.push(dev.cannoli.scorza.navigation.LauncherScreen.RommPlatformList())
                     }
-                    dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.KITCHEN -> toggleQuickMenuKitchen(ds)
+                    dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.KITCHEN -> launcherActions.openKitchen(fromQuickMenu = true)
                     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.RESCAN -> {
                         launcherActions.rescanSystemList(scanDisk = true)
                         nav.dialogState.value = DialogState.None
@@ -532,14 +518,28 @@ class DialogInputHandler @Inject constructor(
                 updateManager.clearError()
                 nav.dialogState.value = DialogState.About()
             }
-            is DialogState.About,
-            is DialogState.Kitchen -> {
+            is DialogState.About -> {
                 nav.dialogState.value = DialogState.None
+                launcherActions.rescanSystemList()
+            }
+            is DialogState.Kitchen -> {
+                if (ds.fromQuickMenu) {
+                    val rows = dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.visibleRows(rommStore.isConfigured, dev.cannoli.scorza.server.KitchenManager.isRunning)
+                    nav.dialogState.value = DialogState.QuickMenu(
+                        rows = rows,
+                        kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
+                        selectedIndex = rows.indexOf(dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.KITCHEN).coerceAtLeast(0)
+                    )
+                } else {
+                    nav.dialogState.value = DialogState.None
+                }
                 launcherActions.rescanSystemList()
             }
             is DialogState.RAAccount -> {
                 nav.dialogState.value = DialogState.None
-                if (settingsViewModel.state.value.inSubList) settingsViewModel.exitSubList()
+                // Only pop when the RA credential sub-list is active (post-login); when opened
+                // directly from the Integrations list, dismissing must stay in Integrations.
+                if (settingsViewModel.state.value.activeCategory == "retroachievements") settingsViewModel.exitSubList()
             }
             is DialogState.RALoggingIn -> {
                 nav.dialogState.value = DialogState.None

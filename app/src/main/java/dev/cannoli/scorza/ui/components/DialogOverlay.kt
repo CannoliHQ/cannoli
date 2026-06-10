@@ -19,7 +19,6 @@ import dev.cannoli.scorza.R
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.screens.KeyboardInputState
 import dev.cannoli.ui.ButtonStyle
-import dev.cannoli.ui.DPAD_HORIZONTAL
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.QuickInfoOverlay
 import dev.cannoli.ui.components.ColorPickerOverlay
@@ -208,19 +207,13 @@ fun DialogOverlay(
         }
 
         is DialogState.QuickMenu -> {
-            val selectedRow = dialogState.rows.getOrNull(dialogState.selectedIndex)
-            val rightItems = if (selectedRow == dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.KITCHEN) {
-                listOf(DPAD_HORIZONTAL to stringResource(R.string.label_change))
-            } else {
-                listOf(buttonStyle.confirm to stringResource(R.string.label_select))
-            }
             ListDialogScreen(
                 backgroundImagePath = backgroundImagePath,
                 backgroundTint = backgroundTint,
                 title = stringResource(R.string.quick_menu_title),
                 listFontSize = listFontSize,
                 listLineHeight = listLineHeight,
-                rightBottomItems = rightItems,
+                rightBottomItems = listOf(buttonStyle.confirm to stringResource(R.string.label_select)),
                 buttonStyle = buttonStyle
             ) {
                 List(
@@ -228,24 +221,13 @@ fun DialogOverlay(
                     selectedIndex = dialogState.selectedIndex,
                     itemHeight = itemHeight
                 ) { _, row, isSelected ->
-                    if (row == dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.KITCHEN) {
-                        PillRowKeyValue(
-                            label = stringResource(R.string.quick_menu_kitchen),
-                            value = stringResource(if (dialogState.kitchenRunning) R.string.value_on else R.string.value_off),
-                            isSelected = isSelected,
-                            fontSize = listFontSize,
-                            lineHeight = listLineHeight,
-                            verticalPadding = listVerticalPadding
-                        )
-                    } else {
-                        PillRowText(
-                            label = quickMenuLabel(row),
-                            isSelected = isSelected,
-                            fontSize = listFontSize,
-                            lineHeight = listLineHeight,
-                            verticalPadding = listVerticalPadding
-                        )
-                    }
+                    PillRowText(
+                        label = quickMenuLabel(row),
+                        isSelected = isSelected,
+                        fontSize = listFontSize,
+                        lineHeight = listLineHeight,
+                        verticalPadding = listVerticalPadding
+                    )
                 }
             }
         }

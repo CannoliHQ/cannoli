@@ -3,20 +3,24 @@ package dev.cannoli.scorza.server
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 object KitchenManager {
 
     @Volatile private var service: KitchenService? = null
-    @Volatile private var started: Boolean = false
+    private val _running = MutableStateFlow(false)
+    val running: StateFlow<Boolean> = _running.asStateFlow()
     var pin: String = ""
         private set
 
-    val isRunning: Boolean get() = started
+    val isRunning: Boolean get() = _running.value
 
     fun start(context: Context, codeBypass: Boolean) {
-        if (started) return
+        if (_running.value) return
         pin = generatePin()
-        started = true
+        _running.value = true
         val intent = Intent(context, KitchenService::class.java)
             .putExtra(KitchenService.EXTRA_PIN, pin)
             .putExtra(KitchenService.EXTRA_CODE_BYPASS, codeBypass)
@@ -24,7 +28,7 @@ object KitchenManager {
     }
 
     fun stop(context: Context) {
-        started = false
+        _running.value = false
         context.startService(
             Intent(context, KitchenService::class.java).setAction(KitchenService.ACTION_STOP)
         )
@@ -35,7 +39,7 @@ object KitchenManager {
     internal fun onServiceCreated(s: KitchenService) { service = s }
 
     internal fun onServiceDestroyed(s: KitchenService) {
-        if (service === s) { service = null; started = false }
+        if (service === s) { service = null; _running.value = false }
     }
 
     fun getUrls(hasVpn: Boolean): List<String> {
