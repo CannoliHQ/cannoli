@@ -48,4 +48,8 @@ internal fun SimpleRomDto.toDomain(): RommGame = RommGame(
     languages = languages,
     coverPath = pathCoverLarge ?: urlCover,
     files = files.map { RommFile(it.fileName, it.fileSizeBytes, it.crcHash, it.md5Hash, it.sha1Hash) },
+    companies = metadatum?.companies ?: emptyList(),
+    genres = metadatum?.genres ?: emptyList(),
+    gameModes = metadatum?.gameModes ?: emptyList(),
+    firstReleaseDate = metadatum?.firstReleaseDate,
 )

@@ -57,6 +57,10 @@ class RommDatabase(private val dbFileProvider: () -> File) {
                 revision TEXT,
                 regions TEXT NOT NULL DEFAULT '[]',
                 languages TEXT NOT NULL DEFAULT '[]',
+                companies TEXT NOT NULL DEFAULT '[]',
+                genres TEXT NOT NULL DEFAULT '[]',
+                game_modes TEXT NOT NULL DEFAULT '[]',
+                first_release_date INTEGER,
                 cover_path TEXT,
                 files_json TEXT NOT NULL DEFAULT '[]',
                 sort_key TEXT NOT NULL DEFAULT '',
@@ -74,7 +78,7 @@ class RommDatabase(private val dbFileProvider: () -> File) {
     }
 
     fun platforms(): List<RommPlatform> = withConn { c ->
-        c.queryAll("SELECT id, slug, cannoli_tag, display_name, rom_count FROM platforms ORDER BY sort_key") {
+        c.queryAll("SELECT id, slug, cannoli_tag, display_name, rom_count FROM platforms WHERE rom_count > 0 ORDER BY sort_key") {
             RommPlatform(
                 id = it.getInt(0),
                 slug = it.getText(1),
@@ -114,10 +118,12 @@ class RommDatabase(private val dbFileProvider: () -> File) {
                 val g = rec.game
                 c.execute(
                     """INSERT OR REPLACE INTO games
-                       (id, platform_id, name, fs_name, size_bytes, summary, revision, regions, languages, cover_path, files_json, sort_key, updated_at)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                       (id, platform_id, name, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json, sort_key, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     g.id, g.platformId, g.name, g.fsName, g.sizeBytes, g.summary, g.revision,
                     RommCacheJson.encodeStrings(g.regions), RommCacheJson.encodeStrings(g.languages),
+                    RommCacheJson.encodeStrings(g.companies), RommCacheJson.encodeStrings(g.genres),
+                    RommCacheJson.encodeStrings(g.gameModes), g.firstReleaseDate,
                     g.coverPath, RommCacheJson.encodeFiles(g.files), NaturalSort.toSortKey(g.name), rec.updatedAt,
                 )
             }
@@ -128,7 +134,7 @@ class RommDatabase(private val dbFileProvider: () -> File) {
     fun games(platformId: Int, search: String?, limit: Int, offset: Int): List<RommGame> = withConn { c ->
         val like = search?.takeIf { it.isNotBlank() }?.let { "%$it%" }
         val sql = buildString {
-            append("SELECT id, platform_id, name, fs_name, size_bytes, summary, revision, regions, languages, cover_path, files_json FROM games WHERE platform_id = ?")
+            append("SELECT id, platform_id, name, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json FROM games WHERE platform_id = ?")
             if (like != null) append(" AND name LIKE ?")
             append(" ORDER BY sort_key LIMIT ? OFFSET ?")
         }
@@ -144,8 +150,12 @@ class RommDatabase(private val dbFileProvider: () -> File) {
                 revision = if (stmt.isNull(6)) null else stmt.getText(6),
                 regions = RommCacheJson.decodeStrings(stmt.getText(7)),
                 languages = RommCacheJson.decodeStrings(stmt.getText(8)),
-                coverPath = if (stmt.isNull(9)) null else stmt.getText(9),
-                files = RommCacheJson.decodeFiles(stmt.getText(10)),
+                companies = RommCacheJson.decodeStrings(stmt.getText(9)),
+                genres = RommCacheJson.decodeStrings(stmt.getText(10)),
+                gameModes = RommCacheJson.decodeStrings(stmt.getText(11)),
+                firstReleaseDate = if (stmt.isNull(12)) null else stmt.getLong(12),
+                coverPath = if (stmt.isNull(13)) null else stmt.getText(13),
+                files = RommCacheJson.decodeFiles(stmt.getText(14)),
             )
         }
     }
@@ -193,6 +203,6 @@ class RommDatabase(private val dbFileProvider: () -> File) {
     }
 
     private companion object {
-        const val SCHEMA_VERSION = 1
+        const val SCHEMA_VERSION = 2
     }
 }

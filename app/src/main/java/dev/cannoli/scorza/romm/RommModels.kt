@@ -28,6 +28,10 @@ data class RommGame(
     val languages: List<String>,
     val coverPath: String?,
     val files: List<RommFile>,
+    val companies: List<String> = emptyList(),
+    val genres: List<String> = emptyList(),
+    val gameModes: List<String> = emptyList(),
+    val firstReleaseDate: Long? = null,
 )
 
 data class RommPage<T>(

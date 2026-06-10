@@ -69,6 +69,23 @@ class RommDatabaseTest {
         assertEquals(42L, loaded.sizeBytes)
     }
 
+    @Test fun `metadatum fields round-trip`() {
+        db.upsertGames(listOf(GameRecord(
+            game(5, 1, "FF6", "ff6.sfc").copy(
+                companies = listOf("Square"),
+                genres = listOf("Role-playing (RPG)"),
+                gameModes = listOf("Single player"),
+                firstReleaseDate = 765072000000L,
+            ),
+            null,
+        )))
+        val loaded = db.games(1, null, 100, 0).single()
+        assertEquals(listOf("Square"), loaded.companies)
+        assertEquals(listOf("Role-playing (RPG)"), loaded.genres)
+        assertEquals(listOf("Single player"), loaded.gameModes)
+        assertEquals(765072000000L, loaded.firstReleaseDate)
+    }
+
     @Test fun `upsert replaces a game by id`() {
         db.upsertGames(listOf(GameRecord(game(1, 1, "Old", "old.sfc"), null)))
         db.upsertGames(listOf(GameRecord(game(1, 1, "New", "new.sfc"), null)))

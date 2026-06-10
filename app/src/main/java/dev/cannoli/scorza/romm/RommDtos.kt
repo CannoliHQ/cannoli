@@ -34,6 +34,14 @@ data class RomFileDto(
 )
 
 @Serializable
+data class RomMetadatumDto(
+    val genres: List<String> = emptyList(),
+    val companies: List<String> = emptyList(),
+    @SerialName("game_modes") val gameModes: List<String> = emptyList(),
+    @SerialName("first_release_date") val firstReleaseDate: Long? = null,
+)
+
+@Serializable
 data class SimpleRomDto(
     val id: Int,
     @SerialName("platform_id") val platformId: Int,
@@ -54,6 +62,7 @@ data class SimpleRomDto(
     @SerialName("url_cover") val urlCover: String? = null,
     @SerialName("has_multiple_files") val hasMultipleFiles: Boolean = false,
     val files: List<RomFileDto> = emptyList(),
+    val metadatum: RomMetadatumDto? = null,
     @SerialName("updated_at") val updatedAt: String? = null,
 )
 
