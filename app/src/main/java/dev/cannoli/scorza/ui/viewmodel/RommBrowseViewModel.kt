@@ -40,35 +40,41 @@ class RommBrowseViewModel(
     private var page = 0
     private var hasMore = false
     private var searchTerm: String? = null
+    private var platformOrder: List<String> = emptyList()
 
-    suspend fun loadPlatforms() { _platforms.value = library.platforms() }
+    suspend fun loadPlatforms() {
+        val order = platformOrder.withIndex().associate { (i, tag) -> tag.uppercase() to i }
+        _platforms.value = library.platforms().sortedBy { order[it.cannoliTag.uppercase()] ?: Int.MAX_VALUE }
+    }
 
-    suspend fun enterBrowse() {
+    suspend fun enterBrowse(platformOrder: List<String> = emptyList()) {
+        this.platformOrder = platformOrder
         loadPlatforms()
         if (_platforms.value.isEmpty()) syncCoordinator?.syncFull() else syncCoordinator?.syncDelta()
         loadPlatforms()
     }
 
     suspend fun openPlatform(platform: RommPlatform, search: String? = null) {
+        val term = search?.ifBlank { null }
         current = platform
         page = 0
-        searchTerm = search?.ifBlank { null }
-        _games.value = emptyList()
+        searchTerm = term
+        val rows = loadPage(platform, 0, term)
+        _games.value = rows
         _loadedPlatformId.value = platform.id
-        fetchPage(reset = true)
     }
 
     suspend fun loadMore() {
         if (!hasMore) return
+        val platform = current ?: return
         page += 1
-        fetchPage(reset = false)
+        _games.value = _games.value + loadPage(platform, page, searchTerm)
     }
 
-    private suspend fun fetchPage(reset: Boolean) {
-        val platform = current ?: return
-        val pageData = library.games(platform, page, searchTerm)
+    private suspend fun loadPage(platform: RommPlatform, page: Int, search: String?): List<RommGameRow> {
+        val pageData = library.games(platform, page, search)
         hasMore = pageData.hasMore
-        val rows = withContext(Dispatchers.IO) {
+        return withContext(Dispatchers.IO) {
             val locals = localFilesFor(platform.cannoliTag)
             val linkedIds = linkedIdsProvider()
             pageData.items
@@ -79,6 +85,5 @@ class RommBrowseViewModel(
                     RommGameRow(game, state)
                 }
         }
-        _games.value = if (reset) rows else _games.value + rows
     }
 }

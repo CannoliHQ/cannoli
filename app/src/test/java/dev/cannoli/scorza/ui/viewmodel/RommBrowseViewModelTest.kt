@@ -33,6 +33,18 @@ class RommBrowseViewModelTest {
         assertEquals(listOf("Super Nintendo"), vm.platforms.value.map { it.displayName })
     }
 
+    @Test fun `enterBrowse orders platforms by the supplied launcher order`() = runTest {
+        val lib = mockk<RommLibrary>()
+        coEvery { lib.platforms() } returns listOf(
+            RommPlatform(1, "gba", "GBA", "Game Boy Advance", 1),
+            RommPlatform(2, "snes", "SNES", "Super Nintendo", 1),
+            RommPlatform(3, "psx", "PSX", "PlayStation", 1),
+        )
+        val vm = vm(lib)
+        vm.enterBrowse(platformOrder = listOf("SNES", "GBA"))
+        assertEquals(listOf("SNES", "GBA", "PSX"), vm.platforms.value.map { it.cannoliTag })
+    }
+
     @Test fun `openPlatform loads games sorted with local state`() = runTest {
         val lib = mockk<RommLibrary>()
         coEvery { lib.games(platform, 0, null) } returns RommPage(
