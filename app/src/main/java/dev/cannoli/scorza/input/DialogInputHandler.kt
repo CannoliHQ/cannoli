@@ -1,5 +1,8 @@
 package dev.cannoli.scorza.input
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Handler
 import android.os.Looper
 import dagger.hilt.android.qualifiers.ActivityContext
@@ -74,6 +77,7 @@ class DialogInputHandler @Inject constructor(
     private val activityActions: ActivityActions,
     private val controllersViewModel: dev.cannoli.scorza.ui.viewmodel.ControllersViewModel,
     private val emulatorMappingBuilder: EmulatorMappingBuilder,
+    private val rommStore: dev.cannoli.scorza.romm.RommConnectionStore,
 ) : DialogPrecedence {
     private val selectHoldHandler = Handler(Looper.getMainLooper())
     private val selectHoldRunnable = Runnable {
@@ -88,6 +92,42 @@ class DialogInputHandler @Inject constructor(
 
     override fun cancelSelectHold() {
         selectHoldHandler.removeCallbacks(selectHoldRunnable)
+    }
+
+    override fun onMenu(): Boolean {
+        if (nav.dialogState.value != DialogState.None) return false
+        if (!isLauncherHomeScreen()) return false
+        val rows = dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.visibleRows(
+            rommPaired = rommStore.isConfigured,
+            kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
+        )
+        nav.dialogState.value = DialogState.QuickMenu(rows = rows, kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning)
+        return true
+    }
+
+    private fun isLauncherHomeScreen(): Boolean = when (nav.currentScreen) {
+        is LauncherScreen.SystemList,
+        is LauncherScreen.GameList -> true
+        else -> false
+    }
+
+    private fun hasActiveVpn(): Boolean {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
+        val net = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(net) ?: return false
+        return caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
+    }
+
+    private fun toggleQuickMenuKitchen(ds: DialogState.QuickMenu) {
+        if (ds.rows.getOrNull(ds.selectedIndex) != dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.KITCHEN) return
+        if (dev.cannoli.scorza.server.KitchenManager.isRunning) dev.cannoli.scorza.server.KitchenManager.stop(context)
+        else dev.cannoli.scorza.server.KitchenManager.start(context, settings.kitchenCodeBypass)
+        val rows = dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.visibleRows(rommStore.isConfigured, dev.cannoli.scorza.server.KitchenManager.isRunning)
+        nav.dialogState.value = DialogState.QuickMenu(
+            rows = rows,
+            kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
+            selectedIndex = ds.selectedIndex.coerceAtMost(rows.lastIndex),
+        )
     }
 
     private sealed interface ContextReturn {
@@ -121,6 +161,10 @@ class DialogInputHandler @Inject constructor(
             is DialogState.ContextMenu,
             is DialogState.BulkContextMenu -> {
                 ds.withMenuDelta(-1)?.let { nav.dialogState.value = it }
+            }
+            is DialogState.QuickMenu -> {
+                val newIdx = (ds.selectedIndex - 1).coerceAtLeast(0)
+                nav.dialogState.value = ds.copy(selectedIndex = newIdx)
             }
             is DialogState.RenameInput,
             is DialogState.NewCollectionInput,
@@ -158,6 +202,10 @@ class DialogInputHandler @Inject constructor(
             is DialogState.ContextMenu,
             is DialogState.BulkContextMenu -> {
                 ds.withMenuDelta(1)?.let { nav.dialogState.value = it }
+            }
+            is DialogState.QuickMenu -> {
+                val newIdx = (ds.selectedIndex + 1).coerceAtMost(ds.rows.lastIndex)
+                nav.dialogState.value = ds.copy(selectedIndex = newIdx)
             }
             is DialogState.RenameInput,
             is DialogState.NewCollectionInput,
@@ -198,6 +246,13 @@ class DialogInputHandler @Inject constructor(
                     nav.dialogState.value = ds.copy(selectedIndex = newIdx)
                 }
             }
+            is DialogState.QuickInfo -> {
+                if (ds.urls.size > 1) {
+                    val newIdx = (ds.selectedIndex - 1 + ds.urls.size) % ds.urls.size
+                    nav.dialogState.value = ds.copy(selectedIndex = newIdx)
+                }
+            }
+            is DialogState.QuickMenu -> toggleQuickMenuKitchen(ds)
             is DialogState.RenameInput,
             is DialogState.NewCollectionInput,
             is DialogState.CollectionRenameInput,
@@ -234,6 +289,13 @@ class DialogInputHandler @Inject constructor(
                     nav.dialogState.value = ds.copy(selectedIndex = newIdx)
                 }
             }
+            is DialogState.QuickInfo -> {
+                if (ds.urls.size > 1) {
+                    val newIdx = (ds.selectedIndex + 1) % ds.urls.size
+                    nav.dialogState.value = ds.copy(selectedIndex = newIdx)
+                }
+            }
+            is DialogState.QuickMenu -> toggleQuickMenuKitchen(ds)
             is DialogState.RenameInput,
             is DialogState.NewCollectionInput,
             is DialogState.CollectionRenameInput,
@@ -388,6 +450,24 @@ class DialogInputHandler @Inject constructor(
                 nav.dialogState.value = DialogState.None
             }
             is DialogState.PlatformResetConfirm -> onPlatformReset(ds)
+            is DialogState.QuickMenu -> {
+                when (ds.rows.getOrNull(ds.selectedIndex)) {
+                    dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.ROMM -> {
+                        nav.dialogState.value = DialogState.None
+                        nav.push(dev.cannoli.scorza.navigation.LauncherScreen.RommPlatformList())
+                    }
+                    dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.KITCHEN -> toggleQuickMenuKitchen(ds)
+                    dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.RESCAN -> {
+                        launcherActions.rescanSystemList(scanDisk = true)
+                        nav.dialogState.value = DialogState.None
+                    }
+                    dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.INFO -> {
+                        val urls = dev.cannoli.scorza.server.KitchenManager.getUrls(hasVpn = hasActiveVpn())
+                        nav.dialogState.value = DialogState.QuickInfo(urls = urls, kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning)
+                    }
+                    null -> nav.dialogState.value = DialogState.None
+                }
+            }
             else -> {}
         }
         return true
@@ -416,6 +496,17 @@ class DialogInputHandler @Inject constructor(
             is DialogState.ContextMenu, is DialogState.BulkContextMenu -> {
                 pendingContextReturn = null
                 nav.dialogState.value = DialogState.None
+            }
+            is DialogState.QuickMenu -> {
+                nav.dialogState.value = DialogState.None
+            }
+            is DialogState.QuickInfo -> {
+                val rows = dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.visibleRows(rommStore.isConfigured, dev.cannoli.scorza.server.KitchenManager.isRunning)
+                nav.dialogState.value = DialogState.QuickMenu(
+                    rows = rows,
+                    kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
+                    selectedIndex = rows.indexOf(dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.INFO).coerceAtLeast(0)
+                )
             }
             is DialogState.DeleteConfirm,
             is DialogState.DeleteCollectionConfirm -> {
@@ -451,6 +542,12 @@ class DialogInputHandler @Inject constructor(
                 if (settingsViewModel.state.value.inSubList) settingsViewModel.exitSubList()
             }
             is DialogState.RALoggingIn -> {
+                nav.dialogState.value = DialogState.None
+            }
+            is DialogState.RommConnected -> {
+                nav.dialogState.value = DialogState.None
+            }
+            is DialogState.RommPairing -> {
                 nav.dialogState.value = DialogState.None
             }
             is DialogState.RestartRequired -> {}
@@ -509,6 +606,11 @@ class DialogInputHandler @Inject constructor(
                 settings.raUsername = ""
                 settings.raToken = ""
                 settings.raPassword = ""
+                settingsViewModel.load()
+                nav.dialogState.value = DialogState.None
+            }
+            is DialogState.RommConnected -> {
+                rommStore.disconnect()
                 settingsViewModel.load()
                 nav.dialogState.value = DialogState.None
             }
@@ -1243,6 +1345,30 @@ class DialogInputHandler @Inject constructor(
         }
         if (state.gameName == "ra_login") {
             activityActions.startRaLogin(settings.raUsername, settingsViewModel.raPassword)
+            nav.dialogState.value = DialogState.None
+            return
+        }
+        if (state.gameName == "romm_host") {
+            rommStore.host = state.currentName.trim()
+            settingsViewModel.refreshSubList()
+            nav.dialogState.value = DialogState.None
+            return
+        }
+        if (state.gameName == "romm_pair_code") {
+            settingsViewModel.rommPairCode = dev.cannoli.scorza.romm.RommPairingCode.normalize(state.currentName)
+            settingsViewModel.refreshSubList()
+            nav.dialogState.value = DialogState.None
+            return
+        }
+        if (state.gameName == "romm_pair") {
+            activityActions.startRommPairing(rommStore.host, settingsViewModel.rommPairCode)
+            nav.dialogState.value = DialogState.None
+            return
+        }
+        if (state.gameName == "romm_search") {
+            (nav.currentScreen as? dev.cannoli.scorza.navigation.LauncherScreen.RommGameList)?.let {
+                nav.replaceTop(it.copy(search = state.currentName.trim(), selectedIndex = 0, scrollTarget = 0))
+            }
             nav.dialogState.value = DialogState.None
             return
         }

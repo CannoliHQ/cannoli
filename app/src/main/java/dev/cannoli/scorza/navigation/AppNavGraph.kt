@@ -91,6 +91,8 @@ enum class OnboardingPermission { STORAGE }
 
 // Nerd Font md-alert glyph; flags a mapped emulator we can confirm is not installed.
 private const val ICON_NOT_INSTALLED = "\uDB80\uDC26"
+// Nerd Font md-download glyph (U+F01DA); marks a RomM game not yet on device.
+private const val ICON_ROMM_DOWNLOAD = "\uDB80\uDDDA"
 
 sealed class LauncherScreen {
     interface ScrollableScreen {
@@ -213,6 +215,23 @@ sealed class LauncherScreen {
         override val itemCount: Int get() = CREDITS.size
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
     }
+    data class RommPlatformList(
+        override val selectedIndex: Int = 0,
+        override val scrollTarget: Int = 0,
+        override val itemCount: Int = 0,
+    ) : LauncherScreen(), ScrollableScreen {
+        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
+    }
+    data class RommGameList(
+        val platform: dev.cannoli.scorza.romm.RommPlatform,
+        val search: String = "",
+        override val selectedIndex: Int = 0,
+        override val scrollTarget: Int = 0,
+        override val itemCount: Int = 0,
+    ) : LauncherScreen(), ScrollableScreen {
+        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
+    }
+    data class RommGameDetail(val game: dev.cannoli.scorza.romm.RommGame) : LauncherScreen()
     data class InstalledCores(val cores: List<String> = emptyList(), val loading: Boolean = true, override val selectedIndex: Int = 0, override val scrollTarget: Int = 0, val title: String? = null) : LauncherScreen(), ScrollableScreen {
         override val itemCount: Int get() = cores.size
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
@@ -287,6 +306,9 @@ fun AppNavGraph(
     editButtonsController: dev.cannoli.scorza.input.EditButtonsController? = null,
     nav: dev.cannoli.scorza.navigation.NavigationController? = null,
     inputRouter: dev.cannoli.scorza.input.InputRouter? = null,
+    rommBrowseViewModel: dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel? = null,
+    rommImageLoader: coil.ImageLoader? = null,
+    rommHost: String = "",
 ) {
     val dialog by dialogState.collectAsState()
     val appSettings by settingsViewModel.appSettings.collectAsState()
@@ -386,10 +408,6 @@ fun AppNavGraph(
                 listFontSize = listFontSize,
                 listLineHeight = listLineHeight,
                 listVerticalPadding = listVerticalPadding,
-                dialogState = dialog,
-                downloadProgress = downloadProgress,
-                downloadError = downloadError,
-                updateAvailable = updateAvailable,
                 onListStateChanged = onListStateChanged,
                 buttonStyle = labels,
             )
@@ -779,17 +797,6 @@ fun AppNavGraph(
                         )
                     }
                 }
-                if (dialog.isFullScreen) {
-                    DialogOverlay(
-                        dialogState = dialog,
-                        backgroundImagePath = appSettings.backgroundImagePath,
-                        backgroundTint = appSettings.backgroundTint,
-                        listFontSize = listFontSize,
-                        listLineHeight = listLineHeight,
-                        listVerticalPadding = listVerticalPadding,
-                        buttonStyle = labels
-                    )
-                }
             }
             is LauncherScreen.CollectionPicker -> {
                 if (inputRouter != null) {
@@ -834,21 +841,9 @@ fun AppNavGraph(
                         }
                     }
                 }
-                if (dialog.isFullScreen) {
-                    DialogOverlay(
-                        dialogState = dialog,
-                        backgroundImagePath = appSettings.backgroundImagePath,
-                        backgroundTint = appSettings.backgroundTint,
-                        listFontSize = listFontSize,
-                        listLineHeight = listLineHeight,
-                        listVerticalPadding = listVerticalPadding,
-                        buttonStyle = labels
-                    )
-                } else {
-                    val d = dialog
-                    if (d is DialogState.CollectionCreated) {
-                        MessageOverlay(message = stringResource(R.string.collection_created, d.collectionName))
-                    }
+                val d = dialog
+                if (d is DialogState.CollectionCreated) {
+                    MessageOverlay(message = stringResource(R.string.collection_created, d.collectionName))
                 }
             }
             is LauncherScreen.ChildPicker -> {
@@ -1076,17 +1071,6 @@ fun AppNavGraph(
                     onListStateChanged = onListStateChanged,
                     buttonStyle = labels
                 )
-                if (dialog.isFullScreen) {
-                    DialogOverlay(
-                        dialogState = dialog,
-                        backgroundImagePath = appSettings.backgroundImagePath,
-                        backgroundTint = appSettings.backgroundTint,
-                        listFontSize = listFontSize,
-                        listLineHeight = listLineHeight,
-                        listVerticalPadding = listVerticalPadding,
-                        buttonStyle = labels
-                    )
-                }
             }
             is LauncherScreen.Credits -> {
                 if (inputRouter != null) {
@@ -1134,17 +1118,6 @@ fun AppNavGraph(
                     listVerticalPadding = listVerticalPadding,
                     buttonStyle = labels,
                 )
-                if (dialog.isFullScreen) {
-                    DialogOverlay(
-                        dialogState = dialog,
-                        backgroundImagePath = appSettings.backgroundImagePath,
-                        backgroundTint = appSettings.backgroundTint,
-                        listFontSize = listFontSize,
-                        listLineHeight = listLineHeight,
-                        listVerticalPadding = listVerticalPadding,
-                        buttonStyle = labels
-                    )
-                }
             }
             is LauncherScreen.EditButtons -> {
                 inputRouter?.let { dev.cannoli.scorza.input.screen.compose.ScreenInput(it.editButtonsHandler) }
@@ -1229,6 +1202,101 @@ fun AppNavGraph(
                     buttonStyle = labels,
                 )
             }
+            is LauncherScreen.RommPlatformList -> {
+                if (inputRouter != null) {
+                    val handler = remember { inputRouter.currentHandler() }
+                    dev.cannoli.scorza.input.screen.compose.ScreenInput(handler)
+                }
+                val platforms = rommBrowseViewModel?.platforms?.collectAsState()?.value ?: emptyList()
+                androidx.compose.runtime.LaunchedEffect(Unit) { rommBrowseViewModel?.loadPlatforms() }
+                androidx.compose.runtime.LaunchedEffect(platforms.size) {
+                    if (currentScreen.itemCount != platforms.size) nav?.replaceTop(currentScreen.copy(itemCount = platforms.size))
+                }
+                dev.cannoli.scorza.ui.screens.RommPlatformListScreen(
+                    platforms = platforms,
+                    selectedIndex = currentScreen.selectedIndex,
+                    scrollTarget = currentScreen.scrollTarget,
+                    backgroundImagePath = appSettings.backgroundImagePath,
+                    backgroundTint = appSettings.backgroundTint,
+                    listFontSize = listFontSize,
+                    listLineHeight = listLineHeight,
+                    listVerticalPadding = listVerticalPadding,
+                    onListStateChanged = onListStateChanged,
+                    buttonStyle = labels,
+                )
+            }
+            is LauncherScreen.RommGameList -> {
+                if (inputRouter != null) {
+                    val handler = remember { inputRouter.currentHandler() }
+                    dev.cannoli.scorza.input.screen.compose.ScreenInput(handler)
+                }
+                val loadedPlatformId = rommBrowseViewModel?.loadedPlatformId?.collectAsState()?.value
+                val allGames = rommBrowseViewModel?.games?.collectAsState()?.value ?: emptyList()
+                // Until the VM has loaded this exact platform, render nothing so a back-then-forward
+                // navigation never flashes the previous platform's games or art.
+                val games = if (loadedPlatformId == currentScreen.platform.id) allGames else emptyList()
+                androidx.compose.runtime.LaunchedEffect(currentScreen.platform.id, currentScreen.search) {
+                    rommBrowseViewModel?.openPlatform(currentScreen.platform, currentScreen.search.ifBlank { null })
+                }
+                androidx.compose.runtime.LaunchedEffect(games.size) {
+                    if (currentScreen.itemCount != games.size) nav?.replaceTop(currentScreen.copy(itemCount = games.size))
+                }
+                androidx.compose.runtime.LaunchedEffect(currentScreen.selectedIndex, games.size) {
+                    if (games.isNotEmpty() && currentScreen.selectedIndex >= games.size - 5) rommBrowseViewModel?.loadMore()
+                }
+                val loader = rommImageLoader
+                if (loader != null) {
+                    dev.cannoli.scorza.ui.screens.RommGameListScreen(
+                        title = currentScreen.platform.displayName,
+                        games = games,
+                        selectedIndex = currentScreen.selectedIndex,
+                        scrollTarget = currentScreen.scrollTarget,
+                        host = rommHost,
+                        artWidth = appSettings.artWidth,
+                        downloadIcon = ICON_ROMM_DOWNLOAD,
+                        imageLoader = loader,
+                        backgroundImagePath = appSettings.backgroundImagePath,
+                        backgroundTint = appSettings.backgroundTint,
+                        listFontSize = listFontSize,
+                        listLineHeight = listLineHeight,
+                        listVerticalPadding = listVerticalPadding,
+                        onListStateChanged = onListStateChanged,
+                        buttonStyle = labels,
+                    )
+                }
+            }
+            is LauncherScreen.RommGameDetail -> {
+                val loader = rommImageLoader
+                if (loader != null) {
+                    dev.cannoli.scorza.ui.screens.RommGameDetailScreen(
+                        game = currentScreen.game,
+                        host = rommHost,
+                        imageLoader = loader,
+                        backgroundImagePath = appSettings.backgroundImagePath,
+                        backgroundTint = appSettings.backgroundTint,
+                        listFontSize = listFontSize,
+                        listLineHeight = listLineHeight,
+                        buttonStyle = labels,
+                    )
+                }
+            }
+        }
+
+        // Hoisted full-screen dialog rendering: every screen gets the keyboard / full-screen
+        // overlays for free, so a new screen can never silently capture input with nothing drawn.
+        if (dialog.isFullScreen) {
+            DialogOverlay(
+                dialogState = dialog,
+                backgroundImagePath = appSettings.backgroundImagePath,
+                backgroundTint = appSettings.backgroundTint,
+                listFontSize = listFontSize,
+                listLineHeight = listLineHeight,
+                listVerticalPadding = listVerticalPadding,
+                downloadProgress = downloadProgress,
+                downloadError = downloadError,
+                updateAvailable = updateAvailable,
+                buttonStyle = labels,
+            )
         }
 
         val systemListState = systemListViewModel?.state?.collectAsState()?.value

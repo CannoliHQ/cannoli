@@ -17,7 +17,6 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
-import dev.cannoli.scorza.ui.components.DialogOverlay
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.DPAD_HORIZONTAL
@@ -40,10 +39,6 @@ fun SettingsScreen(
     listFontSize: TextUnit = 22.sp,
     listLineHeight: TextUnit = 32.sp,
     listVerticalPadding: Dp = 8.dp,
-    dialogState: DialogState = DialogState.None,
-    downloadProgress: Float = 0f,
-    downloadError: String? = null,
-    updateAvailable: Boolean = false,
     onListStateChanged: ((androidx.compose.foundation.lazy.LazyListState?) -> Unit)? = null,
     buttonStyle: ButtonStyle = ButtonStyle(),
 ) {
@@ -170,20 +165,5 @@ fun SettingsScreen(
             )
         }
     }
-    }
-
-    if (dialogState.isFullScreen) {
-        DialogOverlay(
-            dialogState = dialogState,
-            backgroundImagePath = backgroundImagePath,
-            backgroundTint = backgroundTint,
-            listFontSize = listFontSize,
-            listLineHeight = listLineHeight,
-            listVerticalPadding = listVerticalPadding,
-            downloadProgress = downloadProgress,
-            downloadError = downloadError,
-            updateAvailable = updateAvailable,
-            buttonStyle = buttonStyle
-        )
     }
 }

@@ -58,12 +58,24 @@ sealed interface DialogState {
     data class Kitchen(val urls: List<String>, val selectedIndex: Int = 0, val pin: String, val requirePin: Boolean = true) : DialogState
     data class RAAccount(val username: String, val score: Int = 0) : DialogState
     data class RALoggingIn(val message: String = "Logging in$ELLIPSIS") : DialogState
+    data class RommPairing(val host: String = "", val message: String = "") : DialogState
+    data class RommConnected(val host: String, val username: String? = null, val version: String? = null) : DialogState
     data class NewFolderInput(val parentPath: String, override val currentName: String = "", override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
     data object QuitConfirm : DialogState
     data class UpdateDownload(val versionName: String, val changelog: String) : DialogState
     data object RestartRequired : DialogState
     data class IntentAuditResult(val message: String) : DialogState
     data class PlatformResetConfirm(val tag: String, val platformName: String) : DialogState
+    data class QuickMenu(
+        val rows: List<dev.cannoli.scorza.ui.quickmenu.QuickMenuRow>,
+        val kitchenRunning: Boolean,
+        val selectedIndex: Int = 0,
+    ) : DialogState
+    data class QuickInfo(
+        val urls: List<String>,
+        val kitchenRunning: Boolean,
+        val selectedIndex: Int = 0,
+    ) : DialogState
 }
 
 fun DialogState.asKeyboardState(): KeyboardInputState? = this as? KeyboardInputState
@@ -147,8 +159,12 @@ val DialogState.isFullScreen: Boolean
         is DialogState.Kitchen,
         is DialogState.RAAccount,
         is DialogState.RALoggingIn,
+        is DialogState.RommPairing,
+        is DialogState.RommConnected,
         is DialogState.UpdateDownload,
         is DialogState.RestartRequired,
-        is DialogState.IntentAuditResult -> true
+        is DialogState.IntentAuditResult,
+        is DialogState.QuickMenu,
+        is DialogState.QuickInfo -> true
         else -> false
     }

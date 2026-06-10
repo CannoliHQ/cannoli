@@ -19,7 +19,9 @@ import dev.cannoli.scorza.R
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.screens.KeyboardInputState
 import dev.cannoli.ui.ButtonStyle
+import dev.cannoli.ui.DPAD_HORIZONTAL
 import dev.cannoli.ui.components.BottomBar
+import dev.cannoli.ui.components.QuickInfoOverlay
 import dev.cannoli.ui.components.ColorPickerOverlay
 import dev.cannoli.ui.components.HexColorInputOverlay
 import dev.cannoli.ui.components.KeyboardOverlay
@@ -28,6 +30,8 @@ import dev.cannoli.ui.components.PillRowKeyValue
 import dev.cannoli.ui.components.PillRowText
 import dev.cannoli.ui.components.RAAccountOverlay
 import dev.cannoli.ui.components.RALoggingInOverlay
+import dev.cannoli.ui.components.RommConnectedOverlay
+import dev.cannoli.ui.components.RommPairingOverlay
 import dev.cannoli.ui.components.RestartOverlay
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
@@ -178,6 +182,13 @@ fun DialogOverlay(
             RALoggingInOverlay(message = dialogState.message, buttonStyle = buttonStyle)
         }
 
+        is DialogState.RommPairing -> {
+            RommPairingOverlay(host = dialogState.host, message = dialogState.message, buttonStyle = buttonStyle)
+        }
+        is DialogState.RommConnected -> {
+            RommConnectedOverlay(host = dialogState.host, username = dialogState.username, version = dialogState.version, buttonStyle = buttonStyle)
+        }
+
         is DialogState.UpdateDownload -> {
             UpdateDownloadOverlay(
                 versionName = dialogState.versionName,
@@ -196,8 +207,67 @@ fun DialogOverlay(
             RestartOverlay(message = dialogState.message, buttonStyle = buttonStyle)
         }
 
+        is DialogState.QuickMenu -> {
+            val selectedRow = dialogState.rows.getOrNull(dialogState.selectedIndex)
+            val rightItems = if (selectedRow == dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.KITCHEN) {
+                listOf(DPAD_HORIZONTAL to stringResource(R.string.label_change))
+            } else {
+                listOf(buttonStyle.confirm to stringResource(R.string.label_select))
+            }
+            ListDialogScreen(
+                backgroundImagePath = backgroundImagePath,
+                backgroundTint = backgroundTint,
+                title = stringResource(R.string.quick_menu_title),
+                listFontSize = listFontSize,
+                listLineHeight = listLineHeight,
+                rightBottomItems = rightItems,
+                buttonStyle = buttonStyle
+            ) {
+                List(
+                    items = dialogState.rows,
+                    selectedIndex = dialogState.selectedIndex,
+                    itemHeight = itemHeight
+                ) { _, row, isSelected ->
+                    if (row == dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.KITCHEN) {
+                        PillRowKeyValue(
+                            label = stringResource(R.string.quick_menu_kitchen),
+                            value = stringResource(if (dialogState.kitchenRunning) R.string.value_on else R.string.value_off),
+                            isSelected = isSelected,
+                            fontSize = listFontSize,
+                            lineHeight = listLineHeight,
+                            verticalPadding = listVerticalPadding
+                        )
+                    } else {
+                        PillRowText(
+                            label = quickMenuLabel(row),
+                            isSelected = isSelected,
+                            fontSize = listFontSize,
+                            lineHeight = listLineHeight,
+                            verticalPadding = listVerticalPadding
+                        )
+                    }
+                }
+            }
+        }
+        is DialogState.QuickInfo -> {
+            QuickInfoOverlay(
+                urls = dialogState.urls,
+                kitchenRunning = dialogState.kitchenRunning,
+                selectedIndex = dialogState.selectedIndex,
+                buttonStyle = buttonStyle
+            )
+        }
+
         else -> {}
     }
+}
+
+@Composable
+private fun quickMenuLabel(row: dev.cannoli.scorza.ui.quickmenu.QuickMenuRow): String = when (row) {
+    dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.ROMM -> stringResource(R.string.quick_menu_romm)
+    dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.KITCHEN -> stringResource(R.string.quick_menu_kitchen)
+    dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.RESCAN -> stringResource(R.string.quick_menu_rescan)
+    dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.INFO -> stringResource(R.string.quick_menu_info)
 }
 
 @Composable

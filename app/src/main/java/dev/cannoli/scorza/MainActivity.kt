@@ -29,7 +29,10 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import dagger.hilt.android.AndroidEntryPoint
 import dev.cannoli.scorza.boot.BootSequencer
 import dev.cannoli.scorza.boot.BootState
@@ -109,6 +112,10 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var startStorageDependentHolder: StartStorageDependentHolder
     @Inject lateinit var appFonts: AppFonts
     @Inject lateinit var controllerBlacklist: dev.cannoli.scorza.input.ControllerBlacklist
+    @Inject lateinit var rommStore: dev.cannoli.scorza.romm.RommConnectionStore
+    @Inject lateinit var rommClient: dev.cannoli.scorza.romm.RommClient
+    @Inject lateinit var rommBrowseViewModel: dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel
+    @Inject lateinit var rommImageLoader: coil.ImageLoader
 
     private val isTv: Boolean by lazy { packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) }
 
@@ -317,6 +324,9 @@ class MainActivity : ComponentActivity(), ActivityActions {
             editButtonsController = editButtonsController,
             nav = nav,
             inputRouter = router,
+            rommBrowseViewModel = rommBrowseViewModel,
+            rommImageLoader = rommImageLoader,
+            rommHost = rommStore.host,
         )
     }
 
@@ -379,6 +389,9 @@ class MainActivity : ComponentActivity(), ActivityActions {
         settingsViewModel.get().load()
         val activeDialogState = nav.dialogState
         if (activeDialogState.value is DialogState.RAAccount && settings.raToken.isEmpty()) {
+            activeDialogState.value = DialogState.None
+        }
+        if (activeDialogState.value is DialogState.RommConnected && rommStore.token.isNullOrEmpty()) {
             activeDialogState.value = DialogState.None
         }
         if (!systemListViewModel.get().state.value.isLoading) {
@@ -662,6 +675,42 @@ class MainActivity : ComponentActivity(), ActivityActions {
         loginManager = ra
         loginPollHandler.postDelayed(loginPollRunnable, 100)
         nav.dialogState.value = DialogState.RALoggingIn()
+    }
+
+    override fun startRommPairing(host: String, pairCode: String) {
+        if (!dev.cannoli.scorza.romm.RommPairingCode.isValid(pairCode)) {
+            nav.dialogState.value = DialogState.RommPairing(host = host, message = getString(R.string.romm_pair_invalid))
+            return
+        }
+        nav.dialogState.value = DialogState.RommPairing(host = host)
+        val code = dev.cannoli.scorza.romm.RommPairingCode.normalize(pairCode)
+        lifecycleScope.launch {
+            val base = withContext(Dispatchers.IO) { rommClient.resolveBaseUrl(host) }
+            if (base == null) {
+                nav.dialogState.value = DialogState.RommPairing(host = host, message = getString(R.string.romm_unreachable))
+                return@launch
+            }
+            rommStore.host = base
+            val result = withContext(Dispatchers.IO) { runCatching { rommClient.exchangeCode(code) } }
+            result.onSuccess { token ->
+                rommStore.token = token
+                settingsViewModel.get().rommPairCode = ""
+                settingsViewModel.get().refreshSubList()
+                settingsViewModel.get().selectItem("romm_connection_info")
+                val user = withContext(Dispatchers.IO) { rommClient.currentUser() }
+                val version = withContext(Dispatchers.IO) { rommClient.serverVersion() }
+                rommStore.username = user
+                rommStore.serverVersion = version
+                nav.dialogState.value = DialogState.RommConnected(host = rommStore.host, username = user, version = version)
+            }.onFailure { e ->
+                val msg = when ((e as? dev.cannoli.scorza.romm.RommException)?.statusCode) {
+                    404 -> getString(R.string.romm_pair_invalid)
+                    429 -> getString(R.string.romm_pair_rate_limited)
+                    else -> getString(R.string.romm_pair_failed)
+                }
+                nav.dialogState.value = DialogState.RommPairing(host = host, message = msg)
+            }
+        }
     }
 
 }

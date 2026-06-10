@@ -34,6 +34,7 @@ class SettingsViewModel @Inject constructor(
     private val settings: SettingsRepository,
     private val appFonts: AppFonts,
     @ApplicationContext private val context: Context,
+    private val rommStore: dev.cannoli.scorza.romm.RommConnectionStore,
 ) {
     private var cannoliRoot: java.io.File? = null
     private var packageManager: PackageManager? = null
@@ -92,6 +93,7 @@ class SettingsViewModel @Inject constructor(
     )
 
     var raPassword: String = ""
+    var rommPairCode: String = ""
 
     var updateInfo: dev.cannoli.scorza.updater.UpdateInfo? = null
         set(value) {
@@ -187,6 +189,7 @@ class SettingsViewModel @Inject constructor(
         Category("input", R.string.settings_input),
         Category("emulation", R.string.settings_emulation),
         Category("retroachievements", R.string.settings_retroachievements),
+        Category("romm", R.string.settings_romm),
         Category("kitchen", R.string.settings_kitchen),
         Category("advanced", R.string.settings_advanced),
         Category("about", R.string.settings_about),
@@ -320,7 +323,12 @@ class SettingsViewModel @Inject constructor(
         val current = _state.value
         val cat = current.activeCategory ?: return
         val items = buildItemsForCategory(cat)
-        _state.update { it.copy(items = items) }
+        _state.update { it.copy(items = items, selectedIndex = it.selectedIndex.coerceIn(0, (items.size - 1).coerceAtLeast(0))) }
+    }
+
+    fun selectItem(key: String) {
+        val index = _state.value.items.indexOfFirst { it.key == key }
+        if (index >= 0) _state.update { it.copy(selectedIndex = index) }
     }
 
     fun refreshAppSettings() {
@@ -463,6 +471,12 @@ class SettingsViewModel @Inject constructor(
                 val channels = dev.cannoli.scorza.updater.ReleaseChannel.entries
                 val cur = channels.indexOfFirst { it.name == settings.releaseChannel }.coerceAtLeast(0)
                 settings.releaseChannel = channels[((cur + direction) % channels.size + channels.size) % channels.size].name
+            }
+            "romm_allow_self_signed" -> rommStore.allowSelfSigned = !rommStore.allowSelfSigned
+            "romm_art_type" -> {
+                val entries = dev.cannoli.scorza.romm.RommArtType.entries
+                val cur = entries.indexOf(rommStore.artType).coerceAtLeast(0)
+                rommStore.artType = entries[((cur + direction) % entries.size + entries.size) % entries.size]
             }
         }
 
@@ -782,6 +796,26 @@ class SettingsViewModel @Inject constructor(
             add(SettingsItem("ra_password", R.string.setting_ra_password, valueText = if (raPassword.isEmpty()) null else BULLET.repeat(raPassword.length), valueRes = if (raPassword.isEmpty()) R.string.value_not_set else null, isEditable = true))
             if (settings.raUsername.isNotEmpty() && raPassword.isNotEmpty()) {
                 add(SettingsItem("ra_login", R.string.setting_ra_login, isEditable = true))
+            }
+        }
+        "romm" -> buildList {
+            if (rommStore.token.isNullOrEmpty()) {
+                add(SettingsItem("romm_host", R.string.setting_romm_host, valueText = rommStore.host.ifEmpty { null }, valueRes = if (rommStore.host.isEmpty()) R.string.value_not_set else null, isEditable = true, canCycle = false))
+                add(SettingsItem("romm_allow_self_signed", R.string.setting_romm_allow_self_signed, valueRes = onOff(rommStore.allowSelfSigned)))
+                if (rommStore.host.isNotEmpty()) {
+                    add(SettingsItem("romm_pair_code", R.string.setting_romm_pair_code, valueText = if (rommPairCode.isEmpty()) null else BULLET.repeat(rommPairCode.length), valueRes = if (rommPairCode.isEmpty()) R.string.value_not_set else null, isEditable = true, canCycle = false))
+                }
+                if (rommStore.host.isNotEmpty() && rommPairCode.isNotEmpty()) {
+                    add(SettingsItem("romm_pair", R.string.setting_romm_pair, isEditable = true, canCycle = false))
+                }
+            } else {
+                val artTypeRes = when (rommStore.artType) {
+                    dev.cannoli.scorza.romm.RommArtType.COVER -> R.string.romm_art_type_cover
+                    dev.cannoli.scorza.romm.RommArtType.TITLE -> R.string.romm_art_type_title
+                    dev.cannoli.scorza.romm.RommArtType.SCREENSHOT -> R.string.romm_art_type_screenshot
+                }
+                add(SettingsItem("romm_art_type", R.string.setting_romm_art_type, valueRes = artTypeRes))
+                add(SettingsItem("romm_connection_info", R.string.setting_romm_connection_info, isEditable = true, canCycle = false))
             }
         }
         "advanced" -> buildList {

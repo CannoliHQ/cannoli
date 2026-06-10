@@ -38,7 +38,6 @@ import dev.cannoli.scorza.R
 import dev.cannoli.scorza.model.AppType
 import dev.cannoli.scorza.model.ListItem
 import dev.cannoli.scorza.settings.ArtScale
-import dev.cannoli.scorza.ui.components.DialogOverlay
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.STAR
@@ -336,18 +335,6 @@ fun GameListScreen(
             message = stringResource(R.string.dialog_delete_confirm, dialogState.displayName)
         )
         else -> {}
-    }
-
-    if (dialogState.isFullScreen) {
-        DialogOverlay(
-            dialogState = dialogState,
-            backgroundImagePath = backgroundImagePath,
-            backgroundTint = backgroundTint,
-            listFontSize = listFontSize,
-            listLineHeight = listLineHeight,
-            listVerticalPadding = listVerticalPadding,
-            buttonStyle = buttonStyle
-        )
     }
 }
 

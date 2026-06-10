@@ -38,7 +38,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.settings.ArtScale
-import dev.cannoli.scorza.ui.components.DialogOverlay
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel.ListItem
 import dev.cannoli.ui.ButtonStyle
@@ -303,17 +302,5 @@ fun SystemListScreen(
 
     if (dialogState is DialogState.QuitConfirm) {
         ConfirmOverlay(message = stringResource(R.string.dialog_quit_confirm), confirmLabel = stringResource(R.string.label_quit))
-    }
-
-    if (dialogState.isFullScreen) {
-        DialogOverlay(
-            dialogState = dialogState,
-            backgroundImagePath = backgroundImagePath,
-            backgroundTint = backgroundTint,
-            listFontSize = listFontSize,
-            listLineHeight = listLineHeight,
-            listVerticalPadding = listVerticalPadding,
-            buttonStyle = buttonStyle
-        )
     }
 }

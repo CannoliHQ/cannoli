@@ -51,6 +51,7 @@ class InputRouter @Inject constructor(
     @ApplicationContext private val context: Context,
     private val settings: SettingsRepository,
     private val coreInstaller: CoreInstaller,
+    private val rommBrowseViewModel: dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel,
 ) {
     var unregisterCoreQueryReceiver: () -> Unit = {}
 
@@ -85,6 +86,9 @@ class InputRouter @Inject constructor(
         is LauncherScreen.LoggingSettings -> loggingSettingsHandler
         is LauncherScreen.OnboardingPermissions -> onboardingHandler
         is LauncherScreen.DirectoryBrowser -> onboardingHandler
+        is LauncherScreen.RommGameDetail -> object : ScreenInputHandler {
+            override fun onBack() { nav.pop() }
+        }
         else -> null
     }
 
@@ -131,6 +135,8 @@ class InputRouter @Inject constructor(
         is LauncherScreen.ShortcutBinding   -> shortcutBindingHandler()
         is LauncherScreen.Credits           -> creditsHandler()
         is LauncherScreen.InstalledCores    -> installedCoresHandler()
+        is LauncherScreen.RommPlatformList  -> rommPlatformListHandler()
+        is LauncherScreen.RommGameList      -> rommGameListHandler()
         else -> object : ScreenInputHandler {}
     }
 
@@ -336,6 +342,25 @@ class InputRouter @Inject constructor(
         onBack = {
             unregisterCoreQueryReceiver()
             nav.pop()
+        },
+    )
+
+    private fun rommPlatformListHandler() = scrollable<LauncherScreen.RommPlatformList>(
+        onConfirm = {
+            val platform = rommBrowseViewModel.platforms.value.getOrNull(selectedIndex) ?: return@scrollable
+            nav.push(LauncherScreen.RommGameList(platform = platform))
+        },
+        onBack = { nav.pop() },
+    )
+
+    private fun rommGameListHandler() = scrollable<LauncherScreen.RommGameList>(
+        onConfirm = {
+            val row = rommBrowseViewModel.games.value.getOrNull(selectedIndex) ?: return@scrollable
+            nav.push(LauncherScreen.RommGameDetail(game = row.game))
+        },
+        onBack = { nav.pop() },
+        onNorth = {
+            nav.dialogState.value = DialogState.RenameInput(gameName = "romm_search", currentName = search, cursorPos = search.length)
         },
     )
 

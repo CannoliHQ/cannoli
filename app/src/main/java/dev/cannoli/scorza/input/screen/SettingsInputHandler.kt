@@ -50,6 +50,7 @@ class SettingsInputHandler @Inject constructor(
     private val activityActions: ActivityActions,
     private val emulatorMappingBuilder: dev.cannoli.scorza.input.EmulatorMappingBuilder,
     @ApplicationContext private val context: Context,
+    private val rommStore: dev.cannoli.scorza.romm.RommConnectionStore,
 ) : ScreenInputHandler {
 
     override fun onUp() {
@@ -150,6 +151,17 @@ class SettingsInputHandler @Inject constructor(
                 )
             }
             "ra_login" -> activityActions.startRaLogin(settings.raUsername, settingsViewModel.raPassword)
+            "romm_host" -> {
+                val current = rommStore.host
+                nav.dialogState.value = DialogState.RenameInput(gameName = "romm_host", currentName = current, cursorPos = current.length)
+            }
+            "romm_pair_code" -> {
+                val current = settingsViewModel.rommPairCode
+                nav.dialogState.value = DialogState.RenameInput(gameName = "romm_pair_code", currentName = current, cursorPos = current.length)
+            }
+            "romm_pair" -> activityActions.startRommPairing(rommStore.host, settingsViewModel.rommPairCode)
+            "romm_connection_info" -> nav.dialogState.value = DialogState.RommConnected(
+                host = rommStore.host, username = rommStore.username, version = rommStore.serverVersion)
             null -> {}
             else -> {
                 when {
