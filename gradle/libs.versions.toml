@@ -17,6 +17,8 @@ detekt = "1.23.8"
 nanohttpd = "2.3.1"
 commonsFileupload = "2.0.0-M5"
 kotlinxSerialization = "1.7.3"
+okhttp = "4.12.0"
+coil = "2.7.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -42,6 +44,9 @@ hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.r
 nanohttpd = { group = "org.nanohttpd", name = "nanohttpd", version.ref = "nanohttpd" }
 commons-fileupload-core = { group = "org.apache.commons", name = "commons-fileupload2-core", version.ref = "commonsFileupload" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+okhttp-mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver", version.ref = "okhttp" }
+coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
