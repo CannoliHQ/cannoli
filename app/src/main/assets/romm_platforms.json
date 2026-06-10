@@ -1,0 +1,19 @@
+{
+  "snes": "SNES",
+  "nes": "NES",
+  "n64": "N64",
+  "gb": "GB",
+  "gbc": "GBC",
+  "gba": "GBA",
+  "nds": "NDS",
+  "genesis-slash-megadrive": "GENESIS",
+  "sms": "SMS",
+  "gamegear": "GG",
+  "psx": "PSX",
+  "ps2": "PS2",
+  "psp": "PSP",
+  "turbografx16--1": "TG16",
+  "neogeoaes": "NEOGEO",
+  "arcade": "ARCADE",
+  "dc": "DC"
+}
