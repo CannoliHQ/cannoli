@@ -361,7 +361,6 @@ fun AppNavGraph(
                     listVerticalPadding = listVerticalPadding,
                     dialogState = dialog,
                     onListStateChanged = onListStateChanged,
-                    kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
                     title = appSettings.title,
                     mainMenuQuit = appSettings.mainMenuQuit,
                     artWidth = appSettings.artWidth,
@@ -1208,7 +1207,26 @@ fun AppNavGraph(
                     dev.cannoli.scorza.input.screen.compose.ScreenInput(handler)
                 }
                 val platforms = rommBrowseViewModel?.platforms?.collectAsState()?.value ?: emptyList()
-                androidx.compose.runtime.LaunchedEffect(Unit) { rommBrowseViewModel?.loadPlatforms() }
+                androidx.compose.runtime.LaunchedEffect(Unit) { rommBrowseViewModel?.enterBrowse() }
+                val syncStatus = rommBrowseViewModel?.syncStatus?.collectAsState()?.value
+                val syncProgress = rommBrowseViewModel?.syncProgress?.collectAsState()?.value
+                var emptyMessage: String? = null
+                var syncFraction: Float? = null
+                if (platforms.isEmpty()) when (syncStatus) {
+                    dev.cannoli.scorza.romm.cache.RommSyncCoordinator.SyncStatus.SYNCING ->
+                        if (syncProgress != null && syncProgress.total > 0) {
+                            val platformName = syncProgress.platform
+                            emptyMessage = if (platformName != null)
+                                androidx.compose.ui.res.stringResource(dev.cannoli.ui.R.string.romm_syncing_platform, platformName)
+                            else androidx.compose.ui.res.stringResource(dev.cannoli.ui.R.string.romm_syncing)
+                            syncFraction = syncProgress.completed.toFloat() / syncProgress.total
+                        } else {
+                            emptyMessage = androidx.compose.ui.res.stringResource(dev.cannoli.ui.R.string.romm_syncing)
+                        }
+                    dev.cannoli.scorza.romm.cache.RommSyncCoordinator.SyncStatus.ERROR ->
+                        emptyMessage = androidx.compose.ui.res.stringResource(dev.cannoli.ui.R.string.romm_sync_error)
+                    else -> {}
+                }
                 androidx.compose.runtime.LaunchedEffect(platforms.size) {
                     if (currentScreen.itemCount != platforms.size) nav?.replaceTop(currentScreen.copy(itemCount = platforms.size))
                 }
@@ -1223,6 +1241,8 @@ fun AppNavGraph(
                     listVerticalPadding = listVerticalPadding,
                     onListStateChanged = onListStateChanged,
                     buttonStyle = labels,
+                    emptyMessage = emptyMessage,
+                    progress = syncFraction,
                 )
             }
             is LauncherScreen.RommGameList -> {
@@ -1309,7 +1329,9 @@ fun AppNavGraph(
                 || currentScreen is LauncherScreen.InputTester
                 || currentScreen is LauncherScreen.OnboardingPermissions
                 || (currentScreen is LauncherScreen.SystemList && systemListState?.isLoading == true)
-        val hasContent = dev.cannoli.scorza.server.KitchenManager.isRunning
+        val showKitchenIcon = dev.cannoli.scorza.server.KitchenManager.running.collectAsState().value
+                && appSettings.showKitchen
+        val hasContent = showKitchenIcon
                 || appSettings.showWifi
                 || appSettings.showBluetooth
                 || appSettings.showVpn
@@ -1327,6 +1349,7 @@ fun AppNavGraph(
         ) {
             StatusBar(
                 updateAvailable = updateAvailable,
+                kitchenRunning = showKitchenIcon,
                 showWifi = appSettings.showWifi,
                 showBluetooth = appSettings.showBluetooth,
                 showVpn = appSettings.showVpn,
