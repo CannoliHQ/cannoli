@@ -231,7 +231,12 @@ sealed class LauncherScreen {
     ) : LauncherScreen(), ScrollableScreen {
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
     }
-    data class RommGameDetail(val game: dev.cannoli.scorza.romm.RommGame) : LauncherScreen()
+    data class RommGameDetail(
+        val game: dev.cannoli.scorza.romm.RommGame,
+        val localState: dev.cannoli.scorza.romm.LocalState,
+        val platformName: String,
+        val scrollStep: Int = 0,
+    ) : LauncherScreen()
     data class InstalledCores(val cores: List<String> = emptyList(), val loading: Boolean = true, override val selectedIndex: Int = 0, override val scrollTarget: Int = 0, val title: String? = null) : LauncherScreen(), ScrollableScreen {
         override val itemCount: Int get() = cores.size
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
@@ -1207,7 +1212,7 @@ fun AppNavGraph(
                     dev.cannoli.scorza.input.screen.compose.ScreenInput(handler)
                 }
                 val platforms = rommBrowseViewModel?.platforms?.collectAsState()?.value ?: emptyList()
-                androidx.compose.runtime.LaunchedEffect(Unit) { rommBrowseViewModel?.enterBrowse() }
+                androidx.compose.runtime.LaunchedEffect(Unit) { rommBrowseViewModel?.enterBrowse(systemListViewModel?.getPlatformTags().orEmpty()) }
                 val syncStatus = rommBrowseViewModel?.syncStatus?.collectAsState()?.value
                 val syncProgress = rommBrowseViewModel?.syncProgress?.collectAsState()?.value
                 var emptyMessage: String? = null
@@ -1290,10 +1295,12 @@ fun AppNavGraph(
                 if (loader != null) {
                     dev.cannoli.scorza.ui.screens.RommGameDetailScreen(
                         game = currentScreen.game,
+                        platformName = currentScreen.platformName,
+                        localState = currentScreen.localState,
                         host = rommHost,
                         imageLoader = loader,
-                        backgroundImagePath = appSettings.backgroundImagePath,
-                        backgroundTint = appSettings.backgroundTint,
+                        scrollStep = currentScreen.scrollStep,
+                        onScrollStepChanged = { nav?.replaceTop(currentScreen.copy(scrollStep = it)) },
                         listFontSize = listFontSize,
                         listLineHeight = listLineHeight,
                         buttonStyle = labels,

@@ -239,6 +239,13 @@
     <string name="romm_detail_size">Size</string>
     <string name="romm_detail_languages">Languages</string>
     <string name="romm_detail_files">Files</string>
+    <string name="romm_detail_publisher">Publisher</string>
+    <string name="romm_detail_released">Released</string>
+    <string name="romm_detail_genre">Genre</string>
+    <string name="romm_detail_players">Players</string>
+    <string name="romm_detail_on_device">On Device</string>
+    <string name="romm_detail_not_on_device">Not on device</string>
+    <string name="romm_detail_download">Download</string>
     <string name="romm_syncing">Building cache...</string>
     <string name="romm_syncing_platform">Building cache...\n%1$s</string>
     <string name="romm_sync_error">Could not reach RomM. Showing cached library.</string>

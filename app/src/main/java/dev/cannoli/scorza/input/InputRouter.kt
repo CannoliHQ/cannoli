@@ -88,6 +88,14 @@ class InputRouter @Inject constructor(
         is LauncherScreen.DirectoryBrowser -> onboardingHandler
         is LauncherScreen.RommGameDetail -> object : ScreenInputHandler {
             override fun onBack() { nav.pop() }
+            override fun onUp() {
+                val s = nav.currentScreen as? LauncherScreen.RommGameDetail ?: return
+                nav.replaceTop(s.copy(scrollStep = (s.scrollStep - 1).coerceAtLeast(0)))
+            }
+            override fun onDown() {
+                val s = nav.currentScreen as? LauncherScreen.RommGameDetail ?: return
+                nav.replaceTop(s.copy(scrollStep = s.scrollStep + 1))
+            }
         }
         else -> null
     }
@@ -356,7 +364,11 @@ class InputRouter @Inject constructor(
     private fun rommGameListHandler() = scrollable<LauncherScreen.RommGameList>(
         onConfirm = {
             val row = rommBrowseViewModel.games.value.getOrNull(selectedIndex) ?: return@scrollable
-            nav.push(LauncherScreen.RommGameDetail(game = row.game))
+            nav.push(LauncherScreen.RommGameDetail(
+                game = row.game,
+                localState = row.localState,
+                platformName = platform.displayName,
+            ))
         },
         onBack = { nav.pop() },
         onNorth = {
