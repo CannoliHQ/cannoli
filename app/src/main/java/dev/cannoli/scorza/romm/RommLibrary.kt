@@ -52,4 +52,7 @@ internal fun SimpleRomDto.toDomain(): RommGame = RommGame(
     genres = metadatum?.genres ?: emptyList(),
     gameModes = metadatum?.gameModes ?: emptyList(),
     firstReleaseDate = metadatum?.firstReleaseDate,
+    ssMedia = ssMetadata?.let {
+        RommSsMedia(it.box2dUrl, it.box3dUrl, it.miximageUrl, it.titleScreenUrl, it.screenshotUrl, it.marqueeUrl, it.manualUrl)
+    },
 )

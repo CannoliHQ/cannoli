@@ -32,6 +32,17 @@ data class RommGame(
     val genres: List<String> = emptyList(),
     val gameModes: List<String> = emptyList(),
     val firstReleaseDate: Long? = null,
+    val ssMedia: RommSsMedia? = null,
+)
+
+data class RommSsMedia(
+    val box2d: String? = null,
+    val box3d: String? = null,
+    val mix: String? = null,
+    val titleScreen: String? = null,
+    val screenshot: String? = null,
+    val marquee: String? = null,
+    val manual: String? = null,
 )
 
 data class RommPage<T>(

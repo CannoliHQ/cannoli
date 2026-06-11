@@ -41,7 +41,6 @@ class RommDatabase(private val dbFileProvider: () -> File) {
                 slug TEXT NOT NULL,
                 cannoli_tag TEXT NOT NULL,
                 display_name TEXT NOT NULL,
-                rom_count INTEGER NOT NULL DEFAULT 0,
                 sort_key TEXT NOT NULL DEFAULT '',
                 updated_at TEXT
             )
@@ -63,6 +62,7 @@ class RommDatabase(private val dbFileProvider: () -> File) {
                 first_release_date INTEGER,
                 cover_path TEXT,
                 files_json TEXT NOT NULL DEFAULT '[]',
+                ss_media_json TEXT NOT NULL DEFAULT '{}',
                 sort_key TEXT NOT NULL DEFAULT '',
                 updated_at TEXT
             )
@@ -78,7 +78,15 @@ class RommDatabase(private val dbFileProvider: () -> File) {
     }
 
     fun platforms(): List<RommPlatform> = withConn { c ->
-        c.queryAll("SELECT id, slug, cannoli_tag, display_name, rom_count FROM platforms WHERE rom_count > 0 ORDER BY sort_key") {
+        c.queryAll(
+            """
+            SELECT p.id, p.slug, p.cannoli_tag, p.display_name, COUNT(g.id)
+            FROM platforms p LEFT JOIN games g ON g.platform_id = p.id
+            GROUP BY p.id
+            HAVING COUNT(g.id) > 0
+            ORDER BY p.sort_key
+            """.trimIndent()
+        ) {
             RommPlatform(
                 id = it.getInt(0),
                 slug = it.getText(1),
@@ -107,8 +115,8 @@ class RommDatabase(private val dbFileProvider: () -> File) {
     }
 
     private fun insertPlatform(c: SQLiteConnection, p: RommPlatform, updatedAt: String?) = c.execute(
-        "INSERT OR REPLACE INTO platforms (id, slug, cannoli_tag, display_name, rom_count, sort_key, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        p.id, p.slug, p.cannoliTag, p.displayName, p.romCount, NaturalSort.toSortKey(p.displayName), updatedAt,
+        "INSERT OR REPLACE INTO platforms (id, slug, cannoli_tag, display_name, sort_key, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+        p.id, p.slug, p.cannoliTag, p.displayName, NaturalSort.toSortKey(p.displayName), updatedAt,
     )
 
     fun upsertGames(records: List<GameRecord>) = withConn { c ->
@@ -118,13 +126,14 @@ class RommDatabase(private val dbFileProvider: () -> File) {
                 val g = rec.game
                 c.execute(
                     """INSERT OR REPLACE INTO games
-                       (id, platform_id, name, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json, sort_key, updated_at)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                       (id, platform_id, name, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json, ss_media_json, sort_key, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     g.id, g.platformId, g.name, g.fsName, g.sizeBytes, g.summary, g.revision,
                     RommCacheJson.encodeStrings(g.regions), RommCacheJson.encodeStrings(g.languages),
                     RommCacheJson.encodeStrings(g.companies), RommCacheJson.encodeStrings(g.genres),
                     RommCacheJson.encodeStrings(g.gameModes), g.firstReleaseDate,
-                    g.coverPath, RommCacheJson.encodeFiles(g.files), NaturalSort.toSortKey(g.name), rec.updatedAt,
+                    g.coverPath, RommCacheJson.encodeFiles(g.files), RommCacheJson.encodeSsMedia(g.ssMedia),
+                    NaturalSort.toSortKey(g.name), rec.updatedAt,
                 )
             }
             c.execSQL("COMMIT")
@@ -134,7 +143,7 @@ class RommDatabase(private val dbFileProvider: () -> File) {
     fun games(platformId: Int, search: String?, limit: Int, offset: Int): List<RommGame> = withConn { c ->
         val like = search?.takeIf { it.isNotBlank() }?.let { "%$it%" }
         val sql = buildString {
-            append("SELECT id, platform_id, name, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json FROM games WHERE platform_id = ?")
+            append("SELECT id, platform_id, name, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json, ss_media_json FROM games WHERE platform_id = ?")
             if (like != null) append(" AND name LIKE ?")
             append(" ORDER BY sort_key LIMIT ? OFFSET ?")
         }
@@ -156,6 +165,7 @@ class RommDatabase(private val dbFileProvider: () -> File) {
                 firstReleaseDate = if (stmt.isNull(12)) null else stmt.getLong(12),
                 coverPath = if (stmt.isNull(13)) null else stmt.getText(13),
                 files = RommCacheJson.decodeFiles(stmt.getText(14)),
+                ssMedia = RommCacheJson.decodeSsMedia(stmt.getText(15)),
             )
         }
     }
@@ -176,10 +186,29 @@ class RommDatabase(private val dbFileProvider: () -> File) {
         c.queryAll("SELECT id FROM games WHERE platform_id = ?", platformId) { it.getInt(0) }.toSet()
     }
 
+    fun allGameIds(): Set<Int> = withConn { c ->
+        c.queryAll("SELECT id FROM games") { it.getInt(0) }.toSet()
+    }
+
     fun deleteGames(ids: Set<Int>) = withConn { c ->
         c.execSQL("BEGIN")
         try {
             ids.forEach { c.execute("DELETE FROM games WHERE id = ?", it) }
+            c.execSQL("COMMIT")
+        } catch (t: Throwable) { c.execSQL("ROLLBACK"); throw t }
+    }
+
+    fun allPlatformIds(): Set<Int> = withConn { c ->
+        c.queryAll("SELECT id FROM platforms") { it.getInt(0) }.toSet()
+    }
+
+    fun deletePlatforms(ids: Set<Int>) = withConn { c ->
+        c.execSQL("BEGIN")
+        try {
+            ids.forEach {
+                c.execute("DELETE FROM games WHERE platform_id = ?", it)
+                c.execute("DELETE FROM platforms WHERE id = ?", it)
+            }
             c.execSQL("COMMIT")
         } catch (t: Throwable) { c.execSQL("ROLLBACK"); throw t }
     }
@@ -203,6 +232,8 @@ class RommDatabase(private val dbFileProvider: () -> File) {
     }
 
     private companion object {
-        const val SCHEMA_VERSION = 2
+        // Pre-release: schema/cache changes are handled by deleting the cache DB, not version bumps.
+        // A mismatch with an older on-device version still triggers a one-time rebuild.
+        const val SCHEMA_VERSION = 1
     }
 }

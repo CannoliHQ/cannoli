@@ -34,9 +34,11 @@ class RommDatabaseTest {
 
     @Test fun `platforms round-trip and replace clears old rows`() {
         db.replacePlatforms(listOf(platform(1, "SNES", "Super Nintendo", 3) to "2024-01-01T00:00:00"))
+        db.upsertGames(listOf(GameRecord(game(1, 1, "Game 1", "g1.sfc"), null)))
         assertEquals(listOf("Super Nintendo"), db.platforms().map { it.displayName })
 
         db.replacePlatforms(listOf(platform(2, "GBA", "Game Boy Advance", 5) to null))
+        db.upsertGames(listOf(GameRecord(game(10, 2, "Game 10", "g10.gba"), null)))
         assertEquals(listOf(2), db.platforms().map { it.id })
     }
 

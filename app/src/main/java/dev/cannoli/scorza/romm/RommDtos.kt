@@ -63,7 +63,19 @@ data class SimpleRomDto(
     @SerialName("has_multiple_files") val hasMultipleFiles: Boolean = false,
     val files: List<RomFileDto> = emptyList(),
     val metadatum: RomMetadatumDto? = null,
+    @SerialName("ss_metadata") val ssMetadata: SsMetadataDto? = null,
     @SerialName("updated_at") val updatedAt: String? = null,
+)
+
+@Serializable
+data class SsMetadataDto(
+    @SerialName("box2d_url") val box2dUrl: String? = null,
+    @SerialName("box3d_url") val box3dUrl: String? = null,
+    @SerialName("miximage_url") val miximageUrl: String? = null,
+    @SerialName("title_screen_url") val titleScreenUrl: String? = null,
+    @SerialName("screenshot_url") val screenshotUrl: String? = null,
+    @SerialName("marquee_url") val marqueeUrl: String? = null,
+    @SerialName("manual_url") val manualUrl: String? = null,
 )
 
 @Serializable

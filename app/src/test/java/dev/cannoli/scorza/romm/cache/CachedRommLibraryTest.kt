@@ -37,7 +37,7 @@ class CachedRommLibraryTest {
     }
 
     @Test fun `platforms come from the mirror`() = runBlocking {
-        db.replacePlatforms(listOf(snes to null))
+        seed(1)
         assertEquals(listOf("Super Nintendo"), library.platforms().map { it.displayName })
     }
 
