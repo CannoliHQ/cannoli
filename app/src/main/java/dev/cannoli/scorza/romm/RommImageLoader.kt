@@ -14,6 +14,7 @@ object RommImageLoader {
     ): ImageLoader =
         ImageLoader.Builder(context)
             .okHttpClient { http.client() }
+            .respectCacheHeaders(false)
             .diskCache(
                 DiskCache.Builder()
                     .directory(cacheDir)
