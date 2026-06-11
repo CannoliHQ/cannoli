@@ -64,6 +64,24 @@ class RommSyncCoordinator(
                     }
                 }
 
+                // Reconcile server-side deletions: drop any cached platform/game whose id is no
+                // longer on the server. Deltas only carry updated rows, never deletes, so without
+                // this a deleted platform or game lingers in the cache.
+                runCatching {
+                    val validPlatformIds = client.getPlatformIdentifiers().toSet()
+                    if (validPlatformIds.isNotEmpty()) {
+                        val stale = db.allPlatformIds() - validPlatformIds
+                        if (stale.isNotEmpty()) db.deletePlatforms(stale)
+                    }
+                }.onFailure { ScanLog.write("romm purge deleted platforms failed: ${it.message}") }
+                runCatching {
+                    val validRomIds = client.getRomIdentifiers().toSet()
+                    if (validRomIds.isNotEmpty()) {
+                        val stale = db.allGameIds() - validRomIds
+                        if (stale.isNotEmpty()) db.deleteGames(stale)
+                    }
+                }.onFailure { ScanLog.write("romm purge deleted games failed: ${it.message}") }
+
                 RommSyncPlanner.nextCursor(cursor, ingested)?.let { db.setSyncState(KEY_CURSOR, it) }
                 _status.value = SyncStatus.IDLE
             } catch (t: Throwable) {
