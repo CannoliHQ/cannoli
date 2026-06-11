@@ -27,6 +27,7 @@ import dev.cannoli.scorza.R
 import dev.cannoli.scorza.romm.download.DownloadStatus
 import dev.cannoli.scorza.romm.download.RommDownloadItem
 import dev.cannoli.scorza.romm.download.RommDownloadKind
+import dev.cannoli.scorza.romm.download.inDisplayOrder
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.screens.KeyboardInputState
 import dev.cannoli.scorza.romm.RommArtType
@@ -381,7 +382,9 @@ fun DialogOverlay(
         is DialogState.RommDownloads -> {
             val colors = LocalCannoliColors.current
             val font = LocalCannoliFont.current
-            val confirmLabel = when (downloads.getOrNull(dialogState.selectedIndex)?.status) {
+            val ordered = downloads.inDisplayOrder()
+            val firstDoneIndex = ordered.indexOfFirst { it.status == DownloadStatus.Done }
+            val confirmLabel = when (ordered.getOrNull(dialogState.selectedIndex)?.status) {
                 is DownloadStatus.Failed -> R.string.label_retry
                 DownloadStatus.Queued, is DownloadStatus.Downloading -> R.string.label_cancel
                 else -> null
@@ -401,10 +404,13 @@ fun DialogOverlay(
                 },
                 buttonStyle = buttonStyle,
             ) {
-                if (downloads.isEmpty()) {
+                if (ordered.isEmpty()) {
                     Text(stringResource(R.string.romm_download_empty), color = colors.text.copy(alpha = 0.5f), fontFamily = font, fontSize = listFontSize)
                 } else {
-                    List(items = downloads, selectedIndex = dialogState.selectedIndex, itemHeight = itemHeight) { _, item, isSelected ->
+                    List(items = ordered, selectedIndex = dialogState.selectedIndex, itemHeight = itemHeight) { index, item, isSelected ->
+                        if (index == firstDoneIndex) {
+                            DownloadSectionHeader(stringResource(R.string.romm_download_completed), listFontSize)
+                        }
                         DownloadRow(item, isSelected, listFontSize)
                     }
                 }
@@ -413,6 +419,20 @@ fun DialogOverlay(
 
         else -> {}
     }
+}
+
+@Composable
+private fun DownloadSectionHeader(text: String, fontSize: TextUnit) {
+    val colors = LocalCannoliColors.current
+    val font = LocalCannoliFont.current
+    Text(
+        text = text.uppercase(),
+        color = colors.text.copy(alpha = 0.45f),
+        fontFamily = font,
+        fontSize = (fontSize.value * 0.7f).sp,
+        letterSpacing = 1.5.sp,
+        modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 12.dp, bottom = 4.dp),
+    )
 }
 
 @Composable

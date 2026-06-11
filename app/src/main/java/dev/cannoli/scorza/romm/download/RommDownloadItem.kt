@@ -20,3 +20,14 @@ data class RommDownloadItem(
 ) {
     val key: String get() = "${kind.name}-$rommId"
 }
+
+/**
+ * Display order for the Downloads screen: active items (newest first) on top, then completed
+ * items in their own section (newest first). The queue keeps insertion order for FIFO claiming,
+ * so reversing here is purely presentational. Both the list renderer and the input handler must
+ * use this same ordering so selection indices line up.
+ */
+fun List<RommDownloadItem>.inDisplayOrder(): List<RommDownloadItem> {
+    val (done, active) = partition { it.status == DownloadStatus.Done }
+    return active.reversed() + done.reversed()
+}

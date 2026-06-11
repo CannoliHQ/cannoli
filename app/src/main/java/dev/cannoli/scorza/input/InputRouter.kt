@@ -53,6 +53,7 @@ class InputRouter @Inject constructor(
     private val coreInstaller: CoreInstaller,
     private val rommBrowseViewModel: dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel,
     private val rommDownloader: dev.cannoli.scorza.romm.download.RommDownloader,
+    private val osdController: dev.cannoli.ui.components.OsdController,
 ) {
     var unregisterCoreQueryReceiver: () -> Unit = {}
 
@@ -95,6 +96,7 @@ class InputRouter @Inject constructor(
                     rommId = s.game.id, game = s.game, tag = s.tag,
                     kind = dev.cannoli.scorza.romm.download.RommDownloadKind.MANUAL)))
                 dev.cannoli.scorza.romm.download.RommDownloadManager.ensureStarted(context)
+                osdController.show(context.getString(dev.cannoli.ui.R.string.romm_osd_manual_queued))
             }
             override fun onBack() { nav.pop() }
             override fun onUp() {
@@ -112,6 +114,7 @@ class InputRouter @Inject constructor(
                     rommId = s.game.id, game = s.game, tag = s.tag,
                     kind = dev.cannoli.scorza.romm.download.RommDownloadKind.ROM)))
                 dev.cannoli.scorza.romm.download.RommDownloadManager.ensureStarted(context)
+                osdController.show(context.getString(dev.cannoli.ui.R.string.romm_osd_download_queued))
             }
         }
         else -> null

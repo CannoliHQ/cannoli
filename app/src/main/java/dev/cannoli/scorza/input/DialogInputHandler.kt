@@ -23,6 +23,7 @@ import dev.cannoli.scorza.model.recentKey
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.romm.download.DownloadStatus
+import dev.cannoli.scorza.romm.download.inDisplayOrder
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.screens.ColorEntry
 import dev.cannoli.scorza.ui.screens.EmulatorPickerOption
@@ -526,7 +527,7 @@ class DialogInputHandler @Inject constructor(
                 }
             }
             is DialogState.RommDownloads -> {
-                val item = rommDownloader.queue.state.value.getOrNull(ds.selectedIndex) ?: return true
+                val item = rommDownloader.queue.state.value.inDisplayOrder().getOrNull(ds.selectedIndex) ?: return true
                 when (item.status) {
                     is DownloadStatus.Failed -> rommDownloader.retry(item.key)
                     DownloadStatus.Queued, is DownloadStatus.Downloading ->

@@ -72,4 +72,13 @@ class RommDownloadQueueTest {
         q.setStatus("ROM-2", DownloadStatus.Done)
         assertEquals(2, q.activeCount()) // downloading(1) + queued(3)
     }
+
+    @Test fun `display order puts newest active first then completed in their own section`() {
+        val q = RommDownloadQueue()
+        q.enqueue(listOf(item(1), item(2), item(3), item(4)))
+        q.setStatus("ROM-1", DownloadStatus.Done)
+        q.setStatus("ROM-3", DownloadStatus.Done)
+        // Insertion order is 1,2,3,4. Active (2,4) newest-first, then done (1,3) newest-first.
+        assertEquals(listOf(4, 2, 3, 1), q.state.value.inDisplayOrder().map { it.rommId })
+    }
 }
