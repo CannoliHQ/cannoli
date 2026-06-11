@@ -76,7 +76,20 @@ sealed interface DialogState {
         val kitchenRunning: Boolean,
         val selectedIndex: Int = 0,
     ) : DialogState
+    data class RommDownloads(val selectedIndex: Int = 0) : DialogState
+    data class RommQuickMenu(
+        val selectedIndex: Int = 0,
+        val concurrent: Int = 2,
+        val artType: dev.cannoli.scorza.romm.RommArtType = dev.cannoli.scorza.romm.RommArtType.NONE,
+    ) : DialogState
+    data class RommAdvancedMenu(val selectedIndex: Int = 0) : DialogState
+    data class RommConfirm(val action: RommConfirmAction, val downloadKey: String? = null) : DialogState
+    data class RommPlatformToggle(val items: List<RommPlatformToggleItem>, val selectedIndex: Int = 0) : DialogState
 }
+
+data class RommPlatformToggleItem(val tag: String, val displayName: String, val visible: Boolean)
+
+enum class RommConfirmAction { REBUILD_CACHE, DISCONNECT, CANCEL_DOWNLOAD, CANCEL_ALL }
 
 fun DialogState.asKeyboardState(): KeyboardInputState? = this as? KeyboardInputState
 
@@ -165,6 +178,11 @@ val DialogState.isFullScreen: Boolean
         is DialogState.RestartRequired,
         is DialogState.IntentAuditResult,
         is DialogState.QuickMenu,
+        is DialogState.RommDownloads,
+        is DialogState.RommQuickMenu,
+        is DialogState.RommAdvancedMenu,
+        is DialogState.RommConfirm,
+        is DialogState.RommPlatformToggle,
         is DialogState.QuickInfo -> true
         else -> false
     }

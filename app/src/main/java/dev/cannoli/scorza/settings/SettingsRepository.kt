@@ -234,6 +234,21 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         get() = jsonRead { optBoolean(KEY_SHOW_KITCHEN, true) }
         set(value) = jsonWrite { put(KEY_SHOW_KITCHEN, value) }
 
+    var showDownloads: Boolean
+        get() = jsonRead { optBoolean(KEY_SHOW_DOWNLOADS, true) }
+        set(value) = jsonWrite { put(KEY_SHOW_DOWNLOADS, value) }
+
+    var concurrentDownloads: Int
+        get() = jsonRead { optInt(KEY_CONCURRENT_DOWNLOADS, 2) }.coerceIn(1, 4)
+        set(value) = jsonWrite { put(KEY_CONCURRENT_DOWNLOADS, value.coerceIn(1, 4)) }
+
+    var hiddenRommPlatforms: Set<String>
+        get() = jsonRead {
+            val arr = optJSONArray(KEY_HIDDEN_ROMM_PLATFORMS) ?: return@jsonRead emptySet()
+            (0 until arr.length()).mapNotNull { arr.optString(it).ifEmpty { null } }.toSet()
+        }
+        set(value) = jsonWrite { put(KEY_HIDDEN_ROMM_PLATFORMS, org.json.JSONArray(value.toList())) }
+
 
     var showTools: Boolean
         get() = jsonRead { optBoolean(KEY_SHOW_TOOLS, false) }
@@ -416,6 +431,9 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         private const val KEY_BATTERY_DISPLAY = "battery_display"
         private const val KEY_SHOW_UPDATE = "show_update"
         private const val KEY_SHOW_KITCHEN = "show_kitchen"
+        private const val KEY_SHOW_DOWNLOADS = "show_downloads"
+        private const val KEY_CONCURRENT_DOWNLOADS = "concurrent_downloads"
+        private const val KEY_HIDDEN_ROMM_PLATFORMS = "hidden_romm_platforms"
         private const val KEY_SHOW_TOOLS = "show_tools"
         private const val KEY_SHOW_PORTS = "show_ports"
         private const val KEY_SHOW_RECENTLY_PLAYED = "show_recently_played"

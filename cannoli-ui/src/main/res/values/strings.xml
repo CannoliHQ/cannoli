@@ -108,6 +108,7 @@
     <string name="setting_clock">Clock</string>
     <string name="setting_battery">Battery</string>
     <string name="setting_kitchen_running">Kitchen Running</string>
+    <string name="setting_downloads_running">Downloads</string>
     <string name="setting_updater">Update Available</string>
     <string name="setting_time_format">Time Format</string>
     <string name="setting_controllers">Controllers</string>
@@ -245,10 +246,50 @@
     <string name="romm_detail_players">Players</string>
     <string name="romm_detail_on_device">On Device</string>
     <string name="romm_detail_not_on_device">Not on device</string>
-    <string name="romm_detail_download">Download</string>
+    <string name="romm_detail_download">DOWNLOAD</string>
+    <string name="label_manual">MANUAL</string>
+    <string name="romm_download_manual">Manual</string>
     <string name="romm_syncing">Building cache...</string>
     <string name="romm_syncing_platform">Building cache...\n%1$s</string>
     <string name="romm_sync_error">Could not reach RomM. Showing cached library.</string>
+    <string name="romm_downloads_title">Downloads</string>
+    <string name="romm_download_queued">Queued</string>
+    <string name="romm_download_downloading">Downloading</string>
+    <string name="romm_download_failed">Failed</string>
+    <string name="romm_download_empty">No downloads</string>
+    <string name="download_percent">%1$d%%</string>
+    <string name="romm_download_notification_title">RomM Downloads</string>
+    <string name="romm_download_notification_starting">Starting downloads</string>
+    <string name="romm_download_notification_active">Downloading</string>
+    <string name="romm_download_notification_progress">%1$s  %2$d%%</string>
+    <string name="romm_download_notification_count">%1$d downloading</string>
+    <string name="label_retry">RETRY</string>
+    <string name="label_cancel_all">CANCEL ALL</string>
+    <string name="label_downloads">DOWNLOADS</string>
+
+    <string name="romm_qm_title">RomM Settings</string>
+    <string name="romm_qm_concurrent">Concurrent Downloads</string>
+    <string name="romm_qm_cover_art">Cover Art</string>
+    <string name="romm_qm_platforms">Platforms</string>
+    <string name="romm_qm_refresh">Refresh Library</string>
+    <string name="romm_qm_server_info">Server Info</string>
+    <string name="romm_qm_advanced">Advanced</string>
+    <string name="romm_qm_rebuild">Rebuild Cache</string>
+    <string name="romm_platforms_title">Show Platforms</string>
+    <string name="romm_platforms_empty">No platforms</string>
+    <string name="romm_art_default">Default</string>
+    <string name="romm_art_off">Off</string>
+    <string name="romm_art_box2d">Box 2D</string>
+    <string name="romm_art_box3d">Box 3D</string>
+    <string name="romm_art_mix">Mix</string>
+    <string name="romm_art_title">Title</string>
+    <string name="romm_art_screenshot">Screenshot</string>
+    <string name="romm_art_marquee">Marquee</string>
+    <string name="label_disconnect">DISCONNECT</string>
+    <string name="romm_rebuild_confirm">Rebuild the RomM cache? This re-downloads the library index.</string>
+    <string name="romm_disconnect_confirm">Disconnect from RomM?</string>
+    <string name="romm_cancel_confirm">Cancel this download?</string>
+    <string name="romm_cancel_all_confirm">Cancel all downloads?</string>
 
     <string name="setting_kitchen_toggle">File Server</string>
     <string name="setting_logging">Logging</string>
@@ -388,6 +429,11 @@
 
     <!-- Kitchen -->
     <string name="kitchen_title">Nonna\'s Kitchen</string>
+    <string name="kitchen_notification_running">Nonna\'s Kitchen is running</string>
+    <string name="kitchen_notification_active">File server active</string>
+    <string name="kitchen_notification_stop">Stop</string>
+    <string name="kitchen_notification_error_title">Nonna\'s Kitchen could not start</string>
+    <string name="kitchen_notification_error_text">The file server port is unavailable</string>
 
     <!-- Quick menu -->
     <string name="quick_menu_title">Quick Menu</string>

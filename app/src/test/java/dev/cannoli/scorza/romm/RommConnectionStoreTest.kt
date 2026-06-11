@@ -23,7 +23,7 @@ class RommConnectionStoreTest {
         assertFalse(store.allowSelfSigned)
         assertNull(store.token)
         assertFalse(store.isConfigured)
-        assertEquals(RommArtType.COVER, store.artType)
+        assertEquals(RommArtType.DEFAULT, store.artType)
     }
 
     @Test fun `host is trimmed of trailing slash and persists`() {

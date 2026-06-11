@@ -23,6 +23,7 @@ class RommBrowseViewModelMatchTest {
         val vm = RommBrowseViewModel(
             library = FakeLibrary(listOf(game(10, "renamed.sfc", 999L))),
             syncCoordinator = null,
+            db = null,
             localFilesFor = { emptyList() },
             linkedIdsProvider = { setOf(10) },
         )
@@ -34,6 +35,7 @@ class RommBrowseViewModelMatchTest {
         val vm = RommBrowseViewModel(
             library = FakeLibrary(listOf(game(10, "a.sfc", 100L), game(11, "b.sfc", 200L))),
             syncCoordinator = null,
+            db = null,
             localFilesFor = { listOf(LocalFile("a.sfc", 100L)) },
             linkedIdsProvider = { emptySet() },
         )

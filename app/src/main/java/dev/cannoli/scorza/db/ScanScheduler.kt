@@ -67,6 +67,8 @@ class ScanScheduler @Inject constructor(
         return counts
     }
 
+    fun markLauncherMutation(platformTag: String) = romScanner.markLauncherMutation(platformTag)
+
     fun enqueue(platformTag: String) {
         val tag = platformTag.uppercase()
         synchronized(mutex) {

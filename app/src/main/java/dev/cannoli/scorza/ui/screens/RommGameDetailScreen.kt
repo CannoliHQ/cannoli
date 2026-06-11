@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import dev.cannoli.scorza.romm.LocalState
+import dev.cannoli.scorza.romm.RommArtType
 import dev.cannoli.scorza.romm.RommArtUrl
 import dev.cannoli.scorza.romm.RommGame
 import dev.cannoli.ui.ButtonStyle
@@ -45,7 +46,7 @@ import dev.cannoli.ui.theme.LocalCannoliFont
 import dev.cannoli.ui.theme.Spacing
 import kotlin.math.ceil
 
-private const val DOWNLOAD_ENABLED = false // flipped on by the download pipeline (Plan 4)
+private const val DOWNLOAD_ENABLED = true
 private val SCROLL_STEP = 56.dp
 
 @Composable
@@ -54,6 +55,7 @@ fun RommGameDetailScreen(
     platformName: String,
     localState: LocalState,
     host: String,
+    artType: RommArtType = RommArtType.NONE,
     imageLoader: coil.ImageLoader,
     scrollStep: Int,
     onScrollStepChanged: (Int) -> Unit,
@@ -94,16 +96,23 @@ fun RommGameDetailScreen(
                     ) {
                         DetailBody(game, scale)
                     }
-                    Spacer(modifier = Modifier.width((20 * scale).dp))
-                    GameCover(game, host, imageLoader, Modifier.width(coverW).fillMaxHeight())
+                    val coverUrl = RommArtUrl.forType(host, game, artType)
+                    if (coverUrl != null) {
+                        Spacer(modifier = Modifier.width((20 * scale).dp))
+                        GameCover(coverUrl, imageLoader, Modifier.width(coverW).fillMaxHeight())
+                    }
                 }
             }
 
             BottomBar(
                 modifier = Modifier.align(Alignment.BottomCenter),
                 leftItems = listOf(buttonStyle.back to stringResource(R.string.label_back)),
-                rightItems = if (RommGameDetailLayout.showDownloadAction(localState, DOWNLOAD_ENABLED))
-                    listOf(buttonStyle.confirm to stringResource(R.string.romm_detail_download)) else emptyList(),
+                rightItems = buildList {
+                    if (game.ssMedia?.manual != null)
+                        add(buttonStyle.west to stringResource(R.string.label_manual))
+                    if (RommGameDetailLayout.showDownloadAction(localState, DOWNLOAD_ENABLED))
+                        add(buttonStyle.north to stringResource(R.string.romm_detail_download))
+                },
             )
         }
     }
@@ -135,27 +144,16 @@ private fun Subtitle(platformName: String, localState: LocalState, scale: Float)
 }
 
 @Composable
-private fun GameCover(game: RommGame, host: String, imageLoader: coil.ImageLoader, modifier: Modifier) {
-    val colors = LocalCannoliColors.current
+private fun GameCover(coverUrl: String, imageLoader: coil.ImageLoader, modifier: Modifier) {
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        val coverUrl = RommArtUrl.resolve(host, game.coverPath)
-        if (coverUrl != null) {
-            AsyncImage(
-                model = coverUrl,
-                contentDescription = null,
-                imageLoader = imageLoader,
-                contentScale = ContentScale.Fit,
-                alignment = Alignment.TopCenter,
-                modifier = Modifier.fillMaxSize(),
-            )
-        } else {
-            Text(
-                text = game.name.take(1),
-                color = colors.text.copy(alpha = 0.25f),
-                fontFamily = LocalCannoliFont.current,
-                fontSize = 48.sp,
-            )
-        }
+        AsyncImage(
+            model = coverUrl,
+            contentDescription = null,
+            imageLoader = imageLoader,
+            contentScale = ContentScale.Fit,
+            alignment = Alignment.TopCenter,
+            modifier = Modifier.fillMaxSize(),
+        )
     }
 }
 

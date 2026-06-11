@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -184,7 +185,8 @@ fun PillRowKeyValue(
     lineHeight: TextUnit,
     verticalPadding: Dp,
     swatchColor: Color? = null,
-    valueIcon: String? = null
+    valueIcon: String? = null,
+    dotIndicator: Boolean? = null
 ) {
     val colors = LocalCannoliColors.current
     val baseStyle = MaterialTheme.typography.bodyLarge
@@ -240,6 +242,16 @@ fun PillRowKeyValue(
                     fontSize = valueStyle.fontSize,
                     color = labelColor,
                     maxLines = 1
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+            }
+            if (dotIndicator != null) {
+                val dotColor = if (dotIndicator) labelColor else labelColor.copy(alpha = 0.45f)
+                Box(
+                    modifier = Modifier
+                        .size((fontSize.value * 0.42f).dp)
+                        .border(if (dotIndicator) 0.dp else 1.dp, dotColor, CircleShape)
+                        .background(if (dotIndicator) dotColor else Color.Transparent, CircleShape)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
             }

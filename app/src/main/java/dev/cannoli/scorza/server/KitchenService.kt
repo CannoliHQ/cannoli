@@ -12,6 +12,7 @@ import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import dagger.hilt.android.AndroidEntryPoint
+import dev.cannoli.scorza.R
 import dev.cannoli.scorza.db.RomsRepository
 import dev.cannoli.scorza.db.ScanScheduler
 import dev.cannoli.scorza.settings.SettingsRepository
@@ -128,7 +129,7 @@ class KitchenService : Service() {
         val nm = getSystemService(NotificationManager::class.java)
         if (nm.getNotificationChannel(CHANNEL_ID) == null) {
             nm.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "Nonna's Kitchen", NotificationManager.IMPORTANCE_LOW)
+                NotificationChannel(CHANNEL_ID, getString(R.string.kitchen_title), NotificationManager.IMPORTANCE_LOW)
             )
         }
     }
@@ -141,11 +142,11 @@ class KitchenService : Service() {
             android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
         )
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Nonna's Kitchen is running")
-            .setContentText("File server active")
+            .setContentTitle(getString(R.string.kitchen_notification_running))
+            .setContentText(getString(R.string.kitchen_notification_active))
             .setSmallIcon(android.R.drawable.stat_sys_upload)
             .setOngoing(true)
-            .addAction(0, "Stop", stopPending)
+            .addAction(0, getString(R.string.kitchen_notification_stop), stopPending)
             .build()
     }
 
@@ -154,8 +155,8 @@ class KitchenService : Service() {
         getSystemService(NotificationManager::class.java).notify(
             NOTIFICATION_ID + 1,
             NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("Nonna's Kitchen could not start")
-                .setContentText("The file server port is unavailable")
+                .setContentTitle(getString(R.string.kitchen_notification_error_title))
+                .setContentText(getString(R.string.kitchen_notification_error_text))
                 .setSmallIcon(android.R.drawable.stat_notify_error)
                 .build()
         )

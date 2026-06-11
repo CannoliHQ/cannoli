@@ -45,7 +45,8 @@ fun RommGameListScreen(
     scrollTarget: Int,
     host: String,
     artWidth: Int,
-    downloadIcon: String,
+    artType: dev.cannoli.scorza.romm.RommArtType = dev.cannoli.scorza.romm.RommArtType.NONE,
+    downloadCount: Int = 0,
     imageLoader: coil.ImageLoader,
     backgroundImagePath: String?,
     backgroundTint: Int,
@@ -56,7 +57,7 @@ fun RommGameListScreen(
     buttonStyle: ButtonStyle = ButtonStyle(),
 ) {
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
-    val showArt = artWidth > 0 && games.isNotEmpty()
+    val showArt = artWidth > 0 && games.isNotEmpty() && artType != dev.cannoli.scorza.romm.RommArtType.NONE
 
     ScreenBackground(backgroundImagePath = backgroundImagePath, backgroundTint = backgroundTint) {
         Box(modifier = Modifier.fillMaxSize().padding(screenPadding)) {
@@ -90,13 +91,13 @@ fun RommGameListScreen(
                                 fontSize = listFontSize,
                                 lineHeight = listLineHeight,
                                 verticalPadding = listVerticalPadding,
-                                valueIcon = if (row.localState == LocalState.REMOTE) downloadIcon else null,
+                                dotIndicator = if (row.localState == LocalState.PRESENT) true else null,
                             )
                         }
                     }
                     if (showArt) {
                         val focused = games.getOrNull(selectedIndex)
-                        val coverUrl = focused?.let { RommArtUrl.resolve(host, it.game.coverPath) }
+                        val coverUrl = focused?.let { RommArtUrl.forType(host, it.game, artType) }
                         Box(
                             modifier = Modifier
                                 .fillMaxHeight()
@@ -119,7 +120,10 @@ fun RommGameListScreen(
             }
             BottomBar(
                 modifier = Modifier.align(Alignment.BottomCenter),
-                leftItems = listOf(buttonStyle.back to stringResource(R.string.label_back)),
+                leftItems = buildList {
+                    add(buttonStyle.back to stringResource(R.string.label_back))
+                    if (downloadCount > 0) add(buttonStyle.west to stringResource(R.string.label_downloads))
+                },
                 rightItems = listOf(
                     buttonStyle.north to stringResource(R.string.label_search),
                     buttonStyle.confirm to stringResource(R.string.label_select),

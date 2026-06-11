@@ -12,7 +12,9 @@ import android.os.BatteryManager
 import android.os.Build
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -45,6 +47,7 @@ private const val ICON_WIFI = "\uDB81\uDDA9"
 private const val ICON_VPN = "\uDB82\uDFC4"
 private const val ICON_UPDATE = "\uDB81\uDEB0"
 private const val ICON_KITCHEN = "\uF0F5"
+private const val ICON_DOWNLOAD = "\uF019"
 private const val ICON_CHARGING = "\uF0E7"
 
 private const val ICON_BATTERY_FULL = "\uDB80\uDC79"
@@ -77,6 +80,7 @@ private fun batteryLevelIcon(percent: Int): String = when {
 fun StatusBar(
     updateAvailable: Boolean = false,
     kitchenRunning: Boolean = false,
+    downloadCount: Int = 0,
     showWifi: Boolean = true,
     showBluetooth: Boolean = true,
     showVpn: Boolean = false,
@@ -195,7 +199,7 @@ fun StatusBar(
     val showBtIcon = showBluetooth && hasBluetooth
     val showWifiIcon = showWifi && wifiConnected
     val showVpnIcon = showVpn && hasVpn
-    val anyVisible = kitchenRunning || showUpdateIcon || showBtIcon || showWifiIcon || showVpnIcon || showBattery || showClock
+    val anyVisible = kitchenRunning || downloadCount > 0 || showUpdateIcon || showBtIcon || showWifiIcon || showVpnIcon || showBattery || showClock
 
     if (!anyVisible) return
 
@@ -205,6 +209,13 @@ fun StatusBar(
         horizontalArrangement = Arrangement.spacedBy((6 * scaleFactor).dp)
     ) {
         if (kitchenRunning) Text(text = ICON_KITCHEN, style = iconStyle)
+        if (downloadCount > 0) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(text = ICON_DOWNLOAD, style = iconStyle)
+                Spacer(modifier = Modifier.width((3 * scaleFactor).dp))
+                Text(text = downloadCount.toString(), style = textStyle)
+            }
+        }
         if (showUpdateIcon) Text(text = ICON_UPDATE, style = iconStyle)
         if (showBtIcon) Text(text = ICON_BLUETOOTH, style = iconStyle)
         if (showWifiIcon) Text(text = ICON_WIFI, style = iconStyle)

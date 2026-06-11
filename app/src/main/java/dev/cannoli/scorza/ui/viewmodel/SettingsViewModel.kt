@@ -136,6 +136,7 @@ class SettingsViewModel @Inject constructor(
         val batteryDisplay: BatteryDisplay = BatteryDisplay.DEFAULT,
         val showUpdate: Boolean = true,
         val showKitchen: Boolean = true,
+        val showDownloads: Boolean = true,
         val swapPlayResume: Boolean = false,
         val mainMenuQuit: Boolean = false,
         val artWidth: Int = 40,
@@ -173,6 +174,7 @@ class SettingsViewModel @Inject constructor(
         batteryDisplay = settings.batteryDisplay,
         showUpdate = settings.showUpdate,
         showKitchen = settings.showKitchen,
+        showDownloads = settings.showDownloads,
         swapPlayResume = settings.swapPlayResume,
         mainMenuQuit = settings.mainMenuQuit,
         artWidth = settings.artWidth,
@@ -441,6 +443,7 @@ class SettingsViewModel @Inject constructor(
             "show_bluetooth" -> settings.showBluetooth = !settings.showBluetooth
             "show_vpn" -> settings.showVpn = !settings.showVpn
             "show_kitchen" -> settings.showKitchen = !settings.showKitchen
+            "show_downloads" -> settings.showDownloads = !settings.showDownloads
             "show_battery" -> {
                 val entries = BatteryDisplay.entries
                 val cur = entries.indexOf(settings.batteryDisplay).coerceAtLeast(0)
@@ -474,11 +477,6 @@ class SettingsViewModel @Inject constructor(
                 settings.releaseChannel = channels[((cur + direction) % channels.size + channels.size) % channels.size].name
             }
             "romm_allow_self_signed" -> rommStore.allowSelfSigned = !rommStore.allowSelfSigned
-            "romm_art_type" -> {
-                val entries = dev.cannoli.scorza.romm.RommArtType.entries
-                val cur = entries.indexOf(rommStore.artType).coerceAtLeast(0)
-                rommStore.artType = entries[((cur + direction) % entries.size + entries.size) % entries.size]
-            }
         }
 
         val catKey = current.activeCategory ?: return
@@ -767,6 +765,7 @@ class SettingsViewModel @Inject constructor(
             add(SettingsItem("show_bluetooth", R.string.setting_bluetooth, valueRes = showHide(settings.showBluetooth)))
             add(SettingsItem("show_clock", R.string.setting_clock, valueRes = if (!settings.showClock) R.string.value_hide else if (settings.timeFormat == TimeFormat.TWELVE_HOUR) R.string.value_12h else R.string.value_24h))
             add(SettingsItem("show_kitchen", R.string.setting_kitchen_running, valueRes = showHide(settings.showKitchen)))
+            add(SettingsItem("show_downloads", R.string.setting_downloads_running, valueRes = showHide(settings.showDownloads)))
             add(SettingsItem("show_update", R.string.setting_updater, valueRes = showHide(settings.showUpdate)))
             add(SettingsItem("show_vpn", R.string.setting_vpn, valueRes = showHide(settings.showVpn)))
             add(SettingsItem("show_wifi", R.string.setting_wifi, valueRes = showHide(settings.showWifi)))
@@ -814,12 +813,6 @@ class SettingsViewModel @Inject constructor(
                     add(SettingsItem("romm_pair", R.string.setting_romm_pair, isEditable = true, canCycle = false))
                 }
             } else {
-                val artTypeRes = when (rommStore.artType) {
-                    dev.cannoli.scorza.romm.RommArtType.COVER -> R.string.romm_art_type_cover
-                    dev.cannoli.scorza.romm.RommArtType.TITLE -> R.string.romm_art_type_title
-                    dev.cannoli.scorza.romm.RommArtType.SCREENSHOT -> R.string.romm_art_type_screenshot
-                }
-                add(SettingsItem("romm_art_type", R.string.setting_romm_art_type, valueRes = artTypeRes))
                 add(SettingsItem("romm_connection_info", R.string.setting_romm_connection_info, isEditable = true, canCycle = false))
             }
         }

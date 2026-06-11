@@ -2,10 +2,12 @@ package dev.cannoli.scorza.romm
 
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
-enum class RommArtType { COVER, TITLE, SCREENSHOT }
+enum class RommArtType { DEFAULT, NONE, BOX2D, BOX3D, MIX, TITLE, SCREENSHOT, MARQUEE }
 
 @Singleton
 class RommConnectionStore @Inject constructor(@ApplicationContext context: Context) {
@@ -23,8 +25,11 @@ class RommConnectionStore @Inject constructor(@ApplicationContext context: Conte
 
     var artType: RommArtType
         get() = runCatching { RommArtType.valueOf(prefs.getString(KEY_ART_TYPE, null) ?: "") }
-            .getOrDefault(RommArtType.COVER)
-        set(value) { prefs.edit().putString(KEY_ART_TYPE, value.name).apply() }
+            .getOrDefault(RommArtType.DEFAULT)
+        set(value) { prefs.edit().putString(KEY_ART_TYPE, value.name).apply(); _artTypeFlow.value = value }
+
+    private val _artTypeFlow = MutableStateFlow(artType)
+    val artTypeFlow: StateFlow<RommArtType> = _artTypeFlow
 
     var token: String?
         get() = creds.getString(KEY_TOKEN, null)?.ifEmpty { null }

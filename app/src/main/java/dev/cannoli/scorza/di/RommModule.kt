@@ -10,6 +10,7 @@ import dagger.hilt.components.SingletonComponent
 import dev.cannoli.scorza.config.CannoliPaths
 import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.db.RommLinkRepository
+import dev.cannoli.scorza.db.ScanScheduler
 import dev.cannoli.scorza.romm.PlatformMap
 import dev.cannoli.scorza.romm.RommClient
 import dev.cannoli.scorza.romm.RommConnectionStore
@@ -21,7 +22,13 @@ import dev.cannoli.scorza.romm.RommSlugMap
 import dev.cannoli.scorza.romm.cache.CachedRommLibrary
 import dev.cannoli.scorza.romm.cache.RommDatabase
 import dev.cannoli.scorza.romm.cache.RommSyncCoordinator
+import dev.cannoli.scorza.romm.download.RommDownloadQueue
+import dev.cannoli.scorza.romm.download.RommDownloader
+import dev.cannoli.scorza.romm.download.RommInstaller
 import dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel
+import dev.cannoli.scorza.util.ArtworkLookup
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import javax.inject.Singleton
 
 @Module
@@ -70,14 +77,18 @@ object RommModule {
     fun provideRommBrowseViewModel(
         library: RommLibrary,
         syncCoordinator: RommSyncCoordinator,
+        db: RommDatabase,
         scanner: RommFolderScanner,
         linkRepository: RommLinkRepository,
+        settings: dev.cannoli.scorza.settings.SettingsRepository,
     ): RommBrowseViewModel =
         RommBrowseViewModel(
             library = library,
             syncCoordinator = syncCoordinator,
+            db = db,
             localFilesFor = { tag -> scanner.localFiles(tag) },
             linkedIdsProvider = { linkRepository.presentRommIds() },
+            hiddenTagsProvider = { settings.hiddenRommPlatforms },
         )
 
     @Provides @Singleton
@@ -87,4 +98,28 @@ object RommModule {
         paths: CannoliPathsProvider,
     ): ImageLoader =
         RommImageLoader.build(context, http, java.io.File(dev.cannoli.scorza.config.CannoliPaths(paths.root).configCache, "RommArt"))
+
+    @Provides @Singleton
+    fun provideRommDownloader(
+        client: RommClient,
+        links: RommLinkRepository,
+        artwork: ArtworkLookup,
+        scanScheduler: ScanScheduler,
+        store: RommConnectionStore,
+        http: RommHttp,
+        paths: CannoliPathsProvider,
+        settings: dev.cannoli.scorza.settings.SettingsRepository,
+    ): RommDownloader = RommDownloader(
+        queue = RommDownloadQueue(),
+        client = client,
+        installer = RommInstaller(),
+        links = links,
+        artwork = artwork,
+        scanScheduler = scanScheduler,
+        store = store,
+        http = http,
+        paths = paths,
+        concurrency = { settings.concurrentDownloads },
+        scope = CoroutineScope(SupervisorJob()),
+    )
 }

@@ -52,6 +52,7 @@ class InputRouter @Inject constructor(
     private val settings: SettingsRepository,
     private val coreInstaller: CoreInstaller,
     private val rommBrowseViewModel: dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel,
+    private val rommDownloader: dev.cannoli.scorza.romm.download.RommDownloader,
 ) {
     var unregisterCoreQueryReceiver: () -> Unit = {}
 
@@ -87,6 +88,14 @@ class InputRouter @Inject constructor(
         is LauncherScreen.OnboardingPermissions -> onboardingHandler
         is LauncherScreen.DirectoryBrowser -> onboardingHandler
         is LauncherScreen.RommGameDetail -> object : ScreenInputHandler {
+            override fun onWest() {
+                val s = nav.currentScreen as? LauncherScreen.RommGameDetail ?: return
+                if (s.game.ssMedia?.manual == null) return
+                rommDownloader.enqueue(listOf(dev.cannoli.scorza.romm.download.RommDownloadItem(
+                    rommId = s.game.id, game = s.game, tag = s.tag,
+                    kind = dev.cannoli.scorza.romm.download.RommDownloadKind.MANUAL)))
+                dev.cannoli.scorza.romm.download.RommDownloadManager.ensureStarted(context)
+            }
             override fun onBack() { nav.pop() }
             override fun onUp() {
                 val s = nav.currentScreen as? LauncherScreen.RommGameDetail ?: return
@@ -95,6 +104,14 @@ class InputRouter @Inject constructor(
             override fun onDown() {
                 val s = nav.currentScreen as? LauncherScreen.RommGameDetail ?: return
                 nav.replaceTop(s.copy(scrollStep = s.scrollStep + 1))
+            }
+            override fun onNorth() {
+                val s = nav.currentScreen as? LauncherScreen.RommGameDetail ?: return
+                if (s.localState != dev.cannoli.scorza.romm.LocalState.REMOTE) return
+                rommDownloader.enqueue(listOf(dev.cannoli.scorza.romm.download.RommDownloadItem(
+                    rommId = s.game.id, game = s.game, tag = s.tag,
+                    kind = dev.cannoli.scorza.romm.download.RommDownloadKind.ROM)))
+                dev.cannoli.scorza.romm.download.RommDownloadManager.ensureStarted(context)
             }
         }
         else -> null
@@ -368,9 +385,11 @@ class InputRouter @Inject constructor(
                 game = row.game,
                 localState = row.localState,
                 platformName = platform.displayName,
+                tag = platform.cannoliTag,
             ))
         },
         onBack = { nav.pop() },
+        onWest = { if (rommDownloader.queue.state.value.isNotEmpty()) nav.dialogState.value = DialogState.RommDownloads() },
         onNorth = {
             nav.dialogState.value = DialogState.RenameInput(gameName = "romm_search", currentName = search, cursorPos = search.length)
         },
