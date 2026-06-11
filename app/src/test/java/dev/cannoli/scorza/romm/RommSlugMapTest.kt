@@ -28,6 +28,10 @@ class RommSlugMapTest {
         assertEquals(true, asset.exists())
         val map = RommSlugMap.parse(asset.readText())
         assertEquals("SNES", map.tagForSlug("snes"))
-        assertEquals("GENESIS", map.tagForSlug("genesis-slash-megadrive"))
+        assertEquals("MD", map.tagForSlug("genesis"))
+        assertEquals("PS", map.tagForSlug("psx"))
+        assertEquals("SMS", map.tagForSlug("ms"))
+        assertEquals("MAME", map.tagForSlug("arcade"))
+        assertEquals("FBN", map.tagForSlug("fbneo"))
     }
 }

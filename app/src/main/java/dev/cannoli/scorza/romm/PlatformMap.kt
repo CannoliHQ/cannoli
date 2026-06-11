@@ -6,7 +6,7 @@ class PlatformMap(
 ) {
     fun toDomain(dtos: List<PlatformDto>): List<RommPlatform> =
         dtos.mapNotNull { dto ->
-            val tag = slugMap.tagForSlug(dto.slug) ?: return@mapNotNull null
+            val tag = slugMap.tagForSlug(dto.fsSlug.ifEmpty { dto.slug }) ?: return@mapNotNull null
             if (!isSupported(tag)) return@mapNotNull null
             RommPlatform(
                 id = dto.id,
