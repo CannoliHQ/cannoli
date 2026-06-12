@@ -15,6 +15,8 @@ class KitchenHttpServer(
     internal val romsRepository: dev.cannoli.scorza.db.RomsRepository? = null,
     internal val scanPlatform: ((String) -> Unit)? = null,
     internal val romDirectoryWalker: dev.cannoli.scorza.util.RomDirectoryWalker? = null,
+    internal val volumesProvider: () -> List<KitchenVolume> = { emptyList() },
+    internal val apkInstalls: ApkInstalls? = null,
 ) : NanoHTTPD(port) {
 
     private val socketTimeoutMs = 30_000
@@ -89,8 +91,8 @@ class KitchenHttpServer(
 
         if (method == "OPTIONS") return corsResponse(204, "text/plain", ByteArray(0))
 
+        // NanoHTTPD already percent-decodes session.uri; decoding again corrupts + and % in names
         val segments = rawPath.removePrefix("/").split("/")
-            .map { java.net.URLDecoder.decode(it, "UTF-8") }
 
         if (segments.firstOrNull() != "api") {
             return if (method == "GET") serveStatic(rawPath)
@@ -138,6 +140,8 @@ class KitchenHttpServer(
                 val artSegments = apiSegments.drop(1)
                 handleArtwork(artSegments)
             }
+            resource == "fs" -> handleFs(method, apiSegments.drop(1), query, session)
+            resource == "apk" -> handleApk(method, apiSegments.drop(1), session)
             resource in RESOURCE_DIRS -> {
                 val baseDir = RESOURCE_DIRS[resource]!!
                 val subpath = apiSegments.drop(1).joinToString("/")
@@ -189,7 +193,7 @@ class KitchenHttpServer(
         }
     }
 
-    private fun readBody(session: IHTTPSession): String {
+    internal fun readBody(session: IHTTPSession): String {
         val contentLength = session.headers["content-length"]?.toIntOrNull() ?: 0
         if (contentLength <= 0) return ""
         val input = session.inputStream
@@ -234,13 +238,20 @@ class KitchenHttpServer(
     private fun handleAuthStatus(): Response =
         jsonResponse(200, AuthStatusResponse.serializer(), AuthStatusResponse(required = !codeBypass))
 
-    internal fun isSecure(file: File): Boolean {
+    internal fun defaultRoots(): List<File> {
+        val roms = try { romsRootProvider() } catch (_: Exception) { null }
+        return listOfNotNull(cannoliRoot, roms)
+    }
+
+    internal fun isSecure(file: File): Boolean = isSecure(file, defaultRoots())
+
+    internal fun isSecure(file: File, roots: List<File>): Boolean {
         if (java.nio.file.Files.isSymbolicLink(file.toPath())) return false
         val canonical = file.canonicalPath
-        val rootCanonical = cannoliRoot.canonicalPath
-        if (canonical == rootCanonical || canonical.startsWith(rootCanonical + File.separator)) return true
-        val romsCanonical = try { romsRootProvider().canonicalPath } catch (_: Exception) { return false }
-        return canonical == romsCanonical || canonical.startsWith(romsCanonical + File.separator)
+        return roots.any { root ->
+            val rootCanonical = try { root.canonicalPath } catch (_: Exception) { return@any false }
+            canonical == rootCanonical || canonical.startsWith(rootCanonical + File.separator)
+        }
     }
 
     internal fun sanitizeFilename(name: String): String {
@@ -248,7 +259,7 @@ class KitchenHttpServer(
             .replace(Regex("[/\\\\]"), "_").trim()
     }
 
-    private fun mimeForPath(path: String): String = when {
+    internal fun mimeForPath(path: String): String = when {
         path.endsWith(".html") -> "text/html"
         path.endsWith(".css") -> "text/css"
         path.endsWith(".js") -> "application/javascript"

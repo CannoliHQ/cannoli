@@ -113,6 +113,29 @@ internal data class AuthStatusResponse(val required: Boolean)
 @Serializable
 internal data class InfoResponse(val name: String, val version: Int)
 
+@Serializable
+internal data class VolumeEntry(
+    val id: String,
+    val label: String,
+    val totalBytes: Long,
+    val freeBytes: Long,
+)
+
+@Serializable
+internal data class VolumesResponse(val volumes: List<VolumeEntry>)
+
+@Serializable
+internal data class ApkUploadResponse(
+    val ok: Boolean = true,
+    val installId: String,
+)
+
+@Serializable
+internal data class ApkStatusResponse(
+    val status: String,
+    val message: String? = null,
+)
+
 internal fun <T> KitchenHttpServer.jsonResponse(code: Int, serializer: KSerializer<T>, value: T): Response =
     jsonResponse(code, serverJson.encodeToString(serializer, value))
 

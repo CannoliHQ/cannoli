@@ -102,6 +102,20 @@ class KitchenServerTest {
         assertEquals(404, code)
     }
 
+    @Test fun plusInFilenameIsServed() {
+        File(root, "Roms/nes/Mario + Luigi.nes").writeText("PLUS")
+        val (code, body) = request("GET", "/api/roms/nes/Mario%20%2B%20Luigi.nes")
+        assertEquals(200, code)
+        assertEquals("PLUS", body)
+    }
+
+    @Test fun percentInFilenameIsServed() {
+        File(root, "Roms/nes/100%.nes").writeText("PCT")
+        val (code, body) = request("GET", "/api/roms/nes/100%25.nes")
+        assertEquals(200, code)
+        assertEquals("PCT", body)
+    }
+
     @Test fun multipartUploadRoundTrip() {
         val boundary = "----cannolitest"
         val payload = buildString {

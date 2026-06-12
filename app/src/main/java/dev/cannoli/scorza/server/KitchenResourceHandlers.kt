@@ -13,8 +13,8 @@ internal fun KitchenHttpServer.handleTags(): Response {
     return jsonResponse(200, TagsResponse.serializer(), TagsResponse(tags))
 }
 
-internal fun KitchenHttpServer.handleList(dir: File, displayPath: String, recursive: Boolean = false): Response {
-    if (!isSecure(dir)) {
+internal fun KitchenHttpServer.handleList(dir: File, displayPath: String, recursive: Boolean = false, roots: List<File> = defaultRoots()): Response {
+    if (!isSecure(dir, roots)) {
         return errorResponse(403, "forbidden")
     }
     if (!dir.exists() || !dir.isDirectory) {
@@ -29,7 +29,7 @@ internal fun KitchenHttpServer.handleList(dir: File, displayPath: String, recurs
             val current = stack.removeLast()
             val children = current.listFiles() ?: continue
             for (child in children) {
-                if (!isSecure(child)) continue
+                if (!isSecure(child, roots)) continue
                 if (child.isDirectory) stack.add(child)
                 else files.add(dirPath.relativize(child.toPath()).toString() to child)
             }
@@ -50,8 +50,8 @@ internal fun KitchenHttpServer.handleList(dir: File, displayPath: String, recurs
     return jsonResponse(200, DirListResponse.serializer(), DirListResponse(displayPath, entries))
 }
 
-internal fun KitchenHttpServer.handleMkdir(dir: File): Response {
-    if (!isSecure(dir)) {
+internal fun KitchenHttpServer.handleMkdir(dir: File, roots: List<File> = defaultRoots()): Response {
+    if (!isSecure(dir, roots)) {
         return errorResponse(403, "forbidden")
     }
     return if (dir.exists()) {
@@ -63,9 +63,9 @@ internal fun KitchenHttpServer.handleMkdir(dir: File): Response {
     }
 }
 
-internal fun KitchenHttpServer.handleDelete(dir: File, filename: String): Response {
+internal fun KitchenHttpServer.handleDelete(dir: File, filename: String, roots: List<File> = defaultRoots()): Response {
     val file = File(dir, filename)
-    if (!isSecure(file)) {
+    if (!isSecure(file, roots)) {
         return errorResponse(403, "forbidden")
     }
     if (!file.exists()) {
@@ -79,7 +79,7 @@ internal fun KitchenHttpServer.handleDelete(dir: File, filename: String): Respon
     }
 }
 
-internal fun KitchenHttpServer.handleMove(resourceRoot: File, subpath: String, body: String): Response {
+internal fun KitchenHttpServer.handleMove(resourceRoot: File, subpath: String, body: String, roots: List<File> = defaultRoots(), requireSameTopDir: Boolean = true): Response {
     val to = try {
         org.json.JSONObject(body).optString("to", "")
     } catch (_: Exception) { "" }
@@ -87,16 +87,18 @@ internal fun KitchenHttpServer.handleMove(resourceRoot: File, subpath: String, b
         return errorResponse(400, "missing 'to' field")
     }
 
-    val srcRoot = subpath.substringBefore("/", "")
-    val dstRoot = to.substringBefore("/", "")
-    if (srcRoot.isEmpty() || dstRoot.isEmpty() || !srcRoot.equals(dstRoot, ignoreCase = true)) {
-        return errorResponse(403, "moves must stay within the same subdirectory")
+    if (requireSameTopDir) {
+        val srcRoot = subpath.substringBefore("/", "")
+        val dstRoot = to.substringBefore("/", "")
+        if (srcRoot.isEmpty() || dstRoot.isEmpty() || !srcRoot.equals(dstRoot, ignoreCase = true)) {
+            return errorResponse(403, "moves must stay within the same subdirectory")
+        }
     }
 
     val src = File(resourceRoot, subpath)
     val dst = File(resourceRoot, to)
 
-    if (!isSecure(src) || !isSecure(dst)) {
+    if (!isSecure(src, roots) || !isSecure(dst, roots)) {
         return errorResponse(403, "forbidden")
     }
     if (!src.exists()) {
@@ -114,8 +116,8 @@ internal fun KitchenHttpServer.handleMove(resourceRoot: File, subpath: String, b
     }
 }
 
-internal fun KitchenHttpServer.handleUpload(destDir: File, session: NanoHTTPD.IHTTPSession): Response {
-    if (!isSecure(destDir)) return errorResponse(403, "forbidden")
+internal fun KitchenHttpServer.handleUpload(destDir: File, session: NanoHTTPD.IHTTPSession, roots: List<File> = defaultRoots()): Response {
+    if (!isSecure(destDir, roots)) return errorResponse(403, "forbidden")
     destDir.mkdirs()
     val contentType = session.headers["content-type"] ?: ""
     if (session.headers["transfer-encoding"]?.contains("chunked", true) == true) {
