@@ -91,7 +91,7 @@ internal fun KitchenHttpServer.handleSlots(
                     }
                     val bytes = SlotsZip.build(gameDir, romName)
                         ?: return errorResponse(404, "no states")
-                    bytesResponse(200, "application/zip", bytes)
+                    corsResponse(200, "application/zip", bytes)
                 }
                 else -> errorResponse(404, "not found")
             }

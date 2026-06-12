@@ -194,14 +194,7 @@ object GamesResponse {
         val dir = File(cannoliRoot, "Save States/$platformTag/$baseName")
         if (!dir.isDirectory) return 0
         return try {
-            (0..10).count { slot ->
-                val name = when (slot) {
-                    0 -> "$baseName.state.auto"
-                    1 -> "$baseName.state"
-                    else -> "$baseName.state${slot - 1}"
-                }
-                File(dir, name).isFile
-            }
+            (0..10).count { slot -> File(dir, raStateName(baseName, slot)).isFile }
         } catch (_: Throwable) { 0 }
     }
 

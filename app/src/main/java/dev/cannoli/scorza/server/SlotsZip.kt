@@ -11,11 +11,7 @@ object SlotsZip {
         if (!gameDir.isDirectory) return null
         val files = mutableListOf<File>()
         for (slot in 0..10) {
-            val stateName = when (slot) {
-                0 -> "$romName.state.auto"
-                1 -> "$romName.state"
-                else -> "$romName.state${slot - 1}"
-            }
+            val stateName = raStateName(romName, slot)
             val stateFile = File(gameDir, stateName)
             if (!stateFile.isFile) continue
             files.add(stateFile)

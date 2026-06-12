@@ -310,7 +310,7 @@ internal fun KitchenHttpServer.handleGames(
                 if (!isSecure(gameDir)) return errorResponse(403, "forbidden")
                 val bytes = SlotsZip.build(gameDir, base)
                     ?: return errorResponse(404, "no states")
-                return bytesResponse(200, "application/zip", bytes)
+                return corsResponse(200, "application/zip", bytes)
             }
             val slot = segments[3].toIntOrNull()
             if (slot == null || slot < 0 || slot > 10) {

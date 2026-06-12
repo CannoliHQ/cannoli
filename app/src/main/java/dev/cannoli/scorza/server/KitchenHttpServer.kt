@@ -72,9 +72,6 @@ class KitchenHttpServer(
             )
         )
 
-    internal fun bytesResponse(code: Int, contentType: String, body: ByteArray): Response =
-        corsResponse(code, contentType, body)
-
     internal fun fileResponse(file: File, contentType: String): Response =
         decorate(
             newFixedLengthResponse(
@@ -266,12 +263,6 @@ class KitchenHttpServer(
         path.endsWith(".woff2") -> "font/woff2"
         path.endsWith(".woff") -> "font/woff"
         else -> "application/octet-stream"
-    }
-
-    internal fun raStateName(romName: String, slot: Int): String = when (slot) {
-        0 -> "$romName.state.auto"
-        1 -> "$romName.state"
-        else -> "$romName.state${slot - 1}"
     }
 
     companion object {
