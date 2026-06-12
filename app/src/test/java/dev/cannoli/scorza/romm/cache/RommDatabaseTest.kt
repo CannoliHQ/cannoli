@@ -106,6 +106,14 @@ class RommDatabaseTest {
         assertEquals(setOf(1), db.cachedGameIds(1))
     }
 
+    @Test fun `allGames returns all games for a platform`() {
+        db.upsertGames(listOf(
+            GameRecord(game(1, 1, "Alpha", "alpha.sfc"), null),
+            GameRecord(game(2, 1, "Beta", "beta.sfc"), null),
+        ))
+        assertEquals(setOf("alpha.sfc", "beta.sfc"), db.allGames(1).map { it.fsName }.toSet())
+    }
+
     @Test fun `sync_state round-trips and clearAll empties everything`() {
         db.setSyncState("cursor", "2024-09-09T00:00:00")
         assertEquals("2024-09-09T00:00:00", db.getSyncState("cursor"))

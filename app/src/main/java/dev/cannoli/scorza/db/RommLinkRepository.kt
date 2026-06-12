@@ -13,6 +13,10 @@ class RommLinkRepository(
 
     fun removeLink(rommId: Int) = db.execute("DELETE FROM romm_links WHERE romm_id = ?", rommId)
 
+    fun rommIdForPath(relativePath: String): Int? = db.queryOne(
+        "SELECT romm_id FROM romm_links WHERE relative_path = ?", relativePath,
+    ) { it.getInt(0) }
+
     fun presentRommIds(): Set<Int> {
         val romDir = romDirProvider()
         return db.queryAll("SELECT romm_id, relative_path FROM romm_links") {

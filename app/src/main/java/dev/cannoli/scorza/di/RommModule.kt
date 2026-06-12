@@ -95,10 +95,40 @@ object RommModule {
         RommImageLoader.build(context, http, java.io.File(dev.cannoli.scorza.config.CannoliPaths(paths.root).configCache, "RommArt"))
 
     @Provides @Singleton
+    fun provideRommArtDownloader(
+        http: RommHttp,
+        paths: CannoliPathsProvider,
+    ): dev.cannoli.scorza.romm.art.RommArtDownloader =
+        dev.cannoli.scorza.romm.art.RommArtDownloader(http, paths)
+
+    @Provides @Singleton
+    fun provideRommArtFetcher(
+        roms: dev.cannoli.scorza.db.RomsRepository,
+        artwork: ArtworkLookup,
+        db: RommDatabase,
+        links: RommLinkRepository,
+        store: RommConnectionStore,
+        artDownloader: dev.cannoli.scorza.romm.art.RommArtDownloader,
+        paths: CannoliPathsProvider,
+        settings: dev.cannoli.scorza.settings.SettingsRepository,
+    ): dev.cannoli.scorza.romm.art.RommArtFetcher = dev.cannoli.scorza.romm.art.RommArtFetcher(
+        roms = roms,
+        artwork = artwork,
+        db = db,
+        links = links,
+        store = store,
+        artDownloader = artDownloader,
+        paths = paths,
+        concurrency = { settings.concurrentDownloads },
+        scope = CoroutineScope(SupervisorJob()),
+    )
+
+    @Provides @Singleton
     fun provideRommDownloader(
         client: RommClient,
         links: RommLinkRepository,
         artwork: ArtworkLookup,
+        artDownloader: dev.cannoli.scorza.romm.art.RommArtDownloader,
         scanScheduler: ScanScheduler,
         store: RommConnectionStore,
         http: RommHttp,
@@ -110,6 +140,7 @@ object RommModule {
         installer = RommInstaller(),
         links = links,
         artwork = artwork,
+        artDownloader = artDownloader,
         scanScheduler = scanScheduler,
         store = store,
         http = http,

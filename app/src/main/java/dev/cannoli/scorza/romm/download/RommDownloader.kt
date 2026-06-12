@@ -4,7 +4,6 @@ import dev.cannoli.scorza.config.CannoliPaths
 import dev.cannoli.scorza.db.RommLinkRepository
 import dev.cannoli.scorza.db.ScanScheduler
 import dev.cannoli.scorza.di.CannoliPathsProvider
-import dev.cannoli.scorza.romm.RommArtUrl
 import dev.cannoli.scorza.romm.RommClient
 import dev.cannoli.scorza.romm.RommConnectionStore
 import dev.cannoli.scorza.romm.RommDownloadCancelled
@@ -24,6 +23,7 @@ class RommDownloader(
     private val installer: RommInstaller,
     private val links: RommLinkRepository,
     private val artwork: ArtworkLookup,
+    private val artDownloader: dev.cannoli.scorza.romm.art.RommArtDownloader,
     private val scanScheduler: ScanScheduler,
     private val store: RommConnectionStore,
     private val http: RommHttp,
@@ -106,7 +106,7 @@ class RommDownloader(
 
             scanScheduler.markLauncherMutation(item.tag)
             val result = installer.install(item.game, item.tag, temp, paths.romDir)
-            downloadArt(item, result.artBaseName)
+            artDownloader.download(store.host, item.game.coverPath, item.tag, result.artBaseName)
             links.upsertLink(item.rommId, result.linkRelativePath, "download")
             artwork.invalidate(item.tag)
             scanScheduler.runNow(item.tag)
@@ -166,21 +166,6 @@ class RommDownloader(
             queue.setStatus(item.key, DownloadStatus.Failed(e.message ?: "failed"))
         } finally {
             synchronized(cancelled) { cancelled.remove(item.key) }
-        }
-    }
-
-    private fun downloadArt(item: RommDownloadItem, baseName: String) {
-        val url = RommArtUrl.resolve(store.host, item.game.coverPath) ?: return
-        try {
-            val response = http.client().newCall(Request.Builder().url(url).get().build()).execute()
-            response.use {
-                if (!it.isSuccessful) return
-                val ext = url.substringAfterLast('.', "png").substringBefore('?').take(4).ifBlank { "png" }
-                val artDir = File(paths.root, "Art/${item.tag}").apply { mkdirs() }
-                File(artDir, "$baseName.$ext").outputStream().use { out -> it.body?.byteStream()?.copyTo(out) }
-            }
-        } catch (e: Exception) {
-            ScanLog.write("romm art download failed for ${item.rommId}: ${e.message}")
         }
     }
 

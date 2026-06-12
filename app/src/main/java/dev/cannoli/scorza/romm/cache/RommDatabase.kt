@@ -140,6 +140,25 @@ class RommDatabase(private val dbFileProvider: () -> File) {
         } catch (t: Throwable) { c.execSQL("ROLLBACK"); throw t }
     }
 
+    private fun rowToGame(stmt: androidx.sqlite.SQLiteStatement) = RommGame(
+        id = stmt.getInt(0),
+        platformId = stmt.getInt(1),
+        name = stmt.getText(2),
+        fsName = stmt.getText(3),
+        sizeBytes = stmt.getLong(4),
+        summary = if (stmt.isNull(5)) null else stmt.getText(5),
+        revision = if (stmt.isNull(6)) null else stmt.getText(6),
+        regions = RommCacheJson.decodeStrings(stmt.getText(7)),
+        languages = RommCacheJson.decodeStrings(stmt.getText(8)),
+        companies = RommCacheJson.decodeStrings(stmt.getText(9)),
+        genres = RommCacheJson.decodeStrings(stmt.getText(10)),
+        gameModes = RommCacheJson.decodeStrings(stmt.getText(11)),
+        firstReleaseDate = if (stmt.isNull(12)) null else stmt.getLong(12),
+        coverPath = if (stmt.isNull(13)) null else stmt.getText(13),
+        files = RommCacheJson.decodeFiles(stmt.getText(14)),
+        ssMedia = RommCacheJson.decodeSsMedia(stmt.getText(15)),
+    )
+
     fun games(platformId: Int, search: String?, limit: Int, offset: Int): List<RommGame> = withConn { c ->
         val like = search?.takeIf { it.isNotBlank() }?.let { "%$it%" }
         val sql = buildString {
@@ -148,26 +167,15 @@ class RommDatabase(private val dbFileProvider: () -> File) {
             append(" ORDER BY sort_key LIMIT ? OFFSET ?")
         }
         val args: Array<Any?> = if (like != null) arrayOf(platformId, like, limit, offset) else arrayOf(platformId, limit, offset)
-        c.queryAll(sql, *args) { stmt ->
-            RommGame(
-                id = stmt.getInt(0),
-                platformId = stmt.getInt(1),
-                name = stmt.getText(2),
-                fsName = stmt.getText(3),
-                sizeBytes = stmt.getLong(4),
-                summary = if (stmt.isNull(5)) null else stmt.getText(5),
-                revision = if (stmt.isNull(6)) null else stmt.getText(6),
-                regions = RommCacheJson.decodeStrings(stmt.getText(7)),
-                languages = RommCacheJson.decodeStrings(stmt.getText(8)),
-                companies = RommCacheJson.decodeStrings(stmt.getText(9)),
-                genres = RommCacheJson.decodeStrings(stmt.getText(10)),
-                gameModes = RommCacheJson.decodeStrings(stmt.getText(11)),
-                firstReleaseDate = if (stmt.isNull(12)) null else stmt.getLong(12),
-                coverPath = if (stmt.isNull(13)) null else stmt.getText(13),
-                files = RommCacheJson.decodeFiles(stmt.getText(14)),
-                ssMedia = RommCacheJson.decodeSsMedia(stmt.getText(15)),
-            )
-        }
+        c.queryAll(sql, *args, mapper = ::rowToGame)
+    }
+
+    fun allGames(platformId: Int): List<RommGame> = withConn { c ->
+        c.queryAll(
+            "SELECT id, platform_id, name, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json, ss_media_json FROM games WHERE platform_id = ?",
+            platformId,
+            mapper = ::rowToGame,
+        )
     }
 
     fun gamesCount(platformId: Int, search: String?): Int = withConn { c ->

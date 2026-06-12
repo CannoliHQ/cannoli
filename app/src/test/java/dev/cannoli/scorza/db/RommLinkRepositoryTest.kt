@@ -6,6 +6,7 @@ import dev.cannoli.scorza.di.CannoliPathsProvider
 import dev.cannoli.scorza.settings.SettingsRepository
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -47,6 +48,12 @@ class RommLinkRepositoryTest {
 
         assertTrue(present.contains(10))
         assertFalse(present.contains(11))
+    }
+
+    @Test fun `rommIdForPath returns the linked id for a relative path`() {
+        repo.upsertLink(7, "SNES/Zelda.sfc", "download")
+        assertEquals(7, repo.rommIdForPath("SNES/Zelda.sfc"))
+        assertNull(repo.rommIdForPath("SNES/Other.sfc"))
     }
 
     @Test fun `upsert replaces an existing link and removeLink deletes it`() {
