@@ -5,6 +5,8 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import androidx.core.content.FileProvider
 import dev.cannoli.igm.IgmColors
 import dev.cannoli.igm.IgmDisplaySettings
 import dev.cannoli.igm.RICOTTA_PROTOCOL_VERSION
@@ -72,13 +74,7 @@ class RetroArchLauncher(
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
 
-        return try {
-            val opts = ActivityOptions.makeCustomAnimation(context, 0, 0).toBundle()
-            context.startActivity(intent, opts)
-            LaunchResult.Success
-        } catch (e: Exception) {
-            LaunchResult.Error(e.message ?: "Failed to launch RicottaArch")
-        }
+        return context.startActivityNoAnim(intent, "Failed to launch RicottaArch")
     }
 
     // Stock RetroArch (DIY): the classic RetroActivityFuture intent. The user owns RetroArch,
@@ -100,13 +96,7 @@ class RetroArchLauncher(
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
 
-        return try {
-            val opts = ActivityOptions.makeCustomAnimation(context, 0, 0).toBundle()
-            context.startActivity(intent, opts)
-            LaunchResult.Success
-        } catch (e: Exception) {
-            LaunchResult.Error(e.message ?: "Failed to launch RetroArch")
-        }
+        return context.startActivityNoAnim(intent, "Failed to launch RetroArch")
     }
 
     private fun readInstalledProtocol(pkg: String): Int = try {
@@ -129,6 +119,16 @@ class RetroArchLauncher(
 
 fun Context.isPackageInstalled(packageName: String): Boolean =
     packageManager.isPackageInstalled(packageName)
+
+fun Context.startActivityNoAnim(intent: Intent, fallbackMsg: String): LaunchResult = try {
+    startActivity(intent, ActivityOptions.makeCustomAnimation(this, 0, 0).toBundle())
+    LaunchResult.Success
+} catch (e: Exception) {
+    LaunchResult.Error(e.message ?: fallbackMsg)
+}
+
+fun Context.romFileProviderUri(file: File): Uri =
+    FileProvider.getUriForFile(this, "$packageName.fileprovider", file)
 
 fun PackageManager.isPackageInstalled(packageName: String): Boolean = try {
     getPackageInfo(packageName, 0)

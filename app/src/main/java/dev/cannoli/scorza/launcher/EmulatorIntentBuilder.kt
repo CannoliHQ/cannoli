@@ -4,7 +4,6 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import androidx.core.content.FileProvider
 import dev.cannoli.scorza.config.AppConfig
 import dev.cannoli.scorza.config.DataBinding
 import dev.cannoli.scorza.config.ExtraSpec
@@ -103,7 +102,7 @@ object EmulatorIntentBuilder {
     }
 
     private fun fileProviderUri(context: Context, romFile: File): Uri =
-        FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", romFile)
+        context.romFileProviderUri(romFile)
 
     // Synthesize a tree-delegated SAF document URI on com.android.externalstorage.documents
     // from an absolute path. The tree segment is set to the rom's parent directory so the

@@ -4,10 +4,8 @@ import android.app.ActivityOptions
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.StrictMode
 import android.provider.Settings
-import androidx.core.content.FileProvider
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.cannoli.scorza.config.AppConfig
 import dev.cannoli.scorza.config.LaunchMethod
@@ -38,13 +36,7 @@ class ApkLauncher @Inject constructor(
 
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
-        return try {
-            val opts = ActivityOptions.makeCustomAnimation(context, 0, 0).toBundle()
-            context.startActivity(intent, opts)
-            LaunchResult.Success
-        } catch (e: Exception) {
-            LaunchResult.Error(e.message ?: "Failed to launch app")
-        }
+        return context.startActivityNoAnim(intent, "Failed to launch app")
     }
 
     fun launchWithRom(packageName: String, romFile: File, config: AppConfig): LaunchResult {
@@ -108,11 +100,7 @@ class ApkLauncher @Inject constructor(
     }
 
     private fun launchViewWithFileProvider(packageName: String, romFile: File): LaunchResult {
-        val uri: Uri = FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            romFile
-        )
+        val uri = context.romFileProviderUri(romFile)
 
         val viewIntent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(uri, "*/*")
