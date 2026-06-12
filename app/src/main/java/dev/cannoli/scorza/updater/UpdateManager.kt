@@ -91,10 +91,9 @@ class UpdateManager @Inject constructor(
                 )
             }
             settings.lastUpdateCheck = System.currentTimeMillis()
-            val best = candidates
+            val result = candidates
                 .filter { it.versionCode > BuildConfig.VERSION_CODE }
                 .maxByOrNull { it.versionCode }
-            val result = best
             cacheUpdate(result)
             _updateAvailable.value = result
             result
