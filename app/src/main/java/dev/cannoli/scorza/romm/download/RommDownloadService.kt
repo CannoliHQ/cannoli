@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -22,6 +23,7 @@ import javax.inject.Inject
 class RommDownloadService : Service() {
 
     @Inject lateinit var downloader: RommDownloader
+    @Inject lateinit var artFetcher: dev.cannoli.scorza.romm.art.RommArtFetcher
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var watcher: Job? = null
@@ -33,21 +35,24 @@ class RommDownloadService : Service() {
         RommDownloadManager.onServiceCreated(this)
         startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.romm_download_notification_starting)), ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         watcher = scope.launch {
-            downloader.queue.state.collectLatest { items ->
-                if (!downloader.hasWork()) { stopSelf(); return@collectLatest }
-                val downloading = items.filter { it.status is DownloadStatus.Downloading }
-                val text = when {
-                    downloading.size > 1 -> getString(R.string.romm_download_notification_count, downloading.size)
-                    downloading.size == 1 -> {
-                        val item = downloading.first()
-                        val s = item.status as DownloadStatus.Downloading
-                        val pct = if (s.total > 0) (s.downloaded * 100 / s.total) else 0
-                        getString(R.string.romm_download_notification_progress, item.game.name, pct)
+            combine(downloader.queue.state, artFetcher.state) { items, art -> items to art }
+                .collectLatest { (items, art) ->
+                    val artRunning = art is dev.cannoli.scorza.romm.art.ArtFetchState.Running
+                    if (!downloader.hasWork() && !artRunning) { stopSelf(); return@collectLatest }
+                    if (artRunning) { notify(getString(R.string.romm_art_notification_active)); return@collectLatest }
+                    val downloading = items.filter { it.status is DownloadStatus.Downloading }
+                    val text = when {
+                        downloading.size > 1 -> getString(R.string.romm_download_notification_count, downloading.size)
+                        downloading.size == 1 -> {
+                            val item = downloading.first()
+                            val s = item.status as DownloadStatus.Downloading
+                            val pct = if (s.total > 0) (s.downloaded * 100 / s.total) else 0
+                            getString(R.string.romm_download_notification_progress, item.game.name, pct)
+                        }
+                        else -> getString(R.string.romm_download_notification_active)
                     }
-                    else -> getString(R.string.romm_download_notification_active)
+                    notify(text)
                 }
-                notify(text)
-            }
         }
     }
 

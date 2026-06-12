@@ -81,6 +81,7 @@ fun StatusBar(
     updateAvailable: Boolean = false,
     kitchenRunning: Boolean = false,
     downloadCount: Int = 0,
+    downloadsActive: Boolean = false,
     showWifi: Boolean = true,
     showBluetooth: Boolean = true,
     showVpn: Boolean = false,
@@ -199,7 +200,7 @@ fun StatusBar(
     val showBtIcon = showBluetooth && hasBluetooth
     val showWifiIcon = showWifi && wifiConnected
     val showVpnIcon = showVpn && hasVpn
-    val anyVisible = kitchenRunning || downloadCount > 0 || showUpdateIcon || showBtIcon || showWifiIcon || showVpnIcon || showBattery || showClock
+    val anyVisible = kitchenRunning || downloadCount > 0 || downloadsActive || showUpdateIcon || showBtIcon || showWifiIcon || showVpnIcon || showBattery || showClock
 
     if (!anyVisible) return
 
@@ -215,6 +216,8 @@ fun StatusBar(
                 Spacer(modifier = Modifier.width((3 * scaleFactor).dp))
                 Text(text = downloadCount.toString(), style = textStyle)
             }
+        } else if (downloadsActive) {
+            Text(text = ICON_DOWNLOAD, style = iconStyle)
         }
         if (showUpdateIcon) Text(text = ICON_UPDATE, style = iconStyle)
         if (showBtIcon) Text(text = ICON_BLUETOOTH, style = iconStyle)

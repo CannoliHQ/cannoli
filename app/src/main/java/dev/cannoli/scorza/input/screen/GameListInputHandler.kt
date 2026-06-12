@@ -5,6 +5,14 @@ import android.os.Looper
 import dagger.hilt.android.scopes.ActivityScoped
 import dev.cannoli.scorza.di.IoScope
 import dev.cannoli.scorza.input.LauncherActions
+import dev.cannoli.scorza.input.MENU_ADD_FAVORITE
+import dev.cannoli.scorza.input.MENU_DELETE_ART
+import dev.cannoli.scorza.input.MENU_DELETE_GAME
+import dev.cannoli.scorza.input.MENU_MANAGE_COLLECTIONS
+import dev.cannoli.scorza.input.MENU_REMOVE
+import dev.cannoli.scorza.input.MENU_REMOVE_FAVORITE
+import dev.cannoli.scorza.input.MENU_REMOVE_FROM_COLLECTION
+import dev.cannoli.scorza.input.MENU_REMOVE_FROM_RECENTS
 import dev.cannoli.scorza.input.ScreenInputHandler
 import dev.cannoli.scorza.model.ListItem
 import dev.cannoli.scorza.model.recentKey
@@ -450,14 +458,4 @@ class GameListInputHandler @Inject constructor(
             ?.let { FavRef.Rom(it.rom.id) }
     }
 
-    companion object {
-        private const val MENU_REMOVE_FROM_RECENTS = "Remove From Recently Played"
-        private const val MENU_ADD_FAVORITE = "Add To Favorites"
-        private const val MENU_REMOVE_FAVORITE = "Remove From Favorites"
-        private const val MENU_REMOVE_FROM_COLLECTION = "Remove From Collection"
-        private const val MENU_MANAGE_COLLECTIONS = "Manage Collections"
-        private const val MENU_REMOVE = "Remove Shortcut"
-        private const val MENU_DELETE_ART = "Delete Art"
-        private const val MENU_DELETE_GAME = "Delete Game"
-    }
 }

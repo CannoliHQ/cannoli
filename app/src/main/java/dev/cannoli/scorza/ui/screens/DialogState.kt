@@ -77,6 +77,11 @@ sealed interface DialogState {
         val selectedIndex: Int = 0,
     ) : DialogState
     data class RommDownloads(val selectedIndex: Int = 0) : DialogState
+    data class RommArtResults(
+        val results: dev.cannoli.scorza.romm.art.ArtFetchResults,
+        val selectedIndex: Int = 0,
+    ) : DialogState
+    data class RescanProgress(val progress: Float, val label: String) : DialogState
     data class RommQuickMenu(
         val selectedIndex: Int = 0,
         val concurrent: Int = 2,
@@ -179,6 +184,8 @@ val DialogState.isFullScreen: Boolean
         is DialogState.IntentAuditResult,
         is DialogState.QuickMenu,
         is DialogState.RommDownloads,
+        is DialogState.RommArtResults,
+        is DialogState.RescanProgress,
         is DialogState.RommQuickMenu,
         is DialogState.RommAdvancedMenu,
         is DialogState.RommConfirm,

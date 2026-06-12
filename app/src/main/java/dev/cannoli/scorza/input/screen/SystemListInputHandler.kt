@@ -5,6 +5,13 @@ import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.db.CollectionsRepository
 import dev.cannoli.scorza.di.IoScope
 import dev.cannoli.scorza.input.LauncherActions
+import dev.cannoli.scorza.input.MENU_ADD_FAVORITE
+import dev.cannoli.scorza.input.MENU_DELETE_GAME
+import dev.cannoli.scorza.input.MENU_DOWNLOAD_ART
+import dev.cannoli.scorza.input.MENU_EMULATOR_OVERRIDE
+import dev.cannoli.scorza.input.MENU_MANAGE_COLLECTIONS
+import dev.cannoli.scorza.input.MENU_REMOVE_FAVORITE
+import dev.cannoli.scorza.input.MENU_RENAME
 import dev.cannoli.scorza.input.PageJump
 import dev.cannoli.scorza.input.ScreenInputHandler
 import dev.cannoli.scorza.model.ListItem
@@ -33,6 +40,7 @@ class SystemListInputHandler @Inject constructor(
     private val gameListViewModel: GameListViewModel,
     private val settingsViewModel: SettingsViewModel,
     private val launcherActions: LauncherActions,
+    private val rommConnectionStore: dev.cannoli.scorza.romm.RommConnectionStore,
 ) : ScreenInputHandler {
 
     private var selectDown = false
@@ -238,9 +246,15 @@ class SystemListInputHandler @Inject constructor(
             is SystemListViewModel.ListItem.PortsFolder -> item.name
             else -> return
         }
+        val options = buildList {
+            add(MENU_RENAME)
+            if (item is SystemListViewModel.ListItem.PlatformItem && rommConnectionStore.isConfigured) {
+                add(MENU_DOWNLOAD_ART)
+            }
+        }
         nav.dialogState.value = DialogState.ContextMenu(
             gameName = name,
-            options = listOf(MENU_RENAME)
+            options = options
         )
     }
 
@@ -252,12 +266,4 @@ class SystemListInputHandler @Inject constructor(
         }
     }
 
-    companion object {
-        private const val MENU_RENAME = "Rename"
-        private const val MENU_DELETE_GAME = "Delete Game"
-        private const val MENU_MANAGE_COLLECTIONS = "Manage Collections"
-        private const val MENU_EMULATOR_OVERRIDE = "Emulator Override"
-        private const val MENU_ADD_FAVORITE = "Add To Favorites"
-        private const val MENU_REMOVE_FAVORITE = "Remove From Favorites"
-    }
 }

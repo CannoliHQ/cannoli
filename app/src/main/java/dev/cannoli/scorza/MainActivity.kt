@@ -117,6 +117,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var rommBrowseViewModel: dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel
     @Inject lateinit var rommImageLoader: coil.ImageLoader
     @Inject lateinit var rommDownloader: dev.cannoli.scorza.romm.download.RommDownloader
+    @Inject lateinit var rommArtFetcher: dev.cannoli.scorza.romm.art.RommArtFetcher
 
     private val isTv: Boolean by lazy { packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) }
 
@@ -330,6 +331,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
             rommHost = rommStore.host,
             rommArtType = rommStore.artTypeFlow.collectAsState().value,
             rommDownloader = rommDownloader,
+            rommArtFetcher = rommArtFetcher,
         )
     }
 

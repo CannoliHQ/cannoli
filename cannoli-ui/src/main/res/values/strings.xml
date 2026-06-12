@@ -270,14 +270,16 @@
     <string name="romm_download_notification_active">Downloading</string>
     <string name="romm_download_notification_progress">%1$s  %2$d%%</string>
     <string name="romm_download_notification_count">%1$d downloading</string>
+    <string name="romm_art_notification_active">Downloading box art</string>
     <string name="label_retry">RETRY</string>
     <string name="label_cancel_all">CANCEL ALL</string>
     <string name="label_downloads">DOWNLOADS</string>
 
-    <string name="romm_qm_title">RomM Settings</string>
+    <string name="romm_qm_title">RomM Quick Menu</string>
     <string name="romm_qm_concurrent">Concurrent Downloads</string>
     <string name="romm_qm_cover_art">Cover Art</string>
-    <string name="romm_qm_platforms">Platforms</string>
+    <string name="romm_qm_download_art">Download Missing Art</string>
+    <string name="romm_qm_platforms">Show / Hide Platforms</string>
     <string name="romm_qm_refresh">Refresh Library</string>
     <string name="romm_qm_server_info">Server Info</string>
     <string name="romm_qm_advanced">Advanced</string>
@@ -297,6 +299,14 @@
     <string name="romm_disconnect_confirm">Disconnect from RomM?</string>
     <string name="romm_cancel_confirm">Cancel this download?</string>
     <string name="romm_cancel_all_confirm">Cancel all downloads?</string>
+    <string name="romm_art_results_title">Box Art Results</string>
+    <string name="romm_art_added">Added art</string>
+    <string name="romm_art_already">Already had art</string>
+    <string name="romm_art_no_match">No RomM match</string>
+    <string name="romm_art_failed">Failed</string>
+    <string name="romm_art_section_no_match">No match</string>
+    <string name="romm_art_section_failed">Failed</string>
+    <string name="romm_art_done">DONE</string>
 
     <string name="setting_kitchen_toggle">File Server</string>
     <string name="setting_logging">Logging</string>
@@ -446,7 +456,7 @@
     <string name="quick_menu_title">Quick Menu</string>
     <string name="quick_menu_romm">Browse RomM</string>
     <string name="quick_menu_kitchen">Nonna\'s Kitchen</string>
-    <string name="quick_menu_rescan">Full Rescan</string>
+    <string name="quick_menu_rescan">Rescan Library</string>
     <string name="quick_menu_info">Network Info</string>
     <string name="quick_info_title">Network Info</string>
     <string name="quick_info_ip">IP Address</string>

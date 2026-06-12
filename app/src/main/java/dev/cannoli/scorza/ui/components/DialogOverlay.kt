@@ -318,7 +318,7 @@ fun DialogOverlay(
                 buttonStyle = buttonStyle
             ) {
                 List(
-                    items = listOf(R.string.romm_qm_rebuild),
+                    items = ROMM_ADVANCED_ROWS,
                     selectedIndex = dialogState.selectedIndex,
                     itemHeight = itemHeight
                 ) { _, labelRes, isSelected ->
@@ -377,6 +377,27 @@ fun DialogOverlay(
                     }
                 }
             }
+        }
+
+        is DialogState.RescanProgress -> {
+            dev.cannoli.scorza.ui.screens.HousekeepingScreen(
+                kind = dev.cannoli.scorza.ui.screens.HousekeepingKind.LIBRARY_REFRESH,
+                progress = dialogState.progress,
+                statusLabel = dialogState.label,
+            )
+        }
+
+        is DialogState.RommArtResults -> {
+            dev.cannoli.scorza.ui.screens.RommArtResultsScreen(
+                results = dialogState.results,
+                selectedIndex = dialogState.selectedIndex,
+                backgroundImagePath = null,
+                backgroundTint = backgroundTint,
+                listFontSize = listFontSize,
+                listLineHeight = listLineHeight,
+                listVerticalPadding = listVerticalPadding,
+                buttonStyle = buttonStyle,
+            )
         }
 
         is DialogState.RommDownloads -> {
@@ -480,11 +501,13 @@ private fun quickMenuLabel(row: dev.cannoli.scorza.ui.quickmenu.QuickMenuRow): S
     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.INFO -> stringResource(R.string.quick_menu_info)
 }
 
+val ROMM_ADVANCED_ROWS = listOf(R.string.romm_qm_refresh, R.string.romm_qm_rebuild)
+
 enum class RommQuickMenuRow(@androidx.annotation.StringRes val labelRes: Int, val isCycle: Boolean = false) {
-    CONCURRENT(R.string.romm_qm_concurrent, isCycle = true),
+    DOWNLOAD_ART(R.string.romm_qm_download_art),
     COVER_ART(R.string.romm_qm_cover_art, isCycle = true),
+    CONCURRENT(R.string.romm_qm_concurrent, isCycle = true),
     PLATFORMS(R.string.romm_qm_platforms),
-    REFRESH(R.string.romm_qm_refresh),
     ADVANCED(R.string.romm_qm_advanced),
     SERVER_INFO(R.string.romm_qm_server_info),
 }

@@ -325,6 +325,7 @@ fun AppNavGraph(
     rommHost: String = "",
     rommArtType: dev.cannoli.scorza.romm.RommArtType = dev.cannoli.scorza.romm.RommArtType.NONE,
     rommDownloader: dev.cannoli.scorza.romm.download.RommDownloader? = null,
+    rommArtFetcher: dev.cannoli.scorza.romm.art.RommArtFetcher? = null,
 ) {
     val dialog by dialogState.collectAsState()
     val appSettings by settingsViewModel.appSettings.collectAsState()
@@ -1350,6 +1351,13 @@ fun AppNavGraph(
         if (dialog is DialogState.RommDownloads && overlayDownloads.isEmpty()) {
             androidx.compose.runtime.LaunchedEffect(Unit) { nav?.dialogState?.value = DialogState.None }
         }
+        val artState = rommArtFetcher?.state?.collectAsState()?.value
+        androidx.compose.runtime.LaunchedEffect(artState) {
+            val finished = artState as? dev.cannoli.scorza.romm.art.ArtFetchState.Finished
+            if (finished != null && dialog !is DialogState.RommArtResults) {
+                nav?.dialogState?.value = DialogState.RommArtResults(finished.results)
+            }
+        }
         if (dialog.isFullScreen) {
             DialogOverlay(
                 dialogState = dialog,
@@ -1378,6 +1386,8 @@ fun AppNavGraph(
                 || (currentScreen is LauncherScreen.SystemList && systemListState?.isLoading == true)
         val showKitchenIcon = dev.cannoli.scorza.server.KitchenManager.running.collectAsState().value
                 && appSettings.showKitchen
+        val artRunning = appSettings.showDownloads &&
+                rommArtFetcher?.state?.collectAsState()?.value == dev.cannoli.scorza.romm.art.ArtFetchState.Running
         val activeDownloadCount = if (appSettings.showDownloads) {
             rommDownloader?.queue?.state?.collectAsState()?.value?.count {
                 it.status == dev.cannoli.scorza.romm.download.DownloadStatus.Queued || it.status is dev.cannoli.scorza.romm.download.DownloadStatus.Downloading
@@ -1388,6 +1398,7 @@ fun AppNavGraph(
                 currentScreen is LauncherScreen.RommGameDetail
         val hasContent = showKitchenIcon
                 || activeDownloadCount > 0
+                || artRunning
                 || appSettings.showWifi
                 || appSettings.showBluetooth
                 || appSettings.showVpn
@@ -1407,6 +1418,7 @@ fun AppNavGraph(
                 updateAvailable = updateAvailable,
                 kitchenRunning = showKitchenIcon,
                 downloadCount = activeDownloadCount,
+                downloadsActive = artRunning,
                 showWifi = appSettings.showWifi,
                 showBluetooth = appSettings.showBluetooth,
                 showVpn = appSettings.showVpn,

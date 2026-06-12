@@ -1,0 +1,16 @@
+package dev.cannoli.scorza.input
+
+internal const val MENU_RENAME = "Rename"
+internal const val MENU_DELETE = "Delete"
+internal const val MENU_DELETE_GAME = "Delete Game"
+internal const val MENU_DELETE_ART = "Delete Art"
+internal const val MENU_MANAGE_COLLECTIONS = "Manage Collections"
+internal const val MENU_EMULATOR_OVERRIDE = "Emulator Override"
+internal const val MENU_REMOVE_FROM_COLLECTION = "Remove From Collection"
+internal const val MENU_CHILD_COLLECTIONS = "Child Collections"
+internal const val MENU_RA_GAME_ID = "RA Game ID"
+internal const val MENU_ADD_FAVORITE = "Add To Favorites"
+internal const val MENU_REMOVE_FAVORITE = "Remove From Favorites"
+internal const val MENU_REMOVE = "Remove Shortcut"
+internal const val MENU_REMOVE_FROM_RECENTS = "Remove From Recently Played"
+internal const val MENU_DOWNLOAD_ART = "Download Missing Art"
