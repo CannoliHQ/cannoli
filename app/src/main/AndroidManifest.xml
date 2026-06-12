@@ -88,6 +88,10 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <receiver
+            android:name=".server.ApkInstallReceiver"
+            android:exported="false" />
+
     </application>
 
 </manifest>
