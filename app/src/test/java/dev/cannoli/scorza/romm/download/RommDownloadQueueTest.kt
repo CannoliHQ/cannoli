@@ -20,6 +20,24 @@ class RommDownloadQueueTest {
         assertTrue(q.state.value.all { it.status == DownloadStatus.Queued })
     }
 
+    @Test fun `re-enqueuing a completed key replaces it with a fresh queued item`() {
+        val q = RommDownloadQueue()
+        q.enqueue(listOf(item(1)))
+        q.setStatus("ROM-1", DownloadStatus.Done)
+        q.enqueue(listOf(item(1)))
+        assertEquals(1, q.state.value.size)
+        assertEquals(DownloadStatus.Queued, q.state.value.single().status)
+    }
+
+    @Test fun `re-enqueuing an active key is ignored`() {
+        val q = RommDownloadQueue()
+        q.enqueue(listOf(item(1)))
+        q.setStatus("ROM-1", DownloadStatus.Downloading(5, 100))
+        q.enqueue(listOf(item(1)))
+        assertEquals(1, q.state.value.size)
+        assertTrue(q.state.value.single().status is DownloadStatus.Downloading)
+    }
+
     @Test fun `rom and manual with same rommId coexist as distinct keys`() {
         val q = RommDownloadQueue()
         q.enqueue(listOf(item(1), item(1).copy(kind = RommDownloadKind.MANUAL)))
@@ -34,17 +52,6 @@ class RommDownloadQueueTest {
         assertTrue(q.state.value.first { it.rommId == 1 }.status is DownloadStatus.Downloading)
         assertEquals(2, q.claimNext()?.rommId)
         assertNull(q.claimNext())
-    }
-
-    @Test fun `nextQueued returns first queued and status transitions`() {
-        val q = RommDownloadQueue()
-        q.enqueue(listOf(item(1), item(2)))
-        assertEquals(1, q.nextQueued()?.rommId)
-        q.setStatus("ROM-1", DownloadStatus.Downloading(10, 100))
-        assertEquals(2, q.nextQueued()?.rommId)
-        q.setStatus("ROM-1", DownloadStatus.Done)
-        q.setStatus("ROM-2", DownloadStatus.Downloading(0, 50))
-        assertNull(q.nextQueued())
     }
 
     @Test fun `cancel removes a queued item, cancelAll clears queued only`() {
@@ -71,6 +78,16 @@ class RommDownloadQueueTest {
         q.setStatus("ROM-1", DownloadStatus.Downloading(0, 1))
         q.setStatus("ROM-2", DownloadStatus.Done)
         assertEquals(2, q.activeCount()) // downloading(1) + queued(3)
+    }
+
+    @Test fun `clearFinished removes done and failed but keeps queued and downloading`() {
+        val q = RommDownloadQueue()
+        q.enqueue(listOf(item(1), item(2), item(3), item(4)))
+        q.setStatus("ROM-1", DownloadStatus.Done)
+        q.setStatus("ROM-2", DownloadStatus.Failed("x"))
+        q.setStatus("ROM-3", DownloadStatus.Downloading(0, 1))
+        q.clearFinished()
+        assertEquals(listOf(3, 4), q.state.value.map { it.rommId })
     }
 
     @Test fun `display order puts newest active first then completed in their own section`() {

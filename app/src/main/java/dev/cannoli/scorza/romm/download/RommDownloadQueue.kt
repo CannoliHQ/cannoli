@@ -9,12 +9,14 @@ class RommDownloadQueue {
 
     @Synchronized
     fun enqueue(items: List<RommDownloadItem>) {
-        val existing = _state.value.map { it.key }.toSet()
-        val fresh = items.filter { it.key !in existing }.map { it.copy(status = DownloadStatus.Queued) }
-        if (fresh.isNotEmpty()) _state.value = _state.value + fresh
+        val active = _state.value
+            .filter { it.status == DownloadStatus.Queued || it.status is DownloadStatus.Downloading }
+            .map { it.key }.toSet()
+        val fresh = items.filter { it.key !in active }.map { it.copy(status = DownloadStatus.Queued) }
+        if (fresh.isEmpty()) return
+        val freshKeys = fresh.map { it.key }.toSet()
+        _state.value = _state.value.filterNot { it.key in freshKeys } + fresh
     }
-
-    fun nextQueued(): RommDownloadItem? = _state.value.firstOrNull { it.status == DownloadStatus.Queued }
 
     /** Atomically take the first queued item and mark it Downloading, so parallel workers can't claim the same rom. */
     @Synchronized
@@ -48,7 +50,12 @@ class RommDownloadQueue {
         }
     }
 
-    fun remove(key: String) = cancel(key)
+    @Synchronized
+    fun clearFinished() {
+        _state.value = _state.value.filterNot {
+            it.status == DownloadStatus.Done || it.status is DownloadStatus.Failed
+        }
+    }
 
     fun activeCount(): Int = _state.value.count {
         it.status == DownloadStatus.Queued || it.status is DownloadStatus.Downloading
