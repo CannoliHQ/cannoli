@@ -177,6 +177,7 @@ class InputRouter @Inject constructor(
         noinline onNorth: (T.() -> Unit)? = null,
         noinline onLeft: (T.() -> Unit)? = null,
         noinline onRight: (T.() -> Unit)? = null,
+        noinline onSelect: (T.() -> Unit)? = null,
     ): ScrollListInputHandler where T : LauncherScreen, T : LauncherScreen.ScrollableScreen {
         val current: () -> T? = { nav.currentScreen as? T }
         return scrollListFactory.create(
@@ -190,6 +191,7 @@ class InputRouter @Inject constructor(
             onNorth = onNorth?.let { fn -> { current()?.fn() ?: Unit } },
             onLeft = onLeft?.let { fn -> { current()?.fn() ?: Unit } },
             onRight = onRight?.let { fn -> { current()?.fn() ?: Unit } },
+            onSelect = onSelect?.let { fn -> { current()?.fn() ?: Unit } },
         )
     }
 
@@ -378,23 +380,50 @@ class InputRouter @Inject constructor(
             val platform = rommBrowseViewModel.platforms.value.getOrNull(selectedIndex) ?: return@scrollable
             nav.push(LauncherScreen.RommGameList(platform = platform))
         },
-        onBack = { nav.pop() },
+        onBack = {
+            rommDownloader.clearFinished()
+            nav.pop()
+        },
     )
 
     private fun rommGameListHandler() = scrollable<LauncherScreen.RommGameList>(
         onConfirm = {
             val row = rommBrowseViewModel.games.value.getOrNull(selectedIndex) ?: return@scrollable
-            nav.push(LauncherScreen.RommGameDetail(
-                game = row.game,
-                localState = row.localState,
-                platformName = platform.displayName,
-                tag = platform.cannoliTag,
-            ))
+            if (rommBrowseViewModel.isMultiSelect()) {
+                rommBrowseViewModel.toggleChecked(row.game.id)
+            } else {
+                nav.push(LauncherScreen.RommGameDetail(
+                    game = row.game,
+                    localState = row.localState,
+                    platformName = platform.displayName,
+                    tag = platform.cannoliTag,
+                ))
+            }
         },
-        onBack = { nav.pop() },
+        onBack = {
+            if (rommBrowseViewModel.isMultiSelect()) rommBrowseViewModel.cancelMultiSelect()
+            else nav.pop()
+        },
+        onStart = {
+            if (!rommBrowseViewModel.isMultiSelect()) return@scrollable
+            val games = rommBrowseViewModel.confirmMultiSelect()
+            if (games.isEmpty()) return@scrollable
+            rommDownloader.enqueue(games.map {
+                dev.cannoli.scorza.romm.download.RommDownloadItem(rommId = it.id, game = it, tag = platform.cannoliTag)
+            })
+            dev.cannoli.scorza.romm.download.RommDownloadManager.ensureStarted(context)
+            osdController.show(context.resources.getQuantityString(
+                dev.cannoli.ui.R.plurals.romm_osd_downloads_queued, games.size, games.size))
+        },
         onWest = { if (rommDownloader.queue.state.value.isNotEmpty()) nav.dialogState.value = DialogState.RommDownloads() },
         onNorth = {
+            if (rommBrowseViewModel.isMultiSelect()) return@scrollable
             nav.dialogState.value = DialogState.RenameInput(gameName = "romm_search", currentName = search, cursorPos = search.length)
+        },
+        onSelect = {
+            if (rommBrowseViewModel.isMultiSelect()) rommBrowseViewModel.cancelMultiSelect()
+            else rommBrowseViewModel.enterMultiSelect(
+                rommBrowseViewModel.games.value.getOrNull(selectedIndex)?.game?.id)
         },
     )
 

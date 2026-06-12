@@ -1,6 +1,5 @@
 package dev.cannoli.scorza.ui.viewmodel
 
-import dev.cannoli.scorza.romm.LocalFile
 import dev.cannoli.scorza.romm.LocalState
 import dev.cannoli.scorza.romm.RommGame
 import dev.cannoli.scorza.romm.RommLibrary
@@ -20,7 +19,7 @@ class RommBrowseViewModel(
     private val library: RommLibrary,
     private val syncCoordinator: RommSyncCoordinator?,
     private val db: RommDatabase?,
-    private val localFilesFor: (tag: String) -> List<LocalFile>,
+    private val presentNamesFor: (tag: String) -> Set<String>,
     private val linkedIdsProvider: () -> Set<Int>,
     private val hiddenTagsProvider: () -> Set<String> = { emptySet() },
 ) {
@@ -35,6 +34,12 @@ class RommBrowseViewModel(
 
     private val _loadedPlatformId = MutableStateFlow<Int?>(null)
     val loadedPlatformId: StateFlow<Int?> = _loadedPlatformId
+
+    private val _multiSelect = MutableStateFlow(false)
+    val multiSelect: StateFlow<Boolean> = _multiSelect
+
+    private val _checkedIds = MutableStateFlow<Set<Int>>(emptySet())
+    val checkedIds: StateFlow<Set<Int>> = _checkedIds
 
     val syncStatus: StateFlow<RommSyncCoordinator.SyncStatus> =
         syncCoordinator?.status ?: MutableStateFlow(RommSyncCoordinator.SyncStatus.IDLE)
@@ -94,17 +99,61 @@ class RommBrowseViewModel(
         _games.value = _games.value + loadPage(platform, page, searchTerm)
     }
 
+    suspend fun refreshLocalState() {
+        val platform = current ?: return
+        val rows = _games.value
+        if (rows.isEmpty()) return
+        val updated = withContext(Dispatchers.IO) {
+            val present = presentNamesFor(platform.cannoliTag)
+            val linkedIds = linkedIdsProvider()
+            rows.map { row ->
+                val state = if (row.game.id in linkedIds) LocalState.PRESENT
+                else RommLocalState.of(row.game.fsName, present)
+                row.copy(localState = state)
+            }
+        }
+        _games.value = updated
+    }
+
+    fun isMultiSelect(): Boolean = _multiSelect.value
+
+    fun enterMultiSelect(preCheckId: Int?) {
+        if (_multiSelect.value) return
+        _multiSelect.value = true
+        _checkedIds.value = if (preCheckId != null && isCheckable(preCheckId)) setOf(preCheckId) else emptySet()
+    }
+
+    fun toggleChecked(id: Int) {
+        if (!_multiSelect.value || !isCheckable(id)) return
+        _checkedIds.value = if (id in _checkedIds.value) _checkedIds.value - id else _checkedIds.value + id
+    }
+
+    fun confirmMultiSelect(): List<RommGame> {
+        val ids = _checkedIds.value
+        val games = _games.value.filter { it.game.id in ids }.map { it.game }
+        cancelMultiSelect()
+        return games
+    }
+
+    fun cancelMultiSelect() {
+        _multiSelect.value = false
+        _checkedIds.value = emptySet()
+    }
+
+    private fun isCheckable(id: Int): Boolean =
+        _games.value.any { it.game.id == id && it.localState == LocalState.REMOTE }
+
     private suspend fun loadPage(platform: RommPlatform, page: Int, search: String?): List<RommGameRow> {
         val pageData = library.games(platform, page, search)
         hasMore = pageData.hasMore
         return withContext(Dispatchers.IO) {
-            val locals = localFilesFor(platform.cannoliTag)
+            val present = presentNamesFor(platform.cannoliTag)
             val linkedIds = linkedIdsProvider()
             pageData.items
                 .sortedNatural { it.name }
                 .map { game ->
                     val state = if (game.id in linkedIds) LocalState.PRESENT
-                    else RommLocalState.of(game.fsName, game.sizeBytes, locals)
+                    else RommLocalState.of(game.fsName, present)
                     RommGameRow(game, state)
                 }
         }

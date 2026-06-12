@@ -5,28 +5,17 @@ import org.junit.Test
 
 class RommLocalStateTest {
 
-    private val local = listOf(
-        LocalFile("Game (USA).sfc", 1048576L),
-        LocalFile("Other.sfc", 999L),
-    )
+    private val present = setOf("game (usa).sfc", "other.sfc")
 
-    @Test fun `present when filename and size match`() {
-        assertEquals(LocalState.PRESENT,
-            RommLocalState.of(fsName = "Game (USA).sfc", sizeBytes = 1048576L, localFiles = local))
+    @Test fun `present when filename matches`() {
+        assertEquals(LocalState.PRESENT, RommLocalState.of("Game (USA).sfc", present))
     }
 
     @Test fun `remote when filename absent`() {
-        assertEquals(LocalState.REMOTE,
-            RommLocalState.of(fsName = "Missing.sfc", sizeBytes = 1L, localFiles = local))
-    }
-
-    @Test fun `remote when name matches but size differs`() {
-        assertEquals(LocalState.REMOTE,
-            RommLocalState.of(fsName = "Game (USA).sfc", sizeBytes = 2L, localFiles = local))
+        assertEquals(LocalState.REMOTE, RommLocalState.of("Missing.sfc", present))
     }
 
     @Test fun `filename match is case-insensitive`() {
-        assertEquals(LocalState.PRESENT,
-            RommLocalState.of(fsName = "game (usa).SFC", sizeBytes = 1048576L, localFiles = local))
+        assertEquals(LocalState.PRESENT, RommLocalState.of("game (usa).SFC", present))
     }
 }

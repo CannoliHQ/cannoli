@@ -1281,7 +1281,17 @@ fun AppNavGraph(
                     if (games.isNotEmpty() && currentScreen.selectedIndex >= games.size - 5) rommBrowseViewModel?.loadMore()
                 }
                 val loader = rommImageLoader
-                val downloadCount = rommDownloader?.queue?.state?.collectAsState()?.value?.size ?: 0
+                val queueItems = rommDownloader?.queue?.state?.collectAsState()?.value ?: emptyList()
+                val downloadCount = queueItems.size
+                val doneForPlatform = queueItems.count {
+                    it.tag == currentScreen.platform.cannoliTag &&
+                        it.status == dev.cannoli.scorza.romm.download.DownloadStatus.Done
+                }
+                androidx.compose.runtime.LaunchedEffect(doneForPlatform) {
+                    if (doneForPlatform > 0) rommBrowseViewModel?.refreshLocalState()
+                }
+                val multiSelect = rommBrowseViewModel?.multiSelect?.collectAsState()?.value ?: false
+                val checkedIds = rommBrowseViewModel?.checkedIds?.collectAsState()?.value ?: emptySet()
                 if (loader != null) {
                     dev.cannoli.scorza.ui.screens.RommGameListScreen(
                         title = currentScreen.platform.displayName,
@@ -1292,6 +1302,8 @@ fun AppNavGraph(
                         artWidth = appSettings.artWidth,
                         artType = rommArtType,
                         downloadCount = downloadCount,
+                        multiSelect = multiSelect,
+                        checkedIds = checkedIds,
                         imageLoader = loader,
                         backgroundImagePath = appSettings.backgroundImagePath,
                         backgroundTint = appSettings.backgroundTint,

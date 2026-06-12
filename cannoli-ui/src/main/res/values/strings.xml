@@ -260,6 +260,10 @@
     <string name="romm_download_completed">Completed</string>
     <string name="romm_osd_download_queued">Added to downloads</string>
     <string name="romm_osd_manual_queued">Manual added to downloads</string>
+    <plurals name="romm_osd_downloads_queued">
+        <item quantity="one">%1$d added to downloads</item>
+        <item quantity="other">%1$d added to downloads</item>
+    </plurals>
     <string name="download_percent">%1$d%%</string>
     <string name="romm_download_notification_title">RomM Downloads</string>
     <string name="romm_download_notification_starting">Starting downloads</string>

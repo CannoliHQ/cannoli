@@ -69,6 +69,11 @@ class RomsRepository(
         "SELECT tag FROM platforms ORDER BY sort_order, display_name COLLATE NOCASE",
     ) { it.getText(0) }
 
+    /** Lowercased filenames currently indexed for [platformTag], for RomM on-device matching. */
+    fun presentFileNames(platformTag: String): Set<String> = db.queryAll(
+        "SELECT path FROM roms WHERE platform_tag = ?", platformTag.uppercase(),
+    ) { File(it.getText(0)).name.lowercase() }.toSet()
+
     fun setPlatformOrder(orderedTags: List<String>) = db.transaction { conn ->
         orderedTags.forEachIndexed { index, tag ->
             conn.execute("UPDATE platforms SET sort_order = ? WHERE tag = ?", index.toLong(), tag)

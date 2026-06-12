@@ -55,6 +55,9 @@ class RommDownloader(
     @Synchronized
     fun retry(key: String) { queue.retry(key); ensureWorkers() }
 
+    /** Drops Done/Failed entries; queued and in-flight downloads keep running. */
+    fun clearFinished() = queue.clearFinished()
+
     private fun isDownloading(key: String): Boolean =
         queue.state.value.any { it.key == key && it.status is DownloadStatus.Downloading }
 

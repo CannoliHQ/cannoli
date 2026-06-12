@@ -19,24 +19,24 @@ class RommBrowseViewModelMatchTest {
             RommPage(if (page == 0) games else emptyList(), games.size, RommLibrary.PAGE_SIZE, 0)
     }
 
-    @Test fun `a linked id is PRESENT even when filename and size do not match`() = runBlocking {
+    @Test fun `a linked id is PRESENT even when filename does not match`() = runBlocking {
         val vm = RommBrowseViewModel(
             library = FakeLibrary(listOf(game(10, "renamed.sfc", 999L))),
             syncCoordinator = null,
             db = null,
-            localFilesFor = { emptyList() },
+            presentNamesFor = { emptySet() },
             linkedIdsProvider = { setOf(10) },
         )
         vm.openPlatform(snes)
         assertEquals(LocalState.PRESENT, vm.games.value.single().localState)
     }
 
-    @Test fun `falls back to filename and size when not linked`() = runBlocking {
+    @Test fun `falls back to a filename and platform match when not linked`() = runBlocking {
         val vm = RommBrowseViewModel(
             library = FakeLibrary(listOf(game(10, "a.sfc", 100L), game(11, "b.sfc", 200L))),
             syncCoordinator = null,
             db = null,
-            localFilesFor = { listOf(LocalFile("a.sfc", 100L)) },
+            presentNamesFor = { setOf("a.sfc") },
             linkedIdsProvider = { emptySet() },
         )
         vm.openPlatform(snes)

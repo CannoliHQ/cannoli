@@ -47,6 +47,8 @@ fun RommGameListScreen(
     artWidth: Int,
     artType: dev.cannoli.scorza.romm.RommArtType = dev.cannoli.scorza.romm.RommArtType.NONE,
     downloadCount: Int = 0,
+    multiSelect: Boolean = false,
+    checkedIds: Set<Int> = emptySet(),
     imageLoader: coil.ImageLoader,
     backgroundImagePath: String?,
     backgroundTint: Int,
@@ -84,6 +86,7 @@ fun RommGameListScreen(
                             scrollTarget = scrollTarget,
                             onListStateChanged = onListStateChanged,
                         ) { _, row, isSelected ->
+                            val checkable = multiSelect && row.localState == LocalState.REMOTE
                             PillRowKeyValue(
                                 label = row.game.name,
                                 value = "",
@@ -92,6 +95,7 @@ fun RommGameListScreen(
                                 lineHeight = listLineHeight,
                                 verticalPadding = listVerticalPadding,
                                 dotIndicator = if (row.localState == LocalState.PRESENT) true else null,
+                                checkState = if (checkable) row.game.id in checkedIds else null,
                             )
                         }
                     }
@@ -121,10 +125,13 @@ fun RommGameListScreen(
             BottomBar(
                 modifier = Modifier.align(Alignment.BottomCenter),
                 leftItems = buildList {
-                    add(buttonStyle.back to stringResource(R.string.label_back))
-                    if (downloadCount > 0) add(buttonStyle.west to stringResource(R.string.label_downloads))
+                    add(buttonStyle.back to stringResource(if (multiSelect) R.string.label_cancel else R.string.label_back))
+                    if (!multiSelect && downloadCount > 0) add(buttonStyle.west to stringResource(R.string.label_downloads))
                 },
-                rightItems = listOf(
+                rightItems = if (multiSelect) listOf(
+                    buttonStyle.confirm to stringResource(R.string.label_toggle),
+                    dev.cannoli.ui.START_GLYPH to stringResource(R.string.label_download),
+                ) else listOf(
                     buttonStyle.north to stringResource(R.string.label_search),
                     buttonStyle.confirm to stringResource(R.string.label_select),
                 ),

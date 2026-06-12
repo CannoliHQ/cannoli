@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -132,12 +133,7 @@ fun PillRowText(
             val viewportMax = this.maxWidth
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (checkState != null) {
-                    Text(
-                        text = if (checkState) "\u2611" else "\u2610",
-                        style = textStyle,
-                        color = textColor
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    PillCheckGlyph(checked = checkState, style = textStyle, color = textColor)
                 }
                 if (showReorderIcon) {
                     Text(
@@ -186,7 +182,8 @@ fun PillRowKeyValue(
     verticalPadding: Dp,
     swatchColor: Color? = null,
     valueIcon: String? = null,
-    dotIndicator: Boolean? = null
+    dotIndicator: Boolean? = null,
+    checkState: Boolean? = null
 ) {
     val colors = LocalCannoliColors.current
     val baseStyle = MaterialTheme.typography.bodyLarge
@@ -210,6 +207,9 @@ fun PillRowKeyValue(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            if (checkState != null) {
+                PillCheckGlyph(checked = checkState, style = textStyle, color = labelColor)
+            }
             Row(
                 modifier = Modifier
                     .weight(1f)
@@ -263,4 +263,15 @@ fun PillRowKeyValue(
             )
         }
     }
+}
+
+/** The shared multi-select checkbox glyph used by every list row. Call inside a [Row]. */
+@Composable
+fun PillCheckGlyph(checked: Boolean, style: TextStyle, color: Color) {
+    Text(
+        text = if (checked) "☑" else "☐",
+        style = style,
+        color = color
+    )
+    Spacer(modifier = Modifier.width(8.dp))
 }

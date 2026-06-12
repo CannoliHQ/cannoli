@@ -1,6 +1,5 @@
 package dev.cannoli.scorza.ui.viewmodel
 
-import dev.cannoli.scorza.romm.LocalFile
 import dev.cannoli.scorza.romm.LocalState
 import dev.cannoli.scorza.romm.RommGame
 import dev.cannoli.scorza.romm.RommLibrary
@@ -22,7 +21,7 @@ class RommBrowseViewModelTest {
         library = lib,
         syncCoordinator = null,
         db = null,
-        localFilesFor = { listOf(LocalFile("Mario.sfc", 100L)) },
+        presentNamesFor = { setOf("mario.sfc") },
         linkedIdsProvider = { emptySet() },
     )
 
@@ -68,5 +67,81 @@ class RommBrowseViewModelTest {
         val vm = vm(lib)
         vm.openPlatform(platform, "mario")
         assertEquals(listOf("Mario"), vm.games.value.map { it.game.name })
+    }
+
+    private suspend fun loadedVm(): RommBrowseViewModel {
+        val lib = mockk<RommLibrary>()
+        coEvery { lib.games(platform, 0, null) } returns RommPage(
+            items = listOf(game(2, "Zelda", "Zelda.sfc", 1L), game(1, "Mario", "Mario.sfc", 100L)),
+            total = 2, limit = 100, offset = 0,
+        )
+        return vm(lib).also { it.openPlatform(platform) }
+    }
+
+    @Test fun `refreshLocalState re-derives present state when the rom is indexed`() = runTest {
+        val lib = mockk<RommLibrary>()
+        coEvery { lib.games(platform, 0, null) } returns RommPage(
+            items = listOf(game(2, "Zelda", "Zelda.sfc", 1L)), total = 1, limit = 100, offset = 0,
+        )
+        val present = mutableSetOf<String>()
+        val vm = RommBrowseViewModel(
+            library = lib,
+            syncCoordinator = null,
+            db = null,
+            presentNamesFor = { present.toSet() },
+            linkedIdsProvider = { emptySet() },
+        )
+        vm.openPlatform(platform)
+        assertEquals(LocalState.REMOTE, vm.games.value.single().localState)
+        present.add("zelda.sfc")
+        vm.refreshLocalState()
+        assertEquals(LocalState.PRESENT, vm.games.value.single().localState)
+    }
+
+    @Test fun `enterMultiSelect pre-checks a remote row`() = runTest {
+        val vm = loadedVm()
+        vm.enterMultiSelect(2)
+        assertEquals(true, vm.isMultiSelect())
+        assertEquals(setOf(2), vm.checkedIds.value)
+    }
+
+    @Test fun `enterMultiSelect does not pre-check a present row`() = runTest {
+        val vm = loadedVm()
+        vm.enterMultiSelect(1)
+        assertEquals(true, vm.isMultiSelect())
+        assertEquals(emptySet<Int>(), vm.checkedIds.value)
+    }
+
+    @Test fun `toggleChecked adds and removes remote rows`() = runTest {
+        val vm = loadedVm()
+        vm.enterMultiSelect(null)
+        vm.toggleChecked(2)
+        assertEquals(setOf(2), vm.checkedIds.value)
+        vm.toggleChecked(2)
+        assertEquals(emptySet<Int>(), vm.checkedIds.value)
+    }
+
+    @Test fun `toggleChecked ignores present rows`() = runTest {
+        val vm = loadedVm()
+        vm.enterMultiSelect(null)
+        vm.toggleChecked(1)
+        assertEquals(emptySet<Int>(), vm.checkedIds.value)
+    }
+
+    @Test fun `confirmMultiSelect returns checked games and clears state`() = runTest {
+        val vm = loadedVm()
+        vm.enterMultiSelect(2)
+        val games = vm.confirmMultiSelect()
+        assertEquals(listOf(2), games.map { it.id })
+        assertEquals(false, vm.isMultiSelect())
+        assertEquals(emptySet<Int>(), vm.checkedIds.value)
+    }
+
+    @Test fun `cancelMultiSelect clears state`() = runTest {
+        val vm = loadedVm()
+        vm.enterMultiSelect(2)
+        vm.cancelMultiSelect()
+        assertEquals(false, vm.isMultiSelect())
+        assertEquals(emptySet<Int>(), vm.checkedIds.value)
     }
 }

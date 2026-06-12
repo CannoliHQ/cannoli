@@ -14,7 +14,6 @@ import dev.cannoli.scorza.db.ScanScheduler
 import dev.cannoli.scorza.romm.PlatformMap
 import dev.cannoli.scorza.romm.RommClient
 import dev.cannoli.scorza.romm.RommConnectionStore
-import dev.cannoli.scorza.romm.RommFolderScanner
 import dev.cannoli.scorza.romm.RommHttp
 import dev.cannoli.scorza.romm.RommImageLoader
 import dev.cannoli.scorza.romm.RommLibrary
@@ -70,15 +69,11 @@ object RommModule {
         CachedRommLibrary(db)
 
     @Provides @Singleton
-    fun provideRommFolderScanner(paths: CannoliPathsProvider): RommFolderScanner =
-        RommFolderScanner { paths.romDir }
-
-    @Provides @Singleton
     fun provideRommBrowseViewModel(
         library: RommLibrary,
         syncCoordinator: RommSyncCoordinator,
         db: RommDatabase,
-        scanner: RommFolderScanner,
+        romsRepository: dev.cannoli.scorza.db.RomsRepository,
         linkRepository: RommLinkRepository,
         settings: dev.cannoli.scorza.settings.SettingsRepository,
     ): RommBrowseViewModel =
@@ -86,7 +81,7 @@ object RommModule {
             library = library,
             syncCoordinator = syncCoordinator,
             db = db,
-            localFilesFor = { tag -> scanner.localFiles(tag) },
+            presentNamesFor = { tag -> romsRepository.presentFileNames(tag) },
             linkedIdsProvider = { linkRepository.presentRommIds() },
             hiddenTagsProvider = { settings.hiddenRommPlatforms },
         )
