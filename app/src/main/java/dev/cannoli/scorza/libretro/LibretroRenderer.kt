@@ -472,13 +472,13 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
         GLES20.glDisable(GLES20.GL_BLEND)
     }
 
-    private fun bindQuadAttribs(program: Int, tcBuffer: FloatBuffer = texCoordBuffer) {
+    private fun bindQuadAttribs(program: Int) {
         val posHandle = GLES20.glGetAttribLocation(program, "aPosition")
         GLES20.glEnableVertexAttribArray(posHandle)
         GLES20.glVertexAttribPointer(posHandle, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer)
         val texHandle = GLES20.glGetAttribLocation(program, "aTexCoord")
         GLES20.glEnableVertexAttribArray(texHandle)
-        GLES20.glVertexAttribPointer(texHandle, 2, GLES20.GL_FLOAT, false, 0, tcBuffer)
+        GLES20.glVertexAttribPointer(texHandle, 2, GLES20.GL_FLOAT, false, 0, texCoordBuffer)
     }
 
     private fun unbindQuadAttribs(program: Int) {

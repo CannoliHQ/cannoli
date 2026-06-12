@@ -31,7 +31,6 @@ class LibretroRunner {
     fun getAudioDiagnostics(): String = nativeAudioGetDiagnostics()
     fun stopAudio() = nativeAudioStop()
     fun setAudioMuted(muted: Boolean) = nativeAudioSetMuted(muted)
-    fun setAudioNonblock(nonblock: Boolean) = nativeAudioSetNonblock(nonblock)
     fun pauseAudio() = nativeAudioPause()
     fun resumeAudio() = nativeAudioResume()
 
@@ -152,7 +151,6 @@ class LibretroRunner {
     private external fun nativeAudioGetDiagnostics(): String
     private external fun nativeAudioStop()
     private external fun nativeAudioSetMuted(muted: Boolean)
-    private external fun nativeAudioSetNonblock(nonblock: Boolean)
     private external fun nativeAudioPause()
     private external fun nativeAudioResume()
     private external fun nativeLoadGame(romPath: String): IntArray?

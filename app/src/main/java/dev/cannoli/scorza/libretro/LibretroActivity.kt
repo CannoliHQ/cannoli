@@ -162,7 +162,6 @@ class LibretroActivity : ComponentActivity() {
     private var coreCategories by mutableStateOf(emptyList<LibretroRunner.CoreOptionCategory>())
     private var coreRequiresHwRender = false
     private var controllerTypes by mutableStateOf(emptyList<LibretroRunner.ControllerType>())
-    private var controllerTypeIndex by mutableIntStateOf(0)
     private var portDeviceTypes by mutableStateOf<Map<Int, Int>>(emptyMap())
 
     @Volatile
@@ -1529,9 +1528,11 @@ class LibretroActivity : ComponentActivity() {
         sessionLog.log("refreshSlotInfo: occupied=${slotOccupied.count { it }}/${slotOccupied.size}")
     }
 
+    private fun wrapIndex(current: Int, count: Int, dir: Int) = ((current + dir) + count) % count
+
     private fun cycleSlot(direction: Int) {
         val count = slotManager.slots.size
-        selectedSlotIndex = ((selectedSlotIndex + direction) + count) % count
+        selectedSlotIndex = wrapIndex(selectedSlotIndex, count, direction)
         refreshSlotInfo()
     }
 
@@ -1704,10 +1705,10 @@ class LibretroActivity : ComponentActivity() {
         val count = IGMSettings.CATEGORIES.size
         return when (button) {
             "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
             }
             "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
             }
             "btn_south" -> {
                 when (screen.selectedIndex) {
@@ -1869,10 +1870,10 @@ class LibretroActivity : ComponentActivity() {
         if (count == 0) return true
         return when (button) {
             "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
             }
             "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
             }
             "btn_left", "btn_right" -> {
                 val dir = if (button == "btn_right") 1 else -1
@@ -1912,10 +1913,10 @@ class LibretroActivity : ComponentActivity() {
         if (count == 0) return true
         return when (button) {
             "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
             }
             "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
             }
             "btn_left", "btn_right" -> {
                 val dir = if (button == "btn_right") 1 else -1
@@ -1941,11 +1942,10 @@ class LibretroActivity : ComponentActivity() {
         if (controllerTypes.isEmpty()) return
         val currentTypeId = portDeviceTypes[port] ?: LibretroRunner.DEVICE_JOYPAD
         val currentIdx = controllerTypes.indexOfFirst { it.id == currentTypeId }.coerceAtLeast(0)
-        val newIdx = ((currentIdx + direction) + controllerTypes.size) % controllerTypes.size
+        val newIdx = wrapIndex(currentIdx, controllerTypes.size, direction)
         val ct = controllerTypes[newIdx]
         portDeviceTypes = portDeviceTypes.toMutableMap().also { it[port] = ct.id }
         if (port == 0) {
-            controllerTypeIndex = newIdx
             applyForceAnalog(ct.id > 1)
         }
         runner.setControllerPortDevice(port, ct.id)
@@ -2023,10 +2023,10 @@ class LibretroActivity : ComponentActivity() {
         }
         return when (button) {
             "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
             }
             "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
             }
             "btn_south" -> {
                 var ach = filtered.getOrNull(screen.selectedIndex)
@@ -2083,10 +2083,10 @@ class LibretroActivity : ComponentActivity() {
         val count = guideFiles.size
         return when (button) {
             "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
             }
             "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
             }
             "btn_south" -> {
                 guideFiles.getOrNull(screen.selectedIndex)?.let { openGuide(it) }
@@ -2158,10 +2158,10 @@ class LibretroActivity : ComponentActivity() {
         }
         return when (button) {
             "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
             }
             "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
             }
             "btn_left" -> { cycleShaderParam(screen.selectedIndex, -1); true }
             "btn_right" -> { cycleShaderParam(screen.selectedIndex, 1); true }
@@ -2220,10 +2220,10 @@ class LibretroActivity : ComponentActivity() {
             val count = items.size
             return when (button) {
                 "btn_up" -> {
-                    replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
+                    replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
                 }
                 "btn_down" -> {
-                    replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
+                    replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
                 }
                 "btn_south" -> {
                     val usedCategories = coreCategories.filter { cat -> coreOptions.any { it.category == cat.key } }
@@ -2238,10 +2238,10 @@ class LibretroActivity : ComponentActivity() {
         val count = coreOptions.size
         return when (button) {
             "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
             }
             "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
             }
             "btn_left" -> { cycleEmulatorValue(coreOptions, screen.selectedIndex, -1); true }
             "btn_right" -> { cycleEmulatorValue(coreOptions, screen.selectedIndex, 1); true }
@@ -2268,10 +2268,10 @@ class LibretroActivity : ComponentActivity() {
         val count = filtered.size
         return when (button) {
             "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
             }
             "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
             }
             "btn_left" -> { cycleEmulatorValue(filtered, screen.selectedIndex, -1); true }
             "btn_right" -> { cycleEmulatorValue(filtered, screen.selectedIndex, 1); true }
@@ -2346,10 +2346,10 @@ class LibretroActivity : ComponentActivity() {
         val count = ShortcutAction.entries.size + 1
         return when (button) {
             "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
             }
             "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
             }
             "btn_left" -> {
                 if (screen.selectedIndex == 0) cycleShortcutSource(-1)
@@ -2397,10 +2397,10 @@ class LibretroActivity : ComponentActivity() {
         if (count == 0) return true
         return when (button) {
             "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
             }
             "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
             }
             "btn_south" -> {
                 when (screen.selectedIndex) {
@@ -2875,11 +2875,11 @@ class LibretroActivity : ComponentActivity() {
         val count = reassignPortCount
         return when (button) {
             "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count))
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1)))
                 true
             }
             "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count))
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1)))
                 true
             }
             "btn_south" -> {
@@ -2955,11 +2955,11 @@ class LibretroActivity : ComponentActivity() {
 
         return when (button) {
             "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count))
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1)))
                 true
             }
             "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count))
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1)))
                 true
             }
             "btn_south" -> {
