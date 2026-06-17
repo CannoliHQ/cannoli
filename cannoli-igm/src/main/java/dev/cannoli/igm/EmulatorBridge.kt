@@ -19,6 +19,10 @@ interface EmulatorBridge {
     fun getStateThumbnail(slot: Int): Bitmap?
     fun stateExists(slot: Int): Boolean
 
+    // Snapshot of the currently loaded game's achievements. Default empty for
+    // bridges without achievement support.
+    fun getAchievements(): List<AchievementInfo> = emptyList()
+
     // Disc management
     fun getDiskCount(): Int
     fun getDiskIndex(): Int

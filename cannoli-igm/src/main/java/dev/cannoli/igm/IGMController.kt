@@ -88,9 +88,33 @@ class IGMController(
     }
 
     fun openAchievements() {
-        screenStack.clear()
-        bridge.openAchievementsMenu()
-        bridge.setOnNativeMenuClosed { openMenu() }
+        push(IGMScreen.Achievements(achievements = bridge.getAchievements()))
+    }
+
+    private fun filteredAchievements(screen: IGMScreen.Achievements): List<AchievementInfo> = when (screen.filter) {
+        1 -> screen.achievements.filter { it.unlocked }
+        2 -> screen.achievements.filter { !it.unlocked }
+        else -> screen.achievements
+    }
+
+    private fun handleAchievementsKey(screen: IGMScreen.Achievements, keycode: Int) {
+        val filtered = filteredAchievements(screen)
+        val count = filtered.size
+        when (keycode) {
+            19 -> if (count > 0) replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count))
+            20 -> if (count > 0) replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count))
+            96 -> filtered.getOrNull(screen.selectedIndex)?.let {
+                push(IGMScreen.AchievementDetail(achievement = it, parentIndex = screen.selectedIndex))
+            }
+            99 -> replaceTop(screen.copy(filter = (screen.filter + 1) % 3, selectedIndex = 0))
+            97, 4 -> { pop(); if (screenStack.isEmpty()) onClose?.invoke() }
+        }
+    }
+
+    private fun handleAchievementDetailKey(screen: IGMScreen.AchievementDetail, keycode: Int) {
+        when (keycode) {
+            97, 4 -> pop()
+        }
     }
 
     fun attachGuides(manager: GuideManager) {
@@ -198,6 +222,8 @@ class IGMController(
             is IGMScreen.Menu -> handleMenuKey(screen, keycode)
             is IGMScreen.GuidePicker -> handleGuidePickerKey(screen, keycode)
             is IGMScreen.Guide -> handleGuideKey(screen, keycode)
+            is IGMScreen.Achievements -> handleAchievementsKey(screen, keycode)
+            is IGMScreen.AchievementDetail -> handleAchievementDetailKey(screen, keycode)
             else -> {}
         }
     }
@@ -261,8 +287,8 @@ class IGMController(
             IgmMenuAction.GUIDE -> {
                 if (guideFiles.value.size == 1) openGuide(guideFiles.value[0]) else openGuidePicker()
             }
-            IgmMenuAction.ACHIEVEMENTS, IgmMenuAction.SWITCH_DISC,
-            IgmMenuAction.REASSIGN, null -> {}
+            IgmMenuAction.ACHIEVEMENTS -> openAchievements()
+            IgmMenuAction.SWITCH_DISC, IgmMenuAction.REASSIGN, null -> {}
         }
     }
 }
