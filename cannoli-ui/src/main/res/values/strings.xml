@@ -12,6 +12,7 @@
     <string name="label_save">SAVE</string>
     <string name="label_load">LOAD</string>
     <string name="label_change">CHANGE</string>
+    <string name="label_firmware">FIRMWARE</string>
     <string name="label_choose">CHOOSE</string>
     <string name="label_sleep">SLEEP</string>
     <string name="label_close">CLOSE</string>
@@ -177,7 +178,6 @@
     <string name="binding_axis_neg">Axis %1$d-</string>
     <string name="setting_shortcuts">Shortcuts</string>
     <string name="setting_confirm_button">Confirm Button</string>
-    <string name="setting_platform_switching">L1 / R1 Switches Platform</string>
     <string name="setting_swap_play_resume">Swap Play and Resume</string>
     <string name="setting_main_menu_quit">Main Menu Quit</string>
     <string name="setting_always_save_on_quit">Save State On Quit</string>
@@ -275,7 +275,6 @@
     <string name="label_cancel_all">CANCEL ALL</string>
     <string name="label_downloads">DOWNLOADS</string>
 
-    <string name="romm_qm_title">RomM Quick Menu</string>
     <string name="romm_qm_concurrent">Concurrent Downloads</string>
     <string name="romm_qm_cover_art">Cover Art</string>
     <string name="romm_qm_download_art">Download Missing Art</string>
@@ -283,9 +282,20 @@
     <string name="romm_qm_refresh">Refresh Library</string>
     <string name="romm_qm_server_info">Server Info</string>
     <string name="romm_qm_advanced">Advanced</string>
+    <string name="romm_qm_firmware">Firmware</string>
     <string name="romm_qm_rebuild">Rebuild Cache</string>
+    <string name="romm_actions_title">Actions</string>
+    <string name="romm_settings_title">RomM Settings</string>
+    <string name="romm_return_to_cannoli">Return to Cannoli</string>
     <string name="romm_platforms_title">Show Platforms</string>
     <string name="romm_platforms_empty">No platforms</string>
+    <string name="romm_firmware_title">Firmware</string>
+    <string name="romm_firmware_screen_title">%1$s Firmware</string>
+    <string name="romm_global_search_title">Search</string>
+    <string name="romm_no_results">No results</string>
+    <string name="romm_firmware_empty">No firmware</string>
+    <string name="romm_firmware_error">Could not load firmware</string>
+    <string name="romm_firmware_present">on device</string>
     <string name="romm_art_default">Default</string>
     <string name="romm_art_off">Off</string>
     <string name="romm_art_box2d">Box 2D</string>
@@ -438,6 +448,10 @@
     <string name="label_recently_played">Recently Played</string>
     <string name="label_favorites">Favorites</string>
     <string name="label_collections">Collections</string>
+    <string name="global_search_title">Search: \"%1$s\"</string>
+    <string name="origin_tools">Tools</string>
+    <string name="origin_ports">Ports</string>
+    <string name="origin_collection">Collection</string>
 
     <!-- About -->
     <string name="about_title">Cannoli</string>
@@ -451,6 +465,11 @@
     <string name="kitchen_notification_stop">Stop</string>
     <string name="kitchen_notification_error_title">Nonna\'s Kitchen could not start</string>
     <string name="kitchen_notification_error_text">The file server port is unavailable</string>
+
+    <!-- Search -->
+    <string name="search_global">Global Search</string>
+    <string name="search_romm">RomM Search</string>
+    <string name="search_in_platform">%1$s Search</string>
 
     <!-- Quick menu -->
     <string name="quick_menu_title">Quick Menu</string>

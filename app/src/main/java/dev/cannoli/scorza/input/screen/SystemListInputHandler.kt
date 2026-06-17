@@ -63,9 +63,16 @@ class SystemListInputHandler @Inject constructor(
         if (!systemListViewModel.isReorderMode()) pageJump(1)
     }
 
-    override fun onL1() = pageJump(-1)
+    override fun onL1() {}
 
-    override fun onR1() = pageJump(1)
+    override fun onR1() {
+        if (systemListViewModel.isReorderMode()) return
+        nav.dialogState.value = DialogState.RenameInput(
+            gameName = "launcher_global_search",
+            currentName = "",
+            cursorPos = 0,
+        )
+    }
 
     override fun onConfirm() {
         if (systemListViewModel.isReorderMode()) systemListViewModel.confirmReorder()

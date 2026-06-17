@@ -88,6 +88,7 @@ fun KeyboardOverlay(
     keyCol: Int,
     caps: Boolean,
     symbols: Boolean = false,
+    title: String? = null,
     buttonStyle: ButtonStyle = ButtonStyle()
 ) {
     val typo = LocalCannoliTypography.current
@@ -135,6 +136,17 @@ fun KeyboardOverlay(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            if (title != null) {
+                Text(
+                    text = title,
+                    style = typo.titleMedium,
+                    color = colors.text,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(Spacing.Md))
+            }
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

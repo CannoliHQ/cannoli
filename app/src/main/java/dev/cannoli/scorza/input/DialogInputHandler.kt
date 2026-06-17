@@ -102,9 +102,8 @@ class DialogInputHandler @Inject constructor(
     override fun onMenu(): Boolean {
         if (nav.dialogState.value != DialogState.None) return false
         if (isRommScreen()) {
-            nav.dialogState.value = DialogState.RommQuickMenu(
-                concurrent = settings.concurrentDownloads,
-                artType = rommStore.artType,
+            nav.dialogState.value = DialogState.RommActionsMenu(
+                hasDownloads = rommDownloader.queue.state.value.isNotEmpty(),
             )
             return true
         }
@@ -126,18 +125,20 @@ class DialogInputHandler @Inject constructor(
     private fun isRommScreen(): Boolean = when (nav.currentScreen) {
         is LauncherScreen.RommPlatformList,
         is LauncherScreen.RommGameList,
+        is LauncherScreen.RommGlobalSearch,
+        is LauncherScreen.RommFirmwareList,
         is LauncherScreen.RommGameDetail -> true
         else -> false
     }
 
-    private fun cycleRommQuickMenu(ds: DialogState.RommQuickMenu, delta: Int) {
-        when (dev.cannoli.scorza.ui.components.RommQuickMenuRow.entries.getOrNull(ds.selectedIndex)) {
-            dev.cannoli.scorza.ui.components.RommQuickMenuRow.CONCURRENT -> {
+    private fun cycleRommSettings(ds: DialogState.RommSettingsMenu, delta: Int) {
+        when (dev.cannoli.scorza.ui.components.RommSettingsRow.entries.getOrNull(ds.selectedIndex)) {
+            dev.cannoli.scorza.ui.components.RommSettingsRow.CONCURRENT -> {
                 val next = ((ds.concurrent - 1 + delta + 4) % 4) + 1
                 settings.concurrentDownloads = next
                 nav.dialogState.value = ds.copy(concurrent = settings.concurrentDownloads)
             }
-            dev.cannoli.scorza.ui.components.RommQuickMenuRow.COVER_ART -> {
+            dev.cannoli.scorza.ui.components.RommSettingsRow.COVER_ART -> {
                 val types = dev.cannoli.scorza.romm.RommArtType.entries
                 val next = types[(ds.artType.ordinal + delta + types.size) % types.size]
                 rommStore.artType = next
@@ -171,14 +172,19 @@ class DialogInputHandler @Inject constructor(
                 ds.withMenuDelta(-1)?.let { nav.dialogState.value = it }
             }
             is DialogState.QuickMenu -> {
-                val newIdx = (ds.selectedIndex - 1).coerceAtLeast(0)
+                val newIdx = (ds.selectedIndex - 1).mod(ds.rows.size)
                 nav.dialogState.value = ds.copy(selectedIndex = newIdx)
             }
-            is DialogState.RommQuickMenu -> {
-                nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).coerceAtLeast(0))
+            is DialogState.RommActionsMenu -> {
+                val size = dev.cannoli.scorza.ui.components.RommActionRow.visibleRows(ds.hasDownloads).size
+                nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(size))
+            }
+            is DialogState.RommSettingsMenu -> {
+                val size = dev.cannoli.scorza.ui.components.RommSettingsRow.entries.size
+                nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(size))
             }
             is DialogState.RommAdvancedMenu -> {
-                nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).coerceAtLeast(0))
+                nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(dev.cannoli.scorza.ui.components.ROMM_ADVANCED_ROWS.size))
             }
             is DialogState.RenameInput,
             is DialogState.NewCollectionInput,
@@ -207,16 +213,16 @@ class DialogInputHandler @Inject constructor(
             is DialogState.RommDownloads -> {
                 val size = rommDownloader.queue.state.value.size
                 if (size > 0) {
-                    val idx = (ds.selectedIndex - 1).coerceIn(0, size - 1)
+                    val idx = (ds.selectedIndex - 1).mod(size)
                     nav.dialogState.value = ds.copy(selectedIndex = idx)
                 }
             }
             is DialogState.RommArtResults -> {
                 val size = artResultRowCount(ds)
-                if (size > 0) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).coerceIn(0, size - 1))
+                if (size > 0) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(size))
             }
             is DialogState.RommPlatformToggle -> {
-                nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).coerceAtLeast(0))
+                if (ds.items.isNotEmpty()) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(ds.items.size))
             }
             else -> {}
         }
@@ -232,16 +238,19 @@ class DialogInputHandler @Inject constructor(
                 ds.withMenuDelta(1)?.let { nav.dialogState.value = it }
             }
             is DialogState.QuickMenu -> {
-                val newIdx = (ds.selectedIndex + 1).coerceAtMost(ds.rows.lastIndex)
+                val newIdx = (ds.selectedIndex + 1).mod(ds.rows.size)
                 nav.dialogState.value = ds.copy(selectedIndex = newIdx)
             }
-            is DialogState.RommQuickMenu -> {
-                val last = dev.cannoli.scorza.ui.components.RommQuickMenuRow.entries.lastIndex
-                nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).coerceAtMost(last))
+            is DialogState.RommActionsMenu -> {
+                val size = dev.cannoli.scorza.ui.components.RommActionRow.visibleRows(ds.hasDownloads).size
+                nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(size))
+            }
+            is DialogState.RommSettingsMenu -> {
+                val size = dev.cannoli.scorza.ui.components.RommSettingsRow.entries.size
+                nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(size))
             }
             is DialogState.RommAdvancedMenu -> {
-                val last = dev.cannoli.scorza.ui.components.ROMM_ADVANCED_ROWS.lastIndex
-                nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).coerceAtMost(last))
+                nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(dev.cannoli.scorza.ui.components.ROMM_ADVANCED_ROWS.size))
             }
             is DialogState.RenameInput,
             is DialogState.NewCollectionInput,
@@ -270,17 +279,17 @@ class DialogInputHandler @Inject constructor(
             is DialogState.RommDownloads -> {
                 val size = rommDownloader.queue.state.value.size
                 if (size > 0) {
-                    val idx = (ds.selectedIndex + 1).coerceIn(0, size - 1)
+                    val idx = (ds.selectedIndex + 1).mod(size)
                     nav.dialogState.value = ds.copy(selectedIndex = idx)
                 }
             }
             is DialogState.RommArtResults -> {
                 val size = artResultRowCount(ds)
-                if (size > 0) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).coerceIn(0, size - 1))
+                if (size > 0) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(size))
             }
             is DialogState.RommPlatformToggle -> {
                 if (ds.items.isNotEmpty()) {
-                    nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).coerceAtMost(ds.items.lastIndex))
+                    nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(ds.items.size))
                 }
             }
             else -> {}
@@ -304,7 +313,7 @@ class DialogInputHandler @Inject constructor(
                     nav.dialogState.value = ds.copy(selectedIndex = newIdx)
                 }
             }
-            is DialogState.RommQuickMenu -> cycleRommQuickMenu(ds, -1)
+            is DialogState.RommSettingsMenu -> cycleRommSettings(ds, -1)
             is DialogState.RenameInput,
             is DialogState.NewCollectionInput,
             is DialogState.CollectionRenameInput,
@@ -347,7 +356,7 @@ class DialogInputHandler @Inject constructor(
                     nav.dialogState.value = ds.copy(selectedIndex = newIdx)
                 }
             }
-            is DialogState.RommQuickMenu -> cycleRommQuickMenu(ds, 1)
+            is DialogState.RommSettingsMenu -> cycleRommSettings(ds, 1)
             is DialogState.RenameInput,
             is DialogState.NewCollectionInput,
             is DialogState.CollectionRenameInput,
@@ -544,7 +553,8 @@ class DialogInputHandler @Inject constructor(
                 rommArtFetcher.dismissResults()
                 nav.dialogState.value = DialogState.None
             }
-            is DialogState.RommQuickMenu -> onRommQuickMenuConfirm(ds)
+            is DialogState.RommActionsMenu -> onRommActionsConfirm(ds)
+            is DialogState.RommSettingsMenu -> onRommSettingsConfirm(ds)
             is DialogState.RommPlatformToggle -> {
                 val item = ds.items.getOrNull(ds.selectedIndex) ?: return true
                 val nowVisible = !item.visible
@@ -556,11 +566,18 @@ class DialogInputHandler @Inject constructor(
                 nav.dialogState.value = ds.copy(items = newItems)
             }
             is DialogState.RommAdvancedMenu -> {
-                if (ds.selectedIndex == 0) {
-                    nav.dialogState.value = DialogState.None
-                    ioScope.launch { rommBrowseViewModel.refresh() }
-                } else {
-                    nav.dialogState.value = DialogState.RommConfirm(dev.cannoli.scorza.ui.screens.RommConfirmAction.REBUILD_CACHE)
+                when (ds.selectedIndex) {
+                    0 -> {
+                        nav.dialogState.value = DialogState.None
+                        ioScope.launch { rommBrowseViewModel.refresh() }
+                    }
+                    1 -> nav.dialogState.value = DialogState.RommConfirm(dev.cannoli.scorza.ui.screens.RommConfirmAction.REBUILD_CACHE)
+                    else -> {
+                        val tags = romsRepository.knownPlatformTags()
+                        nav.dialogState.value = DialogState.None
+                        dev.cannoli.scorza.romm.download.RommDownloadManager.ensureStarted(context)
+                        rommArtFetcher.start(tags)
+                    }
                 }
             }
             is DialogState.RommConfirm -> onRommConfirm(ds)
@@ -569,25 +586,32 @@ class DialogInputHandler @Inject constructor(
         return true
     }
 
-    private fun onRommQuickMenuConfirm(ds: DialogState.RommQuickMenu) {
-        when (dev.cannoli.scorza.ui.components.RommQuickMenuRow.entries.getOrNull(ds.selectedIndex)) {
-            dev.cannoli.scorza.ui.components.RommQuickMenuRow.SERVER_INFO -> {
+    private fun onRommActionsConfirm(ds: DialogState.RommActionsMenu) {
+        when (dev.cannoli.scorza.ui.components.RommActionRow.visibleRows(ds.hasDownloads).getOrNull(ds.selectedIndex)) {
+            dev.cannoli.scorza.ui.components.RommActionRow.DOWNLOADS -> {
+                nav.dialogState.value = DialogState.RommDownloads()
+            }
+            dev.cannoli.scorza.ui.components.RommActionRow.RETURN_TO_CANNOLI -> {
+                nav.dialogState.value = DialogState.None
+                while (isRommScreen()) nav.pop()
+            }
+            else -> {}
+        }
+    }
+
+    private fun onRommSettingsConfirm(ds: DialogState.RommSettingsMenu) {
+        when (dev.cannoli.scorza.ui.components.RommSettingsRow.entries.getOrNull(ds.selectedIndex)) {
+            dev.cannoli.scorza.ui.components.RommSettingsRow.SERVER_INFO -> {
                 nav.dialogState.value = DialogState.RommConnected(
                     host = rommStore.host,
                     username = rommStore.username,
                     version = rommStore.serverVersion,
                 )
             }
-            dev.cannoli.scorza.ui.components.RommQuickMenuRow.DOWNLOAD_ART -> {
-                val tags = romsRepository.knownPlatformTags()
-                nav.dialogState.value = DialogState.None
-                dev.cannoli.scorza.romm.download.RommDownloadManager.ensureStarted(context)
-                rommArtFetcher.start(tags)
-            }
-            dev.cannoli.scorza.ui.components.RommQuickMenuRow.ADVANCED -> {
+            dev.cannoli.scorza.ui.components.RommSettingsRow.ADVANCED -> {
                 nav.dialogState.value = DialogState.RommAdvancedMenu()
             }
-            dev.cannoli.scorza.ui.components.RommQuickMenuRow.PLATFORMS -> {
+            dev.cannoli.scorza.ui.components.RommSettingsRow.PLATFORMS -> {
                 val hidden = settings.hiddenRommPlatforms
                 val items = rommBrowseViewModel.allPlatforms.value.map { p ->
                     dev.cannoli.scorza.ui.screens.RommPlatformToggleItem(
@@ -739,12 +763,14 @@ class DialogInputHandler @Inject constructor(
                 nav.dialogState.value = DialogState.None
                 ioScope.launch { rommBrowseViewModel.loadPlatforms() }
             }
-            is DialogState.RommQuickMenu -> nav.dialogState.value = DialogState.None
+            is DialogState.RommActionsMenu -> nav.dialogState.value = DialogState.None
+            is DialogState.RommSettingsMenu -> nav.dialogState.value = DialogState.None
             is DialogState.RommAdvancedMenu -> {
-                nav.dialogState.value = DialogState.RommQuickMenu(
+                nav.dialogState.value = DialogState.RommSettingsMenu(
                     concurrent = settings.concurrentDownloads,
                     artType = rommStore.artType,
-                    selectedIndex = dev.cannoli.scorza.ui.components.RommQuickMenuRow.ADVANCED.ordinal,
+                    selectedIndex = dev.cannoli.scorza.ui.components.RommSettingsRow.entries
+                        .indexOf(dev.cannoli.scorza.ui.components.RommSettingsRow.ADVANCED),
                 )
             }
             is DialogState.RommConfirm -> {
@@ -791,7 +817,16 @@ class DialogInputHandler @Inject constructor(
 
     override fun onNorth(): Boolean {
         val ds = nav.dialogState.value
-        if (ds == DialogState.None) return false
+        if (ds == DialogState.None) {
+            if (isRommScreen()) {
+                nav.dialogState.value = DialogState.RommSettingsMenu(
+                    concurrent = settings.concurrentDownloads,
+                    artType = rommStore.artType,
+                )
+                return true
+            }
+            return false
+        }
         when (ds) {
             is DialogState.RenameInput,
             is DialogState.NewCollectionInput,
@@ -1594,6 +1629,31 @@ class DialogInputHandler @Inject constructor(
                 nav.replaceTop(it.copy(search = state.currentName.trim(), selectedIndex = 0, scrollTarget = 0))
             }
             nav.dialogState.value = DialogState.None
+            return
+        }
+        if (state.gameName == "romm_global_search") {
+            val term = state.currentName.trim()
+            nav.dialogState.value = DialogState.None
+            if (term.isNotBlank()) nav.push(LauncherScreen.RommGlobalSearch(term = term))
+            return
+        }
+        if (state.gameName == "launcher_search") {
+            val term = state.currentName.trim()
+            if (term.isBlank()) gameListViewModel.clearSearch() else gameListViewModel.setSearch(term)
+            nav.dialogState.value = DialogState.None
+            return
+        }
+        if (state.gameName == "launcher_global_search") {
+            val term = state.currentName.trim()
+            nav.dialogState.value = DialogState.None
+            if (term.isNotBlank()) {
+                nav.navigating = true
+                gameListViewModel.loadGlobalSearch(dev.cannoli.scorza.model.GameSearchQuery(term)) {
+                    launcherActions.scanResumableGames()
+                    nav.screenStack.add(LauncherScreen.GameList)
+                    nav.navigating = false
+                }
+            }
             return
         }
         if (state.gameName == "title") {

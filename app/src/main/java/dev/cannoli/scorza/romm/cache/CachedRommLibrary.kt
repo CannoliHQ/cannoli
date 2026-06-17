@@ -4,6 +4,7 @@ import dev.cannoli.scorza.romm.RommGame
 import dev.cannoli.scorza.romm.RommLibrary
 import dev.cannoli.scorza.romm.RommPage
 import dev.cannoli.scorza.romm.RommPlatform
+import dev.cannoli.scorza.romm.RommSearchQuery
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -22,4 +23,7 @@ class CachedRommLibrary(private val db: RommDatabase) : RommLibrary {
                 offset = offset,
             )
         }
+
+    override suspend fun searchAll(query: RommSearchQuery): List<RommGame> =
+        withContext(Dispatchers.IO) { db.searchAllGames(query) }
 }

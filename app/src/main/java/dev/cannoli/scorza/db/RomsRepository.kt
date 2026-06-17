@@ -1,12 +1,14 @@
 package dev.cannoli.scorza.db
 
 import androidx.sqlite.SQLiteStatement
+import dev.cannoli.scorza.model.GameSearchQuery
 import dev.cannoli.scorza.model.LaunchTarget
 import dev.cannoli.scorza.model.ListItem
 import dev.cannoli.scorza.model.Rom
 import dev.cannoli.scorza.di.CannoliPathsProvider
 import dev.cannoli.scorza.util.ArtworkLookup
 import dev.cannoli.scorza.util.NaturalSort
+import dev.cannoli.scorza.util.TextNormalizer
 import java.io.File
 
 class RomsRepository(
@@ -73,6 +75,16 @@ class RomsRepository(
     fun presentFileNames(platformTag: String): Set<String> = db.queryAll(
         "SELECT path FROM roms WHERE platform_tag = ?", platformTag.uppercase(),
     ) { File(it.getText(0)).name.lowercase() }.toSet()
+
+    fun searchAllGames(query: GameSearchQuery): List<Rom> {
+        val term = TextNormalizer.normalize(query.text)
+        if (term.isEmpty()) return emptyList()
+        return db.queryAll(
+            "$BASE_SELECT WHERE name_normalized LIKE ? ORDER BY display_name COLLATE NOCASE",
+            "%$term%",
+            mapper = ::rowToRom,
+        )
+    }
 
     fun setPlatformOrder(orderedTags: List<String>) = db.transaction { conn ->
         orderedTags.forEachIndexed { index, tag ->

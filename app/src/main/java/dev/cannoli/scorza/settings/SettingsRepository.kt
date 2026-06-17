@@ -186,10 +186,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         get() = jsonRead { optString(KEY_BG_IMAGE, "").ifEmpty { null } }
         set(value) = jsonWrite { if (value != null) put(KEY_BG_IMAGE, value) else remove(KEY_BG_IMAGE) }
 
-    var platformSwitching: Boolean
-        get() = jsonRead { optBoolean(KEY_PLATFORM_SWITCHING, false) }
-        set(value) = jsonWrite { put(KEY_PLATFORM_SWITCHING, value) }
-
     var swapPlayResume: Boolean
         get() = jsonRead { optBoolean(KEY_SWAP_PLAY_RESUME, false) }
         set(value) = jsonWrite { put(KEY_SWAP_PLAY_RESUME, value) }
@@ -420,7 +416,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         private const val KEY_COLOR_TITLE = "color_title"
         private const val KEY_COLOR_BACKGROUND = "color_background"
         private const val KEY_COLOR_STATUS_BAR = "color_status_bar"
-        private const val KEY_PLATFORM_SWITCHING = "platform_switching"
         private const val KEY_SWAP_PLAY_RESUME = "swap_play_resume"
         private const val KEY_MAIN_MENU_QUIT = "main_menu_quit"
         private const val KEY_KITCHEN_CODE_BYPASS = "kitchen_code_bypass"

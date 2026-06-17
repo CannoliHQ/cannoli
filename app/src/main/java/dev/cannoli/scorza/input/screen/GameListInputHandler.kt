@@ -22,7 +22,6 @@ import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.input.PageJump
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
-import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
 import kotlinx.coroutines.CoroutineScope
 import javax.inject.Inject
 
@@ -31,7 +30,6 @@ class GameListInputHandler @Inject constructor(
     private val nav: NavigationController,
     @IoScope private val ioScope: CoroutineScope,
     private val settings: SettingsRepository,
-    private val systemListViewModel: SystemListViewModel,
     private val gameListViewModel: GameListViewModel,
     private val launcherActions: LauncherActions,
 ) : ScreenInputHandler {
@@ -132,11 +130,23 @@ class GameListInputHandler @Inject constructor(
         if (!fired) onGameListConfirm()
     }
 
+    override fun onR1() {
+        val glState = gameListViewModel.state.value
+        if (glState.reorderMode || glState.multiSelectMode || glState.isCollectionsList) return
+        nav.dialogState.value = DialogState.RenameInput(
+            gameName = "launcher_search",
+            currentName = glState.searchTerm ?: "",
+            cursorPos = (glState.searchTerm ?: "").length,
+            searchScope = glState.breadcrumb,
+        )
+    }
+
     override fun onBack() {
         cancelResumeHoldTimer()
         when {
             gameListViewModel.isMultiSelectMode() -> gameListViewModel.cancelMultiSelect()
             gameListViewModel.isReorderMode() -> gameListViewModel.cancelReorder()
+            gameListViewModel.isSearching() -> gameListViewModel.clearSearch()
             !nav.navigating -> {
                 val glState = gameListViewModel.state.value
                 if (!gameListViewModel.exitSubfolder()) {
@@ -308,14 +318,6 @@ class GameListInputHandler @Inject constructor(
         }
     }
 
-    override fun onL1() {
-        if (settings.platformSwitching) switchPlatform(-1)
-    }
-
-    override fun onR1() {
-        if (settings.platformSwitching) switchPlatform(1)
-    }
-
     private fun onGameListConfirm() {
         if (nav.navigating) return
         val item = gameListViewModel.getSelectedItem() ?: return
@@ -354,75 +356,6 @@ class GameListInputHandler @Inject constructor(
         } else if (trackRecent) {
             launcherActions.recordRecentlyPlayedByPath(recentKey)
             if (tag == "recently_played") nav.pendingRecentlyPlayedReorder = true
-        }
-    }
-
-    private fun switchPlatform(delta: Int) {
-        if (nav.navigating) return
-        val items = systemListViewModel.getNavigableItems()
-        if (items.size < 2) return
-
-        val gs = gameListViewModel.state.value
-        val currentIndex = items.indexOfFirst { item ->
-            when {
-                gs.platformTag == "recently_played" -> item is SystemListViewModel.ListItem.RecentlyPlayedItem
-                gs.isCollectionsList -> item is SystemListViewModel.ListItem.CollectionsFolder
-                gs.isCollection && gs.isFavorites -> item is SystemListViewModel.ListItem.FavoritesItem
-                gs.isCollection && gs.collectionId != null -> {
-                    (item is SystemListViewModel.ListItem.CollectionsFolder) ||
-                    (item is SystemListViewModel.ListItem.CollectionItem && item.id == gs.collectionId)
-                }
-                gs.platformTag == "tools" -> item is SystemListViewModel.ListItem.ToolsFolder
-                gs.platformTag == "ports" -> item is SystemListViewModel.ListItem.PortsFolder
-                gs.platformTag.isNotEmpty() -> item is SystemListViewModel.ListItem.PlatformItem && item.platform.tag == gs.platformTag
-                else -> false
-            }
-        }
-        if (currentIndex == -1) return
-
-        val newIndex = (currentIndex + delta).mod(items.size)
-        nav.navigating = true
-        when (val target = items[newIndex]) {
-            is SystemListViewModel.ListItem.RecentlyPlayedItem -> {
-                gameListViewModel.loadRecentlyPlayed {
-                    launcherActions.scanResumableGames()
-                    nav.navigating = false
-                }
-            }
-            is SystemListViewModel.ListItem.FavoritesItem -> {
-                gameListViewModel.loadFavorites {
-                    launcherActions.scanResumableGames()
-                    nav.navigating = false
-                }
-            }
-            is SystemListViewModel.ListItem.CollectionsFolder -> {
-                gameListViewModel.loadCollectionsList {
-                    nav.navigating = false
-                }
-            }
-            is SystemListViewModel.ListItem.PlatformItem -> {
-                gameListViewModel.loadPlatform(target.platform.tag, target.platform.allTags) {
-                    launcherActions.scanResumableGames()
-                    nav.navigating = false
-                }
-            }
-            is SystemListViewModel.ListItem.CollectionItem -> {
-                gameListViewModel.loadCollectionById(target.id) {
-                    launcherActions.scanResumableGames()
-                    nav.navigating = false
-                }
-            }
-            is SystemListViewModel.ListItem.ToolsFolder -> {
-                gameListViewModel.loadApkList("tools", target.name) {
-                    nav.navigating = false
-                }
-            }
-            is SystemListViewModel.ListItem.PortsFolder -> {
-                gameListViewModel.loadApkList("ports", target.name) {
-                    nav.navigating = false
-                }
-            }
-            else -> { nav.navigating = false }
         }
     }
 

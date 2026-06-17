@@ -42,7 +42,6 @@ class GameListResumeHoldTest {
             nav = nav,
             ioScope = mockk(relaxed = true),
             settings = settings,
-            systemListViewModel = mockk(relaxed = true),
             gameListViewModel = glvm,
             launcherActions = actions,
         )

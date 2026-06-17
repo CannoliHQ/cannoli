@@ -6,6 +6,7 @@ import kotlinx.coroutines.withContext
 interface RommLibrary {
     suspend fun platforms(): List<RommPlatform>
     suspend fun games(platform: RommPlatform, page: Int, search: String? = null): RommPage<RommGame>
+    suspend fun searchAll(query: RommSearchQuery): List<RommGame>
 
     companion object {
         const val PAGE_SIZE = 100
@@ -34,6 +35,14 @@ class LiveRommLibrary(
                 offset = dto.offset,
             )
         }
+
+    override suspend fun searchAll(query: RommSearchQuery): List<RommGame> =
+        withContext(Dispatchers.IO) {
+            val term = query.text.trim()
+            if (term.isEmpty()) return@withContext emptyList()
+            client.getRoms(platformId = null, limit = 300, offset = 0, search = term)
+                .items.map { it.toDomain() }
+        }
 }
 
 internal fun SimpleRomDto.toDomain(): RommGame = RommGame(
@@ -55,4 +64,9 @@ internal fun SimpleRomDto.toDomain(): RommGame = RommGame(
     ssMedia = ssMetadata?.let {
         RommSsMedia(it.box2dUrl, it.box3dUrl, it.miximageUrl, it.titleScreenUrl, it.screenshotUrl, it.marqueeUrl, it.manualUrl)
     },
+)
+
+internal fun FirmwareDto.toDomain() = RommFirmware(
+    id = id, fileName = fileName, sizeBytes = fileSizeBytes,
+    md5 = md5Hash, sha1 = sha1Hash, crc = crcHash,
 )

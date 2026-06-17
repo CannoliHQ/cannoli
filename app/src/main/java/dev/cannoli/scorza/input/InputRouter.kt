@@ -165,6 +165,8 @@ class InputRouter @Inject constructor(
         is LauncherScreen.InstalledCores    -> installedCoresHandler()
         is LauncherScreen.RommPlatformList  -> rommPlatformListHandler()
         is LauncherScreen.RommGameList      -> rommGameListHandler()
+        is LauncherScreen.RommGlobalSearch  -> rommGlobalSearchHandler()
+        is LauncherScreen.RommFirmwareList  -> rommFirmwareListHandler()
         else -> object : ScreenInputHandler {}
     }
 
@@ -178,6 +180,7 @@ class InputRouter @Inject constructor(
         noinline onLeft: (T.() -> Unit)? = null,
         noinline onRight: (T.() -> Unit)? = null,
         noinline onSelect: (T.() -> Unit)? = null,
+        noinline onR1: (T.() -> Unit)? = null,
     ): ScrollListInputHandler where T : LauncherScreen, T : LauncherScreen.ScrollableScreen {
         val current: () -> T? = { nav.currentScreen as? T }
         return scrollListFactory.create(
@@ -192,6 +195,7 @@ class InputRouter @Inject constructor(
             onLeft = onLeft?.let { fn -> { current()?.fn() ?: Unit } },
             onRight = onRight?.let { fn -> { current()?.fn() ?: Unit } },
             onSelect = onSelect?.let { fn -> { current()?.fn() ?: Unit } },
+            onR1 = onR1?.let { fn -> { current()?.fn() ?: Unit } },
         )
     }
 
@@ -384,6 +388,13 @@ class InputRouter @Inject constructor(
             rommDownloader.clearFinished()
             nav.pop()
         },
+        onR1 = {
+            nav.dialogState.value = DialogState.RenameInput(
+                gameName = "romm_global_search",
+                currentName = "",
+                cursorPos = 0,
+            )
+        },
     )
 
     private fun rommGameListHandler() = scrollable<LauncherScreen.RommGameList>(
@@ -402,6 +413,7 @@ class InputRouter @Inject constructor(
         },
         onBack = {
             if (rommBrowseViewModel.isMultiSelect()) rommBrowseViewModel.cancelMultiSelect()
+            else if (search.isNotEmpty()) nav.replaceTop(copy(search = "", selectedIndex = 0, scrollTarget = 0))
             else nav.pop()
         },
         onStart = {
@@ -415,15 +427,50 @@ class InputRouter @Inject constructor(
             osdController.show(context.resources.getQuantityString(
                 dev.cannoli.ui.R.plurals.romm_osd_downloads_queued, games.size, games.size))
         },
-        onWest = { if (rommDownloader.queue.state.value.isNotEmpty()) nav.dialogState.value = DialogState.RommDownloads() },
-        onNorth = {
-            if (rommBrowseViewModel.isMultiSelect()) return@scrollable
-            nav.dialogState.value = DialogState.RenameInput(gameName = "romm_search", currentName = search, cursorPos = search.length)
+        onWest = { nav.push(LauncherScreen.RommFirmwareList(platform = platform)) },
+        onR1 = {
+            nav.dialogState.value = DialogState.RenameInput(gameName = "romm_search", currentName = search, cursorPos = search.length, searchScope = platform.displayName)
         },
         onSelect = {
             if (rommBrowseViewModel.isMultiSelect()) rommBrowseViewModel.cancelMultiSelect()
             else rommBrowseViewModel.enterMultiSelect(
                 rommBrowseViewModel.games.value.getOrNull(selectedIndex)?.game?.id)
+        },
+    )
+
+    private fun rommGlobalSearchHandler() = scrollable<LauncherScreen.RommGlobalSearch>(
+        onConfirm = {
+            val row = rommBrowseViewModel.searchResults.value.getOrNull(selectedIndex) ?: return@scrollable
+            val platform = rommBrowseViewModel.allPlatforms.value.firstOrNull { it.id == row.game.platformId }
+            nav.push(LauncherScreen.RommGameDetail(
+                game = row.game,
+                localState = row.localState,
+                platformName = platform?.displayName ?: "",
+                tag = platform?.cannoliTag ?: "",
+            ))
+        },
+    )
+
+    private fun rommFirmwareListHandler() = scrollable<LauncherScreen.RommFirmwareList>(
+        onConfirm = {
+            val row = rows.getOrNull(selectedIndex) ?: return@scrollable
+            val id = row.firmware.id
+            nav.replaceTop(copy(checkedIds = if (id in checkedIds) checkedIds - id else checkedIds + id))
+        },
+        onBack = { nav.pop() },
+        onStart = {
+            val chosen = rows.filter { it.firmware.id in checkedIds }
+            if (chosen.isEmpty()) return@scrollable
+            rommDownloader.enqueue(chosen.map {
+                dev.cannoli.scorza.romm.download.RommDownloadItem(
+                    rommId = it.firmware.id,
+                    tag = platform.cannoliTag,
+                    kind = dev.cannoli.scorza.romm.download.RommDownloadKind.FIRMWARE,
+                    firmware = it.firmware,
+                )
+            })
+            dev.cannoli.scorza.romm.download.RommDownloadManager.ensureStarted(context)
+            nav.pop()
         },
     )
 

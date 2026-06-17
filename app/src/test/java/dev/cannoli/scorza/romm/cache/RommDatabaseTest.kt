@@ -3,6 +3,7 @@ package dev.cannoli.scorza.romm.cache
 import dev.cannoli.scorza.romm.RommFile
 import dev.cannoli.scorza.romm.RommGame
 import dev.cannoli.scorza.romm.RommPlatform
+import dev.cannoli.scorza.romm.RommSearchQuery
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -112,6 +113,32 @@ class RommDatabaseTest {
             GameRecord(game(2, 1, "Beta", "beta.sfc"), null),
         ))
         assertEquals(setOf("alpha.sfc", "beta.sfc"), db.allGames(1).map { it.fsName }.toSet())
+    }
+
+    @Test fun `searchAllGames matches across platforms`() {
+        db.upsertGames(listOf(
+            GameRecord(game(1, 1, "Super Mario World", "smw.sfc"), null),
+            GameRecord(game(2, 2, "Mario Kart", "mk.gba"), null),
+            GameRecord(game(3, 1, "Donkey Kong", "dk.sfc"), null),
+        ))
+        val names = db.searchAllGames(RommSearchQuery("mario")).map { it.name }.sorted()
+        assertEquals(listOf("Mario Kart", "Super Mario World"), names)
+    }
+
+    @Test fun `searchAllGames is diacritic-insensitive`() {
+        db.upsertGames(listOf(GameRecord(game(1, 1, "Pokémon", "pkmn.gba"), null)))
+        assertEquals(listOf("Pokémon"), db.searchAllGames(RommSearchQuery("poke")).map { it.name })
+        assertEquals(listOf("Pokémon"), db.searchAllGames(RommSearchQuery("pokemon")).map { it.name })
+    }
+
+    @Test fun `in-platform games search is diacritic-insensitive`() {
+        db.upsertGames(listOf(GameRecord(game(1, 1, "Pokémon", "pkmn.gba"), null)))
+        assertEquals(listOf("Pokémon"), db.games(platformId = 1, search = "poke", limit = 100, offset = 0).map { it.name })
+    }
+
+    @Test fun `searchAllGames blank term returns empty`() {
+        db.upsertGames(listOf(GameRecord(game(1, 1, "Game 1", "g1.sfc"), null)))
+        assertEquals(emptyList<String>(), db.searchAllGames(RommSearchQuery("  ")).map { it.name })
     }
 
     @Test fun `sync_state round-trips and clearAll empties everything`() {

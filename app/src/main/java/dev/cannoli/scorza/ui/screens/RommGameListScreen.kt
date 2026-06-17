@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import coil.compose.AsyncImage
+import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.Radius
 import dev.cannoli.scorza.romm.LocalState
 import dev.cannoli.scorza.romm.RommArtUrl
@@ -40,15 +43,16 @@ import dev.cannoli.ui.theme.Spacing
 @Composable
 fun RommGameListScreen(
     title: String,
+    search: String = "",
     games: List<RommGameRow>,
     selectedIndex: Int,
     scrollTarget: Int,
     host: String,
     artWidth: Int,
     artType: dev.cannoli.scorza.romm.RommArtType = dev.cannoli.scorza.romm.RommArtType.NONE,
-    downloadCount: Int = 0,
     multiSelect: Boolean = false,
     checkedIds: Set<Int> = emptySet(),
+    platformLabelForGame: ((dev.cannoli.scorza.romm.RommGame) -> String?)? = null,
     imageLoader: coil.ImageLoader,
     backgroundImagePath: String?,
     backgroundTint: Int,
@@ -65,11 +69,26 @@ fun RommGameListScreen(
         Box(modifier = Modifier.fillMaxSize().padding(screenPadding)) {
             Column(modifier = Modifier.fillMaxSize().padding(bottom = footerReservation())) {
                 ScreenTitle(
-                    text = title,
+                    text = if (search.isBlank()) title else "$title: “$search”",
                     fontSize = listFontSize,
                     lineHeight = listLineHeight,
                 )
                 Spacer(modifier = Modifier.height(Spacing.Sm))
+                if (games.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(R.string.romm_no_results),
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontSize = listFontSize,
+                                lineHeight = listLineHeight
+                            ),
+                            color = LocalCannoliColors.current.text
+                        )
+                    }
+                } else {
                 Row(modifier = Modifier.fillMaxSize()) {
                     Box(
                         modifier = Modifier
@@ -89,7 +108,7 @@ fun RommGameListScreen(
                             val checkable = multiSelect && row.localState == LocalState.REMOTE
                             PillRowKeyValue(
                                 label = row.game.name,
-                                value = "",
+                                value = platformLabelForGame?.invoke(row.game) ?: "",
                                 isSelected = isSelected,
                                 fontSize = listFontSize,
                                 lineHeight = listLineHeight,
@@ -121,18 +140,18 @@ fun RommGameListScreen(
                         }
                     }
                 }
+                }
             }
             BottomBar(
                 modifier = Modifier.align(Alignment.BottomCenter),
                 leftItems = buildList {
                     add(buttonStyle.back to stringResource(if (multiSelect) R.string.label_cancel else R.string.label_back))
-                    if (!multiSelect && downloadCount > 0) add(buttonStyle.west to stringResource(R.string.label_downloads))
+                    if (!multiSelect) add(buttonStyle.west to stringResource(R.string.label_firmware))
                 },
                 rightItems = if (multiSelect) listOf(
                     buttonStyle.confirm to stringResource(R.string.label_toggle),
                     dev.cannoli.ui.START_GLYPH to stringResource(R.string.label_download),
                 ) else listOf(
-                    buttonStyle.north to stringResource(R.string.label_search),
                     buttonStyle.confirm to stringResource(R.string.label_select),
                 ),
             )

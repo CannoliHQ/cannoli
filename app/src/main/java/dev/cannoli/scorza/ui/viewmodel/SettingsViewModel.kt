@@ -218,7 +218,6 @@ class SettingsViewModel @Inject constructor(
         val colorTitle: String,
         val colorBackground: String,
         val colorStatusBar: String,
-        val platformSwitching: Boolean,
         val swapPlayResume: Boolean,
         val showWifi: Boolean,
         val showBluetooth: Boolean,
@@ -422,7 +421,6 @@ class SettingsViewModel @Inject constructor(
                     else -> next
                 }
             }
-            "platform_switching" -> settings.platformSwitching = !settings.platformSwitching
             "swap_play_resume" -> settings.swapPlayResume = !settings.swapPlayResume
             "content_mode" -> {
                 val entries = ContentMode.entries
@@ -603,7 +601,6 @@ class SettingsViewModel @Inject constructor(
         colorTitle = settings.colorTitle,
         colorBackground = settings.colorBackground,
         colorStatusBar = settings.colorStatusBar,
-        platformSwitching = settings.platformSwitching,
         swapPlayResume = settings.swapPlayResume,
         showWifi = settings.showWifi,
         showBluetooth = settings.showBluetooth,
@@ -638,7 +635,6 @@ class SettingsViewModel @Inject constructor(
         settings.colorTitle = snap.colorTitle
         settings.colorBackground = snap.colorBackground
         settings.colorStatusBar = snap.colorStatusBar
-        settings.platformSwitching = snap.platformSwitching
         settings.swapPlayResume = snap.swapPlayResume
         settings.showWifi = snap.showWifi
         settings.showBluetooth = snap.showBluetooth
@@ -773,7 +769,6 @@ class SettingsViewModel @Inject constructor(
         "input" -> listOf(
             SettingsItem("controllers", R.string.setting_controllers, isEditable = true),
             SettingsItem("shortcuts", R.string.setting_shortcuts, isEditable = true),
-            SettingsItem("platform_switching", R.string.setting_platform_switching, valueRes = onOff(settings.platformSwitching)),
             SettingsItem("swap_play_resume", R.string.setting_swap_play_resume, valueRes = onOff(settings.swapPlayResume)),
             SettingsItem("main_menu_quit", R.string.setting_main_menu_quit, valueRes = onOff(settings.mainMenuQuit)),
             SettingsItem("input_tester", R.string.setting_input_tester, isEditable = true)

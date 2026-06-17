@@ -239,6 +239,26 @@ sealed class LauncherScreen {
     ) : LauncherScreen(), ScrollableScreen {
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
     }
+    data class RommGlobalSearch(
+        val term: String,
+        override val selectedIndex: Int = 0,
+        override val scrollTarget: Int = 0,
+        override val itemCount: Int = 0,
+    ) : LauncherScreen(), ScrollableScreen {
+        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
+    }
+    data class RommFirmwareList(
+        val platform: dev.cannoli.scorza.romm.RommPlatform,
+        val rows: List<dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel.RommFirmwareRow> = emptyList(),
+        val checkedIds: Set<Int> = emptySet(),
+        val loading: Boolean = true,
+        val error: Boolean = false,
+        override val selectedIndex: Int = 0,
+        override val scrollTarget: Int = 0,
+    ) : LauncherScreen(), ScrollableScreen {
+        override val itemCount: Int get() = rows.size
+        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
+    }
     data class RommGameDetail(
         val game: dev.cannoli.scorza.romm.RommGame,
         val localState: dev.cannoli.scorza.romm.LocalState,
@@ -1283,7 +1303,6 @@ fun AppNavGraph(
                 }
                 val loader = rommImageLoader
                 val queueItems = rommDownloader?.queue?.state?.collectAsState()?.value ?: emptyList()
-                val downloadCount = queueItems.size
                 val doneForPlatform = queueItems.count {
                     it.tag == currentScreen.platform.cannoliTag &&
                         it.status == dev.cannoli.scorza.romm.download.DownloadStatus.Done
@@ -1296,13 +1315,13 @@ fun AppNavGraph(
                 if (loader != null) {
                     dev.cannoli.scorza.ui.screens.RommGameListScreen(
                         title = currentScreen.platform.displayName,
+                        search = currentScreen.search,
                         games = games,
                         selectedIndex = currentScreen.selectedIndex,
                         scrollTarget = currentScreen.scrollTarget,
                         host = rommHost,
                         artWidth = appSettings.artWidth,
                         artType = rommArtType,
-                        downloadCount = downloadCount,
                         multiSelect = multiSelect,
                         checkedIds = checkedIds,
                         imageLoader = loader,
@@ -1315,6 +1334,76 @@ fun AppNavGraph(
                         buttonStyle = labels,
                     )
                 }
+            }
+            is LauncherScreen.RommGlobalSearch -> {
+                if (inputRouter != null) {
+                    val handler = remember { inputRouter.currentHandler() }
+                    dev.cannoli.scorza.input.screen.compose.ScreenInput(handler)
+                }
+                val results = rommBrowseViewModel?.searchResults?.collectAsState()?.value ?: emptyList()
+                val allPlatforms = rommBrowseViewModel?.allPlatforms?.collectAsState()?.value ?: emptyList()
+                val platformNameById = remember(allPlatforms) { allPlatforms.associate { it.id to it.displayName } }
+                androidx.compose.runtime.LaunchedEffect(currentScreen.term) {
+                    rommBrowseViewModel?.loadGlobalSearch(dev.cannoli.scorza.romm.RommSearchQuery(currentScreen.term))
+                }
+                androidx.compose.runtime.LaunchedEffect(results.size) {
+                    if (currentScreen.itemCount != results.size) nav?.replaceTop(currentScreen.copy(itemCount = results.size))
+                }
+                val loader = rommImageLoader
+                if (loader != null) {
+                    dev.cannoli.scorza.ui.screens.RommGameListScreen(
+                        title = stringResource(dev.cannoli.ui.R.string.romm_global_search_title),
+                        search = currentScreen.term,
+                        games = results,
+                        selectedIndex = currentScreen.selectedIndex,
+                        scrollTarget = currentScreen.scrollTarget,
+                        host = rommHost,
+                        artWidth = appSettings.artWidth,
+                        artType = rommArtType,
+                        imageLoader = loader,
+                        backgroundImagePath = appSettings.backgroundImagePath,
+                        backgroundTint = appSettings.backgroundTint,
+                        listFontSize = listFontSize,
+                        listLineHeight = listLineHeight,
+                        listVerticalPadding = listVerticalPadding,
+                        onListStateChanged = onListStateChanged,
+                        buttonStyle = labels,
+                        platformLabelForGame = { g -> platformNameById[g.platformId] },
+                    )
+                }
+            }
+            is LauncherScreen.RommFirmwareList -> {
+                if (inputRouter != null) {
+                    val handler = remember { inputRouter.currentHandler() }
+                    dev.cannoli.scorza.input.screen.compose.ScreenInput(handler)
+                }
+                androidx.compose.runtime.LaunchedEffect(currentScreen.platform.id) {
+                    if (currentScreen.loading) {
+                        val result = runCatching {
+                            rommBrowseViewModel?.loadFirmware(currentScreen.platform.id, currentScreen.platform.cannoliTag) ?: emptyList()
+                        }
+                        nav?.replaceTop(currentScreen.copy(
+                            rows = result.getOrDefault(emptyList()),
+                            loading = false,
+                            error = result.isFailure,
+                        ))
+                    }
+                }
+                dev.cannoli.scorza.ui.screens.RommFirmwareListScreen(
+                    title = stringResource(dev.cannoli.ui.R.string.romm_firmware_screen_title, currentScreen.platform.displayName),
+                    rows = currentScreen.rows,
+                    checkedIds = currentScreen.checkedIds,
+                    loading = currentScreen.loading,
+                    error = currentScreen.error,
+                    selectedIndex = currentScreen.selectedIndex,
+                    scrollTarget = currentScreen.scrollTarget,
+                    backgroundImagePath = appSettings.backgroundImagePath,
+                    backgroundTint = appSettings.backgroundTint,
+                    listFontSize = listFontSize,
+                    listLineHeight = listLineHeight,
+                    listVerticalPadding = listVerticalPadding,
+                    buttonStyle = labels,
+                )
             }
             is LauncherScreen.RommGameDetail -> {
                 val loader = rommImageLoader
@@ -1395,6 +1484,8 @@ fun AppNavGraph(
         } else 0
         val inRomm = currentScreen is LauncherScreen.RommPlatformList ||
                 currentScreen is LauncherScreen.RommGameList ||
+                currentScreen is LauncherScreen.RommGlobalSearch ||
+                currentScreen is LauncherScreen.RommFirmwareList ||
                 currentScreen is LauncherScreen.RommGameDetail
         val hasContent = showKitchenIcon
                 || activeDownloadCount > 0

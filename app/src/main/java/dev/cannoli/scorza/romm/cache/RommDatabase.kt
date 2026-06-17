@@ -8,7 +8,9 @@ import dev.cannoli.scorza.db.queryAll
 import dev.cannoli.scorza.db.queryOne
 import dev.cannoli.scorza.romm.RommGame
 import dev.cannoli.scorza.romm.RommPlatform
+import dev.cannoli.scorza.romm.RommSearchQuery
 import dev.cannoli.scorza.util.NaturalSort
+import dev.cannoli.scorza.util.TextNormalizer
 import java.io.File
 
 data class GameRecord(val game: RommGame, val updatedAt: String?)
@@ -50,6 +52,7 @@ class RommDatabase(private val dbFileProvider: () -> File) {
                 id INTEGER PRIMARY KEY,
                 platform_id INTEGER NOT NULL,
                 name TEXT NOT NULL,
+                name_normalized TEXT NOT NULL DEFAULT '',
                 fs_name TEXT NOT NULL,
                 size_bytes INTEGER NOT NULL DEFAULT 0,
                 summary TEXT,
@@ -68,6 +71,7 @@ class RommDatabase(private val dbFileProvider: () -> File) {
             )
         """.trimIndent())
         c.execSQL("CREATE INDEX IF NOT EXISTS idx_games_platform_sort ON games(platform_id, sort_key)")
+        c.execSQL("CREATE INDEX IF NOT EXISTS idx_games_name_normalized ON games(name_normalized)")
         c.execSQL("""
             CREATE TABLE IF NOT EXISTS sync_state (
                 key TEXT PRIMARY KEY,
@@ -126,9 +130,9 @@ class RommDatabase(private val dbFileProvider: () -> File) {
                 val g = rec.game
                 c.execute(
                     """INSERT OR REPLACE INTO games
-                       (id, platform_id, name, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json, ss_media_json, sort_key, updated_at)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                    g.id, g.platformId, g.name, g.fsName, g.sizeBytes, g.summary, g.revision,
+                       (id, platform_id, name, name_normalized, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json, ss_media_json, sort_key, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    g.id, g.platformId, g.name, TextNormalizer.normalize(g.name), g.fsName, g.sizeBytes, g.summary, g.revision,
                     RommCacheJson.encodeStrings(g.regions), RommCacheJson.encodeStrings(g.languages),
                     RommCacheJson.encodeStrings(g.companies), RommCacheJson.encodeStrings(g.genres),
                     RommCacheJson.encodeStrings(g.gameModes), g.firstReleaseDate,
@@ -160,14 +164,25 @@ class RommDatabase(private val dbFileProvider: () -> File) {
     )
 
     fun games(platformId: Int, search: String?, limit: Int, offset: Int): List<RommGame> = withConn { c ->
-        val like = search?.takeIf { it.isNotBlank() }?.let { "%$it%" }
+        val like = search?.let { TextNormalizer.normalize(it) }?.takeIf { it.isNotEmpty() }?.let { "%$it%" }
         val sql = buildString {
             append("SELECT id, platform_id, name, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json, ss_media_json FROM games WHERE platform_id = ?")
-            if (like != null) append(" AND name LIKE ?")
+            if (like != null) append(" AND name_normalized LIKE ?")
             append(" ORDER BY sort_key LIMIT ? OFFSET ?")
         }
         val args: Array<Any?> = if (like != null) arrayOf(platformId, like, limit, offset) else arrayOf(platformId, limit, offset)
         c.queryAll(sql, *args, mapper = ::rowToGame)
+    }
+
+    fun searchAllGames(query: RommSearchQuery): List<RommGame> = withConn { c ->
+        val term = TextNormalizer.normalize(query.text)
+        if (term.isEmpty()) return@withConn emptyList()
+        c.queryAll(
+            "SELECT id, platform_id, name, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json, ss_media_json FROM games WHERE name_normalized LIKE ? ORDER BY sort_key LIMIT ?",
+            "%$term%",
+            GLOBAL_SEARCH_LIMIT,
+            mapper = ::rowToGame,
+        )
     }
 
     fun allGames(platformId: Int): List<RommGame> = withConn { c ->
@@ -179,8 +194,8 @@ class RommDatabase(private val dbFileProvider: () -> File) {
     }
 
     fun gamesCount(platformId: Int, search: String?): Int = withConn { c ->
-        val like = search?.takeIf { it.isNotBlank() }?.let { "%$it%" }
-        val sql = if (like != null) "SELECT COUNT(*) FROM games WHERE platform_id = ? AND name LIKE ?"
+        val like = search?.let { TextNormalizer.normalize(it) }?.takeIf { it.isNotEmpty() }?.let { "%$it%" }
+        val sql = if (like != null) "SELECT COUNT(*) FROM games WHERE platform_id = ? AND name_normalized LIKE ?"
         else "SELECT COUNT(*) FROM games WHERE platform_id = ?"
         val args: Array<Any?> = if (like != null) arrayOf(platformId, like) else arrayOf(platformId)
         c.queryOne(sql, *args) { it.getInt(0) } ?: 0
@@ -242,6 +257,7 @@ class RommDatabase(private val dbFileProvider: () -> File) {
     private companion object {
         // Pre-release: schema/cache changes are handled by deleting the cache DB, not version bumps.
         // A mismatch with an older on-device version still triggers a one-time rebuild.
-        const val SCHEMA_VERSION = 1
+        const val SCHEMA_VERSION = 2
+        const val GLOBAL_SEARCH_LIMIT = 300
     }
 }

@@ -17,6 +17,7 @@ class RommBrowseViewModelMatchTest {
         override suspend fun platforms() = listOf(RommPlatform(1, "snes", "SNES", "Super Nintendo", 2))
         override suspend fun games(platform: RommPlatform, page: Int, search: String?) =
             RommPage(if (page == 0) games else emptyList(), games.size, RommLibrary.PAGE_SIZE, 0)
+        override suspend fun searchAll(query: RommSearchQuery) = emptyList<RommGame>()
     }
 
     @Test fun `a linked id is PRESENT even when filename does not match`() = runBlocking {

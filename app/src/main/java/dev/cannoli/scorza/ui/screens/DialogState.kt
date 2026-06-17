@@ -46,7 +46,7 @@ sealed interface DialogState {
     data class ContextMenu(val gameName: String, val selectedOption: Int = 0, val options: List<String>) : DialogState
     data class BulkContextMenu(val gamePaths: List<String>, val selectedOption: Int = 0, val options: List<String>) : DialogState
     data class DeleteConfirm(val gameName: String, val bulkPaths: List<String>? = null) : DialogState
-    data class RenameInput(val gameName: String, override val currentName: String, override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
+    data class RenameInput(val gameName: String, override val currentName: String, override val cursorPos: Int = 0, val searchScope: String? = null, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
     data class NewCollectionInput(val gamePaths: List<String> = emptyList(), val parentId: Long? = null, override val currentName: String = "", override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
     data class CollectionRenameInput(val collectionId: Long, val oldDisplayName: String, override val currentName: String, override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
     data class DeleteCollectionConfirm(val collectionId: Long, val displayName: String) : DialogState
@@ -82,7 +82,11 @@ sealed interface DialogState {
         val selectedIndex: Int = 0,
     ) : DialogState
     data class RescanProgress(val progress: Float, val label: String) : DialogState
-    data class RommQuickMenu(
+    data class RommActionsMenu(
+        val selectedIndex: Int = 0,
+        val hasDownloads: Boolean = false,
+    ) : DialogState
+    data class RommSettingsMenu(
         val selectedIndex: Int = 0,
         val concurrent: Int = 2,
         val artType: dev.cannoli.scorza.romm.RommArtType = dev.cannoli.scorza.romm.RommArtType.NONE,
@@ -186,7 +190,8 @@ val DialogState.isFullScreen: Boolean
         is DialogState.RommDownloads,
         is DialogState.RommArtResults,
         is DialogState.RescanProgress,
-        is DialogState.RommQuickMenu,
+        is DialogState.RommActionsMenu,
+        is DialogState.RommSettingsMenu,
         is DialogState.RommAdvancedMenu,
         is DialogState.RommConfirm,
         is DialogState.RommPlatformToggle,

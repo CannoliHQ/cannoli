@@ -168,6 +168,14 @@ fun DialogOverlay(
         is DialogState.CollectionRenameInput,
         is DialogState.NewFolderInput -> {
             val ks = dialogState as KeyboardInputState
+            val keyboardTitle = (dialogState as? DialogState.RenameInput)?.let { rn ->
+                when (rn.gameName) {
+                    "launcher_global_search" -> stringResource(R.string.search_global)
+                    "romm_global_search" -> stringResource(R.string.search_romm)
+                    "launcher_search", "romm_search" -> rn.searchScope?.let { stringResource(R.string.search_in_platform, it) }
+                    else -> null
+                }
+            }
             KeyboardOverlay(
                 text = ks.currentName,
                 cursorPos = ks.cursorPos,
@@ -175,6 +183,7 @@ fun DialogOverlay(
                 keyCol = ks.keyCol,
                 caps = ks.caps,
                 symbols = ks.symbols,
+                title = keyboardTitle,
                 buttonStyle = buttonStyle
             )
         }
@@ -260,12 +269,35 @@ fun DialogOverlay(
             )
         }
 
-        is DialogState.RommQuickMenu -> {
-            val rows = RommQuickMenuRow.entries
+        is DialogState.RommActionsMenu -> {
+            val rows = RommActionRow.visibleRows(dialogState.hasDownloads)
             ListDialogScreen(
                 backgroundImagePath = backgroundImagePath,
                 backgroundTint = backgroundTint,
-                title = stringResource(R.string.romm_qm_title),
+                title = stringResource(R.string.romm_actions_title),
+                listFontSize = listFontSize,
+                listLineHeight = listLineHeight,
+                rightBottomItems = listOf(buttonStyle.confirm to stringResource(R.string.label_select)),
+                buttonStyle = buttonStyle
+            ) {
+                List(items = rows, selectedIndex = dialogState.selectedIndex, itemHeight = itemHeight) { _, row, isSelected ->
+                    PillRowText(
+                        label = stringResource(row.labelRes),
+                        isSelected = isSelected,
+                        fontSize = listFontSize,
+                        lineHeight = listLineHeight,
+                        verticalPadding = listVerticalPadding
+                    )
+                }
+            }
+        }
+
+        is DialogState.RommSettingsMenu -> {
+            val rows = RommSettingsRow.entries.toList()
+            ListDialogScreen(
+                backgroundImagePath = backgroundImagePath,
+                backgroundTint = backgroundTint,
+                title = stringResource(R.string.romm_settings_title),
                 listFontSize = listFontSize,
                 listLineHeight = listLineHeight,
                 leftBottomItems = if (rows[dialogState.selectedIndex].isCycle)
@@ -273,13 +305,9 @@ fun DialogOverlay(
                 rightBottomItems = listOf(buttonStyle.confirm to stringResource(R.string.label_select)),
                 buttonStyle = buttonStyle
             ) {
-                List(
-                    items = rows,
-                    selectedIndex = dialogState.selectedIndex,
-                    itemHeight = itemHeight
-                ) { _, row, isSelected ->
+                List(items = rows, selectedIndex = dialogState.selectedIndex, itemHeight = itemHeight) { _, row, isSelected ->
                     when (row) {
-                        RommQuickMenuRow.CONCURRENT -> PillRowKeyValue(
+                        RommSettingsRow.CONCURRENT -> PillRowKeyValue(
                             label = stringResource(R.string.romm_qm_concurrent),
                             value = dialogState.concurrent.toString(),
                             isSelected = isSelected,
@@ -287,7 +315,7 @@ fun DialogOverlay(
                             lineHeight = listLineHeight,
                             verticalPadding = listVerticalPadding
                         )
-                        RommQuickMenuRow.COVER_ART -> PillRowKeyValue(
+                        RommSettingsRow.COVER_ART -> PillRowKeyValue(
                             label = stringResource(R.string.romm_qm_cover_art),
                             value = stringResource(rommArtLabelRes(dialogState.artType)),
                             isSelected = isSelected,
@@ -471,8 +499,8 @@ private fun DownloadRow(item: RommDownloadItem, isSelected: Boolean, fontSize: T
     ) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             val label = if (item.kind == RommDownloadKind.MANUAL)
-                "${item.game.name}  ·  ${stringResource(R.string.romm_download_manual)}"
-            else item.game.name
+                "${item.displayName}  ·  ${stringResource(R.string.romm_download_manual)}"
+            else item.displayName
             Text(label, color = text, fontFamily = font, fontSize = fontSize, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             val context = androidx.compose.ui.platform.LocalContext.current
             if (item.status == DownloadStatus.Done) {
@@ -501,10 +529,19 @@ private fun quickMenuLabel(row: dev.cannoli.scorza.ui.quickmenu.QuickMenuRow): S
     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.INFO -> stringResource(R.string.quick_menu_info)
 }
 
-val ROMM_ADVANCED_ROWS = listOf(R.string.romm_qm_refresh, R.string.romm_qm_rebuild)
+val ROMM_ADVANCED_ROWS = listOf(R.string.romm_qm_refresh, R.string.romm_qm_rebuild, R.string.romm_qm_download_art)
 
-enum class RommQuickMenuRow(@androidx.annotation.StringRes val labelRes: Int, val isCycle: Boolean = false) {
-    DOWNLOAD_ART(R.string.romm_qm_download_art),
+enum class RommActionRow(@androidx.annotation.StringRes val labelRes: Int) {
+    DOWNLOADS(R.string.label_downloads),
+    RETURN_TO_CANNOLI(R.string.romm_return_to_cannoli),
+    ;
+    companion object {
+        fun visibleRows(hasDownloads: Boolean): List<RommActionRow> =
+            if (hasDownloads) entries else entries.filterNot { it == DOWNLOADS }
+    }
+}
+
+enum class RommSettingsRow(@androidx.annotation.StringRes val labelRes: Int, val isCycle: Boolean = false) {
     COVER_ART(R.string.romm_qm_cover_art, isCycle = true),
     CONCURRENT(R.string.romm_qm_concurrent, isCycle = true),
     PLATFORMS(R.string.romm_qm_platforms),

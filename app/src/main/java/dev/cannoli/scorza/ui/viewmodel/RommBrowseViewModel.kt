@@ -1,10 +1,12 @@
 package dev.cannoli.scorza.ui.viewmodel
 
 import dev.cannoli.scorza.romm.LocalState
+import dev.cannoli.scorza.romm.RommFirmware
 import dev.cannoli.scorza.romm.RommGame
 import dev.cannoli.scorza.romm.RommLibrary
 import dev.cannoli.scorza.romm.RommLocalState
 import dev.cannoli.scorza.romm.RommPlatform
+import dev.cannoli.scorza.romm.RommSearchQuery
 import dev.cannoli.scorza.romm.cache.RommDatabase
 import dev.cannoli.scorza.romm.cache.RommSyncCoordinator
 import dev.cannoli.scorza.util.sortedNatural
@@ -22,6 +24,8 @@ class RommBrowseViewModel(
     private val presentNamesFor: (tag: String) -> Set<String>,
     private val linkedIdsProvider: () -> Set<Int>,
     private val hiddenTagsProvider: () -> Set<String> = { emptySet() },
+    private val firmwareFor: (platformId: Int) -> List<RommFirmware> = { emptyList() },
+    private val biosDirFor: (tag: String) -> java.io.File = { java.io.File("") },
 ) {
     private val _platforms = MutableStateFlow<List<RommPlatform>>(emptyList())
     val platforms: StateFlow<List<RommPlatform>> = _platforms
@@ -31,6 +35,9 @@ class RommBrowseViewModel(
 
     private val _games = MutableStateFlow<List<RommGameRow>>(emptyList())
     val games: StateFlow<List<RommGameRow>> = _games
+
+    private val _searchResults = MutableStateFlow<List<RommGameRow>>(emptyList())
+    val searchResults: StateFlow<List<RommGameRow>> = _searchResults
 
     private val _loadedPlatformId = MutableStateFlow<Int?>(null)
     val loadedPlatformId: StateFlow<Int?> = _loadedPlatformId
@@ -113,6 +120,33 @@ class RommBrowseViewModel(
             }
         }
         _games.value = updated
+    }
+
+    suspend fun loadGlobalSearch(query: RommSearchQuery) {
+        if (_allPlatforms.value.isEmpty()) loadPlatforms()
+        val games = library.searchAll(query)
+        _searchResults.value = withContext(Dispatchers.IO) {
+            val platformsById = _allPlatforms.value.associateBy { it.id }
+            val linkedIds = linkedIdsProvider()
+            val presentByTag = games
+                .mapNotNull { platformsById[it.platformId]?.cannoliTag }
+                .toSet()
+                .associateWith { presentNamesFor(it) }
+            games.sortedNatural { it.name }.map { g ->
+                val tag = platformsById[g.platformId]?.cannoliTag
+                val present = presentByTag[tag] ?: emptySet()
+                val state = if (g.id in linkedIds) LocalState.PRESENT
+                else RommLocalState.of(g.fsName, present)
+                RommGameRow(g, state)
+            }
+        }
+    }
+
+    data class RommFirmwareRow(val firmware: RommFirmware, val present: Boolean)
+
+    suspend fun loadFirmware(platformId: Int, tag: String): List<RommFirmwareRow> = withContext(Dispatchers.IO) {
+        val biosDir = biosDirFor(tag)
+        firmwareFor(platformId).map { RommFirmwareRow(it, java.io.File(biosDir, it.fileName).exists()) }
     }
 
     fun isMultiSelect(): Boolean = _multiSelect.value
