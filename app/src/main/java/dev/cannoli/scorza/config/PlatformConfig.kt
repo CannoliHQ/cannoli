@@ -8,8 +8,8 @@ import dev.cannoli.scorza.launcher.isPackageInstalled
 import dev.cannoli.scorza.model.LaunchTarget
 import dev.cannoli.scorza.model.Platform
 import dev.cannoli.scorza.ui.screens.EmulatorMappingStatus
-import dev.cannoli.scorza.util.IniData
-import dev.cannoli.scorza.util.IniParser
+import dev.cannoli.core.IniData
+import dev.cannoli.core.IniParser
 import dev.cannoli.scorza.util.sortedNatural
 import org.json.JSONObject
 import java.io.File

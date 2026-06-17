@@ -2,7 +2,7 @@ package dev.cannoli.scorza.libretro
 
 import dev.cannoli.igm.ShortcutAction
 import dev.cannoli.scorza.config.CannoliPaths
-import dev.cannoli.scorza.util.IniParser
+import dev.cannoli.core.IniParser
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull

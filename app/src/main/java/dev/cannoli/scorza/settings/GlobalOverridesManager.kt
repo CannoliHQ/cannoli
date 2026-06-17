@@ -1,8 +1,8 @@
 package dev.cannoli.scorza.settings
 
 import dev.cannoli.igm.ShortcutAction
-import dev.cannoli.scorza.util.IniParser
-import dev.cannoli.scorza.util.IniWriter
+import dev.cannoli.core.IniParser
+import dev.cannoli.core.IniWriter
 import java.io.File
 
 class GlobalOverridesManager(private val sdCardRoot: () -> String) {

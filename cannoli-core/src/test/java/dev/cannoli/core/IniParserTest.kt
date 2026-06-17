@@ -1,4 +1,4 @@
-package dev.cannoli.scorza.util
+package dev.cannoli.core
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

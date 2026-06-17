@@ -4,8 +4,8 @@ import dev.cannoli.igm.ShortcutAction
 import dev.cannoli.scorza.config.CannoliPaths
 import dev.cannoli.scorza.input.CanonicalButton
 import dev.cannoli.scorza.input.runtime.CanonicalRetroMap
-import dev.cannoli.scorza.util.IniParser
-import dev.cannoli.scorza.util.IniWriter
+import dev.cannoli.core.IniParser
+import dev.cannoli.core.IniWriter
 import java.io.File
 
 enum class OverrideSource { GLOBAL, PLATFORM, GAME }
