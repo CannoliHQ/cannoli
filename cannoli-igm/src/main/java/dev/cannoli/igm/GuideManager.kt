@@ -1,10 +1,7 @@
-package dev.cannoli.scorza.libretro
+package dev.cannoli.igm
 
-import dev.cannoli.igm.GuideFile
-import dev.cannoli.igm.GuideType
-import dev.cannoli.scorza.config.CannoliPaths
-import dev.cannoli.scorza.util.IniParser
-import dev.cannoli.scorza.util.IniWriter
+import dev.cannoli.core.IniParser
+import dev.cannoli.core.IniWriter
 import java.io.File
 
 class GuideManager(
@@ -12,9 +9,9 @@ class GuideManager(
     private val platformTag: String,
     private val gameTitle: String
 ) {
-    private val paths = CannoliPaths(cannoliRoot)
-    private val guidesDir = paths.guideDir(platformTag, gameTitle)
-    private val positionsFile = paths.guidePositionsFile
+    private val root = File(cannoliRoot)
+    private val guidesDir = File(File(File(root, "Guides"), platformTag), gameTitle)
+    private val positionsFile = File(File(File(root, "Config"), "State"), "guide_positions.ini")
 
     private val supportedExtensions = mapOf(
         "pdf" to GuideType.PDF,
