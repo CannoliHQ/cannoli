@@ -2,6 +2,7 @@ package dev.cannoli.scorza.db
 
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
+import dev.cannoli.scorza.util.TextNormalizer
 
 internal object Migrations {
     private data class Migration(val version: Int, val apply: (SQLiteConnection) -> Unit)
@@ -135,6 +136,14 @@ internal object Migrations {
                     created_at INTEGER
                 )
             """.trimIndent())
+        },
+        Migration(7) { db ->
+            db.execSQL("ALTER TABLE roms ADD COLUMN name_normalized TEXT NOT NULL DEFAULT ''")
+            db.execSQL("CREATE INDEX roms_by_name_normalized ON roms(name_normalized)")
+            val rows = db.queryAll("SELECT id, display_name FROM roms") { it.getLong(0) to it.getText(1) }
+            for ((id, name) in rows) {
+                db.execute("UPDATE roms SET name_normalized = ? WHERE id = ?", TextNormalizer.normalize(name), id)
+            }
         },
     )
 

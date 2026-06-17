@@ -4,6 +4,7 @@ import dev.cannoli.scorza.util.ArtworkLookup
 import dev.cannoli.scorza.util.NaturalSort
 import dev.cannoli.scorza.util.RomDirectoryWalker
 import dev.cannoli.scorza.util.ScanLog
+import dev.cannoli.scorza.util.TextNormalizer
 
 /**
  * Bridges the file-system view of a platform (via [RomDirectoryWalker]) into the roms table.
@@ -78,8 +79,8 @@ class RomScanner(
         var removed = 0
 
         db.transaction { conn ->
-            conn.prepare("INSERT INTO roms (path, platform_tag, display_name, sort_key, tags) VALUES (?, ?, ?, ?, ?)").use { insertStmt ->
-                conn.prepare("UPDATE roms SET display_name = ?, sort_key = ?, tags = ? WHERE id = ?").use { updateStmt ->
+            conn.prepare("INSERT INTO roms (path, platform_tag, display_name, sort_key, tags, name_normalized) VALUES (?, ?, ?, ?, ?, ?)").use { insertStmt ->
+                conn.prepare("UPDATE roms SET display_name = ?, sort_key = ?, tags = ?, name_normalized = ? WHERE id = ?").use { updateStmt ->
                     conn.prepare("DELETE FROM roms WHERE id = ?").use { deleteStmt ->
                         for (rom in scannedByPath.values) {
                             val current = existing[rom.relativePath]
@@ -90,6 +91,7 @@ class RomScanner(
                                 insertStmt.bindText(3, rom.displayName)
                                 insertStmt.bindText(4, NaturalSort.toSortKey(rom.displayName))
                                 if (rom.tags != null) insertStmt.bindText(5, rom.tags) else insertStmt.bindNull(5)
+                                insertStmt.bindText(6, TextNormalizer.normalize(rom.displayName))
                                 insertStmt.step()
                                 inserted++
                             } else if (current.displayName != rom.displayName || current.tags != rom.tags) {
@@ -97,7 +99,8 @@ class RomScanner(
                                 updateStmt.bindText(1, rom.displayName)
                                 updateStmt.bindText(2, NaturalSort.toSortKey(rom.displayName))
                                 if (rom.tags != null) updateStmt.bindText(3, rom.tags) else updateStmt.bindNull(3)
-                                updateStmt.bindLong(4, current.id)
+                                updateStmt.bindText(4, TextNormalizer.normalize(rom.displayName))
+                                updateStmt.bindLong(5, current.id)
                                 updateStmt.step()
                                 updated++
                             }
