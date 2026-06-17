@@ -5,6 +5,7 @@ import android.graphics.BitmapFactory
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import dev.cannoli.core.StateSlotPaths
 import dev.cannoli.igm.SaveSlotManager as SharedSlotManager
 
 typealias Slot = SharedSlotManager.Slot
@@ -15,17 +16,9 @@ class SaveSlotManager(private val stateBasePath: String) {
 
     val slots = SharedSlotManager().slots
 
-    fun statePath(slot: Slot): String {
-        if (slot.index == 0) return "$stateBasePath.auto"
-        val n = slot.index - 1
-        return if (n == 0) stateBasePath else "$stateBasePath$n"
-    }
+    fun statePath(slot: Slot): String = StateSlotPaths.statePath(stateBasePath, slot.index)
 
-    fun thumbnailPath(slot: Slot): String {
-        if (slot.index == 0) return "$stateBasePath.auto.png"
-        val n = slot.index - 1
-        return if (n == 0) "$stateBasePath.png" else "$stateBasePath$n.png"
-    }
+    fun thumbnailPath(slot: Slot): String = StateSlotPaths.thumbnailPath(stateBasePath, slot.index)
 
     private fun raProgressPath(slot: Slot): String = "${statePath(slot)}.ra"
 
