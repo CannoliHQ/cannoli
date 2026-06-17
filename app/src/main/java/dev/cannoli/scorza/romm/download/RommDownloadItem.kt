@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.romm.download
 
+import dev.cannoli.scorza.romm.RommFirmware
 import dev.cannoli.scorza.romm.RommGame
 
 sealed interface DownloadStatus {
@@ -9,16 +10,19 @@ sealed interface DownloadStatus {
     data class Failed(val reason: String) : DownloadStatus
 }
 
-enum class RommDownloadKind { ROM, MANUAL }
+enum class RommDownloadKind { ROM, MANUAL, FIRMWARE }
 
 data class RommDownloadItem(
     val rommId: Int,
-    val game: RommGame,
+    val game: RommGame? = null,
     val tag: String,
     val kind: RommDownloadKind = RommDownloadKind.ROM,
+    val firmware: RommFirmware? = null,
     val status: DownloadStatus = DownloadStatus.Queued,
 ) {
     val key: String get() = "${kind.name}-$rommId"
+    val displayName: String get() = game?.name ?: firmware?.fileName ?: ""
+    val sizeBytes: Long get() = game?.sizeBytes ?: firmware?.sizeBytes ?: 0L
 }
 
 /**

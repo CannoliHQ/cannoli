@@ -47,7 +47,7 @@ class RommDownloadService : Service() {
                             val item = downloading.first()
                             val s = item.status as DownloadStatus.Downloading
                             val pct = if (s.total > 0) (s.downloaded * 100 / s.total) else 0
-                            getString(R.string.romm_download_notification_progress, item.game.name, pct)
+                            getString(R.string.romm_download_notification_progress, item.displayName, pct)
                         }
                         else -> getString(R.string.romm_download_notification_active)
                     }

@@ -87,26 +87,28 @@ class RommDownloader(
         when (item.kind) {
             RommDownloadKind.ROM -> runRom(item)
             RommDownloadKind.MANUAL -> runManual(item)
+            RommDownloadKind.FIRMWARE -> runFirmware(item)
         }
     }
 
     private fun runRom(item: RommDownloadItem) {
+        val game = item.game ?: return
         val tempDir = File(paths.root, "Config/Cache/RommDownloads").apply { mkdirs() }
         val temp = File(tempDir, "${item.rommId}.part")
-        val fileName = if (installer.isMultiPart(item.game)) "${item.game.name}.zip" else item.game.fsName
+        val fileName = if (installer.isMultiPart(game)) "${game.name}.zip" else game.fsName
         try {
-            queue.setStatus(item.key, DownloadStatus.Downloading(0, item.game.sizeBytes))
+            queue.setStatus(item.key, DownloadStatus.Downloading(0, game.sizeBytes))
             client.downloadRom(
                 romId = item.rommId,
                 fileName = fileName,
                 dest = temp,
                 isCancelled = { synchronized(cancelled) { item.key in cancelled } },
-                expectedTotal = item.game.sizeBytes,
+                expectedTotal = game.sizeBytes,
             ) { downloaded, total -> queue.setStatus(item.key, DownloadStatus.Downloading(downloaded, total)) }
 
             scanScheduler.markLauncherMutation(item.tag)
-            val result = installer.install(item.game, item.tag, temp, paths.romDir)
-            artDownloader.download(store.host, item.game.coverPath, item.tag, result.artBaseName)
+            val result = installer.install(game, item.tag, temp, paths.romDir)
+            artDownloader.download(store.host, game.coverPath, item.tag, result.artBaseName)
             links.upsertLink(item.rommId, result.linkRelativePath, "download")
             artwork.invalidate(item.tag)
             scanScheduler.runNow(item.tag)
@@ -124,12 +126,13 @@ class RommDownloader(
     }
 
     private fun runManual(item: RommDownloadItem) {
-        val url = item.game.ssMedia?.manual
+        val game = item.game ?: return
+        val url = game.ssMedia?.manual
         if (url == null) {
             queue.setStatus(item.key, DownloadStatus.Failed("no manual"))
             return
         }
-        val dir = CannoliPaths(paths.root).guideDir(item.tag, item.game.name).apply { mkdirs() }
+        val dir = CannoliPaths(paths.root).guideDir(item.tag, game.name).apply { mkdirs() }
         val dest = File(dir, "Manual.pdf")
         val temp = File(dir, "Manual.pdf.part")
         val isCancelled = { synchronized(cancelled) { item.key in cancelled } }
@@ -163,6 +166,35 @@ class RommDownloader(
         } catch (e: Exception) {
             temp.delete()
             ScanLog.write("ERROR romm manual ${item.rommId} failed: ${e.message}")
+            queue.setStatus(item.key, DownloadStatus.Failed(e.message ?: "failed"))
+        } finally {
+            synchronized(cancelled) { cancelled.remove(item.key) }
+        }
+    }
+
+    private fun runFirmware(item: RommDownloadItem) {
+        val fw = item.firmware ?: return
+        val biosDir = CannoliPaths(paths.root).biosFor(item.tag).apply { mkdirs() }
+        val dest = File(biosDir, fw.fileName)
+        val temp = File(biosDir, "${fw.fileName}.part")
+        try {
+            queue.setStatus(item.key, DownloadStatus.Downloading(0, fw.sizeBytes))
+            client.downloadFirmware(
+                firmwareId = fw.id,
+                fileName = fw.fileName,
+                dest = temp,
+                isCancelled = { synchronized(cancelled) { item.key in cancelled } },
+                expectedTotal = fw.sizeBytes,
+            ) { downloaded, total -> queue.setStatus(item.key, DownloadStatus.Downloading(downloaded, total)) }
+            if (dest.exists()) dest.delete()
+            if (!temp.renameTo(dest)) { temp.copyTo(dest, overwrite = true); temp.delete() }
+            queue.setStatus(item.key, DownloadStatus.Done)
+        } catch (e: RommDownloadCancelled) {
+            temp.delete()
+            queue.cancel(item.key)
+        } catch (e: Exception) {
+            temp.delete()
+            ScanLog.write("ERROR romm firmware ${fw.id} failed: ${e.message}")
             queue.setStatus(item.key, DownloadStatus.Failed(e.message ?: "failed"))
         } finally {
             synchronized(cancelled) { cancelled.remove(item.key) }

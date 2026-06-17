@@ -87,6 +87,16 @@ data class RomsPageDto(
 )
 
 @Serializable
+data class FirmwareDto(
+    val id: Int,
+    @SerialName("file_name") val fileName: String,
+    @SerialName("file_size_bytes") val fileSizeBytes: Long = 0,
+    @SerialName("md5_hash") val md5Hash: String? = null,
+    @SerialName("sha1_hash") val sha1Hash: String? = null,
+    @SerialName("crc_hash") val crcHash: String? = null,
+)
+
+@Serializable
 data class SystemDict(
     @SerialName("VERSION") val version: String = "",
 )

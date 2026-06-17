@@ -23,7 +23,7 @@ class RommDownloadQueue {
     fun claimNext(): RommDownloadItem? {
         val item = _state.value.firstOrNull { it.status == DownloadStatus.Queued } ?: return null
         _state.value = _state.value.map {
-            if (it.key == item.key) it.copy(status = DownloadStatus.Downloading(0, item.game.sizeBytes)) else it
+            if (it.key == item.key) it.copy(status = DownloadStatus.Downloading(0, item.sizeBytes)) else it
         }
         return item
     }

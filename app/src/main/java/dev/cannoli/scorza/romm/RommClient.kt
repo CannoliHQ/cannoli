@@ -102,6 +102,14 @@ class RommClient(
         return execute(request, ListSerializer(Int.serializer()))
     }
 
+    fun getFirmware(platformId: Int): List<RommFirmware> {
+        val url = endpoint("/api/firmware").newBuilder()
+            .addQueryParameter("platform_id", platformId.toString())
+            .build()
+        val request = Request.Builder().url(url).get().build()
+        return execute(request, ListSerializer(FirmwareDto.serializer())).map { it.toDomain() }
+    }
+
     fun downloadRom(
         romId: Int,
         fileName: String,
@@ -141,6 +149,49 @@ class RommClient(
                 dest.delete(); throw e
             } catch (e: IOException) {
                 dest.delete(); throw RommException(it.code, "IO error downloading rom $romId: ${e.message}", e)
+            }
+        }
+    }
+
+    fun downloadFirmware(
+        firmwareId: Int,
+        fileName: String,
+        dest: File,
+        isCancelled: () -> Boolean,
+        expectedTotal: Long = 0L,
+        onProgress: (downloaded: Long, total: Long) -> Unit,
+    ) {
+        val url = endpoint("/api/firmware/$firmwareId/content").newBuilder().addPathSegment(fileName).build()
+        val request = Request.Builder().url(url).get().build()
+        val response: Response = try {
+            clientProvider().newCall(request).execute()
+        } catch (e: IOException) {
+            throw RommException(null, "Network error: ${e.message}", e)
+        }
+        response.use {
+            if (!it.isSuccessful) throw RommException(it.code, "HTTP ${it.code} downloading firmware $firmwareId")
+            val body = it.body ?: throw RommException(it.code, "Empty body downloading firmware $firmwareId")
+            val total = body.contentLength().takeIf { len -> len > 0 } ?: expectedTotal
+            dest.parentFile?.mkdirs()
+            try {
+                body.byteStream().use { input ->
+                    dest.outputStream().use { output ->
+                        val buf = ByteArray(64 * 1024)
+                        var downloaded = 0L
+                        while (true) {
+                            if (isCancelled()) throw RommDownloadCancelled()
+                            val n = input.read(buf)
+                            if (n < 0) break
+                            output.write(buf, 0, n)
+                            downloaded += n
+                            onProgress(downloaded, total)
+                        }
+                    }
+                }
+            } catch (e: RommDownloadCancelled) {
+                dest.delete(); throw e
+            } catch (e: IOException) {
+                dest.delete(); throw RommException(it.code, "IO error downloading firmware $firmwareId: ${e.message}", e)
             }
         }
     }

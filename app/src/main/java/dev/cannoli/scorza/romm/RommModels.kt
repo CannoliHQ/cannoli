@@ -45,6 +45,15 @@ data class RommSsMedia(
     val manual: String? = null,
 )
 
+data class RommFirmware(
+    val id: Int,
+    val fileName: String,
+    val sizeBytes: Long,
+    val md5: String?,
+    val sha1: String?,
+    val crc: String?,
+)
+
 data class RommPage<T>(
     val items: List<T>,
     val total: Int,

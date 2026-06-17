@@ -76,6 +76,8 @@ object RommModule {
         romsRepository: dev.cannoli.scorza.db.RomsRepository,
         linkRepository: RommLinkRepository,
         settings: dev.cannoli.scorza.settings.SettingsRepository,
+        client: RommClient,
+        paths: CannoliPathsProvider,
     ): RommBrowseViewModel =
         RommBrowseViewModel(
             library = library,
@@ -84,6 +86,8 @@ object RommModule {
             presentNamesFor = { tag -> romsRepository.presentFileNames(tag) },
             linkedIdsProvider = { linkRepository.presentRommIds() },
             hiddenTagsProvider = { settings.hiddenRommPlatforms },
+            firmwareFor = { platformId -> client.getFirmware(platformId) },
+            biosDirFor = { tag -> dev.cannoli.scorza.config.CannoliPaths(paths.root).biosFor(tag) },
         )
 
     @Provides @Singleton

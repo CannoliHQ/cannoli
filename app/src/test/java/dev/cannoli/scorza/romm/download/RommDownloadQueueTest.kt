@@ -1,6 +1,7 @@
 package dev.cannoli.scorza.romm.download
 
 import dev.cannoli.scorza.romm.RommFile
+import dev.cannoli.scorza.romm.RommFirmware
 import dev.cannoli.scorza.romm.RommGame
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -88,6 +89,14 @@ class RommDownloadQueueTest {
         q.setStatus("ROM-3", DownloadStatus.Downloading(0, 1))
         q.clearFinished()
         assertEquals(listOf(3, 4), q.state.value.map { it.rommId })
+    }
+
+    @Test fun `firmware item exposes fileName as displayName and a stable key`() {
+        val fw = RommFirmware(9, "scph5501.bin", 100L, null, null, null)
+        val item = RommDownloadItem(rommId = 9, tag = "PSX", kind = RommDownloadKind.FIRMWARE, firmware = fw)
+        assertEquals("FIRMWARE-9", item.key)
+        assertEquals("scph5501.bin", item.displayName)
+        assertEquals(100L, item.sizeBytes)
     }
 
     @Test fun `display order puts newest active first then completed in their own section`() {
