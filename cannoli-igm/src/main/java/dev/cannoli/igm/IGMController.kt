@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import java.io.File
 
 class IGMController(
     val bridge: EmulatorBridge,
@@ -18,6 +19,18 @@ class IGMController(
     var slotExists = mutableStateOf(false)
     var slotOccupied = mutableStateOf(emptyList<Boolean>())
     var undoLabel = mutableStateOf<String?>(null)
+
+    private var guideManager: GuideManager? = null
+    var guideFiles = mutableStateOf<List<GuideFile>>(emptyList())
+    var guidePageCount = mutableIntStateOf(0)
+    var guideScrollDir = mutableIntStateOf(0)
+    var guideScrollXDir = mutableIntStateOf(0)
+    var guidePageJump = mutableIntStateOf(0)
+    var guidePageJumpDir = mutableIntStateOf(0)
+    var guideInitialScroll = mutableIntStateOf(0)
+    var guideInitialScrollX = mutableIntStateOf(0)
+    private var guideScrollPos = 0
+    private var guideScrollXPos = 0
 
     private val saveSlotManager = SaveSlotManager()
 
@@ -80,6 +93,90 @@ class IGMController(
         bridge.setOnNativeMenuClosed { openMenu() }
     }
 
+    fun attachGuides(manager: GuideManager) {
+        guideManager = manager
+        guideFiles.value = manager.findGuides()
+    }
+
+    fun onGuideScrollChanged(y: Int, x: Int) {
+        guideScrollPos = y
+        guideScrollXPos = x
+    }
+
+    fun openGuidePicker() {
+        push(IGMScreen.GuidePicker())
+    }
+
+    private fun openGuide(guide: GuideFile) {
+        val manager = guideManager ?: return
+        val saved = manager.loadSavedPosition(guide.file)
+        guideScrollDir.intValue = 0
+        guideScrollXDir.intValue = 0
+        guidePageJump.intValue = 0
+        guideScrollXPos = saved.scrollX
+        guideInitialScrollX.intValue = saved.scrollX
+        guidePageCount.intValue = if (guide.type == GuideType.PDF) {
+            try {
+                val pfd = android.os.ParcelFileDescriptor.open(
+                    guide.file, android.os.ParcelFileDescriptor.MODE_READ_ONLY
+                )
+                pfd.use { android.graphics.pdf.PdfRenderer(it).use { r -> r.pageCount } }
+            } catch (_: Exception) { 1 }
+        } else 0
+        guideScrollPos = if (guide.type == GuideType.PDF) saved.scrollY else saved.position
+        guideInitialScroll.intValue = guideScrollPos
+        if (guide.type == GuideType.PDF) {
+            push(IGMScreen.Guide(
+                filePath = guide.file.absolutePath,
+                page = saved.position.coerceIn(0, (guidePageCount.intValue - 1).coerceAtLeast(0)),
+                textZoom = saved.zoom
+            ))
+        } else {
+            push(IGMScreen.Guide(filePath = guide.file.absolutePath, textZoom = saved.zoom))
+        }
+    }
+
+    private fun handleGuidePickerKey(screen: IGMScreen.GuidePicker, keycode: Int) {
+        val count = guideFiles.value.size
+        if (count == 0) { pop(); if (screenStack.isEmpty()) onClose?.invoke(); return }
+        when (keycode) {
+            19 -> replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count))
+            20 -> replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count))
+            96 -> guideFiles.value.getOrNull(screen.selectedIndex)?.let { openGuide(it) }
+            97, 4 -> { pop(); if (screenStack.isEmpty()) onClose?.invoke() }
+        }
+    }
+
+    private fun handleGuideKey(screen: IGMScreen.Guide, keycode: Int) {
+        val guide = guideFiles.value.firstOrNull { it.file.absolutePath == screen.filePath } ?: return
+        val type = guide.type
+        when (keycode) {
+            19 -> guideScrollDir.intValue = -1
+            20 -> guideScrollDir.intValue = 1
+            21 -> if (type != GuideType.TXT && screen.textZoom > 1) guideScrollXDir.intValue = -1
+            22 -> if (type != GuideType.TXT && screen.textZoom > 1) guideScrollXDir.intValue = 1
+            102 -> if (type == GuideType.PDF) {
+                replaceTop(screen.copy(page = (screen.page - 1).coerceAtLeast(0)))
+            } else { guidePageJumpDir.intValue = -1; guidePageJump.intValue++ }
+            103 -> if (type == GuideType.PDF) {
+                replaceTop(screen.copy(page = (screen.page + 1).coerceAtMost(guidePageCount.intValue - 1)))
+            } else { guidePageJumpDir.intValue = 1; guidePageJump.intValue++ }
+            100 -> {
+                guideInitialScroll.intValue = guideScrollPos
+                guideInitialScrollX.intValue = guideScrollXPos
+                replaceTop(screen.copy(textZoom = if (screen.textZoom >= 3) 1 else screen.textZoom + 1))
+            }
+            97, 4 -> {
+                val pos = if (type == GuideType.PDF) screen.page else guideScrollPos
+                guideManager?.save(guide.file, pos, guideScrollPos, guideScrollXPos, screen.textZoom)
+                guideScrollDir.intValue = 0
+                guideScrollXDir.intValue = 0
+                pop()
+                if (screenStack.isEmpty()) onClose?.invoke()
+            }
+        }
+    }
+
     val slots get() = saveSlotManager.slots
     val currentSlot get() = saveSlotManager.slots[selectedSlotIndex.intValue]
 
@@ -99,6 +196,8 @@ class IGMController(
 
         when (screen) {
             is IGMScreen.Menu -> handleMenuKey(screen, keycode)
+            is IGMScreen.GuidePicker -> handleGuidePickerKey(screen, keycode)
+            is IGMScreen.Guide -> handleGuideKey(screen, keycode)
             else -> {}
         }
     }
@@ -144,7 +243,7 @@ class IGMController(
             hasDiscs = bridge.getDiskCount() > 1,
             discLabel = "Disc ${bridge.getDiskIndex() + 1}",
             hasAchievements = bridge.supportsAchievements,
-            hasGuides = false
+            hasGuides = guideFiles.value.isNotEmpty()
         )
         menuOptions = opts
         return opts
@@ -159,7 +258,10 @@ class IGMController(
             IgmMenuAction.SETTINGS -> onOpenNativeMenu?.invoke()
             IgmMenuAction.RESET -> { bridge.reset(); onClose?.invoke() }
             IgmMenuAction.QUIT -> { onClose?.invoke(); bridge.quit() }
-            IgmMenuAction.ACHIEVEMENTS, IgmMenuAction.GUIDE, IgmMenuAction.SWITCH_DISC,
+            IgmMenuAction.GUIDE -> {
+                if (guideFiles.value.size == 1) openGuide(guideFiles.value[0]) else openGuidePicker()
+            }
+            IgmMenuAction.ACHIEVEMENTS, IgmMenuAction.SWITCH_DISC,
             IgmMenuAction.REASSIGN, null -> {}
         }
     }

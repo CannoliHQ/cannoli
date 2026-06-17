@@ -6,7 +6,7 @@ class InGameMenuOptions(
     hasDiscs: Boolean,
     val discLabel: String,
     hasAchievements: Boolean = false,
-    hasGuides: Boolean = false,
+    val hasGuides: Boolean = false,
     hasReassign: Boolean = false,
     quitLabel: String = "Quit",
 ) {
