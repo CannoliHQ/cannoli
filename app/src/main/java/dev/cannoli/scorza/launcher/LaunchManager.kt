@@ -100,6 +100,7 @@ class LaunchManager(
         val gameOverrides = buildMap {
             put("system_directory", biosDir.absolutePath)
             put("savestate_directory", stateDir.absolutePath)
+            put("sort_savestates_enable", "false")
             put("sort_savestates_by_content_enable", "false")
             put("state_slot", raSlot.toString())
             if (resume) {
