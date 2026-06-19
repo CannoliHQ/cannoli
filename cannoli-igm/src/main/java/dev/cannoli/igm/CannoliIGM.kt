@@ -184,7 +184,7 @@ fun CannoliIGM(
                 is IGMScreen.Shortcuts, is IGMScreen.SavePrompt,
                 is IGMScreen.RaOptions, is IGMScreen.RaOptionsCategory,
                 is IGMScreen.Buttons -> {
-                    val description = if (showDescription || screen is IGMScreen.RaOptionsCategory) {
+                    val description = if (showDescription) {
                         settingsItems.getOrNull(screen.selectedIndex)?.hint
                     } else null
                     val isOptionList = screen is IGMScreen.EmulatorCategory ||
@@ -242,7 +242,9 @@ fun CannoliIGM(
                         selectedIndex = screen.selectedIndex,
                         bottomBarLeft = bottomBarLeft,
                         bottomBarRight = bottomBarRight,
-                        coreInfo = coreInfo,
+                        coreInfo = if (screen is IGMScreen.RaOptionsCategory)
+                            settingsItems.getOrNull(screen.selectedIndex)?.hint.orEmpty()
+                        else coreInfo,
                         description = description,
                         fontSize = igmFontSize,
                         lineHeight = igmLineHeight
