@@ -137,6 +137,7 @@ class LaunchManager(
             put("savestate_auto_save", "true")
             put("config_save_on_exit", "false")
             put("video_font_enable", "false")
+            put("auto_overrides_enable", "true")
 
             // TODO come back to this at a later date
 //            put("assets_directory", "$rootPath/Config/Assets")
@@ -522,7 +523,7 @@ class LaunchManager(
             )
 
     companion object {
-        private const val CONFIG_VERSION = 5
+        private const val CONFIG_VERSION = 6
 
         fun extractBundledCores(context: Context): String {
             val coresDir = File(context.filesDir, "cores")
