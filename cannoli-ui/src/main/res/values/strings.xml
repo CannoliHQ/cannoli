@@ -564,6 +564,15 @@
     <string name="igm_save_changes">Save Changes</string>
     <string name="igm_buttons">Buttons</string>
     <string name="igm_save_and_quit">Save and Quit</string>
+    <string name="igm_ra_audio">Audio</string>
+    <string name="igm_ra_latency">Latency</string>
+    <string name="igm_ra_notifications">Notifications</string>
+    <string name="igm_ra_restart_hint">Applies on relaunch</string>
+    <string name="igm_ra_on">On</string>
+    <string name="igm_ra_off">Off</string>
+    <string name="igm_ra_save_platform">Save for Platform</string>
+    <string name="igm_ra_save_game">Save for Game</string>
+    <string name="igm_ra_dont_save">Don\'t Save</string>
     <string name="title_guide">Guide</string>
 
     <!-- IGM info labels -->
