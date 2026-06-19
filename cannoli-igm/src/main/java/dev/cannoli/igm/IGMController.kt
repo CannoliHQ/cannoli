@@ -19,6 +19,12 @@ class IGMController(
     var slotExists = mutableStateOf(false)
     var slotOccupied = mutableStateOf(emptyList<Boolean>())
     var undoLabel = mutableStateOf<String?>(null)
+    // RA option rows; also holds the SavePrompt option list while that screen is shown
+    val settingsItems = mutableStateOf<List<IGMSettingsItem>>(emptyList())
+    var raStrings = RaOptionStrings()
+    private var raDirty = false
+    private var raSettings: List<RaSetting> = emptyList()
+    private val raPending = mutableMapOf<String, Int>()
 
     private var guideManager: GuideManager? = null
     var guideFiles = mutableStateOf<List<GuideFile>>(emptyList())
@@ -34,9 +40,14 @@ class IGMController(
 
     private val saveSlotManager = SaveSlotManager()
 
+    init {
+        bridge.setOnRaSettingApplied { key, value -> onRaApplied(key, value) }
+    }
+
     fun openMenu() {
         screenStack.clear()
         screenStack.add(IGMScreen.Menu())
+        raDirty = false
         refreshSlotInfo()
     }
 
@@ -220,6 +231,9 @@ class IGMController(
 
         when (screen) {
             is IGMScreen.Menu -> handleMenuKey(screen, keycode)
+            is IGMScreen.RaOptions -> handleRaOptionsKey(screen, keycode)
+            is IGMScreen.RaOptionsCategory -> handleRaCategoryKey(screen, keycode)
+            is IGMScreen.SavePrompt -> handleSavePromptKey(screen, keycode)
             is IGMScreen.GuidePicker -> handleGuidePickerKey(screen, keycode)
             is IGMScreen.Guide -> handleGuideKey(screen, keycode)
             is IGMScreen.Achievements -> handleAchievementsKey(screen, keycode)
@@ -257,7 +271,7 @@ class IGMController(
                 selectMenuItem(screen.selectedIndex)
             }
             97, 4 /* BUTTON_B, BACK - back/close */ -> {
-                onClose?.invoke()
+                requestClose()
             }
         }
     }
@@ -275,13 +289,132 @@ class IGMController(
         return opts
     }
 
+    private fun refreshRaRootItems() {
+        settingsItems.value = RaOptionCatalog.categories.map {
+            IGMSettingsItem(raStrings.categoryTitles[it.key] ?: it.key)
+        }
+    }
+
+    private fun refreshRaCategoryItems(categoryKey: String) {
+        val category = RaOptionCatalog.categories.first { it.key == categoryKey }
+        raPending.clear()
+        raSettings = category.settingKeys.mapNotNull { bridge.raGetSetting(it) }
+        rebuildRaCategoryItems()
+    }
+
+    private fun onRaApplied(key: String, value: String) {
+        val remaining = (raPending[key] ?: 0) - 1
+        if (remaining > 0) {
+            raPending[key] = remaining
+            return
+        }
+        raPending.remove(key)
+        if (currentScreen !is IGMScreen.RaOptionsCategory) return
+        val i = raSettings.indexOfFirst { it.key == key }
+        if (i < 0 || raSettings[i].value == value) return
+        raSettings = raSettings.toMutableList().also {
+            it[i] = it[i].copy(value = value)
+        }
+        rebuildRaCategoryItems()
+    }
+
+    private fun rebuildRaCategoryItems() {
+        settingsItems.value = raSettings.map { s ->
+            IGMSettingsItem(
+                label = s.label,
+                value = when {
+                    s.type == RaSettingType.BOOL && s.value == "true" -> raStrings.on
+                    s.type == RaSettingType.BOOL -> raStrings.off
+                    else -> s.value
+                },
+                hint = if (s.requiresRestart) raStrings.restartHint else null,
+            )
+        }
+    }
+
+    private fun handleRaOptionsKey(screen: IGMScreen.RaOptions, keycode: Int) {
+        val count = RaOptionCatalog.categories.size
+        when (keycode) {
+            19 -> replaceTop(screen.copy(selectedIndex = (screen.selectedIndex - 1 + count) % count))
+            20 -> replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count))
+            96 -> {
+                val cat = RaOptionCatalog.categories.getOrNull(screen.selectedIndex) ?: return
+                refreshRaCategoryItems(cat.key)
+                val title = raStrings.categoryTitles[cat.key] ?: cat.key
+                push(IGMScreen.RaOptionsCategory(0, cat.key, title))
+            }
+            97, 4 -> pop()
+        }
+    }
+
+    private fun handleRaCategoryKey(screen: IGMScreen.RaOptionsCategory, keycode: Int) {
+        val count = raSettings.size
+        when (keycode) {
+            19 -> if (count > 0) replaceTop(screen.copy(selectedIndex = (screen.selectedIndex - 1 + count) % count))
+            20 -> if (count > 0) replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count))
+            21, 22 -> {
+                val s = raSettings.getOrNull(screen.selectedIndex) ?: return
+                val newValue = RaValueCycler.next(s, if (keycode == 21) -1 else 1) ?: return
+                if (newValue != s.value && bridge.raSetSetting(s.key, newValue)) {
+                    raDirty = true
+                    raPending[s.key] = (raPending[s.key] ?: 0) + 1
+                    raSettings = raSettings.toMutableList().also {
+                        it[screen.selectedIndex] = s.copy(value = newValue)
+                    }
+                    rebuildRaCategoryItems()
+                }
+            }
+            97, 4 -> {
+                pop()
+                refreshRaRootItems()
+            }
+        }
+    }
+
+    private fun handleSavePromptKey(screen: IGMScreen.SavePrompt, keycode: Int) {
+        val count = settingsItems.value.size
+        when (keycode) {
+            19 -> replaceTop(screen.copy(selectedIndex = (screen.selectedIndex - 1 + count) % count))
+            20 -> replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count))
+            96 -> {
+                when (screen.selectedIndex) {
+                    0 -> bridge.raSaveOverride(RaOverrideScope.CONTENT_DIR)
+                    1 -> bridge.raSaveOverride(RaOverrideScope.GAME)
+                }
+                raDirty = false
+                onClose?.invoke()
+            }
+            97, 4 -> pop()
+        }
+    }
+
+    private fun requestClose() {
+        if (raDirty) {
+            settingsItems.value = listOf(
+                IGMSettingsItem(raStrings.savePlatform),
+                IGMSettingsItem(raStrings.saveGame),
+                IGMSettingsItem(raStrings.dontSave),
+            )
+            push(IGMScreen.SavePrompt())
+        } else {
+            onClose?.invoke()
+        }
+    }
+
     private fun selectMenuItem(index: Int) {
         val opts = menuOptions ?: return
         when (opts.actionAt(index)) {
-            IgmMenuAction.RESUME -> onClose?.invoke()
+            IgmMenuAction.RESUME -> requestClose()
             IgmMenuAction.SAVE_STATE -> { saveState(); onClose?.invoke() }
             IgmMenuAction.LOAD_STATE -> { loadState(); onClose?.invoke() }
-            IgmMenuAction.SETTINGS -> onOpenNativeMenu?.invoke()
+            IgmMenuAction.SETTINGS -> {
+                if (bridge.raSettingsSupported()) {
+                    refreshRaRootItems()
+                    push(IGMScreen.RaOptions())
+                } else {
+                    onOpenNativeMenu?.invoke()
+                }
+            }
             IgmMenuAction.RESET -> { bridge.reset(); onClose?.invoke() }
             IgmMenuAction.QUIT -> { onClose?.invoke(); bridge.quit() }
             IgmMenuAction.GUIDE -> {
