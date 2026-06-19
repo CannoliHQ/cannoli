@@ -115,7 +115,7 @@ fun IGMSettingsScreen(
                     Text(
                         text = coreInfo,
                         style = typo.labelSmall.copy(
-                            color = colors.text.copy(alpha = 0.4f)
+                            color = colors.text.copy(alpha = 0.7f)
                         ),
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
