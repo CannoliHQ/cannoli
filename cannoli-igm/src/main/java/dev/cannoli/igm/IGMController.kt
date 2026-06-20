@@ -26,6 +26,13 @@ class IGMController(
     private var raSettings: List<RaSetting> = emptyList()
     private val raPending = mutableMapOf<String, Int>()
 
+    private var inputTranslator = IgmInputTranslator(null)
+
+    /** Supply the active Cannoli device mapping so raw host keycodes are normalized. */
+    fun setInputMapping(mapping: IgmInputMapping?) {
+        inputTranslator = IgmInputTranslator(mapping)
+    }
+
     private var guideManager: GuideManager? = null
     var guideFiles = mutableStateOf<List<GuideFile>>(emptyList())
     var guidePageCount = mutableIntStateOf(0)
@@ -108,6 +115,9 @@ class IGMController(
         else -> screen.achievements
     }
 
+    private fun achievementsHaveMix(list: List<AchievementInfo>): Boolean =
+        list.any { it.unlocked } && list.any { !it.unlocked }
+
     private fun handleAchievementsKey(screen: IGMScreen.Achievements, keycode: Int) {
         val filtered = filteredAchievements(screen)
         val count = filtered.size
@@ -117,7 +127,9 @@ class IGMController(
             96 -> filtered.getOrNull(screen.selectedIndex)?.let {
                 push(IGMScreen.AchievementDetail(achievement = it, parentIndex = screen.selectedIndex))
             }
-            99 -> replaceTop(screen.copy(filter = (screen.filter + 1) % 3, selectedIndex = 0))
+            99 -> if (achievementsHaveMix(screen.achievements)) {
+                replaceTop(screen.copy(filter = (screen.filter + 1) % 3, selectedIndex = 0))
+            }
             97, 4 -> { pop(); if (screenStack.isEmpty()) onClose?.invoke() }
         }
     }
@@ -228,16 +240,17 @@ class IGMController(
      */
     fun handleKeyDown(keycode: Int) {
         val screen = currentScreen ?: return
+        val normalized = inputTranslator.normalize(keycode)
 
         when (screen) {
-            is IGMScreen.Menu -> handleMenuKey(screen, keycode)
-            is IGMScreen.RaOptions -> handleRaOptionsKey(screen, keycode)
-            is IGMScreen.RaOptionsCategory -> handleRaCategoryKey(screen, keycode)
-            is IGMScreen.SavePrompt -> handleSavePromptKey(screen, keycode)
-            is IGMScreen.GuidePicker -> handleGuidePickerKey(screen, keycode)
-            is IGMScreen.Guide -> handleGuideKey(screen, keycode)
-            is IGMScreen.Achievements -> handleAchievementsKey(screen, keycode)
-            is IGMScreen.AchievementDetail -> handleAchievementDetailKey(screen, keycode)
+            is IGMScreen.Menu -> handleMenuKey(screen, normalized)
+            is IGMScreen.RaOptions -> handleRaOptionsKey(screen, normalized)
+            is IGMScreen.RaOptionsCategory -> handleRaCategoryKey(screen, normalized)
+            is IGMScreen.SavePrompt -> handleSavePromptKey(screen, normalized)
+            is IGMScreen.GuidePicker -> handleGuidePickerKey(screen, normalized)
+            is IGMScreen.Guide -> handleGuideKey(screen, normalized)
+            is IGMScreen.Achievements -> handleAchievementsKey(screen, normalized)
+            is IGMScreen.AchievementDetail -> handleAchievementDetailKey(screen, normalized)
             else -> {}
         }
     }

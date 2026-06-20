@@ -382,7 +382,12 @@ fun CannoliIGM(
                         },
                         selectedIndex = screen.selectedIndex.coerceAtMost((filtered.size - 1).coerceAtLeast(0)),
                         bottomBarLeft = listOf(labels.back to stringResource(dev.cannoli.ui.R.string.label_back)),
-                        bottomBarRight = listOf(labels.west to filterLabel, labels.confirm to stringResource(dev.cannoli.ui.R.string.label_details)),
+                        bottomBarRight = buildList {
+                            if (screen.achievements.any { it.unlocked } && screen.achievements.any { !it.unlocked }) {
+                                add(labels.west to filterLabel)
+                            }
+                            add(labels.confirm to stringResource(dev.cannoli.ui.R.string.label_details))
+                        },
                         coreInfo = screen.status,
                         fontSize = igmFontSize,
                         lineHeight = igmLineHeight
