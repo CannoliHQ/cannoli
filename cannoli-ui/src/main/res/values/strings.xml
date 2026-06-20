@@ -573,6 +573,7 @@
     <string name="igm_ra_save_platform">Save for Platform</string>
     <string name="igm_ra_save_game">Save for Game</string>
     <string name="igm_ra_dont_save">Don\'t Save</string>
+    <string name="igm_ra_native_menu">RetroArch Menu</string>
     <string name="title_guide">Guide</string>
 
     <!-- IGM info labels -->

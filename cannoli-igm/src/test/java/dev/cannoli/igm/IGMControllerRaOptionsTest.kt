@@ -82,16 +82,13 @@ class IGMControllerRaOptionsTest {
         assertEquals("9", c.settingsItems.value[0].value)
     }
 
-    @Test fun savePromptAppearsWhenDirtyAndPlatformSavesContentDir() {
+    @Test fun savePromptAppearsOnSettingsExitAndPlatformSavesContentDir() {
         val (c, bridge) = buildController()
         c.enterLatencyCategory()
         c.handleKeyDown(22)
 
-        c.handleKeyDown(97)
-        c.handleKeyDown(97)
-
-        c.onClose = {}
-        c.handleKeyDown(97)
+        c.handleKeyDown(97) // category -> RaOptions
+        c.handleKeyDown(97) // RaOptions (dirty) -> SavePrompt
 
         assertTrue(c.currentScreen is IGMScreen.SavePrompt)
         assertEquals(0, (c.currentScreen as IGMScreen.SavePrompt).selectedIndex)
@@ -99,6 +96,7 @@ class IGMControllerRaOptionsTest {
         c.handleKeyDown(96)
 
         assertEquals(listOf(RaOverrideScope.CONTENT_DIR), bridge.savedScopes)
+        assertTrue(c.currentScreen is IGMScreen.Menu)
     }
 
     @Test fun gameScopeSavesGameOverride() {
@@ -109,27 +107,21 @@ class IGMControllerRaOptionsTest {
         c.handleKeyDown(97)
         c.handleKeyDown(97)
 
-        c.onClose = {}
-        c.handleKeyDown(97)
-
         assertTrue(c.currentScreen is IGMScreen.SavePrompt)
 
         c.handleKeyDown(20)
         c.handleKeyDown(96)
 
         assertEquals(listOf(RaOverrideScope.GAME), bridge.savedScopes)
+        assertTrue(c.currentScreen is IGMScreen.Menu)
     }
 
-    @Test fun dontSaveClosesWithoutSaving() {
+    @Test fun dontSaveReturnsToMenuWithoutSaving() {
         val (c, bridge) = buildController()
         c.enterLatencyCategory()
         c.handleKeyDown(22)
 
         c.handleKeyDown(97)
-        c.handleKeyDown(97)
-
-        var closed = false
-        c.onClose = { closed = true }
         c.handleKeyDown(97)
 
         assertTrue(c.currentScreen is IGMScreen.SavePrompt)
@@ -139,21 +131,61 @@ class IGMControllerRaOptionsTest {
         c.handleKeyDown(96)
 
         assertTrue(bridge.savedScopes.isEmpty())
-        assertTrue(closed)
+        assertTrue(c.currentScreen is IGMScreen.Menu)
     }
 
-    @Test fun openMenuClearsDirty() {
+    @Test fun exitingCleanSettingsDoesNotPrompt() {
+        val (c, _) = buildController()
+        c.enterLatencyCategory()
+
+        c.handleKeyDown(97) // category -> RaOptions (no change made)
+        c.handleKeyDown(97) // RaOptions (clean) -> Menu
+
+        assertFalse(c.currentScreen is IGMScreen.SavePrompt)
+        assertTrue(c.currentScreen is IGMScreen.Menu)
+    }
+
+    @Test fun openMenuClearsDirtySoSettingsExitDoesNotPrompt() {
         val (c, _) = buildController()
         c.enterLatencyCategory()
         c.handleKeyDown(22)
 
         c.openMenu()
 
-        var closed = false
-        c.onClose = { closed = true }
+        c.push(IGMScreen.RaOptions(selectedIndex = 0))
         c.handleKeyDown(97)
 
-        assertTrue(closed)
         assertFalse(c.currentScreen is IGMScreen.SavePrompt)
+        assertTrue(c.currentScreen is IGMScreen.Menu)
+    }
+
+    @Test fun retroArchMenuEntryOpensNativeMenu() {
+        val (c, _) = buildController()
+        var opened = false
+        c.onOpenNativeMenu = { opened = true }
+        c.openMenu()
+        c.push(IGMScreen.RaOptions(selectedIndex = RaOptionCatalog.categories.size))
+
+        c.handleKeyDown(96)
+
+        assertTrue(opened)
+    }
+
+    @Test fun retroArchMenuEntryPromptsWhenDirtyThenOpens() {
+        val (c, bridge) = buildController()
+        var opened = false
+        c.onOpenNativeMenu = { opened = true }
+        c.enterLatencyCategory()
+        c.handleKeyDown(22)              // dirty
+        c.handleKeyDown(97)              // category -> RaOptions
+
+        c.replaceTop(IGMScreen.RaOptions(selectedIndex = RaOptionCatalog.categories.size))
+        c.handleKeyDown(96)             // select RetroArch Menu while dirty -> SavePrompt
+        assertTrue(c.currentScreen is IGMScreen.SavePrompt)
+        assertFalse(opened)
+
+        c.handleKeyDown(96)             // confirm Platform save
+        assertEquals(listOf(RaOverrideScope.CONTENT_DIR), bridge.savedScopes)
+        assertTrue(opened)
     }
 }
