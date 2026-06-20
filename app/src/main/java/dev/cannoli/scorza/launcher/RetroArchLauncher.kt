@@ -9,6 +9,7 @@ import android.net.Uri
 import androidx.core.content.FileProvider
 import dev.cannoli.igm.IgmColors
 import dev.cannoli.igm.IgmDisplaySettings
+import dev.cannoli.igm.IgmInputMapping
 import dev.cannoli.igm.RICOTTA_PROTOCOL_VERSION
 import dev.cannoli.igm.RicottaLaunchParams
 import java.io.File
@@ -29,6 +30,7 @@ data class RicottaIgm(
     val preferredRefreshRate: Int? = null,
     val colors: IgmColors? = null,
     val displaySettings: IgmDisplaySettings,
+    val inputMapping: IgmInputMapping? = null,
 )
 
 class RetroArchLauncher(
@@ -66,6 +68,7 @@ class RetroArchLauncher(
             preferredRefreshRate = igm.preferredRefreshRate,
             colors = igm.colors,
             displaySettings = igm.displaySettings,
+            inputMapping = igm.inputMapping,
         )
 
         val intent = Intent().apply {

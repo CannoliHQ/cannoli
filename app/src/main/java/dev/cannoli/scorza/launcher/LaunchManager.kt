@@ -11,6 +11,7 @@ import dev.cannoli.igm.TimeFormatMode
 import dev.cannoli.scorza.config.CannoliPaths
 import dev.cannoli.scorza.input.runtime.confirmButton
 import dev.cannoli.scorza.input.runtime.labelSet
+import dev.cannoli.scorza.launcher.toIgmInputMapping
 import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.libretro.LibretroActivity
 import dev.cannoli.scorza.libretro.SaveSlotManager
@@ -505,6 +506,7 @@ class LaunchManager(
                 buttonLabelSet = activeMappingHolder.active.value.labelSet(dev.cannoli.ui.ButtonLabelSet.PLUMBER),
                 confirmButton = activeMappingHolder.active.value.confirmButton(),
             ),
+            inputMapping = activeMappingHolder.active.value.toIgmInputMapping(),
         )
     }
 
