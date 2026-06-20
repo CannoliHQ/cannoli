@@ -51,6 +51,14 @@ class RicottaLaunchParamsTest {
             buttonLabelSet = ButtonLabelSet.PLUMBER,
             confirmButton = ConfirmButton.SOUTH,
         ),
+        inputMapping = dev.cannoli.igm.IgmInputMapping(
+            buttonKeycodes = mapOf(
+                dev.cannoli.igm.CanonicalButton.BTN_WEST to listOf(100),
+                dev.cannoli.igm.CanonicalButton.BTN_EAST to listOf(96),
+            ),
+            menuConfirm = dev.cannoli.igm.CanonicalButton.BTN_EAST,
+            menuBack = dev.cannoli.igm.CanonicalButton.BTN_SOUTH,
+        ),
     )
 
     private fun roundTrip(params: RicottaLaunchParams): RicottaLaunchParams {
@@ -66,7 +74,11 @@ class RicottaLaunchParamsTest {
 
     @Test fun `round trips all fields`() {
         val original = sample()
-        assertEquals(original, roundTrip(original))
+        val restored = roundTrip(original)
+        assertEquals(original, restored)
+        assertEquals(listOf(100), restored.inputMapping?.buttonKeycodes?.get(dev.cannoli.igm.CanonicalButton.BTN_WEST))
+        assertEquals(dev.cannoli.igm.CanonicalButton.BTN_EAST, restored.inputMapping?.menuConfirm)
+        assertEquals(dev.cannoli.igm.CanonicalButton.BTN_SOUTH, restored.inputMapping?.menuBack)
     }
 
     @Test fun `round trips null optional fields`() {
