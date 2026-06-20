@@ -400,19 +400,20 @@ class IGMController(
                     0 -> bridge.raSaveOverride(RaOverrideScope.CONTENT_DIR)
                     1 -> bridge.raSaveOverride(RaOverrideScope.GAME)
                 }
-                raDirty = false
-                pop()
-                if (raSaveThenNativeMenu) {
-                    raSaveThenNativeMenu = false
-                    onOpenNativeMenu?.invoke()
-                } else if (currentScreen is IGMScreen.RaOptions) {
-                    pop()
-                }
+                finishSavePrompt()
             }
-            97, 4 -> {
-                raSaveThenNativeMenu = false
-                pop()
-            }
+            97, 4 -> finishSavePrompt()
+        }
+    }
+
+    private fun finishSavePrompt() {
+        raDirty = false
+        pop()
+        if (raSaveThenNativeMenu) {
+            raSaveThenNativeMenu = false
+            onOpenNativeMenu?.invoke()
+        } else if (currentScreen is IGMScreen.RaOptions) {
+            pop()
         }
     }
 

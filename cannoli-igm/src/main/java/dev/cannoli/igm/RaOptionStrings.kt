@@ -5,8 +5,8 @@ data class RaOptionStrings(
     val off: String = "Off",
     val restartHint: String = "Applies on relaunch",
     val savePlatform: String = "Save for Platform",
-    val saveGame: String = "Save for Game",
-    val dontSave: String = "Don't Save",
+    val saveGame: String = "Save for this game",
+    val dontSave: String = "Discard",
     val nativeMenu: String = "RetroArch Menu",
     val categoryTitles: Map<String, String> = mapOf(
         "video" to "Video",

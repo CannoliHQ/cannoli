@@ -134,6 +134,21 @@ class IGMControllerRaOptionsTest {
         assertTrue(c.currentScreen is IGMScreen.Menu)
     }
 
+    @Test fun backOnSavePromptDiscardsAndReturnsToMenu() {
+        val (c, bridge) = buildController()
+        c.enterLatencyCategory()
+        c.handleKeyDown(22)
+
+        c.handleKeyDown(97) // category -> RaOptions
+        c.handleKeyDown(97) // RaOptions (dirty) -> SavePrompt
+        assertTrue(c.currentScreen is IGMScreen.SavePrompt)
+
+        c.handleKeyDown(97) // B on SavePrompt = discard + leave
+
+        assertTrue(bridge.savedScopes.isEmpty())
+        assertTrue(c.currentScreen is IGMScreen.Menu)
+    }
+
     @Test fun exitingCleanSettingsDoesNotPrompt() {
         val (c, _) = buildController()
         c.enterLatencyCategory()
