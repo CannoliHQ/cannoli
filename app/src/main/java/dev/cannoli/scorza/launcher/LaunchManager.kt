@@ -486,6 +486,7 @@ class LaunchManager(
             stateBasePath = stateBase.absolutePath,
             cannoliRoot = paths.root.absolutePath,
             platformTag = rom.platformTag,
+            platformName = platformConfig.getDisplayName(rom.platformTag),
             igmTriggerKeycodes = resolveMenuKeycodes(),
             colors = IgmColors(
                 highlight = settings.colorHighlight,

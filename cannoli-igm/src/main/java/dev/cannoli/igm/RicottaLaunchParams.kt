@@ -44,6 +44,7 @@ data class RicottaLaunchParams(
     val stateBasePath: String,
     val cannoliRoot: String,
     val platformTag: String,
+    val platformName: String,
     val igmTriggerKeycodes: List<Int>,
     val quitOnFocusLoss: Boolean,
     val preferredRefreshRate: Int?,
@@ -68,6 +69,7 @@ data class RicottaLaunchParams(
         dest.writeString(stateBasePath)
         dest.writeString(cannoliRoot)
         dest.writeString(platformTag)
+        dest.writeString(platformName)
         dest.writeIntArray(igmTriggerKeycodes.toIntArray())
         dest.writeInt(if (quitOnFocusLoss) 1 else 0)
         dest.writeInt(if (preferredRefreshRate != null) 1 else 0)
@@ -104,6 +106,7 @@ data class RicottaLaunchParams(
                 val stateBasePath = p.readString()!!
                 val cannoliRoot = p.readString()!!
                 val platformTag = p.readString()!!
+                val platformName = p.readString()!!
                 val igmTriggerKeycodes = (p.createIntArray() ?: IntArray(0)).toList()
                 val quitOnFocusLoss = p.readInt() != 0
                 val hasRefresh = p.readInt() != 0
@@ -116,7 +119,7 @@ data class RicottaLaunchParams(
                 val inputMapping = p.readParcelable<IgmInputMapping>(IgmInputMapping::class.java.classLoader)
                 return RicottaLaunchParams(
                     coreId, romPath, configFilePath, gameTitle, stateBasePath,
-                    cannoliRoot, platformTag, igmTriggerKeycodes, quitOnFocusLoss,
+                    cannoliRoot, platformTag, platformName, igmTriggerKeycodes, quitOnFocusLoss,
                     preferredRefreshRate, colors, displaySettings, inputMapping,
                 )
             }

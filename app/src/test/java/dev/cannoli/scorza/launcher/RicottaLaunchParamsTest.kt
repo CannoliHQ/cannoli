@@ -29,6 +29,7 @@ class RicottaLaunchParamsTest {
         stateBasePath = "/sd/cannoli/states/zelda",
         cannoliRoot = "/sd/cannoli",
         platformTag = "GB",
+        platformName = "Game Boy",
         igmTriggerKeycodes = listOf(4, 110),
         quitOnFocusLoss = true,
         preferredRefreshRate = 60,
