@@ -283,7 +283,7 @@
     <string name="romm_qm_advanced">Advanced</string>
     <string name="romm_qm_firmware">Firmware</string>
     <string name="romm_qm_rebuild">Rebuild Cache</string>
-    <string name="romm_actions_title">Actions</string>
+    <string name="romm_actions_title">RomM Quick Menu</string>
     <string name="romm_settings_title">RomM Settings</string>
     <string name="romm_return_to_cannoli">Return to Cannoli</string>
     <string name="romm_platforms_title">Show Platforms</string>
