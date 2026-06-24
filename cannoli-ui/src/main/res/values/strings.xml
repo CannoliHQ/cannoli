@@ -252,7 +252,7 @@
     <string name="romm_syncing">Building cache...</string>
     <string name="romm_syncing_platform">Building cache...\n%1$s</string>
     <string name="romm_sync_error">Could not reach RomM. Showing cached library.</string>
-    <string name="romm_downloads_title">Downloads</string>
+    <string name="romm_download_queue">Download Queue</string>
     <string name="romm_download_queued">Queued</string>
     <string name="romm_download_downloading">Downloading</string>
     <string name="romm_download_failed">Failed</string>
@@ -273,7 +273,6 @@
     <string name="romm_art_notification_active">Downloading box art</string>
     <string name="label_retry">RETRY</string>
     <string name="label_cancel_all">CANCEL ALL</string>
-    <string name="label_downloads">DOWNLOADS</string>
 
     <string name="romm_qm_concurrent">Concurrent Downloads</string>
     <string name="romm_qm_cover_art">Cover Art</string>

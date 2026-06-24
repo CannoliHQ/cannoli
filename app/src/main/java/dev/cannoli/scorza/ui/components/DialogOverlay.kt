@@ -1,9 +1,6 @@
 package dev.cannoli.scorza.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.ui.draw.clip
-import dev.cannoli.ui.theme.Radius
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,7 +15,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -42,8 +38,11 @@ import dev.cannoli.ui.components.ColorPickerOverlay
 import dev.cannoli.ui.components.HexColorInputOverlay
 import dev.cannoli.ui.components.KeyboardOverlay
 import dev.cannoli.ui.components.List
+import dev.cannoli.ui.components.ListSection
+import dev.cannoli.ui.components.PillRowInfo
 import dev.cannoli.ui.components.PillRowKeyValue
 import dev.cannoli.ui.components.PillRowText
+import dev.cannoli.ui.components.SectionedList
 import dev.cannoli.ui.components.RAAccountOverlay
 import dev.cannoli.ui.components.RALoggingInOverlay
 import dev.cannoli.ui.components.RommConnectedOverlay
@@ -444,7 +443,7 @@ fun DialogOverlay(
             ListDialogScreen(
                 backgroundImagePath = null,
                 backgroundTint = backgroundTint,
-                title = stringResource(R.string.romm_downloads_title),
+                title = stringResource(R.string.romm_download_queue),
                 listFontSize = listFontSize,
                 listLineHeight = listLineHeight,
                 rightBottomItems = buildList {
@@ -456,11 +455,22 @@ fun DialogOverlay(
                 if (ordered.isEmpty()) {
                     Text(stringResource(R.string.romm_download_empty), color = colors.text.copy(alpha = 0.5f), fontFamily = font, fontSize = listFontSize)
                 } else {
-                    List(items = ordered, selectedIndex = dialogState.selectedIndex, itemHeight = itemHeight) { index, item, isSelected ->
-                        if (index == firstDoneIndex) {
-                            DownloadSectionHeader(stringResource(R.string.romm_download_completed), listFontSize)
-                        }
-                        DownloadRow(item, isSelected, listFontSize)
+                    val active = if (firstDoneIndex < 0) ordered else ordered.subList(0, firstDoneIndex)
+                    val done = if (firstDoneIndex < 0) emptyList() else ordered.subList(firstDoneIndex, ordered.size)
+                    val completedHeader = stringResource(R.string.romm_download_completed).uppercase()
+                    val sections = buildList {
+                        if (active.isNotEmpty()) add(ListSection(header = null, items = active))
+                        if (done.isNotEmpty()) add(ListSection(header = completedHeader, items = done))
+                    }
+                    SectionedList(
+                        sections = sections,
+                        selectedIndex = dialogState.selectedIndex,
+                        fontSize = listFontSize,
+                        lineHeight = listLineHeight,
+                        verticalPadding = listVerticalPadding,
+                        itemHeight = itemHeight,
+                    ) { _, item, isSelected ->
+                        DownloadRow(item, isSelected, listFontSize, listLineHeight, listVerticalPadding)
                     }
                 }
             }
@@ -471,52 +481,35 @@ fun DialogOverlay(
 }
 
 @Composable
-private fun DownloadSectionHeader(text: String, fontSize: TextUnit) {
-    val colors = LocalCannoliColors.current
-    val font = LocalCannoliFont.current
-    Text(
-        text = text.uppercase(),
-        color = colors.text.copy(alpha = 0.45f),
-        fontFamily = font,
-        fontSize = (fontSize.value * 0.7f).sp,
-        letterSpacing = 1.5.sp,
-        modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 12.dp, bottom = 4.dp),
-    )
-}
-
-@Composable
-private fun DownloadRow(item: RommDownloadItem, isSelected: Boolean, fontSize: TextUnit) {
+private fun DownloadRow(item: RommDownloadItem, isSelected: Boolean, fontSize: TextUnit, lineHeight: TextUnit, verticalPadding: Dp) {
     val colors = LocalCannoliColors.current
     val font = LocalCannoliFont.current
     val text = if (isSelected) colors.highlightText else colors.text
     val muted = text.copy(alpha = 0.55f)
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 2.dp)
-            .then(if (isSelected) Modifier.clip(Radius.Pill).background(colors.highlight) else Modifier)
-            .padding(horizontal = 12.dp, vertical = 6.dp)
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val label = if (item.kind == RommDownloadKind.MANUAL)
+        "${item.displayName}  ·  ${stringResource(R.string.romm_download_manual)}"
+    else item.displayName
+    PillRowInfo(
+        label = label,
+        isSelected = isSelected,
+        fontSize = fontSize,
+        lineHeight = lineHeight,
+        verticalPadding = verticalPadding
     ) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            val label = if (item.kind == RommDownloadKind.MANUAL)
-                "${item.displayName}  ·  ${stringResource(R.string.romm_download_manual)}"
-            else item.displayName
-            Text(label, color = text, fontFamily = font, fontSize = fontSize, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-            val context = androidx.compose.ui.platform.LocalContext.current
-            if (item.status == DownloadStatus.Done) {
-                Text(ICON_CHECK_CIRCLE, color = text, fontFamily = LocalCannoliIconFont.current, fontSize = (fontSize.value * 0.9f).sp)
-            } else {
-                val right = when (val s = item.status) {
-                    is DownloadStatus.Downloading ->
-                        if (s.total > 0) stringResource(R.string.download_percent, (s.downloaded * 100 / s.total).coerceAtMost(100))
-                        else if (s.downloaded > 0) android.text.format.Formatter.formatShortFileSize(context, s.downloaded)
-                        else stringResource(R.string.romm_download_downloading)
-                    DownloadStatus.Queued -> stringResource(R.string.romm_download_queued)
-                    is DownloadStatus.Failed -> stringResource(R.string.romm_download_failed)
-                    else -> ""
-                }
-                Text(right, color = muted, fontFamily = font, fontSize = (fontSize.value * 0.8f).sp)
+        if (item.status == DownloadStatus.Done) {
+            Text(ICON_CHECK_CIRCLE, color = text, fontFamily = LocalCannoliIconFont.current, fontSize = (fontSize.value * 0.9f).sp)
+        } else {
+            val right = when (val s = item.status) {
+                is DownloadStatus.Downloading ->
+                    if (s.total > 0) stringResource(R.string.download_percent, (s.downloaded * 100 / s.total).coerceAtMost(100))
+                    else if (s.downloaded > 0) android.text.format.Formatter.formatShortFileSize(context, s.downloaded)
+                    else stringResource(R.string.romm_download_downloading)
+                DownloadStatus.Queued -> stringResource(R.string.romm_download_queued)
+                is DownloadStatus.Failed -> stringResource(R.string.romm_download_failed)
+                else -> ""
             }
+            Text(right, color = muted, fontFamily = font, fontSize = (fontSize.value * 0.8f).sp)
         }
     }
 }
@@ -532,7 +525,7 @@ private fun quickMenuLabel(row: dev.cannoli.scorza.ui.quickmenu.QuickMenuRow): S
 val ROMM_ADVANCED_ROWS = listOf(R.string.romm_qm_refresh, R.string.romm_qm_rebuild, R.string.romm_qm_download_art)
 
 enum class RommActionRow(@androidx.annotation.StringRes val labelRes: Int) {
-    DOWNLOADS(R.string.label_downloads),
+    DOWNLOADS(R.string.romm_download_queue),
     RETURN_TO_CANNOLI(R.string.romm_return_to_cannoli),
     ;
     companion object {
