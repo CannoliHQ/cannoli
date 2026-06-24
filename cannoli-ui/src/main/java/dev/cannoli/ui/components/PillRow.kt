@@ -265,6 +265,50 @@ fun PillRowKeyValue(
     }
 }
 
+@Composable
+fun PillRowInfo(
+    label: String,
+    isSelected: Boolean,
+    fontSize: TextUnit,
+    lineHeight: TextUnit,
+    verticalPadding: Dp,
+    trailing: @Composable () -> Unit
+) {
+    val colors = LocalCannoliColors.current
+    val baseStyle = MaterialTheme.typography.bodyLarge
+    val textStyle = remember(baseStyle, fontSize, lineHeight) {
+        baseStyle.copy(fontSize = fontSize, lineHeight = lineHeight)
+    }
+    val textColor = if (isSelected) colors.highlightText else colors.text
+
+    val scrollState = rememberScrollState()
+    MarqueeEffect(scrollState, isSelected, key = label to isSelected)
+
+    PillRow(isSelected = isSelected, verticalPadding = verticalPadding, lineHeight = lineHeight, modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .horizontalScroll(scrollState),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = label,
+                    style = textStyle,
+                    color = textColor,
+                    maxLines = 1,
+                    softWrap = false
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            trailing()
+        }
+    }
+}
+
 /** The shared multi-select checkbox glyph used by every list row. Call inside a [Row]. */
 @Composable
 fun PillCheckGlyph(checked: Boolean, style: TextStyle, color: Color) {
