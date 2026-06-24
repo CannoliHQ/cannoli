@@ -1,6 +1,8 @@
 package dev.cannoli.scorza.ui.viewmodel
 
 import dev.cannoli.scorza.romm.LocalState
+import dev.cannoli.scorza.romm.RommCollection
+import dev.cannoli.scorza.romm.RommCollectionGroup
 import dev.cannoli.scorza.romm.RommFirmware
 import dev.cannoli.scorza.romm.RommGame
 import dev.cannoli.scorza.romm.RommLibrary
@@ -26,7 +28,12 @@ class RommBrowseViewModel(
     private val hiddenTagsProvider: () -> Set<String> = { emptySet() },
     private val firmwareFor: (platformId: Int) -> List<RommFirmware> = { emptyList() },
     private val biosDirFor: (tag: String) -> java.io.File = { java.io.File("") },
+    private val enabledCollectionGroups: () -> Set<RommCollectionGroup> = { setOf(RommCollectionGroup.USER) },
+    private val collectionPageSize: Int = RommLibrary.PAGE_SIZE,
 ) {
+
+    data class RommCollectionGameRow(val game: RommGame, val localState: LocalState, val platform: RommPlatform)
+
     private val _platforms = MutableStateFlow<List<RommPlatform>>(emptyList())
     val platforms: StateFlow<List<RommPlatform>> = _platforms
 
@@ -41,6 +48,15 @@ class RommBrowseViewModel(
 
     private val _loadedPlatformId = MutableStateFlow<Int?>(null)
     val loadedPlatformId: StateFlow<Int?> = _loadedPlatformId
+
+    private val _collections = MutableStateFlow<List<RommCollection>>(emptyList())
+    val collections: StateFlow<List<RommCollection>> = _collections
+
+    private val _collectionGames = MutableStateFlow<List<RommCollectionGameRow>>(emptyList())
+    val collectionGames: StateFlow<List<RommCollectionGameRow>> = _collectionGames
+
+    private val _loadedCollectionId = MutableStateFlow<String?>(null)
+    val loadedCollectionId: StateFlow<String?> = _loadedCollectionId
 
     private val _multiSelect = MutableStateFlow(false)
     val multiSelect: StateFlow<Boolean> = _multiSelect
@@ -58,6 +74,11 @@ class RommBrowseViewModel(
     private var page = 0
     private var hasMore = false
     private var searchTerm: String? = null
+
+    private var currentCollectionId: String? = null
+    private var collectionPage = 0
+    private var collectionHasMore = false
+    private var collectionSearchTerm: String? = null
 
     suspend fun loadPlatforms() {
         val sortedFull = library.platforms().sortedNatural { it.displayName }
@@ -106,18 +127,51 @@ class RommBrowseViewModel(
         _games.value = _games.value + loadPage(platform, page, searchTerm)
     }
 
+    suspend fun loadCollections() {
+        _collections.value = library.collections(enabledCollectionGroups())
+    }
+
+    fun hasAnyCollections(): Boolean = _collections.value.isNotEmpty()
+
+    fun flattenedCollections(): List<RommCollection> =
+        RommCollectionGroup.entries.flatMap { group -> _collections.value.filter { it.group == group } }
+
+    suspend fun openCollection(collection: RommCollection, search: String? = null) {
+        _loadedCollectionId.value = collection.id
+        val database = db ?: return
+        val platformsById = database.platforms().associateBy { it.id }
+        currentCollectionId = collection.id
+        collectionPage = 0
+        collectionSearchTerm = search
+        val games = database.gamesForCollection(collection.id, search, collectionPageSize, 0)
+        collectionHasMore = games.size == collectionPageSize
+        _collectionGames.value = games.mapNotNull { game ->
+            val platform = platformsById[game.platformId] ?: return@mapNotNull null
+            RommCollectionGameRow(game, localStateFor(game, platform), platform)
+        }
+    }
+
+    suspend fun loadMoreCollection() {
+        if (!collectionHasMore) return
+        val id = currentCollectionId ?: return
+        val database = db ?: return
+        val platformsById = database.platforms().associateBy { it.id }
+        collectionPage += 1
+        val offset = collectionPage * collectionPageSize
+        val games = database.gamesForCollection(id, collectionSearchTerm, collectionPageSize, offset)
+        collectionHasMore = games.size == collectionPageSize
+        _collectionGames.value = _collectionGames.value + games.mapNotNull { game ->
+            val platform = platformsById[game.platformId] ?: return@mapNotNull null
+            RommCollectionGameRow(game, localStateFor(game, platform), platform)
+        }
+    }
+
     suspend fun refreshLocalState() {
         val platform = current ?: return
         val rows = _games.value
         if (rows.isEmpty()) return
         val updated = withContext(Dispatchers.IO) {
-            val present = presentNamesFor(platform.cannoliTag)
-            val linkedIds = linkedIdsProvider()
-            rows.map { row ->
-                val state = if (row.game.id in linkedIds) LocalState.PRESENT
-                else RommLocalState.of(row.game.fsName, present)
-                row.copy(localState = state)
-            }
+            rows.map { row -> row.copy(localState = localStateFor(row.game, platform)) }
         }
         _games.value = updated
     }
@@ -177,19 +231,19 @@ class RommBrowseViewModel(
     private fun isCheckable(id: Int): Boolean =
         _games.value.any { it.game.id == id && it.localState == LocalState.REMOTE }
 
+    private fun localStateFor(game: RommGame, platform: RommPlatform): LocalState {
+        val linkedIds = linkedIdsProvider()
+        return if (game.id in linkedIds) LocalState.PRESENT
+        else RommLocalState.of(game.fsName, presentNamesFor(platform.cannoliTag))
+    }
+
     private suspend fun loadPage(platform: RommPlatform, page: Int, search: String?): List<RommGameRow> {
         val pageData = library.games(platform, page, search)
         hasMore = pageData.hasMore
         return withContext(Dispatchers.IO) {
-            val present = presentNamesFor(platform.cannoliTag)
-            val linkedIds = linkedIdsProvider()
             pageData.items
                 .sortedNatural { it.name }
-                .map { game ->
-                    val state = if (game.id in linkedIds) LocalState.PRESENT
-                    else RommLocalState.of(game.fsName, present)
-                    RommGameRow(game, state)
-                }
+                .map { game -> RommGameRow(game, localStateFor(game, platform)) }
         }
     }
 }

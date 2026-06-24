@@ -62,7 +62,8 @@ object RommModule {
         client: RommClient,
         platformMap: PlatformMap,
         db: RommDatabase,
-    ): RommSyncCoordinator = RommSyncCoordinator(client, platformMap, db)
+        rommStore: RommConnectionStore,
+    ): RommSyncCoordinator = RommSyncCoordinator(client, platformMap, db, enabledGroups = { rommStore.enabledCollectionGroups() })
 
     @Provides @Singleton
     fun provideRommLibrary(db: RommDatabase): RommLibrary =
@@ -78,6 +79,7 @@ object RommModule {
         settings: dev.cannoli.scorza.settings.SettingsRepository,
         client: RommClient,
         paths: CannoliPathsProvider,
+        rommStore: RommConnectionStore,
     ): RommBrowseViewModel =
         RommBrowseViewModel(
             library = library,
@@ -88,6 +90,7 @@ object RommModule {
             hiddenTagsProvider = { settings.hiddenRommPlatforms },
             firmwareFor = { platformId -> client.getFirmware(platformId) },
             biosDirFor = { tag -> dev.cannoli.scorza.config.CannoliPaths(paths.root).biosFor(tag) },
+            enabledCollectionGroups = { rommStore.enabledCollectionGroups() },
         )
 
     @Provides @Singleton
