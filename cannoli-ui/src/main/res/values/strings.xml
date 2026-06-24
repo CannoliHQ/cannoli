@@ -8,7 +8,6 @@
     <string name="label_play">PLAY</string>
     <string name="label_launch">LAUNCH</string>
     <string name="label_open">OPEN</string>
-    <string name="label_scan">SCAN</string>
     <string name="label_save">SAVE</string>
     <string name="label_load">LOAD</string>
     <string name="label_change">CHANGE</string>
@@ -207,7 +206,6 @@
     <string name="setting_ra_package">RetroArch Package</string>
     <string name="setting_rebuild_cache">Rebuild Cache</string>
     <string name="setting_scan_library">Scan Mode</string>
-    <string name="setting_refresh_library">Refresh Library</string>
     <string name="value_automatically">Automatic</string>
     <string name="value_manually">Manual</string>
     <string name="setting_ra_username">Username</string>

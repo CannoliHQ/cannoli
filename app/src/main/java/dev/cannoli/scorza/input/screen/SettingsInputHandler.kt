@@ -98,7 +98,11 @@ class SettingsInputHandler @Inject constructor(
                 if (settings.raToken.isNotEmpty()) nav.dialogState.value = DialogState.RAAccount(username = settings.raUsername)
                 else settingsViewModel.enterSubCategory("retroachievements", dev.cannoli.scorza.R.string.settings_retroachievements)
             }
-            "integrations_romm" -> settingsViewModel.enterSubCategory("romm", dev.cannoli.scorza.R.string.settings_romm)
+            "integrations_romm" -> {
+                if (rommStore.token.isNullOrEmpty()) settingsViewModel.enterSubCategory("romm", dev.cannoli.scorza.R.string.settings_romm)
+                else nav.dialogState.value = DialogState.RommConnected(
+                    host = rommStore.host, username = rommStore.username, version = rommStore.serverVersion)
+            }
             "status_bar" -> settingsViewModel.enterSubCategory("status_bar", dev.cannoli.scorza.R.string.settings_status_bar)
             "fgh_collection" -> settingsViewModel.enterSubCategory(
                 "fgh_collection_picker",
@@ -130,13 +134,6 @@ class SettingsInputHandler @Inject constructor(
             }
             "manage_tools" -> openAppPicker("tools")
             "manage_ports" -> openAppPicker("ports")
-            "refresh_library" -> {
-                settingsViewModel.save()
-                settingsViewModel.exitSubList()
-                nav.screenStack.clear()
-                nav.screenStack.add(LauncherScreen.SystemList)
-                launcherActions.rescanSystemList()
-            }
             "ra_username" -> {
                 val current = settings.raUsername
                 nav.dialogState.value = DialogState.RenameInput(

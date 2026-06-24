@@ -119,8 +119,7 @@ fun SettingsScreen(
             } else if (showClear) {
                 listOf(buttonStyle.north to stringResource(R.string.label_clear))
             } else if (isNavInto) {
-                val labelRes = if (selectedItem?.key == "refresh_library") R.string.label_scan else R.string.label_open
-                listOf(buttonStyle.confirm to stringResource(labelRes))
+                listOf(buttonStyle.confirm to stringResource(R.string.label_open))
             } else {
                 emptyList()
             }

@@ -724,7 +724,6 @@ class SettingsViewModel @Inject constructor(
             add(SettingsItem("manage_tools", R.string.setting_manage_tools, isEditable = true))
             val scanRes = if (settings.scanLibraryAutomatically) R.string.value_automatically else R.string.value_manually
             add(SettingsItem("scan_library", R.string.setting_scan_library, valueRes = scanRes))
-            add(SettingsItem("refresh_library", R.string.setting_refresh_library, isEditable = true, canCycle = false))
             add(SettingsItem("sd_root", R.string.setting_sd_root, valueText = settings.sdCardRoot, isEditable = true))
             val romDir = settings.romDirectory
             add(SettingsItem("rom_directory", R.string.setting_rom_directory, valueText = romDir.ifEmpty { null }, valueRes = if (romDir.isEmpty()) R.string.value_cannoli_root else null, isEditable = true, canCycle = false))
