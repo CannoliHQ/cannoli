@@ -114,7 +114,9 @@ fun RommPlatformListScreen(
             }
             BottomBar(
                 modifier = Modifier.align(Alignment.BottomCenter),
-                leftItems = listOf(buttonStyle.back to stringResource(R.string.label_back)),
+                leftItems = listOf(
+                    buttonStyle.north to stringResource(R.string.label_settings),
+                ),
                 rightItems = listOf(buttonStyle.confirm to stringResource(R.string.label_select)),
             )
         }

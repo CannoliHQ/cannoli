@@ -593,6 +593,7 @@ class DialogInputHandler @Inject constructor(
             }
             dev.cannoli.scorza.ui.components.RommActionRow.RETURN_TO_CANNOLI -> {
                 nav.dialogState.value = DialogState.None
+                rommDownloader.clearFinished()
                 while (isRommScreen()) nav.pop()
             }
             else -> {}
@@ -818,7 +819,7 @@ class DialogInputHandler @Inject constructor(
     override fun onNorth(): Boolean {
         val ds = nav.dialogState.value
         if (ds == DialogState.None) {
-            if (isRommScreen()) {
+            if (nav.currentScreen is LauncherScreen.RommPlatformList) {
                 nav.dialogState.value = DialogState.RommSettingsMenu(
                     concurrent = settings.concurrentDownloads,
                     artType = rommStore.artType,

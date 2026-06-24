@@ -384,10 +384,7 @@ class InputRouter @Inject constructor(
             val platform = rommBrowseViewModel.platforms.value.getOrNull(selectedIndex) ?: return@scrollable
             nav.push(LauncherScreen.RommGameList(platform = platform))
         },
-        onBack = {
-            rommDownloader.clearFinished()
-            nav.pop()
-        },
+        onBack = {},
         onR1 = {
             nav.dialogState.value = DialogState.RenameInput(
                 gameName = "romm_global_search",
