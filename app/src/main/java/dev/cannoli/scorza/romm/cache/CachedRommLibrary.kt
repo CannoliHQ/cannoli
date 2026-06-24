@@ -1,5 +1,7 @@
 package dev.cannoli.scorza.romm.cache
 
+import dev.cannoli.scorza.romm.RommCollection
+import dev.cannoli.scorza.romm.RommCollectionGroup
 import dev.cannoli.scorza.romm.RommGame
 import dev.cannoli.scorza.romm.RommLibrary
 import dev.cannoli.scorza.romm.RommPage
@@ -26,4 +28,7 @@ class CachedRommLibrary(private val db: RommDatabase) : RommLibrary {
 
     override suspend fun searchAll(query: RommSearchQuery): List<RommGame> =
         withContext(Dispatchers.IO) { db.searchAllGames(query) }
+
+    override suspend fun collections(groups: Set<RommCollectionGroup>): List<RommCollection> =
+        withContext(Dispatchers.IO) { db.collections(groups) }
 }

@@ -2,6 +2,8 @@ package dev.cannoli.scorza.romm.cache
 
 import dev.cannoli.scorza.romm.PlatformMap
 import dev.cannoli.scorza.romm.RommClient
+import dev.cannoli.scorza.romm.RommCollection
+import dev.cannoli.scorza.romm.RommCollectionGroup
 import dev.cannoli.scorza.romm.RommLibrary
 import dev.cannoli.scorza.romm.toDomain
 import dev.cannoli.scorza.util.ScanLog
@@ -16,6 +18,7 @@ class RommSyncCoordinator(
     private val client: RommClient,
     private val platformMap: PlatformMap,
     private val db: RommDatabase,
+    private val enabledGroups: () -> Set<RommCollectionGroup> = { setOf(RommCollectionGroup.USER) },
 ) {
     enum class SyncStatus { IDLE, SYNCING, ERROR }
 
@@ -81,6 +84,17 @@ class RommSyncCoordinator(
                         if (stale.isNotEmpty()) db.deleteGames(stale)
                     }
                 }.onFailure { ScanLog.write("romm purge deleted games failed: ${it.message}") }
+                runCatching {
+                    val groups = enabledGroups()
+                    val seen = mutableSetOf<String>()
+                    for (group in groups) {
+                        val fetched = client.getCollections(group)
+                        db.upsertCollections(fetched.map { RommCollection(it.id, it.group, it.name, it.romCount) to null })
+                        fetched.forEach { db.setCollectionMembers(it.id, it.romIds); seen.add(it.id) }
+                    }
+                    val stale = db.allCollectionIds() - seen
+                    if (stale.isNotEmpty()) db.deleteCollections(stale)
+                }.onFailure { ScanLog.write("romm collection sync failed: ${it.message}") }
 
                 RommSyncPlanner.nextCursor(cursor, ingested)?.let { db.setSyncState(KEY_CURSOR, it) }
                 _status.value = SyncStatus.IDLE

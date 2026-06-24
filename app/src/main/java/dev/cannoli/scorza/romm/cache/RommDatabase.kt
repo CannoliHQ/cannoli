@@ -6,6 +6,8 @@ import androidx.sqlite.execSQL
 import dev.cannoli.scorza.db.execute
 import dev.cannoli.scorza.db.queryAll
 import dev.cannoli.scorza.db.queryOne
+import dev.cannoli.scorza.romm.RommCollection
+import dev.cannoli.scorza.romm.RommCollectionGroup
 import dev.cannoli.scorza.romm.RommGame
 import dev.cannoli.scorza.romm.RommPlatform
 import dev.cannoli.scorza.romm.RommSearchQuery
@@ -36,6 +38,8 @@ class RommDatabase(private val dbFileProvider: () -> File) {
             c.execSQL("DROP TABLE IF EXISTS platforms")
             c.execSQL("DROP TABLE IF EXISTS games")
             c.execSQL("DROP TABLE IF EXISTS sync_state")
+            c.execSQL("DROP TABLE IF EXISTS collections")
+            c.execSQL("DROP TABLE IF EXISTS collection_roms")
         }
         c.execSQL("""
             CREATE TABLE IF NOT EXISTS platforms (
@@ -78,6 +82,24 @@ class RommDatabase(private val dbFileProvider: () -> File) {
                 value TEXT
             )
         """.trimIndent())
+        c.execSQL("""
+            CREATE TABLE IF NOT EXISTS collections (
+                id TEXT PRIMARY KEY,
+                coll_group TEXT NOT NULL,
+                name TEXT NOT NULL,
+                rom_count INTEGER NOT NULL DEFAULT 0,
+                sort_key TEXT NOT NULL DEFAULT '',
+                updated_at TEXT
+            )
+        """.trimIndent())
+        c.execSQL("""
+            CREATE TABLE IF NOT EXISTS collection_roms (
+                collection_id TEXT NOT NULL,
+                rom_id INTEGER NOT NULL,
+                PRIMARY KEY (collection_id, rom_id)
+            )
+        """.trimIndent())
+        c.execSQL("CREATE INDEX IF NOT EXISTS idx_collection_roms_collection ON collection_roms(collection_id)")
         c.execSQL("PRAGMA user_version = $SCHEMA_VERSION")
     }
 
@@ -250,14 +272,91 @@ class RommDatabase(private val dbFileProvider: () -> File) {
             c.execSQL("DELETE FROM games")
             c.execSQL("DELETE FROM platforms")
             c.execSQL("DELETE FROM sync_state")
+            c.execSQL("DELETE FROM collections")
+            c.execSQL("DELETE FROM collection_roms")
+            c.execSQL("COMMIT")
+        } catch (t: Throwable) { c.execSQL("ROLLBACK"); throw t }
+    }
+
+    fun upsertCollections(rows: List<Pair<RommCollection, String?>>) = withConn { c ->
+        c.execSQL("BEGIN")
+        try {
+            for ((coll, updatedAt) in rows) {
+                c.execute(
+                    "INSERT OR REPLACE INTO collections (id, coll_group, name, rom_count, sort_key, updated_at) VALUES (?,?,?,?,?,?)",
+                    coll.id, coll.group.name, coll.name, coll.romCount, TextNormalizer.normalize(coll.name), updatedAt,
+                )
+            }
+            c.execSQL("COMMIT")
+        } catch (t: Throwable) { c.execSQL("ROLLBACK"); throw t }
+    }
+
+    fun setCollectionMembers(collectionId: String, romIds: List<Int>) = withConn { c ->
+        c.execSQL("BEGIN")
+        try {
+            c.execute("DELETE FROM collection_roms WHERE collection_id = ?", collectionId)
+            for (rid in romIds) {
+                c.execute("INSERT OR IGNORE INTO collection_roms (collection_id, rom_id) VALUES (?,?)", collectionId, rid)
+            }
+            c.execSQL("COMMIT")
+        } catch (t: Throwable) { c.execSQL("ROLLBACK"); throw t }
+    }
+
+    fun collections(groups: Set<RommCollectionGroup>): List<RommCollection> = withConn { c ->
+        if (groups.isEmpty()) return@withConn emptyList()
+        val placeholders = groups.joinToString(",") { "?" }
+        val args: Array<Any?> = groups.map { it.name }.toTypedArray()
+        c.queryAll(
+            """SELECT c.id, c.coll_group, c.name, c.rom_count FROM collections c
+               WHERE c.coll_group IN ($placeholders)
+                 AND EXISTS (SELECT 1 FROM collection_roms cr JOIN games g ON g.id = cr.rom_id WHERE cr.collection_id = c.id)
+               ORDER BY c.sort_key""",
+            *args,
+            mapper = { stmt ->
+                RommCollection(stmt.getText(0), RommCollectionGroup.valueOf(stmt.getText(1)), stmt.getText(2), stmt.getInt(3))
+            },
+        )
+    }
+
+    fun gamesForCollection(collectionId: String, search: String?, limit: Int, offset: Int): List<RommGame> = withConn { c ->
+        val like = search?.let { TextNormalizer.normalize(it) }?.takeIf { it.isNotEmpty() }?.let { "%$it%" }
+        val sql = buildString {
+            append("SELECT g.id, g.platform_id, g.name, g.fs_name, g.size_bytes, g.summary, g.revision, g.regions, g.languages, g.companies, g.genres, g.game_modes, g.first_release_date, g.cover_path, g.files_json, g.ss_media_json ")
+            append("FROM games g JOIN collection_roms cr ON cr.rom_id = g.id WHERE cr.collection_id = ?")
+            if (like != null) append(" AND g.name_normalized LIKE ?")
+            append(" ORDER BY g.sort_key LIMIT ? OFFSET ?")
+        }
+        val args: Array<Any?> = if (like != null) arrayOf(collectionId, like, limit, offset) else arrayOf(collectionId, limit, offset)
+        c.queryAll(sql, *args, mapper = ::rowToGame)
+    }
+
+    fun gamesForCollectionCount(collectionId: String, search: String?): Int = withConn { c ->
+        val like = search?.let { TextNormalizer.normalize(it) }?.takeIf { it.isNotEmpty() }?.let { "%$it%" }
+        val sql = if (like != null)
+            "SELECT COUNT(*) FROM collection_roms cr JOIN games g ON g.id = cr.rom_id WHERE cr.collection_id = ? AND g.name_normalized LIKE ?"
+        else
+            "SELECT COUNT(*) FROM collection_roms cr JOIN games g ON g.id = cr.rom_id WHERE cr.collection_id = ?"
+        val args: Array<Any?> = if (like != null) arrayOf(collectionId, like) else arrayOf(collectionId)
+        c.queryOne(sql, *args) { it.getInt(0) } ?: 0
+    }
+
+    fun allCollectionIds(): Set<String> = withConn { c ->
+        c.queryAll("SELECT id FROM collections", mapper = { it.getText(0) }).toSet()
+    }
+
+    fun deleteCollections(ids: Set<String>) = withConn { c ->
+        c.execSQL("BEGIN")
+        try {
+            ids.forEach { id ->
+                c.execute("DELETE FROM collections WHERE id = ?", id)
+                c.execute("DELETE FROM collection_roms WHERE collection_id = ?", id)
+            }
             c.execSQL("COMMIT")
         } catch (t: Throwable) { c.execSQL("ROLLBACK"); throw t }
     }
 
     private companion object {
-        // Pre-release: schema/cache changes are handled by deleting the cache DB, not version bumps.
-        // A mismatch with an older on-device version still triggers a one-time rebuild.
-        const val SCHEMA_VERSION = 2
+        const val SCHEMA_VERSION = 1
         const val GLOBAL_SEARCH_LIMIT = 300
     }
 }

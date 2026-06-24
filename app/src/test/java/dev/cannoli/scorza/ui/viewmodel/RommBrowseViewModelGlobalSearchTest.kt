@@ -1,6 +1,8 @@
 package dev.cannoli.scorza.ui.viewmodel
 
 import dev.cannoli.scorza.romm.LocalState
+import dev.cannoli.scorza.romm.RommCollection
+import dev.cannoli.scorza.romm.RommCollectionGroup
 import dev.cannoli.scorza.romm.RommGame
 import dev.cannoli.scorza.romm.RommLibrary
 import dev.cannoli.scorza.romm.RommPage
@@ -27,6 +29,7 @@ class RommBrowseViewModelGlobalSearchTest {
             game(1, 1, "Super Mario World", "smw.sfc"),
             game(2, 2, "Mario Kart", "mk.gba"),
         )
+        override suspend fun collections(groups: Set<RommCollectionGroup>) = emptyList<RommCollection>()
     }
 
     @Test fun `global search returns natural-sorted rows with remote state`() = runBlocking {

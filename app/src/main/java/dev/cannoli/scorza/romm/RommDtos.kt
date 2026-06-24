@@ -97,6 +97,22 @@ data class FirmwareDto(
 )
 
 @Serializable
+data class CollectionDto(
+    val id: Int,
+    val name: String = "",
+    @SerialName("rom_ids") val romIds: List<Int> = emptyList(),
+    @SerialName("rom_count") val romCount: Int = 0,
+)
+
+@Serializable
+data class VirtualCollectionDto(
+    val id: String,
+    val name: String = "",
+    @SerialName("rom_ids") val romIds: List<Int> = emptyList(),
+    @SerialName("rom_count") val romCount: Int = 0,
+)
+
+@Serializable
 data class SystemDict(
     @SerialName("VERSION") val version: String = "",
 )

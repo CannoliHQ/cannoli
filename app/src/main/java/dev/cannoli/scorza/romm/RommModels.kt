@@ -62,3 +62,18 @@ data class RommPage<T>(
 ) {
     val hasMore: Boolean get() = offset + items.size < total
 }
+
+data class RommNetworkCollection(
+    val id: String,
+    val group: RommCollectionGroup,
+    val name: String,
+    val romIds: List<Int>,
+    val romCount: Int,
+)
+
+data class RommCollection(
+    val id: String,
+    val group: RommCollectionGroup,
+    val name: String,
+    val romCount: Int,
+)

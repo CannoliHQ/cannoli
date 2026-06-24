@@ -57,6 +57,17 @@ class RommClient(
         return execute(request, ListSerializer(PlatformDto.serializer()))
     }
 
+    fun getCollections(group: RommCollectionGroup): List<RommNetworkCollection> {
+        val request = Request.Builder().url(endpoint(group.apiPath)).get().build()
+        return if (group == RommCollectionGroup.VIRTUAL) {
+            execute(request, ListSerializer(VirtualCollectionDto.serializer()))
+                .map { RommNetworkCollection(it.id, group, it.name, it.romIds, it.romCount) }
+        } else {
+            execute(request, ListSerializer(CollectionDto.serializer()))
+                .map { RommNetworkCollection(it.id.toString(), group, it.name, it.romIds, it.romCount) }
+        }
+    }
+
     fun currentUser(): String? = runCatching {
         val request = Request.Builder().url(endpoint("/api/users/me")).get().build()
         execute(request, UserMeDto.serializer()).username.ifEmpty { null }
