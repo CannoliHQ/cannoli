@@ -163,10 +163,12 @@ class InputRouter @Inject constructor(
         is LauncherScreen.ShortcutBinding   -> shortcutBindingHandler()
         is LauncherScreen.Credits           -> creditsHandler()
         is LauncherScreen.InstalledCores    -> installedCoresHandler()
-        is LauncherScreen.RommPlatformList  -> rommPlatformListHandler()
-        is LauncherScreen.RommGameList      -> rommGameListHandler()
-        is LauncherScreen.RommGlobalSearch  -> rommGlobalSearchHandler()
-        is LauncherScreen.RommFirmwareList  -> rommFirmwareListHandler()
+        is LauncherScreen.RommPlatformList      -> rommPlatformListHandler()
+        is LauncherScreen.RommGameList          -> rommGameListHandler()
+        is LauncherScreen.RommGlobalSearch      -> rommGlobalSearchHandler()
+        is LauncherScreen.RommFirmwareList      -> rommFirmwareListHandler()
+        is LauncherScreen.RommCollectionList    -> rommCollectionListHandler()
+        is LauncherScreen.RommCollectionGameList -> rommCollectionGameListHandler()
         else -> object : ScreenInputHandler {}
     }
 
@@ -381,8 +383,14 @@ class InputRouter @Inject constructor(
 
     private fun rommPlatformListHandler() = scrollable<LauncherScreen.RommPlatformList>(
         onConfirm = {
-            val platform = rommBrowseViewModel.platforms.value.getOrNull(selectedIndex) ?: return@scrollable
-            nav.push(LauncherScreen.RommGameList(platform = platform))
+            val showCollectionsRow = rommBrowseViewModel.hasAnyCollections()
+            if (showCollectionsRow && selectedIndex == 0) {
+                nav.push(LauncherScreen.RommCollectionList())
+            } else {
+                val offset = if (showCollectionsRow) 1 else 0
+                val platform = rommBrowseViewModel.platforms.value.getOrNull(selectedIndex - offset) ?: return@scrollable
+                nav.push(LauncherScreen.RommGameList(platform = platform))
+            }
         },
         onBack = {},
         onR1 = {
@@ -392,6 +400,27 @@ class InputRouter @Inject constructor(
                 cursorPos = 0,
             )
         },
+    )
+
+    private fun rommCollectionListHandler() = scrollable<LauncherScreen.RommCollectionList>(
+        onConfirm = {
+            val collection = rommBrowseViewModel.flattenedCollections().getOrNull(selectedIndex) ?: return@scrollable
+            nav.push(LauncherScreen.RommCollectionGameList(collection = collection))
+        },
+        onBack = { nav.pop() },
+    )
+
+    private fun rommCollectionGameListHandler() = scrollable<LauncherScreen.RommCollectionGameList>(
+        onConfirm = {
+            val row = rommBrowseViewModel.collectionGames.value.getOrNull(selectedIndex) ?: return@scrollable
+            nav.push(LauncherScreen.RommGameDetail(
+                game = row.game,
+                localState = row.localState,
+                platformName = row.platform.displayName,
+                tag = row.platform.cannoliTag,
+            ))
+        },
+        onBack = { nav.pop() },
     )
 
     private fun rommGameListHandler() = scrollable<LauncherScreen.RommGameList>(

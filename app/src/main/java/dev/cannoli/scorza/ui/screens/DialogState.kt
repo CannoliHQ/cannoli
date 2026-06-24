@@ -94,9 +94,11 @@ sealed interface DialogState {
     data class RommAdvancedMenu(val selectedIndex: Int = 0) : DialogState
     data class RommConfirm(val action: RommConfirmAction, val downloadKey: String? = null) : DialogState
     data class RommPlatformToggle(val items: List<RommPlatformToggleItem>, val selectedIndex: Int = 0) : DialogState
+    data class RommCollectionToggle(val items: List<RommCollectionToggleItem>, val selectedIndex: Int = 0) : DialogState
 }
 
 data class RommPlatformToggleItem(val tag: String, val displayName: String, val visible: Boolean)
+data class RommCollectionToggleItem(val group: dev.cannoli.scorza.romm.RommCollectionGroup, val displayName: String, val visible: Boolean)
 
 enum class RommConfirmAction { REBUILD_CACHE, DISCONNECT, CANCEL_DOWNLOAD, CANCEL_ALL }
 
@@ -195,6 +197,7 @@ val DialogState.isFullScreen: Boolean
         is DialogState.RommAdvancedMenu,
         is DialogState.RommConfirm,
         is DialogState.RommPlatformToggle,
+        is DialogState.RommCollectionToggle,
         is DialogState.QuickInfo -> true
         else -> false
     }

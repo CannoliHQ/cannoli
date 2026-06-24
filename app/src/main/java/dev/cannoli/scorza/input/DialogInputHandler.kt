@@ -127,6 +127,8 @@ class DialogInputHandler @Inject constructor(
         is LauncherScreen.RommGameList,
         is LauncherScreen.RommGlobalSearch,
         is LauncherScreen.RommFirmwareList,
+        is LauncherScreen.RommCollectionList,
+        is LauncherScreen.RommCollectionGameList,
         is LauncherScreen.RommGameDetail -> true
         else -> false
     }
@@ -224,6 +226,9 @@ class DialogInputHandler @Inject constructor(
             is DialogState.RommPlatformToggle -> {
                 if (ds.items.isNotEmpty()) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(ds.items.size))
             }
+            is DialogState.RommCollectionToggle -> {
+                if (ds.items.isNotEmpty()) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(ds.items.size))
+            }
             else -> {}
         }
         return true
@@ -288,6 +293,11 @@ class DialogInputHandler @Inject constructor(
                 if (size > 0) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(size))
             }
             is DialogState.RommPlatformToggle -> {
+                if (ds.items.isNotEmpty()) {
+                    nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(ds.items.size))
+                }
+            }
+            is DialogState.RommCollectionToggle -> {
                 if (ds.items.isNotEmpty()) {
                     nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(ds.items.size))
                 }
@@ -565,6 +575,21 @@ class DialogInputHandler @Inject constructor(
                 newItems[ds.selectedIndex] = item.copy(visible = nowVisible)
                 nav.dialogState.value = ds.copy(items = newItems)
             }
+            is DialogState.RommCollectionToggle -> {
+                val item = ds.items.getOrNull(ds.selectedIndex) ?: return true
+                val nowVisible = !item.visible
+                when (item.group) {
+                    dev.cannoli.scorza.romm.RommCollectionGroup.USER -> rommStore.showUserCollections = nowVisible
+                    dev.cannoli.scorza.romm.RommCollectionGroup.VIRTUAL -> rommStore.showVirtualCollections = nowVisible
+                    dev.cannoli.scorza.romm.RommCollectionGroup.SMART -> rommStore.showSmartCollections = nowVisible
+                }
+                val newItems = ds.items.toMutableList()
+                newItems[ds.selectedIndex] = item.copy(visible = nowVisible)
+                nav.dialogState.value = ds.copy(items = newItems)
+                if (nowVisible) {
+                    ioScope.launch { rommBrowseViewModel.refresh(); rommBrowseViewModel.loadCollections() }
+                }
+            }
             is DialogState.RommAdvancedMenu -> {
                 when (ds.selectedIndex) {
                     0 -> {
@@ -622,6 +647,14 @@ class DialogInputHandler @Inject constructor(
                     )
                 }
                 nav.dialogState.value = DialogState.RommPlatformToggle(items)
+            }
+            dev.cannoli.scorza.ui.components.RommSettingsRow.COLLECTIONS -> {
+                val items = listOf(
+                    dev.cannoli.scorza.ui.screens.RommCollectionToggleItem(dev.cannoli.scorza.romm.RommCollectionGroup.USER, context.getString(dev.cannoli.scorza.R.string.romm_collection_group_user), rommStore.showUserCollections),
+                    dev.cannoli.scorza.ui.screens.RommCollectionToggleItem(dev.cannoli.scorza.romm.RommCollectionGroup.VIRTUAL, context.getString(dev.cannoli.scorza.R.string.romm_collection_group_virtual), rommStore.showVirtualCollections),
+                    dev.cannoli.scorza.ui.screens.RommCollectionToggleItem(dev.cannoli.scorza.romm.RommCollectionGroup.SMART, context.getString(dev.cannoli.scorza.R.string.romm_collection_group_smart), rommStore.showSmartCollections),
+                )
+                nav.dialogState.value = DialogState.RommCollectionToggle(items)
             }
             else -> {}
         }
@@ -764,6 +797,9 @@ class DialogInputHandler @Inject constructor(
                 nav.dialogState.value = DialogState.None
                 ioScope.launch { rommBrowseViewModel.loadPlatforms() }
             }
+            is DialogState.RommCollectionToggle -> {
+                nav.dialogState.value = DialogState.None
+            }
             is DialogState.RommActionsMenu -> nav.dialogState.value = DialogState.None
             is DialogState.RommSettingsMenu -> nav.dialogState.value = DialogState.None
             is DialogState.RommAdvancedMenu -> {
@@ -848,11 +884,6 @@ class DialogInputHandler @Inject constructor(
                 settings.raUsername = ""
                 settings.raToken = ""
                 settings.raPassword = ""
-                settingsViewModel.load()
-                nav.dialogState.value = DialogState.None
-            }
-            is DialogState.RommConnected -> {
-                rommStore.disconnect()
                 settingsViewModel.load()
                 nav.dialogState.value = DialogState.None
             }
@@ -1098,7 +1129,7 @@ class DialogInputHandler @Inject constructor(
                     nav.dialogState.value = DialogState.None
                 }
             }
-            selected == MENU_RA_GAME_ID -> {
+            selected == MENU_RA_GAME_ID || selected.startsWith("$MENU_RA_GAME_ID\t") -> {
                 if (rom != null) {
                     val current = rom.raGameId?.toString() ?: ""
                     nav.dialogState.value = DialogState.RenameInput(
@@ -1106,6 +1137,13 @@ class DialogInputHandler @Inject constructor(
                         currentName = current,
                         cursorPos = current.length
                     )
+                }
+            }
+            selected == MENU_PRELOAD_ACHIEVEMENTS || selected.startsWith("$MENU_PRELOAD_ACHIEVEMENTS\t") -> {
+                if (rom != null) {
+                    raPreloadController.preloadRom(rom)
+                } else {
+                    nav.dialogState.value = DialogState.None
                 }
             }
             selected == MENU_REMOVE -> {
@@ -1414,7 +1452,8 @@ class DialogInputHandler @Inject constructor(
                 add(MENU_REMOVE)
             } else {
                 addAll(gameContextOptions.map { menuItem ->
-                    if (menuItem == MENU_EMULATOR_OVERRIDE && romPath != null) {
+                    when {
+                        menuItem == MENU_EMULATOR_OVERRIDE && romPath != null -> {
                         val bundledCoresDir = LaunchManager.extractBundledCores(context)
                         val options = platformResolver.getCorePickerOptions(platformTag, context.packageManager,
                             installedRaCores = installedCoreService.configuredCores(), embeddedCoresDir = bundledCoresDir,

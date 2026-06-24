@@ -25,6 +25,7 @@ import dev.cannoli.ui.R
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.List
 import dev.cannoli.ui.components.PillRowKeyValue
+import dev.cannoli.ui.components.PillRowText
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.footerReservation
@@ -39,6 +40,7 @@ fun RommPlatformListScreen(
     platforms: List<RommPlatform>,
     selectedIndex: Int,
     scrollTarget: Int,
+    showCollectionsRow: Boolean = false,
     emptyMessage: String? = null,
     progress: Float? = null,
     backgroundImagePath: String?,
@@ -50,6 +52,7 @@ fun RommPlatformListScreen(
     buttonStyle: ButtonStyle = ButtonStyle(),
 ) {
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
+    val totalItemCount = platforms.size + (if (showCollectionsRow) 1 else 0)
     ScreenBackground(backgroundImagePath = backgroundImagePath, backgroundTint = backgroundTint) {
         Box(modifier = Modifier.fillMaxSize().padding(screenPadding)) {
             Column(modifier = Modifier.fillMaxSize().padding(bottom = footerReservation())) {
@@ -59,21 +62,34 @@ fun RommPlatformListScreen(
                     lineHeight = listLineHeight,
                 )
                 Spacer(modifier = Modifier.height(Spacing.Sm))
+                val offset = if (showCollectionsRow) 1 else 0
+                val clampedIndex = selectedIndex.coerceIn(0, (totalItemCount - 1).coerceAtLeast(0))
                 List(
-                    items = platforms,
-                    selectedIndex = selectedIndex.coerceIn(0, (platforms.size - 1).coerceAtLeast(0)),
+                    items = (0 until totalItemCount).toList(),
+                    selectedIndex = clampedIndex,
                     itemHeight = itemHeight,
                     scrollTarget = scrollTarget,
                     onListStateChanged = onListStateChanged,
-                ) { _, platform, isSelected ->
-                    PillRowKeyValue(
-                        label = platform.displayName,
-                        value = platform.romCount.toString(),
-                        isSelected = isSelected,
-                        fontSize = listFontSize,
-                        lineHeight = listLineHeight,
-                        verticalPadding = listVerticalPadding,
-                    )
+                ) { index, _, isSelected ->
+                    if (showCollectionsRow && index == 0) {
+                        PillRowText(
+                            label = stringResource(R.string.romm_collections_title),
+                            isSelected = isSelected,
+                            fontSize = listFontSize,
+                            lineHeight = listLineHeight,
+                            verticalPadding = listVerticalPadding,
+                        )
+                    } else {
+                        val platform = platforms[index - offset]
+                        PillRowKeyValue(
+                            label = platform.displayName,
+                            value = platform.romCount.toString(),
+                            isSelected = isSelected,
+                            fontSize = listFontSize,
+                            lineHeight = listLineHeight,
+                            verticalPadding = listVerticalPadding,
+                        )
+                    }
                 }
             }
             if (platforms.isEmpty() && emptyMessage != null) {

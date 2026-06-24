@@ -42,6 +42,7 @@ import dev.cannoli.ui.components.ListSection
 import dev.cannoli.ui.components.PillRowInfo
 import dev.cannoli.ui.components.PillRowKeyValue
 import dev.cannoli.ui.components.PillRowText
+import dev.cannoli.ui.components.MessageOverlay
 import dev.cannoli.ui.components.SectionedList
 import dev.cannoli.ui.components.RAAccountOverlay
 import dev.cannoli.ui.components.RALoggingInOverlay
@@ -406,6 +407,33 @@ fun DialogOverlay(
             }
         }
 
+        is DialogState.RommCollectionToggle -> {
+            ListDialogScreen(
+                backgroundImagePath = backgroundImagePath,
+                backgroundTint = backgroundTint,
+                title = stringResource(R.string.romm_collections_title),
+                listFontSize = listFontSize,
+                listLineHeight = listLineHeight,
+                rightBottomItems = listOf(buttonStyle.confirm to stringResource(R.string.label_toggle)),
+                buttonStyle = buttonStyle
+            ) {
+                List(
+                    items = dialogState.items,
+                    selectedIndex = dialogState.selectedIndex,
+                    itemHeight = itemHeight
+                ) { _, item, isSelected ->
+                    PillRowText(
+                        label = item.displayName,
+                        isSelected = isSelected,
+                        checkState = item.visible,
+                        fontSize = listFontSize,
+                        lineHeight = listLineHeight,
+                        verticalPadding = listVerticalPadding
+                    )
+                }
+            }
+        }
+
         is DialogState.RescanProgress -> {
             dev.cannoli.scorza.ui.screens.HousekeepingScreen(
                 kind = dev.cannoli.scorza.ui.screens.HousekeepingKind.LIBRARY_REFRESH,
@@ -538,6 +566,7 @@ enum class RommSettingsRow(@androidx.annotation.StringRes val labelRes: Int, val
     COVER_ART(R.string.romm_qm_cover_art, isCycle = true),
     CONCURRENT(R.string.romm_qm_concurrent, isCycle = true),
     PLATFORMS(R.string.romm_qm_platforms),
+    COLLECTIONS(R.string.romm_qm_collections),
     ADVANCED(R.string.romm_qm_advanced),
     SERVER_INFO(R.string.romm_qm_server_info),
 }

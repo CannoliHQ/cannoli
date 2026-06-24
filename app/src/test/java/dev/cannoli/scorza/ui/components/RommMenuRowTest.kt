@@ -19,7 +19,7 @@ class RommMenuRowTest {
         assertEquals(
             listOf(
                 RommSettingsRow.COVER_ART, RommSettingsRow.CONCURRENT, RommSettingsRow.PLATFORMS,
-                RommSettingsRow.ADVANCED, RommSettingsRow.SERVER_INFO,
+                RommSettingsRow.COLLECTIONS, RommSettingsRow.ADVANCED, RommSettingsRow.SERVER_INFO,
             ),
             RommSettingsRow.entries.toList(),
         )

@@ -276,6 +276,7 @@
     <string name="romm_qm_cover_art">Cover Art</string>
     <string name="romm_qm_download_art">Download Missing Art</string>
     <string name="romm_qm_platforms">Show / Hide Platforms</string>
+    <string name="romm_qm_collections">Collections</string>
     <string name="romm_qm_refresh">Refresh Library</string>
     <string name="romm_qm_server_info">Server Info</string>
     <string name="romm_qm_advanced">Advanced</string>
@@ -314,6 +315,11 @@
     <string name="romm_art_section_no_match">No match</string>
     <string name="romm_art_section_failed">Failed</string>
     <string name="romm_art_done">DONE</string>
+
+    <string name="romm_collections_title">Collections</string>
+    <string name="romm_collection_group_user">My Collections</string>
+    <string name="romm_collection_group_virtual">Virtual</string>
+    <string name="romm_collection_group_smart">Smart</string>
 
     <string name="setting_kitchen_toggle">File Server</string>
     <string name="setting_logging">Logging</string>

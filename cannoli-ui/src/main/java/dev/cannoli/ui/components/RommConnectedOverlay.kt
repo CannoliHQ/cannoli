@@ -73,9 +73,8 @@ fun RommConnectedOverlay(host: String, username: String?, version: String?, butt
                 .padding(screenPadding),
             leftItems = listOf(
                 buttonStyle.back to stringResource(R.string.label_back),
-                buttonStyle.west to stringResource(R.string.label_disconnect),
             ),
-            rightItems = listOf(buttonStyle.north to stringResource(R.string.label_logout))
+            rightItems = listOf(buttonStyle.west to stringResource(R.string.label_disconnect))
         )
     }
 }
