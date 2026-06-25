@@ -56,6 +56,7 @@ class CannoliPaths(val root: File) {
     val quickResumeFile: File get() = File(configState, "quick_resume.txt")
     val guidePositionsFile: File get() = File(configState, "guide_positions.ini")
     val raGameIdsFile: File get() = File(configRetroAchievements, "ra_game_ids.txt")
+    val configRaOffline: File get() = File(configRetroAchievements, "Offline")
     val raGameIdsLegacyFile: File get() = File(configRetroArch, "ra_game_ids.txt")
     val raLaunchCfg: File get() = File(configRetroArch, "retroarch_launch.cfg")
     val cannoliFont: File get() = File(configAssets, "cannoli/font.ttf")
