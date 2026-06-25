@@ -337,6 +337,7 @@
     <string name="input_tester_exit_hint">Hold Start + Select To Exit</string>
     <string name="input_tester_device_keyboard">keyboard</string>
     <string name="input_tester_device_unknown">unknown</string>
+    <string name="input_tester_unbound">Events emitted without mappings</string>
 
     <!-- Setting values -->
     <string name="value_on">On</string>
