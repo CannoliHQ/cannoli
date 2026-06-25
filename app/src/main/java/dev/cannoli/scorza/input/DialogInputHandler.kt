@@ -28,15 +28,8 @@ import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.screens.ColorEntry
 import dev.cannoli.scorza.ui.screens.EmulatorPickerOption
 import dev.cannoli.scorza.ui.screens.DialogState
-import dev.cannoli.scorza.ui.screens.KeyboardInputState
-import dev.cannoli.scorza.ui.screens.asKeyboardState
-import dev.cannoli.scorza.ui.screens.withBackspace
-import dev.cannoli.scorza.ui.screens.withCaps
-import dev.cannoli.scorza.ui.screens.withCursor
-import dev.cannoli.scorza.ui.screens.withInsertedChar
-import dev.cannoli.scorza.ui.screens.withKeyboard
+import dev.cannoli.scorza.ui.screens.KeyboardHost
 import dev.cannoli.scorza.ui.screens.withMenuDelta
-import dev.cannoli.scorza.ui.screens.withSymbols
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
@@ -44,10 +37,12 @@ import dev.cannoli.scorza.util.AtomicRename
 import dev.cannoli.ui.KEY_BACKSPACE
 import dev.cannoli.ui.KEY_ENTER
 import dev.cannoli.ui.components.COLOR_GRID_COLS
+import dev.cannoli.ui.components.Direction
 import dev.cannoli.ui.components.HEX_KEYS
 import dev.cannoli.ui.components.HEX_ROW_SIZE
-import dev.cannoli.ui.components.getKeyboardRows
-import dev.cannoli.ui.components.handleKeyboardConfirm
+import dev.cannoli.ui.components.KeyboardController
+import dev.cannoli.ui.components.KeyboardPress
+import dev.cannoli.ui.components.KeyboardState
 import dev.cannoli.ui.theme.COLOR_PRESETS
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -89,10 +84,10 @@ class DialogInputHandler @Inject constructor(
     private val selectHoldRunnable = Runnable {
         nav.selectHeld = true
         val ds = nav.dialogState.value
-        if (ds is KeyboardInputState) {
-            val ks = ds.asKeyboardState()!!
+        if (ds is KeyboardHost) {
+            val ks = ds.keyboard
             if (!ks.symbols) nav.capsBeforeSymbols = ks.caps
-            nav.dialogState.value = ds.withCaps(false).withSymbols(!ks.symbols)
+            nav.dialogState.value = ds.withKeyboard(ks.copy(caps = false, symbols = !ks.symbols))
         }
     }
 
@@ -189,16 +184,7 @@ class DialogInputHandler @Inject constructor(
             is DialogState.RommAdvancedMenu -> {
                 nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(dev.cannoli.scorza.ui.components.ROMM_ADVANCED_ROWS.size))
             }
-            is DialogState.RenameInput,
-            is DialogState.NewCollectionInput,
-            is DialogState.CollectionRenameInput,
-            is DialogState.NewFolderInput -> {
-                val ks = ds.asKeyboardState()!!
-                val rows = getKeyboardRows(ks.caps, ks.symbols)
-                val newRow = if (ks.keyRow <= 0) rows.lastIndex else ks.keyRow - 1
-                val newCol = ks.keyCol.coerceAtMost(rows[newRow].lastIndex)
-                nav.dialogState.value = ds.withKeyboard(newRow, newCol)
-            }
+            is KeyboardHost -> nav.dialogState.value = ds.withKeyboard(KeyboardController.moveSelection(ds.keyboard, Direction.UP))
             is DialogState.ColorPicker -> {
                 val totalRows = (COLOR_PRESETS.size + COLOR_GRID_COLS - 1) / COLOR_GRID_COLS
                 val newRow = if (ds.selectedRow <= 0) totalRows - 1 else ds.selectedRow - 1
@@ -258,16 +244,7 @@ class DialogInputHandler @Inject constructor(
             is DialogState.RommAdvancedMenu -> {
                 nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(dev.cannoli.scorza.ui.components.ROMM_ADVANCED_ROWS.size))
             }
-            is DialogState.RenameInput,
-            is DialogState.NewCollectionInput,
-            is DialogState.CollectionRenameInput,
-            is DialogState.NewFolderInput -> {
-                val ks = ds.asKeyboardState()!!
-                val rows = getKeyboardRows(ks.caps, ks.symbols)
-                val newRow = if (ks.keyRow >= rows.lastIndex) 0 else ks.keyRow + 1
-                val newCol = ks.keyCol.coerceAtMost(rows[newRow].lastIndex)
-                nav.dialogState.value = ds.withKeyboard(newRow, newCol)
-            }
+            is KeyboardHost -> nav.dialogState.value = ds.withKeyboard(KeyboardController.moveSelection(ds.keyboard, Direction.DOWN))
             is DialogState.ColorPicker -> {
                 val totalRows = (COLOR_PRESETS.size + COLOR_GRID_COLS - 1) / COLOR_GRID_COLS
                 val newRow = if (ds.selectedRow >= totalRows - 1) 0 else ds.selectedRow + 1
@@ -325,16 +302,7 @@ class DialogInputHandler @Inject constructor(
                 }
             }
             is DialogState.RommSettingsMenu -> cycleRommSettings(ds, -1)
-            is DialogState.RenameInput,
-            is DialogState.NewCollectionInput,
-            is DialogState.CollectionRenameInput,
-            is DialogState.NewFolderInput -> {
-                val ks = ds.asKeyboardState()!!
-                val rows = getKeyboardRows(ks.caps, ks.symbols)
-                val rowSize = rows[ks.keyRow.coerceIn(0, rows.lastIndex)].size
-                val newCol = if (ks.keyCol <= 0) rowSize - 1 else ks.keyCol - 1
-                nav.dialogState.value = ds.withKeyboard(ks.keyRow, newCol)
-            }
+            is KeyboardHost -> nav.dialogState.value = ds.withKeyboard(KeyboardController.moveSelection(ds.keyboard, Direction.LEFT))
             is DialogState.ColorPicker -> {
                 val newCol = if (ds.selectedCol <= 0) COLOR_GRID_COLS - 1 else ds.selectedCol - 1
                 nav.dialogState.value = ds.copy(selectedCol = newCol)
@@ -368,16 +336,7 @@ class DialogInputHandler @Inject constructor(
                 }
             }
             is DialogState.RommSettingsMenu -> cycleRommSettings(ds, 1)
-            is DialogState.RenameInput,
-            is DialogState.NewCollectionInput,
-            is DialogState.CollectionRenameInput,
-            is DialogState.NewFolderInput -> {
-                val ks = ds.asKeyboardState()!!
-                val rows = getKeyboardRows(ks.caps, ks.symbols)
-                val rowSize = rows[ks.keyRow.coerceIn(0, rows.lastIndex)].size
-                val newCol = if (ks.keyCol >= rowSize - 1) 0 else ks.keyCol + 1
-                nav.dialogState.value = ds.withKeyboard(ks.keyRow, newCol)
-            }
+            is KeyboardHost -> nav.dialogState.value = ds.withKeyboard(KeyboardController.moveSelection(ds.keyboard, Direction.RIGHT))
             is DialogState.ColorPicker -> {
                 val newCol = if (ds.selectedCol >= COLOR_GRID_COLS - 1) 0 else ds.selectedCol + 1
                 nav.dialogState.value = ds.copy(selectedCol = newCol)
@@ -401,30 +360,10 @@ class DialogInputHandler @Inject constructor(
             is DialogState.ContextMenu -> onContextMenuConfirm(ds)
             is DialogState.BulkContextMenu -> onBulkContextMenuConfirm(ds)
             is DialogState.DeleteConfirm -> onDeleteConfirm(ds)
-            is DialogState.RenameInput -> handleKeyboardConfirm(ds.caps, ds.symbols, ds.keyRow, ds.keyCol, ds.currentName, ds.cursorPos,
-                onChar = { name, pos -> nav.dialogState.value = ds.copy(currentName = name, cursorPos = pos) },
-                onShift = { nav.dialogState.value = ds.copy(caps = !ds.caps) },
-                onSymbols = { nav.dialogState.value = ds.copy(symbols = !ds.symbols) },
-                onEnter = { onRenameConfirm(ds) }
-            )
-            is DialogState.NewCollectionInput -> handleKeyboardConfirm(ds.caps, ds.symbols, ds.keyRow, ds.keyCol, ds.currentName, ds.cursorPos,
-                onChar = { name, pos -> nav.dialogState.value = ds.copy(currentName = name, cursorPos = pos) },
-                onShift = { nav.dialogState.value = ds.copy(caps = !ds.caps) },
-                onSymbols = { nav.dialogState.value = ds.copy(symbols = !ds.symbols) },
-                onEnter = { onNewCollectionConfirm(ds) }
-            )
-            is DialogState.CollectionRenameInput -> handleKeyboardConfirm(ds.caps, ds.symbols, ds.keyRow, ds.keyCol, ds.currentName, ds.cursorPos,
-                onChar = { name, pos -> nav.dialogState.value = ds.copy(currentName = name, cursorPos = pos) },
-                onShift = { nav.dialogState.value = ds.copy(caps = !ds.caps) },
-                onSymbols = { nav.dialogState.value = ds.copy(symbols = !ds.symbols) },
-                onEnter = { onCollectionRenameConfirm(ds) }
-            )
-            is DialogState.NewFolderInput -> handleKeyboardConfirm(ds.caps, ds.symbols, ds.keyRow, ds.keyCol, ds.currentName, ds.cursorPos,
-                onChar = { name, pos -> nav.dialogState.value = ds.copy(currentName = name, cursorPos = pos) },
-                onShift = { nav.dialogState.value = ds.copy(caps = !ds.caps) },
-                onSymbols = { nav.dialogState.value = ds.copy(symbols = !ds.symbols) },
-                onEnter = { onNewFolderConfirm(ds) }
-            )
+            is KeyboardHost -> when (val r = KeyboardController.press(ds.keyboard)) {
+                is KeyboardPress.Update -> nav.dialogState.value = ds.withKeyboard(r.state)
+                KeyboardPress.Confirm -> dispatchKeyboardConfirm(ds)
+            }
             is DialogState.QuitConfirm -> {
                 activityActions.finishAffinity()
             }
@@ -701,12 +640,7 @@ class DialogInputHandler @Inject constructor(
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
         when (ds) {
-            is DialogState.RenameInput,
-            is DialogState.NewCollectionInput,
-            is DialogState.CollectionRenameInput,
-            is DialogState.NewFolderInput -> {
-                ds.withBackspace()?.let { nav.dialogState.value = it }
-            }
+            is KeyboardHost -> nav.dialogState.value = ds.withKeyboard(KeyboardController.backspace(ds.keyboard))
             is DialogState.ColorPicker -> {
                 val entries = settingsViewModel.getColorEntries()
                 updateColorListOnStack(ds.settingKey, entries)
@@ -848,10 +782,7 @@ class DialogInputHandler @Inject constructor(
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
         when (ds) {
-            is DialogState.RenameInput -> onRenameConfirm(ds)
-            is DialogState.NewCollectionInput -> onNewCollectionConfirm(ds)
-            is DialogState.CollectionRenameInput -> onCollectionRenameConfirm(ds)
-            is DialogState.NewFolderInput -> onNewFolderConfirm(ds)
+            is KeyboardHost -> dispatchKeyboardConfirm(ds)
             is DialogState.HexColorInput -> {
                 if (ds.currentHex.length == 6) {
                     settingsViewModel.setColor(ds.settingKey, "#${ds.currentHex}")
@@ -878,12 +809,7 @@ class DialogInputHandler @Inject constructor(
             return false
         }
         when (ds) {
-            is DialogState.RenameInput,
-            is DialogState.NewCollectionInput,
-            is DialogState.CollectionRenameInput,
-            is DialogState.NewFolderInput -> {
-                ds.withInsertedChar(" ")?.let { nav.dialogState.value = it }
-            }
+            is KeyboardHost -> nav.dialogState.value = ds.withKeyboard(KeyboardController.insertChar(ds.keyboard, " "))
             is DialogState.About -> {
                 nav.dialogState.value = DialogState.None
                 nav.screenStack.add(LauncherScreen.Credits())
@@ -962,10 +888,7 @@ class DialogInputHandler @Inject constructor(
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
         when (ds) {
-            is DialogState.RenameInput,
-            is DialogState.NewCollectionInput,
-            is DialogState.CollectionRenameInput,
-            is DialogState.NewFolderInput -> {
+            is KeyboardHost -> {
                 if (!nav.selectDown) {
                     nav.selectDown = true
                     nav.selectHeld = false
@@ -980,14 +903,14 @@ class DialogInputHandler @Inject constructor(
     override fun onSelectUp(): Boolean {
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
-        if (ds is KeyboardInputState) {
+        if (ds is KeyboardHost) {
             cancelSelectHold()
             if (!nav.selectHeld) {
-                val ks = ds.asKeyboardState()!!
+                val ks = ds.keyboard
                 if (ks.symbols) {
-                    nav.dialogState.value = ds.withCaps(nav.capsBeforeSymbols).withSymbols(false)
+                    nav.dialogState.value = ds.withKeyboard(ks.copy(caps = nav.capsBeforeSymbols, symbols = false))
                 } else {
-                    nav.dialogState.value = ds.withCaps(!ks.caps)
+                    nav.dialogState.value = ds.withKeyboard(ks.copy(caps = !ks.caps))
                 }
             }
             nav.selectDown = false
@@ -1001,13 +924,7 @@ class DialogInputHandler @Inject constructor(
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
         when (ds) {
-            is DialogState.RenameInput,
-            is DialogState.NewCollectionInput,
-            is DialogState.CollectionRenameInput,
-            is DialogState.NewFolderInput -> {
-                val ks = ds.asKeyboardState()!!
-                if (ks.cursorPos > 0) nav.dialogState.value = ds.withCursor(ks.cursorPos - 1)
-            }
+            is KeyboardHost -> nav.dialogState.value = ds.withKeyboard(KeyboardController.moveCursor(ds.keyboard, -1))
             else -> {}
         }
         return true
@@ -1017,13 +934,7 @@ class DialogInputHandler @Inject constructor(
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
         when (ds) {
-            is DialogState.RenameInput,
-            is DialogState.NewCollectionInput,
-            is DialogState.CollectionRenameInput,
-            is DialogState.NewFolderInput -> {
-                val ks = ds.asKeyboardState()!!
-                if (ks.cursorPos < ks.currentName.length) nav.dialogState.value = ds.withCursor(ks.cursorPos + 1)
-            }
+            is KeyboardHost -> nav.dialogState.value = ds.withKeyboard(KeyboardController.moveCursor(ds.keyboard, 1))
             else -> {}
         }
         return true
@@ -1033,11 +944,7 @@ class DialogInputHandler @Inject constructor(
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
         when (ds) {
-            is DialogState.RenameInput,
-            is DialogState.NewCollectionInput,
-            is DialogState.CollectionRenameInput -> {
-                nav.dialogState.value = ds.withCursor(0)
-            }
+            is KeyboardHost -> nav.dialogState.value = ds.withKeyboard(KeyboardController.cursorToStart(ds.keyboard))
             else -> {}
         }
         return true
@@ -1047,13 +954,7 @@ class DialogInputHandler @Inject constructor(
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
         when (ds) {
-            is DialogState.RenameInput,
-            is DialogState.NewCollectionInput,
-            is DialogState.CollectionRenameInput,
-            is DialogState.NewFolderInput -> {
-                val ks = ds.asKeyboardState()!!
-                nav.dialogState.value = ds.withCursor(ks.currentName.length)
-            }
+            is KeyboardHost -> nav.dialogState.value = ds.withKeyboard(KeyboardController.cursorToEnd(ds.keyboard))
             else -> {}
         }
         return true
@@ -1070,8 +971,7 @@ class DialogInputHandler @Inject constructor(
                     MENU_RENAME -> {
                         nav.dialogState.value = DialogState.RenameInput(
                             gameName = state.gameName,
-                            currentName = state.gameName,
-                            cursorPos = state.gameName.length
+                            keyboard = KeyboardState(text = state.gameName, cursorPos = state.gameName.length),
                         )
                     }
                     MENU_DOWNLOAD_ART -> {
@@ -1120,14 +1020,12 @@ class DialogInputHandler @Inject constructor(
                     nav.dialogState.value = DialogState.CollectionRenameInput(
                         collectionId = collection.id,
                         oldDisplayName = collection.displayName,
-                        currentName = displayName,
-                        cursorPos = displayName.length
+                        keyboard = KeyboardState(text = displayName),
                     )
                 } else {
                     nav.dialogState.value = DialogState.RenameInput(
                         gameName = displayName,
-                        currentName = displayName,
-                        cursorPos = displayName.length
+                        keyboard = KeyboardState(text = displayName, cursorPos = displayName.length),
                     )
                 }
             }
@@ -1159,8 +1057,7 @@ class DialogInputHandler @Inject constructor(
                     val current = rom.raGameId?.toString() ?: ""
                     nav.dialogState.value = DialogState.RenameInput(
                         gameName = "ra_game_id:${rom.path.absolutePath}",
-                        currentName = current,
-                        cursorPos = current.length
+                        keyboard = KeyboardState(text = current, cursorPos = current.length),
                     )
                 }
             }
@@ -1616,6 +1513,16 @@ class DialogInputHandler @Inject constructor(
         }
     }
 
+    private fun dispatchKeyboardConfirm(ds: KeyboardHost) {
+        when (ds) {
+            is DialogState.RenameInput -> onRenameConfirm(ds)
+            is DialogState.NewCollectionInput -> onNewCollectionConfirm(ds)
+            is DialogState.CollectionRenameInput -> onCollectionRenameConfirm(ds)
+            is DialogState.NewFolderInput -> onNewFolderConfirm(ds)
+            else -> {}
+        }
+    }
+
     private fun onNewCollectionConfirm(state: DialogState.NewCollectionInput) {
         val name = state.currentName.trim()
         if (name.isEmpty()) {
@@ -1827,7 +1734,7 @@ class DialogInputHandler @Inject constructor(
                     val newRomFile = File(rom.path.parentFile, "$newName.${rom.path.extension}")
                     val newRelative = relativeRomPath(newRomFile)
                     if (newRelative != null) {
-                        romsRepository.updateRomPath(rom.id, newRelative)
+                        romsRepository.renameRom(rom.id, newRelative, newName)
                     }
                 } else {
                     val msg = when (result.error) {

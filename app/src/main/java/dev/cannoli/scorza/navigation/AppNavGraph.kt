@@ -54,7 +54,7 @@ import dev.cannoli.scorza.ui.screens.DirectoryBrowserScreen
 import dev.cannoli.scorza.ui.screens.GameListScreen
 import dev.cannoli.scorza.ui.screens.InputTesterScreen
 import dev.cannoli.scorza.ui.screens.LoggingSettingsScreen
-import dev.cannoli.scorza.ui.screens.KeyboardInputState
+import dev.cannoli.scorza.ui.screens.KeyboardHost
 import dev.cannoli.scorza.ui.screens.PortraitMarginOverlay
 import dev.cannoli.scorza.ui.screens.SaveStatePickerScreen
 import dev.cannoli.scorza.ui.screens.SettingsScreen
@@ -1624,7 +1624,7 @@ fun AppNavGraph(
         val hideForDialog = dialog is DialogState.About
                 || dialog is DialogState.Kitchen
                 || dialog is DialogState.UpdateDownload
-                || dialog is KeyboardInputState
+                || dialog is KeyboardHost
         val hideForScreen = currentScreen is LauncherScreen.Credits
                 || currentScreen is LauncherScreen.DirectoryBrowser
                 || currentScreen is LauncherScreen.InputTester

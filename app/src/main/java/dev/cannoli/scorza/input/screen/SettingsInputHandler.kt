@@ -25,6 +25,7 @@ import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.setup.SetupCoordinator
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
+import dev.cannoli.ui.components.KeyboardState
 import dev.cannoli.scorza.updater.UpdateManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -138,25 +139,23 @@ class SettingsInputHandler @Inject constructor(
                 val current = settings.raUsername
                 nav.dialogState.value = DialogState.RenameInput(
                     gameName = "ra_username",
-                    currentName = current,
-                    cursorPos = current.length
+                    keyboard = KeyboardState(text = current, cursorPos = current.length)
                 )
             }
             "ra_password" -> {
                 nav.dialogState.value = DialogState.RenameInput(
                     gameName = "ra_password",
-                    currentName = settingsViewModel.raPassword,
-                    cursorPos = settingsViewModel.raPassword.length
+                    keyboard = KeyboardState(text = settingsViewModel.raPassword, cursorPos = settingsViewModel.raPassword.length)
                 )
             }
             "ra_login" -> activityActions.startRaLogin(settings.raUsername, settingsViewModel.raPassword)
             "romm_host" -> {
                 val current = rommStore.host
-                nav.dialogState.value = DialogState.RenameInput(gameName = "romm_host", currentName = current, cursorPos = current.length)
+                nav.dialogState.value = DialogState.RenameInput(gameName = "romm_host", keyboard = KeyboardState(text = current, cursorPos = current.length))
             }
             "romm_pair_code" -> {
                 val current = settingsViewModel.rommPairCode
-                nav.dialogState.value = DialogState.RenameInput(gameName = "romm_pair_code", currentName = current, cursorPos = current.length)
+                nav.dialogState.value = DialogState.RenameInput(gameName = "romm_pair_code", keyboard = KeyboardState(text = current, cursorPos = current.length))
             }
             "romm_pair" -> activityActions.startRommPairing(rommStore.host, settingsViewModel.rommPairCode)
             "romm_connection_info" -> nav.dialogState.value = DialogState.RommConnected(
@@ -181,8 +180,7 @@ class SettingsInputHandler @Inject constructor(
                         val displayValue = settingsViewModel.getSelectedItemDisplayValue()
                         nav.dialogState.value = DialogState.RenameInput(
                             gameName = key,
-                            currentName = displayValue,
-                            cursorPos = displayValue.length
+                            keyboard = KeyboardState(text = displayValue, cursorPos = displayValue.length)
                         )
                     }
                 }

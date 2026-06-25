@@ -25,7 +25,7 @@ import dev.cannoli.scorza.romm.download.RommDownloadItem
 import dev.cannoli.scorza.romm.download.RommDownloadKind
 import dev.cannoli.scorza.romm.download.inDisplayOrder
 import dev.cannoli.scorza.ui.screens.DialogState
-import dev.cannoli.scorza.ui.screens.KeyboardInputState
+import dev.cannoli.scorza.ui.screens.KeyboardHost
 import dev.cannoli.scorza.romm.RommArtType
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.DPAD_HORIZONTAL
@@ -163,11 +163,8 @@ fun DialogOverlay(
             )
         }
 
-        is DialogState.RenameInput,
-        is DialogState.NewCollectionInput,
-        is DialogState.CollectionRenameInput,
-        is DialogState.NewFolderInput -> {
-            val ks = dialogState as KeyboardInputState
+        is KeyboardHost -> {
+            val host = dialogState
             val keyboardTitle = (dialogState as? DialogState.RenameInput)?.let { rn ->
                 when (rn.gameName) {
                     "launcher_global_search" -> stringResource(R.string.search_global)
@@ -177,12 +174,7 @@ fun DialogOverlay(
                 }
             }
             KeyboardOverlay(
-                text = ks.currentName,
-                cursorPos = ks.cursorPos,
-                keyRow = ks.keyRow,
-                keyCol = ks.keyCol,
-                caps = ks.caps,
-                symbols = ks.symbols,
+                state = host.keyboard,
                 title = keyboardTitle,
                 buttonStyle = buttonStyle
             )

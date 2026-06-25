@@ -23,6 +23,7 @@ import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.input.PageJump
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
+import dev.cannoli.ui.components.KeyboardState
 import kotlinx.coroutines.CoroutineScope
 import javax.inject.Inject
 
@@ -136,9 +137,11 @@ class GameListInputHandler @Inject constructor(
         if (glState.reorderMode || glState.multiSelectMode || glState.isCollectionsList) return
         nav.dialogState.value = DialogState.RenameInput(
             gameName = "launcher_search",
-            currentName = glState.searchTerm ?: "",
-            cursorPos = (glState.searchTerm ?: "").length,
             searchScope = glState.breadcrumb,
+            keyboard = KeyboardState(
+                text = glState.searchTerm ?: "",
+                cursorPos = (glState.searchTerm ?: "").length,
+            ),
         )
     }
 

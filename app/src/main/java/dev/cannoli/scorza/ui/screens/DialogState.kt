@@ -1,15 +1,7 @@
 package dev.cannoli.scorza.ui.screens
 
 import dev.cannoli.ui.ELLIPSIS
-
-interface KeyboardInputState {
-    val currentName: String
-    val cursorPos: Int
-    val keyRow: Int
-    val keyCol: Int
-    val caps: Boolean
-    val symbols: Boolean
-}
+import dev.cannoli.ui.components.KeyboardState
 
 enum class EmulatorMappingStatus { READY, NOT_INSTALLED, NEEDS_SETUP }
 data class EmulatorMappingEntry(val tag: String, val platformName: String, val coreDisplayName: String, val runnerLabel: String, val status: EmulatorMappingStatus = EmulatorMappingStatus.READY)
@@ -46,9 +38,27 @@ sealed interface DialogState {
     data class ContextMenu(val gameName: String, val selectedOption: Int = 0, val options: List<String>) : DialogState
     data class BulkContextMenu(val gamePaths: List<String>, val selectedOption: Int = 0, val options: List<String>) : DialogState
     data class DeleteConfirm(val gameName: String, val bulkPaths: List<String>? = null) : DialogState
-    data class RenameInput(val gameName: String, override val currentName: String, override val cursorPos: Int = 0, val searchScope: String? = null, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
-    data class NewCollectionInput(val gamePaths: List<String> = emptyList(), val parentId: Long? = null, override val currentName: String = "", override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
-    data class CollectionRenameInput(val collectionId: Long, val oldDisplayName: String, override val currentName: String, override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
+    data class RenameInput(
+        val gameName: String,
+        val searchScope: String? = null,
+        override val keyboard: KeyboardState = KeyboardState(),
+    ) : DialogState, KeyboardHost {
+        override fun withKeyboard(keyboard: KeyboardState) = copy(keyboard = keyboard)
+    }
+    data class NewCollectionInput(
+        val gamePaths: List<String> = emptyList(),
+        val parentId: Long? = null,
+        override val keyboard: KeyboardState = KeyboardState(),
+    ) : DialogState, KeyboardHost {
+        override fun withKeyboard(keyboard: KeyboardState) = copy(keyboard = keyboard)
+    }
+    data class CollectionRenameInput(
+        val collectionId: Long,
+        val oldDisplayName: String,
+        override val keyboard: KeyboardState = KeyboardState(),
+    ) : DialogState, KeyboardHost {
+        override fun withKeyboard(keyboard: KeyboardState) = copy(keyboard = keyboard)
+    }
     data class DeleteCollectionConfirm(val collectionId: Long, val displayName: String) : DialogState
     data class RenameResult(val success: Boolean, val message: String) : DialogState
     data class CollectionCreated(val collectionName: String) : DialogState
@@ -62,7 +72,12 @@ sealed interface DialogState {
     data class RAPreloadResult(val success: Boolean, val message: String) : DialogState
     data class RommPairing(val host: String = "", val message: String = "") : DialogState
     data class RommConnected(val host: String, val username: String? = null, val version: String? = null) : DialogState
-    data class NewFolderInput(val parentPath: String, override val currentName: String = "", override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
+    data class NewFolderInput(
+        val parentPath: String,
+        override val keyboard: KeyboardState = KeyboardState(),
+    ) : DialogState, KeyboardHost {
+        override fun withKeyboard(keyboard: KeyboardState) = copy(keyboard = keyboard)
+    }
     data object QuitConfirm : DialogState
     data class UpdateDownload(val versionName: String, val changelog: String) : DialogState
     data object RestartRequired : DialogState
@@ -104,46 +119,11 @@ data class RommCollectionToggleItem(val group: dev.cannoli.scorza.romm.RommColle
 
 enum class RommConfirmAction { REBUILD_CACHE, DISCONNECT, CANCEL_DOWNLOAD, CANCEL_ALL }
 
-fun DialogState.asKeyboardState(): KeyboardInputState? = this as? KeyboardInputState
-
-fun DialogState.withKeyboard(row: Int, col: Int): DialogState = when (this) {
-    is DialogState.RenameInput -> copy(keyRow = row, keyCol = col)
-    is DialogState.NewCollectionInput -> copy(keyRow = row, keyCol = col)
-    is DialogState.CollectionRenameInput -> copy(keyRow = row, keyCol = col)
-    is DialogState.NewFolderInput -> copy(keyRow = row, keyCol = col)
-    else -> this
-}
-
-fun DialogState.withCursor(pos: Int): DialogState = when (this) {
-    is DialogState.RenameInput -> copy(cursorPos = pos)
-    is DialogState.NewCollectionInput -> copy(cursorPos = pos)
-    is DialogState.CollectionRenameInput -> copy(cursorPos = pos)
-    is DialogState.NewFolderInput -> copy(cursorPos = pos)
-    else -> this
-}
-
-fun DialogState.withCaps(caps: Boolean): DialogState = when (this) {
-    is DialogState.RenameInput -> copy(caps = caps)
-    is DialogState.NewCollectionInput -> copy(caps = caps)
-    is DialogState.CollectionRenameInput -> copy(caps = caps)
-    is DialogState.NewFolderInput -> copy(caps = caps)
-    else -> this
-}
-
-fun DialogState.withSymbols(symbols: Boolean): DialogState = when (this) {
-    is DialogState.RenameInput -> copy(symbols = symbols)
-    is DialogState.NewCollectionInput -> copy(symbols = symbols)
-    is DialogState.CollectionRenameInput -> copy(symbols = symbols)
-    is DialogState.NewFolderInput -> copy(symbols = symbols)
-    else -> this
-}
-
-fun DialogState.withNameAndCursor(name: String, pos: Int): DialogState = when (this) {
-    is DialogState.RenameInput -> copy(currentName = name, cursorPos = pos)
-    is DialogState.NewCollectionInput -> copy(currentName = name, cursorPos = pos)
-    is DialogState.CollectionRenameInput -> copy(currentName = name, cursorPos = pos)
-    is DialogState.NewFolderInput -> copy(currentName = name, cursorPos = pos)
-    else -> this
+interface KeyboardHost {
+    val keyboard: KeyboardState
+    fun withKeyboard(keyboard: KeyboardState): DialogState
+    val currentName: String get() = keyboard.text
+    val cursorPos: Int get() = keyboard.cursorPos
 }
 
 fun DialogState.withMenuDelta(delta: Int): DialogState? = when (this) {
@@ -156,19 +136,6 @@ fun DialogState.withMenuDelta(delta: Int): DialogState? = when (this) {
         else copy(selectedOption = (selectedOption + delta).mod(options.size))
     }
     else -> null
-}
-
-fun DialogState.withBackspace(): DialogState? {
-    val ks = asKeyboardState() ?: return null
-    if (ks.cursorPos <= 0) return null
-    val newName = ks.currentName.removeRange(ks.cursorPos - 1, ks.cursorPos)
-    return withNameAndCursor(newName, ks.cursorPos - 1)
-}
-
-fun DialogState.withInsertedChar(char: String): DialogState? {
-    val ks = asKeyboardState() ?: return null
-    val newName = ks.currentName.substring(0, ks.cursorPos) + char + ks.currentName.substring(ks.cursorPos)
-    return withNameAndCursor(newName, ks.cursorPos + 1)
 }
 
 val DialogState.isFullScreen: Boolean

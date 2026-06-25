@@ -69,8 +69,6 @@ class SystemListInputHandler @Inject constructor(
         if (systemListViewModel.isReorderMode()) return
         nav.dialogState.value = DialogState.RenameInput(
             gameName = "launcher_global_search",
-            currentName = "",
-            cursorPos = 0,
         )
     }
 

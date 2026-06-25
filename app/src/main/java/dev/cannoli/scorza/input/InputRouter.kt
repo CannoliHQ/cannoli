@@ -24,6 +24,7 @@ import dev.cannoli.scorza.settings.GlobalOverridesManager
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.input.runtime.InputDispatcher
+import dev.cannoli.ui.components.KeyboardState
 import javax.inject.Inject
 
 @ActivityScoped
@@ -455,8 +456,6 @@ class InputRouter @Inject constructor(
         onR1 = {
             nav.dialogState.value = DialogState.RenameInput(
                 gameName = "romm_global_search",
-                currentName = "",
-                cursorPos = 0,
             )
         },
     )
@@ -514,7 +513,11 @@ class InputRouter @Inject constructor(
         },
         onWest = { nav.push(LauncherScreen.RommFirmwareList(platform = platform)) },
         onR1 = {
-            nav.dialogState.value = DialogState.RenameInput(gameName = "romm_search", currentName = search, cursorPos = search.length, searchScope = platform.displayName)
+            nav.dialogState.value = DialogState.RenameInput(
+                gameName = "romm_search",
+                searchScope = platform.displayName,
+                keyboard = KeyboardState(text = search, cursorPos = search.length),
+            )
         },
         onSelect = {
             if (rommBrowseViewModel.isMultiSelect()) rommBrowseViewModel.cancelMultiSelect()
