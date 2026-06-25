@@ -210,6 +210,20 @@ fun DialogOverlay(
             RALoggingInOverlay(message = dialogState.message, buttonStyle = buttonStyle)
         }
 
+        is DialogState.RAPreloadProgress -> {
+            RALoggingInOverlay(
+                message = stringResource(R.string.ra_preload_progress, dialogState.gameName),
+                buttonStyle = buttonStyle,
+            )
+        }
+        is DialogState.RAPreloadResult -> {
+            MessageOverlay(
+                message = dialogState.message,
+                buttonStyle = buttonStyle,
+                buttonLabel = stringResource(R.string.label_back),
+            )
+        }
+
         is DialogState.RommPairing -> {
             RommPairingOverlay(host = dialogState.host, message = dialogState.message, buttonStyle = buttonStyle)
         }

@@ -58,6 +58,8 @@ sealed interface DialogState {
     data class Kitchen(val urls: List<String>, val selectedIndex: Int = 0, val pin: String, val requirePin: Boolean = true, val fromQuickMenu: Boolean = false) : DialogState
     data class RAAccount(val username: String, val score: Int = 0) : DialogState
     data class RALoggingIn(val message: String = "Logging in$ELLIPSIS") : DialogState
+    data class RAPreloadProgress(val gameName: String) : DialogState
+    data class RAPreloadResult(val success: Boolean, val message: String) : DialogState
     data class RommPairing(val host: String = "", val message: String = "") : DialogState
     data class RommConnected(val host: String, val username: String? = null, val version: String? = null) : DialogState
     data class NewFolderInput(val parentPath: String, override val currentName: String = "", override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
@@ -183,6 +185,8 @@ val DialogState.isFullScreen: Boolean
         is DialogState.Kitchen,
         is DialogState.RAAccount,
         is DialogState.RALoggingIn,
+        is DialogState.RAPreloadProgress,
+        is DialogState.RAPreloadResult,
         is DialogState.RommPairing,
         is DialogState.RommConnected,
         is DialogState.UpdateDownload,

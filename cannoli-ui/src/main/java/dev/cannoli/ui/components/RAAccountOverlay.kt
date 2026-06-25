@@ -56,7 +56,10 @@ fun RAAccountOverlay(username: String, buttonStyle: ButtonStyle = ButtonStyle())
                 .align(Alignment.BottomCenter)
                 .padding(screenPadding),
             leftItems = listOf(buttonStyle.back to stringResource(R.string.label_back)),
-            rightItems = listOf(buttonStyle.north to stringResource(R.string.label_logout))
+            rightItems = listOf(
+                buttonStyle.west to stringResource(R.string.label_offline_sets),
+                buttonStyle.north to stringResource(R.string.label_logout),
+            )
         )
     }
 }

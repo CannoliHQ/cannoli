@@ -37,6 +37,7 @@
     <string name="label_update">UPDATE</string>
     <string name="label_check_update">CHECK FOR UPDATES</string>
     <string name="label_logout">LOGOUT</string>
+    <string name="label_offline_sets">OFFLINE SETS</string>
     <string name="label_hex">HEX</string>
     <string name="label_edit">EDIT</string>
     <string name="label_rename">RENAME</string>
@@ -652,4 +653,16 @@
     <string name="ra_cannot_report_banner">RetroArch can\'t report installed cores. Update RetroArch, or press Y to pick from all known cores (may hang if not actually installed).</string>
     <string name="ra_show_all_banner">Showing all known cores. Picking one that\'s not actually installed will hang RetroArch.</string>
     <string name="dialog_reset_platform_confirm">Reset %1$s? This clears your emulator selection for this platform and restores the bundled default.</string>
+    <string name="ra_preload_progress">Preloading %1$s</string>
+    <string name="ra_preload_none">No achievements found for this game</string>
+    <string name="ra_preload_failed">Preload failed. Check your connection.</string>
+    <plurals name="ra_preload_success">
+        <item quantity="one">Cached %1$d achievement (%2$d pts) for offline play</item>
+        <item quantity="other">Cached %1$d achievements (%2$d pts) for offline play</item>
+    </plurals>
+    <string name="ra_preload_bulk_done">Cached %1$d of %2$d games for offline play</string>
+    <string name="ra_offline_sets_title">Offline Achievement Sets</string>
+    <string name="ra_offline_sets_empty">No achievement sets cached</string>
+    <string name="ra_offline_set_value">%1$d Achievements - %2$s</string>
+    <string name="label_refresh">REFRESH</string>
 </resources>
