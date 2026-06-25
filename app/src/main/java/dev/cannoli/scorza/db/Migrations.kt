@@ -145,6 +145,9 @@ internal object Migrations {
                 db.execute("UPDATE roms SET name_normalized = ? WHERE id = ?", TextNormalizer.normalize(name), id)
             }
         },
+        Migration(8) { db ->
+            db.execSQL("ALTER TABLE roms ADD COLUMN ra_cached_game_id INTEGER")
+        },
     )
 
     val current: Int = all.maxOf { it.version }

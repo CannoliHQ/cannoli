@@ -65,6 +65,7 @@ import javax.inject.Inject
 class LibretroActivity : ComponentActivity() {
 
     @Inject lateinit var settings: SettingsRepository
+    @Inject lateinit var romsRepository: dev.cannoli.scorza.db.RomsRepository
     @Inject lateinit var portRouter: dev.cannoli.scorza.input.runtime.PortRouter
     @Inject lateinit var controllerBridge: dev.cannoli.scorza.input.runtime.ControllerBridge
     @Inject lateinit var screenInputRegistry: dev.cannoli.scorza.input.runtime.ScreenInputRegistry
@@ -187,6 +188,9 @@ class LibretroActivity : ComponentActivity() {
     private var diskLabels = emptyList<String>()
 
     private var raManager: RetroAchievementsManager? = null
+    private var raOfflineRomPath: String? = null
+    private var raOfflinePlatformTag: String? = null
+    private var raOfflineRomId: Long = -1
     private var raInfoTick by mutableIntStateOf(0)
 
     private val raPausedIdleHandler = Handler(Looper.getMainLooper())
@@ -805,7 +809,7 @@ class LibretroActivity : ComponentActivity() {
                 val raUser = args.raUsername
                 val raToken = args.raToken
                 val raPassword = args.raPassword
-                val consoleId = RetroAchievementsManager.CONSOLE_MAP[platformTag.uppercase()]
+                val consoleId = dev.cannoli.scorza.ra.RaConsoles.MAP[platformTag.uppercase()]
                 sessionLog.log("RA init: user=${raUser.isNotEmpty()} token=${raToken.isNotEmpty()} password=${raPassword.isNotEmpty()} consoleId=$consoleId platformTag=$platformTag")
                 if (consoleId != null && raUser.isNotEmpty() && (raToken.isNotEmpty() || raPassword.isNotEmpty())) {
                     val raGameIdOverride = args.raGameId ?: 0
@@ -814,6 +818,7 @@ class LibretroActivity : ComponentActivity() {
                     ra = RetroAchievementsManager(
                         context = activity,
                         cacheDir = java.io.File(cacheDir, "ra_cache"),
+                        offlineDir = dev.cannoli.scorza.config.CannoliPaths(settings.sdCardRoot).configRaOffline,
                         onEvent = { _, title, _, _ ->
                             raHasAchievements = true
                             showOsd("\uDB81\uDD38 $title", OsdPosition.BottomCenterLow)
@@ -865,6 +870,9 @@ class LibretroActivity : ComponentActivity() {
                         sessionLog.log("RA setPendingReset (resumeSlot=$resumeSlot)")
                     }
                     raManager = ra
+                    raOfflineRomPath = args.originalRomPath ?: args.romPath
+                    raOfflinePlatformTag = args.platformTag
+                    raOfflineRomId = args.romId
                     slotManager.raManager = ra
                 }
             }
@@ -2688,6 +2696,9 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun onRaDetectionReady() {
+        raManager?.let { ra ->
+            if (ra.gameId > 0 && ra.getAchievements().isNotEmpty()) recordOfflineSet(ra)
+        }
         val name = raStartupDisplayName ?: return
         raStartupTimeout?.let { raStartupHandler.removeCallbacks(it) }
         raStartupTimeout = null
@@ -2707,6 +2718,37 @@ class LibretroActivity : ComponentActivity() {
             getString(R.string.ra_login_success, name, ra.getStatus(), unlocked, achievements.size),
             OsdPosition.TopStart
         )
+    }
+
+    private fun recordOfflineSet(ra: RetroAchievementsManager) {
+        val romPath = raOfflineRomPath ?: return
+        val tag = raOfflinePlatformTag ?: return
+        val gameId = ra.gameId
+        if (gameId <= 0) return
+        val username = settings.raUsername
+        val token = settings.raToken
+        if (username.isEmpty() || token.isEmpty()) return
+        val hash = ra.gameHash
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val store = dev.cannoli.scorza.ra.RaOfflineStore(
+                    dev.cannoli.scorza.config.CannoliPaths(settings.sdCardRoot).configRaOffline
+                )
+                if (store.isCached(gameId)) {
+                    if (raOfflineRomId > 0) romsRepository.setRaCachedGameId(raOfflineRomId, gameId)
+                    return@launch
+                }
+                val client = dev.cannoli.scorza.ra.RaConnectClient(
+                    userAgent = "Cannoli/${dev.cannoli.scorza.BuildConfig.VERSION_NAME}"
+                )
+                val result = dev.cannoli.scorza.ra.RaOfflinePreloader(client, store)
+                    .preload(romPath, tag, gameId, username, token, hash)
+                if (result is dev.cannoli.scorza.ra.RaOfflinePreloader.Result.Success && raOfflineRomId > 0) {
+                    romsRepository.setRaCachedGameId(raOfflineRomId, gameId)
+                }
+            } catch (_: Exception) {
+            }
+        }
     }
 
     private fun startUndoTimer(durationMs: Long = 60_000) {

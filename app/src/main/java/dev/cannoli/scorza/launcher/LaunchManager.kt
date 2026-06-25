@@ -452,6 +452,7 @@ class LaunchManager(
             raToken = settings.raToken,
             raPassword = settings.raPassword,
             raGameId = rom.raGameId,
+            romId = rom.id,
             resumeSlot = resumeSlot,
         )
         val intent = args.writeTo(Intent(context, LibretroActivity::class.java))

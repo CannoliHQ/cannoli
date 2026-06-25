@@ -15,6 +15,7 @@ import java.util.concurrent.Executors
 class RetroAchievementsManager(
     private val context: android.content.Context,
     private val cacheDir: java.io.File? = null,
+    private val offlineDir: java.io.File? = null,
     private val onEvent: (type: Int, title: String, description: String, points: Int) -> Unit = { _, _, _, _ -> },
     private val onLogin: (success: Boolean, displayName: String, token: String?) -> Unit = { _, _, _ -> },
     private val onSyncStatus: (message: String) -> Unit = {},
@@ -108,6 +109,7 @@ class RetroAchievementsManager(
     val username: String get() = nativeGetUsername()
     val gameId: Int get() = nativeGetGameId()
     val gameTitle: String get() = nativeGetGameTitle()
+    val gameHash: String get() = nativeGetGameHash()
     val isOnline: Boolean get() {
         val cm = context?.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return false
         val network = cm.activeNetwork ?: return false
@@ -286,10 +288,11 @@ class RetroAchievementsManager(
                     nativeHttpResponse(requestPtr, body, status)
                 } catch (e: IOException) {
                     val cached = if (key != null) readCache(key) else null
-                    if (cached != null) {
-                        logger("RA http FAILED ($urlTag): ${e.message} -- using cache (len=${cached.length})")
+                    val offline = cached ?: dev.cannoli.scorza.ra.RaOfflineLookup.bodyFor(offlineDir, postData)
+                    if (offline != null) {
+                        logger("RA http FAILED ($urlTag): ${e.message} -- using ${if (cached != null) "cache" else "offline store"} (len=${offline.length})")
                         isOffline = true
-                        nativeHttpResponse(requestPtr, cached, 200)
+                        nativeHttpResponse(requestPtr, offline, 200)
                     } else {
                         logger("RA http FAILED ($urlTag): ${e.message} -- no cache")
                         isOffline = true
@@ -436,21 +439,6 @@ class RetroAchievementsManager(
         private const val EVENT_DETECTION_READY = 1000
         private val CACHE_KEY_STRIP_REGEX = Regex("[&?](t|u)=[^&]+")
 
-        val CONSOLE_MAP = mapOf(
-            "NES" to 7, "FDS" to 7, "SNES" to 3, "GB" to 4, "GBC" to 6, "GBA" to 5,
-            "GG" to 15, "MD" to 1, "SMS" to 11, "SG1000" to 33, "SEGACD" to 9, "32X" to 10,
-            "N64" to 2, "PS" to 12, "PSP" to 41,
-            "PCE" to 8, "SUPERGRAFX" to 8, "PCFX" to 49,
-            "LYNX" to 13,
-            "NGP" to 14, "NGPC" to 14,
-            "WS" to 53, "WSC" to 53,
-            "VIRTUALBOY" to 28, "POKEMINI" to 71,
-            "ATARI2600" to 25, "ATARI7800" to 51, "JAGUAR" to 17,
-            "INTELLIVISION" to 45, "COLECOVISION" to 44, "VECTREX" to 46,
-            "DC" to 40, "SATURN" to 39,
-            "NEOGEO" to 27, "FBN" to 27, "MAME" to 27,
-            "MSX" to 29, "DOS" to 68, "SCUMMVM" to 56, "AMIGA" to 35
-        )
     }
 }
 
