@@ -20,7 +20,6 @@ class RomDirectoryWalker(
     private val romDirectory: File get() = pathsProvider.romDir
 
     private val discRegex = Regex("""\s*\((Disc|Disk)\s*\d+\)|\s*\(CD\d+\)""", RegexOption.IGNORE_CASE)
-    private val tagRegex = Regex("""\s*(\([^)]*\)|\[[^\]]*\])""")
     private val cueFileLineRegex = Regex("""^\s*FILE\s+(?:"([^"]+)"|(\S+))\s+\w+\s*$""", RegexOption.IGNORE_CASE)
 
     @Volatile private var ignoredExtensions: Set<String> = emptySet()
@@ -198,7 +197,7 @@ class RomDirectoryWalker(
             val launch = findDirLaunchFile(subdir)
             if (launch != null) {
                 val launchRel = "$relPrefix${subdir.name}${File.separator}${launch.file.name}"
-                val (displayName, tags) = splitNameAndTags(subdir.name)
+                val (displayName, tags) = RomNaming.splitNameAndTags(subdir.name)
                 out.add(ScannedRom(launchRel, displayName, tags))
             } else if (subdir.listFiles()?.any { !it.name.startsWith(".") } == true) {
                 scanDir(subdir, "$relPrefix${subdir.name}${File.separator}", isArcade, out, depth + 1)
@@ -229,16 +228,9 @@ class RomDirectoryWalker(
             } else {
                 file.nameWithoutExtension
             }
-            val (displayName, tags) = if (override != null) override to null else splitNameAndTags(rawName)
+            val (displayName, tags) = if (override != null) override to null else RomNaming.splitNameAndTags(rawName)
             out.add(ScannedRom("$relPrefix${file.name}", displayName, tags))
         }
-    }
-
-    private fun splitNameAndTags(rawName: String): Pair<String, String?> {
-        val base = tagRegex.replace(rawName, "").trim()
-        if (base.isEmpty() || base == rawName) return rawName to null
-        val tags = tagRegex.findAll(rawName).joinToString(" ") { it.value.trim() }.takeIf { it.isNotBlank() }
-        return base to tags
     }
 
     private fun findDirLaunchFile(dir: File): DirLaunch? {

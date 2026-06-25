@@ -8,6 +8,7 @@ import dev.cannoli.scorza.model.Rom
 import dev.cannoli.scorza.di.CannoliPathsProvider
 import dev.cannoli.scorza.util.ArtworkLookup
 import dev.cannoli.scorza.util.NaturalSort
+import dev.cannoli.scorza.util.RomNaming
 import dev.cannoli.scorza.util.TextNormalizer
 import java.io.File
 
@@ -54,6 +55,22 @@ class RomsRepository(
         "UPDATE roms SET path = ? WHERE id = ?",
         newRelativePath, romId,
     )
+
+    // Renames a rom in place: updates the path plus every name-derived column the same way the
+    // scanner would, so the list re-sorts to the new name immediately instead of waiting for the
+    // file-watcher rescan (which then finds nothing changed and stays a no-op).
+    fun renameRom(romId: Long, newRelativePath: String, newBaseName: String) {
+        val (displayName, tags) = RomNaming.splitNameAndTags(newBaseName)
+        db.execute(
+            "UPDATE roms SET path = ?, display_name = ?, sort_key = ?, tags = ?, name_normalized = ? WHERE id = ?",
+            newRelativePath,
+            displayName,
+            NaturalSort.toSortKey(displayName),
+            tags,
+            TextNormalizer.normalize(displayName),
+            romId,
+        )
+    }
 
     fun updateRomPathsUnderPrefix(platformTag: String, oldPrefix: String, newPrefix: String) = db.execute(
         """
