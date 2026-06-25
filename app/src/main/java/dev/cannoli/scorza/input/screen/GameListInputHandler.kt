@@ -9,6 +9,7 @@ import dev.cannoli.scorza.input.MENU_ADD_FAVORITE
 import dev.cannoli.scorza.input.MENU_DELETE_ART
 import dev.cannoli.scorza.input.MENU_DELETE_GAME
 import dev.cannoli.scorza.input.MENU_MANAGE_COLLECTIONS
+import dev.cannoli.scorza.input.MENU_PRELOAD_ACHIEVEMENTS
 import dev.cannoli.scorza.input.MENU_REMOVE
 import dev.cannoli.scorza.input.MENU_REMOVE_FAVORITE
 import dev.cannoli.scorza.input.MENU_REMOVE_FROM_COLLECTION
@@ -191,7 +192,13 @@ class GameListInputHandler @Inject constructor(
                 if (isApkList) {
                     options.addAll(listOf(MENU_MANAGE_COLLECTIONS, MENU_REMOVE))
                 } else {
-                    options.addAll(listOf(MENU_MANAGE_COLLECTIONS, MENU_DELETE_ART, MENU_DELETE_GAME))
+                    options.add(MENU_MANAGE_COLLECTIONS)
+                    if (settings.raToken.isNotEmpty() &&
+                        dev.cannoli.scorza.ra.RaConsoles.MAP.containsKey(glState.platformTag.uppercase())
+                    ) {
+                        options.add(MENU_PRELOAD_ACHIEVEMENTS)
+                    }
+                    options.addAll(listOf(MENU_DELETE_ART, MENU_DELETE_GAME))
                 }
                 gameListViewModel.confirmMultiSelect()
                 nav.dialogState.value = DialogState.BulkContextMenu(

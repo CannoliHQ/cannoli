@@ -282,6 +282,26 @@ sealed class LauncherScreen {
         val tag: String,
         val scrollStep: Int = 0,
     ) : LauncherScreen()
+    data class RaOfflinePlatform(val tag: String, val name: String, val count: Int)
+
+    data class RetroAchievementsOfflinePlatforms(
+        val platforms: List<RaOfflinePlatform> = emptyList(),
+        override val selectedIndex: Int = 0,
+        override val scrollTarget: Int = 0,
+    ) : LauncherScreen(), ScrollableScreen {
+        override val itemCount: Int get() = platforms.size
+        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
+    }
+    data class RetroAchievementsOfflineSets(
+        val platformTag: String = "",
+        val platformName: String = "",
+        val entries: List<dev.cannoli.scorza.ra.RaOfflineStore.Entry> = emptyList(),
+        override val selectedIndex: Int = 0,
+        override val scrollTarget: Int = 0,
+    ) : LauncherScreen(), ScrollableScreen {
+        override val itemCount: Int get() = entries.size
+        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
+    }
     data class InstalledCores(val cores: List<String> = emptyList(), val loading: Boolean = true, override val selectedIndex: Int = 0, override val scrollTarget: Int = 0, val title: String? = null) : LauncherScreen(), ScrollableScreen {
         override val itemCount: Int get() = cores.size
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
@@ -1225,6 +1245,40 @@ fun AppNavGraph(
                     listLineHeight = listLineHeight,
                     listVerticalPadding = listVerticalPadding,
                     buttonStyle = labels,
+                )
+            }
+            is LauncherScreen.RetroAchievementsOfflinePlatforms -> {
+                if (inputRouter != null) {
+                    val handler = remember { inputRouter.currentHandler() }
+                    dev.cannoli.scorza.input.screen.compose.ScreenInput(handler)
+                }
+                dev.cannoli.scorza.ui.screens.RetroAchievementsOfflinePlatformsScreen(
+                    screen = currentScreen,
+                    modifier = Modifier.fillMaxSize(),
+                    backgroundImagePath = appSettings.backgroundImagePath,
+                    backgroundTint = appSettings.backgroundTint,
+                    listFontSize = listFontSize,
+                    listLineHeight = listLineHeight,
+                    listVerticalPadding = listVerticalPadding,
+                    buttonStyle = labels,
+                    onListStateChanged = onListStateChanged,
+                )
+            }
+            is LauncherScreen.RetroAchievementsOfflineSets -> {
+                if (inputRouter != null) {
+                    val handler = remember { inputRouter.currentHandler() }
+                    dev.cannoli.scorza.input.screen.compose.ScreenInput(handler)
+                }
+                dev.cannoli.scorza.ui.screens.RetroAchievementsOfflineSetsScreen(
+                    screen = currentScreen,
+                    modifier = Modifier.fillMaxSize(),
+                    backgroundImagePath = appSettings.backgroundImagePath,
+                    backgroundTint = appSettings.backgroundTint,
+                    listFontSize = listFontSize,
+                    listLineHeight = listLineHeight,
+                    listVerticalPadding = listVerticalPadding,
+                    buttonStyle = labels,
+                    onListStateChanged = onListStateChanged,
                 )
             }
             is LauncherScreen.OnboardingPermissions -> {

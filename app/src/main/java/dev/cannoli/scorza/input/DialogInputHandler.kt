@@ -83,6 +83,7 @@ class DialogInputHandler @Inject constructor(
     private val rommDownloader: dev.cannoli.scorza.romm.download.RommDownloader,
     private val rommBrowseViewModel: dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel,
     private val rommArtFetcher: dev.cannoli.scorza.romm.art.RommArtFetcher,
+    private val raPreloadController: dev.cannoli.scorza.ra.RaPreloadController,
 ) : DialogPrecedence {
     private val selectHoldHandler = Handler(Looper.getMainLooper())
     private val selectHoldRunnable = Runnable {
@@ -606,6 +607,12 @@ class DialogInputHandler @Inject constructor(
                 }
             }
             is DialogState.RommConfirm -> onRommConfirm(ds)
+            is DialogState.RAPreloadResult -> {
+                nav.dialogState.value = DialogState.None
+            }
+            is DialogState.RAPreloadProgress -> {
+                nav.dialogState.value = DialogState.None
+            }
             else -> {}
         }
         return true
@@ -826,6 +833,12 @@ class DialogInputHandler @Inject constructor(
                         nav.dialogState.value = DialogState.RommDownloads()
                 }
             }
+            is DialogState.RAPreloadResult -> {
+                nav.dialogState.value = DialogState.None
+            }
+            is DialogState.RAPreloadProgress -> {
+                nav.dialogState.value = DialogState.None
+            }
             else -> {}
         }
         return true
@@ -924,6 +937,18 @@ class DialogInputHandler @Inject constructor(
                     nav.dialogState.value = DialogState.UpdateDownload(info.versionName, info.changelog)
                     ioScope.launch { updateManager.downloadAndInstall(info) }
                 }
+            }
+            is DialogState.RAAccount -> {
+                nav.dialogState.value = DialogState.None
+                val store = dev.cannoli.scorza.ra.RaOfflineStore(
+                    dev.cannoli.scorza.config.CannoliPaths(settings.sdCardRoot).configRaOffline
+                )
+                val platforms = store.entries()
+                    .groupBy { it.platformTag }
+                    .map { (tag, list) -> LauncherScreen.RaOfflinePlatform(tag, platformResolver.getDisplayName(tag), list.size) }
+                    .sortedBy { it.name.lowercase() }
+                nav.screenStack.add(LauncherScreen.RetroAchievementsOfflinePlatforms(platforms = platforms))
+                return true
             }
             is DialogState.RommConnected -> {
                 nav.dialogState.value = DialogState.RommConfirm(dev.cannoli.scorza.ui.screens.RommConfirmAction.DISCONNECT)
@@ -1260,6 +1285,22 @@ class DialogInputHandler @Inject constructor(
                 gameListViewModel.reload()
                 nav.dialogState.value = DialogState.None
             }
+            MENU_PRELOAD_ACHIEVEMENTS -> {
+                pendingContextReturn = null
+                val pathSet = state.gamePaths.toSet()
+                val roms = gameListViewModel.state.value.items
+                    .filterIsInstance<ListItem.RomItem>()
+                    .map { it.rom }
+                    .filter { rom ->
+                        rom.path.absolutePath in pathSet &&
+                            dev.cannoli.scorza.ra.RaPreloadEligibility.isEligible(
+                                platformTag = rom.platformTag,
+                                embeddedCorePresent = launchManager.getEmbeddedCorePath(rom) != null,
+                                raLoggedIn = settings.raToken.isNotEmpty(),
+                            )
+                    }
+                raPreloadController.preloadBulk(roms)
+            }
             MENU_REMOVE -> {
                 pendingContextReturn = null
                 val pathSet = state.gamePaths.toSet()
@@ -1473,11 +1514,29 @@ class DialogInputHandler @Inject constructor(
                         } else {
                             "$MENU_EMULATOR_OVERRIDE\tPlatform Default"
                         }
-                    } else menuItem
+                        }
+                        menuItem == MENU_RA_GAME_ID -> "$MENU_RA_GAME_ID\t${rom?.raGameId?.toString() ?: "Autodetect"}"
+                        else -> menuItem
+                    }
                 })
                 if (rom?.artFile != null) {
                     val idx = indexOf(MENU_DELETE_GAME)
                     if (idx >= 0) add(idx, MENU_DELETE_ART) else add(MENU_DELETE_ART)
+                }
+                if (rom != null && dev.cannoli.scorza.ra.RaPreloadEligibility.isEligible(
+                        platformTag = rom.platformTag,
+                        embeddedCorePresent = launchManager.getEmbeddedCorePath(rom) != null,
+                        raLoggedIn = settings.raToken.isNotEmpty(),
+                    )
+                ) {
+                    val cached = rom.raCachedGameId?.let { gid ->
+                        dev.cannoli.scorza.ra.RaOfflineStore(
+                            dev.cannoli.scorza.config.CannoliPaths(settings.sdCardRoot).configRaOffline
+                        ).isCached(gid)
+                    } ?: false
+                    val item = if (cached) "$MENU_PRELOAD_ACHIEVEMENTS\tCached" else MENU_PRELOAD_ACHIEVEMENTS
+                    val raIdx = indexOfFirst { it == MENU_RA_GAME_ID || it.startsWith("$MENU_RA_GAME_ID\t") }
+                    if (raIdx >= 0) add(raIdx + 1, item) else add(item)
                 }
             }
         }
