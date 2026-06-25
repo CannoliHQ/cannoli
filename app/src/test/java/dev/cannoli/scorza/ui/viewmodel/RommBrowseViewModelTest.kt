@@ -40,6 +40,7 @@ class RommBrowseViewModelTest {
             RommPlatform(2, "snes", "SNES", "Super Nintendo", 1),
             RommPlatform(3, "psx", "PSX", "PlayStation", 1),
         )
+        coEvery { lib.collections(any()) } returns emptyList()
         val vm = vm(lib)
         vm.enterBrowse()
         assertEquals(listOf("GBA", "PSX", "SNES"), vm.platforms.value.map { it.cannoliTag })

@@ -1317,7 +1317,6 @@ fun AppNavGraph(
                 val collections = rommBrowseViewModel?.collections?.collectAsState()?.value ?: emptyList()
                 androidx.compose.runtime.LaunchedEffect(Unit) {
                     rommBrowseViewModel?.enterBrowse()
-                    rommBrowseViewModel?.loadCollections()
                 }
                 val showCollectionsRow = collections.isNotEmpty()
                 val syncStatus = rommBrowseViewModel?.syncStatus?.collectAsState()?.value

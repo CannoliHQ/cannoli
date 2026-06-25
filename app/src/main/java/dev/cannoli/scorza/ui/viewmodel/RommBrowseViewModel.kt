@@ -89,8 +89,10 @@ class RommBrowseViewModel(
 
     suspend fun enterBrowse() {
         loadPlatforms()
+        loadCollections()
         if (_platforms.value.isEmpty()) syncCoordinator?.syncFull() else syncCoordinator?.syncDelta()
         loadPlatforms()
+        loadCollections()
     }
 
     suspend fun openPlatform(platform: RommPlatform, search: String? = null) {
