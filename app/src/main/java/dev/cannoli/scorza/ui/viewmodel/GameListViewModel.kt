@@ -58,6 +58,37 @@ internal fun globalOriginTag(
     else -> null
 }
 
+internal fun stableIdOf(item: ListItem?): String? = when (item) {
+    is ListItem.RomItem -> "rom:${item.rom.id}"
+    is ListItem.AppItem -> "app:${item.app.id}"
+    is ListItem.ChildCollectionItem -> "col:${item.collection.id}"
+    is ListItem.CollectionItem -> "col:${item.collection.id}"
+    is ListItem.SubfolderItem -> "sub:${item.name}"
+    else -> null
+}
+
+internal fun findIndexById(items: List<ListItem>, priorId: String?): Int? =
+    priorId?.let { id -> items.indexOfFirst { stableIdOf(it) == id }.takeIf { it >= 0 } }
+
+internal fun reloadPosition(
+    items: List<ListItem>,
+    preserveId: String?,
+    preserveIndex: Int,
+    preserveScroll: Int,
+    prevCount: Int,
+): Pair<Int, Int> {
+    if (items.isEmpty()) return 0 to 0
+    // Found the same item again (e.g. after a rename re-sorts the list): keep it selected but
+    // do NOT force a scroll position. A forced scrollTarget would slam the item to the top of
+    // the viewport; -1 lets the selection effect keep it on screen only if it actually moved off.
+    findIndexById(items, preserveId)?.let { return it to -1 }
+    val maxIdx = items.lastIndex
+    val sameSize = prevCount >= 0 && items.size == prevCount && prevCount > 0
+    return if (sameSize || prevCount < 0) {
+        preserveIndex.coerceAtMost(maxIdx) to preserveScroll.coerceAtMost(maxIdx)
+    } else 0 to 0
+}
+
 @ActivityScoped
 class GameListViewModel @Inject constructor(
     private val romsRepository: RomsRepository,
@@ -131,11 +162,9 @@ class GameListViewModel @Inject constructor(
             val snapshot = _state.value
             val items = loadPlatformItems(snapshot.platformTag, snapshot.platformTags, snapshot.subfolderPath)
             val priorId = stableIdOf(snapshot.items.getOrNull(snapshot.selectedIndex))
-            val newIndex = if (priorId != null) {
-                items.indexOfFirst { stableIdOf(it) == priorId }
-                    .takeIf { it >= 0 }
-                    ?: snapshot.selectedIndex.coerceAtMost(items.lastIndex.coerceAtLeast(0))
-            } else 0
+            val (newIndex, newScroll) = reloadPosition(
+                items, priorId, snapshot.selectedIndex, snapshot.selectedIndex, prevCount = -1
+            )
             _state.update { live ->
                 live.copy(
                     items = items,
@@ -144,7 +173,7 @@ class GameListViewModel @Inject constructor(
                     favoriteRomIds = collectionsRepository.favoriteRomIds(),
                     favoriteAppIds = collectionsRepository.favoriteAppIds(),
                     selectedIndex = newIndex,
-                    scrollTarget = newIndex,
+                    scrollTarget = newScroll,
                 )
             }
             if (!result.silent) {
@@ -155,20 +184,13 @@ class GameListViewModel @Inject constructor(
         }
     }
 
-    private fun stableIdOf(item: ListItem?): String? = when (item) {
-        is ListItem.RomItem -> "rom:${item.rom.id}"
-        is ListItem.AppItem -> "app:${item.app.id}"
-        is ListItem.ChildCollectionItem -> "col:${item.collection.id}"
-        is ListItem.CollectionItem -> "col:${item.collection.id}"
-        is ListItem.SubfolderItem -> "sub:${item.name}"
-        else -> null
-    }
-
     var firstVisibleIndex: Int = 0
+
+    private data class SavedPos(val id: String?, val index: Int, val scroll: Int)
 
     private val breadcrumbStack = mutableListOf<String>()
     private val indexStack = mutableListOf<Pair<Int, Int>>()
-    private var collectionsListSaved: Pair<Int, Int> = 0 to 0
+    private var collectionsListSaved = SavedPos(null, 0, 0)
     private var collectionsListItemCount: Int = 0
     private val collectionStack = mutableListOf<Triple<Long, Int, Int>>()
 
@@ -179,7 +201,8 @@ class GameListViewModel @Inject constructor(
     fun saveCollectionsPosition() {
         val current = _state.value
         if (current.isCollectionsList) {
-            collectionsListSaved = current.selectedIndex to firstVisibleIndex
+            val id = stableIdOf(current.items.getOrNull(current.selectedIndex))
+            collectionsListSaved = SavedPos(id, current.selectedIndex, firstVisibleIndex)
             collectionsListItemCount = current.items.size
         }
     }
@@ -211,7 +234,8 @@ class GameListViewModel @Inject constructor(
     fun loadCollectionById(id: Long, onReady: () -> Unit = {}) {
         val current = _state.value
         if (current.isCollectionsList) {
-            collectionsListSaved = current.selectedIndex to firstVisibleIndex
+            val savedId = stableIdOf(current.items.getOrNull(current.selectedIndex))
+            collectionsListSaved = SavedPos(savedId, current.selectedIndex, firstVisibleIndex)
             collectionsListItemCount = current.items.size
         }
         breadcrumbStack.clear()
@@ -351,7 +375,9 @@ class GameListViewModel @Inject constructor(
             }
             val (idx, scroll) = if (restoreIndex && collectionsListItemCount > 0 && items.isNotEmpty()) {
                 val maxIdx = items.lastIndex.coerceAtLeast(0)
-                collectionsListSaved.first.coerceAtMost(maxIdx) to collectionsListSaved.second.coerceAtMost(maxIdx)
+                val found = findIndexById(items, collectionsListSaved.id)
+                if (found != null) found to -1
+                else collectionsListSaved.index.coerceAtMost(maxIdx) to collectionsListSaved.scroll.coerceAtMost(maxIdx)
             } else 0 to 0
             _state.value = State(
                 breadcrumb = resources.getString(R.string.label_collections),
@@ -412,39 +438,32 @@ class GameListViewModel @Inject constructor(
         val preserveIndex = current.selectedIndex
         val preserveScroll = firstVisibleIndex
         val prevCount = current.items.size
+        val preserveId = stableIdOf(current.items.getOrNull(preserveIndex))
         if (current.isCollectionsList) {
-            collectionsListSaved = preserveIndex to preserveScroll
+            collectionsListSaved = SavedPos(preserveId, preserveIndex, preserveScroll)
             collectionsListItemCount = prevCount
             loadCollectionsList(restoreIndex = true, onReady = onReady)
         } else if (current.isCollection && current.collectionId != null) {
             scope.launch(Dispatchers.IO) {
                 loadCollectionByIdInternal(current.collectionId) {
                     val s = _state.value
-                    if (s.items.size == prevCount && prevCount > 0) {
-                        _state.value = s.copy(
-                            selectedIndex = preserveIndex.coerceAtMost(s.items.lastIndex.coerceAtLeast(0)),
-                            scrollTarget = preserveScroll.coerceAtMost(s.items.lastIndex.coerceAtLeast(0))
-                        )
-                    } else {
-                        _state.value = s.copy(selectedIndex = 0, scrollTarget = 0)
-                    }
+                    val (idx, scroll) = reloadPosition(s.items, preserveId, preserveIndex, preserveScroll, prevCount)
+                    _state.value = s.copy(selectedIndex = idx, scrollTarget = scroll)
                     onReady()
                 }
             }
         } else if (current.platformTag == "tools" || current.platformTag == "ports") {
             loadApkList(current.platformTag, current.breadcrumb) {
                 val s = _state.value
-                _state.value = s.copy(
-                    selectedIndex = preserveIndex.coerceAtMost(s.items.lastIndex.coerceAtLeast(0)),
-                    scrollTarget = preserveScroll.coerceAtMost(s.items.lastIndex.coerceAtLeast(0))
-                )
+                val (idx, scroll) = reloadPosition(s.items, preserveId, preserveIndex, preserveScroll, prevCount = -1)
+                _state.value = s.copy(selectedIndex = idx, scrollTarget = scroll)
                 onReady()
             }
         } else if (current.platformTag == "recently_played") {
             _state.value = current.copy(items = emptyList(), isLoading = true)
             loadRecentlyPlayed(onReady)
         } else if (current.platformTags.isNotEmpty()) {
-            loadGames(current.platformTag, current.platformTags, current.subfolderPath, preserveIndex, preserveScroll, prevCount, onReady)
+            loadGames(current.platformTag, current.platformTags, current.subfolderPath, preserveIndex, preserveScroll, prevCount, preserveId, onReady)
         } else {
             onReady()
         }
@@ -697,6 +716,7 @@ class GameListViewModel @Inject constructor(
         preserveIndex: Int = 0,
         preserveScroll: Int = 0,
         prevCount: Int = -1,
+        preserveId: String? = null,
         onReady: () -> Unit = {},
     ) {
         scope.launch(Dispatchers.IO) {
@@ -705,11 +725,7 @@ class GameListViewModel @Inject constructor(
                 val displayName = platformConfig.getDisplayName(tag)
                 val breadcrumb = if (breadcrumbStack.isEmpty()) displayName
                 else "/${breadcrumbStack.last()}"
-                val sameSize = prevCount >= 0 && items.size == prevCount && prevCount > 0
-                val maxIdx = items.lastIndex.coerceAtLeast(0)
-                val (idx, scroll) = if (sameSize || prevCount < 0) {
-                    preserveIndex.coerceAtMost(maxIdx) to preserveScroll.coerceAtMost(maxIdx)
-                } else 0 to 0
+                val (idx, scroll) = reloadPosition(items, preserveId, preserveIndex, preserveScroll, prevCount)
                 _state.value = State(
                     platformTag = tag,
                     platformTags = tags,
