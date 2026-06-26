@@ -1,5 +1,8 @@
 package dev.cannoli.ui.components
 
+import dev.cannoli.ui.KEY_SHIFT
+import dev.cannoli.ui.KEY_SPACE
+import dev.cannoli.ui.KEY_SYMBOLS
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -90,5 +93,43 @@ class KeyboardControllerTest {
     @Test fun `press backspace key deletes before cursor`() {
         val r = KeyboardController.press(KeyboardState(text = "ab", cursorPos = 2, keyRow = 0, keyCol = 10)) as KeyboardPress.Update
         assertEquals("a", r.state.text)
+    }
+
+    @Test fun `layout capability flags`() {
+        assertEquals(true, KeyboardLayout.Default.supportsCaps)
+        assertEquals(true, KeyboardLayout.Default.supportsSymbols)
+        assertEquals(true, KeyboardLayout.Default.supportsSpace)
+        assertEquals(false, KeyboardLayout.Number.supportsCaps)
+        assertEquals(false, KeyboardLayout.Number.supportsSymbols)
+        assertEquals(false, KeyboardLayout.Number.supportsSpace)
+    }
+
+    @Test fun `number layout ignores caps and symbols`() {
+        assertEquals(KEYBOARD_NUMBER, getKeyboardRows(KeyboardLayout.Number, caps = true, symbols = true))
+        assertEquals(KEYBOARD_NUMBER, getKeyboardRows(KeyboardLayout.Number, caps = false, symbols = false))
+    }
+
+    @Test fun `number layout has no modifier keys`() {
+        val flat = KEYBOARD_NUMBER.flatten()
+        assertEquals(false, flat.contains(KEY_SHIFT))
+        assertEquals(false, flat.contains(KEY_SYMBOLS))
+        assertEquals(false, flat.contains(KEY_SPACE))
+    }
+
+    @Test fun `number layout press inserts digit`() {
+        val s = KeyboardState(layout = KeyboardLayout.Number, keyRow = 0, keyCol = 0)
+        val r = KeyboardController.press(s) as KeyboardPress.Update
+        assertEquals("1", r.state.text)
+    }
+
+    @Test fun `number layout enter confirms`() {
+        val s = KeyboardState(layout = KeyboardLayout.Number, keyRow = 3, keyCol = 2)
+        assertEquals(KeyboardPress.Confirm, KeyboardController.press(s))
+    }
+
+    @Test fun `number layout backspace key deletes before cursor`() {
+        val s = KeyboardState(text = "12", cursorPos = 2, layout = KeyboardLayout.Number, keyRow = 3, keyCol = 0)
+        val r = KeyboardController.press(s) as KeyboardPress.Update
+        assertEquals("1", r.state.text)
     }
 }

@@ -63,7 +63,7 @@ fun KeyboardOverlay(
     val caps = state.caps
     val symbols = state.symbols
     val typo = LocalCannoliTypography.current
-    val rows = getKeyboardRows(caps, symbols)
+    val rows = getKeyboardRows(state.layout, caps, symbols)
     val row = keyRow.coerceIn(0, rows.lastIndex)
     val col = keyCol.coerceIn(0, rows[row].lastIndex)
     val colors = LocalCannoliColors.current

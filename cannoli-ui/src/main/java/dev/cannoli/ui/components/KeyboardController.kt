@@ -30,10 +30,33 @@ val KEYBOARD_SYMBOLS = listOf(
     listOf(KEY_SPACE)
 )
 
-fun getKeyboardRows(caps: Boolean, symbols: Boolean): List<List<String>> = when {
-    symbols -> KEYBOARD_SYMBOLS
-    caps -> KEYBOARD_ALPHA_SHIFTED
-    else -> KEYBOARD_ALPHA
+val KEYBOARD_NUMBER = listOf(
+    listOf("1", "2", "3"),
+    listOf("4", "5", "6"),
+    listOf("7", "8", "9"),
+    listOf(KEY_BACKSPACE, "0", KEY_ENTER)
+)
+
+enum class KeyboardLayout(
+    val supportsCaps: Boolean,
+    val supportsSymbols: Boolean,
+    val supportsSpace: Boolean,
+) {
+    Default(supportsCaps = true, supportsSymbols = true, supportsSpace = true),
+    Number(supportsCaps = false, supportsSymbols = false, supportsSpace = false),
+}
+
+fun getKeyboardRows(
+    layout: KeyboardLayout = KeyboardLayout.Default,
+    caps: Boolean,
+    symbols: Boolean,
+): List<List<String>> = when (layout) {
+    KeyboardLayout.Number -> KEYBOARD_NUMBER
+    KeyboardLayout.Default -> when {
+        symbols -> KEYBOARD_SYMBOLS
+        caps -> KEYBOARD_ALPHA_SHIFTED
+        else -> KEYBOARD_ALPHA
+    }
 }
 
 data class KeyboardState(
@@ -43,6 +66,7 @@ data class KeyboardState(
     val keyCol: Int = 0,
     val caps: Boolean = false,
     val symbols: Boolean = false,
+    val layout: KeyboardLayout = KeyboardLayout.Default,
 )
 
 enum class Direction { UP, DOWN, LEFT, RIGHT }
@@ -55,7 +79,7 @@ sealed interface KeyboardPress {
 object KeyboardController {
 
     fun moveSelection(s: KeyboardState, dir: Direction): KeyboardState {
-        val rows = getKeyboardRows(s.caps, s.symbols)
+        val rows = getKeyboardRows(s.layout, s.caps, s.symbols)
         return when (dir) {
             Direction.UP -> {
                 val newRow = if (s.keyRow <= 0) rows.lastIndex else s.keyRow - 1
@@ -99,7 +123,7 @@ object KeyboardController {
     }
 
     fun press(s: KeyboardState): KeyboardPress {
-        val rows = getKeyboardRows(s.caps, s.symbols)
+        val rows = getKeyboardRows(s.layout, s.caps, s.symbols)
         val key = rows.getOrNull(s.keyRow)?.getOrNull(s.keyCol) ?: return KeyboardPress.Update(s)
         return when (key) {
             KEY_SHIFT -> KeyboardPress.Update(toggleCaps(s))
