@@ -608,7 +608,7 @@ private fun ConfirmOverlay(message: String, buttonStyle: ButtonStyle) {
                 .align(Alignment.BottomCenter)
                 .padding(screenPadding),
             leftItems = listOf(buttonStyle.back to stringResource(R.string.label_cancel)),
-            rightItems = listOf(buttonStyle.confirm to stringResource(R.string.label_select))
+            rightItems = listOf(buttonStyle.confirm to stringResource(R.string.label_confirm))
         )
     }
 }
