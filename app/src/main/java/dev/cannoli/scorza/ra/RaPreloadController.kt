@@ -31,7 +31,11 @@ class RaPreloadController @Inject constructor(
             return
         }
         nav.dialogState.value = DialogState.RAPreloadProgress(rom.displayName)
-        ioScope.launch { finish(preloadOne(rom), rom.displayName, onComplete) }
+        ioScope.launch {
+            val result = runCatching { engine().preloadOne(client(), rom) }
+                .getOrDefault(RaOfflinePreloader.Result.Failure("error"))
+            finish(result, rom.displayName, onComplete)
+        }
     }
 
     fun start(
@@ -47,7 +51,9 @@ class RaPreloadController @Inject constructor(
         }
         nav.dialogState.value = DialogState.RAPreloadProgress(displayName)
         ioScope.launch {
-            finish(runPreload(client(), romPath, platformTag, gameId, null), displayName, onComplete)
+            val result = runCatching { engine().refresh(client(), romPath, platformTag, gameId, null) }
+                .getOrDefault(RaOfflinePreloader.Result.Failure("error"))
+            finish(result, displayName, onComplete)
         }
     }
 
@@ -64,68 +70,41 @@ class RaPreloadController @Inject constructor(
             return
         }
         ioScope.launch {
-            var cached = 0
-            for ((i, rom) in roms.withIndex()) {
-                withContext(Dispatchers.Main) {
-                    nav.dialogState.value = DialogState.RAPreloadProgress("${rom.displayName} (${i + 1}/${roms.size})")
+            val cached = runCatching {
+                engine().preloadAll(client(), roms) { rom, i ->
+                    withContext(Dispatchers.Main) {
+                        if (!activityGone()) {
+                            nav.dialogState.value =
+                                DialogState.RAPreloadProgress("${rom.displayName} (${i + 1}/${roms.size})")
+                        }
+                    }
                 }
-                if (preloadOne(rom) is RaOfflinePreloader.Result.Success) cached++
-            }
+            }.getOrDefault(0)
             withContext(Dispatchers.Main) {
                 onComplete()
-                nav.dialogState.value = DialogState.RAPreloadResult(
-                    success = cached > 0,
-                    message = context.getString(dev.cannoli.scorza.R.string.ra_preload_bulk_done, cached, roms.size),
-                )
-            }
-        }
-    }
-
-    private suspend fun preloadOne(rom: Rom): RaOfflinePreloader.Result {
-        val client = client()
-        var gameId = rom.raGameId ?: 0
-        var hash: String? = null
-        if (gameId <= 0) {
-            val consoleId = RaConsoles.MAP[rom.platformTag.uppercase()]
-            if (consoleId != null) {
-                hash = RaHasher.hashRom(rom.path.absolutePath, consoleId)
-                if (hash != null) {
-                    val resolved = client.resolveGameId(settings.raUsername, settings.raToken, hash)
-                    if (resolved < 0) return RaOfflinePreloader.Result.Failure("offline")
-                    gameId = resolved
+                if (!activityGone()) {
+                    nav.dialogState.value = DialogState.RAPreloadResult(
+                        success = cached > 0,
+                        message = context.getString(dev.cannoli.scorza.R.string.ra_preload_bulk_done, cached, roms.size),
+                    )
                 }
             }
         }
-        val result = runPreload(client, rom.path.absolutePath, rom.platformTag, gameId, hash)
-        if (result is RaOfflinePreloader.Result.Success && gameId > 0) {
-            romsRepository.setRaCachedGameId(rom.id, gameId)
-        }
-        return result
     }
 
-    private suspend fun runPreload(
-        client: RaConnectClient,
-        romPath: String,
-        platformTag: String,
-        gameId: Int,
-        hash: String?,
-    ): RaOfflinePreloader.Result {
-        if (gameId <= 0) return RaOfflinePreloader.Result.NoAchievements
-        val store = RaOfflineStore(CannoliPaths(settings.sdCardRoot).configRaOffline)
-        return RaOfflinePreloader(client, store).preload(
-            romPath = romPath,
-            platformTag = platformTag,
-            gameId = gameId,
-            username = settings.raUsername,
-            token = settings.raToken,
-            hash = hash,
-        )
-    }
+    private fun engine() = RaPreloadEngine(
+        store = RaOfflineStore(CannoliPaths(settings.sdCardRoot).configRaOffline),
+        romsRepository = romsRepository,
+        username = settings.raUsername,
+        token = settings.raToken,
+    )
 
     private suspend fun finish(result: RaOfflinePreloader.Result, displayName: String, onComplete: () -> Unit) {
         withContext(Dispatchers.Main) {
             onComplete()
-            showResult(result !is RaOfflinePreloader.Result.Failure, displayName, messageFor(result))
+            if (!activityGone()) {
+                showResult(result !is RaOfflinePreloader.Result.Failure, displayName, messageFor(result))
+            }
         }
     }
 
@@ -139,6 +118,13 @@ class RaPreloadController @Inject constructor(
         val caps = cm.getNetworkCapabilities(network) ?: return false
         return caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
             caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }
+
+    /** The preload coroutines run on the process-lifetime IoScope so they finish even if the user
+     *  navigates away; this skips the UI transitions once the hosting Activity is gone. */
+    private fun activityGone(): Boolean {
+        val act = context as? android.app.Activity ?: return false
+        return act.isFinishing || act.isDestroyed
     }
 
     private fun client() = RaConnectClient(userAgent = "Cannoli/${BuildConfig.VERSION_NAME}")
