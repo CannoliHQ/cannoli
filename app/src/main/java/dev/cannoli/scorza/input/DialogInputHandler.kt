@@ -41,6 +41,7 @@ import dev.cannoli.ui.components.Direction
 import dev.cannoli.ui.components.HEX_KEYS
 import dev.cannoli.ui.components.HEX_ROW_SIZE
 import dev.cannoli.ui.components.KeyboardController
+import dev.cannoli.ui.components.KeyboardLayout
 import dev.cannoli.ui.components.KeyboardPress
 import dev.cannoli.ui.components.KeyboardState
 import dev.cannoli.ui.theme.COLOR_PRESETS
@@ -84,7 +85,7 @@ class DialogInputHandler @Inject constructor(
     private val selectHoldRunnable = Runnable {
         nav.selectHeld = true
         val ds = nav.dialogState.value
-        if (ds is KeyboardHost) {
+        if (ds is KeyboardHost && ds.keyboard.layout.supportsSymbols) {
             val ks = ds.keyboard
             if (!ks.symbols) nav.capsBeforeSymbols = ks.caps
             nav.dialogState.value = ds.withKeyboard(ks.copy(caps = false, symbols = !ks.symbols))
@@ -809,7 +810,9 @@ class DialogInputHandler @Inject constructor(
             return false
         }
         when (ds) {
-            is KeyboardHost -> nav.dialogState.value = ds.withKeyboard(KeyboardController.insertChar(ds.keyboard, " "))
+            is KeyboardHost -> if (ds.keyboard.layout.supportsSpace) {
+                nav.dialogState.value = ds.withKeyboard(KeyboardController.insertChar(ds.keyboard, " "))
+            }
             is DialogState.About -> {
                 nav.dialogState.value = DialogState.None
                 nav.screenStack.add(LauncherScreen.Credits())
@@ -889,7 +892,8 @@ class DialogInputHandler @Inject constructor(
         if (ds == DialogState.None) return false
         when (ds) {
             is KeyboardHost -> {
-                if (!nav.selectDown) {
+                val layout = ds.keyboard.layout
+                if ((layout.supportsCaps || layout.supportsSymbols) && !nav.selectDown) {
                     nav.selectDown = true
                     nav.selectHeld = false
                     selectHoldHandler.postDelayed(selectHoldRunnable, 400)
@@ -909,7 +913,7 @@ class DialogInputHandler @Inject constructor(
                 val ks = ds.keyboard
                 if (ks.symbols) {
                     nav.dialogState.value = ds.withKeyboard(ks.copy(caps = nav.capsBeforeSymbols, symbols = false))
-                } else {
+                } else if (ks.layout.supportsCaps) {
                     nav.dialogState.value = ds.withKeyboard(ks.copy(caps = !ks.caps))
                 }
             }
@@ -1057,7 +1061,7 @@ class DialogInputHandler @Inject constructor(
                     val current = rom.raGameId?.toString() ?: ""
                     nav.dialogState.value = DialogState.RenameInput(
                         gameName = "ra_game_id:${rom.path.absolutePath}",
-                        keyboard = KeyboardState(text = current, cursorPos = current.length),
+                        keyboard = KeyboardState(text = current, cursorPos = current.length, layout = KeyboardLayout.Number),
                     )
                 }
             }
