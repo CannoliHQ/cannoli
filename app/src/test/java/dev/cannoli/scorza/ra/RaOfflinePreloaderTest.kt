@@ -88,4 +88,50 @@ class RaOfflinePreloaderTest {
         assertTrue(result is RaOfflinePreloader.Result.Failure)
         server.shutdown()
     }
+
+    @Test fun loginBodyNotSuccessful_returnsFailure() = runBlocking {
+        val server = MockWebServer()
+        server.enqueue(MockResponse().setBody("""{"Success":false,"Error":"bad token"}"""))
+        server.start()
+        val (pre, store) = preloader(server)
+        val result = pre.preload("/roms/x.sfc", "SNES", 7, "bob", "tok")
+        assertEquals("login", (result as RaOfflinePreloader.Result.Failure).reason)
+        assertTrue(store.entries().isEmpty())
+        server.shutdown()
+    }
+
+    @Test fun loginBodyMalformedJson_returnsFailure() = runBlocking {
+        val server = MockWebServer()
+        server.enqueue(MockResponse().setBody("not json at all"))
+        server.start()
+        val (pre, _) = preloader(server)
+        val result = pre.preload("/roms/x.sfc", "SNES", 7, "bob", "tok")
+        assertEquals("login", (result as RaOfflinePreloader.Result.Failure).reason)
+        server.shutdown()
+    }
+
+    @Test fun achievementSetsHttpError_returnsFailure() = runBlocking {
+        val server = MockWebServer()
+        server.enqueue(MockResponse().setBody("""{"Success":true,"User":"bob","Token":"tok"}"""))
+        server.enqueue(MockResponse().setResponseCode(500))
+        server.start()
+        val (pre, store) = preloader(server)
+        val result = pre.preload("/roms/x.sfc", "SNES", 7, "bob", "tok")
+        assertEquals("achievementsets", (result as RaOfflinePreloader.Result.Failure).reason)
+        assertTrue(store.entries().isEmpty())
+        server.shutdown()
+    }
+
+    @Test fun startSessionHttpError_returnsFailure() = runBlocking {
+        val server = MockWebServer()
+        server.enqueue(MockResponse().setBody("""{"Success":true,"User":"bob","Token":"tok"}"""))
+        server.enqueue(MockResponse().setBody(setsBody))
+        server.enqueue(MockResponse().setResponseCode(503))
+        server.start()
+        val (pre, store) = preloader(server)
+        val result = pre.preload("/roms/sm.sfc", "SNES", 55, "bob", "tok")
+        assertEquals("startsession", (result as RaOfflinePreloader.Result.Failure).reason)
+        assertTrue(store.entries().isEmpty())
+        server.shutdown()
+    }
 }

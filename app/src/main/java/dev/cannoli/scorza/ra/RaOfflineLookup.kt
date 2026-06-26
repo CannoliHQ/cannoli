@@ -8,17 +8,22 @@ object RaOfflineLookup {
         return when {
             postData.contains("r=login2") -> read(File(dir, "login2.json"))
             postData.contains("r=achievementsets") -> {
-                val id = param(postData, "g") ?: param(postData, "m")?.let { hashToId(dir, it) }
+                val id = intParam(postData, "g") ?: param(postData, "m")?.let { hashToId(dir, it) }
                 id?.let { read(File(dir, "$it/achievementsets.json")) }
             }
             postData.contains("r=startsession") ->
-                param(postData, "g")?.let { read(File(dir, "$it/startsession.json")) }
+                intParam(postData, "g")?.let { read(File(dir, "$it/startsession.json")) }
             else -> null
         }
     }
 
     private fun param(postData: String, key: String): String? =
-        Regex("(?:^|[&?])$key=([^&]+)").find(postData)?.groupValues?.get(1)
+        Regex("(?:^|&)$key=([^&]+)").find(postData)?.groupValues?.get(1)
+
+    /** Game-id params must be plain integers; rejecting anything else keeps a crafted `g=../x`
+     *  value from escaping the cache directory when building the file path. */
+    private fun intParam(postData: String, key: String): String? =
+        param(postData, key)?.takeIf { it.toIntOrNull() != null }
 
     private fun hashToId(dir: File, hash: String): String? {
         val dirs = dir.listFiles { f -> f.isDirectory } ?: return null

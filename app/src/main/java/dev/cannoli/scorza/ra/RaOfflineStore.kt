@@ -23,11 +23,16 @@ class RaOfflineStore(private val dir: File) {
     private val login2File get() = File(dir, "login2.json")
     private fun gameDir(gameId: Int) = File(dir, gameId.toString())
 
-    fun writeLogin2(body: String) {
+    fun writeLogin2(body: String): Boolean = try {
         dir.mkdirs()
         login2File.writeText(body)
+        true
+    } catch (_: Exception) {
+        false
     }
 
+    /** Writes a game's cached bodies atomically: a partial-write failure deletes the dir and
+     *  returns false so [entries] never surfaces a corrupt entry. */
     fun writeGame(
         gameId: Int,
         achievementSets: String,
@@ -35,13 +40,19 @@ class RaOfflineStore(private val dir: File) {
         platformTag: String,
         romPath: String,
         hash: String?,
-    ) {
+    ): Boolean {
         val g = gameDir(gameId)
-        g.mkdirs()
-        File(g, "achievementsets.json").writeText(achievementSets)
-        File(g, "startsession.json").writeText(startSession)
-        File(g, "source").writeText("$platformTag\n$romPath")
-        if (!hash.isNullOrEmpty()) File(g, "hash").writeText(hash)
+        return try {
+            g.mkdirs()
+            File(g, "achievementsets.json").writeText(achievementSets)
+            File(g, "startsession.json").writeText(startSession)
+            File(g, "source").writeText("$platformTag\n$romPath")
+            if (!hash.isNullOrEmpty()) File(g, "hash").writeText(hash)
+            true
+        } catch (_: Exception) {
+            g.deleteRecursively()
+            false
+        }
     }
 
     fun isCached(gameId: Int): Boolean = File(gameDir(gameId), "achievementsets.json").exists()
@@ -51,7 +62,7 @@ class RaOfflineStore(private val dir: File) {
         val setsFile = File(g, "achievementsets.json")
         if (!setsFile.exists()) return@mapNotNull null
         val meta = RaSetMetadata.parse(setsFile.readText()) ?: return@mapNotNull null
-        val (tag, romPath) = readSource(g)
+        val (tag, romPath) = readSource(g) ?: return@mapNotNull null
         Entry(
             gameId = gameId,
             romPath = romPath,
@@ -71,14 +82,17 @@ class RaOfflineStore(private val dir: File) {
     private fun gameDirs(): List<File> =
         dir.listFiles { f -> f.isDirectory && (f.name.toIntOrNull() ?: 0) > 0 }?.toList() ?: emptyList()
 
-    private fun readSource(g: File): Pair<String, String> {
+    /** Returns (platformTag, romPath), or null when the source file is missing, unreadable, or has
+     *  a blank platform tag, so corrupt entries are dropped instead of surfacing as empty groups. */
+    private fun readSource(g: File): Pair<String, String>? {
         val f = File(g, "source")
-        if (!f.exists()) return "" to ""
+        if (!f.exists()) return null
         return try {
             val lines = f.readText().split('\n')
-            (lines.getOrNull(0) ?: "") to (lines.getOrNull(1) ?: "")
+            val tag = lines.getOrNull(0)?.takeIf { it.isNotBlank() } ?: return null
+            tag to (lines.getOrNull(1) ?: "")
         } catch (_: Exception) {
-            "" to ""
+            null
         }
     }
 }

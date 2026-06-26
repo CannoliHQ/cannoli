@@ -8,7 +8,7 @@ import java.io.IOException
 
 class RaConnectClient(
     private val baseUrlProvider: () -> String = { "https://retroachievements.org" },
-    private val clientProvider: () -> OkHttpClient = { OkHttpClient() },
+    private val clientProvider: () -> OkHttpClient = { sharedClient },
     private val userAgent: String = "Cannoli",
 ) {
     data class RawResponse(val code: Int, val body: String)
@@ -46,5 +46,9 @@ class RaConnectClient(
 
     companion object {
         private const val RA_CLIENT_VERSION = "12.3.0"
+
+        /** OkHttp is designed to be shared; one instance reuses the connection pool and dispatcher
+         *  across every request instead of spinning up a new pool per call during bulk preload. */
+        private val sharedClient: OkHttpClient by lazy { OkHttpClient() }
     }
 }

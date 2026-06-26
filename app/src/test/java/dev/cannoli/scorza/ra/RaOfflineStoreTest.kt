@@ -82,4 +82,20 @@ class RaOfflineStoreTest {
         assertTrue(store.entries().isEmpty())
         assertFalse(tmp.root.resolve("login2.json").exists())
     }
+
+    @Test
+    fun entries_dropsEntryWithMissingSource() {
+        val store = RaOfflineStore(tmp.root)
+        store.writeGame(7, sets("Metroid", 5), "s", "NES", "/m.nes", null)
+        File(tmp.root, "7/source").delete()
+        assertTrue(store.entries().isEmpty())
+    }
+
+    @Test
+    fun entries_dropsEntryWithBlankPlatform() {
+        val store = RaOfflineStore(tmp.root)
+        store.writeGame(8, sets("Zelda", 5), "s", "NES", "/z.nes", null)
+        File(tmp.root, "8/source").writeText("\n/z.nes")
+        assertTrue(store.entries().isEmpty())
+    }
 }

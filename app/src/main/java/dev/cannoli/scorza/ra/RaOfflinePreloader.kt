@@ -26,7 +26,7 @@ class RaOfflinePreloader(
         if (!login.isOk() || !login.body.looksSuccessful()) {
             return@withContext Result.Failure("login")
         }
-        store.writeLogin2(login.body)
+        if (!store.writeLogin2(login.body)) return@withContext Result.Failure("write")
 
         val sets = client.achievementSets(username, token, gameId)
         if (!sets.isOk()) return@withContext Result.Failure("achievementsets")
@@ -36,7 +36,9 @@ class RaOfflinePreloader(
         val session = client.startSession(username, token, gameId)
         if (!session.isOk()) return@withContext Result.Failure("startsession")
 
-        store.writeGame(gameId, sets.body, session.body, platformTag, romPath, hash)
+        if (!store.writeGame(gameId, sets.body, session.body, platformTag, romPath, hash)) {
+            return@withContext Result.Failure("write")
+        }
         Result.Success(meta.title, meta.count, meta.points)
     }
 

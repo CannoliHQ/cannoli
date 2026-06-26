@@ -14,8 +14,8 @@ class RaPreloadEligibilityTest {
     @Test fun ineligible_whenNotLoggedIn() {
         assertFalse(RaPreloadEligibility.isEligible("SNES", embeddedCorePresent = true, raLoggedIn = false))
     }
-    @Test fun eligible_evenWithoutKnownGameId() {
-        assertTrue(RaPreloadEligibility.isEligible("SNES", embeddedCorePresent = true, raLoggedIn = true))
+    @Test fun ineligible_whenPlatformNull() {
+        assertFalse(RaPreloadEligibility.isEligible(null, embeddedCorePresent = true, raLoggedIn = true))
     }
     @Test fun ineligible_whenPlatformNotRaMapped() {
         assertFalse(RaPreloadEligibility.isEligible("3DS", embeddedCorePresent = true, raLoggedIn = true))

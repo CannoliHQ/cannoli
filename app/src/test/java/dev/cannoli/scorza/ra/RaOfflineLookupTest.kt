@@ -47,4 +47,25 @@ class RaOfflineLookupTest {
     @Test fun missingDir_returnsNull() {
         assertNull(RaOfflineLookup.bodyFor(null, "r=login2"))
     }
+
+    @Test fun achievementSets_hashFileWithWhitespace_stillMatches() {
+        val dir = seed()
+        File(dir, "55/hash").writeText("  abcdef0123456789\n")
+        assertEquals("sets", RaOfflineLookup.bodyFor(dir, "r=achievementsets&u=bob&t=tok&m=abcdef0123456789"))
+    }
+
+    @Test fun achievementSets_unreadableHashFile_skipsDirectory() {
+        val dir = seed()
+        File(dir, "55/hash").delete()
+        File(dir, "55/hash").mkdirs()
+        assertNull(RaOfflineLookup.bodyFor(dir, "r=achievementsets&u=bob&t=tok&m=abcdef0123456789"))
+    }
+
+    @Test fun startSession_hashOnlyNoGameId_returnsNull() {
+        assertNull(RaOfflineLookup.bodyFor(seed(), "r=startsession&u=bob&t=tok&m=abcdef0123456789"))
+    }
+
+    @Test fun achievementSets_nonIntegerGameId_rejectedNoTraversal() {
+        assertNull(RaOfflineLookup.bodyFor(seed(), "r=achievementsets&u=bob&t=tok&g=../../55"))
+    }
 }
