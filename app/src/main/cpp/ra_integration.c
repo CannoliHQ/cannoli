@@ -691,12 +691,14 @@ Java_dev_cannoli_scorza_ra_RaHasher_nativeHashRom(JNIEnv *env, jobject thiz,
     char hash[33];
     hash[0] = '\0';
     if (!path) return (*env)->NewStringUTF(env, hash);
-    rc_hash_init_default_cdreader();
     const char *cpath = (*env)->GetStringUTFChars(env, path, NULL);
     if (cpath) {
-        if (!rc_hash_generate_from_file(hash, (uint32_t)consoleId, cpath)) {
+        rc_hash_iterator_t iterator;
+        rc_hash_initialize_iterator(&iterator, cpath, NULL, 0);
+        if (!rc_hash_generate(hash, (uint32_t)consoleId, &iterator)) {
             hash[0] = '\0';
         }
+        rc_hash_destroy_iterator(&iterator);
         (*env)->ReleaseStringUTFChars(env, path, cpath);
     }
     return (*env)->NewStringUTF(env, hash);
