@@ -700,8 +700,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
             result.onSuccess { token ->
                 rommStore.token = token
                 settingsViewModel.get().rommPairCode = ""
-                settingsViewModel.get().refreshSubList()
-                settingsViewModel.get().selectItem("romm_connection_info")
+                settingsViewModel.get().exitSubList()
                 val user = withContext(Dispatchers.IO) { rommClient.currentUser() }
                 val version = withContext(Dispatchers.IO) { rommClient.serverVersion() }
                 rommStore.username = user

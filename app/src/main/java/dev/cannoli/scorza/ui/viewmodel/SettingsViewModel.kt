@@ -806,8 +806,6 @@ class SettingsViewModel @Inject constructor(
                 if (rommStore.host.isNotEmpty() && rommPairCode.isNotEmpty()) {
                     add(SettingsItem("romm_pair", R.string.setting_romm_pair, isEditable = true, canCycle = false))
                 }
-            } else {
-                add(SettingsItem("romm_connection_info", R.string.setting_romm_connection_info, isEditable = true, canCycle = false))
             }
         }
         "advanced" -> buildList {

@@ -229,8 +229,7 @@
     <string name="romm_pair_failed">Pairing failed</string>
     <string name="romm_pair_rate_limited">Too many attempts, try again later</string>
     <string name="romm_unreachable">Could not reach server</string>
-    <string name="setting_romm_connection_info">Connection Info</string>
-    <string name="romm_conn_title">RomM Information</string>
+    <string name="romm_conn_title">RomM Connection Info</string>
     <string name="romm_conn_account">Account</string>
     <string name="romm_conn_server">Server</string>
     <string name="romm_browse_title" translatable="false">RomM</string>
