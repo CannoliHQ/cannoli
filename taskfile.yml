@@ -61,6 +61,7 @@ tasks:
     desc: Build cannoli-kitchen and copy dist into app assets
     dir: '{{.KITCHEN_SRC}}'
     cmds:
-      - bun run build
+      # build-only skips vue-tsc, which cannot run under bun (Volar .vue resolution breaks); run `bun run type-check` under Node for the type gate
+      - bun run build-only
       - rm -rf {{.USER_WORKING_DIR}}/{{.KITCHEN_DEST}}/*
       - cp -R dist/. {{.USER_WORKING_DIR}}/{{.KITCHEN_DEST}}/
