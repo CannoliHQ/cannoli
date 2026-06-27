@@ -20,10 +20,11 @@ import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.R
 import dev.cannoli.ui.START_GLYPH
 import dev.cannoli.ui.components.BottomBar
-import dev.cannoli.ui.components.List
+import dev.cannoli.ui.components.ListSection
 import dev.cannoli.ui.components.PillRowKeyValue
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
+import dev.cannoli.ui.components.SectionedList
 import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.screenPadding
@@ -79,21 +80,36 @@ fun RommFirmwareListScreen(
                         fontFamily = font,
                         fontSize = listFontSize,
                     )
-                    else -> List(
-                        items = rows,
-                        selectedIndex = selectedIndex.coerceIn(0, (rows.size - 1).coerceAtLeast(0)),
-                        itemHeight = pillItemHeight(listLineHeight, listVerticalPadding),
-                        scrollTarget = scrollTarget,
-                    ) { _, row, isSelected ->
-                        PillRowKeyValue(
-                            label = row.firmware.fileName,
-                            value = if (row.present) stringResource(R.string.romm_firmware_present) else "",
-                            isSelected = isSelected,
+                    else -> {
+                        val sections = listOf(
+                            ListSection(
+                                stringResource(R.string.romm_firmware_not_on_device),
+                                rows.filterNot { it.present },
+                            ),
+                            ListSection(
+                                stringResource(R.string.romm_firmware_on_device),
+                                rows.filter { it.present },
+                            ),
+                        )
+                        SectionedList(
+                            sections = sections,
+                            selectedIndex = selectedIndex.coerceIn(0, (rows.size - 1).coerceAtLeast(0)),
                             fontSize = listFontSize,
                             lineHeight = listLineHeight,
                             verticalPadding = listVerticalPadding,
-                            checkState = row.firmware.id in checkedIds,
-                        )
+                            itemHeight = pillItemHeight(listLineHeight, listVerticalPadding),
+                            scrollTarget = scrollTarget,
+                        ) { _, row, isSelected ->
+                            PillRowKeyValue(
+                                label = row.firmware.fileName,
+                                value = "",
+                                isSelected = isSelected,
+                                fontSize = listFontSize,
+                                lineHeight = listLineHeight,
+                                verticalPadding = listVerticalPadding,
+                                checkState = row.firmware.id in checkedIds,
+                            )
+                        }
                     }
                 }
             }

@@ -293,7 +293,8 @@
     <string name="romm_no_results">No results</string>
     <string name="romm_firmware_empty">No firmware</string>
     <string name="romm_firmware_error">Could not load firmware</string>
-    <string name="romm_firmware_present">on device</string>
+    <string name="romm_firmware_not_on_device">Not on Device</string>
+    <string name="romm_firmware_on_device">On Device</string>
     <string name="romm_art_default">Default</string>
     <string name="romm_art_off">Off</string>
     <string name="romm_art_box2d">Box 2D</string>

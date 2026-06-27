@@ -202,7 +202,9 @@ class RommBrowseViewModel(
 
     suspend fun loadFirmware(platformId: Int, tag: String): List<RommFirmwareRow> = withContext(Dispatchers.IO) {
         val biosDir = biosDirFor(tag)
-        firmwareFor(platformId).map { RommFirmwareRow(it, java.io.File(biosDir, it.fileName).exists()) }
+        firmwareFor(platformId)
+            .map { RommFirmwareRow(it, java.io.File(biosDir, it.fileName).exists()) }
+            .sortedBy { it.present }
     }
 
     fun isMultiSelect(): Boolean = _multiSelect.value
