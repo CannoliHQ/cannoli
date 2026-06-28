@@ -394,6 +394,26 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         get() = jsonRead { optInt(KEY_PORTRAIT_MARGIN_PX, 0) }
         set(value) = jsonWrite { put(KEY_PORTRAIT_MARGIN_PX, value.coerceAtLeast(0)) }
 
+    var rommDeviceId: String?
+        get() = jsonRead { optString(KEY_ROMM_DEVICE_ID, "").ifEmpty { null } }
+        set(value) = jsonWrite { if (value == null) remove(KEY_ROMM_DEVICE_ID) else put(KEY_ROMM_DEVICE_ID, value) }
+
+    var rommDeviceName: String?
+        get() = jsonRead { optString(KEY_ROMM_DEVICE_NAME, "").ifEmpty { null } }
+        set(value) = jsonWrite { if (value == null) remove(KEY_ROMM_DEVICE_NAME) else put(KEY_ROMM_DEVICE_NAME, value) }
+
+    var rommDeviceClientVersion: String?
+        get() = jsonRead { optString(KEY_ROMM_DEVICE_CLIENT_VERSION, "").ifEmpty { null } }
+        set(value) = jsonWrite { if (value == null) remove(KEY_ROMM_DEVICE_CLIENT_VERSION) else put(KEY_ROMM_DEVICE_CLIENT_VERSION, value) }
+
+    var rommSaveSyncEnabled: Boolean
+        get() = jsonRead { optBoolean(KEY_ROMM_SAVE_SYNC_ENABLED, false) }
+        set(value) = jsonWrite { put(KEY_ROMM_SAVE_SYNC_ENABLED, value) }
+
+    var rommSaveBackupCount: Int
+        get() = jsonRead { optInt(KEY_ROMM_SAVE_BACKUP_COUNT, 5) }
+        set(value) = jsonWrite { put(KEY_ROMM_SAVE_BACKUP_COUNT, value.coerceAtLeast(0)) }
+
     companion object {
         const val DEFAULT_ROOT = "/storage/emulated/0/Cannoli/"
         const val DEFAULT_RA_PACKAGE = "dev.cannoli.ricotta.aarch64"
@@ -454,6 +474,11 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         private const val KEY_ALWAYS_SAVE_ON_QUIT = "always_save_on_quit"
         private const val KEY_PORTRAIT_MARGIN_PX = "portrait_margin_px"
         private const val KEY_FGH_COLLECTION = "fgh_collection"
+        private const val KEY_ROMM_DEVICE_ID = "romm_device_id"
+        private const val KEY_ROMM_DEVICE_NAME = "romm_device_name"
+        private const val KEY_ROMM_DEVICE_CLIENT_VERSION = "romm_device_client_version"
+        private const val KEY_ROMM_SAVE_SYNC_ENABLED = "romm_save_sync_enabled"
+        private const val KEY_ROMM_SAVE_BACKUP_COUNT = "romm_save_backup_count"
     }
 }
 

@@ -39,9 +39,6 @@ class SaveSyncStore(private val db: CannoliDatabase) {
     fun delete(gameKey: String, slot: String) =
         db.execute("DELETE FROM save_sync WHERE game_key = ? AND slot = ?", gameKey, slot)
 
-    fun renameSlotRow(gameKey: String, oldSlot: String, newSlot: String) =
-        db.execute("UPDATE save_sync SET slot = ? WHERE game_key = ? AND slot = ?", newSlot, gameKey, oldSlot)
-
     fun activeSlot(gameKey: String): String =
         db.queryOne("SELECT active_slot FROM save_slot_active WHERE game_key = ?", gameKey) { it.getText(0) } ?: DEFAULT_SLOT
 

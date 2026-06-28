@@ -24,10 +24,16 @@ import dev.cannoli.scorza.romm.cache.RommSyncCoordinator
 import dev.cannoli.scorza.romm.download.RommDownloadQueue
 import dev.cannoli.scorza.romm.download.RommDownloader
 import dev.cannoli.scorza.romm.download.RommInstaller
+import dev.cannoli.scorza.romm.sync.DeviceRegistrar
+import dev.cannoli.scorza.romm.sync.LocalSaveResolver
+import dev.cannoli.scorza.romm.sync.SaveBackupManager
+import dev.cannoli.scorza.romm.sync.SaveSyncService
+import dev.cannoli.scorza.romm.sync.SaveSyncStore
+import dev.cannoli.scorza.romm.sync.SlotManager
+import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel
 import dev.cannoli.scorza.util.ArtworkLookup
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
 import javax.inject.Singleton
 
 @Module
@@ -39,6 +45,7 @@ object RommModule {
         RommHttp(
             tokenProvider = { store.token },
             allowSelfSignedProvider = { store.allowSelfSigned },
+            hostProvider = { store.host },
         )
 
     @Provides @Singleton
@@ -64,6 +71,43 @@ object RommModule {
         db: RommDatabase,
         rommStore: RommConnectionStore,
     ): RommSyncCoordinator = RommSyncCoordinator(client, platformMap, db, enabledGroups = { rommStore.enabledCollectionGroups() })
+
+    @Provides @Singleton
+    fun provideDeviceRegistrar(
+        settings: SettingsRepository,
+        client: RommClient,
+    ): DeviceRegistrar = DeviceRegistrar(settings, client)
+
+    @Provides @Singleton
+    fun provideLocalSaveResolver(paths: CannoliPathsProvider): LocalSaveResolver =
+        LocalSaveResolver(paths.root)
+
+    @Provides @Singleton
+    fun provideSaveBackupManager(paths: CannoliPathsProvider, resolver: LocalSaveResolver): SaveBackupManager =
+        SaveBackupManager(paths.root, resolver)
+
+    @Provides @Singleton
+    fun provideSaveSyncService(
+        client: RommClient,
+        connStore: RommConnectionStore,
+        settings: SettingsRepository,
+        registrar: DeviceRegistrar,
+        store: SaveSyncStore,
+        resolver: LocalSaveResolver,
+        links: RommLinkRepository,
+        paths: CannoliPathsProvider,
+        backupManager: SaveBackupManager,
+    ): SaveSyncService = SaveSyncService(client, connStore, settings, registrar, store, resolver, links, paths, backupManager)
+
+    @Provides @Singleton
+    fun provideSlotManager(
+        client: RommClient,
+        store: SaveSyncStore,
+        resolver: LocalSaveResolver,
+        registrar: DeviceRegistrar,
+        paths: CannoliPathsProvider,
+        service: SaveSyncService,
+    ): SlotManager = SlotManager(client, store, resolver, registrar, paths, service)
 
     @Provides @Singleton
     fun provideRommLibrary(db: RommDatabase): RommLibrary =
@@ -118,6 +162,7 @@ object RommModule {
         artDownloader: dev.cannoli.scorza.romm.art.RommArtDownloader,
         paths: CannoliPathsProvider,
         settings: dev.cannoli.scorza.settings.SettingsRepository,
+        @IoScope ioScope: CoroutineScope,
     ): dev.cannoli.scorza.romm.art.RommArtFetcher = dev.cannoli.scorza.romm.art.RommArtFetcher(
         roms = roms,
         artwork = artwork,
@@ -127,7 +172,7 @@ object RommModule {
         artDownloader = artDownloader,
         paths = paths,
         concurrency = { settings.concurrentDownloads },
-        scope = CoroutineScope(SupervisorJob()),
+        scope = ioScope,
     )
 
     @Provides @Singleton
@@ -141,6 +186,7 @@ object RommModule {
         http: RommHttp,
         paths: CannoliPathsProvider,
         settings: dev.cannoli.scorza.settings.SettingsRepository,
+        @IoScope ioScope: CoroutineScope,
     ): RommDownloader = RommDownloader(
         queue = RommDownloadQueue(),
         client = client,
@@ -153,6 +199,6 @@ object RommModule {
         http = http,
         paths = paths,
         concurrency = { settings.concurrentDownloads },
-        scope = CoroutineScope(SupervisorJob()),
+        scope = ioScope,
     )
 }
