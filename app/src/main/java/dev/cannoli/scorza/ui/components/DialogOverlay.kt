@@ -241,6 +241,10 @@ fun DialogOverlay(
             RestartOverlay(message = dialogState.message, buttonStyle = buttonStyle)
         }
 
+        is DialogState.SystemFoldersRegenerated -> {
+            RestartOverlay(message = dialogState.message, buttonStyle = buttonStyle)
+        }
+
         is DialogState.QuickMenu -> {
             ListDialogScreen(
                 backgroundImagePath = backgroundImagePath,

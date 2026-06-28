@@ -461,6 +461,9 @@ class DialogInputHandler @Inject constructor(
             is DialogState.IntentAuditResult -> {
                 nav.dialogState.value = DialogState.None
             }
+            is DialogState.SystemFoldersRegenerated -> {
+                nav.dialogState.value = DialogState.None
+            }
             is DialogState.PlatformResetConfirm -> onPlatformReset(ds)
             is DialogState.QuickMenu -> {
                 when (ds.rows.getOrNull(ds.selectedIndex)) {
@@ -725,6 +728,9 @@ class DialogInputHandler @Inject constructor(
             }
             is DialogState.RestartRequired -> {}
             is DialogState.IntentAuditResult -> {
+                nav.dialogState.value = DialogState.None
+            }
+            is DialogState.SystemFoldersRegenerated -> {
                 nav.dialogState.value = DialogState.None
             }
             is DialogState.PlatformResetConfirm -> {

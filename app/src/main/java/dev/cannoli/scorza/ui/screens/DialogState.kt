@@ -82,6 +82,7 @@ sealed interface DialogState {
     data class UpdateDownload(val versionName: String, val changelog: String) : DialogState
     data object RestartRequired : DialogState
     data class IntentAuditResult(val message: String) : DialogState
+    data class SystemFoldersRegenerated(val message: String) : DialogState
     data class PlatformResetConfirm(val tag: String, val platformName: String) : DialogState
     data class QuickMenu(
         val rows: List<dev.cannoli.scorza.ui.quickmenu.QuickMenuRow>,
@@ -159,6 +160,7 @@ val DialogState.isFullScreen: Boolean
         is DialogState.UpdateDownload,
         is DialogState.RestartRequired,
         is DialogState.IntentAuditResult,
+        is DialogState.SystemFoldersRegenerated,
         is DialogState.QuickMenu,
         is DialogState.RommDownloads,
         is DialogState.RommArtResults,

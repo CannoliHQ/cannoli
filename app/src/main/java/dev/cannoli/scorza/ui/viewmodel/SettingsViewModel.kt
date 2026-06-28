@@ -810,6 +810,7 @@ class SettingsViewModel @Inject constructor(
         }
         "advanced" -> buildList {
             add(SettingsItem("logging", R.string.setting_logging, isEditable = true))
+            add(SettingsItem("regenerate_system_folders", R.string.setting_regenerate_system_folders, isEditable = true))
             add(SettingsItem("kitchen_code_bypass", R.string.setting_kitchen_code_bypass, valueRes = onOff(settings.kitchenCodeBypass)))
             add(SettingsItem(
                 "release_channel",

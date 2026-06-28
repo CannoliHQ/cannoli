@@ -183,6 +183,7 @@
     <string name="setting_always_save_on_quit">Save State On Quit</string>
     <string name="setting_kitchen_code_bypass">Kitchen Code Bypass</string>
     <string name="setting_set_default_launcher">Set as Default Launcher</string>
+    <string name="setting_regenerate_system_folders">Regenerate System Folders</string>
     <string name="setting_content_mode">Content Mode</string>
     <string name="setting_fgh_collection">5GH Collection</string>
     <string name="setting_scroll_speed">Marquee Speed</string>
@@ -647,6 +648,11 @@
     <plurals name="bulk_delete_count">
         <item quantity="one">%d item</item>
         <item quantity="other">%d items</item>
+    </plurals>
+    <string name="regenerate_system_folders_none">All system folders already present</string>
+    <plurals name="regenerate_system_folders_result">
+        <item quantity="one">Created %d system folder</item>
+        <item quantity="other">Created %d system folders</item>
     </plurals>
     <string name="value_no_cores_found">No Cores Found</string>
     <string name="label_clear_override">CLEAR</string>

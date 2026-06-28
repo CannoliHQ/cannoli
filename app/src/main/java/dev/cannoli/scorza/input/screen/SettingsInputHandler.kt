@@ -7,6 +7,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.scopes.ActivityScoped
 import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.db.AppsRepository
+import dev.cannoli.scorza.di.CannoliPathsProvider
 import dev.cannoli.scorza.di.IoScope
 import dev.cannoli.scorza.input.ActivityActions
 import dev.cannoli.scorza.input.InputTesterController
@@ -52,6 +53,7 @@ class SettingsInputHandler @Inject constructor(
     private val emulatorMappingBuilder: dev.cannoli.scorza.input.EmulatorMappingBuilder,
     @ApplicationContext private val context: Context,
     private val rommStore: dev.cannoli.scorza.romm.RommConnectionStore,
+    private val cannoliPaths: CannoliPathsProvider,
 ) : ScreenInputHandler {
 
     override fun onUp() {
@@ -135,6 +137,23 @@ class SettingsInputHandler @Inject constructor(
             }
             "manage_tools" -> openAppPicker("tools")
             "manage_ports" -> openAppPicker("ports")
+            "regenerate_system_folders" -> {
+                val romDir = cannoliPaths.romDir
+                val tags = platformConfig.getAllTags()
+                ioScope.launch {
+                    val created = dev.cannoli.scorza.util.DirectoryLayout.scaffoldRomFolders(romDir, tags)
+                    val msg = if (created == 0) {
+                        context.getString(dev.cannoli.scorza.R.string.regenerate_system_folders_none)
+                    } else {
+                        context.resources.getQuantityString(
+                            dev.cannoli.scorza.R.plurals.regenerate_system_folders_result, created, created
+                        )
+                    }
+                    withContext(Dispatchers.Main) {
+                        nav.dialogState.value = DialogState.SystemFoldersRegenerated(msg)
+                    }
+                }
+            }
             "ra_username" -> {
                 val current = settings.raUsername
                 nav.dialogState.value = DialogState.RenameInput(
