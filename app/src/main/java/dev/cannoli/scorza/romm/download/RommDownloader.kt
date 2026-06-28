@@ -175,8 +175,14 @@ class RommDownloader(
     private fun runFirmware(item: RommDownloadItem) {
         val fw = item.firmware ?: return
         val biosDir = CannoliPaths(paths.root).biosFor(item.tag).apply { mkdirs() }
-        val dest = File(biosDir, fw.fileName)
-        val temp = File(biosDir, "${fw.fileName}.part")
+        val safeName = File(fw.fileName).name
+        val dest = File(biosDir, safeName)
+        if (!dest.canonicalPath.startsWith(biosDir.canonicalPath)) {
+            ScanLog.write("ERROR romm firmware ${fw.id} blocked: path traversal in fileName")
+            queue.setStatus(item.key, DownloadStatus.Failed("invalid firmware filename"))
+            return
+        }
+        val temp = File(biosDir, "$safeName.part")
         try {
             queue.setStatus(item.key, DownloadStatus.Downloading(0, fw.sizeBytes))
             client.downloadFirmware(

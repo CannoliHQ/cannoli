@@ -14,6 +14,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -60,6 +61,7 @@ class RommDownloadService : Service() {
 
     override fun onDestroy() {
         watcher?.cancel()
+        scope.cancel()
         RommDownloadManager.onServiceDestroyed(this)
         super.onDestroy()
     }

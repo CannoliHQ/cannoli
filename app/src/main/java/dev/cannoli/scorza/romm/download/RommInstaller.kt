@@ -19,10 +19,12 @@ class RommInstaller {
 
     private fun installSingle(game: RommGame, tag: String, tagDir: File, temp: File): InstallResult {
         tagDir.mkdirs()
-        val dest = File(tagDir, game.fsName)
+        val safeName = File(game.fsName).name
+        val dest = File(tagDir, safeName)
+        if (!dest.canonicalPath.startsWith(tagDir.canonicalPath)) throw Exception("invalid fsName: path traversal")
         if (dest.exists()) dest.delete()
         if (!temp.renameTo(dest)) { temp.copyTo(dest, overwrite = true); temp.delete() }
-        return InstallResult("$tag/${game.fsName}", dest.nameWithoutExtension)
+        return InstallResult("$tag/$safeName", dest.nameWithoutExtension)
     }
 
     private fun installMultiPart(game: RommGame, tag: String, tagDir: File, temp: File): InstallResult {
@@ -31,16 +33,21 @@ class RommInstaller {
         if (staging.exists()) staging.deleteRecursively()
         staging.mkdirs()
         var m3u: String? = null
-        ZipInputStream(temp.inputStream()).use { zin ->
-            var entry = zin.nextEntry
-            while (entry != null) {
-                if (!entry.isDirectory) {
-                    val name = File(entry.name).name
-                    File(staging, name).outputStream().use { zin.copyTo(it) }
-                    if (name.endsWith(".m3u", ignoreCase = true)) m3u = name
+        try {
+            ZipInputStream(temp.inputStream()).use { zin ->
+                var entry = zin.nextEntry
+                while (entry != null) {
+                    if (!entry.isDirectory) {
+                        val name = File(entry.name).name
+                        File(staging, name).outputStream().use { zin.copyTo(it) }
+                        if (name.endsWith(".m3u", ignoreCase = true)) m3u = name
+                    }
+                    entry = zin.nextEntry
                 }
-                entry = zin.nextEntry
             }
+        } catch (e: Throwable) {
+            staging.deleteRecursively()
+            throw e
         }
         temp.delete()
         val dest = File(tagDir, folderName)

@@ -57,6 +57,7 @@ class RommDownloadQueue {
         }
     }
 
+    @Synchronized
     fun activeCount(): Int = _state.value.count {
         it.status == DownloadStatus.Queued || it.status is DownloadStatus.Downloading
     }

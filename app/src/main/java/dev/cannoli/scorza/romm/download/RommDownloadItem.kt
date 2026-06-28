@@ -32,6 +32,6 @@ data class RommDownloadItem(
  * use this same ordering so selection indices line up.
  */
 fun List<RommDownloadItem>.inDisplayOrder(): List<RommDownloadItem> {
-    val (done, active) = partition { it.status == DownloadStatus.Done }
+    val (done, active) = partition { it.status == DownloadStatus.Done || it.status is DownloadStatus.Failed }
     return active.reversed() + done.reversed()
 }

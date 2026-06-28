@@ -39,12 +39,14 @@ class RommConnectionStore @Inject constructor(@ApplicationContext context: Conte
         if (showSmartCollections) add(RommCollectionGroup.SMART)
     }
 
-    var artType: RommArtType
-        get() = runCatching { RommArtType.valueOf(prefs.getString(KEY_ART_TYPE, null) ?: "") }
+    private val _artTypeFlow = MutableStateFlow(
+        runCatching { RommArtType.valueOf(prefs.getString(KEY_ART_TYPE, null) ?: "") }
             .getOrDefault(RommArtType.DEFAULT)
-        set(value) { prefs.edit().putString(KEY_ART_TYPE, value.name).apply(); _artTypeFlow.value = value }
+    )
 
-    private val _artTypeFlow = MutableStateFlow(artType)
+    var artType: RommArtType
+        get() = _artTypeFlow.value
+        set(value) { prefs.edit().putString(KEY_ART_TYPE, value.name).apply(); _artTypeFlow.value = value }
     val artTypeFlow: StateFlow<RommArtType> = _artTypeFlow
 
     var token: String?

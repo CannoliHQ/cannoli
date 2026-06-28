@@ -47,7 +47,7 @@ class RommClient(
     }
 
     fun exchangeCode(code: String): String {
-        val payload = ClientTokenExchangePayload(code.trim().replace("-", ""))
+        val payload = ClientTokenExchangePayload(RommPairingCode.normalize(code))
         val body = rommJson
             .encodeToString(ClientTokenExchangePayload.serializer(), payload)
             .toRequestBody(jsonMedia)
@@ -263,7 +263,8 @@ class RommClient(
         val request = Request.Builder().url(url).get().build()
         clientProvider().newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw RommException(response.code, "HTTP ${response.code}: download save $saveId")
-            dest.outputStream().use { out -> response.body!!.byteStream().copyTo(out) }
+            val body = response.body ?: throw RommException(response.code, "Empty body downloading save $saveId")
+            dest.outputStream().use { out -> body.byteStream().copyTo(out) }
         }
     }
 
