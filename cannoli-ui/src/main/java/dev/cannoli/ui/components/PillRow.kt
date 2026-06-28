@@ -245,22 +245,22 @@ fun PillRowKeyValue(
                 )
                 Spacer(modifier = Modifier.width(6.dp))
             }
-            if (dotIndicator != null) {
-                val dotColor = if (dotIndicator) labelColor else labelColor.copy(alpha = 0.45f)
-                Box(
-                    modifier = Modifier
-                        .size((fontSize.value * 0.42f).dp)
-                        .border(if (dotIndicator) 0.dp else 1.dp, dotColor, CircleShape)
-                        .background(if (dotIndicator) dotColor else Color.Transparent, CircleShape)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-            }
             Text(
                 text = value,
                 style = valueStyle,
                 color = valueColor,
                 maxLines = 1
             )
+            if (dotIndicator != null) {
+                val dotColor = if (dotIndicator) labelColor else labelColor.copy(alpha = 0.45f)
+                if (value.isNotEmpty()) Spacer(modifier = Modifier.width(6.dp))
+                Box(
+                    modifier = Modifier
+                        .size((fontSize.value * 0.42f).dp)
+                        .border(if (dotIndicator) 0.dp else 1.dp, dotColor, CircleShape)
+                        .background(if (dotIndicator) dotColor else Color.Transparent, CircleShape)
+                )
+            }
         }
     }
 }
