@@ -128,13 +128,15 @@ fun RommPlatformListScreen(
                     }
                 }
             }
-            BottomBar(
-                modifier = Modifier.align(Alignment.BottomCenter),
-                leftItems = listOf(
-                    buttonStyle.north to stringResource(R.string.label_settings),
-                ),
-                rightItems = listOf(buttonStyle.confirm to stringResource(R.string.label_select)),
-            )
+            if (!(platforms.isEmpty() && emptyMessage != null)) {
+                BottomBar(
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                    leftItems = listOf(
+                        buttonStyle.north to stringResource(R.string.label_settings),
+                    ),
+                    rightItems = listOf(buttonStyle.confirm to stringResource(R.string.label_select)),
+                )
+            }
         }
     }
 }
