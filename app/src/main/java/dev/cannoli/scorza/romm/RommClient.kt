@@ -1,5 +1,13 @@
 package dev.cannoli.scorza.romm
 
+import dev.cannoli.scorza.romm.sync.ConfirmDownloadPayload
+import dev.cannoli.scorza.romm.sync.DeleteSavesPayload
+import dev.cannoli.scorza.romm.sync.DeviceRegisterPayload
+import dev.cannoli.scorza.romm.sync.DeviceRegisterResponse
+import dev.cannoli.scorza.romm.sync.RommSaveDto
+import dev.cannoli.scorza.romm.sync.SyncCompletePayload
+import dev.cannoli.scorza.romm.sync.SyncNegotiatePayload
+import dev.cannoli.scorza.romm.sync.SyncNegotiateResponse
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.ListSerializer
@@ -7,8 +15,10 @@ import kotlinx.serialization.builtins.serializer
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import java.io.File
@@ -204,6 +214,81 @@ class RommClient(
             } catch (e: IOException) {
                 dest.delete(); throw RommException(it.code, "IO error downloading firmware $firmwareId: ${e.message}", e)
             }
+        }
+    }
+
+    fun registerDevice(payload: DeviceRegisterPayload): DeviceRegisterResponse {
+        val body = rommJson.encodeToString(DeviceRegisterPayload.serializer(), payload)
+            .toRequestBody(jsonMedia)
+        val request = Request.Builder().url(endpoint("/api/devices")).post(body).build()
+        return execute(request, DeviceRegisterResponse.serializer())
+    }
+
+    fun negotiateSync(payload: SyncNegotiatePayload): SyncNegotiateResponse {
+        val body = rommJson.encodeToString(SyncNegotiatePayload.serializer(), payload)
+            .toRequestBody(jsonMedia)
+        val request = Request.Builder().url(endpoint("/api/sync/negotiate")).post(body).build()
+        return execute(request, SyncNegotiateResponse.serializer())
+    }
+
+    fun getSaves(romId: Int, deviceId: String): List<RommSaveDto> {
+        val url = endpoint("/api/saves").newBuilder()
+            .addQueryParameter("rom_id", romId.toString())
+            .addQueryParameter("device_id", deviceId)
+            .build()
+        val request = Request.Builder().url(url).get().build()
+        return execute(request, ListSerializer(RommSaveDto.serializer()))
+    }
+
+    fun uploadSave(romId: Int, emulator: String?, slot: String, deviceId: String, overwrite: Boolean, file: File): RommSaveDto {
+        val url = endpoint("/api/saves").newBuilder()
+            .addQueryParameter("rom_id", romId.toString())
+            .apply { if (emulator != null) addQueryParameter("emulator", emulator) }
+            .addQueryParameter("slot", slot)
+            .addQueryParameter("device_id", deviceId)
+            .addQueryParameter("overwrite", overwrite.toString())
+            .build()
+        val multipart = MultipartBody.Builder().setType(MultipartBody.FORM)
+            .addFormDataPart("saveFile", file.name, file.asRequestBody("application/octet-stream".toMediaType()))
+            .build()
+        val request = Request.Builder().url(url).post(multipart).build()
+        return execute(request, RommSaveDto.serializer())
+    }
+
+    fun downloadSaveContent(saveId: Int, deviceId: String, dest: File) {
+        val url = endpoint("/api/saves/$saveId/content").newBuilder()
+            .addQueryParameter("device_id", deviceId)
+            .addQueryParameter("optimistic", "false")
+            .build()
+        val request = Request.Builder().url(url).get().build()
+        clientProvider().newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw RommException(response.code, "HTTP ${response.code}: download save $saveId")
+            dest.outputStream().use { out -> response.body!!.byteStream().copyTo(out) }
+        }
+    }
+
+    fun confirmSaveDownloaded(saveId: Int, deviceId: String): RommSaveDto {
+        val body = rommJson.encodeToString(ConfirmDownloadPayload.serializer(), ConfirmDownloadPayload(deviceId))
+            .toRequestBody(jsonMedia)
+        val request = Request.Builder().url(endpoint("/api/saves/$saveId/downloaded")).post(body).build()
+        return execute(request, RommSaveDto.serializer())
+    }
+
+    fun completeSyncSession(sessionId: Int, payload: SyncCompletePayload) {
+        val body = rommJson.encodeToString(SyncCompletePayload.serializer(), payload)
+            .toRequestBody(jsonMedia)
+        val request = Request.Builder().url(endpoint("/api/sync/sessions/$sessionId/complete")).post(body).build()
+        clientProvider().newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw RommException(response.code, "HTTP ${response.code}: complete session $sessionId")
+        }
+    }
+
+    fun deleteSaves(ids: List<Int>) {
+        val body = rommJson.encodeToString(DeleteSavesPayload.serializer(), DeleteSavesPayload(ids))
+            .toRequestBody(jsonMedia)
+        val request = Request.Builder().url(endpoint("/api/saves/delete")).post(body).build()
+        clientProvider().newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw RommException(response.code, "HTTP ${response.code}: delete saves")
         }
     }
 
