@@ -478,7 +478,17 @@ class InputRouter @Inject constructor(
                 tag = row.platform.cannoliTag,
             ))
         },
-        onBack = { nav.pop() },
+        onBack = {
+            if (search.isNotEmpty()) nav.replaceTop(copy(search = "", selectedIndex = 0, scrollTarget = 0))
+            else nav.pop()
+        },
+        onR1 = {
+            nav.dialogState.value = DialogState.RenameInput(
+                gameName = "romm_collection_search",
+                searchScope = collection.name,
+                keyboard = KeyboardState(text = search, cursorPos = search.length),
+            )
+        },
     )
 
     private fun rommGameListHandler() = scrollable<LauncherScreen.RommGameList>(

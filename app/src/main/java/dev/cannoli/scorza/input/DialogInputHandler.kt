@@ -1647,6 +1647,13 @@ class DialogInputHandler @Inject constructor(
             nav.dialogState.value = DialogState.None
             return
         }
+        if (state.gameName == "romm_collection_search") {
+            (nav.currentScreen as? dev.cannoli.scorza.navigation.LauncherScreen.RommCollectionGameList)?.let {
+                nav.replaceTop(it.copy(search = state.currentName.trim(), selectedIndex = 0, scrollTarget = 0))
+            }
+            nav.dialogState.value = DialogState.None
+            return
+        }
         if (state.gameName == "romm_global_search") {
             val term = state.currentName.trim()
             nav.dialogState.value = DialogState.None

@@ -169,7 +169,7 @@ fun DialogOverlay(
                 when (rn.gameName) {
                     "launcher_global_search" -> stringResource(R.string.search_global)
                     "romm_global_search" -> stringResource(R.string.search_romm)
-                    "launcher_search", "romm_search" -> rn.searchScope?.let { stringResource(R.string.search_in_platform, it) }
+                    "launcher_search", "romm_search", "romm_collection_search" -> rn.searchScope?.let { stringResource(R.string.search_in_platform, it) }
                     else -> null
                 }
             }
