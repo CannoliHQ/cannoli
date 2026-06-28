@@ -28,6 +28,23 @@ class RommDtosTest {
         assertEquals("Super Nintendo", dto.displayName)
     }
 
+    @Test fun `parses platform firmware list`() {
+        val json = """
+            {"id":12,"slug":"snes","fs_slug":"snes","rom_count":1,"name":"SNES","display_name":"SNES",
+             "firmware":[{"id":1,"file_name":"snes.bin","file_size_bytes":512},
+                         {"id":2,"file_name":"snes2.bin"}]}
+        """.trimIndent()
+        val dto = rommJson.decodeFromString(PlatformDto.serializer(), json)
+        assertEquals(2, dto.firmware.size)
+        assertEquals("snes.bin", dto.firmware.first().fileName)
+    }
+
+    @Test fun `platform firmware defaults to empty when absent`() {
+        val json = """{"id":12,"slug":"snes","fs_slug":"snes","rom_count":1,"name":"X","display_name":"X"}"""
+        val dto = rommJson.decodeFromString(PlatformDto.serializer(), json)
+        assertTrue(dto.firmware.isEmpty())
+    }
+
     @Test fun `parses roms page with files`() {
         val json = """
             {"items":[

@@ -47,6 +47,7 @@ class RommDatabase(private val dbFileProvider: () -> File) {
                 slug TEXT NOT NULL,
                 cannoli_tag TEXT NOT NULL,
                 display_name TEXT NOT NULL,
+                firmware_count INTEGER NOT NULL DEFAULT 0,
                 sort_key TEXT NOT NULL DEFAULT '',
                 updated_at TEXT
             )
@@ -106,7 +107,7 @@ class RommDatabase(private val dbFileProvider: () -> File) {
     fun platforms(): List<RommPlatform> = withConn { c ->
         c.queryAll(
             """
-            SELECT p.id, p.slug, p.cannoli_tag, p.display_name, COUNT(g.id)
+            SELECT p.id, p.slug, p.cannoli_tag, p.display_name, COUNT(g.id), p.firmware_count
             FROM platforms p LEFT JOIN games g ON g.platform_id = p.id
             GROUP BY p.id
             HAVING COUNT(g.id) > 0
@@ -119,6 +120,7 @@ class RommDatabase(private val dbFileProvider: () -> File) {
                 cannoliTag = it.getText(2),
                 displayName = it.getText(3),
                 romCount = it.getInt(4),
+                firmwareCount = it.getInt(5),
             )
         }
     }
@@ -141,8 +143,8 @@ class RommDatabase(private val dbFileProvider: () -> File) {
     }
 
     private fun insertPlatform(c: SQLiteConnection, p: RommPlatform, updatedAt: String?) = c.execute(
-        "INSERT OR REPLACE INTO platforms (id, slug, cannoli_tag, display_name, sort_key, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
-        p.id, p.slug, p.cannoliTag, p.displayName, NaturalSort.toSortKey(p.displayName), updatedAt,
+        "INSERT OR REPLACE INTO platforms (id, slug, cannoli_tag, display_name, firmware_count, sort_key, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        p.id, p.slug, p.cannoliTag, p.displayName, p.firmwareCount, NaturalSort.toSortKey(p.displayName), updatedAt,
     )
 
     fun upsertGames(records: List<GameRecord>) = withConn { c ->
@@ -356,7 +358,7 @@ class RommDatabase(private val dbFileProvider: () -> File) {
     }
 
     private companion object {
-        const val SCHEMA_VERSION = 1
+        const val SCHEMA_VERSION = 2
         const val GLOBAL_SEARCH_LIMIT = 300
     }
 }

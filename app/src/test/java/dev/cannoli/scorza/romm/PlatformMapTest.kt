@@ -27,4 +27,15 @@ class PlatformMapTest {
         val map = PlatformMap(slugMap, isSupported = { false })
         assertEquals(emptyList<RommPlatform>(), map.toDomain(listOf(dto(1, "snes", "SNES", 1))))
     }
+
+    @Test fun `maps firmware count from firmware list`() {
+        val map = PlatformMap(slugMap, isSupported = { true })
+        val result = map.toDomain(listOf(
+            dto(1, "snes", "Super Nintendo", 1).copy(
+                firmware = listOf(FirmwareDto(id = 1, fileName = "a.bin"), FirmwareDto(id = 2, fileName = "b.bin"))),
+            dto(2, "gba", "Game Boy Advance", 1),
+        ))
+        assertEquals(2, result.first { it.cannoliTag == "SNES" }.firmwareCount)
+        assertEquals(0, result.first { it.cannoliTag == "GBA" }.firmwareCount)
+    }
 }

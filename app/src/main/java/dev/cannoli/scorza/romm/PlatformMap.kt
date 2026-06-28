@@ -14,6 +14,7 @@ class PlatformMap(
                 cannoliTag = tag,
                 displayName = dto.displayName.ifEmpty { dto.name },
                 romCount = dto.romCount,
+                firmwareCount = dto.firmware.size,
             )
         }
 }

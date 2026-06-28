@@ -6,6 +6,7 @@ data class RommPlatform(
     val cannoliTag: String,
     val displayName: String,
     val romCount: Int,
+    val firmwareCount: Int = 0,
 )
 
 data class RommFile(

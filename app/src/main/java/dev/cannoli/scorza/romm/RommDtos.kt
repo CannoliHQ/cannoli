@@ -20,6 +20,7 @@ data class PlatformDto(
     @SerialName("rom_count") val romCount: Int = 0,
     val name: String = "",
     @SerialName("display_name") val displayName: String = "",
+    val firmware: List<FirmwareDto> = emptyList(),
     @SerialName("updated_at") val updatedAt: String? = null,
 )
 

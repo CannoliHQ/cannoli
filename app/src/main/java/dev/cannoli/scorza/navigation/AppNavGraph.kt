@@ -1400,6 +1400,7 @@ fun AppNavGraph(
                         artType = rommArtType,
                         multiSelect = multiSelect,
                         checkedIds = checkedIds,
+                        showFirmware = currentScreen.platform.firmwareCount > 0,
                         imageLoader = loader,
                         backgroundImagePath = appSettings.backgroundImagePath,
                         backgroundTint = appSettings.backgroundTint,

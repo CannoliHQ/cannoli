@@ -511,7 +511,7 @@ class InputRouter @Inject constructor(
             osdController.show(context.resources.getQuantityString(
                 dev.cannoli.ui.R.plurals.romm_osd_downloads_queued, games.size, games.size))
         },
-        onWest = { nav.push(LauncherScreen.RommFirmwareList(platform = platform)) },
+        onWest = { if (platform.firmwareCount > 0) nav.push(LauncherScreen.RommFirmwareList(platform = platform)) },
         onR1 = {
             nav.dialogState.value = DialogState.RenameInput(
                 gameName = "romm_search",

@@ -43,6 +43,14 @@ class RommDatabaseTest {
         assertEquals(listOf(2), db.platforms().map { it.id })
     }
 
+    @Test fun `firmware count round-trips`() {
+        db.replacePlatforms(listOf(
+            RommPlatform(id = 1, slug = "snes", cannoliTag = "SNES", displayName = "Super Nintendo", romCount = 1, firmwareCount = 3) to null,
+        ))
+        db.upsertGames(listOf(GameRecord(game(1, 1, "Game 1", "g1.sfc"), null)))
+        assertEquals(3, db.platforms().first().firmwareCount)
+    }
+
     @Test fun `games are paged and sorted naturally`() {
         db.upsertGames(listOf(
             GameRecord(game(1, 1, "Game 10", "g10.sfc"), null),

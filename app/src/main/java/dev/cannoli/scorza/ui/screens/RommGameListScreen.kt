@@ -52,6 +52,7 @@ fun RommGameListScreen(
     artType: dev.cannoli.scorza.romm.RommArtType = dev.cannoli.scorza.romm.RommArtType.NONE,
     multiSelect: Boolean = false,
     checkedIds: Set<Int> = emptySet(),
+    showFirmware: Boolean = false,
     platformLabelForGame: ((dev.cannoli.scorza.romm.RommGame) -> String?)? = null,
     imageLoader: coil.ImageLoader,
     backgroundImagePath: String?,
@@ -146,7 +147,7 @@ fun RommGameListScreen(
                 modifier = Modifier.align(Alignment.BottomCenter),
                 leftItems = buildList {
                     add(buttonStyle.back to stringResource(if (multiSelect) R.string.label_cancel else R.string.label_back))
-                    if (!multiSelect) add(buttonStyle.west to stringResource(R.string.label_firmware))
+                    if (!multiSelect && showFirmware) add(buttonStyle.west to stringResource(R.string.label_firmware))
                 },
                 rightItems = if (multiSelect) listOf(
                     buttonStyle.confirm to stringResource(R.string.label_toggle),
