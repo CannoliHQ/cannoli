@@ -30,11 +30,18 @@ object RaOptionCatalog {
             "video_swap_interval",
             "audio_sync",
         )),
-        Category("notifications", listOf(
-            "video_font_enable",
+        Category("osd", listOf(
+            // Cannoli OSD events (RA-key-backed; reset is a host-local toggle)
+            "notification_show_save_state",
+            "cannoli_osd_reset",
+            "notification_show_fast_forward",
+            "notification_show_disk_control",
+            "notification_show_screenshot",
+            "notification_show_autoconfig",
+            // Performance HUD
             "fps_show",
             "statistics_show",
-            "video_font_size",
+            "memory_show",
         )),
     )
 }

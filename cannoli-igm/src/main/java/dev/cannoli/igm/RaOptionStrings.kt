@@ -12,6 +12,10 @@ data class RaOptionStrings(
         "video" to "Video",
         "audio" to "Audio",
         "latency" to "Latency",
-        "notifications" to "Notifications",
+        "osd" to "On-Screen Display",
+    ),
+    // Labels for host-local toggles (keys prefixed "cannoli_") shown in a category.
+    val localToggleLabels: Map<String, String> = mapOf(
+        "cannoli_osd_reset" to "Reset OSD",
     ),
 )

@@ -6,6 +6,10 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import java.io.File
 
+// Catalog keys with this prefix are host-local toggles (e.g. Cannoli OSD prefs),
+// not RetroArch settings; they read/write via bridge.get/setLocalToggle.
+private const val LOCAL_TOGGLE_PREFIX = "cannoli_"
+
 class IGMController(
     val bridge: EmulatorBridge,
     val gameTitle: String
@@ -312,7 +316,16 @@ class IGMController(
     private fun refreshRaCategoryItems(categoryKey: String) {
         val category = RaOptionCatalog.categories.first { it.key == categoryKey }
         raPending.clear()
-        raSettings = category.settingKeys.mapNotNull { bridge.raGetSetting(it) }
+        raSettings = category.settingKeys.mapNotNull { key ->
+            if (key.startsWith(LOCAL_TOGGLE_PREFIX))
+                RaSetting(
+                    key = key,
+                    label = raStrings.localToggleLabels[key] ?: key,
+                    type = RaSettingType.BOOL,
+                    value = if (bridge.getLocalToggle(key, true)) "true" else "false",
+                )
+            else bridge.raGetSetting(key)
+        }
         rebuildRaCategoryItems()
     }
 
@@ -374,7 +387,15 @@ class IGMController(
             21, 22 -> {
                 val s = raSettings.getOrNull(screen.selectedIndex) ?: return
                 val newValue = RaValueCycler.next(s, if (keycode == 21) -1 else 1) ?: return
-                if (newValue != s.value && bridge.raSetSetting(s.key, newValue)) {
+                if (newValue == s.value) return
+                if (s.key.startsWith(LOCAL_TOGGLE_PREFIX)) {
+                    // Host-local pref: persisted immediately, not part of an RA override.
+                    bridge.setLocalToggle(s.key, newValue == "true")
+                    raSettings = raSettings.toMutableList().also {
+                        it[screen.selectedIndex] = s.copy(value = newValue)
+                    }
+                    rebuildRaCategoryItems()
+                } else if (bridge.raSetSetting(s.key, newValue)) {
                     raDirty = true
                     raPending[s.key] = (raPending[s.key] ?: 0) + 1
                     raSettings = raSettings.toMutableList().also {

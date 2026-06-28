@@ -19,10 +19,14 @@ private class RaFakeBridge : FakeEmulatorBridge() {
     }
     override fun raSaveOverride(scope: RaOverrideScope) { savedScopes.add(scope) }
     fun fireApplied(key: String, value: String) { appliedCb?.invoke(key, value) }
+    val localToggles = mutableMapOf<String, Boolean>()
+    override fun getLocalToggle(key: String, default: Boolean): Boolean = localToggles[key] ?: default
+    override fun setLocalToggle(key: String, value: Boolean) { localToggles[key] = value }
 }
 
-// latency is at index 2 in RaOptionCatalog.categories
+// latency is at index 2, osd at index 3 in RaOptionCatalog.categories
 private const val LATENCY_INDEX = 2
+private const val OSD_INDEX = 3
 
 private fun buildController(): Pair<IGMController, RaFakeBridge> {
     val bridge = RaFakeBridge()
@@ -202,5 +206,30 @@ class IGMControllerRaOptionsTest {
         c.handleKeyDown(96)             // confirm Platform save
         assertEquals(listOf(RaOverrideScope.CONTENT_DIR), bridge.savedScopes)
         assertTrue(opened)
+    }
+
+    @Test fun cannoliLocalToggleFlipsLocallyWithoutDirtyOverride() {
+        val (c, bridge) = buildController()
+        c.openMenu()
+        c.push(IGMScreen.RaOptions(selectedIndex = OSD_INDEX))
+        c.handleKeyDown(96) // enter On-Screen Display category
+        assertTrue(c.currentScreen is IGMScreen.RaOptionsCategory)
+
+        // The fake bridge has no RA settings for the osd keys, so only the local
+        // toggle (cannoli_osd_reset) resolves.
+        assertEquals("Reset OSD", c.settingsItems.value[0].label)
+        assertEquals("On", c.settingsItems.value[0].value)
+
+        c.handleKeyDown(22) // cycle the toggle
+
+        assertEquals(false, bridge.localToggles["cannoli_osd_reset"])
+        assertEquals("Off", c.settingsItems.value[0].value)
+        assertTrue(bridge.setCalls.isEmpty()) // not routed through raSetSetting
+
+        // A host-local pref is not an RA override, so exiting must not prompt to save.
+        c.handleKeyDown(97) // category -> RaOptions
+        c.handleKeyDown(97) // RaOptions (clean) -> Menu
+        assertFalse(c.currentScreen is IGMScreen.SavePrompt)
+        assertTrue(bridge.savedScopes.isEmpty())
     }
 }
