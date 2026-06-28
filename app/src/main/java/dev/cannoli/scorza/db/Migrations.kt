@@ -148,6 +148,29 @@ internal object Migrations {
         Migration(8) { db ->
             db.execSQL("ALTER TABLE roms ADD COLUMN ra_cached_game_id INTEGER")
         },
+        Migration(9) { db ->
+            db.execSQL("""
+                CREATE TABLE save_sync (
+                    game_key TEXT NOT NULL,
+                    slot TEXT NOT NULL,
+                    romm_rom_id INTEGER NOT NULL,
+                    romm_save_id INTEGER,
+                    last_synced_at TEXT,
+                    last_uploaded_hash TEXT,
+                    local_content_hash TEXT,
+                    server_updated_at TEXT,
+                    updated_at INTEGER NOT NULL DEFAULT 0,
+                    PRIMARY KEY (game_key, slot)
+                )
+            """.trimIndent())
+            db.execSQL("CREATE INDEX save_sync_by_game ON save_sync(game_key)")
+            db.execSQL("""
+                CREATE TABLE save_slot_active (
+                    game_key TEXT PRIMARY KEY,
+                    active_slot TEXT NOT NULL
+                )
+            """.trimIndent())
+        },
     )
 
     val current: Int = all.maxOf { it.version }
