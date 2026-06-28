@@ -285,7 +285,8 @@ class KitchenHttpServer(
             "states" to "Save States",
             "bios" to "BIOS",
             "wallpapers" to "Wallpapers",
-            "guides" to "Guides"
+            "guides" to "Guides",
+            "shaders" to "Shaders"
         )
     }
 }

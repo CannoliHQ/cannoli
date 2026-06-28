@@ -30,6 +30,7 @@ internal fun KitchenHttpServer.handleList(dir: File, displayPath: String, recurs
             val children = current.listFiles() ?: continue
             for (child in children) {
                 if (!isSecure(child, roots)) continue
+                if (child.name == ".bundled_version") continue
                 if (child.isDirectory) stack.add(child)
                 else files.add(dirPath.relativize(child.toPath()).toString() to child)
             }
@@ -38,6 +39,7 @@ internal fun KitchenHttpServer.handleList(dir: File, displayPath: String, recurs
             .map { (relativePath, f) -> DirEntry(relativePath, "file", f.length()) }
     } else {
         dir.listFiles()
+            ?.filter { it.name != ".bundled_version" }
             ?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name.lowercase(java.util.Locale.ROOT) })
             ?.map { f ->
                 DirEntry(
