@@ -218,6 +218,23 @@
 
     <!-- RomM -->
     <string name="setting_romm_host">Host</string>
+    <string name="setting_romm_save_sync">Save Sync</string>
+    <string name="setting_romm_save_backups">Save Backups</string>
+    <string name="dialog_romm_device_name_title">Name this device</string>
+    <string name="romm_save_sync_needs_490">Requires RomM 4.9.0+</string>
+    <string name="save_sync_checking">Checking saves...</string>
+    <string name="save_conflict_title">Save conflict</string>
+    <string name="save_conflict_keep_local">Keep This Device</string>
+    <string name="save_conflict_use_server">Use Server</string>
+    <string name="save_conflict_this_device">This device: %1$s</string>
+    <string name="save_conflict_server_device">Server (%1$s): %2$s</string>
+    <string name="save_stale_title">Server has a newer save</string>
+    <string name="save_stale_play_local">Play Local Anyway</string>
+    <string name="romm_sync_now">Sync Saves Now</string>
+    <plurals name="romm_sync_done">
+        <item quantity="one">%d save synced</item>
+        <item quantity="other">%d saves synced</item>
+    </plurals>
     <string name="setting_romm_allow_self_signed">Allow Self-Signed Cert</string>
     <string name="setting_romm_art_type">Box Art</string>
     <string name="setting_romm_pair_code">Pairing Code</string>
@@ -672,4 +689,13 @@
     <string name="ra_offline_sets_empty">No achievement sets cached</string>
     <string name="ra_offline_set_value">%1$d Achievements - %2$s</string>
     <string name="label_refresh">REFRESH</string>
+
+    <!-- Save Slots screen -->
+    <string name="save_slots_title">Save Slots</string>
+    <string name="save_slots_active">Active</string>
+    <string name="save_slots_create">NEW SLOT</string>
+    <string name="save_slots_rename">RENAME</string>
+    <string name="save_slots_delete">DELETE</string>
+    <string name="save_slots_switch">SWITCH</string>
+    <string name="save_slots_delete_confirm">Delete slot \"%1$s\"?</string>
 </resources>

@@ -24,6 +24,7 @@ import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.romm.download.DownloadStatus
 import dev.cannoli.scorza.romm.download.inDisplayOrder
+import dev.cannoli.scorza.romm.sync.RomKeys
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.screens.ColorEntry
 import dev.cannoli.scorza.ui.screens.EmulatorPickerOption
@@ -34,6 +35,7 @@ import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
 import dev.cannoli.scorza.util.AtomicRename
+import dev.cannoli.scorza.util.ErrorLog
 import dev.cannoli.ui.KEY_BACKSPACE
 import dev.cannoli.ui.KEY_ENTER
 import dev.cannoli.ui.components.COLOR_GRID_COLS
@@ -80,6 +82,10 @@ class DialogInputHandler @Inject constructor(
     private val rommBrowseViewModel: dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel,
     private val rommArtFetcher: dev.cannoli.scorza.romm.art.RommArtFetcher,
     private val raPreloadController: dev.cannoli.scorza.ra.RaPreloadController,
+    private val deviceRegistrar: dev.cannoli.scorza.romm.sync.DeviceRegistrar,
+    private val saveSyncService: dev.cannoli.scorza.romm.sync.SaveSyncService,
+    private val slotManager: dev.cannoli.scorza.romm.sync.SlotManager,
+    private val saveSlotsHandler: dev.cannoli.scorza.input.screen.SaveSlotsInputHandler,
 ) : DialogPrecedence {
     private val selectHoldHandler = Handler(Looper.getMainLooper())
     private val selectHoldRunnable = Runnable {
@@ -167,7 +173,9 @@ class DialogInputHandler @Inject constructor(
         if (ds == DialogState.None) return false
         when (ds) {
             is DialogState.ContextMenu,
-            is DialogState.BulkContextMenu -> {
+            is DialogState.BulkContextMenu,
+            is DialogState.SaveSyncConflict,
+            is DialogState.SaveSyncStaleBlock -> {
                 ds.withMenuDelta(-1)?.let { nav.dialogState.value = it }
             }
             is DialogState.QuickMenu -> {
@@ -227,7 +235,9 @@ class DialogInputHandler @Inject constructor(
         if (ds == DialogState.None) return false
         when (ds) {
             is DialogState.ContextMenu,
-            is DialogState.BulkContextMenu -> {
+            is DialogState.BulkContextMenu,
+            is DialogState.SaveSyncConflict,
+            is DialogState.SaveSyncStaleBlock -> {
                 ds.withMenuDelta(1)?.let { nav.dialogState.value = it }
             }
             is DialogState.QuickMenu -> {
@@ -556,9 +566,37 @@ class DialogInputHandler @Inject constructor(
             is DialogState.RAPreloadProgress -> {
                 nav.dialogState.value = DialogState.None
             }
+            is DialogState.SaveSyncConflict -> onSaveConflictConfirm(ds)
+            is DialogState.SaveSyncStaleBlock -> onSaveStaleConfirm(ds)
             else -> {}
         }
         return true
+    }
+
+    private fun onSaveConflictConfirm(ds: DialogState.SaveSyncConflict) {
+        val deviceId = saveSyncService.deviceIdOrNull() ?: run {
+            nav.dialogState.value = DialogState.None
+            launcherActions.proceedPendingLaunch()
+            return
+        }
+        ioScope.launch {
+            try {
+                if (ds.selectedIndex == 0) saveSyncService.applyConflictKeepLocal(ds.conflict, deviceId)
+                else saveSyncService.applyConflictUseServer(ds.conflict, deviceId)
+            } catch (_: Throwable) {
+                // apply failed (offline/IO): never strand the launch; proceed with the local save
+            } finally {
+                withContext(Dispatchers.Main) {
+                    nav.dialogState.value = DialogState.None
+                    launcherActions.proceedPendingLaunch()
+                }
+            }
+        }
+    }
+
+    private fun onSaveStaleConfirm(ds: DialogState.SaveSyncStaleBlock) {
+        nav.dialogState.value = DialogState.None
+        if (ds.selectedIndex == 0) launcherActions.proceedPendingLaunch() else launcherActions.cancelPendingLaunch()
     }
 
     private fun onRommActionsConfirm(ds: DialogState.RommActionsMenu) {
@@ -780,6 +818,15 @@ class DialogInputHandler @Inject constructor(
             is DialogState.RAPreloadProgress -> {
                 nav.dialogState.value = DialogState.None
             }
+            is DialogState.SaveSyncConflict -> {
+                nav.dialogState.value = DialogState.None
+                launcherActions.proceedPendingLaunch()
+            }
+            is DialogState.SaveSyncStaleBlock -> {
+                nav.dialogState.value = DialogState.None
+                launcherActions.cancelPendingLaunch()
+            }
+            is DialogState.SaveSyncChecking -> {}
             else -> {}
         }
         return true
@@ -1098,6 +1145,23 @@ class DialogInputHandler @Inject constructor(
                 if (rom == null) return
                 openEmulatorPicker(rom)
             }
+            selected == MENU_SAVE_SLOTS -> {
+                if (rom == null) return
+                nav.dialogState.value = DialogState.None
+                val gameKey = RomKeys.relativeKey(rom.path, romDir())
+                val romId = saveSyncService.isSyncableGame(gameKey) ?: return
+                val tag = rom.platformTag
+                val base = java.text.Normalizer.normalize(rom.path.nameWithoutExtension, java.text.Normalizer.Form.NFC)
+                val emulator = RomKeys.coreDisplayNameFor(rom, platformResolver)
+                ioScope.launch {
+                    val slots = runCatching { slotManager.listSlots(gameKey, romId) }.onFailure { e ->
+                        ErrorLog.write("save_slots_open: ${e.message}")
+                    }.getOrDefault(emptyList())
+                    withContext(Dispatchers.Main) {
+                        nav.push(LauncherScreen.SaveSlots(gameKey, tag, base, romId, emulator, slots))
+                    }
+                }
+            }
         }
     }
 
@@ -1264,9 +1328,7 @@ class DialogInputHandler @Inject constructor(
                 ?: (systemListViewModel.getSelectedItem() as? SystemListViewModel.ListItem.GameItem)?.item
             if (item is ListItem.SubfolderItem) {
                 val tag = gameListViewModel.state.value.platformTag
-                val romDir = settings.romDirectory.takeIf { it.isNotEmpty() }?.let { File(it) }
-                    ?: File(File(settings.sdCardRoot), "Roms")
-                val dir = File(romDir, "$tag${File.separator}${item.path}")
+                val dir = File(romDir(), "$tag${File.separator}${item.path}")
                 val prefix = relativeRomPath(dir)
                 if (prefix == null) {
                     nav.dialogState.value = DialogState.None
@@ -1444,6 +1506,11 @@ class DialogInputHandler @Inject constructor(
                     val item = if (cached) "$MENU_PRELOAD_ACHIEVEMENTS\tCached" else MENU_PRELOAD_ACHIEVEMENTS
                     val raIdx = indexOfFirst { it == MENU_RA_GAME_ID || it.startsWith("$MENU_RA_GAME_ID\t") }
                     if (raIdx >= 0) add(raIdx + 1, item) else add(item)
+                }
+                if (item is ListItem.RomItem) {
+                    if (saveSyncService.isSyncableGame(RomKeys.relativeKey(item.rom.path, romDir())) != null) {
+                        add(MENU_SAVE_SLOTS)
+                    }
                 }
             }
         }
@@ -1640,6 +1707,19 @@ class DialogInputHandler @Inject constructor(
             nav.dialogState.value = DialogState.None
             return
         }
+        if (state.gameName == "romm_device_name") {
+            val name = state.currentName.trim().ifEmpty { deviceRegistrar.defaultDeviceName() }
+            nav.dialogState.value = DialogState.None
+            ioScope.launch {
+                runCatching { deviceRegistrar.register(name) }
+                    .onSuccess {
+                        settings.rommSaveSyncEnabled = true
+                        withContext(Dispatchers.Main) { settingsViewModel.refreshSubList() }
+                    }
+                    .onFailure { ErrorLog.write("romm device registration failed: ${it.message}") }
+            }
+            return
+        }
         if (state.gameName == "romm_search") {
             (nav.currentScreen as? dev.cannoli.scorza.navigation.LauncherScreen.RommGameList)?.let {
                 nav.replaceTop(it.copy(search = state.currentName.trim(), selectedIndex = 0, scrollTarget = 0))
@@ -1664,6 +1744,33 @@ class DialogInputHandler @Inject constructor(
             val term = state.currentName.trim()
             if (term.isBlank()) gameListViewModel.clearSearch() else gameListViewModel.setSearch(term)
             nav.dialogState.value = DialogState.None
+            return
+        }
+        if (state.gameName == "save_slot_create") {
+            val name = state.currentName.trim()
+            nav.dialogState.value = DialogState.None
+            if (name.isNotBlank()) {
+                val s = nav.currentScreen as? dev.cannoli.scorza.navigation.LauncherScreen.SaveSlots ?: return
+                ioScope.launch {
+                    runCatching { slotManager.create(s.gameKey, s.tag, s.base, s.romId, s.emulator, name) }
+                        .onFailure { ErrorLog.write("save slot create failed: ${it.message}") }
+                    withContext(Dispatchers.Main) { saveSlotsHandler.refreshSlots() }
+                }
+            }
+            return
+        }
+        if (state.gameName.startsWith("save_slot_rename:")) {
+            val oldSlot = state.gameName.removePrefix("save_slot_rename:")
+            val newSlot = state.currentName.trim()
+            nav.dialogState.value = DialogState.None
+            if (newSlot.isNotBlank() && newSlot != oldSlot) {
+                val s = nav.currentScreen as? dev.cannoli.scorza.navigation.LauncherScreen.SaveSlots ?: return
+                ioScope.launch {
+                    runCatching { slotManager.rename(s.gameKey, s.tag, s.base, s.romId, s.emulator, oldSlot, newSlot) }
+                        .onFailure { ErrorLog.write("save slot rename failed: ${it.message}") }
+                    withContext(Dispatchers.Main) { saveSlotsHandler.refreshSlots() }
+                }
+            }
             return
         }
         if (state.gameName == "launcher_global_search") {
@@ -1725,8 +1832,7 @@ class DialogInputHandler @Inject constructor(
             }
             if (item is ListItem.SubfolderItem) {
                 val tag = gameListViewModel.state.value.platformTag
-                val romDir = settings.romDirectory.takeIf { it.isNotEmpty() }?.let { File(it) } ?: File(File(settings.sdCardRoot), "Roms")
-                val oldDir = File(romDir, "$tag${File.separator}${item.path}")
+                val oldDir = File(romDir(), "$tag${File.separator}${item.path}")
                 val newDir = File(oldDir.parentFile, newName)
                 val oldPrefix = relativeRomPath(oldDir)
                 val ok = oldDir.renameTo(newDir)
@@ -1913,8 +2019,11 @@ class DialogInputHandler @Inject constructor(
         }
     }
 
+    private fun romDir(): File =
+        settings.romDirectory.takeIf { it.isNotEmpty() }?.let { File(it) } ?: File(File(settings.sdCardRoot), "Roms")
+
     private fun relativeRomPath(file: File): String? {
-        val romDir = settings.romDirectory.takeIf { it.isNotEmpty() }?.let { File(it) } ?: File(File(settings.sdCardRoot), "Roms")
+        val romDir = romDir()
         return try {
             val relative = file.relativeTo(romDir).path
             if (relative.startsWith("..")) null else relative

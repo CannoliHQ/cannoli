@@ -240,6 +240,7 @@ class LaunchManager(
         debugLog("launchRom entered: ${rom.platformTag} / ${rom.path.name} target=${rom.launchTarget::class.simpleName}")
         if (launchState.launching) return null
         launchState.launching = true
+        launchState.lastLaunched = rom
         val launchFile = resolveLaunchFile(rom, extractArchives = false)
             ?: return errorAndReset(DialogState.LaunchError(context.getString(dev.cannoli.scorza.R.string.launch_error_resolve_file)))
 
@@ -353,14 +354,15 @@ class LaunchManager(
         debugLog("resumeRom entered: ${rom.platformTag} / ${rom.path.name} slot=$resumeSlot")
         if (launchState.launching) return null
         launchState.launching = true
+        launchState.lastLaunched = rom
         val embeddedCorePath = getEmbeddedCorePath(rom)
         val launchFile = resolveLaunchFile(rom, extractArchives = embeddedCorePath != null)
-            ?: run { launchState.launching = false; return null }
+            ?: run { launchState.launching = false; launchState.lastLaunched = null; return null }
         if (embeddedCorePath != null) {
             return launchEmbedded(rom.copy(path = launchFile), embeddedCorePath, resumeSlot, originalRomPath = rom.path.absolutePath)
         }
         val gameOverride = platformConfig.getGameOverride(rom.path.absolutePath)
-        val core = gameOverride?.coreId ?: platformConfig.getCoreName(rom.platformTag) ?: run { launchState.launching = false; return null }
+        val core = gameOverride?.coreId ?: platformConfig.getCoreName(rom.platformTag) ?: run { launchState.launching = false; launchState.lastLaunched = null; return null }
         val raPackage = settings.retroArchPackage
         if (RetroArchLauncher.isRicotta(raPackage)) {
             syncRetroArchConfig(File(settings.sdCardRoot))
@@ -375,6 +377,7 @@ class LaunchManager(
 
     private fun errorAndReset(dialog: DialogState): DialogState {
         launchState.launching = false
+        launchState.lastLaunched = null
         return dialog
     }
 

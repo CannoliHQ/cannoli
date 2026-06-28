@@ -68,6 +68,7 @@ import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.scorza.ui.viewmodel.InputTesterViewModel
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
+import dev.cannoli.scorza.romm.sync.RomKeys
 import dev.cannoli.scorza.updater.UpdateManager
 import dev.cannoli.ui.theme.CannoliTheme
 import javax.inject.Inject
@@ -118,6 +119,9 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var rommImageLoader: coil.ImageLoader
     @Inject lateinit var rommDownloader: dev.cannoli.scorza.romm.download.RommDownloader
     @Inject lateinit var rommArtFetcher: dev.cannoli.scorza.romm.art.RommArtFetcher
+    @Inject lateinit var saveSyncService: dev.cannoli.scorza.romm.sync.SaveSyncService
+    @Inject lateinit var cannoliPathsProvider: dev.cannoli.scorza.di.CannoliPathsProvider
+    @field:dev.cannoli.scorza.di.IoScope @Inject lateinit var ioScope: kotlinx.coroutines.CoroutineScope
 
     private val isTv: Boolean by lazy { packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) }
 
@@ -379,6 +383,19 @@ class MainActivity : ComponentActivity(), ActivityActions {
         menuNavigationPoller.start()
         bootSequencer.advance()
         launchState.launching = false
+        val justExited = launchState.lastLaunched
+        if (justExited != null && !LibretroActivity.isRunning) {
+            launchState.lastLaunched = null
+            val gameKey = RomKeys.relativeKey(justExited.path, cannoliPathsProvider.romDir)
+            val tag = justExited.platformTag
+            val base = java.text.Normalizer.normalize(justExited.path.nameWithoutExtension, java.text.Normalizer.Form.NFC)
+            val emulator = RomKeys.coreDisplayNameFor(justExited, platformConfig.get())
+            ioScope.launch {
+                if (saveSyncService.isSyncableGame(gameKey) != null) {
+                    runCatching { saveSyncService.syncAfterExit(tag, base, gameKey, emulator) }
+                }
+            }
+        }
         if (!isReady) return
         if (!coldStart) overridePendingTransition(0, 0)
         coldStart = false

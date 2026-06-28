@@ -313,6 +313,8 @@ class GameListInputHandler @Inject constructor(
             val errorDialog = launcherActions.launchSelected(item, !settings.swapPlayResume)
             if (errorDialog != null) {
                 nav.dialogState.value = errorDialog
+            } else if (nav.dialogState.value is DialogState.SaveSyncChecking) {
+                if (trackRecent) launcherActions.recordPendingRecent(recentKey, false)
             } else if (trackRecent) {
                 launcherActions.recordRecentlyPlayedByPath(recentKey)
             }
@@ -363,6 +365,8 @@ class GameListInputHandler @Inject constructor(
         val errorDialog = launcherActions.launchSelected(item, isResumable && settings.swapPlayResume)
         if (errorDialog != null) {
             nav.dialogState.value = errorDialog
+        } else if (nav.dialogState.value is DialogState.SaveSyncChecking) {
+            if (trackRecent) launcherActions.recordPendingRecent(recentKey, tag == "recently_played")
         } else if (trackRecent) {
             launcherActions.recordRecentlyPlayedByPath(recentKey)
             if (tag == "recently_played") nav.pendingRecentlyPlayedReorder = true

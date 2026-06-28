@@ -56,6 +56,7 @@ import dev.cannoli.scorza.ui.screens.InputTesterScreen
 import dev.cannoli.scorza.ui.screens.LoggingSettingsScreen
 import dev.cannoli.scorza.ui.screens.KeyboardHost
 import dev.cannoli.scorza.ui.screens.PortraitMarginOverlay
+import dev.cannoli.scorza.ui.screens.SaveSlotsScreen
 import dev.cannoli.scorza.ui.screens.SaveStatePickerScreen
 import dev.cannoli.scorza.ui.screens.SettingsScreen
 import dev.cannoli.scorza.ui.screens.SystemListScreen
@@ -120,6 +121,16 @@ sealed class LauncherScreen {
         val slotOccupied: List<Boolean>,
         val selectedSlotIndex: Int,
         val awaitConfirmRelease: Boolean = false,
+    ) : LauncherScreen()
+    data class SaveSlots(
+        val gameKey: String,
+        val tag: String,
+        val base: String,
+        val romId: Int,
+        val emulator: String?,
+        val slots: List<dev.cannoli.scorza.romm.sync.SlotInfo>,
+        val selectedIndex: Int = 0,
+        val pendingDelete: Boolean = false,
     ) : LauncherScreen()
     data class EmulatorMapping(val mappings: List<EmulatorMappingEntry>, val allMappings: List<EmulatorMappingEntry> = mappings, override val selectedIndex: Int = 0, override val scrollTarget: Int = 0, val filter: Int = 0) : LauncherScreen(), ScrollableScreen {
         override val itemCount: Int get() = mappings.size
@@ -1306,6 +1317,20 @@ fun AppNavGraph(
                     listFontSize = listFontSize,
                     listLineHeight = listLineHeight,
                     buttonStyle = labels,
+                )
+            }
+            is LauncherScreen.SaveSlots -> {
+                inputRouter?.let { dev.cannoli.scorza.input.screen.compose.ScreenInput(it.saveSlotsHandler) }
+                SaveSlotsScreen(
+                    slots = currentScreen.slots,
+                    selectedIndex = currentScreen.selectedIndex,
+                    backgroundImagePath = appSettings.backgroundImagePath,
+                    backgroundTint = appSettings.backgroundTint,
+                    listFontSize = listFontSize,
+                    listLineHeight = listLineHeight,
+                    listVerticalPadding = listVerticalPadding,
+                    buttonStyle = labels,
+                    pendingDelete = currentScreen.pendingDelete,
                 )
             }
             is LauncherScreen.RommPlatformList -> {

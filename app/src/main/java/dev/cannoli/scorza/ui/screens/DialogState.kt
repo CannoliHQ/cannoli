@@ -113,6 +113,18 @@ sealed interface DialogState {
     data class RommConfirm(val action: RommConfirmAction, val downloadKey: String? = null) : DialogState
     data class RommPlatformToggle(val items: List<RommPlatformToggleItem>, val selectedIndex: Int = 0) : DialogState
     data class RommCollectionToggle(val items: List<RommCollectionToggleItem>, val selectedIndex: Int = 0) : DialogState
+    data object SaveSyncChecking : DialogState
+    data class SaveSyncConflict(
+        val conflict: dev.cannoli.scorza.romm.sync.PreLaunchOutcome.Conflict,
+        val selectedIndex: Int = 0,
+    ) : DialogState
+    data class SaveSyncStaleBlock(
+        val stale: dev.cannoli.scorza.romm.sync.PreLaunchOutcome.KnownStaleBlock,
+        val tag: String,
+        val base: String,
+        val selectedIndex: Int = 0,
+    ) : DialogState
+    data class RommSyncResult(val message: String) : DialogState
 }
 
 data class RommPlatformToggleItem(val tag: String, val displayName: String, val visible: Boolean)
@@ -136,6 +148,8 @@ fun DialogState.withMenuDelta(delta: Int): DialogState? = when (this) {
         if (options.isEmpty()) null
         else copy(selectedOption = (selectedOption + delta).mod(options.size))
     }
+    is DialogState.SaveSyncConflict -> copy(selectedIndex = (selectedIndex + delta).mod(2))
+    is DialogState.SaveSyncStaleBlock -> copy(selectedIndex = (selectedIndex + delta).mod(2))
     else -> null
 }
 
@@ -171,6 +185,10 @@ val DialogState.isFullScreen: Boolean
         is DialogState.RommConfirm,
         is DialogState.RommPlatformToggle,
         is DialogState.RommCollectionToggle,
-        is DialogState.QuickInfo -> true
+        is DialogState.QuickInfo,
+        is DialogState.SaveSyncChecking,
+        is DialogState.SaveSyncConflict,
+        is DialogState.SaveSyncStaleBlock,
+        is DialogState.RommSyncResult -> true
         else -> false
     }

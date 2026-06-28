@@ -54,6 +54,8 @@ class SettingsInputHandler @Inject constructor(
     @ApplicationContext private val context: Context,
     private val rommStore: dev.cannoli.scorza.romm.RommConnectionStore,
     private val cannoliPaths: CannoliPathsProvider,
+    private val deviceRegistrar: dev.cannoli.scorza.romm.sync.DeviceRegistrar,
+    private val saveSyncService: dev.cannoli.scorza.romm.sync.SaveSyncService,
 ) : ScreenInputHandler {
 
     override fun onUp() {
@@ -70,6 +72,7 @@ class SettingsInputHandler @Inject constructor(
             if (settingsViewModel.getSelectedItem()?.key == "release_channel") {
                 ioScope.launch { updateManager.checkForUpdate() }
             }
+            checkPendingEnableSaveSync()
         } else {
             pageJump(-1)
         }
@@ -81,9 +84,20 @@ class SettingsInputHandler @Inject constructor(
             if (settingsViewModel.getSelectedItem()?.key == "release_channel") {
                 ioScope.launch { updateManager.checkForUpdate() }
             }
+            checkPendingEnableSaveSync()
         } else {
             pageJump(1)
         }
+    }
+
+    private fun checkPendingEnableSaveSync() {
+        if (!settingsViewModel.pendingEnableSaveSync) return
+        settingsViewModel.pendingEnableSaveSync = false
+        val default = deviceRegistrar.defaultDeviceName()
+        nav.dialogState.value = dev.cannoli.scorza.ui.screens.DialogState.RenameInput(
+            gameName = "romm_device_name",
+            keyboard = KeyboardState(text = default, cursorPos = default.length),
+        )
     }
 
     override fun onConfirm() {
@@ -175,6 +189,33 @@ class SettingsInputHandler @Inject constructor(
             "romm_pair_code" -> {
                 val current = settingsViewModel.rommPairCode
                 nav.dialogState.value = DialogState.RenameInput(gameName = "romm_pair_code", keyboard = KeyboardState(text = current, cursorPos = current.length))
+            }
+            "romm_sync_now" -> {
+                ioScope.launch {
+                    val summary = try {
+                        val resolveGame: (String) -> Triple<String, String, String?>? = { gameKey ->
+                            val tag = gameKey.substringBefore('/')
+                            val base = java.text.Normalizer.normalize(
+                                java.io.File(gameKey).nameWithoutExtension,
+                                java.text.Normalizer.Form.NFC
+                            )
+                            val coreName = platformConfig.getCoreName(tag) ?: ""
+                            val emulator = platformConfig.getCoreDisplayName(coreName)
+                            Triple(tag, base, emulator)
+                        }
+                        saveSyncService.syncAll(resolveGame)
+                    } catch (e: Exception) {
+                        dev.cannoli.scorza.util.ErrorLog.error("romm_sync_now failed", e)
+                        null
+                    }
+                    withContext(Dispatchers.Main) {
+                        val total = (summary?.uploaded ?: 0) + (summary?.downloaded ?: 0)
+                        val text = context.resources.getQuantityString(
+                            dev.cannoli.scorza.R.plurals.romm_sync_done, total, total
+                        )
+                        nav.dialogState.value = dev.cannoli.scorza.ui.screens.DialogState.RommSyncResult(text)
+                    }
+                }
             }
             "romm_pair" -> activityActions.startRommPairing(rommStore.host, settingsViewModel.rommPairCode)
             null -> {}

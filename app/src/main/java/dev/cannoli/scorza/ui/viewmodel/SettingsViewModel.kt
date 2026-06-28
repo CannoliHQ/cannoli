@@ -35,6 +35,7 @@ class SettingsViewModel @Inject constructor(
     private val appFonts: AppFonts,
     @ApplicationContext private val context: Context,
     private val rommStore: dev.cannoli.scorza.romm.RommConnectionStore,
+    private val deviceRegistrar: dev.cannoli.scorza.romm.sync.DeviceRegistrar,
 ) {
     private var cannoliRoot: java.io.File? = null
     private var packageManager: PackageManager? = null
@@ -94,6 +95,7 @@ class SettingsViewModel @Inject constructor(
 
     var raPassword: String = ""
     var rommPairCode: String = ""
+    var pendingEnableSaveSync: Boolean = false
 
     var updateInfo: dev.cannoli.scorza.updater.UpdateInfo? = null
         set(value) {
@@ -475,6 +477,22 @@ class SettingsViewModel @Inject constructor(
                 settings.releaseChannel = channels[((cur + direction) % channels.size + channels.size) % channels.size].name
             }
             "romm_allow_self_signed" -> rommStore.allowSelfSigned = !rommStore.allowSelfSigned
+            "romm_save_sync" -> {
+                if (!settings.rommSaveSyncEnabled) {
+                    if (deviceRegistrar.isRegistered()) {
+                        settings.rommSaveSyncEnabled = true
+                    } else {
+                        pendingEnableSaveSync = true
+                    }
+                } else {
+                    settings.rommSaveSyncEnabled = false
+                }
+            }
+            "romm_save_backups" -> {
+                val options = intArrayOf(0, 3, 5, 10)
+                val idx = options.indexOf(settings.rommSaveBackupCount).let { if (it < 0) 0 else it }
+                settings.rommSaveBackupCount = options[(idx + direction).mod(options.size)]
+            }
         }
 
         val catKey = current.activeCategory ?: return
@@ -805,6 +823,29 @@ class SettingsViewModel @Inject constructor(
                 }
                 if (rommStore.host.isNotEmpty() && rommPairCode.isNotEmpty()) {
                     add(SettingsItem("romm_pair", R.string.setting_romm_pair, isEditable = true, canCycle = false))
+                }
+            } else {
+                val supported = dev.cannoli.scorza.romm.sync.SaveSyncCapabilities.supportsSaveSync(rommStore.serverVersion)
+                add(SettingsItem(
+                    key = "romm_save_sync",
+                    labelRes = R.string.setting_romm_save_sync,
+                    valueRes = if (!supported) R.string.romm_save_sync_needs_490 else onOff(settings.rommSaveSyncEnabled),
+                    canCycle = supported,
+                ))
+                if (supported && settings.rommSaveSyncEnabled) {
+                    val n = settings.rommSaveBackupCount
+                    add(SettingsItem(
+                        key = "romm_save_backups",
+                        labelRes = R.string.setting_romm_save_backups,
+                        valueRes = if (n <= 0) R.string.value_off else null,
+                        valueText = if (n <= 0) null else n.toString(),
+                    ))
+                    add(SettingsItem(
+                        key = "romm_sync_now",
+                        labelRes = R.string.romm_sync_now,
+                        isEditable = true,
+                        canCycle = false,
+                    ))
                 }
             }
         }

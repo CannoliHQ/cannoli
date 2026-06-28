@@ -117,6 +117,8 @@ class SystemListInputHandler @Inject constructor(
                 val errorDialog = launcherActions.launchSelected(item.item, !settings.swapPlayResume)
                 if (errorDialog != null) {
                     nav.dialogState.value = errorDialog
+                } else if (nav.dialogState.value is DialogState.SaveSyncChecking) {
+                    launcherActions.recordPendingRecent(recentKey, false)
                 } else {
                     launcherActions.recordRecentlyPlayedByPath(recentKey)
                 }
@@ -202,6 +204,8 @@ class SystemListInputHandler @Inject constructor(
                 val errorDialog = launcherActions.launchSelected(item.item, resume)
                 if (errorDialog != null) {
                     nav.dialogState.value = errorDialog
+                } else if (nav.dialogState.value is DialogState.SaveSyncChecking) {
+                    launcherActions.recordPendingRecent(recentKey, false)
                 } else {
                     launcherActions.recordRecentlyPlayedByPath(recentKey)
                 }

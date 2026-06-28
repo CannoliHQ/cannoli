@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
+import dev.cannoli.scorza.romm.sync.PreLaunchOutcome
 import dev.cannoli.scorza.romm.download.DownloadStatus
 import dev.cannoli.scorza.romm.download.RommDownloadItem
 import dev.cannoli.scorza.romm.download.RommDownloadKind
@@ -170,6 +171,7 @@ fun DialogOverlay(
                     "launcher_global_search" -> stringResource(R.string.search_global)
                     "romm_global_search" -> stringResource(R.string.search_romm)
                     "launcher_search", "romm_search", "romm_collection_search" -> rn.searchScope?.let { stringResource(R.string.search_in_platform, it) }
+                    "romm_device_name" -> stringResource(dev.cannoli.ui.R.string.dialog_romm_device_name_title)
                     else -> null
                 }
             }
@@ -242,6 +244,10 @@ fun DialogOverlay(
         }
 
         is DialogState.SystemFoldersRegenerated -> {
+            RestartOverlay(message = dialogState.message, buttonStyle = buttonStyle)
+        }
+
+        is DialogState.RommSyncResult -> {
             RestartOverlay(message = dialogState.message, buttonStyle = buttonStyle)
         }
 
@@ -510,6 +516,91 @@ fun DialogOverlay(
                     ) { _, item, isSelected ->
                         DownloadRow(item, isSelected, listFontSize, listLineHeight, listVerticalPadding)
                     }
+                }
+            }
+        }
+
+        is DialogState.SaveSyncChecking -> {
+            ListDialogScreen(
+                backgroundImagePath = backgroundImagePath,
+                backgroundTint = backgroundTint,
+                title = stringResource(R.string.save_sync_checking),
+                listFontSize = listFontSize,
+                listLineHeight = listLineHeight,
+                rightBottomItems = emptyList(),
+                showBackButton = false,
+                buttonStyle = buttonStyle,
+            ) {}
+        }
+
+        is DialogState.SaveSyncConflict -> {
+            val options = listOf(
+                stringResource(R.string.save_conflict_keep_local),
+                stringResource(R.string.save_conflict_use_server),
+            )
+            val localLabel = dialogState.conflict.localTime
+                ?: stringResource(android.R.string.unknownName)
+            val serverDevice = dialogState.conflict.serverDevice ?: ""
+            val serverLabel = dialogState.conflict.serverTime
+                ?: stringResource(android.R.string.unknownName)
+            val titleLines = buildString {
+                append(stringResource(R.string.save_conflict_title))
+                append("\n")
+                append(stringResource(R.string.save_conflict_this_device, localLabel))
+                append("\n")
+                append(stringResource(R.string.save_conflict_server_device, serverDevice, serverLabel))
+            }
+            ListDialogScreen(
+                backgroundImagePath = backgroundImagePath,
+                backgroundTint = backgroundTint,
+                title = titleLines,
+                listFontSize = listFontSize,
+                listLineHeight = listLineHeight,
+                rightBottomItems = listOf(buttonStyle.confirm to stringResource(R.string.label_select)),
+                buttonStyle = buttonStyle,
+            ) {
+                List(
+                    items = options,
+                    selectedIndex = dialogState.selectedIndex,
+                    itemHeight = itemHeight,
+                ) { _, option, isSelected ->
+                    PillRowText(
+                        label = option,
+                        isSelected = isSelected,
+                        fontSize = listFontSize,
+                        lineHeight = listLineHeight,
+                        verticalPadding = listVerticalPadding,
+                    )
+                }
+            }
+        }
+
+        is DialogState.SaveSyncStaleBlock -> {
+            val options = listOf(
+                stringResource(R.string.save_stale_play_local),
+                stringResource(R.string.label_back),
+            )
+            ListDialogScreen(
+                backgroundImagePath = backgroundImagePath,
+                backgroundTint = backgroundTint,
+                title = stringResource(R.string.save_stale_title),
+                listFontSize = listFontSize,
+                listLineHeight = listLineHeight,
+                rightBottomItems = listOf(buttonStyle.confirm to stringResource(R.string.label_select)),
+                buttonStyle = buttonStyle,
+            ) {
+                List(
+                    items = options,
+                    selectedIndex = dialogState.selectedIndex,
+                    itemHeight = itemHeight,
+                ) { _, option, isSelected ->
+                    PillRowText(
+                        label = option,
+                        isSelected = isSelected,
+                        fontSize = listFontSize,
+                        lineHeight = listLineHeight,
+                        verticalPadding = listVerticalPadding,
+                    )
                 }
             }
         }
