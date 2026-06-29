@@ -141,6 +141,30 @@ class SaveSyncSweepTest {
         assertEquals(SyncDirection.CONFLICT, historyStore.recent().first().direction)
     }
 
+    @Test fun `a persistent conflict is logged to history only once`() = runBlocking {
+        writeSave("NEW-LOCAL")
+        seedAnchor(lastUploadedHash = "old-server-hash", localContentHash = "old-local-hash")
+        every { client.negotiateSync(any()) } returns SyncNegotiateResponse(
+            sessionId = 1,
+            operations = listOf(
+                SyncOperationDto(
+                    action = "conflict",
+                    romId = 42,
+                    saveId = 100,
+                    fileName = "Zelda.srm",
+                    slot = "autosave",
+                    serverUpdatedAt = "2026-06-26T01:00:00Z",
+                    serverContentHash = "new-server-hash",
+                )
+            ),
+            totalConflict = 1,
+        )
+        repeat(3) { service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") }, online = true) }
+
+        assertEquals(1, pendingStore.count())
+        assertEquals(1, historyStore.recent().count { it.direction == SyncDirection.CONFLICT })
+    }
+
     @Test fun `sweep uploads a changed local save`() = runBlocking {
         writeSave("CHANGED")
         seedAnchor(lastUploadedHash = "old-server-hash", localContentHash = "old-local-hash")

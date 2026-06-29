@@ -408,7 +408,13 @@ class SaveSyncService(
                 else -> {}
             }
             if (!r.ok) error = true
-            history.add(entry(p.gameKey, p.name, if (r.ok) (r.direction ?: SyncDirection.UPLOAD) else SyncDirection.ERROR))
+            // escalate() records conflicts itself (deduped); log only real transfers and errors here.
+            when {
+                !r.ok -> history.add(entry(p.gameKey, p.name, SyncDirection.ERROR))
+                r.direction == SyncDirection.UPLOAD || r.direction == SyncDirection.DOWNLOAD ->
+                    history.add(entry(p.gameKey, p.name, r.direction))
+                else -> {}
+            }
         }
 
         val pending = pendingConflicts.count()
@@ -538,7 +544,8 @@ class SaveSyncService(
 
     private fun escalate(gameKey: String, name: String, c: PreLaunchOutcome.Conflict) {
         val existing = pendingConflicts.get(gameKey)
-        if (existing?.dismissedHash != null && existing.dismissedHash == c.serverContentHash) return
+        // Already recorded this exact conflict (pending or dismissed) -> don't re-log it every sweep.
+        if (existing != null && existing.serverContentHash == c.serverContentHash) return
         pendingConflicts.upsert(
             PendingConflict(gameKey, c.romId, name, c.saveId, c.serverContentHash, c.serverTime, System.currentTimeMillis(), null)
         )
