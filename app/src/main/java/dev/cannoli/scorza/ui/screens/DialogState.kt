@@ -110,6 +110,12 @@ sealed interface DialogState {
         val artType: dev.cannoli.scorza.romm.RommArtType = dev.cannoli.scorza.romm.RommArtType.NONE,
     ) : DialogState
     data class RommAdvancedMenu(val selectedIndex: Int = 0) : DialogState
+    data class RommSaveSyncMenu(
+        val selectedIndex: Int = 0,
+        val supported: Boolean = true,
+        val enabled: Boolean = false,
+        val backupCount: Int = 5,
+    ) : DialogState
     data class RommConfirm(val action: RommConfirmAction, val downloadKey: String? = null) : DialogState
     data class RommPlatformToggle(val items: List<RommPlatformToggleItem>, val selectedIndex: Int = 0) : DialogState
     data class RommCollectionToggle(val items: List<RommCollectionToggleItem>, val selectedIndex: Int = 0) : DialogState
@@ -182,6 +188,7 @@ val DialogState.isFullScreen: Boolean
         is DialogState.RommActionsMenu,
         is DialogState.RommSettingsMenu,
         is DialogState.RommAdvancedMenu,
+        is DialogState.RommSaveSyncMenu,
         is DialogState.RommConfirm,
         is DialogState.RommPlatformToggle,
         is DialogState.RommCollectionToggle,

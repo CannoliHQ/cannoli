@@ -193,6 +193,10 @@ class DialogInputHandler @Inject constructor(
             is DialogState.RommAdvancedMenu -> {
                 nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(dev.cannoli.scorza.ui.components.ROMM_ADVANCED_ROWS.size))
             }
+            is DialogState.RommSaveSyncMenu -> {
+                val size = dev.cannoli.scorza.ui.components.RommSaveSyncRow.visibleRows(ds.supported, ds.enabled).size
+                nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(size))
+            }
             is KeyboardHost -> nav.dialogState.value = ds.withKeyboard(KeyboardController.moveSelection(ds.keyboard, Direction.UP))
             is DialogState.ColorPicker -> {
                 val totalRows = (COLOR_PRESETS.size + COLOR_GRID_COLS - 1) / COLOR_GRID_COLS
@@ -255,6 +259,10 @@ class DialogInputHandler @Inject constructor(
             is DialogState.RommAdvancedMenu -> {
                 nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(dev.cannoli.scorza.ui.components.ROMM_ADVANCED_ROWS.size))
             }
+            is DialogState.RommSaveSyncMenu -> {
+                val size = dev.cannoli.scorza.ui.components.RommSaveSyncRow.visibleRows(ds.supported, ds.enabled).size
+                nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(size))
+            }
             is KeyboardHost -> nav.dialogState.value = ds.withKeyboard(KeyboardController.moveSelection(ds.keyboard, Direction.DOWN))
             is DialogState.ColorPicker -> {
                 val totalRows = (COLOR_PRESETS.size + COLOR_GRID_COLS - 1) / COLOR_GRID_COLS
@@ -313,6 +321,7 @@ class DialogInputHandler @Inject constructor(
                 }
             }
             is DialogState.RommSettingsMenu -> cycleRommSettings(ds, -1)
+            is DialogState.RommSaveSyncMenu -> cycleRommSaveSync(ds, -1)
             is KeyboardHost -> nav.dialogState.value = ds.withKeyboard(KeyboardController.moveSelection(ds.keyboard, Direction.LEFT))
             is DialogState.ColorPicker -> {
                 val newCol = if (ds.selectedCol <= 0) COLOR_GRID_COLS - 1 else ds.selectedCol - 1
@@ -347,6 +356,7 @@ class DialogInputHandler @Inject constructor(
                 }
             }
             is DialogState.RommSettingsMenu -> cycleRommSettings(ds, 1)
+            is DialogState.RommSaveSyncMenu -> cycleRommSaveSync(ds, 1)
             is KeyboardHost -> nav.dialogState.value = ds.withKeyboard(KeyboardController.moveSelection(ds.keyboard, Direction.RIGHT))
             is DialogState.ColorPicker -> {
                 val newCol = if (ds.selectedCol >= COLOR_GRID_COLS - 1) 0 else ds.selectedCol + 1
@@ -519,6 +529,7 @@ class DialogInputHandler @Inject constructor(
             }
             is DialogState.RommActionsMenu -> onRommActionsConfirm(ds)
             is DialogState.RommSettingsMenu -> onRommSettingsConfirm(ds)
+            is DialogState.RommSaveSyncMenu -> onRommSaveSyncConfirm(ds)
             is DialogState.RommPlatformToggle -> {
                 val item = ds.items.getOrNull(ds.selectedIndex) ?: return true
                 val nowVisible = !item.visible
@@ -618,6 +629,9 @@ class DialogInputHandler @Inject constructor(
                     version = rommStore.serverVersion,
                 )
             }
+            dev.cannoli.scorza.ui.components.RommSettingsRow.SAVE_SYNC -> {
+                nav.dialogState.value = buildSaveSyncMenu()
+            }
             dev.cannoli.scorza.ui.components.RommSettingsRow.ADVANCED -> {
                 nav.dialogState.value = DialogState.RommAdvancedMenu()
             }
@@ -640,6 +654,51 @@ class DialogInputHandler @Inject constructor(
                 )
                 nav.dialogState.value = DialogState.RommCollectionToggle(items)
             }
+            else -> {}
+        }
+    }
+
+    private fun buildSaveSyncMenu(selectedIndex: Int = 0) = DialogState.RommSaveSyncMenu(
+        selectedIndex = selectedIndex,
+        supported = dev.cannoli.scorza.romm.sync.SaveSyncCapabilities.supportsSaveSync(rommStore.serverVersion),
+        enabled = settings.rommSaveSyncEnabled,
+        backupCount = settings.rommSaveBackupCount,
+    )
+
+    private fun toggleSaveSync(ds: DialogState.RommSaveSyncMenu) {
+        if (!ds.supported) return
+        if (settings.rommSaveSyncEnabled) {
+            settings.rommSaveSyncEnabled = false
+            nav.dialogState.value = ds.copy(enabled = false, selectedIndex = 0)
+        } else if (deviceRegistrar.isRegistered()) {
+            settings.rommSaveSyncEnabled = true
+            nav.dialogState.value = ds.copy(enabled = true)
+        } else {
+            val default = deviceRegistrar.defaultDeviceName()
+            nav.dialogState.value = DialogState.RenameInput(
+                gameName = "romm_device_name",
+                keyboard = KeyboardState(text = default, cursorPos = default.length),
+            )
+        }
+    }
+
+    private fun cycleRommSaveSync(ds: DialogState.RommSaveSyncMenu, delta: Int) {
+        when (dev.cannoli.scorza.ui.components.RommSaveSyncRow.visibleRows(ds.supported, ds.enabled).getOrNull(ds.selectedIndex)) {
+            dev.cannoli.scorza.ui.components.RommSaveSyncRow.TOGGLE -> toggleSaveSync(ds)
+            dev.cannoli.scorza.ui.components.RommSaveSyncRow.BACKUPS -> {
+                val options = intArrayOf(0, 3, 5, 10)
+                val idx = options.indexOf(settings.rommSaveBackupCount).let { if (it < 0) 0 else it }
+                val next = options[(idx + delta).mod(options.size)]
+                settings.rommSaveBackupCount = next
+                nav.dialogState.value = ds.copy(backupCount = next)
+            }
+            else -> {}
+        }
+    }
+
+    private fun onRommSaveSyncConfirm(ds: DialogState.RommSaveSyncMenu) {
+        when (dev.cannoli.scorza.ui.components.RommSaveSyncRow.visibleRows(ds.supported, ds.enabled).getOrNull(ds.selectedIndex)) {
+            dev.cannoli.scorza.ui.components.RommSaveSyncRow.TOGGLE -> toggleSaveSync(ds)
             else -> {}
         }
     }
@@ -790,6 +849,14 @@ class DialogInputHandler @Inject constructor(
                     artType = rommStore.artType,
                     selectedIndex = dev.cannoli.scorza.ui.components.RommSettingsRow.entries
                         .indexOf(dev.cannoli.scorza.ui.components.RommSettingsRow.ADVANCED),
+                )
+            }
+            is DialogState.RommSaveSyncMenu -> {
+                nav.dialogState.value = DialogState.RommSettingsMenu(
+                    concurrent = settings.concurrentDownloads,
+                    artType = rommStore.artType,
+                    selectedIndex = dev.cannoli.scorza.ui.components.RommSettingsRow.entries
+                        .indexOf(dev.cannoli.scorza.ui.components.RommSettingsRow.SAVE_SYNC),
                 )
             }
             is DialogState.RommConfirm -> {
@@ -1710,7 +1777,7 @@ class DialogInputHandler @Inject constructor(
                 runCatching { deviceRegistrar.register(name) }
                     .onSuccess {
                         settings.rommSaveSyncEnabled = true
-                        withContext(Dispatchers.Main) { settingsViewModel.refreshSubList() }
+                        withContext(Dispatchers.Main) { nav.dialogState.value = buildSaveSyncMenu() }
                     }
                     .onFailure { ErrorLog.write("romm device registration failed: ${it.message}") }
             }

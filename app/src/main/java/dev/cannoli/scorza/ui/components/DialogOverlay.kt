@@ -377,6 +377,48 @@ fun DialogOverlay(
             }
         }
 
+        is DialogState.RommSaveSyncMenu -> {
+            val rows = RommSaveSyncRow.visibleRows(dialogState.supported, dialogState.enabled)
+            val selectedRow = rows.getOrNull(dialogState.selectedIndex)
+            val isCycleRow = selectedRow == RommSaveSyncRow.TOGGLE || selectedRow == RommSaveSyncRow.BACKUPS
+            ListDialogScreen(
+                backgroundImagePath = backgroundImagePath,
+                backgroundTint = backgroundTint,
+                title = stringResource(R.string.setting_romm_save_sync),
+                listFontSize = listFontSize,
+                listLineHeight = listLineHeight,
+                leftBottomItems = if (isCycleRow)
+                    listOf(DPAD_HORIZONTAL to stringResource(R.string.label_change)) else emptyList(),
+                rightBottomItems = listOf(buttonStyle.confirm to stringResource(R.string.label_select)),
+                buttonStyle = buttonStyle
+            ) {
+                List(items = rows, selectedIndex = dialogState.selectedIndex, itemHeight = itemHeight) { _, row, isSelected ->
+                    when (row) {
+                        RommSaveSyncRow.TOGGLE -> PillRowKeyValue(
+                            label = stringResource(R.string.setting_romm_save_sync),
+                            value = stringResource(
+                                if (!dialogState.supported) R.string.romm_save_sync_needs_490
+                                else if (dialogState.enabled) R.string.value_on else R.string.value_off
+                            ),
+                            isSelected = isSelected,
+                            fontSize = listFontSize,
+                            lineHeight = listLineHeight,
+                            verticalPadding = listVerticalPadding
+                        )
+                        RommSaveSyncRow.BACKUPS -> PillRowKeyValue(
+                            label = stringResource(R.string.setting_romm_save_backups),
+                            value = if (dialogState.backupCount <= 0) stringResource(R.string.value_off)
+                            else dialogState.backupCount.toString(),
+                            isSelected = isSelected,
+                            fontSize = listFontSize,
+                            lineHeight = listLineHeight,
+                            verticalPadding = listVerticalPadding
+                        )
+                    }
+                }
+            }
+        }
+
         is DialogState.RommConfirm -> {
             val message = when (dialogState.action) {
                 dev.cannoli.scorza.ui.screens.RommConfirmAction.REBUILD_CACHE -> R.string.romm_rebuild_confirm
@@ -666,10 +708,19 @@ enum class RommActionRow(@androidx.annotation.StringRes val labelRes: Int) {
 enum class RommSettingsRow(@androidx.annotation.StringRes val labelRes: Int, val isCycle: Boolean = false) {
     COVER_ART(R.string.romm_qm_cover_art, isCycle = true),
     CONCURRENT(R.string.romm_qm_concurrent, isCycle = true),
+    SAVE_SYNC(R.string.setting_romm_save_sync),
     PLATFORMS(R.string.romm_qm_platforms),
     COLLECTIONS(R.string.romm_qm_collections),
     ADVANCED(R.string.romm_qm_advanced),
     SERVER_INFO(R.string.romm_qm_server_info),
+}
+
+enum class RommSaveSyncRow {
+    TOGGLE, BACKUPS;
+    companion object {
+        fun visibleRows(supported: Boolean, enabled: Boolean): List<RommSaveSyncRow> =
+            if (supported && enabled) listOf(TOGGLE, BACKUPS) else listOf(TOGGLE)
+    }
 }
 
 @androidx.annotation.StringRes
