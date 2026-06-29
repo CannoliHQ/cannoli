@@ -976,7 +976,7 @@ internal fun ListDialogScreen(
     title: String,
     listFontSize: TextUnit,
     listLineHeight: TextUnit,
-    fullWidth: Boolean = false,
+    fullWidth: Boolean = true,
     leftBottomItems: List<Pair<String, String>> = emptyList(),
     rightBottomItems: List<Pair<String, String>>,
     buttonStyle: ButtonStyle = ButtonStyle(),
