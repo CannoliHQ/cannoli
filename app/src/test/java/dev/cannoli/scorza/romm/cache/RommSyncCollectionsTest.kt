@@ -51,9 +51,9 @@ class RommSyncCollectionsTest {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val path = request.path!!
                 return when {
-                    path.startsWith("/api/platforms/identifiers") -> json("[]")
+                    path.startsWith("/api/platforms/identifiers") -> json("[1]")
                     path.startsWith("/api/platforms") -> json(platformsResponse())
-                    path.startsWith("/api/roms/identifiers") -> json("[]")
+                    path.startsWith("/api/roms/identifiers") -> json("[10]")
                     path.startsWith("/api/roms") -> json(romsResponse())
                     path.startsWith("/api/collections") -> json(
                         """[{"id":42,"name":"Favourites","rom_ids":[10],"rom_count":1}]"""
@@ -78,9 +78,9 @@ class RommSyncCollectionsTest {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val path = request.path!!
                 return when {
-                    path.startsWith("/api/platforms/identifiers") -> json("[]")
+                    path.startsWith("/api/platforms/identifiers") -> json("[1]")
                     path.startsWith("/api/platforms") -> json(platformsResponse())
-                    path.startsWith("/api/roms/identifiers") -> json("[]")
+                    path.startsWith("/api/roms/identifiers") -> json("[10]")
                     path.startsWith("/api/roms") -> json(romsResponse())
                     path.startsWith("/api/collections") -> json(
                         """[{"id":42,"name":"Favourites","rom_ids":[10],"rom_count":1}]"""
@@ -97,9 +97,9 @@ class RommSyncCollectionsTest {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val path = request.path!!
                 return when {
-                    path.startsWith("/api/platforms/identifiers") -> json("[]")
+                    path.startsWith("/api/platforms/identifiers") -> json("[1]")
                     path.startsWith("/api/platforms") -> json(platformsResponse())
-                    path.startsWith("/api/roms/identifiers") -> json("[]")
+                    path.startsWith("/api/roms/identifiers") -> json("[10]")
                     path.startsWith("/api/roms") -> json(romsResponse())
                     path.startsWith("/api/collections") -> json("[]")
                     else -> json("[]")
@@ -118,9 +118,9 @@ class RommSyncCollectionsTest {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val path = request.path!!
                 return when {
-                    path.startsWith("/api/platforms/identifiers") -> json("[]")
+                    path.startsWith("/api/platforms/identifiers") -> json("[1]")
                     path.startsWith("/api/platforms") -> json(platformsResponse())
-                    path.startsWith("/api/roms/identifiers") -> json("[]")
+                    path.startsWith("/api/roms/identifiers") -> json("[10]")
                     path.startsWith("/api/roms") -> json(romsResponse())
                     path.startsWith("/api/collections") -> MockResponse().setResponseCode(500)
                     else -> json("[]")
@@ -133,5 +133,40 @@ class RommSyncCollectionsTest {
 
         assertEquals(RommSyncCoordinator.SyncStatus.IDLE, coord.status.value)
         assertEquals(1, db.gamesCount(1, null))
+    }
+
+    @Test fun `syncDelta purges games no longer on the server`() = runBlocking {
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val path = request.path!!
+                return when {
+                    path.startsWith("/api/platforms/identifiers") -> json("[1]")
+                    path.startsWith("/api/platforms") -> json(platformsResponse())
+                    path.startsWith("/api/roms/identifiers") -> json("[10]")
+                    path.startsWith("/api/roms") -> json(romsResponse())
+                    path.startsWith("/api/collections") -> json("[]")
+                    else -> json("[]")
+                }
+            }
+        }
+        coordinator().syncFull()
+        assertEquals(1, db.gamesCount(1, null))
+
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val path = request.path!!
+                return when {
+                    path.startsWith("/api/platforms/identifiers") -> json("[1]")
+                    path.startsWith("/api/platforms") -> json(platformsResponse())
+                    path.startsWith("/api/roms/identifiers") -> json("[]")
+                    path.startsWith("/api/roms") -> json("""{"items":[],"total":0,"limit":100,"offset":0}""")
+                    path.startsWith("/api/collections") -> json("[]")
+                    else -> json("[]")
+                }
+            }
+        }
+        coordinator().syncDelta()
+
+        assertEquals(0, db.gamesCount(1, null))
     }
 }

@@ -240,7 +240,10 @@ class RommDatabase(private val dbFileProvider: () -> File) {
     fun deleteGames(ids: Set<Int>) = withConn { c ->
         c.execSQL("BEGIN")
         try {
-            ids.forEach { c.execute("DELETE FROM games WHERE id = ?", it) }
+            ids.forEach {
+                c.execute("DELETE FROM games WHERE id = ?", it)
+                c.execute("DELETE FROM collection_roms WHERE rom_id = ?", it)
+            }
             c.execSQL("COMMIT")
         } catch (t: Throwable) { c.execSQL("ROLLBACK"); throw t }
     }
@@ -286,7 +289,7 @@ class RommDatabase(private val dbFileProvider: () -> File) {
             for ((coll, updatedAt) in rows) {
                 c.execute(
                     "INSERT OR REPLACE INTO collections (id, coll_group, name, rom_count, sort_key, updated_at) VALUES (?,?,?,?,?,?)",
-                    coll.id, coll.group.name, coll.name, coll.romCount, TextNormalizer.normalize(coll.name), updatedAt,
+                    coll.id, coll.group.name, coll.name, coll.romCount, NaturalSort.toSortKey(coll.name), updatedAt,
                 )
             }
             c.execSQL("COMMIT")

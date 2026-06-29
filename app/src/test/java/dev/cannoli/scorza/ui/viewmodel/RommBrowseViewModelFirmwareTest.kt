@@ -29,7 +29,7 @@ class RommBrowseViewModelFirmwareTest {
                    RommFirmware(2, "scph7001.bin", 1, null, null, null)),
             biosDir,
         ).loadFirmware(7, "PSX")
-        assertEquals(listOf("scph7001.bin" to false, "scph5501.bin" to true),
+        assertEquals(listOf("scph5501.bin" to true, "scph7001.bin" to false),
             rows.map { it.firmware.fileName to it.present })
     }
 }

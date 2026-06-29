@@ -72,17 +72,13 @@ class RommSyncCoordinator(
                 // this a deleted platform or game lingers in the cache.
                 runCatching {
                     val validPlatformIds = client.getPlatformIdentifiers().toSet()
-                    if (validPlatformIds.isNotEmpty()) {
-                        val stale = db.allPlatformIds() - validPlatformIds
-                        if (stale.isNotEmpty()) db.deletePlatforms(stale)
-                    }
+                    val stale = db.allPlatformIds() - validPlatformIds
+                    if (stale.isNotEmpty()) db.deletePlatforms(stale)
                 }.onFailure { ScanLog.write("romm purge deleted platforms failed: ${it.message}") }
                 runCatching {
                     val validRomIds = client.getRomIdentifiers().toSet()
-                    if (validRomIds.isNotEmpty()) {
-                        val stale = db.allGameIds() - validRomIds
-                        if (stale.isNotEmpty()) db.deleteGames(stale)
-                    }
+                    val stale = db.allGameIds() - validRomIds
+                    if (stale.isNotEmpty()) db.deleteGames(stale)
                 }.onFailure { ScanLog.write("romm purge deleted games failed: ${it.message}") }
                 runCatching {
                     val groups = enabledGroups()

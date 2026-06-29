@@ -141,31 +141,39 @@ class RommBrowseViewModel(
     suspend fun openCollection(collection: RommCollection, search: String? = null) {
         _loadedCollectionId.value = collection.id
         val database = db ?: return
-        val platformsById = database.platforms().associateBy { it.id }
         currentCollectionId = collection.id
         collectionPage = 0
         collectionSearchTerm = search
-        val games = database.gamesForCollection(collection.id, search, collectionPageSize, 0)
-        collectionHasMore = games.size == collectionPageSize
-        _collectionGames.value = games.mapNotNull { game ->
-            val platform = platformsById[game.platformId] ?: return@mapNotNull null
-            RommCollectionGameRow(game, localStateFor(game, platform), platform)
+        val (rows, hasMore) = withContext(Dispatchers.IO) {
+            val platformsById = database.platforms().associateBy { it.id }
+            val games = database.gamesForCollection(collection.id, search, collectionPageSize, 0)
+            val mapped = games.mapNotNull { game ->
+                val platform = platformsById[game.platformId] ?: return@mapNotNull null
+                RommCollectionGameRow(game, localStateFor(game, platform), platform)
+            }
+            mapped to (games.size == collectionPageSize)
         }
+        collectionHasMore = hasMore
+        _collectionGames.value = rows
     }
 
     suspend fun loadMoreCollection() {
         if (!collectionHasMore) return
         val id = currentCollectionId ?: return
         val database = db ?: return
-        val platformsById = database.platforms().associateBy { it.id }
         collectionPage += 1
         val offset = collectionPage * collectionPageSize
-        val games = database.gamesForCollection(id, collectionSearchTerm, collectionPageSize, offset)
-        collectionHasMore = games.size == collectionPageSize
-        _collectionGames.value = _collectionGames.value + games.mapNotNull { game ->
-            val platform = platformsById[game.platformId] ?: return@mapNotNull null
-            RommCollectionGameRow(game, localStateFor(game, platform), platform)
+        val (rows, hasMore) = withContext(Dispatchers.IO) {
+            val platformsById = database.platforms().associateBy { it.id }
+            val games = database.gamesForCollection(id, collectionSearchTerm, collectionPageSize, offset)
+            val mapped = games.mapNotNull { game ->
+                val platform = platformsById[game.platformId] ?: return@mapNotNull null
+                RommCollectionGameRow(game, localStateFor(game, platform), platform)
+            }
+            mapped to (games.size == collectionPageSize)
         }
+        collectionHasMore = hasMore
+        _collectionGames.value = _collectionGames.value + rows
     }
 
     suspend fun refreshLocalState() {
@@ -204,7 +212,6 @@ class RommBrowseViewModel(
         val biosDir = biosDirFor(tag)
         firmwareFor(platformId)
             .map { RommFirmwareRow(it, java.io.File(biosDir, it.fileName).exists()) }
-            .sortedBy { it.present }
     }
 
     fun isMultiSelect(): Boolean = _multiSelect.value
