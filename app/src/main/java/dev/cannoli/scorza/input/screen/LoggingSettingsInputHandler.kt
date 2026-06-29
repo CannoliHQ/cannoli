@@ -51,6 +51,7 @@ class LoggingSettingsInputHandler @Inject constructor(
             LoggingPrefs.Category.SESSION -> settings.loggingSession = newValue
             LoggingPrefs.Category.KITCHEN -> settings.loggingKitchen = newValue
             LoggingPrefs.Category.STORAGE -> settings.loggingStorage = newValue
+            LoggingPrefs.Category.ROMM -> settings.loggingRomm = newValue
         }
         nav.replaceTop(screen.copy())
     }
