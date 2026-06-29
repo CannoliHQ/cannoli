@@ -259,8 +259,8 @@
     <string name="romm_detail_download">DOWNLOAD</string>
     <string name="label_manual">MANUAL</string>
     <string name="romm_download_manual">Manual</string>
-    <string name="romm_syncing">Building cache...</string>
-    <string name="romm_syncing_platform">Building cache...\n%1$s</string>
+    <string name="romm_syncing" tools:ignore="TypographyEllipsis">Building cache...</string>
+    <string name="romm_syncing_platform" tools:ignore="TypographyEllipsis">Building cache...\n%1$s</string>
     <string name="romm_sync_error">Could not reach RomM. Showing cached library.</string>
     <string name="romm_download_queue">Download Queue</string>
     <string name="romm_download_queued">Queued</string>
@@ -494,8 +494,8 @@
     <string name="quick_menu_kitchen">Nonna\'s Kitchen</string>
     <string name="quick_menu_rescan">Rescan Library</string>
     <string name="quick_menu_info">Network Info</string>
-    <string name="quick_menu_sync_history">Sync History</string>
-    <string name="sync_history_title">Sync History</string>
+    <string name="quick_menu_sync_history">Save Sync History</string>
+    <string name="sync_history_title">Save Sync History</string>
     <string name="sync_history_empty">No sync history</string>
     <string name="sync_relative_now">just now</string>
     <string name="quick_info_title">Network Info</string>
@@ -698,10 +698,10 @@
     <string name="save_slots_delete_confirm">Delete slot \"%1$s\"?</string>
 
     <!-- Conflicts resolution screen -->
-    <string name="conflicts_title">Conflicts</string>
+    <string name="conflicts_title">Sync Conflicts</string>
     <plurals name="quick_menu_conflicts">
-        <item quantity="one">Conflicts (1)</item>
-        <item quantity="other">Conflicts (%1$d)</item>
+        <item quantity="one">Sync Conflicts (1)</item>
+        <item quantity="other">Sync Conflicts (%1$d)</item>
     </plurals>
     <string name="conflict_keep_local">Keep Local</string>
     <string name="conflict_use_server">Use Server</string>
