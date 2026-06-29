@@ -546,11 +546,7 @@ class DialogInputHandler @Inject constructor(
             }
             is DialogState.RommAdvancedMenu -> {
                 when (ds.selectedIndex) {
-                    0 -> {
-                        nav.dialogState.value = DialogState.None
-                        ioScope.launch { rommBrowseViewModel.refresh() }
-                    }
-                    1 -> nav.dialogState.value = DialogState.RommConfirm(dev.cannoli.scorza.ui.screens.RommConfirmAction.REBUILD_CACHE)
+                    0 -> nav.dialogState.value = DialogState.RommConfirm(dev.cannoli.scorza.ui.screens.RommConfirmAction.REBUILD_CACHE)
                     else -> {
                         val tags = romsRepository.knownPlatformTags()
                         nav.dialogState.value = DialogState.None

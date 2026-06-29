@@ -651,7 +651,7 @@ private fun quickMenuLabel(row: dev.cannoli.scorza.ui.quickmenu.QuickMenuRow): S
     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.INFO -> stringResource(R.string.quick_menu_info)
 }
 
-val ROMM_ADVANCED_ROWS = listOf(R.string.romm_qm_refresh, R.string.romm_qm_rebuild, R.string.romm_qm_download_art)
+val ROMM_ADVANCED_ROWS = listOf(R.string.romm_qm_rebuild, R.string.romm_qm_download_art)
 
 enum class RommActionRow(@androidx.annotation.StringRes val labelRes: Int) {
     DOWNLOADS(R.string.romm_download_queue),
@@ -696,6 +696,7 @@ private fun ConfirmOverlay(message: String, buttonStyle: ButtonStyle) {
             text = message,
             color = LocalCannoliColors.current.text,
             fontFamily = LocalCannoliFont.current,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             modifier = Modifier.padding(horizontal = 32.dp)
         )
         BottomBar(
