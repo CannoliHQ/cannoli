@@ -393,6 +393,7 @@ fun AppNavGraph(
     rommArtType: dev.cannoli.scorza.romm.RommArtType = dev.cannoli.scorza.romm.RommArtType.NONE,
     rommDownloader: dev.cannoli.scorza.romm.download.RommDownloader? = null,
     rommArtFetcher: dev.cannoli.scorza.romm.art.RommArtFetcher? = null,
+    saveSyncStatus: dev.cannoli.ui.components.SaveSyncStatus = dev.cannoli.ui.components.SaveSyncStatus.DISABLED,
 ) {
     val dialog by dialogState.collectAsState()
     val appSettings by settingsViewModel.appSettings.collectAsState()
@@ -1702,7 +1703,8 @@ fun AppNavGraph(
                 showBattery = appSettings.batteryDisplay != dev.cannoli.scorza.settings.BatteryDisplay.HIDE,
                 batteryIconOnly = appSettings.batteryDisplay == dev.cannoli.scorza.settings.BatteryDisplay.ICON,
                 showUpdate = appSettings.showUpdate,
-                use24hTime = appSettings.use24h
+                use24hTime = appSettings.use24h,
+                saveSyncStatus = saveSyncStatus,
             )
         }
         }

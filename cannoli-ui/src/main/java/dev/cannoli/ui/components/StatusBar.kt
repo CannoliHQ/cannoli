@@ -42,6 +42,19 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+private const val ICON_CLOUD_SYNC = "\uDB81\uDE3F"
+private const val ICON_CLOUD_CHECK = "\uDB80\uDD60"
+private const val ICON_CLOUD_ALERT = "\uDB82\uDDE0"
+private const val ICON_CLOUD_OFF = "\uDB80\uDD64"
+
+private fun cloudIcon(status: SaveSyncStatus): String? = when (status) {
+    SaveSyncStatus.UPLOADING, SaveSyncStatus.DOWNLOADING -> ICON_CLOUD_SYNC
+    SaveSyncStatus.UP_TO_DATE -> ICON_CLOUD_CHECK
+    SaveSyncStatus.ISSUE -> ICON_CLOUD_ALERT
+    SaveSyncStatus.OFFLINE -> ICON_CLOUD_OFF
+    SaveSyncStatus.DISABLED -> null
+}
+
 private const val ICON_BLUETOOTH = "\uDB80\uDCAF"
 private const val ICON_WIFI = "\uDB81\uDDA9"
 private const val ICON_VPN = "\uDB82\uDFC4"
@@ -90,7 +103,8 @@ fun StatusBar(
     batteryIconOnly: Boolean = false,
     showUpdate: Boolean = true,
     use24hTime: Boolean = false,
-    textSizeSp: Int = 16
+    textSizeSp: Int = 16,
+    saveSyncStatus: SaveSyncStatus = SaveSyncStatus.DISABLED,
 ) {
     val context = LocalContext.current
     val scaleFactor = LocalScaleFactor.current
@@ -200,7 +214,7 @@ fun StatusBar(
     val showBtIcon = showBluetooth && hasBluetooth
     val showWifiIcon = showWifi && wifiConnected
     val showVpnIcon = showVpn && hasVpn
-    val anyVisible = kitchenRunning || downloadCount > 0 || downloadsActive || showUpdateIcon || showBtIcon || showWifiIcon || showVpnIcon || showBattery || showClock
+    val anyVisible = cloudIcon(saveSyncStatus) != null || kitchenRunning || downloadCount > 0 || downloadsActive || showUpdateIcon || showBtIcon || showWifiIcon || showVpnIcon || showBattery || showClock
 
     if (!anyVisible) return
 
@@ -209,6 +223,7 @@ fun StatusBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy((6 * scaleFactor).dp)
     ) {
+        cloudIcon(saveSyncStatus)?.let { Text(text = it, style = iconStyle) }
         if (kitchenRunning) Text(text = ICON_KITCHEN, style = iconStyle)
         if (downloadCount > 0) {
             Row(verticalAlignment = Alignment.CenterVertically) {
