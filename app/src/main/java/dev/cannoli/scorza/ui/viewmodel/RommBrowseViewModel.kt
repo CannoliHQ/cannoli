@@ -117,8 +117,13 @@ class RommBrowseViewModel(
 
     suspend fun rebuild() {
         db?.clearAll()
+        _platforms.value = emptyList()
+        _collections.value = emptyList()
+        _games.value = emptyList()
+        _loadedPlatformId.value = null
         syncCoordinator?.syncFull()
         loadPlatforms()
+        loadCollections()
         reload()
     }
 
