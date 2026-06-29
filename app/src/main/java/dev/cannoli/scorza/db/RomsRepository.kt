@@ -101,6 +101,8 @@ class RomsRepository(
         "SELECT path FROM roms WHERE platform_tag = ?", platformTag.uppercase(),
     ) { File(it.getText(0)).name.lowercase() }.toSet()
 
+    fun allRelativePaths(): List<String> = db.queryAll("SELECT path FROM roms") { it.getText(0) }
+
     fun searchAllGames(query: GameSearchQuery): List<Rom> {
         val term = TextNormalizer.normalize(query.text)
         if (term.isEmpty()) return emptyList()

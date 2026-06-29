@@ -119,7 +119,8 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var rommImageLoader: coil.ImageLoader
     @Inject lateinit var rommDownloader: dev.cannoli.scorza.romm.download.RommDownloader
     @Inject lateinit var rommArtFetcher: dev.cannoli.scorza.romm.art.RommArtFetcher
-    @Inject lateinit var saveSyncService: dev.cannoli.scorza.romm.sync.SaveSyncService
+    @Inject lateinit var syncScheduler: dev.cannoli.scorza.romm.sync.SyncScheduler
+    @Inject lateinit var saveSyncStatusHolder: dev.cannoli.scorza.romm.sync.SaveSyncStatusHolder
     @Inject lateinit var cannoliPathsProvider: dev.cannoli.scorza.di.CannoliPathsProvider
     @field:dev.cannoli.scorza.di.IoScope @Inject lateinit var ioScope: kotlinx.coroutines.CoroutineScope
 
@@ -156,6 +157,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
         dev.cannoli.scorza.util.LoggingPrefs.session = settings.loggingSession
         dev.cannoli.scorza.util.LoggingPrefs.kitchen = settings.loggingKitchen
         dev.cannoli.scorza.util.LoggingPrefs.storage = settings.loggingStorage
+        dev.cannoli.scorza.util.LoggingPrefs.romm = settings.loggingRomm
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -295,6 +297,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
         val navDialogState = nav.dialogState
         val navResumableGames = nav.resumableGames
         val activeMapping by activeMappingHolder.active.collectAsState()
+        val syncStatus by saveSyncStatusHolder.state.collectAsState()
         LaunchedEffect(updateInfo) { svm.updateInfo = updateInfo }
         LaunchedEffect(navScreen) {
         }
@@ -336,6 +339,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
             rommArtType = rommStore.artTypeFlow.collectAsState().value,
             rommDownloader = rommDownloader,
             rommArtFetcher = rommArtFetcher,
+            saveSyncStatus = syncStatus,
         )
     }
 
@@ -386,15 +390,11 @@ class MainActivity : ComponentActivity(), ActivityActions {
         val justExited = launchState.lastLaunched
         if (justExited != null && !LibretroActivity.isRunning) {
             launchState.lastLaunched = null
-            val gameKey = RomKeys.relativeKey(justExited.path, cannoliPathsProvider.romDir)
-            val tag = justExited.platformTag
-            val base = java.text.Normalizer.normalize(justExited.path.nameWithoutExtension, java.text.Normalizer.Form.NFC)
-            val emulator = RomKeys.coreDisplayNameFor(justExited, platformConfig.get())
-            ioScope.launch {
-                if (saveSyncService.isSyncableGame(gameKey) != null) {
-                    runCatching { saveSyncService.syncAfterExit(tag, base, gameKey, emulator) }
-                }
-            }
+        }
+        if (!LibretroActivity.isRunning) {
+            syncScheduler.start()
+            // The just-played save is uploaded by the sweep itself; force one so it runs now.
+            if (justExited != null) syncScheduler.syncNow()
         }
         if (!isReady) return
         if (!coldStart) overridePendingTransition(0, 0)
@@ -427,6 +427,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
 
     override fun onPause() {
         super.onPause()
+        syncScheduler.stop()
         menuNavigationPoller.stop()
         // Cancel any in-flight stick auto-repeat so it does not keep firing dispatcher callbacks
         // after LibretroActivity has rewired them.

@@ -171,6 +171,35 @@ internal object Migrations {
                 )
             """.trimIndent())
         },
+        Migration(10) { db ->
+            db.execSQL(
+                """
+                CREATE TABLE sync_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    game_key TEXT NOT NULL,
+                    display_name TEXT NOT NULL,
+                    direction TEXT NOT NULL,
+                    detail TEXT,
+                    created_at INTEGER NOT NULL
+                )
+                """.trimIndent()
+            )
+            db.execSQL("CREATE INDEX sync_history_by_time ON sync_history(created_at DESC, id DESC)")
+            db.execSQL(
+                """
+                CREATE TABLE pending_conflicts (
+                    game_key TEXT PRIMARY KEY,
+                    rom_id INTEGER NOT NULL,
+                    display_name TEXT NOT NULL,
+                    server_save_id INTEGER,
+                    server_content_hash TEXT,
+                    server_updated_at TEXT,
+                    detected_at INTEGER NOT NULL,
+                    dismissed_hash TEXT
+                )
+                """.trimIndent()
+            )
+        },
     )
 
     val current: Int = all.maxOf { it.version }

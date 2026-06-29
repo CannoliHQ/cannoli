@@ -9,6 +9,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dev.cannoli.scorza.config.CannoliPaths
 import dev.cannoli.scorza.config.PlatformConfig
+import dev.cannoli.scorza.db.CannoliDatabase
 import dev.cannoli.scorza.db.RommLinkRepository
 import dev.cannoli.scorza.db.ScanScheduler
 import dev.cannoli.scorza.romm.PlatformMap
@@ -26,10 +27,14 @@ import dev.cannoli.scorza.romm.download.RommDownloader
 import dev.cannoli.scorza.romm.download.RommInstaller
 import dev.cannoli.scorza.romm.sync.DeviceRegistrar
 import dev.cannoli.scorza.romm.sync.LocalSaveResolver
+import dev.cannoli.scorza.romm.sync.PendingConflictStore
 import dev.cannoli.scorza.romm.sync.SaveBackupManager
 import dev.cannoli.scorza.romm.sync.SaveSyncService
+import dev.cannoli.scorza.romm.sync.SaveSyncStatusHolder
 import dev.cannoli.scorza.romm.sync.SaveSyncStore
 import dev.cannoli.scorza.romm.sync.SlotManager
+import dev.cannoli.scorza.romm.sync.SyncHistoryStore
+import dev.cannoli.scorza.romm.sync.SyncScheduler
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel
 import dev.cannoli.scorza.util.ArtworkLookup
@@ -87,6 +92,15 @@ object RommModule {
         SaveBackupManager(paths.root, resolver)
 
     @Provides @Singleton
+    fun provideSyncHistoryStore(db: CannoliDatabase): SyncHistoryStore = SyncHistoryStore(db)
+
+    @Provides @Singleton
+    fun providePendingConflictStore(db: CannoliDatabase): PendingConflictStore = PendingConflictStore(db)
+
+    @Provides @Singleton
+    fun provideSaveSyncStatusHolder(): SaveSyncStatusHolder = SaveSyncStatusHolder()
+
+    @Provides @Singleton
     fun provideSaveSyncService(
         client: RommClient,
         connStore: RommConnectionStore,
@@ -97,7 +111,17 @@ object RommModule {
         links: RommLinkRepository,
         paths: CannoliPathsProvider,
         backupManager: SaveBackupManager,
-    ): SaveSyncService = SaveSyncService(client, connStore, settings, registrar, store, resolver, links, paths, backupManager)
+        history: SyncHistoryStore,
+        pendingConflicts: PendingConflictStore,
+        statusHolder: SaveSyncStatusHolder,
+        matcher: dev.cannoli.scorza.romm.sync.RommCacheMatcher,
+        roms: dev.cannoli.scorza.db.RomsRepository,
+    ): SaveSyncService = SaveSyncService(client, connStore, settings, registrar, store, resolver, links, paths, backupManager, history, pendingConflicts, statusHolder, matcher, roms)
+
+    @Provides @Singleton
+    fun provideRommCacheMatcher(
+        cache: RommDatabase,
+    ): dev.cannoli.scorza.romm.sync.RommCacheMatcher = dev.cannoli.scorza.romm.sync.RommCacheMatcher(cache)
 
     @Provides @Singleton
     fun provideSlotManager(
@@ -201,4 +225,15 @@ object RommModule {
         concurrency = { settings.concurrentDownloads },
         scope = ioScope,
     )
+
+    @Provides @Singleton
+    fun provideSyncScheduler(
+        @ApplicationContext context: Context,
+        service: SaveSyncService,
+        statusHolder: SaveSyncStatusHolder,
+        platformConfig: PlatformConfig,
+        settings: SettingsRepository,
+        paths: CannoliPathsProvider,
+        @IoScope ioScope: CoroutineScope,
+    ): SyncScheduler = SyncScheduler(context, service, statusHolder, platformConfig, settings, { paths.romDir }, ioScope)
 }
