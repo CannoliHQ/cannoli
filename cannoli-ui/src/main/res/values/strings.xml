@@ -226,15 +226,9 @@
     <string name="save_conflict_title">Save conflict</string>
     <string name="save_conflict_keep_local">Keep This Device</string>
     <string name="save_conflict_use_server">Use Server</string>
-    <string name="save_conflict_this_device">This device: %1$s</string>
-    <string name="save_conflict_server_device">Server (%1$s): %2$s</string>
+    <string name="save_conflict_subtitle">Changed here and on the server</string>
     <string name="save_stale_title">Server has a newer save</string>
     <string name="save_stale_play_local">Play Local Anyway</string>
-    <string name="romm_sync_now">Sync Saves Now</string>
-    <plurals name="romm_sync_done">
-        <item quantity="one">%d save synced</item>
-        <item quantity="other">%d saves synced</item>
-    </plurals>
     <string name="setting_romm_allow_self_signed">Allow Self-Signed Cert</string>
     <string name="setting_romm_art_type">Box Art</string>
     <string name="setting_romm_pair_code">Pairing Code</string>
@@ -348,6 +342,7 @@
     <string name="logging_session">Game Session</string>
     <string name="logging_kitchen">Nonna\'s Kitchen</string>
     <string name="logging_storage">Storage</string>
+    <string name="logging_romm">RomM</string>
     <string name="setting_input_tester">Input Tester</string>
     <string name="input_tester_none">—</string>
     <string name="input_tester_device_format">P%1$d • %2$s • dev%3$d</string>
@@ -499,6 +494,10 @@
     <string name="quick_menu_kitchen">Nonna\'s Kitchen</string>
     <string name="quick_menu_rescan">Rescan Library</string>
     <string name="quick_menu_info">Network Info</string>
+    <string name="quick_menu_sync_history">Sync History</string>
+    <string name="sync_history_title">Sync History</string>
+    <string name="sync_history_empty">No sync history</string>
+    <string name="sync_relative_now">just now</string>
     <string name="quick_info_title">Network Info</string>
     <string name="quick_info_ip">IP Address</string>
     <string name="quick_info_kitchen_url">Kitchen URL</string>
@@ -697,4 +696,17 @@
     <string name="save_slots_delete">DELETE</string>
     <string name="save_slots_switch">SWITCH</string>
     <string name="save_slots_delete_confirm">Delete slot \"%1$s\"?</string>
+
+    <!-- Conflicts resolution screen -->
+    <string name="conflicts_title">Conflicts</string>
+    <plurals name="quick_menu_conflicts">
+        <item quantity="one">Conflicts (1)</item>
+        <item quantity="other">Conflicts (%1$d)</item>
+    </plurals>
+    <string name="conflict_keep_local">Keep Local</string>
+    <string name="conflict_use_server">Use Server</string>
+    <string name="conflict_skip">Skip</string>
+    <string name="conflict_yours">Yours</string>
+    <string name="conflict_server">Server</string>
+    <string name="conflict_older">older</string>
 </resources>

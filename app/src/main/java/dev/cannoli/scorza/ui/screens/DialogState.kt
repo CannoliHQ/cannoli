@@ -88,6 +88,7 @@ sealed interface DialogState {
         val rows: List<dev.cannoli.scorza.ui.quickmenu.QuickMenuRow>,
         val kitchenRunning: Boolean,
         val selectedIndex: Int = 0,
+        val conflictCount: Int = 0,
     ) : DialogState
     data class QuickInfo(
         val urls: List<String>,
@@ -115,10 +116,13 @@ sealed interface DialogState {
         val supported: Boolean = true,
         val enabled: Boolean = false,
         val backupCount: Int = 5,
+        val pendingConflicts: Int = 0,
     ) : DialogState
     data class RommConfirm(val action: RommConfirmAction, val downloadKey: String? = null) : DialogState
     data class RommPlatformToggle(val items: List<RommPlatformToggleItem>, val selectedIndex: Int = 0) : DialogState
     data class RommCollectionToggle(val items: List<RommCollectionToggleItem>, val selectedIndex: Int = 0) : DialogState
+    data class SyncHistory(val entries: List<SyncHistoryRow>, val selectedIndex: Int = 0, val fromSaveSyncMenu: Boolean = false) : DialogState
+    data class ConflictsMenu(val rows: List<ConflictRow>, val selectedIndex: Int = 0, val fromSaveSyncMenu: Boolean = false) : DialogState
     data object SaveSyncChecking : DialogState
     data class SaveSyncConflict(
         val conflict: dev.cannoli.scorza.romm.sync.PreLaunchOutcome.Conflict,
@@ -130,11 +134,19 @@ sealed interface DialogState {
         val base: String,
         val selectedIndex: Int = 0,
     ) : DialogState
-    data class RommSyncResult(val message: String) : DialogState
 }
 
 data class RommPlatformToggleItem(val tag: String, val displayName: String, val visible: Boolean)
 data class RommCollectionToggleItem(val group: dev.cannoli.scorza.romm.RommCollectionGroup, val displayName: String, val visible: Boolean)
+
+enum class ConflictChoice { KEEP_LOCAL, USE_SERVER, SKIP }
+data class ConflictRow(
+    val gameKey: String,
+    val name: String,
+    val choice: ConflictChoice = ConflictChoice.SKIP,
+    val localMillis: Long? = null,
+    val serverMillis: Long? = null,
+)
 
 enum class RommConfirmAction { REBUILD_CACHE, DISCONNECT, CANCEL_DOWNLOAD, CANCEL_ALL }
 
@@ -193,9 +205,9 @@ val DialogState.isFullScreen: Boolean
         is DialogState.RommPlatformToggle,
         is DialogState.RommCollectionToggle,
         is DialogState.QuickInfo,
-        is DialogState.SaveSyncChecking,
         is DialogState.SaveSyncConflict,
         is DialogState.SaveSyncStaleBlock,
-        is DialogState.RommSyncResult -> true
+        is DialogState.SyncHistory,
+        is DialogState.ConflictsMenu -> true
         else -> false
     }
