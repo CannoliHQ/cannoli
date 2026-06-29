@@ -71,7 +71,7 @@ sealed interface DialogState {
     data class RAPreloadProgress(val gameName: String) : DialogState
     data class RAPreloadResult(val success: Boolean, val message: String) : DialogState
     data class RommPairing(val host: String = "", val message: String = "") : DialogState
-    data class RommConnected(val host: String, val username: String? = null, val version: String? = null) : DialogState
+    data class RommConnected(val host: String, val username: String? = null, val version: String? = null, val fromSettingsMenu: Boolean = false) : DialogState
     data class NewFolderInput(
         val parentPath: String,
         override val keyboard: KeyboardState = KeyboardState(),

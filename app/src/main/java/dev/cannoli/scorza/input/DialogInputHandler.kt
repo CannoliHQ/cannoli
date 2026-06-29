@@ -645,6 +645,14 @@ class DialogInputHandler @Inject constructor(
         if (ds.selectedIndex == 0) launcherActions.proceedPendingLaunch() else launcherActions.cancelPendingLaunch()
     }
 
+    private fun backToRommSettings(row: dev.cannoli.scorza.ui.components.RommSettingsRow) {
+        nav.dialogState.value = DialogState.RommSettingsMenu(
+            concurrent = settings.concurrentDownloads,
+            artType = rommStore.artType,
+            selectedIndex = dev.cannoli.scorza.ui.components.RommSettingsRow.entries.indexOf(row),
+        )
+    }
+
     private fun onRommActionsConfirm(ds: DialogState.RommActionsMenu) {
         when (dev.cannoli.scorza.ui.components.RommActionRow.visibleRows(ds.hasDownloads).getOrNull(ds.selectedIndex)) {
             dev.cannoli.scorza.ui.components.RommActionRow.DOWNLOADS -> {
@@ -666,6 +674,7 @@ class DialogInputHandler @Inject constructor(
                     host = rommStore.host,
                     username = rommStore.username,
                     version = rommStore.serverVersion,
+                    fromSettingsMenu = true,
                 )
             }
             dev.cannoli.scorza.ui.components.RommSettingsRow.SAVE_SYNC -> {
@@ -954,7 +963,8 @@ class DialogInputHandler @Inject constructor(
                 nav.dialogState.value = DialogState.None
             }
             is DialogState.RommConnected -> {
-                nav.dialogState.value = DialogState.None
+                if (ds.fromSettingsMenu) backToRommSettings(dev.cannoli.scorza.ui.components.RommSettingsRow.SERVER_INFO)
+                else nav.dialogState.value = DialogState.None
             }
             is DialogState.RommPairing -> {
                 nav.dialogState.value = DialogState.None
@@ -975,30 +985,16 @@ class DialogInputHandler @Inject constructor(
                 nav.dialogState.value = DialogState.None
             }
             is DialogState.RommPlatformToggle -> {
-                nav.dialogState.value = DialogState.None
                 ioScope.launch { rommBrowseViewModel.loadPlatforms() }
+                backToRommSettings(dev.cannoli.scorza.ui.components.RommSettingsRow.PLATFORMS)
             }
             is DialogState.RommCollectionToggle -> {
-                nav.dialogState.value = DialogState.None
+                backToRommSettings(dev.cannoli.scorza.ui.components.RommSettingsRow.COLLECTIONS)
             }
             is DialogState.RommActionsMenu -> nav.dialogState.value = DialogState.None
             is DialogState.RommSettingsMenu -> nav.dialogState.value = DialogState.None
-            is DialogState.RommAdvancedMenu -> {
-                nav.dialogState.value = DialogState.RommSettingsMenu(
-                    concurrent = settings.concurrentDownloads,
-                    artType = rommStore.artType,
-                    selectedIndex = dev.cannoli.scorza.ui.components.RommSettingsRow.entries
-                        .indexOf(dev.cannoli.scorza.ui.components.RommSettingsRow.ADVANCED),
-                )
-            }
-            is DialogState.RommSaveSyncMenu -> {
-                nav.dialogState.value = DialogState.RommSettingsMenu(
-                    concurrent = settings.concurrentDownloads,
-                    artType = rommStore.artType,
-                    selectedIndex = dev.cannoli.scorza.ui.components.RommSettingsRow.entries
-                        .indexOf(dev.cannoli.scorza.ui.components.RommSettingsRow.SAVE_SYNC),
-                )
-            }
+            is DialogState.RommAdvancedMenu -> backToRommSettings(dev.cannoli.scorza.ui.components.RommSettingsRow.ADVANCED)
+            is DialogState.RommSaveSyncMenu -> backToRommSettings(dev.cannoli.scorza.ui.components.RommSettingsRow.SAVE_SYNC)
             is DialogState.SyncHistory -> {
                 if (ds.fromSaveSyncMenu) {
                     ioScope.launch {
