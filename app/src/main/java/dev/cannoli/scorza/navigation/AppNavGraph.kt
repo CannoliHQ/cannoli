@@ -1381,6 +1381,7 @@ fun AppNavGraph(
                     buttonStyle = labels,
                     emptyMessage = emptyMessage,
                     progress = syncFraction,
+                    syncing = syncStatus == dev.cannoli.scorza.romm.cache.RommSyncCoordinator.SyncStatus.SYNCING,
                 )
             }
             is LauncherScreen.RommGameList -> {
