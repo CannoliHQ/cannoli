@@ -26,7 +26,6 @@ import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.CannoliProgressBar
 import dev.cannoli.ui.components.List
 import dev.cannoli.ui.components.PillRowKeyValue
-import dev.cannoli.ui.components.PillRowText
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.footerReservation
@@ -40,6 +39,7 @@ fun RommPlatformListScreen(
     selectedIndex: Int,
     scrollTarget: Int,
     showCollectionsRow: Boolean = false,
+    collectionCount: Int = 0,
     emptyMessage: String? = null,
     progress: Float? = null,
     syncing: Boolean = false,
@@ -72,8 +72,9 @@ fun RommPlatformListScreen(
                     onListStateChanged = onListStateChanged,
                 ) { index, _, isSelected ->
                     if (showCollectionsRow && index == 0) {
-                        PillRowText(
+                        PillRowKeyValue(
                             label = stringResource(R.string.romm_collections_title),
+                            value = collectionCount.toString(),
                             isSelected = isSelected,
                             fontSize = listFontSize,
                             lineHeight = listLineHeight,

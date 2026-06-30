@@ -1389,6 +1389,7 @@ fun AppNavGraph(
                     selectedIndex = currentScreen.selectedIndex,
                     scrollTarget = currentScreen.scrollTarget,
                     showCollectionsRow = showCollectionsRow,
+                    collectionCount = collections.size,
                     backgroundImagePath = appSettings.backgroundImagePath,
                     backgroundTint = appSettings.backgroundTint,
                     listFontSize = listFontSize,
