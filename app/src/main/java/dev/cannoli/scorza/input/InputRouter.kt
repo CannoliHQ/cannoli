@@ -25,7 +25,12 @@ import dev.cannoli.scorza.settings.GlobalOverridesManager
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.input.runtime.InputDispatcher
+import dev.cannoli.scorza.di.IoScope
 import dev.cannoli.ui.components.KeyboardState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @ActivityScoped
@@ -58,6 +63,7 @@ class InputRouter @Inject constructor(
     private val rommDownloader: dev.cannoli.scorza.romm.download.RommDownloader,
     private val osdController: dev.cannoli.ui.components.OsdController,
     private val raPreloadController: dev.cannoli.scorza.ra.RaPreloadController,
+    @IoScope private val ioScope: CoroutineScope,
 ) {
     var unregisterCoreQueryReceiver: () -> Unit = {}
 
@@ -452,7 +458,10 @@ class InputRouter @Inject constructor(
             } else {
                 val offset = if (showCollectionsRow) 1 else 0
                 val platform = rommBrowseViewModel.platforms.value.getOrNull(selectedIndex - offset) ?: return@scrollable
-                nav.push(LauncherScreen.RommGameList(platform = platform))
+                ioScope.launch {
+                    rommBrowseViewModel.openPlatform(platform)
+                    withContext(Dispatchers.Main) { nav.push(LauncherScreen.RommGameList(platform = platform)) }
+                }
             }
         },
         onBack = {},
@@ -466,14 +475,17 @@ class InputRouter @Inject constructor(
     private fun rommCollectionListHandler() = scrollable<LauncherScreen.RommCollectionList>(
         onConfirm = {
             val collection = rommBrowseViewModel.flattenedCollections().getOrNull(selectedIndex) ?: return@scrollable
-            nav.push(LauncherScreen.RommCollectionGameList(collection = collection))
+            ioScope.launch {
+                rommBrowseViewModel.openCollection(collection)
+                withContext(Dispatchers.Main) { nav.push(LauncherScreen.RommCollectionGameList(collection = collection)) }
+            }
         },
         onBack = { nav.pop() },
     )
 
     private fun rommCollectionGameListHandler() = scrollable<LauncherScreen.RommCollectionGameList>(
         onConfirm = {
-            val row = rommBrowseViewModel.collectionGames.value.getOrNull(selectedIndex) ?: return@scrollable
+            val row = rommBrowseViewModel.collectionGames.value?.rows?.getOrNull(selectedIndex) ?: return@scrollable
             nav.push(LauncherScreen.RommGameDetail(
                 game = row.game,
                 localState = row.localState,
@@ -496,7 +508,7 @@ class InputRouter @Inject constructor(
 
     private fun rommGameListHandler() = scrollable<LauncherScreen.RommGameList>(
         onConfirm = {
-            val row = rommBrowseViewModel.games.value.getOrNull(selectedIndex) ?: return@scrollable
+            val row = rommBrowseViewModel.games.value?.rows?.getOrNull(selectedIndex) ?: return@scrollable
             if (rommBrowseViewModel.isMultiSelect()) {
                 rommBrowseViewModel.toggleChecked(row.game.id)
             } else {
@@ -535,7 +547,7 @@ class InputRouter @Inject constructor(
         onSelect = {
             if (rommBrowseViewModel.isMultiSelect()) rommBrowseViewModel.cancelMultiSelect()
             else rommBrowseViewModel.enterMultiSelect(
-                rommBrowseViewModel.games.value.getOrNull(selectedIndex)?.game?.id)
+                rommBrowseViewModel.games.value?.rows?.getOrNull(selectedIndex)?.game?.id)
         },
     )
 

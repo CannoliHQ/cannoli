@@ -86,16 +86,30 @@ class RommBrowseCollectionsTest {
         assertEquals(true, vm.hasAnyCollections())
     }
 
-    @Test fun `openCollection sets loadedCollectionId`() = runBlocking {
+    @Test fun `openCollection publishes the collection id with its rows`() = runBlocking {
         val vm = vm()
         vm.openCollection(collection)
-        assertEquals("col-1", vm.loadedCollectionId.value)
+        assertEquals("col-1", vm.collectionGames.value?.id)
+    }
+
+    @Test fun `switching collections replaces id and rows together`() = runBlocking {
+        db.upsertCollections(listOf(RommCollection("col-2", RommCollectionGroup.USER, "Shooters", 1) to null))
+        db.setCollectionMembers("col-2", listOf(20))
+        val vm = vm()
+
+        vm.openCollection(collection)
+        assertEquals("col-1", vm.collectionGames.value?.id)
+        assertEquals(setOf(10, 20), vm.collectionGames.value!!.rows.map { it.game.id }.toSet())
+
+        vm.openCollection(RommCollection("col-2", RommCollectionGroup.USER, "Shooters", 1))
+        assertEquals("col-2", vm.collectionGames.value?.id)
+        assertEquals(setOf(20), vm.collectionGames.value!!.rows.map { it.game.id }.toSet())
     }
 
     @Test fun `openCollection resolves two games on different platforms`() = runBlocking {
         val vm = vm()
         vm.openCollection(collection)
-        val rows = vm.collectionGames.value
+        val rows = vm.collectionGames.value!!.rows
         assertEquals(2, rows.size)
         val snesRow = rows.first { it.game.id == 10 }
         assertEquals(snes.cannoliTag, snesRow.platform.cannoliTag)
@@ -108,7 +122,7 @@ class RommBrowseCollectionsTest {
     @Test fun `openCollection marks a present game PRESENT by filename`() = runBlocking {
         val vm = vm(presentNamesFor = { tag -> if (tag == "SNES") setOf("smw.sfc") else emptySet() })
         vm.openCollection(collection)
-        val rows = vm.collectionGames.value
+        val rows = vm.collectionGames.value!!.rows
         assertEquals(LocalState.PRESENT, rows.first { it.game.id == 10 }.localState)
         assertEquals(LocalState.REMOTE, rows.first { it.game.id == 20 }.localState)
     }
@@ -116,9 +130,28 @@ class RommBrowseCollectionsTest {
     @Test fun `openCollection marks a linked game PRESENT regardless of filename`() = runBlocking {
         val vm = vm(linkedIds = setOf(20))
         vm.openCollection(collection)
-        val rows = vm.collectionGames.value
+        val rows = vm.collectionGames.value!!.rows
         assertEquals(LocalState.PRESENT, rows.first { it.game.id == 20 }.localState)
         assertEquals(LocalState.REMOTE, rows.first { it.game.id == 10 }.localState)
+    }
+
+    @Test fun `openCollection resolves local-state lookups once per page, not per row`() = runBlocking {
+        db.upsertGames(listOf(GameRecord(game(30, 1, "Yoshi", "yoshi.sfc"), null)))
+        db.setCollectionMembers("col-1", listOf(10, 20, 30))
+        var linkedCalls = 0
+        var presentCalls = 0
+        val vm = RommBrowseViewModel(
+            library = library,
+            syncCoordinator = null,
+            db = db,
+            presentNamesFor = { presentCalls++; emptySet() },
+            linkedIdsProvider = { linkedCalls++; emptySet() },
+            enabledCollectionGroups = { setOf(RommCollectionGroup.USER) },
+        )
+        vm.openCollection(collection)
+        assertEquals(3, vm.collectionGames.value!!.rows.size)
+        assertEquals(1, linkedCalls)
+        assertEquals(2, presentCalls)
     }
 
     @Test fun `loadMoreCollection appends the next page`() = runBlocking {
@@ -137,8 +170,8 @@ class RommBrowseCollectionsTest {
             collectionPageSize = 2,
         )
         smallPage.openCollection(collection)
-        assertEquals(2, smallPage.collectionGames.value.size)
+        assertEquals(2, smallPage.collectionGames.value!!.rows.size)
         smallPage.loadMoreCollection()
-        assertEquals(3, smallPage.collectionGames.value.size)
+        assertEquals(3, smallPage.collectionGames.value!!.rows.size)
     }
 }

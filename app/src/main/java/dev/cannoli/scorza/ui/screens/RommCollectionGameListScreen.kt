@@ -46,6 +46,7 @@ fun RommCollectionGameListScreen(
     title: String,
     search: String = "",
     games: List<RommBrowseViewModel.RommCollectionGameRow>,
+    loading: Boolean = false,
     selectedIndex: Int,
     scrollTarget: Int,
     host: String,
@@ -72,7 +73,10 @@ fun RommCollectionGameListScreen(
                     lineHeight = listLineHeight,
                 )
                 Spacer(modifier = Modifier.height(Spacing.Sm))
-                if (games.isEmpty()) {
+                if (loading) {
+                    // Blank during the load gap so a freshly-entered list never flashes "No results".
+                    Box(modifier = Modifier.fillMaxSize()) {}
+                } else if (games.isEmpty()) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center

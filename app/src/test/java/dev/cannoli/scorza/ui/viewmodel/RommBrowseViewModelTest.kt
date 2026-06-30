@@ -54,7 +54,7 @@ class RommBrowseViewModelTest {
         )
         val vm = vm(lib)
         vm.openPlatform(platform)
-        val games = vm.games.value
+        val games = vm.games.value!!.rows
         assertEquals(listOf("Mario", "Zelda"), games.map { it.game.name })
         assertEquals(LocalState.PRESENT, games.first { it.game.name == "Mario" }.localState)
         assertEquals(LocalState.REMOTE, games.first { it.game.name == "Zelda" }.localState)
@@ -67,7 +67,38 @@ class RommBrowseViewModelTest {
         )
         val vm = vm(lib)
         vm.openPlatform(platform, "mario")
-        assertEquals(listOf("Mario"), vm.games.value.map { it.game.name })
+        assertEquals(listOf("Mario"), vm.games.value!!.rows.map { it.game.name })
+    }
+
+    @Test fun `openPlatform publishes the platform id with its rows`() = runTest {
+        val lib = mockk<RommLibrary>()
+        coEvery { lib.games(platform, 0, null) } returns RommPage(
+            items = listOf(game(1, "Mario", "Mario.sfc", 100L)), total = 1, limit = 100, offset = 0,
+        )
+        val vm = vm(lib)
+        vm.openPlatform(platform)
+        assertEquals(platform.id, vm.games.value?.id)
+        assertEquals(listOf("Mario"), vm.games.value!!.rows.map { it.game.name })
+    }
+
+    @Test fun `openPlatform resolves local-state lookups once per page, not per row`() = runTest {
+        val lib = mockk<RommLibrary>()
+        coEvery { lib.games(platform, 0, null) } returns RommPage(
+            items = (1..50).map { game(it, "G$it", "g$it.sfc", 1L) }, total = 50, limit = 100, offset = 0,
+        )
+        var presentCalls = 0
+        var linkedCalls = 0
+        val vm = RommBrowseViewModel(
+            library = lib,
+            syncCoordinator = null,
+            db = null,
+            presentNamesFor = { presentCalls++; emptySet() },
+            linkedIdsProvider = { linkedCalls++; emptySet() },
+        )
+        vm.openPlatform(platform)
+        assertEquals(50, vm.games.value!!.rows.size)
+        assertEquals(1, presentCalls)
+        assertEquals(1, linkedCalls)
     }
 
     private suspend fun loadedVm(): RommBrowseViewModel {
@@ -93,10 +124,10 @@ class RommBrowseViewModelTest {
             linkedIdsProvider = { emptySet() },
         )
         vm.openPlatform(platform)
-        assertEquals(LocalState.REMOTE, vm.games.value.single().localState)
+        assertEquals(LocalState.REMOTE, vm.games.value!!.rows.single().localState)
         present.add("zelda.sfc")
         vm.refreshLocalState()
-        assertEquals(LocalState.PRESENT, vm.games.value.single().localState)
+        assertEquals(LocalState.PRESENT, vm.games.value!!.rows.single().localState)
     }
 
     @Test fun `enterMultiSelect pre-checks a remote row`() = runTest {

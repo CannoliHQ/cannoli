@@ -30,7 +30,7 @@ class RommBrowseViewModelMatchTest {
             linkedIdsProvider = { setOf(10) },
         )
         vm.openPlatform(snes)
-        assertEquals(LocalState.PRESENT, vm.games.value.single().localState)
+        assertEquals(LocalState.PRESENT, vm.games.value!!.rows.single().localState)
     }
 
     @Test fun `falls back to a filename and platform match when not linked`() = runBlocking {
@@ -42,7 +42,7 @@ class RommBrowseViewModelMatchTest {
             linkedIdsProvider = { emptySet() },
         )
         vm.openPlatform(snes)
-        val byId = vm.games.value.associate { it.game.id to it.localState }
+        val byId = vm.games.value!!.rows.associate { it.game.id to it.localState }
         assertEquals(LocalState.PRESENT, byId[10])
         assertEquals(LocalState.REMOTE, byId[11])
     }

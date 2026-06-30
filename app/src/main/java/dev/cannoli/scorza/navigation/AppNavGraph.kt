@@ -1390,19 +1390,19 @@ fun AppNavGraph(
                     val handler = remember { inputRouter.currentHandler() }
                     dev.cannoli.scorza.input.screen.compose.ScreenInput(handler)
                 }
-                val loadedPlatformId = rommBrowseViewModel?.loadedPlatformId?.collectAsState()?.value
-                val allGames = rommBrowseViewModel?.games?.collectAsState()?.value ?: emptyList()
-                // Until the VM has loaded this exact platform, render nothing so a back-then-forward
-                // navigation never flashes the previous platform's games or art.
-                val games = if (loadedPlatformId == currentScreen.platform.id) allGames else emptyList()
+                val loaded = rommBrowseViewModel?.games?.collectAsState()?.value
+                // null (not loaded) or a different platform's id means the rows are not ours yet, so we
+                // render a loading blank rather than flashing the previous platform's games/art or "No results".
+                val loading = loaded?.id != currentScreen.platform.id
+                val games = if (loading) emptyList() else loaded?.rows ?: emptyList()
                 androidx.compose.runtime.LaunchedEffect(currentScreen.platform.id, currentScreen.search) {
                     rommBrowseViewModel?.openPlatform(currentScreen.platform, currentScreen.search.ifBlank { null })
                 }
-                androidx.compose.runtime.LaunchedEffect(games.size) {
-                    if (currentScreen.itemCount != games.size) nav?.replaceTop(currentScreen.copy(itemCount = games.size))
+                androidx.compose.runtime.LaunchedEffect(loading, games.size) {
+                    if (!loading && currentScreen.itemCount != games.size) nav?.replaceTop(currentScreen.copy(itemCount = games.size))
                 }
                 androidx.compose.runtime.LaunchedEffect(currentScreen.selectedIndex, games.size) {
-                    if (games.isNotEmpty() && currentScreen.selectedIndex >= games.size - 5) rommBrowseViewModel?.loadMore()
+                    if (!loading && games.isNotEmpty() && currentScreen.selectedIndex >= games.size - 5) rommBrowseViewModel?.loadMore()
                 }
                 val loader = rommImageLoader
                 val queueItems = rommDownloader?.queue?.state?.collectAsState()?.value ?: emptyList()
@@ -1420,6 +1420,7 @@ fun AppNavGraph(
                         title = currentScreen.platform.displayName,
                         search = currentScreen.search,
                         games = games,
+                        loading = loading,
                         selectedIndex = currentScreen.selectedIndex,
                         scrollTarget = currentScreen.scrollTarget,
                         host = rommHost,
@@ -1485,17 +1486,17 @@ fun AppNavGraph(
                     val handler = remember { inputRouter.currentHandler() }
                     dev.cannoli.scorza.input.screen.compose.ScreenInput(handler)
                 }
-                val loadedCollectionId = rommBrowseViewModel?.loadedCollectionId?.collectAsState()?.value
-                val allGames = rommBrowseViewModel?.collectionGames?.collectAsState()?.value ?: emptyList()
-                val games = if (loadedCollectionId == currentScreen.collection.id) allGames else emptyList()
+                val loaded = rommBrowseViewModel?.collectionGames?.collectAsState()?.value
+                val loading = loaded?.id != currentScreen.collection.id
+                val games = if (loading) emptyList() else loaded?.rows ?: emptyList()
                 androidx.compose.runtime.LaunchedEffect(currentScreen.collection.id, currentScreen.search) {
                     rommBrowseViewModel?.openCollection(currentScreen.collection, currentScreen.search.ifBlank { null })
                 }
-                androidx.compose.runtime.LaunchedEffect(games.size) {
-                    if (currentScreen.itemCount != games.size) nav?.replaceTop(currentScreen.copy(itemCount = games.size))
+                androidx.compose.runtime.LaunchedEffect(loading, games.size) {
+                    if (!loading && currentScreen.itemCount != games.size) nav?.replaceTop(currentScreen.copy(itemCount = games.size))
                 }
                 androidx.compose.runtime.LaunchedEffect(currentScreen.selectedIndex, games.size) {
-                    if (games.isNotEmpty() && currentScreen.selectedIndex >= games.size - 5) rommBrowseViewModel?.loadMoreCollection()
+                    if (!loading && games.isNotEmpty() && currentScreen.selectedIndex >= games.size - 5) rommBrowseViewModel?.loadMoreCollection()
                 }
                 val loader = rommImageLoader
                 if (loader != null) {
@@ -1503,6 +1504,7 @@ fun AppNavGraph(
                         title = currentScreen.collection.name,
                         search = currentScreen.search,
                         games = games,
+                        loading = loading,
                         selectedIndex = currentScreen.selectedIndex,
                         scrollTarget = currentScreen.scrollTarget,
                         host = rommHost,
