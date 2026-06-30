@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
-enum class RommArtType { DEFAULT, NONE, BOX2D, BOX3D, MIX, TITLE, SCREENSHOT, MARQUEE }
+enum class RommArtType { NONE, DEFAULT, BOX2D, BOX3D, MIX, TITLE, SCREENSHOT, MARQUEE }
 
 @Singleton
 class RommConnectionStore @Inject constructor(@ApplicationContext context: Context) {
