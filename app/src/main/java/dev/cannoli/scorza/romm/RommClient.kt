@@ -74,7 +74,7 @@ class RommClient(
         val request = Request.Builder().url(url).get().build()
         return if (group == RommCollectionGroup.VIRTUAL) {
             execute(request, ListSerializer(VirtualCollectionDto.serializer()))
-                .map { RommNetworkCollection(it.id, group, it.name, it.romIds, it.romCount) }
+                .map { RommNetworkCollection(it.id, group, it.name, it.romIds, it.romCount, it.type) }
         } else {
             execute(request, ListSerializer(CollectionDto.serializer()))
                 .map { RommNetworkCollection(it.id.toString(), group, it.name, it.romIds, it.romCount) }

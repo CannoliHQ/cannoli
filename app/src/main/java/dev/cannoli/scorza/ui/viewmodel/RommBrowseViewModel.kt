@@ -9,6 +9,7 @@ import dev.cannoli.scorza.romm.RommLibrary
 import dev.cannoli.scorza.romm.RommLocalState
 import dev.cannoli.scorza.romm.RommPlatform
 import dev.cannoli.scorza.romm.RommSearchQuery
+import dev.cannoli.scorza.romm.RommVirtualType
 import dev.cannoli.scorza.romm.cache.RommDatabase
 import dev.cannoli.scorza.romm.cache.RommSyncCoordinator
 import dev.cannoli.scorza.util.sortedNatural
@@ -136,8 +137,47 @@ class RommBrowseViewModel(
 
     fun hasAnyCollections(): Boolean = _collections.value.isNotEmpty()
 
-    fun flattenedCollections(): List<RommCollection> =
-        RommCollectionGroup.entries.flatMap { group -> _collections.value.filter { it.group == group } }
+    sealed interface CollectionEntry {
+        object Landing : CollectionEntry
+        data class Group(val group: RommCollectionGroup) : CollectionEntry
+        object VirtualTypes : CollectionEntry
+    }
+
+    private val _groupCounts = MutableStateFlow<Map<RommCollectionGroup, Int>>(emptyMap())
+    val groupCounts: StateFlow<Map<RommCollectionGroup, Int>> = _groupCounts
+
+    private val _virtualTypeCounts = MutableStateFlow<List<Pair<String, Int>>>(emptyList())
+    val virtualTypeCounts: StateFlow<List<Pair<String, Int>>> = _virtualTypeCounts
+
+    private val _collectionList = MutableStateFlow<LoadedRows<String, RommCollection>?>(null)
+    val collectionList: StateFlow<LoadedRows<String, RommCollection>?> = _collectionList
+
+    fun enabledGroups(): Set<RommCollectionGroup> = enabledCollectionGroups()
+
+    suspend fun loadCollectionCounts() {
+        val (groups, types) = withContext(Dispatchers.IO) {
+            library.collectionGroupCounts() to library.virtualTypeCounts()
+        }
+        _groupCounts.value = groups
+        _virtualTypeCounts.value = RommVirtualType.orderedFrom(types.keys).map { it to (types[it] ?: 0) }
+    }
+
+    fun collectionEntryTarget(): CollectionEntry {
+        val enabled = enabledCollectionGroups()
+        return when {
+            enabled.size >= 2 -> CollectionEntry.Landing
+            enabled.size == 1 -> enabled.single().let {
+                if (it == RommCollectionGroup.VIRTUAL) CollectionEntry.VirtualTypes else CollectionEntry.Group(it)
+            }
+            else -> CollectionEntry.Landing
+        }
+    }
+
+    suspend fun openCollections(group: RommCollectionGroup, virtualType: String? = null) {
+        val key = group.name + (virtualType?.let { ":$it" } ?: "")
+        val rows = withContext(Dispatchers.IO) { library.collections(setOf(group), virtualType) }
+        _collectionList.value = LoadedRows(key, rows)
+    }
 
     suspend fun openCollection(collection: RommCollection, search: String? = null) {
         val database = db ?: return

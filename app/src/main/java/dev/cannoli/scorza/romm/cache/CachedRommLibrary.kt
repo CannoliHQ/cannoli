@@ -29,6 +29,12 @@ class CachedRommLibrary(private val db: RommDatabase) : RommLibrary {
     override suspend fun searchAll(query: RommSearchQuery): List<RommGame> =
         withContext(Dispatchers.IO) { db.searchAllGames(query) }
 
-    override suspend fun collections(groups: Set<RommCollectionGroup>): List<RommCollection> =
-        withContext(Dispatchers.IO) { db.collections(groups) }
+    override suspend fun collections(groups: Set<RommCollectionGroup>, virtualType: String?): List<RommCollection> =
+        withContext(Dispatchers.IO) { db.collections(groups, virtualType) }
+
+    override suspend fun collectionGroupCounts(): Map<RommCollectionGroup, Int> =
+        withContext(Dispatchers.IO) { db.collectionGroupCounts() }
+
+    override suspend fun virtualTypeCounts(): Map<String, Int> =
+        withContext(Dispatchers.IO) { db.virtualTypeCounts() }
 }

@@ -332,6 +332,14 @@
     <string name="romm_collection_group_user">My Collections</string>
     <string name="romm_collection_group_virtual">Virtual</string>
     <string name="romm_collection_group_smart">Smart</string>
+    <string name="romm_collections_my">My Collections</string>
+    <string name="romm_collections_smart">Smart Collections</string>
+    <string name="romm_collections_virtual">Virtual Collections</string>
+    <string name="romm_vtype_franchise">Franchises</string>
+    <string name="romm_vtype_collection">Collections</string>
+    <string name="romm_vtype_genre">Genres</string>
+    <string name="romm_vtype_company">Companies</string>
+    <string name="romm_vtype_mode">Game Modes</string>
 
     <string name="setting_kitchen_toggle">File Server</string>
     <string name="setting_logging">Logging</string>

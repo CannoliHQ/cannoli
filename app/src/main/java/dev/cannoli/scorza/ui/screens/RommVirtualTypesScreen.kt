@@ -15,7 +15,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.cannoli.scorza.romm.RommCollection
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.R
 import dev.cannoli.ui.components.BottomBar
@@ -28,10 +27,11 @@ import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.screenPadding
 import dev.cannoli.ui.theme.Spacing
 
+data class RommTypeRow(val type: String, val label: String, val count: Int)
+
 @Composable
-fun RommCollectionListScreen(
-    title: String,
-    collections: List<RommCollection>,
+fun RommVirtualTypesScreen(
+    rows: List<RommTypeRow>,
     selectedIndex: Int,
     scrollTarget: Int,
     backgroundImagePath: String?,
@@ -47,21 +47,21 @@ fun RommCollectionListScreen(
         Box(modifier = Modifier.fillMaxSize().padding(screenPadding)) {
             Column(modifier = Modifier.fillMaxSize().padding(bottom = footerReservation())) {
                 ScreenTitle(
-                    text = title,
+                    text = stringResource(R.string.romm_collections_virtual),
                     fontSize = listFontSize,
                     lineHeight = listLineHeight,
                 )
                 Spacer(modifier = Modifier.height(Spacing.Sm))
                 List(
-                    items = collections,
-                    selectedIndex = selectedIndex.coerceIn(0, (collections.size - 1).coerceAtLeast(0)),
+                    items = rows,
+                    selectedIndex = selectedIndex.coerceIn(0, (rows.size - 1).coerceAtLeast(0)),
                     itemHeight = itemHeight,
                     scrollTarget = scrollTarget,
                     onListStateChanged = onListStateChanged,
-                ) { _, collection, isSelected ->
+                ) { _, row, isSelected ->
                     PillRowKeyValue(
-                        label = collection.name,
-                        value = collection.romCount.toString(),
+                        label = row.label,
+                        value = row.count.toString(),
                         isSelected = isSelected,
                         fontSize = listFontSize,
                         lineHeight = listLineHeight,

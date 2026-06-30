@@ -109,6 +109,7 @@ data class CollectionDto(
 data class VirtualCollectionDto(
     val id: String,
     val name: String = "",
+    val type: String? = null,
     @SerialName("rom_ids") val romIds: List<Int> = emptyList(),
     @SerialName("rom_count") val romCount: Int = 0,
 )

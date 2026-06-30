@@ -126,6 +126,37 @@ class RommDatabaseCollectionsTest {
         assertEquals(0, db.gamesForCollectionCount("1", null))
     }
 
+    @Test fun `stores and filters by virtual_type`() {
+        db.upsertPlatforms(listOf(platform(1, "SNES", "Super Nintendo") to null))
+        db.upsertGames(listOf(GameRecord(game(10, 1, "Zelda", "z.sfc"), null)))
+        db.upsertCollections(listOf(
+            RommCollection("v-fr", RommCollectionGroup.VIRTUAL, "Zelda", 1, "franchise") to null,
+            RommCollection("v-co", RommCollectionGroup.VIRTUAL, "Zelda", 1, "collection") to null,
+        ))
+        db.setCollectionMembers("v-fr", listOf(10))
+        db.setCollectionMembers("v-co", listOf(10))
+
+        val franchises = db.collections(setOf(RommCollectionGroup.VIRTUAL), "franchise")
+        assertEquals(listOf("v-fr"), franchises.map { it.id })
+        assertEquals("franchise", franchises.single().virtualType)
+    }
+
+    @Test fun `group and virtual-type counts are browsable-filtered`() {
+        db.upsertPlatforms(listOf(platform(1, "SNES", "Super Nintendo") to null))
+        db.upsertGames(listOf(GameRecord(game(10, 1, "Zelda", "z.sfc"), null)))
+        db.upsertCollections(listOf(
+            RommCollection("u1", RommCollectionGroup.USER, "Faves", 1) to null,
+            RommCollection("v-fr", RommCollectionGroup.VIRTUAL, "Zelda", 1, "franchise") to null,
+            RommCollection("v-empty", RommCollectionGroup.VIRTUAL, "Ghost", 0, "genre") to null,
+        ))
+        db.setCollectionMembers("u1", listOf(10))
+        db.setCollectionMembers("v-fr", listOf(10))
+
+        assertEquals(1, db.collectionGroupCounts()[RommCollectionGroup.USER])
+        assertEquals(1, db.collectionGroupCounts()[RommCollectionGroup.VIRTUAL])
+        assertEquals(mapOf("franchise" to 1), db.virtualTypeCounts())
+    }
+
     @Test fun `setCollectionMembers replaces existing members`() {
         db.upsertPlatforms(listOf(platform(1, "SNES", "Super Nintendo") to null))
         db.upsertGames(listOf(

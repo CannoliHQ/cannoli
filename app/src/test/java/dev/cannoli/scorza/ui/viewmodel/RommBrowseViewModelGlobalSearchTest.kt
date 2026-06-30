@@ -29,7 +29,9 @@ class RommBrowseViewModelGlobalSearchTest {
             game(1, 1, "Super Mario World", "smw.sfc"),
             game(2, 2, "Mario Kart", "mk.gba"),
         )
-        override suspend fun collections(groups: Set<RommCollectionGroup>) = emptyList<RommCollection>()
+        override suspend fun collections(groups: Set<RommCollectionGroup>, virtualType: String?) = emptyList<RommCollection>()
+        override suspend fun collectionGroupCounts() = emptyMap<RommCollectionGroup, Int>()
+        override suspend fun virtualTypeCounts() = emptyMap<String, Int>()
     }
 
     @Test fun `global search returns natural-sorted rows with remote state`() = runBlocking {

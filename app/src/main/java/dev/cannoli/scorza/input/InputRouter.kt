@@ -178,6 +178,8 @@ class InputRouter @Inject constructor(
         is LauncherScreen.RommGameList          -> rommGameListHandler()
         is LauncherScreen.RommGlobalSearch      -> rommGlobalSearchHandler()
         is LauncherScreen.RommFirmwareList      -> rommFirmwareListHandler()
+        is LauncherScreen.RommCollectionGroups  -> rommCollectionGroupsHandler()
+        is LauncherScreen.RommVirtualTypes      -> rommVirtualTypesHandler()
         is LauncherScreen.RommCollectionList    -> rommCollectionListHandler()
         is LauncherScreen.RommCollectionGameList -> rommCollectionGameListHandler()
         is LauncherScreen.RetroAchievementsOfflinePlatforms -> raOfflinePlatformsHandler()
@@ -454,7 +456,14 @@ class InputRouter @Inject constructor(
         onConfirm = {
             val showCollectionsRow = rommBrowseViewModel.hasAnyCollections()
             if (showCollectionsRow && selectedIndex == 0) {
-                nav.push(LauncherScreen.RommCollectionList())
+                when (val target = rommBrowseViewModel.collectionEntryTarget()) {
+                    is dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel.CollectionEntry.Landing ->
+                        nav.push(LauncherScreen.RommCollectionGroups())
+                    is dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel.CollectionEntry.VirtualTypes ->
+                        nav.push(LauncherScreen.RommVirtualTypes())
+                    is dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel.CollectionEntry.Group ->
+                        nav.push(LauncherScreen.RommCollectionList(group = target.group))
+                }
             } else {
                 val offset = if (showCollectionsRow) 1 else 0
                 val platform = rommBrowseViewModel.platforms.value.getOrNull(selectedIndex - offset) ?: return@scrollable
@@ -472,9 +481,35 @@ class InputRouter @Inject constructor(
         },
     )
 
+    private fun rommCollectionGroupsHandler() = scrollable<LauncherScreen.RommCollectionGroups>(
+        onConfirm = {
+            val order = listOf(
+                dev.cannoli.scorza.romm.RommCollectionGroup.USER,
+                dev.cannoli.scorza.romm.RommCollectionGroup.VIRTUAL,
+                dev.cannoli.scorza.romm.RommCollectionGroup.SMART,
+            )
+            val enabled = order.filter { it in rommBrowseViewModel.enabledGroups() }
+            val group = enabled.getOrNull(selectedIndex) ?: return@scrollable
+            if (group == dev.cannoli.scorza.romm.RommCollectionGroup.VIRTUAL) nav.push(LauncherScreen.RommVirtualTypes())
+            else nav.push(LauncherScreen.RommCollectionList(group = group))
+        },
+        onBack = { nav.pop() },
+    )
+
+    private fun rommVirtualTypesHandler() = scrollable<LauncherScreen.RommVirtualTypes>(
+        onConfirm = {
+            val type = rommBrowseViewModel.virtualTypeCounts.value.getOrNull(selectedIndex)?.first ?: return@scrollable
+            nav.push(LauncherScreen.RommCollectionList(group = dev.cannoli.scorza.romm.RommCollectionGroup.VIRTUAL, virtualType = type))
+        },
+        onBack = { nav.pop() },
+    )
+
     private fun rommCollectionListHandler() = scrollable<LauncherScreen.RommCollectionList>(
         onConfirm = {
-            val collection = rommBrowseViewModel.flattenedCollections().getOrNull(selectedIndex) ?: return@scrollable
+            val key = group.name + (virtualType?.let { ":$it" } ?: "")
+            val loaded = rommBrowseViewModel.collectionList.value
+            if (loaded?.id != key) return@scrollable
+            val collection = loaded.rows.getOrNull(selectedIndex) ?: return@scrollable
             ioScope.launch {
                 rommBrowseViewModel.openCollection(collection)
                 withContext(Dispatchers.Main) { nav.push(LauncherScreen.RommCollectionGameList(collection = collection)) }

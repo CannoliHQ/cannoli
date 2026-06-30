@@ -90,7 +90,7 @@ class RommSyncCoordinator(
                     val seen = mutableSetOf<String>()
                     for (group in groups) {
                         val fetched = client.getCollections(group)
-                        db.upsertCollections(fetched.map { RommCollection(it.id, it.group, it.name, it.romCount) to null })
+                        db.upsertCollections(fetched.map { RommCollection(it.id, it.group, it.name, it.romCount, it.virtualType) to null })
                         fetched.forEach { db.setCollectionMembers(it.id, it.romIds); seen.add(it.id) }
                     }
                     val stale = db.allCollectionIds() - seen

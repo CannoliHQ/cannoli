@@ -250,7 +250,23 @@ sealed class LauncherScreen {
     ) : LauncherScreen(), ScrollableScreen {
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
     }
+    data class RommCollectionGroups(
+        override val selectedIndex: Int = 0,
+        override val scrollTarget: Int = 0,
+        override val itemCount: Int = 0,
+    ) : LauncherScreen(), ScrollableScreen {
+        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
+    }
+    data class RommVirtualTypes(
+        override val selectedIndex: Int = 0,
+        override val scrollTarget: Int = 0,
+        override val itemCount: Int = 0,
+    ) : LauncherScreen(), ScrollableScreen {
+        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
+    }
     data class RommCollectionList(
+        val group: dev.cannoli.scorza.romm.RommCollectionGroup,
+        val virtualType: String? = null,
         override val selectedIndex: Int = 0,
         override val scrollTarget: Int = 0,
         override val itemCount: Int = 0,
@@ -1440,36 +1456,90 @@ fun AppNavGraph(
                     )
                 }
             }
+            is LauncherScreen.RommCollectionGroups -> {
+                if (inputRouter != null) {
+                    val handler = remember { inputRouter.currentHandler() }
+                    dev.cannoli.scorza.input.screen.compose.ScreenInput(handler)
+                }
+                androidx.compose.runtime.LaunchedEffect(Unit) { rommBrowseViewModel?.loadCollectionCounts() }
+                val counts = rommBrowseViewModel?.groupCounts?.collectAsState()?.value ?: emptyMap()
+                val enabled = rommBrowseViewModel?.enabledGroups() ?: emptySet()
+                val rows = listOf(
+                    dev.cannoli.scorza.romm.RommCollectionGroup.USER to stringResource(dev.cannoli.ui.R.string.romm_collections_my),
+                    dev.cannoli.scorza.romm.RommCollectionGroup.VIRTUAL to stringResource(dev.cannoli.ui.R.string.romm_collections_virtual),
+                    dev.cannoli.scorza.romm.RommCollectionGroup.SMART to stringResource(dev.cannoli.ui.R.string.romm_collections_smart),
+                ).filter { it.first in enabled }
+                 .map { dev.cannoli.scorza.ui.screens.RommGroupRow(it.first, it.second, counts[it.first] ?: 0) }
+                androidx.compose.runtime.LaunchedEffect(rows.size) {
+                    if (currentScreen.itemCount != rows.size) nav?.replaceTop(currentScreen.copy(itemCount = rows.size))
+                }
+                dev.cannoli.scorza.ui.screens.RommCollectionGroupsScreen(
+                    rows = rows,
+                    selectedIndex = currentScreen.selectedIndex,
+                    scrollTarget = currentScreen.scrollTarget,
+                    backgroundImagePath = appSettings.backgroundImagePath,
+                    backgroundTint = appSettings.backgroundTint,
+                    listFontSize = listFontSize,
+                    listLineHeight = listLineHeight,
+                    listVerticalPadding = listVerticalPadding,
+                    onListStateChanged = onListStateChanged,
+                    buttonStyle = labels,
+                )
+            }
+            is LauncherScreen.RommVirtualTypes -> {
+                if (inputRouter != null) {
+                    val handler = remember { inputRouter.currentHandler() }
+                    dev.cannoli.scorza.input.screen.compose.ScreenInput(handler)
+                }
+                androidx.compose.runtime.LaunchedEffect(Unit) { rommBrowseViewModel?.loadCollectionCounts() }
+                val typeCounts = rommBrowseViewModel?.virtualTypeCounts?.collectAsState()?.value ?: emptyList()
+                val rows = typeCounts.map { (type, count) ->
+                    val label = dev.cannoli.scorza.romm.RommVirtualType.from(type)?.let { stringResource(it.labelRes) } ?: type
+                    dev.cannoli.scorza.ui.screens.RommTypeRow(type, label, count)
+                }
+                androidx.compose.runtime.LaunchedEffect(rows.size) {
+                    if (currentScreen.itemCount != rows.size) nav?.replaceTop(currentScreen.copy(itemCount = rows.size))
+                }
+                dev.cannoli.scorza.ui.screens.RommVirtualTypesScreen(
+                    rows = rows,
+                    selectedIndex = currentScreen.selectedIndex,
+                    scrollTarget = currentScreen.scrollTarget,
+                    backgroundImagePath = appSettings.backgroundImagePath,
+                    backgroundTint = appSettings.backgroundTint,
+                    listFontSize = listFontSize,
+                    listLineHeight = listLineHeight,
+                    listVerticalPadding = listVerticalPadding,
+                    onListStateChanged = onListStateChanged,
+                    buttonStyle = labels,
+                )
+            }
             is LauncherScreen.RommCollectionList -> {
                 if (inputRouter != null) {
                     val handler = remember { inputRouter.currentHandler() }
                     dev.cannoli.scorza.input.screen.compose.ScreenInput(handler)
                 }
-                androidx.compose.runtime.LaunchedEffect(Unit) { rommBrowseViewModel?.loadCollections() }
-                val collectionsRaw = rommBrowseViewModel?.collections?.collectAsState()?.value ?: emptyList()
-                val flattened = dev.cannoli.scorza.romm.RommCollectionGroup.entries
-                    .flatMap { group -> collectionsRaw.filter { it.group == group } }
-                val sections = dev.cannoli.scorza.romm.RommCollectionGroup.entries.mapNotNull { group ->
-                    val items = flattened.filter { it.group == group }
-                    if (items.isEmpty()) null
-                    else dev.cannoli.ui.components.ListSection(
-                        header = when (group) {
-                            dev.cannoli.scorza.romm.RommCollectionGroup.USER ->
-                                stringResource(dev.cannoli.ui.R.string.romm_collection_group_user).uppercase()
-                            dev.cannoli.scorza.romm.RommCollectionGroup.VIRTUAL ->
-                                stringResource(dev.cannoli.ui.R.string.romm_collection_group_virtual).uppercase()
-                            dev.cannoli.scorza.romm.RommCollectionGroup.SMART ->
-                                stringResource(dev.cannoli.ui.R.string.romm_collection_group_smart).uppercase()
-                        },
-                        items = items
-                    )
+                val key = currentScreen.group.name + (currentScreen.virtualType?.let { ":$it" } ?: "")
+                val loaded = rommBrowseViewModel?.collectionList?.collectAsState()?.value
+                val items = if (loaded?.id == key) loaded.rows else emptyList()
+                androidx.compose.runtime.LaunchedEffect(key) {
+                    rommBrowseViewModel?.openCollections(currentScreen.group, currentScreen.virtualType)
                 }
-                val itemCount = flattened.size
-                androidx.compose.runtime.LaunchedEffect(itemCount) {
-                    if (currentScreen.itemCount != itemCount) nav?.replaceTop(currentScreen.copy(itemCount = itemCount))
+                androidx.compose.runtime.LaunchedEffect(items.size) {
+                    if (currentScreen.itemCount != items.size) nav?.replaceTop(currentScreen.copy(itemCount = items.size))
                 }
+                val title = currentScreen.virtualType
+                    ?.let { vtype ->
+                        val typeLabel = dev.cannoli.scorza.romm.RommVirtualType.from(vtype)?.let { t -> stringResource(t.labelRes) } ?: vtype
+                        "${stringResource(dev.cannoli.ui.R.string.romm_collection_group_virtual)}: $typeLabel"
+                    }
+                    ?: stringResource(when (currentScreen.group) {
+                        dev.cannoli.scorza.romm.RommCollectionGroup.USER -> dev.cannoli.ui.R.string.romm_collections_my
+                        dev.cannoli.scorza.romm.RommCollectionGroup.SMART -> dev.cannoli.ui.R.string.romm_collections_smart
+                        dev.cannoli.scorza.romm.RommCollectionGroup.VIRTUAL -> dev.cannoli.ui.R.string.romm_collections_virtual
+                    })
                 dev.cannoli.scorza.ui.screens.RommCollectionListScreen(
-                    sections = sections,
+                    title = title,
+                    collections = items,
                     selectedIndex = currentScreen.selectedIndex,
                     scrollTarget = currentScreen.scrollTarget,
                     backgroundImagePath = appSettings.backgroundImagePath,
@@ -1670,6 +1740,8 @@ fun AppNavGraph(
         } else 0
         val inRomm = currentScreen is LauncherScreen.RommPlatformList ||
                 currentScreen is LauncherScreen.RommGameList ||
+                currentScreen is LauncherScreen.RommCollectionGroups ||
+                currentScreen is LauncherScreen.RommVirtualTypes ||
                 currentScreen is LauncherScreen.RommCollectionList ||
                 currentScreen is LauncherScreen.RommCollectionGameList ||
                 currentScreen is LauncherScreen.RommGlobalSearch ||

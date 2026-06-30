@@ -7,7 +7,9 @@ interface RommLibrary {
     suspend fun platforms(): List<RommPlatform>
     suspend fun games(platform: RommPlatform, page: Int, search: String? = null): RommPage<RommGame>
     suspend fun searchAll(query: RommSearchQuery): List<RommGame>
-    suspend fun collections(groups: Set<RommCollectionGroup>): List<RommCollection>
+    suspend fun collections(groups: Set<RommCollectionGroup>, virtualType: String? = null): List<RommCollection>
+    suspend fun collectionGroupCounts(): Map<RommCollectionGroup, Int>
+    suspend fun virtualTypeCounts(): Map<String, Int>
 
     companion object {
         const val PAGE_SIZE = 100
@@ -45,13 +47,17 @@ class LiveRommLibrary(
                 .items.map { it.toDomain() }
         }
 
-    override suspend fun collections(groups: Set<RommCollectionGroup>): List<RommCollection> =
+    override suspend fun collections(groups: Set<RommCollectionGroup>, virtualType: String?): List<RommCollection> =
         withContext(Dispatchers.IO) {
             groups.flatMap { group ->
                 runCatching { client.getCollections(group) }.getOrDefault(emptyList())
-                    .map { RommCollection(it.id, group, it.name, it.romCount) }
+                    .map { RommCollection(it.id, group, it.name, it.romCount, it.virtualType) }
+                    .filter { virtualType == null || it.virtualType == virtualType }
             }
         }
+
+    override suspend fun collectionGroupCounts(): Map<RommCollectionGroup, Int> = emptyMap()
+    override suspend fun virtualTypeCounts(): Map<String, Int> = emptyMap()
 }
 
 internal fun SimpleRomDto.toDomain(): RommGame = RommGame(

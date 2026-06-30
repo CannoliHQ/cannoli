@@ -18,7 +18,9 @@ class RommBrowseViewModelMatchTest {
         override suspend fun games(platform: RommPlatform, page: Int, search: String?) =
             RommPage(if (page == 0) games else emptyList(), games.size, RommLibrary.PAGE_SIZE, 0)
         override suspend fun searchAll(query: RommSearchQuery) = emptyList<RommGame>()
-        override suspend fun collections(groups: Set<RommCollectionGroup>) = emptyList<RommCollection>()
+        override suspend fun collections(groups: Set<RommCollectionGroup>, virtualType: String?) = emptyList<RommCollection>()
+        override suspend fun collectionGroupCounts() = emptyMap<RommCollectionGroup, Int>()
+        override suspend fun virtualTypeCounts() = emptyMap<String, Int>()
     }
 
     @Test fun `a linked id is PRESENT even when filename does not match`() = runBlocking {

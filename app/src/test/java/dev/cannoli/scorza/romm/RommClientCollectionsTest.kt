@@ -43,4 +43,16 @@ class RommClientCollectionsTest {
         assertEquals(listOf(4, 5), result[0].romIds)
         server.shutdown()
     }
+
+    @Test
+    fun getCollections_virtualParsesType() {
+        val server = MockWebServer()
+        server.enqueue(MockResponse().setBody("""
+            [{"id":"v1","name":"Zelda","type":"franchise","rom_ids":[1],"rom_count":1}]
+        """.trimIndent()))
+        server.start()
+        val result = client(server).getCollections(RommCollectionGroup.VIRTUAL)
+        assertEquals("franchise", result[0].virtualType)
+        server.shutdown()
+    }
 }

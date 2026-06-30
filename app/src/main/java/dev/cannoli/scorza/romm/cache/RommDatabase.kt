@@ -89,6 +89,7 @@ class RommDatabase(private val dbFileProvider: () -> File) {
                 coll_group TEXT NOT NULL,
                 name TEXT NOT NULL,
                 rom_count INTEGER NOT NULL DEFAULT 0,
+                virtual_type TEXT,
                 sort_key TEXT NOT NULL DEFAULT '',
                 updated_at TEXT
             )
@@ -101,6 +102,7 @@ class RommDatabase(private val dbFileProvider: () -> File) {
             )
         """.trimIndent())
         c.execSQL("CREATE INDEX IF NOT EXISTS idx_collection_roms_collection ON collection_roms(collection_id)")
+        c.execSQL("CREATE INDEX IF NOT EXISTS idx_collections_group_type ON collections(coll_group, virtual_type)")
         c.execSQL("PRAGMA user_version = $SCHEMA_VERSION")
     }
 
@@ -288,8 +290,8 @@ class RommDatabase(private val dbFileProvider: () -> File) {
         try {
             for ((coll, updatedAt) in rows) {
                 c.execute(
-                    "INSERT OR REPLACE INTO collections (id, coll_group, name, rom_count, sort_key, updated_at) VALUES (?,?,?,?,?,?)",
-                    coll.id, coll.group.name, coll.name, coll.romCount, NaturalSort.toSortKey(coll.name), updatedAt,
+                    "INSERT OR REPLACE INTO collections (id, coll_group, name, rom_count, virtual_type, sort_key, updated_at) VALUES (?,?,?,?,?,?,?)",
+                    coll.id, coll.group.name, coll.name, coll.romCount, coll.virtualType, NaturalSort.toSortKey(coll.name), updatedAt,
                 )
             }
             c.execSQL("COMMIT")
@@ -307,20 +309,43 @@ class RommDatabase(private val dbFileProvider: () -> File) {
         } catch (t: Throwable) { c.execSQL("ROLLBACK"); throw t }
     }
 
-    fun collections(groups: Set<RommCollectionGroup>): List<RommCollection> = withConn { c ->
+    fun collections(groups: Set<RommCollectionGroup>, virtualType: String? = null): List<RommCollection> = withConn { c ->
         if (groups.isEmpty()) return@withConn emptyList()
         val placeholders = groups.joinToString(",") { "?" }
-        val args: Array<Any?> = groups.map { it.name }.toTypedArray()
+        val args = mutableListOf<Any?>().apply { groups.forEach { add(it.name) } }
+        val typeClause = if (virtualType != null) { args.add(virtualType); " AND c.virtual_type = ?" } else ""
         c.queryAll(
-            """SELECT c.id, c.coll_group, c.name, c.rom_count FROM collections c
-               WHERE c.coll_group IN ($placeholders)
+            """SELECT c.id, c.coll_group, c.name, c.rom_count, c.virtual_type FROM collections c
+               WHERE c.coll_group IN ($placeholders)$typeClause
                  AND EXISTS (SELECT 1 FROM collection_roms cr JOIN games g ON g.id = cr.rom_id WHERE cr.collection_id = c.id)
                ORDER BY c.sort_key""",
-            *args,
+            *args.toTypedArray(),
             mapper = { stmt ->
-                RommCollection(stmt.getText(0), RommCollectionGroup.valueOf(stmt.getText(1)), stmt.getText(2), stmt.getInt(3))
+                RommCollection(
+                    stmt.getText(0), RommCollectionGroup.valueOf(stmt.getText(1)), stmt.getText(2), stmt.getInt(3),
+                    if (stmt.isNull(4)) null else stmt.getText(4),
+                )
             },
         )
+    }
+
+    fun collectionGroupCounts(): Map<RommCollectionGroup, Int> = withConn { c ->
+        c.queryAll(
+            """SELECT c.coll_group, COUNT(*) FROM collections c
+               WHERE EXISTS (SELECT 1 FROM collection_roms cr JOIN games g ON g.id = cr.rom_id WHERE cr.collection_id = c.id)
+               GROUP BY c.coll_group""",
+        ) { runCatching { RommCollectionGroup.valueOf(it.getText(0)) }.getOrNull() to it.getInt(1) }
+            .mapNotNull { (k, v) -> k?.let { it to v } }
+            .toMap()
+    }
+
+    fun virtualTypeCounts(): Map<String, Int> = withConn { c ->
+        c.queryAll(
+            """SELECT c.virtual_type, COUNT(*) FROM collections c
+               WHERE c.coll_group = 'VIRTUAL' AND c.virtual_type IS NOT NULL
+                 AND EXISTS (SELECT 1 FROM collection_roms cr JOIN games g ON g.id = cr.rom_id WHERE cr.collection_id = c.id)
+               GROUP BY c.virtual_type""",
+        ) { it.getText(0) to it.getInt(1) }.toMap()
     }
 
     fun gamesForCollection(collectionId: String, search: String?, limit: Int, offset: Int): List<RommGame> = withConn { c ->
@@ -361,7 +386,7 @@ class RommDatabase(private val dbFileProvider: () -> File) {
     }
 
     private companion object {
-        const val SCHEMA_VERSION = 2
+        const val SCHEMA_VERSION = 3
         const val GLOBAL_SEARCH_LIMIT = 300
     }
 }

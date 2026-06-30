@@ -38,8 +38,10 @@ class RommBrowseCollectionsTest {
         override suspend fun games(platform: RommPlatform, page: Int, search: String?) =
             RommPage<RommGame>(emptyList(), 0, RommLibrary.PAGE_SIZE, 0)
         override suspend fun searchAll(query: RommSearchQuery) = emptyList<RommGame>()
-        override suspend fun collections(groups: Set<RommCollectionGroup>) =
-            if (RommCollectionGroup.USER in groups) listOf(collection) else emptyList()
+        override suspend fun collections(groups: Set<RommCollectionGroup>, virtualType: String?) =
+            db.collections(groups, virtualType)
+        override suspend fun collectionGroupCounts() = db.collectionGroupCounts()
+        override suspend fun virtualTypeCounts() = db.virtualTypeCounts()
     }
 
     @Before fun setUp() {
@@ -173,5 +175,43 @@ class RommBrowseCollectionsTest {
         assertEquals(2, smallPage.collectionGames.value!!.rows.size)
         smallPage.loadMoreCollection()
         assertEquals(3, smallPage.collectionGames.value!!.rows.size)
+    }
+
+    @Test fun `group counts and entry target reflect enabled groups`() = runBlocking {
+        db.upsertGames(listOf(GameRecord(game(30, 1, "Yoshi", "yoshi.sfc"), null)))
+        db.upsertCollections(listOf(
+            RommCollection("v-fr", RommCollectionGroup.VIRTUAL, "Yoshi", 1, "franchise") to null,
+        ))
+        db.setCollectionMembers("v-fr", listOf(30))
+
+        val vm = vm(enabledGroups = setOf(RommCollectionGroup.USER, RommCollectionGroup.VIRTUAL))
+        vm.loadCollectionCounts()
+        assertEquals(1, vm.groupCounts.value[RommCollectionGroup.VIRTUAL])
+        assertEquals(listOf("franchise" to 1), vm.virtualTypeCounts.value)
+        assertEquals(RommBrowseViewModel.CollectionEntry.Landing, vm.collectionEntryTarget())
+    }
+
+    @Test fun `single enabled group skips to its destination`() {
+        assertEquals(
+            RommBrowseViewModel.CollectionEntry.Group(RommCollectionGroup.USER),
+            vm(enabledGroups = setOf(RommCollectionGroup.USER)).collectionEntryTarget(),
+        )
+        assertEquals(
+            RommBrowseViewModel.CollectionEntry.VirtualTypes,
+            vm(enabledGroups = setOf(RommCollectionGroup.VIRTUAL)).collectionEntryTarget(),
+        )
+    }
+
+    @Test fun `openCollections filters by group and type`() = runBlocking {
+        db.upsertGames(listOf(GameRecord(game(30, 1, "Yoshi", "yoshi.sfc"), null)))
+        db.upsertCollections(listOf(
+            RommCollection("v-fr", RommCollectionGroup.VIRTUAL, "Yoshi", 1, "franchise") to null,
+            RommCollection("v-ge", RommCollectionGroup.VIRTUAL, "Platformers", 1, "genre") to null,
+        ))
+        db.setCollectionMembers("v-fr", listOf(30)); db.setCollectionMembers("v-ge", listOf(30))
+
+        val vm = vm(enabledGroups = setOf(RommCollectionGroup.VIRTUAL))
+        vm.openCollections(RommCollectionGroup.VIRTUAL, "franchise")
+        assertEquals(listOf("v-fr"), vm.collectionList.value?.rows?.map { it.id })
     }
 }
