@@ -75,7 +75,12 @@ object RommModule {
         platformMap: PlatformMap,
         db: RommDatabase,
         rommStore: RommConnectionStore,
-    ): RommSyncCoordinator = RommSyncCoordinator(client, platformMap, db, enabledGroups = { rommStore.enabledCollectionGroups() })
+        @ApplicationContext context: Context,
+    ): RommSyncCoordinator = RommSyncCoordinator(
+        client, platformMap, db,
+        enabledGroups = { rommStore.enabledCollectionGroups() },
+        collectionsLabel = { context.getString(dev.cannoli.scorza.R.string.romm_qm_collections) },
+    )
 
     @Provides @Singleton
     fun provideDeviceRegistrar(

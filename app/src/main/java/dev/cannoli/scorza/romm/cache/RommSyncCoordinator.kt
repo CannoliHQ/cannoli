@@ -19,6 +19,7 @@ class RommSyncCoordinator(
     private val platformMap: PlatformMap,
     private val db: RommDatabase,
     private val enabledGroups: () -> Set<RommCollectionGroup> = { setOf(RommCollectionGroup.USER) },
+    private val collectionsLabel: () -> String = { "Collections" },
 ) {
     enum class SyncStatus { IDLE, SYNCING, ERROR }
 
@@ -66,6 +67,10 @@ class RommSyncCoordinator(
                         repullPlatform(it, ingested, reconcile = true)
                     }
                 }
+
+                // Everything past the platform pull is the "finishing up" phase (deletion
+                // reconcile + collection sync); label it so the screen never blanks out.
+                _progress.value = _progress.value.copy(platform = collectionsLabel())
 
                 // Reconcile server-side deletions: drop any cached platform/game whose id is no
                 // longer on the server. Deltas only carry updated rows, never deletes, so without
