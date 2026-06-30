@@ -62,8 +62,8 @@ class RommSyncCoordinatorTest {
         assertEquals(2, db.gamesCount(1, null))
         // cursor = max updated_at across platforms + roms
         assertEquals("2024-03-03T00:00:00", db.getSyncState("cursor"))
-        // progress lands at completed == total (one supported platform)
-        assertEquals(RommSyncCoordinator.SyncProgress(1, 1), coord.progress.value)
+        // progress lands at completed == total (one supported platform), labelled for the finishing phase
+        assertEquals(RommSyncCoordinator.SyncProgress(1, 1, "Collections"), coord.progress.value)
     }
 
     @Test fun `delta sweep upserts changed roms and advances cursor`() = runBlocking {
