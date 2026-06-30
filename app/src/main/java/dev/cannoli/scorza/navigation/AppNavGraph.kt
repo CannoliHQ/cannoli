@@ -943,7 +943,7 @@ fun AppNavGraph(
                 }
                 val d = dialog
                 if (d is DialogState.CollectionCreated) {
-                    MessageOverlay(message = stringResource(R.string.collection_created, d.collectionName))
+                    MessageOverlay(message = stringResource(R.string.collection_created, d.collectionName), buttonStyle = labels)
                 }
             }
             is LauncherScreen.ChildPicker -> {

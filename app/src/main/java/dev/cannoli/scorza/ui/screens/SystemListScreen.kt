@@ -298,6 +298,6 @@ fun SystemListScreen(
     }
 
     if (dialogState is DialogState.QuitConfirm) {
-        ConfirmOverlay(message = stringResource(R.string.dialog_quit_confirm), confirmLabel = stringResource(R.string.label_quit))
+        ConfirmOverlay(message = stringResource(R.string.dialog_quit_confirm), buttonStyle = buttonStyle, confirmLabel = stringResource(R.string.label_quit))
     }
 }

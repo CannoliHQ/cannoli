@@ -314,10 +314,12 @@ fun GameListScreen(
                         stringResource(R.string.dialog_rename_success)
                     } else {
                         stringResource(R.string.dialog_rename_failed, dialogState.message)
-                    }
+                    },
+                    buttonStyle = buttonStyle
                 )
                 is DialogState.CollectionCreated -> MessageOverlay(
-                    message = stringResource(R.string.collection_created, dialogState.collectionName)
+                    message = stringResource(R.string.collection_created, dialogState.collectionName),
+                    buttonStyle = buttonStyle
                 )
                 else -> {}
             }
@@ -332,14 +334,17 @@ fun GameListScreen(
         )
         is DialogState.MissingApp -> MissingAppDialog(
             appName = dialogState.appName,
-            showRemove = state.platformTag == "tools" || state.platformTag == "ports"
+            showRemove = state.platformTag == "tools" || state.platformTag == "ports",
+            buttonStyle = buttonStyle
         )
-        is DialogState.LaunchError -> LaunchErrorDialog(dialogState.message)
+        is DialogState.LaunchError -> LaunchErrorDialog(dialogState.message, buttonStyle = buttonStyle)
         is DialogState.DeleteConfirm -> ConfirmOverlay(
-            message = stringResource(R.string.dialog_delete_confirm, dialogState.gameName)
+            message = stringResource(R.string.dialog_delete_confirm, dialogState.gameName),
+            buttonStyle = buttonStyle
         )
         is DialogState.DeleteCollectionConfirm -> ConfirmOverlay(
-            message = stringResource(R.string.dialog_delete_confirm, dialogState.displayName)
+            message = stringResource(R.string.dialog_delete_confirm, dialogState.displayName),
+            buttonStyle = buttonStyle
         )
         else -> {}
     }
