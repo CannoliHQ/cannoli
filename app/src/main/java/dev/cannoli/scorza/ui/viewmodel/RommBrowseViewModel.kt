@@ -20,7 +20,7 @@ import kotlinx.coroutines.withContext
 
 data class RommGameRow(val game: RommGame, val localState: LocalState)
 
-data class LoadedRows<ID, T>(val id: ID, val rows: List<T>)
+data class LoadedRows<ID, T>(val id: ID, val rows: List<T>, val search: String? = null)
 
 class RommBrowseViewModel(
     private val library: RommLibrary,
@@ -46,8 +46,8 @@ class RommBrowseViewModel(
     private val _games = MutableStateFlow<LoadedRows<Int, RommGameRow>?>(null)
     val games: StateFlow<LoadedRows<Int, RommGameRow>?> = _games
 
-    private val _searchResults = MutableStateFlow<List<RommGameRow>>(emptyList())
-    val searchResults: StateFlow<List<RommGameRow>> = _searchResults
+    private val _searchResults = MutableStateFlow<LoadedRows<String, RommGameRow>?>(null)
+    val searchResults: StateFlow<LoadedRows<String, RommGameRow>?> = _searchResults
 
     private val _collections = MutableStateFlow<List<RommCollection>>(emptyList())
     val collections: StateFlow<List<RommCollection>> = _collections
@@ -98,7 +98,7 @@ class RommBrowseViewModel(
         page = 0
         searchTerm = term
         val rows = loadPage(platform, 0, term)
-        _games.value = LoadedRows(platform.id, rows)
+        _games.value = LoadedRows(platform.id, rows, term)
     }
 
     suspend fun reload() {
@@ -196,7 +196,7 @@ class RommBrowseViewModel(
             mapped to (games.size == collectionPageSize)
         }
         collectionHasMore = hasMore
-        _collectionGames.value = LoadedRows(collection.id, rows)
+        _collectionGames.value = LoadedRows(collection.id, rows, search)
     }
 
     suspend fun loadMoreCollection() {
@@ -236,7 +236,7 @@ class RommBrowseViewModel(
     suspend fun loadGlobalSearch(query: RommSearchQuery) {
         if (_allPlatforms.value.isEmpty()) loadPlatforms()
         val games = library.searchAll(query)
-        _searchResults.value = withContext(Dispatchers.IO) {
+        val rows = withContext(Dispatchers.IO) {
             val platformsById = _allPlatforms.value.associateBy { it.id }
             val linkedIds = linkedIdsProvider()
             val presentByTag = presentNamesByTag(games, platformsById)
@@ -245,6 +245,7 @@ class RommBrowseViewModel(
                 RommGameRow(g, localStateOf(g, linkedIds, presentByTag[tag] ?: emptySet()))
             }
         }
+        _searchResults.value = LoadedRows(query.text, rows)
     }
 
     data class RommFirmwareRow(val firmware: RommFirmware, val present: Boolean)

@@ -44,7 +44,7 @@ class RommBrowseViewModelGlobalSearchTest {
         )
         vm.loadPlatforms()
         vm.loadGlobalSearch(RommSearchQuery("mario"))
-        val rows = vm.searchResults.value
+        val rows = vm.searchResults.value!!.rows
         assertEquals(listOf("Mario Kart", "Super Mario World"), rows.map { it.game.name })
         assertEquals(listOf(LocalState.REMOTE, LocalState.REMOTE), rows.map { it.localState })
     }
@@ -59,7 +59,7 @@ class RommBrowseViewModelGlobalSearchTest {
         )
         vm.loadPlatforms()
         vm.loadGlobalSearch(RommSearchQuery("mario"))
-        val present = vm.searchResults.value.first { it.game.id == 1 }.localState
+        val present = vm.searchResults.value!!.rows.first { it.game.id == 1 }.localState
         assertEquals(LocalState.PRESENT, present)
     }
 }

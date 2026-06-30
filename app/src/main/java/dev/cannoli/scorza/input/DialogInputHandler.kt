@@ -2019,15 +2019,20 @@ class DialogInputHandler @Inject constructor(
             return
         }
         if (state.gameName == "launcher_global_search") {
+            if (nav.navigating) return
             val term = state.currentName.trim()
-            nav.dialogState.value = DialogState.None
-            if (term.isNotBlank()) {
-                nav.navigating = true
-                gameListViewModel.loadGlobalSearch(dev.cannoli.scorza.model.GameSearchQuery(term)) {
-                    launcherActions.scanResumableGames()
-                    nav.screenStack.add(LauncherScreen.GameList)
-                    nav.navigating = false
-                }
+            if (term.isBlank()) {
+                nav.dialogState.value = DialogState.None
+                return
+            }
+            // Keep the keyboard up until results are ready so the screen underneath never flashes,
+            // then dismiss it and reveal the populated results in the same frame.
+            nav.navigating = true
+            gameListViewModel.loadGlobalSearch(dev.cannoli.scorza.model.GameSearchQuery(term)) {
+                launcherActions.scanResumableGames()
+                nav.screenStack.add(LauncherScreen.GameList)
+                nav.dialogState.value = DialogState.None
+                nav.navigating = false
             }
             return
         }

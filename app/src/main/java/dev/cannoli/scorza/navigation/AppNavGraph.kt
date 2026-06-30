@@ -1407,9 +1407,10 @@ fun AppNavGraph(
                     dev.cannoli.scorza.input.screen.compose.ScreenInput(handler)
                 }
                 val loaded = rommBrowseViewModel?.games?.collectAsState()?.value
-                // null (not loaded) or a different platform's id means the rows are not ours yet, so we
-                // render a loading blank rather than flashing the previous platform's games/art or "No results".
-                val loading = loaded?.id != currentScreen.platform.id
+                // null (not loaded), a different platform's id, or a stale search term means the rows are not
+                // ours yet, so we render a loading blank rather than flashing the previous list/art or "No results".
+                val loading = loaded?.id != currentScreen.platform.id ||
+                    loaded?.search != currentScreen.search.ifBlank { null }
                 val games = if (loading) emptyList() else loaded?.rows ?: emptyList()
                 androidx.compose.runtime.LaunchedEffect(currentScreen.platform.id, currentScreen.search) {
                     rommBrowseViewModel?.openPlatform(currentScreen.platform, currentScreen.search.ifBlank { null })
@@ -1557,7 +1558,8 @@ fun AppNavGraph(
                     dev.cannoli.scorza.input.screen.compose.ScreenInput(handler)
                 }
                 val loaded = rommBrowseViewModel?.collectionGames?.collectAsState()?.value
-                val loading = loaded?.id != currentScreen.collection.id
+                val loading = loaded?.id != currentScreen.collection.id ||
+                    loaded?.search != currentScreen.search.ifBlank { null }
                 val games = if (loading) emptyList() else loaded?.rows ?: emptyList()
                 androidx.compose.runtime.LaunchedEffect(currentScreen.collection.id, currentScreen.search) {
                     rommBrowseViewModel?.openCollection(currentScreen.collection, currentScreen.search.ifBlank { null })
@@ -1596,14 +1598,16 @@ fun AppNavGraph(
                     val handler = remember { inputRouter.currentHandler() }
                     dev.cannoli.scorza.input.screen.compose.ScreenInput(handler)
                 }
-                val results = rommBrowseViewModel?.searchResults?.collectAsState()?.value ?: emptyList()
+                val loaded = rommBrowseViewModel?.searchResults?.collectAsState()?.value
+                val loading = loaded?.id != currentScreen.term
+                val results = if (loading) emptyList() else loaded?.rows ?: emptyList()
                 val allPlatforms = rommBrowseViewModel?.allPlatforms?.collectAsState()?.value ?: emptyList()
                 val platformTagById = remember(allPlatforms) { allPlatforms.associate { it.id to it.cannoliTag.uppercase() } }
                 androidx.compose.runtime.LaunchedEffect(currentScreen.term) {
                     rommBrowseViewModel?.loadGlobalSearch(dev.cannoli.scorza.romm.RommSearchQuery(currentScreen.term))
                 }
-                androidx.compose.runtime.LaunchedEffect(results.size) {
-                    if (currentScreen.itemCount != results.size) nav?.replaceTop(currentScreen.copy(itemCount = results.size))
+                androidx.compose.runtime.LaunchedEffect(loading, results.size) {
+                    if (!loading && currentScreen.itemCount != results.size) nav?.replaceTop(currentScreen.copy(itemCount = results.size))
                 }
                 val loader = rommImageLoader
                 if (loader != null) {
@@ -1611,6 +1615,7 @@ fun AppNavGraph(
                         title = stringResource(dev.cannoli.ui.R.string.romm_global_search_title),
                         search = currentScreen.term,
                         games = results,
+                        loading = loading,
                         selectedIndex = currentScreen.selectedIndex,
                         scrollTarget = currentScreen.scrollTarget,
                         host = rommHost,

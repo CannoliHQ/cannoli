@@ -588,7 +588,7 @@ class InputRouter @Inject constructor(
 
     private fun rommGlobalSearchHandler() = scrollable<LauncherScreen.RommGlobalSearch>(
         onConfirm = {
-            val row = rommBrowseViewModel.searchResults.value.getOrNull(selectedIndex) ?: return@scrollable
+            val row = rommBrowseViewModel.searchResults.value?.rows?.getOrNull(selectedIndex) ?: return@scrollable
             val platform = rommBrowseViewModel.allPlatforms.value.firstOrNull { it.id == row.game.platformId }
             nav.push(LauncherScreen.RommGameDetail(
                 game = row.game,
