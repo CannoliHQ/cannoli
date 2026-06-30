@@ -45,7 +45,7 @@ class LiveRommLibraryCollectionsTest {
             val lib = LiveRommLibrary(client(server), platformMap)
             val result = lib.collections(setOf(RommCollectionGroup.VIRTUAL))
 
-            assertEquals("/api/collections/virtual", server.takeRequest().path)
+            assertEquals("/api/collections/virtual?type=all", server.takeRequest().path)
             assertEquals(1, result.size)
             assertEquals(RommCollectionGroup.VIRTUAL, result[0].group)
         } finally {

@@ -68,7 +68,10 @@ class RommClient(
     }
 
     fun getCollections(group: RommCollectionGroup): List<RommNetworkCollection> {
-        val request = Request.Builder().url(endpoint(group.apiPath)).get().build()
+        val url = endpoint(group.apiPath).newBuilder()
+            .apply { if (group == RommCollectionGroup.VIRTUAL) addQueryParameter("type", "all") }
+            .build()
+        val request = Request.Builder().url(url).get().build()
         return if (group == RommCollectionGroup.VIRTUAL) {
             execute(request, ListSerializer(VirtualCollectionDto.serializer()))
                 .map { RommNetworkCollection(it.id, group, it.name, it.romIds, it.romCount) }
