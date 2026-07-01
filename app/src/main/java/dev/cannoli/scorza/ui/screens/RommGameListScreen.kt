@@ -40,6 +40,8 @@ import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.screenPadding
 import dev.cannoli.ui.theme.Spacing
 
+private const val ICON_VARIANTS = "\uDB86\uDC92" // mdi-card-multiple-outline (U+F1892)
+
 @Composable
 fun RommGameListScreen(
     title: String,
@@ -111,14 +113,22 @@ fun RommGameListScreen(
                             onListStateChanged = onListStateChanged,
                         ) { _, row, isSelected ->
                             val checkable = multiSelect && row.localState == LocalState.REMOTE
+                            val folded = row.versionCount > 1
+                            val platformLabel = platformLabelForGame?.invoke(row.game)
+                            val value = when {
+                                folded && platformLabel != null -> "$platformLabel · ${row.versionCount}"
+                                folded -> row.versionCount.toString()
+                                else -> platformLabel ?: ""
+                            }
                             PillRowKeyValue(
                                 label = row.game.name,
-                                value = platformLabelForGame?.invoke(row.game) ?: "",
+                                value = value,
                                 isSelected = isSelected,
                                 fontSize = listFontSize,
                                 lineHeight = listLineHeight,
                                 verticalPadding = listVerticalPadding,
-                                dotIndicator = if (row.localState == LocalState.PRESENT) true else null,
+                                valueIcon = if (folded) ICON_VARIANTS else null,
+                                dotIndicator = if (row.anyPresent) true else null,
                                 checkState = if (checkable) row.game.id in checkedIds else null,
                             )
                         }

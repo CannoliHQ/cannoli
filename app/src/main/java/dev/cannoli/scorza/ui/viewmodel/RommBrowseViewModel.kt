@@ -5,6 +5,7 @@ import dev.cannoli.scorza.romm.RommCollection
 import dev.cannoli.scorza.romm.RommCollectionGroup
 import dev.cannoli.scorza.romm.RommFirmware
 import dev.cannoli.scorza.romm.RommGame
+import dev.cannoli.scorza.romm.RommGroup
 import dev.cannoli.scorza.romm.RommLibrary
 import dev.cannoli.scorza.romm.RommLocalState
 import dev.cannoli.scorza.romm.RommPlatform
@@ -18,7 +19,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 
-data class RommGameRow(val game: RommGame, val localState: LocalState)
+data class RommGameRow(
+    val game: RommGame,
+    val localState: LocalState,
+    val members: List<RommGame> = listOf(game),
+    val anyPresent: Boolean = localState == LocalState.PRESENT,
+) {
+    val versionCount: Int get() = members.size
+}
 
 data class LoadedRows<ID, T>(val id: ID, val rows: List<T>, val search: String? = null)
 
@@ -35,7 +43,15 @@ class RommBrowseViewModel(
     private val collectionPageSize: Int = RommLibrary.PAGE_SIZE,
 ) {
 
-    data class RommCollectionGameRow(val game: RommGame, val localState: LocalState, val platform: RommPlatform)
+    data class RommCollectionGameRow(
+        val game: RommGame,
+        val localState: LocalState,
+        val platform: RommPlatform,
+        val members: List<RommGame> = listOf(game),
+        val anyPresent: Boolean = localState == LocalState.PRESENT,
+    ) {
+        val versionCount: Int get() = members.size
+    }
 
     private val _platforms = MutableStateFlow<List<RommPlatform>>(emptyList())
     val platforms: StateFlow<List<RommPlatform>> = _platforms
@@ -71,11 +87,13 @@ class RommBrowseViewModel(
     private var page = 0
     private var hasMore = false
     private var searchTerm: String? = null
+    private var foldedRows: List<RommGameRow> = emptyList()
 
     private var currentCollectionId: String? = null
     private var collectionPage = 0
     private var collectionHasMore = false
     private var collectionSearchTerm: String? = null
+    private var foldedCollectionRows: List<RommCollectionGameRow> = emptyList()
 
     suspend fun loadPlatforms() {
         val sortedFull = library.platforms().sortedNatural { it.displayName }
@@ -184,41 +202,46 @@ class RommBrowseViewModel(
         currentCollectionId = collection.id
         collectionPage = 0
         collectionSearchTerm = search
-        val (rows, hasMore) = withContext(Dispatchers.IO) {
-            val platformsById = database.platforms().associateBy { it.id }
-            val games = database.gamesForCollection(collection.id, search, collectionPageSize, 0)
-            val linkedIds = linkedIdsProvider()
-            val presentByTag = presentNamesByTag(games, platformsById)
-            val mapped = games.mapNotNull { game ->
-                val platform = platformsById[game.platformId] ?: return@mapNotNull null
-                RommCollectionGameRow(game, localStateOf(game, linkedIds, presentByTag[platform.cannoliTag] ?: emptySet()), platform)
-            }
-            mapped to (games.size == collectionPageSize)
+        val rows = withContext(Dispatchers.IO) {
+            foldedCollectionRows = foldCollectionRows(database, collection.id, search)
+            val page = foldedCollectionRows.take(collectionPageSize)
+            collectionHasMore = collectionPageSize < foldedCollectionRows.size
+            page
         }
-        collectionHasMore = hasMore
         _collectionGames.value = LoadedRows(collection.id, rows, search)
     }
 
     suspend fun loadMoreCollection() {
         if (!collectionHasMore) return
-        val id = currentCollectionId ?: return
-        val database = db ?: return
+        currentCollectionId ?: return
         val loaded = _collectionGames.value ?: return
         collectionPage += 1
-        val offset = collectionPage * collectionPageSize
-        val (rows, hasMore) = withContext(Dispatchers.IO) {
-            val platformsById = database.platforms().associateBy { it.id }
-            val games = database.gamesForCollection(id, collectionSearchTerm, collectionPageSize, offset)
-            val linkedIds = linkedIdsProvider()
-            val presentByTag = presentNamesByTag(games, platformsById)
-            val mapped = games.mapNotNull { game ->
-                val platform = platformsById[game.platformId] ?: return@mapNotNull null
-                RommCollectionGameRow(game, localStateOf(game, linkedIds, presentByTag[platform.cannoliTag] ?: emptySet()), platform)
-            }
-            mapped to (games.size == collectionPageSize)
+        val from = collectionPage * collectionPageSize
+        collectionHasMore = from + collectionPageSize < foldedCollectionRows.size
+        _collectionGames.value = loaded.copy(rows = loaded.rows + foldedCollectionRows.drop(from).take(collectionPageSize))
+    }
+
+    private fun foldCollectionRows(database: RommDatabase, collectionId: String, search: String?): List<RommCollectionGameRow> {
+        val platformsById = database.platforms().associateBy { it.id }
+        val total = database.gamesForCollectionCount(collectionId, search).coerceAtLeast(1)
+        val games = database.gamesForCollection(collectionId, search, total, 0)
+        val linkedIds = linkedIdsProvider()
+        val presentByTag = presentNamesByTag(games, platformsById)
+        val folded = RommBrowseFolding.foldCrossPlatform(
+            games = games,
+            tagForGame = { platformsById[it.platformId]?.cannoliTag },
+            localStateForGame = { g, tag -> localStateOf(g, linkedIds, presentByTag[tag] ?: emptySet()) },
+        )
+        return folded.mapNotNull { row ->
+            val platform = platformsById[row.game.platformId] ?: return@mapNotNull null
+            RommCollectionGameRow(
+                game = row.game,
+                localState = row.localState,
+                platform = platform,
+                members = row.members,
+                anyPresent = row.anyPresent,
+            )
         }
-        collectionHasMore = hasMore
-        _collectionGames.value = loaded.copy(rows = loaded.rows + rows)
     }
 
     suspend fun refreshLocalState() {
@@ -228,7 +251,12 @@ class RommBrowseViewModel(
         val updated = withContext(Dispatchers.IO) {
             val linkedIds = linkedIdsProvider()
             val present = presentNamesFor(platform.cannoliTag)
-            loaded.rows.map { row -> row.copy(localState = localStateOf(row.game, linkedIds, present)) }
+            loaded.rows.map { row ->
+                row.copy(
+                    localState = localStateOf(row.game, linkedIds, present),
+                    anyPresent = row.members.any { localStateOf(it, linkedIds, present) == LocalState.PRESENT },
+                )
+            }
         }
         _games.value = loaded.copy(rows = updated)
     }
@@ -240,10 +268,11 @@ class RommBrowseViewModel(
             val platformsById = _allPlatforms.value.associateBy { it.id }
             val linkedIds = linkedIdsProvider()
             val presentByTag = presentNamesByTag(games, platformsById)
-            games.sortedNatural { it.name }.map { g ->
-                val tag = platformsById[g.platformId]?.cannoliTag
-                RommGameRow(g, localStateOf(g, linkedIds, presentByTag[tag] ?: emptySet()))
-            }
+            RommBrowseFolding.foldCrossPlatform(
+                games = games,
+                tagForGame = { platformsById[it.platformId]?.cannoliTag },
+                localStateForGame = { g, tag -> localStateOf(g, linkedIds, presentByTag[tag] ?: emptySet()) },
+            )
         }
         _searchResults.value = LoadedRows(query.text, rows)
     }
@@ -292,14 +321,31 @@ class RommBrowseViewModel(
         games.mapNotNull { platformsById[it.platformId]?.cannoliTag }.toSet().associateWith { presentNamesFor(it) }
 
     private suspend fun loadPage(platform: RommPlatform, page: Int, search: String?): List<RommGameRow> {
-        val pageData = library.games(platform, page, search)
-        hasMore = pageData.hasMore
         return withContext(Dispatchers.IO) {
-            val linkedIds = linkedIdsProvider()
-            val present = presentNamesFor(platform.cannoliTag)
-            pageData.items
-                .sortedNatural { it.name }
-                .map { game -> RommGameRow(game, localStateOf(game, linkedIds, present)) }
+            if (page == 0) {
+                val groups = library.foldedGames(platform, search)
+                val presentIds = presentIdsFor(platform, groups)
+                foldedRows = RommBrowseFolding.toRows(groups, presentIds)
+            }
+            val from = page * RommLibrary.PAGE_SIZE
+            hasMore = from + RommLibrary.PAGE_SIZE < foldedRows.size
+            foldedRows.drop(from).take(RommLibrary.PAGE_SIZE)
         }
+    }
+
+    private fun presentIdsFor(platform: RommPlatform, groups: List<RommGroup>): Set<Int> {
+        val linkedIds = linkedIdsProvider()
+        val present = presentNamesFor(platform.cannoliTag)
+        return groups.asSequence()
+            .flatMap { it.members.asSequence() }
+            .filter { localStateOf(it, linkedIds, present) == LocalState.PRESENT }
+            .map { it.id }
+            .toSet()
+    }
+
+    fun presentIdsForTag(tag: String, games: List<RommGame>): Set<Int> {
+        val linkedIds = linkedIdsProvider()
+        val present = presentNamesFor(tag)
+        return games.filter { localStateOf(it, linkedIds, present) == LocalState.PRESENT }.map { it.id }.toSet()
     }
 }

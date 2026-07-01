@@ -4,6 +4,7 @@ import dev.cannoli.scorza.romm.LocalState
 import dev.cannoli.scorza.romm.RommCollection
 import dev.cannoli.scorza.romm.RommCollectionGroup
 import dev.cannoli.scorza.romm.RommGame
+import dev.cannoli.scorza.romm.RommGroup
 import dev.cannoli.scorza.romm.RommLibrary
 import dev.cannoli.scorza.romm.RommPage
 import dev.cannoli.scorza.romm.RommPlatform
@@ -37,6 +38,7 @@ class RommBrowseCollectionsTest {
         override suspend fun platforms() = listOf(snes, gba)
         override suspend fun games(platform: RommPlatform, page: Int, search: String?) =
             RommPage<RommGame>(emptyList(), 0, RommLibrary.PAGE_SIZE, 0)
+        override suspend fun foldedGames(platform: RommPlatform, search: String?) = emptyList<RommGroup>()
         override suspend fun searchAll(query: RommSearchQuery) = emptyList<RommGame>()
         override suspend fun collections(groups: Set<RommCollectionGroup>, virtualType: String?) =
             db.collections(groups, virtualType)

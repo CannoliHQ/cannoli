@@ -11,12 +11,14 @@ class RommBrowseViewModelMatchTest {
     private val snes = RommPlatform(1, "snes", "SNES", "Super Nintendo", 2)
 
     private fun game(id: Int, fsName: String, size: Long) =
-        RommGame(id, 1, "Game $id", fsName, size, null, null, emptyList(), emptyList(), null, emptyList())
+        RommGame(id, 1, "Game $id", fsName, size, null, null, emptyList(), emptyList(), null, emptyList(), groupKey = id)
 
     private class FakeLibrary(private val games: List<RommGame>) : RommLibrary {
         override suspend fun platforms() = listOf(RommPlatform(1, "snes", "SNES", "Super Nintendo", 2))
         override suspend fun games(platform: RommPlatform, page: Int, search: String?) =
             RommPage(if (page == 0) games else emptyList(), games.size, RommLibrary.PAGE_SIZE, 0)
+        override suspend fun foldedGames(platform: RommPlatform, search: String?) =
+            RommVariantFolder.foldSorted(games)
         override suspend fun searchAll(query: RommSearchQuery) = emptyList<RommGame>()
         override suspend fun collections(groups: Set<RommCollectionGroup>, virtualType: String?) = emptyList<RommCollection>()
         override suspend fun collectionGroupCounts() = emptyMap<RommCollectionGroup, Int>()

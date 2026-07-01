@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import dev.cannoli.scorza.romm.LocalState
 import dev.cannoli.scorza.romm.RommArtType
 import dev.cannoli.scorza.romm.RommArtUrl
 import dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel
@@ -40,6 +39,8 @@ import dev.cannoli.ui.components.screenPadding
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.Radius
 import dev.cannoli.ui.theme.Spacing
+
+private const val ICON_VARIANTS = "󱢒" // mdi-card-multiple-outline (U+F1892)
 
 @Composable
 fun RommCollectionGameListScreen(
@@ -107,14 +108,17 @@ fun RommCollectionGameListScreen(
                                 scrollTarget = scrollTarget,
                                 onListStateChanged = onListStateChanged,
                             ) { _, row, isSelected ->
+                                val folded = row.versionCount > 1
+                                val platformLabel = row.platform.cannoliTag.uppercase()
                                 PillRowKeyValue(
                                     label = row.game.name,
-                                    value = row.platform.cannoliTag.uppercase(),
+                                    value = if (folded) "$platformLabel · ${row.versionCount}" else platformLabel,
                                     isSelected = isSelected,
                                     fontSize = listFontSize,
                                     lineHeight = listLineHeight,
                                     verticalPadding = listVerticalPadding,
-                                    dotIndicator = if (row.localState == LocalState.PRESENT) true else null,
+                                    valueIcon = if (folded) ICON_VARIANTS else null,
+                                    dotIndicator = if (row.anyPresent) true else null,
                                 )
                             }
                         }

@@ -3,8 +3,9 @@ package dev.cannoli.scorza.ui.viewmodel
 import dev.cannoli.scorza.romm.LocalState
 import dev.cannoli.scorza.romm.RommGame
 import dev.cannoli.scorza.romm.RommLibrary
-import dev.cannoli.scorza.romm.RommPage
 import dev.cannoli.scorza.romm.RommPlatform
+import dev.cannoli.scorza.romm.RommSearchQuery
+import dev.cannoli.scorza.romm.RommVariantFolder
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
@@ -15,7 +16,7 @@ class RommBrowseViewModelTest {
 
     private val platform = RommPlatform(12, "snes", "SNES", "Super Nintendo", 2)
     private fun game(id: Int, name: String, fs: String, size: Long) =
-        RommGame(id, 12, name, fs, size, null, null, emptyList(), emptyList(), null, emptyList())
+        RommGame(id, 12, name, fs, size, null, null, emptyList(), emptyList(), null, emptyList(), groupKey = id)
 
     private fun vm(lib: RommLibrary) = RommBrowseViewModel(
         library = lib,
@@ -48,9 +49,8 @@ class RommBrowseViewModelTest {
 
     @Test fun `openPlatform loads games sorted with local state`() = runTest {
         val lib = mockk<RommLibrary>()
-        coEvery { lib.games(platform, 0, null) } returns RommPage(
-            items = listOf(game(2, "Zelda", "Zelda.sfc", 1L), game(1, "Mario", "Mario.sfc", 100L)),
-            total = 2, limit = 100, offset = 0,
+        coEvery { lib.foldedGames(platform, null) } returns RommVariantFolder.foldSorted(
+            listOf(game(2, "Zelda", "Zelda.sfc", 1L), game(1, "Mario", "Mario.sfc", 100L)),
         )
         val vm = vm(lib)
         vm.openPlatform(platform)
@@ -62,8 +62,8 @@ class RommBrowseViewModelTest {
 
     @Test fun `openPlatform with a search term queries it`() = runTest {
         val lib = mockk<RommLibrary>()
-        coEvery { lib.games(platform, 0, "mario") } returns RommPage(
-            items = listOf(game(1, "Mario", "Mario.sfc", 100L)), total = 1, limit = 100, offset = 0,
+        coEvery { lib.foldedGames(platform, "mario") } returns RommVariantFolder.foldSorted(
+            listOf(game(1, "Mario", "Mario.sfc", 100L)),
         )
         val vm = vm(lib)
         vm.openPlatform(platform, "mario")
@@ -72,8 +72,8 @@ class RommBrowseViewModelTest {
 
     @Test fun `openPlatform publishes the platform id with its rows`() = runTest {
         val lib = mockk<RommLibrary>()
-        coEvery { lib.games(platform, 0, null) } returns RommPage(
-            items = listOf(game(1, "Mario", "Mario.sfc", 100L)), total = 1, limit = 100, offset = 0,
+        coEvery { lib.foldedGames(platform, null) } returns RommVariantFolder.foldSorted(
+            listOf(game(1, "Mario", "Mario.sfc", 100L)),
         )
         val vm = vm(lib)
         vm.openPlatform(platform)
@@ -83,8 +83,8 @@ class RommBrowseViewModelTest {
 
     @Test fun `openPlatform resolves local-state lookups once per page, not per row`() = runTest {
         val lib = mockk<RommLibrary>()
-        coEvery { lib.games(platform, 0, null) } returns RommPage(
-            items = (1..50).map { game(it, "G$it", "g$it.sfc", 1L) }, total = 50, limit = 100, offset = 0,
+        coEvery { lib.foldedGames(platform, null) } returns RommVariantFolder.foldSorted(
+            (1..50).map { game(it, "G$it", "g$it.sfc", 1L) },
         )
         var presentCalls = 0
         var linkedCalls = 0
@@ -103,17 +103,16 @@ class RommBrowseViewModelTest {
 
     private suspend fun loadedVm(): RommBrowseViewModel {
         val lib = mockk<RommLibrary>()
-        coEvery { lib.games(platform, 0, null) } returns RommPage(
-            items = listOf(game(2, "Zelda", "Zelda.sfc", 1L), game(1, "Mario", "Mario.sfc", 100L)),
-            total = 2, limit = 100, offset = 0,
+        coEvery { lib.foldedGames(platform, null) } returns RommVariantFolder.foldSorted(
+            listOf(game(2, "Zelda", "Zelda.sfc", 1L), game(1, "Mario", "Mario.sfc", 100L)),
         )
         return vm(lib).also { it.openPlatform(platform) }
     }
 
     @Test fun `refreshLocalState re-derives present state when the rom is indexed`() = runTest {
         val lib = mockk<RommLibrary>()
-        coEvery { lib.games(platform, 0, null) } returns RommPage(
-            items = listOf(game(2, "Zelda", "Zelda.sfc", 1L)), total = 1, limit = 100, offset = 0,
+        coEvery { lib.foldedGames(platform, null) } returns RommVariantFolder.foldSorted(
+            listOf(game(2, "Zelda", "Zelda.sfc", 1L)),
         )
         val present = mutableSetOf<String>()
         val vm = RommBrowseViewModel(
@@ -175,5 +174,51 @@ class RommBrowseViewModelTest {
         vm.cancelMultiSelect()
         assertEquals(false, vm.isMultiSelect())
         assertEquals(emptySet<Int>(), vm.checkedIds.value)
+    }
+
+    private val snes = RommPlatform(12, "snes", "SNES", "Super Nintendo", 4)
+    private val gba = RommPlatform(20, "gba", "GBA", "Game Boy Advance", 2)
+
+    private fun searchGame(id: Int, platformId: Int, name: String, fs: String, groupKey: Int) =
+        RommGame(id, platformId, name, fs, 0L, null, null, emptyList(), emptyList(), null, emptyList(), groupKey = groupKey)
+
+    private fun searchVm(lib: RommLibrary, present: (String) -> Set<String>) = RommBrowseViewModel(
+        library = lib,
+        syncCoordinator = null,
+        db = null,
+        presentNamesFor = present,
+        linkedIdsProvider = { emptySet() },
+    )
+
+    @Test fun `loadGlobalSearch folds siblings into one row carrying members`() = runTest {
+        val lib = mockk<RommLibrary>()
+        coEvery { lib.platforms() } returns listOf(snes, gba)
+        coEvery { lib.searchAll(any()) } returns listOf(
+            searchGame(1, 12, "Zelda", "zelda-usa.sfc", groupKey = 1),
+            searchGame(2, 12, "Zelda", "zelda-jp.sfc", groupKey = 1),
+            searchGame(9, 20, "Metroid", "metroid.gba", groupKey = 9),
+        )
+        val vm = searchVm(lib) { emptySet() }
+        vm.loadGlobalSearch(RommSearchQuery("z"))
+        val rows = vm.searchResults.value!!.rows
+        assertEquals(listOf("Metroid", "Zelda"), rows.map { it.game.name })
+        val zelda = rows.first { it.game.name == "Zelda" }
+        assertEquals(2, zelda.versionCount)
+        assertEquals(setOf(1, 2), zelda.members.map { it.id }.toSet())
+    }
+
+    @Test fun `loadGlobalSearch resolves present per member platform`() = runTest {
+        val lib = mockk<RommLibrary>()
+        coEvery { lib.platforms() } returns listOf(snes, gba)
+        coEvery { lib.searchAll(any()) } returns listOf(
+            searchGame(1, 12, "Zelda", "zelda.sfc", groupKey = 1),
+            searchGame(9, 20, "Metroid", "metroid.gba", groupKey = 9),
+        )
+        val vm = searchVm(lib) { tag -> if (tag == "GBA") setOf("metroid.gba") else emptySet() }
+        vm.loadGlobalSearch(RommSearchQuery("m"))
+        val rows = vm.searchResults.value!!.rows
+        assertEquals(LocalState.REMOTE, rows.first { it.game.name == "Zelda" }.localState)
+        assertEquals(LocalState.PRESENT, rows.first { it.game.name == "Metroid" }.localState)
+        assertEquals(true, rows.first { it.game.name == "Metroid" }.anyPresent)
     }
 }
