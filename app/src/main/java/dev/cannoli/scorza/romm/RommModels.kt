@@ -34,6 +34,8 @@ data class RommGame(
     val gameModes: List<String> = emptyList(),
     val firstReleaseDate: Long? = null,
     val ssMedia: RommSsMedia? = null,
+    val groupKey: Int = 0,
+    val isMainSibling: Boolean = false,
 )
 
 data class RommSsMedia(

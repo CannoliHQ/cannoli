@@ -71,6 +71,8 @@ class RommDatabase(private val dbFileProvider: () -> File) {
                 cover_path TEXT,
                 files_json TEXT NOT NULL DEFAULT '[]',
                 ss_media_json TEXT NOT NULL DEFAULT '{}',
+                group_key INTEGER NOT NULL DEFAULT 0,
+                is_main_sibling INTEGER NOT NULL DEFAULT 0,
                 sort_key TEXT NOT NULL DEFAULT '',
                 updated_at TEXT
             )
@@ -156,13 +158,14 @@ class RommDatabase(private val dbFileProvider: () -> File) {
                 val g = rec.game
                 c.execute(
                     """INSERT OR REPLACE INTO games
-                       (id, platform_id, name, name_normalized, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json, ss_media_json, sort_key, updated_at)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                       (id, platform_id, name, name_normalized, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json, ss_media_json, group_key, is_main_sibling, sort_key, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     g.id, g.platformId, g.name, TextNormalizer.normalize(g.name), g.fsName, g.sizeBytes, g.summary, g.revision,
                     RommCacheJson.encodeStrings(g.regions), RommCacheJson.encodeStrings(g.languages),
                     RommCacheJson.encodeStrings(g.companies), RommCacheJson.encodeStrings(g.genres),
                     RommCacheJson.encodeStrings(g.gameModes), g.firstReleaseDate,
                     g.coverPath, RommCacheJson.encodeFiles(g.files), RommCacheJson.encodeSsMedia(g.ssMedia),
+                    g.groupKey, if (g.isMainSibling) 1 else 0,
                     NaturalSort.toSortKey(g.name), rec.updatedAt,
                 )
             }
@@ -187,12 +190,14 @@ class RommDatabase(private val dbFileProvider: () -> File) {
         coverPath = if (stmt.isNull(13)) null else stmt.getText(13),
         files = RommCacheJson.decodeFiles(stmt.getText(14)),
         ssMedia = RommCacheJson.decodeSsMedia(stmt.getText(15)),
+        groupKey = stmt.getInt(16),
+        isMainSibling = stmt.getInt(17) == 1,
     )
 
     fun games(platformId: Int, search: String?, limit: Int, offset: Int): List<RommGame> = withConn { c ->
         val like = search?.let { TextNormalizer.normalize(it) }?.takeIf { it.isNotEmpty() }?.let { "%$it%" }
         val sql = buildString {
-            append("SELECT id, platform_id, name, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json, ss_media_json FROM games WHERE platform_id = ?")
+            append("SELECT id, platform_id, name, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json, ss_media_json, group_key, is_main_sibling FROM games WHERE platform_id = ?")
             if (like != null) append(" AND name_normalized LIKE ?")
             append(" ORDER BY sort_key LIMIT ? OFFSET ?")
         }
@@ -204,7 +209,7 @@ class RommDatabase(private val dbFileProvider: () -> File) {
         val term = TextNormalizer.normalize(query.text)
         if (term.isEmpty()) return@withConn emptyList()
         c.queryAll(
-            "SELECT id, platform_id, name, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json, ss_media_json FROM games WHERE name_normalized LIKE ? ORDER BY sort_key LIMIT ?",
+            "SELECT id, platform_id, name, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json, ss_media_json, group_key, is_main_sibling FROM games WHERE name_normalized LIKE ? ORDER BY sort_key LIMIT ?",
             "%$term%",
             GLOBAL_SEARCH_LIMIT,
             mapper = ::rowToGame,
@@ -213,7 +218,7 @@ class RommDatabase(private val dbFileProvider: () -> File) {
 
     fun allGames(platformId: Int): List<RommGame> = withConn { c ->
         c.queryAll(
-            "SELECT id, platform_id, name, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json, ss_media_json FROM games WHERE platform_id = ?",
+            "SELECT id, platform_id, name, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json, ss_media_json, group_key, is_main_sibling FROM games WHERE platform_id = ?",
             platformId,
             mapper = ::rowToGame,
         )
@@ -351,7 +356,7 @@ class RommDatabase(private val dbFileProvider: () -> File) {
     fun gamesForCollection(collectionId: String, search: String?, limit: Int, offset: Int): List<RommGame> = withConn { c ->
         val like = search?.let { TextNormalizer.normalize(it) }?.takeIf { it.isNotEmpty() }?.let { "%$it%" }
         val sql = buildString {
-            append("SELECT g.id, g.platform_id, g.name, g.fs_name, g.size_bytes, g.summary, g.revision, g.regions, g.languages, g.companies, g.genres, g.game_modes, g.first_release_date, g.cover_path, g.files_json, g.ss_media_json ")
+            append("SELECT g.id, g.platform_id, g.name, g.fs_name, g.size_bytes, g.summary, g.revision, g.regions, g.languages, g.companies, g.genres, g.game_modes, g.first_release_date, g.cover_path, g.files_json, g.ss_media_json, g.group_key, g.is_main_sibling ")
             append("FROM games g JOIN collection_roms cr ON cr.rom_id = g.id WHERE cr.collection_id = ?")
             if (like != null) append(" AND g.name_normalized LIKE ?")
             append(" ORDER BY g.sort_key LIMIT ? OFFSET ?")
@@ -386,7 +391,7 @@ class RommDatabase(private val dbFileProvider: () -> File) {
     }
 
     private companion object {
-        const val SCHEMA_VERSION = 3
+        const val SCHEMA_VERSION = 4
         const val GLOBAL_SEARCH_LIMIT = 300
     }
 }

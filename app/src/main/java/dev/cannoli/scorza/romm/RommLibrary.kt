@@ -1,11 +1,13 @@
 package dev.cannoli.scorza.romm
 
+import dev.cannoli.scorza.util.TextNormalizer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 interface RommLibrary {
     suspend fun platforms(): List<RommPlatform>
     suspend fun games(platform: RommPlatform, page: Int, search: String? = null): RommPage<RommGame>
+    suspend fun foldedGames(platform: RommPlatform, search: String? = null): List<RommGroup>
     suspend fun searchAll(query: RommSearchQuery): List<RommGame>
     suspend fun collections(groups: Set<RommCollectionGroup>, virtualType: String? = null): List<RommCollection>
     suspend fun collectionGroupCounts(): Map<RommCollectionGroup, Int>
@@ -39,6 +41,14 @@ class LiveRommLibrary(
             )
         }
 
+    override suspend fun foldedGames(platform: RommPlatform, search: String?): List<RommGroup> =
+        withContext(Dispatchers.IO) {
+            val games = client.getRoms(platform.id, limit = platform.romCount.coerceAtLeast(1), offset = 0, search = null)
+                .items.map { it.toDomain() }
+                .filter { rommGameMatches(it, search) }
+            RommVariantFolder.foldSorted(games)
+        }
+
     override suspend fun searchAll(query: RommSearchQuery): List<RommGame> =
         withContext(Dispatchers.IO) {
             val term = query.text.trim()
@@ -60,6 +70,11 @@ class LiveRommLibrary(
     override suspend fun virtualTypeCounts(): Map<String, Int> = emptyMap()
 }
 
+internal fun rommGameMatches(game: RommGame, search: String?): Boolean {
+    val term = search?.let { TextNormalizer.normalize(it) }?.takeIf { it.isNotEmpty() } ?: return true
+    return TextNormalizer.normalize(game.name).contains(term)
+}
+
 internal fun SimpleRomDto.toDomain(): RommGame = RommGame(
     id = id,
     platformId = platformId,
@@ -79,6 +94,8 @@ internal fun SimpleRomDto.toDomain(): RommGame = RommGame(
     ssMedia = ssMetadata?.let {
         RommSsMedia(it.box2dUrl, it.box3dUrl, it.miximageUrl, it.titleScreenUrl, it.screenshotUrl, it.marqueeUrl, it.manualUrl)
     },
+    groupKey = (siblings.map { it.id } + id).min(),
+    isMainSibling = isMainSibling,
 )
 
 internal fun FirmwareDto.toDomain() = RommFirmware(

@@ -25,6 +25,12 @@ data class PlatformDto(
 )
 
 @Serializable
+data class RomSiblingDto(
+    val id: Int,
+    @SerialName("is_main_sibling") val isMainSibling: Boolean = false,
+)
+
+@Serializable
 data class RomFileDto(
     val id: Int,
     @SerialName("file_name") val fileName: String,
@@ -63,6 +69,8 @@ data class SimpleRomDto(
     @SerialName("url_cover") val urlCover: String? = null,
     @SerialName("has_multiple_files") val hasMultipleFiles: Boolean = false,
     val files: List<RomFileDto> = emptyList(),
+    @SerialName("sibling_roms") val siblings: List<RomSiblingDto> = emptyList(),
+    @SerialName("is_main_sibling") val isMainSibling: Boolean = false,
     val metadatum: RomMetadatumDto? = null,
     @SerialName("ss_metadata") val ssMetadata: SsMetadataDto? = null,
     @SerialName("updated_at") val updatedAt: String? = null,

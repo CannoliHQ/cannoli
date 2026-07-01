@@ -3,10 +3,13 @@ package dev.cannoli.scorza.romm.cache
 import dev.cannoli.scorza.romm.RommCollection
 import dev.cannoli.scorza.romm.RommCollectionGroup
 import dev.cannoli.scorza.romm.RommGame
+import dev.cannoli.scorza.romm.RommGroup
 import dev.cannoli.scorza.romm.RommLibrary
 import dev.cannoli.scorza.romm.RommPage
 import dev.cannoli.scorza.romm.RommPlatform
 import dev.cannoli.scorza.romm.RommSearchQuery
+import dev.cannoli.scorza.romm.RommVariantFolder
+import dev.cannoli.scorza.romm.rommGameMatches
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -24,6 +27,12 @@ class CachedRommLibrary(private val db: RommDatabase) : RommLibrary {
                 limit = limit,
                 offset = offset,
             )
+        }
+
+    override suspend fun foldedGames(platform: RommPlatform, search: String?): List<RommGroup> =
+        withContext(Dispatchers.IO) {
+            val games = db.allGames(platform.id).filter { rommGameMatches(it, search) }
+            RommVariantFolder.foldSorted(games)
         }
 
     override suspend fun searchAll(query: RommSearchQuery): List<RommGame> =
