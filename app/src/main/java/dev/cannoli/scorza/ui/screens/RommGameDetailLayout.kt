@@ -42,8 +42,8 @@ object RommGameDetailLayout {
             }
         }
 
-    fun showDownloadAction(localState: LocalState, downloadEnabled: Boolean): Boolean =
-        downloadEnabled && localState == LocalState.REMOTE
+    fun showDownloadAction(localState: LocalState, downloadEnabled: Boolean, folded: Boolean = false): Boolean =
+        downloadEnabled && (localState == LocalState.REMOTE || folded)
 
     fun formatBytes(bytes: Long): String = when {
         bytes >= 1_073_741_824L -> "%.1f GB".format(bytes / 1_073_741_824.0)

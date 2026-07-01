@@ -25,6 +25,7 @@ import dev.cannoli.scorza.settings.GlobalOverridesManager
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.input.runtime.InputDispatcher
+import dev.cannoli.scorza.util.NaturalSort
 import dev.cannoli.scorza.di.IoScope
 import dev.cannoli.ui.components.KeyboardState
 import kotlinx.coroutines.CoroutineScope
@@ -120,6 +121,24 @@ class InputRouter @Inject constructor(
             }
             override fun onNorth() {
                 val s = nav.currentScreen as? LauncherScreen.RommGameDetail ?: return
+                if (s.members.size > 1) {
+                    val presentIds = rommBrowseViewModel.presentIdsForTag(s.tag, s.members)
+                    val entries = s.members.map { g ->
+                        dev.cannoli.scorza.ui.screens.RommVariantEntry(
+                            game = g,
+                            label = dev.cannoli.scorza.romm.RommVariantFolder.variantLabel(g) { context.getString(dev.cannoli.ui.R.string.romm_variant_rev, it) },
+                            present = g.id in presentIds,
+                            isPrimary = g.id == s.game.id,
+                        )
+                    }
+                    val sorted = entries.sortedWith(
+                        compareByDescending<dev.cannoli.scorza.ui.screens.RommVariantEntry> { it.isPrimary }
+                            .then(compareBy(NaturalSort) { it.label })
+                    )
+                    nav.dialogState.value = dev.cannoli.scorza.ui.screens.DialogState.RommVersionPicker(
+                        gameName = s.game.name, tag = s.tag, members = sorted)
+                    return
+                }
                 if (s.localState != dev.cannoli.scorza.romm.LocalState.REMOTE) return
                 rommDownloader.enqueue(listOf(dev.cannoli.scorza.romm.download.RommDownloadItem(
                     rommId = s.game.id, game = s.game, tag = s.tag,
@@ -526,6 +545,7 @@ class InputRouter @Inject constructor(
                 localState = row.localState,
                 platformName = row.platform.displayName,
                 tag = row.platform.cannoliTag,
+                members = row.members,
             ))
         },
         onBack = {
@@ -552,6 +572,7 @@ class InputRouter @Inject constructor(
                     localState = row.localState,
                     platformName = platform.displayName,
                     tag = platform.cannoliTag,
+                    members = row.members,
                 ))
             }
         },
@@ -595,6 +616,7 @@ class InputRouter @Inject constructor(
                 localState = row.localState,
                 platformName = platform?.displayName ?: "",
                 tag = platform?.cannoliTag ?: "",
+                members = row.members,
             ))
         },
     )

@@ -89,6 +89,7 @@ class DialogInputHandler @Inject constructor(
     private val syncHistoryStore: dev.cannoli.scorza.romm.sync.SyncHistoryStore,
     private val pendingConflictStore: dev.cannoli.scorza.romm.sync.PendingConflictStore,
     private val saveSyncStatusHolder: dev.cannoli.scorza.romm.sync.SaveSyncStatusHolder,
+    private val osdController: dev.cannoli.ui.components.OsdController,
 ) : DialogPrecedence {
     private val selectHoldHandler = Handler(Looper.getMainLooper())
     private val selectHoldRunnable = Runnable {
@@ -249,6 +250,9 @@ class DialogInputHandler @Inject constructor(
             is DialogState.RommCollectionToggle -> {
                 if (ds.items.isNotEmpty()) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(ds.items.size))
             }
+            is DialogState.RommVersionPicker -> {
+                if (ds.members.isNotEmpty()) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(ds.members.size))
+            }
             else -> {}
         }
         return true
@@ -324,6 +328,9 @@ class DialogInputHandler @Inject constructor(
                 if (ds.items.isNotEmpty()) {
                     nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(ds.items.size))
                 }
+            }
+            is DialogState.RommVersionPicker -> {
+                if (ds.members.isNotEmpty()) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(ds.members.size))
             }
             else -> {}
         }
@@ -597,6 +604,7 @@ class DialogInputHandler @Inject constructor(
                 }
             }
             is DialogState.RommConfirm -> onRommConfirm(ds)
+            is DialogState.RommVersionPicker -> onRommVersionConfirm(ds)
             is DialogState.RAPreloadResult -> {
                 nav.dialogState.value = DialogState.None
             }
@@ -875,6 +883,16 @@ class DialogInputHandler @Inject constructor(
         }
     }
 
+    private fun onRommVersionConfirm(ds: DialogState.RommVersionPicker) {
+        val entry = ds.members.getOrNull(ds.selectedIndex) ?: return
+        nav.dialogState.value = DialogState.None
+        rommDownloader.enqueue(listOf(dev.cannoli.scorza.romm.download.RommDownloadItem(
+            rommId = entry.game.id, game = entry.game, tag = ds.tag,
+            kind = dev.cannoli.scorza.romm.download.RommDownloadKind.ROM)))
+        dev.cannoli.scorza.romm.download.RommDownloadManager.ensureStarted(context)
+        osdController.show(context.getString(dev.cannoli.ui.R.string.romm_osd_download_queued))
+    }
+
     private fun artResultRowCount(ds: DialogState.RommArtResults): Int =
         dev.cannoli.scorza.ui.screens.rommArtIssueRows(
             ds.results,
@@ -993,6 +1011,7 @@ class DialogInputHandler @Inject constructor(
             }
             is DialogState.RommActionsMenu -> nav.dialogState.value = DialogState.None
             is DialogState.RommSettingsMenu -> nav.dialogState.value = DialogState.None
+            is DialogState.RommVersionPicker -> nav.dialogState.value = DialogState.None
             is DialogState.RommAdvancedMenu -> backToRommSettings(dev.cannoli.scorza.ui.components.RommSettingsRow.ADVANCED)
             is DialogState.RommSaveSyncMenu -> backToRommSettings(dev.cannoli.scorza.ui.components.RommSettingsRow.SAVE_SYNC)
             is DialogState.SyncHistory -> {

@@ -134,7 +134,15 @@ sealed interface DialogState {
         val base: String,
         val selectedIndex: Int = 0,
     ) : DialogState
+    data class RommVersionPicker(
+        val gameName: String,
+        val tag: String,
+        val members: List<RommVariantEntry>,
+        val selectedIndex: Int = 0,
+    ) : DialogState
 }
+
+data class RommVariantEntry(val game: dev.cannoli.scorza.romm.RommGame, val label: String, val present: Boolean, val isPrimary: Boolean)
 
 data class RommPlatformToggleItem(val tag: String, val displayName: String, val visible: Boolean)
 data class RommCollectionToggleItem(val group: dev.cannoli.scorza.romm.RommCollectionGroup, val displayName: String, val visible: Boolean)
@@ -208,6 +216,7 @@ val DialogState.isFullScreen: Boolean
         is DialogState.SaveSyncConflict,
         is DialogState.SaveSyncStaleBlock,
         is DialogState.SyncHistory,
-        is DialogState.ConflictsMenu -> true
+        is DialogState.ConflictsMenu,
+        is DialogState.RommVersionPicker -> true
         else -> false
     }

@@ -66,6 +66,7 @@ import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.screenPadding
 import dev.cannoli.ui.theme.Spacing
 
+private const val ICON_PRIMARY = "\u2605"
 private const val ICON_CHECK_CIRCLE = "\uF058"
 private const val ICON_SYNC_DOWNLOAD = "\uF063"
 private const val ICON_SYNC_UPLOAD = "\uF062"
@@ -314,6 +315,32 @@ fun DialogOverlay(
                         fontSize = listFontSize,
                         lineHeight = listLineHeight,
                         verticalPadding = listVerticalPadding
+                    )
+                }
+            }
+        }
+
+        is DialogState.RommVersionPicker -> {
+            ListDialogScreen(
+                backgroundImagePath = backgroundImagePath,
+                backgroundTint = backgroundTint,
+                title = stringResource(dev.cannoli.scorza.R.string.romm_version_picker_title),
+                listFontSize = listFontSize,
+                listLineHeight = listLineHeight,
+                rightBottomItems = listOf(
+                    buttonStyle.confirm to stringResource(dev.cannoli.scorza.R.string.label_download)
+                ),
+                buttonStyle = buttonStyle,
+            ) {
+                List(items = dialogState.members, selectedIndex = dialogState.selectedIndex, itemHeight = itemHeight) { _, entry, isSelected ->
+                    PillRowKeyValue(
+                        label = if (entry.isPrimary) "$ICON_PRIMARY ${entry.label}" else entry.label,
+                        value = dev.cannoli.scorza.ui.screens.RommGameDetailLayout.formatBytes(entry.game.sizeBytes),
+                        isSelected = isSelected,
+                        fontSize = listFontSize,
+                        lineHeight = listLineHeight,
+                        verticalPadding = listVerticalPadding,
+                        dotIndicator = if (entry.present) true else null,
                     )
                 }
             }

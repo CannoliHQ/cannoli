@@ -59,6 +59,7 @@ fun RommGameDetailScreen(
     imageLoader: coil.ImageLoader,
     scrollStep: Int,
     onScrollStepChanged: (Int) -> Unit,
+    memberCount: Int = 1,
     listFontSize: TextUnit = 22.sp,
     listLineHeight: TextUnit = 32.sp,
     buttonStyle: ButtonStyle = ButtonStyle(),
@@ -110,7 +111,7 @@ fun RommGameDetailScreen(
                 rightItems = buildList {
                     if (game.ssMedia?.manual != null)
                         add(buttonStyle.west to stringResource(R.string.label_manual))
-                    if (RommGameDetailLayout.showDownloadAction(localState, DOWNLOAD_ENABLED))
+                    if (RommGameDetailLayout.showDownloadAction(localState, DOWNLOAD_ENABLED, folded = memberCount > 1))
                         add(buttonStyle.north to stringResource(R.string.romm_detail_download))
                 },
             )
