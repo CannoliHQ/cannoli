@@ -3,12 +3,13 @@ package dev.cannoli.scorza.ui.viewmodel
 import dev.cannoli.scorza.romm.LocalState
 import dev.cannoli.scorza.romm.RommCollection
 import dev.cannoli.scorza.romm.RommCollectionGroup
+import dev.cannoli.scorza.romm.RommFoldedGame
 import dev.cannoli.scorza.romm.RommGame
-import dev.cannoli.scorza.romm.RommGroup
 import dev.cannoli.scorza.romm.RommLibrary
 import dev.cannoli.scorza.romm.RommPage
 import dev.cannoli.scorza.romm.RommPlatform
 import dev.cannoli.scorza.romm.RommSearchQuery
+import dev.cannoli.scorza.romm.fakeFold
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -26,11 +27,14 @@ class RommBrowseViewModelGlobalSearchTest {
         )
         override suspend fun games(platform: RommPlatform, page: Int, search: String?) =
             RommPage<RommGame>(emptyList(), 0, 100, 0)
-        override suspend fun foldedGames(platform: RommPlatform, search: String?) = emptyList<RommGroup>()
-        override suspend fun searchAll(query: RommSearchQuery) = listOf(
+        override suspend fun foldedGames(platform: RommPlatform, search: String?) = emptyList<RommFoldedGame>()
+        override suspend fun foldedGamesForCollection(collectionId: String, search: String?) = emptyList<RommFoldedGame>()
+        override suspend fun foldedGlobalSearch(query: RommSearchQuery) = fakeFold(listOf(
             game(1, 1, "Super Mario World", "smw.sfc"),
             game(2, 2, "Mario Kart", "mk.gba"),
-        )
+        ))
+        override suspend fun groupMembers(groupKey: Int) = emptyList<RommGame>()
+        override suspend fun searchAll(query: RommSearchQuery) = emptyList<RommGame>()
         override suspend fun collections(groups: Set<RommCollectionGroup>, virtualType: String?) = emptyList<RommCollection>()
         override suspend fun collectionGroupCounts() = emptyMap<RommCollectionGroup, Int>()
         override suspend fun virtualTypeCounts() = emptyMap<String, Int>()

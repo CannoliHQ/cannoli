@@ -121,22 +121,27 @@ class InputRouter @Inject constructor(
             }
             override fun onNorth() {
                 val s = nav.currentScreen as? LauncherScreen.RommGameDetail ?: return
-                if (s.members.size > 1) {
-                    val presentIds = rommBrowseViewModel.presentIdsForTag(s.tag, s.members)
-                    val entries = s.members.map { g ->
-                        dev.cannoli.scorza.ui.screens.RommVariantEntry(
-                            game = g,
-                            label = dev.cannoli.scorza.romm.RommVariantFolder.variantLabel(g) { context.getString(dev.cannoli.ui.R.string.romm_variant_rev, it) },
-                            present = g.id in presentIds,
-                            isPrimary = g.id == s.game.id,
+                if (s.versionCount > 1) {
+                    ioScope.launch {
+                        val members = rommBrowseViewModel.groupMembers(s.groupKey)
+                        val presentIds = rommBrowseViewModel.presentIdsForTag(s.tag, members)
+                        val entries = members.map { g ->
+                            dev.cannoli.scorza.ui.screens.RommVariantEntry(
+                                game = g,
+                                label = dev.cannoli.scorza.romm.RommVariantFolder.variantLabel(g) { context.getString(dev.cannoli.ui.R.string.romm_variant_rev, it) },
+                                present = g.id in presentIds,
+                                isPrimary = g.id == s.game.id,
+                            )
+                        }
+                        val sorted = entries.sortedWith(
+                            compareByDescending<dev.cannoli.scorza.ui.screens.RommVariantEntry> { it.isPrimary }
+                                .then(compareBy(NaturalSort) { it.label })
                         )
+                        withContext(Dispatchers.Main) {
+                            nav.dialogState.value = dev.cannoli.scorza.ui.screens.DialogState.RommVersionPicker(
+                                gameName = s.game.name, tag = s.tag, members = sorted)
+                        }
                     }
-                    val sorted = entries.sortedWith(
-                        compareByDescending<dev.cannoli.scorza.ui.screens.RommVariantEntry> { it.isPrimary }
-                            .then(compareBy(NaturalSort) { it.label })
-                    )
-                    nav.dialogState.value = dev.cannoli.scorza.ui.screens.DialogState.RommVersionPicker(
-                        gameName = s.game.name, tag = s.tag, members = sorted)
                     return
                 }
                 if (s.localState != dev.cannoli.scorza.romm.LocalState.REMOTE) return
@@ -545,7 +550,8 @@ class InputRouter @Inject constructor(
                 localState = row.localState,
                 platformName = row.platform.displayName,
                 tag = row.platform.cannoliTag,
-                members = row.members,
+                groupKey = row.groupKey,
+                versionCount = row.versionCount,
             ))
         },
         onBack = {
@@ -572,7 +578,8 @@ class InputRouter @Inject constructor(
                     localState = row.localState,
                     platformName = platform.displayName,
                     tag = platform.cannoliTag,
-                    members = row.members,
+                    groupKey = row.groupKey,
+                    versionCount = row.versionCount,
                 ))
             }
         },
@@ -616,7 +623,8 @@ class InputRouter @Inject constructor(
                 localState = row.localState,
                 platformName = platform?.displayName ?: "",
                 tag = platform?.cannoliTag ?: "",
-                members = row.members,
+                groupKey = row.groupKey,
+                versionCount = row.versionCount,
             ))
         },
     )

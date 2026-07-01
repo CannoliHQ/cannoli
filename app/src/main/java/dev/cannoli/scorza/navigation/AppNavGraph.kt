@@ -308,7 +308,8 @@ sealed class LauncherScreen {
         val platformName: String,
         val tag: String,
         val scrollStep: Int = 0,
-        val members: List<dev.cannoli.scorza.romm.RommGame> = listOf(game),
+        val groupKey: Int = game.groupKey,
+        val versionCount: Int = 1,
     ) : LauncherScreen()
     data class RaOfflinePlatform(val tag: String, val name: String, val count: Int)
 
@@ -1689,7 +1690,7 @@ fun AppNavGraph(
                         imageLoader = loader,
                         scrollStep = currentScreen.scrollStep,
                         onScrollStepChanged = { nav?.replaceTop(currentScreen.copy(scrollStep = it)) },
-                        memberCount = currentScreen.members.size,
+                        memberCount = currentScreen.versionCount,
                         listFontSize = listFontSize,
                         listLineHeight = listLineHeight,
                         buttonStyle = labels,

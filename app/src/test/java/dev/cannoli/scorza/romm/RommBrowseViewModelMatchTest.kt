@@ -17,8 +17,10 @@ class RommBrowseViewModelMatchTest {
         override suspend fun platforms() = listOf(RommPlatform(1, "snes", "SNES", "Super Nintendo", 2))
         override suspend fun games(platform: RommPlatform, page: Int, search: String?) =
             RommPage(if (page == 0) games else emptyList(), games.size, RommLibrary.PAGE_SIZE, 0)
-        override suspend fun foldedGames(platform: RommPlatform, search: String?) =
-            RommVariantFolder.foldSorted(games)
+        override suspend fun foldedGames(platform: RommPlatform, search: String?) = fakeFold(games)
+        override suspend fun foldedGamesForCollection(collectionId: String, search: String?) = emptyList<RommFoldedGame>()
+        override suspend fun foldedGlobalSearch(query: RommSearchQuery) = emptyList<RommFoldedGame>()
+        override suspend fun groupMembers(groupKey: Int) = games.filter { it.groupKey == groupKey }
         override suspend fun searchAll(query: RommSearchQuery) = emptyList<RommGame>()
         override suspend fun collections(groups: Set<RommCollectionGroup>, virtualType: String?) = emptyList<RommCollection>()
         override suspend fun collectionGroupCounts() = emptyMap<RommCollectionGroup, Int>()
@@ -49,5 +51,23 @@ class RommBrowseViewModelMatchTest {
         val byId = vm.games.value!!.rows.associate { it.game.id to it.localState }
         assertEquals(LocalState.PRESENT, byId[10])
         assertEquals(LocalState.REMOTE, byId[11])
+    }
+
+    // The picker (InputRouter.onNorth, Android-only) fetches members via groupMembers and marks
+    // present ones via presentIdsForTag; assert the reachable VM pieces build the right data.
+    @Test fun `groupMembers plus presentIdsForTag drive the variant picker data`() = runBlocking {
+        val usa = game(10, "zelda-usa.sfc", 1L).copy(name = "Zelda", groupKey = 10, regions = listOf("USA"))
+        val jpn = game(11, "zelda-jp.sfc", 1L).copy(name = "Zelda", groupKey = 10, regions = listOf("Japan"))
+        val vm = RommBrowseViewModel(
+            library = FakeLibrary(listOf(usa, jpn)),
+            syncCoordinator = null,
+            db = null,
+            presentNamesFor = { setOf("zelda-jp.sfc") },
+            linkedIdsProvider = { emptySet() },
+        )
+        val members = vm.groupMembers(10)
+        assertEquals(setOf(10, 11), members.map { it.id }.toSet())
+        val present = vm.presentIdsForTag(snes.cannoliTag, members)
+        assertEquals(setOf(11), present)
     }
 }

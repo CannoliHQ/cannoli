@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.romm
 
+import dev.cannoli.scorza.util.NaturalSort
 import dev.cannoli.scorza.util.TextNormalizer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -7,7 +8,10 @@ import kotlinx.coroutines.withContext
 interface RommLibrary {
     suspend fun platforms(): List<RommPlatform>
     suspend fun games(platform: RommPlatform, page: Int, search: String? = null): RommPage<RommGame>
-    suspend fun foldedGames(platform: RommPlatform, search: String? = null): List<RommGroup>
+    suspend fun foldedGames(platform: RommPlatform, search: String? = null): List<RommFoldedGame>
+    suspend fun foldedGamesForCollection(collectionId: String, search: String? = null): List<RommFoldedGame>
+    suspend fun foldedGlobalSearch(query: RommSearchQuery): List<RommFoldedGame>
+    suspend fun groupMembers(groupKey: Int): List<RommGame>
     suspend fun searchAll(query: RommSearchQuery): List<RommGame>
     suspend fun collections(groups: Set<RommCollectionGroup>, virtualType: String? = null): List<RommCollection>
     suspend fun collectionGroupCounts(): Map<RommCollectionGroup, Int>
@@ -41,13 +45,23 @@ class LiveRommLibrary(
             )
         }
 
-    override suspend fun foldedGames(platform: RommPlatform, search: String?): List<RommGroup> =
+    // LiveRommLibrary is not the browse runtime; the folded reads only exist so the interface stays
+    // consistent. Browse always goes through CachedRommLibrary, which uses the DB window fold.
+    override suspend fun foldedGames(platform: RommPlatform, search: String?): List<RommFoldedGame> =
         withContext(Dispatchers.IO) {
             val games = client.getRoms(platform.id, limit = platform.romCount.coerceAtLeast(1), offset = 0, search = null)
                 .items.map { it.toDomain() }
                 .filter { rommGameMatches(it, search) }
-            RommVariantFolder.foldSorted(games)
+            foldLive(games)
         }
+
+    override suspend fun foldedGamesForCollection(collectionId: String, search: String?): List<RommFoldedGame> =
+        emptyList()
+
+    override suspend fun foldedGlobalSearch(query: RommSearchQuery): List<RommFoldedGame> =
+        withContext(Dispatchers.IO) { foldLive(searchAll(query)) }
+
+    override suspend fun groupMembers(groupKey: Int): List<RommGame> = emptyList()
 
     override suspend fun searchAll(query: RommSearchQuery): List<RommGame> =
         withContext(Dispatchers.IO) {
@@ -69,6 +83,20 @@ class LiveRommLibrary(
     override suspend fun collectionGroupCounts(): Map<RommCollectionGroup, Int> = emptyMap()
     override suspend fun virtualTypeCounts(): Map<String, Int> = emptyMap()
 }
+
+// Minimal live fold; mirrors the DB representative order (main sibling, region rank, natural name).
+// Only used by LiveRommLibrary, which is not the browse runtime.
+private fun foldLive(games: List<RommGame>): List<RommFoldedGame> =
+    games.groupBy { it.platformId to if (it.groupKey > 0) it.groupKey else -it.id }
+        .map { (_, members) ->
+            val rep = members.minWithOrNull(
+                compareByDescending<RommGame> { it.isMainSibling }
+                    .thenBy { RommVariantFolder.regionRank(it.regions) }
+                    .thenBy(NaturalSort) { it.name }
+            ) ?: members.first()
+            RommFoldedGame(rep, members.size, members.map { it.id }, members.map { it.fsName })
+        }
+        .sortedWith(compareBy(NaturalSort) { it.game.name })
 
 internal fun rommGameMatches(game: RommGame, search: String?): Boolean {
     val term = search?.let { TextNormalizer.normalize(it) }?.takeIf { it.isNotEmpty() } ?: return true

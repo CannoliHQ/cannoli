@@ -3,8 +3,8 @@ package dev.cannoli.scorza.ui.viewmodel
 import dev.cannoli.scorza.romm.LocalState
 import dev.cannoli.scorza.romm.RommCollection
 import dev.cannoli.scorza.romm.RommCollectionGroup
+import dev.cannoli.scorza.romm.RommFoldedGame
 import dev.cannoli.scorza.romm.RommGame
-import dev.cannoli.scorza.romm.RommGroup
 import dev.cannoli.scorza.romm.RommLibrary
 import dev.cannoli.scorza.romm.RommPage
 import dev.cannoli.scorza.romm.RommPlatform
@@ -30,7 +30,7 @@ class RommBrowseCollectionsTest {
     private val gba = RommPlatform(2, "gba", "GBA", "Game Boy Advance", 1)
 
     private fun game(id: Int, platformId: Int, name: String, fsName: String, size: Long = 0L) =
-        RommGame(id, platformId, name, fsName, size, null, null, emptyList(), emptyList(), null, emptyList())
+        RommGame(id, platformId, name, fsName, size, null, null, emptyList(), emptyList(), null, emptyList(), groupKey = id)
 
     private val collection = RommCollection("col-1", RommCollectionGroup.USER, "My Faves", 2)
 
@@ -38,7 +38,11 @@ class RommBrowseCollectionsTest {
         override suspend fun platforms() = listOf(snes, gba)
         override suspend fun games(platform: RommPlatform, page: Int, search: String?) =
             RommPage<RommGame>(emptyList(), 0, RommLibrary.PAGE_SIZE, 0)
-        override suspend fun foldedGames(platform: RommPlatform, search: String?) = emptyList<RommGroup>()
+        override suspend fun foldedGames(platform: RommPlatform, search: String?) = db.foldedGames(platform.id, search)
+        override suspend fun foldedGamesForCollection(collectionId: String, search: String?) =
+            db.foldedGamesForCollection(collectionId, search)
+        override suspend fun foldedGlobalSearch(query: RommSearchQuery) = db.foldedGlobalSearch(query)
+        override suspend fun groupMembers(groupKey: Int) = db.groupMembers(groupKey)
         override suspend fun searchAll(query: RommSearchQuery) = emptyList<RommGame>()
         override suspend fun collections(groups: Set<RommCollectionGroup>, virtualType: String?) =
             db.collections(groups, virtualType)

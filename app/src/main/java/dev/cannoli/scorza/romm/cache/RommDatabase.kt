@@ -9,8 +9,10 @@ import dev.cannoli.scorza.db.queryOne
 import dev.cannoli.scorza.romm.RommCollection
 import dev.cannoli.scorza.romm.RommCollectionGroup
 import dev.cannoli.scorza.romm.RommGame
+import dev.cannoli.scorza.romm.RommFoldedGame
 import dev.cannoli.scorza.romm.RommPlatform
 import dev.cannoli.scorza.romm.RommSearchQuery
+import dev.cannoli.scorza.romm.RommVariantFolder
 import dev.cannoli.scorza.util.NaturalSort
 import dev.cannoli.scorza.util.TextNormalizer
 import java.io.File
@@ -74,11 +76,13 @@ class RommDatabase(private val dbFileProvider: () -> File) {
                 group_key INTEGER NOT NULL DEFAULT 0,
                 is_main_sibling INTEGER NOT NULL DEFAULT 0,
                 sort_key TEXT NOT NULL DEFAULT '',
-                updated_at TEXT
+                updated_at TEXT,
+                region_rank INTEGER NOT NULL DEFAULT 3
             )
         """.trimIndent())
         c.execSQL("CREATE INDEX IF NOT EXISTS idx_games_platform_sort ON games(platform_id, sort_key)")
         c.execSQL("CREATE INDEX IF NOT EXISTS idx_games_name_normalized ON games(name_normalized)")
+        c.execSQL("CREATE INDEX IF NOT EXISTS games_group ON games(platform_id, group_key)")
         c.execSQL("""
             CREATE TABLE IF NOT EXISTS sync_state (
                 key TEXT PRIMARY KEY,
@@ -158,15 +162,15 @@ class RommDatabase(private val dbFileProvider: () -> File) {
                 val g = rec.game
                 c.execute(
                     """INSERT OR REPLACE INTO games
-                       (id, platform_id, name, name_normalized, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json, ss_media_json, group_key, is_main_sibling, sort_key, updated_at)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                       (id, platform_id, name, name_normalized, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json, ss_media_json, group_key, is_main_sibling, sort_key, updated_at, region_rank)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     g.id, g.platformId, g.name, TextNormalizer.normalize(g.name), g.fsName, g.sizeBytes, g.summary, g.revision,
                     RommCacheJson.encodeStrings(g.regions), RommCacheJson.encodeStrings(g.languages),
                     RommCacheJson.encodeStrings(g.companies), RommCacheJson.encodeStrings(g.genres),
                     RommCacheJson.encodeStrings(g.gameModes), g.firstReleaseDate,
                     g.coverPath, RommCacheJson.encodeFiles(g.files), RommCacheJson.encodeSsMedia(g.ssMedia),
                     g.groupKey, if (g.isMainSibling) 1 else 0,
-                    NaturalSort.toSortKey(g.name), rec.updatedAt,
+                    NaturalSort.toSortKey(g.name), rec.updatedAt, RommVariantFolder.regionRank(g.regions),
                 )
             }
             c.execSQL("COMMIT")
@@ -193,6 +197,50 @@ class RommDatabase(private val dbFileProvider: () -> File) {
         groupKey = stmt.getInt(16),
         isMainSibling = stmt.getInt(17) == 1,
     )
+
+    // rowToGame reads columns 0..17; folded window queries append variant_count, member_ids, member_fs at 18..20.
+    private fun rowToFolded(stmt: androidx.sqlite.SQLiteStatement) = RommFoldedGame(
+        game = rowToGame(stmt),
+        variantCount = stmt.getInt(18),
+        memberIds = splitUnitSeparated(stmt.getText(19)).map { it.toInt() },
+        memberFsNames = splitUnitSeparated(stmt.getText(20)),
+    )
+
+    private fun splitUnitSeparated(raw: String): List<String> =
+        if (raw.isEmpty()) emptyList() else raw.split(31.toChar())
+
+    fun foldedGames(platformId: Int, search: String?): List<RommFoldedGame> = withConn { c ->
+        val like = search?.let { TextNormalizer.normalize(it) }?.takeIf { it.isNotEmpty() }?.let { "%$it%" }
+        val filter = if (like != null) "AND name_normalized LIKE ?" else ""
+        val sql = foldedSql("platform_id = ? $filter")
+        val args: Array<Any?> = if (like != null) arrayOf(platformId, like) else arrayOf(platformId)
+        c.queryAll(sql, *args, mapper = ::rowToFolded)
+    }
+
+    fun foldedGamesForCollection(collectionId: String, search: String?): List<RommFoldedGame> = withConn { c ->
+        val like = search?.let { TextNormalizer.normalize(it) }?.takeIf { it.isNotEmpty() }?.let { "%$it%" }
+        // Membership via IN-subquery rather than a JOIN: the bundled SQLite optimizer rejects the folded
+        // window query when a JOIN feeds it, but accepts the same shape over an id IN (...) filter.
+        val filter = if (like != null) "AND name_normalized LIKE ?" else ""
+        val sql = foldedSql("id IN (SELECT rom_id FROM collection_roms WHERE collection_id = ?) $filter")
+        val args: Array<Any?> = if (like != null) arrayOf(collectionId, like) else arrayOf(collectionId)
+        c.queryAll(sql, *args, mapper = ::rowToFolded)
+    }
+
+    fun foldedGlobalSearch(query: RommSearchQuery): List<RommFoldedGame> = withConn { c ->
+        val term = TextNormalizer.normalize(query.text)
+        if (term.isEmpty()) return@withConn emptyList()
+        val sql = foldedSql("name_normalized LIKE ?", limit = GLOBAL_SEARCH_LIMIT)
+        c.queryAll(sql, "%$term%", mapper = ::rowToFolded)
+    }
+
+    fun groupMembers(groupKey: Int): List<RommGame> = withConn { c ->
+        c.queryAll(
+            "SELECT $GAME_COLUMNS FROM games WHERE group_key = ? ORDER BY $REPRESENTATIVE_ORDER",
+            groupKey,
+            mapper = ::rowToGame,
+        )
+    }
 
     fun games(platformId: Int, search: String?, limit: Int, offset: Int): List<RommGame> = withConn { c ->
         val like = search?.let { TextNormalizer.normalize(it) }?.takeIf { it.isNotEmpty() }?.let { "%$it%" }
@@ -391,7 +439,31 @@ class RommDatabase(private val dbFileProvider: () -> File) {
     }
 
     private companion object {
-        const val SCHEMA_VERSION = 4
+        const val SCHEMA_VERSION = 5
         const val GLOBAL_SEARCH_LIMIT = 300
+
+        const val GAME_COLUMNS =
+            "id, platform_id, name, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json, ss_media_json, group_key, is_main_sibling"
+
+        const val REPRESENTATIVE_ORDER = "is_main_sibling DESC, region_rank ASC, sort_key ASC"
+
+        // Window over PARTITION BY group_key, keep the representative row (rn = 1), carry group aggregates.
+        fun foldedSql(where: String, limit: Int? = null): String {
+            val outer = if (limit != null) " LIMIT $limit" else ""
+            // sort_key must be projected out of the subquery: the bundled SQLite optimizer rejects an outer
+            // ORDER BY over an unprojected column when the inner query mixes COUNT and group_concat windows.
+            return """
+                SELECT $GAME_COLUMNS, variant_count, member_ids, member_fs FROM (
+                  SELECT $GAME_COLUMNS, sort_key,
+                    ROW_NUMBER() OVER (PARTITION BY group_key ORDER BY $REPRESENTATIVE_ORDER) AS rn,
+                    COUNT(*)     OVER (PARTITION BY group_key) AS variant_count,
+                    group_concat(id, char(31))      OVER (PARTITION BY group_key) AS member_ids,
+                    group_concat(fs_name, char(31)) OVER (PARTITION BY group_key) AS member_fs
+                  FROM games WHERE $where
+                ) WHERE rn = 1
+                ORDER BY sort_key$outer
+            """.trimIndent()
+        }
+
     }
 }

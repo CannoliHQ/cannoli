@@ -82,3 +82,10 @@ data class RommCollection(
     val romCount: Int,
     val virtualType: String? = null,
 )
+
+data class RommFoldedGame(
+    val game: RommGame,
+    val variantCount: Int,
+    val memberIds: List<Int>,
+    val memberFsNames: List<String>,
+)

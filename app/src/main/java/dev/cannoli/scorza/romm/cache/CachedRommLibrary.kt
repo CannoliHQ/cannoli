@@ -2,14 +2,12 @@ package dev.cannoli.scorza.romm.cache
 
 import dev.cannoli.scorza.romm.RommCollection
 import dev.cannoli.scorza.romm.RommCollectionGroup
+import dev.cannoli.scorza.romm.RommFoldedGame
 import dev.cannoli.scorza.romm.RommGame
-import dev.cannoli.scorza.romm.RommGroup
 import dev.cannoli.scorza.romm.RommLibrary
 import dev.cannoli.scorza.romm.RommPage
 import dev.cannoli.scorza.romm.RommPlatform
 import dev.cannoli.scorza.romm.RommSearchQuery
-import dev.cannoli.scorza.romm.RommVariantFolder
-import dev.cannoli.scorza.romm.rommGameMatches
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -29,11 +27,17 @@ class CachedRommLibrary(private val db: RommDatabase) : RommLibrary {
             )
         }
 
-    override suspend fun foldedGames(platform: RommPlatform, search: String?): List<RommGroup> =
-        withContext(Dispatchers.IO) {
-            val games = db.allGames(platform.id).filter { rommGameMatches(it, search) }
-            RommVariantFolder.foldSorted(games)
-        }
+    override suspend fun foldedGames(platform: RommPlatform, search: String?): List<RommFoldedGame> =
+        withContext(Dispatchers.IO) { db.foldedGames(platform.id, search) }
+
+    override suspend fun foldedGamesForCollection(collectionId: String, search: String?): List<RommFoldedGame> =
+        withContext(Dispatchers.IO) { db.foldedGamesForCollection(collectionId, search) }
+
+    override suspend fun foldedGlobalSearch(query: RommSearchQuery): List<RommFoldedGame> =
+        withContext(Dispatchers.IO) { db.foldedGlobalSearch(query) }
+
+    override suspend fun groupMembers(groupKey: Int): List<RommGame> =
+        withContext(Dispatchers.IO) { db.groupMembers(groupKey) }
 
     override suspend fun searchAll(query: RommSearchQuery): List<RommGame> =
         withContext(Dispatchers.IO) { db.searchAllGames(query) }
