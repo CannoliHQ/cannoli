@@ -362,7 +362,7 @@ fun DialogOverlay(
                 List(items = rows, selectedIndex = dialogState.selectedIndex, itemHeight = itemHeight) { _, row, isSelected ->
                     when (row) {
                         RommSettingsRow.CONCURRENT -> PillRowKeyValue(
-                            label = stringResource(R.string.romm_qm_concurrent),
+                            label = stringResource(R.string.romm_settings_concurrent),
                             value = dialogState.concurrent.toString(),
                             isSelected = isSelected,
                             fontSize = listFontSize,
@@ -370,7 +370,7 @@ fun DialogOverlay(
                             verticalPadding = listVerticalPadding
                         )
                         RommSettingsRow.COVER_ART -> PillRowKeyValue(
-                            label = stringResource(R.string.romm_qm_cover_art),
+                            label = stringResource(R.string.romm_settings_cover_art),
                             value = stringResource(rommArtLabelRes(dialogState.artType)),
                             isSelected = isSelected,
                             fontSize = listFontSize,
@@ -393,7 +393,7 @@ fun DialogOverlay(
             ListDialogScreen(
                 backgroundImagePath = backgroundImagePath,
                 backgroundTint = backgroundTint,
-                title = stringResource(R.string.romm_qm_advanced),
+                title = stringResource(R.string.romm_settings_advanced),
                 listFontSize = listFontSize,
                 listLineHeight = listLineHeight,
                 rightBottomItems = listOf(buttonStyle.confirm to stringResource(R.string.label_select)),
@@ -922,7 +922,7 @@ private fun formatConflictTime(millis: Long?): String =
         java.text.SimpleDateFormat("MMM d, h:mm a", java.util.Locale.getDefault()).format(java.util.Date(it))
     } ?: "—"
 
-val ROMM_ADVANCED_ROWS = listOf(R.string.romm_qm_rebuild, R.string.romm_qm_download_art)
+val ROMM_ADVANCED_ROWS = listOf(R.string.romm_settings_rebuild, R.string.romm_settings_download_art)
 
 enum class RommActionRow(@androidx.annotation.StringRes val labelRes: Int) {
     DOWNLOADS(R.string.romm_download_queue),
@@ -935,13 +935,13 @@ enum class RommActionRow(@androidx.annotation.StringRes val labelRes: Int) {
 }
 
 enum class RommSettingsRow(@androidx.annotation.StringRes val labelRes: Int, val isCycle: Boolean = false) {
-    COVER_ART(R.string.romm_qm_cover_art, isCycle = true),
-    CONCURRENT(R.string.romm_qm_concurrent, isCycle = true),
+    COVER_ART(R.string.romm_settings_cover_art, isCycle = true),
+    CONCURRENT(R.string.romm_settings_concurrent, isCycle = true),
     SAVE_SYNC(R.string.setting_romm_save_sync),
-    PLATFORMS(R.string.romm_qm_platforms),
-    COLLECTIONS(R.string.romm_qm_collections),
-    ADVANCED(R.string.romm_qm_advanced),
-    SERVER_INFO(R.string.romm_qm_server_info),
+    PLATFORMS(R.string.romm_settings_platforms),
+    COLLECTIONS(R.string.romm_settings_collections),
+    ADVANCED(R.string.romm_settings_advanced),
+    SERVER_INFO(R.string.romm_settings_server_info),
 }
 
 enum class RommSaveSyncRow {

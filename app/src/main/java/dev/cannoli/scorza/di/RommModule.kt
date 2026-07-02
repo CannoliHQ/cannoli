@@ -79,7 +79,7 @@ object RommModule {
     ): RommSyncCoordinator = RommSyncCoordinator(
         client, platformMap, db,
         enabledGroups = { rommStore.enabledCollectionGroups() },
-        collectionsLabel = { context.getString(dev.cannoli.scorza.R.string.romm_qm_collections) },
+        collectionsLabel = { context.getString(dev.cannoli.scorza.R.string.romm_sync_collections) },
     )
 
     @Provides @Singleton

@@ -263,6 +263,7 @@
     <string name="romm_download_manual">Manual</string>
     <string name="romm_syncing" tools:ignore="TypographyEllipsis">Building cache...</string>
     <string name="romm_syncing_platform" tools:ignore="TypographyEllipsis">Building cache...\n%1$s</string>
+    <string name="romm_sync_collections">Collections</string>
     <string name="romm_sync_error">Could not reach RomM. Showing cached library.</string>
     <string name="romm_download_queue">Download Queue</string>
     <string name="romm_download_queued">Queued</string>
@@ -286,15 +287,14 @@
     <string name="label_retry">RETRY</string>
     <string name="label_cancel_all">CANCEL ALL</string>
 
-    <string name="romm_qm_concurrent">Concurrent Downloads</string>
-    <string name="romm_qm_cover_art">Cover Art</string>
-    <string name="romm_qm_download_art">Download Missing Art</string>
-    <string name="romm_qm_platforms">Show / Hide Platforms</string>
-    <string name="romm_qm_collections">Collections</string>
-    <string name="romm_qm_server_info">Server Info</string>
-    <string name="romm_qm_advanced">Advanced</string>
-    <string name="romm_qm_firmware">Firmware</string>
-    <string name="romm_qm_rebuild">Rebuild Cache</string>
+    <string name="romm_settings_concurrent">Concurrent Downloads</string>
+    <string name="romm_settings_cover_art">Cover Art</string>
+    <string name="romm_settings_download_art">Download Missing Art</string>
+    <string name="romm_settings_platforms">Show / Hide Platforms</string>
+    <string name="romm_settings_collections">Show / Hide Collections</string>
+    <string name="romm_settings_server_info">Server Info</string>
+    <string name="romm_settings_advanced">Advanced</string>
+    <string name="romm_settings_rebuild">Rebuild Cache</string>
     <string name="romm_actions_title">RomM Quick Menu</string>
     <string name="romm_settings_title">RomM Settings</string>
     <string name="romm_return_to_cannoli">Return to Cannoli</string>
