@@ -22,4 +22,19 @@ class RaOptionCatalogTest {
         val all = RaOptionCatalog.categories.flatMap { it.settingKeys }
         assertEquals(all.size, all.distinct().size)
     }
+
+    @Test
+    fun categoriesMatchExpectedTaxonomy() {
+        val keys = RaOptionCatalog.categories.map { it.key }
+        assertEquals(
+            listOf("video", "audio", "latency", "speed", "input", "savestates", "osd"),
+            keys,
+        )
+    }
+
+    @Test
+    fun hardcoreToggleLivesInSaveStates() {
+        val savestates = RaOptionCatalog.categories.first { it.key == "savestates" }
+        assertTrue(savestates.settingKeys.contains("cheevos_hardcore_mode_enable"))
+    }
 }
