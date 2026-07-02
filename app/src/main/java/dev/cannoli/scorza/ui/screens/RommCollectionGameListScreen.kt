@@ -112,7 +112,7 @@ fun RommCollectionGameListScreen(
                                 val platformLabel = row.platform.cannoliTag.uppercase()
                                 PillRowKeyValue(
                                     label = row.game.name,
-                                    value = if (folded) "$platformLabel · ${row.versionCount}" else platformLabel,
+                                    value = if (folded) "${row.versionCount} · $platformLabel" else platformLabel,
                                     isSelected = isSelected,
                                     fontSize = listFontSize,
                                     lineHeight = listLineHeight,

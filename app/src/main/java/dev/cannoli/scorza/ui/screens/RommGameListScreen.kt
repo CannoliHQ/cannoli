@@ -116,7 +116,7 @@ fun RommGameListScreen(
                             val folded = row.versionCount > 1
                             val platformLabel = platformLabelForGame?.invoke(row.game)
                             val value = when {
-                                folded && platformLabel != null -> "$platformLabel · ${row.versionCount}"
+                                folded && platformLabel != null -> "${row.versionCount} · $platformLabel"
                                 folded -> row.versionCount.toString()
                                 else -> platformLabel ?: ""
                             }
