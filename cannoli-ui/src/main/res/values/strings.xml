@@ -598,6 +598,10 @@
     <string name="igm_ra_audio">Audio</string>
     <string name="igm_ra_latency">Latency</string>
     <string name="igm_ra_notifications">Notifications</string>
+    <string name="igm_ra_speed">Speed &amp; Rewind</string>
+    <string name="igm_ra_input">Input</string>
+    <string name="igm_ra_savestates">Save States</string>
+    <string name="igm_ra_osd">On-Screen Display</string>
     <string name="igm_ra_restart_hint">Applies on relaunch</string>
     <string name="igm_ra_on">On</string>
     <string name="igm_ra_off">Off</string>
