@@ -208,7 +208,7 @@ fun CannoliIGM(
                             labels.north to stringResource(dev.cannoli.ui.R.string.label_clear),
                             labels.confirm to stringResource(dev.cannoli.ui.R.string.label_press),
                         )
-                        screen is IGMScreen.RaOptions -> listOf(labels.confirm to selectLabel)
+                        screen is IGMScreen.RaOptions -> listOf(labels.north to stringResource(dev.cannoli.ui.R.string.label_ra_settings), labels.confirm to selectLabel)
                         screen is IGMScreen.RaOptionsCategory -> emptyList()
                         else -> listOf(labels.confirm to selectLabel)
                     }

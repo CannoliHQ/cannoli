@@ -50,26 +50,6 @@ object RaOptionCatalog {
             "rewind_granularity",
             "rewind_buffer_size",
         )),
-        Category("input", listOf(
-            "input_analog_deadzone",
-            "input_analog_sensitivity",
-            "input_axis_threshold",
-            "input_turbo_period",
-            "input_turbo_duty_cycle",
-            "input_turbo_mode",
-            "input_turbo_default_button",
-            "input_auto_game_focus",
-        )),
-        Category("savestates", listOf(
-            "cheevos_hardcore_mode_enable",
-            "savestate_auto_save",
-            "savestate_auto_load",
-            "savestate_auto_index",
-            "savestate_thumbnail_enable",
-            "savestate_file_compression",
-            "save_file_compression",
-            "block_sram_overwrite",
-        )),
         Category("osd", listOf(
             // Performance HUD
             "video_font_enable",

@@ -48,6 +48,7 @@
     <string name="label_hold_buttons" tools:ignore="TypographyEllipsis">HOLD ONE OR MORE BUTTONS...</string>
     <string name="label_confirm_delete">CONFIRM DELETE</string>
     <string name="label_info">INFO</string>
+    <string name="label_ra_settings">RA SETTINGS</string>
     <string name="label_details">DETAILS</string>
     <string name="label_all">ALL</string>
     <string name="label_unlocked">UNLOCKED</string>
@@ -599,8 +600,6 @@
     <string name="igm_ra_latency">Latency</string>
     <string name="igm_ra_notifications">Notifications</string>
     <string name="igm_ra_speed">Speed &amp; Rewind</string>
-    <string name="igm_ra_input">Input</string>
-    <string name="igm_ra_savestates">Save States</string>
     <string name="igm_ra_osd">On-Screen Display</string>
     <string name="igm_ra_restart_hint">Applies on relaunch</string>
     <string name="igm_ra_on">On</string>

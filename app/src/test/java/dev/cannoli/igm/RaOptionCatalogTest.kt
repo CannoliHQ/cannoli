@@ -27,14 +27,18 @@ class RaOptionCatalogTest {
     fun categoriesMatchExpectedTaxonomy() {
         val keys = RaOptionCatalog.categories.map { it.key }
         assertEquals(
-            listOf("video", "audio", "latency", "speed", "input", "savestates", "osd"),
+            listOf("video", "audio", "latency", "speed", "osd"),
             keys,
         )
     }
 
     @Test
-    fun hardcoreToggleLivesInSaveStates() {
-        val savestates = RaOptionCatalog.categories.first { it.key == "savestates" }
-        assertTrue(savestates.settingKeys.contains("cheevos_hardcore_mode_enable"))
+    fun categorySizesMatchDesign() {
+        fun size(key: String) = RaOptionCatalog.categories.first { it.key == key }.settingKeys.size
+        assertEquals(11, size("video"))
+        assertEquals(9, size("audio"))
+        assertEquals(10, size("latency"))
+        assertEquals(7, size("speed"))
+        assertEquals(18, size("osd"))
     }
 }

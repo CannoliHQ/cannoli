@@ -310,7 +310,7 @@ class IGMController(
     private fun refreshRaRootItems() {
         settingsItems.value = RaOptionCatalog.categories.map {
             IGMSettingsItem(raStrings.categoryTitles[it.key] ?: it.key)
-        } + IGMSettingsItem(raStrings.nativeMenu)
+        }
     }
 
     private fun refreshRaCategoryItems(categoryKey: String) {
@@ -360,21 +360,17 @@ class IGMController(
     }
 
     private fun handleRaOptionsKey(screen: IGMScreen.RaOptions, keycode: Int) {
-        val catCount = RaOptionCatalog.categories.size
-        val count = catCount + 1
+        val count = RaOptionCatalog.categories.size
         when (keycode) {
             19 -> replaceTop(screen.copy(selectedIndex = (screen.selectedIndex - 1 + count) % count))
             20 -> replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count))
             96 -> {
-                if (screen.selectedIndex >= catCount) {
-                    if (raDirty) showSavePrompt(thenNativeMenu = true) else onOpenNativeMenu?.invoke()
-                    return
-                }
                 val cat = RaOptionCatalog.categories.getOrNull(screen.selectedIndex) ?: return
                 refreshRaCategoryItems(cat.key)
                 val title = raStrings.categoryTitles[cat.key] ?: cat.key
                 push(IGMScreen.RaOptionsCategory(0, cat.key, title))
             }
+            100 -> if (raDirty) showSavePrompt(thenNativeMenu = true) else onOpenNativeMenu?.invoke()
             97, 4 -> if (raDirty) showSavePrompt() else pop()
         }
     }

@@ -13,8 +13,6 @@ data class RaOptionStrings(
         "audio" to "Audio",
         "latency" to "Latency",
         "speed" to "Speed & Rewind",
-        "input" to "Input",
-        "savestates" to "Save States",
         "osd" to "On-Screen Display",
     ),
     // Labels for host-local toggles (keys prefixed "cannoli_") shown in a category.
