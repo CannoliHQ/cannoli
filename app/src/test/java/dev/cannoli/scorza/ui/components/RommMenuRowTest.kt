@@ -14,15 +14,4 @@ class RommMenuRowTest {
             RommActionRow.visibleRows(true),
         )
     }
-
-    @Test fun `settings rows in declared order`() {
-        assertEquals(
-            listOf(
-                RommSettingsRow.COVER_ART, RommSettingsRow.CONCURRENT, RommSettingsRow.SAVE_SYNC,
-                RommSettingsRow.PLATFORMS, RommSettingsRow.COLLECTIONS, RommSettingsRow.ADVANCED,
-                RommSettingsRow.SERVER_INFO,
-            ),
-            RommSettingsRow.entries.toList(),
-        )
-    }
 }

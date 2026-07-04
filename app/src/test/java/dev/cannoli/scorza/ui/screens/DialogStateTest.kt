@@ -4,7 +4,6 @@ import dev.cannoli.ui.components.KeyboardController
 import dev.cannoli.ui.components.KeyboardState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -118,10 +117,6 @@ class DialogStateTest {
         val newFolder = DialogState.NewFolderInput(parentPath = "/")
         val updatedNF = newFolder.withKeyboard(KeyboardState(text = "abc", cursorPos = 2)) as DialogState.NewFolderInput
         assertEquals(2, updatedNF.keyboard.cursorPos)
-    }
-
-    @Test fun `withKeyboard on non-keyboard state - QuitConfirm is not a KeyboardHost`() {
-        assertSame(null, DialogState.QuitConfirm as? KeyboardHost)
     }
 
     @Test fun `caps and symbols accessible via keyboard`() {

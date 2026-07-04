@@ -107,11 +107,6 @@ class RicottaLaunchParamsTest {
         }
     }
 
-    @Test fun `accepts matching protocol version`() {
-        // Round-trip already exercises the matching path; assert it does not throw.
-        roundTrip(sample())
-    }
-
     @Test fun `writeToIntent then readFromIntent round trips`() {
         val intent = android.content.Intent()
         val params = sample()

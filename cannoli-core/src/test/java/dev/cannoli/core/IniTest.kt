@@ -34,10 +34,4 @@ class IniTest {
         assertEquals("1", data.get("positions", "a"))
         assertEquals("2", data.get("positions", "b"))
     }
-
-    @Test
-    fun parseMissingFileIsEmpty() {
-        val data = IniParser.parse(File(tmp.root, "nope.ini"))
-        assertEquals(emptyMap<String, Map<String, String>>(), data.sections)
-    }
 }

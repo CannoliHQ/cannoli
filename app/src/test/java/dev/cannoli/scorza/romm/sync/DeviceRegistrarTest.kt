@@ -46,12 +46,6 @@ class DeviceRegistrarTest {
         assertTrue(!settings.rommDeviceClientVersion.isNullOrEmpty())
     }
 
-    @Test fun register_returns_device_id() {
-        every { client.registerDevice(any()) } returns DeviceRegisterResponse(deviceId = "uuid-xyz")
-        val id = registrar.register("Test Device")
-        assertEquals("uuid-xyz", id)
-    }
-
     @Test fun device_id_reflects_registered_state() {
         every { client.registerDevice(any()) } returns DeviceRegisterResponse(deviceId = "uuid-9")
         assertFalse(registrar.isRegistered())

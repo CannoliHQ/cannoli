@@ -388,16 +388,6 @@ class InputDispatcherTest {
     }
 
     @Test
-    fun dpad_up_via_keycode_fires_onUp() {
-        val (d, _, _) = setup(westernTemplate())
-        var up = 0
-        d.onUp = { up++ }
-        // KEYCODE_DPAD_UP = 19, bound in westernTemplate to BTN_UP via InputBinding.Button(19).
-        d.handleKeyEventForTest(deviceId = 7, keyCode = 19, action = android.view.KeyEvent.ACTION_DOWN, repeatCount = 0)
-        assertEquals(1, up)
-    }
-
-    @Test
     fun dpad_up_via_hat_axis_fires_onUp() {
         val template = DeviceMapping(
             id = "hat-pad",

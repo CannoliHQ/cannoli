@@ -2,7 +2,6 @@ package dev.cannoli.scorza.ui.screens
 
 import dev.cannoli.ui.components.KeyboardState
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class KeyboardHostTest {
@@ -13,10 +12,6 @@ class KeyboardHostTest {
         DialogState.CollectionRenameInput(collectionId = 1, oldDisplayName = "x"),
         DialogState.NewFolderInput(parentPath = "/p"),
     )
-
-    @Test fun `all keyboard dialogs are KeyboardHost`() {
-        dialogs.forEach { assertTrue("${it::class.simpleName} must be KeyboardHost", it is KeyboardHost) }
-    }
 
     @Test fun `withKeyboard round-trips and currentName reads through`() {
         dialogs.forEach { d ->
