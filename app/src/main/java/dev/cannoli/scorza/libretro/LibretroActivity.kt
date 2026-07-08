@@ -31,6 +31,9 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
 import dev.cannoli.igm.AchievementInfo
+import dev.cannoli.igm.CheatManager
+import dev.cannoli.igm.CheatRowUi
+import dev.cannoli.igm.CheatSession
 import dev.cannoli.igm.GuideFile
 import dev.cannoli.igm.GuideManager
 import dev.cannoli.igm.GuideType
@@ -52,6 +55,7 @@ import dev.cannoli.ui.theme.LocalCannoliColors
 import androidx.compose.runtime.collectAsState
 import dev.cannoli.scorza.input.runtime.confirmButton
 import dev.cannoli.scorza.input.runtime.labelSet
+import dev.cannoli.ui.components.ListSection
 import dev.cannoli.ui.components.OsdPosition
 import dev.cannoli.ui.theme.hexToColor
 import kotlinx.coroutines.launch
@@ -357,11 +361,19 @@ class LibretroActivity : ComponentActivity() {
     private var guideInitialScrollX by mutableIntStateOf(0)
     private var infoScrollDir by mutableIntStateOf(0)
 
+    private lateinit var cheatManager: CheatManager
+    private var cheatSession: CheatSession? = null
+    private var cheatSections by mutableStateOf(emptyList<ListSection<CheatRowUi>>())
+    private var cheatHasRemembered by mutableStateOf(false)
+    private var hasCheats by mutableStateOf(false)
+
     private fun menuOptions() = InGameMenuOptions(
         hasDiscs,
         diskLabel(currentDiskIndex),
         raHasAchievements,
         guideFiles.isNotEmpty(),
+        hasCheats = hasCheats,
+        cheatsLabel = getString(R.string.igm_cheats),
         hasReassign = nonExcludedConnectedCount() > 1,
         quitLabel = if (alwaysSaveOnQuit) getString(R.string.igm_save_and_quit) else getString(R.string.igm_quit)
     )
@@ -509,6 +521,7 @@ class LibretroActivity : ComponentActivity() {
         sessionLog.log("platform_tag=$platformTag")
         slotManager = SaveSlotManager(stateBasePath)
         guideManager = GuideManager(cannoliRoot, platformTag, File(romPath).nameWithoutExtension)
+        cheatManager = CheatManager(cannoliRoot, platformTag, File(romPath).nameWithoutExtension, sessionLog::log)
         runner = LibretroRunner()
 
         val colors = CannoliColors(
@@ -587,6 +600,8 @@ class LibretroActivity : ComponentActivity() {
                                 fastForwarding = fastForwarding,
                                 settings = settings,
                                 guideFiles = guideFiles,
+                                cheatSections = cheatSections,
+                                cheatHasRemembered = cheatHasRemembered,
                                 guidePageCount = guidePageCount,
                                 guideScrollDir = guideScrollDir,
                                 guideScrollXDir = guideScrollXDir,
@@ -1273,6 +1288,7 @@ class LibretroActivity : ComponentActivity() {
         is IGMScreen.AchievementDetail -> simpleIgmHandler { btn -> handleAchievementDetailInput(screen, btn) }
         is IGMScreen.GuidePicker -> simpleIgmHandler { btn -> handleGuidePickerInput(screen, btn) }
         is IGMScreen.Guide -> simpleIgmHandler { btn -> handleGuideInput(screen, btn) }
+        is IGMScreen.Cheats -> simpleIgmHandler { btn -> handleCheatsInput(screen, btn) }
         is IGMScreen.ReassignPlayers -> simpleIgmHandler { btn -> handleReassignPlayersInput(screen, btn) }
         is IGMScreen.RaOptions -> null
         is IGMScreen.RaOptionsCategory -> null
@@ -1489,6 +1505,7 @@ class LibretroActivity : ComponentActivity() {
         renderer.paused = true
         syncGlThread()
         sessionLog.log("openMenu: glSynced")
+        ensureCheatSession()
         runner.pauseAudio()
         sessionLog.log("openMenu: audioPaused")
         startRaPausedIdle()
@@ -1658,6 +1675,10 @@ class LibretroActivity : ComponentActivity() {
                 } else {
                     push(IGMScreen.GuidePicker())
                 }
+            }
+            IgmMenuAction.CHEATS -> {
+                val session = cheatSession ?: return
+                push(IGMScreen.Cheats(selectedIndex = session.firstSupportedIndex()))
             }
             IgmMenuAction.SETTINGS -> {
                 coreOptions = loadVisibleCoreOptions()
@@ -2087,6 +2108,102 @@ class LibretroActivity : ComponentActivity() {
             push(IGMScreen.Guide(filePath = guide.file.absolutePath, page = saved.position.coerceIn(0, (guidePageCount - 1).coerceAtLeast(0)), textZoom = saved.zoom))
         } else {
             push(IGMScreen.Guide(filePath = guide.file.absolutePath, textZoom = saved.zoom))
+        }
+    }
+
+    private fun ensureCheatSession() {
+        val files = cheatManager.findCheatFiles()
+        val session = cheatSession
+        val snapshot = files.map { it.file.name to it.file.lastModified() }
+        if (session != null && session.fileSnapshot() == snapshot) {
+            hasCheats = session.rows.isNotEmpty()
+            refreshCheatRows()
+            return
+        }
+        if (session != null && session.anyEnabled()) {
+            runner.applyEmuCheats(emptyList())
+            runner.setRetroCheats(LongArray(0))
+        }
+        cheatSession = if (files.isEmpty()) null else {
+            CheatSession(cheatManager, files, runner.cheatMemorySize() > 0)
+        }
+        hasCheats = cheatSession?.rows?.isNotEmpty() == true
+        refreshCheatRows()
+    }
+
+    private fun refreshCheatRows() {
+        val session = cheatSession
+        if (session == null) {
+            cheatSections = emptyList()
+            cheatHasRemembered = false
+            return
+        }
+        var rowIndex = 0
+        cheatSections = session.files.map { f ->
+            ListSection(
+                header = f.file.nameWithoutExtension,
+                items = f.cheats.indices.map {
+                    val row = session.rows[rowIndex++]
+                    CheatRowUi(
+                        label = row.label,
+                        enabled = session.isEnabled(row),
+                        supported = row.supported,
+                    )
+                }
+            )
+        }
+        cheatHasRemembered = session.hasRemembered()
+    }
+
+    private fun applyCheats(session: CheatSession) {
+        runner.applyEmuCheats(session.emuCodes())
+        runner.setRetroCheats(session.retroTable())
+        sessionLog.log("cheats: applied emu=${session.emuCodes().size} table=${session.rows.size}")
+    }
+
+    private fun handleCheatsInput(screen: IGMScreen.Cheats, button: String?): Boolean {
+        val session = cheatSession ?: run { pop(); return true }
+        val count = session.rows.size
+        if (count == 0) { pop(); return true }
+
+        fun move(dir: Int) {
+            if (session.rows.none { it.supported }) return
+            var idx = screen.selectedIndex
+            repeat(count) {
+                idx = (idx + dir + count) % count
+                if (session.rows[idx].supported) {
+                    replaceTop(screen.copy(selectedIndex = idx))
+                    return
+                }
+            }
+        }
+
+        return when (button) {
+            "btn_up" -> { move(-1); true }
+            "btn_down" -> { move(1); true }
+            "btn_left", "btn_right", "btn_south" -> {
+                if (session.toggle(screen.selectedIndex)) {
+                    applyCheats(session)
+                    refreshCheatRows()
+                }
+                true
+            }
+            "btn_north" -> {
+                if (session.hasRemembered()) {
+                    val restored = session.restoreLastSession()
+                    if (restored > 0) {
+                        applyCheats(session)
+                        refreshCheatRows()
+                        showOsd(
+                            resources.getQuantityString(R.plurals.osd_cheats_restored, restored, restored),
+                            OsdPosition.BottomCenter
+                        )
+                    }
+                }
+                true
+            }
+            "btn_east" -> { pop(); true }
+            else -> true
         }
     }
 
