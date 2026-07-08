@@ -551,6 +551,9 @@
     <string name="osd_buttons_reset">Buttons Reset To Default</string>
     <string name="osd_disc_fallback">Disc %1$d</string>
     <string name="igm_quit">Quit</string>
+    <string name="igm_cheats">Cheats</string>
+    <string name="title_cheats">Cheats</string>
+    <string name="label_restore_session">RESTORE LAST SESSION</string>
     <string name="scaling_core_reported">Core Reported</string>
     <string name="scaling_integer">Integer</string>
     <string name="scaling_integer_overscale">Integer Overscale</string>
@@ -676,6 +679,10 @@
     <plurals name="bulk_delete_count">
         <item quantity="one">%d item</item>
         <item quantity="other">%d items</item>
+    </plurals>
+    <plurals name="osd_cheats_restored">
+        <item quantity="one">%d cheat restored</item>
+        <item quantity="other">%d cheats restored</item>
     </plurals>
     <string name="regenerate_system_folders_none">All system folders already present</string>
     <plurals name="regenerate_system_folders_result">

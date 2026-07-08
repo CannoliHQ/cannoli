@@ -20,6 +20,7 @@ sealed class IGMScreen {
     data class AchievementDetail(override val selectedIndex: Int = 0, val achievement: AchievementInfo, val parentIndex: Int = 0) : IGMScreen()
     data class GuidePicker(override val selectedIndex: Int = 0) : IGMScreen()
     data class Guide(override val selectedIndex: Int = 0, val filePath: String, val page: Int = 0, val textZoom: Int = 1) : IGMScreen()
+    data class Cheats(override val selectedIndex: Int = 0) : IGMScreen()
 
     data class Buttons(
         override val selectedIndex: Int = 0,

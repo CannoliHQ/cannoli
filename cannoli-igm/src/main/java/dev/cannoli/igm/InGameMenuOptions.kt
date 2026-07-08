@@ -1,12 +1,14 @@
 package dev.cannoli.igm
 
-enum class IgmMenuAction { RESUME, SAVE_STATE, LOAD_STATE, ACHIEVEMENTS, GUIDE, SETTINGS, SWITCH_DISC, REASSIGN, RESET, QUIT }
+enum class IgmMenuAction { RESUME, SAVE_STATE, LOAD_STATE, ACHIEVEMENTS, GUIDE, CHEATS, SETTINGS, SWITCH_DISC, REASSIGN, RESET, QUIT }
 
 class InGameMenuOptions(
     hasDiscs: Boolean,
     val discLabel: String,
     hasAchievements: Boolean = false,
     val hasGuides: Boolean = false,
+    val hasCheats: Boolean = false,
+    val cheatsLabel: String = "Cheats",
     hasReassign: Boolean = false,
     quitLabel: String = "Quit",
 ) {
@@ -16,6 +18,7 @@ class InGameMenuOptions(
         add(IgmMenuAction.LOAD_STATE)
         if (hasAchievements) add(IgmMenuAction.ACHIEVEMENTS)
         if (hasGuides) add(IgmMenuAction.GUIDE)
+        if (hasCheats) add(IgmMenuAction.CHEATS)
         add(IgmMenuAction.SETTINGS)
         if (hasDiscs) add(IgmMenuAction.SWITCH_DISC)
         if (hasReassign) add(IgmMenuAction.REASSIGN)
@@ -30,6 +33,7 @@ class InGameMenuOptions(
             IgmMenuAction.LOAD_STATE -> "Load State"
             IgmMenuAction.ACHIEVEMENTS -> "Achievements"
             IgmMenuAction.GUIDE -> "Guide"
+            IgmMenuAction.CHEATS -> cheatsLabel
             IgmMenuAction.SETTINGS -> "Settings"
             IgmMenuAction.SWITCH_DISC -> discLabel
             IgmMenuAction.REASSIGN -> "Reassign Players"
@@ -43,6 +47,7 @@ class InGameMenuOptions(
     val loadStateIndex get() = actions.indexOf(IgmMenuAction.LOAD_STATE)
     val achievementsIndex get() = actions.indexOf(IgmMenuAction.ACHIEVEMENTS)
     val guideIndex get() = actions.indexOf(IgmMenuAction.GUIDE)
+    val cheatsIndex get() = actions.indexOf(IgmMenuAction.CHEATS)
     val settingsIndex get() = actions.indexOf(IgmMenuAction.SETTINGS)
     val switchDiscIndex get() = actions.indexOf(IgmMenuAction.SWITCH_DISC)
     val reassignIndex get() = actions.indexOf(IgmMenuAction.REASSIGN)

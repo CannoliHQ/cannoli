@@ -464,7 +464,7 @@ class IGMController(
                 if (guideFiles.value.size == 1) openGuide(guideFiles.value[0]) else openGuidePicker()
             }
             IgmMenuAction.ACHIEVEMENTS -> openAchievements()
-            IgmMenuAction.SWITCH_DISC, IgmMenuAction.REASSIGN, null -> {}
+            IgmMenuAction.SWITCH_DISC, IgmMenuAction.REASSIGN, IgmMenuAction.CHEATS, null -> {}
         }
     }
 }

@@ -87,6 +87,8 @@ fun CannoliIGM(
     onGuideScrollChanged: (y: Int, x: Int) -> Unit = { _, _ -> },
     players: List<PlayerSlotInfo> = emptyList(),
     inputRemapHasChanges: Boolean = false,
+    cheatSections: List<dev.cannoli.ui.components.ListSection<CheatRowUi>> = emptyList(),
+    cheatHasRemembered: Boolean = false,
 ) {
     val showDescription = when (screen) {
         is IGMScreen.Emulator -> screen.showDescription
@@ -354,6 +356,24 @@ fun CannoliIGM(
                         pageCount = guidePageCount,
                         textZoom = screen.textZoom,
                         onScrollPosChanged = onGuideScrollChanged
+                    )
+                }
+                is IGMScreen.Cheats -> {
+                    CheatsScreen(
+                        title = stringResource(dev.cannoli.ui.R.string.title_cheats),
+                        sections = cheatSections,
+                        selectedIndex = screen.selectedIndex,
+                        onLabel = stringResource(dev.cannoli.ui.R.string.value_on),
+                        offLabel = stringResource(dev.cannoli.ui.R.string.value_off),
+                        bottomBarLeft = listOf(labels.back to stringResource(dev.cannoli.ui.R.string.label_back)),
+                        bottomBarRight = buildList {
+                            add(labels.confirm to stringResource(dev.cannoli.ui.R.string.label_toggle))
+                            if (cheatHasRemembered) {
+                                add(labels.north to stringResource(dev.cannoli.ui.R.string.label_restore_session))
+                            }
+                        },
+                        fontSize = igmFontSize,
+                        lineHeight = igmLineHeight
                     )
                 }
                 is IGMScreen.Achievements -> {
