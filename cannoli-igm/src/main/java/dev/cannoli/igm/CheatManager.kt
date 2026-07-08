@@ -36,6 +36,15 @@ class CheatManager(
             }
     }
 
+    fun rawSnapshot(): List<Pair<String, Long>> {
+        if (!cheatsDir.isDirectory) return emptyList()
+        val files = cheatsDir.listFiles() ?: return emptyList()
+        return files
+            .filter { it.isFile && it.extension.equals("cht", ignoreCase = true) }
+            .sortedBy { it.name.lowercase() }
+            .map { it.name to it.lastModified() }
+    }
+
     private val keyPrefix = "$platformTag/$gameBaseName/"
 
     fun loadRemembered(): Map<String, Set<Int>> =

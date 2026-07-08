@@ -2112,14 +2112,14 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun ensureCheatSession() {
-        val files = cheatManager.findCheatFiles()
+        val snapshot = cheatManager.rawSnapshot()
         val session = cheatSession
-        val snapshot = files.map { it.file.name to it.file.lastModified() }
         if (session != null && session.fileSnapshot() == snapshot) {
             hasCheats = session.rows.isNotEmpty()
             refreshCheatRows()
             return
         }
+        val files = cheatManager.findCheatFiles()
         if (session != null && session.anyEnabled()) {
             runner.applyEmuCheats(emptyList())
             runner.setRetroCheats(LongArray(0))
