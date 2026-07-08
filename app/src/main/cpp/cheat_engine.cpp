@@ -14,7 +14,7 @@ extern "C" const struct retro_memory_map *bridge_get_memory_map(void);
 
 namespace {
 
-constexpr int STRIDE = 11;
+constexpr int STRIDE = CHEAT_ENGINE_STRIDE;
 
 enum {
     TYPE_DISABLED = 0,
@@ -46,6 +46,11 @@ struct Buffer {
     size_t len;
 };
 
+// All cheat_engine_* entry points run either on the emulation thread
+// (cheat_engine_apply, from nativeRun) or while emulation is fully paused with the
+// GL thread synced (set_table/clear/invalidate/total_memory, called from the IGM
+// which pauses the renderer before touching cheats). There is thus no concurrent
+// access to this state and no locking; that invariant must hold for new callers.
 std::vector<Cheat> g_cheats;
 std::vector<Buffer> g_buffers;
 uint64_t g_total = 0;
@@ -59,7 +64,9 @@ void rebuild_buffers() {
         for (unsigned i = 0; i < map->num_descriptors; i++) {
             const retro_memory_descriptor &d = map->descriptors[i];
             if (!(d.flags & RETRO_MEMDESC_SYSTEM_RAM) || !d.ptr || d.len == 0) continue;
-            g_buffers.push_back({(uint8_t *)d.ptr + d.offset, d.len});
+            // RetroArch's cheat engine indexes system RAM from d.ptr directly and
+            // ignores d.offset; the cheat database addresses are calibrated to that.
+            g_buffers.push_back({(uint8_t *)d.ptr, d.len});
             g_total += d.len;
         }
     }
@@ -82,6 +89,9 @@ uint8_t *translate(uint64_t address) {
     return nullptr;
 }
 
+// Returns the value width in bits. RetroArch encodes the same thing as a
+// (bytes_per_item, mask) pair; here the byte count is bits/8 and the value mask is
+// value_mask(bits), which are equivalent for sizes 3-5 (8/16/32-bit).
 unsigned bits_for_size(int search_size) {
     switch (search_size) {
         case 0: return 1;
@@ -184,20 +194,25 @@ void cheat_engine_apply(void) {
 
     bool run_cheat = true;
     for (auto &c : g_cheats) {
-        // RetroArch semantics: a failed run-next condition skips the literal next
-        // table entry, before the enabled/handler filter is evaluated.
+        // RetroArch applies the handler/enabled filter BEFORE the run-next skip
+        // guard, so a failed run-next condition skips the next enabled RETRO cheat,
+        // stepping over disabled and emulator-handled entries without consuming the
+        // skip. Preserve that order (cheat_manager_apply_retro_cheats).
+        if (!c.enabled || !c.retro_handler) continue;
+
         if (!run_cheat) {
             run_cheat = true;
             continue;
         }
-        if (!c.enabled || !c.retro_handler || c.type == TYPE_DISABLED) continue;
 
         unsigned bits = bits_for_size(c.search_size);
         uint32_t vmask = value_mask(bits);
-        uint64_t address = g_total ? c.address % g_total : 0;
-        uint32_t value = c.value & vmask;
+        uint64_t address = c.address % g_total;
+        uint32_t value = c.value;
 
         switch (c.type) {
+            case TYPE_DISABLED:
+                break;
             case TYPE_RUN_NEXT_IF_EQ:
                 run_cheat = read_val(address, bits, c.big_endian, c.address_mask) == value;
                 break;
@@ -212,21 +227,27 @@ void cheat_engine_apply(void) {
                 break;
             default: {
                 unsigned bytes_per_item = bits >= 8 ? bits / 8 : 1;
-                for (uint32_t r = 0; r < c.repeat_count; r++) {
-                    uint32_t out;
-                    switch (c.type) {
-                        case TYPE_INCREASE_VALUE:
-                            out = read_val(address, bits, c.big_endian, c.address_mask) + value;
-                            break;
-                        case TYPE_DECREASE_VALUE:
-                            out = read_val(address, bits, c.big_endian, c.address_mask) - value;
-                            break;
-                        default:
-                            out = value;
-                            break;
-                    }
-                    write_val(address, bits, c.big_endian, c.address_mask, out & vmask);
-                    value = (value + c.repeat_add_to_value) & vmask;
+                uint32_t written;
+                switch (c.type) {
+                    case TYPE_INCREASE_VALUE:
+                        written = read_val(address, bits, c.big_endian, c.address_mask) + value;
+                        break;
+                    case TYPE_DECREASE_VALUE:
+                        written = read_val(address, bits, c.big_endian, c.address_mask) - value;
+                        break;
+                    default:  // TYPE_SET_TO_VALUE
+                        written = value;
+                        break;
+                }
+                // Addresses wrap modulo total memory, so iterating more than the
+                // memory size can never poke anything new; clamp there so a malformed
+                // .cht with a huge repeat_count cannot stall the frame.
+                uint64_t reps = c.repeat_count;
+                if (reps > g_total) reps = g_total;
+                for (uint64_t r = 0; r < reps; r++) {
+                    write_val(address, bits, c.big_endian, c.address_mask, written);
+                    written += c.repeat_add_to_value;
+                    if (vmask != 0) written %= vmask;
                     address = (address + (uint64_t)c.repeat_add_to_address * bytes_per_item) % g_total;
                 }
                 break;

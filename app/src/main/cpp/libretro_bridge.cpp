@@ -1025,7 +1025,7 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeSetRetroCheats(JNIEnv *env
     }
     std::vector<int64_t> buf((size_t)len);
     env->GetLongArrayRegion(table, 0, len, (jlong *)buf.data());
-    cheat_engine_set_table(buf.data(), (size_t)(len / 11));
+    cheat_engine_set_table(buf.data(), (size_t)(len / CHEAT_ENGINE_STRIDE));
 }
 
 JNIEXPORT jlong JNICALL

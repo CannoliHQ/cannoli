@@ -103,6 +103,7 @@ class CheatSession(
     }
 
     companion object {
+        // Longs per cheat in retroTable(); must match CHEAT_ENGINE_STRIDE in cheat_engine.h.
         const val STRIDE = 11
     }
 }

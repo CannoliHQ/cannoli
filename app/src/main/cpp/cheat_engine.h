@@ -3,6 +3,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+// Longs per cheat in the flat table passed to cheat_engine_set_table. Must match
+// CheatSession.STRIDE (Kotlin) and the layout built by CheatSession.retroTable().
+#define CHEAT_ENGINE_STRIDE 11
+
 #ifdef __cplusplus
 extern "C" {
 #endif
