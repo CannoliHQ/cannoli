@@ -26,6 +26,7 @@ object DirectoryLayout {
             paths.configInputMappings,
             paths.backupDir,
             paths.guidesDir,
+            paths.cheatsDir,
             paths.wallpapersDir,
         ).forEach { it.mkdirs() }
 
@@ -48,6 +49,7 @@ object DirectoryLayout {
             paths.savesFor(tag).mkdirs()
             paths.saveStatesFor(tag).mkdirs()
             paths.guidesFor(tag).mkdirs()
+            paths.cheatsFor(tag).mkdirs()
         }
     }
 

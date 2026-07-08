@@ -26,6 +26,7 @@ object GamesResponse {
         val savesCount: Int,
         val statesCount: Int,
         val guidesCount: Int,
+        val cheatsCount: Int,
         val raGameId: Int? = null,
         val lastPlayedAt: Long? = null,
         val multiDisc: Boolean,
@@ -56,6 +57,7 @@ object GamesResponse {
         val savesCount: Int,
         val statesCount: Int,
         val guidesCount: Int,
+        val cheatsCount: Int,
         val raGameId: Int? = null,
         val lastPlayedAt: Long? = null,
         val multiDisc: Boolean,
@@ -107,6 +109,7 @@ object GamesResponse {
                 savesCount = game.savesCount,
                 statesCount = game.statesCount,
                 guidesCount = game.guidesCount,
+                cheatsCount = game.cheatsCount,
                 raGameId = game.raGameId,
                 lastPlayedAt = game.lastPlayedAt,
                 multiDisc = game.multiDisc,
@@ -159,6 +162,7 @@ object GamesResponse {
             savesCount = countSaves(cannoliRoot, platformTag, baseName),
             statesCount = countStates(cannoliRoot, platformTag, baseName),
             guidesCount = countGuides(cannoliRoot, platformTag, baseName),
+            cheatsCount = countCheats(cannoliRoot, platformTag, baseName),
             raGameId = rom.raGameId,
             lastPlayedAt = rom.lastPlayedAt,
             multiDisc = rom.isMultiDisc,
@@ -203,6 +207,14 @@ object GamesResponse {
         if (!dir.isDirectory) return 0
         return try {
             dir.listFiles { f -> f.isFile }?.size ?: 0
+        } catch (_: Throwable) { 0 }
+    }
+
+    private fun countCheats(cannoliRoot: File, platformTag: String, baseName: String): Int {
+        val dir = File(cannoliRoot, "Cheats/$platformTag/$baseName")
+        if (!dir.isDirectory) return 0
+        return try {
+            dir.listFiles { f -> f.isFile && f.extension.equals("cht", ignoreCase = true) }?.size ?: 0
         } catch (_: Throwable) { 0 }
     }
 }

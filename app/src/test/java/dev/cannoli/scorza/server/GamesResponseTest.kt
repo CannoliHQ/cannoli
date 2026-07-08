@@ -97,6 +97,22 @@ class GamesResponseTest {
     }
 
     @Test
+    fun `counts cheat files next to the rom`() {
+        val romDir = File(tmp.root, "Roms/SNES").also { it.mkdirs() }
+        File(romDir, "zelda.sfc").also { it.writeBytes(ByteArray(64)) }
+        File(tmp.root, "Cheats/SNES/zelda").also { it.mkdirs() }
+        File(tmp.root, "Cheats/SNES/zelda/zelda.cht").writeText("cheats = 1\ncheat0_desc = \"X\"\n")
+        File(tmp.root, "Cheats/SNES/zelda/notes.txt").writeText("ignored")
+        val rom = fakeRom(7, "SNES/zelda.sfc", "Zelda")
+        val repo = mockRepo(listOf(rom))
+
+        val json = GamesResponse.buildList(repo, tmp.root, File(tmp.root, "Roms"), "SNES", "Super Nintendo")
+        val game = JSONObject(json).getJSONArray("games").getJSONObject(0)
+
+        assertEquals(1, game.getInt("cheatsCount"))
+    }
+
+    @Test
     fun `hasArt emits artUrl when rom has art`() {
         val artFile = File(tmp.root, "Art/SNES/zelda.png").apply { parentFile.mkdirs(); writeBytes(ByteArray(4)) }
         val romDir = File(tmp.root, "Roms/SNES").also { it.mkdirs() }

@@ -29,6 +29,14 @@ internal fun KitchenHttpServer.gameGuidesResponse(platformTag: String, base: Str
     return jsonResponse(200, FilesResponse.serializer(), FilesResponse(items))
 }
 
+internal fun KitchenHttpServer.gameCheatsResponse(platformTag: String, base: String): Response {
+    val dir = File(cannoliRoot, "Cheats/$platformTag/$base")
+    val files = dir.listFiles { f -> f.isFile && f.extension.equals("cht", ignoreCase = true) }
+        ?.sortedBy { it.name.lowercase(java.util.Locale.ROOT) } ?: emptyList()
+    val items = files.map { f -> FileEntry(f.name, f.length(), f.lastModified()) }
+    return jsonResponse(200, FilesResponse.serializer(), FilesResponse(items))
+}
+
 internal fun KitchenHttpServer.gameRomFiles(rom: dev.cannoli.scorza.model.Rom): List<File> =
     romDirectoryWalker?.gameFiles(rom.path) ?: listOf(rom.path)
 
@@ -116,6 +124,7 @@ internal fun KitchenHttpServer.handleGames(
                     }?.forEach { it.delete() }
                     File(cannoliRoot, "Save States/$platformTag/$base").deleteRecursively()
                     File(cannoliRoot, "Guides/$platformTag/$base").deleteRecursively()
+                    File(cannoliRoot, "Cheats/$platformTag/$base").deleteRecursively()
                     rom.artFile?.let { if (isSecure(it)) it.delete() }
                 }
                 repo.deleteRom(rom.id)
@@ -236,6 +245,44 @@ internal fun KitchenHttpServer.handleGames(
                         val fileName = query["file"]
                         if (fileName.isNullOrBlank()) return errorResponse(400, "file param required")
                         val target = File(guideDir, File(fileName).name)
+                        if (!isSecure(target)) return errorResponse(403, "forbidden")
+                        if (!target.exists()) return errorResponse(404, "not found")
+                        target.delete()
+                        okResponse()
+                    }
+                    else -> errorResponse(405, "method not allowed")
+                }
+            }
+            "cheats" -> {
+                val cheatDir = File(cannoliRoot, "Cheats/$platformTag/$base")
+                when (method) {
+                    "GET" -> {
+                        val fileName = query["file"]
+                        if (fileName.isNullOrBlank()) {
+                            gameCheatsResponse(platformTag, base)
+                        } else {
+                            val target = File(cheatDir, File(fileName).name)
+                            if (!isSecure(target) || !target.exists()) {
+                                return errorResponse(404, "not found")
+                            }
+                            fileResponse(target, "application/octet-stream")
+                        }
+                    }
+                    "POST" -> {
+                        val name = query["name"]
+                        if (name.isNullOrBlank()) return errorResponse(400, "name param required")
+                        if (!name.lowercase(java.util.Locale.ROOT).endsWith(".cht")) {
+                            return errorResponse(400, "cheat files must have a .cht extension")
+                        }
+                        val dest = File(cheatDir, File(name).name)
+                        if (!isSecure(dest)) return errorResponse(403, "forbidden")
+                        streamUploadToFile(dest, session)?.let { return it }
+                        okResponse()
+                    }
+                    "DELETE" -> {
+                        val fileName = query["file"]
+                        if (fileName.isNullOrBlank()) return errorResponse(400, "file param required")
+                        val target = File(cheatDir, File(fileName).name)
                         if (!isSecure(target)) return errorResponse(403, "forbidden")
                         if (!target.exists()) return errorResponse(404, "not found")
                         target.delete()

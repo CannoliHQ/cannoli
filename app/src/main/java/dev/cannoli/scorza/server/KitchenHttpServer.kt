@@ -286,6 +286,7 @@ class KitchenHttpServer(
             "bios" to "BIOS",
             "wallpapers" to "Wallpapers",
             "guides" to "Guides",
+            "cheats" to "Cheats",
             "shaders" to "Shaders"
         )
     }
