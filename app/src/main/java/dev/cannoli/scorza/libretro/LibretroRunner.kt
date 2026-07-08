@@ -77,6 +77,10 @@ class LibretroRunner {
     fun saveSRAM(path: String): Boolean = nativeSaveSRAM(path)
     fun loadSRAM(path: String): Boolean = nativeLoadSRAM(path)
 
+    fun applyEmuCheats(codes: List<String>) = nativeApplyEmuCheats(codes.toTypedArray())
+    fun setRetroCheats(table: LongArray) = nativeSetRetroCheats(table)
+    fun cheatMemorySize(): Long = nativeCheatMemorySize()
+
     fun unloadGame() = nativeUnloadGame()
     fun deinit() = nativeDeinit()
     fun reset() = nativeReset()
@@ -170,6 +174,9 @@ class LibretroRunner {
     private external fun nativeLoadState(path: String): Boolean
     private external fun nativeSaveSRAM(path: String): Boolean
     private external fun nativeLoadSRAM(path: String): Boolean
+    private external fun nativeApplyEmuCheats(codes: Array<String>)
+    private external fun nativeSetRetroCheats(table: LongArray)
+    private external fun nativeCheatMemorySize(): Long
     private external fun nativeUnloadGame()
     private external fun nativeDeinit()
     private external fun nativeReset()
