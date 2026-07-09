@@ -1,6 +1,4 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <string name="app_name" translatable="false">Cannoli</string>
-
     <!-- Bottom bar labels -->
     <string name="label_back">BACK</string>
     <string name="label_cancel" tools:ignore="ButtonCase">CANCEL</string>
@@ -13,19 +11,16 @@
     <string name="label_change">CHANGE</string>
     <string name="label_firmware">FIRMWARE</string>
     <string name="label_choose">CHOOSE</string>
-    <string name="label_sleep">SLEEP</string>
     <string name="label_close">CLOSE</string>
     <string name="label_remove">REMOVE SHORTCUT</string>
     <string name="label_delete">DELETE</string>
-    <string name="label_add">ADD</string>
     <string name="label_confirm">CONFIRM</string>
     <string name="label_toggle">TOGGLE</string>
     <string name="label_new">NEW</string>
     <string name="label_settings">SETTINGS</string>
-    <string name="label_menu">MENU</string>
     <string name="label_resume">RESUME</string>
     <string name="label_continue">CONTINUE</string>
-    <string name="label_new_folder">NEW FOLDER</string>
+    <string name="label_new_folder">NEW</string>
     <string name="label_parent">PARENT</string>
     <string name="label_slot">SLOT</string>
     <string name="label_disc">DISC</string>
@@ -35,18 +30,15 @@
     <string name="label_interface">INTERFACE</string>
     <string name="label_credits">CREDITS</string>
     <string name="label_update">UPDATE</string>
-    <string name="label_check_update">CHECK FOR UPDATES</string>
     <string name="label_logout">LOGOUT</string>
     <string name="label_offline_sets">OFFLINE SETS</string>
     <string name="label_hex">HEX</string>
-    <string name="label_edit">EDIT</string>
     <string name="label_rename">RENAME</string>
     <string name="label_set">SET</string>
     <string name="label_clear">CLEAR</string>
     <string name="label_press">PRESS</string>
     <string name="label_kitchen">KITCHEN</string>
     <string name="label_hold_buttons" tools:ignore="TypographyEllipsis">HOLD ONE OR MORE BUTTONS...</string>
-    <string name="label_confirm_delete">CONFIRM DELETE</string>
     <string name="label_info">INFO</string>
     <string name="label_ra_settings">RA SETTINGS</string>
     <string name="label_details">DETAILS</string>
@@ -57,12 +49,8 @@
     <string name="label_remap">REMAP</string>
     <string name="label_unmap">UNMAP</string>
     <string name="label_swap">SWAP</string>
-    <string name="label_swap_with">SWAP WITH</string>
     <string name="label_grant">GRANT</string>
-    <string name="label_search">SEARCH</string>
     <string name="igm_reassign_players">Reassign Players</string>
-
-    <string name="osd_cannot_steal_confirm">Remap the confirm button first to free this button</string>
 
     <!-- In-game shortcut actions -->
     <string name="shortcut_action_save_state">Save State</string>
@@ -92,12 +80,10 @@
     <string name="settings_retroachievements" translatable="false">RetroAchievements</string>
     <string name="settings_romm" translatable="false">RomM</string>
     <string name="settings_about">About</string>
-    <string name="settings_install_update">Install Update</string>
     <string name="settings_release_channel">Release Channel</string>
 
     <!-- Settings items -->
     <string name="setting_colors">Colors</string>
-    <string name="setting_box_art">Box Art</string>
     <string name="setting_art_width">Art Width</string>
     <string name="setting_art_scale">Art Scale</string>
     <string name="setting_text_size">Text Size</string>
@@ -112,19 +98,16 @@
     <string name="setting_kitchen_running">Kitchen Running</string>
     <string name="setting_downloads_running">Downloads</string>
     <string name="setting_updater">Update Available</string>
-    <string name="setting_time_format">Time Format</string>
     <string name="setting_controllers">Controllers</string>
     <string name="controllers_connected_now">Connected Now</string>
     <string name="controllers_saved_mappings">Saved Mappings</string>
     <string name="controllers_empty_connected">Connect a controller to start.</string>
-    <string name="controllers_built_in">Built-in Controls</string>
     <string name="controllers_mapping_not_found">Mapping not found.</string>
     <string name="controllers_edit_buttons">Edit Buttons</string>
     <string name="controllers_name">Name</string>
     <string name="controllers_confirm_button">Confirm Button</string>
     <string name="controllers_glyph_style">Glyph Style</string>
     <string name="controllers_exclude_from_gameplay">Exclude From Gameplay</string>
-    <string name="controllers_forget">Forget Controller</string>
     <string name="controllers_reset_defaults">Reset Defaults</string>
     <string name="controllers_not_bound">Not bound</string>
 
@@ -178,7 +161,6 @@
     <string name="binding_axis_pos">Axis %1$d+</string>
     <string name="binding_axis_neg">Axis %1$d-</string>
     <string name="setting_shortcuts">Shortcuts</string>
-    <string name="setting_confirm_button">Confirm Button</string>
     <string name="setting_swap_play_resume">Swap Play and Resume</string>
     <string name="setting_main_menu_quit">Main Menu Quit</string>
     <string name="setting_always_save_on_quit">Save State On Quit</string>
@@ -187,9 +169,6 @@
     <string name="setting_regenerate_system_folders">Regenerate System Folders</string>
     <string name="setting_content_mode">Content Mode</string>
     <string name="setting_fgh_collection">5GH Collection</string>
-    <string name="setting_scroll_speed">Marquee Speed</string>
-    <string name="setting_show_tools">Tools</string>
-    <string name="setting_show_ports">Ports</string>
     <string name="setting_show_recently_played">Recently Played</string>
     <string name="setting_manage_tools">Manage Tools</string>
     <string name="setting_manage_ports">Manage Ports</string>
@@ -207,15 +186,12 @@
     <string name="setting_sd_root">Cannoli Root</string>
     <string name="setting_rom_directory">ROM Directory</string>
     <string name="setting_ra_package">RetroArch Package</string>
-    <string name="setting_rebuild_cache">Rebuild Cache</string>
     <string name="setting_scan_library">Scan Mode</string>
     <string name="value_automatically">Automatic</string>
     <string name="value_manually">Manual</string>
     <string name="setting_ra_username">Username</string>
     <string name="setting_ra_password">Password</string>
     <string name="setting_ra_login">Login</string>
-    <string name="setting_ra_logout">Logout</string>
-    <string name="setting_ra_status">Logged in as</string>
 
     <!-- RomM -->
     <string name="setting_romm_host">Host</string>
@@ -223,7 +199,6 @@
     <string name="setting_romm_save_backups">Save Backups</string>
     <string name="dialog_romm_device_name_title">Name this device</string>
     <string name="romm_save_sync_needs_490">Requires RomM 4.9.0+</string>
-    <string name="save_sync_checking">Checking saves...</string>
     <string name="save_conflict_title">Save conflict</string>
     <string name="save_conflict_keep_local">Keep This Device</string>
     <string name="save_conflict_use_server">Use Server</string>
@@ -231,12 +206,8 @@
     <string name="save_stale_title">Server has a newer save</string>
     <string name="save_stale_play_local">Play Local Anyway</string>
     <string name="setting_romm_allow_self_signed">Allow Self-Signed Cert</string>
-    <string name="setting_romm_art_type">Box Art</string>
     <string name="setting_romm_pair_code">Pairing Code</string>
     <string name="setting_romm_pair">Pair</string>
-    <string name="romm_art_type_cover">Cover</string>
-    <string name="romm_art_type_title">Title</string>
-    <string name="romm_art_type_screenshot">Screenshot</string>
     <string name="romm_connecting">Connecting to RomM</string>
     <string name="romm_pair_invalid">Invalid pairing code</string>
     <string name="romm_pair_failed">Pairing failed</string>
@@ -250,7 +221,6 @@
     <string name="romm_detail_revision">Revision</string>
     <string name="romm_detail_size">Size</string>
     <string name="romm_detail_languages">Languages</string>
-    <string name="romm_detail_files">Files</string>
     <string name="romm_detail_publisher">Publisher</string>
     <string name="romm_detail_released">Released</string>
     <string name="romm_detail_genre">Genre</string>
@@ -301,7 +271,6 @@
     <string name="romm_return_to_cannoli">Return to Cannoli</string>
     <string name="romm_platforms_title">Show Platforms</string>
     <string name="romm_platforms_empty">No platforms</string>
-    <string name="romm_firmware_title">Firmware</string>
     <string name="romm_firmware_screen_title">%1$s Firmware</string>
     <string name="romm_global_search_title">Search</string>
     <string name="romm_no_results">No results</string>
@@ -344,7 +313,6 @@
     <string name="romm_vtype_company">Companies</string>
     <string name="romm_vtype_mode">Game Modes</string>
 
-    <string name="setting_kitchen_toggle">File Server</string>
     <string name="setting_logging">Logging</string>
     <string name="setting_audit_emulator_intents">Audit Emulator Intents</string>
     <string name="logging_title">Logging</string>
@@ -385,15 +353,10 @@
     <string name="value_not_installed">Not Installed</string>
     <string name="value_none_installed">None Installed</string>
     <string name="value_active">Active</string>
-    <string name="text_size_compact">Compact</string>
-    <string name="text_size_default">Default</string>
 
     <!-- Dialogs -->
     <string name="empty_list">%1$s is empty</string>
-    <string name="dialog_rename">Rename</string>
     <string name="dialog_delete_confirm">Delete \"%1$s\"?</string>
-    <string name="dialog_add_to_collection">Add to Collection</string>
-    <string name="dialog_new_collection">New Collection</string>
     <string name="value_empty_override">(empty override)</string>
     <string name="emulator_platform_setting">Platform Setting</string>
     <string name="emulator_platform_setting_named">Platform Setting (%1$s)</string>
@@ -433,7 +396,6 @@
     <string name="dialog_missing_core_plain">%1$s isn\'t installed.</string>
     <string name="dialog_missing_core_hint">Set it up in Emulator Mapping.</string>
     <string name="dialog_missing_app">%1$s is not installed.</string>
-    <string name="dialog_launch_error">%1$s</string>
     <string name="dialog_missing_bios_header">At least one BIOS file is required in %1$s:</string>
     <string name="dialog_title_missing_core">Missing core</string>
     <string name="dialog_title_missing_app">Missing App</string>
@@ -441,11 +403,6 @@
     <string name="dialog_rename_success">Renamed successfully</string>
     <string name="dialog_rename_failed">Rename failed: %1$s</string>
     <string name="dialog_quit_confirm">Are you sure you want to quit?</string>
-
-    <!-- Context menu options -->
-    <string name="context_rename">Rename</string>
-    <string name="context_delete">Delete</string>
-    <string name="context_add_to_collection">Add To Collection</string>
 
     <!-- Formatted strings -->
     <string name="collection_created">%1$s Created</string>
@@ -578,17 +535,12 @@
     <string name="no_compatible_cores">No compatible cores found</string>
     <string name="no_collections">No collections</string>
     <string name="title_child_collections">Child Collections</string>
-    <string name="title_button_mapping">Button Mapping</string>
     <string name="title_shortcuts">Shortcuts</string>
     <string name="shortcut_hold_prompt" tools:ignore="TypographyEllipsis">Hold one or more buttons...</string>
 
     <!-- Update download -->
-    <string name="update_downloading" tools:ignore="TypographyEllipsis">Downloading...</string>
-    <string name="update_installing" tools:ignore="TypographyEllipsis">Installing...</string>
     <string name="update_retry">RETRY</string>
     <string name="restart_required">Restart required to apply changes.</string>
-    <string name="update_up_to_date">You\'re on the latest version.</string>
-    <string name="update_available">A new version is available.</string>
 
     <!-- IGM screen titles -->
     <string name="igm_settings">Settings</string>
@@ -599,18 +551,6 @@
     <string name="igm_save_changes">Save Changes</string>
     <string name="igm_buttons">Buttons</string>
     <string name="igm_save_and_quit">Save and Quit</string>
-    <string name="igm_ra_audio">Audio</string>
-    <string name="igm_ra_latency">Latency</string>
-    <string name="igm_ra_notifications">Notifications</string>
-    <string name="igm_ra_speed">Speed &amp; Rewind</string>
-    <string name="igm_ra_osd">On-Screen Display</string>
-    <string name="igm_ra_restart_hint">Applies on relaunch</string>
-    <string name="igm_ra_on">On</string>
-    <string name="igm_ra_off">Off</string>
-    <string name="igm_ra_save_platform">Save for %1$s</string>
-    <string name="igm_ra_save_game">Save for this game</string>
-    <string name="igm_ra_dont_save">Discard</string>
-    <string name="igm_ra_native_menu">RetroArch Menu</string>
     <string name="title_guide">Guide</string>
 
     <!-- IGM info labels -->
@@ -624,7 +564,6 @@
 
     <!-- IGM dialogs -->
     <string name="igm_delete_slot">Delete %1$s?</string>
-    <string name="igm_press_button" tools:ignore="TypographyEllipsis">PRESS A BUTTON... %1$d</string>
     <string name="press_button_prompt" tools:ignore="TypographyEllipsis">Press any button...</string>
 
     <!-- Achievements -->
@@ -636,11 +575,7 @@
     <string name="ach_unlocked">Unlocked</string>
     <string name="ach_locked">Locked</string>
 
-    <!-- Guide -->
-    <string name="guide_page">%1$d / %2$d</string>
-
     <string name="setting_portrait_margin">Portrait Margin</string>
-    <string name="portrait_margin_hud">Margin: %1$d px</string>
 
     <!-- Emulator Mapping -->
     <string name="setting_emulator_mapping">Emulator Mapping</string>
@@ -648,7 +583,6 @@
     <string name="label_show_all">SHOW ALL</string>
     <string name="label_show_installed">SHOW INSTALLED</string>
     <string name="value_not_bundled">NOT BUNDLED</string>
-    <string name="value_no_options">No options available.</string>
     <string name="value_no_overrides">No per-game overrides.</string>
     <string name="value_no_firmware">No firmware required for this core.</string>
     <string name="mapping_action_bios">BIOS Files</string>
@@ -691,9 +625,6 @@
     </plurals>
     <string name="value_no_cores_found">No Cores Found</string>
     <string name="label_clear_override">CLEAR</string>
-    <string name="ra_no_cores_reported">No cores reported by this RetroArch install.</string>
-    <string name="ra_cannot_report_banner">RetroArch can\'t report installed cores. Update RetroArch, or press Y to pick from all known cores (may hang if not actually installed).</string>
-    <string name="ra_show_all_banner">Showing all known cores. Picking one that\'s not actually installed will hang RetroArch.</string>
     <string name="dialog_reset_platform_confirm">Reset %1$s? This clears your emulator selection for this platform and restores the bundled default.</string>
     <string name="ra_preload_progress">Preloading %1$s</string>
     <string name="ra_preload_none">No achievements found for this game</string>
