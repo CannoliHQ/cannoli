@@ -128,7 +128,7 @@ class InputRouter @Inject constructor(
                         val entries = members.map { g ->
                             dev.cannoli.scorza.ui.screens.RommVariantEntry(
                                 game = g,
-                                label = dev.cannoli.scorza.romm.RommVariantFolder.variantLabel(g) { context.getString(dev.cannoli.ui.R.string.romm_variant_rev, it) },
+                                label = g.fsName.substringBeforeLast('.'),
                                 present = g.id in presentIds,
                                 isPrimary = g.id == s.game.id,
                             )

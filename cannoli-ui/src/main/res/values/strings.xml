@@ -229,7 +229,6 @@
     <string name="romm_detail_not_on_device">Not on device</string>
     <string name="romm_detail_download">DOWNLOAD</string>
     <string name="romm_version_picker_title">Download which version?</string>
-    <string name="romm_variant_rev">Rev %1$s</string>
     <string name="label_manual">MANUAL</string>
     <string name="romm_download_manual">Manual</string>
     <string name="romm_syncing" tools:ignore="TypographyEllipsis">Building cache...</string>
