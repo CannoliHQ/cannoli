@@ -502,6 +502,10 @@ class LaunchManager(
             displaySettings = IgmDisplaySettings(
                 fontSizeSp = settings.textSize.sp,
                 portraitMarginPx = settings.portraitMarginPx,
+                geometryWidthPct = settings.screenGeometryWidth,
+                geometryHeightPct = settings.screenGeometryHeight,
+                geometryXPct = settings.screenGeometryX,
+                geometryYPct = settings.screenGeometryY,
                 showWifi = settings.showWifi,
                 showBluetooth = settings.showBluetooth,
                 showVpn = settings.showVpn,

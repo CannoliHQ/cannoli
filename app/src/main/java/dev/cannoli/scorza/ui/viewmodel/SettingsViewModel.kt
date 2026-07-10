@@ -84,7 +84,8 @@ class SettingsViewModel @Inject constructor(
         val valueText: String? = null,
         val isEditable: Boolean = false,
         val canCycle: Boolean = true,
-        val swatchColor: Color? = null
+        val swatchColor: Color? = null,
+        val disabled: Boolean = false
     )
 
     data class Category(
@@ -145,6 +146,10 @@ class SettingsViewModel @Inject constructor(
         val fghCollectionId: Long? = null,
         val fghCollectionDisplayName: String? = null,
         val portraitMarginPx: Int = 0,
+        val screenGeometryWidth: Int = 100,
+        val screenGeometryHeight: Int = 100,
+        val screenGeometryX: Int = 0,
+        val screenGeometryY: Int = 0,
     )
 
     private val _state = MutableStateFlow(State())
@@ -185,6 +190,10 @@ class SettingsViewModel @Inject constructor(
             collectionsRepository?.byId(id)?.displayName
         },
         portraitMarginPx = settings.portraitMarginPx,
+        screenGeometryWidth = settings.screenGeometryWidth,
+        screenGeometryHeight = settings.screenGeometryHeight,
+        screenGeometryX = settings.screenGeometryX,
+        screenGeometryY = settings.screenGeometryY,
     )
 
     private val allCategories = listOf(
@@ -236,6 +245,10 @@ class SettingsViewModel @Inject constructor(
         val artWidth: Int,
         val artScale: ArtScale,
         val portraitMarginPx: Int,
+        val screenGeometryWidth: Int,
+        val screenGeometryHeight: Int,
+        val screenGeometryX: Int,
+        val screenGeometryY: Int,
     )
 
     private var snapshot: SettingsSnapshot? = null
@@ -334,6 +347,30 @@ class SettingsViewModel @Inject constructor(
 
     fun refreshAppSettings() {
         _appSettings.value = readAppSettings()
+    }
+
+    fun refreshItemsAndSettings() {
+        val catKey = _state.value.activeCategory
+        if (catKey != null) {
+            val newItems = buildItemsForCategory(catKey)
+            _state.update { it.copy(items = newItems, selectedIndex = it.selectedIndex.coerceAtMost((newItems.size - 1).coerceAtLeast(0))) }
+        }
+        _appSettings.value = readAppSettings()
+    }
+
+    private fun reclampGeometryOffsets() {
+        val maxX = (100 - settings.screenGeometryWidth) / 2
+        val maxY = (100 - settings.screenGeometryHeight) / 2
+        settings.screenGeometryX = settings.screenGeometryX.coerceIn(-maxX, maxX)
+        settings.screenGeometryY = settings.screenGeometryY.coerceIn(-maxY, maxY)
+    }
+
+    fun resetScreenGeometry() {
+        settings.screenGeometryWidth = 100
+        settings.screenGeometryHeight = 100
+        settings.screenGeometryX = 0
+        settings.screenGeometryY = 0
+        refreshItemsAndSettings()
     }
 
     fun enterSubCategory(key: String, @StringRes labelRes: Int, initialIndex: Int = 0) {
@@ -457,6 +494,26 @@ class SettingsViewModel @Inject constructor(
                     else -> 25
                 }
                 settings.portraitMarginPx = (settings.portraitMarginPx + direction * step).coerceAtLeast(0)
+            }
+            "screen_geo_width" -> {
+                val step = if (repeatCount == 0) 1 else 5
+                settings.screenGeometryWidth = (settings.screenGeometryWidth + direction * step).coerceIn(50, 100)
+                reclampGeometryOffsets()
+            }
+            "screen_geo_height" -> {
+                val step = if (repeatCount == 0) 1 else 5
+                settings.screenGeometryHeight = (settings.screenGeometryHeight + direction * step).coerceIn(50, 100)
+                reclampGeometryOffsets()
+            }
+            "screen_geo_x" -> {
+                val step = if (repeatCount == 0) 1 else 5
+                val maxX = (100 - settings.screenGeometryWidth) / 2
+                settings.screenGeometryX = (settings.screenGeometryX + direction * step).coerceIn(-maxX, maxX)
+            }
+            "screen_geo_y" -> {
+                val step = if (repeatCount == 0) 1 else 5
+                val maxY = (100 - settings.screenGeometryHeight) / 2
+                settings.screenGeometryY = (settings.screenGeometryY + direction * step).coerceIn(-maxY, maxY)
             }
             "kitchen_code_bypass" -> {
                 settings.kitchenCodeBypass = !settings.kitchenCodeBypass
@@ -619,6 +676,10 @@ class SettingsViewModel @Inject constructor(
         artWidth = settings.artWidth,
         artScale = settings.artScale,
         portraitMarginPx = settings.portraitMarginPx,
+        screenGeometryWidth = settings.screenGeometryWidth,
+        screenGeometryHeight = settings.screenGeometryHeight,
+        screenGeometryX = settings.screenGeometryX,
+        screenGeometryY = settings.screenGeometryY,
     )
 
     private fun restoreSettings(snap: SettingsSnapshot) {
@@ -653,6 +714,10 @@ class SettingsViewModel @Inject constructor(
         settings.artWidth = snap.artWidth
         settings.artScale = snap.artScale
         settings.portraitMarginPx = snap.portraitMarginPx
+        settings.screenGeometryWidth = snap.screenGeometryWidth
+        settings.screenGeometryHeight = snap.screenGeometryHeight
+        settings.screenGeometryX = snap.screenGeometryX
+        settings.screenGeometryY = snap.screenGeometryY
     }
 
     private fun fghCollections(): List<CollectionsRepository.CollectionRow> {
@@ -765,6 +830,12 @@ class SettingsViewModel @Inject constructor(
             add(SettingsItem("show_vpn", R.string.setting_vpn, valueRes = showHide(settings.showVpn)))
             add(SettingsItem("show_wifi", R.string.setting_wifi, valueRes = showHide(settings.showWifi)))
         }
+        "screen_geometry" -> buildList {
+            add(SettingsItem("screen_geo_width", R.string.setting_geo_width, valueText = "${settings.screenGeometryWidth}%"))
+            add(SettingsItem("screen_geo_height", R.string.setting_geo_height, valueText = "${settings.screenGeometryHeight}%"))
+            add(SettingsItem("screen_geo_x", R.string.setting_geo_hpos, valueText = (if (settings.screenGeometryX >= 0) "+" else "") + settings.screenGeometryX, disabled = settings.screenGeometryWidth >= 100))
+            add(SettingsItem("screen_geo_y", R.string.setting_geo_vpos, valueText = (if (settings.screenGeometryY >= 0) "+" else "") + settings.screenGeometryY, disabled = settings.screenGeometryHeight >= 100))
+        }
         "input" -> listOf(
             SettingsItem("controllers", R.string.setting_controllers, isEditable = true),
             SettingsItem("shortcuts", R.string.setting_shortcuts, isEditable = true),
@@ -810,6 +881,7 @@ class SettingsViewModel @Inject constructor(
         }
         "advanced" -> buildList {
             add(SettingsItem("logging", R.string.setting_logging, isEditable = true))
+            add(SettingsItem("screen_geometry", R.string.setting_screen_geometry, isEditable = true))
             add(SettingsItem("regenerate_system_folders", R.string.setting_regenerate_system_folders, isEditable = true))
             add(SettingsItem("kitchen_code_bypass", R.string.setting_kitchen_code_bypass, valueRes = onOff(settings.kitchenCodeBypass)))
             add(SettingsItem(

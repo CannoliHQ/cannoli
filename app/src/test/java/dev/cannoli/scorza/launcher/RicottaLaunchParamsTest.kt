@@ -43,6 +43,10 @@ class RicottaLaunchParamsTest {
         displaySettings = IgmDisplaySettings(
             fontSizeSp = 24,
             portraitMarginPx = 0,
+            geometryWidthPct = 100,
+            geometryHeightPct = 100,
+            geometryXPct = 0,
+            geometryYPct = 0,
             showWifi = true,
             showBluetooth = true,
             showVpn = true,

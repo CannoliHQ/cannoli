@@ -4,7 +4,7 @@ import android.os.Parcel
 import android.os.Parcelable
 
 /** Bumped whenever the launch contract changes. Sender and receiver must match. */
-const val RICOTTA_PROTOCOL_VERSION = 1
+const val RICOTTA_PROTOCOL_VERSION = 3
 
 class ProtocolMismatchException(val found: Int, val expected: Int) : RuntimeException(
     "Ricotta launch protocol mismatch: parcel=$found, app=$expected",

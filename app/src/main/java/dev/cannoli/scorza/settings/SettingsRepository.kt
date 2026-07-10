@@ -398,6 +398,22 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         get() = jsonRead { optInt(KEY_PORTRAIT_MARGIN_PX, 0) }
         set(value) = jsonWrite { put(KEY_PORTRAIT_MARGIN_PX, value.coerceAtLeast(0)) }
 
+    var screenGeometryWidth: Int
+        get() = jsonRead { optInt(KEY_SCREEN_GEOMETRY_WIDTH, 100) }
+        set(value) = jsonWrite { put(KEY_SCREEN_GEOMETRY_WIDTH, value.coerceIn(50, 100)) }
+
+    var screenGeometryHeight: Int
+        get() = jsonRead { optInt(KEY_SCREEN_GEOMETRY_HEIGHT, 100) }
+        set(value) = jsonWrite { put(KEY_SCREEN_GEOMETRY_HEIGHT, value.coerceIn(50, 100)) }
+
+    var screenGeometryX: Int
+        get() = jsonRead { optInt(KEY_SCREEN_GEOMETRY_X, 0) }
+        set(value) = jsonWrite { put(KEY_SCREEN_GEOMETRY_X, value.coerceIn(-50, 50)) }
+
+    var screenGeometryY: Int
+        get() = jsonRead { optInt(KEY_SCREEN_GEOMETRY_Y, 0) }
+        set(value) = jsonWrite { put(KEY_SCREEN_GEOMETRY_Y, value.coerceIn(-50, 50)) }
+
     var rommDeviceId: String?
         get() = jsonRead { optString(KEY_ROMM_DEVICE_ID, "").ifEmpty { null } }
         set(value) = jsonWrite { if (value == null) remove(KEY_ROMM_DEVICE_ID) else put(KEY_ROMM_DEVICE_ID, value) }
@@ -478,6 +494,10 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         private const val KEY_LOGGING_ROMM = "logging_romm"
         private const val KEY_ALWAYS_SAVE_ON_QUIT = "always_save_on_quit"
         private const val KEY_PORTRAIT_MARGIN_PX = "portrait_margin_px"
+        private const val KEY_SCREEN_GEOMETRY_WIDTH = "screen_geometry_width"
+        private const val KEY_SCREEN_GEOMETRY_HEIGHT = "screen_geometry_height"
+        private const val KEY_SCREEN_GEOMETRY_X = "screen_geometry_x"
+        private const val KEY_SCREEN_GEOMETRY_Y = "screen_geometry_y"
         private const val KEY_FGH_COLLECTION = "fgh_collection"
         private const val KEY_ROMM_DEVICE_ID = "romm_device_id"
         private const val KEY_ROMM_DEVICE_NAME = "romm_device_name"

@@ -19,6 +19,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -60,8 +61,8 @@ import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.setup.SetupCoordinator
-import dev.cannoli.scorza.ui.LocalPortraitMargin
-import dev.cannoli.scorza.ui.PortraitMarginState
+import dev.cannoli.scorza.ui.LocalViewportInsets
+import dev.cannoli.scorza.ui.ViewportInsetsPx
 import dev.cannoli.scorza.ui.screens.BootErrorScreen
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
@@ -215,7 +216,13 @@ class MainActivity : ComponentActivity(), ActivityActions {
             CannoliTheme(fontFamily = themeFont, iconFontFamily = appFonts.mplus1Code) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     CompositionLocalProvider(
-                        LocalPortraitMargin provides PortraitMarginState(marginPx = settings.portraitMarginPx),
+                        LocalViewportInsets provides ViewportInsetsPx(
+                            geometryWidthPct = settings.screenGeometryWidth,
+                            geometryHeightPct = settings.screenGeometryHeight,
+                            geometryXPct = settings.screenGeometryX,
+                            geometryYPct = settings.screenGeometryY,
+                            portraitMarginPx = settings.portraitMarginPx,
+                        ),
                         dev.cannoli.scorza.input.screen.compose.LocalScreenInputRegistry provides screenInputRegistry,
                     ) {
                     when (val s = boot) {
@@ -265,11 +272,13 @@ class MainActivity : ComponentActivity(), ActivityActions {
                                     dev.cannoli.scorza.boot.BootPhase.LIBRARY_REFRESH ->
                                         dev.cannoli.scorza.ui.screens.HousekeepingKind.LIBRARY_REFRESH
                                 }
-                                dev.cannoli.scorza.ui.screens.HousekeepingScreen(
-                                    kind = kind,
-                                    progress = s.progress,
-                                    statusLabel = s.label,
-                                )
+                                Box(modifier = Modifier.fillMaxSize().padding(dev.cannoli.scorza.ui.effectiveViewportPadding())) {
+                                    dev.cannoli.scorza.ui.screens.HousekeepingScreen(
+                                        kind = kind,
+                                        progress = s.progress,
+                                        statusLabel = s.label,
+                                    )
+                                }
                             } else {
                                 Box(modifier = Modifier.fillMaxSize()) {}
                             }

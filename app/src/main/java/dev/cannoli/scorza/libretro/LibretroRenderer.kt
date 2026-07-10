@@ -62,6 +62,10 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
     @Volatile var viewportWidth = 0; private set
     @Volatile var viewportHeight = 0; private set
     @Volatile var portraitMarginPx: Int = 0
+    @Volatile var screenGeometryWidth: Int = 100
+    @Volatile var screenGeometryHeight: Int = 100
+    @Volatile var screenGeometryX: Int = 0
+    @Volatile var screenGeometryY: Int = 0
 
     private val fpsMeter = FpsMeter(emaAlpha = FPS_EMA_ALPHA)
     val fps: Float get() = fpsMeter.fps
@@ -326,51 +330,24 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
             texCoordBuffer.put(coords)
             texCoordBuffer.position(0)
         }
-        val rotated = rotation == 1 || rotation == 3
-        val gameAspect = when (scalingMode) {
-            ScalingMode.FULLSCREEN -> surfaceWidth.toFloat() / surfaceHeight.toFloat()
-            ScalingMode.CORE_REPORTED -> {
-                val base = if (coreAspectRatio > 0f) coreAspectRatio else w.toFloat() / h.toFloat()
-                if (rotated) 1f / base else base
-            }
-            ScalingMode.ASPECT_SCREEN -> {
-                val base = w.toFloat() / h.toFloat()
-                if (rotated) 1f / base else base
-            }
-            ScalingMode.INTEGER,
-            ScalingMode.INTEGER_OVERSCALE -> if (rotated) h.toFloat() / w.toFloat() else w.toFloat() / h.toFloat()
-        }
-        val portrait = surfaceWidth < surfaceHeight
-        val marginActive = portrait && portraitMarginPx > 0
-        val effH = if (marginActive) (surfaceHeight - portraitMarginPx).coerceAtLeast(1) else surfaceHeight
-        val screenAspect = surfaceWidth.toFloat() / effH.toFloat()
-
-        var vpW: Int
-        var vpH: Int
-        if (scalingMode == ScalingMode.INTEGER || scalingMode == ScalingMode.INTEGER_OVERSCALE) {
-            val dimW = if (rotated) h else w
-            val dimH = if (rotated) w else h
-            val scaleXf = surfaceWidth.toFloat() / dimW
-            val scaleYf = effH.toFloat() / dimH
-            val minF = minOf(scaleXf, scaleYf)
-            val scale = if (scalingMode == ScalingMode.INTEGER_OVERSCALE) {
-                maxOf(1, kotlin.math.ceil(minF).toInt())
-            } else {
-                maxOf(1, kotlin.math.floor(minF).toInt())
-            }
-            vpW = dimW * scale
-            vpH = dimH * scale
-        } else if (gameAspect > screenAspect) {
-            vpW = surfaceWidth
-            vpH = (surfaceWidth / gameAspect).toInt()
-        } else {
-            vpW = (effH * gameAspect).toInt()
-            vpH = effH
-        }
-        val vpX = (surfaceWidth - vpW) / 2
-        val marginYOffset = if (marginActive) portraitMarginPx else 0
-        val vpY = marginYOffset + (effH - vpH) / 2
-
+        val vp = computeViewport(
+            surfaceWidth = surfaceWidth,
+            surfaceHeight = surfaceHeight,
+            frameWidth = w,
+            frameHeight = h,
+            coreAspectRatio = coreAspectRatio,
+            rotation = rotation,
+            scalingMode = scalingMode,
+            portraitMarginPx = portraitMarginPx,
+            geometryWidthPct = screenGeometryWidth,
+            geometryHeightPct = screenGeometryHeight,
+            geometryXPct = screenGeometryX,
+            geometryYPct = screenGeometryY,
+        )
+        val vpX = vp.x
+        val vpY = vp.y
+        val vpW = vp.w
+        val vpH = vp.h
         viewportWidth = vpW
         viewportHeight = vpH
 

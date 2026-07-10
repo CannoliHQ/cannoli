@@ -119,6 +119,7 @@ class SettingsInputHandler @Inject constructor(
             }
             "colors" -> nav.push(LauncherScreen.ColorList(colors = settingsViewModel.getColorEntries()))
             "controllers" -> nav.push(LauncherScreen.Controllers())
+            "screen_geometry" -> settingsViewModel.enterSubCategory("screen_geometry", dev.cannoli.scorza.R.string.setting_screen_geometry)
             "logging" -> nav.push(LauncherScreen.LoggingSettings())
             "audit_emulator_intents" -> runIntentAudit()
             "shortcuts" -> nav.push(LauncherScreen.ShortcutBinding(shortcuts = globalOverrides.readShortcuts()))
@@ -222,6 +223,10 @@ class SettingsInputHandler @Inject constructor(
             settingsViewModel.clearRomDirectory()
             launcherActions.invalidateAllLibraryCaches()
             nav.dialogState.value = DialogState.RestartRequired
+            return
+        }
+        if (settingsViewModel.state.value.activeCategory == "screen_geometry") {
+            settingsViewModel.resetScreenGeometry()
         }
     }
 

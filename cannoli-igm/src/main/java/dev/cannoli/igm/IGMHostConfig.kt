@@ -19,6 +19,10 @@ data class IGMHostConfig(
     // Expected: fontSizeSp / 22f (matches the launcher's igm scale-factor derivation).
     val scaleFactor: Float,
     val portraitMarginPx: Int,
+    val geometryWidthPct: Int,
+    val geometryHeightPct: Int,
+    val geometryXPct: Int,
+    val geometryYPct: Int,
     val showWifi: Boolean,
     val showBluetooth: Boolean,
     val showVpn: Boolean,

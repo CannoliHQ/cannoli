@@ -744,6 +744,10 @@ class LibretroActivity : ComponentActivity() {
                     backend.overlayPath = resolveOverlayPath()
                     backend.shaderPresetPath = resolveShaderPresetPath()
                     backend.portraitMarginPx = settings.portraitMarginPx
+                    backend.screenGeometryWidth = settings.screenGeometryWidth
+                    backend.screenGeometryHeight = settings.screenGeometryHeight
+                    backend.screenGeometryX = settings.screenGeometryX
+                    backend.screenGeometryY = settings.screenGeometryY
                 }
 
                 val glesBackend = LibretroRenderer(runner)

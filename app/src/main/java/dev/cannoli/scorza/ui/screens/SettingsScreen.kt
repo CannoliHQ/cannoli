@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -11,6 +12,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
@@ -74,6 +76,7 @@ fun SettingsScreen(
                     key = { _, item -> item.key }
                 ) { _, item, isSelected ->
                     val hasValue = item.valueText != null || item.valueRes != null || item.swatchColor != null
+                    Box(modifier = Modifier.fillMaxWidth().alpha(if (item.disabled) 0.4f else 1f)) {
                     if (hasValue) {
                         PillRowKeyValue(
                             label = item.labelText ?: stringResource(item.labelRes),
@@ -93,6 +96,7 @@ fun SettingsScreen(
                             verticalPadding = listVerticalPadding
                         )
                     }
+                    }
                 }
             }
 
@@ -100,7 +104,7 @@ fun SettingsScreen(
             val isColorItem = selectedItem?.key?.startsWith("color_") == true
             val isEditableItem = selectedItem?.isEditable == true
             val isFghCollection = selectedItem?.key == "fgh_collection"
-            val showChange = selectedItem?.canCycle != false && (!isEditableItem || isFghCollection)
+            val showChange = selectedItem?.canCycle != false && selectedItem?.disabled != true && (!isEditableItem || isFghCollection)
             val leftItems = if (showChange) {
                 listOf(buttonStyle.back to stringResource(R.string.label_back), DPAD_HORIZONTAL to stringResource(R.string.label_change))
             } else {
@@ -116,6 +120,8 @@ fun SettingsScreen(
                 listOf(buttonStyle.confirm to stringResource(R.string.label_select))
             } else if (isFghCollection) {
                 listOf(buttonStyle.confirm to stringResource(R.string.label_choose))
+            } else if (state.activeCategory == "screen_geometry") {
+                listOf(buttonStyle.north to stringResource(R.string.label_reset))
             } else if (showClear) {
                 listOf(buttonStyle.north to stringResource(R.string.label_clear))
             } else if (isNavInto) {

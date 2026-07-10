@@ -102,6 +102,10 @@ fun LibretroScreen(
         lineHeightSp = settings.textSize.sp + 10,
         scaleFactor = settings.textSize.sp / 22f,
         portraitMarginPx = settings.portraitMarginPx,
+        geometryWidthPct = settings.screenGeometryWidth,
+        geometryHeightPct = settings.screenGeometryHeight,
+        geometryXPct = settings.screenGeometryX,
+        geometryYPct = settings.screenGeometryY,
         showWifi = settings.showWifi,
         showBluetooth = settings.showBluetooth,
         showVpn = settings.showVpn,
@@ -192,15 +196,21 @@ fun LibretroScreen(
 
         val osdConfiguration = androidx.compose.ui.platform.LocalConfiguration.current
         val osdDensity = androidx.compose.ui.platform.LocalDensity.current
-        val osdBottomMargin = if (
-            settings.portraitMarginPx > 0 &&
-            osdConfiguration.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT
-        ) {
-            with(osdDensity) { settings.portraitMarginPx.toDp() }
-        } else {
-            0.dp
+        val osdPortrait = osdConfiguration.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT
+        val osdRect = dev.cannoli.ui.computeScreenGeometryRect(
+            osdConfiguration.screenWidthDp, osdConfiguration.screenHeightDp,
+            settings.screenGeometryWidth, settings.screenGeometryHeight, settings.screenGeometryX, settings.screenGeometryY,
+        )
+        val osdBottomMarginPx = if (osdPortrait) settings.portraitMarginPx else 0
+        val osdPadding = with(osdDensity) {
+            androidx.compose.foundation.layout.PaddingValues(
+                start = osdRect.x.dp,
+                top = osdRect.y.dp,
+                end = (osdConfiguration.screenWidthDp - osdRect.x - osdRect.w).coerceAtLeast(0).dp,
+                bottom = (osdConfiguration.screenHeightDp - osdRect.y - osdRect.h).coerceAtLeast(0).dp + osdBottomMarginPx.toDp(),
+            )
         }
-        Box(modifier = Modifier.fillMaxSize().padding(bottom = osdBottomMargin)) {
+        Box(modifier = Modifier.fillMaxSize().padding(osdPadding)) {
             OsdHost(controller = osdController)
         }
     }

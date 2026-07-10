@@ -10,6 +10,10 @@ import dev.cannoli.ui.ConfirmButton
 data class IgmDisplaySettings(
     val fontSizeSp: Int,
     val portraitMarginPx: Int,
+    val geometryWidthPct: Int,
+    val geometryHeightPct: Int,
+    val geometryXPct: Int,
+    val geometryYPct: Int,
     val showWifi: Boolean,
     val showBluetooth: Boolean,
     val showVpn: Boolean,
@@ -24,6 +28,10 @@ data class IgmDisplaySettings(
     override fun writeToParcel(dest: Parcel, flags: Int) {
         dest.writeInt(fontSizeSp)
         dest.writeInt(portraitMarginPx)
+        dest.writeInt(geometryWidthPct)
+        dest.writeInt(geometryHeightPct)
+        dest.writeInt(geometryXPct)
+        dest.writeInt(geometryYPct)
         dest.writeInt(if (showWifi) 1 else 0)
         dest.writeInt(if (showBluetooth) 1 else 0)
         dest.writeInt(if (showVpn) 1 else 0)
@@ -38,6 +46,10 @@ data class IgmDisplaySettings(
         override fun createFromParcel(p: Parcel) = IgmDisplaySettings(
             fontSizeSp = p.readInt(),
             portraitMarginPx = p.readInt(),
+            geometryWidthPct = p.readInt(),
+            geometryHeightPct = p.readInt(),
+            geometryXPct = p.readInt(),
+            geometryYPct = p.readInt(),
             showWifi = p.readInt() != 0,
             showBluetooth = p.readInt() != 0,
             showVpn = p.readInt() != 0,

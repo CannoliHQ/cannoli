@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -36,7 +37,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.ui.ButtonStyle
@@ -104,16 +104,21 @@ fun CannoliIGM(
     val statusBarEnabled = (config.showWifi || config.showBluetooth || config.showClock || config.batteryDisplay != BatteryDisplayMode.HIDE || config.showVpn) && !showDescription && !isGuideScreen
     val statusBarLeftEdge = remember { mutableIntStateOf(Int.MAX_VALUE) }
 
-    val portraitMarginDp: Dp = if (config.portraitMarginPx > 0) {
-        val configuration = LocalConfiguration.current
-        val density = LocalDensity.current
-        if (configuration.orientation == Configuration.ORIENTATION_PORTRAIT) {
-            with(density) { config.portraitMarginPx.toDp() }
-        } else {
-            0.dp
-        }
-    } else {
-        0.dp
+    val configuration = LocalConfiguration.current
+    val density = LocalDensity.current
+    val portrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+    val geoRect = dev.cannoli.ui.computeScreenGeometryRect(
+        configuration.screenWidthDp, configuration.screenHeightDp,
+        config.geometryWidthPct, config.geometryHeightPct, config.geometryXPct, config.geometryYPct,
+    )
+    val bottomMarginPx = if (portrait) config.portraitMarginPx else 0
+    val viewportPadding = with(density) {
+        PaddingValues(
+            start = geoRect.x.dp,
+            top = geoRect.y.dp,
+            end = (configuration.screenWidthDp - geoRect.x - geoRect.w).coerceAtLeast(0).dp,
+            bottom = (configuration.screenHeightDp - geoRect.y - geoRect.h).coerceAtLeast(0).dp + bottomMarginPx.toDp(),
+        )
     }
 
     CompositionLocalProvider(
@@ -121,7 +126,7 @@ fun CannoliIGM(
         LocalScaleFactor provides igmScaleFactor,
         LocalCannoliTypography provides igmTypography,
     ) {
-        Box(modifier = Modifier.fillMaxSize().padding(bottom = portraitMarginDp)) {
+        Box(modifier = Modifier.fillMaxSize().padding(viewportPadding)) {
             when (screen) {
                 is IGMScreen.Menu -> {
                     InGameMenu(

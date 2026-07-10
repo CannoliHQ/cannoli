@@ -35,14 +35,14 @@ import dev.cannoli.igm.ShortcutAction
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.input.runtime.confirmButton
 import dev.cannoli.scorza.input.runtime.labelSet
-import dev.cannoli.scorza.ui.LocalPortraitMargin
+import dev.cannoli.scorza.ui.LocalViewportInsets
 import dev.cannoli.scorza.util.keyCodeName
-import dev.cannoli.scorza.ui.PortraitMarginState
+import dev.cannoli.scorza.ui.ViewportInsetsPx
 import dev.cannoli.scorza.ui.components.CREDITS
 import dev.cannoli.scorza.ui.components.CreditsOverlay
 import dev.cannoli.scorza.ui.components.DialogOverlay
 import dev.cannoli.scorza.ui.components.ListDialogScreen
-import dev.cannoli.scorza.ui.effectivePortraitMarginDp
+import dev.cannoli.scorza.ui.effectiveViewportPadding
 import dev.cannoli.scorza.ui.screens.ColorEntry
 import dev.cannoli.scorza.ui.screens.ControllerDetailScreen
 import dev.cannoli.scorza.ui.screens.ControllersScreen
@@ -441,16 +441,22 @@ fun AppNavGraph(
     val scaleFactor = appSettings.textSize.sp / 22f
     val cannoliTypography = buildCannoliTypography(baseSizeSp = appSettings.textSize.sp, fontFamily = LocalCannoliFont.current)
 
-    val portraitMarginState = PortraitMarginState(marginPx = appSettings.portraitMarginPx)
+    val viewportInsets = ViewportInsetsPx(
+        geometryWidthPct = appSettings.screenGeometryWidth,
+        geometryHeightPct = appSettings.screenGeometryHeight,
+        geometryXPct = appSettings.screenGeometryX,
+        geometryYPct = appSettings.screenGeometryY,
+        portraitMarginPx = appSettings.portraitMarginPx,
+    )
     CompositionLocalProvider(
         LocalCannoliColors provides cannoliColors,
         LocalStatusBarLeftEdge provides statusBarLeftEdge,
         LocalScaleFactor provides scaleFactor,
         LocalCannoliTypography provides cannoliTypography,
-        LocalPortraitMargin provides portraitMarginState
+        LocalViewportInsets provides viewportInsets
     ) {
-    Box(modifier = Modifier.fillMaxSize().displayCutoutPadding()) {
-    Box(modifier = Modifier.fillMaxSize().padding(bottom = effectivePortraitMarginDp())) {
+    Box(modifier = Modifier.fillMaxSize().displayCutoutPadding().padding(effectiveViewportPadding())) {
+    Box(modifier = Modifier.fillMaxSize()) {
         when (currentScreen) {
             is LauncherScreen.SystemList -> {
                 if (systemListViewModel == null) return@Box
@@ -1799,6 +1805,12 @@ fun AppNavGraph(
         && settingsState.items.getOrNull(settingsState.selectedIndex)?.key == "portrait_margin"
     if (onPortraitMarginRow && appSettings.portraitMarginPx > 0) {
         PortraitMarginOverlay(marginPx = appSettings.portraitMarginPx)
+    }
+    val onScreenGeometryRow = currentScreen is LauncherScreen.Settings && settingsState.activeCategory == "screen_geometry"
+    val geometryIsDefault = appSettings.screenGeometryWidth == 100 && appSettings.screenGeometryHeight == 100 &&
+        appSettings.screenGeometryX == 0 && appSettings.screenGeometryY == 0
+    if (onScreenGeometryRow && !geometryIsDefault) {
+        Box(modifier = Modifier.fillMaxSize().border(2.dp, cannoliColors.accent))
     }
     OsdHost(controller = osdController)
     }

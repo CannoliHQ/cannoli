@@ -575,6 +575,11 @@
     <string name="ach_locked">Locked</string>
 
     <string name="setting_portrait_margin">Portrait Margin</string>
+    <string name="setting_screen_geometry">Screen Geometry</string>
+    <string name="setting_geo_width">Width</string>
+    <string name="setting_geo_height">Height</string>
+    <string name="setting_geo_hpos">Horizontal Position</string>
+    <string name="setting_geo_vpos">Vertical Position</string>
 
     <!-- Emulator Mapping -->
     <string name="setting_emulator_mapping">Emulator Mapping</string>

@@ -20,7 +20,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.cannoli.scorza.R
-import dev.cannoli.scorza.ui.effectivePortraitMarginDp
 import dev.cannoli.ui.components.CannoliProgressBar
 import dev.cannoli.ui.components.screenPadding
 import dev.cannoli.ui.theme.GrayText
@@ -45,7 +44,6 @@ fun HousekeepingScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .padding(bottom = effectivePortraitMarginDp())
             .padding(screenPadding),
         contentAlignment = Alignment.Center
     ) {
