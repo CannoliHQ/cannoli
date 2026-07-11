@@ -1348,7 +1348,7 @@ fun AppNavGraph(
             is LauncherScreen.SaveSlots -> {
                 inputRouter?.let { dev.cannoli.scorza.input.screen.compose.ScreenInput(it.saveSlotsHandler) }
                 SaveSlotsScreen(
-                    title = currentScreen.displayName,
+                    gameName = currentScreen.displayName,
                     slots = currentScreen.slots,
                     selectedIndex = currentScreen.selectedIndex,
                     backgroundImagePath = appSettings.backgroundImagePath,

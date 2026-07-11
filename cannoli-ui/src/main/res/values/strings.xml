@@ -644,7 +644,7 @@
     <string name="label_refresh">REFRESH</string>
 
     <!-- Save Slots screen -->
-    <string name="save_slots_title">Save Slots</string>
+    <string name="save_slots_screen_title">%1$s Slots</string>
     <string name="save_slots_active">Active</string>
     <string name="save_slots_create">NEW SLOT</string>
     <string name="save_slots_rename">RENAME</string>

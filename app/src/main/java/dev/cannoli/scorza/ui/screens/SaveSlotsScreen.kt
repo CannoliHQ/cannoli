@@ -21,7 +21,7 @@ private const val GLYPH_L1 = "L1"
 
 @Composable
 fun SaveSlotsScreen(
-    title: String,
+    gameName: String,
     slots: List<SlotInfo>,
     selectedIndex: Int,
     pendingDelete: Boolean,
@@ -40,7 +40,7 @@ fun SaveSlotsScreen(
         ListDialogScreen(
             backgroundImagePath = backgroundImagePath,
             backgroundTint = backgroundTint,
-            title = title,
+            title = stringResource(R.string.save_slots_screen_title, gameName),
             listFontSize = listFontSize,
             listLineHeight = listLineHeight,
             leftBottomItems = buildList {
