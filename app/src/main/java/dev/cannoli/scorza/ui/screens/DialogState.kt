@@ -119,12 +119,17 @@ sealed interface DialogState {
         val backupCount: Int = 5,
         val pendingConflicts: Int = 0,
         val syncErrors: Int = 0,
+        val hasBackups: Boolean = false,
     ) : DialogState
     data class RommConfirm(val action: RommConfirmAction, val downloadKey: String? = null) : DialogState
     data class RommPlatformToggle(val items: List<RommPlatformToggleItem>, val selectedIndex: Int = 0) : DialogState
     data class RommCollectionToggle(val items: List<RommCollectionToggleItem>, val selectedIndex: Int = 0) : DialogState
     data class SyncHistory(val entries: List<SyncHistoryRow>, val selectedIndex: Int = 0, val fromSaveSyncMenu: Boolean = false) : DialogState
     data class SyncErrors(val errors: List<dev.cannoli.scorza.romm.sync.SyncFailure>, val selectedIndex: Int = 0, val fromSaveSyncMenu: Boolean = false) : DialogState
+    data class RommSavesMenu(val title: String, val options: List<String>, val selectedIndex: Int = 0) : DialogState
+    data class SaveBackupGames(val games: List<dev.cannoli.scorza.romm.sync.SaveBackupGame>, val selectedIndex: Int = 0) : DialogState
+    data class SaveBackupList(val tag: String, val base: String, val displayName: String, val backups: List<dev.cannoli.scorza.romm.sync.SaveBackup>, val selectedIndex: Int = 0, val fromContextMenu: Boolean = false) : DialogState
+    data class SaveBackupRestoreConfirm(val tag: String, val base: String, val displayName: String, val stamp: Long, val dateLabel: String, val fromContextMenu: Boolean = false) : DialogState
     data class ConflictsMenu(val rows: List<ConflictRow>, val selectedIndex: Int = 0, val fromSaveSyncMenu: Boolean = false) : DialogState
     data object SaveSyncChecking : DialogState
     data class SaveSyncConflict(
@@ -220,6 +225,10 @@ val DialogState.isFullScreen: Boolean
         is DialogState.SaveSyncStaleBlock,
         is DialogState.SyncHistory,
         is DialogState.SyncErrors,
+        is DialogState.RommSavesMenu,
+        is DialogState.SaveBackupGames,
+        is DialogState.SaveBackupList,
+        is DialogState.SaveBackupRestoreConfirm,
         is DialogState.ConflictsMenu,
         is DialogState.RommVersionPicker -> true
         else -> false

@@ -420,7 +420,7 @@ fun DialogOverlay(
         }
 
         is DialogState.RommSaveSyncMenu -> {
-            val rows = RommSaveSyncRow.visibleRows(dialogState.supported, dialogState.enabled, dialogState.pendingConflicts, dialogState.syncErrors)
+            val rows = RommSaveSyncRow.visibleRows(dialogState.supported, dialogState.enabled, dialogState.pendingConflicts, dialogState.syncErrors, dialogState.hasBackups)
             val selectedRow = rows.getOrNull(dialogState.selectedIndex)
             val isCycleRow = selectedRow == RommSaveSyncRow.TOGGLE || selectedRow == RommSaveSyncRow.BACKUPS
             ListDialogScreen(
@@ -472,6 +472,13 @@ fun DialogOverlay(
                         )
                         RommSaveSyncRow.ERRORS -> PillRowText(
                             label = pluralStringResource(dev.cannoli.ui.R.plurals.quick_menu_sync_errors, dialogState.syncErrors, dialogState.syncErrors),
+                            isSelected = isSelected,
+                            fontSize = listFontSize,
+                            lineHeight = listLineHeight,
+                            verticalPadding = listVerticalPadding
+                        )
+                        RommSaveSyncRow.RESTORE -> PillRowText(
+                            label = stringResource(dev.cannoli.ui.R.string.save_backup_restore),
                             isSelected = isSelected,
                             fontSize = listFontSize,
                             lineHeight = listLineHeight,
@@ -768,6 +775,93 @@ fun DialogOverlay(
             }
         }
 
+        is DialogState.RommSavesMenu -> {
+            ListDialogScreen(
+                backgroundImagePath = backgroundImagePath,
+                backgroundTint = backgroundTint,
+                title = dialogState.title,
+                listFontSize = listFontSize,
+                listLineHeight = listLineHeight,
+                rightBottomItems = listOf(buttonStyle.confirm to stringResource(R.string.label_select)),
+                buttonStyle = buttonStyle
+            ) {
+                List(items = dialogState.options, selectedIndex = dialogState.selectedIndex, itemHeight = itemHeight) { _, option, isSelected ->
+                    PillRowText(
+                        label = option,
+                        isSelected = isSelected,
+                        fontSize = listFontSize,
+                        lineHeight = listLineHeight,
+                        verticalPadding = listVerticalPadding
+                    )
+                }
+            }
+        }
+
+        is DialogState.SaveBackupGames -> {
+            val colors = LocalCannoliColors.current
+            val font = LocalCannoliFont.current
+            ListDialogScreen(
+                backgroundImagePath = backgroundImagePath,
+                backgroundTint = backgroundTint,
+                title = stringResource(dev.cannoli.ui.R.string.save_backup_games_title),
+                listFontSize = listFontSize,
+                listLineHeight = listLineHeight,
+                rightBottomItems = listOf(buttonStyle.confirm to stringResource(R.string.label_select)),
+                buttonStyle = buttonStyle
+            ) {
+                if (dialogState.games.isEmpty()) {
+                    Text(text = stringResource(dev.cannoli.ui.R.string.save_backup_none), color = colors.text.copy(alpha = 0.5f), fontFamily = font, fontSize = listFontSize)
+                } else {
+                    List(items = dialogState.games, selectedIndex = dialogState.selectedIndex, itemHeight = itemHeight) { _, game, isSelected ->
+                        PillRowKeyValue(
+                            label = game.displayName,
+                            value = game.tag.uppercase(),
+                            isSelected = isSelected,
+                            fontSize = listFontSize,
+                            lineHeight = listLineHeight,
+                            verticalPadding = listVerticalPadding,
+                        )
+                    }
+                }
+            }
+        }
+
+        is DialogState.SaveBackupList -> {
+            val colors = LocalCannoliColors.current
+            val font = LocalCannoliFont.current
+            ListDialogScreen(
+                backgroundImagePath = backgroundImagePath,
+                backgroundTint = backgroundTint,
+                title = dialogState.displayName,
+                listFontSize = listFontSize,
+                listLineHeight = listLineHeight,
+                rightBottomItems = listOf(buttonStyle.confirm to stringResource(R.string.label_select)),
+                buttonStyle = buttonStyle
+            ) {
+                if (dialogState.backups.isEmpty()) {
+                    Text(text = stringResource(dev.cannoli.ui.R.string.save_backup_none), color = colors.text.copy(alpha = 0.5f), fontFamily = font, fontSize = listFontSize)
+                } else {
+                    List(items = dialogState.backups, selectedIndex = dialogState.selectedIndex, itemHeight = itemHeight) { _, backup, isSelected ->
+                        PillRowKeyValue(
+                            label = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date(backup.stamp)),
+                            value = dev.cannoli.scorza.ui.screens.RommGameDetailLayout.formatBytes(backup.sizeBytes),
+                            isSelected = isSelected,
+                            fontSize = listFontSize,
+                            lineHeight = listLineHeight,
+                            verticalPadding = listVerticalPadding,
+                        )
+                    }
+                }
+            }
+        }
+
+        is DialogState.SaveBackupRestoreConfirm -> {
+            ConfirmOverlay(
+                message = "${stringResource(dev.cannoli.ui.R.string.save_backup_restore_confirm)}\n${dialogState.dateLabel}",
+                buttonStyle = buttonStyle,
+            )
+        }
+
         is DialogState.ConflictsMenu -> {
             ListDialogScreen(
                 backgroundImagePath = backgroundImagePath,
@@ -1031,9 +1125,9 @@ enum class RommSettingsRow(@androidx.annotation.StringRes val labelRes: Int, val
 }
 
 enum class RommSaveSyncRow {
-    TOGGLE, BACKUPS, HISTORY, CONFLICTS, ERRORS;
+    TOGGLE, BACKUPS, HISTORY, CONFLICTS, ERRORS, RESTORE;
     companion object {
-        fun visibleRows(supported: Boolean, enabled: Boolean, pendingConflicts: Int = 0, syncErrors: Int = 0): List<RommSaveSyncRow> =
+        fun visibleRows(supported: Boolean, enabled: Boolean, pendingConflicts: Int = 0, syncErrors: Int = 0, hasBackups: Boolean = false): List<RommSaveSyncRow> =
             buildList {
                 add(TOGGLE)
                 if (supported && enabled) {
@@ -1042,6 +1136,8 @@ enum class RommSaveSyncRow {
                     if (pendingConflicts > 0) add(CONFLICTS)
                     if (syncErrors > 0) add(ERRORS)
                 }
+                // Restore is a recovery action, so it stays available even when sync is off.
+                if (hasBackups) add(RESTORE)
             }
     }
 }

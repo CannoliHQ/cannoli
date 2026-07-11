@@ -126,6 +126,7 @@ sealed class LauncherScreen {
         val gameKey: String,
         val tag: String,
         val base: String,
+        val displayName: String,
         val romId: Int,
         val emulator: String?,
         val slots: List<dev.cannoli.scorza.romm.sync.SlotInfo>,
@@ -1347,6 +1348,7 @@ fun AppNavGraph(
             is LauncherScreen.SaveSlots -> {
                 inputRouter?.let { dev.cannoli.scorza.input.screen.compose.ScreenInput(it.saveSlotsHandler) }
                 SaveSlotsScreen(
+                    title = currentScreen.displayName,
                     slots = currentScreen.slots,
                     selectedIndex = currentScreen.selectedIndex,
                     backgroundImagePath = appSettings.backgroundImagePath,

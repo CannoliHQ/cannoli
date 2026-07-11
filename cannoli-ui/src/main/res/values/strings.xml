@@ -664,6 +664,17 @@
         <item quantity="one">Sync Errors (1)</item>
         <item quantity="other">Sync Errors (%1$d)</item>
     </plurals>
+    <string name="save_backup_restore">Restore from Backup</string>
+    <string name="save_backup_games_title">Restore Save</string>
+    <string name="save_backup_list_title">Backups</string>
+    <string name="save_backup_none">No backups</string>
+    <string name="save_backup_restore_confirm">Restore this backup?\nYour current save is backed up first.</string>
+    <string name="save_backup_restore_done">Save restored</string>
+    <string name="save_backup_restore_failed">Restore failed</string>
+    <plurals name="save_backup_count">
+        <item quantity="one">%1$d backup</item>
+        <item quantity="other">%1$d backups</item>
+    </plurals>
     <string name="conflict_keep_local">Keep Local</string>
     <string name="conflict_use_server">Use Server</string>
     <string name="conflict_skip">Skip</string>

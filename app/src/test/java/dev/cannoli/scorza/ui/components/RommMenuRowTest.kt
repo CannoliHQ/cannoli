@@ -23,4 +23,11 @@ class RommMenuRowTest {
         assertEquals(false, noErrors.contains(RommSaveSyncRow.ERRORS))
         assertEquals(false, disabled.contains(RommSaveSyncRow.ERRORS))
     }
+
+    @Test fun `restore row appears whenever backups exist even if sync is off`() {
+        val withBackups = RommSaveSyncRow.visibleRows(supported = true, enabled = false, hasBackups = true)
+        val noBackups = RommSaveSyncRow.visibleRows(supported = true, enabled = true, hasBackups = false)
+        assertEquals(true, withBackups.contains(RommSaveSyncRow.RESTORE))
+        assertEquals(false, noBackups.contains(RommSaveSyncRow.RESTORE))
+    }
 }
