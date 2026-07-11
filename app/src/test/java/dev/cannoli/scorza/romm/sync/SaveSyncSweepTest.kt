@@ -187,4 +187,50 @@ class SaveSyncSweepTest {
 
         assertEquals(0, summary.uploaded)
     }
+
+    @Test fun `sweep pulls server save when local missing and no anchor`() = runBlocking {
+        // no local save, no anchor: the server copy should still be pulled down.
+        every { client.getSaves(42, "dev-1") } returns listOf(
+            RommSaveDto(id = 77, romId = 42, slot = "autosave", contentHash = "srv", updatedAt = "2026-06-26T01:00:00Z")
+        )
+
+        val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") }, online = true)
+
+        assertEquals(1, summary.downloaded)
+        assertEquals(SyncDirection.DOWNLOAD, historyStore.recent().first().direction)
+        assertEquals(true, store.get("SNES/Zelda.sfc", DEFAULT_SLOT) != null)
+    }
+
+    @Test fun `upload 409 with a different server save escalates a conflict`() = runBlocking {
+        writeSave("LOCAL")
+        seedAnchor(lastUploadedHash = "old", localContentHash = "old") // local changed -> plan UPLOAD
+        every { client.negotiateSync(any()) } returns SyncNegotiateResponse(sessionId = 1, operations = emptyList())
+        every { client.uploadSave(any(), any(), any(), any(), any(), any()) } throws dev.cannoli.scorza.romm.RommException(409, "HTTP 409 Conflict")
+        every { client.getSaves(42, "dev-1") } returns listOf(
+            RommSaveDto(id = 88, romId = 42, slot = "autosave", contentHash = "different-server-hash", updatedAt = "t")
+        )
+
+        service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") }, online = true)
+
+        assertEquals(1, pendingStore.count())
+        assertEquals(SyncDirection.CONFLICT, historyStore.recent().first().direction)
+    }
+
+    @Test fun `upload 409 with an identical server save reconciles without conflict`() = runBlocking {
+        writeSave("LOCAL")
+        val localHash = SaveHasher.hashFile(File(sd, "Saves/SNES/Zelda.srm"))
+        seedAnchor(lastUploadedHash = "old", localContentHash = "old") // local changed -> plan UPLOAD
+        every { client.negotiateSync(any()) } returns SyncNegotiateResponse(sessionId = 1, operations = emptyList())
+        every { client.uploadSave(any(), any(), any(), any(), any(), any()) } throws dev.cannoli.scorza.romm.RommException(409, "HTTP 409 Conflict")
+        every { client.getSaves(42, "dev-1") } returns listOf(
+            RommSaveDto(id = 88, romId = 42, slot = "autosave", contentHash = localHash, updatedAt = "2026-06-26T05:00:00Z")
+        )
+
+        val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") }, online = true)
+
+        assertEquals(0, pendingStore.count())
+        assertEquals(0, summary.uploaded)
+        assertEquals(88, store.get("SNES/Zelda.sfc", DEFAULT_SLOT)?.rommSaveId)
+        assertEquals(0, historyStore.recent().count { it.direction == SyncDirection.ERROR })
+    }
 }

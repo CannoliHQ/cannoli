@@ -7,6 +7,7 @@ data class SyncHistoryRow(
     val name: String,
     val direction: SyncDirection,
     val relativeTime: String,
+    val detail: String? = null,
 )
 
 fun buildHistoryRows(entries: List<SyncHistoryEntry>, now: Long, nowLabel: String): List<SyncHistoryRow> =
@@ -18,5 +19,5 @@ fun buildHistoryRows(entries: List<SyncHistoryEntry>, now: Long, nowLabel: Strin
             secs < 86_400 -> "${secs / 3600}h"
             else -> "${secs / 86_400}d"
         }
-        SyncHistoryRow(e.displayName, e.direction, rel)
+        SyncHistoryRow(e.displayName, e.direction, rel, e.detail)
     }

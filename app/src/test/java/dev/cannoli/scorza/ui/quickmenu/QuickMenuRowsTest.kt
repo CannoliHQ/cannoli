@@ -25,4 +25,20 @@ class QuickMenuRowsTest {
             QuickMenuRow.visibleRows(rommPaired = false, kitchenRunning = false)
         )
     }
+
+    @Test fun `errors row only when sync enabled and errors present`() {
+        val withErrors = QuickMenuRow.visibleRows(rommPaired = true, kitchenRunning = false, saveSyncEnabled = true, syncErrors = 2)
+        val noErrors = QuickMenuRow.visibleRows(rommPaired = true, kitchenRunning = false, saveSyncEnabled = true, syncErrors = 0)
+        val syncDisabled = QuickMenuRow.visibleRows(rommPaired = true, kitchenRunning = false, saveSyncEnabled = false, syncErrors = 2)
+        assertEquals(true, withErrors.contains(QuickMenuRow.ERRORS))
+        assertEquals(false, noErrors.contains(QuickMenuRow.ERRORS))
+        assertEquals(false, syncDisabled.contains(QuickMenuRow.ERRORS))
+    }
+
+    @Test fun `errors row follows conflicts`() {
+        val rows = QuickMenuRow.visibleRows(
+            rommPaired = true, kitchenRunning = false, saveSyncEnabled = true, pendingConflicts = 1, syncErrors = 1,
+        )
+        assertEquals(rows.indexOf(QuickMenuRow.CONFLICTS) + 1, rows.indexOf(QuickMenuRow.ERRORS))
+    }
 }

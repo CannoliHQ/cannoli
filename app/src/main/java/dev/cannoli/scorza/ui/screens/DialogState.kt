@@ -89,6 +89,7 @@ sealed interface DialogState {
         val kitchenRunning: Boolean,
         val selectedIndex: Int = 0,
         val conflictCount: Int = 0,
+        val syncErrorCount: Int = 0,
     ) : DialogState
     data class QuickInfo(
         val urls: List<String>,
@@ -117,11 +118,13 @@ sealed interface DialogState {
         val enabled: Boolean = false,
         val backupCount: Int = 5,
         val pendingConflicts: Int = 0,
+        val syncErrors: Int = 0,
     ) : DialogState
     data class RommConfirm(val action: RommConfirmAction, val downloadKey: String? = null) : DialogState
     data class RommPlatformToggle(val items: List<RommPlatformToggleItem>, val selectedIndex: Int = 0) : DialogState
     data class RommCollectionToggle(val items: List<RommCollectionToggleItem>, val selectedIndex: Int = 0) : DialogState
     data class SyncHistory(val entries: List<SyncHistoryRow>, val selectedIndex: Int = 0, val fromSaveSyncMenu: Boolean = false) : DialogState
+    data class SyncErrors(val errors: List<dev.cannoli.scorza.romm.sync.SyncFailure>, val selectedIndex: Int = 0, val fromSaveSyncMenu: Boolean = false) : DialogState
     data class ConflictsMenu(val rows: List<ConflictRow>, val selectedIndex: Int = 0, val fromSaveSyncMenu: Boolean = false) : DialogState
     data object SaveSyncChecking : DialogState
     data class SaveSyncConflict(
@@ -216,6 +219,7 @@ val DialogState.isFullScreen: Boolean
         is DialogState.SaveSyncConflict,
         is DialogState.SaveSyncStaleBlock,
         is DialogState.SyncHistory,
+        is DialogState.SyncErrors,
         is DialogState.ConflictsMenu,
         is DialogState.RommVersionPicker -> true
         else -> false

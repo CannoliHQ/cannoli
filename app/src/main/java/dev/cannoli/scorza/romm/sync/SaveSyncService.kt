@@ -310,7 +310,7 @@ class SaveSyncService(
         val conflict: PreLaunchOutcome.Conflict? = null,
     )
 
-    private class ExecResult(val direction: SyncDirection?, val ok: Boolean, val label: String)
+    private class ExecResult(val direction: SyncDirection?, val ok: Boolean, val label: String, val logDetail: String? = null)
 
     private class Scanned(
         val tag: String,
@@ -397,20 +397,21 @@ class SaveSyncService(
         // Phase 3: apply the actionable plans.
         dev.cannoli.scorza.util.RommLog.write("=== sweep: applying ===")
         var up = 0; var down = 0; var conflicts = 0; var error = false
+        val failures = ArrayList<SyncFailure>()
         for (p in sorted) {
             if (p.action == SweepAction.UP_TO_DATE || p.action == SweepAction.NO_SAVE || p.action == SweepAction.UNREACHABLE) continue
             val r = executePlan(p, deviceId)
-            dev.cannoli.scorza.util.RommLog.write("[${p.tag}] ${p.name}: ${p.action.label} -> ${r.label}")
+            dev.cannoli.scorza.util.RommLog.write("[${p.tag}] ${p.name}: ${p.action.label} -> ${r.label}${r.logDetail?.let { " | $it" } ?: ""}")
             when (r.direction) {
                 SyncDirection.UPLOAD -> if (r.ok) up++
                 SyncDirection.DOWNLOAD -> if (r.ok) down++
                 SyncDirection.CONFLICT -> conflicts++
                 else -> {}
             }
-            if (!r.ok) error = true
+            if (!r.ok) { error = true; failures.add(SyncFailure(p.name, r.label)) }
             // escalate() records conflicts itself (deduped); log only real transfers and errors here.
             when {
-                !r.ok -> history.add(entry(p.gameKey, p.name, SyncDirection.ERROR))
+                !r.ok -> history.add(entry(p.gameKey, p.name, SyncDirection.ERROR, r.label))
                 r.direction == SyncDirection.UPLOAD || r.direction == SyncDirection.DOWNLOAD ->
                     history.add(entry(p.gameKey, p.name, r.direction))
                 else -> {}
@@ -419,6 +420,7 @@ class SaveSyncService(
 
         val pending = pendingConflicts.count()
         val reachable = online && (attempted == 0 || reached)
+        statusHolder.setErrors(failures)
         statusHolder.settle(enabled = settings.rommSaveSyncEnabled, online = reachable, pendingConflicts = pending, hadError = error)
         dev.cannoli.scorza.util.RommLog.write("=== sweep done: up=$up down=$down conflicts=$conflicts attempted=$attempted reachable=$reachable pending=$pending status=${statusHolder.state.value} error=$error ===")
         SyncSummary(up, down, conflicts)
@@ -429,7 +431,8 @@ class SaveSyncService(
             SweepPlan(s.tag, s.base, s.gameKey, s.slot, s.emulator, s.romId, action, downloadOp, conflict)
         val local = s.local
         if (local == null) {
-            if (s.anchor == null) return plan(SweepAction.NO_SAVE)
+            // No local save: pull the server copy if one exists, even with no prior anchor
+            // (first-time restore / restore after a local delete).
             val serverSaves = try {
                 client.getSaves(s.romId, deviceId).also { onReach(true) }
             } catch (t: Throwable) {
@@ -437,7 +440,8 @@ class SaveSyncService(
                 return plan(SweepAction.UNREACHABLE)
             }
             val save = serverSaves.firstOrNull { (it.slot ?: DEFAULT_SLOT) == s.slot } ?: return plan(SweepAction.NO_SAVE)
-            return plan(SweepAction.REGENERATE, downloadOp = downloadOpFor(save, s.romId, s.slot))
+            val action = if (s.anchor == null) SweepAction.DOWNLOAD else SweepAction.REGENERATE
+            return plan(action, downloadOp = downloadOpFor(save, s.romId, s.slot))
         }
         if (batchFailed) return plan(SweepAction.UNREACHABLE)
         return when (op?.action) {
@@ -462,7 +466,10 @@ class SaveSyncService(
                 uploadActive(p.tag, p.name, p.gameKey, p.slot, p.romId, p.emulator, deviceId, overwrite = false)
                 ExecResult(SyncDirection.UPLOAD, true, "uploaded")
             } catch (t: Throwable) {
-                ExecResult(SyncDirection.UPLOAD, false, "upload failed (${errLabel(t)})")
+                // A 409 means the server already has a save we would clobber -> that is a conflict,
+                // not a hard error. Reconcile if identical, otherwise escalate for manual resolve.
+                if ((t as? dev.cannoli.scorza.romm.RommException)?.statusCode == 409) resolveUploadConflict(p, deviceId)
+                else ExecResult(SyncDirection.UPLOAD, false, "upload failed (${errLabel(t)})", logDetailOf(t))
             }
         }
         SweepAction.DOWNLOAD, SweepAction.REGENERATE -> {
@@ -481,7 +488,7 @@ class SaveSyncService(
                 pendingConflicts.delete(p.gameKey)
                 ExecResult(SyncDirection.UPLOAD, true, "kept local")
             } catch (t: Throwable) {
-                ExecResult(SyncDirection.UPLOAD, false, "keep-local failed (${errLabel(t)})")
+                ExecResult(SyncDirection.UPLOAD, false, "keep-local failed (${errLabel(t)})", logDetailOf(t))
             }
         }
         SweepAction.KEEP_SERVER -> {
@@ -491,7 +498,7 @@ class SaveSyncService(
                 pendingConflicts.delete(p.gameKey)
                 ExecResult(SyncDirection.DOWNLOAD, true, "kept server")
             } catch (t: Throwable) {
-                ExecResult(SyncDirection.DOWNLOAD, false, "keep-server failed (${errLabel(t)})")
+                ExecResult(SyncDirection.DOWNLOAD, false, "keep-server failed (${errLabel(t)})", logDetailOf(t))
             }
         }
         SweepAction.ESCALATE -> {
@@ -499,6 +506,50 @@ class SaveSyncService(
             ExecResult(SyncDirection.CONFLICT, true, "escalated for manual resolve")
         }
         else -> ExecResult(null, true, "skipped")
+    }
+
+    private fun resolveUploadConflict(p: SweepPlan, deviceId: String): ExecResult {
+        val serverSaves = try {
+            client.getSaves(p.romId, deviceId)
+        } catch (t: Throwable) {
+            return ExecResult(SyncDirection.UPLOAD, false, "upload failed (409; ${errLabel(t)})")
+        }
+        val save = serverSaves.firstOrNull { (it.slot ?: DEFAULT_SLOT) == p.slot }
+            ?: return ExecResult(SyncDirection.UPLOAD, false, "upload failed (409)")
+        val local = resolver.resolve(p.tag, p.name)
+        if (local != null && save.contentHash != null && save.contentHash == local.contentHash) {
+            // Server already holds an identical save; adopt it as the anchor so future sweeps are quiet.
+            store.upsert(
+                SaveSyncRow(
+                    gameKey = p.gameKey,
+                    slot = p.slot,
+                    rommRomId = p.romId,
+                    rommSaveId = save.id,
+                    lastSyncedAt = save.updatedAt,
+                    lastUploadedHash = save.contentHash,
+                    localContentHash = local.contentHash,
+                    serverUpdatedAt = save.updatedAt,
+                    updatedAt = System.currentTimeMillis(),
+                )
+            )
+            return ExecResult(null, true, "already in sync")
+        }
+        val conflict = PreLaunchOutcome.Conflict(
+            gameKey = p.gameKey,
+            slot = p.slot,
+            localTime = local?.let { isoOf(it.modifiedMillis) },
+            serverTime = save.updatedAt,
+            serverDevice = save.originDeviceId,
+            saveId = save.id,
+            romId = p.romId,
+            tag = p.tag,
+            base = p.name,
+            emulator = p.emulator,
+            serverContentHash = save.contentHash,
+            reason = "server already has a save",
+        )
+        escalate(p.gameKey, p.name, conflict)
+        return ExecResult(SyncDirection.CONFLICT, true, "conflict (server has a save)")
     }
 
     private fun downloadOpFor(save: RommSaveDto, romId: Int, slot: String): SyncOperationDto =
@@ -512,8 +563,28 @@ class SaveSyncService(
             serverContentHash = save.contentHash,
         )
 
-    private fun errLabel(t: Throwable): String =
-        (t as? dev.cannoli.scorza.romm.RommException)?.statusCode?.toString() ?: (t.message ?: "error")
+    private fun errLabel(t: Throwable): String {
+        val code = (t as? dev.cannoli.scorza.romm.RommException)?.statusCode
+        return if (code != null) "$code ${httpReason(code)}".trim() else (t.message ?: "error")
+    }
+
+    // The full server message (with response body) for the log only; null for non-HTTP errors,
+    // whose reason errLabel already carries.
+    private fun logDetailOf(t: Throwable): String? = (t as? dev.cannoli.scorza.romm.RommException)?.message
+
+    private fun httpReason(code: Int): String = when (code) {
+        400 -> "Bad Request"
+        401 -> "Unauthorized"
+        403 -> "Forbidden"
+        404 -> "Not Found"
+        409 -> "Conflict"
+        413 -> "Too Large"
+        422 -> "Unprocessable"
+        500 -> "Server Error"
+        502 -> "Bad Gateway"
+        503 -> "Unavailable"
+        else -> ""
+    }
 
     suspend fun resolvePending(gameKey: String, keepLocal: Boolean, resolveGame: (String) -> Triple<String, String, String?>?): Boolean = withContext(Dispatchers.IO) {
         val pc = pendingConflicts.get(gameKey) ?: return@withContext false

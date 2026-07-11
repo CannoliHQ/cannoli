@@ -117,17 +117,20 @@ class DialogInputHandler @Inject constructor(
         if (!isLauncherHomeScreen()) return false
         ioScope.launch {
             val count = saveSyncService.pendingConflictCount()
+            val errorCount = saveSyncStatusHolder.errors.value.size
             val rows = dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.visibleRows(
                 rommPaired = rommStore.isConfigured,
                 kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
                 saveSyncEnabled = settings.rommSaveSyncEnabled,
                 pendingConflicts = count,
+                syncErrors = errorCount,
             )
             withContext(Dispatchers.Main) {
                 nav.dialogState.value = DialogState.QuickMenu(
                     rows = rows,
                     kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
                     conflictCount = count,
+                    syncErrorCount = errorCount,
                 )
             }
         }
@@ -215,6 +218,9 @@ class DialogInputHandler @Inject constructor(
             is DialogState.SyncHistory -> {
                 if (ds.entries.isNotEmpty()) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(ds.entries.size))
             }
+            is DialogState.SyncErrors -> {
+                if (ds.errors.isNotEmpty()) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(ds.errors.size))
+            }
             is DialogState.ConflictsMenu -> {
                 if (ds.rows.isNotEmpty()) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(ds.rows.size))
             }
@@ -289,6 +295,9 @@ class DialogInputHandler @Inject constructor(
             }
             is DialogState.SyncHistory -> {
                 if (ds.entries.isNotEmpty()) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(ds.entries.size))
+            }
+            is DialogState.SyncErrors -> {
+                if (ds.errors.isNotEmpty()) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(ds.errors.size))
             }
             is DialogState.ConflictsMenu -> {
                 if (ds.rows.isNotEmpty()) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(ds.rows.size))
@@ -528,6 +537,7 @@ class DialogInputHandler @Inject constructor(
                     }
                     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.SYNC_HISTORY -> openSyncHistory()
                     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.CONFLICTS -> openConflictsMenu(fromSaveSyncMenu = false)
+                    dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.ERRORS -> openSyncErrors(fromSaveSyncMenu = false)
                     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.KITCHEN -> launcherActions.openKitchen(fromQuickMenu = true)
                     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.RESCAN -> {
                         nav.dialogState.value = DialogState.RescanProgress(
@@ -723,6 +733,7 @@ class DialogInputHandler @Inject constructor(
         enabled = settings.rommSaveSyncEnabled,
         backupCount = settings.rommSaveBackupCount,
         pendingConflicts = pendingConflicts,
+        syncErrors = saveSyncStatusHolder.errors.value.size,
     )
 
     private fun toggleSaveSync(ds: DialogState.RommSaveSyncMenu) {
@@ -745,7 +756,7 @@ class DialogInputHandler @Inject constructor(
     }
 
     private fun cycleRommSaveSync(ds: DialogState.RommSaveSyncMenu, delta: Int) {
-        when (dev.cannoli.scorza.ui.components.RommSaveSyncRow.visibleRows(ds.supported, ds.enabled, ds.pendingConflicts).getOrNull(ds.selectedIndex)) {
+        when (dev.cannoli.scorza.ui.components.RommSaveSyncRow.visibleRows(ds.supported, ds.enabled, ds.pendingConflicts, ds.syncErrors).getOrNull(ds.selectedIndex)) {
             dev.cannoli.scorza.ui.components.RommSaveSyncRow.TOGGLE -> toggleSaveSync(ds)
             dev.cannoli.scorza.ui.components.RommSaveSyncRow.BACKUPS -> {
                 val options = intArrayOf(0, 3, 5, 10)
@@ -759,11 +770,63 @@ class DialogInputHandler @Inject constructor(
     }
 
     private fun onRommSaveSyncConfirm(ds: DialogState.RommSaveSyncMenu) {
-        when (dev.cannoli.scorza.ui.components.RommSaveSyncRow.visibleRows(ds.supported, ds.enabled, ds.pendingConflicts).getOrNull(ds.selectedIndex)) {
+        when (dev.cannoli.scorza.ui.components.RommSaveSyncRow.visibleRows(ds.supported, ds.enabled, ds.pendingConflicts, ds.syncErrors).getOrNull(ds.selectedIndex)) {
             dev.cannoli.scorza.ui.components.RommSaveSyncRow.TOGGLE -> toggleSaveSync(ds)
             dev.cannoli.scorza.ui.components.RommSaveSyncRow.HISTORY -> openSyncHistory(fromSaveSyncMenu = true)
             dev.cannoli.scorza.ui.components.RommSaveSyncRow.CONFLICTS -> openConflictsMenu(fromSaveSyncMenu = true)
+            dev.cannoli.scorza.ui.components.RommSaveSyncRow.ERRORS -> openSyncErrors(fromSaveSyncMenu = true)
             else -> {}
+        }
+    }
+
+    private fun openSyncErrors(fromSaveSyncMenu: Boolean = false) {
+        nav.dialogState.value = DialogState.SyncErrors(
+            errors = saveSyncStatusHolder.errors.value,
+            fromSaveSyncMenu = fromSaveSyncMenu,
+        )
+    }
+
+    // Back out of a save-sync child list (history/errors) to whichever menu opened it,
+    // rebuilding it so the conflict + error rows stay consistent.
+    private fun returnFromSaveSyncChild(
+        fromSaveSyncMenu: Boolean,
+        saveSyncRow: dev.cannoli.scorza.ui.components.RommSaveSyncRow,
+        quickRow: dev.cannoli.scorza.ui.quickmenu.QuickMenuRow,
+    ) {
+        ioScope.launch {
+            val count = saveSyncService.pendingConflictCount()
+            val errorCount = saveSyncStatusHolder.errors.value.size
+            if (fromSaveSyncMenu) {
+                val idx = dev.cannoli.scorza.ui.components.RommSaveSyncRow
+                    .visibleRows(
+                        dev.cannoli.scorza.romm.sync.SaveSyncCapabilities.supportsSaveSync(rommStore.serverVersion),
+                        settings.rommSaveSyncEnabled,
+                        count,
+                        errorCount,
+                    )
+                    .indexOf(saveSyncRow)
+                    .coerceAtLeast(0)
+                withContext(Dispatchers.Main) {
+                    nav.dialogState.value = buildSaveSyncMenu(selectedIndex = idx, pendingConflicts = count)
+                }
+            } else {
+                val rows = dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.visibleRows(
+                    rommPaired = rommStore.isConfigured,
+                    kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
+                    saveSyncEnabled = settings.rommSaveSyncEnabled,
+                    pendingConflicts = count,
+                    syncErrors = errorCount,
+                )
+                withContext(Dispatchers.Main) {
+                    nav.dialogState.value = DialogState.QuickMenu(
+                        rows = rows,
+                        kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
+                        selectedIndex = rows.indexOf(quickRow).coerceAtLeast(0),
+                        conflictCount = count,
+                        syncErrorCount = errorCount,
+                    )
+                }
+            }
         }
     }
 
@@ -845,17 +908,20 @@ class DialogInputHandler @Inject constructor(
                 .coerceAtLeast(0)
             nav.dialogState.value = buildSaveSyncMenu(selectedIndex = idx, pendingConflicts = count)
         } else {
+            val errorCount = saveSyncStatusHolder.errors.value.size
             val rows = dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.visibleRows(
                 rommPaired = rommStore.isConfigured,
                 kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
                 saveSyncEnabled = settings.rommSaveSyncEnabled,
                 pendingConflicts = count,
+                syncErrors = errorCount,
             )
             nav.dialogState.value = DialogState.QuickMenu(
                 rows = rows,
                 kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
                 selectedIndex = rows.indexOf(dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.CONFLICTS).coerceAtLeast(0),
                 conflictCount = count,
+                syncErrorCount = errorCount,
             )
         }
     }
@@ -1014,42 +1080,16 @@ class DialogInputHandler @Inject constructor(
             is DialogState.RommVersionPicker -> nav.dialogState.value = DialogState.None
             is DialogState.RommAdvancedMenu -> backToRommSettings(dev.cannoli.scorza.ui.components.RommSettingsRow.ADVANCED)
             is DialogState.RommSaveSyncMenu -> backToRommSettings(dev.cannoli.scorza.ui.components.RommSettingsRow.SAVE_SYNC)
-            is DialogState.SyncHistory -> {
-                if (ds.fromSaveSyncMenu) {
-                    ioScope.launch {
-                        val count = saveSyncService.pendingConflictCount()
-                        val idx = dev.cannoli.scorza.ui.components.RommSaveSyncRow
-                            .visibleRows(
-                                dev.cannoli.scorza.romm.sync.SaveSyncCapabilities.supportsSaveSync(rommStore.serverVersion),
-                                settings.rommSaveSyncEnabled,
-                                count,
-                            )
-                            .indexOf(dev.cannoli.scorza.ui.components.RommSaveSyncRow.HISTORY)
-                            .coerceAtLeast(0)
-                        withContext(Dispatchers.Main) {
-                            nav.dialogState.value = buildSaveSyncMenu(selectedIndex = idx, pendingConflicts = count)
-                        }
-                    }
-                } else {
-                    ioScope.launch {
-                        val count = saveSyncService.pendingConflictCount()
-                        val rows = dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.visibleRows(
-                            rommPaired = rommStore.isConfigured,
-                            kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
-                            saveSyncEnabled = settings.rommSaveSyncEnabled,
-                            pendingConflicts = count,
-                        )
-                        withContext(Dispatchers.Main) {
-                            nav.dialogState.value = DialogState.QuickMenu(
-                                rows = rows,
-                                kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
-                                selectedIndex = rows.indexOf(dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.SYNC_HISTORY).coerceAtLeast(0),
-                                conflictCount = count,
-                            )
-                        }
-                    }
-                }
-            }
+            is DialogState.SyncHistory -> returnFromSaveSyncChild(
+                ds.fromSaveSyncMenu,
+                dev.cannoli.scorza.ui.components.RommSaveSyncRow.HISTORY,
+                dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.SYNC_HISTORY,
+            )
+            is DialogState.SyncErrors -> returnFromSaveSyncChild(
+                ds.fromSaveSyncMenu,
+                dev.cannoli.scorza.ui.components.RommSaveSyncRow.ERRORS,
+                dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.ERRORS,
+            )
             is DialogState.ConflictsMenu -> {
                 val fromSaveSyncMenu = ds.fromSaveSyncMenu
                 ioScope.launch {

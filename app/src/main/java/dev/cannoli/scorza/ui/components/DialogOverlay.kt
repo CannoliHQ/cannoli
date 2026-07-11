@@ -275,9 +275,13 @@ fun DialogOverlay(
                     selectedIndex = dialogState.selectedIndex,
                     itemHeight = itemHeight
                 ) { _, row, isSelected ->
-                    val label = if (row == dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.CONFLICTS && conflictCount > 0)
-                        pluralStringResource(dev.cannoli.ui.R.plurals.quick_menu_conflicts, conflictCount, conflictCount)
-                    else quickMenuLabel(row)
+                    val label = when {
+                        row == dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.CONFLICTS && conflictCount > 0 ->
+                            pluralStringResource(dev.cannoli.ui.R.plurals.quick_menu_conflicts, conflictCount, conflictCount)
+                        row == dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.ERRORS && dialogState.syncErrorCount > 0 ->
+                            pluralStringResource(dev.cannoli.ui.R.plurals.quick_menu_sync_errors, dialogState.syncErrorCount, dialogState.syncErrorCount)
+                        else -> quickMenuLabel(row)
+                    }
                     PillRowText(
                         label = label,
                         isSelected = isSelected,
@@ -416,7 +420,7 @@ fun DialogOverlay(
         }
 
         is DialogState.RommSaveSyncMenu -> {
-            val rows = RommSaveSyncRow.visibleRows(dialogState.supported, dialogState.enabled, dialogState.pendingConflicts)
+            val rows = RommSaveSyncRow.visibleRows(dialogState.supported, dialogState.enabled, dialogState.pendingConflicts, dialogState.syncErrors)
             val selectedRow = rows.getOrNull(dialogState.selectedIndex)
             val isCycleRow = selectedRow == RommSaveSyncRow.TOGGLE || selectedRow == RommSaveSyncRow.BACKUPS
             ListDialogScreen(
@@ -461,6 +465,13 @@ fun DialogOverlay(
                         )
                         RommSaveSyncRow.CONFLICTS -> PillRowText(
                             label = pluralStringResource(dev.cannoli.ui.R.plurals.quick_menu_conflicts, dialogState.pendingConflicts, dialogState.pendingConflicts),
+                            isSelected = isSelected,
+                            fontSize = listFontSize,
+                            lineHeight = listLineHeight,
+                            verticalPadding = listVerticalPadding
+                        )
+                        RommSaveSyncRow.ERRORS -> PillRowText(
+                            label = pluralStringResource(dev.cannoli.ui.R.plurals.quick_menu_sync_errors, dialogState.syncErrors, dialogState.syncErrors),
                             isSelected = isSelected,
                             fontSize = listFontSize,
                             lineHeight = listLineHeight,
@@ -726,6 +737,37 @@ fun DialogOverlay(
             }
         }
 
+        is DialogState.SyncErrors -> {
+            val colors = LocalCannoliColors.current
+            val font = LocalCannoliFont.current
+            ListDialogScreen(
+                backgroundImagePath = backgroundImagePath,
+                backgroundTint = backgroundTint,
+                title = stringResource(dev.cannoli.ui.R.string.sync_errors_title),
+                listFontSize = listFontSize,
+                listLineHeight = listLineHeight,
+                rightBottomItems = emptyList(),
+                buttonStyle = buttonStyle
+            ) {
+                if (dialogState.errors.isEmpty()) {
+                    Text(
+                        text = stringResource(dev.cannoli.ui.R.string.sync_errors_empty),
+                        color = colors.text.copy(alpha = 0.5f),
+                        fontFamily = font,
+                        fontSize = listFontSize,
+                    )
+                } else {
+                    List(
+                        items = dialogState.errors,
+                        selectedIndex = dialogState.selectedIndex,
+                        itemHeight = itemHeight,
+                    ) { _, err, isSelected ->
+                        SyncErrorRowItem(err, isSelected, listFontSize, listLineHeight, listVerticalPadding)
+                    }
+                }
+            }
+        }
+
         is DialogState.ConflictsMenu -> {
             ListDialogScreen(
                 backgroundImagePath = backgroundImagePath,
@@ -782,17 +824,60 @@ private fun SyncHistoryRowItem(row: SyncHistoryRow, isSelected: Boolean, fontSiz
         ) {
             Text(glyph, color = textColor, fontFamily = LocalCannoliIconFont.current, fontSize = (fontSize.value * SYNC_GLYPH_SCALE).sp)
             Spacer(modifier = Modifier.width(8.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = row.name,
+                    color = textColor,
+                    fontFamily = LocalCannoliFont.current,
+                    fontSize = fontSize,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+                if (row.detail != null) {
+                    Text(
+                        text = row.detail,
+                        color = muted,
+                        fontFamily = LocalCannoliFont.current,
+                        fontSize = (fontSize.value * SYNC_TIME_SCALE).sp,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(row.relativeTime, color = muted, fontFamily = LocalCannoliFont.current, fontSize = (fontSize.value * SYNC_TIME_SCALE).sp)
+        }
+    }
+}
+
+@Composable
+private fun SyncErrorRowItem(err: dev.cannoli.scorza.romm.sync.SyncFailure, isSelected: Boolean, fontSize: TextUnit, lineHeight: TextUnit, verticalPadding: Dp) {
+    val colors = LocalCannoliColors.current
+    val textColor = if (isSelected) colors.highlightText else colors.text
+    val muted = textColor.copy(alpha = 0.55f)
+    dev.cannoli.ui.components.PillRow(
+        isSelected = isSelected,
+        verticalPadding = verticalPadding,
+        lineHeight = lineHeight,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
             Text(
-                text = row.name,
+                text = err.displayName,
                 color = textColor,
                 fontFamily = LocalCannoliFont.current,
                 fontSize = fontSize,
                 maxLines = 1,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
             )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(row.relativeTime, color = muted, fontFamily = LocalCannoliFont.current, fontSize = (fontSize.value * SYNC_TIME_SCALE).sp)
+            Text(
+                text = err.reason,
+                color = muted,
+                fontFamily = LocalCannoliFont.current,
+                fontSize = (fontSize.value * SYNC_TIME_SCALE).sp,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -836,6 +921,7 @@ private fun quickMenuLabel(row: dev.cannoli.scorza.ui.quickmenu.QuickMenuRow): S
     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.ROMM -> stringResource(R.string.quick_menu_romm)
     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.SYNC_HISTORY -> stringResource(R.string.quick_menu_sync_history)
     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.CONFLICTS -> stringResource(dev.cannoli.ui.R.string.conflicts_title)
+    dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.ERRORS -> stringResource(dev.cannoli.ui.R.string.sync_errors_title)
     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.KITCHEN -> stringResource(R.string.quick_menu_kitchen)
     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.RESCAN -> stringResource(R.string.quick_menu_rescan)
     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.INFO -> stringResource(R.string.quick_menu_info)
@@ -945,15 +1031,16 @@ enum class RommSettingsRow(@androidx.annotation.StringRes val labelRes: Int, val
 }
 
 enum class RommSaveSyncRow {
-    TOGGLE, BACKUPS, HISTORY, CONFLICTS;
+    TOGGLE, BACKUPS, HISTORY, CONFLICTS, ERRORS;
     companion object {
-        fun visibleRows(supported: Boolean, enabled: Boolean, pendingConflicts: Int = 0): List<RommSaveSyncRow> =
+        fun visibleRows(supported: Boolean, enabled: Boolean, pendingConflicts: Int = 0, syncErrors: Int = 0): List<RommSaveSyncRow> =
             buildList {
                 add(TOGGLE)
                 if (supported && enabled) {
                     add(BACKUPS)
                     add(HISTORY)
                     if (pendingConflicts > 0) add(CONFLICTS)
+                    if (syncErrors > 0) add(ERRORS)
                 }
             }
     }

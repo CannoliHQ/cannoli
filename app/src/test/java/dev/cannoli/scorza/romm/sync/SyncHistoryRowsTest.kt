@@ -46,6 +46,15 @@ class SyncHistoryRowsTest {
     }
 
     @Test
+    fun `detail is carried through`() {
+        val now = 1_000L
+        val rows = buildHistoryRows(listOf(
+            SyncHistoryEntry("g", "E", SyncDirection.ERROR, "upload failed (403 Forbidden)", now),
+        ), now, "just now")
+        assertEquals("upload failed (403 Forbidden)", rows[0].detail)
+    }
+
+    @Test
     fun `exact day boundary`() {
         val now = 200_000_000L
         val rows = buildHistoryRows(listOf(

@@ -314,7 +314,7 @@ class RommClient(
         response.use {
             val text = it.body?.string().orEmpty()
             if (!it.isSuccessful) {
-                throw RommException(it.code, "HTTP ${it.code}: ${text.take(200)}")
+                throw RommException(it.code, "HTTP ${it.code} ${it.message}: ${text.take(200)}".trim())
             }
             return try {
                 rommJson.decodeFromString(deserializer, text)

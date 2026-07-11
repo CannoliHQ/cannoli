@@ -658,6 +658,12 @@
         <item quantity="one">Sync Conflicts (1)</item>
         <item quantity="other">Sync Conflicts (%1$d)</item>
     </plurals>
+    <string name="sync_errors_title">Sync Errors</string>
+    <string name="sync_errors_empty">No sync errors</string>
+    <plurals name="quick_menu_sync_errors">
+        <item quantity="one">Sync Errors (1)</item>
+        <item quantity="other">Sync Errors (%1$d)</item>
+    </plurals>
     <string name="conflict_keep_local">Keep Local</string>
     <string name="conflict_use_server">Use Server</string>
     <string name="conflict_skip">Skip</string>
