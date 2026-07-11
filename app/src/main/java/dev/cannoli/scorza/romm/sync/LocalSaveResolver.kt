@@ -59,16 +59,35 @@ class LocalSaveResolver(private val cannoliRoot: File) {
 
     fun applyDownload(tag: String, base: String, downloaded: File) {
         val dir = savesDir(tag).apply { mkdirs() }
-        if (isZip(downloaded)) {
-            ZipFile(downloaded).use { zf ->
-                for (entry in zf.entries()) {
-                    if (entry.isDirectory) continue
-                    val out = File(dir, File(entry.name).name)
-                    zf.getInputStream(entry).use { ins -> out.outputStream().use { ins.copyTo(it) } }
+        val existing = matchingFiles(tag, base)
+        // Stage every incoming file to a temp name first. A failure here never touches the live save.
+        val staged = ArrayList<Pair<File, File>>() // dest to part
+        try {
+            if (isZip(downloaded)) {
+                ZipFile(downloaded).use { zf ->
+                    for (entry in zf.entries()) {
+                        if (entry.isDirectory) continue
+                        val dest = File(dir, File(entry.name).name)
+                        val part = File(dir, ".part_${dest.name}")
+                        zf.getInputStream(entry).use { ins -> part.outputStream().use { ins.copyTo(it) } }
+                        staged.add(dest to part)
+                    }
                 }
+            } else {
+                val dest = File(dir, "$base.srm")
+                val part = File(dir, ".part_${dest.name}")
+                downloaded.copyTo(part, overwrite = true)
+                staged.add(dest to part)
             }
-        } else {
-            downloaded.copyTo(File(dir, "$base.srm"), overwrite = true)
+        } catch (t: Throwable) {
+            staged.forEach { it.second.delete() }
+            throw t
+        }
+        // Everything staged: drop stale files not in the new set, then swap the staged copies in atomically.
+        val keepNames = staged.mapTo(HashSet()) { it.first.name }
+        existing.filter { it.name !in keepNames }.forEach { it.delete() }
+        staged.forEach { (dest, part) ->
+            if (!part.renameTo(dest)) { part.copyTo(dest, overwrite = true); part.delete() }
         }
     }
 

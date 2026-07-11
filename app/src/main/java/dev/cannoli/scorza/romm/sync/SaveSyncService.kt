@@ -158,6 +158,7 @@ class SaveSyncService(
         val tmp = File.createTempFile("romm-save", ".bin", paths.configCache.apply { mkdirs() })
         return try {
             client.downloadSaveContent(saveId, deviceId, tmp)
+            verifyDownloaded(tmp, op.serverContentHash)
             backupBeforeDownload(tag, base)
             resolver.applyDownload(tag, base, tmp)
             val confirmed = runCatching { client.confirmSaveDownloaded(saveId, deviceId) }.getOrNull()
@@ -177,6 +178,7 @@ class SaveSyncService(
             )
             PreLaunchOutcome.Proceed
         } catch (t: Throwable) {
+            dev.cannoli.scorza.util.RommLog.write("download aborted [$base]: ${t.message}")
             PreLaunchOutcome.KnownStaleBlock(gameKey, slot)
         } finally {
             tmp.delete()
@@ -208,6 +210,7 @@ class SaveSyncService(
         val tmp = File.createTempFile("romm-save", ".bin", paths.configCache.apply { mkdirs() })
         try {
             client.downloadSaveContent(c.saveId, deviceId, tmp)
+            verifyDownloaded(tmp, c.serverContentHash)
             backupBeforeDownload(c.tag, c.base)
             resolver.applyDownload(c.tag, c.base, tmp)
             val confirmed = runCatching { client.confirmSaveDownloaded(c.saveId, deviceId) }.getOrNull()
@@ -236,6 +239,24 @@ class SaveSyncService(
 
     fun backupBeforeDownload(tag: String, base: String) =
         backupManager.backup(tag, base, settings.rommSaveBackupCount, System.currentTimeMillis())
+
+    fun listBackupGames(): List<SaveBackupGame> = backupManager.listGames()
+    fun listBackups(tag: String, base: String): List<SaveBackup> = backupManager.list(tag, base)
+    fun hasBackups(): Boolean = backupManager.listGames().isNotEmpty()
+    fun restoreBackup(tag: String, base: String, stamp: Long): Boolean =
+        backupManager.restore(tag, base, stamp, settings.rommSaveBackupCount)
+
+    // Guard the local save from a bad download: never overwrite with an empty file, and when the
+    // server gives us an md5 content hash, require the bytes to match before we apply them.
+    private fun verifyDownloaded(tmp: File, expectedHash: String?) {
+        if (tmp.length() == 0L) throw IllegalStateException("empty download")
+        if (expectedHash != null && expectedHash.length == 32) {
+            val actual = SaveHasher.hashFile(tmp)
+            if (!actual.equals(expectedHash, ignoreCase = true)) {
+                throw IllegalStateException("hash mismatch (expected $expectedHash, got $actual)")
+            }
+        }
+    }
 
     internal fun uploadActive(
         tag: String,

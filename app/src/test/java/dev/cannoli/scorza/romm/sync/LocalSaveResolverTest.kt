@@ -53,4 +53,41 @@ class LocalSaveResolverTest {
         assertEquals("SAVE", File(saves("GBA"), "Pokemon.srm").readText())
         assertEquals("RTC", File(saves("GBA"), "Pokemon.rtc").readText())
     }
+
+    @Test fun applyDownload_single_clears_stale_bundle_files() {
+        File(saves("GBA"), "Pokemon.srm").writeBytes("OLD".toByteArray())
+        File(saves("GBA"), "Pokemon.rtc").writeBytes("OLDRTC".toByteArray())
+        val resolver = LocalSaveResolver(tmp.root)
+        val single = tmp.newFile("dl.bin").apply { writeBytes("NEWSAVE".toByteArray()) }
+        resolver.applyDownload("GBA", "Pokemon", single)
+        assertEquals("NEWSAVE", File(saves("GBA"), "Pokemon.srm").readText())
+        assertFalse(File(saves("GBA"), "Pokemon.rtc").exists())
+    }
+
+    @Test fun applyDownload_zip_clears_stale_files_not_in_archive() {
+        File(saves("GBA"), "Game.srm").writeBytes("OLD".toByteArray())
+        File(saves("GBA"), "Game.rtc").writeBytes("OLDRTC".toByteArray())
+        File(saves("GBA"), "Game.eep").writeBytes("STALE".toByteArray()) // absent from the new archive
+        // Build a zip containing only Game.srm + Game.rtc from a separate staging area.
+        val stageRoot = File(tmp.root, "stage")
+        File(stageRoot, "Saves/GBA").apply { mkdirs() }
+        File(stageRoot, "Saves/GBA/Game.srm").writeBytes("NEW".toByteArray())
+        File(stageRoot, "Saves/GBA/Game.rtc").writeBytes("NEWRTC".toByteArray())
+        val zip = LocalSaveResolver(stageRoot).bundleToZip("GBA", "Game", tmp.newFile("Game.zip"))
+
+        LocalSaveResolver(tmp.root).applyDownload("GBA", "Game", zip)
+
+        assertEquals("NEW", File(saves("GBA"), "Game.srm").readText())
+        assertEquals("NEWRTC", File(saves("GBA"), "Game.rtc").readText())
+        assertFalse(File(saves("GBA"), "Game.eep").exists())
+    }
+
+    @Test fun applyDownload_leaves_no_temp_files() {
+        File(saves("SNES"), "Mario.srm").writeBytes("OLD".toByteArray())
+        val single = tmp.newFile("dl2.bin").apply { writeBytes("NEW".toByteArray()) }
+        LocalSaveResolver(tmp.root).applyDownload("SNES", "Mario", single)
+        val leftover = saves("SNES").listFiles()!!.filter { it.name.startsWith(".part_") }
+        assertTrue(leftover.isEmpty())
+        assertEquals("NEW", File(saves("SNES"), "Mario.srm").readText())
+    }
 }

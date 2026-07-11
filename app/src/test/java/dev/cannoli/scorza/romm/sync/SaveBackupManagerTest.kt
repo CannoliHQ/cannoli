@@ -43,4 +43,44 @@ class SaveBackupManagerTest {
         val remaining = backupDir().listFiles()!!.map { it.name }.toSet()
         assertEquals(setOf("5.zip", "6.zip", "7.zip"), remaining)
     }
+
+    @Test fun list_returns_backups_newest_first() {
+        writeSave()
+        val m = manager()
+        m.backup("SNES", "Mario", keepCount = 5, stamp = 1000L)
+        m.backup("SNES", "Mario", keepCount = 5, stamp = 3000L)
+        m.backup("SNES", "Mario", keepCount = 5, stamp = 2000L)
+        assertEquals(listOf(3000L, 2000L, 1000L), m.list("SNES", "Mario").map { it.stamp })
+    }
+
+    @Test fun listGames_reports_games_with_backups() {
+        writeSave()
+        File(tmp.root, "Saves/GBA").mkdirs()
+        File(tmp.root, "Saves/GBA/Pokemon.srm").writeBytes("SAVE".toByteArray())
+        val m = manager()
+        m.backup("SNES", "Mario", keepCount = 5, stamp = 1000L)
+        m.backup("GBA", "Pokemon", keepCount = 5, stamp = 2000L)
+        val games = m.listGames()
+        assertEquals(listOf("GBA" to "Pokemon", "SNES" to "Mario"), games.map { it.tag to it.base })
+        assertEquals(1, games.first { it.base == "Mario" }.count)
+    }
+
+    @Test fun restore_overwrites_current_and_backs_it_up() {
+        writeSave() // "LOCAL"
+        val m = manager()
+        m.backup("SNES", "Mario", keepCount = 5, stamp = 1000L) // snapshot of "LOCAL"
+        File(tmp.root, "Saves/SNES/Mario.srm").writeBytes("CHANGED".toByteArray())
+
+        val ok = m.restore("SNES", "Mario", stamp = 1000L, keepCount = 5)
+
+        assertTrue(ok)
+        assertEquals("LOCAL", File(tmp.root, "Saves/SNES/Mario.srm").readText())
+        // the pre-restore "CHANGED" save was backed up, so we now have two snapshots + none lost
+        assertTrue(m.list("SNES", "Mario").size >= 2)
+    }
+
+    @Test fun restore_returns_false_for_missing_backup() {
+        writeSave()
+        assertFalse(manager().restore("SNES", "Mario", stamp = 999L, keepCount = 5))
+    }
 }

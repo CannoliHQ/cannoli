@@ -193,12 +193,63 @@ class SaveSyncSweepTest {
         every { client.getSaves(42, "dev-1") } returns listOf(
             RommSaveDto(id = 77, romId = 42, slot = "autosave", contentHash = "srv", updatedAt = "2026-06-26T01:00:00Z")
         )
+        every { client.downloadSaveContent(77, "dev-1", any()) } answers { thirdArg<File>().writeBytes("RESTORED".toByteArray()) }
 
         val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") }, online = true)
 
         assertEquals(1, summary.downloaded)
         assertEquals(SyncDirection.DOWNLOAD, historyStore.recent().first().direction)
         assertEquals(true, store.get("SNES/Zelda.sfc", DEFAULT_SLOT) != null)
+        assertEquals("RESTORED", File(sd, "Saves/SNES/Zelda.srm").readText())
+    }
+
+    @Test fun `empty download does not overwrite the local save`() = runBlocking {
+        writeSave("KEEP-ME")
+        seedAnchor(lastUploadedHash = "old", localContentHash = "old")
+        every { client.negotiateSync(any()) } returns SyncNegotiateResponse(
+            sessionId = 1,
+            operations = listOf(SyncOperationDto(action = "download", romId = 42, saveId = 100, fileName = "Zelda.srm", slot = "autosave", serverUpdatedAt = "t", serverContentHash = "abc")),
+            totalDownload = 1,
+        )
+        // relaxed downloadSaveContent writes nothing -> empty temp file
+        val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") }, online = true)
+
+        assertEquals(0, summary.downloaded)
+        assertEquals("KEEP-ME", File(sd, "Saves/SNES/Zelda.srm").readText())
+    }
+
+    @Test fun `hash mismatch does not overwrite the local save`() = runBlocking {
+        writeSave("KEEP-ME")
+        seedAnchor(lastUploadedHash = "old", localContentHash = "old")
+        every { client.negotiateSync(any()) } returns SyncNegotiateResponse(
+            sessionId = 1,
+            operations = listOf(SyncOperationDto(action = "download", romId = 42, saveId = 100, fileName = "Zelda.srm", slot = "autosave", serverUpdatedAt = "t", serverContentHash = "0".repeat(32))),
+            totalDownload = 1,
+        )
+        every { client.downloadSaveContent(any(), any(), any()) } answers { thirdArg<File>().writeBytes("WRONG".toByteArray()) }
+
+        val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") }, online = true)
+
+        assertEquals(0, summary.downloaded)
+        assertEquals("KEEP-ME", File(sd, "Saves/SNES/Zelda.srm").readText())
+    }
+
+    @Test fun `matching hash applies the download`() = runBlocking {
+        writeSave("KEEP-ME")
+        seedAnchor(lastUploadedHash = "old", localContentHash = "old")
+        val serverBytes = "SERVER-SAVE".toByteArray()
+        val serverHash = SaveHasher.md5Hex(serverBytes)
+        every { client.negotiateSync(any()) } returns SyncNegotiateResponse(
+            sessionId = 1,
+            operations = listOf(SyncOperationDto(action = "download", romId = 42, saveId = 100, fileName = "Zelda.srm", slot = "autosave", serverUpdatedAt = "t", serverContentHash = serverHash)),
+            totalDownload = 1,
+        )
+        every { client.downloadSaveContent(any(), any(), any()) } answers { thirdArg<File>().writeBytes(serverBytes) }
+
+        val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") }, online = true)
+
+        assertEquals(1, summary.downloaded)
+        assertEquals("SERVER-SAVE", File(sd, "Saves/SNES/Zelda.srm").readText())
     }
 
     @Test fun `upload 409 with a different server save escalates a conflict`() = runBlocking {
