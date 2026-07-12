@@ -40,6 +40,12 @@ class RommClient(
             val ok = runCatching {
                 val request = Request.Builder().url("$candidate/api/heartbeat".toHttpUrl()).get().build()
                 clientProvider().newCall(request).execute().use { it.isSuccessful }
+            }.onFailure {
+                dev.cannoli.scorza.util.RommLog.write(
+                    "probe $candidate failed: ${it.javaClass.simpleName}: ${it.message}"
+                )
+            }.onSuccess {
+                if (!it) dev.cannoli.scorza.util.RommLog.write("probe $candidate failed: heartbeat not successful")
             }.getOrDefault(false)
             if (ok) return candidate
         }
