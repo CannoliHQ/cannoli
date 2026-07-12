@@ -42,7 +42,7 @@ class SettingsViewModel @Inject constructor(
     private var collectionsRepository: CollectionsRepository? = null
 
     val isTelevision: Boolean
-        get() = packageManager?.hasSystemFeature(PackageManager.FEATURE_LEANBACK) == true
+        get() = dev.cannoli.scorza.util.DeviceType.isTv(context)
 
     private fun isDefaultLauncher(): Boolean {
         val pm = packageManager ?: return false

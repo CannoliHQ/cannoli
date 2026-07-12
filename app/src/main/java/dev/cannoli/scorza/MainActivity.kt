@@ -125,7 +125,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var cannoliPathsProvider: dev.cannoli.scorza.di.CannoliPathsProvider
     @field:dev.cannoli.scorza.di.IoScope @Inject lateinit var ioScope: kotlinx.coroutines.CoroutineScope
 
-    private val isTv: Boolean by lazy { packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) }
+    private val isTv: Boolean by lazy { dev.cannoli.scorza.util.DeviceType.isTv(this) }
 
     private val isReady: Boolean get() = bootSequencer.state.value is BootState.Ready
 
@@ -503,6 +503,9 @@ class MainActivity : ComponentActivity(), ActivityActions {
                         // button to GPIO deliver it keyboard-sourced from a device ControllerBridge never
                         // routes, so it has no PortRouter entry and can never resolve through the mapping.
                         // Call onMenu() directly so it behaves like a mapped BTN_MENU. TV keeps back-nav.
+                        dev.cannoli.scorza.util.InputLog.write(
+                            "back key: isTv=$isTv -> ${if (isTv) "onBack" else "onMenu"}"
+                        )
                         if (isTv) inputDispatcher.onBack() else inputDispatcher.onMenu()
                     }
                     return true
