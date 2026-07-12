@@ -162,25 +162,15 @@ class RommBrowseCollectionsTest {
         assertEquals(2, presentCalls)
     }
 
-    @Test fun `loadMoreCollection appends the next page`() = runBlocking {
+    @Test fun `openCollection publishes all folded rows at once`() = runBlocking {
         val thirdGame = game(30, 1, "Yoshi", "yoshi.sfc")
         db.upsertGames(listOf(GameRecord(thirdGame, null)))
         db.upsertCollections(listOf(RommCollection("col-1", RommCollectionGroup.USER, "My Faves", 3) to null))
         db.setCollectionMembers("col-1", listOf(10, 20, 30))
 
-        val smallPage = RommBrowseViewModel(
-            library = library,
-            syncCoordinator = null,
-            db = db,
-            presentNamesFor = { emptySet() },
-            linkedIdsProvider = { emptySet() },
-            enabledCollectionGroups = { setOf(RommCollectionGroup.USER) },
-            collectionPageSize = 2,
-        )
-        smallPage.openCollection(collection)
-        assertEquals(2, smallPage.collectionGames.value!!.rows.size)
-        smallPage.loadMoreCollection()
-        assertEquals(3, smallPage.collectionGames.value!!.rows.size)
+        val vm = vm()
+        vm.openCollection(collection)
+        assertEquals(3, vm.collectionGames.value!!.rows.size)
     }
 
     @Test fun `group counts and entry target reflect enabled groups`() = runBlocking {

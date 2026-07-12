@@ -1429,9 +1429,6 @@ fun AppNavGraph(
                 androidx.compose.runtime.LaunchedEffect(loading, games.size) {
                     if (!loading && currentScreen.itemCount != games.size) nav?.replaceTop(currentScreen.copy(itemCount = games.size))
                 }
-                androidx.compose.runtime.LaunchedEffect(currentScreen.selectedIndex, games.size) {
-                    if (!loading && games.isNotEmpty() && currentScreen.selectedIndex >= games.size - 5) rommBrowseViewModel?.loadMore()
-                }
                 val loader = rommImageLoader
                 val queueItems = rommDownloader?.queue?.state?.collectAsState()?.value ?: emptyList()
                 val doneForPlatform = queueItems.count {
@@ -1577,9 +1574,6 @@ fun AppNavGraph(
                 }
                 androidx.compose.runtime.LaunchedEffect(loading, games.size) {
                     if (!loading && currentScreen.itemCount != games.size) nav?.replaceTop(currentScreen.copy(itemCount = games.size))
-                }
-                androidx.compose.runtime.LaunchedEffect(currentScreen.selectedIndex, games.size) {
-                    if (!loading && games.isNotEmpty() && currentScreen.selectedIndex >= games.size - 5) rommBrowseViewModel?.loadMoreCollection()
                 }
                 val loader = rommImageLoader
                 if (loader != null) {

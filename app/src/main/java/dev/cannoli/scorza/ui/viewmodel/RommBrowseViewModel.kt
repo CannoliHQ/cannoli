@@ -39,7 +39,6 @@ class RommBrowseViewModel(
     private val firmwareFor: (platformId: Int) -> List<RommFirmware> = { emptyList() },
     private val biosDirFor: (tag: String) -> java.io.File = { java.io.File("") },
     private val enabledCollectionGroups: () -> Set<RommCollectionGroup> = { setOf(RommCollectionGroup.USER) },
-    private val collectionPageSize: Int = RommLibrary.PAGE_SIZE,
 ) {
 
     data class RommCollectionGameRow(
@@ -82,16 +81,7 @@ class RommBrowseViewModel(
         syncCoordinator?.progress ?: MutableStateFlow(RommSyncCoordinator.SyncProgress(0, 0))
 
     private var current: RommPlatform? = null
-    private var page = 0
-    private var hasMore = false
     private var searchTerm: String? = null
-    private var foldedRows: List<RommGameRow> = emptyList()
-
-    private var currentCollectionId: String? = null
-    private var collectionPage = 0
-    private var collectionHasMore = false
-    private var collectionSearchTerm: String? = null
-    private var foldedCollectionRows: List<RommCollectionGameRow> = emptyList()
 
     suspend fun loadPlatforms() {
         val sortedFull = library.platforms().sortedNatural { it.displayName }
@@ -111,10 +101,8 @@ class RommBrowseViewModel(
     suspend fun openPlatform(platform: RommPlatform, search: String? = null) {
         val term = search?.ifBlank { null }
         current = platform
-        page = 0
         searchTerm = term
-        val rows = loadPage(platform, 0, term)
-        _games.value = LoadedRows(platform.id, rows, term)
+        _games.value = LoadedRows(platform.id, foldRows(platform, term), term)
     }
 
     suspend fun reload() {
@@ -137,14 +125,6 @@ class RommBrowseViewModel(
         loadPlatforms()
         loadCollections()
         reload()
-    }
-
-    suspend fun loadMore() {
-        if (!hasMore) return
-        val platform = current ?: return
-        val loaded = _games.value ?: return
-        page += 1
-        _games.value = loaded.copy(rows = loaded.rows + loadPage(platform, page, searchTerm))
     }
 
     suspend fun loadCollections() {
@@ -197,23 +177,7 @@ class RommBrowseViewModel(
 
     suspend fun openCollection(collection: RommCollection, search: String? = null) {
         val database = db ?: return
-        currentCollectionId = collection.id
-        collectionPage = 0
-        collectionSearchTerm = search
-        foldedCollectionRows = foldCollectionRows(database, collection.id, search)
-        val page = foldedCollectionRows.take(collectionPageSize)
-        collectionHasMore = collectionPageSize < foldedCollectionRows.size
-        _collectionGames.value = LoadedRows(collection.id, page, search)
-    }
-
-    suspend fun loadMoreCollection() {
-        if (!collectionHasMore) return
-        currentCollectionId ?: return
-        val loaded = _collectionGames.value ?: return
-        collectionPage += 1
-        val from = collectionPage * collectionPageSize
-        collectionHasMore = from + collectionPageSize < foldedCollectionRows.size
-        _collectionGames.value = loaded.copy(rows = loaded.rows + foldedCollectionRows.drop(from).take(collectionPageSize))
+        _collectionGames.value = LoadedRows(collection.id, foldCollectionRows(database, collection.id, search), search)
     }
 
     private suspend fun foldCollectionRows(database: RommDatabase, collectionId: String, search: String?): List<RommCollectionGameRow> {
@@ -239,17 +203,8 @@ class RommBrowseViewModel(
         val platform = current ?: return
         val loaded = _games.value ?: return
         if (loaded.rows.isEmpty()) return
-        // Re-fold so folded-group present state reflects the just-completed download, then keep the
-        // same number of visible rows the pager had built up.
-        val visible = loaded.rows.size
-        val folded = library.foldedGames(platform, searchTerm)
-        val updated = withContext(Dispatchers.IO) {
-            val linkedIds = linkedIdsProvider()
-            val present = presentNamesFor(platform.cannoliTag)
-            foldedRows = folded.map { toRow(it, linkedIds, present) }
-            foldedRows.take(visible)
-        }
-        _games.value = loaded.copy(rows = updated)
+        // Re-fold so folded-group present state reflects the just-completed download.
+        _games.value = loaded.copy(rows = foldRows(platform, searchTerm))
     }
 
     suspend fun loadGlobalSearch(query: RommSearchQuery) {
@@ -308,19 +263,13 @@ class RommBrowseViewModel(
         if (game.id in linkedIds) LocalState.PRESENT
         else RommLocalState.of(game.fsName, present)
 
-    private suspend fun loadPage(platform: RommPlatform, page: Int, search: String?): List<RommGameRow> {
-        return withContext(Dispatchers.IO) {
-            if (page == 0) {
-                val folded = library.foldedGames(platform, search)
-                val linkedIds = linkedIdsProvider()
-                val present = presentNamesFor(platform.cannoliTag)
-                foldedRows = folded.map { toRow(it, linkedIds, present) }
-            }
-            val from = page * RommLibrary.PAGE_SIZE
-            hasMore = from + RommLibrary.PAGE_SIZE < foldedRows.size
-            foldedRows.drop(from).take(RommLibrary.PAGE_SIZE)
+    private suspend fun foldRows(platform: RommPlatform, search: String?): List<RommGameRow> =
+        withContext(Dispatchers.IO) {
+            val folded = library.foldedGames(platform, search)
+            val linkedIds = linkedIdsProvider()
+            val present = presentNamesFor(platform.cannoliTag)
+            folded.map { toRow(it, linkedIds, present) }
         }
-    }
 
     private fun toRow(folded: RommFoldedGame, linkedIds: Set<Int>, present: Set<String>): RommGameRow =
         RommGameRow(

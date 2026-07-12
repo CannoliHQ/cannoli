@@ -123,6 +123,16 @@ class RommBrowseViewModelTest {
         assertEquals(1, linkedCalls)
     }
 
+    @Test fun `openPlatform publishes all folded rows at once`() = runTest {
+        val lib = mockk<RommLibrary>()
+        coEvery { lib.foldedGames(platform, null) } returns fakeFold(
+            (1..250).map { game(it, "G$it", "g$it.sfc", 1L) },
+        )
+        val vm = vm(lib)
+        vm.openPlatform(platform)
+        assertEquals(250, vm.games.value!!.rows.size)
+    }
+
     private suspend fun loadedVm(): RommBrowseViewModel {
         val lib = mockk<RommLibrary>()
         coEvery { lib.foldedGames(platform, null) } returns fakeFold(
