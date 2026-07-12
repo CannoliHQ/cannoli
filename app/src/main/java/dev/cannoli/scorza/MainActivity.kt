@@ -498,8 +498,12 @@ class MainActivity : ComponentActivity(), ActivityActions {
                     val currentScreenForKey = nav.currentScreen
                     if (currentScreenForKey is LauncherScreen.InputTester) {
                         inputTesterController.dispatchKey(event, down = event.action == KeyEvent.ACTION_DOWN)
-                    } else if (isTv && event.action == KeyEvent.ACTION_DOWN) {
-                        inputDispatcher.onBack()
+                    } else if (event.action == KeyEvent.ACTION_DOWN) {
+                        // KEYCODE_BACK is a default BTN_MENU binding, but handhelds that wire the menu
+                        // button to GPIO deliver it keyboard-sourced from a device ControllerBridge never
+                        // routes, so it has no PortRouter entry and can never resolve through the mapping.
+                        // Call onMenu() directly so it behaves like a mapped BTN_MENU. TV keeps back-nav.
+                        if (isTv) inputDispatcher.onBack() else inputDispatcher.onMenu()
                     }
                     return true
                 }
