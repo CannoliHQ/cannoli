@@ -49,4 +49,40 @@ class SaveSyncCapabilitiesTest {
     @Test fun not_supported_when_unknown() {
         assertFalse(SaveSyncCapabilities.supportsSaveSync("unknown"))
     }
+
+    @Test fun supported_when_prerelease_of_higher_major() {
+        assertTrue(SaveSyncCapabilities.supportsSaveSync("5.0.0-beta.1"))
+    }
+
+    @Test fun supported_when_prerelease_of_higher_minor() {
+        assertTrue(SaveSyncCapabilities.supportsSaveSync("4.10.0-rc.1"))
+    }
+
+    @Test fun supported_when_prerelease_of_higher_patch() {
+        assertTrue(SaveSyncCapabilities.supportsSaveSync("4.9.1-beta.1"))
+    }
+
+    @Test fun supported_when_pep440_prerelease_of_higher_major() {
+        assertTrue(SaveSyncCapabilities.supportsSaveSync("5.0.0b1"))
+    }
+
+    @Test fun supported_when_build_metadata() {
+        assertTrue(SaveSyncCapabilities.supportsSaveSync("5.0.0+build.7"))
+    }
+
+    @Test fun supported_when_v_prefixed() {
+        assertTrue(SaveSyncCapabilities.supportsSaveSync("v5.0.0"))
+    }
+
+    @Test fun not_supported_when_prerelease_of_older_release() {
+        assertFalse(SaveSyncCapabilities.supportsSaveSync("4.8.0-beta.1"))
+    }
+
+    @Test fun not_supported_when_pep440_prerelease_of_floor() {
+        assertFalse(SaveSyncCapabilities.supportsSaveSync("4.9.0b1"))
+    }
+
+    @Test fun not_supported_when_partial_version() {
+        assertFalse(SaveSyncCapabilities.supportsSaveSync("5.0"))
+    }
 }
