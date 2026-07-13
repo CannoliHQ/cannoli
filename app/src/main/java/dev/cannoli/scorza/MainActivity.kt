@@ -364,6 +364,17 @@ class MainActivity : ComponentActivity(), ActivityActions {
             dev.cannoli.scorza.util.InputLog.init(settings.sdCardRoot)
         }
         controllerBridge.settleNow()
+        refreshRommServerVersion()
+    }
+
+    private fun refreshRommServerVersion() {
+        if (!rommStore.isConfigured) return
+        lifecycleScope.launch {
+            // The server can be upgraded behind our back; the version cached at pairing time would
+            // otherwise gate save sync forever. Keep the cached value when the server is unreachable.
+            val version = withContext(Dispatchers.IO) { rommClient.serverVersion() }
+            if (version != null) rommStore.serverVersion = version
+        }
     }
 
     private fun registerControllerOsd() {
