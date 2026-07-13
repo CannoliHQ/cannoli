@@ -1000,7 +1000,7 @@ class LibretroActivity : ComponentActivity() {
             event.getAxisValue(android.view.MotionEvent.AXIS_HAT_X),
             event.getAxisValue(android.view.MotionEvent.AXIS_HAT_Y),
             { keyCode -> pressSyntheticKey(port, keyCode) },
-            { keyCode -> releaseSyntheticKey(port, keyCode) },
+            { keyCode -> releasePortKey(port, keyCode) },
         )
 
         // Track whether any axis binding actually matched. If nothing did (e.g. the active
@@ -1207,18 +1207,7 @@ class LibretroActivity : ComponentActivity() {
             return true
         }
         val port = portRouter.portFor(event.deviceId) ?: 0
-        val portKeys = portPressedKeys[port]
-        portKeys.remove(keyCode)
-        portConsumedKeys[port].remove(keyCode)
-
-        if (holdingFf) {
-            val holdChord = shortcuts[ShortcutAction.HOLD_FF]
-            if (holdChord != null && !portKeys.containsAll(holdChord)) {
-                holdingFf = false
-                setFastForward(false)
-            }
-        }
-        checkPendingHoldRelease(port)
+        releasePortKey(port, keyCode)
 
         // The evaluator's Button asserter for this keycode releases here; if an Axis
         // asserter is still tracking the canonical, BTN_* stays in currentlyPressed via
@@ -1404,7 +1393,7 @@ class LibretroActivity : ComponentActivity() {
             pressSyntheticKey(port, keyCode)
         } else if (value < TRIGGER_RELEASE_THRESHOLD && wasHeld) {
             held.remove(deviceId)
-            releaseSyntheticKey(port, keyCode)
+            releasePortKey(port, keyCode)
         }
     }
 
@@ -1412,16 +1401,13 @@ class LibretroActivity : ComponentActivity() {
         if (portPressedKeys[port].add(keyCode)) checkShortcuts(port)
     }
 
-    private fun releaseSyntheticKey(port: Int, keyCode: Int) {
+    private fun releasePortKey(port: Int, keyCode: Int) {
         val portKeys = portPressedKeys[port]
         portKeys.remove(keyCode)
         portConsumedKeys[port].remove(keyCode)
-        if (holdingFf) {
-            val holdChord = shortcuts[ShortcutAction.HOLD_FF]
-            if (holdChord != null && !portKeys.containsAll(holdChord)) {
-                holdingFf = false
-                setFastForward(false)
-            }
+        if (holdingFf && shouldReleaseHoldFf(shortcuts[ShortcutAction.HOLD_FF], portKeys)) {
+            holdingFf = false
+            setFastForward(false)
         }
         checkPendingHoldRelease(port)
     }
