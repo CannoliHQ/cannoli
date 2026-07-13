@@ -702,6 +702,7 @@ class DialogInputHandler @Inject constructor(
                 nav.dialogState.value = DialogState.None
                 rommDownloader.clearFinished()
                 while (isRommScreen()) nav.pop()
+                launcherActions.refreshLauncherLists()
             }
             else -> {}
         }

@@ -436,13 +436,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
         if (activeDialogState.value is DialogState.RommConnected && rommStore.token.isNullOrEmpty()) {
             activeDialogState.value = DialogState.None
         }
-        if (!systemListViewModel.get().state.value.isLoading) {
-            rescanSystemList()
-            val activeScreen = nav.currentScreen
-            if (activeScreen is LauncherScreen.GameList) {
-                gameListViewModel.get().reload { launcherActions.get().scanResumableGames() }
-            }
-        }
+        launcherActions.get().refreshLauncherLists()
     }
 
     override fun onPause() {
@@ -655,10 +649,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
         }
 
         return super.dispatchGenericMotionEvent(event)
-    }
-
-    private fun rescanSystemList() {
-        launcherActions.get().rescanSystemList()
     }
 
     private fun requestStoragePermission() {

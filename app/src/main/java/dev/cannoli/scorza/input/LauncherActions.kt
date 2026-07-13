@@ -114,6 +114,14 @@ class LauncherActions @Inject constructor(
         )
     }
 
+    fun refreshLauncherLists() {
+        if (systemListViewModel.state.value.isLoading) return
+        rescanSystemList()
+        if (nav.currentScreen is LauncherScreen.GameList) {
+            gameListViewModel.reload { scanResumableGames() }
+        }
+    }
+
     fun validateFghCollection(): Long? {
         if (settings.contentMode != ContentMode.FIVE_GAME_HANDHELD) return null
         val all = collectionsRepository.all().filter { it.type == CollectionType.STANDARD }
