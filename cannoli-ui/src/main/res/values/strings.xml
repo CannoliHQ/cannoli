@@ -548,7 +548,9 @@
     <string name="igm_shader_settings">Shader Settings</string>
     <string name="igm_emulator">Emulator</string>
     <string name="igm_save_changes">Save Changes</string>
-    <string name="igm_buttons">Buttons</string>
+    <string name="igm_input">Input</string>
+    <string name="igm_button_mappings">Button Mappings</string>
+    <string name="igm_left_stick_dpad">Left Stick as D-Pad</string>
     <string name="igm_save_and_quit">Save and Quit</string>
     <string name="title_guide">Guide</string>
 

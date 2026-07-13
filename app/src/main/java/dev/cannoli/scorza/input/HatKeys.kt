@@ -19,6 +19,14 @@ object HatKeys {
         CanonicalButton.BTN_RIGHT -> KeyEvent.KEYCODE_DPAD_RIGHT
         else -> null
     }
+
+    fun canonicalFor(keyCode: Int): CanonicalButton? = when (keyCode) {
+        KeyEvent.KEYCODE_DPAD_UP -> CanonicalButton.BTN_UP
+        KeyEvent.KEYCODE_DPAD_DOWN -> CanonicalButton.BTN_DOWN
+        KeyEvent.KEYCODE_DPAD_LEFT -> CanonicalButton.BTN_LEFT
+        KeyEvent.KEYCODE_DPAD_RIGHT -> CanonicalButton.BTN_RIGHT
+        else -> null
+    }
 }
 
 /**

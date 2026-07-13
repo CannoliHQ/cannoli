@@ -186,7 +186,7 @@ fun CannoliIGM(
                     }
                 }
                 is IGMScreen.Settings, is IGMScreen.Video, is IGMScreen.Advanced,
-                is IGMScreen.ShaderSettings,
+                is IGMScreen.ShaderSettings, is IGMScreen.Input,
                 is IGMScreen.Emulator, is IGMScreen.EmulatorCategory,
                 is IGMScreen.Shortcuts, is IGMScreen.SavePrompt,
                 is IGMScreen.RaOptions, is IGMScreen.RaOptionsCategory,
@@ -200,6 +200,8 @@ fun CannoliIGM(
                     val selectLabel = stringResource(dev.cannoli.ui.R.string.label_select)
                     val showsCycleHint = isOptionList ||
                         (screen is IGMScreen.Shortcuts && screen.selectedIndex == 0) ||
+                        (screen is IGMScreen.Input &&
+                            screen.selectedIndex == IGMSettings.Input.LEFT_STICK_DPAD) ||
                         screen is IGMScreen.Video ||
                         screen is IGMScreen.Advanced ||
                         screen is IGMScreen.ShaderSettings ||
@@ -211,6 +213,9 @@ fun CannoliIGM(
                         screen is IGMScreen.Video -> listOf(labels.confirm to selectLabel)
                         screen is IGMScreen.Advanced -> emptyList()
                         screen is IGMScreen.ShaderSettings -> emptyList()
+                        screen is IGMScreen.Input &&
+                            screen.selectedIndex == IGMSettings.Input.LEFT_STICK_DPAD -> emptyList()
+                        screen is IGMScreen.Input -> listOf(labels.confirm to selectLabel)
                         screen is IGMScreen.Buttons -> listOf(
                             labels.north to stringResource(dev.cannoli.ui.R.string.label_clear),
                             labels.confirm to stringResource(dev.cannoli.ui.R.string.label_press),
@@ -223,13 +228,14 @@ fun CannoliIGM(
                     val title = when (screen) {
                         is IGMScreen.Settings -> stringResource(dev.cannoli.ui.R.string.igm_settings)
                         is IGMScreen.Video -> stringResource(dev.cannoli.ui.R.string.igm_video)
+                        is IGMScreen.Input -> stringResource(dev.cannoli.ui.R.string.igm_input)
                         is IGMScreen.Advanced -> stringResource(dev.cannoli.ui.R.string.igm_advanced)
                         is IGMScreen.ShaderSettings -> stringResource(dev.cannoli.ui.R.string.igm_shader_settings)
                         is IGMScreen.Emulator -> emulatorLabel
                         is IGMScreen.EmulatorCategory -> screen.categoryTitle.ifEmpty { emulatorLabel }
                         is IGMScreen.Shortcuts -> stringResource(dev.cannoli.ui.R.string.title_shortcuts)
                         is IGMScreen.SavePrompt -> stringResource(dev.cannoli.ui.R.string.igm_save_changes)
-                        is IGMScreen.Buttons -> stringResource(dev.cannoli.ui.R.string.igm_buttons)
+                        is IGMScreen.Buttons -> stringResource(dev.cannoli.ui.R.string.igm_button_mappings)
                         is IGMScreen.RaOptions -> stringResource(dev.cannoli.ui.R.string.igm_settings)
                         is IGMScreen.RaOptionsCategory -> screen.categoryTitle.ifEmpty {
                             stringResource(dev.cannoli.ui.R.string.igm_settings)

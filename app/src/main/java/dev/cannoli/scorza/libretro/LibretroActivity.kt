@@ -175,6 +175,8 @@ class LibretroActivity : ComponentActivity() {
 
     private var inputRemap by mutableStateOf<Map<dev.cannoli.scorza.input.CanonicalButton, Int>>(emptyMap())
 
+    private var leftStickAsDpad by mutableStateOf(false)
+
     private var shortcutSource by mutableStateOf(OverrideSource.GLOBAL)
     private var shortcuts by mutableStateOf(mapOf<ShortcutAction, Set<Int>>())
     private var coreInfoText by mutableStateOf("")
@@ -920,6 +922,16 @@ class LibretroActivity : ComponentActivity() {
     private val portPressedKeys = Array(LibretroRunner.MAX_PORTS) { mutableSetOf<Int>() }
     private val bindingHatSync = dev.cannoli.scorza.input.HatKeySync()
     private val gameplayHatSync = dev.cannoli.scorza.input.HatKeySync()
+    private val stickDpadSync = dev.cannoli.scorza.input.HatKeySync()
+    private val portStickDpad =
+        Array(LibretroRunner.MAX_PORTS) { mutableSetOf<dev.cannoli.scorza.input.CanonicalButton>() }
+
+    private fun setStickDpad(port: Int, keyCode: Int, pressed: Boolean) {
+        val canonical = dev.cannoli.scorza.input.HatKeys.canonicalFor(keyCode) ?: return
+        val changed = if (pressed) portStickDpad[port].add(canonical)
+        else portStickDpad[port].remove(canonical)
+        if (changed) pushPortMask(port)
+    }
 
     private fun handleMenuMotion(event: android.view.MotionEvent): Boolean {
         // A hat D-pad reaches a menu screen only as a canonical event, which carries no keycode.
@@ -1038,8 +1050,22 @@ class LibretroActivity : ComponentActivity() {
         val stickY = event.getAxisValue(android.view.MotionEvent.AXIS_Y)
         val lStickX = mostActiveStick(mappingStickValue(mapping, dev.cannoli.scorza.input.AnalogRole.LEFT_STICK_X, event), stickX)
         val lStickY = mostActiveStick(mappingStickValue(mapping, dev.cannoli.scorza.input.AnalogRole.LEFT_STICK_Y, event), stickY)
-        runner.setAnalog(port, 0, (lStickX * 32767).toInt().coerceIn(-32768, 32767),
-            (lStickY * 32767).toInt().coerceIn(-32768, 32767))
+        if (leftStickAsDpad) {
+            // The stick drives the D-pad instead of the analog axes, so the core sees one or the
+            // other and never both. Deliberately kept out of portPressedKeys: the stick is a
+            // gameplay input here, not something that should trigger shortcut chords.
+            stickDpadSync.sync(
+                deviceId,
+                lStickX,
+                lStickY,
+                { keyCode -> setStickDpad(port, keyCode, pressed = true) },
+                { keyCode -> setStickDpad(port, keyCode, pressed = false) },
+            )
+            runner.setAnalog(port, 0, 0, 0)
+        } else {
+            runner.setAnalog(port, 0, (lStickX * 32767).toInt().coerceIn(-32768, 32767),
+                (lStickY * 32767).toInt().coerceIn(-32768, 32767))
+        }
         val rStickX = mostActiveStick(
             mappingStickValue(mapping, dev.cannoli.scorza.input.AnalogRole.RIGHT_STICK_X, event),
             event.getAxisValue(android.view.MotionEvent.AXIS_Z),
@@ -1072,6 +1098,9 @@ class LibretroActivity : ComponentActivity() {
             // keeps re-asserting itself from the axis, so suppress it here while it is consumed.
             val hatKeyCode = dev.cannoli.scorza.input.HatKeys.keyCodeFor(cb)
             if (hatKeyCode != null && hatKeyCode in consumed) continue
+            mask = mask or dev.cannoli.scorza.input.runtime.CanonicalRetroMap.effectiveTarget(cb, remap)
+        }
+        for (cb in portStickDpad[port]) {
             mask = mask or dev.cannoli.scorza.input.runtime.CanonicalRetroMap.effectiveTarget(cb, remap)
         }
         runner.setInput(port, mask)
@@ -1304,6 +1333,7 @@ class LibretroActivity : ComponentActivity() {
         is IGMScreen.Menu -> simpleIgmHandler { btn -> handleMenuInput(screen, btn) }
         is IGMScreen.Settings -> simpleIgmHandler { btn -> handleCategoryInput(screen, btn) }
         is IGMScreen.Video -> simpleIgmHandler { btn -> handleVideoInput(screen, btn) }
+        is IGMScreen.Input -> simpleIgmHandler { btn -> handleInputInput(screen, btn) }
         is IGMScreen.Advanced -> simpleIgmHandler { btn -> handleAdvancedInput(screen, btn) }
         is IGMScreen.ShaderSettings -> simpleIgmHandler { btn -> handleShaderSettingsInput(screen, btn) }
         is IGMScreen.Emulator -> simpleIgmHandler { btn -> handleEmulatorInput(screen, btn) }
@@ -1562,6 +1592,8 @@ class LibretroActivity : ComponentActivity() {
         triggerL2HeldDevices.clear()
         triggerR2HeldDevices.clear()
         gameplayHatSync.reset()
+        stickDpadSync.reset()
+        for (set in portStickDpad) set.clear()
         for (set in portConsumedKeys) set.clear()
         if (holdingFf) {
             holdingFf = false
@@ -1788,10 +1820,7 @@ class LibretroActivity : ComponentActivity() {
                         coreCategories = runner.getCoreCategories()
                         push(IGMScreen.Emulator())
                     }
-                    IGMSettings.BUTTONS -> {
-                        push(IGMScreen.Buttons())
-                    }
-                    IGMSettings.SHORTCUTS -> push(IGMScreen.Shortcuts())
+                    IGMSettings.INPUT -> push(IGMScreen.Input())
                     IGMSettings.ADVANCED -> push(IGMScreen.Advanced())
                     IGMSettings.INFO -> push(IGMScreen.Info())
                 }
@@ -2601,6 +2630,7 @@ class LibretroActivity : ComponentActivity() {
             if (shaderParams.isNotEmpty()) add(IGMSettingsItem("Shader Settings"))
             add(IGMSettingsItem("Overlay", overlayLabel()))
         }
+        is IGMScreen.Input -> buildInputItems()
         is IGMScreen.Advanced -> buildList {
             if (controllerTypes.size > 1) {
                 val ports = occupiedPorts()
@@ -2660,6 +2690,15 @@ class LibretroActivity : ComponentActivity() {
         is IGMScreen.Buttons -> buildButtonsItems(screen)
         else -> emptyList()
     }
+
+    private fun buildInputItems(): List<IGMSettingsItem> = listOf(
+        IGMSettingsItem(getString(R.string.igm_button_mappings)),
+        IGMSettingsItem(getString(R.string.title_shortcuts)),
+        IGMSettingsItem(
+            getString(R.string.igm_left_stick_dpad),
+            getString(if (leftStickAsDpad) R.string.value_on else R.string.value_off),
+        ),
+    )
 
     private fun buildButtonsItems(screen: IGMScreen.Buttons): List<IGMSettingsItem> = buildList {
         val canonicals = dev.cannoli.scorza.input.CanonicalButton.entries
@@ -2737,6 +2776,7 @@ class LibretroActivity : ComponentActivity() {
             shaderParams = paramMap,
             portDeviceTypes = portDeviceTypes,
             inputRemap = inputRemap,
+            leftStickAsDpad = leftStickAsDpad,
         )
     }
 
@@ -2776,6 +2816,7 @@ class LibretroActivity : ComponentActivity() {
         portDeviceTypes = settings.portDeviceTypes
         inputRemap = settings.inputRemap
         activeInputRemap = settings.inputRemap
+        leftStickAsDpad = settings.leftStickAsDpad
 
         for ((key, value) in settings.coreOptions) {
             runner.setCoreOption(key, value)
@@ -3129,6 +3170,43 @@ class LibretroActivity : ComponentActivity() {
         return mapping.bindings.entries.firstOrNull { (_, bindings) ->
             bindings.any { it is dev.cannoli.scorza.input.InputBinding.Button && it.keyCode == keyCode }
         }?.key
+    }
+
+    private fun handleInputInput(screen: IGMScreen.Input, button: String?): Boolean {
+        val count = IGMSettings.Input.COUNT
+        return when (button) {
+            "btn_up" -> {
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
+            }
+            "btn_down" -> {
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
+            }
+            "btn_left", "btn_right" -> {
+                if (screen.selectedIndex == IGMSettings.Input.LEFT_STICK_DPAD) toggleLeftStickAsDpad()
+                true
+            }
+            "btn_south" -> {
+                when (screen.selectedIndex) {
+                    IGMSettings.Input.BUTTON_MAPPINGS -> push(IGMScreen.Buttons())
+                    IGMSettings.Input.SHORTCUTS -> push(IGMScreen.Shortcuts())
+                }
+                true
+            }
+            "btn_east" -> { pop(); true }
+            else -> true
+        }
+    }
+
+    private fun toggleLeftStickAsDpad() {
+        leftStickAsDpad = !leftStickAsDpad
+        // Drop any direction the stick was holding, or it stays latched in the port mask.
+        stickDpadSync.reset()
+        for (port in portStickDpad.indices) {
+            val wasHolding = portStickDpad[port].isNotEmpty()
+            portStickDpad[port].clear()
+            if (leftStickAsDpad) runner.setAnalog(port, 0, 0, 0)
+            if (wasHolding) pushPortMask(port)
+        }
     }
 
     private fun handleButtonsInput(
