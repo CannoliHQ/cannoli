@@ -36,7 +36,7 @@ import dev.cannoli.scorza.R
 import dev.cannoli.scorza.input.runtime.confirmButton
 import dev.cannoli.scorza.input.runtime.labelSet
 import dev.cannoli.scorza.ui.LocalViewportInsets
-import dev.cannoli.scorza.util.keyCodeName
+import dev.cannoli.scorza.util.buttonLabel
 import dev.cannoli.scorza.ui.ViewportInsetsPx
 import dev.cannoli.scorza.ui.components.CREDITS
 import dev.cannoli.scorza.ui.components.CreditsOverlay
@@ -425,6 +425,16 @@ fun AppNavGraph(
         activeMapping.labelSet(dev.cannoli.ui.ButtonLabelSet.PLUMBER),
         activeMapping.confirmButton(),
     )
+
+    val labelContext = androidx.compose.ui.platform.LocalContext.current
+    val shortcutKeyLabel: (Int) -> String = { keyCode ->
+        buttonLabel(
+            labelContext,
+            keyCode,
+            activeMapping,
+            activeMapping?.glyphStyle ?: dev.cannoli.scorza.input.GlyphStyle.PLUMBER,
+        )
+    }
 
     val cannoliColors = CannoliColors(
         highlight = appSettings.colorHighlight,
@@ -1055,7 +1065,7 @@ fun AppNavGraph(
                     ) { _, action, isSelected ->
                         val chord = currentScreen.shortcuts[action]
                         val value = if (chord.isNullOrEmpty()) stringResource(R.string.value_none)
-                        else chord.joinToString(" + ") { keyCodeName(it) }
+                        else chord.joinToString(" + ") { shortcutKeyLabel(it) }
                         PillRowKeyValue(
                             label = stringResource(action.labelRes),
                             value = value,
@@ -1090,7 +1100,7 @@ fun AppNavGraph(
                             Spacer(modifier = Modifier.height(Spacing.Sm))
                             Text(
                                 text = if (currentScreen.heldKeys.isEmpty()) stringResource(R.string.shortcut_hold_prompt)
-                                else currentScreen.heldKeys.joinToString(" + ") { keyCodeName(it) },
+                                else currentScreen.heldKeys.joinToString(" + ") { shortcutKeyLabel(it) },
                                 style = MaterialTheme.typography.bodyMedium.copy(
                                     fontSize = 16.sp,
                                     color = colors.text.copy(alpha = 0.6f)

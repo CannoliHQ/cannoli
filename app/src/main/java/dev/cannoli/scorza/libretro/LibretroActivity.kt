@@ -918,8 +918,22 @@ class LibretroActivity : ComponentActivity() {
     private val triggerR2HeldDevices = mutableSetOf<Int>()
     private val portConsumedKeys = Array(LibretroRunner.MAX_PORTS) { mutableSetOf<Int>() }
     private val portPressedKeys = Array(LibretroRunner.MAX_PORTS) { mutableSetOf<Int>() }
+    private val bindingHatSync = dev.cannoli.scorza.input.HatKeySync()
+    private val gameplayHatSync = dev.cannoli.scorza.input.HatKeySync()
 
     private fun handleMenuMotion(event: android.view.MotionEvent): Boolean {
+        // A hat D-pad reaches a menu screen only as a canonical event, which carries no keycode.
+        // Bridge it to KEYCODE_DPAD_* so it can join a chord like any other button.
+        val menuScreen = currentScreen
+        if (menuScreen is IGMScreen.Shortcuts && menuScreen.listening) {
+            bindingHatSync.sync(
+                event.deviceId,
+                event.getAxisValue(android.view.MotionEvent.AXIS_HAT_X),
+                event.getAxisValue(android.view.MotionEvent.AXIS_HAT_Y),
+                { bindingController.keyDown(it) },
+                { bindingController.keyUp(it) },
+            )
+        }
         // Route through the dispatcher first so the evaluator can react to Hat bindings (e.g.
         // Retroid Pocket Controller's D-pad uses hat axes 15/16). The dispatcher will fire
         // BTN_UP/DOWN/LEFT/RIGHT via the wired callback; PortRouter held-state is updated so
@@ -977,6 +991,17 @@ class LibretroActivity : ComponentActivity() {
             portRouter.activate(deviceId, System.currentTimeMillis())
         }
         val port = portRouter.portFor(deviceId) ?: return super.dispatchGenericMotionEvent(event)
+
+        // A hat D-pad never produces a keycode, so the keycode-based chord matcher below could
+        // not see it. Bridge it before the port mask is pushed, so a chord that fires here has
+        // already marked the direction consumed and the game never receives it.
+        gameplayHatSync.sync(
+            deviceId,
+            event.getAxisValue(android.view.MotionEvent.AXIS_HAT_X),
+            event.getAxisValue(android.view.MotionEvent.AXIS_HAT_Y),
+            { keyCode -> pressSyntheticKey(port, keyCode) },
+            { keyCode -> releaseSyntheticKey(port, keyCode) },
+        )
 
         // Track whether any axis binding actually matched. If nothing did (e.g. the active
         // mapping uses Button(19/20/21/22) for D-pad and the device emits HAT axes 15/16),
@@ -1040,8 +1065,13 @@ class LibretroActivity : ComponentActivity() {
             return
         }
         val remap = activeInputRemap
+        val consumed = portConsumedKeys[port]
         var mask = 0
         for (cb in eval.currentlyPressed()) {
+            // A keycode D-pad is released from the evaluator when its chord fires; a hat D-pad
+            // keeps re-asserting itself from the axis, so suppress it here while it is consumed.
+            val hatKeyCode = dev.cannoli.scorza.input.HatKeys.keyCodeFor(cb)
+            if (hatKeyCode != null && hatKeyCode in consumed) continue
             mask = mask or dev.cannoli.scorza.input.runtime.CanonicalRetroMap.effectiveTarget(cb, remap)
         }
         runner.setInput(port, mask)
@@ -1213,6 +1243,16 @@ class LibretroActivity : ComponentActivity() {
         else -> false
     }
 
+    private fun shortcutKeyLabel(keyCode: Int): String {
+        val mapping = activeMappingHolder.active.value
+        return dev.cannoli.scorza.util.buttonLabel(
+            this,
+            keyCode,
+            mapping,
+            mapping?.glyphStyle ?: dev.cannoli.scorza.input.GlyphStyle.PLUMBER,
+        )
+    }
+
     private fun resolveNavButton(keyCode: Int, deviceId: Int): String? {
         when (keyCode) {
             KeyEvent.KEYCODE_BACK -> return "btn_east"
@@ -1361,22 +1401,29 @@ class LibretroActivity : ComponentActivity() {
         val wasHeld = deviceId in held
         if (value > TRIGGER_PRESS_THRESHOLD && !wasHeld) {
             held.add(deviceId)
-            val portKeys = portPressedKeys[port]
-            if (portKeys.add(keyCode)) checkShortcuts(port)
+            pressSyntheticKey(port, keyCode)
         } else if (value < TRIGGER_RELEASE_THRESHOLD && wasHeld) {
             held.remove(deviceId)
-            val portKeys = portPressedKeys[port]
-            portKeys.remove(keyCode)
-            portConsumedKeys[port].remove(keyCode)
-            if (holdingFf) {
-                val holdChord = shortcuts[ShortcutAction.HOLD_FF]
-                if (holdChord != null && !portKeys.containsAll(holdChord)) {
-                    holdingFf = false
-                    setFastForward(false)
-                }
-            }
-            checkPendingHoldRelease(port)
+            releaseSyntheticKey(port, keyCode)
         }
+    }
+
+    private fun pressSyntheticKey(port: Int, keyCode: Int) {
+        if (portPressedKeys[port].add(keyCode)) checkShortcuts(port)
+    }
+
+    private fun releaseSyntheticKey(port: Int, keyCode: Int) {
+        val portKeys = portPressedKeys[port]
+        portKeys.remove(keyCode)
+        portConsumedKeys[port].remove(keyCode)
+        if (holdingFf) {
+            val holdChord = shortcuts[ShortcutAction.HOLD_FF]
+            if (holdChord != null && !portKeys.containsAll(holdChord)) {
+                holdingFf = false
+                setFastForward(false)
+            }
+        }
+        checkPendingHoldRelease(port)
     }
 
     private fun handleGameplayInput(keyCode: Int, event: KeyEvent): Boolean {
@@ -1528,6 +1575,7 @@ class LibretroActivity : ComponentActivity() {
         for (set in portPressedKeys) set.clear()
         triggerL2HeldDevices.clear()
         triggerR2HeldDevices.clear()
+        gameplayHatSync.reset()
         for (set in portConsumedKeys) set.clear()
         if (holdingFf) {
             holdingFf = false
@@ -2614,7 +2662,7 @@ class LibretroActivity : ComponentActivity() {
             for (action in ShortcutAction.entries) {
                 val chord = shortcuts[action]
                 val label = if (chord.isNullOrEmpty()) "None"
-                else chord.joinToString(" + ") { dev.cannoli.scorza.util.keyCodeName(it) }
+                else chord.joinToString(" + ") { shortcutKeyLabel(it) }
                 add(IGMSettingsItem(getString(action.labelRes), label))
             }
         }

@@ -97,6 +97,8 @@ fun LibretroScreen(
         dev.cannoli.scorza.settings.TimeFormat.TWENTY_FOUR_HOUR -> TimeFormatMode.TWENTY_FOUR_HOUR
     }
 
+    val labelContext = androidx.compose.ui.platform.LocalContext.current
+
     val config = IGMHostConfig(
         fontSizeSp = settings.textSize.sp,
         lineHeightSp = settings.textSize.sp + 10,
@@ -114,7 +116,14 @@ fun LibretroScreen(
         timeFormat = timeFormat,
         buttonLabelSet = activeMapping.labelSet(dev.cannoli.ui.ButtonLabelSet.PLUMBER),
         confirmButton = activeMapping.confirmButton(),
-        keyCodeName = { dev.cannoli.scorza.util.keyCodeName(it) },
+        keyCodeName = { keyCode ->
+            dev.cannoli.scorza.util.buttonLabel(
+                labelContext,
+                keyCode,
+                activeMapping,
+                activeMapping?.glyphStyle ?: dev.cannoli.scorza.input.GlyphStyle.PLUMBER,
+            )
+        },
     )
 
     val igmGameInfo = IgmGameInfo(

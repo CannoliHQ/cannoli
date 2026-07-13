@@ -2,6 +2,7 @@ package dev.cannoli.scorza.input
 
 import android.os.Handler
 import android.os.Looper
+import android.view.KeyEvent
 import dagger.hilt.android.scopes.ActivityScoped
 import javax.inject.Inject
 
@@ -53,6 +54,10 @@ class BindingController @Inject constructor() {
     /** Returns true when the keypress should be considered consumed. */
     fun keyDown(keyCode: Int): Boolean {
         if (!listening) return false
+        // Canonical (hat/stick-sourced) callbacks carry no keycode. Swallow them rather than
+        // recording KEYCODE_UNKNOWN, which would store an unmatchable "Unknown" chord member.
+        // Hat D-pads reach the chord as real KEYCODE_DPAD_* via HatKeySync.
+        if (keyCode == KeyEvent.KEYCODE_UNKNOWN) return true
         if (keyCode in heldKeys) return true
         heldKeys.add(keyCode)
         elapsedMs = 0

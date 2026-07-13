@@ -603,6 +603,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
 
     private val triggerL2HeldDevices = mutableSetOf<Int>()
     private val triggerR2HeldDevices = mutableSetOf<Int>()
+    private val bindingHatSync = dev.cannoli.scorza.input.HatKeySync()
 
     private fun syncBindingTrigger(deviceId: Int, keyCode: Int, value: Float, held: MutableSet<Int>) {
         val wasHeld = deviceId in held
@@ -641,6 +642,13 @@ class MainActivity : ComponentActivity(), ActivityActions {
             )
             syncBindingTrigger(event.deviceId, KeyEvent.KEYCODE_BUTTON_L2, lt, triggerL2HeldDevices)
             syncBindingTrigger(event.deviceId, KeyEvent.KEYCODE_BUTTON_R2, rt, triggerR2HeldDevices)
+            bindingHatSync.sync(
+                event.deviceId,
+                event.getAxisValue(android.view.MotionEvent.AXIS_HAT_X),
+                event.getAxisValue(android.view.MotionEvent.AXIS_HAT_Y),
+                { bindingController.keyDown(it) },
+                { bindingController.keyUp(it) },
+            )
         }
 
         if (currentScreenForMotion is LauncherScreen.InputTester) {
