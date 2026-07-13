@@ -17,6 +17,10 @@ class RommLinkRepository(
         "SELECT romm_id FROM romm_links WHERE relative_path = ?", relativePath,
     ) { it.getInt(0) }
 
+    fun relativePathFor(rommId: Int): String? = db.queryOne(
+        "SELECT relative_path FROM romm_links WHERE romm_id = ?", rommId,
+    ) { it.getText(0) }
+
     fun allRelativePaths(): List<String> = db.queryAll("SELECT relative_path FROM romm_links") { it.getText(0) }
 
     fun presentRommIds(): Set<Int> {

@@ -108,6 +108,13 @@ class RommDownloader(
 
             scanScheduler.markLauncherMutation(item.tag)
             val result = installer.install(game, item.tag, temp, paths.romDir)
+            runCatching {
+                adoptGuideDir(
+                    CannoliPaths(paths.root).guidesFor(item.tag),
+                    guideBaseName(null, game.fsName),
+                    guideBaseName(result.linkRelativePath, game.fsName),
+                )
+            }.onFailure { ScanLog.write("ERROR romm guide adopt ${item.rommId} failed: ${it.message}") }
             artDownloader.download(store.host, game.coverPath, item.tag, result.artBaseName)
             links.upsertLink(item.rommId, result.linkRelativePath, "download")
             artwork.invalidate(item.tag)
@@ -132,7 +139,8 @@ class RommDownloader(
             queue.setStatus(item.key, DownloadStatus.Failed("no manual"))
             return
         }
-        val dir = CannoliPaths(paths.root).guideDir(item.tag, game.name).apply { mkdirs() }
+        val base = guideBaseName(links.relativePathFor(item.rommId), game.fsName)
+        val dir = CannoliPaths(paths.root).guideDir(item.tag, base).apply { mkdirs() }
         val dest = File(dir, "Manual.pdf")
         val temp = File(dir, "Manual.pdf.part")
         val isCancelled = { synchronized(cancelled) { item.key in cancelled } }

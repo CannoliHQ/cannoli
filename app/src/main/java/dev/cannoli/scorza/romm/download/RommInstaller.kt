@@ -28,7 +28,7 @@ class RommInstaller {
     }
 
     private fun installMultiPart(game: RommGame, tag: String, tagDir: File, temp: File): InstallResult {
-        val folderName = sanitize(game.name)
+        val folderName = sanitizeFsName(game.name)
         val staging = File(tagDir, ".$folderName.tmp")
         if (staging.exists()) staging.deleteRecursively()
         staging.mkdirs()
@@ -59,6 +59,4 @@ class RommInstaller {
         val linkRel = if (m3u != null) "$tag/$folderName/$m3u" else "$tag/$folderName"
         return InstallResult(linkRel, folderName)
     }
-
-    private fun sanitize(name: String): String = name.replace(Regex("[/\\\\:*?\"<>|]"), "_").trim()
 }
