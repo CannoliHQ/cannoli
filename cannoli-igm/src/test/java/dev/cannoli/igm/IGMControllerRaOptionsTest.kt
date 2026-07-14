@@ -24,9 +24,8 @@ private class RaFakeBridge : FakeEmulatorBridge() {
     override fun setLocalToggle(key: String, value: Boolean) { localToggles[key] = value }
 }
 
-// latency is at index 2, osd at index 3 in RaOptionCatalog.categories
-private const val LATENCY_INDEX = 2
-private const val OSD_INDEX = 3
+private val LATENCY_INDEX = RaOptionCatalog.categories.indexOfFirst { it.key == "latency" }
+private val OSD_INDEX = RaOptionCatalog.categories.indexOfFirst { it.key == "osd" }
 
 private fun buildController(): Pair<IGMController, RaFakeBridge> {
     val bridge = RaFakeBridge()
@@ -178,19 +177,19 @@ class IGMControllerRaOptionsTest {
         assertTrue(c.currentScreen is IGMScreen.Menu)
     }
 
-    @Test fun retroArchMenuEntryOpensNativeMenu() {
+    @Test fun retroArchShortcutOpensNativeMenu() {
         val (c, _) = buildController()
         var opened = false
         c.onOpenNativeMenu = { opened = true }
         c.openMenu()
-        c.push(IGMScreen.RaOptions(selectedIndex = RaOptionCatalog.categories.size))
+        c.push(IGMScreen.RaOptions())
 
-        c.handleKeyDown(96)
+        c.handleKeyDown(100)            // RA SETTINGS shortcut
 
         assertTrue(opened)
     }
 
-    @Test fun retroArchMenuEntryPromptsWhenDirtyThenOpens() {
+    @Test fun retroArchShortcutPromptsWhenDirtyThenOpens() {
         val (c, bridge) = buildController()
         var opened = false
         c.onOpenNativeMenu = { opened = true }
@@ -198,8 +197,7 @@ class IGMControllerRaOptionsTest {
         c.handleKeyDown(22)              // dirty
         c.handleKeyDown(97)              // category -> RaOptions
 
-        c.replaceTop(IGMScreen.RaOptions(selectedIndex = RaOptionCatalog.categories.size))
-        c.handleKeyDown(96)             // select RetroArch Menu while dirty -> SavePrompt
+        c.handleKeyDown(100)            // RA SETTINGS while dirty -> SavePrompt
         assertTrue(c.currentScreen is IGMScreen.SavePrompt)
         assertFalse(opened)
 
