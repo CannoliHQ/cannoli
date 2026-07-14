@@ -8,6 +8,7 @@ import android.os.Handler
 import android.os.HandlerThread
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.cannoli.scorza.BuildConfig
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
@@ -197,6 +198,12 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     var kitchenCodeBypass: Boolean
         get() = jsonRead { optBoolean(KEY_KITCHEN_CODE_BYPASS, false) }
         set(value) = jsonWrite { put(KEY_KITCHEN_CODE_BYPASS, value) }
+
+    // Opt-in for features that are not ready for release users. Dev builds default it on so a fresh
+    // install does not need it flipped by hand.
+    var experimentalFeatures: Boolean
+        get() = jsonRead { optBoolean(KEY_EXPERIMENTAL_FEATURES, BuildConfig.DEBUG) }
+        set(value) = jsonWrite { put(KEY_EXPERIMENTAL_FEATURES, value) }
 
 
     var showWifi: Boolean
@@ -459,6 +466,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         private const val KEY_SWAP_PLAY_RESUME = "swap_play_resume"
         private const val KEY_MAIN_MENU_QUIT = "main_menu_quit"
         private const val KEY_KITCHEN_CODE_BYPASS = "kitchen_code_bypass"
+        private const val KEY_EXPERIMENTAL_FEATURES = "experimental_features"
         private const val KEY_SHOW_WIFI = "show_wifi"
         private const val KEY_SHOW_BLUETOOTH = "show_bluetooth"
         private const val KEY_SHOW_VPN = "show_vpn"

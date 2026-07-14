@@ -165,6 +165,7 @@
     <string name="setting_main_menu_quit">Main Menu Quit</string>
     <string name="setting_always_save_on_quit">Save State On Quit</string>
     <string name="setting_kitchen_code_bypass">Kitchen Code Bypass</string>
+    <string name="setting_experimental_features">Experimental Features</string>
     <string name="setting_set_default_launcher">Set as Default Launcher</string>
     <string name="setting_regenerate_system_folders">Regenerate System Folders</string>
     <string name="setting_content_mode">Content Mode</string>
@@ -551,6 +552,9 @@
     <string name="igm_input">Input</string>
     <string name="igm_button_mappings">Button Mappings</string>
     <string name="igm_left_stick_dpad">Left Stick as D-Pad</string>
+    <string name="igm_dpad_mode">D-Pad Mode (BETA)</string>
+    <string name="value_dpad_8way">8-Way</string>
+    <string name="value_dpad_4way">4-Way</string>
     <string name="igm_save_and_quit">Save and Quit</string>
     <string name="title_guide">Guide</string>
 

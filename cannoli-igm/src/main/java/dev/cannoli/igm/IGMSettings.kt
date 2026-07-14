@@ -14,6 +14,8 @@ object IGMSettings {
         const val SHORTCUTS = 1
         const val LEFT_STICK_DPAD = 2
 
-        const val COUNT = 3
+        // Gated behind the Experimental Features setting, so the row count is derived from the
+        // built list rather than a constant. DPAD_MODE is unreachable when the row is absent.
+        const val DPAD_MODE = 3
     }
 }

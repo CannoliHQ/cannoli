@@ -519,6 +519,9 @@ class SettingsViewModel @Inject constructor(
                 settings.kitchenCodeBypass = !settings.kitchenCodeBypass
                 dev.cannoli.scorza.server.KitchenManager.setCodeBypass(settings.kitchenCodeBypass)
             }
+            "experimental_features" -> {
+                settings.experimentalFeatures = !settings.experimentalFeatures
+            }
             "ra_package" -> {
                 val pkgs = detectInstalledRaPackages()
                 if (pkgs.isNotEmpty()) {
@@ -884,6 +887,7 @@ class SettingsViewModel @Inject constructor(
             add(SettingsItem("screen_geometry", R.string.setting_screen_geometry, isEditable = true))
             add(SettingsItem("regenerate_system_folders", R.string.setting_regenerate_system_folders, isEditable = true))
             add(SettingsItem("kitchen_code_bypass", R.string.setting_kitchen_code_bypass, valueRes = onOff(settings.kitchenCodeBypass)))
+            add(SettingsItem("experimental_features", R.string.setting_experimental_features, valueRes = onOff(settings.experimentalFeatures)))
             add(SettingsItem(
                 "release_channel",
                 R.string.settings_release_channel,

@@ -201,7 +201,7 @@ fun CannoliIGM(
                     val showsCycleHint = isOptionList ||
                         (screen is IGMScreen.Shortcuts && screen.selectedIndex == 0) ||
                         (screen is IGMScreen.Input &&
-                            screen.selectedIndex == IGMSettings.Input.LEFT_STICK_DPAD) ||
+                            settingsItems.getOrNull(screen.selectedIndex)?.value != null) ||
                         screen is IGMScreen.Video ||
                         screen is IGMScreen.Advanced ||
                         screen is IGMScreen.ShaderSettings ||
@@ -214,7 +214,7 @@ fun CannoliIGM(
                         screen is IGMScreen.Advanced -> emptyList()
                         screen is IGMScreen.ShaderSettings -> emptyList()
                         screen is IGMScreen.Input &&
-                            screen.selectedIndex == IGMSettings.Input.LEFT_STICK_DPAD -> emptyList()
+                            settingsItems.getOrNull(screen.selectedIndex)?.value != null -> emptyList()
                         screen is IGMScreen.Input -> listOf(labels.confirm to selectLabel)
                         screen is IGMScreen.Buttons -> listOf(
                             labels.north to stringResource(dev.cannoli.ui.R.string.label_clear),

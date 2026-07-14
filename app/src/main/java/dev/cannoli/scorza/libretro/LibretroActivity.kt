@@ -177,6 +177,18 @@ class LibretroActivity : ComponentActivity() {
 
     private var leftStickAsDpad by mutableStateOf(false)
 
+    // A launcher setting, so it cannot change while a game is running. Read once.
+    private val experimentalFeatures: Boolean by lazy { settings.experimentalFeatures }
+
+    private var allowDiagonals by mutableStateOf(true)
+
+    // The hot mask path reads this plain copy outside composition instead of the Compose state.
+    // Mirrors the existing activeInputRemap / inputRemap pair. Forced back to "allow" when the
+    // feature is gated off, so a value saved by a dev build cannot take effect in a release build
+    // where there is no row left to turn it back on.
+    @Volatile
+    private var activeAllowDiagonals = true
+
     private var shortcutSource by mutableStateOf(OverrideSource.GLOBAL)
     private var shortcuts by mutableStateOf(mapOf<ShortcutAction, Set<Int>>())
     private var coreInfoText by mutableStateOf("")
@@ -923,6 +935,8 @@ class LibretroActivity : ComponentActivity() {
     private val bindingHatSync = dev.cannoli.scorza.input.HatKeySync()
     private val gameplayHatSync = dev.cannoli.scorza.input.HatKeySync()
     private val stickDpadSync = dev.cannoli.scorza.input.HatKeySync()
+    private val stickDominance = dev.cannoli.scorza.input.StickDominance()
+    private val diagonalLock = DiagonalLock()
     private val portStickDpad =
         Array(LibretroRunner.MAX_PORTS) { mutableSetOf<dev.cannoli.scorza.input.CanonicalButton>() }
 
@@ -1054,10 +1068,22 @@ class LibretroActivity : ComponentActivity() {
             // The stick drives the D-pad instead of the analog axes, so the core sees one or the
             // other and never both. Deliberately kept out of portPressedKeys: the stick is a
             // gameplay input here, not something that should trigger shortcut chords.
+            var dx = lStickX
+            var dy = lStickY
+            if (!activeAllowDiagonals) {
+                // Drop the minor axis so the stick asserts one direction, never a diagonal. Only
+                // the raw floats know which way the player actually pushed; by the time the stick
+                // reaches the mask it is already a set of buttons.
+                when (stickDominance.dominantAxis(deviceId, lStickX, lStickY)) {
+                    dev.cannoli.scorza.input.DominantAxis.HORIZONTAL -> dy = 0f
+                    dev.cannoli.scorza.input.DominantAxis.VERTICAL -> dx = 0f
+                    dev.cannoli.scorza.input.DominantAxis.NONE -> {}
+                }
+            }
             stickDpadSync.sync(
                 deviceId,
-                lStickX,
-                lStickY,
+                dx,
+                dy,
                 { keyCode -> setStickDpad(port, keyCode, pressed = true) },
                 { keyCode -> setStickDpad(port, keyCode, pressed = false) },
             )
@@ -1087,7 +1113,7 @@ class LibretroActivity : ComponentActivity() {
 
     private fun pushPortMask(port: Int) {
         val eval = evaluatorForPort(port) ?: run {
-            runner.setInput(port, 0)
+            runner.setInput(port, diagonalLock.filter(port, 0, activeAllowDiagonals))
             return
         }
         val remap = activeInputRemap
@@ -1103,7 +1129,7 @@ class LibretroActivity : ComponentActivity() {
         for (cb in portStickDpad[port]) {
             mask = mask or dev.cannoli.scorza.input.runtime.CanonicalRetroMap.effectiveTarget(cb, remap)
         }
-        runner.setInput(port, mask)
+        runner.setInput(port, diagonalLock.filter(port, mask, activeAllowDiagonals))
     }
 
     private fun collectMotionAxes(
@@ -1593,6 +1619,7 @@ class LibretroActivity : ComponentActivity() {
         triggerR2HeldDevices.clear()
         gameplayHatSync.reset()
         stickDpadSync.reset()
+        diagonalLock.reset()
         for (set in portStickDpad) set.clear()
         for (set in portConsumedKeys) set.clear()
         if (holdingFf) {
@@ -2691,14 +2718,24 @@ class LibretroActivity : ComponentActivity() {
         else -> emptyList()
     }
 
-    private fun buildInputItems(): List<IGMSettingsItem> = listOf(
-        IGMSettingsItem(getString(R.string.igm_button_mappings)),
-        IGMSettingsItem(getString(R.string.title_shortcuts)),
-        IGMSettingsItem(
-            getString(R.string.igm_left_stick_dpad),
-            getString(if (leftStickAsDpad) R.string.value_on else R.string.value_off),
-        ),
-    )
+    private fun buildInputItems(): List<IGMSettingsItem> = buildList {
+        add(IGMSettingsItem(getString(R.string.igm_button_mappings)))
+        add(IGMSettingsItem(getString(R.string.title_shortcuts)))
+        add(
+            IGMSettingsItem(
+                getString(R.string.igm_left_stick_dpad),
+                getString(if (leftStickAsDpad) R.string.value_on else R.string.value_off),
+            )
+        )
+        if (experimentalFeatures) {
+            add(
+                IGMSettingsItem(
+                    getString(R.string.igm_dpad_mode),
+                    getString(if (allowDiagonals) R.string.value_dpad_8way else R.string.value_dpad_4way),
+                )
+            )
+        }
+    }
 
     private fun buildButtonsItems(screen: IGMScreen.Buttons): List<IGMSettingsItem> = buildList {
         val canonicals = dev.cannoli.scorza.input.CanonicalButton.entries
@@ -2777,6 +2814,7 @@ class LibretroActivity : ComponentActivity() {
             portDeviceTypes = portDeviceTypes,
             inputRemap = inputRemap,
             leftStickAsDpad = leftStickAsDpad,
+            allowDiagonals = allowDiagonals,
         )
     }
 
@@ -2817,6 +2855,8 @@ class LibretroActivity : ComponentActivity() {
         inputRemap = settings.inputRemap
         activeInputRemap = settings.inputRemap
         leftStickAsDpad = settings.leftStickAsDpad
+        allowDiagonals = settings.allowDiagonals
+        activeAllowDiagonals = effectiveAllowDiagonals()
 
         for ((key, value) in settings.coreOptions) {
             runner.setCoreOption(key, value)
@@ -3072,7 +3112,7 @@ class LibretroActivity : ComponentActivity() {
                 showOsd(msg)
                 val port = departed.port
                 if (port != null && ::runner.isInitialized && !loading) {
-                    runner.setInput(port, 0)
+                    runner.setInput(port, diagonalLock.filter(port, 0, activeAllowDiagonals))
                     runner.setControllerPortDevice(port, LibretroRunner.DEVICE_NONE)
                 }
             }
@@ -3173,7 +3213,7 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun handleInputInput(screen: IGMScreen.Input, button: String?): Boolean {
-        val count = IGMSettings.Input.COUNT
+        val count = buildInputItems().size
         return when (button) {
             "btn_up" -> {
                 replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
@@ -3182,7 +3222,10 @@ class LibretroActivity : ComponentActivity() {
                 replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
             }
             "btn_left", "btn_right" -> {
-                if (screen.selectedIndex == IGMSettings.Input.LEFT_STICK_DPAD) toggleLeftStickAsDpad()
+                when (screen.selectedIndex) {
+                    IGMSettings.Input.LEFT_STICK_DPAD -> toggleLeftStickAsDpad()
+                    IGMSettings.Input.DPAD_MODE -> toggleDpadMode()
+                }
                 true
             }
             "btn_south" -> {
@@ -3206,6 +3249,25 @@ class LibretroActivity : ComponentActivity() {
             portStickDpad[port].clear()
             if (leftStickAsDpad) runner.setAnalog(port, 0, 0, 0)
             if (wasHolding) pushPortMask(port)
+        }
+    }
+
+    // Ignore a persisted "off" when the gate is closed, or a user who turned Diagonals off with
+    // experimental features on would keep it in effect after turning them back off, with no row
+    // left to undo it.
+    private fun effectiveAllowDiagonals(): Boolean = !experimentalFeatures || allowDiagonals
+
+    private fun toggleDpadMode() {
+        allowDiagonals = !allowDiagonals
+        activeAllowDiagonals = effectiveAllowDiagonals()
+        diagonalLock.reset()
+        stickDominance.reset()
+        // Drop the state the old setting established and rebuild every port's mask from the live
+        // pressed state under the new one.
+        stickDpadSync.reset()
+        for (port in portStickDpad.indices) {
+            portStickDpad[port].clear()
+            pushPortMask(port)
         }
     }
 
