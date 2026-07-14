@@ -39,6 +39,7 @@ class OverrideManager(
         var debugHud: Boolean = false,
         var showFps: Boolean = false,
         var leftStickAsDpad: Boolean = false,
+        var allowDiagonals: Boolean = true,
         var maxFfSpeed: Int = 4,
         var crtCurvature: Float = 1.7f,
         var crtScanline: Float = 0.75f,
@@ -67,6 +68,7 @@ class OverrideManager(
             debugHud == other.debugHud &&
             showFps == other.showFps &&
             leftStickAsDpad == other.leftStickAsDpad &&
+            allowDiagonals == other.allowDiagonals &&
             maxFfSpeed == other.maxFfSpeed &&
             crtCurvature == other.crtCurvature &&
             crtScanline == other.crtScanline &&
@@ -222,6 +224,7 @@ class OverrideManager(
         s["debug_hud"]?.let { settings.debugHud = it == "true" }
         s["show_fps"]?.let { settings.showFps = it == "true" }
         s["left_stick_dpad"]?.let { settings.leftStickAsDpad = it == "true" }
+        s["allow_diagonals"]?.let { settings.allowDiagonals = it == "true" }
         s["max_ff_speed"]?.let { v -> v.toIntOrNull()?.let { settings.maxFfSpeed = it } }
         s["crt_curvature"]?.toFloatOrNull()?.let { settings.crtCurvature = it }
         s["crt_scanline"]?.toFloatOrNull()?.let { settings.crtScanline = it }
@@ -333,6 +336,7 @@ class OverrideManager(
         "debug_hud" to settings.debugHud.toString(),
         "show_fps" to settings.showFps.toString(),
         "left_stick_dpad" to settings.leftStickAsDpad.toString(),
+        "allow_diagonals" to settings.allowDiagonals.toString(),
         "max_ff_speed" to settings.maxFfSpeed.toString(),
         "crt_curvature" to settings.crtCurvature.toString(),
         "crt_scanline" to settings.crtScanline.toString(),
@@ -356,6 +360,9 @@ class OverrideManager(
         if (settings.showFps != baseline.showFps) delta["show_fps"] = settings.showFps.toString()
         if (settings.leftStickAsDpad != baseline.leftStickAsDpad) {
             delta["left_stick_dpad"] = settings.leftStickAsDpad.toString()
+        }
+        if (settings.allowDiagonals != baseline.allowDiagonals) {
+            delta["allow_diagonals"] = settings.allowDiagonals.toString()
         }
         if (settings.maxFfSpeed != baseline.maxFfSpeed) delta["max_ff_speed"] = settings.maxFfSpeed.toString()
         if (settings.crtCurvature != baseline.crtCurvature) delta["crt_curvature"] = settings.crtCurvature.toString()

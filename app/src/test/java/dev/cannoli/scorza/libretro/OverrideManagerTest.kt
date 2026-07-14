@@ -598,4 +598,37 @@ class OverrideManagerTest {
         val parsed = IniParser.parse(paths.systemOverrideFile("PS"))
         assertEquals("FULLSCREEN", parsed.get("frontend", "scaling"))
     }
+
+    @Test fun `diagonals are allowed when nothing is set`() {
+        assertTrue(manager().load().allowDiagonals)
+    }
+
+    @Test fun `allow_diagonals round-trips through platform and game files`() {
+        val mgr = manager()
+        mgr.savePlatform(OverrideManager.Settings(allowDiagonals = false))
+        assertFalse(mgr.load().allowDiagonals)
+
+        val baseline = mgr.load()
+        mgr.saveGameDelta(baseline.copy(allowDiagonals = true), baseline)
+        assertTrue(mgr.load().allowDiagonals)
+    }
+
+    @Test fun `the game allow_diagonals overrides the platform value`() {
+        writePlatformIni("PS", "[frontend]\nallow_diagonals = true")
+        writeGameIni("PS", "Game", "[frontend]\nallow_diagonals = false")
+        assertFalse(manager().load().allowDiagonals)
+    }
+
+    @Test fun `saveGameDelta omits allow_diagonals when it matches the platform baseline`() {
+        val mgr = manager()
+        mgr.savePlatform(OverrideManager.Settings(allowDiagonals = false))
+        val baseline = mgr.load()
+        // Diverge on an unrelated field, so the game file is written but must not carry the
+        // inherited allow_diagonals along with it.
+        mgr.saveGameDelta(baseline.copy(showFps = true), baseline)
+        val section = IniParser.parse(paths.gameOverrideFile("PS", "Game")).getSection("frontend")
+        assertEquals("true", section["show_fps"])
+        assertNull(section["allow_diagonals"])
+        assertFalse(mgr.load().allowDiagonals)
+    }
 }
