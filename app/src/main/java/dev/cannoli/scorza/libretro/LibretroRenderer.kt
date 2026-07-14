@@ -73,6 +73,7 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
 
     private var lastDrawNanos = 0L
     private var frameAccumulatorNs = 0L
+    private val lockedPacer = LockedFramePacer()
 
     private val shaderParamOverrides = ConcurrentHashMap<String, Float>()
 
@@ -210,7 +211,8 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
                 runEmulatedFrame()
                 repeat(extra - 1) { runEmulatedFrame() }
             } else if (lockedToVsync) {
-                runEmulatedFrame()
+                val frameDurationNs = (1_000_000_000.0 / coreTargetFps).toLong()
+                if (lockedPacer.shouldRunFrame(delta, frameDurationNs)) runEmulatedFrame()
             } else {
                 val frameDurationNs = (1_000_000_000.0 / coreTargetFps).toLong()
                 frameAccumulatorNs += delta
