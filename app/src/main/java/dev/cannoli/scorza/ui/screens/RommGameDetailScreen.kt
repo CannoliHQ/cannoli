@@ -33,6 +33,7 @@ import dev.cannoli.scorza.romm.LocalState
 import dev.cannoli.scorza.romm.RommArtType
 import dev.cannoli.scorza.romm.RommArtUrl
 import dev.cannoli.scorza.romm.RommGame
+import dev.cannoli.scorza.romm.download.RommManual
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.R
 import dev.cannoli.ui.components.BottomBar
@@ -109,7 +110,7 @@ fun RommGameDetailScreen(
                 modifier = Modifier.align(Alignment.BottomCenter),
                 leftItems = listOf(buttonStyle.back to stringResource(R.string.label_back)),
                 rightItems = buildList {
-                    if (game.ssMedia?.manual != null)
+                    if (RommManual.isAvailable(game))
                         add(buttonStyle.west to stringResource(R.string.label_manual))
                     if (RommGameDetailLayout.showDownloadAction(localState, DOWNLOAD_ENABLED, folded = memberCount > 1))
                         add(buttonStyle.north to stringResource(R.string.romm_detail_download))

@@ -1,6 +1,7 @@
 package dev.cannoli.scorza.romm
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -26,6 +27,45 @@ class RommDtosTest {
         assertEquals("snes", dto.slug)
         assertEquals(42, dto.romCount)
         assertEquals("Super Nintendo", dto.displayName)
+    }
+
+    @Test fun `takes the RomM-hosted media and ignores the provider urls beside it`() {
+        val json = """
+            {"id":1,"platform_id":12,"fs_name":"G.sfc","name":"G",
+             "path_cover_large":"assets/romm/resources/roms/snes/1/cover/big.png",
+             "url_cover":"https://images.igdb.com/igdb/cover.jpg",
+             "merged_screenshots":["assets/romm/resources/roms/snes/1/screenshots/0.png"],
+             "has_manual":true,
+             "path_manual":"assets/romm/resources/roms/snes/1/manual/1.pdf",
+             "url_manual":"https://api.screenscraper.fr/api2/mediaJeu.php?media=manuel(us)",
+             "ss_metadata":{
+               "box3d_path":"assets/romm/resources/roms/snes/1/box3d.png",
+               "box3d_url":"https://www.screenscraper.fr/medias/1/2/box3d.png",
+               "miximage_path":"assets/romm/resources/roms/snes/1/mix.png",
+               "title_screen_path":"assets/romm/resources/roms/snes/1/title.png",
+               "marquee_path":"assets/romm/resources/roms/snes/1/marquee.png",
+               "manual_url":"https://api.screenscraper.fr/api2/mediaJeu.php?media=manuel(us)"}}
+        """.trimIndent()
+        val game = rommJson.decodeFromString(SimpleRomDto.serializer(), json).toDomain()
+
+        assertEquals("assets/romm/resources/roms/snes/1/cover/big.png", game.coverPath)
+        assertEquals("assets/romm/resources/roms/snes/1/screenshots/0.png", game.screenshotPath)
+        assertEquals("assets/romm/resources/roms/snes/1/manual/1.pdf", game.manualPath)
+        assertTrue(game.hasManual)
+        assertEquals("assets/romm/resources/roms/snes/1/box3d.png", game.ssMedia?.box3dPath)
+        assertEquals("assets/romm/resources/roms/snes/1/mix.png", game.ssMedia?.mixPath)
+        assertEquals("assets/romm/resources/roms/snes/1/title.png", game.ssMedia?.titleScreenPath)
+        assertEquals("assets/romm/resources/roms/snes/1/marquee.png", game.ssMedia?.marqueePath)
+    }
+
+    @Test fun `no cover at all when RomM has not stored one, rather than the provider url`() {
+        val json = """
+            {"id":1,"platform_id":12,"fs_name":"G.sfc","name":"G",
+             "url_cover":"https://images.igdb.com/igdb/cover.jpg"}
+        """.trimIndent()
+        val game = rommJson.decodeFromString(SimpleRomDto.serializer(), json).toDomain()
+        assertNull(game.coverPath)
+        assertNull(game.screenshotPath)
     }
 
     @Test fun `parses platform firmware list`() {

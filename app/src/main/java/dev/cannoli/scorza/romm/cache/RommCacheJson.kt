@@ -18,13 +18,10 @@ data class CachedFile(
 
 @Serializable
 data class CachedSsMedia(
-    val box2d: String? = null,
     val box3d: String? = null,
     val mix: String? = null,
     val title: String? = null,
-    val screenshot: String? = null,
     val marquee: String? = null,
-    val manual: String? = null,
 )
 
 object RommCacheJson {
@@ -34,16 +31,14 @@ object RommCacheJson {
     fun encodeSsMedia(media: RommSsMedia?): String =
         rommJson.encodeToString(
             CachedSsMedia.serializer(),
-            media?.let { CachedSsMedia(it.box2d, it.box3d, it.mix, it.titleScreen, it.screenshot, it.marquee, it.manual) }
+            media?.let { CachedSsMedia(it.box3dPath, it.mixPath, it.titleScreenPath, it.marqueePath) }
                 ?: CachedSsMedia(),
         )
 
     fun decodeSsMedia(json: String): RommSsMedia? {
         val c = rommJson.decodeFromString(CachedSsMedia.serializer(), json)
-        if (c.box2d == null && c.box3d == null && c.mix == null && c.title == null &&
-            c.screenshot == null && c.marquee == null && c.manual == null
-        ) return null
-        return RommSsMedia(c.box2d, c.box3d, c.mix, c.title, c.screenshot, c.marquee, c.manual)
+        if (c.box3d == null && c.mix == null && c.title == null && c.marquee == null) return null
+        return RommSsMedia(c.box3d, c.mix, c.title, c.marquee)
     }
 
     fun encodeFiles(files: List<RommFile>): String =

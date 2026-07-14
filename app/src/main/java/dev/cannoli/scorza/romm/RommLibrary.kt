@@ -113,15 +113,18 @@ internal fun SimpleRomDto.toDomain(): RommGame = RommGame(
     revision = revision,
     regions = regions,
     languages = languages,
-    coverPath = pathCoverLarge ?: urlCover,
+    coverPath = pathCoverLarge,
     files = files.map { RommFile(it.fileName, it.fileSizeBytes, it.crcHash, it.md5Hash, it.sha1Hash) },
     companies = metadatum?.companies ?: emptyList(),
     genres = metadatum?.genres ?: emptyList(),
     gameModes = metadatum?.gameModes ?: emptyList(),
     firstReleaseDate = metadatum?.firstReleaseDate,
     ssMedia = ssMetadata?.let {
-        RommSsMedia(it.box2dUrl, it.box3dUrl, it.miximageUrl, it.titleScreenUrl, it.screenshotUrl, it.marqueeUrl, it.manualUrl)
+        RommSsMedia(it.box3dPath, it.miximagePath, it.titleScreenPath, it.marqueePath)
     },
+    screenshotPath = mergedScreenshots.firstOrNull(),
+    hasManual = hasManual,
+    manualPath = pathManual,
     groupKey = (siblings.map { it.id } + id).min(),
     isMainSibling = isMainSibling,
 )

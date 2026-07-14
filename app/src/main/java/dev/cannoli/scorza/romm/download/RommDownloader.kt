@@ -134,7 +134,7 @@ class RommDownloader(
 
     private fun runManual(item: RommDownloadItem) {
         val game = item.game ?: return
-        val url = game.ssMedia?.manual
+        val url = RommManual.sourceUrl(store.host, game)
         if (url == null) {
             queue.setStatus(item.key, DownloadStatus.Failed("no manual"))
             return
@@ -163,6 +163,16 @@ class RommDownloader(
                         downloaded += read
                         queue.setStatus(item.key, DownloadStatus.Downloading(downloaded, total))
                     }
+                }
+                if (!RommManual.looksLikePdf(temp)) {
+                    ScanLog.write(
+                        "ERROR romm manual ${item.rommId} not a pdf: " +
+                            "content-type=${resp.header("Content-Type") ?: "(none)"} " +
+                            "bytes=${temp.length()} head=${RommManual.describeHead(temp)}"
+                    )
+                    temp.delete()
+                    queue.setStatus(item.key, DownloadStatus.Failed("manual is not a PDF"))
+                    return
                 }
             }
             if (dest.exists()) dest.delete()

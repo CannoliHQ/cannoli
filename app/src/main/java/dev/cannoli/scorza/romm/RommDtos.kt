@@ -66,7 +66,9 @@ data class SimpleRomDto(
     @SerialName("md5_hash") val md5Hash: String? = null,
     @SerialName("sha1_hash") val sha1Hash: String? = null,
     @SerialName("path_cover_large") val pathCoverLarge: String? = null,
-    @SerialName("url_cover") val urlCover: String? = null,
+    @SerialName("merged_screenshots") val mergedScreenshots: List<String> = emptyList(),
+    @SerialName("has_manual") val hasManual: Boolean = false,
+    @SerialName("path_manual") val pathManual: String? = null,
     @SerialName("has_multiple_files") val hasMultipleFiles: Boolean = false,
     val files: List<RomFileDto> = emptyList(),
     @SerialName("sibling_roms") val siblings: List<RomSiblingDto> = emptyList(),
@@ -76,15 +78,14 @@ data class SimpleRomDto(
     @SerialName("updated_at") val updatedAt: String? = null,
 )
 
+// Only the resources RomM stores and serves itself. The provider urls in ss_metadata (box3d_url and
+// friends) point straight at ScreenScraper and are intentionally left unparsed.
 @Serializable
 data class SsMetadataDto(
-    @SerialName("box2d_url") val box2dUrl: String? = null,
-    @SerialName("box3d_url") val box3dUrl: String? = null,
-    @SerialName("miximage_url") val miximageUrl: String? = null,
-    @SerialName("title_screen_url") val titleScreenUrl: String? = null,
-    @SerialName("screenshot_url") val screenshotUrl: String? = null,
-    @SerialName("marquee_url") val marqueeUrl: String? = null,
-    @SerialName("manual_url") val manualUrl: String? = null,
+    @SerialName("box3d_path") val box3dPath: String? = null,
+    @SerialName("miximage_path") val miximagePath: String? = null,
+    @SerialName("title_screen_path") val titleScreenPath: String? = null,
+    @SerialName("marquee_path") val marqueePath: String? = null,
 )
 
 @Serializable

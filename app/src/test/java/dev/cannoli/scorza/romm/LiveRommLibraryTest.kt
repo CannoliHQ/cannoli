@@ -5,6 +5,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class LiveRommLibraryTest {
@@ -80,19 +81,16 @@ class LiveRommLibraryTest {
         assertEquals("Untitled", game.name)
     }
 
-    @Test fun `cover path falls back to url cover when path cover absent`() = runTest {
+    @Test fun `no cover when RomM has not stored one`() = runTest {
         val client = mockk<RommClient>()
         every { client.getRoms(12, 100, 0, null) } returns RomsPageDto(
             items = listOf(
-                SimpleRomDto(
-                    id = 1, platformId = 12, fsName = "G.sfc", name = "G",
-                    pathCoverLarge = null, urlCover = "https://example/cover.png",
-                ),
+                SimpleRomDto(id = 1, platformId = 12, fsName = "G.sfc", name = "G", pathCoverLarge = null),
             ),
             total = 1, limit = 100, offset = 0,
         )
         val lib = LiveRommLibrary(client, platformMap)
         val game = lib.games(RommPlatform(12, "snes", "SNES", "SNES", 1), page = 0).items.first()
-        assertEquals("https://example/cover.png", game.coverPath)
+        assertNull(game.coverPath)
     }
 }

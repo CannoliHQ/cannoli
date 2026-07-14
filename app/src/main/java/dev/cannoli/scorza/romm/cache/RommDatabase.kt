@@ -73,6 +73,9 @@ class RommDatabase(private val dbFileProvider: () -> File) {
                 cover_path TEXT,
                 files_json TEXT NOT NULL DEFAULT '[]',
                 ss_media_json TEXT NOT NULL DEFAULT '{}',
+                screenshot_path TEXT,
+                has_manual INTEGER NOT NULL DEFAULT 0,
+                manual_path TEXT,
                 group_key INTEGER NOT NULL DEFAULT 0,
                 is_main_sibling INTEGER NOT NULL DEFAULT 0,
                 sort_key TEXT NOT NULL DEFAULT '',
@@ -162,13 +165,14 @@ class RommDatabase(private val dbFileProvider: () -> File) {
                 val g = rec.game
                 c.execute(
                     """INSERT OR REPLACE INTO games
-                       (id, platform_id, name, name_normalized, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json, ss_media_json, group_key, is_main_sibling, sort_key, updated_at, region_rank)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                       (id, platform_id, name, name_normalized, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json, ss_media_json, screenshot_path, has_manual, manual_path, group_key, is_main_sibling, sort_key, updated_at, region_rank)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     g.id, g.platformId, g.name, TextNormalizer.normalize(g.name), g.fsName, g.sizeBytes, g.summary, g.revision,
                     RommCacheJson.encodeStrings(g.regions), RommCacheJson.encodeStrings(g.languages),
                     RommCacheJson.encodeStrings(g.companies), RommCacheJson.encodeStrings(g.genres),
                     RommCacheJson.encodeStrings(g.gameModes), g.firstReleaseDate,
                     g.coverPath, RommCacheJson.encodeFiles(g.files), RommCacheJson.encodeSsMedia(g.ssMedia),
+                    g.screenshotPath, if (g.hasManual) 1 else 0, g.manualPath,
                     g.groupKey, if (g.isMainSibling) 1 else 0,
                     NaturalSort.toSortKey(g.name), rec.updatedAt, RommVariantFolder.regionRank(g.regions),
                 )
@@ -196,14 +200,17 @@ class RommDatabase(private val dbFileProvider: () -> File) {
         ssMedia = RommCacheJson.decodeSsMedia(stmt.getText(15)),
         groupKey = stmt.getInt(16),
         isMainSibling = stmt.getInt(17) == 1,
+        hasManual = stmt.getInt(18) == 1,
+        manualPath = if (stmt.isNull(19)) null else stmt.getText(19),
+        screenshotPath = if (stmt.isNull(20)) null else stmt.getText(20),
     )
 
-    // rowToGame reads columns 0..17; folded window queries append variant_count, member_ids, member_fs at 18..20.
+    // rowToGame reads columns 0..20; folded window queries append variant_count, member_ids, member_fs at 21..23.
     private fun rowToFolded(stmt: androidx.sqlite.SQLiteStatement) = RommFoldedGame(
         game = rowToGame(stmt),
-        variantCount = stmt.getInt(18),
-        memberIds = splitUnitSeparated(stmt.getText(19)).map { it.toInt() },
-        memberFsNames = splitUnitSeparated(stmt.getText(20)),
+        variantCount = stmt.getInt(21),
+        memberIds = splitUnitSeparated(stmt.getText(22)).map { it.toInt() },
+        memberFsNames = splitUnitSeparated(stmt.getText(23)),
     )
 
     private fun splitUnitSeparated(raw: String): List<String> =
@@ -245,7 +252,7 @@ class RommDatabase(private val dbFileProvider: () -> File) {
     fun games(platformId: Int, search: String?, limit: Int, offset: Int): List<RommGame> = withConn { c ->
         val like = search?.let { TextNormalizer.normalize(it) }?.takeIf { it.isNotEmpty() }?.let { "%$it%" }
         val sql = buildString {
-            append("SELECT id, platform_id, name, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json, ss_media_json, group_key, is_main_sibling FROM games WHERE platform_id = ?")
+            append("SELECT $GAME_COLUMNS FROM games WHERE platform_id = ?")
             if (like != null) append(" AND name_normalized LIKE ?")
             append(" ORDER BY sort_key LIMIT ? OFFSET ?")
         }
@@ -257,7 +264,7 @@ class RommDatabase(private val dbFileProvider: () -> File) {
         val term = TextNormalizer.normalize(query.text)
         if (term.isEmpty()) return@withConn emptyList()
         c.queryAll(
-            "SELECT id, platform_id, name, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json, ss_media_json, group_key, is_main_sibling FROM games WHERE name_normalized LIKE ? ORDER BY sort_key LIMIT ?",
+            "SELECT $GAME_COLUMNS FROM games WHERE name_normalized LIKE ? ORDER BY sort_key LIMIT ?",
             "%$term%",
             GLOBAL_SEARCH_LIMIT,
             mapper = ::rowToGame,
@@ -266,7 +273,7 @@ class RommDatabase(private val dbFileProvider: () -> File) {
 
     fun allGames(platformId: Int): List<RommGame> = withConn { c ->
         c.queryAll(
-            "SELECT id, platform_id, name, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json, ss_media_json, group_key, is_main_sibling FROM games WHERE platform_id = ?",
+            "SELECT $GAME_COLUMNS FROM games WHERE platform_id = ?",
             platformId,
             mapper = ::rowToGame,
         )
@@ -404,7 +411,7 @@ class RommDatabase(private val dbFileProvider: () -> File) {
     fun gamesForCollection(collectionId: String, search: String?, limit: Int, offset: Int): List<RommGame> = withConn { c ->
         val like = search?.let { TextNormalizer.normalize(it) }?.takeIf { it.isNotEmpty() }?.let { "%$it%" }
         val sql = buildString {
-            append("SELECT g.id, g.platform_id, g.name, g.fs_name, g.size_bytes, g.summary, g.revision, g.regions, g.languages, g.companies, g.genres, g.game_modes, g.first_release_date, g.cover_path, g.files_json, g.ss_media_json, g.group_key, g.is_main_sibling ")
+            append("SELECT $GAME_COLUMNS_QUALIFIED ")
             append("FROM games g JOIN collection_roms cr ON cr.rom_id = g.id WHERE cr.collection_id = ?")
             if (like != null) append(" AND g.name_normalized LIKE ?")
             append(" ORDER BY g.sort_key LIMIT ? OFFSET ?")
@@ -439,11 +446,13 @@ class RommDatabase(private val dbFileProvider: () -> File) {
     }
 
     private companion object {
-        const val SCHEMA_VERSION = 5
+        const val SCHEMA_VERSION = 6
         const val GLOBAL_SEARCH_LIMIT = 300
 
         const val GAME_COLUMNS =
-            "id, platform_id, name, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json, ss_media_json, group_key, is_main_sibling"
+            "id, platform_id, name, fs_name, size_bytes, summary, revision, regions, languages, companies, genres, game_modes, first_release_date, cover_path, files_json, ss_media_json, group_key, is_main_sibling, has_manual, manual_path, screenshot_path"
+
+        val GAME_COLUMNS_QUALIFIED = GAME_COLUMNS.split(", ").joinToString(", ") { "g.$it" }
 
         const val REPRESENTATIVE_ORDER = "is_main_sibling DESC, region_rank ASC, sort_key ASC"
 

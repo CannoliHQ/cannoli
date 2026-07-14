@@ -34,18 +34,22 @@ data class RommGame(
     val gameModes: List<String> = emptyList(),
     val firstReleaseDate: Long? = null,
     val ssMedia: RommSsMedia? = null,
+    val screenshotPath: String? = null,
+    val hasManual: Boolean = false,
+    val manualPath: String? = null,
     val groupKey: Int = 0,
     val isMainSibling: Boolean = false,
 )
 
+/**
+ * Paths to the media RomM stores and serves itself. The provider's own urls are deliberately not
+ * modelled: media is only ever read back from the RomM instance, never from ScreenScraper.
+ */
 data class RommSsMedia(
-    val box2d: String? = null,
-    val box3d: String? = null,
-    val mix: String? = null,
-    val titleScreen: String? = null,
-    val screenshot: String? = null,
-    val marquee: String? = null,
-    val manual: String? = null,
+    val box3dPath: String? = null,
+    val mixPath: String? = null,
+    val titleScreenPath: String? = null,
+    val marqueePath: String? = null,
 )
 
 data class RommFirmware(

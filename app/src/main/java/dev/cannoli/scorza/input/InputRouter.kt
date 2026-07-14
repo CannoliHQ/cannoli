@@ -104,7 +104,7 @@ class InputRouter @Inject constructor(
         is LauncherScreen.RommGameDetail -> object : ScreenInputHandler {
             override fun onWest() {
                 val s = nav.currentScreen as? LauncherScreen.RommGameDetail ?: return
-                if (s.game.ssMedia?.manual == null) return
+                if (!dev.cannoli.scorza.romm.download.RommManual.isAvailable(s.game)) return
                 rommDownloader.enqueue(listOf(dev.cannoli.scorza.romm.download.RommDownloadItem(
                     rommId = s.game.id, game = s.game, tag = s.tag,
                     kind = dev.cannoli.scorza.romm.download.RommDownloadKind.MANUAL)))
