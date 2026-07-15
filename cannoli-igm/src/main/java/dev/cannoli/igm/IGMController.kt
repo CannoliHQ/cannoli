@@ -38,17 +38,19 @@ class IGMController(
         inputTranslator = IgmInputTranslator(mapping)
     }
 
-    private var guideManager: GuideManager? = null
-    var guideFiles = mutableStateOf<List<GuideFile>>(emptyList())
-    var guidePageCount = mutableIntStateOf(0)
-    var guideScrollDir = mutableIntStateOf(0)
-    var guideScrollXDir = mutableIntStateOf(0)
-    var guidePageJump = mutableIntStateOf(0)
-    var guidePageJumpDir = mutableIntStateOf(0)
-    var guideInitialScroll = mutableIntStateOf(0)
-    var guideInitialScrollX = mutableIntStateOf(0)
-    private var guideScrollPos = 0
-    private var guideScrollXPos = 0
+    // Guide navigation is delegated to the shared GuideController. These pass-through getters
+    // preserve the public API that ricotta/IGMOverlay.kt reads (controller.guideFiles.value,
+    // controller.guideScrollDir.intValue, ...). cannoli-igm is a source dependency of the ricotta
+    // fork; do not inline or rename these without updating ricotta.
+    private val guideController = GuideController()
+    val guideFiles get() = guideController.guideFiles
+    val guidePageCount get() = guideController.guidePageCount
+    val guideScrollDir get() = guideController.guideScrollDir
+    val guideScrollXDir get() = guideController.guideScrollXDir
+    val guidePageJump get() = guideController.guidePageJump
+    val guidePageJumpDir get() = guideController.guidePageJumpDir
+    val guideInitialScroll get() = guideController.guideInitialScroll
+    val guideInitialScrollX get() = guideController.guideInitialScrollX
 
     private val saveSlotManager = SaveSlotManager()
 
@@ -145,47 +147,17 @@ class IGMController(
         }
     }
 
-    fun attachGuides(manager: GuideManager) {
-        guideManager = manager
-        guideFiles.value = manager.findGuides()
-    }
+    fun attachGuides(manager: GuideManager) = guideController.attach(manager)
 
-    fun onGuideScrollChanged(y: Int, x: Int) {
-        guideScrollPos = y
-        guideScrollXPos = x
-    }
+    fun onGuideScrollChanged(y: Int, x: Int) = guideController.onScrollChanged(y, x)
 
     fun openGuidePicker() {
         push(IGMScreen.GuidePicker())
     }
 
     private fun openGuide(guide: GuideFile) {
-        val manager = guideManager ?: return
-        val saved = manager.loadSavedPosition(guide.file)
-        guideScrollDir.intValue = 0
-        guideScrollXDir.intValue = 0
-        guidePageJump.intValue = 0
-        guideScrollXPos = saved.scrollX
-        guideInitialScrollX.intValue = saved.scrollX
-        guidePageCount.intValue = if (guide.type == GuideType.PDF) {
-            try {
-                val pfd = android.os.ParcelFileDescriptor.open(
-                    guide.file, android.os.ParcelFileDescriptor.MODE_READ_ONLY
-                )
-                pfd.use { android.graphics.pdf.PdfRenderer(it).use { r -> r.pageCount } }
-            } catch (_: Exception) { 1 }
-        } else 0
-        guideScrollPos = if (guide.type == GuideType.PDF) saved.scrollY else saved.position
-        guideInitialScroll.intValue = guideScrollPos
-        if (guide.type == GuideType.PDF) {
-            push(IGMScreen.Guide(
-                filePath = guide.file.absolutePath,
-                page = saved.position.coerceIn(0, (guidePageCount.intValue - 1).coerceAtLeast(0)),
-                textZoom = saved.zoom
-            ))
-        } else {
-            push(IGMScreen.Guide(filePath = guide.file.absolutePath, textZoom = saved.zoom))
-        }
+        val open = guideController.prepareGuide(guide) ?: return
+        push(IGMScreen.Guide(filePath = open.filePath, page = open.initialPage, textZoom = open.textZoom))
     }
 
     private fun handleGuidePickerKey(screen: IGMScreen.GuidePicker, keycode: Int) {
@@ -203,26 +175,24 @@ class IGMController(
         val guide = guideFiles.value.firstOrNull { it.file.absolutePath == screen.filePath } ?: return
         val type = guide.type
         when (keycode) {
-            19 -> guideScrollDir.intValue = -1
-            20 -> guideScrollDir.intValue = 1
-            21 -> if (type != GuideType.TXT && screen.textZoom > 1) guideScrollXDir.intValue = -1
-            22 -> if (type != GuideType.TXT && screen.textZoom > 1) guideScrollXDir.intValue = 1
+            19 -> guideController.scroll(-1)
+            20 -> guideController.scroll(1)
+            21 -> if (type != GuideType.TXT && screen.textZoom > 1) guideController.scrollX(-1)
+            22 -> if (type != GuideType.TXT && screen.textZoom > 1) guideController.scrollX(1)
             102 -> if (type == GuideType.PDF) {
                 replaceTop(screen.copy(page = (screen.page - 1).coerceAtLeast(0)))
-            } else { guidePageJumpDir.intValue = -1; guidePageJump.intValue++ }
+            } else guideController.pageJump(-1)
             103 -> if (type == GuideType.PDF) {
                 replaceTop(screen.copy(page = (screen.page + 1).coerceAtMost(guidePageCount.intValue - 1)))
-            } else { guidePageJumpDir.intValue = 1; guidePageJump.intValue++ }
+            } else guideController.pageJump(1)
             100 -> {
-                guideInitialScroll.intValue = guideScrollPos
-                guideInitialScrollX.intValue = guideScrollXPos
+                guideController.beginZoomReseed()
                 replaceTop(screen.copy(textZoom = if (screen.textZoom >= 3) 1 else screen.textZoom + 1))
             }
             97, 4 -> {
-                val pos = if (type == GuideType.PDF) screen.page else guideScrollPos
-                guideManager?.save(guide.file, pos, guideScrollPos, guideScrollXPos, screen.textZoom)
-                guideScrollDir.intValue = 0
-                guideScrollXDir.intValue = 0
+                guideController.saveGuide(guide, if (type == GuideType.PDF) screen.page else null, screen.textZoom)
+                guideController.scroll(0)
+                guideController.scrollX(0)
                 pop()
                 if (screenStack.isEmpty()) onClose?.invoke()
             }
