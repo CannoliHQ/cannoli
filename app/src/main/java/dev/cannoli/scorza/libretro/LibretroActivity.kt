@@ -823,7 +823,12 @@ class LibretroActivity : ComponentActivity() {
                                     sessionLog.log("setFrameRate threw: ${t.message}")
                                 }
                             }
-                            val displayHz = activity.display?.refreshRate ?: 60f
+                            val display = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                                activity.display
+                            } else {
+                                @Suppress("DEPRECATION") activity.windowManager.defaultDisplay
+                            }
+                            val displayHz = display?.refreshRate ?: 60f
                             val mismatch = kotlin.math.abs(displayHz - requestedFps) / requestedFps
                             glesBackend.lockedToVsync = mismatch < 0.02f
                             sessionLog.log("vsync lock: displayHz=$displayHz coreFps=$requestedFps mismatch=${"%.4f".format(mismatch)} locked=${glesBackend.lockedToVsync}")

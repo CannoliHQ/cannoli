@@ -54,11 +54,15 @@ class KitchenService : Service() {
 
     private fun startServer(pin: String, codeBypass: Boolean) {
         if (server != null) return
-        startForeground(
-            NOTIFICATION_ID,
-            buildNotification(),
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(
+                NOTIFICATION_ID,
+                buildNotification(),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            )
+        } else {
+            startForeground(NOTIFICATION_ID, buildNotification())
+        }
         acquireLocks()
         val root = File(settings.sdCardRoot)
         val romsRoot = {

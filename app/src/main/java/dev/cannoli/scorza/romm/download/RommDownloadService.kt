@@ -7,6 +7,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.os.Build
 import android.os.IBinder
 import dev.cannoli.scorza.R
 import dagger.hilt.android.AndroidEntryPoint
@@ -34,7 +35,11 @@ class RommDownloadService : Service() {
     override fun onCreate() {
         super.onCreate()
         RommDownloadManager.onServiceCreated(this)
-        startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.romm_download_notification_starting)), ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.romm_download_notification_starting)), ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        } else {
+            startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.romm_download_notification_starting)))
+        }
         watcher = scope.launch {
             combine(downloader.queue.state, artFetcher.state) { items, art -> items to art }
                 .collectLatest { (items, art) ->
