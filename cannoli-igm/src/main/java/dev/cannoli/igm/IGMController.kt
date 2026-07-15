@@ -187,7 +187,7 @@ class IGMController(
             } else guideController.pageJump(1)
             100 -> {
                 guideController.beginZoomReseed()
-                replaceTop(screen.copy(textZoom = if (screen.textZoom >= 3) 1 else screen.textZoom + 1))
+                replaceTop(screen.copy(textZoom = if (screen.textZoom >= GuideZoom.levels) 1 else screen.textZoom + 1))
             }
             97, 4 -> {
                 guideController.saveGuide(guide, if (type == GuideType.PDF) screen.page else null, screen.textZoom)

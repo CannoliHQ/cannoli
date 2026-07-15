@@ -5,6 +5,7 @@ import dev.cannoli.igm.GuideController
 import dev.cannoli.igm.GuideFile
 import dev.cannoli.igm.GuideManager
 import dev.cannoli.igm.GuideType
+import dev.cannoli.igm.GuideZoom
 import dev.cannoli.scorza.input.ScreenInputHandler
 import dev.cannoli.scorza.model.Rom
 import dev.cannoli.scorza.navigation.LauncherScreen
@@ -104,7 +105,7 @@ class GuideInputHandler @Inject constructor(
     override fun onNorth() {
         val g = guide() ?: return
         controller.beginZoomReseed()
-        nav.replaceTop(g.copy(textZoom = if (g.textZoom >= 3) 1 else g.textZoom + 1))
+        nav.replaceTop(g.copy(textZoom = if (g.textZoom >= GuideZoom.levels) 1 else g.textZoom + 1))
     }
 
     override fun onConfirm() {

@@ -38,8 +38,6 @@ import dev.cannoli.ui.theme.LocalCannoliTypography
 import kotlinx.coroutines.delay
 import java.io.File
 
-private val ZOOM_SCALES = listOf(1, 2, 3)
-private val TXT_FONT_SIZES = listOf(14, 18, 24)
 private const val SCROLL_SPEED = 14f
 private const val FRAME_MS = 16L
 
@@ -61,22 +59,22 @@ fun GuideScreen(
 ) {
     val typo = LocalCannoliTypography.current
     val colors = LocalCannoliColors.current
-    val zoomIndex = (textZoom - 1).coerceIn(0, ZOOM_SCALES.lastIndex)
+    val zoomIndex = (textZoom - 1).coerceIn(0, GuideZoom.pdfScales.lastIndex)
 
     ScreenBackground(backgroundImagePath = null, backgroundAlpha = 1f) {
         Box(modifier = Modifier.fillMaxSize().padding(12.dp)) {
             when (guideType) {
                 GuideType.PDF -> PdfContent(
-                    filePath, page, ZOOM_SCALES[zoomIndex],
+                    filePath, page, GuideZoom.pdfScales[zoomIndex],
                     initialScrollY, initialScrollX, scrollDir, scrollXDir, onScrollPosChanged
                 )
                 GuideType.TXT -> TxtContent(
                     filePath, initialScrollY, scrollDir, pageJump, pageJumpDir,
-                    TXT_FONT_SIZES[zoomIndex], onScrollPosChanged
+                    GuideZoom.txtFontSizes[zoomIndex], onScrollPosChanged
                 )
                 GuideType.IMAGE -> ImageContent(
                     filePath, initialScrollY, initialScrollX, scrollDir, scrollXDir,
-                    pageJump, pageJumpDir, ZOOM_SCALES[zoomIndex], onScrollPosChanged
+                    pageJump, pageJumpDir, GuideZoom.pdfScales[zoomIndex], onScrollPosChanged
                 )
             }
 
@@ -95,7 +93,7 @@ fun GuideScreen(
 
 @Composable
 private fun PdfContent(
-    filePath: String, page: Int, scale: Int,
+    filePath: String, page: Int, scale: Float,
     initialScrollY: Int, initialScrollX: Int,
     scrollDir: Int, scrollXDir: Int,
     onScrollPosChanged: (Int, Int) -> Unit
@@ -144,7 +142,7 @@ private fun PdfContent(
         val pdfPage = r.openPage(page)
         val renderScale = scale + 1
         val bmp = Bitmap.createBitmap(
-            pdfPage.width * renderScale, pdfPage.height * renderScale, Bitmap.Config.ARGB_8888
+            (pdfPage.width * renderScale).toInt(), (pdfPage.height * renderScale).toInt(), Bitmap.Config.ARGB_8888
         )
         bmp.eraseColor(android.graphics.Color.WHITE)
         pdfPage.render(bmp, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
@@ -156,7 +154,7 @@ private fun PdfContent(
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         bitmap?.let { bmp ->
-            if (scale == 1) {
+            if (scale <= 1f) {
                 Image(
                     bitmap = bmp.asImageBitmap(),
                     contentDescription = null,
@@ -233,7 +231,7 @@ private fun ImageContent(
     filePath: String, initialScrollY: Int, initialScrollX: Int,
     scrollDir: Int, scrollXDir: Int,
     pageJump: Int, pageJumpDir: Int,
-    scale: Int, onScrollPosChanged: (Int, Int) -> Unit
+    scale: Float, onScrollPosChanged: (Int, Int) -> Unit
 ) {
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
     val scrollState = remember(initialScrollY) { ScrollState(initialScrollY) }
@@ -272,7 +270,7 @@ private fun ImageContent(
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         bitmap?.let { bmp ->
-            if (scale == 1) {
+            if (scale <= 1f) {
                 Image(
                     bitmap = bmp.asImageBitmap(),
                     contentDescription = null,

@@ -2361,7 +2361,7 @@ class LibretroActivity : ComponentActivity() {
             "btn_north" -> {
                 guideInitialScroll = guideScrollPos
                 guideInitialScrollX = guideScrollXPos
-                replaceTop(screen.copy(textZoom = if (screen.textZoom >= 3) 1 else screen.textZoom + 1))
+                replaceTop(screen.copy(textZoom = if (screen.textZoom >= dev.cannoli.igm.GuideZoom.levels) 1 else screen.textZoom + 1))
                 true
             }
             "btn_east" -> {
