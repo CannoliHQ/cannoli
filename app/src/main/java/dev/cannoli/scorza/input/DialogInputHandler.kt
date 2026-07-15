@@ -184,6 +184,7 @@ class DialogInputHandler @Inject constructor(
         data class Bulk(val gamePaths: List<String>, val options: List<String>) : ContextReturn
     }
     private var pendingContextReturn: ContextReturn? = null
+    var openGuides: ((dev.cannoli.scorza.model.Rom) -> Unit)? = null
 
     private val gameContextOptions = listOf(MENU_MANAGE_COLLECTIONS, MENU_EMULATOR_OVERRIDE, MENU_RA_GAME_ID, MENU_RENAME, MENU_DELETE_GAME)
 
@@ -1558,6 +1559,10 @@ class DialogInputHandler @Inject constructor(
                 if (rom == null) return
                 openRommSavesMenu()
             }
+            selected == MENU_GUIDES -> {
+                if (rom == null) return
+                openGuides?.invoke(rom)
+            }
         }
     }
 
@@ -1952,6 +1957,14 @@ class DialogInputHandler @Inject constructor(
                 if (item is ListItem.RomItem && rommSavesOptions(item.rom).isNotEmpty()) {
                     val idx = indexOf(MENU_RENAME)
                     if (idx >= 0) add(idx, MENU_ROMM_SAVES) else add(MENU_ROMM_SAVES)
+                }
+                if (item is ListItem.RomItem &&
+                    dev.cannoli.igm.GuideManager(
+                        settings.sdCardRoot, item.rom.platformTag, item.rom.path.nameWithoutExtension
+                    ).findGuides().isNotEmpty()
+                ) {
+                    val idx = indexOfFirst { it == MENU_EMULATOR_OVERRIDE || it.startsWith("$MENU_EMULATOR_OVERRIDE\t") }
+                    if (idx >= 0) add(idx, MENU_GUIDES) else add(MENU_GUIDES)
                 }
             }
         }
