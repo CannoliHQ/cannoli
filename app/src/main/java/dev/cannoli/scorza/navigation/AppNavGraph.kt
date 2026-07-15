@@ -52,6 +52,8 @@ import dev.cannoli.scorza.ui.screens.EmulatorPickerOption
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.screens.DirectoryBrowserScreen
 import dev.cannoli.scorza.ui.screens.GameListScreen
+import dev.cannoli.scorza.ui.screens.GuidePickerScreen
+import dev.cannoli.scorza.ui.screens.GuideViewerScreen
 import dev.cannoli.scorza.ui.screens.InputTesterScreen
 import dev.cannoli.scorza.ui.screens.LoggingSettingsScreen
 import dev.cannoli.scorza.ui.screens.KeyboardHost
@@ -132,6 +134,16 @@ sealed class LauncherScreen {
         val slots: List<dev.cannoli.scorza.romm.sync.SlotInfo>,
         val selectedIndex: Int = 0,
         val pendingDelete: Boolean = false,
+    ) : LauncherScreen()
+    data class GuidePicker(
+        val files: List<dev.cannoli.igm.GuideFile>,
+        val selectedIndex: Int = 0,
+    ) : LauncherScreen()
+    data class Guide(
+        val filePath: String,
+        val guideType: dev.cannoli.igm.GuideType,
+        val page: Int = 0,
+        val textZoom: Int = 1,
     ) : LauncherScreen()
     data class EmulatorMapping(val mappings: List<EmulatorMappingEntry>, val allMappings: List<EmulatorMappingEntry> = mappings, override val selectedIndex: Int = 0, override val scrollTarget: Int = 0, val filter: Int = 0) : LauncherScreen(), ScrollableScreen {
         override val itemCount: Int get() = mappings.size
@@ -1368,6 +1380,38 @@ fun AppNavGraph(
                     listVerticalPadding = listVerticalPadding,
                     buttonStyle = labels,
                     pendingDelete = currentScreen.pendingDelete,
+                )
+            }
+            is LauncherScreen.GuidePicker -> {
+                inputRouter?.let { dev.cannoli.scorza.input.screen.compose.ScreenInput(it.guideHandler) }
+                GuidePickerScreen(
+                    files = currentScreen.files,
+                    selectedIndex = currentScreen.selectedIndex,
+                    backgroundImagePath = appSettings.backgroundImagePath,
+                    backgroundTint = appSettings.backgroundTint,
+                    listFontSize = listFontSize,
+                    listLineHeight = listLineHeight,
+                    listVerticalPadding = listVerticalPadding,
+                    buttonStyle = labels,
+                )
+            }
+            is LauncherScreen.Guide -> {
+                inputRouter?.let { dev.cannoli.scorza.input.screen.compose.ScreenInput(it.guideHandler) }
+                val c = inputRouter?.guideHandler?.controller
+                GuideViewerScreen(
+                    filePath = currentScreen.filePath,
+                    guideType = currentScreen.guideType,
+                    page = currentScreen.page,
+                    textZoom = currentScreen.textZoom,
+                    initialScrollY = c?.guideInitialScroll?.intValue ?: 0,
+                    initialScrollX = c?.guideInitialScrollX?.intValue ?: 0,
+                    scrollDir = c?.guideScrollDir?.intValue ?: 0,
+                    scrollXDir = c?.guideScrollXDir?.intValue ?: 0,
+                    pageJump = c?.guidePageJump?.intValue ?: 0,
+                    pageJumpDir = c?.guidePageJumpDir?.intValue ?: 0,
+                    pageCount = c?.guidePageCount?.intValue ?: 0,
+                    onScrollPosChanged = { y, x -> c?.onScrollChanged(y, x) },
+                    buttonStyle = labels,
                 )
             }
             is LauncherScreen.RommPlatformList -> {

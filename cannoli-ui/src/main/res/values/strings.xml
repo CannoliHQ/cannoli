@@ -557,6 +557,7 @@
     <string name="value_dpad_4way">4-Way</string>
     <string name="igm_save_and_quit">Save and Quit</string>
     <string name="title_guide">Guide</string>
+    <string name="guide_zoom">ZOOM</string>
 
     <!-- IGM info labels -->
     <string name="info_core">Core</string>

@@ -9,6 +9,7 @@ import dev.cannoli.scorza.input.screen.ControllerDetailInputHandler
 import dev.cannoli.scorza.input.screen.ControllersInputHandler
 import dev.cannoli.scorza.input.screen.EditButtonsInputHandler
 import dev.cannoli.scorza.input.screen.GameListInputHandler
+import dev.cannoli.scorza.input.screen.GuideInputHandler
 import dev.cannoli.scorza.input.screen.LoggingSettingsInputHandler
 import dev.cannoli.scorza.input.screen.InputTesterInputHandler
 import dev.cannoli.scorza.input.screen.ScrollListInputHandler
@@ -45,6 +46,7 @@ class InputRouter @Inject constructor(
     val inputTesterHandler: InputTesterInputHandler,
     val saveStatePickerHandler: SaveStatePickerInputHandler,
     val saveSlotsHandler: SaveSlotsInputHandler,
+    val guideHandler: GuideInputHandler,
     val controllerDetailHandler: ControllerDetailInputHandler,
     val controllersHandler: ControllersInputHandler,
     val editButtonsHandler: EditButtonsInputHandler,
@@ -95,6 +97,8 @@ class InputRouter @Inject constructor(
         is LauncherScreen.InputTester -> inputTesterHandler
         is LauncherScreen.SaveStatePicker -> saveStatePickerHandler
         is LauncherScreen.SaveSlots -> saveSlotsHandler
+        is LauncherScreen.GuidePicker -> guideHandler
+        is LauncherScreen.Guide -> guideHandler
         is LauncherScreen.Controllers -> controllersHandler
         is LauncherScreen.ControllerDetail -> controllerDetailHandler
         is LauncherScreen.EditButtons -> editButtonsHandler
