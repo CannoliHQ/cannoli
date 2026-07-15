@@ -162,8 +162,9 @@ class DialogInputHandler @Inject constructor(
                 nav.dialogState.value = ds.copy(concurrent = settings.concurrentDownloads)
             }
             dev.cannoli.scorza.ui.components.RommSettingsRow.COVER_ART -> {
-                val types = dev.cannoli.scorza.romm.RommArtType.entries
-                val next = types[(ds.artType.ordinal + delta + types.size) % types.size]
+                val types = dev.cannoli.scorza.romm.availableArtTypes(rommStore.scanMedia)
+                val cur = types.indexOf(ds.artType).coerceAtLeast(0)
+                val next = types[(cur + delta + types.size) % types.size]
                 rommStore.artType = next
                 nav.dialogState.value = ds.copy(artType = next)
             }

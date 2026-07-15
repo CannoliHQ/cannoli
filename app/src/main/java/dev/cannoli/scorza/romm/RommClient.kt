@@ -97,6 +97,12 @@ class RommClient(
         execute(request, HeartbeatResponse.serializer()).system.version.ifEmpty { null }
     }.getOrNull()
 
+    /** Media types the instance scrapes and stores (SCAN_MEDIA); empty if the config is unreachable. */
+    fun scanMedia(): List<String> = runCatching {
+        val request = Request.Builder().url(endpoint("/api/config")).get().build()
+        execute(request, RommConfigDto.serializer()).scanMedia
+    }.getOrDefault(emptyList())
+
     fun getRoms(
         platformId: Int?,
         limit: Int,

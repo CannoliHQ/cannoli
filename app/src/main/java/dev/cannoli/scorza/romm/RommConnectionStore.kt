@@ -66,6 +66,11 @@ class RommConnectionStore @Inject constructor(@ApplicationContext context: Conte
         get() = prefs.getString(KEY_SERVER_VERSION, null)?.ifEmpty { null }
         set(value) { prefs.edit().run { if (value.isNullOrEmpty()) remove(KEY_SERVER_VERSION) else putString(KEY_SERVER_VERSION, value); apply() } }
 
+    /** SCAN_MEDIA from the server; empty means unknown and must not restrict the art picker. */
+    var scanMedia: Set<String>
+        get() = prefs.getStringSet(KEY_SCAN_MEDIA, null)?.toSet() ?: emptySet()
+        set(value) { prefs.edit().run { if (value.isEmpty()) remove(KEY_SCAN_MEDIA) else putStringSet(KEY_SCAN_MEDIA, value); apply() } }
+
     val isConfigured: Boolean get() = host.isNotEmpty() && !token.isNullOrEmpty()
 
     fun clearToken() { creds.edit().remove(KEY_TOKEN).apply() }
@@ -74,6 +79,7 @@ class RommConnectionStore @Inject constructor(@ApplicationContext context: Conte
         clearToken()
         username = null
         serverVersion = null
+        scanMedia = emptySet()
     }
 
     private companion object {
@@ -83,6 +89,7 @@ class RommConnectionStore @Inject constructor(@ApplicationContext context: Conte
         const val KEY_TOKEN = "romm_token"
         const val KEY_USERNAME = "username"
         const val KEY_SERVER_VERSION = "server_version"
+        const val KEY_SCAN_MEDIA = "scan_media"
         const val KEY_COLL_USER = "coll_user"
         const val KEY_COLL_VIRTUAL = "coll_virtual"
         const val KEY_COLL_SMART = "coll_smart"

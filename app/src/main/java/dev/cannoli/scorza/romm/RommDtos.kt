@@ -134,6 +134,11 @@ data class HeartbeatResponse(
 )
 
 @Serializable
+data class RommConfigDto(
+    @SerialName("SCAN_MEDIA") val scanMedia: List<String> = emptyList(),
+)
+
+@Serializable
 data class UserMeDto(
     val username: String = "",
 )

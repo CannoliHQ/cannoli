@@ -30,32 +30,42 @@ class RommDtosTest {
     }
 
     @Test fun `takes the RomM-hosted media and ignores the provider urls beside it`() {
+        // Wire shapes as RomM actually sends them: path_cover_large and merged_screenshots arrive
+        // already rooted at /assets/..., while path_manual and the ss_metadata *_path fields are
+        // relative to the resources base (roms/...).
         val json = """
             {"id":1,"platform_id":12,"fs_name":"G.sfc","name":"G",
-             "path_cover_large":"assets/romm/resources/roms/snes/1/cover/big.png",
+             "path_cover_large":"/assets/romm/resources/roms/12/1/cover/big.png?ts=9",
              "url_cover":"https://images.igdb.com/igdb/cover.jpg",
-             "merged_screenshots":["assets/romm/resources/roms/snes/1/screenshots/0.png"],
+             "merged_screenshots":["/assets/romm/resources/roms/12/1/screenshots/0.png"],
              "has_manual":true,
-             "path_manual":"assets/romm/resources/roms/snes/1/manual/1.pdf",
+             "path_manual":"roms/12/1/manual/1.pdf",
              "url_manual":"https://api.screenscraper.fr/api2/mediaJeu.php?media=manuel(us)",
              "ss_metadata":{
-               "box3d_path":"assets/romm/resources/roms/snes/1/box3d.png",
+               "box3d_path":"roms/12/1/box-3D/box3d.png",
                "box3d_url":"https://www.screenscraper.fr/medias/1/2/box3d.png",
-               "miximage_path":"assets/romm/resources/roms/snes/1/mix.png",
-               "title_screen_path":"assets/romm/resources/roms/snes/1/title.png",
-               "marquee_path":"assets/romm/resources/roms/snes/1/marquee.png",
+               "miximage_path":"roms/12/1/miximage/mix.png",
+               "title_screen_path":"roms/12/1/title/title.png",
+               "marquee_path":"roms/12/1/marquee/marquee.png",
                "manual_url":"https://api.screenscraper.fr/api2/mediaJeu.php?media=manuel(us)"}}
         """.trimIndent()
         val game = rommJson.decodeFromString(SimpleRomDto.serializer(), json).toDomain()
 
-        assertEquals("assets/romm/resources/roms/snes/1/cover/big.png", game.coverPath)
-        assertEquals("assets/romm/resources/roms/snes/1/screenshots/0.png", game.screenshotPath)
-        assertEquals("assets/romm/resources/roms/snes/1/manual/1.pdf", game.manualPath)
+        assertEquals("/assets/romm/resources/roms/12/1/cover/big.png?ts=9", game.coverPath)
+        assertEquals("/assets/romm/resources/roms/12/1/screenshots/0.png", game.screenshotPath)
+        assertEquals("roms/12/1/manual/1.pdf", game.manualPath)
         assertTrue(game.hasManual)
-        assertEquals("assets/romm/resources/roms/snes/1/box3d.png", game.ssMedia?.box3dPath)
-        assertEquals("assets/romm/resources/roms/snes/1/mix.png", game.ssMedia?.mixPath)
-        assertEquals("assets/romm/resources/roms/snes/1/title.png", game.ssMedia?.titleScreenPath)
-        assertEquals("assets/romm/resources/roms/snes/1/marquee.png", game.ssMedia?.marqueePath)
+        assertEquals("roms/12/1/box-3D/box3d.png", game.ssMedia?.box3dPath)
+        assertEquals("roms/12/1/miximage/mix.png", game.ssMedia?.mixPath)
+        assertEquals("roms/12/1/title/title.png", game.ssMedia?.titleScreenPath)
+        assertEquals("roms/12/1/marquee/marquee.png", game.ssMedia?.marqueePath)
+
+        // And they resolve to real RomM urls under the resources mount.
+        val host = "https://romm.local"
+        assertEquals("$host/assets/romm/resources/roms/12/1/box-3D/box3d.png",
+            RommArtUrl.forType(host, game, RommArtType.BOX3D))
+        assertEquals("$host/assets/romm/resources/roms/12/1/cover/big.png?ts=9",
+            RommArtUrl.forType(host, game, RommArtType.DEFAULT))
     }
 
     @Test fun `no cover at all when RomM has not stored one, rather than the provider url`() {
@@ -66,6 +76,19 @@ class RommDtosTest {
         val game = rommJson.decodeFromString(SimpleRomDto.serializer(), json).toDomain()
         assertNull(game.coverPath)
         assertNull(game.screenshotPath)
+    }
+
+    @Test fun `parses SCAN_MEDIA from the config endpoint and ignores the rest`() {
+        val json = """
+            {"EJS_DEBUG":false,"SCAN_METADATA_PRIORITY":["ss","igdb"],
+             "SCAN_MEDIA":["box2d","box3d","screenshot","miximage","marquee","title_screen"],
+             "GAMELIST_MEDIA_THUMBNAIL":"box2d"}
+        """.trimIndent()
+        val dto = rommJson.decodeFromString(RommConfigDto.serializer(), json)
+        assertEquals(
+            listOf("box2d", "box3d", "screenshot", "miximage", "marquee", "title_screen"),
+            dto.scanMedia,
+        )
     }
 
     @Test fun `parses platform firmware list`() {

@@ -33,12 +33,13 @@ class RommManualTest {
         manualPath = manualPath,
     )
 
-    @Test fun `downloads the copy RomM already fetched and validated`() {
+    @Test fun `downloads the copy RomM already fetched, under the resources mount`() {
+        // path_manual comes over the wire relative to the resources base; the resolver adds the mount.
         val source = RommManual.sourceUrl(
             "https://romm.local",
-            game(hasManual = true, manualPath = "assets/romm/resources/roms/snes/1/manual/1.pdf"),
+            game(hasManual = true, manualPath = "roms/12/1/manual/1.pdf"),
         )
-        assertEquals("https://romm.local/assets/romm/resources/roms/snes/1/manual/1.pdf", source)
+        assertEquals("https://romm.local/assets/romm/resources/roms/12/1/manual/1.pdf", source)
     }
 
     @Test fun `ignores a stale manual path when RomM says it has no manual`() {

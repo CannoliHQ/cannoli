@@ -374,6 +374,8 @@ class MainActivity : ComponentActivity(), ActivityActions {
             // otherwise gate save sync forever. Keep the cached value when the server is unreachable.
             val version = withContext(Dispatchers.IO) { rommClient.serverVersion() }
             if (version != null) rommStore.serverVersion = version
+            val media = withContext(Dispatchers.IO) { rommClient.scanMedia() }
+            if (media.isNotEmpty()) rommStore.scanMedia = media.toSet()
         }
     }
 
@@ -746,8 +748,10 @@ class MainActivity : ComponentActivity(), ActivityActions {
                 settingsViewModel.get().exitSubList()
                 val user = withContext(Dispatchers.IO) { rommClient.currentUser() }
                 val version = withContext(Dispatchers.IO) { rommClient.serverVersion() }
+                val media = withContext(Dispatchers.IO) { rommClient.scanMedia() }
                 rommStore.username = user
                 rommStore.serverVersion = version
+                if (media.isNotEmpty()) rommStore.scanMedia = media.toSet()
                 nav.dialogState.value = DialogState.RommConnected(host = rommStore.host, username = user, version = version)
             }.onFailure { e ->
                 val msg = when ((e as? dev.cannoli.scorza.romm.RommException)?.statusCode) {
