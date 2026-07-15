@@ -10,6 +10,7 @@ import dev.cannoli.scorza.settings.SettingsRepository
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.verify
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -30,6 +31,8 @@ class SaveSyncSweepTest {
     private lateinit var historyStore: SyncHistoryStore
     private lateinit var pendingStore: PendingConflictStore
     private lateinit var store: SaveSyncStore
+    private lateinit var promotionStore: RestorePromotionStore
+    private lateinit var backupManager: SaveBackupManager
     private lateinit var sd: File
 
     @Before fun setup() {
@@ -43,6 +46,7 @@ class SaveSyncSweepTest {
         store = SaveSyncStore(db)
         historyStore = SyncHistoryStore(db)
         pendingStore = PendingConflictStore(db)
+        promotionStore = RestorePromotionStore(db)
         val links = RommLinkRepository(db) { File(sd, "Roms") }
         links.upsertLink(42, "SNES/Zelda.sfc", "download")
         val connStore = mockk<RommConnectionStore>(relaxed = true)
@@ -51,11 +55,12 @@ class SaveSyncSweepTest {
         client = mockk(relaxed = true)
         val registrar = mockk<DeviceRegistrar>(); every { registrar.deviceId() } returns "dev-1"
         val resolver = LocalSaveResolver(paths.root)
+        backupManager = SaveBackupManager(paths.root, resolver)
         val roms = mockk<dev.cannoli.scorza.db.RomsRepository>(relaxed = true)
         every { roms.allRelativePaths() } returns listOf("SNES/Zelda.sfc")
         service = SaveSyncService(
             client, connStore, settings, registrar, store, resolver, links, paths,
-            SaveBackupManager(paths.root, resolver), historyStore, pendingStore, SaveSyncStatusHolder(),
+            backupManager, historyStore, pendingStore, promotionStore, SaveSyncStatusHolder(),
             mockk(relaxed = true), roms,
         )
     }
@@ -252,6 +257,65 @@ class SaveSyncSweepTest {
         assertEquals("SERVER-SAVE", File(sd, "Saves/SNES/Zelda.srm").readText())
     }
 
+    @Test fun `sweep escalates a non-convergent upload instead of looping`() = runBlocking {
+        writeSave("LOCAL")
+        val localHash = SaveHasher.hashFile(File(sd, "Saves/SNES/Zelda.srm"))
+        // We already uploaded exactly this content, but the server's newest is different -> stuck.
+        seedAnchor(lastUploadedHash = localHash, localContentHash = localHash)
+        every { client.negotiateSync(any()) } returns SyncNegotiateResponse(
+            sessionId = 1,
+            operations = listOf(
+                SyncOperationDto(
+                    action = "upload",
+                    romId = 42,
+                    saveId = 100,
+                    fileName = "Zelda.srm",
+                    slot = "autosave",
+                    serverUpdatedAt = "2026-07-13T04:42:48Z",
+                    serverContentHash = "different-server-head",
+                    reason = "Client save is newer than last sync",
+                )
+            ),
+            totalUpload = 1,
+        )
+
+        val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") }, online = true)
+
+        assertEquals(0, summary.uploaded)
+        assertEquals(1, pendingStore.count())
+        assertEquals(SyncDirection.CONFLICT, historyStore.recent().first().direction)
+        verify(exactly = 0) { client.uploadSave(any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test fun `sweep still uploads when an upload verdict is genuinely new content`() = runBlocking {
+        writeSave("BRAND-NEW")
+        val localHash = SaveHasher.hashFile(File(sd, "Saves/SNES/Zelda.srm"))
+        // local differs from what we last uploaded -> real new content, upload converges normally.
+        seedAnchor(lastUploadedHash = "old-uploaded", localContentHash = "old-local")
+        every { client.negotiateSync(any()) } returns SyncNegotiateResponse(
+            sessionId = 1,
+            operations = listOf(
+                SyncOperationDto(
+                    action = "upload",
+                    romId = 42,
+                    saveId = 100,
+                    fileName = "Zelda.srm",
+                    slot = "autosave",
+                    serverUpdatedAt = "t",
+                    serverContentHash = "some-server-hash",
+                    reason = "Client save is newer than last sync",
+                )
+            ),
+            totalUpload = 1,
+        )
+        every { client.uploadSave(any(), any(), any(), any(), any(), any()) } returns RommSaveDto(id = 55, slot = "autosave", contentHash = localHash, updatedAt = "t2")
+
+        val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") }, online = true)
+
+        assertEquals(1, summary.uploaded)
+        assertEquals(0, pendingStore.count())
+    }
+
     @Test fun `upload 409 with a different server save escalates a conflict`() = runBlocking {
         writeSave("LOCAL")
         seedAnchor(lastUploadedHash = "old", localContentHash = "old") // local changed -> plan UPLOAD
@@ -283,5 +347,74 @@ class SaveSyncSweepTest {
         assertEquals(0, summary.uploaded)
         assertEquals(88, store.get("SNES/Zelda.sfc", DEFAULT_SLOT)?.rommSaveId)
         assertEquals(0, historyStore.recent().count { it.direction == SyncDirection.ERROR })
+    }
+
+    @Test fun `sweep promotes a pending restore when the server head is unchanged`() = runBlocking {
+        writeSave("RESTORED")
+        val localHash = SaveHasher.hashFile(File(sd, "Saves/SNES/Zelda.srm"))
+        promotionStore.upsert(RestorePromotion("SNES/Zelda.sfc", DEFAULT_SLOT, localHash, baseHead = "server-head", System.currentTimeMillis()))
+        every { client.negotiateSync(any()) } returns SyncNegotiateResponse(sessionId = 1, operations = emptyList())
+        every { client.getSaves(42, "dev-1") } returns listOf(
+            RommSaveDto(id = 200, romId = 42, slot = "autosave", contentHash = "server-head", updatedAt = "2026-07-13T04:42:48+00:00")
+        )
+        every { client.uploadSave(any(), any(), any(), any(), any(), any()) } returns RommSaveDto(id = 201, slot = "autosave", contentHash = localHash, updatedAt = "2026-07-15T00:00:00+00:00")
+
+        val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") }, online = true)
+
+        verify { client.uploadSave(42, "snes9x", "autosave", "dev-1", true, any()) }
+        assertEquals(1, summary.uploaded)
+        assertEquals(null, promotionStore.get("SNES/Zelda.sfc", DEFAULT_SLOT))
+        assertEquals(0, pendingStore.count())
+    }
+
+    @Test fun `sweep escalates a pending restore when the server head moved`() = runBlocking {
+        writeSave("RESTORED")
+        val localHash = SaveHasher.hashFile(File(sd, "Saves/SNES/Zelda.srm"))
+        promotionStore.upsert(RestorePromotion("SNES/Zelda.sfc", DEFAULT_SLOT, localHash, baseHead = "old-head", System.currentTimeMillis()))
+        every { client.negotiateSync(any()) } returns SyncNegotiateResponse(sessionId = 1, operations = emptyList())
+        every { client.getSaves(42, "dev-1") } returns listOf(
+            RommSaveDto(id = 200, romId = 42, slot = "autosave", contentHash = "new-head-from-other-device", updatedAt = "2026-07-14T00:00:00+00:00")
+        )
+
+        service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") }, online = true)
+
+        assertEquals(null, promotionStore.get("SNES/Zelda.sfc", DEFAULT_SLOT))
+        assertEquals(1, pendingStore.count())
+        assertEquals(SyncDirection.CONFLICT, historyStore.recent().first().direction)
+        verify(exactly = 0) { client.uploadSave(any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test fun `restore promotes the restored save to head`() = runBlocking {
+        writeSave("OLD-SAVE")
+        backupManager.backup("SNES", "Zelda", 5, 1000L)
+        writeSave("NEW-SAVE")
+        seedAnchor(lastUploadedHash = "server-head", localContentHash = "new-save-hash")
+        every { client.getSaves(42, "dev-1") } returns listOf(
+            RommSaveDto(id = 200, romId = 42, slot = "autosave", contentHash = "server-head", updatedAt = "2026-07-13T00:00:00+00:00")
+        )
+        every { client.uploadSave(any(), any(), any(), any(), any(), any()) } returns RommSaveDto(id = 201, slot = "autosave", contentHash = SaveHasher.md5Hex("OLD-SAVE".toByteArray()), updatedAt = "2026-07-15T00:00:00+00:00")
+
+        val outcome = service.restoreBackupToHead("SNES", "Zelda", 1000L) { Triple("SNES", "Zelda", "snes9x") }
+
+        assertEquals(dev.cannoli.scorza.romm.sync.RestoreOutcome.Promoted, outcome)
+        assertEquals("OLD-SAVE", File(sd, "Saves/SNES/Zelda.srm").readText())
+        verify { client.uploadSave(42, "snes9x", "autosave", "dev-1", true, any()) }
+        assertEquals(null, promotionStore.get("SNES/Zelda.sfc", DEFAULT_SLOT))
+    }
+
+    @Test fun `restore defers promotion when offline`() = runBlocking {
+        writeSave("OLD-SAVE")
+        backupManager.backup("SNES", "Zelda", 5, 2000L)
+        writeSave("NEW-SAVE")
+        seedAnchor(lastUploadedHash = "server-head", localContentHash = "new-save-hash")
+        every { client.getSaves(42, "dev-1") } throws dev.cannoli.scorza.romm.RommException(null, "offline")
+
+        val outcome = service.restoreBackupToHead("SNES", "Zelda", 2000L) { Triple("SNES", "Zelda", "snes9x") }
+
+        assertEquals(dev.cannoli.scorza.romm.sync.RestoreOutcome.PendingPromote, outcome)
+        assertEquals("OLD-SAVE", File(sd, "Saves/SNES/Zelda.srm").readText())
+        val pending = promotionStore.get("SNES/Zelda.sfc", DEFAULT_SLOT)
+        assertEquals(SaveHasher.md5Hex("OLD-SAVE".toByteArray()), pending?.targetHash)
+        assertEquals("server-head", pending?.baseHead)
     }
 }

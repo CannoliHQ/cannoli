@@ -200,6 +200,20 @@ internal object Migrations {
                 """.trimIndent()
             )
         },
+        Migration(11) { db ->
+            db.execSQL(
+                """
+                CREATE TABLE restore_promotions (
+                    game_key TEXT NOT NULL,
+                    slot TEXT NOT NULL,
+                    target_hash TEXT NOT NULL,
+                    base_head TEXT,
+                    created_at INTEGER NOT NULL,
+                    PRIMARY KEY (game_key, slot)
+                )
+                """.trimIndent()
+            )
+        },
     )
 
     val current: Int = all.maxOf { it.version }

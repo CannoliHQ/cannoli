@@ -674,8 +674,11 @@
     <string name="save_backup_games_title">Restore Save</string>
     <string name="save_backup_list_title">Backups</string>
     <string name="save_backup_none">No backups</string>
-    <string name="save_backup_restore_confirm">Restore this backup?\nYour current save is backed up first.</string>
+    <string name="save_backup_restore_confirm">Restore this backup?\nYour current save is backed up first, then this becomes your current save on RomM.</string>
     <string name="save_backup_restore_done">Save restored</string>
+    <string name="save_backup_restore_synced">Save restored and set as current</string>
+    <string name="save_backup_restore_pending">Save restored, syncs when online</string>
+    <string name="save_backup_restore_conflict">Save restored, resolve the sync conflict</string>
     <string name="save_backup_restore_failed">Restore failed</string>
     <plurals name="save_backup_count">
         <item quantity="one">%1$d backup</item>

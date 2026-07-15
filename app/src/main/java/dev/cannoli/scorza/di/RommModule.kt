@@ -28,6 +28,7 @@ import dev.cannoli.scorza.romm.download.RommInstaller
 import dev.cannoli.scorza.romm.sync.DeviceRegistrar
 import dev.cannoli.scorza.romm.sync.LocalSaveResolver
 import dev.cannoli.scorza.romm.sync.PendingConflictStore
+import dev.cannoli.scorza.romm.sync.RestorePromotionStore
 import dev.cannoli.scorza.romm.sync.SaveBackupManager
 import dev.cannoli.scorza.romm.sync.SaveSyncService
 import dev.cannoli.scorza.romm.sync.SaveSyncStatusHolder
@@ -103,6 +104,9 @@ object RommModule {
     fun providePendingConflictStore(db: CannoliDatabase): PendingConflictStore = PendingConflictStore(db)
 
     @Provides @Singleton
+    fun provideRestorePromotionStore(db: CannoliDatabase): RestorePromotionStore = RestorePromotionStore(db)
+
+    @Provides @Singleton
     fun provideSaveSyncStatusHolder(): SaveSyncStatusHolder = SaveSyncStatusHolder()
 
     @Provides @Singleton
@@ -118,10 +122,11 @@ object RommModule {
         backupManager: SaveBackupManager,
         history: SyncHistoryStore,
         pendingConflicts: PendingConflictStore,
+        promotions: RestorePromotionStore,
         statusHolder: SaveSyncStatusHolder,
         matcher: dev.cannoli.scorza.romm.sync.RommCacheMatcher,
         roms: dev.cannoli.scorza.db.RomsRepository,
-    ): SaveSyncService = SaveSyncService(client, connStore, settings, registrar, store, resolver, links, paths, backupManager, history, pendingConflicts, statusHolder, matcher, roms)
+    ): SaveSyncService = SaveSyncService(client, connStore, settings, registrar, store, resolver, links, paths, backupManager, history, pendingConflicts, promotions, statusHolder, matcher, roms)
 
     @Provides @Singleton
     fun provideRommCacheMatcher(

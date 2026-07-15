@@ -31,6 +31,14 @@ sealed interface PreLaunchOutcome {
     data class KnownStaleBlock(val gameKey: String, val slot: String) : PreLaunchOutcome
 }
 
+sealed interface RestoreOutcome {
+    object Failed : RestoreOutcome
+    object RestoredLocalOnly : RestoreOutcome
+    object Promoted : RestoreOutcome
+    object Escalated : RestoreOutcome
+    object PendingPromote : RestoreOutcome
+}
+
 class SaveSyncService(
     private val client: RommClient,
     private val connStore: RommConnectionStore,
@@ -43,6 +51,7 @@ class SaveSyncService(
     private val backupManager: SaveBackupManager,
     private val history: SyncHistoryStore,
     private val pendingConflicts: PendingConflictStore,
+    private val promotions: RestorePromotionStore,
     private val statusHolder: SaveSyncStatusHolder,
     private val matcher: RommCacheMatcher,
     private val roms: dev.cannoli.scorza.db.RomsRepository,
@@ -100,6 +109,14 @@ class SaveSyncService(
             reason = op.reason.ifEmpty { null },
         )
 
+    // A negotiate "upload" verdict we cannot satisfy: we already pushed exactly this content
+    // (anchor == local) yet the server's newest save is different. RomM's overwrite=false upload
+    // dedups our bytes back onto the old row, so re-uploading never converges. Treat it as a conflict.
+    private fun isStuckUpload(op: SyncOperationDto, anchor: SaveSyncRow?, local: LocalSave): Boolean =
+        anchor?.lastUploadedHash == local.contentHash &&
+            op.serverContentHash != null &&
+            op.serverContentHash != local.contentHash
+
     suspend fun syncBeforeLaunch(tag: String, base: String, gameKey: String, emulator: String?): PreLaunchOutcome =
         withContext(Dispatchers.IO) {
             val romId = isSyncableGame(gameKey) ?: return@withContext PreLaunchOutcome.Proceed
@@ -125,7 +142,10 @@ class SaveSyncService(
                         dev.cannoli.scorza.util.RommLog.write("launch [$base]: downloaded server save")
                     }
                 }
-                "upload" -> {
+                "upload" -> if (isStuckUpload(op, anchor, local)) {
+                    dev.cannoli.scorza.util.RommLog.write("launch [$base]: upload cannot converge, surfacing conflict")
+                    buildConflict(op, local, slot, romId, tag, base, gameKey, emulator)
+                } else {
                     try {
                         uploadActive(tag, base, gameKey, slot, romId, emulator, deviceId, overwrite = false)
                         dev.cannoli.scorza.util.RommLog.write("launch [$base]: uploaded local save")
@@ -246,6 +266,109 @@ class SaveSyncService(
     fun restoreBackup(tag: String, base: String, stamp: Long): Boolean =
         backupManager.restore(tag, base, stamp, settings.rommSaveBackupCount)
 
+    // Restore a backup locally and make it the server head. A restore is an explicit "this is my
+    // save" intent, so it wins on the server too (append-only history keeps the superseded save).
+    // Online: promote now (or escalate if the server head moved since restore). Offline: record a
+    // deferred promotion the next sweep applies.
+    suspend fun restoreBackupToHead(
+        tag: String,
+        base: String,
+        stamp: Long,
+        resolveGame: (String) -> Triple<String, String, String?>?,
+    ): RestoreOutcome = withContext(Dispatchers.IO) {
+        if (!restoreBackup(tag, base, stamp)) return@withContext RestoreOutcome.Failed
+        val gameKey = findGameKey(tag, base, resolveGame) ?: return@withContext RestoreOutcome.RestoredLocalOnly
+        val romId = isSyncableGame(gameKey) ?: return@withContext RestoreOutcome.RestoredLocalOnly
+        val deviceId = registrar.deviceId() ?: return@withContext RestoreOutcome.RestoredLocalOnly
+        val emulator = resolveGame(gameKey)?.third
+        val slot = store.activeSlot(gameKey)
+        val local = resolver.resolve(tag, base) ?: return@withContext RestoreOutcome.RestoredLocalOnly
+        val baseHead = store.get(gameKey, slot)?.lastUploadedHash
+        when (applyPromotion(tag, base, gameKey, slot, romId, emulator, local.contentHash, baseHead, deviceId)) {
+            PromoteResult.PROMOTED -> { promotions.delete(gameKey, slot); RestoreOutcome.Promoted }
+            PromoteResult.ESCALATED -> { promotions.delete(gameKey, slot); RestoreOutcome.Escalated }
+            PromoteResult.UNREACHABLE -> {
+                promotions.upsert(RestorePromotion(gameKey, slot, local.contentHash, baseHead, System.currentTimeMillis()))
+                RestoreOutcome.PendingPromote
+            }
+        }
+    }
+
+    private enum class PromoteResult { PROMOTED, ESCALATED, UNREACHABLE }
+
+    // Force the local save to become the server head, unless another device changed the head since
+    // the restore (baseHead) - then surface a conflict so the user chooses. Returns UNREACHABLE when
+    // the server can't be reached, so the caller can defer.
+    private fun applyPromotion(
+        tag: String,
+        base: String,
+        gameKey: String,
+        slot: String,
+        romId: Int,
+        emulator: String?,
+        targetHash: String,
+        baseHead: String?,
+        deviceId: String,
+    ): PromoteResult {
+        val head = try {
+            client.getSaves(romId, deviceId)
+                .filter { (it.slot ?: DEFAULT_SLOT) == slot }
+                .maxByOrNull { it.updatedAt }
+        } catch (t: Throwable) {
+            return PromoteResult.UNREACHABLE
+        }
+        val serverHead = head?.contentHash
+        if (serverHead != null && serverHead == targetHash) {
+            // Server already holds the restored content as head; adopt it as the anchor.
+            store.upsert(
+                SaveSyncRow(
+                    gameKey = gameKey,
+                    slot = slot,
+                    rommRomId = romId,
+                    rommSaveId = head.id,
+                    lastSyncedAt = head.updatedAt,
+                    lastUploadedHash = serverHead,
+                    localContentHash = targetHash,
+                    serverUpdatedAt = head.updatedAt,
+                    updatedAt = System.currentTimeMillis(),
+                )
+            )
+            return PromoteResult.PROMOTED
+        }
+        // Promote when the server head is unchanged since the restore (or the server has no save).
+        if (serverHead == null || serverHead == baseHead) {
+            return try {
+                uploadActive(tag, base, gameKey, slot, romId, emulator, deviceId, overwrite = true)
+                PromoteResult.PROMOTED
+            } catch (t: Throwable) {
+                PromoteResult.UNREACHABLE
+            }
+        }
+        // Server moved to a different head since the restore: let the user choose.
+        val conflict = PreLaunchOutcome.Conflict(
+            gameKey = gameKey,
+            slot = slot,
+            localTime = null,
+            serverTime = head.updatedAt,
+            serverDevice = head.originDeviceId,
+            saveId = head.id,
+            romId = romId,
+            tag = tag,
+            base = base,
+            emulator = emulator,
+            serverContentHash = serverHead,
+            reason = "server changed since restore",
+        )
+        escalate(gameKey, base, conflict)
+        return PromoteResult.ESCALATED
+    }
+
+    private fun findGameKey(tag: String, base: String, resolveGame: (String) -> Triple<String, String, String?>?): String? =
+        roms.allRelativePaths().firstOrNull { gk ->
+            val r = resolveGame(gk) ?: return@firstOrNull false
+            r.first == tag && r.second == base
+        }
+
     // Guard the local save from a bad download: never overwrite with an empty file, and when the
     // server gives us an md5 content hash, require the bytes to match before we apply them.
     private fun verifyDownloaded(tmp: File, expectedHash: String?) {
@@ -315,6 +438,7 @@ class SaveSyncService(
         KEEP_LOCAL("conflict, keep local"),
         KEEP_SERVER("conflict, keep server"),
         ESCALATE("conflict, needs manual resolve"),
+        PROMOTE("promote restored save to head"),
         NO_SAVE("no save"),
         UNREACHABLE("server unreachable"),
     }
@@ -329,6 +453,8 @@ class SaveSyncService(
         val action: SweepAction,
         val downloadOp: SyncOperationDto? = null,
         val conflict: PreLaunchOutcome.Conflict? = null,
+        val debug: String? = null,
+        val promotion: RestorePromotion? = null,
     )
 
     private class ExecResult(val direction: SyncDirection?, val ok: Boolean, val label: String, val logDetail: String? = null)
@@ -412,7 +538,7 @@ class SaveSyncService(
         val sorted = plans.sortedWith(compareBy({ it.tag }, { it.name.lowercase() }))
         dev.cannoli.scorza.util.RommLog.write("=== sweep: plan (${plans.size} associable games) ===")
         for (p in sorted) {
-            dev.cannoli.scorza.util.RommLog.write("[${p.tag}] ${p.name} (slot=${p.slot}): ${p.action.label}")
+            dev.cannoli.scorza.util.RommLog.write("[${p.tag}] ${p.name} (slot=${p.slot}): ${p.action.label}${p.debug?.let { " | $it" } ?: ""}")
         }
 
         // Phase 3: apply the actionable plans.
@@ -448,8 +574,11 @@ class SaveSyncService(
     }
 
     private fun planFor(s: Scanned, op: SyncOperationDto?, batchFailed: Boolean, deviceId: String, onReach: (Boolean) -> Unit): SweepPlan {
-        fun plan(action: SweepAction, downloadOp: SyncOperationDto? = null, conflict: PreLaunchOutcome.Conflict? = null) =
-            SweepPlan(s.tag, s.base, s.gameKey, s.slot, s.emulator, s.romId, action, downloadOp, conflict)
+        val dbg = "local=${s.local?.contentHash?.take(8)} anchorUp=${s.anchor?.lastUploadedHash?.take(8)} " +
+            "anchorLocal=${s.anchor?.localContentHash?.take(8)} server=${op?.serverContentHash?.take(8)}" +
+            (op?.reason?.ifEmpty { null }?.let { " reason=$it" } ?: "")
+        fun plan(action: SweepAction, downloadOp: SyncOperationDto? = null, conflict: PreLaunchOutcome.Conflict? = null, promotion: RestorePromotion? = null) =
+            SweepPlan(s.tag, s.base, s.gameKey, s.slot, s.emulator, s.romId, action, downloadOp, conflict, dbg, promotion)
         val local = s.local
         if (local == null) {
             // No local save: pull the server copy if one exists, even with no prior anchor
@@ -464,10 +593,15 @@ class SaveSyncService(
             val action = if (s.anchor == null) SweepAction.DOWNLOAD else SweepAction.REGENERATE
             return plan(action, downloadOp = downloadOpFor(save, s.romId, s.slot))
         }
+        promotions.get(s.gameKey, s.slot)?.let { return plan(SweepAction.PROMOTE, promotion = it) }
         if (batchFailed) return plan(SweepAction.UNREACHABLE)
         return when (op?.action) {
             "download" -> plan(SweepAction.DOWNLOAD, downloadOp = op)
-            "upload" -> plan(SweepAction.UPLOAD)
+            "upload" -> if (isStuckUpload(op, s.anchor, local)) {
+                plan(SweepAction.ESCALATE, conflict = buildConflict(op, local, s.slot, s.romId, s.tag, s.base, s.gameKey, s.emulator))
+            } else {
+                plan(SweepAction.UPLOAD)
+            }
             "conflict" -> {
                 val cf = buildConflict(op, local, s.slot, s.romId, s.tag, s.base, s.gameKey, s.emulator)
                 when (ConflictAutoResolver.classify(local.contentHash, s.anchor?.localContentHash, op.serverContentHash, s.anchor?.lastUploadedHash)) {
@@ -525,6 +659,15 @@ class SaveSyncService(
         SweepAction.ESCALATE -> {
             escalate(p.gameKey, p.name, p.conflict!!)
             ExecResult(SyncDirection.CONFLICT, true, "escalated for manual resolve")
+        }
+        SweepAction.PROMOTE -> {
+            statusHolder.setActive(SaveSyncStatus.UPLOADING)
+            val pr = p.promotion!!
+            when (applyPromotion(p.tag, p.name, p.gameKey, p.slot, p.romId, p.emulator, pr.targetHash, pr.baseHead, deviceId)) {
+                PromoteResult.PROMOTED -> { promotions.delete(p.gameKey, p.slot); ExecResult(SyncDirection.UPLOAD, true, "promoted restored save to head") }
+                PromoteResult.ESCALATED -> { promotions.delete(p.gameKey, p.slot); ExecResult(SyncDirection.CONFLICT, true, "restore superseded by server") }
+                PromoteResult.UNREACHABLE -> ExecResult(null, true, "promote deferred (offline)")
+            }
         }
         else -> ExecResult(null, true, "skipped")
     }

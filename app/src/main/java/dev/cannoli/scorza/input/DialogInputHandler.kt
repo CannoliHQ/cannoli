@@ -857,17 +857,23 @@ class DialogInputHandler @Inject constructor(
 
     private fun doRestore(ds: DialogState.SaveBackupRestoreConfirm) {
         ioScope.launch {
-            val ok = saveSyncService.restoreBackup(ds.tag, ds.base, ds.stamp)
+            val resolveGame = dev.cannoli.scorza.romm.sync.rommResolveGame(platformResolver, romDir())
+            val outcome = saveSyncService.restoreBackupToHead(ds.tag, ds.base, ds.stamp, resolveGame)
             val count = saveSyncService.pendingConflictCount()
             withContext(Dispatchers.Main) {
-                osdController.show(context.getString(
-                    if (ok) dev.cannoli.ui.R.string.save_backup_restore_done
-                    else dev.cannoli.ui.R.string.save_backup_restore_failed
-                ))
+                osdController.show(context.getString(restoreOutcomeMessage(outcome)))
                 if (ds.fromContextMenu) nav.dialogState.value = DialogState.None
                 else nav.dialogState.value = buildSaveSyncMenu(pendingConflicts = count)
             }
         }
+    }
+
+    private fun restoreOutcomeMessage(outcome: dev.cannoli.scorza.romm.sync.RestoreOutcome): Int = when (outcome) {
+        dev.cannoli.scorza.romm.sync.RestoreOutcome.Promoted -> dev.cannoli.ui.R.string.save_backup_restore_synced
+        dev.cannoli.scorza.romm.sync.RestoreOutcome.Escalated -> dev.cannoli.ui.R.string.save_backup_restore_conflict
+        dev.cannoli.scorza.romm.sync.RestoreOutcome.PendingPromote -> dev.cannoli.ui.R.string.save_backup_restore_pending
+        dev.cannoli.scorza.romm.sync.RestoreOutcome.RestoredLocalOnly -> dev.cannoli.ui.R.string.save_backup_restore_done
+        dev.cannoli.scorza.romm.sync.RestoreOutcome.Failed -> dev.cannoli.ui.R.string.save_backup_restore_failed
     }
 
     private fun backupDateLabel(stamp: Long): String =

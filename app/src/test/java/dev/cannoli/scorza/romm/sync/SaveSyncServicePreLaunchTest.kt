@@ -46,7 +46,7 @@ class SaveSyncServicePreLaunchTest {
         client = mockk(relaxed = true)
         val registrar = mockk<DeviceRegistrar>(); every { registrar.deviceId() } returns "dev-1"
         val resolver = LocalSaveResolver(paths.root)
-        service = SaveSyncService(client, connStore, settings, registrar, store, resolver, links, paths, SaveBackupManager(paths.root, resolver), SyncHistoryStore(db), PendingConflictStore(db), SaveSyncStatusHolder(), io.mockk.mockk(relaxed = true), io.mockk.mockk(relaxed = true))
+        service = SaveSyncService(client, connStore, settings, registrar, store, resolver, links, paths, SaveBackupManager(paths.root, resolver), SyncHistoryStore(db), PendingConflictStore(db), RestorePromotionStore(db), SaveSyncStatusHolder(), io.mockk.mockk(relaxed = true), io.mockk.mockk(relaxed = true))
     }
 
     private fun writeSave() {
