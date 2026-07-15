@@ -22,6 +22,10 @@ class InputDispatcher @Inject constructor(
     var onDown: () -> Unit = {}
     var onLeft: () -> Unit = {}
     var onRight: () -> Unit = {}
+    var onUpRelease: () -> Unit = {}
+    var onDownRelease: () -> Unit = {}
+    var onLeftRelease: () -> Unit = {}
+    var onRightRelease: () -> Unit = {}
     var onConfirm: () -> Unit = {}
     var onBack: () -> Unit = {}
     var onSelect: () -> Unit = {}
@@ -132,6 +136,10 @@ class InputDispatcher @Inject constructor(
                         CanonicalButton.BTN_SOUTH, CanonicalButton.BTN_EAST -> {
                             if (mapping.menuConfirm == delta.button) { onConfirmUp(); fired = true }
                         }
+                        CanonicalButton.BTN_UP -> { onUpRelease(); fired = true }
+                        CanonicalButton.BTN_DOWN -> { onDownRelease(); fired = true }
+                        CanonicalButton.BTN_LEFT -> { onLeftRelease(); fired = true }
+                        CanonicalButton.BTN_RIGHT -> { onRightRelease(); fired = true }
                         else -> {}
                     }
                 }
@@ -152,9 +160,15 @@ class InputDispatcher @Inject constructor(
                 maybeActivate(deviceId)
                 activeMappingHolder.set(mapping)
                 if (dispatchPressed(delta.button, mapping)) fired = true
-            } else if (delta is CanonicalEvent.Released && delta.button == CanonicalButton.BTN_SELECT) {
-                onSelectUp()
-                fired = true
+            } else if (delta is CanonicalEvent.Released) {
+                when (delta.button) {
+                    CanonicalButton.BTN_SELECT -> { onSelectUp(); fired = true }
+                    CanonicalButton.BTN_UP -> { onUpRelease(); fired = true }
+                    CanonicalButton.BTN_DOWN -> { onDownRelease(); fired = true }
+                    CanonicalButton.BTN_LEFT -> { onLeftRelease(); fired = true }
+                    CanonicalButton.BTN_RIGHT -> { onRightRelease(); fired = true }
+                    else -> {}
+                }
             }
         }
         return fired
@@ -232,6 +246,10 @@ class InputDispatcher @Inject constructor(
         onDown = { if (dialogHandler?.onDown() != true) screen().onDown() }
         onLeft = { if (dialogHandler?.onLeft() != true) screen().onLeft() }
         onRight = { if (dialogHandler?.onRight() != true) screen().onRight() }
+        onUpRelease = { screen().onUpRelease() }
+        onDownRelease = { screen().onDownRelease() }
+        onLeftRelease = { screen().onLeftRelease() }
+        onRightRelease = { screen().onRightRelease() }
         onConfirm = { if (dialogHandler?.onConfirm() != true) screen().onConfirm() }
         onBack = { if (dialogHandler?.onBack() != true) screen().onBack() }
         onStart = { if (dialogHandler?.onStart() != true) screen().onStart() }

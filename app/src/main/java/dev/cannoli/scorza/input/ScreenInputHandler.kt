@@ -7,6 +7,10 @@ interface ScreenInputHandler {
     fun onDown() {}
     fun onLeft() {}
     fun onRight() {}
+    fun onUpRelease() {}
+    fun onDownRelease() {}
+    fun onLeftRelease() {}
+    fun onRightRelease() {}
     fun onConfirm() {}
     fun onBack() {}
     fun onStart() {}

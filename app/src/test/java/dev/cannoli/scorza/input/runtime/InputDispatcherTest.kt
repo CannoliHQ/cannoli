@@ -553,4 +553,47 @@ class InputDispatcherTest {
         // resolver cleared -> dispatch goes to registry top (empty), not the launcher resolver
         assertEquals(0, fired)
     }
+
+    @Test
+    fun dpad_down_release_fires_onDownRelease_via_keycode() {
+        val template = westernTemplate().copy(
+            bindings = westernTemplate().bindings + (CanonicalButton.BTN_DOWN to listOf(InputBinding.Button(20)))
+        )
+        val (d, _, _) = setup(template)
+        var down = 0
+        var downRelease = 0
+        d.onDown = { down++ }
+        d.onDownRelease = { downRelease++ }
+        d.handleKeyEventForTest(deviceId = 7, keyCode = 20, action = android.view.KeyEvent.ACTION_DOWN, repeatCount = 0)
+        d.handleKeyEventForTest(deviceId = 7, keyCode = 20, action = android.view.KeyEvent.ACTION_UP, repeatCount = 0)
+        assertEquals(1, down)
+        assertEquals(1, downRelease)
+    }
+
+    @Test
+    fun dpad_up_release_via_hat_axis_neutral_fires_onUpRelease() {
+        val template = DeviceMapping(
+            id = "hat-pad",
+            displayName = "Hat Pad",
+            match = DeviceMatchRule(),
+            bindings = mapOf(
+                CanonicalButton.BTN_UP to listOf(
+                    InputBinding.Hat(axis = android.view.MotionEvent.AXIS_HAT_Y, direction = HatDirection.UP)
+                ),
+            ),
+            menuConfirm = CanonicalButton.BTN_SOUTH,
+            menuBack = CanonicalButton.BTN_EAST,
+            glyphStyle = GlyphStyle.PLUMBER,
+            source = MappingSource.RETROARCH_AUTOCONFIG,
+        )
+        val (d, _, _) = setup(template)
+        var up = 0
+        var upRelease = 0
+        d.onUp = { up++ }
+        d.onUpRelease = { upRelease++ }
+        d.handleMotionEventForTest(deviceId = 7, axisValues = mapOf(android.view.MotionEvent.AXIS_HAT_Y to -1f))
+        d.handleMotionEventForTest(deviceId = 7, axisValues = mapOf(android.view.MotionEvent.AXIS_HAT_Y to 0f))
+        assertEquals(1, up)
+        assertEquals(1, upRelease)
+    }
 }
