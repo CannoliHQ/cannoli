@@ -1429,20 +1429,24 @@ fun AppNavGraph(
                 val syncProgress = rommBrowseViewModel?.syncProgress?.collectAsState()?.value
                 var emptyMessage: String? = null
                 var syncFraction: Float? = null
-                if (platforms.isEmpty()) when (syncStatus) {
-                    dev.cannoli.scorza.romm.cache.RommSyncCoordinator.SyncStatus.SYNCING ->
-                        if (syncProgress != null && syncProgress.total > 0) {
-                            val platformName = syncProgress.platform
-                            emptyMessage = if (platformName != null)
-                                androidx.compose.ui.res.stringResource(dev.cannoli.ui.R.string.romm_syncing_platform, platformName)
-                            else androidx.compose.ui.res.stringResource(dev.cannoli.ui.R.string.romm_syncing)
-                            syncFraction = syncProgress.completed.toFloat() / syncProgress.total
-                        } else {
-                            emptyMessage = androidx.compose.ui.res.stringResource(dev.cannoli.ui.R.string.romm_syncing)
-                        }
-                    dev.cannoli.scorza.romm.cache.RommSyncCoordinator.SyncStatus.ERROR ->
-                        emptyMessage = androidx.compose.ui.res.stringResource(dev.cannoli.ui.R.string.romm_sync_error)
-                    else -> {}
+                if (platforms.isEmpty()) {
+                    if (rommBrowseViewModel?.isServerUnsupported() == true) {
+                        emptyMessage = androidx.compose.ui.res.stringResource(dev.cannoli.ui.R.string.romm_server_too_old)
+                    } else when (syncStatus) {
+                        dev.cannoli.scorza.romm.cache.RommSyncCoordinator.SyncStatus.SYNCING ->
+                            if (syncProgress != null && syncProgress.total > 0) {
+                                val platformName = syncProgress.platform
+                                emptyMessage = if (platformName != null)
+                                    androidx.compose.ui.res.stringResource(dev.cannoli.ui.R.string.romm_syncing_platform, platformName)
+                                else androidx.compose.ui.res.stringResource(dev.cannoli.ui.R.string.romm_syncing)
+                                syncFraction = syncProgress.completed.toFloat() / syncProgress.total
+                            } else {
+                                emptyMessage = androidx.compose.ui.res.stringResource(dev.cannoli.ui.R.string.romm_syncing)
+                            }
+                        dev.cannoli.scorza.romm.cache.RommSyncCoordinator.SyncStatus.ERROR ->
+                            emptyMessage = androidx.compose.ui.res.stringResource(dev.cannoli.ui.R.string.romm_sync_error)
+                        else -> {}
+                    }
                 }
                 val effectiveItemCount = platforms.size + (if (showCollectionsRow) 1 else 0)
                 androidx.compose.runtime.LaunchedEffect(effectiveItemCount) {

@@ -192,6 +192,7 @@ object RommModule {
             firmwareFor = { platformId -> client.getFirmware(platformId) },
             biosDirFor = { tag -> dev.cannoli.scorza.config.CannoliPaths(paths.root).biosFor(tag) },
             enabledCollectionGroups = { rommStore.enabledCollectionGroups() },
+            serverUnsupported = { dev.cannoli.scorza.romm.RommCapabilities.isKnownUnsupported(rommStore.serverVersion) },
         )
 
     @Provides @Singleton

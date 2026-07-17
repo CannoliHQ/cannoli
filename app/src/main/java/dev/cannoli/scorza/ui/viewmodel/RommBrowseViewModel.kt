@@ -39,7 +39,10 @@ class RommBrowseViewModel(
     private val firmwareFor: (platformId: Int) -> List<RommFirmware> = { emptyList() },
     private val biosDirFor: (tag: String) -> java.io.File = { java.io.File("") },
     private val enabledCollectionGroups: () -> Set<RommCollectionGroup> = { setOf(RommCollectionGroup.USER) },
+    private val serverUnsupported: () -> Boolean = { false },
 ) {
+
+    fun isServerUnsupported(): Boolean = serverUnsupported()
 
     data class RommCollectionGameRow(
         val game: RommGame,
