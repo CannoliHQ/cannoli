@@ -90,6 +90,29 @@ object RommModule {
     ): DeviceRegistrar = DeviceRegistrar(settings, client)
 
     @Provides @Singleton
+    fun provideRommDevicePairing(
+        client: RommClient,
+        store: RommConnectionStore,
+        settings: SettingsRepository,
+        registrar: DeviceRegistrar,
+        @ApplicationContext context: Context,
+        @IoScope ioScope: CoroutineScope,
+    ): dev.cannoli.scorza.romm.RommDevicePairing = dev.cannoli.scorza.romm.RommDevicePairing(
+        client = client,
+        store = store,
+        settings = settings,
+        scope = ioScope,
+        io = kotlinx.coroutines.Dispatchers.IO,
+        deviceIdentifier = {
+            android.provider.Settings.Secure.getString(
+                context.contentResolver, android.provider.Settings.Secure.ANDROID_ID
+            ) ?: "cannoli-unknown"
+        },
+        deviceName = { registrar.defaultDeviceName() },
+        clientVersion = { dev.cannoli.scorza.BuildConfig.VERSION_NAME },
+    )
+
+    @Provides @Singleton
     fun provideLocalSaveResolver(paths: CannoliPathsProvider): LocalSaveResolver =
         LocalSaveResolver(paths.root)
 
