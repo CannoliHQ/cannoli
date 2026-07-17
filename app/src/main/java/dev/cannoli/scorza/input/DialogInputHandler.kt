@@ -754,7 +754,7 @@ class DialogInputHandler @Inject constructor(
 
     private fun buildSaveSyncMenu(selectedIndex: Int = 0, pendingConflicts: Int) = DialogState.RommSaveSyncMenu(
         selectedIndex = selectedIndex,
-        supported = dev.cannoli.scorza.romm.sync.SaveSyncCapabilities.supportsSaveSync(rommStore.serverVersion),
+        supported = dev.cannoli.scorza.romm.RommCapabilities.isSupported(rommStore.serverVersion),
         enabled = settings.rommSaveSyncEnabled,
         backupCount = settings.rommSaveBackupCount,
         pendingConflicts = pendingConflicts,
@@ -818,7 +818,7 @@ class DialogInputHandler @Inject constructor(
             val count = saveSyncService.pendingConflictCount()
             val errorCount = saveSyncStatusHolder.errors.value.size
             val idx = dev.cannoli.scorza.ui.components.RommSaveSyncRow.visibleRows(
-                dev.cannoli.scorza.romm.sync.SaveSyncCapabilities.supportsSaveSync(rommStore.serverVersion),
+                dev.cannoli.scorza.romm.RommCapabilities.isSupported(rommStore.serverVersion),
                 settings.rommSaveSyncEnabled, count, errorCount, saveSyncService.hasBackups(),
             ).indexOf(row).coerceAtLeast(0)
             withContext(Dispatchers.Main) { nav.dialogState.value = buildSaveSyncMenu(selectedIndex = idx, pendingConflicts = count) }
@@ -900,7 +900,7 @@ class DialogInputHandler @Inject constructor(
             if (fromSaveSyncMenu) {
                 val idx = dev.cannoli.scorza.ui.components.RommSaveSyncRow
                     .visibleRows(
-                        dev.cannoli.scorza.romm.sync.SaveSyncCapabilities.supportsSaveSync(rommStore.serverVersion),
+                        dev.cannoli.scorza.romm.RommCapabilities.isSupported(rommStore.serverVersion),
                         settings.rommSaveSyncEnabled,
                         count,
                         errorCount,
@@ -1001,7 +1001,7 @@ class DialogInputHandler @Inject constructor(
         if (fromSaveSyncMenu) {
             val idx = dev.cannoli.scorza.ui.components.RommSaveSyncRow
                 .visibleRows(
-                    dev.cannoli.scorza.romm.sync.SaveSyncCapabilities.supportsSaveSync(rommStore.serverVersion),
+                    dev.cannoli.scorza.romm.RommCapabilities.isSupported(rommStore.serverVersion),
                     settings.rommSaveSyncEnabled,
                     count,
                 )
