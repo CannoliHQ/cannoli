@@ -199,7 +199,7 @@
     <string name="setting_romm_save_sync">Save Sync</string>
     <string name="setting_romm_save_backups">Save Backups</string>
     <string name="dialog_romm_device_name_title">Name this device</string>
-    <string name="romm_save_sync_needs_490">Requires RomM 4.9.0+</string>
+    <string name="romm_save_sync_needs_500">Requires RomM 5.0+</string>
     <string name="save_conflict_title">Save conflict</string>
     <string name="save_conflict_keep_local">Keep This Device</string>
     <string name="save_conflict_use_server">Use Server</string>

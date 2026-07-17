@@ -446,7 +446,7 @@ fun DialogOverlay(
                         RommSaveSyncRow.TOGGLE -> PillRowKeyValue(
                             label = stringResource(R.string.setting_romm_save_sync),
                             value = stringResource(
-                                if (!dialogState.supported) R.string.romm_save_sync_needs_490
+                                if (!dialogState.supported) R.string.romm_save_sync_needs_500
                                 else if (dialogState.enabled) R.string.value_on else R.string.value_off
                             ),
                             isSelected = isSelected,
