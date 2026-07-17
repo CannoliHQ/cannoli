@@ -3,6 +3,7 @@ package dev.cannoli.scorza.romm.sync
 import dev.cannoli.scorza.config.CannoliPaths
 import dev.cannoli.scorza.db.RommLinkRepository
 import dev.cannoli.scorza.di.CannoliPathsProvider
+import dev.cannoli.scorza.romm.RommCapabilities
 import dev.cannoli.scorza.romm.RommClient
 import dev.cannoli.scorza.romm.RommConnectionStore
 import dev.cannoli.scorza.settings.SettingsRepository
@@ -64,7 +65,7 @@ class SaveSyncService(
     fun isSyncableGame(gameKey: String): Int? {
         if (!settings.rommSaveSyncEnabled) return null
         if (!connStore.isConfigured) return null
-        if (!SaveSyncCapabilities.supportsSaveSync(connStore.serverVersion)) return null
+        if (!RommCapabilities.isSupported(connStore.serverVersion)) return null
         if (registrar.deviceId().isNullOrEmpty()) return null
         links.rommIdForPath(gameKey)?.let { return it }
         val tag = gameKey.substringBefore('/')

@@ -42,7 +42,7 @@ class SaveSyncServicePreLaunchTest {
         links.upsertLink(42, "SNES/Mario.sfc", "download")
         val connStore = mockk<RommConnectionStore>(relaxed = true)
         every { connStore.isConfigured } returns true
-        every { connStore.serverVersion } returns "4.9.0"
+        every { connStore.serverVersion } returns "5.0.0"
         client = mockk(relaxed = true)
         val registrar = mockk<DeviceRegistrar>(); every { registrar.deviceId() } returns "dev-1"
         val resolver = LocalSaveResolver(paths.root)
