@@ -757,7 +757,9 @@ class MainActivity : ComponentActivity(), ActivityActions {
                         rommStore.username = user
                         rommStore.serverVersion = version
                         if (media.isNotEmpty()) rommStore.scanMedia = media.toSet()
-                        nav.dialogState.value = DialogState.RommConnected(host = rommStore.host, username = user, version = version)
+                        if (rommDevicePairing.state.value is dev.cannoli.scorza.romm.PairingState.Success) {
+                            nav.dialogState.value = DialogState.RommConnected(host = rommStore.host, username = user, version = version)
+                        }
                     }
                     is dev.cannoli.scorza.romm.PairingState.Failed ->
                         nav.dialogState.value = DialogState.RommPairing(
