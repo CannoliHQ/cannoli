@@ -38,7 +38,7 @@ class SyncScheduler(
             override fun onLost(network: Network) {
                 dev.cannoli.scorza.util.RommLog.write("scheduler: network lost -> OFFLINE")
                 statusHolder.settle(
-                    enabled = settings.rommSaveSyncEnabled,
+                    enabled = service.syncEnabled(),
                     online = false,
                     pendingConflicts = service.pendingConflictCount(),
                     hadError = false,
@@ -51,7 +51,7 @@ class SyncScheduler(
             while (true) { delay(intervalMs); trigger(force = false) }
         }
         val online = cm.getNetworkCapabilities(cm.activeNetwork)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
-        statusHolder.settle(enabled = settings.rommSaveSyncEnabled, online = online, pendingConflicts = 0, hadError = false)
+        statusHolder.settle(enabled = service.syncEnabled(), online = online, pendingConflicts = 0, hadError = false)
         dev.cannoli.scorza.util.RommLog.write("scheduler: started (network callback + ${intervalMs / 60000}min loop)")
         trigger(force = false)
     }
@@ -71,6 +71,10 @@ class SyncScheduler(
         val now = System.currentTimeMillis()
         if (!force && !shouldSweep(now, lastSweepAt, intervalMs)) {
             dev.cannoli.scorza.util.RommLog.write("scheduler: trigger debounced (${(now - lastSweepAt) / 1000}s since last sweep)")
+            return
+        }
+        if (!service.syncEnabled()) {
+            dev.cannoli.scorza.util.RommLog.write("scheduler: trigger skipped, sync disabled or not connected")
             return
         }
         if (service.deviceIdOrNull() == null) {

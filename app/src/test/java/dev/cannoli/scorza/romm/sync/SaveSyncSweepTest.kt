@@ -33,6 +33,8 @@ class SaveSyncSweepTest {
     private lateinit var store: SaveSyncStore
     private lateinit var promotionStore: RestorePromotionStore
     private lateinit var backupManager: SaveBackupManager
+    private lateinit var connStore: RommConnectionStore
+    private lateinit var statusHolder: SaveSyncStatusHolder
     private lateinit var sd: File
 
     @Before fun setup() {
@@ -49,7 +51,7 @@ class SaveSyncSweepTest {
         promotionStore = RestorePromotionStore(db)
         val links = RommLinkRepository(db) { File(sd, "Roms") }
         links.upsertLink(42, "SNES/Zelda.sfc", "download")
-        val connStore = mockk<RommConnectionStore>(relaxed = true)
+        connStore = mockk<RommConnectionStore>(relaxed = true)
         every { connStore.isConfigured } returns true
         every { connStore.serverVersion } returns "5.0.0"
         client = mockk(relaxed = true)
@@ -58,9 +60,10 @@ class SaveSyncSweepTest {
         backupManager = SaveBackupManager(paths.root, resolver)
         val roms = mockk<dev.cannoli.scorza.db.RomsRepository>(relaxed = true)
         every { roms.allRelativePaths() } returns listOf("SNES/Zelda.sfc")
+        statusHolder = SaveSyncStatusHolder()
         service = SaveSyncService(
             client, connStore, settings, registrar, store, resolver, links, paths,
-            backupManager, historyStore, pendingStore, promotionStore, SaveSyncStatusHolder(),
+            backupManager, historyStore, pendingStore, promotionStore, statusHolder,
             mockk(relaxed = true), roms,
         )
     }
@@ -416,5 +419,16 @@ class SaveSyncSweepTest {
         val pending = promotionStore.get("SNES/Zelda.sfc", DEFAULT_SLOT)
         assertEquals(SaveHasher.md5Hex("OLD-SAVE".toByteArray()), pending?.targetHash)
         assertEquals("server-head", pending?.baseHead)
+    }
+
+    @Test fun `syncEnabled is false when not connected even if the setting is on`() {
+        every { connStore.isConfigured } returns false
+        assertEquals(false, service.syncEnabled())
+    }
+
+    @Test fun `sweep settles DISABLED when signed out with sync enabled and device id set`() = runBlocking {
+        every { connStore.isConfigured } returns false
+        service.sweep({ null }, online = true)
+        assertEquals(dev.cannoli.ui.components.SaveSyncStatus.DISABLED, statusHolder.state.value)
     }
 }

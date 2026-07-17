@@ -62,9 +62,10 @@ class SaveSyncService(
 
     fun deviceIdOrNull(): String? = registrar.deviceId()
 
+    fun syncEnabled(): Boolean = settings.rommSaveSyncEnabled && connStore.isConfigured
+
     fun isSyncableGame(gameKey: String): Int? {
-        if (!settings.rommSaveSyncEnabled) return null
-        if (!connStore.isConfigured) return null
+        if (!syncEnabled()) return null
         if (!RommCapabilities.isSupported(connStore.serverVersion)) return null
         if (registrar.deviceId().isNullOrEmpty()) return null
         links.rommIdForPath(gameKey)?.let { return it }
@@ -477,7 +478,7 @@ class SaveSyncService(
     ): SyncSummary = withContext(Dispatchers.IO) {
         val deviceId = registrar.deviceId()
         if (deviceId == null) {
-            statusHolder.settle(enabled = settings.rommSaveSyncEnabled, online = online, pendingConflicts = pendingConflicts.count(), hadError = false)
+            statusHolder.settle(enabled = syncEnabled(), online = online, pendingConflicts = pendingConflicts.count(), hadError = false)
             return@withContext SyncSummary(0, 0, 0)
         }
         matcher.refresh()
@@ -569,7 +570,7 @@ class SaveSyncService(
         val pending = pendingConflicts.count()
         val reachable = online && (attempted == 0 || reached)
         statusHolder.setErrors(failures)
-        statusHolder.settle(enabled = settings.rommSaveSyncEnabled, online = reachable, pendingConflicts = pending, hadError = error)
+        statusHolder.settle(enabled = syncEnabled(), online = reachable, pendingConflicts = pending, hadError = error)
         dev.cannoli.scorza.util.RommLog.write("=== sweep done: up=$up down=$down conflicts=$conflicts attempted=$attempted reachable=$reachable pending=$pending status=${statusHolder.state.value} error=$error ===")
         SyncSummary(up, down, conflicts)
     }
