@@ -4,15 +4,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class ClientTokenExchangePayload(val code: String)
-
-@Serializable
-data class ClientTokenDto(
-    val name: String = "",
-    @SerialName("raw_token") val rawToken: String = "",
-)
-
-@Serializable
 data class PlatformDto(
     val id: Int,
     val slug: String,

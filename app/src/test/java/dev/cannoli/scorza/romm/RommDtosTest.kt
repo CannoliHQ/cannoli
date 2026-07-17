@@ -7,17 +7,6 @@ import org.junit.Test
 
 class RommDtosTest {
 
-    @Test fun `parses token exchange response and ignores unknown fields`() {
-        val json = """
-            {"id":7,"name":"Cannoli","scopes":["roms:read"],"expires_at":null,
-             "last_used_at":null,"created_at":"2026-06-09T00:00:00Z","user_id":3,
-             "raw_token":"abc123"}
-        """.trimIndent()
-        val dto = rommJson.decodeFromString(ClientTokenDto.serializer(), json)
-        assertEquals("abc123", dto.rawToken)
-        assertEquals("Cannoli", dto.name)
-    }
-
     @Test fun `parses platform list entry`() {
         val json = """
             {"id":12,"slug":"snes","fs_slug":"snes","rom_count":42,
