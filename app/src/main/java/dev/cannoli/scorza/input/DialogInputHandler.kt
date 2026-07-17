@@ -90,6 +90,7 @@ class DialogInputHandler @Inject constructor(
     private val pendingConflictStore: dev.cannoli.scorza.romm.sync.PendingConflictStore,
     private val saveSyncStatusHolder: dev.cannoli.scorza.romm.sync.SaveSyncStatusHolder,
     private val osdController: dev.cannoli.ui.components.OsdController,
+    private val rommDevicePairing: dev.cannoli.scorza.romm.RommDevicePairing,
 ) : DialogPrecedence {
     private val selectHoldHandler = Handler(Looper.getMainLooper())
     private val selectHoldRunnable = Runnable {
@@ -1152,6 +1153,7 @@ class DialogInputHandler @Inject constructor(
                 else nav.dialogState.value = DialogState.None
             }
             is DialogState.RommPairing -> {
+                rommDevicePairing.cancel()
                 nav.dialogState.value = DialogState.None
             }
             is DialogState.RestartRequired -> {}
@@ -2147,17 +2149,6 @@ class DialogInputHandler @Inject constructor(
         if (state.gameName == "romm_host") {
             rommStore.host = state.currentName.trim()
             settingsViewModel.refreshSubList()
-            nav.dialogState.value = DialogState.None
-            return
-        }
-        if (state.gameName == "romm_pair_code") {
-            settingsViewModel.rommPairCode = dev.cannoli.scorza.romm.RommPairingCode.normalize(state.currentName)
-            settingsViewModel.refreshSubList()
-            nav.dialogState.value = DialogState.None
-            return
-        }
-        if (state.gameName == "romm_pair") {
-            activityActions.startRommPairing(rommStore.host, settingsViewModel.rommPairCode)
             nav.dialogState.value = DialogState.None
             return
         }

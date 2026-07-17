@@ -173,11 +173,7 @@ class SettingsInputHandler @Inject constructor(
                 val current = rommStore.host
                 nav.dialogState.value = DialogState.RenameInput(gameName = "romm_host", keyboard = KeyboardState(text = current, cursorPos = current.length))
             }
-            "romm_pair_code" -> {
-                val current = settingsViewModel.rommPairCode
-                nav.dialogState.value = DialogState.RenameInput(gameName = "romm_pair_code", keyboard = KeyboardState(text = current, cursorPos = current.length))
-            }
-            "romm_pair" -> activityActions.startRommPairing(rommStore.host, settingsViewModel.rommPairCode)
+            "romm_pair" -> activityActions.startRommPairing(rommStore.host)
             null -> {}
             else -> {
                 when {

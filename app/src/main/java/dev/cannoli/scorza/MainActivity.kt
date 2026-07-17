@@ -116,6 +116,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var controllerBlacklist: dev.cannoli.scorza.input.ControllerBlacklist
     @Inject lateinit var rommStore: dev.cannoli.scorza.romm.RommConnectionStore
     @Inject lateinit var rommClient: dev.cannoli.scorza.romm.RommClient
+    @Inject lateinit var rommDevicePairing: dev.cannoli.scorza.romm.RommDevicePairing
     @Inject lateinit var rommBrowseViewModel: dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel
     @Inject lateinit var rommImageLoader: coil.ImageLoader
     @Inject lateinit var rommDownloader: dev.cannoli.scorza.romm.download.RommDownloader
@@ -131,6 +132,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
 
     private var coreQueryReceiver: android.content.BroadcastReceiver? = null
     private var loginManager: RetroAchievementsManager? = null
+    private var pairingUiJob: kotlinx.coroutines.Job? = null
     private val loginPollHandler = Handler(Looper.getMainLooper())
     private val loginPollRunnable: Runnable = object : Runnable {
         override fun run() {
@@ -727,41 +729,53 @@ class MainActivity : ComponentActivity(), ActivityActions {
         nav.dialogState.value = DialogState.RALoggingIn()
     }
 
-    override fun startRommPairing(host: String, pairCode: String) {
-        if (!dev.cannoli.scorza.romm.RommPairingCode.isValid(pairCode)) {
-            nav.dialogState.value = DialogState.RommPairing(host = host, message = getString(R.string.romm_pair_invalid))
-            return
-        }
-        nav.dialogState.value = DialogState.RommPairing(host = host)
-        val code = dev.cannoli.scorza.romm.RommPairingCode.normalize(pairCode)
-        lifecycleScope.launch {
-            val base = withContext(Dispatchers.IO) { rommClient.resolveBaseUrl(host) }
-            if (base == null) {
-                nav.dialogState.value = DialogState.RommPairing(host = host, message = getString(R.string.romm_unreachable))
-                return@launch
-            }
-            rommStore.host = base
-            val result = withContext(Dispatchers.IO) { runCatching { rommClient.exchangeCode(code) } }
-            result.onSuccess { token ->
-                rommStore.token = token
-                settingsViewModel.get().rommPairCode = ""
-                settingsViewModel.get().exitSubList()
-                val user = withContext(Dispatchers.IO) { rommClient.currentUser() }
-                val version = withContext(Dispatchers.IO) { rommClient.serverVersion() }
-                val media = withContext(Dispatchers.IO) { rommClient.scanMedia() }
-                rommStore.username = user
-                rommStore.serverVersion = version
-                if (media.isNotEmpty()) rommStore.scanMedia = media.toSet()
-                nav.dialogState.value = DialogState.RommConnected(host = rommStore.host, username = user, version = version)
-            }.onFailure { e ->
-                val msg = when ((e as? dev.cannoli.scorza.romm.RommException)?.statusCode) {
-                    404 -> getString(R.string.romm_pair_invalid)
-                    429 -> getString(R.string.romm_pair_rate_limited)
-                    else -> getString(R.string.romm_pair_failed)
+    override fun startRommPairing(host: String) {
+        rommDevicePairing.start(host)
+        pairingUiJob?.cancel()
+        pairingUiJob = lifecycleScope.launch {
+            rommDevicePairing.state.collect { state ->
+                when (state) {
+                    is dev.cannoli.scorza.romm.PairingState.Idle -> {}
+                    is dev.cannoli.scorza.romm.PairingState.Connecting ->
+                        nav.dialogState.value = DialogState.RommPairing(host = host)
+                    is dev.cannoli.scorza.romm.PairingState.WaitingApproval -> {
+                        val qr = withContext(Dispatchers.Default) {
+                            dev.cannoli.scorza.util.QrCode.generate(state.verificationUrl, 256)
+                        }
+                        nav.dialogState.value = DialogState.RommPairing(
+                            host = rommStore.host,
+                            userCode = state.userCode,
+                            verificationUrl = state.verificationUrl,
+                            qrBitmap = qr,
+                        )
+                    }
+                    is dev.cannoli.scorza.romm.PairingState.Success -> {
+                        settingsViewModel.get().exitSubList()
+                        val user = withContext(Dispatchers.IO) { rommClient.currentUser() }
+                        val version = withContext(Dispatchers.IO) { rommClient.serverVersion() }
+                        val media = withContext(Dispatchers.IO) { rommClient.scanMedia() }
+                        rommStore.username = user
+                        rommStore.serverVersion = version
+                        if (media.isNotEmpty()) rommStore.scanMedia = media.toSet()
+                        nav.dialogState.value = DialogState.RommConnected(host = rommStore.host, username = user, version = version)
+                    }
+                    is dev.cannoli.scorza.romm.PairingState.Failed ->
+                        nav.dialogState.value = DialogState.RommPairing(
+                            host = rommStore.host,
+                            message = pairingFailureMessage(state.reason),
+                        )
                 }
-                nav.dialogState.value = DialogState.RommPairing(host = host, message = msg)
             }
         }
+    }
+
+    private fun pairingFailureMessage(reason: dev.cannoli.scorza.romm.PairingFailure): String = when (reason) {
+        dev.cannoli.scorza.romm.PairingFailure.SERVER_TOO_OLD -> getString(R.string.romm_server_too_old)
+        dev.cannoli.scorza.romm.PairingFailure.UNREACHABLE -> getString(R.string.romm_unreachable)
+        dev.cannoli.scorza.romm.PairingFailure.DENIED -> getString(R.string.romm_pair_denied)
+        dev.cannoli.scorza.romm.PairingFailure.EXPIRED -> getString(R.string.romm_pair_expired)
+        dev.cannoli.scorza.romm.PairingFailure.RATE_LIMITED -> getString(R.string.romm_pair_rate_limited)
+        dev.cannoli.scorza.romm.PairingFailure.FAILED -> getString(R.string.romm_pair_failed)
     }
 
 }

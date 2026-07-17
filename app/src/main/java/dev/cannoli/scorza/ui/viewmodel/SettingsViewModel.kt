@@ -94,7 +94,6 @@ class SettingsViewModel @Inject constructor(
     )
 
     var raPassword: String = ""
-    var rommPairCode: String = ""
 
     var updateInfo: dev.cannoli.scorza.updater.UpdateInfo? = null
         set(value) {
@@ -875,9 +874,6 @@ class SettingsViewModel @Inject constructor(
                 add(SettingsItem("romm_host", R.string.setting_romm_host, valueText = rommStore.host.ifEmpty { null }, valueRes = if (rommStore.host.isEmpty()) R.string.value_not_set else null, isEditable = true, canCycle = false))
                 add(SettingsItem("romm_allow_self_signed", R.string.setting_romm_allow_self_signed, valueRes = onOff(rommStore.allowSelfSigned)))
                 if (rommStore.host.isNotEmpty()) {
-                    add(SettingsItem("romm_pair_code", R.string.setting_romm_pair_code, valueText = if (rommPairCode.isEmpty()) null else BULLET.repeat(rommPairCode.length), valueRes = if (rommPairCode.isEmpty()) R.string.value_not_set else null, isEditable = true, canCycle = false))
-                }
-                if (rommStore.host.isNotEmpty() && rommPairCode.isNotEmpty()) {
                     add(SettingsItem("romm_pair", R.string.setting_romm_pair, isEditable = true, canCycle = false))
                 }
             }
