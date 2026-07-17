@@ -142,3 +142,36 @@ data class RommConfigDto(
 data class UserMeDto(
     val username: String = "",
 )
+
+@Serializable
+data class DeviceAuthInitPayload(
+    @SerialName("client_device_identifier") val clientDeviceIdentifier: String,
+    val name: String,
+    val client: String,
+    val platform: String? = null,
+    @SerialName("client_version") val clientVersion: String? = null,
+    @SerialName("requested_scopes") val requestedScopes: List<String>,
+)
+
+@Serializable
+data class DeviceAuthInitDto(
+    @SerialName("device_code") val deviceCode: String,
+    @SerialName("user_code") val userCode: String,
+    @SerialName("verification_path") val verificationPath: String = "",
+    @SerialName("verification_path_complete") val verificationPathComplete: String = "",
+    @SerialName("expires_in") val expiresIn: Int = 600,
+    val interval: Int = 5,
+)
+
+@Serializable
+data class DeviceAuthTokenPayload(
+    @SerialName("device_code") val deviceCode: String,
+)
+
+@Serializable
+data class DeviceAuthTokenDto(
+    @SerialName("access_token") val accessToken: String,
+    @SerialName("device_id") val deviceId: String = "",
+    val scopes: List<String> = emptyList(),
+    @SerialName("expires_at") val expiresAt: String? = null,
+)

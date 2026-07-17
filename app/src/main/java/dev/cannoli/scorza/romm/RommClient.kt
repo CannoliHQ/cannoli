@@ -65,6 +65,20 @@ class RommClient(
         return dto.rawToken
     }
 
+    fun deviceAuthInit(payload: DeviceAuthInitPayload): DeviceAuthInitDto {
+        val body = rommJson.encodeToString(DeviceAuthInitPayload.serializer(), payload)
+            .toRequestBody(jsonMedia)
+        val request = Request.Builder().url(endpoint("/api/auth/device/init")).post(body).build()
+        return execute(request, DeviceAuthInitDto.serializer())
+    }
+
+    fun deviceAuthToken(deviceCode: String): DeviceAuthTokenDto {
+        val body = rommJson.encodeToString(DeviceAuthTokenPayload.serializer(), DeviceAuthTokenPayload(deviceCode))
+            .toRequestBody(jsonMedia)
+        val request = Request.Builder().url(endpoint("/api/auth/device/token")).post(body).build()
+        return execute(request, DeviceAuthTokenDto.serializer())
+    }
+
     fun getPlatforms(updatedAfter: String? = null): List<PlatformDto> {
         val url = endpoint("/api/platforms").newBuilder()
             .apply { if (!updatedAfter.isNullOrBlank()) addQueryParameter("updated_after", updatedAfter) }
