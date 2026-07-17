@@ -231,7 +231,14 @@ fun DialogOverlay(
         }
 
         is DialogState.RommPairing -> {
-            RommPairingOverlay(host = dialogState.host, message = dialogState.message, buttonStyle = buttonStyle)
+            RommPairingOverlay(
+                host = dialogState.host,
+                message = dialogState.message,
+                userCode = dialogState.userCode,
+                verificationUrl = dialogState.verificationUrl,
+                qrBitmap = dialogState.qrBitmap,
+                buttonStyle = buttonStyle,
+            )
         }
         is DialogState.RommConnected -> {
             RommConnectedOverlay(host = dialogState.host, username = dialogState.username, version = dialogState.version, buttonStyle = buttonStyle)
