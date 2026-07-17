@@ -73,8 +73,7 @@ sealed interface DialogState {
     data class RommPairing(
         val host: String = "",
         val message: String = "",
-        val userCode: String = "",
-        val verificationUrl: String = "",
+        val waitingApproval: Boolean = false,
         val qrBitmap: android.graphics.Bitmap? = null,
     ) : DialogState
     data class RommConnected(val host: String, val username: String? = null, val version: String? = null, val fromSettingsMenu: Boolean = false) : DialogState

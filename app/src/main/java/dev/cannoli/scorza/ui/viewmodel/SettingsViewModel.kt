@@ -875,6 +875,7 @@ class SettingsViewModel @Inject constructor(
                 add(SettingsItem("romm_allow_self_signed", R.string.setting_romm_allow_self_signed, valueRes = onOff(rommStore.allowSelfSigned)))
                 if (rommStore.host.isNotEmpty()) {
                     add(SettingsItem("romm_pair", R.string.setting_romm_pair, isEditable = true, canCycle = false))
+                    add(SettingsItem("romm_pair_code", R.string.setting_romm_pair_code, isEditable = true, canCycle = false))
                 }
             }
         }

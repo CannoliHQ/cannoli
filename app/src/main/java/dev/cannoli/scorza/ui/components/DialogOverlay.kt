@@ -234,8 +234,7 @@ fun DialogOverlay(
             RommPairingOverlay(
                 host = dialogState.host,
                 message = dialogState.message,
-                userCode = dialogState.userCode,
-                verificationUrl = dialogState.verificationUrl,
+                waitingApproval = dialogState.waitingApproval,
                 qrBitmap = dialogState.qrBitmap,
                 buttonStyle = buttonStyle,
             )

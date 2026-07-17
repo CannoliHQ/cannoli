@@ -6,7 +6,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,14 +29,12 @@ import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliTypography
 import dev.cannoli.ui.theme.Radius
 import dev.cannoli.ui.theme.Spacing
-import dev.cannoli.ui.theme.SurfaceDim
 
 @Composable
 fun RommPairingOverlay(
     host: String,
     message: String,
-    userCode: String = "",
-    verificationUrl: String = "",
+    waitingApproval: Boolean = false,
     qrBitmap: Bitmap? = null,
     buttonStyle: ButtonStyle = ButtonStyle(),
 ) {
@@ -48,7 +45,7 @@ fun RommPairingOverlay(
             .background(Color.Black),
         contentAlignment = Alignment.Center
     ) {
-        if (userCode.isEmpty()) {
+        if (!waitingApproval) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -74,8 +71,8 @@ fun RommPairingOverlay(
                     style = typo.titleLarge.copy(color = Color.White),
                     textAlign = TextAlign.Center
                 )
-                Spacer(modifier = Modifier.height(Spacing.Lg))
                 if (qrBitmap != null) {
+                    Spacer(modifier = Modifier.height(Spacing.Lg))
                     Image(
                         bitmap = qrBitmap.asImageBitmap(),
                         contentDescription = null,
@@ -83,28 +80,6 @@ fun RommPairingOverlay(
                             .size(200.dp)
                             .clip(RoundedCornerShape(Radius.Lg))
                     )
-                    Spacer(modifier = Modifier.height(Spacing.Lg))
-                }
-                Text(
-                    text = verificationUrl.substringAfter("://", verificationUrl).substringBefore('?'),
-                    style = typo.bodyMedium.copy(color = Color.White, textAlign = TextAlign.Center)
-                )
-                Spacer(modifier = Modifier.height(Spacing.Lg))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    for (char in userCode) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(Radius.Lg))
-                                .background(SurfaceDim),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = char.toString(),
-                                style = typo.bodyLarge.copy(color = Color.White)
-                            )
-                        }
-                    }
                 }
             }
         }

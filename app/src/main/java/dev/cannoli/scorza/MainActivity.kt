@@ -744,21 +744,14 @@ class MainActivity : ComponentActivity(), ActivityActions {
                         }
                         nav.dialogState.value = DialogState.RommPairing(
                             host = rommStore.host,
-                            userCode = state.userCode,
-                            verificationUrl = state.verificationUrl,
+                            waitingApproval = true,
                             qrBitmap = qr,
                         )
                     }
                     is dev.cannoli.scorza.romm.PairingState.Success -> {
-                        settingsViewModel.get().exitSubList()
-                        val user = withContext(Dispatchers.IO) { rommClient.currentUser() }
-                        val version = withContext(Dispatchers.IO) { rommClient.serverVersion() }
-                        val media = withContext(Dispatchers.IO) { rommClient.scanMedia() }
-                        rommStore.username = user
-                        rommStore.serverVersion = version
-                        if (media.isNotEmpty()) rommStore.scanMedia = media.toSet()
+                        val connected = completeRommConnection()
                         if (rommDevicePairing.state.value is dev.cannoli.scorza.romm.PairingState.Success) {
-                            nav.dialogState.value = DialogState.RommConnected(host = rommStore.host, username = user, version = version)
+                            nav.dialogState.value = connected
                         }
                     }
                     is dev.cannoli.scorza.romm.PairingState.Failed ->
@@ -769,6 +762,55 @@ class MainActivity : ComponentActivity(), ActivityActions {
                 }
             }
         }
+    }
+
+    override fun startRommCodePairing(host: String, pairCode: String) {
+        if (!dev.cannoli.scorza.romm.RommPairingCode.isValid(pairCode)) {
+            nav.dialogState.value = DialogState.RommPairing(host = host, message = getString(R.string.romm_pair_invalid))
+            return
+        }
+        nav.dialogState.value = DialogState.RommPairing(host = host)
+        lifecycleScope.launch {
+            val base = withContext(Dispatchers.IO) { rommClient.resolveBaseUrl(host) }
+            if (base == null) {
+                nav.dialogState.value = DialogState.RommPairing(host = host, message = getString(R.string.romm_unreachable))
+                return@launch
+            }
+            rommStore.host = base
+            val version = withContext(Dispatchers.IO) { rommClient.serverVersion() }
+            if (dev.cannoli.scorza.romm.RommCapabilities.isKnownUnsupported(version)) {
+                nav.dialogState.value = DialogState.RommPairing(host = base, message = getString(R.string.romm_server_too_old))
+                return@launch
+            }
+            val result = withContext(Dispatchers.IO) { runCatching { rommClient.exchangeCode(pairCode) } }
+            result.onSuccess { token ->
+                rommStore.token = token
+                val connected = completeRommConnection()
+                if (nav.dialogState.value is DialogState.RommPairing) {
+                    nav.dialogState.value = connected
+                }
+            }.onFailure { e ->
+                val msg = when ((e as? dev.cannoli.scorza.romm.RommException)?.statusCode) {
+                    404 -> getString(R.string.romm_pair_invalid)
+                    429 -> getString(R.string.romm_pair_rate_limited)
+                    else -> getString(R.string.romm_pair_failed)
+                }
+                if (nav.dialogState.value is DialogState.RommPairing) {
+                    nav.dialogState.value = DialogState.RommPairing(host = host, message = msg)
+                }
+            }
+        }
+    }
+
+    private suspend fun completeRommConnection(): DialogState.RommConnected {
+        settingsViewModel.get().exitSubList()
+        val user = withContext(Dispatchers.IO) { rommClient.currentUser() }
+        val version = withContext(Dispatchers.IO) { rommClient.serverVersion() }
+        val media = withContext(Dispatchers.IO) { rommClient.scanMedia() }
+        rommStore.username = user
+        rommStore.serverVersion = version
+        if (media.isNotEmpty()) rommStore.scanMedia = media.toSet()
+        return DialogState.RommConnected(host = rommStore.host, username = user, version = version)
     }
 
     private fun pairingFailureMessage(reason: dev.cannoli.scorza.romm.PairingFailure): String = when (reason) {

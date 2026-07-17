@@ -52,6 +52,19 @@ class RommClient(
         return null
     }
 
+    fun exchangeCode(code: String): String {
+        val payload = ClientTokenExchangePayload(RommPairingCode.normalize(code))
+        val body = rommJson
+            .encodeToString(ClientTokenExchangePayload.serializer(), payload)
+            .toRequestBody(jsonMedia)
+        val request = Request.Builder()
+            .url(endpoint("/api/client-tokens/exchange"))
+            .post(body)
+            .build()
+        val dto = execute(request, ClientTokenDto.serializer())
+        return dto.rawToken
+    }
+
     fun deviceAuthInit(payload: DeviceAuthInitPayload): DeviceAuthInitDto {
         val body = rommJson.encodeToString(DeviceAuthInitPayload.serializer(), payload)
             .toRequestBody(jsonMedia)

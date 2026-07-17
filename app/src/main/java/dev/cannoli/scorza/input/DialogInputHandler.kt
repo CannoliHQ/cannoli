@@ -667,7 +667,7 @@ class DialogInputHandler @Inject constructor(
                 else saveSyncService.applyConflictUseServer(ds.conflict, deviceId)
                 saveSyncService.clearResolvedConflict(ds.conflict.gameKey, ds.conflict.base, keepLocal)
                 saveSyncStatusHolder.settle(
-                    enabled = settings.rommSaveSyncEnabled,
+                    enabled = saveSyncService.syncEnabled(),
                     online = true,
                     pendingConflicts = saveSyncService.pendingConflictCount(),
                     hadError = false,
@@ -993,7 +993,7 @@ class DialogInputHandler @Inject constructor(
                 }
             }
             val count = saveSyncService.pendingConflictCount()
-            saveSyncStatusHolder.settle(enabled = settings.rommSaveSyncEnabled, online = true, pendingConflicts = count, hadError = false)
+            saveSyncStatusHolder.settle(enabled = saveSyncService.syncEnabled(), online = true, pendingConflicts = count, hadError = false)
             withContext(Dispatchers.Main) { showOriginMenu(fromSaveSyncMenu, count) }
         }
     }
@@ -1036,6 +1036,7 @@ class DialogInputHandler @Inject constructor(
             }
             dev.cannoli.scorza.ui.screens.RommConfirmAction.DISCONNECT -> {
                 rommStore.disconnect()
+                saveSyncStatusHolder.settle(enabled = saveSyncService.syncEnabled(), online = true, pendingConflicts = 0, hadError = false)
                 settingsViewModel.load()
                 nav.dialogState.value = DialogState.None
                 while (isRommScreen()) nav.pop()
@@ -2150,6 +2151,12 @@ class DialogInputHandler @Inject constructor(
             rommStore.host = state.currentName.trim()
             settingsViewModel.refreshSubList()
             nav.dialogState.value = DialogState.None
+            return
+        }
+        if (state.gameName == "romm_pair_code") {
+            val code = state.currentName
+            nav.dialogState.value = DialogState.None
+            activityActions.startRommCodePairing(rommStore.host, code)
             return
         }
         if (state.gameName == "romm_device_name") {

@@ -111,6 +111,7 @@ fun SettingsScreen(
                 listOf(buttonStyle.back to stringResource(R.string.label_back))
             }
             val showClear = selectedItem?.key == "rom_directory" && selectedItem.valueText != null
+            val isRommPairAction = selectedItem?.key == "romm_pair" || selectedItem?.key == "romm_pair_code"
             val isNavInto = selectedItem?.isEditable == true
                 && selectedItem.valueText == null
                 && selectedItem.valueRes == null
@@ -124,6 +125,8 @@ fun SettingsScreen(
                 listOf(buttonStyle.north to stringResource(R.string.label_reset))
             } else if (showClear) {
                 listOf(buttonStyle.north to stringResource(R.string.label_clear))
+            } else if (isRommPairAction) {
+                listOf(buttonStyle.confirm to stringResource(R.string.label_select))
             } else if (isNavInto) {
                 listOf(buttonStyle.confirm to stringResource(R.string.label_open))
             } else {

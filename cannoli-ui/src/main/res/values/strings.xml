@@ -207,8 +207,10 @@
     <string name="save_stale_title">Server has a newer save</string>
     <string name="save_stale_play_local">Play Local Anyway</string>
     <string name="setting_romm_allow_self_signed">Allow Self-Signed Cert</string>
-    <string name="setting_romm_pair">Connect</string>
+    <string name="setting_romm_pair">Pair with Another Device</string>
+    <string name="setting_romm_pair_code">Pair with Code</string>
     <string name="romm_connecting">Connecting to RomM</string>
+    <string name="romm_pair_invalid">Invalid pairing code</string>
     <string name="romm_pair_failed">Pairing failed</string>
     <string name="romm_pair_rate_limited">Too many attempts, try again later</string>
     <string name="romm_unreachable">Could not reach server</string>
