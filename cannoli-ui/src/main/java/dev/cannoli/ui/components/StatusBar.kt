@@ -49,7 +49,7 @@ private const val ICON_CLOUD_OFF = "\uDB80\uDD64"
 private const val ICON_ALERT_CIRCLE = "\uDB80\uDC28" // mdi-alert-circle (U+F0028)
 
 private fun cloudIcon(status: SaveSyncStatus): String? = when (status) {
-    SaveSyncStatus.UPLOADING, SaveSyncStatus.DOWNLOADING -> ICON_CLOUD_SYNC
+    SaveSyncStatus.CHECKING, SaveSyncStatus.UPLOADING, SaveSyncStatus.DOWNLOADING -> ICON_CLOUD_SYNC
     SaveSyncStatus.UP_TO_DATE -> ICON_CLOUD_CHECK
     SaveSyncStatus.CONFLICT -> ICON_CLOUD_ALERT
     SaveSyncStatus.ERROR -> ICON_ALERT_CIRCLE
