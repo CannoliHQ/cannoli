@@ -1,8 +1,11 @@
 package dev.cannoli.scorza.launcher
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
+import android.os.Process
 import android.provider.Settings
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.cannoli.scorza.config.AppConfig
@@ -23,9 +26,17 @@ class ApkLauncher @Inject constructor(
 
     companion object {
         const val VIRTUAL_TV_SETTINGS_PACKAGE = "cannoli.virtual.tv_settings"
+        private const val GAMEHUB_DETAIL_ACTIVITY =
+            "com.xj.landscape.launcher.ui.gamedetail.GameDetailActivity"
     }
 
     fun launch(packageName: String): LaunchResult {
+        GameHubTarget.decode(packageName)?.let { game ->
+            return launchGameHub(game)
+        }
+        AndroidShortcutTarget.decode(packageName)?.let { shortcut ->
+            return launchShortcut(shortcut)
+        }
         val intent = if (packageName == VIRTUAL_TV_SETTINGS_PACKAGE) {
             Intent(Settings.ACTION_SETTINGS)
         } else {
@@ -39,6 +50,56 @@ class ApkLauncher @Inject constructor(
             intent,
             "Failed to launch app",
             activityDisplayRouter.gameLaunchDisplayId(),
+        )
+    }
+
+    private fun launchGameHub(target: GameHubTarget): LaunchResult {
+        if (!context.isPackageInstalled(target.packageName)) {
+            return LaunchResult.AppNotInstalled(target.packageName)
+        }
+        val intent = Intent().apply {
+            component = ComponentName(target.packageName, GAMEHUB_DETAIL_ACTIVITY)
+            putExtra("autoStartGame", true)
+            putExtra("steamAppId", target.steamAppId)
+            putExtra("id", "0")
+            putExtra("type", "1")
+            putExtra("gameType", "0")
+            putExtra("localGameId", "")
+            putExtra("localMobileAppId", "")
+            putExtra("localAppName", target.title)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        return context.startActivityNoAnim(
+            intent,
+            "Failed to launch GameHub game",
+            activityDisplayRouter.gameLaunchDisplayId(),
+            logLabel = "gamehub",
+        )
+    }
+
+    private fun launchShortcut(target: AndroidShortcutTarget): LaunchResult {
+        if (!context.isPackageInstalled(target.packageName)) {
+            return LaunchResult.AppNotInstalled(target.packageName)
+        }
+        val launcherApps = context.getSystemService(LauncherApps::class.java)
+        if (!launcherApps.hasShortcutHostPermission()) {
+            return LaunchResult.Error("Cannoli does not have access to Android shortcuts")
+        }
+        val query = LauncherApps.ShortcutQuery()
+            .setPackage(target.packageName)
+            .setShortcutIds(listOf(target.shortcutId))
+            .setQueryFlags(LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED)
+        val shortcut = runCatching {
+            launcherApps.getShortcuts(query, Process.myUserHandle()).orEmpty().firstOrNull()
+        }.getOrNull() ?: return LaunchResult.Error("Android shortcut is no longer available")
+        val intent = shortcut.intents.orEmpty().lastOrNull()
+            ?: return LaunchResult.Error("Android shortcut has no launch intent")
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        return context.startActivityNoAnim(
+            intent,
+            "Failed to launch shortcut",
+            activityDisplayRouter.gameLaunchDisplayId(),
+            logLabel = "shortcut",
         )
     }
 
