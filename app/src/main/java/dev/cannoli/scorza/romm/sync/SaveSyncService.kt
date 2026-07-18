@@ -474,11 +474,10 @@ class SaveSyncService(
 
     suspend fun sweep(
         resolveGame: (gameKey: String) -> Triple<String, String, String?>?,
-        online: Boolean,
     ): SyncSummary = withContext(Dispatchers.IO) {
         val deviceId = registrar.deviceId()
         if (deviceId == null) {
-            statusHolder.settle(enabled = syncEnabled(), online = online, pendingConflicts = pendingConflicts.count(), hadError = false)
+            statusHolder.settle(enabled = syncEnabled(), online = true, pendingConflicts = pendingConflicts.count(), hadError = false)
             return@withContext SyncSummary(0, 0, 0)
         }
         matcher.refresh()
@@ -530,10 +529,15 @@ class SaveSyncService(
 
         // Phase 1c: decide each game's action (regenerate candidates query the server per-rom).
         var getSavesReached = false
+        var getSavesAttempted = false
         val plans = scanned.map { s ->
-            planFor(s, opByKey[s.romId to s.slot], batchFailed, deviceId) { if (it) getSavesReached = true }
+            planFor(s, opByKey[s.romId to s.slot], batchFailed, deviceId) { ok ->
+                getSavesAttempted = true
+                if (ok) getSavesReached = true
+            }
         }
         val reached = batchReached || getSavesReached
+        val serverContacted = withLocal.isNotEmpty() || getSavesAttempted
         val attempted = scanned.count { it.local != null || it.anchor != null }
 
         // Phase 2: report the plan, sorted by platform then game name.
@@ -568,13 +572,14 @@ class SaveSyncService(
         }
 
         val pending = pendingConflicts.count()
-        val reachable = online && (attempted == 0 || reached)
+        // Reachability reflects whether RomM actually answered, not whether Android
+        // validated internet: a LAN-only server on an unvalidated network still syncs.
+        val reachable = reached || !serverContacted
         statusHolder.setErrors(failures)
         statusHolder.settle(enabled = syncEnabled(), online = reachable, pendingConflicts = pending, hadError = error)
         dev.cannoli.scorza.util.RommLog.write("=== sweep done: up=$up down=$down conflicts=$conflicts attempted=$attempted reachable=$reachable pending=$pending status=${statusHolder.state.value} error=$error ===")
         if (statusHolder.state.value == SaveSyncStatus.OFFLINE) {
-            val cause = if (!online) "no validated network" else "RomM server unreachable"
-            dev.cannoli.scorza.util.RommLog.write("=== sweep: OFFLINE ($cause) online=$online reached=$reached attempted=$attempted ===")
+            dev.cannoli.scorza.util.RommLog.write("=== sweep: OFFLINE (RomM server unreachable) reached=$reached contacted=$serverContacted attempted=$attempted ===")
         }
         SyncSummary(up, down, conflicts)
     }

@@ -116,7 +116,7 @@ class SaveSyncSweepTest {
         )
         every { client.uploadSave(any(), any(), any(), any(), any(), any()) } returns RommSaveDto(id = 101, slot = "autosave", contentHash = localHash, updatedAt = "2026-06-26T02:00:00Z")
 
-        val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") }, online = true)
+        val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") })
 
         assertEquals(0, pendingStore.count())
         assertEquals(SyncDirection.UPLOAD, historyStore.recent().first().direction)
@@ -143,7 +143,7 @@ class SaveSyncSweepTest {
             ),
             totalConflict = 1,
         )
-        service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") }, online = true)
+        service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") })
 
         assertEquals(1, pendingStore.count())
         assertEquals(SyncDirection.CONFLICT, historyStore.recent().first().direction)
@@ -167,7 +167,7 @@ class SaveSyncSweepTest {
             ),
             totalConflict = 1,
         )
-        repeat(3) { service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") }, online = true) }
+        repeat(3) { service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") }) }
 
         assertEquals(1, pendingStore.count())
         assertEquals(1, historyStore.recent().count { it.direction == SyncDirection.CONFLICT })
@@ -179,7 +179,7 @@ class SaveSyncSweepTest {
         every { client.negotiateSync(any()) } returns SyncNegotiateResponse(sessionId = 1, operations = emptyList())
         every { client.uploadSave(any(), any(), any(), any(), any(), any()) } returns RommSaveDto(id = 55, slot = "autosave", contentHash = "h", updatedAt = "t")
 
-        val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") }, online = true)
+        val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") })
 
         assertEquals(1, summary.uploaded)
         assertEquals(SyncDirection.UPLOAD, historyStore.recent().first().direction)
@@ -191,7 +191,7 @@ class SaveSyncSweepTest {
         seedAnchor(lastUploadedHash = hash, localContentHash = hash)
         every { client.negotiateSync(any()) } returns SyncNegotiateResponse(sessionId = 1, operations = emptyList())
 
-        val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") }, online = true)
+        val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") })
 
         assertEquals(0, summary.uploaded)
     }
@@ -203,7 +203,7 @@ class SaveSyncSweepTest {
         )
         every { client.downloadSaveContent(77, "dev-1", any()) } answers { thirdArg<File>().writeBytes("RESTORED".toByteArray()) }
 
-        val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") }, online = true)
+        val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") })
 
         assertEquals(1, summary.downloaded)
         assertEquals(SyncDirection.DOWNLOAD, historyStore.recent().first().direction)
@@ -220,7 +220,7 @@ class SaveSyncSweepTest {
             totalDownload = 1,
         )
         // relaxed downloadSaveContent writes nothing -> empty temp file
-        val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") }, online = true)
+        val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") })
 
         assertEquals(0, summary.downloaded)
         assertEquals("KEEP-ME", File(sd, "Saves/SNES/Zelda.srm").readText())
@@ -236,7 +236,7 @@ class SaveSyncSweepTest {
         )
         every { client.downloadSaveContent(any(), any(), any()) } answers { thirdArg<File>().writeBytes("WRONG".toByteArray()) }
 
-        val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") }, online = true)
+        val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") })
 
         assertEquals(0, summary.downloaded)
         assertEquals("KEEP-ME", File(sd, "Saves/SNES/Zelda.srm").readText())
@@ -254,7 +254,7 @@ class SaveSyncSweepTest {
         )
         every { client.downloadSaveContent(any(), any(), any()) } answers { thirdArg<File>().writeBytes(serverBytes) }
 
-        val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") }, online = true)
+        val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") })
 
         assertEquals(1, summary.downloaded)
         assertEquals("SERVER-SAVE", File(sd, "Saves/SNES/Zelda.srm").readText())
@@ -282,7 +282,7 @@ class SaveSyncSweepTest {
             totalUpload = 1,
         )
 
-        val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") }, online = true)
+        val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") })
 
         assertEquals(0, summary.uploaded)
         assertEquals(1, pendingStore.count())
@@ -313,7 +313,7 @@ class SaveSyncSweepTest {
         )
         every { client.uploadSave(any(), any(), any(), any(), any(), any()) } returns RommSaveDto(id = 55, slot = "autosave", contentHash = localHash, updatedAt = "t2")
 
-        val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") }, online = true)
+        val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") })
 
         assertEquals(1, summary.uploaded)
         assertEquals(0, pendingStore.count())
@@ -328,7 +328,7 @@ class SaveSyncSweepTest {
             RommSaveDto(id = 88, romId = 42, slot = "autosave", contentHash = "different-server-hash", updatedAt = "t")
         )
 
-        service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") }, online = true)
+        service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") })
 
         assertEquals(1, pendingStore.count())
         assertEquals(SyncDirection.CONFLICT, historyStore.recent().first().direction)
@@ -344,7 +344,7 @@ class SaveSyncSweepTest {
             RommSaveDto(id = 88, romId = 42, slot = "autosave", contentHash = localHash, updatedAt = "2026-06-26T05:00:00Z")
         )
 
-        val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") }, online = true)
+        val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") })
 
         assertEquals(0, pendingStore.count())
         assertEquals(0, summary.uploaded)
@@ -362,7 +362,7 @@ class SaveSyncSweepTest {
         )
         every { client.uploadSave(any(), any(), any(), any(), any(), any()) } returns RommSaveDto(id = 201, slot = "autosave", contentHash = localHash, updatedAt = "2026-07-15T00:00:00+00:00")
 
-        val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") }, online = true)
+        val summary = service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") })
 
         verify { client.uploadSave(42, "snes9x", "autosave", "dev-1", true, any()) }
         assertEquals(1, summary.uploaded)
@@ -379,7 +379,7 @@ class SaveSyncSweepTest {
             RommSaveDto(id = 200, romId = 42, slot = "autosave", contentHash = "new-head-from-other-device", updatedAt = "2026-07-14T00:00:00+00:00")
         )
 
-        service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") }, online = true)
+        service.sweep(resolveGame = { Triple("SNES", "Zelda", "snes9x") })
 
         assertEquals(null, promotionStore.get("SNES/Zelda.sfc", DEFAULT_SLOT))
         assertEquals(1, pendingStore.count())
@@ -428,7 +428,7 @@ class SaveSyncSweepTest {
 
     @Test fun `sweep settles DISABLED when signed out with sync enabled and device id set`() = runBlocking {
         every { connStore.isConfigured } returns false
-        service.sweep({ null }, online = true)
+        service.sweep({ null })
         assertEquals(dev.cannoli.ui.components.SaveSyncStatus.DISABLED, statusHolder.state.value)
     }
 }

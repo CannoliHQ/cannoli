@@ -4,7 +4,9 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import dev.cannoli.scorza.config.PlatformConfig
+import dev.cannoli.ui.components.SaveSyncStatus
 import dev.cannoli.scorza.settings.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -21,11 +23,15 @@ class SyncScheduler(
     private val romDir: () -> File,
     private val scope: CoroutineScope,
     private val intervalMs: Long = 30 * 60 * 1000L,
+    private val offlineRetryMs: Long = 30_000L,
 ) {
     private var callback: ConnectivityManager.NetworkCallback? = null
+    private var underlyingCallback: ConnectivityManager.NetworkCallback? = null
     private var loop: Job? = null
     private var lastSweepAt = 0L
+    private var wasValidated = false
     private val sweeping = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val resweepRequested = java.util.concurrent.atomic.AtomicBoolean(false)
 
     fun start() {
         if (callback != null) return
@@ -33,9 +39,12 @@ class SyncScheduler(
         val cb = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) { trigger(force = true) }
             override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
-                if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) trigger(force = false)
+                val validated = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+                if (validated && !wasValidated) trigger(force = true)
+                wasValidated = validated
             }
             override fun onLost(network: Network) {
+                wasValidated = false
                 dev.cannoli.scorza.util.RommLog.write("scheduler: network lost -> OFFLINE")
                 statusHolder.settle(
                     enabled = service.syncEnabled(),
@@ -47,12 +56,39 @@ class SyncScheduler(
         }
         runCatching { cm.registerDefaultNetworkCallback(cb) }
         callback = cb
-        loop = scope.launch {
-            while (true) { delay(intervalMs); trigger(force = false) }
+        // The default-network callback is blind to wifi drops when a VPN (e.g. Tailscale) is the
+        // default network: the VPN stays up across the reconnect, so no onLost/onAvailable fires.
+        // Watch the underlying non-VPN internet transport so a physical reconnect still triggers.
+        val underlyingCb = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                dev.cannoli.scorza.util.RommLog.write("scheduler: underlying network available -> sync")
+                trigger(force = true)
+            }
+            override fun onLost(network: Network) {
+                dev.cannoli.scorza.util.RommLog.write("scheduler: underlying network lost -> re-check")
+                trigger(force = true)
+            }
         }
-        val online = cm.getNetworkCapabilities(cm.activeNetwork)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
-        statusHolder.settle(enabled = service.syncEnabled(), online = online, pendingConflicts = 0, hadError = false)
-        dev.cannoli.scorza.util.RommLog.write("scheduler: started (network callback + ${intervalMs / 60000}min loop)")
+        val underlyingRequest = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
+            .build()
+        runCatching { cm.registerNetworkCallback(underlyingRequest, underlyingCb) }
+        underlyingCallback = underlyingCb
+        // Poll on a short tick: retry every offlineRetryMs while OFFLINE (a safety net when the
+        // callbacks miss a reconnect), otherwise fall back to the normal interval sweep.
+        loop = scope.launch {
+            while (true) {
+                delay(offlineRetryMs)
+                when {
+                    statusHolder.state.value == SaveSyncStatus.OFFLINE -> trigger(force = true)
+                    System.currentTimeMillis() - lastSweepAt >= intervalMs -> trigger(force = false)
+                    else -> {}
+                }
+            }
+        }
+        statusHolder.settle(enabled = service.syncEnabled(), online = true, pendingConflicts = 0, hadError = false)
+        dev.cannoli.scorza.util.RommLog.write("scheduler: started (default + underlying callbacks, ${offlineRetryMs / 1000}s poll)")
         trigger(force = false)
     }
 
@@ -60,6 +96,10 @@ class SyncScheduler(
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
         callback?.let { runCatching { cm?.unregisterNetworkCallback(it) } }
         callback = null
+        underlyingCallback?.let { runCatching { cm?.unregisterNetworkCallback(it) } }
+        underlyingCallback = null
+        wasValidated = false
+        resweepRequested.set(false)
         loop?.cancel(); loop = null
         dev.cannoli.scorza.util.RommLog.write("scheduler: stopped")
     }
@@ -82,22 +122,30 @@ class SyncScheduler(
             return
         }
         if (!sweeping.compareAndSet(false, true)) {
-            dev.cannoli.scorza.util.RommLog.write("scheduler: trigger skipped, a sweep is already running")
+            // A forced request (network reconnect, game exit) that lands mid-sweep would
+            // otherwise be lost; queue exactly one re-sweep for when the current one ends.
+            if (force) resweepRequested.set(true)
+            dev.cannoli.scorza.util.RommLog.write("scheduler: trigger ${if (force) "queued" else "skipped"}, a sweep is already running")
             return
         }
         lastSweepAt = now
-        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
-        val caps = cm?.getNetworkCapabilities(cm.activeNetwork)
-        val online = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
-        dev.cannoli.scorza.util.RommLog.write("scheduler: trigger fired (force=$force online=$online)")
+        statusHolder.setActive(SaveSyncStatus.CHECKING)
+        dev.cannoli.scorza.util.RommLog.write("scheduler: trigger fired (force=$force)")
         scope.launch {
             try {
-                service.sweep(rommResolveGame(platformResolver, romDir()), online = online)
+                service.sweep(rommResolveGame(platformResolver, romDir()))
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (_: Exception) {
+                statusHolder.settle(
+                    enabled = service.syncEnabled(),
+                    online = true,
+                    pendingConflicts = service.pendingConflictCount(),
+                    hadError = true,
+                )
             } finally {
                 sweeping.set(false)
+                if (resweepRequested.compareAndSet(true, false)) trigger(force = true)
             }
         }
     }
