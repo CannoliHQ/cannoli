@@ -205,6 +205,10 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         get() = jsonRead { optBoolean(KEY_EXPERIMENTAL_FEATURES, BuildConfig.DEBUG) }
         set(value) = jsonWrite { put(KEY_EXPERIMENTAL_FEATURES, value) }
 
+    var dualScreenLaunching: Boolean
+        get() = jsonRead { optBoolean(KEY_DUAL_SCREEN_LAUNCHING, false) }
+        set(value) = jsonWrite { put(KEY_DUAL_SCREEN_LAUNCHING, value) }
+
 
     var showWifi: Boolean
         get() = jsonRead { optBoolean(KEY_SHOW_WIFI, true) }
@@ -467,6 +471,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         private const val KEY_MAIN_MENU_QUIT = "main_menu_quit"
         private const val KEY_KITCHEN_CODE_BYPASS = "kitchen_code_bypass"
         private const val KEY_EXPERIMENTAL_FEATURES = "experimental_features"
+        private const val KEY_DUAL_SCREEN_LAUNCHING = "dual_screen_launching"
         private const val KEY_SHOW_WIFI = "show_wifi"
         private const val KEY_SHOW_BLUETOOTH = "show_bluetooth"
         private const val KEY_SHOW_VPN = "show_vpn"
