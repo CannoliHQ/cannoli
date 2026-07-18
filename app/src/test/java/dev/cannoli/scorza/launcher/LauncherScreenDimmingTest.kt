@@ -2,6 +2,7 @@ package dev.cannoli.scorza.launcher
 
 import android.app.Activity
 import android.view.WindowManager
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -34,5 +35,11 @@ class LauncherScreenDimmingTest {
 
         setLauncherWindowInputBlocked(activity.window, blocked = false)
         assertFalse(activity.window.attributes.flags and notFocusable != 0)
+    }
+
+    @Test
+    fun `launcher dimming uses an app local overlay`() {
+        assertEquals(DIMMED_LAUNCHER_OVERLAY_ALPHA, launcherDimOverlayAlpha(true), 0f)
+        assertEquals(0f, launcherDimOverlayAlpha(false), 0f)
     }
 }

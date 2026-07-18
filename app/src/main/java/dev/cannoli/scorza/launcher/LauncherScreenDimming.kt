@@ -3,6 +3,8 @@ package dev.cannoli.scorza.launcher
 import android.view.Window
 import android.view.WindowManager
 
+internal const val DIMMED_LAUNCHER_OVERLAY_ALPHA = 0.95f
+
 internal fun shouldDimLauncherScreen(
     experimentalFeatures: Boolean,
     dualScreenLaunching: Boolean,
@@ -16,6 +18,9 @@ internal fun shouldDimLauncherScreen(
     gameActive &&
     gameDisplayId != null &&
     gameDisplayId != launcherDisplayId
+
+internal fun launcherDimOverlayAlpha(dimmed: Boolean): Float =
+    if (dimmed) DIMMED_LAUNCHER_OVERLAY_ALPHA else 0f
 
 /**
  * Keep the dimmed launcher touchable so it can consume taps without exposing Android's
