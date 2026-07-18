@@ -80,5 +80,23 @@ class LaunchManagerSlotTest {
 
         assertEquals(null, dialog)
         assertFalse(launchState.launching)
+        assertTrue(launchState.gameActive.value)
+    }
+
+    @Test
+    fun `tools do not start a game session`() {
+        val root = tmp.newFolder()
+        val launchState = LaunchState()
+        val apkLauncher = mockk<ApkLauncher>(relaxed = true)
+        every { apkLauncher.launch("dev.example.tool") } returns LaunchResult.Success
+        val mgr = manager(root, launchState, apkLauncher)
+
+        val dialog = mgr.launchApp(
+            App(1L, AppType.TOOL, "Example", "dev.example.tool"),
+        )
+
+        assertEquals(null, dialog)
+        assertFalse(launchState.launching)
+        assertFalse(launchState.gameActive.value)
     }
 }

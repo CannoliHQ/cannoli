@@ -91,6 +91,8 @@
     <string name="setting_title">Title</string>
     <string name="setting_bg_image">Background Image</string>
     <string name="setting_dual_screen_launching">Dual-Screen Launching</string>
+    <string name="setting_top_screen_blackout">Black Idle Game Screen</string>
+    <string name="setting_dim_launcher_during_games">Dim Launcher During Games</string>
     <string name="setting_wifi">Wi-Fi</string>
     <string name="setting_vpn">VPN</string>
     <string name="setting_bluetooth">Bluetooth</string>

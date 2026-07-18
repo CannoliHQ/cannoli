@@ -59,6 +59,7 @@ internal class GameSessionLifecycle(
 class ExternalGameSessionActivity : ComponentActivity() {
 
     @Inject lateinit var activityDisplayRouter: ActivityDisplayRouter
+    @Inject lateinit var launchState: LaunchState
 
     private lateinit var sessionLifecycle: GameSessionLifecycle
 
@@ -124,6 +125,7 @@ class ExternalGameSessionActivity : ComponentActivity() {
     }
 
     private fun returnToLauncher() {
+        launchState.markGameEnded()
         val launcherDisplayId = activityDisplayRouter.preferredLauncherDisplayId(
             forcePrimaryWhenDisabled = true
         )

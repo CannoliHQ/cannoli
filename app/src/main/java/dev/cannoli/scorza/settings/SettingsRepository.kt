@@ -209,6 +209,14 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         get() = jsonRead { optBoolean(KEY_DUAL_SCREEN_LAUNCHING, false) }
         set(value) = jsonWrite { put(KEY_DUAL_SCREEN_LAUNCHING, value) }
 
+    var topScreenBlackout: Boolean
+        get() = jsonRead { optBoolean(KEY_TOP_SCREEN_BLACKOUT, false) }
+        set(value) = jsonWrite { put(KEY_TOP_SCREEN_BLACKOUT, value) }
+
+    var dimLauncherDuringGames: Boolean
+        get() = jsonRead { optBoolean(KEY_DIM_LAUNCHER_DURING_GAMES, false) }
+        set(value) = jsonWrite { put(KEY_DIM_LAUNCHER_DURING_GAMES, value) }
+
 
     var showWifi: Boolean
         get() = jsonRead { optBoolean(KEY_SHOW_WIFI, true) }
@@ -472,6 +480,8 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         private const val KEY_KITCHEN_CODE_BYPASS = "kitchen_code_bypass"
         private const val KEY_EXPERIMENTAL_FEATURES = "experimental_features"
         private const val KEY_DUAL_SCREEN_LAUNCHING = "dual_screen_launching"
+        private const val KEY_TOP_SCREEN_BLACKOUT = "top_screen_blackout"
+        private const val KEY_DIM_LAUNCHER_DURING_GAMES = "dim_launcher_during_games"
         private const val KEY_SHOW_WIFI = "show_wifi"
         private const val KEY_SHOW_BLUETOOTH = "show_bluetooth"
         private const val KEY_SHOW_VPN = "show_vpn"

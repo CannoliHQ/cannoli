@@ -61,6 +61,14 @@ class GameListInputHandler @Inject constructor(
         selectHoldHandler.removeCallbacks(collectionSelectHoldRunnable)
     }
 
+    fun cancelPendingInput() {
+        cancelSelectHoldTimer()
+        cancelResumeHoldTimer()
+        selectHandled = false
+        collectionSelectHeld = false
+        gameSelectDown = false
+    }
+
     private enum class ResumeButton { CONFIRM, NORTH }
     private var armedResumeButton: ResumeButton? = null
     private var resumeHoldFired = false

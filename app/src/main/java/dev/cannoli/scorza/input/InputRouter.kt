@@ -172,6 +172,13 @@ class InputRouter @Inject constructor(
         nav.selectHeld = false
     }
 
+    fun cancelPendingInput() {
+        dialogHandler.cancelSelectHold()
+        gameListHandler.cancelPendingInput()
+        nav.selectDown = false
+        nav.selectHeld = false
+    }
+
     /**
      * Returns the appropriate handler for a ScrollableScreen instance. Used by [AppNavGraph] to
      * push a handler via ScreenInput for screens that don't have a dedicated handler class --

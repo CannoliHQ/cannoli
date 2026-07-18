@@ -16,6 +16,7 @@ import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.libretro.LibretroActivity
 import dev.cannoli.scorza.libretro.SaveSlotManager
 import dev.cannoli.scorza.model.App
+import dev.cannoli.scorza.model.AppType
 import dev.cannoli.scorza.model.LaunchTarget
 import dev.cannoli.scorza.model.Rom
 import dev.cannoli.scorza.settings.SettingsRepository
@@ -354,7 +355,10 @@ class LaunchManager(
             return null
         }
         launchState.launching = true
-        return launchResultDialog(apkLauncher.launch(app.packageName))
+        return launchResultDialog(
+            apkLauncher.launch(app.packageName),
+            gameSession = app.type == AppType.PORT,
+        )
     }
 
     fun resumeRom(rom: Rom): DialogState? = resumeRom(rom, findMostRecentSlot(rom) ?: 0)
@@ -369,12 +373,22 @@ class LaunchManager(
         launchState.lastLaunched = rom
         val embeddedCorePath = getEmbeddedCorePath(rom)
         val launchFile = resolveLaunchFile(rom, extractArchives = embeddedCorePath != null)
-            ?: run { launchState.launching = false; launchState.lastLaunched = null; return null }
+            ?: run {
+                launchState.launching = false
+                launchState.lastLaunched = null
+                launchState.markGameEnded()
+                return null
+            }
         if (embeddedCorePath != null) {
             return launchEmbedded(rom.copy(path = launchFile), embeddedCorePath, resumeSlot, originalRomPath = rom.path.absolutePath)
         }
         val gameOverride = platformConfig.getGameOverride(rom.path.absolutePath)
-        val core = gameOverride?.coreId ?: platformConfig.getCoreName(rom.platformTag) ?: run { launchState.launching = false; launchState.lastLaunched = null; return null }
+        val core = gameOverride?.coreId ?: platformConfig.getCoreName(rom.platformTag) ?: run {
+            launchState.launching = false
+            launchState.lastLaunched = null
+            launchState.markGameEnded()
+            return null
+        }
         val raPackage = settings.retroArchPackage
         val result = if (RetroArchLauncher.isRicotta(raPackage)) {
             syncRetroArchConfig(File(settings.sdCardRoot))
@@ -391,15 +405,24 @@ class LaunchManager(
     private fun errorAndReset(dialog: DialogState): DialogState {
         launchState.launching = false
         launchState.lastLaunched = null
+        launchState.markGameEnded()
         return dialog
     }
 
-    private fun launchResultDialog(result: LaunchResult): DialogState? {
+    private fun launchResultDialog(
+        result: LaunchResult,
+        gameSession: Boolean = true,
+    ): DialogState? {
         val dialog = toLaunchDialog(result)
         // startActivity has either accepted or rejected the request at this point. Do not wait
         // for MainActivity.onResume to release the guard: on multi-display Android both the
         // launcher and game activities can remain resumed at the same time.
         launchState.launching = false
+        if (result == LaunchResult.Success && gameSession) {
+            launchState.markGameStarted()
+        } else if (result != LaunchResult.Success) {
+            launchState.markGameEnded()
+        }
         return dialog
     }
 

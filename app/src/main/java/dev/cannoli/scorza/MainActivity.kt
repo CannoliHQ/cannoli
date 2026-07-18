@@ -29,6 +29,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -53,9 +54,13 @@ import dev.cannoli.scorza.input.LauncherActions
 import dev.cannoli.scorza.input.runtime.ControllerBridge
 import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.ActivityDisplayRouter
+import dev.cannoli.scorza.launcher.BlackGameScreenActivity
 import dev.cannoli.scorza.launcher.ExternalGameSessionActivity
 import dev.cannoli.scorza.launcher.LaunchManager
 import dev.cannoli.scorza.launcher.noAnimationActivityOptions
+import dev.cannoli.scorza.launcher.shouldBlankGameScreen
+import dev.cannoli.scorza.launcher.shouldDimLauncherScreen
+import dev.cannoli.scorza.launcher.setLauncherWindowInputBlocked
 import dev.cannoli.scorza.libretro.LibretroActivity
 import dev.cannoli.scorza.libretro.RetroAchievementsManager
 import dev.cannoli.scorza.navigation.AppNavGraph
@@ -76,6 +81,8 @@ import dev.cannoli.scorza.updater.UpdateManager
 import dev.cannoli.ui.theme.CannoliTheme
 import javax.inject.Inject
 import javax.inject.Provider
+
+private const val DIMMED_LAUNCHER_BRIGHTNESS = 0.05f
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity(), ActivityActions {
@@ -144,6 +151,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
         }
     }
     private var coldStart = true
+    private var launcherInputBlocked = false
 
     private val storagePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -183,6 +191,9 @@ class MainActivity : ComponentActivity(), ActivityActions {
         // Belt-and-suspenders: ensure the launcher window does not hold FLAG_KEEP_SCREEN_ON,
         // so the system display timeout applies. The IGM activity manages its own flag.
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        lifecycleScope.launch {
+            launchState.gameActive.collect(::syncLauncherBrightness)
+        }
 
         @Suppress("DEPRECATION")
         setTaskDescription(
@@ -213,6 +224,12 @@ class MainActivity : ComponentActivity(), ActivityActions {
 
         setContent {
             val boot by bootSequencer.state.collectAsState()
+            LaunchedEffect(boot) {
+                if (boot is BootState.Ready) {
+                    syncBlackGameScreen()
+                    syncLauncherBrightness()
+                }
+            }
 
             val themeFont = if (boot is BootState.Ready) {
                 settingsViewModel.get().appSettings.collectAsState().value.fontFamily
@@ -366,6 +383,10 @@ class MainActivity : ComponentActivity(), ActivityActions {
      */
     private fun startStorageDependent() {
         settings.reload()
+        // This callback runs synchronously before BootSequencer exposes its Initializing state,
+        // so the idle game display is already black when the library animation begins.
+        syncBlackGameScreen()
+        syncLauncherBrightness()
         if (settings.sdCardRoot.isNotEmpty()) {
             dev.cannoli.scorza.util.InputLog.init(settings.sdCardRoot)
         }
@@ -407,12 +428,15 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Suppress("DEPRECATION")
     override fun onResume() {
         super.onResume()
+        syncLauncherBrightness()
         // Re-wire the dispatcher to launcher dispatch shape on each resume. LibretroActivity
         // overwrites these callbacks with IGM-specific wiring when it runs; we restore the
         // launcher's wiring when we come back.
-        router.wire(inputDispatcher)
-        registerControllerOsd()
-        menuNavigationPoller.start()
+        if (!launcherInputBlocked) {
+            router.wire(inputDispatcher)
+            registerControllerOsd()
+            menuNavigationPoller.start()
+        }
         bootSequencer.advance()
         launchState.launching = false
         val justExited = launchState.lastLaunched
@@ -424,6 +448,9 @@ class MainActivity : ComponentActivity(), ActivityActions {
         }
         if (justExited != null && !LibretroActivity.isRunning) {
             launchState.lastLaunched = null
+            if (activityDisplayRouter.gameLaunchDisplayId() == null) {
+                launchState.markGameEnded()
+            }
         }
         if (!LibretroActivity.isRunning) {
             syncScheduler.start()
@@ -443,6 +470,8 @@ class MainActivity : ComponentActivity(), ActivityActions {
         }
         settings.reload()
         settingsViewModel.get().load()
+        syncBlackGameScreen()
+        syncLauncherBrightness()
         val activeDialogState = nav.dialogState
         if (activeDialogState.value is DialogState.RAAccount && settings.raToken.isEmpty()) {
             activeDialogState.value = DialogState.None
@@ -475,6 +504,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
         if (!intent.getBooleanExtra(ExternalGameSessionActivity.EXTRA_GAME_SESSION_RETURN, false)) return
 
         launchState.launching = false
+        launchState.markGameEnded()
         val justExited = launchState.lastLaunched
         launchState.lastLaunched = null
         dev.cannoli.scorza.util.LaunchLog.write(
@@ -490,6 +520,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     }
 
     override fun onDestroy() {
+        dismissBlackGameScreen()
         controllerBridge.onDeviceAdded = null
         controllerBridge.onDeviceRemoved = null
         controllerBridge.stop(this)
@@ -510,6 +541,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (launcherInputBlocked) return true
         if (event.action == KeyEvent.ACTION_DOWN) {
             dev.cannoli.scorza.util.InputLog.write(
                 "[launcher dispatch] keyCode=${event.keyCode} source=0x${event.source.toString(16)}"
@@ -556,6 +588,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (launcherInputBlocked) return true
         val bootValOnKeyDown = bootSequencer.state.value
         if (!isReady && bootValOnKeyDown !is BootState.NeedsSetup && bootValOnKeyDown !is BootState.NeedsPermission) {
             if (bootValOnKeyDown is BootState.Error && AndroidGamepadKeyNames.isGamepadEvent(event)) {
@@ -607,6 +640,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        if (launcherInputBlocked) return true
         val bootValOnKeyUp = bootSequencer.state.value
         if (!isReady && bootValOnKeyUp !is BootState.NeedsSetup && bootValOnKeyUp !is BootState.NeedsPermission) return true
         val currentScreenForKey = nav.currentScreen
@@ -624,6 +658,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     }
 
     override fun onGenericMotionEvent(event: MotionEvent): Boolean {
+        if (launcherInputBlocked) return true
         val bootValOnMotion = bootSequencer.state.value
         if (!isReady && bootValOnMotion !is BootState.NeedsSetup && bootValOnMotion !is BootState.NeedsPermission) return super.onGenericMotionEvent(event)
         val currentScreenForMotion = nav.currentScreen
@@ -652,6 +687,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     }
 
     override fun dispatchGenericMotionEvent(event: android.view.MotionEvent): Boolean {
+        if (launcherInputBlocked) return true
         val csForListen = nav.currentScreen
         if (csForListen is LauncherScreen.EditButtons && editButtonsController.isListening) {
             val axes = listOf(0, 1, 11, 14, 15, 16, 17, 18, 22, 23)
@@ -729,6 +765,88 @@ class MainActivity : ComponentActivity(), ActivityActions {
 
     override fun applyLauncherDisplayPreference() {
         moveLauncherToPreferredDisplay(forcePrimaryWhenDisabled = true)
+        window.decorView.post {
+            syncBlackGameScreen()
+            syncLauncherBrightness()
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun syncLauncherBrightness(gameActive: Boolean = launchState.gameActive.value) {
+        val launcherDisplayId = windowManager.defaultDisplay.displayId
+        val dim = shouldDimLauncherScreen(
+            experimentalFeatures = settings.experimentalFeatures,
+            dualScreenLaunching = settings.dualScreenLaunching,
+            dimLauncherDuringGames = settings.dimLauncherDuringGames,
+            gameActive = gameActive,
+            gameDisplayId = activityDisplayRouter.gameLaunchDisplayId(),
+            launcherDisplayId = launcherDisplayId,
+        )
+        updateLauncherInputBlock(dim)
+        val targetBrightness = if (dim) {
+            DIMMED_LAUNCHER_BRIGHTNESS
+        } else {
+            WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+        }
+        if (window.attributes.screenBrightness == targetBrightness) return
+
+        window.attributes = window.attributes.apply {
+            screenBrightness = targetBrightness
+        }
+    }
+
+    private fun updateLauncherInputBlock(blocked: Boolean) {
+        if (launcherInputBlocked == blocked) return
+        launcherInputBlocked = blocked
+        setLauncherWindowInputBlocked(window, blocked)
+        if (blocked) {
+            router.cancelPendingInput()
+            stickAutoRepeat.stop()
+            menuNavigationPoller.stop()
+            portRouter.resetAllEvaluators()
+        } else if (
+            isReady && lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+        ) {
+            menuNavigationPoller.start()
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun syncBlackGameScreen() {
+        val launcherDisplayId = windowManager.defaultDisplay.displayId
+        val gameDisplayId = activityDisplayRouter.gameLaunchDisplayId()
+        val shouldShow = shouldBlankGameScreen(
+            experimentalFeatures = settings.experimentalFeatures,
+            dualScreenLaunching = settings.dualScreenLaunching,
+            topScreenBlackout = settings.topScreenBlackout,
+            gameDisplayId = gameDisplayId,
+            launcherDisplayId = launcherDisplayId,
+        )
+        if (!shouldShow) {
+            dismissBlackGameScreen()
+            return
+        }
+
+        val targetDisplayId = gameDisplayId ?: return
+        if (BlackGameScreenActivity.isShowingOn(targetDisplayId)) return
+
+        dismissBlackGameScreen()
+        try {
+            startActivity(
+                BlackGameScreenActivity.intent(this),
+                noAnimationActivityOptions(targetDisplayId),
+            )
+        } catch (e: RuntimeException) {
+            dismissBlackGameScreen()
+            dev.cannoli.scorza.util.ErrorLog.error(
+                "black game screen failed: display=$targetDisplayId",
+                e,
+            )
+        }
+    }
+
+    private fun dismissBlackGameScreen() {
+        BlackGameScreenActivity.finishIfRunning()
     }
 
     @Suppress("DEPRECATION")

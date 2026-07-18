@@ -68,7 +68,11 @@ class SettingsInputHandler @Inject constructor(
         if (settingsViewModel.state.value.inSubList) {
             val key = settingsViewModel.getSelectedItem()?.key
             settingsViewModel.cycleSelected(-1, repeatCount = nav.lastKeyRepeatCount)
-            if (key == "dual_screen_launching" || key == "experimental_features") {
+            if (key == "dual_screen_launching" ||
+                key == "top_screen_blackout" ||
+                key == "dim_launcher_during_games" ||
+                key == "experimental_features"
+            ) {
                 activityActions.applyLauncherDisplayPreference()
             }
             if (key == "release_channel") {
@@ -83,7 +87,11 @@ class SettingsInputHandler @Inject constructor(
         if (settingsViewModel.state.value.inSubList) {
             val key = settingsViewModel.getSelectedItem()?.key
             settingsViewModel.cycleSelected(1, repeatCount = nav.lastKeyRepeatCount)
-            if (key == "dual_screen_launching" || key == "experimental_features") {
+            if (key == "dual_screen_launching" ||
+                key == "top_screen_blackout" ||
+                key == "dim_launcher_during_games" ||
+                key == "experimental_features"
+            ) {
                 activityActions.applyLauncherDisplayPreference()
             }
             if (key == "release_channel") {
