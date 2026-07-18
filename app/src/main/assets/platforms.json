@@ -374,6 +374,7 @@
       { "package": "org.azahar_emu.azahar", "activity": "org.citra.citra_emu.activities.EmulationActivity", "extras": [{ "key": "SelectedGame", "kind": "path" }] },
       { "package": "io.github.azaharplus.android", "data": { "kind": "file_provider" } },
       { "package": "org.citra.citra_emu", "activity": "org.citra.citra_emu.activities.EmulationActivity", "extras": [{ "key": "SelectedGame", "kind": "path" }] },
+      { "package": "org.citra.emu", "activity": "org.citra.emu.ui.EmulationActivity", "extras": [{ "key": "GamePath", "kind": "path" }] },
       { "package": "org.citra.citra_emu.canary", "data": { "kind": "file_provider" } },
       { "package": "io.github.borked3ds.android", "activity": "io.github.borked3ds.android.activities.EmulationActivity" },
       { "package": "io.github.lime3ds.android", "data": { "kind": "file_provider" } },

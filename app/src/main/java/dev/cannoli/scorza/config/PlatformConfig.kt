@@ -537,11 +537,14 @@ class PlatformConfig(
     }
 
     private fun resolveAppLabel(pm: PackageManager, packageName: String): String {
+        // Some emulator forks deliberately keep the upstream application label. Prefer our
+        // package-specific name so variants such as Citra and Citra MMJ remain distinguishable.
+        knownAppLabels[packageName]?.let { return it }
         return try {
             val info = pm.getApplicationInfo(packageName, 0)
             pm.getApplicationLabel(info).toString()
         } catch (_: PackageManager.NameNotFoundException) {
-            knownAppLabels[packageName] ?: packageName
+            packageName
         }
     }
 
@@ -588,6 +591,7 @@ class PlatformConfig(
         "org.dolphinemu.mmjr" to "Dolphin MMJR2",
         "org.azahar_emu.azahar" to "Azahar",
         "org.citra.citra_emu" to "Citra",
+        "org.citra.emu" to "Citra MMJ",
         "io.github.lime3ds.android" to "Lime3DS",
         "com.panda3ds.pandroid" to "Panda3DS",
         "info.cemu.cemu" to "Cemu",
