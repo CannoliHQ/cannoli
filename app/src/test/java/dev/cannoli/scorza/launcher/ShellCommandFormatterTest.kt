@@ -53,6 +53,27 @@ class ShellCommandFormatterTest {
         )
     }
 
+    @Test fun `display id targets the requested screen`() {
+        val resolved = ResolvedIntent(
+            component = null,
+            packageName = "com.example",
+            action = "android.intent.action.VIEW",
+            dataUri = null,
+            mimeType = null,
+            flagsHex = "0x10000000",
+            extras = emptyList()
+        )
+        assertEquals(
+            listOf(
+                "am", "start", "--display", "0",
+                "-a", "android.intent.action.VIEW",
+                "-p", "com.example",
+                "-f", "0x10000000"
+            ),
+            ShellCommandFormatter.format(resolved, launchDisplayId = 0)
+        )
+    }
+
     @Test fun `data uri and mime are emitted`() {
         val resolved = ResolvedIntent(
             component = null,

@@ -2,7 +2,6 @@ package dev.cannoli.scorza
 
 import android.Manifest
 import android.app.ActivityManager
-import android.app.ActivityOptions
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -53,7 +52,10 @@ import dev.cannoli.scorza.input.InputTesterController
 import dev.cannoli.scorza.input.LauncherActions
 import dev.cannoli.scorza.input.runtime.ControllerBridge
 import dev.cannoli.scorza.launcher.InstalledCoreService
+import dev.cannoli.scorza.launcher.ActivityDisplayRouter
+import dev.cannoli.scorza.launcher.ExternalGameSessionActivity
 import dev.cannoli.scorza.launcher.LaunchManager
+import dev.cannoli.scorza.launcher.noAnimationActivityOptions
 import dev.cannoli.scorza.libretro.LibretroActivity
 import dev.cannoli.scorza.libretro.RetroAchievementsManager
 import dev.cannoli.scorza.navigation.AppNavGraph
@@ -96,6 +98,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var updateManager: UpdateManager
     @Inject lateinit var setupCoordinator: SetupCoordinator
     @Inject lateinit var launchManager: Provider<LaunchManager>
+    @Inject lateinit var activityDisplayRouter: ActivityDisplayRouter
     @Inject lateinit var launchState: dev.cannoli.scorza.launcher.LaunchState
     @Inject lateinit var installedCoreService: Provider<InstalledCoreService>
     @Inject lateinit var romsRepository: Provider<RomsRepository>
@@ -175,6 +178,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
             }
         }
         super.onCreate(savedInstanceState)
+        moveLauncherToPreferredDisplay()
 
         // Belt-and-suspenders: ensure the launcher window does not hold FLAG_KEEP_SCREEN_ON,
         // so the system display timeout applies. The IGM activity manages its own flag.
@@ -412,6 +416,12 @@ class MainActivity : ComponentActivity(), ActivityActions {
         bootSequencer.advance()
         launchState.launching = false
         val justExited = launchState.lastLaunched
+        if (justExited != null) {
+            dev.cannoli.scorza.util.LaunchLog.write(
+                "launcher resumed rom=${justExited.path.absolutePath} " +
+                    "display=${windowManager.defaultDisplay.displayId} libretroRunning=${LibretroActivity.isRunning}"
+            )
+        }
         if (justExited != null && !LibretroActivity.isRunning) {
             launchState.lastLaunched = null
         }
@@ -426,8 +436,8 @@ class MainActivity : ComponentActivity(), ActivityActions {
         hideSystemUI()
         if (LibretroActivity.isRunning) {
             val intent = Intent(this, LibretroActivity::class.java)
-            intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-            val opts = ActivityOptions.makeCustomAnimation(this, 0, 0).toBundle()
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+            val opts = noAnimationActivityOptions(activityDisplayRouter.gameLaunchDisplayId())
             startActivity(intent, opts)
             return
         }
@@ -456,6 +466,27 @@ class MainActivity : ComponentActivity(), ActivityActions {
             nav.pendingRecentlyPlayedReorder = false
             gameListViewModel.get().moveSelectedToTop()
         }
+    }
+
+    @Suppress("DEPRECATION")
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (!intent.getBooleanExtra(ExternalGameSessionActivity.EXTRA_GAME_SESSION_RETURN, false)) return
+
+        launchState.launching = false
+        val justExited = launchState.lastLaunched
+        launchState.lastLaunched = null
+        dev.cannoli.scorza.util.LaunchLog.write(
+            "launcher focus restored display=${windowManager.defaultDisplay.displayId} " +
+                "rom=${justExited?.path?.absolutePath ?: "<none>"}"
+        )
+        if (isReady) {
+            syncScheduler.start()
+            if (justExited != null) syncScheduler.syncNow()
+            launcherActions.get().refreshLauncherLists()
+        }
+        hideSystemUI()
     }
 
     override fun onDestroy() {
@@ -696,10 +727,36 @@ class MainActivity : ComponentActivity(), ActivityActions {
 
     override fun finishAffinity() = super.finishAffinity()
 
+    override fun applyLauncherDisplayPreference() {
+        moveLauncherToPreferredDisplay(forcePrimaryWhenDisabled = true)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun moveLauncherToPreferredDisplay(forcePrimaryWhenDisabled: Boolean = false) {
+        val targetDisplayId = activityDisplayRouter.preferredLauncherDisplayId(
+            forcePrimaryWhenDisabled = forcePrimaryWhenDisabled
+        ) ?: return
+        if (windowManager.defaultDisplay.displayId == targetDisplayId) return
+
+        val intent = Intent(this, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+        }
+        try {
+            startActivity(intent, noAnimationActivityOptions(targetDisplayId))
+        } catch (e: RuntimeException) {
+            dev.cannoli.scorza.util.ErrorLog.error(
+                "launcher display move failed: display=$targetDisplayId",
+                e,
+            )
+        }
+    }
+
     override fun restartApp() {
         val intent = packageManager.getLaunchIntentForPackage(packageName) ?: return
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-        val opts = ActivityOptions.makeCustomAnimation(this, 0, 0).toBundle()
+        val opts = noAnimationActivityOptions(
+            activityDisplayRouter.preferredLauncherDisplayId()
+        )
         startActivity(intent, opts)
         Runtime.getRuntime().exit(0)
     }

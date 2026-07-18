@@ -1,10 +1,8 @@
 package dev.cannoli.scorza.launcher
 
-import android.app.ActivityOptions
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.StrictMode
 import android.provider.Settings
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.cannoli.scorza.config.AppConfig
@@ -17,6 +15,7 @@ import javax.inject.Singleton
 class ApkLauncher @Inject constructor(
     @ApplicationContext private val context: Context,
     private val shellLauncher: ShellLauncher,
+    private val activityDisplayRouter: ActivityDisplayRouter,
 ) {
 
     var debugLog: (String) -> Unit = {}
@@ -36,7 +35,11 @@ class ApkLauncher @Inject constructor(
 
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
-        return context.startActivityNoAnim(intent, "Failed to launch app")
+        return context.startActivityNoAnim(
+            intent,
+            "Failed to launch app",
+            activityDisplayRouter.gameLaunchDisplayId(),
+        )
     }
 
     fun launchWithRom(packageName: String, romFile: File, config: AppConfig): LaunchResult {
@@ -48,7 +51,9 @@ class ApkLauncher @Inject constructor(
         val resolved = EmulatorIntentBuilder.resolve(context, config, romFile)
         return when (config.launchMethod) {
             LaunchMethod.INTENT -> dispatchIntent(resolved, config, romFile, packageName)
-            LaunchMethod.SHELL  -> shellLauncher.launch(ShellCommandFormatter.format(resolved))
+            LaunchMethod.SHELL -> shellLauncher.launch(
+                ShellCommandFormatter.format(resolved, activityDisplayRouter.gameLaunchDisplayId())
+            )
         }
     }
 
@@ -65,22 +70,14 @@ class ApkLauncher @Inject constructor(
             logExposedActivities(packageName)
             return launchViewWithFileProvider(packageName, romFile)
         }
-        val opts = ActivityOptions.makeCustomAnimation(context, 0, 0).toBundle()
-        val previousVmPolicy = if (resolved.dataUri?.scheme == "file") {
-            val current = StrictMode.getVmPolicy()
-            StrictMode.setVmPolicy(StrictMode.VmPolicy.Builder().build())
-            current
-        } else null
-        return try {
-            context.startActivity(intent, opts)
-            debugLog("  -> startActivity succeeded")
-            LaunchResult.Success
-        } catch (e: Exception) {
-            debugLog("  -> startActivity failed: ${e.javaClass.simpleName}: ${e.message}")
-            LaunchResult.Error(e.message ?: "Failed to launch emulator")
-        } finally {
-            previousVmPolicy?.let { StrictMode.setVmPolicy(it) }
-        }
+        val result = context.startActivityNoAnim(
+            intent,
+            "Failed to launch emulator",
+            activityDisplayRouter.gameLaunchDisplayId(),
+            logLabel = "emulator",
+        )
+        debugLog("  -> dispatch result=${result::class.simpleName}")
+        return result
     }
 
     private fun logExposedActivities(packageName: String) {
@@ -108,25 +105,22 @@ class ApkLauncher @Inject constructor(
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
 
-        val opts = ActivityOptions.makeCustomAnimation(context, 0, 0).toBundle()
-        return try {
-            context.startActivity(viewIntent, opts)
-            debugLog("  -> FileProvider VIEW startActivity succeeded")
-            LaunchResult.Success
-        } catch (_: Exception) {
-            debugLog("  -> FileProvider VIEW failed, retrying via getLaunchIntentForPackage")
-            val launchIntent = context.packageManager.getLaunchIntentForPackage(packageName)
-                ?: return LaunchResult.Error("No launch activity for $packageName")
-            launchIntent.apply {
+        val targetIntent = if (
+            context.packageManager.resolveActivity(viewIntent, PackageManager.MATCH_DEFAULT_ONLY) != null
+        ) {
+            viewIntent
+        } else {
+            debugLog("  -> FileProvider VIEW unresolved, using package launch intent")
+            context.packageManager.getLaunchIntentForPackage(packageName)?.apply {
                 data = uri
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            try {
-                context.startActivity(launchIntent, opts)
-                LaunchResult.Success
-            } catch (e: Exception) {
-                LaunchResult.Error(e.message ?: "Failed to launch emulator")
-            }
+            } ?: return LaunchResult.Error("No launch activity for $packageName")
         }
+        return context.startActivityNoAnim(
+            targetIntent,
+            "Failed to launch emulator",
+            activityDisplayRouter.gameLaunchDisplayId(),
+            logLabel = "emulator-fallback",
+        )
     }
 }

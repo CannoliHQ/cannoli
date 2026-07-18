@@ -9,7 +9,10 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class EmuLauncher @Inject constructor(@ApplicationContext private val context: Context) {
+class EmuLauncher @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val activityDisplayRouter: ActivityDisplayRouter,
+) {
 
     fun launch(romFile: File, packageName: String, activityName: String, action: String): LaunchResult {
         if (!context.isPackageInstalled(packageName)) {
@@ -24,6 +27,10 @@ class EmuLauncher @Inject constructor(@ApplicationContext private val context: C
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
 
-        return context.startActivityNoAnim(intent, "Failed to launch emulator")
+        return context.startActivityNoAnim(
+            intent,
+            "Failed to launch emulator",
+            activityDisplayRouter.gameLaunchDisplayId(),
+        )
     }
 }

@@ -21,10 +21,13 @@ sealed class ResolvedExtra {
 }
 
 object ShellCommandFormatter {
-    fun format(resolved: ResolvedIntent): List<String> {
+    fun format(resolved: ResolvedIntent, launchDisplayId: Int? = null): List<String> {
         validate(resolved)
         return buildList {
             add("am"); add("start")
+            launchDisplayId?.let {
+                add("--display"); add(it.toString())
+            }
             resolved.component?.let { c ->
                 add("-n"); add("${c.packageName}/${c.className}")
             }

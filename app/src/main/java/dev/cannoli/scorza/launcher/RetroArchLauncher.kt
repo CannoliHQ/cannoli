@@ -1,6 +1,5 @@
 package dev.cannoli.scorza.launcher
 
-import android.app.ActivityOptions
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -12,6 +11,8 @@ import dev.cannoli.igm.IgmDisplaySettings
 import dev.cannoli.igm.IgmInputMapping
 import dev.cannoli.igm.RICOTTA_PROTOCOL_VERSION
 import dev.cannoli.igm.RicottaLaunchParams
+import dev.cannoli.scorza.util.ErrorLog
+import dev.cannoli.scorza.util.LaunchLog
 import java.io.File
 
 sealed interface ProtocolVerdict {
@@ -37,6 +38,7 @@ data class RicottaIgm(
 class RetroArchLauncher(
     private val context: Context,
     private val getRetroArchPackage: () -> String,
+    private val activityDisplayRouter: ActivityDisplayRouter,
 ) {
     // Managed RicottaArch: structured, version-negotiated launch contract that drives the
     // shared Cannoli in-game menu.
@@ -79,7 +81,15 @@ class RetroArchLauncher(
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
 
-        return context.startActivityNoAnim(intent, "Failed to launch RicottaArch")
+        val launchDisplayId = activityDisplayRouter.gameLaunchDisplayId()
+        logExternalLaunch("ricotta", pkg, romFile, coreId, configPath, intent, launchDisplayId)
+
+        return context.startActivityNoAnim(
+            intent,
+            "Failed to launch RicottaArch",
+            launchDisplayId = launchDisplayId,
+            logLabel = "ricotta",
+        )
     }
 
     // Stock RetroArch (DIY): the classic RetroActivityFuture intent. The user owns RetroArch,
@@ -101,7 +111,37 @@ class RetroArchLauncher(
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
 
-        return context.startActivityNoAnim(intent, "Failed to launch RetroArch")
+        val launchDisplayId = activityDisplayRouter.gameLaunchDisplayId()
+        logExternalLaunch("retroarch", pkg, romFile, coreId, configPath, intent, launchDisplayId)
+
+        return context.startActivityNoAnim(
+            intent,
+            "Failed to launch RetroArch",
+            launchDisplayId = launchDisplayId,
+            logLabel = "retroarch",
+        )
+    }
+
+    private fun logExternalLaunch(
+        kind: String,
+        pkg: String,
+        romFile: File,
+        coreId: String,
+        configPath: String?,
+        intent: Intent,
+        launchDisplayId: Int?,
+    ) {
+        val resolved = context.packageManager.resolveActivity(
+            intent,
+            PackageManager.MATCH_DEFAULT_ONLY,
+        )?.activityInfo?.let { "${it.packageName}/${it.name}" } ?: "unresolved"
+        LaunchLog.write(
+            "$kind request pkg=$pkg resolved=$resolved core=$coreId " +
+                "rom=${romFile.absolutePath} exists=${romFile.exists()} readable=${romFile.canRead()} " +
+                "size=${romFile.length()} config=${configPath ?: "<none>"} " +
+                "displayPolicy=${launchDisplayId ?: "system-default"} " +
+                activityDisplayRouter.diagnosticSummary()
+        )
     }
 
     private fun readInstalledProtocol(pkg: String): Int = try {
@@ -125,11 +165,34 @@ class RetroArchLauncher(
 fun Context.isPackageInstalled(packageName: String): Boolean =
     packageManager.isPackageInstalled(packageName)
 
-fun Context.startActivityNoAnim(intent: Intent, fallbackMsg: String): LaunchResult = try {
-    startActivity(intent, ActivityOptions.makeCustomAnimation(this, 0, 0).toBundle())
-    LaunchResult.Success
-} catch (e: Exception) {
-    LaunchResult.Error(e.message ?: fallbackMsg)
+fun Context.startActivityNoAnim(
+    intent: Intent,
+    fallbackMsg: String,
+    launchDisplayId: Int? = null,
+    logLabel: String = "activity",
+): LaunchResult {
+    val component = intent.component?.flattenToShortString()
+        ?: intent.`package`
+        ?: intent.action
+        ?: "<implicit>"
+    LaunchLog.write(
+        "$logLabel dispatch component=$component display=${launchDisplayId ?: "system-default"} " +
+            "flags=0x${intent.flags.toString(16)} extras=${intent.extras?.keySet()?.sorted() ?: emptyList<String>()}"
+    )
+    if (packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY) == null) {
+        LaunchLog.write("$logLabel rejected unresolved component=$component")
+        return LaunchResult.Error(fallbackMsg)
+    }
+    return try {
+        val dispatchIntent = ExternalGameSessionActivity.wrap(this, intent, launchDisplayId)
+        startActivity(dispatchIntent, noAnimationActivityOptions(launchDisplayId))
+        LaunchLog.write("$logLabel accepted component=$component")
+        LaunchResult.Success
+    } catch (e: Exception) {
+        LaunchLog.error("$logLabel failed component=$component", e)
+        ErrorLog.error("$logLabel activity launch failed component=$component", e)
+        LaunchResult.Error(e.message ?: fallbackMsg)
+    }
 }
 
 fun Context.romFileProviderUri(file: File): Uri =

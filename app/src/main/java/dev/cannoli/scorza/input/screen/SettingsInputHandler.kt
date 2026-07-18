@@ -66,8 +66,12 @@ class SettingsInputHandler @Inject constructor(
 
     override fun onLeft() {
         if (settingsViewModel.state.value.inSubList) {
+            val key = settingsViewModel.getSelectedItem()?.key
             settingsViewModel.cycleSelected(-1, repeatCount = nav.lastKeyRepeatCount)
-            if (settingsViewModel.getSelectedItem()?.key == "release_channel") {
+            if (key == "dual_screen_launching" || key == "experimental_features") {
+                activityActions.applyLauncherDisplayPreference()
+            }
+            if (key == "release_channel") {
                 ioScope.launch { updateManager.checkForUpdate() }
             }
         } else {
@@ -77,8 +81,12 @@ class SettingsInputHandler @Inject constructor(
 
     override fun onRight() {
         if (settingsViewModel.state.value.inSubList) {
+            val key = settingsViewModel.getSelectedItem()?.key
             settingsViewModel.cycleSelected(1, repeatCount = nav.lastKeyRepeatCount)
-            if (settingsViewModel.getSelectedItem()?.key == "release_channel") {
+            if (key == "dual_screen_launching" || key == "experimental_features") {
+                activityActions.applyLauncherDisplayPreference()
+            }
+            if (key == "release_channel") {
                 ioScope.launch { updateManager.checkForUpdate() }
             }
         } else {

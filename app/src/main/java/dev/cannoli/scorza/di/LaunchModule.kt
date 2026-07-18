@@ -8,6 +8,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.launcher.ApkLauncher
+import dev.cannoli.scorza.launcher.ActivityDisplayRouter
 import dev.cannoli.scorza.launcher.EmuLauncher
 import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.LaunchManager
@@ -24,7 +25,12 @@ object LaunchModule {
     fun provideRetroArchLauncher(
         @ApplicationContext context: Context,
         settings: SettingsRepository,
-    ): RetroArchLauncher = RetroArchLauncher(context) { settings.retroArchPackage }
+        activityDisplayRouter: ActivityDisplayRouter,
+    ): RetroArchLauncher = RetroArchLauncher(
+        context,
+        { settings.retroArchPackage },
+        activityDisplayRouter,
+    )
 
     @Provides @Singleton
     fun provideLaunchManager(
@@ -36,9 +42,11 @@ object LaunchModule {
         apkLauncher: ApkLauncher,
         launchState: LaunchState,
         activeMappingHolder: dev.cannoli.scorza.input.runtime.ActiveMappingHolder,
+        activityDisplayRouter: ActivityDisplayRouter,
         installedCoreService: InstalledCoreService,
     ): LaunchManager = LaunchManager(
         context, settings, platformConfig,
-        retroArchLauncher, emuLauncher, apkLauncher, launchState, activeMappingHolder, installedCoreService
+        retroArchLauncher, emuLauncher, apkLauncher, launchState, activeMappingHolder,
+        activityDisplayRouter, installedCoreService
     )
 }
