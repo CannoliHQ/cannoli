@@ -9,6 +9,7 @@ import dev.cannoli.igm.IgmColors
 import dev.cannoli.igm.IgmDisplaySettings
 import dev.cannoli.igm.TimeFormatMode
 import dev.cannoli.scorza.config.CannoliPaths
+import dev.cannoli.scorza.config.EmulatorSource
 import dev.cannoli.scorza.input.runtime.confirmButton
 import dev.cannoli.scorza.input.runtime.labelSet
 import dev.cannoli.scorza.launcher.toIgmInputMapping
@@ -196,7 +197,7 @@ class LaunchManager(
         if (target !is LaunchTarget.RetroArch) return null
         val core = gameOverride?.coreId ?: platformConfig.getCoreName(rom.platformTag) ?: return null
         val runnerPref = gameOverride?.runner ?: platformConfig.getRunnerPreference(rom.platformTag)
-        if (runnerPref == "RetroArch" || runnerPref == "RicottaArch") return null
+        if (isExplicitExternalRunner(runnerPref)) return null
         return findEmbeddedCore(core)
     }
 
@@ -273,7 +274,7 @@ class LaunchManager(
                 } else {
                     val core = gameOverride?.coreId ?: platformConfig.getCoreName(rom.platformTag)
                     if (core != null) {
-                        if (runnerPref != "RetroArch" && runnerPref != "RicottaArch") {
+                        if (!isExplicitExternalRunner(runnerPref)) {
                             val embeddedCorePath = findEmbeddedCore(core)
                             debugLog("RetroArch target: core=$core runnerPref=$runnerPref embeddedCorePath=$embeddedCorePath")
                             if (embeddedCorePath != null) {
@@ -563,3 +564,7 @@ class LaunchManager(
         }
     }
 }
+
+internal fun isExplicitExternalRunner(runnerPreference: String?): Boolean =
+    runnerPreference != null &&
+        EmulatorSource.fromRunnerLabel(runnerPreference) == EmulatorSource.RetroArch
