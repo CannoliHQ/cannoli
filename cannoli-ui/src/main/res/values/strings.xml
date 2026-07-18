@@ -214,7 +214,7 @@
     <string name="romm_pair_failed">Pairing failed</string>
     <string name="romm_pair_rate_limited">Too many attempts, try again later</string>
     <string name="romm_unreachable">Could not reach server</string>
-    <string name="romm_pair_waiting">Approve this device in RomM</string>
+    <string name="romm_pair_waiting">Scan to pair this device</string>
     <string name="romm_pair_denied">Pairing request denied</string>
     <string name="romm_pair_expired">Pairing request expired</string>
     <string name="romm_server_too_old">RomM server is too old. Version 5.0 or newer is required.</string>
