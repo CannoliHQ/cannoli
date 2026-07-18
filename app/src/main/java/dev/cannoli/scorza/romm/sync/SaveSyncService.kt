@@ -572,6 +572,10 @@ class SaveSyncService(
         statusHolder.setErrors(failures)
         statusHolder.settle(enabled = syncEnabled(), online = reachable, pendingConflicts = pending, hadError = error)
         dev.cannoli.scorza.util.RommLog.write("=== sweep done: up=$up down=$down conflicts=$conflicts attempted=$attempted reachable=$reachable pending=$pending status=${statusHolder.state.value} error=$error ===")
+        if (statusHolder.state.value == SaveSyncStatus.OFFLINE) {
+            val cause = if (!online) "no validated network" else "RomM server unreachable"
+            dev.cannoli.scorza.util.RommLog.write("=== sweep: OFFLINE ($cause) online=$online reached=$reached attempted=$attempted ===")
+        }
         SyncSummary(up, down, conflicts)
     }
 
