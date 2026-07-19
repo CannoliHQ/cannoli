@@ -12,6 +12,7 @@
     <string name="label_firmware">FIRMWARE</string>
     <string name="label_choose">CHOOSE</string>
     <string name="label_close">CLOSE</string>
+    <string name="label_help">HELP</string>
     <string name="label_remove">REMOVE SHORTCUT</string>
     <string name="label_delete">DELETE</string>
     <string name="label_confirm">CONFIRM</string>
@@ -694,4 +695,20 @@
     <string name="conflict_yours">Yours</string>
     <string name="conflict_server">Server</string>
     <string name="conflict_older">older</string>
+
+    <!-- On-screen keyboard help overlay -->
+    <string name="kbd_help_title">Keyboard Controls</string>
+    <string name="kbd_help_group_type">Type</string>
+    <string name="kbd_help_group_cursor">Cursor</string>
+    <string name="kbd_help_group_action">Action</string>
+    <string name="kbd_help_move_selection">MOVE SELECTION</string>
+    <string name="kbd_help_press">TYPE KEY</string>
+    <string name="kbd_help_backspace">BACKSPACE</string>
+    <string name="kbd_help_space">SPACE</string>
+    <string name="kbd_help_shift">SHIFT / CAPS (TAP)</string>
+    <string name="kbd_help_symbols">SYMBOLS (HOLD)</string>
+    <string name="kbd_help_cursor_move">MOVE LEFT / RIGHT</string>
+    <string name="kbd_help_cursor_jump">JUMP TO START / END</string>
+    <string name="kbd_help_submit">SUBMIT</string>
+    <string name="kbd_help_cancel">CANCEL</string>
 </resources>

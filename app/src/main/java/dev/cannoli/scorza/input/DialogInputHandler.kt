@@ -108,7 +108,16 @@ class DialogInputHandler @Inject constructor(
     }
 
     override fun onMenu(): Boolean {
-        if (nav.dialogState.value != DialogState.None) return false
+        val ds = nav.dialogState.value
+        if (ds is KeyboardHost) {
+            nav.dialogState.value = DialogState.KeyboardHelp(ds, ds.keyboard.layout)
+            return true
+        }
+        if (ds is DialogState.KeyboardHelp) {
+            nav.dialogState.value = ds.restore
+            return true
+        }
+        if (ds != DialogState.None) return false
         if (isRommScreen()) {
             if (rommDownloader.queue.state.value.isEmpty()) return true
             nav.dialogState.value = DialogState.RommActionsMenu(hasDownloads = true)
@@ -1070,6 +1079,7 @@ class DialogInputHandler @Inject constructor(
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
         when (ds) {
+            is DialogState.KeyboardHelp -> nav.dialogState.value = ds.restore
             is KeyboardHost -> nav.dialogState.value = ds.withKeyboard(KeyboardController.backspace(ds.keyboard))
             is DialogState.ColorPicker -> {
                 val entries = settingsViewModel.getColorEntries()

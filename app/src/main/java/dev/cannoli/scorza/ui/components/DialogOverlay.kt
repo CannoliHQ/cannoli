@@ -45,6 +45,7 @@ import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.QuickInfoOverlay
 import dev.cannoli.ui.components.ColorPickerOverlay
 import dev.cannoli.ui.components.HexColorInputOverlay
+import dev.cannoli.ui.components.KeyboardHelpOverlay
 import dev.cannoli.ui.components.KeyboardOverlay
 import dev.cannoli.ui.components.List
 import dev.cannoli.ui.components.ListSection
@@ -190,6 +191,15 @@ fun DialogOverlay(
             KeyboardOverlay(
                 state = host.keyboard,
                 title = keyboardTitle,
+                buttonStyle = buttonStyle
+            )
+        }
+
+        is DialogState.KeyboardHelp -> {
+            KeyboardHelpOverlay(
+                layout = dialogState.layout,
+                titleFontSize = listFontSize,
+                titleLineHeight = listLineHeight,
                 buttonStyle = buttonStyle
             )
         }

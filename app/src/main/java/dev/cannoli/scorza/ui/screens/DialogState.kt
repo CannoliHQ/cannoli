@@ -1,6 +1,7 @@
 package dev.cannoli.scorza.ui.screens
 
 import dev.cannoli.ui.ELLIPSIS
+import dev.cannoli.ui.components.KeyboardLayout
 import dev.cannoli.ui.components.KeyboardState
 
 enum class EmulatorMappingStatus { READY, NOT_INSTALLED, NEEDS_SETUP }
@@ -83,6 +84,7 @@ sealed interface DialogState {
     ) : DialogState, KeyboardHost {
         override fun withKeyboard(keyboard: KeyboardState) = copy(keyboard = keyboard)
     }
+    data class KeyboardHelp(val restore: DialogState, val layout: KeyboardLayout) : DialogState
     data object QuitConfirm : DialogState
     data class UpdateDownload(val versionName: String, val changelog: String) : DialogState
     data object RestartRequired : DialogState
@@ -202,6 +204,7 @@ val DialogState.isFullScreen: Boolean
         is DialogState.NewCollectionInput,
         is DialogState.CollectionRenameInput,
         is DialogState.NewFolderInput,
+        is DialogState.KeyboardHelp,
         is DialogState.About,
         is DialogState.Kitchen,
         is DialogState.RAAccount,

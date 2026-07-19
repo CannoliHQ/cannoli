@@ -40,6 +40,7 @@ import dev.cannoli.ui.KEY_ENTER
 import dev.cannoli.ui.KEY_SHIFT
 import dev.cannoli.ui.KEY_SPACE
 import dev.cannoli.ui.KEY_SYMBOLS
+import dev.cannoli.ui.MENU_GLYPH
 import dev.cannoli.ui.R
 import dev.cannoli.ui.START_GLYPH
 import dev.cannoli.ui.theme.LocalCannoliColors
@@ -215,7 +216,8 @@ fun KeyboardOverlay(
         BottomBar(
             modifier = Modifier.align(Alignment.BottomCenter),
             leftItems = listOf(
-                buttonStyle.west to stringResource(R.string.label_cancel)
+                buttonStyle.west to stringResource(R.string.label_cancel),
+                MENU_GLYPH to stringResource(R.string.label_help)
             ),
             rightItems = listOf(
                 START_GLYPH to stringResource(R.string.label_confirm)
