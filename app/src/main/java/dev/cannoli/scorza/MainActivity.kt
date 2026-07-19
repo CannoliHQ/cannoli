@@ -511,6 +511,11 @@ class MainActivity : ComponentActivity(), ActivityActions {
         }
     }
 
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) window.decorView.post(::hideSystemUI)
+    }
+
     @Suppress("DEPRECATION")
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)

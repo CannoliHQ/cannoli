@@ -54,6 +54,11 @@ class BlackGameScreenActivity : ComponentActivity() {
         window.decorView.post(::returnFocusToLauncher)
     }
 
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        window.decorView.post(::hideSystemUI)
+    }
+
     override fun onDestroy() {
         if (activeActivity?.get() === this) activeActivity = null
         super.onDestroy()
@@ -101,12 +106,15 @@ class BlackGameScreenActivity : ComponentActivity() {
         }
         try {
             startActivity(launcherIntent, noAnimationActivityOptions(launcherDisplayId))
+            window.decorView.postDelayed(::hideSystemUI, SYSTEM_UI_REHIDE_DELAY_MS)
         } catch (e: RuntimeException) {
             ErrorLog.error("black game screen focus return failed", e)
         }
     }
 
     companion object {
+        private const val SYSTEM_UI_REHIDE_DELAY_MS = 150L
+
         @Volatile
         private var activeActivity: WeakReference<BlackGameScreenActivity>? = null
 

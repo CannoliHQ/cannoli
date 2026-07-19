@@ -1,8 +1,11 @@
 package dev.cannoli.scorza.launcher
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import androidx.test.core.app.ApplicationProvider
+import dev.cannoli.scorza.libretro.LibretroActivity
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
 import org.junit.Test
@@ -13,6 +16,16 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class ExternalGameSessionActivityTest {
+
+    @Test fun `embedded games stay in the black session task`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val activityInfo = context.packageManager.getActivityInfo(
+            ComponentName(context, LibretroActivity::class.java),
+            0,
+        )
+
+        assertEquals(ActivityInfo.LAUNCH_SINGLE_TOP, activityInfo.launchMode)
+    }
 
     @Test fun `single-screen launches keep their original intent`() {
         val context = ApplicationProvider.getApplicationContext<Context>()

@@ -2,10 +2,20 @@ package dev.cannoli.scorza.launcher
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import android.os.Bundle
 import android.os.StrictMode
+import android.view.KeyEvent
+import android.view.MotionEvent
+import android.view.View
+import android.view.ViewConfiguration
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import dagger.hilt.android.AndroidEntryPoint
 import dev.cannoli.scorza.MainActivity
 import dev.cannoli.scorza.util.LaunchLog
@@ -51,9 +61,10 @@ internal class GameSessionLifecycle(
 }
 
 /**
- * A short-lived task placed behind an externally launched game on the game display.
- * When that game exits, this activity resumes and explicitly focuses the existing launcher task
- * on the preferred launcher display.
+ * A reusable black task placed behind an externally launched game on the game display.
+ * When that game exits, this activity stays visible and explicitly focuses the existing launcher
+ * task on the preferred launcher display. Keeping this task alive avoids a visible cross-task
+ * close animation and lets the next launch reuse the already-black window.
  */
 @AndroidEntryPoint
 class ExternalGameSessionActivity : ComponentActivity() {
@@ -62,14 +73,39 @@ class ExternalGameSessionActivity : ComponentActivity() {
     @Inject lateinit var launchState: LaunchState
 
     private lateinit var sessionLifecycle: GameSessionLifecycle
+    private lateinit var tapGestureDetector: BlackScreenTapGestureDetector
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         sessionLifecycle = GameSessionLifecycle.restore(savedInstanceState)
+        tapGestureDetector = BlackScreenTapGestureDetector(
+            ViewConfiguration.get(this).scaledTouchSlop.toFloat()
+        )
+        window.apply {
+            setBackgroundDrawable(ColorDrawable(Color.BLACK))
+            clearFlags(
+                WindowManager.LayoutParams.FLAG_DIM_BEHIND or
+                    WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+            )
+        }
+        setContentView(View(this).apply { setBackgroundColor(Color.BLACK) })
+        hideSystemUI()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        sessionLifecycle = GameSessionLifecycle()
+        window.decorView.post(::dispatchSessionResume)
     }
 
     override fun onResume() {
         super.onResume()
+        hideSystemUI()
+        dispatchSessionResume()
+    }
+
+    private fun dispatchSessionResume() {
         when (sessionLifecycle.onResume()) {
             GameSessionResumeAction.LAUNCH_GAME -> window.decorView.post(::launchGame)
             GameSessionResumeAction.RETURN_TO_LAUNCHER -> window.decorView.post(::returnToLauncher)
@@ -85,6 +121,29 @@ class ExternalGameSessionActivity : ComponentActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         sessionLifecycle.save(outState)
         super.onSaveInstanceState(outState)
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        window.decorView.post(::hideSystemUI)
+    }
+
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (tapGestureDetector.onTouch(
+                actionMasked = event.actionMasked,
+                x = event.x,
+                y = event.y,
+                pointerCount = event.pointerCount,
+            )
+        ) {
+            window.decorView.post(::focusLauncher)
+        }
+        return true
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_DOWN) window.decorView.post(::focusLauncher)
+        return true
     }
 
     private fun launchGame() {
@@ -126,11 +185,15 @@ class ExternalGameSessionActivity : ComponentActivity() {
 
     private fun returnToLauncher() {
         launchState.markGameEnded()
+        focusLauncher(gameSessionReturn = true)
+    }
+
+    private fun focusLauncher(gameSessionReturn: Boolean = false) {
         val launcherDisplayId = activityDisplayRouter.preferredLauncherDisplayId(
             forcePrimaryWhenDisabled = true
         )
         val launcherIntent = Intent(this, MainActivity::class.java).apply {
-            putExtra(EXTRA_GAME_SESSION_RETURN, true)
+            if (gameSessionReturn) putExtra(EXTRA_GAME_SESSION_RETURN, true)
             addFlags(
                 Intent.FLAG_ACTIVITY_NEW_TASK or
                     Intent.FLAG_ACTIVITY_CLEAR_TOP or
@@ -146,7 +209,19 @@ class ExternalGameSessionActivity : ComponentActivity() {
         } catch (e: RuntimeException) {
             LaunchLog.error("game session launcher focus failed", e)
         }
-        finishAndRemoveTask()
+        // Keep this already-black activity visible on the game display. Removing or replacing its
+        // task produces an unavoidable cross-task wipe on Android 11+, while a later session
+        // launch can safely reuse it for the next game.
+        window.decorView.postDelayed(::hideSystemUI, SYSTEM_UI_REHIDE_DELAY_MS)
+    }
+
+    private fun hideSystemUI() {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            hide(WindowInsetsCompat.Type.systemBars())
+            systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
     }
 
     @Suppress("DEPRECATION")
@@ -156,6 +231,7 @@ class ExternalGameSessionActivity : ComponentActivity() {
     companion object {
         const val EXTRA_GAME_SESSION_RETURN = "dev.cannoli.scorza.extra.GAME_SESSION_RETURN"
         private const val EXTRA_TARGET_INTENT = "dev.cannoli.scorza.extra.GAME_TARGET_INTENT"
+        private const val SYSTEM_UI_REHIDE_DELAY_MS = 150L
 
         fun wrap(context: Context, target: Intent, gameDisplayId: Int?): Intent {
             if (gameDisplayId == null) return target
