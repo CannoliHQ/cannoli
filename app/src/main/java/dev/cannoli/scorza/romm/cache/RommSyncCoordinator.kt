@@ -45,9 +45,11 @@ class RommSyncCoordinator(
                 val cursor = if (full) null else db.getSyncState(KEY_CURSOR)
                 val ingested = mutableListOf<String?>()
 
-                val platformDtos = client.getPlatforms(updatedAfter = cursor)
+                // Always refresh the small platform catalog. Besides keeping platform metadata
+                // current, its ROM counts let a delta sync repair games that an older cursor may
+                // already have skipped without rebuilding the entire cache.
+                val platformDtos = client.getPlatforms()
                 val supported = platformMap.toDomain(platformDtos)
-                val supportedIds = supported.map { it.id }.toSet()
                 val updatedById = platformDtos.associate { it.id to it.updatedAt }
                 val rows = supported.map { it to updatedById[it.id] }
                 if (full) db.replacePlatforms(rows) else db.upsertPlatforms(rows)
@@ -60,6 +62,7 @@ class RommSyncCoordinator(
                     }
                     _progress.value = SyncProgress(supported.size, supported.size)
                 } else {
+                    val supportedIds = supported.mapTo(mutableSetOf()) { it.id }
                     deltaSweep(cursor, supportedIds, ingested)
                     val serverCounts = supported.associate { it.id to it.romCount }
                     val cachedCounts = db.gameCountsByPlatform()
