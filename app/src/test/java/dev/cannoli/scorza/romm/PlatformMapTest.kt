@@ -28,6 +28,20 @@ class PlatformMapTest {
         assertEquals(emptyList<RommPlatform>(), map.toDomain(listOf(dto(1, "snes", "SNES", 1))))
     }
 
+    @Test fun `falls back to canonical slug when filesystem slug is unknown`() {
+        val map = PlatformMap(
+            RommSlugMap.parse("""{"ngc":"GC"}"""),
+            isSupported = { it == "GC" },
+        )
+
+        val result = map.toDomain(
+            listOf(dto(15, "ngc", "Nintendo GameCube", 95).copy(fsSlug = "GC")),
+        )
+
+        assertEquals(listOf("GC"), result.map { it.cannoliTag })
+        assertEquals(95, result.single().romCount)
+    }
+
     @Test fun `maps firmware count from firmware list`() {
         val map = PlatformMap(slugMap, isSupported = { true })
         val result = map.toDomain(listOf(
