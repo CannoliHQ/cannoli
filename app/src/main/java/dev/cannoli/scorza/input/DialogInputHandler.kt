@@ -110,12 +110,11 @@ class DialogInputHandler @Inject constructor(
     override fun onMenu(): Boolean {
         if (nav.dialogState.value != DialogState.None) return false
         if (isRommScreen()) {
-            nav.dialogState.value = DialogState.RommActionsMenu(
-                hasDownloads = rommDownloader.queue.state.value.isNotEmpty(),
-            )
+            if (rommDownloader.queue.state.value.isEmpty()) return true
+            nav.dialogState.value = DialogState.RommActionsMenu(hasDownloads = true)
             return true
         }
-        if (!isLauncherHomeScreen()) return false
+        if (isQuickMenuBlockedScreen()) return false
         ioScope.launch {
             val count = saveSyncService.pendingConflictCount()
             val errorCount = saveSyncStatusHolder.errors.value.size
@@ -138,9 +137,11 @@ class DialogInputHandler @Inject constructor(
         return true
     }
 
-    private fun isLauncherHomeScreen(): Boolean = when (nav.currentScreen) {
-        is LauncherScreen.SystemList,
-        is LauncherScreen.GameList -> true
+    private fun isQuickMenuBlockedScreen(): Boolean = when (nav.currentScreen) {
+        is LauncherScreen.InputTester,
+        is LauncherScreen.EditButtons,
+        is LauncherScreen.ShortcutBinding,
+        is LauncherScreen.OnboardingPermissions -> true
         else -> false
     }
 
@@ -151,6 +152,8 @@ class DialogInputHandler @Inject constructor(
         is LauncherScreen.RommFirmwareList,
         is LauncherScreen.RommCollectionList,
         is LauncherScreen.RommCollectionGameList,
+        is LauncherScreen.RommCollectionGroups,
+        is LauncherScreen.RommVirtualTypes,
         is LauncherScreen.RommGameDetail -> true
         else -> false
     }
@@ -700,12 +703,6 @@ class DialogInputHandler @Inject constructor(
         when (dev.cannoli.scorza.ui.components.RommActionRow.visibleRows(ds.hasDownloads).getOrNull(ds.selectedIndex)) {
             dev.cannoli.scorza.ui.components.RommActionRow.DOWNLOADS -> {
                 nav.dialogState.value = DialogState.RommDownloads()
-            }
-            dev.cannoli.scorza.ui.components.RommActionRow.RETURN_TO_CANNOLI -> {
-                nav.dialogState.value = DialogState.None
-                rommDownloader.clearFinished()
-                while (isRommScreen()) nav.pop()
-                launcherActions.refreshLauncherLists()
             }
             else -> {}
         }
