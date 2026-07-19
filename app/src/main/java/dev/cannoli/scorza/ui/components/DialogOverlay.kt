@@ -1112,7 +1112,6 @@ val ROMM_ADVANCED_ROWS = listOf(R.string.romm_settings_rebuild, R.string.romm_se
 
 enum class RommActionRow(@androidx.annotation.StringRes val labelRes: Int) {
     DOWNLOADS(R.string.romm_download_queue),
-    RETURN_TO_CANNOLI(R.string.romm_return_to_cannoli),
     ;
     companion object {
         fun visibleRows(hasDownloads: Boolean): List<RommActionRow> =

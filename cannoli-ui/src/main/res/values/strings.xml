@@ -272,7 +272,6 @@
     <string name="romm_settings_rebuild">Rebuild Cache</string>
     <string name="romm_actions_title">RomM Quick Menu</string>
     <string name="romm_settings_title">RomM Settings</string>
-    <string name="romm_return_to_cannoli">Return to Cannoli</string>
     <string name="romm_platforms_title">Show Platforms</string>
     <string name="romm_platforms_empty">No platforms</string>
     <string name="romm_firmware_screen_title">%1$s Firmware</string>

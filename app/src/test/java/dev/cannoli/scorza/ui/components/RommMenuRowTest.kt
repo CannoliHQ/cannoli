@@ -5,14 +5,11 @@ import org.junit.Test
 
 class RommMenuRowTest {
     @Test fun `downloads row hidden when no downloads`() {
-        assertEquals(listOf(RommActionRow.RETURN_TO_CANNOLI), RommActionRow.visibleRows(false))
+        assertEquals(emptyList<RommActionRow>(), RommActionRow.visibleRows(false))
     }
 
     @Test fun `downloads row shown when downloads active`() {
-        assertEquals(
-            listOf(RommActionRow.DOWNLOADS, RommActionRow.RETURN_TO_CANNOLI),
-            RommActionRow.visibleRows(true),
-        )
+        assertEquals(listOf(RommActionRow.DOWNLOADS), RommActionRow.visibleRows(true))
     }
 
     @Test fun `save sync errors row only when enabled and errors present`() {

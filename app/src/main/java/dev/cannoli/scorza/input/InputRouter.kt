@@ -503,7 +503,11 @@ class InputRouter @Inject constructor(
                 }
             }
         },
-        onBack = {},
+        onBack = {
+            rommDownloader.clearFinished()
+            nav.pop()
+            launcherActions.refreshLauncherLists()
+        },
         onR1 = {
             nav.dialogState.value = DialogState.RenameInput(
                 gameName = "romm_global_search",
