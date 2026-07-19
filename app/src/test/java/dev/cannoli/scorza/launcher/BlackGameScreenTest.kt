@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.launcher
 
+import android.view.KeyEvent
 import android.view.MotionEvent
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -14,6 +15,47 @@ class BlackGameScreenTest {
         assertFalse(shouldBlankGameScreen(true, true, false, gameDisplayId = 0, launcherDisplayId = 4))
         assertFalse(shouldBlankGameScreen(true, true, true, gameDisplayId = null, launcherDisplayId = 4))
         assertFalse(shouldBlankGameScreen(true, true, true, gameDisplayId = 4, launcherDisplayId = 4))
+    }
+
+    @Test
+    fun `default home keeps the game display anchored during boot`() {
+        assertTrue(
+            shouldBlankGameScreen(
+                experimentalFeatures = true,
+                dualScreenLaunching = true,
+                topScreenBlackout = false,
+                cannoliIsDefaultHome = true,
+                gameDisplayId = 0,
+                launcherDisplayId = 4,
+            )
+        )
+    }
+
+    @Test
+    fun `black screen accounts for a pending launcher display move`() {
+        val launcherDisplayId = intendedLauncherDisplayId(
+            currentDisplayId = 0,
+            preferredDisplayId = 4,
+        )
+
+        assertTrue(
+            shouldBlankGameScreen(
+                experimentalFeatures = true,
+                dualScreenLaunching = true,
+                topScreenBlackout = true,
+                gameDisplayId = 0,
+                launcherDisplayId = launcherDisplayId,
+            )
+        )
+    }
+
+    @Test
+    fun `volume and media keys remain system owned`() {
+        assertTrue(isSystemMediaKey(KeyEvent.KEYCODE_VOLUME_UP))
+        assertTrue(isSystemMediaKey(KeyEvent.KEYCODE_VOLUME_DOWN))
+        assertTrue(isSystemMediaKey(KeyEvent.KEYCODE_VOLUME_MUTE))
+        assertTrue(isSystemMediaKey(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE))
+        assertFalse(isSystemMediaKey(KeyEvent.KEYCODE_DPAD_UP))
     }
 
     @Test

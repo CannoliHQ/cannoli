@@ -62,6 +62,8 @@ import dev.cannoli.scorza.launcher.BlackGameScreenActivity
 import dev.cannoli.scorza.launcher.ExternalGameSessionActivity
 import dev.cannoli.scorza.launcher.LaunchManager
 import dev.cannoli.scorza.launcher.launcherDimOverlayAlpha
+import dev.cannoli.scorza.launcher.isSystemMediaKey
+import dev.cannoli.scorza.launcher.intendedLauncherDisplayId
 import dev.cannoli.scorza.launcher.noAnimationActivityOptions
 import dev.cannoli.scorza.launcher.shouldBlankGameScreen
 import dev.cannoli.scorza.launcher.shouldDimLauncherScreen
@@ -190,6 +192,10 @@ class MainActivity : ComponentActivity(), ActivityActions {
             }
         }
         super.onCreate(savedInstanceState)
+        // When Cannoli is the system Home activity, keep a task covering the primary display
+        // before moving the launcher away. Otherwise Android immediately relaunches Home on the
+        // uncovered primary display and Main/Black activities ping-pong until boot completes.
+        syncBlackGameScreen()
         moveLauncherToPreferredDisplay()
 
         // Belt-and-suspenders: ensure the launcher window does not hold FLAG_KEEP_SCREEN_ON,
@@ -539,7 +545,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
     }
 
     override fun onDestroy() {
-        dismissBlackGameScreen()
         controllerBridge.onDeviceAdded = null
         controllerBridge.onDeviceRemoved = null
         controllerBridge.stop(this)
@@ -560,6 +565,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (isSystemMediaKey(event.keyCode)) return super.dispatchKeyEvent(event)
         if (launcherInputBlocked) return true
         if (event.action == KeyEvent.ACTION_DOWN) {
             dev.cannoli.scorza.util.InputLog.write(
@@ -607,6 +613,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (isSystemMediaKey(keyCode)) return super.onKeyDown(keyCode, event)
         if (launcherInputBlocked) return true
         val bootValOnKeyDown = bootSequencer.state.value
         if (!isReady && bootValOnKeyDown !is BootState.NeedsSetup && bootValOnKeyDown !is BootState.NeedsPermission) {
@@ -659,6 +666,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        if (isSystemMediaKey(keyCode)) return super.onKeyUp(keyCode, event)
         if (launcherInputBlocked) return true
         val bootValOnKeyUp = bootSequencer.state.value
         if (!isReady && bootValOnKeyUp !is BootState.NeedsSetup && bootValOnKeyUp !is BootState.NeedsPermission) return true
@@ -823,12 +831,16 @@ class MainActivity : ComponentActivity(), ActivityActions {
 
     @Suppress("DEPRECATION")
     private fun syncBlackGameScreen() {
-        val launcherDisplayId = windowManager.defaultDisplay.displayId
+        val launcherDisplayId = intendedLauncherDisplayId(
+            currentDisplayId = windowManager.defaultDisplay.displayId,
+            preferredDisplayId = activityDisplayRouter.preferredLauncherDisplayId(),
+        )
         val gameDisplayId = activityDisplayRouter.gameLaunchDisplayId()
         val shouldShow = shouldBlankGameScreen(
             experimentalFeatures = settings.experimentalFeatures,
             dualScreenLaunching = settings.dualScreenLaunching,
             topScreenBlackout = settings.topScreenBlackout,
+            cannoliIsDefaultHome = isCannoliDefaultHome(),
             gameDisplayId = gameDisplayId,
             launcherDisplayId = launcherDisplayId,
         )
@@ -857,6 +869,15 @@ class MainActivity : ComponentActivity(), ActivityActions {
 
     private fun dismissBlackGameScreen() {
         BlackGameScreenActivity.finishIfRunning()
+    }
+
+    private fun isCannoliDefaultHome(): Boolean {
+        val homeIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+        val resolved = packageManager.resolveActivity(
+            homeIntent,
+            PackageManager.MATCH_DEFAULT_ONLY,
+        )
+        return resolved?.activityInfo?.packageName == packageName
     }
 
     @Suppress("DEPRECATION")

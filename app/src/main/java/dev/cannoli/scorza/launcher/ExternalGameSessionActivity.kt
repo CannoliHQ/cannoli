@@ -142,6 +142,7 @@ class ExternalGameSessionActivity : ComponentActivity() {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (isSystemMediaKey(event.keyCode)) return super.dispatchKeyEvent(event)
         if (event.action == KeyEvent.ACTION_DOWN) window.decorView.post(::focusLauncher)
         return true
     }

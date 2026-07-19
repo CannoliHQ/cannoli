@@ -22,8 +22,8 @@ import javax.inject.Inject
 
 /**
  * A persistent black task behind games on the larger display.
- * Games naturally cover it while running; when it becomes visible again it returns input focus
- * to the launcher task on the smaller display.
+ * Games naturally cover it while running. A completed tap or non-system key returns input focus
+ * to the launcher task on the smaller display; merely resuming must not trigger a launch loop.
  */
 @AndroidEntryPoint
 class BlackGameScreenActivity : ComponentActivity() {
@@ -51,7 +51,6 @@ class BlackGameScreenActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         hideSystemUI()
-        window.decorView.post(::returnFocusToLauncher)
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -78,6 +77,7 @@ class BlackGameScreenActivity : ComponentActivity() {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (isSystemMediaKey(event.keyCode)) return super.dispatchKeyEvent(event)
         if (event.action == KeyEvent.ACTION_DOWN) {
             window.decorView.post(::returnFocusToLauncher)
         }
@@ -140,13 +140,17 @@ internal fun shouldBlankGameScreen(
     experimentalFeatures: Boolean,
     dualScreenLaunching: Boolean,
     topScreenBlackout: Boolean,
+    cannoliIsDefaultHome: Boolean = false,
     gameDisplayId: Int?,
     launcherDisplayId: Int,
 ): Boolean = experimentalFeatures &&
     dualScreenLaunching &&
-    topScreenBlackout &&
+    (topScreenBlackout || cannoliIsDefaultHome) &&
     gameDisplayId != null &&
     gameDisplayId != launcherDisplayId
+
+internal fun intendedLauncherDisplayId(currentDisplayId: Int, preferredDisplayId: Int?): Int =
+    preferredDisplayId ?: currentDisplayId
 
 /**
  * Defers the focus handoff until Android has delivered a complete tap. Moving focus on
