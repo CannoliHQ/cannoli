@@ -26,6 +26,23 @@ internal data class DisplaySizeRoute(
     val gameDisplayId: Int,
 )
 
+internal enum class LauncherDisplayTransition {
+    SYNC_IN_PLACE,
+    COVER_GAME_DISPLAY_THEN_MOVE,
+    MOVE_THEN_SYNC_ON_DESTINATION,
+}
+
+internal fun launcherDisplayTransition(
+    currentDisplayId: Int,
+    targetDisplayId: Int?,
+    gameDisplayId: Int?,
+): LauncherDisplayTransition = when {
+    targetDisplayId == null || targetDisplayId == currentDisplayId ->
+        LauncherDisplayTransition.SYNC_IN_PLACE
+    gameDisplayId != null -> LauncherDisplayTransition.COVER_GAME_DISPLAY_THEN_MOVE
+    else -> LauncherDisplayTransition.MOVE_THEN_SYNC_ON_DESTINATION
+}
+
 internal fun isDualScreenRoutingEnabled(
     experimentalFeatures: Boolean,
     dualScreenLaunching: Boolean,

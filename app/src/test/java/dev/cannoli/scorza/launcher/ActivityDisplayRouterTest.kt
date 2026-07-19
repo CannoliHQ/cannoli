@@ -12,6 +12,39 @@ import org.robolectric.annotation.Config
 @Config(sdk = [34])
 class ActivityDisplayRouterTest {
 
+    @Test fun `enabling covers the game display before moving Home away`() {
+        assertEquals(
+            LauncherDisplayTransition.COVER_GAME_DISPLAY_THEN_MOVE,
+            launcherDisplayTransition(
+                currentDisplayId = Display.DEFAULT_DISPLAY,
+                targetDisplayId = 4,
+                gameDisplayId = Display.DEFAULT_DISPLAY,
+            ),
+        )
+    }
+
+    @Test fun `disabling moves Home before removing the game display cover`() {
+        assertEquals(
+            LauncherDisplayTransition.MOVE_THEN_SYNC_ON_DESTINATION,
+            launcherDisplayTransition(
+                currentDisplayId = 4,
+                targetDisplayId = Display.DEFAULT_DISPLAY,
+                gameDisplayId = null,
+            ),
+        )
+    }
+
+    @Test fun `same display settings changes synchronize without relocation`() {
+        assertEquals(
+            LauncherDisplayTransition.SYNC_IN_PLACE,
+            launcherDisplayTransition(
+                currentDisplayId = 4,
+                targetDisplayId = 4,
+                gameDisplayId = Display.DEFAULT_DISPLAY,
+            ),
+        )
+    }
+
     @Test fun `dual-screen routing is gated by experimental features`() {
         assertEquals(false, isDualScreenRoutingEnabled(false, true))
         assertEquals(false, isDualScreenRoutingEnabled(true, false))

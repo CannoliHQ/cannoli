@@ -61,9 +61,11 @@ import dev.cannoli.scorza.launcher.ActivityDisplayRouter
 import dev.cannoli.scorza.launcher.BlackGameScreenActivity
 import dev.cannoli.scorza.launcher.ExternalGameSessionActivity
 import dev.cannoli.scorza.launcher.LaunchManager
+import dev.cannoli.scorza.launcher.LauncherDisplayTransition
 import dev.cannoli.scorza.launcher.launcherDimOverlayAlpha
 import dev.cannoli.scorza.launcher.isSystemMediaKey
 import dev.cannoli.scorza.launcher.intendedLauncherDisplayId
+import dev.cannoli.scorza.launcher.launcherDisplayTransition
 import dev.cannoli.scorza.launcher.noAnimationActivityOptions
 import dev.cannoli.scorza.launcher.shouldBlankGameScreen
 import dev.cannoli.scorza.launcher.shouldDimLauncherScreen
@@ -791,10 +793,34 @@ class MainActivity : ComponentActivity(), ActivityActions {
     override fun finishAffinity() = super.finishAffinity()
 
     override fun applyLauncherDisplayPreference() {
-        moveLauncherToPreferredDisplay(forcePrimaryWhenDisabled = true)
-        window.decorView.post {
-            syncBlackGameScreen()
-            syncLauncherDimming()
+        @Suppress("DEPRECATION")
+        val currentDisplayId = windowManager.defaultDisplay.displayId
+        val targetDisplayId = activityDisplayRouter.preferredLauncherDisplayId(
+            forcePrimaryWhenDisabled = true,
+        )
+        when (
+            launcherDisplayTransition(
+                currentDisplayId = currentDisplayId,
+                targetDisplayId = targetDisplayId,
+                gameDisplayId = activityDisplayRouter.gameLaunchDisplayId(),
+            )
+        ) {
+            LauncherDisplayTransition.SYNC_IN_PLACE -> {
+                syncBlackGameScreen()
+                syncLauncherDimming()
+            }
+            LauncherDisplayTransition.COVER_GAME_DISPLAY_THEN_MOVE -> {
+                // Enabling: cover the Home display before moving MainActivity away from it.
+                syncBlackGameScreen()
+                syncLauncherDimming()
+                moveLauncherToPreferredDisplay(forcePrimaryWhenDisabled = true)
+            }
+            LauncherDisplayTransition.MOVE_THEN_SYNC_ON_DESTINATION -> {
+                // Disabling: keep the black task in place until MainActivity reaches primary.
+                // The destination activity's create/resume path will dismiss it safely.
+                syncLauncherDimming()
+                moveLauncherToPreferredDisplay(forcePrimaryWhenDisabled = true)
+            }
         }
     }
 
@@ -850,9 +876,10 @@ class MainActivity : ComponentActivity(), ActivityActions {
         }
 
         val targetDisplayId = gameDisplayId ?: return
-        if (BlackGameScreenActivity.isShowingOn(targetDisplayId)) return
+        if (BlackGameScreenActivity.isShowingOrLaunchingOn(targetDisplayId)) return
 
         dismissBlackGameScreen()
+        BlackGameScreenActivity.markLaunchPending(targetDisplayId)
         try {
             startActivity(
                 BlackGameScreenActivity.intent(this),

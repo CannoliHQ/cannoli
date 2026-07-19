@@ -34,6 +34,7 @@ class BlackGameScreenActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         activeActivity = WeakReference(this)
+        pendingDisplayId = null
         tapGestureDetector = BlackScreenTapGestureDetector(
             ViewConfiguration.get(this).scaledTouchSlop.toFloat()
         )
@@ -118,15 +119,26 @@ class BlackGameScreenActivity : ComponentActivity() {
         @Volatile
         private var activeActivity: WeakReference<BlackGameScreenActivity>? = null
 
+        @Volatile
+        private var pendingDisplayId: Int? = null
+
         @Suppress("DEPRECATION")
         fun isShowingOn(displayId: Int): Boolean =
             activeActivity?.get()?.let { activity ->
                 !activity.isFinishing && activity.windowManager.defaultDisplay.displayId == displayId
             } == true
 
+        fun isShowingOrLaunchingOn(displayId: Int): Boolean =
+            isShowingOn(displayId) || pendingDisplayId == displayId
+
+        fun markLaunchPending(displayId: Int) {
+            pendingDisplayId = displayId
+        }
+
         fun finishIfRunning() {
             activeActivity?.get()?.finishAndRemoveTask()
             activeActivity = null
+            pendingDisplayId = null
         }
 
         fun intent(context: Context): Intent =
