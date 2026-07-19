@@ -2,8 +2,10 @@ package dev.cannoli.scorza
 
 import android.Manifest
 import android.app.ActivityManager
+import android.database.ContentObserver
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.hardware.display.DisplayManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -68,6 +70,7 @@ import dev.cannoli.scorza.launcher.intendedLauncherDisplayId
 import dev.cannoli.scorza.launcher.launcherDisplayTransition
 import dev.cannoli.scorza.launcher.noAnimationActivityOptions
 import dev.cannoli.scorza.launcher.shouldBlankGameScreen
+import dev.cannoli.scorza.launcher.shouldApplyDisplayAvailabilityChange
 import dev.cannoli.scorza.launcher.shouldDimLauncherScreen
 import dev.cannoli.scorza.launcher.setLauncherWindowInputBlocked
 import dev.cannoli.scorza.libretro.LibretroActivity
@@ -93,6 +96,10 @@ import javax.inject.Provider
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity(), ActivityActions {
+
+    companion object {
+        private const val DISPLAY_CHANGE_SETTLE_MS = 250L
+    }
 
     @Inject lateinit var settings: SettingsRepository
     @Inject lateinit var platformConfig: Provider<PlatformConfig>
@@ -160,6 +167,29 @@ class MainActivity : ComponentActivity(), ActivityActions {
     private var coldStart = true
     private var launcherInputBlocked = false
     private var launcherDimmed by mutableStateOf(false)
+    private val displayChangeHandler = Handler(Looper.getMainLooper())
+    private var displayListenerRegistered = false
+    private var secondaryDisplayModeObserverRegistered = false
+    private var lastDualScreenActive: Boolean? = null
+    private val displayChangeRunnable = Runnable {
+        val dualScreenActive = activityDisplayRouter.isDualScreenActive
+        if (!shouldApplyDisplayAvailabilityChange(
+                defaultDisplayActive = activityDisplayRouter.isDefaultDisplayActive,
+                dualScreenActive = dualScreenActive,
+                lastDualScreenActive = lastDualScreenActive,
+                gameActive = launchState.gameActive.value,
+            )
+        ) return@Runnable
+        applyLauncherDisplayPreference()
+    }
+    private val displayListener = object : DisplayManager.DisplayListener {
+        override fun onDisplayAdded(displayId: Int) = scheduleDisplayAvailabilitySync()
+        override fun onDisplayRemoved(displayId: Int) = scheduleDisplayAvailabilitySync()
+        override fun onDisplayChanged(displayId: Int) = scheduleDisplayAvailabilitySync()
+    }
+    private val secondaryDisplayModeObserver = object : ContentObserver(displayChangeHandler) {
+        override fun onChange(selfChange: Boolean) = scheduleDisplayAvailabilitySync()
+    }
 
     private val storagePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -194,6 +224,18 @@ class MainActivity : ComponentActivity(), ActivityActions {
             }
         }
         super.onCreate(savedInstanceState)
+        lastDualScreenActive = activityDisplayRouter.isDualScreenActive
+        getSystemService(DisplayManager::class.java).registerDisplayListener(
+            displayListener,
+            displayChangeHandler,
+        )
+        displayListenerRegistered = true
+        contentResolver.registerContentObserver(
+            activityDisplayRouter.secondaryDisplayModeUri,
+            false,
+            secondaryDisplayModeObserver,
+        )
+        secondaryDisplayModeObserverRegistered = true
         // When Cannoli is the system Home activity, keep a task covering the primary display
         // before moving the launcher away. Otherwise Android immediately relaunches Home on the
         // uncovered primary display and Main/Black activities ping-pong until boot completes.
@@ -204,7 +246,10 @@ class MainActivity : ComponentActivity(), ActivityActions {
         // so the system display timeout applies. The IGM activity manages its own flag.
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         lifecycleScope.launch {
-            launchState.gameActive.collect(::syncLauncherDimming)
+            launchState.gameActive.collect { gameActive ->
+                syncLauncherDimming(gameActive)
+                if (!gameActive) scheduleDisplayAvailabilitySync()
+            }
         }
 
         @Suppress("DEPRECATION")
@@ -547,6 +592,15 @@ class MainActivity : ComponentActivity(), ActivityActions {
     }
 
     override fun onDestroy() {
+        displayChangeHandler.removeCallbacks(displayChangeRunnable)
+        if (displayListenerRegistered) {
+            getSystemService(DisplayManager::class.java).unregisterDisplayListener(displayListener)
+            displayListenerRegistered = false
+        }
+        if (secondaryDisplayModeObserverRegistered) {
+            contentResolver.unregisterContentObserver(secondaryDisplayModeObserver)
+            secondaryDisplayModeObserverRegistered = false
+        }
         controllerBridge.onDeviceAdded = null
         controllerBridge.onDeviceRemoved = null
         controllerBridge.stop(this)
@@ -798,11 +852,13 @@ class MainActivity : ComponentActivity(), ActivityActions {
         val targetDisplayId = activityDisplayRouter.preferredLauncherDisplayId(
             forcePrimaryWhenDisabled = true,
         )
+        val dualScreenActive = activityDisplayRouter.isDualScreenActive
+        lastDualScreenActive = dualScreenActive
         when (
             launcherDisplayTransition(
                 currentDisplayId = currentDisplayId,
                 targetDisplayId = targetDisplayId,
-                gameDisplayId = activityDisplayRouter.gameLaunchDisplayId(),
+                dualScreenActive = dualScreenActive,
             )
         ) {
             LauncherDisplayTransition.SYNC_IN_PLACE -> {
@@ -822,6 +878,11 @@ class MainActivity : ComponentActivity(), ActivityActions {
                 moveLauncherToPreferredDisplay(forcePrimaryWhenDisabled = true)
             }
         }
+    }
+
+    private fun scheduleDisplayAvailabilitySync() {
+        displayChangeHandler.removeCallbacks(displayChangeRunnable)
+        displayChangeHandler.postDelayed(displayChangeRunnable, DISPLAY_CHANGE_SETTLE_MS)
     }
 
     @Suppress("DEPRECATION")
