@@ -1893,9 +1893,8 @@ class LibretroActivity : ComponentActivity() {
 
     private fun scanOverlayImages() {
         val dir = dev.cannoli.scorza.config.CannoliPaths(cannoliRoot).overlaysFor(platformTag)
-        val exts = setOf("png", "jpg", "jpeg")
         overlayImages = dir.listFiles()
-            ?.filter { it.isFile && it.extension.lowercase(java.util.Locale.ROOT) in exts }
+            ?.filter { it.isFile && it.extension.equals("png", ignoreCase = true) }
             ?.sortedBy { it.name }
             ?.map { it.name }
             ?: emptyList()
