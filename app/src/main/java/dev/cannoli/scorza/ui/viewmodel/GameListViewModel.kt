@@ -17,6 +17,7 @@ import dev.cannoli.scorza.model.CollectionType
 import dev.cannoli.scorza.model.GameSearchQuery
 import dev.cannoli.scorza.model.ListItem
 import dev.cannoli.scorza.util.TextNormalizer
+import dev.cannoli.scorza.util.sortedNatural
 import dev.cannoli.ui.components.OsdController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -32,16 +33,16 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 
-internal fun matchesSearch(item: ListItem, term: String): Boolean {
-    val name = when (item) {
-        is ListItem.RomItem -> item.rom.displayName
-        is ListItem.AppItem -> item.app.displayName
-        is ListItem.SubfolderItem -> item.name
-        is ListItem.CollectionItem -> item.collection.displayName
-        is ListItem.ChildCollectionItem -> item.collection.displayName
-    }
-    return TextNormalizer.normalize(name).contains(TextNormalizer.normalize(term))
+internal fun displayNameOf(item: ListItem): String = when (item) {
+    is ListItem.RomItem -> item.rom.displayName
+    is ListItem.AppItem -> item.app.displayName
+    is ListItem.SubfolderItem -> item.name
+    is ListItem.CollectionItem -> item.collection.displayName
+    is ListItem.ChildCollectionItem -> item.collection.displayName
 }
+
+internal fun matchesSearch(item: ListItem, term: String): Boolean =
+    TextNormalizer.normalize(displayNameOf(item)).contains(TextNormalizer.normalize(term))
 
 internal fun applyItemFilter(items: List<ListItem>, term: String?): List<ListItem> =
     if (term.isNullOrBlank()) items else items.filter { matchesSearch(it, term) }
@@ -125,6 +126,7 @@ class GameListViewModel @Inject constructor(
         val collectionId: Long? = null,
         val isCollectionsList: Boolean = false,
         val isGlobalSearch: Boolean = false,
+        val globalSearchQuery: String? = null,
         val reorderMode: Boolean = false,
         val reorderOriginalIndex: Int = -1,
         val multiSelectMode: Boolean = false,
@@ -392,7 +394,11 @@ class GameListViewModel @Inject constructor(
         }
     }
 
-    fun loadGlobalSearch(query: GameSearchQuery, onReady: () -> Unit = {}) {
+    fun loadGlobalSearch(
+        query: GameSearchQuery,
+        preserveId: String? = null,
+        onReady: () -> Unit = {},
+    ) {
         breadcrumbStack.clear()
         indexStack.clear()
         scope.launch(Dispatchers.IO) {
@@ -405,16 +411,23 @@ class GameListViewModel @Inject constructor(
                 val collections = collectionsRepository.topLevel()
                     .filter { TextNormalizer.normalize(it.displayName).contains(TextNormalizer.normalize(term)) }
                     .map { ListItem.CollectionItem(Collection(it.id, it.displayName)) }
-                val items = games + apps + collections
+                val favRoms = collectionsRepository.favoriteRomIds()
+                val favApps = collectionsRepository.favoriteAppIds()
+                val sorted = (games + apps + collections).sortedNatural { displayNameOf(it) }
+                val (favs, rest) = sorted.partition { isFavorite(it, favRoms, favApps) }
+                val items = favs + rest
+                val selectedIndex = preserveId?.let { findIndexById(items, it) } ?: 0
                 _state.value = State(
                     breadcrumb = resources.getString(R.string.global_search_title, term),
                     items = items,
                     allItems = items,
-                    favoriteRomIds = collectionsRepository.favoriteRomIds(),
-                    favoriteAppIds = collectionsRepository.favoriteAppIds(),
-                    selectedIndex = 0,
+                    favoriteRomIds = favRoms,
+                    favoriteAppIds = favApps,
+                    selectedIndex = selectedIndex,
+                    scrollTarget = -1,
                     isLoading = false,
                     isGlobalSearch = true,
+                    globalSearchQuery = term,
                 )
             } finally {
                 withContext(Dispatchers.Main) { onReady() }
@@ -435,21 +448,26 @@ class GameListViewModel @Inject constructor(
 
     fun reload(onReady: () -> Unit = {}) {
         val current = _state.value
+        val term = current.searchTerm
         val preserveIndex = current.selectedIndex
         val preserveScroll = firstVisibleIndex
         val prevCount = current.items.size
         val preserveId = stableIdOf(current.items.getOrNull(preserveIndex))
+        val done: () -> Unit = {
+            if (term != null) reapplySearch(term, preserveId, preserveIndex, preserveScroll, prevCount)
+            onReady()
+        }
         if (current.isCollectionsList) {
             collectionsListSaved = SavedPos(preserveId, preserveIndex, preserveScroll)
             collectionsListItemCount = prevCount
-            loadCollectionsList(restoreIndex = true, onReady = onReady)
+            loadCollectionsList(restoreIndex = true, onReady = done)
         } else if (current.isCollection && current.collectionId != null) {
             scope.launch(Dispatchers.IO) {
                 loadCollectionByIdInternal(current.collectionId) {
                     val s = _state.value
                     val (idx, scroll) = reloadPosition(s.items, preserveId, preserveIndex, preserveScroll, prevCount)
                     _state.value = s.copy(selectedIndex = idx, scrollTarget = scroll)
-                    onReady()
+                    done()
                 }
             }
         } else if (current.platformTag == "tools" || current.platformTag == "ports") {
@@ -457,15 +475,25 @@ class GameListViewModel @Inject constructor(
                 val s = _state.value
                 val (idx, scroll) = reloadPosition(s.items, preserveId, preserveIndex, preserveScroll, prevCount = -1)
                 _state.value = s.copy(selectedIndex = idx, scrollTarget = scroll)
-                onReady()
+                done()
             }
         } else if (current.platformTag == "recently_played") {
             _state.value = current.copy(items = emptyList(), isLoading = true)
-            loadRecentlyPlayed(onReady)
+            loadRecentlyPlayed(done)
         } else if (current.platformTags.isNotEmpty()) {
-            loadGames(current.platformTag, current.platformTags, current.subfolderPath, preserveIndex, preserveScroll, prevCount, preserveId, onReady)
+            loadGames(current.platformTag, current.platformTags, current.subfolderPath, preserveIndex, preserveScroll, prevCount, preserveId, done)
+        } else if (current.isGlobalSearch && current.globalSearchQuery != null) {
+            loadGlobalSearch(GameSearchQuery(current.globalSearchQuery), preserveId, done)
         } else {
-            onReady()
+            done()
+        }
+    }
+
+    private fun reapplySearch(term: String, preserveId: String?, preserveIndex: Int, preserveScroll: Int, prevCount: Int) {
+        _state.update { s ->
+            val filtered = applyItemFilter(s.allItems, term)
+            val (idx, scroll) = reloadPosition(filtered, preserveId, preserveIndex, preserveScroll, prevCount)
+            s.copy(searchTerm = term, items = filtered, selectedIndex = idx, scrollTarget = scroll)
         }
     }
 
@@ -518,6 +546,10 @@ class GameListViewModel @Inject constructor(
                 (current.isCollection && current.isFavorites)
             if (isFav) collectionsRepository.removeMember(favId, ref)
             else collectionsRepository.addMember(favId, ref)
+            if (current.isGlobalSearch) {
+                withContext(Dispatchers.Main) { reload(onDone) }
+                return@launch
+            }
             val newItems = if (current.isCollection && current.collectionId != null) {
                 val romIds = collectionsRepository.romIdsIn(current.collectionId)
                 val appIds = collectionsRepository.appIdsIn(current.collectionId)
@@ -539,12 +571,13 @@ class GameListViewModel @Inject constructor(
                 val freshFavs = collectionsRepository.favoriteAppIds()
                 newItems.sortedBy { (it as? ListItem.AppItem)?.app?.id !in freshFavs }
             } else newItems
-            val newIndex = sortedItems.indexOfFirst { itemRef(it) == ref }
-                .let { if (it >= 0) it else oldIndex.coerceAtMost(sortedItems.lastIndex.coerceAtLeast(0)) }
+            val visible = applyItemFilter(sortedItems, current.searchTerm)
+            val newIndex = visible.indexOfFirst { itemRef(it) == ref }
+                .let { if (it >= 0) it else oldIndex.coerceAtMost(visible.lastIndex.coerceAtLeast(0)) }
             _state.value = current.copy(
-                items = sortedItems,
+                items = visible,
                 allItems = sortedItems,
-                searchTerm = null,
+                searchTerm = current.searchTerm,
                 favoriteRomIds = collectionsRepository.favoriteRomIds(),
                 favoriteAppIds = collectionsRepository.favoriteAppIds(),
                 selectedIndex = newIndex,
@@ -571,11 +604,10 @@ class GameListViewModel @Inject constructor(
     fun enterMultiSelect() {
         _state.update { current ->
             if (current.reorderMode || current.multiSelectMode) return@update current
-            val base = if (current.searchTerm != null) current.copy(searchTerm = null, items = current.allItems) else current
-            val item = base.items.getOrNull(base.selectedIndex)
+            val item = current.items.getOrNull(current.selectedIndex)
             val initial = if (item != null && item !is ListItem.SubfolderItem && item !is ListItem.ChildCollectionItem)
-                setOf(base.selectedIndex) else emptySet()
-            base.copy(multiSelectMode = true, checkedIndices = initial)
+                setOf(current.selectedIndex) else emptySet()
+            current.copy(multiSelectMode = true, checkedIndices = initial)
         }
     }
 
@@ -616,9 +648,8 @@ class GameListViewModel @Inject constructor(
         _state.update { current ->
             val isApkList = current.platformTag == "tools" || current.platformTag == "ports"
             val canReorder = current.isCollectionsList || isApkList || current.isCollection
-            if (!canReorder || current.items.isEmpty()) return@update current
-            val base = if (current.searchTerm != null) current.copy(searchTerm = null, items = current.allItems) else current
-            base.copy(reorderMode = true, reorderOriginalIndex = base.selectedIndex)
+            if (!canReorder || current.items.isEmpty() || current.searchTerm != null) return@update current
+            current.copy(reorderMode = true, reorderOriginalIndex = current.selectedIndex)
         }
     }
 
@@ -655,11 +686,8 @@ class GameListViewModel @Inject constructor(
         return true
     }
 
-    private fun isItemFavorited(current: State, item: ListItem): Boolean = when (item) {
-        is ListItem.RomItem -> item.rom.id in current.favoriteRomIds
-        is ListItem.AppItem -> item.app.id in current.favoriteAppIds
-        else -> false
-    }
+    private fun isItemFavorited(current: State, item: ListItem): Boolean =
+        isFavorite(item, current.favoriteRomIds, current.favoriteAppIds)
 
     private fun swapAt(current: State, a: Int, b: Int): State {
         val items = current.items.toMutableList()
@@ -753,14 +781,14 @@ class GameListViewModel @Inject constructor(
         val favRoms = collectionsRepository.favoriteRomIds()
         val favApps = collectionsRepository.favoriteAppIds()
         val (subfolders, others) = items.partition { it is ListItem.SubfolderItem || it is ListItem.ChildCollectionItem }
-        val (favs, rest) = others.partition { item ->
-            when (item) {
-                is ListItem.RomItem -> item.rom.id in favRoms
-                is ListItem.AppItem -> item.app.id in favApps
-                else -> false
-            }
-        }
+        val (favs, rest) = others.partition { isFavorite(it, favRoms, favApps) }
         return subfolders + favs + rest
+    }
+
+    private fun isFavorite(item: ListItem, favRoms: Set<Long>, favApps: Set<Long>): Boolean = when (item) {
+        is ListItem.RomItem -> item.rom.id in favRoms
+        is ListItem.AppItem -> item.app.id in favApps
+        else -> false
     }
 
     private fun itemRef(item: ListItem): LibraryRef? = when (item) {
