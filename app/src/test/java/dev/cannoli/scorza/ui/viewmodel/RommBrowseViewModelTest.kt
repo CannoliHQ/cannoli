@@ -163,21 +163,21 @@ class RommBrowseViewModelTest {
 
     @Test fun `enterMultiSelect pre-checks a remote row`() = runTest {
         val vm = loadedVm()
-        vm.enterMultiSelect(2)
+        vm.enterMultiSelect(RommBrowseViewModel.MultiSelectSource.PLATFORM, 2)
         assertEquals(true, vm.isMultiSelect())
         assertEquals(setOf(2), vm.checkedIds.value)
     }
 
     @Test fun `enterMultiSelect does not pre-check a present row`() = runTest {
         val vm = loadedVm()
-        vm.enterMultiSelect(1)
+        vm.enterMultiSelect(RommBrowseViewModel.MultiSelectSource.PLATFORM, 1)
         assertEquals(true, vm.isMultiSelect())
         assertEquals(emptySet<Int>(), vm.checkedIds.value)
     }
 
     @Test fun `toggleChecked adds and removes remote rows`() = runTest {
         val vm = loadedVm()
-        vm.enterMultiSelect(null)
+        vm.enterMultiSelect(RommBrowseViewModel.MultiSelectSource.PLATFORM, null)
         vm.toggleChecked(2)
         assertEquals(setOf(2), vm.checkedIds.value)
         vm.toggleChecked(2)
@@ -186,23 +186,23 @@ class RommBrowseViewModelTest {
 
     @Test fun `toggleChecked ignores present rows`() = runTest {
         val vm = loadedVm()
-        vm.enterMultiSelect(null)
+        vm.enterMultiSelect(RommBrowseViewModel.MultiSelectSource.PLATFORM, null)
         vm.toggleChecked(1)
         assertEquals(emptySet<Int>(), vm.checkedIds.value)
     }
 
-    @Test fun `confirmMultiSelect returns checked games and clears state`() = runTest {
+    @Test fun `confirmMultiSelect returns checked ids and clears state`() = runTest {
         val vm = loadedVm()
-        vm.enterMultiSelect(2)
-        val games = vm.confirmMultiSelect()
-        assertEquals(listOf(2), games.map { it.id })
+        vm.enterMultiSelect(RommBrowseViewModel.MultiSelectSource.PLATFORM, 2)
+        val ids = vm.confirmMultiSelect()
+        assertEquals(setOf(2), ids)
         assertEquals(false, vm.isMultiSelect())
         assertEquals(emptySet<Int>(), vm.checkedIds.value)
     }
 
     @Test fun `cancelMultiSelect clears state`() = runTest {
         val vm = loadedVm()
-        vm.enterMultiSelect(2)
+        vm.enterMultiSelect(RommBrowseViewModel.MultiSelectSource.PLATFORM, 2)
         vm.cancelMultiSelect()
         assertEquals(false, vm.isMultiSelect())
         assertEquals(emptySet<Int>(), vm.checkedIds.value)

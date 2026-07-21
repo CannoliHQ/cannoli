@@ -202,6 +202,13 @@ class RommBrowseViewModel(
         }
     }
 
+    suspend fun refreshCollectionLocalState() {
+        val database = db ?: return
+        val loaded = _collectionGames.value ?: return
+        if (loaded.rows.isEmpty()) return
+        _collectionGames.value = loaded.copy(rows = foldCollectionRows(database, loaded.id, loaded.search))
+    }
+
     suspend fun refreshLocalState() {
         val platform = current ?: return
         val loaded = _games.value ?: return
@@ -236,8 +243,13 @@ class RommBrowseViewModel(
 
     fun isMultiSelect(): Boolean = _multiSelect.value
 
-    fun enterMultiSelect(preCheckId: Int?) {
+    enum class MultiSelectSource { PLATFORM, COLLECTION }
+
+    private var multiSelectSource = MultiSelectSource.PLATFORM
+
+    fun enterMultiSelect(source: MultiSelectSource, preCheckId: Int?) {
         if (_multiSelect.value) return
+        multiSelectSource = source
         _multiSelect.value = true
         _checkedIds.value = if (preCheckId != null && isCheckable(preCheckId)) setOf(preCheckId) else emptySet()
     }
@@ -247,11 +259,10 @@ class RommBrowseViewModel(
         _checkedIds.value = if (id in _checkedIds.value) _checkedIds.value - id else _checkedIds.value + id
     }
 
-    fun confirmMultiSelect(): List<RommGame> {
+    fun confirmMultiSelect(): Set<Int> {
         val ids = _checkedIds.value
-        val games = (_games.value?.rows ?: emptyList()).filter { it.game.id in ids }.map { it.game }
         cancelMultiSelect()
-        return games
+        return ids
     }
 
     fun cancelMultiSelect() {
@@ -259,8 +270,13 @@ class RommBrowseViewModel(
         _checkedIds.value = emptySet()
     }
 
+    private fun checkableCandidates(): List<Pair<Int, LocalState>> = when (multiSelectSource) {
+        MultiSelectSource.PLATFORM -> (_games.value?.rows ?: emptyList()).map { it.game.id to it.localState }
+        MultiSelectSource.COLLECTION -> (_collectionGames.value?.rows ?: emptyList()).map { it.game.id to it.localState }
+    }
+
     private fun isCheckable(id: Int): Boolean =
-        (_games.value?.rows ?: emptyList()).any { it.game.id == id && it.localState == LocalState.REMOTE }
+        checkableCandidates().any { it.first == id && it.second == LocalState.REMOTE }
 
     private fun localStateOf(game: RommGame, linkedIds: Set<Int>, present: Set<String>): LocalState =
         if (game.id in linkedIds) LocalState.PRESENT

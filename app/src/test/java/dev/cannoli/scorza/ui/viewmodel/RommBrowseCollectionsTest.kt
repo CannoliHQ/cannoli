@@ -210,4 +210,35 @@ class RommBrowseCollectionsTest {
         vm.openCollections(RommCollectionGroup.VIRTUAL, "franchise")
         assertEquals(listOf("v-fr"), vm.collectionList.value?.rows?.map { it.id })
     }
+
+    @Test fun `COLLECTION multi-select checks against collection games`() = runBlocking {
+        val vm = vm()
+        vm.openCollection(collection)
+        vm.enterMultiSelect(RommBrowseViewModel.MultiSelectSource.COLLECTION, 10)
+        assertEquals(true, vm.isMultiSelect())
+        assertEquals(setOf(10), vm.checkedIds.value)
+        vm.toggleChecked(20)
+        assertEquals(setOf(10, 20), vm.checkedIds.value)
+        assertEquals(setOf(10, 20), vm.confirmMultiSelect())
+        assertEquals(false, vm.isMultiSelect())
+    }
+
+    @Test fun `COLLECTION multi-select does not check a present game`() = runBlocking {
+        val vm = vm(presentNamesFor = { tag -> if (tag == "SNES") setOf("smw.sfc") else emptySet() })
+        vm.openCollection(collection)
+        vm.enterMultiSelect(RommBrowseViewModel.MultiSelectSource.COLLECTION, 10)
+        assertEquals(emptySet<Int>(), vm.checkedIds.value)
+        vm.toggleChecked(10)
+        assertEquals(emptySet<Int>(), vm.checkedIds.value)
+    }
+
+    @Test fun `refreshCollectionLocalState re-derives present state`() = runBlocking {
+        val present = mutableMapOf<String, Set<String>>()
+        val vm = vm(presentNamesFor = { tag -> present[tag] ?: emptySet() })
+        vm.openCollection(collection)
+        assertEquals(LocalState.REMOTE, vm.collectionGames.value!!.rows.first { it.game.id == 10 }.localState)
+        present["SNES"] = setOf("smw.sfc")
+        vm.refreshCollectionLocalState()
+        assertEquals(LocalState.PRESENT, vm.collectionGames.value!!.rows.first { it.game.id == 10 }.localState)
+    }
 }

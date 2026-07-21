@@ -555,18 +555,36 @@ class InputRouter @Inject constructor(
     private fun rommCollectionGameListHandler() = scrollable<LauncherScreen.RommCollectionGameList>(
         onConfirm = {
             val row = rommBrowseViewModel.collectionGames.value?.rows?.getOrNull(selectedIndex) ?: return@scrollable
-            nav.push(LauncherScreen.RommGameDetail(
-                game = row.game,
-                localState = row.localState,
-                platformName = row.platform.displayName,
-                tag = row.platform.cannoliTag,
-                groupKey = row.groupKey,
-                versionCount = row.versionCount,
-            ))
+            if (rommBrowseViewModel.isMultiSelect()) {
+                rommBrowseViewModel.toggleChecked(row.game.id)
+            } else {
+                nav.push(LauncherScreen.RommGameDetail(
+                    game = row.game,
+                    localState = row.localState,
+                    platformName = row.platform.displayName,
+                    tag = row.platform.cannoliTag,
+                    groupKey = row.groupKey,
+                    versionCount = row.versionCount,
+                ))
+            }
         },
         onBack = {
-            if (search.isNotEmpty()) nav.replaceTop(copy(search = "", selectedIndex = 0, scrollTarget = 0))
+            if (rommBrowseViewModel.isMultiSelect()) rommBrowseViewModel.cancelMultiSelect()
+            else if (search.isNotEmpty()) nav.replaceTop(copy(search = "", selectedIndex = 0, scrollTarget = 0))
             else nav.pop()
+        },
+        onStart = {
+            if (!rommBrowseViewModel.isMultiSelect()) return@scrollable
+            val ids = rommBrowseViewModel.confirmMultiSelect()
+            val rows = (rommBrowseViewModel.collectionGames.value?.rows ?: emptyList())
+                .filter { it.game.id in ids }
+            if (rows.isEmpty()) return@scrollable
+            rommDownloader.enqueue(rows.map {
+                dev.cannoli.scorza.romm.download.RommDownloadItem(rommId = it.game.id, game = it.game, tag = it.platform.cannoliTag)
+            })
+            dev.cannoli.scorza.romm.download.RommDownloadManager.ensureStarted(context)
+            osdController.show(context.resources.getQuantityString(
+                dev.cannoli.ui.R.plurals.romm_osd_downloads_queued, rows.size, rows.size))
         },
         onR1 = {
             nav.dialogState.value = DialogState.RenameInput(
@@ -574,6 +592,12 @@ class InputRouter @Inject constructor(
                 searchScope = collection.name,
                 keyboard = KeyboardState(text = search, cursorPos = search.length),
             )
+        },
+        onSelect = {
+            if (rommBrowseViewModel.isMultiSelect()) rommBrowseViewModel.cancelMultiSelect()
+            else rommBrowseViewModel.enterMultiSelect(
+                dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel.MultiSelectSource.COLLECTION,
+                rommBrowseViewModel.collectionGames.value?.rows?.getOrNull(selectedIndex)?.game?.id)
         },
     )
 
@@ -600,7 +624,9 @@ class InputRouter @Inject constructor(
         },
         onStart = {
             if (!rommBrowseViewModel.isMultiSelect()) return@scrollable
-            val games = rommBrowseViewModel.confirmMultiSelect()
+            val ids = rommBrowseViewModel.confirmMultiSelect()
+            val games = (rommBrowseViewModel.games.value?.rows ?: emptyList())
+                .filter { it.game.id in ids }.map { it.game }
             if (games.isEmpty()) return@scrollable
             rommDownloader.enqueue(games.map {
                 dev.cannoli.scorza.romm.download.RommDownloadItem(rommId = it.id, game = it, tag = platform.cannoliTag)
@@ -620,6 +646,7 @@ class InputRouter @Inject constructor(
         onSelect = {
             if (rommBrowseViewModel.isMultiSelect()) rommBrowseViewModel.cancelMultiSelect()
             else rommBrowseViewModel.enterMultiSelect(
+                dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel.MultiSelectSource.PLATFORM,
                 rommBrowseViewModel.games.value?.rows?.getOrNull(selectedIndex)?.game?.id)
         },
     )

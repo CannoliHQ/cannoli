@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import dev.cannoli.scorza.romm.LocalState
 import dev.cannoli.scorza.romm.RommArtType
 import dev.cannoli.scorza.romm.RommArtUrl
 import dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel
@@ -53,6 +54,8 @@ fun RommCollectionGameListScreen(
     host: String,
     artWidth: Int,
     artType: RommArtType = RommArtType.NONE,
+    multiSelect: Boolean = false,
+    checkedIds: Set<Int> = emptySet(),
     imageLoader: coil.ImageLoader,
     backgroundImagePath: String?,
     backgroundTint: Int,
@@ -108,6 +111,7 @@ fun RommCollectionGameListScreen(
                                 scrollTarget = scrollTarget,
                                 onListStateChanged = onListStateChanged,
                             ) { _, row, isSelected ->
+                                val checkable = multiSelect && row.localState == LocalState.REMOTE
                                 val folded = row.versionCount > 1
                                 val platformLabel = row.platform.cannoliTag.uppercase()
                                 PillRowKeyValue(
@@ -119,6 +123,7 @@ fun RommCollectionGameListScreen(
                                     verticalPadding = listVerticalPadding,
                                     valueIcon = if (folded) ICON_VARIANTS else null,
                                     dotIndicator = if (row.anyPresent) true else null,
+                                    checkState = if (checkable) row.game.id in checkedIds else null,
                                 )
                             }
                         }
@@ -148,8 +153,15 @@ fun RommCollectionGameListScreen(
             }
             BottomBar(
                 modifier = Modifier.align(Alignment.BottomCenter),
-                leftItems = listOf(buttonStyle.back to stringResource(R.string.label_back)),
-                rightItems = listOf(buttonStyle.confirm to stringResource(R.string.label_select)),
+                leftItems = listOf(
+                    buttonStyle.back to stringResource(if (multiSelect) R.string.label_cancel else R.string.label_back)
+                ),
+                rightItems = if (multiSelect) listOf(
+                    buttonStyle.confirm to stringResource(R.string.label_toggle),
+                    dev.cannoli.ui.START_GLYPH to stringResource(R.string.label_download),
+                ) else listOf(
+                    buttonStyle.confirm to stringResource(R.string.label_select),
+                ),
             )
         }
     }
