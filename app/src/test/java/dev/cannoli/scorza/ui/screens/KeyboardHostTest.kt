@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.ui.screens
 
+import dev.cannoli.ui.R
 import dev.cannoli.ui.components.KeyboardState
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -20,5 +21,19 @@ class KeyboardHostTest {
             assertEquals("abc", updated.currentName)
             assertEquals(2, updated.cursorPos)
         }
+    }
+
+    @Test fun `create and rename dialogs carry header titles by type`() {
+        assertEquals(R.string.keyboard_title_new_collection, DialogState.NewCollectionInput().titleRes)
+        assertEquals(R.string.keyboard_title_rename_collection, DialogState.CollectionRenameInput(collectionId = 1, oldDisplayName = "x").titleRes)
+        assertEquals(R.string.keyboard_title_new_folder, DialogState.NewFolderInput(parentPath = "/p").titleRes)
+    }
+
+    @Test fun `RenameInput title defaults to null and honors an explicit titleRes`() {
+        assertEquals(null, DialogState.RenameInput(gameName = "g").titleRes)
+        assertEquals(
+            R.string.keyboard_title_rename_game,
+            DialogState.RenameInput(gameName = "g", titleRes = R.string.keyboard_title_rename_game).titleRes,
+        )
     }
 }

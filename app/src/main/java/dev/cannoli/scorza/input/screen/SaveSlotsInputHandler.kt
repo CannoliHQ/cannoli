@@ -93,6 +93,7 @@ class SaveSlotsInputHandler @Inject constructor(
         if (s.pendingDelete) return
         nav.dialogState.value = DialogState.RenameInput(
             gameName = "save_slot_create",
+            titleRes = dev.cannoli.ui.R.string.keyboard_title_new_slot,
             keyboard = KeyboardState(),
         )
     }
@@ -104,6 +105,7 @@ class SaveSlotsInputHandler @Inject constructor(
         if (target.slot == DEFAULT_SLOT) return
         nav.dialogState.value = DialogState.RenameInput(
             gameName = "save_slot_rename:${target.slot}",
+            titleRes = dev.cannoli.ui.R.string.keyboard_title_rename_slot,
             keyboard = KeyboardState(text = target.slot, cursorPos = target.slot.length),
         )
     }

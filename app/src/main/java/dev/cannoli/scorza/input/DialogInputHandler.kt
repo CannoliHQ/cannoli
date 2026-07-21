@@ -1446,8 +1446,14 @@ class DialogInputHandler @Inject constructor(
             } else {
                 when (state.options[state.selectedOption]) {
                     MENU_RENAME -> {
+                        val renameTitle = when (systemListViewModel.getSelectedItem()) {
+                            is SystemListViewModel.ListItem.PlatformItem -> dev.cannoli.ui.R.string.keyboard_title_rename_platform
+                            is SystemListViewModel.ListItem.CollectionItem -> dev.cannoli.ui.R.string.keyboard_title_rename_collection
+                            else -> dev.cannoli.ui.R.string.keyboard_title_rename_folder
+                        }
                         nav.dialogState.value = DialogState.RenameInput(
                             gameName = state.gameName,
+                            titleRes = renameTitle,
                             keyboard = KeyboardState(text = state.gameName, cursorPos = state.gameName.length),
                         )
                     }
@@ -1500,8 +1506,14 @@ class DialogInputHandler @Inject constructor(
                         keyboard = KeyboardState(text = displayName),
                     )
                 } else {
+                    val renameTitle = when (item) {
+                        is ListItem.AppItem -> dev.cannoli.ui.R.string.keyboard_title_rename_app
+                        is ListItem.SubfolderItem -> dev.cannoli.ui.R.string.keyboard_title_rename_folder
+                        else -> dev.cannoli.ui.R.string.keyboard_title_rename_game
+                    }
                     nav.dialogState.value = DialogState.RenameInput(
                         gameName = displayName,
+                        titleRes = renameTitle,
                         keyboard = KeyboardState(text = displayName, cursorPos = displayName.length),
                     )
                 }

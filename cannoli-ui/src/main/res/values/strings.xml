@@ -460,6 +460,18 @@
     <string name="search_romm">RomM Search</string>
     <string name="search_in_platform">%1$s Search</string>
 
+    <!-- Keyboard entry headers -->
+    <string name="keyboard_title_new_collection">New Collection</string>
+    <string name="keyboard_title_rename_collection">Rename Collection</string>
+    <string name="keyboard_title_new_folder">New Folder</string>
+    <string name="keyboard_title_rename_game">Rename Game</string>
+    <string name="keyboard_title_rename_app">Rename App</string>
+    <string name="keyboard_title_rename_folder">Rename Folder</string>
+    <string name="keyboard_title_rename_platform">Rename Platform</string>
+    <string name="keyboard_title_new_slot">New Slot</string>
+    <string name="keyboard_title_rename_slot">Rename Slot</string>
+    <string name="keyboard_title_rename_controller">Rename Controller</string>
+
     <!-- Quick menu -->
     <string name="quick_menu_title">Quick Menu</string>
     <string name="quick_menu_romm">Browse RomM</string>

@@ -179,15 +179,16 @@ fun DialogOverlay(
 
         is KeyboardHost -> {
             val host = dialogState
-            val keyboardTitle = (dialogState as? DialogState.RenameInput)?.let { rn ->
-                when (rn.gameName) {
-                    "launcher_global_search" -> stringResource(R.string.search_global)
-                    "romm_global_search" -> stringResource(R.string.search_romm)
-                    "launcher_search", "romm_search", "romm_collection_search" -> rn.searchScope?.let { stringResource(R.string.search_in_platform, it) }
-                    "romm_device_name" -> stringResource(dev.cannoli.ui.R.string.dialog_romm_device_name_title)
-                    else -> null
+            val keyboardTitle = host.titleRes?.let { stringResource(it) }
+                ?: (dialogState as? DialogState.RenameInput)?.let { rn ->
+                    when (rn.gameName) {
+                        "launcher_global_search" -> stringResource(R.string.search_global)
+                        "romm_global_search" -> stringResource(R.string.search_romm)
+                        "launcher_search", "romm_search", "romm_collection_search" -> rn.searchScope?.let { stringResource(R.string.search_in_platform, it) }
+                        "romm_device_name" -> stringResource(dev.cannoli.ui.R.string.dialog_romm_device_name_title)
+                        else -> null
+                    }
                 }
-            }
             KeyboardOverlay(
                 state = host.keyboard,
                 title = keyboardTitle,

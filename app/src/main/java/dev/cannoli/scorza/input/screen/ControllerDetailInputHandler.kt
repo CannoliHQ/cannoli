@@ -53,6 +53,7 @@ class ControllerDetailInputHandler @Inject constructor(
             0 -> nav.push(LauncherScreen.EditButtons(mappingId = mapping.id))
             4 -> nav.dialogState.value = DialogState.RenameInput(
                 gameName = "$RENAME_KEY_PREFIX${mapping.id}",
+                titleRes = dev.cannoli.ui.R.string.keyboard_title_rename_controller,
                 keyboard = KeyboardState(text = mapping.displayName, cursorPos = mapping.displayName.length),
             )
             5 -> if (mapping.userEdited) {

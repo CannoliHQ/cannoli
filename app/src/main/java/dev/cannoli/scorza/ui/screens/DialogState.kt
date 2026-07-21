@@ -42,6 +42,7 @@ sealed interface DialogState {
     data class RenameInput(
         val gameName: String,
         val searchScope: String? = null,
+        @androidx.annotation.StringRes override val titleRes: Int? = null,
         override val keyboard: KeyboardState = KeyboardState(),
     ) : DialogState, KeyboardHost {
         override fun withKeyboard(keyboard: KeyboardState) = copy(keyboard = keyboard)
@@ -51,6 +52,7 @@ sealed interface DialogState {
         val parentId: Long? = null,
         override val keyboard: KeyboardState = KeyboardState(),
     ) : DialogState, KeyboardHost {
+        override val titleRes: Int get() = dev.cannoli.ui.R.string.keyboard_title_new_collection
         override fun withKeyboard(keyboard: KeyboardState) = copy(keyboard = keyboard)
     }
     data class CollectionRenameInput(
@@ -58,6 +60,7 @@ sealed interface DialogState {
         val oldDisplayName: String,
         override val keyboard: KeyboardState = KeyboardState(),
     ) : DialogState, KeyboardHost {
+        override val titleRes: Int get() = dev.cannoli.ui.R.string.keyboard_title_rename_collection
         override fun withKeyboard(keyboard: KeyboardState) = copy(keyboard = keyboard)
     }
     data class DeleteCollectionConfirm(val collectionId: Long, val displayName: String) : DialogState
@@ -82,6 +85,7 @@ sealed interface DialogState {
         val parentPath: String,
         override val keyboard: KeyboardState = KeyboardState(),
     ) : DialogState, KeyboardHost {
+        override val titleRes: Int get() = dev.cannoli.ui.R.string.keyboard_title_new_folder
         override fun withKeyboard(keyboard: KeyboardState) = copy(keyboard = keyboard)
     }
     data class KeyboardHelp(val restore: DialogState, val layout: KeyboardLayout) : DialogState
@@ -178,6 +182,7 @@ interface KeyboardHost {
     fun withKeyboard(keyboard: KeyboardState): DialogState
     val currentName: String get() = keyboard.text
     val cursorPos: Int get() = keyboard.cursorPos
+    @get:androidx.annotation.StringRes val titleRes: Int? get() = null
 }
 
 fun DialogState.withMenuDelta(delta: Int): DialogState? = when (this) {
