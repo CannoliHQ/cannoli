@@ -26,6 +26,7 @@ import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.SectionedList
 import dev.cannoli.ui.components.footerReservation
+import dev.cannoli.ui.components.pillInternalH
 import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.screenPadding
 import dev.cannoli.ui.theme.LocalCannoliColors
@@ -63,22 +64,25 @@ fun RommFirmwareListScreen(
                 Spacer(modifier = Modifier.height(Spacing.Sm))
                 when {
                     loading -> Text(
-                        text = stringResource(R.string.boot_preparing),
+                        text = stringResource(R.string.romm_firmware_loading),
                         color = muted,
                         fontFamily = font,
                         fontSize = listFontSize,
+                        modifier = Modifier.padding(start = pillInternalH),
                     )
                     error -> Text(
                         text = stringResource(R.string.romm_firmware_error),
                         color = muted,
                         fontFamily = font,
                         fontSize = listFontSize,
+                        modifier = Modifier.padding(start = pillInternalH),
                     )
                     rows.isEmpty() -> Text(
                         text = stringResource(R.string.romm_firmware_empty),
                         color = muted,
                         fontFamily = font,
                         fontSize = listFontSize,
+                        modifier = Modifier.padding(start = pillInternalH),
                     )
                     else -> {
                         val sections = listOf(

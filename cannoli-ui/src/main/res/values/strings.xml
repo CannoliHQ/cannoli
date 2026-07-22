@@ -278,6 +278,7 @@
     <string name="romm_firmware_screen_title">%1$s Firmware</string>
     <string name="romm_global_search_title">Search</string>
     <string name="romm_no_results">No results</string>
+    <string name="romm_firmware_loading">Loading</string>
     <string name="romm_firmware_empty">No firmware</string>
     <string name="romm_firmware_error">Could not load firmware</string>
     <string name="romm_firmware_not_on_device">Not on Device</string>
@@ -677,6 +678,11 @@
 
     <!-- Conflicts resolution screen -->
     <string name="conflicts_title">Sync Conflicts</string>
+    <string name="conflicts_applying">Applying conflicts...</string>
+    <plurals name="conflicts_apply_failed">
+        <item quantity="one">%1$d save could not be applied</item>
+        <item quantity="other">%1$d saves could not be applied</item>
+    </plurals>
     <plurals name="quick_menu_conflicts">
         <item quantity="one">Sync Conflicts (1)</item>
         <item quantity="other">Sync Conflicts (%1$d)</item>
