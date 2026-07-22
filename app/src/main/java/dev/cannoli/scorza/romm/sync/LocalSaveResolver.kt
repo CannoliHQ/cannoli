@@ -60,7 +60,10 @@ class LocalSaveResolver(private val cannoliRoot: File) {
     fun applyDownload(tag: String, base: String, downloaded: File) {
         val dir = savesDir(tag).apply { mkdirs() }
         val existing = matchingFiles(tag, base)
-        // Stage every incoming file to a temp name first. A failure here never touches the live save.
+        // Stage every incoming file to a temp name first. A failure here never touches the live save,
+        // and the per-call token keeps a concurrent apply of the same save from staging through our
+        // path and publishing each other's half-written bytes.
+        val token = java.util.UUID.randomUUID().toString().take(8)
         val staged = ArrayList<Pair<File, File>>() // dest to part
         try {
             if (isZip(downloaded)) {
@@ -68,14 +71,14 @@ class LocalSaveResolver(private val cannoliRoot: File) {
                     for (entry in zf.entries()) {
                         if (entry.isDirectory) continue
                         val dest = File(dir, File(entry.name).name)
-                        val part = File(dir, ".part_${dest.name}")
+                        val part = File(dir, ".part_${token}_${dest.name}")
                         zf.getInputStream(entry).use { ins -> part.outputStream().use { ins.copyTo(it) } }
                         staged.add(dest to part)
                     }
                 }
             } else {
                 val dest = File(dir, "$base.srm")
-                val part = File(dir, ".part_${dest.name}")
+                val part = File(dir, ".part_${token}_${dest.name}")
                 downloaded.copyTo(part, overwrite = true)
                 staged.add(dest to part)
             }

@@ -143,6 +143,7 @@ sealed interface DialogState {
     data class SaveBackupRestoreConfirm(val tag: String, val base: String, val displayName: String, val stamp: Long, val dateLabel: String, val fromContextMenu: Boolean = false) : DialogState
     data class ConflictsMenu(val rows: List<ConflictRow>, val selectedIndex: Int = 0, val fromSaveSyncMenu: Boolean = false) : DialogState
     data object SaveSyncChecking : DialogState
+    data object ConflictsApplying : DialogState
     data class SaveSyncConflict(
         val conflict: dev.cannoli.scorza.romm.sync.PreLaunchOutcome.Conflict,
         val selectedIndex: Int = 0,
@@ -243,6 +244,7 @@ val DialogState.isFullScreen: Boolean
         is DialogState.SaveBackupList,
         is DialogState.SaveBackupRestoreConfirm,
         is DialogState.ConflictsMenu,
+        is DialogState.ConflictsApplying,
         is DialogState.RommVersionPicker -> true
         else -> false
     }

@@ -90,4 +90,18 @@ class LocalSaveResolverTest {
         assertTrue(leftover.isEmpty())
         assertEquals("NEW", File(saves("SNES"), "Mario.srm").readText())
     }
+
+    // Two applies of the same save must not share a staging path: whichever renames first would
+    // otherwise publish the other's half-written bytes. A concurrent call's staging file stands in
+    // for the in-flight one here, and must come through untouched.
+    @Test fun applyDownload_does_not_stage_through_a_shared_temp_path() {
+        val inFlight = File(saves("GBA"), ".part_Pokemon.srm").apply { writeBytes("IN-FLIGHT".toByteArray()) }
+        val src = tmp.newFile("dl3.bin").apply { writeBytes("MINE".toByteArray()) }
+
+        LocalSaveResolver(tmp.root).applyDownload("GBA", "Pokemon", src)
+
+        assertEquals("MINE", File(saves("GBA"), "Pokemon.srm").readText())
+        assertTrue(inFlight.isFile)
+        assertEquals("IN-FLIGHT", inFlight.readText())
+    }
 }

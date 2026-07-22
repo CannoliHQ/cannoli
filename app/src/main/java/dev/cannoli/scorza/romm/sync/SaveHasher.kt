@@ -4,6 +4,8 @@ import java.io.File
 import java.security.MessageDigest
 
 object SaveHasher {
+    const val EMPTY_MD5 = "d41d8cd98f00b204e9800998ecf8427e"
+
     fun md5Hex(bytes: ByteArray): String =
         MessageDigest.getInstance("MD5").digest(bytes).toHex()
 

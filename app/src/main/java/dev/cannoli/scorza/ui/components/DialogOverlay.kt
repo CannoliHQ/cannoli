@@ -53,6 +53,7 @@ import dev.cannoli.ui.components.PillRowInfo
 import dev.cannoli.ui.components.PillRowKeyValue
 import dev.cannoli.ui.components.PillRowText
 import dev.cannoli.ui.components.MessageOverlay
+import dev.cannoli.ui.components.OverlayScrim
 import dev.cannoli.ui.components.SectionedList
 import dev.cannoli.ui.components.RAAccountOverlay
 import dev.cannoli.ui.components.RALoggingInOverlay
@@ -903,6 +904,17 @@ fun DialogOverlay(
                         verticalPadding = listVerticalPadding,
                     )
                 }
+            }
+        }
+
+        is DialogState.ConflictsApplying -> {
+            OverlayScrim {
+                androidx.compose.material3.Text(
+                    text = stringResource(R.string.conflicts_applying),
+                    color = LocalCannoliColors.current.text,
+                    fontSize = listFontSize,
+                    lineHeight = listLineHeight,
+                )
             }
         }
 

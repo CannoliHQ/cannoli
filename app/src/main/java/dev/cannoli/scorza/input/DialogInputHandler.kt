@@ -92,6 +92,7 @@ class DialogInputHandler @Inject constructor(
     private val osdController: dev.cannoli.ui.components.OsdController,
     private val rommDevicePairing: dev.cannoli.scorza.romm.RommDevicePairing,
 ) : DialogPrecedence {
+    private val applyingConflicts = java.util.concurrent.atomic.AtomicBoolean(false)
     private val selectHoldHandler = Handler(Looper.getMainLooper())
     private val selectHoldRunnable = Runnable {
         nav.selectHeld = true
@@ -983,24 +984,51 @@ class DialogInputHandler @Inject constructor(
         nav.dialogState.value = ds.copy(rows = newRows)
     }
 
+    // Each pass downloads or uploads a save per row and takes seconds. The applying state replaces
+    // the list so the press has visible feedback and the rows can't be re-applied mid-flight; the
+    // guard is the second line of defense on the async boundary.
     private fun applyAllConflicts(ds: DialogState.ConflictsMenu) {
+        if (!applyingConflicts.compareAndSet(false, true)) return
         val fromSaveSyncMenu = ds.fromSaveSyncMenu
         val rows = ds.rows
         val resolveGame = dev.cannoli.scorza.romm.sync.rommResolveGame(platformResolver, romDir())
+        nav.dialogState.value = DialogState.ConflictsApplying
         ioScope.launch {
-            for (row in rows) {
-                when (row.choice) {
-                    dev.cannoli.scorza.ui.screens.ConflictChoice.KEEP_LOCAL ->
-                        saveSyncService.resolvePending(row.gameKey, keepLocal = true, resolveGame)
-                    dev.cannoli.scorza.ui.screens.ConflictChoice.USE_SERVER ->
-                        saveSyncService.resolvePending(row.gameKey, keepLocal = false, resolveGame)
-                    dev.cannoli.scorza.ui.screens.ConflictChoice.SKIP ->
-                        saveSyncService.skipPending(row.gameKey)
+            try {
+                var failed = 0
+                for (row in rows) {
+                    val applied = when (row.choice) {
+                        dev.cannoli.scorza.ui.screens.ConflictChoice.KEEP_LOCAL ->
+                            saveSyncService.resolvePending(row.gameKey, keepLocal = true, resolveGame)
+                        dev.cannoli.scorza.ui.screens.ConflictChoice.USE_SERVER ->
+                            saveSyncService.resolvePending(row.gameKey, keepLocal = false, resolveGame)
+                        dev.cannoli.scorza.ui.screens.ConflictChoice.SKIP -> {
+                            saveSyncService.skipPending(row.gameKey)
+                            true
+                        }
+                    }
+                    if (!applied) failed++
                 }
+                val count = saveSyncService.pendingConflictCount()
+                saveSyncStatusHolder.settle(enabled = saveSyncService.syncEnabled(), online = true, pendingConflicts = count, hadError = failed > 0)
+                withContext(Dispatchers.Main) {
+                    if (failed > 0) {
+                        osdController.show(
+                            context.resources.getQuantityString(
+                                dev.cannoli.ui.R.plurals.conflicts_apply_failed, failed, failed
+                            )
+                        )
+                    }
+                    showOriginMenu(fromSaveSyncMenu, count)
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (_: Throwable) {
+                // Never strand the user on the applying overlay: it is full screen and eats input.
+                withContext(Dispatchers.Main) { nav.dialogState.value = DialogState.None }
+            } finally {
+                applyingConflicts.set(false)
             }
-            val count = saveSyncService.pendingConflictCount()
-            saveSyncStatusHolder.settle(enabled = saveSyncService.syncEnabled(), online = true, pendingConflicts = count, hadError = false)
-            withContext(Dispatchers.Main) { showOriginMenu(fromSaveSyncMenu, count) }
         }
     }
 
@@ -1245,7 +1273,7 @@ class DialogInputHandler @Inject constructor(
                 nav.dialogState.value = DialogState.None
                 launcherActions.cancelPendingLaunch()
             }
-            is DialogState.SaveSyncChecking -> {}
+            is DialogState.SaveSyncChecking, is DialogState.ConflictsApplying -> {}
             else -> {}
         }
         return true
