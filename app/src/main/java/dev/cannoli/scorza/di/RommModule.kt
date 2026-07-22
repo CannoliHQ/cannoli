@@ -56,7 +56,11 @@ object RommModule {
 
     @Provides @Singleton
     fun provideRommClient(store: RommConnectionStore, http: RommHttp): RommClient =
-        RommClient(baseUrlProvider = { store.host }, clientProvider = { http.client() })
+        RommClient(
+            baseUrlProvider = { store.host },
+            clientProvider = { http.client() },
+            downloadClientProvider = { http.downloadClient() },
+        )
 
     @Provides @Singleton
     fun provideRommSlugMap(@ApplicationContext context: Context): RommSlugMap =
@@ -269,5 +273,6 @@ object RommModule {
         settings: SettingsRepository,
         paths: CannoliPathsProvider,
         @IoScope ioScope: CoroutineScope,
-    ): SyncScheduler = SyncScheduler(context, service, statusHolder, platformConfig, settings, { paths.romDir }, ioScope)
+        http: RommHttp,
+    ): SyncScheduler = SyncScheduler(context, service, statusHolder, platformConfig, settings, { paths.romDir }, ioScope, http)
 }

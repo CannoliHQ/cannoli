@@ -14,6 +14,8 @@ class RommHttp(
 ) {
     private var cached: OkHttpClient? = null
     private var builtWithSelfSigned: Boolean = false
+    private var cachedDownload: OkHttpClient? = null
+    private var downloadBase: OkHttpClient? = null
 
     @Synchronized
     fun client(): OkHttpClient {
@@ -24,6 +26,28 @@ class RommHttp(
         cached = built
         builtWithSelfSigned = selfSigned
         return built
+    }
+
+    // Streaming ROM/firmware/manual downloads reuse the base client's pool and auth but need a much
+    // longer read timeout: the server may spend minutes zipping a large ROM before its first byte.
+    @Synchronized
+    fun downloadClient(): OkHttpClient {
+        val base = client()
+        val existing = cachedDownload
+        if (existing != null && downloadBase === base) return existing
+        val built = base.newBuilder()
+            .readTimeout(DOWNLOAD_READ_TIMEOUT_MINUTES, TimeUnit.MINUTES)
+            .build()
+        cachedDownload = built
+        downloadBase = base
+        return built
+    }
+
+    // Drop pooled sockets whose network has gone away. Without this the next request can pick a dead
+    // connection and block until its timeout rather than failing fast onto a fresh one.
+    @Synchronized
+    fun evictConnections() {
+        cached?.connectionPool?.evictAll()
     }
 
     private fun build(allowSelfSigned: Boolean): OkHttpClient {
@@ -68,5 +92,9 @@ class RommHttp(
         }
         builder.sslSocketFactory(sslContext.socketFactory, trustManager)
         builder.hostnameVerifier { _, _ -> true }
+    }
+
+    companion object {
+        private const val DOWNLOAD_READ_TIMEOUT_MINUTES = 10L
     }
 }

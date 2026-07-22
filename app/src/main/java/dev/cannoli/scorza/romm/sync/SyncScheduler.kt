@@ -22,6 +22,7 @@ class SyncScheduler(
     private val settings: SettingsRepository,
     private val romDir: () -> File,
     private val scope: CoroutineScope,
+    private val http: dev.cannoli.scorza.romm.RommHttp,
     private val intervalMs: Long = 30 * 60 * 1000L,
     private val offlineRetryMs: Long = 30_000L,
 ) {
@@ -32,15 +33,16 @@ class SyncScheduler(
     private var wasValidated = false
     private val sweeping = java.util.concurrent.atomic.AtomicBoolean(false)
     private val resweepRequested = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val forceCooldownMs = 60_000L
 
     fun start() {
         if (callback != null) return
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return
         val cb = object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) { trigger(force = true) }
+            override fun onAvailable(network: Network) { triggerFromCallback() }
             override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
                 val validated = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-                if (validated && !wasValidated) trigger(force = true)
+                if (validated && !wasValidated) triggerFromCallback()
                 wasValidated = validated
             }
             override fun onLost(network: Network) {
@@ -62,11 +64,15 @@ class SyncScheduler(
         val underlyingCb = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
                 dev.cannoli.scorza.util.RommLog.write("scheduler: underlying network available -> sync")
-                trigger(force = true)
+                // The pool can hold sockets to a network that is gone; reusing one stalls the next
+                // request until its timeout instead of failing fast onto a fresh connection.
+                evictStaleConnections()
+                triggerFromCallback()
             }
             override fun onLost(network: Network) {
                 dev.cannoli.scorza.util.RommLog.write("scheduler: underlying network lost -> re-check")
-                trigger(force = true)
+                evictStaleConnections()
+                triggerFromCallback()
             }
         }
         val underlyingRequest = NetworkRequest.Builder()
@@ -107,10 +113,21 @@ class SyncScheduler(
     /** Force an immediate sweep (e.g. on returning from a game), bypassing the debounce window. */
     fun syncNow() = trigger(force = true)
 
-    private fun trigger(force: Boolean) {
+    // Registering the network callbacks makes them fire straight away, so every screen unlock used
+    // to force several full sweeps. Callback- and start-driven sweeps wait out a cooldown; the
+    // game-exit sync does not, because the save just changed.
+    private fun triggerFromCallback() = trigger(force = true, cooldown = true)
+
+    private fun evictStaleConnections() = runCatching { http.evictConnections() }
+
+    private fun trigger(force: Boolean, cooldown: Boolean = false) {
         val now = System.currentTimeMillis()
         if (!force && !shouldSweep(now, lastSweepAt, intervalMs)) {
             dev.cannoli.scorza.util.RommLog.write("scheduler: trigger debounced (${(now - lastSweepAt) / 1000}s since last sweep)")
+            return
+        }
+        if (cooldown && !pastForceCooldown(now, lastSweepAt, forceCooldownMs)) {
+            dev.cannoli.scorza.util.RommLog.write("scheduler: trigger in cooldown (${(now - lastSweepAt) / 1000}s since last sweep)")
             return
         }
         if (!service.syncEnabled()) {
@@ -152,5 +169,8 @@ class SyncScheduler(
 
     companion object {
         fun shouldSweep(now: Long, lastSweepAt: Long, intervalMs: Long): Boolean = now - lastSweepAt >= intervalMs
+
+        fun pastForceCooldown(now: Long, lastSweepAt: Long, cooldownMs: Long): Boolean =
+            lastSweepAt == 0L || now - lastSweepAt >= cooldownMs
     }
 }

@@ -45,4 +45,20 @@ class RommHttpTest {
         val second = http.client()
         assertNotEquals(first, second)
     }
+
+    @Test fun `download client keeps a long read timeout while api client stays short`() {
+        val http = RommHttp(tokenProvider = { null }, allowSelfSignedProvider = { false })
+        assertEquals(30_000, http.client().readTimeoutMillis)
+        assertEquals(600_000, http.downloadClient().readTimeoutMillis)
+        assertEquals(15_000, http.downloadClient().connectTimeoutMillis)
+    }
+
+    @Test fun `download client is reused until the base client changes`() {
+        var selfSigned = false
+        val http = RommHttp(tokenProvider = { null }, allowSelfSignedProvider = { selfSigned })
+        val first = http.downloadClient()
+        assertEquals(first, http.downloadClient())
+        selfSigned = true
+        assertNotEquals(first, http.downloadClient())
+    }
 }

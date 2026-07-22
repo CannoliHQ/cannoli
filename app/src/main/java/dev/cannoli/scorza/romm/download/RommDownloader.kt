@@ -9,7 +9,7 @@ import dev.cannoli.scorza.romm.RommConnectionStore
 import dev.cannoli.scorza.romm.RommDownloadCancelled
 import dev.cannoli.scorza.romm.RommHttp
 import dev.cannoli.scorza.util.ArtworkLookup
-import dev.cannoli.scorza.util.ScanLog
+import dev.cannoli.scorza.util.RommLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -114,7 +114,7 @@ class RommDownloader(
                     guideBaseName(null, game.fsName),
                     guideBaseName(result.linkRelativePath, game.fsName),
                 )
-            }.onFailure { ScanLog.write("ERROR romm guide adopt ${item.rommId} failed: ${it.message}") }
+            }.onFailure { RommLog.write("ERROR romm guide adopt ${item.rommId} failed: ${it.message}") }
             artDownloader.download(store.host, game.coverPath, item.tag, result.artBaseName)
             links.upsertLink(item.rommId, result.linkRelativePath, "download")
             artwork.invalidate(item.tag)
@@ -125,7 +125,7 @@ class RommDownloader(
             queue.cancel(item.key)
         } catch (e: Exception) {
             temp.delete()
-            ScanLog.write("ERROR romm download ${item.rommId} failed: ${e.message}")
+            RommLog.write("ERROR romm download ${item.rommId} failed: ${e.message}")
             queue.setStatus(item.key, DownloadStatus.Failed(e.message ?: "failed"))
         } finally {
             synchronized(cancelled) { cancelled.remove(item.key) }
@@ -147,7 +147,7 @@ class RommDownloader(
         try {
             queue.setStatus(item.key, DownloadStatus.Downloading(0, 0))
             if (isCancelled()) { temp.delete(); queue.cancel(item.key); return }
-            http.client().newCall(Request.Builder().url(url).get().build()).execute().use { resp ->
+            http.downloadClient().newCall(Request.Builder().url(url).get().build()).execute().use { resp ->
                 if (!resp.isSuccessful) throw Exception("HTTP ${resp.code}")
                 val total = (resp.body?.contentLength() ?: -1L).coerceAtLeast(0L)
                 queue.setStatus(item.key, DownloadStatus.Downloading(0, total))
@@ -165,7 +165,7 @@ class RommDownloader(
                     }
                 }
                 if (!RommManual.looksLikePdf(temp)) {
-                    ScanLog.write(
+                    RommLog.write(
                         "ERROR romm manual ${item.rommId} not a pdf: " +
                             "content-type=${resp.header("Content-Type") ?: "(none)"} " +
                             "bytes=${temp.length()} head=${RommManual.describeHead(temp)}"
@@ -183,7 +183,7 @@ class RommDownloader(
             queue.cancel(item.key)
         } catch (e: Exception) {
             temp.delete()
-            ScanLog.write("ERROR romm manual ${item.rommId} failed: ${e.message}")
+            RommLog.write("ERROR romm manual ${item.rommId} failed: ${e.message}")
             queue.setStatus(item.key, DownloadStatus.Failed(e.message ?: "failed"))
         } finally {
             synchronized(cancelled) { cancelled.remove(item.key) }
@@ -196,7 +196,7 @@ class RommDownloader(
         val safeName = File(fw.fileName).name
         val dest = File(biosDir, safeName)
         if (!dest.canonicalPath.startsWith(biosDir.canonicalPath)) {
-            ScanLog.write("ERROR romm firmware ${fw.id} blocked: path traversal in fileName")
+            RommLog.write("ERROR romm firmware ${fw.id} blocked: path traversal in fileName")
             queue.setStatus(item.key, DownloadStatus.Failed("invalid firmware filename"))
             return
         }
@@ -218,7 +218,7 @@ class RommDownloader(
             queue.cancel(item.key)
         } catch (e: Exception) {
             temp.delete()
-            ScanLog.write("ERROR romm firmware ${fw.id} failed: ${e.message}")
+            RommLog.write("ERROR romm firmware ${fw.id} failed: ${e.message}")
             queue.setStatus(item.key, DownloadStatus.Failed(e.message ?: "failed"))
         } finally {
             synchronized(cancelled) { cancelled.remove(item.key) }

@@ -6,7 +6,7 @@ import dev.cannoli.scorza.romm.RommCollection
 import dev.cannoli.scorza.romm.RommCollectionGroup
 import dev.cannoli.scorza.romm.RommLibrary
 import dev.cannoli.scorza.romm.toDomain
-import dev.cannoli.scorza.util.ScanLog
+import dev.cannoli.scorza.util.RommLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -79,12 +79,12 @@ class RommSyncCoordinator(
                     val validPlatformIds = client.getPlatformIdentifiers().toSet()
                     val stale = db.allPlatformIds() - validPlatformIds
                     if (stale.isNotEmpty()) db.deletePlatforms(stale)
-                }.onFailure { ScanLog.write("romm purge deleted platforms failed: ${it.message}") }
+                }.onFailure { RommLog.write("romm purge deleted platforms failed: ${it.message}") }
                 runCatching {
                     val validRomIds = client.getRomIdentifiers().toSet()
                     val stale = db.allGameIds() - validRomIds
                     if (stale.isNotEmpty()) db.deleteGames(stale)
-                }.onFailure { ScanLog.write("romm purge deleted games failed: ${it.message}") }
+                }.onFailure { RommLog.write("romm purge deleted games failed: ${it.message}") }
                 runCatching {
                     val groups = enabledGroups()
                     val seen = mutableSetOf<String>()
@@ -95,12 +95,12 @@ class RommSyncCoordinator(
                     }
                     val stale = db.allCollectionIds() - seen
                     if (stale.isNotEmpty()) db.deleteCollections(stale)
-                }.onFailure { ScanLog.write("romm collection sync failed: ${it.message}") }
+                }.onFailure { RommLog.write("romm collection sync failed: ${it.message}") }
 
                 RommSyncPlanner.nextCursor(cursor, ingested)?.let { db.setSyncState(KEY_CURSOR, it) }
                 _status.value = SyncStatus.IDLE
             } catch (t: Throwable) {
-                ScanLog.write("ERROR romm sync failed: ${t.message}")
+                RommLog.write("ERROR romm sync failed: ${t.message}")
                 _status.value = SyncStatus.ERROR
             }
         }

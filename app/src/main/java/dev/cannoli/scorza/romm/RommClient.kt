@@ -32,6 +32,7 @@ class RommDownloadCancelled : Exception("download cancelled")
 class RommClient(
     private val baseUrlProvider: () -> String,
     private val clientProvider: () -> OkHttpClient,
+    private val downloadClientProvider: () -> OkHttpClient = clientProvider,
 ) {
     private val jsonMedia = "application/json".toMediaType()
 
@@ -171,7 +172,7 @@ class RommClient(
         val url = endpoint("/api/roms/$romId/content").newBuilder().addPathSegment(fileName).build()
         val request = Request.Builder().url(url).get().build()
         val response: Response = try {
-            clientProvider().newCall(request).execute()
+            downloadClientProvider().newCall(request).execute()
         } catch (e: IOException) {
             throw RommException(null, "Network error: ${e.message}", e)
         }
@@ -214,7 +215,7 @@ class RommClient(
         val url = endpoint("/api/firmware/$firmwareId/content").newBuilder().addPathSegment(fileName).build()
         val request = Request.Builder().url(url).get().build()
         val response: Response = try {
-            clientProvider().newCall(request).execute()
+            downloadClientProvider().newCall(request).execute()
         } catch (e: IOException) {
             throw RommException(null, "Network error: ${e.message}", e)
         }
