@@ -274,7 +274,9 @@ class GameListInputHandler @Inject constructor(
 
     override fun onSelectUp() {
         cancelSelectHoldTimer()
-        if (!nav.selectHeld && !collectionSelectHeld && !selectHandled) {
+        // gameSelectDown gates the action: an open dialog consumes the press but not the release,
+        // so a release can arrive here with no press behind it. Flags below still reset either way.
+        if (gameSelectDown && !nav.selectHeld && !collectionSelectHeld && !selectHandled) {
             val glState = gameListViewModel.state.value
             val isApkList = glState.platformTag == "tools" || glState.platformTag == "ports"
             if (((glState.isCollection && !glState.isCollectionsList && glState.subfolderPath == null) || isApkList)
