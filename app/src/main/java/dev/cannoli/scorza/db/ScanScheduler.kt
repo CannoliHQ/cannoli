@@ -53,6 +53,11 @@ class ScanScheduler @Inject constructor(
             ScanLog.write("ScanScheduler runNow $tag failed: ${t.message}")
             RomScanner.SyncCounts(0, 0, 0)
         }
+        finishScan(tag, counts) { result -> scope.launch { _results.tryEmit(result) } }
+        return counts
+    }
+
+    private inline fun finishScan(tag: String, counts: RomScanner.SyncCounts, emit: (ScanResult) -> Unit) {
         val needsRerun = synchronized(mutex) {
             runningTag = null
             val rerun = rerunNeeded.remove(tag)
@@ -61,11 +66,12 @@ class ScanScheduler @Inject constructor(
         }
         val silent = romScanner.consumeLauncherMutation(tag)
         if (counts.inserted + counts.updated + counts.removed > 0) {
-            scope.launch { _results.tryEmit(ScanResult(tag, counts, silent)) }
+            emit(ScanResult(tag, counts, silent))
         }
         if (needsRerun) enqueue(tag)
-        return counts
     }
+
+    fun markLauncherMutation(platformTag: String) = romScanner.markLauncherMutation(platformTag)
 
     fun enqueue(platformTag: String) {
         val tag = platformTag.uppercase()
@@ -91,17 +97,7 @@ class ScanScheduler @Inject constructor(
                 ScanLog.write("ScanScheduler $tag failed: ${t.message}")
                 RomScanner.SyncCounts(0, 0, 0)
             }
-            val needsRerun = synchronized(mutex) {
-                runningTag = null
-                val rerun = rerunNeeded.remove(tag)
-                (mutex as java.lang.Object).notifyAll()
-                rerun
-            }
-            val silent = romScanner.consumeLauncherMutation(tag)
-            if (counts.inserted + counts.updated + counts.removed > 0) {
-                _results.tryEmit(ScanResult(tag, counts, silent))
-            }
-            if (needsRerun) enqueue(tag)
+            finishScan(tag, counts) { result -> _results.tryEmit(result) }
         }
     }
 }

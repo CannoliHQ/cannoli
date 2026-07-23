@@ -27,6 +27,7 @@ data class LaunchArgs(
     val raToken: String,
     val raPassword: String,
     val raGameId: Int?,
+    val romId: Long = -1,
     val resumeSlot: Int,
 ) {
     fun writeTo(intent: Intent): Intent = intent.apply {
@@ -54,6 +55,7 @@ data class LaunchArgs(
         putExtra(EXTRA_RA_TOKEN, raToken)
         putExtra(EXTRA_RA_PASSWORD, raPassword)
         if (raGameId != null) putExtra(EXTRA_RA_GAME_ID, raGameId)
+        putExtra(EXTRA_ROM_ID, romId)
         if (resumeSlot >= 0) putExtra(EXTRA_RESUME_SLOT, resumeSlot)
     }
 
@@ -82,6 +84,7 @@ data class LaunchArgs(
         private const val EXTRA_RA_TOKEN = "ra_token"
         private const val EXTRA_RA_PASSWORD = "ra_password"
         private const val EXTRA_RA_GAME_ID = "ra_game_id"
+        private const val EXTRA_ROM_ID = "rom_id"
         private const val EXTRA_RESUME_SLOT = "resume_slot"
 
         fun from(intent: Intent): LaunchArgs? {
@@ -113,6 +116,7 @@ data class LaunchArgs(
                 raToken = intent.getStringExtra(EXTRA_RA_TOKEN) ?: "",
                 raPassword = intent.getStringExtra(EXTRA_RA_PASSWORD) ?: "",
                 raGameId = if (intent.hasExtra(EXTRA_RA_GAME_ID)) intent.getIntExtra(EXTRA_RA_GAME_ID, 0) else null,
+                romId = intent.getLongExtra(EXTRA_ROM_ID, -1),
                 resumeSlot = intent.getIntExtra(EXTRA_RESUME_SLOT, -1),
             )
         }

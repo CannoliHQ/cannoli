@@ -24,10 +24,47 @@ import dev.cannoli.ui.theme.LocalScaleFactor
 import dev.cannoli.ui.theme.Radius
 
 @Composable
-fun LegendPill(button: String, label: String) {
+fun GlyphPill(content: @Composable () -> Unit) {
+    val innerPill = LocalCannoliColors.current.accent.copy(alpha = 0.30f)
+    val sf = LocalScaleFactor.current
+    Box(
+        modifier = Modifier
+            .clip(Radius.Pill)
+            .background(innerPill)
+            .padding(horizontal = (10 * sf).dp, vertical = (4 * sf).dp),
+        contentAlignment = Alignment.Center
+    ) {
+        content()
+    }
+}
+
+@Composable
+fun GlyphPill(button: String) {
+    val accent = LocalCannoliColors.current.accent
+    val sf = LocalScaleFactor.current
+    GlyphPill {
+        Text(
+            text = button,
+            style = TextStyle(
+                fontFamily = LocalCannoliFont.current,
+                fontWeight = FontWeight.Bold,
+                fontSize = (14 * sf).sp,
+                lineHeight = (14 * sf).sp,
+                platformStyle = PlatformTextStyle(includeFontPadding = false),
+                lineHeightStyle = LineHeightStyle(
+                    alignment = LineHeightStyle.Alignment.Center,
+                    trim = LineHeightStyle.Trim.Both
+                ),
+                color = accent
+            )
+        )
+    }
+}
+
+@Composable
+fun LegendPill(label: String, glyphs: @Composable () -> Unit) {
     val accent = LocalCannoliColors.current.accent
     val outerPill = accent.copy(alpha = 0.15f)
-    val innerPill = accent.copy(alpha = 0.30f)
     val sf = LocalScaleFactor.current
 
     Row(
@@ -38,29 +75,7 @@ fun LegendPill(button: String, label: String) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy((8 * sf).dp)
     ) {
-        Box(
-            modifier = Modifier
-                .clip(Radius.Pill)
-                .background(innerPill)
-                .padding(horizontal = (10 * sf).dp, vertical = (4 * sf).dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = button,
-                style = TextStyle(
-                    fontFamily = LocalCannoliFont.current,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = (14 * sf).sp,
-                    lineHeight = (14 * sf).sp,
-                    platformStyle = PlatformTextStyle(includeFontPadding = false),
-                    lineHeightStyle = LineHeightStyle(
-                        alignment = LineHeightStyle.Alignment.Center,
-                        trim = LineHeightStyle.Trim.Both
-                    ),
-                    color = accent
-                )
-            )
-        }
+        glyphs()
 
         Text(
             text = label,
@@ -79,6 +94,9 @@ fun LegendPill(button: String, label: String) {
         )
     }
 }
+
+@Composable
+fun LegendPill(button: String, label: String) = LegendPill(label = label) { GlyphPill(button) }
 
 @Composable
 fun BottomBar(

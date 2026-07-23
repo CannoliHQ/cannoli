@@ -9,6 +9,7 @@
 #include "rc_libretro.h"
 #include "rc_api_runtime.h"
 #include "rc_api_user.h"
+#include "rc_hash.h"
 
 #define LOG_TAG "RA"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -679,6 +680,26 @@ Java_dev_cannoli_scorza_libretro_RetroAchievementsManager_nativeGetGameHash(JNIE
             strncpy(hash, game->hash, sizeof(hash) - 1);
             hash[sizeof(hash) - 1] = '\0';
         }
+    }
+    return (*env)->NewStringUTF(env, hash);
+}
+
+JNIEXPORT jstring JNICALL
+Java_dev_cannoli_scorza_ra_RaHasher_nativeHashRom(JNIEnv *env, jobject thiz,
+        jstring path, jint consoleId) {
+    (void)thiz;
+    char hash[33];
+    hash[0] = '\0';
+    if (!path) return (*env)->NewStringUTF(env, hash);
+    const char *cpath = (*env)->GetStringUTFChars(env, path, NULL);
+    if (cpath) {
+        rc_hash_iterator_t iterator;
+        rc_hash_initialize_iterator(&iterator, cpath, NULL, 0);
+        if (!rc_hash_generate(hash, (uint32_t)consoleId, &iterator)) {
+            hash[0] = '\0';
+        }
+        rc_hash_destroy_iterator(&iterator);
+        (*env)->ReleaseStringUTFChars(env, path, cpath);
     }
     return (*env)->NewStringUTF(env, hash);
 }

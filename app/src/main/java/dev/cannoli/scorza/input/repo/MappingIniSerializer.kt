@@ -8,7 +8,7 @@ import dev.cannoli.scorza.input.GlyphStyle
 import dev.cannoli.scorza.input.HatDirection
 import dev.cannoli.scorza.input.InputBinding
 import dev.cannoli.scorza.input.MappingSource
-import dev.cannoli.scorza.util.IniParser
+import dev.cannoli.core.IniParser
 
 object MappingIniSerializer {
 

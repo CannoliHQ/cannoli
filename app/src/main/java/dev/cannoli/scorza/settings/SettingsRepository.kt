@@ -8,6 +8,7 @@ import android.os.Handler
 import android.os.HandlerThread
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.cannoli.scorza.BuildConfig
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
@@ -186,10 +187,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         get() = jsonRead { optString(KEY_BG_IMAGE, "").ifEmpty { null } }
         set(value) = jsonWrite { if (value != null) put(KEY_BG_IMAGE, value) else remove(KEY_BG_IMAGE) }
 
-    var platformSwitching: Boolean
-        get() = jsonRead { optBoolean(KEY_PLATFORM_SWITCHING, false) }
-        set(value) = jsonWrite { put(KEY_PLATFORM_SWITCHING, value) }
-
     var swapPlayResume: Boolean
         get() = jsonRead { optBoolean(KEY_SWAP_PLAY_RESUME, false) }
         set(value) = jsonWrite { put(KEY_SWAP_PLAY_RESUME, value) }
@@ -202,9 +199,12 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         get() = jsonRead { optBoolean(KEY_KITCHEN_CODE_BYPASS, false) }
         set(value) = jsonWrite { put(KEY_KITCHEN_CODE_BYPASS, value) }
 
-    var retroArchDiyMode: Boolean
-        get() = jsonRead { optBoolean(KEY_RETROARCH_DIY_MODE, true) }
-        set(value) = jsonWrite { put(KEY_RETROARCH_DIY_MODE, value) }
+    // Opt-in for features that are not ready for release users. Dev builds default it on so a fresh
+    // install does not need it flipped by hand.
+    var experimentalFeatures: Boolean
+        get() = jsonRead { optBoolean(KEY_EXPERIMENTAL_FEATURES, BuildConfig.DEBUG) }
+        set(value) = jsonWrite { put(KEY_EXPERIMENTAL_FEATURES, value) }
+
 
     var showWifi: Boolean
         get() = jsonRead { optBoolean(KEY_SHOW_WIFI, true) }
@@ -232,6 +232,25 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     var showUpdate: Boolean
         get() = jsonRead { optBoolean(KEY_SHOW_UPDATE, true) }
         set(value) = jsonWrite { put(KEY_SHOW_UPDATE, value) }
+
+    var showKitchen: Boolean
+        get() = jsonRead { optBoolean(KEY_SHOW_KITCHEN, true) }
+        set(value) = jsonWrite { put(KEY_SHOW_KITCHEN, value) }
+
+    var showDownloads: Boolean
+        get() = jsonRead { optBoolean(KEY_SHOW_DOWNLOADS, true) }
+        set(value) = jsonWrite { put(KEY_SHOW_DOWNLOADS, value) }
+
+    var concurrentDownloads: Int
+        get() = jsonRead { optInt(KEY_CONCURRENT_DOWNLOADS, 2) }.coerceIn(1, 4)
+        set(value) = jsonWrite { put(KEY_CONCURRENT_DOWNLOADS, value.coerceIn(1, 4)) }
+
+    var hiddenRommPlatforms: Set<String>
+        get() = jsonRead {
+            val arr = optJSONArray(KEY_HIDDEN_ROMM_PLATFORMS) ?: return@jsonRead emptySet()
+            (0 until arr.length()).mapNotNull { arr.optString(it).ifEmpty { null } }.toSet()
+        }
+        set(value) = jsonWrite { put(KEY_HIDDEN_ROMM_PLATFORMS, org.json.JSONArray(value.toList())) }
 
 
     var showTools: Boolean
@@ -366,9 +385,17 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         get() = jsonRead { optBoolean(KEY_LOGGING_SESSION, false) }
         set(value) = jsonWrite { put(KEY_LOGGING_SESSION, value) }
 
+    var loggingKitchen: Boolean
+        get() = jsonRead { optBoolean(KEY_LOGGING_KITCHEN, false) }
+        set(value) = jsonWrite { put(KEY_LOGGING_KITCHEN, value) }
+
     var loggingStorage: Boolean
         get() = jsonRead { optBoolean(KEY_LOGGING_STORAGE, false) }
         set(value) = jsonWrite { put(KEY_LOGGING_STORAGE, value) }
+
+    var loggingRomm: Boolean
+        get() = jsonRead { optBoolean(KEY_LOGGING_ROMM, false) }
+        set(value) = jsonWrite { put(KEY_LOGGING_ROMM, value) }
 
     var alwaysSaveOnQuit: Boolean
         get() = jsonRead { optBoolean(KEY_ALWAYS_SAVE_ON_QUIT, false) }
@@ -377,6 +404,42 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     var portraitMarginPx: Int
         get() = jsonRead { optInt(KEY_PORTRAIT_MARGIN_PX, 0) }
         set(value) = jsonWrite { put(KEY_PORTRAIT_MARGIN_PX, value.coerceAtLeast(0)) }
+
+    var screenGeometryWidth: Int
+        get() = jsonRead { optInt(KEY_SCREEN_GEOMETRY_WIDTH, 100) }
+        set(value) = jsonWrite { put(KEY_SCREEN_GEOMETRY_WIDTH, value.coerceIn(50, 100)) }
+
+    var screenGeometryHeight: Int
+        get() = jsonRead { optInt(KEY_SCREEN_GEOMETRY_HEIGHT, 100) }
+        set(value) = jsonWrite { put(KEY_SCREEN_GEOMETRY_HEIGHT, value.coerceIn(50, 100)) }
+
+    var screenGeometryX: Int
+        get() = jsonRead { optInt(KEY_SCREEN_GEOMETRY_X, 0) }
+        set(value) = jsonWrite { put(KEY_SCREEN_GEOMETRY_X, value.coerceIn(-50, 50)) }
+
+    var screenGeometryY: Int
+        get() = jsonRead { optInt(KEY_SCREEN_GEOMETRY_Y, 0) }
+        set(value) = jsonWrite { put(KEY_SCREEN_GEOMETRY_Y, value.coerceIn(-50, 50)) }
+
+    var rommDeviceId: String?
+        get() = jsonRead { optString(KEY_ROMM_DEVICE_ID, "").ifEmpty { null } }
+        set(value) = jsonWrite { if (value == null) remove(KEY_ROMM_DEVICE_ID) else put(KEY_ROMM_DEVICE_ID, value) }
+
+    var rommDeviceName: String?
+        get() = jsonRead { optString(KEY_ROMM_DEVICE_NAME, "").ifEmpty { null } }
+        set(value) = jsonWrite { if (value == null) remove(KEY_ROMM_DEVICE_NAME) else put(KEY_ROMM_DEVICE_NAME, value) }
+
+    var rommDeviceClientVersion: String?
+        get() = jsonRead { optString(KEY_ROMM_DEVICE_CLIENT_VERSION, "").ifEmpty { null } }
+        set(value) = jsonWrite { if (value == null) remove(KEY_ROMM_DEVICE_CLIENT_VERSION) else put(KEY_ROMM_DEVICE_CLIENT_VERSION, value) }
+
+    var rommSaveSyncEnabled: Boolean
+        get() = jsonRead { optBoolean(KEY_ROMM_SAVE_SYNC_ENABLED, false) }
+        set(value) = jsonWrite { put(KEY_ROMM_SAVE_SYNC_ENABLED, value) }
+
+    var rommSaveBackupCount: Int
+        get() = jsonRead { optInt(KEY_ROMM_SAVE_BACKUP_COUNT, 5) }
+        set(value) = jsonWrite { put(KEY_ROMM_SAVE_BACKUP_COUNT, value.coerceAtLeast(0)) }
 
     companion object {
         const val DEFAULT_ROOT = "/storage/emulated/0/Cannoli/"
@@ -400,17 +463,20 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         private const val KEY_COLOR_TITLE = "color_title"
         private const val KEY_COLOR_BACKGROUND = "color_background"
         private const val KEY_COLOR_STATUS_BAR = "color_status_bar"
-        private const val KEY_PLATFORM_SWITCHING = "platform_switching"
         private const val KEY_SWAP_PLAY_RESUME = "swap_play_resume"
         private const val KEY_MAIN_MENU_QUIT = "main_menu_quit"
         private const val KEY_KITCHEN_CODE_BYPASS = "kitchen_code_bypass"
-        private const val KEY_RETROARCH_DIY_MODE = "retroarch_diy_mode"
+        private const val KEY_EXPERIMENTAL_FEATURES = "experimental_features"
         private const val KEY_SHOW_WIFI = "show_wifi"
         private const val KEY_SHOW_BLUETOOTH = "show_bluetooth"
         private const val KEY_SHOW_VPN = "show_vpn"
         private const val KEY_SHOW_CLOCK = "show_clock"
         private const val KEY_BATTERY_DISPLAY = "battery_display"
         private const val KEY_SHOW_UPDATE = "show_update"
+        private const val KEY_SHOW_KITCHEN = "show_kitchen"
+        private const val KEY_SHOW_DOWNLOADS = "show_downloads"
+        private const val KEY_CONCURRENT_DOWNLOADS = "concurrent_downloads"
+        private const val KEY_HIDDEN_ROMM_PLATFORMS = "hidden_romm_platforms"
         private const val KEY_SHOW_TOOLS = "show_tools"
         private const val KEY_SHOW_PORTS = "show_ports"
         private const val KEY_SHOW_RECENTLY_PLAYED = "show_recently_played"
@@ -431,10 +497,21 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         private const val KEY_LOGGING_ROM_SCAN = "logging_rom_scan"
         private const val KEY_LOGGING_INPUT = "logging_input"
         private const val KEY_LOGGING_SESSION = "logging_session"
+        private const val KEY_LOGGING_KITCHEN = "logging_kitchen"
         private const val KEY_LOGGING_STORAGE = "logging_storage"
+        private const val KEY_LOGGING_ROMM = "logging_romm"
         private const val KEY_ALWAYS_SAVE_ON_QUIT = "always_save_on_quit"
         private const val KEY_PORTRAIT_MARGIN_PX = "portrait_margin_px"
+        private const val KEY_SCREEN_GEOMETRY_WIDTH = "screen_geometry_width"
+        private const val KEY_SCREEN_GEOMETRY_HEIGHT = "screen_geometry_height"
+        private const val KEY_SCREEN_GEOMETRY_X = "screen_geometry_x"
+        private const val KEY_SCREEN_GEOMETRY_Y = "screen_geometry_y"
         private const val KEY_FGH_COLLECTION = "fgh_collection"
+        private const val KEY_ROMM_DEVICE_ID = "romm_device_id"
+        private const val KEY_ROMM_DEVICE_NAME = "romm_device_name"
+        private const val KEY_ROMM_DEVICE_CLIENT_VERSION = "romm_device_client_version"
+        private const val KEY_ROMM_SAVE_SYNC_ENABLED = "romm_save_sync_enabled"
+        private const val KEY_ROMM_SAVE_BACKUP_COUNT = "romm_save_backup_count"
     }
 }
 

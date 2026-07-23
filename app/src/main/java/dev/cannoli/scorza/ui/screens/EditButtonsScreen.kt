@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
@@ -220,52 +221,8 @@ fun EditButtonsScreen(
 }
 
 @Composable
-private fun friendlyCanonicalLabel(button: CanonicalButton, style: GlyphStyle): String {
-    val face = when (button) {
-        CanonicalButton.BTN_SOUTH -> R.string.canonical_south to when (style) {
-            GlyphStyle.PLUMBER -> R.string.glyph_plumber_south
-            GlyphStyle.REDMOND -> R.string.glyph_redmond_south
-            GlyphStyle.SHAPES -> R.string.glyph_shapes_south
-        }
-        CanonicalButton.BTN_EAST -> R.string.canonical_east to when (style) {
-            GlyphStyle.PLUMBER -> R.string.glyph_plumber_east
-            GlyphStyle.REDMOND -> R.string.glyph_redmond_east
-            GlyphStyle.SHAPES -> R.string.glyph_shapes_east
-        }
-        CanonicalButton.BTN_WEST -> R.string.canonical_west to when (style) {
-            GlyphStyle.PLUMBER -> R.string.glyph_plumber_west
-            GlyphStyle.REDMOND -> R.string.glyph_redmond_west
-            GlyphStyle.SHAPES -> R.string.glyph_shapes_west
-        }
-        CanonicalButton.BTN_NORTH -> R.string.canonical_north to when (style) {
-            GlyphStyle.PLUMBER -> R.string.glyph_plumber_north
-            GlyphStyle.REDMOND -> R.string.glyph_redmond_north
-            GlyphStyle.SHAPES -> R.string.glyph_shapes_north
-        }
-        else -> null
-    }
-    if (face != null) {
-        val (cardinalRes, glyphRes) = face
-        return stringResource(R.string.canonical_face_with_glyph, stringResource(cardinalRes), stringResource(glyphRes))
-    }
-    val res = when (button) {
-        CanonicalButton.BTN_UP -> R.string.canonical_dpad_up
-        CanonicalButton.BTN_DOWN -> R.string.canonical_dpad_down
-        CanonicalButton.BTN_LEFT -> R.string.canonical_dpad_left
-        CanonicalButton.BTN_RIGHT -> R.string.canonical_dpad_right
-        CanonicalButton.BTN_L -> R.string.canonical_l1
-        CanonicalButton.BTN_R -> R.string.canonical_r1
-        CanonicalButton.BTN_L2 -> R.string.canonical_l2
-        CanonicalButton.BTN_R2 -> R.string.canonical_r2
-        CanonicalButton.BTN_L3 -> R.string.canonical_l3
-        CanonicalButton.BTN_R3 -> R.string.canonical_r3
-        CanonicalButton.BTN_START -> R.string.canonical_start
-        CanonicalButton.BTN_SELECT -> R.string.canonical_select
-        CanonicalButton.BTN_MENU -> R.string.canonical_menu
-        else -> return button.name
-    }
-    return stringResource(res)
-}
+private fun friendlyCanonicalLabel(button: CanonicalButton, style: GlyphStyle): String =
+    dev.cannoli.scorza.util.canonicalLabel(LocalContext.current, button, style)
 
 @Composable
 private fun formatBindings(bindings: List<InputBinding>): String =

@@ -1,11 +1,8 @@
 package dev.cannoli.scorza.launcher
 
-import android.app.ActivityOptions
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
-import androidx.core.content.FileProvider
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import javax.inject.Inject
@@ -19,11 +16,7 @@ class EmuLauncher @Inject constructor(@ApplicationContext private val context: C
             return LaunchResult.AppNotInstalled(packageName)
         }
 
-        val uri: Uri = FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            romFile
-        )
+        val uri = context.romFileProviderUri(romFile)
 
         val intent = Intent(action).apply {
             setDataAndType(uri, "*/*")
@@ -31,12 +24,6 @@ class EmuLauncher @Inject constructor(@ApplicationContext private val context: C
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
 
-        return try {
-            val opts = ActivityOptions.makeCustomAnimation(context, 0, 0).toBundle()
-            context.startActivity(intent, opts)
-            LaunchResult.Success
-        } catch (e: Exception) {
-            LaunchResult.Error(e.message ?: "Failed to launch emulator")
-        }
+        return context.startActivityNoAnim(intent, "Failed to launch emulator")
     }
 }

@@ -75,10 +75,4 @@ class InputBindingTest {
         val right = InputBinding.Hat(axis = 1, direction = HatDirection.RIGHT, threshold = 0.5f)
         assertTrue(right.isPressed(1f))
     }
-
-    @Test
-    fun button_binding_holds_keycode() {
-        val b = InputBinding.Button(keyCode = 96)
-        assertEquals(96, b.keyCode)
-    }
 }

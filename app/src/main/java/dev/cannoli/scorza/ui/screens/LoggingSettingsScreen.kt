@@ -86,5 +86,7 @@ private fun labelFor(category: LoggingPrefs.Category): String = when (category) 
     LoggingPrefs.Category.ROM_SCAN -> stringResource(R.string.logging_rom_scan)
     LoggingPrefs.Category.INPUT -> stringResource(R.string.logging_input)
     LoggingPrefs.Category.SESSION -> stringResource(R.string.logging_session)
+    LoggingPrefs.Category.KITCHEN -> stringResource(R.string.logging_kitchen)
     LoggingPrefs.Category.STORAGE -> stringResource(R.string.logging_storage)
+    LoggingPrefs.Category.ROMM -> stringResource(R.string.logging_romm)
 }

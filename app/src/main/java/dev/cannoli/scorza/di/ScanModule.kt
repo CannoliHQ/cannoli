@@ -34,6 +34,9 @@ object ScanModule {
         coreInfo: CoreInfoRepository,
     ): PlatformConfig {
         val bundledCoresDir = LaunchManager.extractBundledCores(context)
-        return PlatformConfig({ paths.root }, context.assets, coreInfo, bundledCoresDir)
+        return PlatformConfig(
+            { paths.root }, context.assets, coreInfo, bundledCoresDir,
+            context.getString(dev.cannoli.scorza.R.string.value_empty_override),
+        )
     }
 }

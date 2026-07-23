@@ -34,6 +34,8 @@ class BootSequencer(
     private val now: () -> Long = { System.currentTimeMillis() },
     private val mountWatcher: MountWatcher = MountWatcher.None,
     private val scheduleTimeout: (delayMs: Long, action: () -> Unit) -> Unit = { _, _ -> },
+    // Resolved string passed in because this class is intentionally Android-free; defaulted for tests.
+    private val preparingLabel: String = "Preparing",
 ) {
     fun interface InitRunner {
         suspend fun run(onPhase: (BootPhase, Float, String) -> Unit): BootResult
@@ -95,6 +97,7 @@ class BootSequencer(
             setupResolved = setupResolved,
             volumes = volumes,
             awaitingMount = awaitingMount,
+            preparingLabel = preparingLabel,
         )
         when (after) {
             is BootState.NeedsPermission, is BootState.NeedsSetup, is BootState.Error, BootState.Ready, BootState.Resolving -> {
@@ -134,7 +137,7 @@ class BootSequencer(
     private fun startInitialization() {
         if (initJob?.isActive == true) return
         stopMountWatch()
-        _state.value = BootState.Initializing(BootPhase.IMPORT, 0f, "Preparing")
+        _state.value = BootState.Initializing(BootPhase.IMPORT, 0f, preparingLabel)
         initJob = scope.launch {
             val result = initRunner.run { phase, progress, label ->
                 _state.value = BootState.Initializing(phase, progress, label)
@@ -161,6 +164,7 @@ class BootSequencer(
             setupResolved: Boolean,
             volumes: List<Pair<String, String>>,
             awaitingMount: Boolean = false,
+            preparingLabel: String = "Preparing",
         ): BootState {
             if (!hasStorage) {
                 return BootState.NeedsPermission(storageGranted = false)
@@ -170,7 +174,7 @@ class BootSequencer(
                 is BootState.Error -> current
                 BootState.Ready -> BootState.Ready
                 else -> when {
-                    setupResolved -> BootState.Initializing(BootPhase.IMPORT, 0f, "Preparing")
+                    setupResolved -> BootState.Initializing(BootPhase.IMPORT, 0f, preparingLabel)
                     awaitingMount -> BootState.Resolving
                     else -> BootState.NeedsSetup(volumes)
                 }

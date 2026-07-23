@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -28,11 +29,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.ui.theme.LocalCannoliColors
+import dev.cannoli.ui.theme.LocalCannoliIconFont
 import dev.cannoli.ui.theme.LocalScaleFactor
 import dev.cannoli.ui.theme.Radius
 import kotlinx.coroutines.delay
@@ -130,12 +133,7 @@ fun PillRowText(
             val viewportMax = this.maxWidth
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (checkState != null) {
-                    Text(
-                        text = if (checkState) "\u2611" else "\u2610",
-                        style = textStyle,
-                        color = textColor
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    PillCheckGlyph(checked = checkState, style = textStyle, color = textColor)
                 }
                 if (showReorderIcon) {
                     Text(
@@ -182,7 +180,10 @@ fun PillRowKeyValue(
     fontSize: TextUnit,
     lineHeight: TextUnit,
     verticalPadding: Dp,
-    swatchColor: Color? = null
+    swatchColor: Color? = null,
+    valueIcon: String? = null,
+    dotIndicator: Boolean? = null,
+    checkState: Boolean? = null
 ) {
     val colors = LocalCannoliColors.current
     val baseStyle = MaterialTheme.typography.bodyLarge
@@ -198,7 +199,7 @@ fun PillRowKeyValue(
     MarqueeEffect(scrollState, isSelected)
 
     val labelColor = if (isSelected) colors.highlightText else colors.text
-    val valueColor = if (isSelected) colors.highlightText.copy(alpha = 0.5f) else colors.text.copy(alpha = 0.6f)
+    val valueColor = if (isSelected) colors.highlightText else colors.accent
     val borderColor = if (isSelected) colors.highlightText.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.3f)
 
     PillRow(isSelected = isSelected, verticalPadding = verticalPadding, lineHeight = lineHeight, modifier = Modifier.fillMaxWidth()) {
@@ -206,6 +207,9 @@ fun PillRowKeyValue(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            if (checkState != null) {
+                PillCheckGlyph(checked = checkState, style = textStyle, color = labelColor)
+            }
             Row(
                 modifier = Modifier
                     .weight(1f)
@@ -231,12 +235,87 @@ fun PillRowKeyValue(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
             }
+            if (valueIcon != null) {
+                Text(
+                    text = valueIcon,
+                    fontFamily = LocalCannoliIconFont.current,
+                    fontSize = valueStyle.fontSize,
+                    color = labelColor,
+                    maxLines = 1
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+            }
             Text(
                 text = value,
                 style = valueStyle,
                 color = valueColor,
                 maxLines = 1
             )
+            if (dotIndicator != null) {
+                val dotColor = if (dotIndicator) labelColor else labelColor.copy(alpha = 0.45f)
+                if (value.isNotEmpty()) Spacer(modifier = Modifier.width(6.dp))
+                Box(
+                    modifier = Modifier
+                        .size((fontSize.value * 0.42f).dp)
+                        .border(if (dotIndicator) 0.dp else 1.dp, dotColor, CircleShape)
+                        .background(if (dotIndicator) dotColor else Color.Transparent, CircleShape)
+                )
+            }
         }
     }
+}
+
+@Composable
+fun PillRowInfo(
+    label: String,
+    isSelected: Boolean,
+    fontSize: TextUnit,
+    lineHeight: TextUnit,
+    verticalPadding: Dp,
+    trailing: @Composable () -> Unit
+) {
+    val colors = LocalCannoliColors.current
+    val baseStyle = MaterialTheme.typography.bodyLarge
+    val textStyle = remember(baseStyle, fontSize, lineHeight) {
+        baseStyle.copy(fontSize = fontSize, lineHeight = lineHeight)
+    }
+    val textColor = if (isSelected) colors.highlightText else colors.text
+
+    val scrollState = rememberScrollState()
+    MarqueeEffect(scrollState, isSelected, key = label to isSelected)
+
+    PillRow(isSelected = isSelected, verticalPadding = verticalPadding, lineHeight = lineHeight, modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .horizontalScroll(scrollState),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = label,
+                    style = textStyle,
+                    color = textColor,
+                    maxLines = 1,
+                    softWrap = false
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            trailing()
+        }
+    }
+}
+
+/** The shared multi-select checkbox glyph used by every list row. Call inside a [Row]. */
+@Composable
+fun PillCheckGlyph(checked: Boolean, style: TextStyle, color: Color) {
+    Text(
+        text = if (checked) "☑" else "☐",
+        style = style,
+        color = color
+    )
+    Spacer(modifier = Modifier.width(8.dp))
 }

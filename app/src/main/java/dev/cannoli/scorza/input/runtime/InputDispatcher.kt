@@ -22,10 +22,16 @@ class InputDispatcher @Inject constructor(
     var onDown: () -> Unit = {}
     var onLeft: () -> Unit = {}
     var onRight: () -> Unit = {}
+    var onUpRelease: () -> Unit = {}
+    var onDownRelease: () -> Unit = {}
+    var onLeftRelease: () -> Unit = {}
+    var onRightRelease: () -> Unit = {}
     var onConfirm: () -> Unit = {}
     var onBack: () -> Unit = {}
     var onSelect: () -> Unit = {}
     var onSelectUp: () -> Unit = {}
+    var onConfirmUp: () -> Unit = {}
+    var onNorthUp: () -> Unit = {}
     var onStart: () -> Unit = {}
     var onL1: () -> Unit = {}
     var onR1: () -> Unit = {}
@@ -37,11 +43,20 @@ class InputDispatcher @Inject constructor(
     var onNorth: () -> Unit = {}
     var onMenu: () -> Unit = {}
 
+    // When set, resolves the active screen handler synchronously from nav state instead of the
+    // recompose-lagging registry. Set per wiring via wireToRegistry: the launcher passes one, the
+    // IGM passes null so it falls back to registry top. Reset on every wireToRegistry call so the
+    // last activity to wire wins (the IGM clears the launcher's resolver when it takes over).
+    private var screenResolver: (() -> dev.cannoli.scorza.input.ScreenInputHandler)? = null
+
+    private fun activeScreen(): dev.cannoli.scorza.input.ScreenInputHandler =
+        screenResolver?.invoke() ?: screenInputRegistry.top
+
     fun handleKeyEvent(event: KeyEvent): Boolean {
         // Raw event hook: screens that need keycode/deviceId/repeatCount (binding capture,
         // shortcut chord capture) override onRawKeyDown/onRawKeyUp and can short-circuit before
         // canonical dispatch.
-        val handler = screenInputRegistry.top
+        val handler = activeScreen()
         if (handler !== dev.cannoli.scorza.input.screen.EmptyScreenInputHandler) {
             val consumed = when (event.action) {
                 KeyEvent.ACTION_DOWN -> handler.onRawKeyDown(event.keyCode, event)
@@ -114,9 +129,18 @@ class InputDispatcher @Inject constructor(
                 if (deltas.isEmpty()) return false
                 var fired = false
                 for (delta in deltas) {
-                    if (delta is CanonicalEvent.Released && delta.button == CanonicalButton.BTN_SELECT) {
-                        onSelectUp()
-                        fired = true
+                    if (delta !is CanonicalEvent.Released) continue
+                    when (delta.button) {
+                        CanonicalButton.BTN_SELECT -> { onSelectUp(); fired = true }
+                        CanonicalButton.BTN_NORTH -> { onNorthUp(); fired = true }
+                        CanonicalButton.BTN_SOUTH, CanonicalButton.BTN_EAST -> {
+                            if (mapping.menuConfirm == delta.button) { onConfirmUp(); fired = true }
+                        }
+                        CanonicalButton.BTN_UP -> { onUpRelease(); fired = true }
+                        CanonicalButton.BTN_DOWN -> { onDownRelease(); fired = true }
+                        CanonicalButton.BTN_LEFT -> { onLeftRelease(); fired = true }
+                        CanonicalButton.BTN_RIGHT -> { onRightRelease(); fired = true }
+                        else -> {}
                     }
                 }
                 fired
@@ -136,9 +160,15 @@ class InputDispatcher @Inject constructor(
                 maybeActivate(deviceId)
                 activeMappingHolder.set(mapping)
                 if (dispatchPressed(delta.button, mapping)) fired = true
-            } else if (delta is CanonicalEvent.Released && delta.button == CanonicalButton.BTN_SELECT) {
-                onSelectUp()
-                fired = true
+            } else if (delta is CanonicalEvent.Released) {
+                when (delta.button) {
+                    CanonicalButton.BTN_SELECT -> { onSelectUp(); fired = true }
+                    CanonicalButton.BTN_UP -> { onUpRelease(); fired = true }
+                    CanonicalButton.BTN_DOWN -> { onDownRelease(); fired = true }
+                    CanonicalButton.BTN_LEFT -> { onLeftRelease(); fired = true }
+                    CanonicalButton.BTN_RIGHT -> { onRightRelease(); fired = true }
+                    else -> {}
+                }
             }
         }
         return fired
@@ -208,12 +238,18 @@ class InputDispatcher @Inject constructor(
     fun wireToRegistry(
         dialogHandler: dev.cannoli.scorza.input.DialogPrecedence? = null,
         onSelectUpOverride: (() -> Unit)? = null,
+        screenResolver: (() -> dev.cannoli.scorza.input.ScreenInputHandler)? = null,
     ) {
-        fun screen(): dev.cannoli.scorza.input.ScreenInputHandler = screenInputRegistry.top
+        this.screenResolver = screenResolver
+        fun screen(): dev.cannoli.scorza.input.ScreenInputHandler = activeScreen()
         onUp = { if (dialogHandler?.onUp() != true) screen().onUp() }
         onDown = { if (dialogHandler?.onDown() != true) screen().onDown() }
         onLeft = { if (dialogHandler?.onLeft() != true) screen().onLeft() }
         onRight = { if (dialogHandler?.onRight() != true) screen().onRight() }
+        onUpRelease = { screen().onUpRelease() }
+        onDownRelease = { screen().onDownRelease() }
+        onLeftRelease = { screen().onLeftRelease() }
+        onRightRelease = { screen().onRightRelease() }
         onConfirm = { if (dialogHandler?.onConfirm() != true) screen().onConfirm() }
         onBack = { if (dialogHandler?.onBack() != true) screen().onBack() }
         onStart = { if (dialogHandler?.onStart() != true) screen().onStart() }
@@ -222,6 +258,8 @@ class InputDispatcher @Inject constructor(
             dialogHandler?.cancelSelectHold()
             if (dialogHandler?.onSelectUp() != true) screen().onSelectUp()
         }
+        onConfirmUp = { if (dialogHandler?.onConfirmUp() != true) screen().onConfirmUp() }
+        onNorthUp = { if (dialogHandler?.onNorthUp() != true) screen().onNorthUp() }
         onNorth = { if (dialogHandler?.onNorth() != true) screen().onNorth() }
         onWest = { if (dialogHandler?.onWest() != true) screen().onWest() }
         onL1 = { if (dialogHandler?.onL1() != true) screen().onL1() }

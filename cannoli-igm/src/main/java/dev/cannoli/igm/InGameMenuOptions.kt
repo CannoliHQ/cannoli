@@ -1,57 +1,58 @@
 package dev.cannoli.igm
 
+enum class IgmMenuAction { RESUME, SAVE_STATE, LOAD_STATE, ACHIEVEMENTS, GUIDE, CHEATS, SETTINGS, SWITCH_DISC, REASSIGN, RESET, QUIT }
+
 class InGameMenuOptions(
     hasDiscs: Boolean,
     val discLabel: String,
     hasAchievements: Boolean = false,
-    hasGuides: Boolean = false,
+    val hasGuides: Boolean = false,
+    val hasCheats: Boolean = false,
+    val cheatsLabel: String = "Cheats",
     hasReassign: Boolean = false,
-    quitLabel: String = "Quit"
+    quitLabel: String = "Quit",
 ) {
-    val options: List<String>
-    val resumeIndex = 0
-    val saveStateIndex = 1
-    val loadStateIndex = 2
-    val achievementsIndex: Int
-    val guideIndex: Int
-    val settingsIndex: Int
-    val switchDiscIndex: Int
-    val reassignIndex: Int
-    val resetIndex: Int
-    val quitIndex: Int
-
-    init {
-        val list = mutableListOf("Resume", "Save State", "Load State")
-        if (hasAchievements) {
-            achievementsIndex = list.size
-            list.add("Achievements")
-        } else {
-            achievementsIndex = -1
-        }
-        if (hasGuides) {
-            guideIndex = list.size
-            list.add("Guide")
-        } else {
-            guideIndex = -1
-        }
-        settingsIndex = list.size
-        list.add("Settings")
-        if (hasDiscs) {
-            switchDiscIndex = list.size
-            list.add("Switch Disc")
-        } else {
-            switchDiscIndex = -1
-        }
-        if (hasReassign) {
-            reassignIndex = list.size
-            list.add("Reassign Players")
-        } else {
-            reassignIndex = -1
-        }
-        resetIndex = list.size
-        list.add("Reset")
-        quitIndex = list.size
-        list.add(quitLabel)
-        options = list
+    val actions: List<IgmMenuAction> = buildList {
+        add(IgmMenuAction.RESUME)
+        add(IgmMenuAction.SAVE_STATE)
+        add(IgmMenuAction.LOAD_STATE)
+        if (hasGuides) add(IgmMenuAction.GUIDE)
+        if (hasCheats) add(IgmMenuAction.CHEATS)
+        if (hasAchievements) add(IgmMenuAction.ACHIEVEMENTS)
+        add(IgmMenuAction.SETTINGS)
+        if (hasDiscs) add(IgmMenuAction.SWITCH_DISC)
+        if (hasReassign) add(IgmMenuAction.REASSIGN)
+        add(IgmMenuAction.RESET)
+        add(IgmMenuAction.QUIT)
     }
+
+    val options: List<String> = actions.map { action ->
+        when (action) {
+            IgmMenuAction.RESUME -> "Resume"
+            IgmMenuAction.SAVE_STATE -> "Save State"
+            IgmMenuAction.LOAD_STATE -> "Load State"
+            IgmMenuAction.ACHIEVEMENTS -> "Achievements"
+            IgmMenuAction.GUIDE -> "Guide"
+            IgmMenuAction.CHEATS -> cheatsLabel
+            IgmMenuAction.SETTINGS -> "Settings"
+            IgmMenuAction.SWITCH_DISC -> discLabel
+            IgmMenuAction.REASSIGN -> "Reassign Players"
+            IgmMenuAction.RESET -> "Reset"
+            IgmMenuAction.QUIT -> quitLabel
+        }
+    }
+
+    val resumeIndex get() = actions.indexOf(IgmMenuAction.RESUME)
+    val saveStateIndex get() = actions.indexOf(IgmMenuAction.SAVE_STATE)
+    val loadStateIndex get() = actions.indexOf(IgmMenuAction.LOAD_STATE)
+    val achievementsIndex get() = actions.indexOf(IgmMenuAction.ACHIEVEMENTS)
+    val guideIndex get() = actions.indexOf(IgmMenuAction.GUIDE)
+    val cheatsIndex get() = actions.indexOf(IgmMenuAction.CHEATS)
+    val settingsIndex get() = actions.indexOf(IgmMenuAction.SETTINGS)
+    val switchDiscIndex get() = actions.indexOf(IgmMenuAction.SWITCH_DISC)
+    val reassignIndex get() = actions.indexOf(IgmMenuAction.REASSIGN)
+    val resetIndex get() = actions.indexOf(IgmMenuAction.RESET)
+    val quitIndex get() = actions.indexOf(IgmMenuAction.QUIT)
+
+    fun actionAt(index: Int): IgmMenuAction? = actions.getOrNull(index)
 }

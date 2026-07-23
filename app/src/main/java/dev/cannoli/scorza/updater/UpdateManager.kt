@@ -7,6 +7,7 @@ import android.net.NetworkCapabilities
 import androidx.core.content.FileProvider
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.cannoli.scorza.BuildConfig
+import dev.cannoli.scorza.R
 import dev.cannoli.scorza.settings.SettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,6 +36,8 @@ class UpdateManager @Inject constructor(
 
     @Volatile
     private var downloadCancelled = false
+
+    private val checking = java.util.concurrent.atomic.AtomicBoolean(false)
 
     private fun loadCached(): UpdateInfo? {
         val code = settings.cachedUpdateCode
@@ -70,6 +73,10 @@ class UpdateManager @Inject constructor(
     }
 
     suspend fun checkForUpdate(): UpdateInfo? = withContext(Dispatchers.IO) {
+        // Skip when offline and dedupe concurrent checks (e.g. holding Left/Right on the
+        // release_channel row auto-repeats); otherwise each press would race a network fetch.
+        if (!isOnline()) return@withContext _updateAvailable.value
+        if (!checking.compareAndSet(false, true)) return@withContext _updateAvailable.value
         try {
             val channel = ReleaseChannel.fromString(settings.releaseChannel)
             val json = fetchJson("https://update.cannoli.dev/versions.json")
@@ -84,15 +91,16 @@ class UpdateManager @Inject constructor(
                 )
             }
             settings.lastUpdateCheck = System.currentTimeMillis()
-            val best = candidates
+            val result = candidates
                 .filter { it.versionCode > BuildConfig.VERSION_CODE }
                 .maxByOrNull { it.versionCode }
-            val result = best
             cacheUpdate(result)
             _updateAvailable.value = result
             result
         } catch (_: Exception) {
             null
+        } finally {
+            checking.set(false)
         }
     }
 
@@ -110,7 +118,7 @@ class UpdateManager @Inject constructor(
             conn.readTimeout = 30_000
             conn.connect()
             if (conn.responseCode != HttpURLConnection.HTTP_OK) {
-                _downloadError.value = "Download failed. Server returned an error. Try again later."
+                _downloadError.value = context.getString(R.string.update_download_error_server)
                 _downloadProgress.value = -1f
                 return@withContext
             }
@@ -138,7 +146,7 @@ class UpdateManager @Inject constructor(
         } catch (_: Exception) {
             apkFile.delete()
             if (!downloadCancelled) {
-                _downloadError.value = "Download failed. Check your connection and try again."
+                _downloadError.value = context.getString(R.string.update_download_error_network)
             }
             _downloadProgress.value = -1f
         }

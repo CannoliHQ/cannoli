@@ -11,6 +11,8 @@ import dev.cannoli.scorza.db.CannoliDatabase
 import dev.cannoli.scorza.db.CollectionsRepository
 import dev.cannoli.scorza.db.RecentlyPlayedRepository
 import dev.cannoli.scorza.db.RomScanner
+import dev.cannoli.scorza.db.RommLinkRepository
+import dev.cannoli.scorza.romm.sync.SaveSyncStore
 import dev.cannoli.scorza.db.RomsRepository
 import dev.cannoli.scorza.util.ArcadeTitleLookup
 import dev.cannoli.scorza.util.ArtworkLookup
@@ -64,4 +66,14 @@ object DatabaseModule {
     @Provides @Singleton
     fun provideRecentlyPlayedRepository(db: CannoliDatabase): RecentlyPlayedRepository =
         RecentlyPlayedRepository(db)
+
+    @Provides @Singleton
+    fun provideRommLinkRepository(
+        db: CannoliDatabase,
+        paths: CannoliPathsProvider,
+    ): RommLinkRepository = RommLinkRepository(db) { paths.romDir }
+
+    @Provides
+    @Singleton
+    fun provideSaveSyncStore(db: CannoliDatabase): SaveSyncStore = SaveSyncStore(db)
 }

@@ -40,6 +40,7 @@ import dev.cannoli.ui.KEY_ENTER
 import dev.cannoli.ui.KEY_SHIFT
 import dev.cannoli.ui.KEY_SPACE
 import dev.cannoli.ui.KEY_SYMBOLS
+import dev.cannoli.ui.MENU_GLYPH
 import dev.cannoli.ui.R
 import dev.cannoli.ui.START_GLYPH
 import dev.cannoli.ui.theme.LocalCannoliColors
@@ -48,50 +49,22 @@ import dev.cannoli.ui.theme.Radius
 import dev.cannoli.ui.theme.Spacing
 import kotlinx.coroutines.delay
 
-val KEYBOARD_ALPHA = listOf(
-    listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0", KEY_BACKSPACE),
-    listOf("q", "w", "e", "r", "t", "y", "u", "i", "o", "p"),
-    listOf("a", "s", "d", "f", "g", "h", "j", "k", "l", KEY_ENTER),
-    listOf(KEY_SHIFT, "z", "x", "c", "v", "b", "n", "m", KEY_SYMBOLS),
-    listOf(KEY_SPACE)
-)
-
-val KEYBOARD_ALPHA_SHIFTED = listOf(
-    listOf("!", "@", "#", "$", "%", "^", "&", "*", "(", ")", KEY_BACKSPACE),
-    listOf("Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"),
-    listOf("A", "S", "D", "F", "G", "H", "J", "K", "L", KEY_ENTER),
-    listOf(KEY_SHIFT, "Z", "X", "C", "V", "B", "N", "M", KEY_SYMBOLS),
-    listOf(KEY_SPACE)
-)
-
-val KEYBOARD_SYMBOLS = listOf(
-    listOf("~", "`", "|", "\\", "<", ">", "{", "}", "[", "]", KEY_BACKSPACE),
-    listOf("!", "@", "#", "$", "%", "^", "&", "*", "(", ")"),
-    listOf("-", "_", "=", "+", ";", ":", "'", "\"", "?", KEY_ENTER),
-    listOf(KEY_SHIFT, ",", ".", "/", "\\", "|", "~", "`", KEY_SYMBOLS),
-    listOf(KEY_SPACE)
-)
-
-fun getKeyboardRows(caps: Boolean, symbols: Boolean): List<List<String>> = when {
-    symbols -> KEYBOARD_SYMBOLS
-    caps -> KEYBOARD_ALPHA_SHIFTED
-    else -> KEYBOARD_ALPHA
-}
-
 private val KEY_BG = Color.White.copy(alpha = 0.12f)
 
 @Composable
 fun KeyboardOverlay(
-    text: String,
-    cursorPos: Int,
-    keyRow: Int,
-    keyCol: Int,
-    caps: Boolean,
-    symbols: Boolean = false,
+    state: KeyboardState,
+    title: String? = null,
     buttonStyle: ButtonStyle = ButtonStyle()
 ) {
+    val text = state.text
+    val cursorPos = state.cursorPos
+    val keyRow = state.keyRow
+    val keyCol = state.keyCol
+    val caps = state.caps
+    val symbols = state.symbols
     val typo = LocalCannoliTypography.current
-    val rows = getKeyboardRows(caps, symbols)
+    val rows = getKeyboardRows(state.layout, caps, symbols)
     val row = keyRow.coerceIn(0, rows.lastIndex)
     val col = keyCol.coerceIn(0, rows[row].lastIndex)
     val colors = LocalCannoliColors.current
@@ -135,6 +108,17 @@ fun KeyboardOverlay(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            if (title != null) {
+                Text(
+                    text = title,
+                    style = typo.titleMedium,
+                    color = colors.text,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(Spacing.Md))
+            }
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -232,46 +216,12 @@ fun KeyboardOverlay(
         BottomBar(
             modifier = Modifier.align(Alignment.BottomCenter),
             leftItems = listOf(
-                buttonStyle.west to stringResource(R.string.label_cancel)
+                buttonStyle.west to stringResource(R.string.label_cancel),
+                MENU_GLYPH to stringResource(R.string.label_help)
             ),
             rightItems = listOf(
                 START_GLYPH to stringResource(R.string.label_confirm)
             )
         )
-    }
-}
-
-fun handleKeyboardConfirm(
-    caps: Boolean, symbols: Boolean, keyRow: Int, keyCol: Int,
-    currentName: String, cursorPos: Int,
-    onChar: (String, Int) -> Unit,
-    onShift: () -> Unit,
-    onSymbols: () -> Unit,
-    onEnter: () -> Unit
-) {
-    val rows = getKeyboardRows(caps, symbols)
-    val row = rows.getOrNull(keyRow) ?: return
-    val key = row.getOrNull(keyCol) ?: return
-
-    when (key) {
-        KEY_SHIFT -> onShift()
-        KEY_SYMBOLS -> onSymbols()
-        KEY_ENTER -> onEnter()
-        KEY_BACKSPACE -> {
-            if (cursorPos > 0) {
-                val newName = currentName.removeRange(cursorPos - 1, cursorPos)
-                onChar(newName, cursorPos - 1)
-            }
-        }
-        KEY_SPACE -> {
-            val pos = cursorPos.coerceIn(0, currentName.length)
-            val newName = currentName.substring(0, pos) + " " + currentName.substring(pos)
-            onChar(newName, pos + 1)
-        }
-        else -> {
-            val pos = cursorPos.coerceIn(0, currentName.length)
-            val newName = currentName.substring(0, pos) + key + currentName.substring(pos)
-            onChar(newName, pos + 1)
-        }
     }
 }

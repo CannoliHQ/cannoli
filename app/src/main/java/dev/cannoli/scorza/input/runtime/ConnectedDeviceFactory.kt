@@ -44,6 +44,6 @@ object ConnectedDeviceFactory {
         sourceMask = device.sources,
         connectedAtMillis = connectedAtMillis,
         isBuiltIn = isBuiltIn,
-        isExternal = device.isExternal,
+        isExternal = device.isExternalCompat(),
     )
 }

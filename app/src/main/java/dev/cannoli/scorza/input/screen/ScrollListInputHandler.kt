@@ -17,6 +17,10 @@ class ScrollListInputHandler @AssistedInject constructor(
     @Assisted("onStart") val onStart: (() -> Unit)?,
     @Assisted("onWest") val onWest: (() -> Unit)?,
     @Assisted("onNorth") val onNorth: (() -> Unit)?,
+    @Assisted("onLeft") val onLeftOverride: (() -> Unit)?,
+    @Assisted("onRight") val onRightOverride: (() -> Unit)?,
+    @Assisted("onSelect") val onSelectOverride: (() -> Unit)?,
+    @Assisted("onR1") val onR1Override: (() -> Unit)?,
 ) : ScreenInputHandler {
 
     @AssistedFactory
@@ -30,6 +34,10 @@ class ScrollListInputHandler @AssistedInject constructor(
             @Assisted("onStart") onStart: (() -> Unit)?,
             @Assisted("onWest") onWest: (() -> Unit)? = null,
             @Assisted("onNorth") onNorth: (() -> Unit)? = null,
+            @Assisted("onLeft") onLeft: (() -> Unit)? = null,
+            @Assisted("onRight") onRight: (() -> Unit)? = null,
+            @Assisted("onSelect") onSelect: (() -> Unit)? = null,
+            @Assisted("onR1") onR1: (() -> Unit)? = null,
         ): ScrollListInputHandler
     }
 
@@ -43,11 +51,19 @@ class ScrollListInputHandler @AssistedInject constructor(
     override fun onDown() = onMove(wrap(1))
 
     override fun onLeft() {
+        if (onLeftOverride != null) {
+            onLeftOverride.invoke()
+            return
+        }
         val newIdx = PageJump.compute(-1, itemCount(), selectedIndex(), nav.activeListState)
         if (newIdx != selectedIndex()) onMove(newIdx)
     }
 
     override fun onRight() {
+        if (onRightOverride != null) {
+            onRightOverride.invoke()
+            return
+        }
         val newIdx = PageJump.compute(1, itemCount(), selectedIndex(), nav.activeListState)
         if (newIdx != selectedIndex()) onMove(newIdx)
     }
@@ -57,4 +73,6 @@ class ScrollListInputHandler @AssistedInject constructor(
     override fun onStart() = onStart?.invoke() ?: Unit
     override fun onWest() = onWest?.invoke() ?: Unit
     override fun onNorth() = onNorth?.invoke() ?: Unit
+    override fun onSelect() = onSelectOverride?.invoke() ?: Unit
+    override fun onR1() = onR1Override?.invoke() ?: Unit
 }

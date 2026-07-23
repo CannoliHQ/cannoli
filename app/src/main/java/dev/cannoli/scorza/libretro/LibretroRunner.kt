@@ -31,7 +31,6 @@ class LibretroRunner {
     fun getAudioDiagnostics(): String = nativeAudioGetDiagnostics()
     fun stopAudio() = nativeAudioStop()
     fun setAudioMuted(muted: Boolean) = nativeAudioSetMuted(muted)
-    fun setAudioNonblock(nonblock: Boolean) = nativeAudioSetNonblock(nonblock)
     fun pauseAudio() = nativeAudioPause()
     fun resumeAudio() = nativeAudioResume()
 
@@ -77,6 +76,10 @@ class LibretroRunner {
     fun loadState(path: String): Boolean = nativeLoadState(path)
     fun saveSRAM(path: String): Boolean = nativeSaveSRAM(path)
     fun loadSRAM(path: String): Boolean = nativeLoadSRAM(path)
+
+    fun applyEmuCheats(codes: List<String>) = nativeApplyEmuCheats(codes.toTypedArray())
+    fun setRetroCheats(table: LongArray) = nativeSetRetroCheats(table)
+    fun cheatMemorySize(): Long = nativeCheatMemorySize()
 
     fun unloadGame() = nativeUnloadGame()
     fun deinit() = nativeDeinit()
@@ -152,7 +155,6 @@ class LibretroRunner {
     private external fun nativeAudioGetDiagnostics(): String
     private external fun nativeAudioStop()
     private external fun nativeAudioSetMuted(muted: Boolean)
-    private external fun nativeAudioSetNonblock(nonblock: Boolean)
     private external fun nativeAudioPause()
     private external fun nativeAudioResume()
     private external fun nativeLoadGame(romPath: String): IntArray?
@@ -172,6 +174,9 @@ class LibretroRunner {
     private external fun nativeLoadState(path: String): Boolean
     private external fun nativeSaveSRAM(path: String): Boolean
     private external fun nativeLoadSRAM(path: String): Boolean
+    private external fun nativeApplyEmuCheats(codes: Array<String>)
+    private external fun nativeSetRetroCheats(table: LongArray)
+    private external fun nativeCheatMemorySize(): Long
     private external fun nativeUnloadGame()
     private external fun nativeDeinit()
     private external fun nativeReset()

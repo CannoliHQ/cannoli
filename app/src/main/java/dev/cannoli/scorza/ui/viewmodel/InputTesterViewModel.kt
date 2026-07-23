@@ -26,6 +26,7 @@ data class EventLogEntry(
     val resolvedButton: String?,
     val timestamp: Long,
     val isDown: Boolean = true,
+    val unbound: Boolean = false,
 )
 
 data class DeviceInfo(
@@ -86,6 +87,7 @@ class InputTesterViewModel @Inject constructor() {
         deviceId: Int,
         deviceName: String,
         resolvedButton: String?,
+        unbound: Boolean = false,
     ) {
         val isFreshPress = heldKeyCodes.add(keyCode)
         val ts = now()
@@ -93,7 +95,7 @@ class InputTesterViewModel @Inject constructor() {
             val prev = current.portStates[port] ?: InputTesterState()
             val pressed = if (resolvedButton != null) prev.pressedButtons + resolvedButton else prev.pressedButtons
             val updatedPort = prev.copy(pressedButtons = pressed)
-            val entry = EventLogEntry(keyCode, keyName, deviceId, deviceName, resolvedButton, ts, isDown = true)
+            val entry = EventLogEntry(keyCode, keyName, deviceId, deviceName, resolvedButton, ts, isDown = true, unbound = unbound)
             current.copy(
                 portStates = current.portStates + (port to updatedPort),
                 lastEventDevice = DeviceInfo(port, deviceId, deviceName),
@@ -109,6 +111,7 @@ class InputTesterViewModel @Inject constructor() {
         deviceId: Int,
         deviceName: String,
         resolvedButton: String?,
+        unbound: Boolean = false,
     ) {
         val wasHeld = heldKeyCodes.remove(keyCode)
         if (!wasHeld) return
@@ -117,7 +120,7 @@ class InputTesterViewModel @Inject constructor() {
             val prev = current.portStates[port] ?: InputTesterState()
             val pressed = if (resolvedButton != null) prev.pressedButtons - resolvedButton else prev.pressedButtons
             val updatedPort = prev.copy(pressedButtons = pressed)
-            val entry = EventLogEntry(keyCode, keyName, deviceId, deviceName, resolvedButton, ts, isDown = false)
+            val entry = EventLogEntry(keyCode, keyName, deviceId, deviceName, resolvedButton, ts, isDown = false, unbound = unbound)
             current.copy(
                 portStates = current.portStates + (port to updatedPort),
                 eventLog = (listOf(entry) + current.eventLog).take(eventLogCapacity),

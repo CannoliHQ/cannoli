@@ -91,6 +91,16 @@ fun InputTesterScreen(
                 highlightText = colors.highlightText,
             )
             Spacer(Modifier.height(Spacing.Sm))
+            if (uiState.eventLog.any { it.unbound }) {
+                Text(
+                    text = stringResource(R.string.input_tester_unbound),
+                    color = ErrorHighlight,
+                    fontSize = 14.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(Spacing.Sm))
+            }
             Row(modifier = Modifier.fillMaxWidth().weight(1f, fill = true)) {
                 Box(modifier = Modifier.fillMaxHeight().weight(1f, fill = true)) {
                     ControllerDiagram(
@@ -180,7 +190,7 @@ private fun EventLog(
     ) {
         Column {
             entries.forEach { e ->
-                val color = if (e.resolvedButton == null) ErrorHighlight else textColor
+                val color = if (e.unbound || e.resolvedButton == null) ErrorHighlight else textColor
                 val arrow = if (e.isDown) "↓" else "↑"
                 Text(
                     text = "$arrow ${e.keyName} (${e.keyCode})",

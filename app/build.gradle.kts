@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 fun gitCommitHash(): String = try {
@@ -103,10 +104,16 @@ android {
     testOptions {
         unitTests.isIncludeAndroidResources = true
     }
+    lint {
+        abortOnError = true
+        checkDependencies = true
+        fatal += "NewApi"
+    }
 }
 
 dependencies {
     implementation(project(":cannoli-igm"))
+    implementation(project(":cannoli-core"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -125,13 +132,20 @@ dependencies {
     implementation("org.tukaani:xz:1.10")
     implementation("io.legere:pdfiumandroid:1.0.35")
     implementation("com.google.oboe:oboe:1.9.3")
+    implementation(libs.nanohttpd)
+    implementation(libs.commons.fileupload.core)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.okhttp)
+    implementation(libs.coil.compose)
     testImplementation(libs.junit)
+    testImplementation(libs.okhttp.mockwebserver)
     testImplementation("io.mockk:mockk:1.13.11")
     testImplementation("org.json:json:20240303")
     testImplementation("org.robolectric:robolectric:4.13")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
     testImplementation("androidx.test.ext:junit:1.2.1")
     testImplementation("androidx.test:core:1.6.1")
+    testImplementation("androidx.sqlite:sqlite-bundled-jvm:2.5.0")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

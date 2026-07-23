@@ -1,8 +1,6 @@
 package dev.cannoli.scorza.input
 
-enum class CanonicalButton {
-    BTN_UP, BTN_DOWN, BTN_LEFT, BTN_RIGHT,
-    BTN_NORTH, BTN_SOUTH, BTN_EAST, BTN_WEST,
-    BTN_L, BTN_R, BTN_L2, BTN_R2, BTN_L3, BTN_R3,
-    BTN_START, BTN_SELECT, BTN_MENU,
-}
+// Moved to cannoli-igm so the IGM input translator and the launcher share one enum.
+// Kept as a typealias here so existing `dev.cannoli.scorza.input.CanonicalButton` imports
+// and `CanonicalButton.BTN_*` references continue to resolve unchanged.
+typealias CanonicalButton = dev.cannoli.igm.CanonicalButton

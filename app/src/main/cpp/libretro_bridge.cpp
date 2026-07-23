@@ -12,12 +12,18 @@
 #include "libretro.h"
 #include "frame_buffer.h"
 #include "native_audio.h"
+#include "cheat_engine.h"
 
 #define LOG_TAG "LibretroBridge"
 static void bridge_log(const char *level_str, int prio, const char *fmt, ...) __attribute__((format(printf, 3, 4)));
 #define LOGI(...) bridge_log("INFO",  ANDROID_LOG_INFO,  __VA_ARGS__)
 #define LOGW(...) bridge_log("WARN",  ANDROID_LOG_WARN,  __VA_ARGS__)
 #define LOGE(...) bridge_log("ERROR", ANDROID_LOG_ERROR, __VA_ARGS__)
+
+// Not declared by this project's trimmed libretro.h; typedefs follow the same
+// pattern as the rest of the core API function pointers below.
+typedef void (*retro_cheat_reset_t)(void);
+typedef void (*retro_cheat_set_t)(unsigned, bool, const char *);
 
 static struct {
     void *handle;
@@ -40,6 +46,8 @@ static struct {
     retro_get_memory_data_t get_memory_data;
     retro_get_memory_size_t get_memory_size;
     retro_reset_t reset;
+    retro_cheat_reset_t cheat_reset;
+    retro_cheat_set_t cheat_set;
     retro_set_controller_port_device_t set_controller_port_device;
 } core;
 
@@ -419,6 +427,7 @@ static bool environment_cb(unsigned cmd, void *data) {
             g_memory_map.descriptors = g_memory_descriptors;
             g_memory_map.num_descriptors = g_memory_descriptor_count;
             LOGI("Memory map set: %u descriptors", g_memory_descriptor_count);
+            cheat_engine_invalidate_memory();
             return true;
         }
 
@@ -566,6 +575,9 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeLoadCore(JNIEnv *env, jobj
     g_get_image_label = nullptr;
     for (int p = 0; p < MAX_PORTS; p++) g_controller_types[p].clear();
 
+    cheat_engine_clear();
+    cheat_engine_invalidate_memory();
+
     const char *path = env->GetStringUTFChars(corePath, nullptr);
     core.handle = dlopen(path, RTLD_LAZY);
     env->ReleaseStringUTFChars(corePath, path);
@@ -594,6 +606,8 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeLoadCore(JNIEnv *env, jobj
     LOAD_SYM(get_memory_data);
     LOAD_SYM(get_memory_size);
     LOAD_SYM(reset);
+    LOAD_SYM(cheat_reset);
+    LOAD_SYM(cheat_set);
     core.set_controller_port_device = (retro_set_controller_port_device_t)dlsym(core.handle, "retro_set_controller_port_device");
 
     return JNI_TRUE;
@@ -712,6 +726,8 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeLoadGame(JNIEnv *env, jobj
          av_info.geometry.base_width, av_info.geometry.base_height,
          av_info.timing.fps, av_info.timing.sample_rate);
 
+    cheat_engine_invalidate_memory();
+
     // Return [width, height, fps*1_000_000, sampleRate]
     jintArray result = env->NewIntArray(4);
     jint vals[4] = {
@@ -730,6 +746,7 @@ extern "C" void ra_process_frame(void);
 JNIEXPORT void JNICALL
 Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeRun(JNIEnv *, jobject) {
     core.run();
+    cheat_engine_apply();
     ra_process_frame();
 }
 
@@ -977,6 +994,43 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeLoadSRAM(JNIEnv *env, jobj
     fread(data, 1, size, f);
     fclose(f);
     return JNI_TRUE;
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeApplyEmuCheats(JNIEnv *env, jobject, jobjectArray codes) {
+    if (!core.cheat_reset || !core.cheat_set) return;
+    core.cheat_reset();
+    jsize n = env->GetArrayLength(codes);
+    unsigned idx = 0;
+    for (jsize i = 0; i < n; i++) {
+        jstring jcode = (jstring)env->GetObjectArrayElement(codes, i);
+        if (!jcode) continue;
+        const char *code = env->GetStringUTFChars(jcode, nullptr);
+        if (code && code[0]) core.cheat_set(idx++, true, code);
+        if (code) env->ReleaseStringUTFChars(jcode, code);
+        env->DeleteLocalRef(jcode);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeSetRetroCheats(JNIEnv *env, jobject, jlongArray table) {
+    if (!table) {
+        cheat_engine_clear();
+        return;
+    }
+    jsize len = env->GetArrayLength(table);
+    if (len <= 0) {
+        cheat_engine_clear();
+        return;
+    }
+    std::vector<int64_t> buf((size_t)len);
+    env->GetLongArrayRegion(table, 0, len, (jlong *)buf.data());
+    cheat_engine_set_table(buf.data(), (size_t)(len / CHEAT_ENGINE_STRIDE));
+}
+
+JNIEXPORT jlong JNICALL
+Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeCheatMemorySize(JNIEnv *, jobject) {
+    return (jlong)cheat_engine_total_memory();
 }
 
 JNIEXPORT void JNICALL

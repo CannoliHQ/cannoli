@@ -1,0 +1,244 @@
+package dev.cannoli.scorza.ui.viewmodel
+
+import dev.cannoli.scorza.romm.LocalState
+import dev.cannoli.scorza.romm.RommCollection
+import dev.cannoli.scorza.romm.RommCollectionGroup
+import dev.cannoli.scorza.romm.RommFoldedGame
+import dev.cannoli.scorza.romm.RommGame
+import dev.cannoli.scorza.romm.RommLibrary
+import dev.cannoli.scorza.romm.RommPage
+import dev.cannoli.scorza.romm.RommPlatform
+import dev.cannoli.scorza.romm.RommSearchQuery
+import dev.cannoli.scorza.romm.cache.GameRecord
+import dev.cannoli.scorza.romm.cache.RommDatabase
+import kotlinx.coroutines.runBlocking
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.TemporaryFolder
+import java.io.File
+
+class RommBrowseCollectionsTest {
+
+    @get:Rule val tmp = TemporaryFolder()
+
+    private lateinit var db: RommDatabase
+
+    private val snes = RommPlatform(1, "snes", "SNES", "Super Nintendo", 2)
+    private val gba = RommPlatform(2, "gba", "GBA", "Game Boy Advance", 1)
+
+    private fun game(id: Int, platformId: Int, name: String, fsName: String, size: Long = 0L) =
+        RommGame(id, platformId, name, fsName, size, null, null, emptyList(), emptyList(), null, emptyList(), groupKey = id)
+
+    private val collection = RommCollection("col-1", RommCollectionGroup.USER, "My Faves", 2)
+
+    private val library = object : RommLibrary {
+        override suspend fun platforms() = listOf(snes, gba)
+        override suspend fun games(platform: RommPlatform, page: Int, search: String?) =
+            RommPage<RommGame>(emptyList(), 0, RommLibrary.PAGE_SIZE, 0)
+        override suspend fun foldedGames(platform: RommPlatform, search: String?) = db.foldedGames(platform.id, search)
+        override suspend fun foldedGamesForCollection(collectionId: String, search: String?) =
+            db.foldedGamesForCollection(collectionId, search)
+        override suspend fun foldedGlobalSearch(query: RommSearchQuery) = db.foldedGlobalSearch(query)
+        override suspend fun groupMembers(groupKey: Int) = db.groupMembers(groupKey)
+        override suspend fun searchAll(query: RommSearchQuery) = emptyList<RommGame>()
+        override suspend fun collections(groups: Set<RommCollectionGroup>, virtualType: String?) =
+            db.collections(groups, virtualType)
+        override suspend fun collectionGroupCounts() = db.collectionGroupCounts()
+        override suspend fun virtualTypeCounts() = db.virtualTypeCounts()
+    }
+
+    @Before fun setUp() {
+        val dbFile = File(tmp.newFolder("Config"), "romm.db")
+        db = RommDatabase { dbFile }
+        db.upsertPlatforms(listOf(snes to null, gba to null))
+        db.upsertGames(listOf(
+            GameRecord(game(10, 1, "Super Mario World", "smw.sfc", 100L), null),
+            GameRecord(game(20, 2, "Mario Kart", "mk.gba", 200L), null),
+        ))
+        db.upsertCollections(listOf(collection to null))
+        db.setCollectionMembers("col-1", listOf(10, 20))
+    }
+
+    @After fun tearDown() = db.close()
+
+    private fun vm(
+        presentNamesFor: (String) -> Set<String> = { emptySet() },
+        linkedIds: Set<Int> = emptySet(),
+        enabledGroups: Set<RommCollectionGroup> = setOf(RommCollectionGroup.USER),
+    ) = RommBrowseViewModel(
+        library = library,
+        syncCoordinator = null,
+        db = db,
+        presentNamesFor = presentNamesFor,
+        linkedIdsProvider = { linkedIds },
+        enabledCollectionGroups = { enabledGroups },
+    )
+
+    @Test fun `loadCollections populates collections from the library`() = runBlocking {
+        val vm = vm()
+        vm.loadCollections()
+        assertEquals(listOf("My Faves"), vm.collections.value.map { it.name })
+    }
+
+    @Test fun `hasAnyCollections returns false before load`() {
+        val vm = vm()
+        assertEquals(false, vm.hasAnyCollections())
+    }
+
+    @Test fun `hasAnyCollections returns true after loadCollections`() = runBlocking {
+        val vm = vm()
+        vm.loadCollections()
+        assertEquals(true, vm.hasAnyCollections())
+    }
+
+    @Test fun `openCollection publishes the collection id with its rows`() = runBlocking {
+        val vm = vm()
+        vm.openCollection(collection)
+        assertEquals("col-1", vm.collectionGames.value?.id)
+    }
+
+    @Test fun `switching collections replaces id and rows together`() = runBlocking {
+        db.upsertCollections(listOf(RommCollection("col-2", RommCollectionGroup.USER, "Shooters", 1) to null))
+        db.setCollectionMembers("col-2", listOf(20))
+        val vm = vm()
+
+        vm.openCollection(collection)
+        assertEquals("col-1", vm.collectionGames.value?.id)
+        assertEquals(setOf(10, 20), vm.collectionGames.value!!.rows.map { it.game.id }.toSet())
+
+        vm.openCollection(RommCollection("col-2", RommCollectionGroup.USER, "Shooters", 1))
+        assertEquals("col-2", vm.collectionGames.value?.id)
+        assertEquals(setOf(20), vm.collectionGames.value!!.rows.map { it.game.id }.toSet())
+    }
+
+    @Test fun `openCollection resolves two games on different platforms`() = runBlocking {
+        val vm = vm()
+        vm.openCollection(collection)
+        val rows = vm.collectionGames.value!!.rows
+        assertEquals(2, rows.size)
+        val snesRow = rows.first { it.game.id == 10 }
+        assertEquals(snes.cannoliTag, snesRow.platform.cannoliTag)
+        assertEquals(snes.id, snesRow.platform.id)
+        val gbaRow = rows.first { it.game.id == 20 }
+        assertEquals(gba.cannoliTag, gbaRow.platform.cannoliTag)
+        assertEquals(gba.id, gbaRow.platform.id)
+    }
+
+    @Test fun `openCollection marks a present game PRESENT by filename`() = runBlocking {
+        val vm = vm(presentNamesFor = { tag -> if (tag == "SNES") setOf("smw.sfc") else emptySet() })
+        vm.openCollection(collection)
+        val rows = vm.collectionGames.value!!.rows
+        assertEquals(LocalState.PRESENT, rows.first { it.game.id == 10 }.localState)
+        assertEquals(LocalState.REMOTE, rows.first { it.game.id == 20 }.localState)
+    }
+
+    @Test fun `openCollection marks a linked game PRESENT regardless of filename`() = runBlocking {
+        val vm = vm(linkedIds = setOf(20))
+        vm.openCollection(collection)
+        val rows = vm.collectionGames.value!!.rows
+        assertEquals(LocalState.PRESENT, rows.first { it.game.id == 20 }.localState)
+        assertEquals(LocalState.REMOTE, rows.first { it.game.id == 10 }.localState)
+    }
+
+    @Test fun `openCollection resolves local-state lookups once per page, not per row`() = runBlocking {
+        db.upsertGames(listOf(GameRecord(game(30, 1, "Yoshi", "yoshi.sfc"), null)))
+        db.setCollectionMembers("col-1", listOf(10, 20, 30))
+        var linkedCalls = 0
+        var presentCalls = 0
+        val vm = RommBrowseViewModel(
+            library = library,
+            syncCoordinator = null,
+            db = db,
+            presentNamesFor = { presentCalls++; emptySet() },
+            linkedIdsProvider = { linkedCalls++; emptySet() },
+            enabledCollectionGroups = { setOf(RommCollectionGroup.USER) },
+        )
+        vm.openCollection(collection)
+        assertEquals(3, vm.collectionGames.value!!.rows.size)
+        assertEquals(1, linkedCalls)
+        assertEquals(2, presentCalls)
+    }
+
+    @Test fun `openCollection publishes all folded rows at once`() = runBlocking {
+        val thirdGame = game(30, 1, "Yoshi", "yoshi.sfc")
+        db.upsertGames(listOf(GameRecord(thirdGame, null)))
+        db.upsertCollections(listOf(RommCollection("col-1", RommCollectionGroup.USER, "My Faves", 3) to null))
+        db.setCollectionMembers("col-1", listOf(10, 20, 30))
+
+        val vm = vm()
+        vm.openCollection(collection)
+        assertEquals(3, vm.collectionGames.value!!.rows.size)
+    }
+
+    @Test fun `group counts and entry target reflect enabled groups`() = runBlocking {
+        db.upsertGames(listOf(GameRecord(game(30, 1, "Yoshi", "yoshi.sfc"), null)))
+        db.upsertCollections(listOf(
+            RommCollection("v-fr", RommCollectionGroup.VIRTUAL, "Yoshi", 1, "franchise") to null,
+        ))
+        db.setCollectionMembers("v-fr", listOf(30))
+
+        val vm = vm(enabledGroups = setOf(RommCollectionGroup.USER, RommCollectionGroup.VIRTUAL))
+        vm.loadCollectionCounts()
+        assertEquals(1, vm.groupCounts.value[RommCollectionGroup.VIRTUAL])
+        assertEquals(listOf("franchise" to 1), vm.virtualTypeCounts.value)
+        assertEquals(RommBrowseViewModel.CollectionEntry.Landing, vm.collectionEntryTarget())
+    }
+
+    @Test fun `single enabled group skips to its destination`() {
+        assertEquals(
+            RommBrowseViewModel.CollectionEntry.Group(RommCollectionGroup.USER),
+            vm(enabledGroups = setOf(RommCollectionGroup.USER)).collectionEntryTarget(),
+        )
+        assertEquals(
+            RommBrowseViewModel.CollectionEntry.VirtualTypes,
+            vm(enabledGroups = setOf(RommCollectionGroup.VIRTUAL)).collectionEntryTarget(),
+        )
+    }
+
+    @Test fun `openCollections filters by group and type`() = runBlocking {
+        db.upsertGames(listOf(GameRecord(game(30, 1, "Yoshi", "yoshi.sfc"), null)))
+        db.upsertCollections(listOf(
+            RommCollection("v-fr", RommCollectionGroup.VIRTUAL, "Yoshi", 1, "franchise") to null,
+            RommCollection("v-ge", RommCollectionGroup.VIRTUAL, "Platformers", 1, "genre") to null,
+        ))
+        db.setCollectionMembers("v-fr", listOf(30)); db.setCollectionMembers("v-ge", listOf(30))
+
+        val vm = vm(enabledGroups = setOf(RommCollectionGroup.VIRTUAL))
+        vm.openCollections(RommCollectionGroup.VIRTUAL, "franchise")
+        assertEquals(listOf("v-fr"), vm.collectionList.value?.rows?.map { it.id })
+    }
+
+    @Test fun `COLLECTION multi-select checks against collection games`() = runBlocking {
+        val vm = vm()
+        vm.openCollection(collection)
+        vm.enterMultiSelect(RommBrowseViewModel.MultiSelectSource.COLLECTION, 10)
+        assertEquals(true, vm.isMultiSelect())
+        assertEquals(setOf(10), vm.checkedIds.value)
+        vm.toggleChecked(20)
+        assertEquals(setOf(10, 20), vm.checkedIds.value)
+        assertEquals(setOf(10, 20), vm.confirmMultiSelect())
+        assertEquals(false, vm.isMultiSelect())
+    }
+
+    @Test fun `COLLECTION multi-select does not check a present game`() = runBlocking {
+        val vm = vm(presentNamesFor = { tag -> if (tag == "SNES") setOf("smw.sfc") else emptySet() })
+        vm.openCollection(collection)
+        vm.enterMultiSelect(RommBrowseViewModel.MultiSelectSource.COLLECTION, 10)
+        assertEquals(emptySet<Int>(), vm.checkedIds.value)
+        vm.toggleChecked(10)
+        assertEquals(emptySet<Int>(), vm.checkedIds.value)
+    }
+
+    @Test fun `refreshCollectionLocalState re-derives present state`() = runBlocking {
+        val present = mutableMapOf<String, Set<String>>()
+        val vm = vm(presentNamesFor = { tag -> present[tag] ?: emptySet() })
+        vm.openCollection(collection)
+        assertEquals(LocalState.REMOTE, vm.collectionGames.value!!.rows.first { it.game.id == 10 }.localState)
+        present["SNES"] = setOf("smw.sfc")
+        vm.refreshCollectionLocalState()
+        assertEquals(LocalState.PRESENT, vm.collectionGames.value!!.rows.first { it.game.id == 10 }.localState)
+    }
+}

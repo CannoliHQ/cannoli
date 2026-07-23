@@ -14,12 +14,18 @@ class AtomicRename(private val cannoliRoot: File) {
     private val statesDir get() = paths.saveStatesDir
     private val artDir get() = paths.artDir
 
-    data class RenameResult(val success: Boolean, val error: String? = null)
+    enum class RenameError { CANNOT_RESOLVE_DIR, ALREADY_EXISTS, BACKUP_FAILED, RENAME_FAILED, RELOCATE_FAILED }
+
+    data class RenameResult(val success: Boolean, val error: RenameError? = null)
+
+    // Carries a structured error through the throw/catch so the raw exception text can be
+    // logged (not surfaced) while the UI maps the code to a localized message.
+    private class RenameFailure(val error: RenameError) : Exception()
 
     fun rename(romFile: File, newBaseName: String, platformTag: String): RenameResult {
         val oldBaseName = romFile.nameWithoutExtension
         val extension = romFile.extension
-        val romDir = romFile.parentFile ?: return RenameResult(false, "Cannot resolve ROM directory")
+        val romDir = romFile.parentFile ?: return RenameResult(false, RenameError.CANNOT_RESOLVE_DIR)
 
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
         val backupTagDir = File(backupDir, "$platformTag/${oldBaseName}-$timestamp")
@@ -33,7 +39,8 @@ class AtomicRename(private val cannoliRoot: File) {
             if (backupTagDir.list()?.isEmpty() == true) backupTagDir.delete()
         } catch (e: Exception) {
             backupTagDir.deleteRecursively()
-            return RenameResult(false, "Backup failed: ${e.message}")
+            ErrorLog.write("rename backup failed: ${e.message}")
+            return RenameResult(false, RenameError.BACKUP_FAILED)
         }
 
         val newRomFile = File(romDir, "$newBaseName.$extension")
@@ -41,10 +48,10 @@ class AtomicRename(private val cannoliRoot: File) {
         var artMoved: Pair<File, File>? = null
         try {
             if (newRomFile.exists() && newRomFile != romFile) {
-                throw Exception("A game named \"$newBaseName\" already exists")
+                throw RenameFailure(RenameError.ALREADY_EXISTS)
             }
             if (!romFile.renameTo(newRomFile)) {
-                throw Exception("Failed to rename ROM file")
+                throw RenameFailure(RenameError.RENAME_FAILED)
             }
             romMoved = true
             findArtFile(platformTag, oldBaseName)?.let { artFile ->
@@ -57,7 +64,8 @@ class AtomicRename(private val cannoliRoot: File) {
             try {
                 rollback(backupTagDir, platformTag, romMoved, romFile, newRomFile, artMoved)
             } catch (_: Exception) { }
-            return RenameResult(false, e.message ?: "Rename failed")
+            if (e !is RenameFailure) ErrorLog.write("rename failed: ${e.message}")
+            return RenameResult(false, (e as? RenameFailure)?.error ?: RenameError.RENAME_FAILED)
         }
 
         return RenameResult(true)
@@ -78,7 +86,8 @@ class AtomicRename(private val cannoliRoot: File) {
             backupSaveData(backupTagDir, platformTag, oldBaseName)
         } catch (e: Exception) {
             backupTagDir.deleteRecursively()
-            return RenameResult(false, "Backup failed: ${e.message}")
+            ErrorLog.write("relocate backup failed: ${e.message}")
+            return RenameResult(false, RenameError.BACKUP_FAILED)
         }
 
         try {
@@ -88,7 +97,8 @@ class AtomicRename(private val cannoliRoot: File) {
                 clearSaveData(platformTag, newBaseName)
                 restoreSaveData(backupTagDir, platformTag)
             } catch (_: Exception) { }
-            return RenameResult(false, "Relocate failed: ${e.message}")
+            ErrorLog.write("relocate failed: ${e.message}")
+            return RenameResult(false, RenameError.RELOCATE_FAILED)
         }
 
         return RenameResult(true)

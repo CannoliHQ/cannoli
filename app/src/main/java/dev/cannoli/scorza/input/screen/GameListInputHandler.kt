@@ -5,6 +5,15 @@ import android.os.Looper
 import dagger.hilt.android.scopes.ActivityScoped
 import dev.cannoli.scorza.di.IoScope
 import dev.cannoli.scorza.input.LauncherActions
+import dev.cannoli.scorza.input.MENU_ADD_FAVORITE
+import dev.cannoli.scorza.input.MENU_DELETE_ART
+import dev.cannoli.scorza.input.MENU_DELETE_GAME
+import dev.cannoli.scorza.input.MENU_MANAGE_COLLECTIONS
+import dev.cannoli.scorza.input.MENU_PRELOAD_ACHIEVEMENTS
+import dev.cannoli.scorza.input.MENU_REMOVE
+import dev.cannoli.scorza.input.MENU_REMOVE_FAVORITE
+import dev.cannoli.scorza.input.MENU_REMOVE_FROM_COLLECTION
+import dev.cannoli.scorza.input.MENU_REMOVE_FROM_RECENTS
 import dev.cannoli.scorza.input.ScreenInputHandler
 import dev.cannoli.scorza.model.ListItem
 import dev.cannoli.scorza.model.recentKey
@@ -14,7 +23,7 @@ import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.input.PageJump
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
-import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
+import dev.cannoli.ui.components.KeyboardState
 import kotlinx.coroutines.CoroutineScope
 import javax.inject.Inject
 
@@ -23,7 +32,6 @@ class GameListInputHandler @Inject constructor(
     private val nav: NavigationController,
     @IoScope private val ioScope: CoroutineScope,
     private val settings: SettingsRepository,
-    private val systemListViewModel: SystemListViewModel,
     private val gameListViewModel: GameListViewModel,
     private val launcherActions: LauncherActions,
 ) : ScreenInputHandler {
@@ -53,21 +61,58 @@ class GameListInputHandler @Inject constructor(
         selectHoldHandler.removeCallbacks(collectionSelectHoldRunnable)
     }
 
+    private enum class ResumeButton { CONFIRM, NORTH }
+    private var armedResumeButton: ResumeButton? = null
+    private var resumeHoldFired = false
+    private val resumeHoldHandler = Handler(Looper.getMainLooper())
+    val resumeHoldRunnable = Runnable {
+        val button = armedResumeButton ?: return@Runnable
+        armedResumeButton = null
+        resumeHoldFired = true
+        val item = gameListViewModel.getSelectedItem() as? ListItem.RomItem ?: return@Runnable
+        nav.push(launcherActions.buildSaveStatePicker(item.rom, awaitConfirmRelease = button == ResumeButton.CONFIRM))
+    }
+
+    private fun armResumeHold(button: ResumeButton) {
+        if (armedResumeButton == button) return
+        resumeHoldHandler.removeCallbacks(resumeHoldRunnable)
+        armedResumeButton = button
+        resumeHoldFired = false
+        resumeHoldHandler.postDelayed(resumeHoldRunnable, 400)
+    }
+
+    private fun cancelResumeHoldTimer() {
+        resumeHoldHandler.removeCallbacks(resumeHoldRunnable)
+        armedResumeButton = null
+        resumeHoldFired = false
+    }
+
+    private fun isResumableRomSelected(): Boolean {
+        val item = gameListViewModel.getSelectedItem() ?: return false
+        if (item !is ListItem.RomItem) return false
+        val key = selectedRecentKey(item) ?: return false
+        return nav.resumableGames.contains(key)
+    }
+
     override fun onUp() {
+        cancelResumeHoldTimer()
         if (gameListViewModel.isReorderMode()) gameListViewModel.reorderMoveUp()
         else gameListViewModel.moveSelection(-1)
     }
 
     override fun onDown() {
+        cancelResumeHoldTimer()
         if (gameListViewModel.isReorderMode()) gameListViewModel.reorderMoveDown()
         else gameListViewModel.moveSelection(1)
     }
 
     override fun onLeft() {
+        cancelResumeHoldTimer()
         if (!gameListViewModel.isReorderMode()) pageJump(-1)
     }
 
     override fun onRight() {
+        cancelResumeHoldTimer()
         if (!gameListViewModel.isReorderMode()) pageJump(1)
     }
 
@@ -75,14 +120,37 @@ class GameListInputHandler @Inject constructor(
         when {
             gameListViewModel.isMultiSelectMode() -> gameListViewModel.toggleChecked()
             gameListViewModel.isReorderMode() -> gameListViewModel.confirmReorder()
+            settings.swapPlayResume && isResumableRomSelected() -> armResumeHold(ResumeButton.CONFIRM)
             else -> onGameListConfirm()
         }
     }
 
+    override fun onConfirmUp() {
+        if (armedResumeButton != ResumeButton.CONFIRM) return
+        val fired = resumeHoldFired
+        cancelResumeHoldTimer()
+        if (!fired) onGameListConfirm()
+    }
+
+    override fun onR1() {
+        val glState = gameListViewModel.state.value
+        if (glState.reorderMode || glState.multiSelectMode || glState.isCollectionsList) return
+        nav.dialogState.value = DialogState.RenameInput(
+            gameName = "launcher_search",
+            searchScope = glState.breadcrumb,
+            keyboard = KeyboardState(
+                text = glState.searchTerm ?: "",
+                cursorPos = (glState.searchTerm ?: "").length,
+            ),
+        )
+    }
+
     override fun onBack() {
+        cancelResumeHoldTimer()
         when {
             gameListViewModel.isMultiSelectMode() -> gameListViewModel.cancelMultiSelect()
             gameListViewModel.isReorderMode() -> gameListViewModel.cancelReorder()
+            gameListViewModel.isSearching() -> gameListViewModel.clearSearch()
             !nav.navigating -> {
                 val glState = gameListViewModel.state.value
                 if (!gameListViewModel.exitSubfolder()) {
@@ -102,6 +170,7 @@ class GameListInputHandler @Inject constructor(
     }
 
     override fun onStart() {
+        cancelResumeHoldTimer()
         val glState = gameListViewModel.state.value
         if (gameListViewModel.isMultiSelectMode()) {
             val checkedItems: List<ListItem> = glState.checkedIndices
@@ -126,7 +195,13 @@ class GameListInputHandler @Inject constructor(
                 if (isApkList) {
                     options.addAll(listOf(MENU_MANAGE_COLLECTIONS, MENU_REMOVE))
                 } else {
-                    options.addAll(listOf(MENU_MANAGE_COLLECTIONS, MENU_DELETE_ART, MENU_DELETE_GAME))
+                    options.add(MENU_MANAGE_COLLECTIONS)
+                    if (settings.raToken.isNotEmpty() &&
+                        dev.cannoli.scorza.ra.RaConsoles.MAP.containsKey(glState.platformTag.uppercase())
+                    ) {
+                        options.add(MENU_PRELOAD_ACHIEVEMENTS)
+                    }
+                    options.addAll(listOf(MENU_DELETE_ART, MENU_DELETE_GAME))
                 }
                 gameListViewModel.confirmMultiSelect()
                 nav.dialogState.value = DialogState.BulkContextMenu(
@@ -157,6 +232,7 @@ class GameListInputHandler @Inject constructor(
     }
 
     override fun onSelect() {
+        cancelResumeHoldTimer()
         if (gameSelectDown) return
         gameSelectDown = true
         val glState = gameListViewModel.state.value
@@ -198,7 +274,9 @@ class GameListInputHandler @Inject constructor(
 
     override fun onSelectUp() {
         cancelSelectHoldTimer()
-        if (!nav.selectHeld && !collectionSelectHeld && !selectHandled) {
+        // gameSelectDown gates the action: an open dialog consumes the press but not the release,
+        // so a release can arrive here with no press behind it. Flags below still reset either way.
+        if (gameSelectDown && !nav.selectHeld && !collectionSelectHeld && !selectHandled) {
             val glState = gameListViewModel.state.value
             val isApkList = glState.platformTag == "tools" || glState.platformTag == "ports"
             if (((glState.isCollection && !glState.isCollectionsList && glState.subfolderPath == null) || isApkList)
@@ -212,6 +290,21 @@ class GameListInputHandler @Inject constructor(
     }
 
     override fun onNorth() {
+        if (!settings.swapPlayResume && isResumableRomSelected()) {
+            armResumeHold(ResumeButton.NORTH)
+        } else {
+            northAction()
+        }
+    }
+
+    override fun onNorthUp() {
+        if (armedResumeButton != ResumeButton.NORTH) return
+        val fired = resumeHoldFired
+        cancelResumeHoldTimer()
+        if (!fired) northAction()
+    }
+
+    private fun northAction() {
         val glState = gameListViewModel.state.value
         if (glState.isCollectionsList) return
         val item = gameListViewModel.getSelectedItem() ?: return
@@ -222,6 +315,8 @@ class GameListInputHandler @Inject constructor(
             val errorDialog = launcherActions.launchSelected(item, !settings.swapPlayResume)
             if (errorDialog != null) {
                 nav.dialogState.value = errorDialog
+            } else if (nav.dialogState.value is DialogState.SaveSyncChecking) {
+                if (trackRecent) launcherActions.recordPendingRecent(recentKey, false)
             } else if (trackRecent) {
                 launcherActions.recordRecentlyPlayedByPath(recentKey)
             }
@@ -235,14 +330,6 @@ class GameListInputHandler @Inject constructor(
         } else if (glState.isCollection && glState.collectionId != null && !glState.isFavorites) {
             nav.dialogState.value = DialogState.NewCollectionInput(gamePaths = emptyList(), parentId = glState.collectionId)
         }
-    }
-
-    override fun onL1() {
-        if (settings.platformSwitching) switchPlatform(-1)
-    }
-
-    override fun onR1() {
-        if (settings.platformSwitching) switchPlatform(1)
     }
 
     private fun onGameListConfirm() {
@@ -280,78 +367,11 @@ class GameListInputHandler @Inject constructor(
         val errorDialog = launcherActions.launchSelected(item, isResumable && settings.swapPlayResume)
         if (errorDialog != null) {
             nav.dialogState.value = errorDialog
+        } else if (nav.dialogState.value is DialogState.SaveSyncChecking) {
+            if (trackRecent) launcherActions.recordPendingRecent(recentKey, tag == "recently_played")
         } else if (trackRecent) {
             launcherActions.recordRecentlyPlayedByPath(recentKey)
             if (tag == "recently_played") nav.pendingRecentlyPlayedReorder = true
-        }
-    }
-
-    private fun switchPlatform(delta: Int) {
-        if (nav.navigating) return
-        val items = systemListViewModel.getNavigableItems()
-        if (items.size < 2) return
-
-        val gs = gameListViewModel.state.value
-        val currentIndex = items.indexOfFirst { item ->
-            when {
-                gs.platformTag == "recently_played" -> item is SystemListViewModel.ListItem.RecentlyPlayedItem
-                gs.isCollectionsList -> item is SystemListViewModel.ListItem.CollectionsFolder
-                gs.isCollection && gs.isFavorites -> item is SystemListViewModel.ListItem.FavoritesItem
-                gs.isCollection && gs.collectionId != null -> {
-                    (item is SystemListViewModel.ListItem.CollectionsFolder) ||
-                    (item is SystemListViewModel.ListItem.CollectionItem && item.id == gs.collectionId)
-                }
-                gs.platformTag == "tools" -> item is SystemListViewModel.ListItem.ToolsFolder
-                gs.platformTag == "ports" -> item is SystemListViewModel.ListItem.PortsFolder
-                gs.platformTag.isNotEmpty() -> item is SystemListViewModel.ListItem.PlatformItem && item.platform.tag == gs.platformTag
-                else -> false
-            }
-        }
-        if (currentIndex == -1) return
-
-        val newIndex = (currentIndex + delta).mod(items.size)
-        nav.navigating = true
-        when (val target = items[newIndex]) {
-            is SystemListViewModel.ListItem.RecentlyPlayedItem -> {
-                gameListViewModel.loadRecentlyPlayed {
-                    launcherActions.scanResumableGames()
-                    nav.navigating = false
-                }
-            }
-            is SystemListViewModel.ListItem.FavoritesItem -> {
-                gameListViewModel.loadFavorites {
-                    launcherActions.scanResumableGames()
-                    nav.navigating = false
-                }
-            }
-            is SystemListViewModel.ListItem.CollectionsFolder -> {
-                gameListViewModel.loadCollectionsList {
-                    nav.navigating = false
-                }
-            }
-            is SystemListViewModel.ListItem.PlatformItem -> {
-                gameListViewModel.loadPlatform(target.platform.tag, target.platform.allTags) {
-                    launcherActions.scanResumableGames()
-                    nav.navigating = false
-                }
-            }
-            is SystemListViewModel.ListItem.CollectionItem -> {
-                gameListViewModel.loadCollectionById(target.id) {
-                    launcherActions.scanResumableGames()
-                    nav.navigating = false
-                }
-            }
-            is SystemListViewModel.ListItem.ToolsFolder -> {
-                gameListViewModel.loadApkList("tools", target.name) {
-                    nav.navigating = false
-                }
-            }
-            is SystemListViewModel.ListItem.PortsFolder -> {
-                gameListViewModel.loadApkList("ports", target.name) {
-                    nav.navigating = false
-                }
-            }
-            else -> { nav.navigating = false }
         }
     }
 
@@ -387,14 +407,4 @@ class GameListInputHandler @Inject constructor(
             ?.let { FavRef.Rom(it.rom.id) }
     }
 
-    companion object {
-        private const val MENU_REMOVE_FROM_RECENTS = "Remove From Recently Played"
-        private const val MENU_ADD_FAVORITE = "Add To Favorites"
-        private const val MENU_REMOVE_FAVORITE = "Remove From Favorites"
-        private const val MENU_REMOVE_FROM_COLLECTION = "Remove From Collection"
-        private const val MENU_MANAGE_COLLECTIONS = "Manage Collections"
-        private const val MENU_REMOVE = "Remove Shortcut"
-        private const val MENU_DELETE_ART = "Delete Art"
-        private const val MENU_DELETE_GAME = "Delete Game"
-    }
 }

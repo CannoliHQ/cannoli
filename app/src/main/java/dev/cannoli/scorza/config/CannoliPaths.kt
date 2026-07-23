@@ -14,6 +14,7 @@ class CannoliPaths(val root: File) {
     val collectionsDir: File get() = File(root, "Collections")
     val backupDir: File get() = File(root, "Backup")
     val guidesDir: File get() = File(root, "Guides")
+    val cheatsDir: File get() = File(root, "Cheats")
     val wallpapersDir: File get() = File(root, "Wallpapers")
     val romsDir: File get() = File(root, "Roms")
     val shadersDir: File get() = File(root, "Shaders")
@@ -45,6 +46,7 @@ class CannoliPaths(val root: File) {
 
     // Specific config files
     val database: File get() = File(configDir, "cannoli.db")
+    val rommDatabase: File get() = File(configDir, "romm.db")
     val settingsJson: File get() = File(configDir, "settings.json")
     val platformsIni: File get() = File(configDir, "platforms.ini")
     val coresJson: File get() = File(configDir, "cores.json")
@@ -54,7 +56,9 @@ class CannoliPaths(val root: File) {
     val recentlyPlayedFile: File get() = File(configState, "recently_played.txt")
     val quickResumeFile: File get() = File(configState, "quick_resume.txt")
     val guidePositionsFile: File get() = File(configState, "guide_positions.ini")
+    val cheatStateFile: File get() = File(configState, "cheat_state.ini")
     val raGameIdsFile: File get() = File(configRetroAchievements, "ra_game_ids.txt")
+    val configRaOffline: File get() = File(configRetroAchievements, "Offline")
     val raGameIdsLegacyFile: File get() = File(configRetroArch, "ra_game_ids.txt")
     val raLaunchCfg: File get() = File(configRetroArch, "retroarch_launch.cfg")
     val cannoliFont: File get() = File(configAssets, "cannoli/font.ttf")
@@ -69,6 +73,8 @@ class CannoliPaths(val root: File) {
     fun savesFor(tag: String): File = File(savesDir, tag)
     fun saveStatesFor(tag: String): File = File(saveStatesDir, tag)
     fun guidesFor(tag: String): File = File(guidesDir, tag)
+
+    fun cheatsFor(tag: String): File = File(cheatsDir, tag)
     fun overlaysFor(tag: String): File = File(overlaysDir, tag)
     fun romsFor(tag: String): File = File(romsDir, tag)
 
@@ -84,6 +90,9 @@ class CannoliPaths(val root: File) {
 
     fun guideDir(tag: String, gameTitle: String): File =
         File(guidesFor(tag), gameTitle)
+
+    fun cheatDir(tag: String, gameTitle: String): File =
+        File(cheatsFor(tag), gameTitle)
 
     // Profiles & overrides
     fun profileFile(name: String): File = File(configProfiles, "$name.ini")

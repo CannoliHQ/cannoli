@@ -31,10 +31,16 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
 import dev.cannoli.igm.AchievementInfo
+import dev.cannoli.igm.CheatManager
+import dev.cannoli.igm.CheatRowUi
+import dev.cannoli.igm.CheatSession
+import dev.cannoli.igm.GuideFile
+import dev.cannoli.igm.GuideManager
 import dev.cannoli.igm.GuideType
 import dev.cannoli.igm.IGMScreen
 import dev.cannoli.igm.IGMSettings
 import dev.cannoli.igm.IGMSettingsItem
+import dev.cannoli.igm.IgmMenuAction
 import dev.cannoli.igm.InGameMenuOptions
 import dev.cannoli.igm.ShortcutAction
 import dev.cannoli.scorza.R
@@ -49,6 +55,7 @@ import dev.cannoli.ui.theme.LocalCannoliColors
 import androidx.compose.runtime.collectAsState
 import dev.cannoli.scorza.input.runtime.confirmButton
 import dev.cannoli.scorza.input.runtime.labelSet
+import dev.cannoli.ui.components.ListSection
 import dev.cannoli.ui.components.OsdPosition
 import dev.cannoli.ui.theme.hexToColor
 import kotlinx.coroutines.launch
@@ -62,6 +69,7 @@ import javax.inject.Inject
 class LibretroActivity : ComponentActivity() {
 
     @Inject lateinit var settings: SettingsRepository
+    @Inject lateinit var romsRepository: dev.cannoli.scorza.db.RomsRepository
     @Inject lateinit var portRouter: dev.cannoli.scorza.input.runtime.PortRouter
     @Inject lateinit var controllerBridge: dev.cannoli.scorza.input.runtime.ControllerBridge
     @Inject lateinit var screenInputRegistry: dev.cannoli.scorza.input.runtime.ScreenInputRegistry
@@ -160,13 +168,26 @@ class LibretroActivity : ComponentActivity() {
     private var coreCategories by mutableStateOf(emptyList<LibretroRunner.CoreOptionCategory>())
     private var coreRequiresHwRender = false
     private var controllerTypes by mutableStateOf(emptyList<LibretroRunner.ControllerType>())
-    private var controllerTypeIndex by mutableIntStateOf(0)
     private var portDeviceTypes by mutableStateOf<Map<Int, Int>>(emptyMap())
 
     @Volatile
     private var activeInputRemap: Map<dev.cannoli.scorza.input.CanonicalButton, Int> = emptyMap()
 
     private var inputRemap by mutableStateOf<Map<dev.cannoli.scorza.input.CanonicalButton, Int>>(emptyMap())
+
+    private var leftStickAsDpad by mutableStateOf(false)
+
+    // A launcher setting, so it cannot change while a game is running. Read once.
+    private val experimentalFeatures: Boolean by lazy { settings.experimentalFeatures }
+
+    private var allowDiagonals by mutableStateOf(true)
+
+    // The hot mask path reads this plain copy outside composition instead of the Compose state.
+    // Mirrors the existing activeInputRemap / inputRemap pair. Forced back to "allow" when the
+    // feature is gated off, so a value saved by a dev build cannot take effect in a release build
+    // where there is no row left to turn it back on.
+    @Volatile
+    private var activeAllowDiagonals = true
 
     private var shortcutSource by mutableStateOf(OverrideSource.GLOBAL)
     private var shortcuts by mutableStateOf(mapOf<ShortcutAction, Set<Int>>())
@@ -185,6 +206,9 @@ class LibretroActivity : ComponentActivity() {
     private var diskLabels = emptyList<String>()
 
     private var raManager: RetroAchievementsManager? = null
+    private var raOfflineRomPath: String? = null
+    private var raOfflinePlatformTag: String? = null
+    private var raOfflineRomId: Long = -1
     private var raInfoTick by mutableIntStateOf(0)
 
     private val raPausedIdleHandler = Handler(Looper.getMainLooper())
@@ -333,7 +357,7 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun diskLabel(index: Int): String =
-        diskLabels.getOrNull(index)?.takeIf { it.isNotEmpty() } ?: "Disc ${index + 1}"
+        diskLabels.getOrNull(index)?.takeIf { it.isNotEmpty() } ?: getString(R.string.osd_disc_fallback, index + 1)
 
     @Volatile private var raHasAchievements = false
 
@@ -351,13 +375,21 @@ class LibretroActivity : ComponentActivity() {
     private var guideInitialScrollX by mutableIntStateOf(0)
     private var infoScrollDir by mutableIntStateOf(0)
 
+    private lateinit var cheatManager: CheatManager
+    private var cheatSession: CheatSession? = null
+    private var cheatSections by mutableStateOf(emptyList<ListSection<CheatRowUi>>())
+    private var cheatHasRemembered by mutableStateOf(false)
+    private var hasCheats by mutableStateOf(false)
+
     private fun menuOptions() = InGameMenuOptions(
         hasDiscs,
         diskLabel(currentDiskIndex),
         raHasAchievements,
         guideFiles.isNotEmpty(),
+        hasCheats = hasCheats,
+        cheatsLabel = getString(R.string.igm_cheats),
         hasReassign = nonExcludedConnectedCount() > 1,
-        quitLabel = if (alwaysSaveOnQuit) getString(R.string.igm_save_and_quit) else "Quit"
+        quitLabel = if (alwaysSaveOnQuit) getString(R.string.igm_save_and_quit) else getString(R.string.igm_quit)
     )
 
     private fun nonExcludedConnectedCount(): Int =
@@ -472,7 +504,8 @@ class LibretroActivity : ComponentActivity() {
             cannoliRoot = cannoliRoot,
             coreName = coreName,
             corePath = corePath,
-            romPath = romPath
+            romPath = romPath,
+            gameTitle = gameTitle
         )
 
         if (savedInstanceState != null) {
@@ -502,6 +535,7 @@ class LibretroActivity : ComponentActivity() {
         sessionLog.log("platform_tag=$platformTag")
         slotManager = SaveSlotManager(stateBasePath)
         guideManager = GuideManager(cannoliRoot, platformTag, File(romPath).nameWithoutExtension)
+        cheatManager = CheatManager(cannoliRoot, platformTag, File(romPath).nameWithoutExtension, sessionLog::log)
         runner = LibretroRunner()
 
         val colors = CannoliColors(
@@ -580,6 +614,8 @@ class LibretroActivity : ComponentActivity() {
                                 fastForwarding = fastForwarding,
                                 settings = settings,
                                 guideFiles = guideFiles,
+                                cheatSections = cheatSections,
+                                cheatHasRemembered = cheatHasRemembered,
                                 guidePageCount = guidePageCount,
                                 guideScrollDir = guideScrollDir,
                                 guideScrollXDir = guideScrollXDir,
@@ -722,6 +758,10 @@ class LibretroActivity : ComponentActivity() {
                     backend.overlayPath = resolveOverlayPath()
                     backend.shaderPresetPath = resolveShaderPresetPath()
                     backend.portraitMarginPx = settings.portraitMarginPx
+                    backend.screenGeometryWidth = settings.screenGeometryWidth
+                    backend.screenGeometryHeight = settings.screenGeometryHeight
+                    backend.screenGeometryX = settings.screenGeometryX
+                    backend.screenGeometryY = settings.screenGeometryY
                 }
 
                 val glesBackend = LibretroRenderer(runner)
@@ -783,7 +823,12 @@ class LibretroActivity : ComponentActivity() {
                                     sessionLog.log("setFrameRate threw: ${t.message}")
                                 }
                             }
-                            val displayHz = activity.display?.refreshRate ?: 60f
+                            val display = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                                activity.display
+                            } else {
+                                @Suppress("DEPRECATION") activity.windowManager.defaultDisplay
+                            }
+                            val displayHz = display?.refreshRate ?: 60f
                             val mismatch = kotlin.math.abs(displayHz - requestedFps) / requestedFps
                             glesBackend.lockedToVsync = mismatch < 0.02f
                             sessionLog.log("vsync lock: displayHz=$displayHz coreFps=$requestedFps mismatch=${"%.4f".format(mismatch)} locked=${glesBackend.lockedToVsync}")
@@ -802,7 +847,7 @@ class LibretroActivity : ComponentActivity() {
                 val raUser = args.raUsername
                 val raToken = args.raToken
                 val raPassword = args.raPassword
-                val consoleId = RetroAchievementsManager.CONSOLE_MAP[platformTag.uppercase()]
+                val consoleId = dev.cannoli.scorza.ra.RaConsoles.MAP[platformTag.uppercase()]
                 sessionLog.log("RA init: user=${raUser.isNotEmpty()} token=${raToken.isNotEmpty()} password=${raPassword.isNotEmpty()} consoleId=$consoleId platformTag=$platformTag")
                 if (consoleId != null && raUser.isNotEmpty() && (raToken.isNotEmpty() || raPassword.isNotEmpty())) {
                     val raGameIdOverride = args.raGameId ?: 0
@@ -811,6 +856,7 @@ class LibretroActivity : ComponentActivity() {
                     ra = RetroAchievementsManager(
                         context = activity,
                         cacheDir = java.io.File(cacheDir, "ra_cache"),
+                        offlineDir = dev.cannoli.scorza.config.CannoliPaths(settings.sdCardRoot).configRaOffline,
                         onEvent = { _, title, _, _ ->
                             raHasAchievements = true
                             showOsd("\uDB81\uDD38 $title", OsdPosition.BottomCenterLow)
@@ -862,6 +908,9 @@ class LibretroActivity : ComponentActivity() {
                         sessionLog.log("RA setPendingReset (resumeSlot=$resumeSlot)")
                     }
                     raManager = ra
+                    raOfflineRomPath = args.originalRomPath ?: args.romPath
+                    raOfflinePlatformTag = args.platformTag
+                    raOfflineRomId = args.romId
                     slotManager.raManager = ra
                 }
             }
@@ -888,8 +937,34 @@ class LibretroActivity : ComponentActivity() {
     private val triggerR2HeldDevices = mutableSetOf<Int>()
     private val portConsumedKeys = Array(LibretroRunner.MAX_PORTS) { mutableSetOf<Int>() }
     private val portPressedKeys = Array(LibretroRunner.MAX_PORTS) { mutableSetOf<Int>() }
+    private val bindingHatSync = dev.cannoli.scorza.input.HatKeySync()
+    private val gameplayHatSync = dev.cannoli.scorza.input.HatKeySync()
+    private val stickDpadSync = dev.cannoli.scorza.input.HatKeySync()
+    private val stickDominance = dev.cannoli.scorza.input.StickDominance()
+    private val diagonalLock = DiagonalLock()
+    private val portStickDpad =
+        Array(LibretroRunner.MAX_PORTS) { mutableSetOf<dev.cannoli.scorza.input.CanonicalButton>() }
+
+    private fun setStickDpad(port: Int, keyCode: Int, pressed: Boolean) {
+        val canonical = dev.cannoli.scorza.input.HatKeys.canonicalFor(keyCode) ?: return
+        val changed = if (pressed) portStickDpad[port].add(canonical)
+        else portStickDpad[port].remove(canonical)
+        if (changed) pushPortMask(port)
+    }
 
     private fun handleMenuMotion(event: android.view.MotionEvent): Boolean {
+        // A hat D-pad reaches a menu screen only as a canonical event, which carries no keycode.
+        // Bridge it to KEYCODE_DPAD_* so it can join a chord like any other button.
+        val menuScreen = currentScreen
+        if (menuScreen is IGMScreen.Shortcuts && menuScreen.listening) {
+            bindingHatSync.sync(
+                event.deviceId,
+                event.getAxisValue(android.view.MotionEvent.AXIS_HAT_X),
+                event.getAxisValue(android.view.MotionEvent.AXIS_HAT_Y),
+                { bindingController.keyDown(it) },
+                { bindingController.keyUp(it) },
+            )
+        }
         // Route through the dispatcher first so the evaluator can react to Hat bindings (e.g.
         // Retroid Pocket Controller's D-pad uses hat axes 15/16). The dispatcher will fire
         // BTN_UP/DOWN/LEFT/RIGHT via the wired callback; PortRouter held-state is updated so
@@ -948,6 +1023,17 @@ class LibretroActivity : ComponentActivity() {
         }
         val port = portRouter.portFor(deviceId) ?: return super.dispatchGenericMotionEvent(event)
 
+        // A hat D-pad never produces a keycode, so the keycode-based chord matcher below could
+        // not see it. Bridge it before the port mask is pushed, so a chord that fires here has
+        // already marked the direction consumed and the game never receives it.
+        gameplayHatSync.sync(
+            deviceId,
+            event.getAxisValue(android.view.MotionEvent.AXIS_HAT_X),
+            event.getAxisValue(android.view.MotionEvent.AXIS_HAT_Y),
+            { keyCode -> pressSyntheticKey(port, keyCode) },
+            { keyCode -> releasePortKey(port, keyCode) },
+        )
+
         // Track whether any axis binding actually matched. If nothing did (e.g. the active
         // mapping uses Button(19/20/21/22) for D-pad and the device emits HAT axes 15/16),
         // we hand the event off to super so ViewRootImpl's SyntheticJoystickHandler can
@@ -983,8 +1069,34 @@ class LibretroActivity : ComponentActivity() {
         val stickY = event.getAxisValue(android.view.MotionEvent.AXIS_Y)
         val lStickX = mostActiveStick(mappingStickValue(mapping, dev.cannoli.scorza.input.AnalogRole.LEFT_STICK_X, event), stickX)
         val lStickY = mostActiveStick(mappingStickValue(mapping, dev.cannoli.scorza.input.AnalogRole.LEFT_STICK_Y, event), stickY)
-        runner.setAnalog(port, 0, (lStickX * 32767).toInt().coerceIn(-32768, 32767),
-            (lStickY * 32767).toInt().coerceIn(-32768, 32767))
+        if (leftStickAsDpad) {
+            // The stick drives the D-pad instead of the analog axes, so the core sees one or the
+            // other and never both. Deliberately kept out of portPressedKeys: the stick is a
+            // gameplay input here, not something that should trigger shortcut chords.
+            var dx = lStickX
+            var dy = lStickY
+            if (!activeAllowDiagonals) {
+                // Drop the minor axis so the stick asserts one direction, never a diagonal. Only
+                // the raw floats know which way the player actually pushed; by the time the stick
+                // reaches the mask it is already a set of buttons.
+                when (stickDominance.dominantAxis(deviceId, lStickX, lStickY)) {
+                    dev.cannoli.scorza.input.DominantAxis.HORIZONTAL -> dy = 0f
+                    dev.cannoli.scorza.input.DominantAxis.VERTICAL -> dx = 0f
+                    dev.cannoli.scorza.input.DominantAxis.NONE -> {}
+                }
+            }
+            stickDpadSync.sync(
+                deviceId,
+                dx,
+                dy,
+                { keyCode -> setStickDpad(port, keyCode, pressed = true) },
+                { keyCode -> setStickDpad(port, keyCode, pressed = false) },
+            )
+            runner.setAnalog(port, 0, 0, 0)
+        } else {
+            runner.setAnalog(port, 0, (lStickX * 32767).toInt().coerceIn(-32768, 32767),
+                (lStickY * 32767).toInt().coerceIn(-32768, 32767))
+        }
         val rStickX = mostActiveStick(
             mappingStickValue(mapping, dev.cannoli.scorza.input.AnalogRole.RIGHT_STICK_X, event),
             event.getAxisValue(android.view.MotionEvent.AXIS_Z),
@@ -1006,15 +1118,23 @@ class LibretroActivity : ComponentActivity() {
 
     private fun pushPortMask(port: Int) {
         val eval = evaluatorForPort(port) ?: run {
-            runner.setInput(port, 0)
+            runner.setInput(port, diagonalLock.filter(port, 0, activeAllowDiagonals))
             return
         }
         val remap = activeInputRemap
+        val consumed = portConsumedKeys[port]
         var mask = 0
         for (cb in eval.currentlyPressed()) {
+            // A keycode D-pad is released from the evaluator when its chord fires; a hat D-pad
+            // keeps re-asserting itself from the axis, so suppress it here while it is consumed.
+            val hatKeyCode = dev.cannoli.scorza.input.HatKeys.keyCodeFor(cb)
+            if (hatKeyCode != null && hatKeyCode in consumed) continue
             mask = mask or dev.cannoli.scorza.input.runtime.CanonicalRetroMap.effectiveTarget(cb, remap)
         }
-        runner.setInput(port, mask)
+        for (cb in portStickDpad[port]) {
+            mask = mask or dev.cannoli.scorza.input.runtime.CanonicalRetroMap.effectiveTarget(cb, remap)
+        }
+        runner.setInput(port, diagonalLock.filter(port, mask, activeAllowDiagonals))
     }
 
     private fun collectMotionAxes(
@@ -1147,18 +1267,7 @@ class LibretroActivity : ComponentActivity() {
             return true
         }
         val port = portRouter.portFor(event.deviceId) ?: 0
-        val portKeys = portPressedKeys[port]
-        portKeys.remove(keyCode)
-        portConsumedKeys[port].remove(keyCode)
-
-        if (holdingFf) {
-            val holdChord = shortcuts[ShortcutAction.HOLD_FF]
-            if (holdChord != null && !portKeys.containsAll(holdChord)) {
-                holdingFf = false
-                setFastForward(false)
-            }
-        }
-        checkPendingHoldRelease(port)
+        releasePortKey(port, keyCode)
 
         // The evaluator's Button asserter for this keycode releases here; if an Axis
         // asserter is still tracking the canonical, BTN_* stays in currentlyPressed via
@@ -1181,6 +1290,16 @@ class LibretroActivity : ComponentActivity() {
         KeyEvent.KEYCODE_MEDIA_NEXT,
         KeyEvent.KEYCODE_MEDIA_PREVIOUS -> true
         else -> false
+    }
+
+    private fun shortcutKeyLabel(keyCode: Int): String {
+        val mapping = activeMappingHolder.active.value
+        return dev.cannoli.scorza.util.buttonLabel(
+            this,
+            keyCode,
+            mapping,
+            mapping?.glyphStyle ?: dev.cannoli.scorza.input.GlyphStyle.PLUMBER,
+        )
     }
 
     private fun resolveNavButton(keyCode: Int, deviceId: Int): String? {
@@ -1245,6 +1364,7 @@ class LibretroActivity : ComponentActivity() {
         is IGMScreen.Menu -> simpleIgmHandler { btn -> handleMenuInput(screen, btn) }
         is IGMScreen.Settings -> simpleIgmHandler { btn -> handleCategoryInput(screen, btn) }
         is IGMScreen.Video -> simpleIgmHandler { btn -> handleVideoInput(screen, btn) }
+        is IGMScreen.Input -> simpleIgmHandler { btn -> handleInputInput(screen, btn) }
         is IGMScreen.Advanced -> simpleIgmHandler { btn -> handleAdvancedInput(screen, btn) }
         is IGMScreen.ShaderSettings -> simpleIgmHandler { btn -> handleShaderSettingsInput(screen, btn) }
         is IGMScreen.Emulator -> simpleIgmHandler { btn -> handleEmulatorInput(screen, btn) }
@@ -1262,7 +1382,10 @@ class LibretroActivity : ComponentActivity() {
         is IGMScreen.AchievementDetail -> simpleIgmHandler { btn -> handleAchievementDetailInput(screen, btn) }
         is IGMScreen.GuidePicker -> simpleIgmHandler { btn -> handleGuidePickerInput(screen, btn) }
         is IGMScreen.Guide -> simpleIgmHandler { btn -> handleGuideInput(screen, btn) }
+        is IGMScreen.Cheats -> simpleIgmHandler { btn -> handleCheatsInput(screen, btn) }
         is IGMScreen.ReassignPlayers -> simpleIgmHandler { btn -> handleReassignPlayersInput(screen, btn) }
+        is IGMScreen.RaOptions -> null
+        is IGMScreen.RaOptionsCategory -> null
         is IGMScreen.Buttons -> object : dev.cannoli.scorza.input.ScreenInputHandler {
             // Canonical events for nav between rows (works for hat-only D-pads where no KeyEvent
             // arrives). When the screen is in capture mode (listeningCanonical != null) we
@@ -1328,22 +1451,26 @@ class LibretroActivity : ComponentActivity() {
         val wasHeld = deviceId in held
         if (value > TRIGGER_PRESS_THRESHOLD && !wasHeld) {
             held.add(deviceId)
-            val portKeys = portPressedKeys[port]
-            if (portKeys.add(keyCode)) checkShortcuts(port)
+            pressSyntheticKey(port, keyCode)
         } else if (value < TRIGGER_RELEASE_THRESHOLD && wasHeld) {
             held.remove(deviceId)
-            val portKeys = portPressedKeys[port]
-            portKeys.remove(keyCode)
-            portConsumedKeys[port].remove(keyCode)
-            if (holdingFf) {
-                val holdChord = shortcuts[ShortcutAction.HOLD_FF]
-                if (holdChord != null && !portKeys.containsAll(holdChord)) {
-                    holdingFf = false
-                    setFastForward(false)
-                }
-            }
-            checkPendingHoldRelease(port)
+            releasePortKey(port, keyCode)
         }
+    }
+
+    private fun pressSyntheticKey(port: Int, keyCode: Int) {
+        if (portPressedKeys[port].add(keyCode)) checkShortcuts(port)
+    }
+
+    private fun releasePortKey(port: Int, keyCode: Int) {
+        val portKeys = portPressedKeys[port]
+        portKeys.remove(keyCode)
+        portConsumedKeys[port].remove(keyCode)
+        if (holdingFf && shouldReleaseHoldFf(shortcuts[ShortcutAction.HOLD_FF], portKeys)) {
+            holdingFf = false
+            setFastForward(false)
+        }
+        checkPendingHoldRelease(port)
     }
 
     private fun handleGameplayInput(keyCode: Int, event: KeyEvent): Boolean {
@@ -1379,14 +1506,14 @@ class LibretroActivity : ComponentActivity() {
                 ShortcutAction.SAVE_STATE -> {
                     if (stateBasePath.isNotEmpty()) {
                         slotManager.saveState(runner, currentSlot)
-                        showOsd("Saved to ${currentSlot.label}", OsdPosition.BottomCenter)
+                        showOsd(getString(R.string.osd_state_saved, currentSlot.label), OsdPosition.BottomCenter)
                     }
                 }
                 ShortcutAction.LOAD_STATE -> {
                     if (stateBasePath.isNotEmpty() && slotManager.stateExists(currentSlot)) {
                         slotManager.loadState(runner, currentSlot)
                         sessionLog.log("RA state load (shortcut): slot=${currentSlot.label}")
-                        showOsd("Loaded ${currentSlot.label}", OsdPosition.BottomCenter)
+                        showOsd(getString(R.string.osd_state_loaded, currentSlot.label), OsdPosition.BottomCenter)
                     }
                 }
                 ShortcutAction.RESET_GAME -> {
@@ -1397,7 +1524,7 @@ class LibretroActivity : ComponentActivity() {
                         startUndoTimer(30_000)
                     }
                     runner.reset()
-                    showOsd("Reset", OsdPosition.BottomCenter)
+                    showOsd(getString(R.string.osd_reset), OsdPosition.BottomCenter)
                 }
                 ShortcutAction.SAVE_AND_QUIT -> {
                     performSaveAndQuit()
@@ -1410,12 +1537,12 @@ class LibretroActivity : ComponentActivity() {
                     val modes = ScalingMode.entries
                     scalingMode = modes[(scalingMode.ordinal + 1) % modes.size]
                     renderer.scalingMode = scalingMode
-                    showOsd("Scaling: ${scalingLabel()}", OsdPosition.BottomCenter)
+                    showOsd(getString(R.string.osd_scaling, scalingLabel()), OsdPosition.BottomCenter)
                 }
                 ShortcutAction.CYCLE_EFFECT -> {
                     cycleShader(1)
                     val label = if (shaderPreset.isEmpty()) "Off" else File(shaderPreset).nameWithoutExtension
-                    showOsd("Shader: $label", OsdPosition.BottomCenter)
+                    showOsd(getString(R.string.osd_shader, label), OsdPosition.BottomCenter)
                 }
                 ShortcutAction.TOGGLE_FF -> {
                     setFastForward(!fastForwarding)
@@ -1476,6 +1603,7 @@ class LibretroActivity : ComponentActivity() {
         renderer.paused = true
         syncGlThread()
         sessionLog.log("openMenu: glSynced")
+        ensureCheatSession()
         runner.pauseAudio()
         sessionLog.log("openMenu: audioPaused")
         startRaPausedIdle()
@@ -1494,6 +1622,10 @@ class LibretroActivity : ComponentActivity() {
         for (set in portPressedKeys) set.clear()
         triggerL2HeldDevices.clear()
         triggerR2HeldDevices.clear()
+        gameplayHatSync.reset()
+        stickDpadSync.reset()
+        diagonalLock.reset()
+        for (set in portStickDpad) set.clear()
         for (set in portConsumedKeys) set.clear()
         if (holdingFf) {
             holdingFf = false
@@ -1526,9 +1658,11 @@ class LibretroActivity : ComponentActivity() {
         sessionLog.log("refreshSlotInfo: occupied=${slotOccupied.count { it }}/${slotOccupied.size}")
     }
 
+    private fun wrapIndex(current: Int, count: Int, dir: Int) = ((current + dir) + count) % count
+
     private fun cycleSlot(direction: Int) {
         val count = slotManager.slots.size
-        selectedSlotIndex = ((selectedSlotIndex + direction) + count) % count
+        selectedSlotIndex = wrapIndex(selectedSlotIndex, count, direction)
         refreshSlotInfo()
     }
 
@@ -1538,7 +1672,7 @@ class LibretroActivity : ComponentActivity() {
         val ok = runOnGlThread(200L, false) { runner.setDiskIndex(newIndex) }
         if (ok) {
             currentDiskIndex = newIndex
-            showOsd("Switched to ${diskLabel(currentDiskIndex)}", OsdPosition.TopCenter)
+            showOsd(getString(R.string.osd_switched_to, diskLabel(currentDiskIndex)), OsdPosition.TopCenter)
         }
     }
 
@@ -1548,7 +1682,7 @@ class LibretroActivity : ComponentActivity() {
                 "btn_north" -> {
                     slotManager.deleteState(currentSlot)
                     refreshSlotInfo()
-                    showOsd("Deleted ${currentSlot.label}", OsdPosition.BottomCenter)
+                    showOsd(getString(R.string.osd_state_deleted, currentSlot.label), OsdPosition.BottomCenter)
                     replaceTop(screen.copy(confirmDeleteSlot = false))
                     true
                 }
@@ -1607,9 +1741,9 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun handleMenuAction(menu: InGameMenuOptions, index: Int) {
-        when (index) {
-            menu.resumeIndex -> closeAll()
-            menu.saveStateIndex -> {
+        when (menu.actionAt(index)) {
+            IgmMenuAction.RESUME -> closeAll()
+            IgmMenuAction.SAVE_STATE -> {
                 if (stateBasePath.isNotEmpty()) {
                     val slot = currentSlot
                     if (slot.index != 0) {
@@ -1620,11 +1754,11 @@ class LibretroActivity : ComponentActivity() {
                     }
                     slotManager.saveState(runner, slot)
                     refreshSlotInfo()
-                    showOsd("Saved to ${slot.label}", OsdPosition.BottomCenter)
+                    showOsd(getString(R.string.osd_state_saved, slot.label), OsdPosition.BottomCenter)
                 }
                 closeAll()
             }
-            menu.loadStateIndex -> {
+            IgmMenuAction.LOAD_STATE -> {
                 if (stateBasePath.isNotEmpty() && slotManager.stateExists(currentSlot)) {
                     val slot = currentSlot
                     slotManager.cacheForUndoLoad(runner)
@@ -1633,28 +1767,32 @@ class LibretroActivity : ComponentActivity() {
                     startUndoTimer()
                     slotManager.loadState(runner, slot)
                     sessionLog.log("RA state load (IGM): slot=${slot.label}")
-                    showOsd("Loaded ${slot.label}", OsdPosition.BottomCenter)
+                    showOsd(getString(R.string.osd_state_loaded, slot.label), OsdPosition.BottomCenter)
                 }
                 closeAll()
             }
-            menu.guideIndex -> {
+            IgmMenuAction.GUIDE -> {
                 if (guideFiles.size == 1) {
                     openGuide(guideFiles[0])
                 } else {
                     push(IGMScreen.GuidePicker())
                 }
             }
-            menu.settingsIndex -> {
+            IgmMenuAction.CHEATS -> {
+                val session = cheatSession ?: return
+                push(IGMScreen.Cheats(selectedIndex = session.firstSupportedIndex()))
+            }
+            IgmMenuAction.SETTINGS -> {
                 coreOptions = loadVisibleCoreOptions()
                 refreshShaderParams()
                 frontendSnapshot = buildCurrentSettings()
                 shaderParamsDirty = false
                 push(IGMScreen.Settings())
             }
-            menu.reassignIndex -> {
+            IgmMenuAction.REASSIGN -> {
                 push(IGMScreen.ReassignPlayers())
             }
-            menu.resetIndex -> {
+            IgmMenuAction.RESET -> {
                 if (stateBasePath.isNotEmpty()) {
                     slotManager.cacheForUndoLoad(runner)
                     undoType = UndoType.RESET
@@ -1664,10 +1802,10 @@ class LibretroActivity : ComponentActivity() {
                 runner.reset()
                 sessionLog.log("RA reset (IGM game reset)")
                 raManager?.reset()
-                showOsd("Reset", OsdPosition.BottomCenter)
+                showOsd(getString(R.string.osd_reset), OsdPosition.BottomCenter)
                 closeAll()
             }
-            menu.achievementsIndex -> {
+            IgmMenuAction.ACHIEVEMENTS -> {
                 val ra = raManager ?: return
                 val pending = ra.pendingSyncIds
                 val local = ra.localUnlocks
@@ -1681,7 +1819,7 @@ class LibretroActivity : ComponentActivity() {
                 }
                 push(IGMScreen.Achievements(achievements = achievements, status = ra.getStatus()))
             }
-            menu.quitIndex -> {
+            IgmMenuAction.QUIT -> {
                 if (alwaysSaveOnQuit && stateBasePath.isNotEmpty()) {
                     try {
                         slotManager.saveState(runner, slotManager.slots[0])
@@ -1691,6 +1829,7 @@ class LibretroActivity : ComponentActivity() {
                 }
                 quit()
             }
+            IgmMenuAction.SWITCH_DISC, null -> {}
         }
     }
 
@@ -1700,10 +1839,10 @@ class LibretroActivity : ComponentActivity() {
         val count = IGMSettings.CATEGORIES.size
         return when (button) {
             "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
             }
             "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
             }
             "btn_south" -> {
                 when (screen.selectedIndex) {
@@ -1713,10 +1852,7 @@ class LibretroActivity : ComponentActivity() {
                         coreCategories = runner.getCoreCategories()
                         push(IGMScreen.Emulator())
                     }
-                    IGMSettings.BUTTONS -> {
-                        push(IGMScreen.Buttons())
-                    }
-                    IGMSettings.SHORTCUTS -> push(IGMScreen.Shortcuts())
+                    IGMSettings.INPUT -> push(IGMScreen.Input())
                     IGMSettings.ADVANCED -> push(IGMScreen.Advanced())
                     IGMSettings.INFO -> push(IGMScreen.Info())
                 }
@@ -1738,11 +1874,11 @@ class LibretroActivity : ComponentActivity() {
     // --- Frontend ---
 
     private fun scalingLabel() = when (scalingMode) {
-        ScalingMode.CORE_REPORTED -> "Core Reported"
-        ScalingMode.INTEGER -> "Integer"
-        ScalingMode.INTEGER_OVERSCALE -> "Integer Overscale"
-        ScalingMode.ASPECT_SCREEN -> "Aspect Screen"
-        ScalingMode.FULLSCREEN -> "Fullscreen"
+        ScalingMode.CORE_REPORTED -> getString(R.string.scaling_core_reported)
+        ScalingMode.INTEGER -> getString(R.string.scaling_integer)
+        ScalingMode.INTEGER_OVERSCALE -> getString(R.string.scaling_integer_overscale)
+        ScalingMode.ASPECT_SCREEN -> getString(R.string.scaling_aspect_screen)
+        ScalingMode.FULLSCREEN -> getString(R.string.scaling_fullscreen)
     }
 
     private fun sharpnessLabel() = when (sharpness) {
@@ -1757,9 +1893,8 @@ class LibretroActivity : ComponentActivity() {
 
     private fun scanOverlayImages() {
         val dir = dev.cannoli.scorza.config.CannoliPaths(cannoliRoot).overlaysFor(platformTag)
-        val exts = setOf("png", "jpg", "jpeg")
         overlayImages = dir.listFiles()
-            ?.filter { it.isFile && it.extension.lowercase(java.util.Locale.ROOT) in exts }
+            ?.filter { it.isFile && it.extension.equals("png", ignoreCase = true) }
             ?.sortedBy { it.name }
             ?.map { it.name }
             ?: emptyList()
@@ -1865,10 +2000,10 @@ class LibretroActivity : ComponentActivity() {
         if (count == 0) return true
         return when (button) {
             "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
             }
             "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
             }
             "btn_left", "btn_right" -> {
                 val dir = if (button == "btn_right") 1 else -1
@@ -1908,10 +2043,10 @@ class LibretroActivity : ComponentActivity() {
         if (count == 0) return true
         return when (button) {
             "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
             }
             "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
             }
             "btn_left", "btn_right" -> {
                 val dir = if (button == "btn_right") 1 else -1
@@ -1937,11 +2072,10 @@ class LibretroActivity : ComponentActivity() {
         if (controllerTypes.isEmpty()) return
         val currentTypeId = portDeviceTypes[port] ?: LibretroRunner.DEVICE_JOYPAD
         val currentIdx = controllerTypes.indexOfFirst { it.id == currentTypeId }.coerceAtLeast(0)
-        val newIdx = ((currentIdx + direction) + controllerTypes.size) % controllerTypes.size
+        val newIdx = wrapIndex(currentIdx, controllerTypes.size, direction)
         val ct = controllerTypes[newIdx]
         portDeviceTypes = portDeviceTypes.toMutableMap().also { it[port] = ct.id }
         if (port == 0) {
-            controllerTypeIndex = newIdx
             applyForceAnalog(ct.id > 1)
         }
         runner.setControllerPortDevice(port, ct.id)
@@ -2019,10 +2153,10 @@ class LibretroActivity : ComponentActivity() {
         }
         return when (button) {
             "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
             }
             "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
             }
             "btn_south" -> {
                 var ach = filtered.getOrNull(screen.selectedIndex)
@@ -2075,14 +2209,110 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
+    private fun ensureCheatSession() {
+        val snapshot = cheatManager.rawSnapshot()
+        val session = cheatSession
+        if (session != null && session.fileSnapshot() == snapshot) {
+            hasCheats = session.rows.isNotEmpty()
+            refreshCheatRows()
+            return
+        }
+        val files = cheatManager.findCheatFiles()
+        if (session != null && session.anyEnabled()) {
+            runner.applyEmuCheats(emptyList())
+            runner.setRetroCheats(LongArray(0))
+        }
+        cheatSession = if (files.isEmpty()) null else {
+            CheatSession(cheatManager, files, runner.cheatMemorySize() > 0)
+        }
+        hasCheats = cheatSession?.rows?.isNotEmpty() == true
+        refreshCheatRows()
+    }
+
+    private fun refreshCheatRows() {
+        val session = cheatSession
+        if (session == null) {
+            cheatSections = emptyList()
+            cheatHasRemembered = false
+            return
+        }
+        var rowIndex = 0
+        cheatSections = session.files.map { f ->
+            ListSection(
+                header = f.file.nameWithoutExtension,
+                items = f.cheats.indices.map {
+                    val row = session.rows[rowIndex++]
+                    CheatRowUi(
+                        label = row.label,
+                        enabled = session.isEnabled(row),
+                        supported = row.supported,
+                    )
+                }
+            )
+        }
+        cheatHasRemembered = session.hasRemembered()
+    }
+
+    private fun applyCheats(session: CheatSession) {
+        runner.applyEmuCheats(session.emuCodes())
+        runner.setRetroCheats(session.retroTable())
+        sessionLog.log("cheats: applied emu=${session.emuCodes().size} table=${session.rows.size}")
+    }
+
+    private fun handleCheatsInput(screen: IGMScreen.Cheats, button: String?): Boolean {
+        val session = cheatSession ?: run { pop(); return true }
+        val count = session.rows.size
+        if (count == 0) { pop(); return true }
+
+        fun move(dir: Int) {
+            if (session.rows.none { it.supported }) return
+            var idx = screen.selectedIndex
+            repeat(count) {
+                idx = (idx + dir + count) % count
+                if (session.rows[idx].supported) {
+                    replaceTop(screen.copy(selectedIndex = idx))
+                    return
+                }
+            }
+        }
+
+        return when (button) {
+            "btn_up" -> { move(-1); true }
+            "btn_down" -> { move(1); true }
+            "btn_left", "btn_right", "btn_south" -> {
+                if (session.toggle(screen.selectedIndex)) {
+                    applyCheats(session)
+                    refreshCheatRows()
+                }
+                true
+            }
+            "btn_north" -> {
+                if (session.hasRemembered()) {
+                    val restored = session.restoreLastSession()
+                    if (restored > 0) {
+                        applyCheats(session)
+                        refreshCheatRows()
+                        showOsd(
+                            resources.getQuantityString(R.plurals.osd_cheats_restored, restored, restored),
+                            OsdPosition.BottomCenter
+                        )
+                    }
+                }
+                true
+            }
+            "btn_east" -> { pop(); true }
+            else -> true
+        }
+    }
+
     private fun handleGuidePickerInput(screen: IGMScreen.GuidePicker, button: String?): Boolean {
         val count = guideFiles.size
         return when (button) {
             "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
             }
             "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
             }
             "btn_south" -> {
                 guideFiles.getOrNull(screen.selectedIndex)?.let { openGuide(it) }
@@ -2130,7 +2360,7 @@ class LibretroActivity : ComponentActivity() {
             "btn_north" -> {
                 guideInitialScroll = guideScrollPos
                 guideInitialScrollX = guideScrollXPos
-                replaceTop(screen.copy(textZoom = if (screen.textZoom >= 3) 1 else screen.textZoom + 1))
+                replaceTop(screen.copy(textZoom = if (screen.textZoom >= dev.cannoli.igm.GuideZoom.levels) 1 else screen.textZoom + 1))
                 true
             }
             "btn_east" -> {
@@ -2154,10 +2384,10 @@ class LibretroActivity : ComponentActivity() {
         }
         return when (button) {
             "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
             }
             "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
             }
             "btn_left" -> { cycleShaderParam(screen.selectedIndex, -1); true }
             "btn_right" -> { cycleShaderParam(screen.selectedIndex, 1); true }
@@ -2216,10 +2446,10 @@ class LibretroActivity : ComponentActivity() {
             val count = items.size
             return when (button) {
                 "btn_up" -> {
-                    replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
+                    replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
                 }
                 "btn_down" -> {
-                    replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
+                    replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
                 }
                 "btn_south" -> {
                     val usedCategories = coreCategories.filter { cat -> coreOptions.any { it.category == cat.key } }
@@ -2234,10 +2464,10 @@ class LibretroActivity : ComponentActivity() {
         val count = coreOptions.size
         return when (button) {
             "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
             }
             "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
             }
             "btn_left" -> { cycleEmulatorValue(coreOptions, screen.selectedIndex, -1); true }
             "btn_right" -> { cycleEmulatorValue(coreOptions, screen.selectedIndex, 1); true }
@@ -2264,10 +2494,10 @@ class LibretroActivity : ComponentActivity() {
         val count = filtered.size
         return when (button) {
             "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
             }
             "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
             }
             "btn_left" -> { cycleEmulatorValue(filtered, screen.selectedIndex, -1); true }
             "btn_right" -> { cycleEmulatorValue(filtered, screen.selectedIndex, 1); true }
@@ -2342,10 +2572,10 @@ class LibretroActivity : ComponentActivity() {
         val count = ShortcutAction.entries.size + 1
         return when (button) {
             "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
             }
             "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
             }
             "btn_left" -> {
                 if (screen.selectedIndex == 0) cycleShortcutSource(-1)
@@ -2393,15 +2623,15 @@ class LibretroActivity : ComponentActivity() {
         if (count == 0) return true
         return when (button) {
             "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
             }
             "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count)); true
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
             }
             "btn_south" -> {
                 when (screen.selectedIndex) {
-                    0 -> { saveToPlatform(); showOsd("Saved for $platformName", OsdPosition.BottomCenter) }
-                    1 -> { saveToGame(); showOsd("Saved for this game", OsdPosition.BottomCenter) }
+                    0 -> { saveToPlatform(); showOsd(getString(R.string.osd_saved_for, platformName), OsdPosition.BottomCenter) }
+                    1 -> { saveToGame(); showOsd(getString(R.string.osd_saved_for_game), OsdPosition.BottomCenter) }
                 }
                 frontendSnapshot = null
                 shaderParamsDirty = false
@@ -2431,6 +2661,7 @@ class LibretroActivity : ComponentActivity() {
             if (shaderParams.isNotEmpty()) add(IGMSettingsItem("Shader Settings"))
             add(IGMSettingsItem("Overlay", overlayLabel()))
         }
+        is IGMScreen.Input -> buildInputItems()
         is IGMScreen.Advanced -> buildList {
             if (controllerTypes.size > 1) {
                 val ports = occupiedPorts()
@@ -2478,7 +2709,7 @@ class LibretroActivity : ComponentActivity() {
             for (action in ShortcutAction.entries) {
                 val chord = shortcuts[action]
                 val label = if (chord.isNullOrEmpty()) "None"
-                else chord.joinToString(" + ") { dev.cannoli.scorza.util.keyCodeName(it) }
+                else chord.joinToString(" + ") { shortcutKeyLabel(it) }
                 add(IGMSettingsItem(getString(action.labelRes), label))
             }
         }
@@ -2489,6 +2720,25 @@ class LibretroActivity : ComponentActivity() {
         )
         is IGMScreen.Buttons -> buildButtonsItems(screen)
         else -> emptyList()
+    }
+
+    private fun buildInputItems(): List<IGMSettingsItem> = buildList {
+        add(IGMSettingsItem(getString(R.string.igm_button_mappings)))
+        add(IGMSettingsItem(getString(R.string.title_shortcuts)))
+        add(
+            IGMSettingsItem(
+                getString(R.string.igm_left_stick_dpad),
+                getString(if (leftStickAsDpad) R.string.value_on else R.string.value_off),
+            )
+        )
+        if (experimentalFeatures) {
+            add(
+                IGMSettingsItem(
+                    getString(R.string.igm_dpad_mode),
+                    getString(if (allowDiagonals) R.string.value_dpad_8way else R.string.value_dpad_4way),
+                )
+            )
+        }
     }
 
     private fun buildButtonsItems(screen: IGMScreen.Buttons): List<IGMSettingsItem> = buildList {
@@ -2567,6 +2817,8 @@ class LibretroActivity : ComponentActivity() {
             shaderParams = paramMap,
             portDeviceTypes = portDeviceTypes,
             inputRemap = inputRemap,
+            leftStickAsDpad = leftStickAsDpad,
+            allowDiagonals = allowDiagonals,
         )
     }
 
@@ -2585,9 +2837,9 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun sourceLabel(source: OverrideSource): String = when (source) {
-        OverrideSource.GLOBAL -> "Global"
+        OverrideSource.GLOBAL -> getString(R.string.override_source_global)
         OverrideSource.PLATFORM -> platformName
-        OverrideSource.GAME -> "This Game"
+        OverrideSource.GAME -> getString(R.string.override_source_game)
     }
 
     private fun loadOverrides() {
@@ -2606,6 +2858,9 @@ class LibretroActivity : ComponentActivity() {
         portDeviceTypes = settings.portDeviceTypes
         inputRemap = settings.inputRemap
         activeInputRemap = settings.inputRemap
+        leftStickAsDpad = settings.leftStickAsDpad
+        allowDiagonals = settings.allowDiagonals
+        activeAllowDiagonals = effectiveAllowDiagonals()
 
         for ((key, value) in settings.coreOptions) {
             runner.setCoreOption(key, value)
@@ -2681,6 +2936,9 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun onRaDetectionReady() {
+        raManager?.let { ra ->
+            if (ra.gameId > 0 && ra.getAchievements().isNotEmpty()) recordOfflineSet(ra)
+        }
         val name = raStartupDisplayName ?: return
         raStartupTimeout?.let { raStartupHandler.removeCallbacks(it) }
         raStartupTimeout = null
@@ -2700,6 +2958,37 @@ class LibretroActivity : ComponentActivity() {
             getString(R.string.ra_login_success, name, ra.getStatus(), unlocked, achievements.size),
             OsdPosition.TopStart
         )
+    }
+
+    private fun recordOfflineSet(ra: RetroAchievementsManager) {
+        val romPath = raOfflineRomPath ?: return
+        val tag = raOfflinePlatformTag ?: return
+        val gameId = ra.gameId
+        if (gameId <= 0) return
+        val username = settings.raUsername
+        val token = settings.raToken
+        if (username.isEmpty() || token.isEmpty()) return
+        val hash = ra.gameHash
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val store = dev.cannoli.scorza.ra.RaOfflineStore(
+                    dev.cannoli.scorza.config.CannoliPaths(settings.sdCardRoot).configRaOffline
+                )
+                if (store.isCached(gameId)) {
+                    if (raOfflineRomId > 0) romsRepository.setRaCachedGameId(raOfflineRomId, gameId)
+                    return@launch
+                }
+                val client = dev.cannoli.scorza.ra.RaConnectClient(
+                    userAgent = "Cannoli/${dev.cannoli.scorza.BuildConfig.VERSION_NAME}"
+                )
+                val result = dev.cannoli.scorza.ra.RaOfflinePreloader(client, store)
+                    .preload(romPath, tag, gameId, username, token, hash)
+                if (result is dev.cannoli.scorza.ra.RaOfflinePreloader.Result.Success && raOfflineRomId > 0) {
+                    romsRepository.setRaCachedGameId(raOfflineRomId, gameId)
+                }
+            } catch (_: Exception) {
+            }
+        }
     }
 
     private fun startUndoTimer(durationMs: Long = 60_000) {
@@ -2812,8 +3101,8 @@ class LibretroActivity : ComponentActivity() {
                 if (!device.isBuiltIn) {
                     val portLabel = port?.let { "P${it + 1}" } ?: "-"
                     val name = port?.let { portRouter.mappingForPort(it)?.displayName?.takeIf { n -> n.isNotEmpty() } }
-                        ?: device.name.ifEmpty { "Controller" }
-                    showOsd("$name connected to $portLabel")
+                        ?: device.name.ifEmpty { getString(R.string.device_controller) }
+                    showOsd(getString(R.string.osd_controller_connected_named, name, portLabel))
                 }
                 if (port != null && ::runner.isInitialized) {
                     val typeId = portDeviceTypes[port] ?: LibretroRunner.DEVICE_JOYPAD
@@ -2821,11 +3110,13 @@ class LibretroActivity : ComponentActivity() {
                 }
             }
             controllerBridge.onDeviceRemoved = { departed ->
-                val portLabel = departed.port?.let { "P${it + 1}: " } ?: ""
-                showOsd("$portLabel${departed.displayName} disconnected")
+                val msg = departed.port?.let {
+                    getString(R.string.osd_controller_disconnected_port, it + 1, departed.displayName)
+                } ?: getString(R.string.osd_controller_disconnected, departed.displayName)
+                showOsd(msg)
                 val port = departed.port
                 if (port != null && ::runner.isInitialized && !loading) {
-                    runner.setInput(port, 0)
+                    runner.setInput(port, diagonalLock.filter(port, 0, activeAllowDiagonals))
                     runner.setControllerPortDevice(port, LibretroRunner.DEVICE_NONE)
                 }
             }
@@ -2869,11 +3160,11 @@ class LibretroActivity : ComponentActivity() {
         val count = reassignPortCount
         return when (button) {
             "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count))
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1)))
                 true
             }
             "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count))
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1)))
                 true
             }
             "btn_south" -> {
@@ -2925,6 +3216,65 @@ class LibretroActivity : ComponentActivity() {
         }?.key
     }
 
+    private fun handleInputInput(screen: IGMScreen.Input, button: String?): Boolean {
+        val count = buildInputItems().size
+        return when (button) {
+            "btn_up" -> {
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
+            }
+            "btn_down" -> {
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
+            }
+            "btn_left", "btn_right" -> {
+                when (screen.selectedIndex) {
+                    IGMSettings.Input.LEFT_STICK_DPAD -> toggleLeftStickAsDpad()
+                    IGMSettings.Input.DPAD_MODE -> toggleDpadMode()
+                }
+                true
+            }
+            "btn_south" -> {
+                when (screen.selectedIndex) {
+                    IGMSettings.Input.BUTTON_MAPPINGS -> push(IGMScreen.Buttons())
+                    IGMSettings.Input.SHORTCUTS -> push(IGMScreen.Shortcuts())
+                }
+                true
+            }
+            "btn_east" -> { pop(); true }
+            else -> true
+        }
+    }
+
+    private fun toggleLeftStickAsDpad() {
+        leftStickAsDpad = !leftStickAsDpad
+        // Drop any direction the stick was holding, or it stays latched in the port mask.
+        stickDpadSync.reset()
+        for (port in portStickDpad.indices) {
+            val wasHolding = portStickDpad[port].isNotEmpty()
+            portStickDpad[port].clear()
+            if (leftStickAsDpad) runner.setAnalog(port, 0, 0, 0)
+            if (wasHolding) pushPortMask(port)
+        }
+    }
+
+    // Ignore a persisted "off" when the gate is closed, or a user who turned Diagonals off with
+    // experimental features on would keep it in effect after turning them back off, with no row
+    // left to undo it.
+    private fun effectiveAllowDiagonals(): Boolean = !experimentalFeatures || allowDiagonals
+
+    private fun toggleDpadMode() {
+        allowDiagonals = !allowDiagonals
+        activeAllowDiagonals = effectiveAllowDiagonals()
+        diagonalLock.reset()
+        stickDominance.reset()
+        // Drop the state the old setting established and rebuild every port's mask from the live
+        // pressed state under the new one.
+        stickDpadSync.reset()
+        for (port in portStickDpad.indices) {
+            portStickDpad[port].clear()
+            pushPortMask(port)
+        }
+    }
+
     private fun handleButtonsInput(
         screen: IGMScreen.Buttons,
         keyCode: Int,
@@ -2949,11 +3299,11 @@ class LibretroActivity : ComponentActivity() {
 
         return when (button) {
             "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = ((screen.selectedIndex - 1) + count) % count))
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1)))
                 true
             }
             "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count))
+                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1)))
                 true
             }
             "btn_south" -> {
@@ -2969,7 +3319,7 @@ class LibretroActivity : ComponentActivity() {
             "btn_west" -> {
                 if (inputRemap.isNotEmpty()) {
                     inputRemap = emptyMap()
-                    showOsd("Buttons Reset To Default", OsdPosition.BottomCenter)
+                    showOsd(getString(R.string.osd_buttons_reset), OsdPosition.BottomCenter)
                 }
                 true
             }

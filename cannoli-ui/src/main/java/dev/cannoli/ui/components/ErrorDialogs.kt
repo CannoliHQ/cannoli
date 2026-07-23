@@ -1,6 +1,7 @@
 package dev.cannoli.ui.components
 
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -8,26 +9,40 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.R
 import dev.cannoli.ui.theme.LocalCannoliColors
 
 @Composable
-fun MissingCoreDialog(coreName: String, buttonStyle: ButtonStyle = ButtonStyle()) {
+fun MissingCoreDialog(
+    coreName: String,
+    packageLabel: String? = null,
+    buttonStyle: ButtonStyle = ButtonStyle()
+) {
     OverlayScrim(
         bottomBar = { LegendPill(button = buttonStyle.back, label = stringResource(R.string.label_close)) }
     ) {
         Text(
             text = stringResource(R.string.dialog_title_missing_core),
             style = MaterialTheme.typography.titleLarge,
-            color = Color.White
+            color = Color.White,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(12.dp))
+        val problem = if (packageLabel != null) {
+            stringResource(R.string.dialog_missing_core_pkg, coreName, packageLabel)
+        } else {
+            stringResource(R.string.dialog_missing_core_plain, coreName)
+        }
         Text(
-            text = stringResource(R.string.dialog_missing_core, coreName),
+            text = problem + "\n" + stringResource(R.string.dialog_missing_core_hint),
             style = MaterialTheme.typography.bodyLarge,
-            color = LocalCannoliColors.current.text.copy(alpha = 0.6f)
+            color = LocalCannoliColors.current.text.copy(alpha = 0.6f),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
         )
     }
 }

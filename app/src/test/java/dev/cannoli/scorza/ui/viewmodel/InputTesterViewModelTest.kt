@@ -31,6 +31,18 @@ class InputTesterViewModelTest {
     }
 
     @Test
+    fun onKeyDown_marks_event_unbound_when_flagged() {
+        val vm = vm()
+        vm.onKeyDown(0, 104, "BUTTON_L2", 8, "Retroid", "btn_l2", unbound = true)
+        val unboundEntry = vm.state.value.eventLog.first()
+        assertTrue(unboundEntry.unbound)
+        assertEquals("btn_l2", unboundEntry.resolvedButton)
+
+        vm.onKeyDown(0, 96, "BUTTON_A", 8, "Retroid", "btn_south")
+        assertFalse(vm.state.value.eventLog.first().unbound)
+    }
+
+    @Test
     fun keyUp_removesButton() {
         val vm = vm()
         vm.onKeyDown(0, 96, "BUTTON_A", 10, "Test Pad", "btn_south")

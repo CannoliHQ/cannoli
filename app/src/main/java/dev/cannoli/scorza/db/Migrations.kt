@@ -2,6 +2,7 @@ package dev.cannoli.scorza.db
 
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
+import dev.cannoli.scorza.util.TextNormalizer
 
 internal object Migrations {
     private data class Migration(val version: Int, val apply: (SQLiteConnection) -> Unit)
@@ -118,6 +119,100 @@ internal object Migrations {
             """.trimIndent())
             db.execSQL("DROP TABLE game_overrides")
             db.execSQL("ALTER TABLE game_overrides_new RENAME TO game_overrides")
+        },
+        Migration(4) { db ->
+            db.execSQL("ALTER TABLE roms DROP COLUMN disc_paths")
+            db.execSQL("UPDATE platforms SET last_scanned_mtime = 0")
+        },
+        Migration(5) { db ->
+            db.execSQL("ALTER TABLE platforms DROP COLUMN last_scanned_mtime")
+        },
+        Migration(6) { db ->
+            db.execSQL("""
+                CREATE TABLE romm_links (
+                    romm_id INTEGER PRIMARY KEY,
+                    relative_path TEXT NOT NULL,
+                    link_source TEXT NOT NULL CHECK (link_source IN ('download', 'manual')),
+                    created_at INTEGER
+                )
+            """.trimIndent())
+        },
+        Migration(7) { db ->
+            db.execSQL("ALTER TABLE roms ADD COLUMN name_normalized TEXT NOT NULL DEFAULT ''")
+            db.execSQL("CREATE INDEX roms_by_name_normalized ON roms(name_normalized)")
+            val rows = db.queryAll("SELECT id, display_name FROM roms") { it.getLong(0) to it.getText(1) }
+            for ((id, name) in rows) {
+                db.execute("UPDATE roms SET name_normalized = ? WHERE id = ?", TextNormalizer.normalize(name), id)
+            }
+        },
+        Migration(8) { db ->
+            db.execSQL("ALTER TABLE roms ADD COLUMN ra_cached_game_id INTEGER")
+        },
+        Migration(9) { db ->
+            db.execSQL("""
+                CREATE TABLE save_sync (
+                    game_key TEXT NOT NULL,
+                    slot TEXT NOT NULL,
+                    romm_rom_id INTEGER NOT NULL,
+                    romm_save_id INTEGER,
+                    last_synced_at TEXT,
+                    last_uploaded_hash TEXT,
+                    local_content_hash TEXT,
+                    server_updated_at TEXT,
+                    updated_at INTEGER NOT NULL DEFAULT 0,
+                    PRIMARY KEY (game_key, slot)
+                )
+            """.trimIndent())
+            db.execSQL("CREATE INDEX save_sync_by_game ON save_sync(game_key)")
+            db.execSQL("""
+                CREATE TABLE save_slot_active (
+                    game_key TEXT PRIMARY KEY,
+                    active_slot TEXT NOT NULL
+                )
+            """.trimIndent())
+        },
+        Migration(10) { db ->
+            db.execSQL(
+                """
+                CREATE TABLE sync_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    game_key TEXT NOT NULL,
+                    display_name TEXT NOT NULL,
+                    direction TEXT NOT NULL,
+                    detail TEXT,
+                    created_at INTEGER NOT NULL
+                )
+                """.trimIndent()
+            )
+            db.execSQL("CREATE INDEX sync_history_by_time ON sync_history(created_at DESC, id DESC)")
+            db.execSQL(
+                """
+                CREATE TABLE pending_conflicts (
+                    game_key TEXT PRIMARY KEY,
+                    rom_id INTEGER NOT NULL,
+                    display_name TEXT NOT NULL,
+                    server_save_id INTEGER,
+                    server_content_hash TEXT,
+                    server_updated_at TEXT,
+                    detected_at INTEGER NOT NULL,
+                    dismissed_hash TEXT
+                )
+                """.trimIndent()
+            )
+        },
+        Migration(11) { db ->
+            db.execSQL(
+                """
+                CREATE TABLE restore_promotions (
+                    game_key TEXT NOT NULL,
+                    slot TEXT NOT NULL,
+                    target_hash TEXT NOT NULL,
+                    base_head TEXT,
+                    created_at INTEGER NOT NULL,
+                    PRIMARY KEY (game_key, slot)
+                )
+                """.trimIndent()
+            )
         },
     )
 

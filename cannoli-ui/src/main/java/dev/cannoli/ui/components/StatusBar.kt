@@ -12,7 +12,9 @@ import android.os.BatteryManager
 import android.os.Build
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -40,10 +42,27 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+private const val ICON_CLOUD_SYNC = "\uDB81\uDE3F"
+private const val ICON_CLOUD_CHECK = "\uDB80\uDD60"
+private const val ICON_CLOUD_ALERT = "\uDB82\uDDE0"
+private const val ICON_CLOUD_OFF = "\uDB80\uDD64"
+private const val ICON_ALERT_CIRCLE = "\uDB80\uDC28" // mdi-alert-circle (U+F0028)
+
+private fun cloudIcon(status: SaveSyncStatus): String? = when (status) {
+    SaveSyncStatus.CHECKING, SaveSyncStatus.UPLOADING, SaveSyncStatus.DOWNLOADING -> ICON_CLOUD_SYNC
+    SaveSyncStatus.UP_TO_DATE -> ICON_CLOUD_CHECK
+    SaveSyncStatus.CONFLICT -> ICON_CLOUD_ALERT
+    SaveSyncStatus.ERROR -> ICON_ALERT_CIRCLE
+    SaveSyncStatus.OFFLINE -> ICON_CLOUD_OFF
+    SaveSyncStatus.DISABLED -> null
+}
+
 private const val ICON_BLUETOOTH = "\uDB80\uDCAF"
 private const val ICON_WIFI = "\uDB81\uDDA9"
 private const val ICON_VPN = "\uDB82\uDFC4"
 private const val ICON_UPDATE = "\uDB81\uDEB0"
+private const val ICON_KITCHEN = "\uF0F5"
+private const val ICON_DOWNLOAD = "\uF019"
 private const val ICON_CHARGING = "\uF0E7"
 
 private const val ICON_BATTERY_FULL = "\uDB80\uDC79"
@@ -75,6 +94,9 @@ private fun batteryLevelIcon(percent: Int): String = when {
 @Composable
 fun StatusBar(
     updateAvailable: Boolean = false,
+    kitchenRunning: Boolean = false,
+    downloadCount: Int = 0,
+    downloadsActive: Boolean = false,
     showWifi: Boolean = true,
     showBluetooth: Boolean = true,
     showVpn: Boolean = false,
@@ -83,7 +105,8 @@ fun StatusBar(
     batteryIconOnly: Boolean = false,
     showUpdate: Boolean = true,
     use24hTime: Boolean = false,
-    textSizeSp: Int = 16
+    textSizeSp: Int = 16,
+    saveSyncStatus: SaveSyncStatus = SaveSyncStatus.DISABLED,
 ) {
     val context = LocalContext.current
     val scaleFactor = LocalScaleFactor.current
@@ -193,7 +216,7 @@ fun StatusBar(
     val showBtIcon = showBluetooth && hasBluetooth
     val showWifiIcon = showWifi && wifiConnected
     val showVpnIcon = showVpn && hasVpn
-    val anyVisible = showUpdateIcon || showBtIcon || showWifiIcon || showVpnIcon || showBattery || showClock
+    val anyVisible = cloudIcon(saveSyncStatus) != null || kitchenRunning || downloadCount > 0 || downloadsActive || showUpdateIcon || showBtIcon || showWifiIcon || showVpnIcon || showBattery || showClock
 
     if (!anyVisible) return
 
@@ -202,6 +225,17 @@ fun StatusBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy((6 * scaleFactor).dp)
     ) {
+        cloudIcon(saveSyncStatus)?.let { Text(text = it, style = iconStyle) }
+        if (kitchenRunning) Text(text = ICON_KITCHEN, style = iconStyle)
+        if (downloadCount > 0) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(text = ICON_DOWNLOAD, style = iconStyle)
+                Spacer(modifier = Modifier.width((3 * scaleFactor).dp))
+                Text(text = downloadCount.toString(), style = textStyle)
+            }
+        } else if (downloadsActive) {
+            Text(text = ICON_DOWNLOAD, style = iconStyle)
+        }
         if (showUpdateIcon) Text(text = ICON_UPDATE, style = iconStyle)
         if (showBtIcon) Text(text = ICON_BLUETOOTH, style = iconStyle)
         if (showWifiIcon) Text(text = ICON_WIFI, style = iconStyle)

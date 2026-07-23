@@ -8,14 +8,16 @@ import dev.cannoli.scorza.db.AppsRepository
 import dev.cannoli.scorza.db.CollectionsRepository
 import dev.cannoli.scorza.db.LibraryRef
 import dev.cannoli.scorza.db.RecentlyPlayedRepository
-import dev.cannoli.scorza.db.RomScanner
 import dev.cannoli.scorza.db.RomsRepository
 import dev.cannoli.scorza.db.ScanScheduler
 import dev.cannoli.scorza.di.CannoliPathsProvider
 import dev.cannoli.scorza.model.AppType
 import dev.cannoli.scorza.model.Collection
 import dev.cannoli.scorza.model.CollectionType
+import dev.cannoli.scorza.model.GameSearchQuery
 import dev.cannoli.scorza.model.ListItem
+import dev.cannoli.scorza.util.TextNormalizer
+import dev.cannoli.scorza.util.sortedNatural
 import dev.cannoli.ui.components.OsdController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,10 +33,66 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 
+internal fun displayNameOf(item: ListItem): String = when (item) {
+    is ListItem.RomItem -> item.rom.displayName
+    is ListItem.AppItem -> item.app.displayName
+    is ListItem.SubfolderItem -> item.name
+    is ListItem.CollectionItem -> item.collection.displayName
+    is ListItem.ChildCollectionItem -> item.collection.displayName
+}
+
+internal fun matchesSearch(item: ListItem, term: String): Boolean =
+    TextNormalizer.normalize(displayNameOf(item)).contains(TextNormalizer.normalize(term))
+
+internal fun applyItemFilter(items: List<ListItem>, term: String?): List<ListItem> =
+    if (term.isNullOrBlank()) items else items.filter { matchesSearch(it, term) }
+
+internal fun globalOriginTag(
+    item: ListItem,
+    toolsLabel: String,
+    portsLabel: String,
+    collectionLabel: String,
+): String? = when (item) {
+    is ListItem.RomItem -> item.rom.platformTag.uppercase()
+    is ListItem.AppItem -> if (item.app.type == AppType.TOOL) toolsLabel else portsLabel
+    is ListItem.CollectionItem -> collectionLabel
+    else -> null
+}
+
+internal fun stableIdOf(item: ListItem?): String? = when (item) {
+    is ListItem.RomItem -> "rom:${item.rom.id}"
+    is ListItem.AppItem -> "app:${item.app.id}"
+    is ListItem.ChildCollectionItem -> "col:${item.collection.id}"
+    is ListItem.CollectionItem -> "col:${item.collection.id}"
+    is ListItem.SubfolderItem -> "sub:${item.name}"
+    else -> null
+}
+
+internal fun findIndexById(items: List<ListItem>, priorId: String?): Int? =
+    priorId?.let { id -> items.indexOfFirst { stableIdOf(it) == id }.takeIf { it >= 0 } }
+
+internal fun reloadPosition(
+    items: List<ListItem>,
+    preserveId: String?,
+    preserveIndex: Int,
+    preserveScroll: Int,
+    prevCount: Int,
+): Pair<Int, Int> {
+    if (items.isEmpty()) return 0 to 0
+    // Found the same item again (e.g. after a rename re-sorts the list): keep it selected but
+    // do NOT force a scroll position. A forced scrollTarget would slam the item to the top of
+    // the viewport; -1 lets the selection effect keep it on screen only if it actually moved off.
+    findIndexById(items, preserveId)?.let { return it to -1 }
+    val maxIdx = items.lastIndex
+    val sameSize = prevCount >= 0 && items.size == prevCount && prevCount > 0
+    return if (sameSize || prevCount < 0) {
+        preserveIndex.coerceAtMost(maxIdx) to preserveScroll.coerceAtMost(maxIdx)
+    } else 0 to 0
+}
+
 @ActivityScoped
 class GameListViewModel @Inject constructor(
     private val romsRepository: RomsRepository,
-    private val romScanner: RomScanner,
     private val appsRepository: AppsRepository,
     private val collectionsRepository: CollectionsRepository,
     private val recentlyPlayedRepository: RecentlyPlayedRepository,
@@ -54,6 +112,8 @@ class GameListViewModel @Inject constructor(
         val platformTags: List<String> = emptyList(),
         val breadcrumb: String = "",
         val items: List<ListItem> = emptyList(),
+        val allItems: List<ListItem> = emptyList(),
+        val searchTerm: String? = null,
         val favoriteRomIds: Set<Long> = emptySet(),
         val favoriteAppIds: Set<Long> = emptySet(),
         val selectedIndex: Int = 0,
@@ -65,6 +125,8 @@ class GameListViewModel @Inject constructor(
         val collectionName: String? = null,
         val collectionId: Long? = null,
         val isCollectionsList: Boolean = false,
+        val isGlobalSearch: Boolean = false,
+        val globalSearchQuery: String? = null,
         val reorderMode: Boolean = false,
         val reorderOriginalIndex: Int = -1,
         val multiSelectMode: Boolean = false,
@@ -102,18 +164,18 @@ class GameListViewModel @Inject constructor(
             val snapshot = _state.value
             val items = loadPlatformItems(snapshot.platformTag, snapshot.platformTags, snapshot.subfolderPath)
             val priorId = stableIdOf(snapshot.items.getOrNull(snapshot.selectedIndex))
-            val newIndex = if (priorId != null) {
-                items.indexOfFirst { stableIdOf(it) == priorId }
-                    .takeIf { it >= 0 }
-                    ?: snapshot.selectedIndex.coerceAtMost(items.lastIndex.coerceAtLeast(0))
-            } else 0
+            val (newIndex, newScroll) = reloadPosition(
+                items, priorId, snapshot.selectedIndex, snapshot.selectedIndex, prevCount = -1
+            )
             _state.update { live ->
                 live.copy(
                     items = items,
+                    allItems = items,
+                    searchTerm = null,
                     favoriteRomIds = collectionsRepository.favoriteRomIds(),
                     favoriteAppIds = collectionsRepository.favoriteAppIds(),
                     selectedIndex = newIndex,
-                    scrollTarget = newIndex,
+                    scrollTarget = newScroll,
                 )
             }
             if (!result.silent) {
@@ -124,20 +186,13 @@ class GameListViewModel @Inject constructor(
         }
     }
 
-    private fun stableIdOf(item: ListItem?): String? = when (item) {
-        is ListItem.RomItem -> "rom:${item.rom.id}"
-        is ListItem.AppItem -> "app:${item.app.id}"
-        is ListItem.ChildCollectionItem -> "col:${item.collection.id}"
-        is ListItem.CollectionItem -> "col:${item.collection.id}"
-        is ListItem.SubfolderItem -> "sub:${item.name}"
-        else -> null
-    }
-
     var firstVisibleIndex: Int = 0
+
+    private data class SavedPos(val id: String?, val index: Int, val scroll: Int)
 
     private val breadcrumbStack = mutableListOf<String>()
     private val indexStack = mutableListOf<Pair<Int, Int>>()
-    private var collectionsListSaved: Pair<Int, Int> = 0 to 0
+    private var collectionsListSaved = SavedPos(null, 0, 0)
     private var collectionsListItemCount: Int = 0
     private val collectionStack = mutableListOf<Triple<Long, Int, Int>>()
 
@@ -148,7 +203,8 @@ class GameListViewModel @Inject constructor(
     fun saveCollectionsPosition() {
         val current = _state.value
         if (current.isCollectionsList) {
-            collectionsListSaved = current.selectedIndex to firstVisibleIndex
+            val id = stableIdOf(current.items.getOrNull(current.selectedIndex))
+            collectionsListSaved = SavedPos(id, current.selectedIndex, firstVisibleIndex)
             collectionsListItemCount = current.items.size
         }
     }
@@ -166,11 +222,11 @@ class GameListViewModel @Inject constructor(
                     platformTags = tags,
                     breadcrumb = displayName,
                     items = items,
-                    favoriteRomIds = favRoms,
+                    allItems = items,
                     selectedIndex = 0,
+                    favoriteRomIds = favRoms,
                     isLoading = false
                 )
-                maybeBackstop(tags)
             } finally {
                 withContext(Dispatchers.Main) { onReady() }
             }
@@ -180,7 +236,8 @@ class GameListViewModel @Inject constructor(
     fun loadCollectionById(id: Long, onReady: () -> Unit = {}) {
         val current = _state.value
         if (current.isCollectionsList) {
-            collectionsListSaved = current.selectedIndex to firstVisibleIndex
+            val savedId = stableIdOf(current.items.getOrNull(current.selectedIndex))
+            collectionsListSaved = SavedPos(savedId, current.selectedIndex, firstVisibleIndex)
             collectionsListItemCount = current.items.size
         }
         breadcrumbStack.clear()
@@ -242,6 +299,7 @@ class GameListViewModel @Inject constructor(
         _state.value = State(
             breadcrumb = breadcrumb,
             items = items,
+            allItems = items,
             favoriteRomIds = collectionsRepository.favoriteRomIds(),
             favoriteAppIds = collectionsRepository.favoriteAppIds(),
             selectedIndex = 0,
@@ -269,6 +327,7 @@ class GameListViewModel @Inject constructor(
                     platformTag = type,
                     breadcrumb = displayName,
                     items = items,
+                    allItems = items,
                     favoriteAppIds = favAppIds,
                     selectedIndex = 0,
                     isLoading = false
@@ -295,6 +354,7 @@ class GameListViewModel @Inject constructor(
                     platformTag = "recently_played",
                     breadcrumb = resources.getString(R.string.label_recently_played),
                     items = items,
+                    allItems = items,
                     favoriteRomIds = collectionsRepository.favoriteRomIds(),
                     favoriteAppIds = collectionsRepository.favoriteAppIds(),
                     selectedIndex = 0,
@@ -317,17 +377,61 @@ class GameListViewModel @Inject constructor(
             }
             val (idx, scroll) = if (restoreIndex && collectionsListItemCount > 0 && items.isNotEmpty()) {
                 val maxIdx = items.lastIndex.coerceAtLeast(0)
-                collectionsListSaved.first.coerceAtMost(maxIdx) to collectionsListSaved.second.coerceAtMost(maxIdx)
+                val found = findIndexById(items, collectionsListSaved.id)
+                if (found != null) found to -1
+                else collectionsListSaved.index.coerceAtMost(maxIdx) to collectionsListSaved.scroll.coerceAtMost(maxIdx)
             } else 0 to 0
             _state.value = State(
                 breadcrumb = resources.getString(R.string.label_collections),
                 items = items,
+                allItems = items,
                 selectedIndex = idx,
                 scrollTarget = scroll,
                 isLoading = false,
                 isCollectionsList = true
             )
             withContext(Dispatchers.Main) { onReady() }
+        }
+    }
+
+    fun loadGlobalSearch(
+        query: GameSearchQuery,
+        preserveId: String? = null,
+        onReady: () -> Unit = {},
+    ) {
+        breadcrumbStack.clear()
+        indexStack.clear()
+        scope.launch(Dispatchers.IO) {
+            try {
+                val term = query.text.trim()
+                val games = romsRepository.searchAllGames(query).map { ListItem.RomItem(it) }
+                val apps = appsRepository.all()
+                    .filter { TextNormalizer.normalize(it.displayName).contains(TextNormalizer.normalize(term)) }
+                    .map { ListItem.AppItem(it) }
+                val collections = collectionsRepository.topLevel()
+                    .filter { TextNormalizer.normalize(it.displayName).contains(TextNormalizer.normalize(term)) }
+                    .map { ListItem.CollectionItem(Collection(it.id, it.displayName)) }
+                val favRoms = collectionsRepository.favoriteRomIds()
+                val favApps = collectionsRepository.favoriteAppIds()
+                val sorted = (games + apps + collections).sortedNatural { displayNameOf(it) }
+                val (favs, rest) = sorted.partition { isFavorite(it, favRoms, favApps) }
+                val items = favs + rest
+                val selectedIndex = preserveId?.let { findIndexById(items, it) } ?: 0
+                _state.value = State(
+                    breadcrumb = resources.getString(R.string.global_search_title, term),
+                    items = items,
+                    allItems = items,
+                    favoriteRomIds = favRoms,
+                    favoriteAppIds = favApps,
+                    selectedIndex = selectedIndex,
+                    scrollTarget = -1,
+                    isLoading = false,
+                    isGlobalSearch = true,
+                    globalSearchQuery = term,
+                )
+            } finally {
+                withContext(Dispatchers.Main) { onReady() }
+            }
         }
     }
 
@@ -344,44 +448,52 @@ class GameListViewModel @Inject constructor(
 
     fun reload(onReady: () -> Unit = {}) {
         val current = _state.value
+        val term = current.searchTerm
         val preserveIndex = current.selectedIndex
         val preserveScroll = firstVisibleIndex
         val prevCount = current.items.size
+        val preserveId = stableIdOf(current.items.getOrNull(preserveIndex))
+        val done: () -> Unit = {
+            if (term != null) reapplySearch(term, preserveId, preserveIndex, preserveScroll, prevCount)
+            onReady()
+        }
         if (current.isCollectionsList) {
-            collectionsListSaved = preserveIndex to preserveScroll
+            collectionsListSaved = SavedPos(preserveId, preserveIndex, preserveScroll)
             collectionsListItemCount = prevCount
-            loadCollectionsList(restoreIndex = true, onReady = onReady)
+            loadCollectionsList(restoreIndex = true, onReady = done)
         } else if (current.isCollection && current.collectionId != null) {
             scope.launch(Dispatchers.IO) {
                 loadCollectionByIdInternal(current.collectionId) {
                     val s = _state.value
-                    if (s.items.size == prevCount && prevCount > 0) {
-                        _state.value = s.copy(
-                            selectedIndex = preserveIndex.coerceAtMost(s.items.lastIndex.coerceAtLeast(0)),
-                            scrollTarget = preserveScroll.coerceAtMost(s.items.lastIndex.coerceAtLeast(0))
-                        )
-                    } else {
-                        _state.value = s.copy(selectedIndex = 0, scrollTarget = 0)
-                    }
-                    onReady()
+                    val (idx, scroll) = reloadPosition(s.items, preserveId, preserveIndex, preserveScroll, prevCount)
+                    _state.value = s.copy(selectedIndex = idx, scrollTarget = scroll)
+                    done()
                 }
             }
         } else if (current.platformTag == "tools" || current.platformTag == "ports") {
             loadApkList(current.platformTag, current.breadcrumb) {
                 val s = _state.value
-                _state.value = s.copy(
-                    selectedIndex = preserveIndex.coerceAtMost(s.items.lastIndex.coerceAtLeast(0)),
-                    scrollTarget = preserveScroll.coerceAtMost(s.items.lastIndex.coerceAtLeast(0))
-                )
-                onReady()
+                val (idx, scroll) = reloadPosition(s.items, preserveId, preserveIndex, preserveScroll, prevCount = -1)
+                _state.value = s.copy(selectedIndex = idx, scrollTarget = scroll)
+                done()
             }
         } else if (current.platformTag == "recently_played") {
             _state.value = current.copy(items = emptyList(), isLoading = true)
-            loadRecentlyPlayed(onReady)
+            loadRecentlyPlayed(done)
         } else if (current.platformTags.isNotEmpty()) {
-            loadGames(current.platformTag, current.platformTags, current.subfolderPath, preserveIndex, preserveScroll, prevCount, onReady)
+            loadGames(current.platformTag, current.platformTags, current.subfolderPath, preserveIndex, preserveScroll, prevCount, preserveId, done)
+        } else if (current.isGlobalSearch && current.globalSearchQuery != null) {
+            loadGlobalSearch(GameSearchQuery(current.globalSearchQuery), preserveId, done)
         } else {
-            onReady()
+            done()
+        }
+    }
+
+    private fun reapplySearch(term: String, preserveId: String?, preserveIndex: Int, preserveScroll: Int, prevCount: Int) {
+        _state.update { s ->
+            val filtered = applyItemFilter(s.allItems, term)
+            val (idx, scroll) = reloadPosition(filtered, preserveId, preserveIndex, preserveScroll, prevCount)
+            s.copy(searchTerm = term, items = filtered, selectedIndex = idx, scrollTarget = scroll)
         }
     }
 
@@ -434,6 +546,10 @@ class GameListViewModel @Inject constructor(
                 (current.isCollection && current.isFavorites)
             if (isFav) collectionsRepository.removeMember(favId, ref)
             else collectionsRepository.addMember(favId, ref)
+            if (current.isGlobalSearch) {
+                withContext(Dispatchers.Main) { reload(onDone) }
+                return@launch
+            }
             val newItems = if (current.isCollection && current.collectionId != null) {
                 val romIds = collectionsRepository.romIdsIn(current.collectionId)
                 val appIds = collectionsRepository.appIdsIn(current.collectionId)
@@ -455,10 +571,13 @@ class GameListViewModel @Inject constructor(
                 val freshFavs = collectionsRepository.favoriteAppIds()
                 newItems.sortedBy { (it as? ListItem.AppItem)?.app?.id !in freshFavs }
             } else newItems
-            val newIndex = sortedItems.indexOfFirst { itemRef(it) == ref }
-                .let { if (it >= 0) it else oldIndex.coerceAtMost(sortedItems.lastIndex.coerceAtLeast(0)) }
+            val visible = applyItemFilter(sortedItems, current.searchTerm)
+            val newIndex = visible.indexOfFirst { itemRef(it) == ref }
+                .let { if (it >= 0) it else oldIndex.coerceAtMost(visible.lastIndex.coerceAtLeast(0)) }
             _state.value = current.copy(
-                items = sortedItems,
+                items = visible,
+                allItems = sortedItems,
+                searchTerm = current.searchTerm,
                 favoriteRomIds = collectionsRepository.favoriteRomIds(),
                 favoriteAppIds = collectionsRepository.favoriteAppIds(),
                 selectedIndex = newIndex,
@@ -467,6 +586,20 @@ class GameListViewModel @Inject constructor(
             withContext(Dispatchers.Main) { onDone() }
         }
     }
+
+    fun setSearch(term: String) {
+        _state.update {
+            if (it.reorderMode || it.multiSelectMode) return@update it
+            val t = term.trim()
+            it.copy(searchTerm = t.ifBlank { null }, items = applyItemFilter(it.allItems, t), selectedIndex = 0, scrollTarget = 0)
+        }
+    }
+
+    fun clearSearch() {
+        _state.update { it.copy(searchTerm = null, items = it.allItems, selectedIndex = 0, scrollTarget = 0) }
+    }
+
+    fun isSearching(): Boolean = !_state.value.searchTerm.isNullOrBlank()
 
     fun enterMultiSelect() {
         _state.update { current ->
@@ -515,7 +648,7 @@ class GameListViewModel @Inject constructor(
         _state.update { current ->
             val isApkList = current.platformTag == "tools" || current.platformTag == "ports"
             val canReorder = current.isCollectionsList || isApkList || current.isCollection
-            if (!canReorder || current.items.isEmpty()) return@update current
+            if (!canReorder || current.items.isEmpty() || current.searchTerm != null) return@update current
             current.copy(reorderMode = true, reorderOriginalIndex = current.selectedIndex)
         }
     }
@@ -553,11 +686,8 @@ class GameListViewModel @Inject constructor(
         return true
     }
 
-    private fun isItemFavorited(current: State, item: ListItem): Boolean = when (item) {
-        is ListItem.RomItem -> item.rom.id in current.favoriteRomIds
-        is ListItem.AppItem -> item.app.id in current.favoriteAppIds
-        else -> false
-    }
+    private fun isItemFavorited(current: State, item: ListItem): Boolean =
+        isFavorite(item, current.favoriteRomIds, current.favoriteAppIds)
 
     private fun swapAt(current: State, a: Int, b: Int): State {
         val items = current.items.toMutableList()
@@ -614,6 +744,7 @@ class GameListViewModel @Inject constructor(
         preserveIndex: Int = 0,
         preserveScroll: Int = 0,
         prevCount: Int = -1,
+        preserveId: String? = null,
         onReady: () -> Unit = {},
     ) {
         scope.launch(Dispatchers.IO) {
@@ -622,23 +753,19 @@ class GameListViewModel @Inject constructor(
                 val displayName = platformConfig.getDisplayName(tag)
                 val breadcrumb = if (breadcrumbStack.isEmpty()) displayName
                 else "/${breadcrumbStack.last()}"
-                val sameSize = prevCount >= 0 && items.size == prevCount && prevCount > 0
-                val maxIdx = items.lastIndex.coerceAtLeast(0)
-                val (idx, scroll) = if (sameSize || prevCount < 0) {
-                    preserveIndex.coerceAtMost(maxIdx) to preserveScroll.coerceAtMost(maxIdx)
-                } else 0 to 0
+                val (idx, scroll) = reloadPosition(items, preserveId, preserveIndex, preserveScroll, prevCount)
                 _state.value = State(
                     platformTag = tag,
                     platformTags = tags,
                     breadcrumb = breadcrumb,
                     items = items,
+                    allItems = items,
                     favoriteRomIds = collectionsRepository.favoriteRomIds(),
                     selectedIndex = idx,
                     scrollTarget = scroll,
                     subfolderPath = subfolder,
                     isLoading = false
                 )
-                maybeBackstop(tags)
             } finally {
                 withContext(Dispatchers.Main) { onReady() }
             }
@@ -650,30 +777,18 @@ class GameListViewModel @Inject constructor(
         return sortFavoritesFirst(items)
     }
 
-    private fun maybeBackstop(tags: List<String>) {
-        val romDir = cannoliPaths.romDir
-        for (t in tags) {
-            val tag = t.uppercase()
-            val dir = File(romDir, tag)
-            if (!dir.exists()) continue
-            val onDisk = dir.lastModified()
-            val stored = romScanner.lastScannedMtime(tag)
-            if (onDisk != stored) scanScheduler.enqueue(tag)
-        }
-    }
-
     private fun sortFavoritesFirst(items: List<ListItem>): List<ListItem> {
         val favRoms = collectionsRepository.favoriteRomIds()
         val favApps = collectionsRepository.favoriteAppIds()
         val (subfolders, others) = items.partition { it is ListItem.SubfolderItem || it is ListItem.ChildCollectionItem }
-        val (favs, rest) = others.partition { item ->
-            when (item) {
-                is ListItem.RomItem -> item.rom.id in favRoms
-                is ListItem.AppItem -> item.app.id in favApps
-                else -> false
-            }
-        }
+        val (favs, rest) = others.partition { isFavorite(it, favRoms, favApps) }
         return subfolders + favs + rest
+    }
+
+    private fun isFavorite(item: ListItem, favRoms: Set<Long>, favApps: Set<Long>): Boolean = when (item) {
+        is ListItem.RomItem -> item.rom.id in favRoms
+        is ListItem.AppItem -> item.app.id in favApps
+        else -> false
     }
 
     private fun itemRef(item: ListItem): LibraryRef? = when (item) {

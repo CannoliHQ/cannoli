@@ -4,7 +4,14 @@ import android.app.ActivityOptions
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import dev.cannoli.igm.BatteryDisplayMode
+import dev.cannoli.igm.IgmColors
+import dev.cannoli.igm.IgmDisplaySettings
+import dev.cannoli.igm.TimeFormatMode
 import dev.cannoli.scorza.config.CannoliPaths
+import dev.cannoli.scorza.input.runtime.confirmButton
+import dev.cannoli.scorza.input.runtime.labelSet
+import dev.cannoli.scorza.launcher.toIgmInputMapping
 import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.libretro.LibretroActivity
 import dev.cannoli.scorza.libretro.SaveSlotManager
@@ -26,10 +33,12 @@ class LaunchManager(
     private val retroArchLauncher: RetroArchLauncher,
     private val emuLauncher: EmuLauncher,
     private val apkLauncher: ApkLauncher,
+    private val delfinoLauncher: DelfinoLauncher,
+    private val launchState: LaunchState,
+    private val activeMappingHolder: dev.cannoli.scorza.input.runtime.ActiveMappingHolder,
     private val installedCoreService: InstalledCoreService? = null,
 ) {
     private var raConfigPath: String? = null
-    @Volatile var launching = false
 
     init {
         apkLauncher.debugLog = ::debugLog
@@ -93,6 +102,7 @@ class LaunchManager(
         val gameOverrides = buildMap {
             put("system_directory", biosDir.absolutePath)
             put("savestate_directory", stateDir.absolutePath)
+            put("sort_savestates_enable", "false")
             put("sort_savestates_by_content_enable", "false")
             put("state_slot", raSlot.toString())
             if (resume) {
@@ -130,6 +140,7 @@ class LaunchManager(
             put("savestate_auto_save", "true")
             put("config_save_on_exit", "false")
             put("video_font_enable", "false")
+            put("auto_overrides_enable", "true")
 
             // TODO come back to this at a later date
 //            put("assets_directory", "$rootPath/Config/Assets")
@@ -165,21 +176,7 @@ class LaunchManager(
         return digest.digest().joinToString("") { "%02x".format(it) }
     }
 
-    /** Recovery path: only reached if the walker organizer was unable to move the discs into a
-     *  subfolder. Writes the m3u next to the discs (libretro cores resolve disc paths relative to
-     *  the m3u's directory) so the next scan picks it up via the m3u-by-base-name branch. */
-    fun createFallbackM3u(rom: Rom): File {
-        val discs = checkNotNull(rom.discFiles)
-        val first = discs.first()
-        val parent = first.parentFile ?: throw IOException("Cannot resolve disc directory")
-        val base = DISC_REGEX.replace(first.nameWithoutExtension, "").trim()
-        val m3uFile = File(parent, "$base.m3u")
-        m3uFile.writeText(discs.joinToString("\n") { it.name } + "\n")
-        return m3uFile
-    }
-
     fun resolveLaunchFile(rom: Rom, extractArchives: Boolean): File? {
-        if (rom.discFiles != null) return createFallbackM3u(rom)
         if (extractArchives && ArchiveExtractor.isArchive(rom.path) && !platformConfig.isArcade(rom.platformTag)) {
             return ArchiveExtractor.extract(rom.path, context.cacheDir, rom.path.nameWithoutExtension)
         }
@@ -204,10 +201,21 @@ class LaunchManager(
         return findEmbeddedCore(core)
     }
 
-    fun findMostRecentSlot(rom: Rom): Int? {
+    fun saveStateBasePath(rom: Rom): String {
         val romName = normalizedRomName(rom)
-        val stateBase = CannoliPaths(settings.sdCardRoot).saveStateBase(rom.platformTag, romName)
-        val slotManager = SaveSlotManager(stateBase.absolutePath)
+        return CannoliPaths(settings.sdCardRoot).saveStateBase(rom.platformTag, romName).absolutePath
+    }
+
+    fun slotOccupancy(rom: Rom): List<Boolean> {
+        val slotManager = SaveSlotManager(saveStateBasePath(rom))
+        return (0..10).map { i ->
+            slotManager.slots.firstOrNull { it.index == i }
+                ?.let { File(slotManager.statePath(it)).exists() } ?: false
+        }
+    }
+
+    fun findMostRecentSlot(rom: Rom): Int? {
+        val slotManager = SaveSlotManager(saveStateBasePath(rom))
         return slotManager.slots
             .filter { File(slotManager.statePath(it)).exists() }
             .maxByOrNull { File(slotManager.statePath(it)).lastModified() }
@@ -222,7 +230,7 @@ class LaunchManager(
             if (!hasSaveState(rom)) continue
             val target = rom.launchTarget
             val embedded = target is LaunchTarget.Embedded || getEmbeddedCorePath(rom) != null
-            if (embedded || (target is LaunchTarget.RetroArch && !settings.retroArchDiyMode)) {
+            if (embedded || (target is LaunchTarget.RetroArch && RetroArchLauncher.isRicotta(settings.retroArchPackage))) {
                 result.add(rom.path.absolutePath)
             }
         }
@@ -231,15 +239,23 @@ class LaunchManager(
 
     fun launchRom(rom: Rom): DialogState? {
         debugLog("launchRom entered: ${rom.platformTag} / ${rom.path.name} target=${rom.launchTarget::class.simpleName}")
-        if (launching) return null
-        launching = true
+        if (launchState.launching) return null
+        launchState.launching = true
+        launchState.lastLaunched = rom
         val launchFile = resolveLaunchFile(rom, extractArchives = false)
-            ?: return errorAndReset(DialogState.LaunchError("Failed to resolve launch file"))
+            ?: return errorAndReset(DialogState.LaunchError(context.getString(dev.cannoli.scorza.R.string.launch_error_resolve_file)))
 
         val gameOverride = platformConfig.getGameOverride(rom.path.absolutePath)
         if (gameOverride?.appPackage != null) {
             val cfg = platformConfig.getAppConfig(rom.platformTag, gameOverride.appPackage)
             return launchResultDialog(apkLauncher.launchWithRom(gameOverride.appPackage, launchFile, cfg))
+        }
+
+        if (rom.platformTag in DELFINO_PLATFORMS) {
+            val delfinoPkg = DelfinoLauncher.installedPackage(context)
+            if (delfinoPkg != null) {
+                return launchResultDialog(delfinoLauncher.launch(buildDelfinoParams(rom), delfinoPkg))
+            }
         }
 
         val result = when (val target = rom.launchTarget) {
@@ -270,9 +286,8 @@ class LaunchManager(
                             debugLog("RetroArch target: core=$core runnerPref=$runnerPref embeddedCorePath=$embeddedCorePath")
                             if (embeddedCorePath != null) {
                                 val embeddedFile = resolveLaunchFile(rom, extractArchives = true)
-                                    ?: return errorAndReset(DialogState.LaunchError("Failed to extract archive"))
-                                launchEmbedded(rom.copy(path = embeddedFile), embeddedCorePath, originalRomPath = rom.path.absolutePath)
-                                return null
+                                    ?: return errorAndReset(DialogState.LaunchError(context.getString(dev.cannoli.scorza.R.string.launch_error_extract)))
+                                return launchEmbedded(rom.copy(path = embeddedFile), embeddedCorePath, originalRomPath = rom.path.absolutePath)
                             }
                         }
                         val raPackage = settings.retroArchPackage
@@ -283,20 +298,24 @@ class LaunchManager(
                             } catch (_: PackageManager.NameNotFoundException) { raPackage }
                             return errorAndReset(DialogState.MissingApp(appName, raPackage))
                         }
-                        if (settings.retroArchDiyMode) {
-                            val raConfig = "/storage/emulated/0/Android/data/$raPackage/files/retroarch.cfg"
-                            retroArchLauncher.launch(launchFile, core, raConfig, raPackage, buildIGMExtras(rom))
-                        } else {
-                            if (installedCoreService != null
-                                && installedCoreService.cacheReady
-                                && raPackage !in installedCoreService.unresponsivePackages
-                                && !installedCoreService.hasCoreInPackage(core, raPackage)) {
-                                val label = InstalledCoreService.getPackageLabel(raPackage)
-                                return errorAndReset(DialogState.MissingCore("$core not found in $label"))
-                            }
+                        // Core-install check applies to RicottaArch and to RetroArch installs
+                        // that report their cores; it self-skips for installs that cannot
+                        // (unresponsivePackages), since the user owns those.
+                        if (installedCoreService != null
+                            && installedCoreService.cacheReady
+                            && raPackage !in installedCoreService.unresponsivePackages
+                            && !installedCoreService.hasCoreInPackage(core, raPackage)) {
+                            val label = InstalledCoreService.getPackageLabel(raPackage)
+                            val coreName = platformConfig.getCoreDisplayName(core)
+                            return errorAndReset(DialogState.MissingCore(coreName, label))
+                        }
+                        if (RetroArchLauncher.isRicotta(raPackage)) {
                             syncRetroArchConfig(File(settings.sdCardRoot))
                             val launchConfig = buildGameConfig(rom) ?: raConfigPath
-                            retroArchLauncher.launch(launchFile, core, launchConfig, raPackage, buildIGMExtras(rom))
+                            retroArchLauncher.launchRicotta(launchFile, core, launchConfig, raPackage, buildRicottaIgm(rom))
+                        } else {
+                            val raConfig = "/storage/emulated/0/Android/data/$raPackage/files/retroarch.cfg"
+                            retroArchLauncher.launchRetroArchIntent(launchFile, core, raConfig, raPackage)
                         }
                     } else {
                         LaunchResult.CoreNotInstalled("unknown")
@@ -322,9 +341,8 @@ class LaunchManager(
             }
             is LaunchTarget.Embedded -> {
                 val embeddedFile = resolveLaunchFile(rom, extractArchives = true)
-                    ?: return errorAndReset(DialogState.LaunchError("Failed to extract archive"))
-                launchEmbedded(rom.copy(path = embeddedFile), target.corePath, originalRomPath = rom.path.absolutePath)
-                return null
+                    ?: return errorAndReset(DialogState.LaunchError(context.getString(dev.cannoli.scorza.R.string.launch_error_extract)))
+                return launchEmbedded(rom.copy(path = embeddedFile), target.corePath, originalRomPath = rom.path.absolutePath)
             }
         }
 
@@ -333,45 +351,47 @@ class LaunchManager(
 
     fun launchApp(app: App): DialogState? {
         debugLog("launchApp entered: ${app.type} / ${app.packageName}")
-        if (launching) return null
-        launching = true
+        if (launchState.launching) return null
+        launchState.launching = true
         return launchResultDialog(apkLauncher.launch(app.packageName))
     }
 
-    fun resumeRom(rom: Rom): DialogState? {
-        debugLog("resumeRom entered: ${rom.platformTag} / ${rom.path.name}")
-        if (launching) return null
-        launching = true
-        val resumeSlot = findMostRecentSlot(rom) ?: 0
+    fun resumeRom(rom: Rom): DialogState? = resumeRom(rom, findMostRecentSlot(rom) ?: 0)
+
+    fun resumeRom(rom: Rom, resumeSlot: Int): DialogState? {
+        debugLog("resumeRom entered: ${rom.platformTag} / ${rom.path.name} slot=$resumeSlot")
+        if (launchState.launching) return null
+        launchState.launching = true
+        launchState.lastLaunched = rom
         val embeddedCorePath = getEmbeddedCorePath(rom)
         val launchFile = resolveLaunchFile(rom, extractArchives = embeddedCorePath != null)
-            ?: run { launching = false; return null }
+            ?: run { launchState.launching = false; launchState.lastLaunched = null; return null }
         if (embeddedCorePath != null) {
-            launchEmbedded(rom.copy(path = launchFile), embeddedCorePath, resumeSlot, originalRomPath = rom.path.absolutePath)
-            return null
+            return launchEmbedded(rom.copy(path = launchFile), embeddedCorePath, resumeSlot, originalRomPath = rom.path.absolutePath)
         }
         val gameOverride = platformConfig.getGameOverride(rom.path.absolutePath)
-        val core = gameOverride?.coreId ?: platformConfig.getCoreName(rom.platformTag) ?: run { launching = false; return null }
+        val core = gameOverride?.coreId ?: platformConfig.getCoreName(rom.platformTag) ?: run { launchState.launching = false; launchState.lastLaunched = null; return null }
         val raPackage = settings.retroArchPackage
-        if (settings.retroArchDiyMode) {
-            val raConfig = "/storage/emulated/0/Android/data/$raPackage/files/retroarch.cfg"
-            retroArchLauncher.launch(launchFile, core, raConfig, raPackage)
-        } else {
+        if (RetroArchLauncher.isRicotta(raPackage)) {
             syncRetroArchConfig(File(settings.sdCardRoot))
             val launchConfig = buildGameConfig(rom, resume = true, slot = resumeSlot) ?: raConfigPath
-            retroArchLauncher.launch(launchFile, core, launchConfig, raPackage)
+            retroArchLauncher.launchRicotta(launchFile, core, launchConfig, raPackage, buildRicottaIgm(rom))
+        } else {
+            val raConfig = "/storage/emulated/0/Android/data/$raPackage/files/retroarch.cfg"
+            retroArchLauncher.launchRetroArchIntent(launchFile, core, raConfig, raPackage)
         }
         return null
     }
 
     private fun errorAndReset(dialog: DialogState): DialogState {
-        launching = false
+        launchState.launching = false
+        launchState.lastLaunched = null
         return dialog
     }
 
     private fun launchResultDialog(result: LaunchResult): DialogState? {
         val dialog = toLaunchDialog(result)
-        if (dialog != null) launching = false
+        if (dialog != null) launchState.launching = false
         return dialog
     }
 
@@ -402,7 +422,7 @@ class LaunchManager(
         } catch (_: Exception) {}
     }
 
-    fun launchEmbedded(rom: Rom, corePath: String, resumeSlot: Int = -1, originalRomPath: String? = null) {
+    fun launchEmbedded(rom: Rom, corePath: String, resumeSlot: Int = -1, originalRomPath: String? = null): DialogState? {
         val paths = CannoliPaths(settings.sdCardRoot)
         val romName = normalizedRomName(rom)
 
@@ -443,37 +463,107 @@ class LaunchManager(
             raToken = settings.raToken,
             raPassword = settings.raPassword,
             raGameId = rom.raGameId,
+            romId = rom.id,
             resumeSlot = resumeSlot,
         )
         val intent = args.writeTo(Intent(context, LibretroActivity::class.java))
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         val opts = ActivityOptions.makeCustomAnimation(context, 0, 0).toBundle()
-        context.startActivity(intent, opts)
+        return try {
+            context.startActivity(intent, opts)
+            null
+        } catch (t: Throwable) {
+            errorAndReset(DialogState.LaunchError(context.getString(dev.cannoli.scorza.R.string.launch_error_generic)))
+        }
     }
 
     private fun normalizedRomName(rom: Rom): String =
         Normalizer.normalize(rom.path.nameWithoutExtension, Normalizer.Form.NFC)
 
-    private fun buildIGMExtras(rom: Rom): IGMExtras {
+    private fun buildDelfinoParams(rom: Rom): dev.cannoli.igm.DelfinoLaunchParams {
+        val igm = buildRicottaIgm(rom)
+        val paths = CannoliPaths(settings.sdCardRoot)
+        return dev.cannoli.igm.DelfinoLaunchParams(
+            romPath = rom.path.absolutePath,
+            cannoliRoot = paths.root.absolutePath,
+            savesDir = null,
+            saveStatesDir = null,
+            biosDir = paths.biosFor(rom.platformTag).absolutePath,
+            userDir = null,
+            gameTitle = rom.displayName,
+            platformTag = rom.platformTag,
+            igmTriggerKeycodes = igm.igmTriggerKeycodes,
+            colors = igm.colors,
+            displaySettings = igm.displaySettings,
+            inputMapping = igm.inputMapping,
+        )
+    }
+
+    private fun buildRicottaIgm(rom: Rom): RicottaIgm {
         val paths = CannoliPaths(settings.sdCardRoot)
         val romName = normalizedRomName(rom)
         val stateBase = paths.saveStateBase(rom.platformTag, romName)
-        return IGMExtras(
+        val batteryDisplay = when (settings.batteryDisplay) {
+            dev.cannoli.scorza.settings.BatteryDisplay.HIDE -> BatteryDisplayMode.HIDE
+            dev.cannoli.scorza.settings.BatteryDisplay.PERCENT -> BatteryDisplayMode.PERCENT
+            dev.cannoli.scorza.settings.BatteryDisplay.ICON -> BatteryDisplayMode.ICON
+        }
+        val timeFormat = when (settings.timeFormat) {
+            dev.cannoli.scorza.settings.TimeFormat.TWELVE_HOUR -> TimeFormatMode.TWELVE_HOUR
+            dev.cannoli.scorza.settings.TimeFormat.TWENTY_FOUR_HOUR -> TimeFormatMode.TWENTY_FOUR_HOUR
+        }
+        return RicottaIgm(
             gameTitle = rom.displayName,
             stateBasePath = stateBase.absolutePath,
             cannoliRoot = paths.root.absolutePath,
             platformTag = rom.platformTag,
-            colorHighlight = settings.colorHighlight,
-            colorText = settings.colorText,
-            colorHighlightText = settings.colorHighlightText,
-            colorAccent = settings.colorAccent,
-            colorTitle = settings.colorTitle
+            platformName = platformConfig.getDisplayName(rom.platformTag),
+            igmTriggerKeycodes = resolveMenuKeycodes(),
+            colors = IgmColors(
+                highlight = settings.colorHighlight,
+                text = settings.colorText,
+                highlightText = settings.colorHighlightText,
+                accent = settings.colorAccent,
+                title = settings.colorTitle,
+            ),
+            displaySettings = IgmDisplaySettings(
+                fontSizeSp = settings.textSize.sp,
+                portraitMarginPx = settings.portraitMarginPx,
+                geometryWidthPct = settings.screenGeometryWidth,
+                geometryHeightPct = settings.screenGeometryHeight,
+                geometryXPct = settings.screenGeometryX,
+                geometryYPct = settings.screenGeometryY,
+                showWifi = settings.showWifi,
+                showBluetooth = settings.showBluetooth,
+                showVpn = settings.showVpn,
+                showClock = settings.showClock,
+                batteryDisplay = batteryDisplay,
+                timeFormat = timeFormat,
+                buttonLabelSet = activeMappingHolder.active.value.labelSet(dev.cannoli.ui.ButtonLabelSet.PLUMBER),
+                confirmButton = activeMappingHolder.active.value.confirmButton(),
+            ),
+            inputMapping = activeMappingHolder.active.value.toIgmInputMapping(),
         )
     }
 
+    // Keycodes bound to BTN_MENU in the active mapping open the Cannoli IGM in ricotta,
+    // mirroring how the launcher's own in-game menu opens. Falls back to the platform
+    // default (BACK + BUTTON_MODE) when no mapping is active.
+    private fun resolveMenuKeycodes(): List<Int> =
+        activeMappingHolder.active.value
+            ?.bindings
+            ?.get(dev.cannoli.scorza.input.CanonicalButton.BTN_MENU)
+            ?.filterIsInstance<dev.cannoli.scorza.input.InputBinding.Button>()
+            ?.map { it.keyCode }
+            ?.takeIf { it.isNotEmpty() }
+            ?: listOf(
+                android.view.KeyEvent.KEYCODE_BACK,
+                android.view.KeyEvent.KEYCODE_BUTTON_MODE,
+            )
+
     companion object {
-        private const val CONFIG_VERSION = 5
-        private val DISC_REGEX = Regex("""\s*\((Disc|Disk)\s*\d+\)|\s*\(CD\d+\)""", RegexOption.IGNORE_CASE)
+        private const val CONFIG_VERSION = 6
+        val DELFINO_PLATFORMS = setOf("GC", "WII")
 
         fun extractBundledCores(context: Context): String {
             val coresDir = File(context.filesDir, "cores")

@@ -1,6 +1,5 @@
 package dev.cannoli.scorza.ui.components
 
-import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -24,10 +23,9 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.google.zxing.BarcodeFormat
-import com.google.zxing.qrcode.QRCodeWriter
 import dev.cannoli.scorza.R
 import dev.cannoli.ui.ButtonStyle
+import dev.cannoli.ui.DPAD_HORIZONTAL
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.screenPadding
 import dev.cannoli.ui.theme.LocalCannoliTypography
@@ -49,7 +47,7 @@ fun KitchenOverlay(
     val qrUrl = remember(url, pin, requirePin) {
         if (requirePin) "$url?host=${java.net.URLEncoder.encode(pin, "UTF-8")}" else url
     }
-    val qrBitmap = remember(qrUrl) { generateQrBitmap(qrUrl, 256) }
+    val qrBitmap = remember(qrUrl) { dev.cannoli.scorza.util.QrCode.generate(qrUrl, 256) }
 
     Box(
         modifier = Modifier
@@ -115,25 +113,9 @@ fun KitchenOverlay(
                 .padding(horizontal = screenPadding, vertical = 16.dp),
             leftItems = buildList {
                 add(buttonStyle.back to stringResource(R.string.label_back))
-                if (urls.size > 1) add("\u25C0\u25B6" to stringResource(R.string.label_interface))
+                if (urls.size > 1) add(DPAD_HORIZONTAL to stringResource(R.string.label_interface))
             },
             rightItems = listOf(buttonStyle.north to stringResource(R.string.label_stop))
         )
-    }
-}
-
-private fun generateQrBitmap(content: String, size: Int): Bitmap? {
-    return try {
-        val hints = mapOf(com.google.zxing.EncodeHintType.MARGIN to 0)
-        val matrix = QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, size, size, hints)
-        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        for (x in 0 until size) {
-            for (y in 0 until size) {
-                bitmap.setPixel(x, y, if (matrix.get(x, y)) 0xFF000000.toInt() else 0xFFFFFFFF.toInt())
-            }
-        }
-        bitmap
-    } catch (_: Exception) {
-        null
     }
 }

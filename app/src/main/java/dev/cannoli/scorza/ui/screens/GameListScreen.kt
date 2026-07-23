@@ -38,7 +38,6 @@ import dev.cannoli.scorza.R
 import dev.cannoli.scorza.model.AppType
 import dev.cannoli.scorza.model.ListItem
 import dev.cannoli.scorza.settings.ArtScale
-import dev.cannoli.scorza.ui.components.DialogOverlay
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.STAR
@@ -167,6 +166,9 @@ fun GameListScreen(
         }
         result
     }
+    val toolsLabel = stringResource(R.string.origin_tools)
+    val portsLabel = stringResource(R.string.origin_ports)
+    val collectionLabel = stringResource(R.string.origin_collection)
 
     ScreenBackground(backgroundImagePath = backgroundImagePath, backgroundTint = backgroundTint) {
         Box(
@@ -181,7 +183,7 @@ fun GameListScreen(
                     .padding(bottom = footerReservation())
             ) {
                 ScreenTitle(
-                    text = state.breadcrumb,
+                    text = state.searchTerm?.let { "${state.breadcrumb}: “$it”" } ?: state.breadcrumb,
                     fontSize = listFontSize,
                     lineHeight = listLineHeight,
                 )
@@ -222,7 +224,11 @@ fun GameListScreen(
                                     is ListItem.AppItem -> item.app.id in favoriteAppIds
                                     else -> false
                                 }
-                                val tagSuffix = (item as? ListItem.RomItem)?.let { romTagSuffixById[it.rom.id] }
+                                val tagSuffix = if (state.isGlobalSearch) {
+                                    dev.cannoli.scorza.ui.viewmodel.globalOriginTag(item, toolsLabel, portsLabel, collectionLabel)
+                                } else {
+                                    (item as? ListItem.RomItem)?.let { romTagSuffixById[it.rom.id] }
+                                }
                                 val displayName = item.rowDisplayName(showStar = false)
                                 val withStar = if (starred) "$STAR $displayName" else displayName
                                 val label = if (item is ListItem.SubfolderItem) "/ $withStar" else withStar
@@ -308,10 +314,12 @@ fun GameListScreen(
                         stringResource(R.string.dialog_rename_success)
                     } else {
                         stringResource(R.string.dialog_rename_failed, dialogState.message)
-                    }
+                    },
+                    buttonStyle = buttonStyle
                 )
                 is DialogState.CollectionCreated -> MessageOverlay(
-                    message = stringResource(R.string.collection_created, dialogState.collectionName)
+                    message = stringResource(R.string.collection_created, dialogState.collectionName),
+                    buttonStyle = buttonStyle
                 )
                 else -> {}
             }
@@ -319,31 +327,26 @@ fun GameListScreen(
     }
 
     when (dialogState) {
-        is DialogState.MissingCore -> MissingCoreDialog(dialogState.coreName)
-        is DialogState.MissingApp -> MissingAppDialog(
-            appName = dialogState.appName,
-            showRemove = state.platformTag == "tools" || state.platformTag == "ports"
-        )
-        is DialogState.LaunchError -> LaunchErrorDialog(dialogState.message)
-        is DialogState.DeleteConfirm -> ConfirmOverlay(
-            message = stringResource(R.string.dialog_delete_confirm, dialogState.gameName)
-        )
-        is DialogState.DeleteCollectionConfirm -> ConfirmOverlay(
-            message = stringResource(R.string.dialog_delete_confirm, dialogState.displayName)
-        )
-        else -> {}
-    }
-
-    if (dialogState.isFullScreen) {
-        DialogOverlay(
-            dialogState = dialogState,
-            backgroundImagePath = backgroundImagePath,
-            backgroundTint = backgroundTint,
-            listFontSize = listFontSize,
-            listLineHeight = listLineHeight,
-            listVerticalPadding = listVerticalPadding,
+        is DialogState.MissingCore -> MissingCoreDialog(
+            coreName = dialogState.coreName,
+            packageLabel = dialogState.packageLabel,
             buttonStyle = buttonStyle
         )
+        is DialogState.MissingApp -> MissingAppDialog(
+            appName = dialogState.appName,
+            showRemove = state.platformTag == "tools" || state.platformTag == "ports",
+            buttonStyle = buttonStyle
+        )
+        is DialogState.LaunchError -> LaunchErrorDialog(dialogState.message, buttonStyle = buttonStyle)
+        is DialogState.DeleteConfirm -> ConfirmOverlay(
+            message = stringResource(R.string.dialog_delete_confirm, dialogState.gameName),
+            buttonStyle = buttonStyle
+        )
+        is DialogState.DeleteCollectionConfirm -> ConfirmOverlay(
+            message = stringResource(R.string.dialog_delete_confirm, dialogState.displayName),
+            buttonStyle = buttonStyle
+        )
+        else -> {}
     }
 }
 

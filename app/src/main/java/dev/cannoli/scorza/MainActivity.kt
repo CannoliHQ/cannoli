@@ -19,6 +19,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -29,7 +30,10 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import dagger.hilt.android.AndroidEntryPoint
 import dev.cannoli.scorza.boot.BootSequencer
 import dev.cannoli.scorza.boot.BootState
@@ -57,14 +61,15 @@ import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.setup.SetupCoordinator
-import dev.cannoli.scorza.ui.LocalPortraitMargin
-import dev.cannoli.scorza.ui.PortraitMarginState
+import dev.cannoli.scorza.ui.LocalViewportInsets
+import dev.cannoli.scorza.ui.ViewportInsetsPx
 import dev.cannoli.scorza.ui.screens.BootErrorScreen
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.scorza.ui.viewmodel.InputTesterViewModel
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
+import dev.cannoli.scorza.romm.sync.RomKeys
 import dev.cannoli.scorza.updater.UpdateManager
 import dev.cannoli.ui.theme.CannoliTheme
 import javax.inject.Inject
@@ -91,6 +96,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var updateManager: UpdateManager
     @Inject lateinit var setupCoordinator: SetupCoordinator
     @Inject lateinit var launchManager: Provider<LaunchManager>
+    @Inject lateinit var launchState: dev.cannoli.scorza.launcher.LaunchState
     @Inject lateinit var installedCoreService: Provider<InstalledCoreService>
     @Inject lateinit var romsRepository: Provider<RomsRepository>
     @Inject lateinit var romScanner: Provider<RomScanner>
@@ -108,13 +114,25 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var startStorageDependentHolder: StartStorageDependentHolder
     @Inject lateinit var appFonts: AppFonts
     @Inject lateinit var controllerBlacklist: dev.cannoli.scorza.input.ControllerBlacklist
+    @Inject lateinit var rommStore: dev.cannoli.scorza.romm.RommConnectionStore
+    @Inject lateinit var rommClient: dev.cannoli.scorza.romm.RommClient
+    @Inject lateinit var rommDevicePairing: dev.cannoli.scorza.romm.RommDevicePairing
+    @Inject lateinit var rommBrowseViewModel: dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel
+    @Inject lateinit var rommImageLoader: coil.ImageLoader
+    @Inject lateinit var rommDownloader: dev.cannoli.scorza.romm.download.RommDownloader
+    @Inject lateinit var rommArtFetcher: dev.cannoli.scorza.romm.art.RommArtFetcher
+    @Inject lateinit var syncScheduler: dev.cannoli.scorza.romm.sync.SyncScheduler
+    @Inject lateinit var saveSyncStatusHolder: dev.cannoli.scorza.romm.sync.SaveSyncStatusHolder
+    @Inject lateinit var cannoliPathsProvider: dev.cannoli.scorza.di.CannoliPathsProvider
+    @field:dev.cannoli.scorza.di.IoScope @Inject lateinit var ioScope: kotlinx.coroutines.CoroutineScope
 
-    private val isTv: Boolean by lazy { packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) }
+    private val isTv: Boolean by lazy { dev.cannoli.scorza.util.DeviceType.isTv(this) }
 
     private val isReady: Boolean get() = bootSequencer.state.value is BootState.Ready
 
     private var coreQueryReceiver: android.content.BroadcastReceiver? = null
     private var loginManager: RetroAchievementsManager? = null
+    private var pairingUiJob: kotlinx.coroutines.Job? = null
     private val loginPollHandler = Handler(Looper.getMainLooper())
     private val loginPollRunnable: Runnable = object : Runnable {
         override fun run() {
@@ -140,7 +158,9 @@ class MainActivity : ComponentActivity(), ActivityActions {
         dev.cannoli.scorza.util.LoggingPrefs.romScan = settings.loggingRomScan
         dev.cannoli.scorza.util.LoggingPrefs.input = settings.loggingInput
         dev.cannoli.scorza.util.LoggingPrefs.session = settings.loggingSession
+        dev.cannoli.scorza.util.LoggingPrefs.kitchen = settings.loggingKitchen
         dev.cannoli.scorza.util.LoggingPrefs.storage = settings.loggingStorage
+        dev.cannoli.scorza.util.LoggingPrefs.romm = settings.loggingRomm
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -198,7 +218,13 @@ class MainActivity : ComponentActivity(), ActivityActions {
             CannoliTheme(fontFamily = themeFont, iconFontFamily = appFonts.mplus1Code) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     CompositionLocalProvider(
-                        LocalPortraitMargin provides PortraitMarginState(marginPx = settings.portraitMarginPx),
+                        LocalViewportInsets provides ViewportInsetsPx(
+                            geometryWidthPct = settings.screenGeometryWidth,
+                            geometryHeightPct = settings.screenGeometryHeight,
+                            geometryXPct = settings.screenGeometryX,
+                            geometryYPct = settings.screenGeometryY,
+                            portraitMarginPx = settings.portraitMarginPx,
+                        ),
                         dev.cannoli.scorza.input.screen.compose.LocalScreenInputRegistry provides screenInputRegistry,
                     ) {
                     when (val s = boot) {
@@ -248,11 +274,13 @@ class MainActivity : ComponentActivity(), ActivityActions {
                                     dev.cannoli.scorza.boot.BootPhase.LIBRARY_REFRESH ->
                                         dev.cannoli.scorza.ui.screens.HousekeepingKind.LIBRARY_REFRESH
                                 }
-                                dev.cannoli.scorza.ui.screens.HousekeepingScreen(
-                                    kind = kind,
-                                    progress = s.progress,
-                                    statusLabel = s.label,
-                                )
+                                Box(modifier = Modifier.fillMaxSize().padding(dev.cannoli.scorza.ui.effectiveViewportPadding())) {
+                                    dev.cannoli.scorza.ui.screens.HousekeepingScreen(
+                                        kind = kind,
+                                        progress = s.progress,
+                                        statusLabel = s.label,
+                                    )
+                                }
                             } else {
                                 Box(modifier = Modifier.fillMaxSize()) {}
                             }
@@ -280,7 +308,18 @@ class MainActivity : ComponentActivity(), ActivityActions {
         val navDialogState = nav.dialogState
         val navResumableGames = nav.resumableGames
         val activeMapping by activeMappingHolder.active.collectAsState()
+        val syncStatus by saveSyncStatusHolder.state.collectAsState()
+        LaunchedEffect(updateInfo) { svm.updateInfo = updateInfo }
         LaunchedEffect(navScreen) {
+        }
+        val currentDialog by navDialogState.collectAsState()
+        val kitchenVisible = currentDialog is DialogState.Kitchen
+        LaunchedEffect(kitchenVisible) {
+            if (kitchenVisible) {
+                window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            } else {
+                window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }
         }
         AppNavGraph(
             currentScreen = navScreen,
@@ -305,6 +344,13 @@ class MainActivity : ComponentActivity(), ActivityActions {
             editButtonsController = editButtonsController,
             nav = nav,
             inputRouter = router,
+            rommBrowseViewModel = rommBrowseViewModel,
+            rommImageLoader = rommImageLoader,
+            rommHost = rommStore.host,
+            rommArtType = rommStore.artTypeFlow.collectAsState().value,
+            rommDownloader = rommDownloader,
+            rommArtFetcher = rommArtFetcher,
+            saveSyncStatus = syncStatus,
         )
     }
 
@@ -320,6 +366,19 @@ class MainActivity : ComponentActivity(), ActivityActions {
             dev.cannoli.scorza.util.InputLog.init(settings.sdCardRoot)
         }
         controllerBridge.settleNow()
+        refreshRommServerVersion()
+    }
+
+    private fun refreshRommServerVersion() {
+        if (!rommStore.isConfigured) return
+        lifecycleScope.launch {
+            // The server can be upgraded behind our back; the version cached at pairing time would
+            // otherwise gate save sync forever. Keep the cached value when the server is unreachable.
+            val version = withContext(Dispatchers.IO) { rommClient.serverVersion() }
+            if (version != null) rommStore.serverVersion = version
+            val media = withContext(Dispatchers.IO) { rommClient.scanMedia() }
+            if (media.isNotEmpty()) rommStore.scanMedia = media.toSet()
+        }
     }
 
     private fun registerControllerOsd() {
@@ -328,14 +387,16 @@ class MainActivity : ComponentActivity(), ActivityActions {
                 val port = portRouter.portFor(device.androidDeviceId)
                 if (port != null) {
                     val name = portRouter.mappingForPort(port)?.displayName?.takeIf { it.isNotEmpty() }
-                        ?: device.name.ifEmpty { "Controller" }
-                    osdController.show("P${port + 1}: $name")
+                        ?: device.name.ifEmpty { getString(R.string.device_controller) }
+                    osdController.show(getString(R.string.osd_controller_connected, port + 1, name))
                 }
             }
         }
         controllerBridge.onDeviceRemoved = { departed ->
-            val portLabel = departed.port?.let { "P${it + 1}: " } ?: ""
-            osdController.show("$portLabel${departed.displayName} disconnected")
+            val msg = departed.port?.let {
+                getString(R.string.osd_controller_disconnected_port, it + 1, departed.displayName)
+            } ?: getString(R.string.osd_controller_disconnected, departed.displayName)
+            osdController.show(msg)
         }
     }
 
@@ -349,11 +410,20 @@ class MainActivity : ComponentActivity(), ActivityActions {
         registerControllerOsd()
         menuNavigationPoller.start()
         bootSequencer.advance()
+        launchState.launching = false
+        val justExited = launchState.lastLaunched
+        if (justExited != null && !LibretroActivity.isRunning) {
+            launchState.lastLaunched = null
+        }
+        if (!LibretroActivity.isRunning) {
+            syncScheduler.start()
+            // The just-played save is uploaded by the sweep itself; force one so it runs now.
+            if (justExited != null) syncScheduler.syncNow()
+        }
         if (!isReady) return
         if (!coldStart) overridePendingTransition(0, 0)
         coldStart = false
         hideSystemUI()
-        launchManager.get().launching = false
         if (LibretroActivity.isRunning) {
             val intent = Intent(this, LibretroActivity::class.java)
             intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
@@ -367,17 +437,15 @@ class MainActivity : ComponentActivity(), ActivityActions {
         if (activeDialogState.value is DialogState.RAAccount && settings.raToken.isEmpty()) {
             activeDialogState.value = DialogState.None
         }
-        if (!systemListViewModel.get().state.value.isLoading) {
-            rescanSystemList()
-            val activeScreen = nav.currentScreen
-            if (activeScreen is LauncherScreen.GameList) {
-                gameListViewModel.get().reload { launcherActions.get().scanResumableGames() }
-            }
+        if (activeDialogState.value is DialogState.RommConnected && rommStore.token.isNullOrEmpty()) {
+            activeDialogState.value = DialogState.None
         }
+        launcherActions.get().refreshLauncherLists()
     }
 
     override fun onPause() {
         super.onPause()
+        syncScheduler.stop()
         menuNavigationPoller.stop()
         // Cancel any in-flight stick auto-repeat so it does not keep firing dispatcher callbacks
         // after LibretroActivity has rewired them.
@@ -396,12 +464,14 @@ class MainActivity : ComponentActivity(), ActivityActions {
         controllerBridge.stop(this)
         super.onDestroy()
         unregisterCoreQueryReceiver()
+        loginPollHandler.removeCallbacks(loginPollRunnable)
+        loginManager?.destroy()
+        loginManager = null
         settings.shutdown()
         if (isReady) {
             systemListViewModel.get().close()
             gameListViewModel.get().close()
         }
-        dev.cannoli.scorza.server.KitchenManager.stop()
     }
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
@@ -437,8 +507,15 @@ class MainActivity : ComponentActivity(), ActivityActions {
                     val currentScreenForKey = nav.currentScreen
                     if (currentScreenForKey is LauncherScreen.InputTester) {
                         inputTesterController.dispatchKey(event, down = event.action == KeyEvent.ACTION_DOWN)
-                    } else if (isTv && event.action == KeyEvent.ACTION_DOWN) {
-                        inputDispatcher.onBack()
+                    } else if (event.action == KeyEvent.ACTION_DOWN) {
+                        // KEYCODE_BACK is a default BTN_MENU binding, but handhelds that wire the menu
+                        // button to GPIO deliver it keyboard-sourced from a device ControllerBridge never
+                        // routes, so it has no PortRouter entry and can never resolve through the mapping.
+                        // Call onMenu() directly so it behaves like a mapped BTN_MENU. TV keeps back-nav.
+                        dev.cannoli.scorza.util.InputLog.write(
+                            "back key: isTv=$isTv -> ${if (isTv) "onBack" else "onMenu"}"
+                        )
+                        if (isTv) inputDispatcher.onBack() else inputDispatcher.onMenu()
                     }
                     return true
                 }
@@ -530,6 +607,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
 
     private val triggerL2HeldDevices = mutableSetOf<Int>()
     private val triggerR2HeldDevices = mutableSetOf<Int>()
+    private val bindingHatSync = dev.cannoli.scorza.input.HatKeySync()
 
     private fun syncBindingTrigger(deviceId: Int, keyCode: Int, value: Float, held: MutableSet<Int>) {
         val wasHeld = deviceId in held
@@ -568,6 +646,13 @@ class MainActivity : ComponentActivity(), ActivityActions {
             )
             syncBindingTrigger(event.deviceId, KeyEvent.KEYCODE_BUTTON_L2, lt, triggerL2HeldDevices)
             syncBindingTrigger(event.deviceId, KeyEvent.KEYCODE_BUTTON_R2, rt, triggerR2HeldDevices)
+            bindingHatSync.sync(
+                event.deviceId,
+                event.getAxisValue(android.view.MotionEvent.AXIS_HAT_X),
+                event.getAxisValue(android.view.MotionEvent.AXIS_HAT_Y),
+                { bindingController.keyDown(it) },
+                { bindingController.keyUp(it) },
+            )
         }
 
         if (currentScreenForMotion is LauncherScreen.InputTester) {
@@ -576,10 +661,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
         }
 
         return super.dispatchGenericMotionEvent(event)
-    }
-
-    private fun rescanSystemList() {
-        launcherActions.get().rescanSystemList()
     }
 
     private fun requestStoragePermission() {
@@ -625,6 +706,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
 
     override fun startRaLogin(username: String, password: String) {
         val ra = RetroAchievementsManager(
+            context = this,
             onLogin = { success, nameOrError, token ->
                 if (success && token != null) {
                     settings.raUsername = nameOrError
@@ -633,7 +715,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
                     settingsViewModel.get().raPassword = ""
                     nav.dialogState.value = DialogState.RAAccount(username = nameOrError)
                 } else {
-                    nav.dialogState.value = DialogState.RALoggingIn(message = "Invalid username or password")
+                    nav.dialogState.value = DialogState.RALoggingIn(message = getString(R.string.ra_login_invalid))
                 }
                 loginPollHandler.removeCallbacks(loginPollRunnable)
                 loginManager?.destroy()
@@ -645,6 +727,99 @@ class MainActivity : ComponentActivity(), ActivityActions {
         loginManager = ra
         loginPollHandler.postDelayed(loginPollRunnable, 100)
         nav.dialogState.value = DialogState.RALoggingIn()
+    }
+
+    override fun startRommPairing(host: String) {
+        rommDevicePairing.start(host)
+        pairingUiJob?.cancel()
+        pairingUiJob = lifecycleScope.launch {
+            rommDevicePairing.state.collect { state ->
+                when (state) {
+                    is dev.cannoli.scorza.romm.PairingState.Idle -> {}
+                    is dev.cannoli.scorza.romm.PairingState.Connecting ->
+                        nav.dialogState.value = DialogState.RommPairing(host = host)
+                    is dev.cannoli.scorza.romm.PairingState.WaitingApproval -> {
+                        val qr = withContext(Dispatchers.Default) {
+                            dev.cannoli.scorza.util.QrCode.generate(state.verificationUrl, 256)
+                        }
+                        nav.dialogState.value = DialogState.RommPairing(
+                            host = rommStore.host,
+                            waitingApproval = true,
+                            qrBitmap = qr,
+                        )
+                    }
+                    is dev.cannoli.scorza.romm.PairingState.Success -> {
+                        val connected = completeRommConnection()
+                        if (rommDevicePairing.state.value is dev.cannoli.scorza.romm.PairingState.Success) {
+                            nav.dialogState.value = connected
+                        }
+                    }
+                    is dev.cannoli.scorza.romm.PairingState.Failed ->
+                        nav.dialogState.value = DialogState.RommPairing(
+                            host = rommStore.host,
+                            message = pairingFailureMessage(state.reason),
+                        )
+                }
+            }
+        }
+    }
+
+    override fun startRommCodePairing(host: String, pairCode: String) {
+        if (!dev.cannoli.scorza.romm.RommPairingCode.isValid(pairCode)) {
+            nav.dialogState.value = DialogState.RommPairing(host = host, message = getString(R.string.romm_pair_invalid))
+            return
+        }
+        nav.dialogState.value = DialogState.RommPairing(host = host)
+        lifecycleScope.launch {
+            val base = withContext(Dispatchers.IO) { rommClient.resolveBaseUrl(host) }
+            if (base == null) {
+                nav.dialogState.value = DialogState.RommPairing(host = host, message = getString(R.string.romm_unreachable))
+                return@launch
+            }
+            rommStore.host = base
+            val version = withContext(Dispatchers.IO) { rommClient.serverVersion() }
+            if (dev.cannoli.scorza.romm.RommCapabilities.isKnownUnsupported(version)) {
+                nav.dialogState.value = DialogState.RommPairing(host = base, message = getString(R.string.romm_server_too_old))
+                return@launch
+            }
+            val result = withContext(Dispatchers.IO) { runCatching { rommClient.exchangeCode(pairCode) } }
+            result.onSuccess { token ->
+                rommStore.token = token
+                val connected = completeRommConnection()
+                if (nav.dialogState.value is DialogState.RommPairing) {
+                    nav.dialogState.value = connected
+                }
+            }.onFailure { e ->
+                val msg = when ((e as? dev.cannoli.scorza.romm.RommException)?.statusCode) {
+                    404 -> getString(R.string.romm_pair_invalid)
+                    429 -> getString(R.string.romm_pair_rate_limited)
+                    else -> getString(R.string.romm_pair_failed)
+                }
+                if (nav.dialogState.value is DialogState.RommPairing) {
+                    nav.dialogState.value = DialogState.RommPairing(host = host, message = msg)
+                }
+            }
+        }
+    }
+
+    private suspend fun completeRommConnection(): DialogState.RommConnected {
+        settingsViewModel.get().exitSubList()
+        val user = withContext(Dispatchers.IO) { rommClient.currentUser() }
+        val version = withContext(Dispatchers.IO) { rommClient.serverVersion() }
+        val media = withContext(Dispatchers.IO) { rommClient.scanMedia() }
+        rommStore.username = user
+        rommStore.serverVersion = version
+        if (media.isNotEmpty()) rommStore.scanMedia = media.toSet()
+        return DialogState.RommConnected(host = rommStore.host, username = user, version = version)
+    }
+
+    private fun pairingFailureMessage(reason: dev.cannoli.scorza.romm.PairingFailure): String = when (reason) {
+        dev.cannoli.scorza.romm.PairingFailure.SERVER_TOO_OLD -> getString(R.string.romm_server_too_old)
+        dev.cannoli.scorza.romm.PairingFailure.UNREACHABLE -> getString(R.string.romm_unreachable)
+        dev.cannoli.scorza.romm.PairingFailure.DENIED -> getString(R.string.romm_pair_denied)
+        dev.cannoli.scorza.romm.PairingFailure.EXPIRED -> getString(R.string.romm_pair_expired)
+        dev.cannoli.scorza.romm.PairingFailure.RATE_LIMITED -> getString(R.string.romm_pair_rate_limited)
+        dev.cannoli.scorza.romm.PairingFailure.FAILED -> getString(R.string.romm_pair_failed)
     }
 
 }

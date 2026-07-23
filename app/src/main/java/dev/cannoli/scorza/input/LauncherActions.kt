@@ -16,10 +16,16 @@ import dev.cannoli.scorza.launcher.LaunchManager
 import dev.cannoli.scorza.model.AppType
 import dev.cannoli.scorza.model.CollectionType
 import dev.cannoli.scorza.model.ListItem
+import dev.cannoli.scorza.model.Rom
+import dev.cannoli.scorza.romm.sync.PreLaunchOutcome
+import dev.cannoli.scorza.romm.sync.RomKeys
+import dev.cannoli.scorza.romm.sync.SaveSyncService
+import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.server.KitchenManager
 import dev.cannoli.scorza.settings.ContentMode
 import dev.cannoli.scorza.settings.SettingsRepository
+import dev.cannoli.scorza.di.CannoliPathsProvider
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
@@ -34,7 +40,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 import javax.inject.Inject
 
 @ActivityScoped
@@ -54,7 +59,38 @@ class LauncherActions @Inject constructor(
     private val systemListViewModel: SystemListViewModel,
     private val gameListViewModel: GameListViewModel,
     private val settingsViewModel: SettingsViewModel,
+    private val saveSyncService: SaveSyncService,
+    private val pathsProvider: CannoliPathsProvider,
 ) {
+
+    private var pendingLaunch: (() -> DialogState?)? = null
+    private var pendingRecentPath: String? = null
+    private var pendingRecentReorder: Boolean = false
+
+    fun proceedPendingLaunch() {
+        val p = pendingLaunch
+        val recentPath = pendingRecentPath
+        val reorder = pendingRecentReorder
+        pendingLaunch = null
+        pendingRecentPath = null
+        pendingRecentReorder = false
+        p?.invoke()?.let { nav.dialogState.value = it }
+        if (recentPath != null) {
+            recordRecentlyPlayedByPath(recentPath)
+            if (reorder) nav.pendingRecentlyPlayedReorder = true
+        }
+    }
+
+    fun cancelPendingLaunch() {
+        pendingLaunch = null
+        pendingRecentPath = null
+        pendingRecentReorder = false
+    }
+
+    fun recordPendingRecent(path: String, reorder: Boolean) {
+        pendingRecentPath = path
+        pendingRecentReorder = reorder
+    }
 
     fun rescanSystemList(
         scanDisk: Boolean = true,
@@ -76,6 +112,14 @@ class LauncherActions @Inject constructor(
                 if (fghId != null) scanResumableGames()
             }
         )
+    }
+
+    fun refreshLauncherLists() {
+        if (systemListViewModel.state.value.isLoading) return
+        rescanSystemList()
+        if (nav.currentScreen is LauncherScreen.GameList) {
+            gameListViewModel.reload { scanResumableGames() }
+        }
     }
 
     fun validateFghCollection(): Long? {
@@ -107,12 +151,52 @@ class LauncherActions @Inject constructor(
         arcadeTitleLookup.invalidateAll()
     }
 
-    fun launchSelected(item: ListItem, resume: Boolean): DialogState? = when (item) {
-        is ListItem.RomItem ->
-            if (resume) launchManager.resumeRom(item.rom) else launchManager.launchRom(item.rom)
-        is ListItem.AppItem -> launchManager.launchApp(item.app)
-        else -> null
+    fun launchSelected(item: ListItem, resume: Boolean): DialogState? {
+        return when (item) {
+            is ListItem.RomItem -> launchSelectedRom(item.rom, resume)
+            is ListItem.AppItem -> launchManager.launchApp(item.app)
+            else -> null
+        }
     }
+
+    private fun launchSelectedRom(rom: Rom, resume: Boolean): DialogState? {
+        val gameKey = RomKeys.relativeKey(rom.path, pathsProvider.romDir)
+        val romId = saveSyncService.isSyncableGame(gameKey)
+        if (romId == null) {
+            return if (resume) launchManager.resumeRom(rom) else launchManager.launchRom(rom)
+        }
+        val tag = rom.platformTag
+        val base = java.text.Normalizer.normalize(rom.path.nameWithoutExtension, java.text.Normalizer.Form.NFC)
+        val emulator = RomKeys.coreDisplayNameFor(rom, platformConfig)
+        pendingLaunch = { if (resume) launchManager.resumeRom(rom) else launchManager.launchRom(rom) }
+        nav.dialogState.value = DialogState.SaveSyncChecking
+        ioScope.launch {
+            val outcome = saveSyncService.syncBeforeLaunch(tag, base, gameKey, emulator)
+            withContext(Dispatchers.Main) {
+                when (outcome) {
+                    is PreLaunchOutcome.Proceed -> {
+                        nav.dialogState.value = DialogState.None
+                        proceedPendingLaunch()
+                    }
+                    is PreLaunchOutcome.Conflict -> nav.dialogState.value = DialogState.SaveSyncConflict(outcome)
+                    is PreLaunchOutcome.KnownStaleBlock -> nav.dialogState.value = DialogState.SaveSyncStaleBlock(outcome, tag, base)
+                }
+            }
+        }
+        return null
+    }
+
+    fun launchRomFromSlot(rom: Rom, slot: Int): DialogState? =
+        launchManager.resumeRom(rom, slot)
+
+    fun buildSaveStatePicker(rom: Rom, awaitConfirmRelease: Boolean): LauncherScreen.SaveStatePicker =
+        LauncherScreen.SaveStatePicker(
+            rom = rom,
+            stateBasePath = launchManager.saveStateBasePath(rom),
+            slotOccupied = launchManager.slotOccupancy(rom),
+            selectedSlotIndex = launchManager.findMostRecentSlot(rom) ?: 0,
+            awaitConfirmRelease = awaitConfirmRelease,
+        )
 
     fun recordRecentlyPlayedByPath(path: String) {
         ioScope.launch {
@@ -136,18 +220,15 @@ class LauncherActions @Inject constructor(
         )
     }
 
-    fun openKitchen() {
+    fun openKitchen(fromQuickMenu: Boolean = false) {
         val km = KitchenManager
-        val sdRoot = File(settings.sdCardRoot)
-        val romsRootProvider = {
-            settings.romDirectory.takeIf { it.isNotEmpty() }?.let { File(it) } ?: File(sdRoot, "Roms")
-        }
-        if (!km.isRunning) km.toggle(sdRoot, context.assets, settings.kitchenCodeBypass, romsRootProvider)
+        if (!km.isRunning) km.start(context, settings.kitchenCodeBypass)
         else km.setCodeBypass(settings.kitchenCodeBypass)
         nav.dialogState.value = DialogState.Kitchen(
             urls = km.getUrls(hasActiveVpn()),
             pin = km.pin,
-            requirePin = !settings.kitchenCodeBypass
+            requirePin = !settings.kitchenCodeBypass,
+            fromQuickMenu = fromQuickMenu
         )
     }
 

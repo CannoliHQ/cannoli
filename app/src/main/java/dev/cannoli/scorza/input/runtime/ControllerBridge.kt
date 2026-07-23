@@ -351,7 +351,7 @@ class ControllerBridge(
         vendorId = vendorId,
         productId = productId,
         sourceMask = sources,
-        isExternal = isExternal,
+        isExternal = isExternalCompat(),
     )
 
     companion object {

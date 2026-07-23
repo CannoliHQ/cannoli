@@ -49,6 +49,7 @@ class InputTesterController(
         val keyName = KeyEvent.keyCodeToString(event.keyCode).removePrefix("KEYCODE_")
         val mappingNav = mappingNavButtonFor(portRouter.mappingForPort(port), event.keyCode)
         val navButton = mappingNav ?: AndroidGamepadKeyNames.DEFAULT_KEY_MAP[event.keyCode]
+        val unbound = mappingNav == null && navButton != null
 
         if (down) {
             val isRepeat = event.repeatCount > 0
@@ -65,7 +66,7 @@ class InputTesterController(
             }
             val resolved = mappingNav ?: AndroidGamepadKeyNames.DEFAULT_KEY_MAP[event.keyCode]
             pressedKeycodes[event.keyCode] = resolved
-            viewModel.onKeyDown(port, event.keyCode, keyName, deviceId, name, resolved)
+            viewModel.onKeyDown(port, event.keyCode, keyName, deviceId, name, resolved, unbound = unbound)
             if (!isRepeat) {
                 viewModel.setActivePort(port)
                 portRouter.mappingForPort(port)?.let { activeMappingHolder.set(it) }
@@ -80,7 +81,7 @@ class InputTesterController(
                 updateExitCountdown()
             }
             val resolved = pressedKeycodes.remove(event.keyCode)
-            viewModel.onKeyUp(port, event.keyCode, keyName, deviceId, name, resolved)
+            viewModel.onKeyUp(port, event.keyCode, keyName, deviceId, name, resolved, unbound = unbound)
         }
         refreshPorts()
         return true
@@ -126,8 +127,14 @@ class InputTesterController(
         val dumpAxes = event.device?.motionRanges?.map { it.axis }?.distinct() ?: emptyList()
         viewModel.recordAxisValues(port, dumpAxes.associateWith { event.getAxisValue(it) })
 
-        syncAxisTrigger(port, deviceId, name, KeyEvent.KEYCODE_BUTTON_L2, leftTrigger, axisTriggerL2Held, "btn_l2")
-        syncAxisTrigger(port, deviceId, name, KeyEvent.KEYCODE_BUTTON_R2, rightTrigger, axisTriggerR2Held, "btn_r2")
+        syncAxisTrigger(
+            port, deviceId, name, KeyEvent.KEYCODE_BUTTON_L2, leftTrigger, axisTriggerL2Held, "btn_l2",
+            unbound = mappingNavButtonFor(mapping, KeyEvent.KEYCODE_BUTTON_L2) == null,
+        )
+        syncAxisTrigger(
+            port, deviceId, name, KeyEvent.KEYCODE_BUTTON_R2, rightTrigger, axisTriggerR2Held, "btn_r2",
+            unbound = mappingNavButtonFor(mapping, KeyEvent.KEYCODE_BUTTON_R2) == null,
+        )
 
         return true
     }
@@ -154,15 +161,16 @@ class InputTesterController(
         value: Float,
         held: MutableSet<Int>,
         legacyKey: String,
+        unbound: Boolean,
     ) {
         val keyName = KeyEvent.keyCodeToString(syntheticKeyCode).removePrefix("KEYCODE_")
         val wasHeld = deviceId in held
         if (value > 0.5f && !wasHeld) {
             held.add(deviceId)
-            viewModel.onKeyDown(port, syntheticKeyCode, keyName, deviceId, deviceName, legacyKey)
+            viewModel.onKeyDown(port, syntheticKeyCode, keyName, deviceId, deviceName, legacyKey, unbound = unbound)
         } else if (value < 0.3f && wasHeld) {
             held.remove(deviceId)
-            viewModel.onKeyUp(port, syntheticKeyCode, keyName, deviceId, deviceName, legacyKey)
+            viewModel.onKeyUp(port, syntheticKeyCode, keyName, deviceId, deviceName, legacyKey, unbound = unbound)
         }
     }
 

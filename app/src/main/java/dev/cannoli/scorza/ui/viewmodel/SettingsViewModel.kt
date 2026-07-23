@@ -1,11 +1,13 @@
 package dev.cannoli.scorza.ui.viewmodel
 
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import dev.cannoli.scorza.BuildConfig
 import androidx.annotation.StringRes
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.scopes.ActivityScoped
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.db.CollectionsRepository
@@ -31,6 +33,8 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     private val settings: SettingsRepository,
     private val appFonts: AppFonts,
+    @ApplicationContext private val context: Context,
+    private val rommStore: dev.cannoli.scorza.romm.RommConnectionStore,
 ) {
     private var cannoliRoot: java.io.File? = null
     private var packageManager: PackageManager? = null
@@ -38,7 +42,7 @@ class SettingsViewModel @Inject constructor(
     private var collectionsRepository: CollectionsRepository? = null
 
     val isTelevision: Boolean
-        get() = packageManager?.hasSystemFeature(PackageManager.FEATURE_LEANBACK) == true
+        get() = dev.cannoli.scorza.util.DeviceType.isTv(context)
 
     private fun isDefaultLauncher(): Boolean {
         val pm = packageManager ?: return false
@@ -80,7 +84,8 @@ class SettingsViewModel @Inject constructor(
         val valueText: String? = null,
         val isEditable: Boolean = false,
         val canCycle: Boolean = true,
-        val swatchColor: Color? = null
+        val swatchColor: Color? = null,
+        val disabled: Boolean = false
     )
 
     data class Category(
@@ -130,15 +135,20 @@ class SettingsViewModel @Inject constructor(
         val showClock: Boolean = true,
         val batteryDisplay: BatteryDisplay = BatteryDisplay.DEFAULT,
         val showUpdate: Boolean = true,
+        val showKitchen: Boolean = true,
+        val showDownloads: Boolean = true,
         val swapPlayResume: Boolean = false,
         val mainMenuQuit: Boolean = false,
-        val retroArchDiyMode: Boolean = true,
         val artWidth: Int = 40,
         val artScale: ArtScale = ArtScale.DEFAULT,
         val contentMode: ContentMode = ContentMode.PLATFORMS,
         val fghCollectionId: Long? = null,
         val fghCollectionDisplayName: String? = null,
         val portraitMarginPx: Int = 0,
+        val screenGeometryWidth: Int = 100,
+        val screenGeometryHeight: Int = 100,
+        val screenGeometryX: Int = 0,
+        val screenGeometryY: Int = 0,
     )
 
     private val _state = MutableStateFlow(State())
@@ -167,9 +177,10 @@ class SettingsViewModel @Inject constructor(
         showClock = settings.showClock,
         batteryDisplay = settings.batteryDisplay,
         showUpdate = settings.showUpdate,
+        showKitchen = settings.showKitchen,
+        showDownloads = settings.showDownloads,
         swapPlayResume = settings.swapPlayResume,
         mainMenuQuit = settings.mainMenuQuit,
-        retroArchDiyMode = settings.retroArchDiyMode,
         artWidth = settings.artWidth,
         artScale = settings.artScale,
         contentMode = settings.contentMode,
@@ -178,6 +189,10 @@ class SettingsViewModel @Inject constructor(
             collectionsRepository?.byId(id)?.displayName
         },
         portraitMarginPx = settings.portraitMarginPx,
+        screenGeometryWidth = settings.screenGeometryWidth,
+        screenGeometryHeight = settings.screenGeometryHeight,
+        screenGeometryX = settings.screenGeometryX,
+        screenGeometryY = settings.screenGeometryY,
     )
 
     private val allCategories = listOf(
@@ -185,8 +200,7 @@ class SettingsViewModel @Inject constructor(
         Category("library", R.string.settings_library),
         Category("input", R.string.settings_input),
         Category("emulation", R.string.settings_emulation),
-        Category("retroachievements", R.string.settings_retroachievements),
-        Category("kitchen", R.string.settings_kitchen),
+        Category("integrations", R.string.settings_integrations),
         Category("advanced", R.string.settings_advanced),
         Category("about", R.string.settings_about),
     ) + if (BuildConfig.DEBUG) listOf(Category("debug", R.string.settings_debug)) else emptyList()
@@ -212,7 +226,6 @@ class SettingsViewModel @Inject constructor(
         val colorTitle: String,
         val colorBackground: String,
         val colorStatusBar: String,
-        val platformSwitching: Boolean,
         val swapPlayResume: Boolean,
         val showWifi: Boolean,
         val showBluetooth: Boolean,
@@ -230,8 +243,11 @@ class SettingsViewModel @Inject constructor(
         val releaseChannel: String,
         val artWidth: Int,
         val artScale: ArtScale,
-        val retroArchDiyMode: Boolean,
         val portraitMarginPx: Int,
+        val screenGeometryWidth: Int,
+        val screenGeometryHeight: Int,
+        val screenGeometryX: Int,
+        val screenGeometryY: Int,
     )
 
     private var snapshot: SettingsSnapshot? = null
@@ -320,11 +336,40 @@ class SettingsViewModel @Inject constructor(
         val current = _state.value
         val cat = current.activeCategory ?: return
         val items = buildItemsForCategory(cat)
-        _state.update { it.copy(items = items) }
+        _state.update { it.copy(items = items, selectedIndex = it.selectedIndex.coerceIn(0, (items.size - 1).coerceAtLeast(0))) }
+    }
+
+    fun selectItem(key: String) {
+        val index = _state.value.items.indexOfFirst { it.key == key }
+        if (index >= 0) _state.update { it.copy(selectedIndex = index) }
     }
 
     fun refreshAppSettings() {
         _appSettings.value = readAppSettings()
+    }
+
+    fun refreshItemsAndSettings() {
+        val catKey = _state.value.activeCategory
+        if (catKey != null) {
+            val newItems = buildItemsForCategory(catKey)
+            _state.update { it.copy(items = newItems, selectedIndex = it.selectedIndex.coerceAtMost((newItems.size - 1).coerceAtLeast(0))) }
+        }
+        _appSettings.value = readAppSettings()
+    }
+
+    private fun reclampGeometryOffsets() {
+        val maxX = (100 - settings.screenGeometryWidth) / 2
+        val maxY = (100 - settings.screenGeometryHeight) / 2
+        settings.screenGeometryX = settings.screenGeometryX.coerceIn(-maxX, maxX)
+        settings.screenGeometryY = settings.screenGeometryY.coerceIn(-maxY, maxY)
+    }
+
+    fun resetScreenGeometry() {
+        settings.screenGeometryWidth = 100
+        settings.screenGeometryHeight = 100
+        settings.screenGeometryX = 0
+        settings.screenGeometryY = 0
+        refreshItemsAndSettings()
     }
 
     fun enterSubCategory(key: String, @StringRes labelRes: Int, initialIndex: Int = 0) {
@@ -412,7 +457,6 @@ class SettingsViewModel @Inject constructor(
                     else -> next
                 }
             }
-            "platform_switching" -> settings.platformSwitching = !settings.platformSwitching
             "swap_play_resume" -> settings.swapPlayResume = !settings.swapPlayResume
             "content_mode" -> {
                 val entries = ContentMode.entries
@@ -432,6 +476,8 @@ class SettingsViewModel @Inject constructor(
             "show_wifi" -> settings.showWifi = !settings.showWifi
             "show_bluetooth" -> settings.showBluetooth = !settings.showBluetooth
             "show_vpn" -> settings.showVpn = !settings.showVpn
+            "show_kitchen" -> settings.showKitchen = !settings.showKitchen
+            "show_downloads" -> settings.showDownloads = !settings.showDownloads
             "show_battery" -> {
                 val entries = BatteryDisplay.entries
                 val cur = entries.indexOf(settings.batteryDisplay).coerceAtLeast(0)
@@ -439,7 +485,6 @@ class SettingsViewModel @Inject constructor(
             }
             "show_update" -> settings.showUpdate = !settings.showUpdate
             "main_menu_quit" -> settings.mainMenuQuit = !settings.mainMenuQuit
-            "retroarch_diy_mode" -> settings.retroArchDiyMode = !settings.retroArchDiyMode
             "always_save_on_quit" -> settings.alwaysSaveOnQuit = !settings.alwaysSaveOnQuit
             "portrait_margin" -> {
                 val step = when {
@@ -449,9 +494,32 @@ class SettingsViewModel @Inject constructor(
                 }
                 settings.portraitMarginPx = (settings.portraitMarginPx + direction * step).coerceAtLeast(0)
             }
+            "screen_geo_width" -> {
+                val step = if (repeatCount == 0) 1 else 5
+                settings.screenGeometryWidth = (settings.screenGeometryWidth + direction * step).coerceIn(50, 100)
+                reclampGeometryOffsets()
+            }
+            "screen_geo_height" -> {
+                val step = if (repeatCount == 0) 1 else 5
+                settings.screenGeometryHeight = (settings.screenGeometryHeight + direction * step).coerceIn(50, 100)
+                reclampGeometryOffsets()
+            }
+            "screen_geo_x" -> {
+                val step = if (repeatCount == 0) 1 else 5
+                val maxX = (100 - settings.screenGeometryWidth) / 2
+                settings.screenGeometryX = (settings.screenGeometryX + direction * step).coerceIn(-maxX, maxX)
+            }
+            "screen_geo_y" -> {
+                val step = if (repeatCount == 0) 1 else 5
+                val maxY = (100 - settings.screenGeometryHeight) / 2
+                settings.screenGeometryY = (settings.screenGeometryY + direction * step).coerceIn(-maxY, maxY)
+            }
             "kitchen_code_bypass" -> {
                 settings.kitchenCodeBypass = !settings.kitchenCodeBypass
                 dev.cannoli.scorza.server.KitchenManager.setCodeBypass(settings.kitchenCodeBypass)
+            }
+            "experimental_features" -> {
+                settings.experimentalFeatures = !settings.experimentalFeatures
             }
             "ra_package" -> {
                 val pkgs = detectInstalledRaPackages()
@@ -465,6 +533,7 @@ class SettingsViewModel @Inject constructor(
                 val cur = channels.indexOfFirst { it.name == settings.releaseChannel }.coerceAtLeast(0)
                 settings.releaseChannel = channels[((cur + direction) % channels.size + channels.size) % channels.size].name
             }
+            "romm_allow_self_signed" -> rommStore.allowSelfSigned = !rommStore.allowSelfSigned
         }
 
         val catKey = current.activeCategory ?: return
@@ -591,7 +660,6 @@ class SettingsViewModel @Inject constructor(
         colorTitle = settings.colorTitle,
         colorBackground = settings.colorBackground,
         colorStatusBar = settings.colorStatusBar,
-        platformSwitching = settings.platformSwitching,
         swapPlayResume = settings.swapPlayResume,
         showWifi = settings.showWifi,
         showBluetooth = settings.showBluetooth,
@@ -609,8 +677,11 @@ class SettingsViewModel @Inject constructor(
         releaseChannel = settings.releaseChannel,
         artWidth = settings.artWidth,
         artScale = settings.artScale,
-        retroArchDiyMode = settings.retroArchDiyMode,
         portraitMarginPx = settings.portraitMarginPx,
+        screenGeometryWidth = settings.screenGeometryWidth,
+        screenGeometryHeight = settings.screenGeometryHeight,
+        screenGeometryX = settings.screenGeometryX,
+        screenGeometryY = settings.screenGeometryY,
     )
 
     private fun restoreSettings(snap: SettingsSnapshot) {
@@ -627,7 +698,6 @@ class SettingsViewModel @Inject constructor(
         settings.colorTitle = snap.colorTitle
         settings.colorBackground = snap.colorBackground
         settings.colorStatusBar = snap.colorStatusBar
-        settings.platformSwitching = snap.platformSwitching
         settings.swapPlayResume = snap.swapPlayResume
         settings.showWifi = snap.showWifi
         settings.showBluetooth = snap.showBluetooth
@@ -645,8 +715,11 @@ class SettingsViewModel @Inject constructor(
         settings.releaseChannel = snap.releaseChannel
         settings.artWidth = snap.artWidth
         settings.artScale = snap.artScale
-        settings.retroArchDiyMode = snap.retroArchDiyMode
         settings.portraitMarginPx = snap.portraitMarginPx
+        settings.screenGeometryWidth = snap.screenGeometryWidth
+        settings.screenGeometryHeight = snap.screenGeometryHeight
+        settings.screenGeometryX = snap.screenGeometryX
+        settings.screenGeometryY = snap.screenGeometryY
     }
 
     private fun fghCollections(): List<CollectionsRepository.CollectionRow> {
@@ -718,7 +791,6 @@ class SettingsViewModel @Inject constructor(
             add(SettingsItem("manage_tools", R.string.setting_manage_tools, isEditable = true))
             val scanRes = if (settings.scanLibraryAutomatically) R.string.value_automatically else R.string.value_manually
             add(SettingsItem("scan_library", R.string.setting_scan_library, valueRes = scanRes))
-            add(SettingsItem("refresh_library", R.string.setting_refresh_library, isEditable = true, canCycle = false))
             add(SettingsItem("sd_root", R.string.setting_sd_root, valueText = settings.sdCardRoot, isEditable = true))
             val romDir = settings.romDirectory
             add(SettingsItem("rom_directory", R.string.setting_rom_directory, valueText = romDir.ifEmpty { null }, valueRes = if (romDir.isEmpty()) R.string.value_cannoli_root else null, isEditable = true, canCycle = false))
@@ -754,20 +826,27 @@ class SettingsViewModel @Inject constructor(
             add(SettingsItem("show_battery", R.string.setting_battery, valueRes = batteryRes))
             add(SettingsItem("show_bluetooth", R.string.setting_bluetooth, valueRes = showHide(settings.showBluetooth)))
             add(SettingsItem("show_clock", R.string.setting_clock, valueRes = if (!settings.showClock) R.string.value_hide else if (settings.timeFormat == TimeFormat.TWELVE_HOUR) R.string.value_12h else R.string.value_24h))
+            add(SettingsItem("show_kitchen", R.string.setting_kitchen_running, valueRes = showHide(settings.showKitchen)))
+            add(SettingsItem("show_downloads", R.string.setting_downloads_running, valueRes = showHide(settings.showDownloads)))
             add(SettingsItem("show_update", R.string.setting_updater, valueRes = showHide(settings.showUpdate)))
             add(SettingsItem("show_vpn", R.string.setting_vpn, valueRes = showHide(settings.showVpn)))
             add(SettingsItem("show_wifi", R.string.setting_wifi, valueRes = showHide(settings.showWifi)))
         }
+        "screen_geometry" -> buildList {
+            add(SettingsItem("screen_geo_width", R.string.setting_geo_width, valueText = "${settings.screenGeometryWidth}%"))
+            add(SettingsItem("screen_geo_height", R.string.setting_geo_height, valueText = "${settings.screenGeometryHeight}%"))
+            add(SettingsItem("screen_geo_x", R.string.setting_geo_hpos, valueText = (if (settings.screenGeometryX >= 0) "+" else "") + settings.screenGeometryX, disabled = settings.screenGeometryWidth >= 100))
+            add(SettingsItem("screen_geo_y", R.string.setting_geo_vpos, valueText = (if (settings.screenGeometryY >= 0) "+" else "") + settings.screenGeometryY, disabled = settings.screenGeometryHeight >= 100))
+        }
         "input" -> listOf(
             SettingsItem("controllers", R.string.setting_controllers, isEditable = true),
             SettingsItem("shortcuts", R.string.setting_shortcuts, isEditable = true),
-            SettingsItem("platform_switching", R.string.setting_platform_switching, valueRes = onOff(settings.platformSwitching)),
             SettingsItem("swap_play_resume", R.string.setting_swap_play_resume, valueRes = onOff(settings.swapPlayResume)),
             SettingsItem("main_menu_quit", R.string.setting_main_menu_quit, valueRes = onOff(settings.mainMenuQuit)),
             SettingsItem("input_tester", R.string.setting_input_tester, isEditable = true)
         )
         "emulation" -> buildList {
-            add(SettingsItem("core_mapping", R.string.setting_core_mapping, isEditable = true))
+            add(SettingsItem("core_mapping", R.string.setting_emulator_mapping, isEditable = true))
             val pkgs = detectInstalledRaPackages()
             if (pkgs.isNotEmpty() && settings.retroArchPackage !in pkgs) {
                 settings.retroArchPackage = pkgs.first()
@@ -775,12 +854,14 @@ class SettingsViewModel @Inject constructor(
             add(SettingsItem("ra_package", R.string.setting_ra_package, valueText = if (pkgs.isEmpty()) null else settings.retroArchPackage, valueRes = if (pkgs.isEmpty()) R.string.value_none_installed else null, canCycle = pkgs.size > 1))
             if (pkgs.isNotEmpty()) {
                 val pkgLabel = InstalledCoreService.getPackageLabel(settings.retroArchPackage)
-                add(SettingsItem("installed_cores", R.string.setting_installed_cores, labelText = "$pkgLabel Installed Cores", isEditable = true))
+                add(SettingsItem("installed_cores", R.string.setting_installed_cores, labelText = context.getString(R.string.setting_installed_cores, pkgLabel), isEditable = true))
             }
-            add(SettingsItem("retroarch_diy_mode", R.string.setting_retroarch_diy_mode, valueRes = onOff(settings.retroArchDiyMode)))
             add(SettingsItem("always_save_on_quit", R.string.setting_always_save_on_quit, valueRes = onOff(settings.alwaysSaveOnQuit)))
         }
-        "kitchen" -> emptyList()
+        "integrations" -> buildList {
+            add(SettingsItem("integrations_ra", R.string.settings_retroachievements, isEditable = true))
+            add(SettingsItem("integrations_romm", R.string.settings_romm, isEditable = true))
+        }
         "retroachievements" -> buildList {
             add(SettingsItem("ra_username", R.string.setting_ra_username, valueText = settings.raUsername.ifEmpty { null }, valueRes = if (settings.raUsername.isEmpty()) R.string.value_not_set else null, isEditable = true))
             add(SettingsItem("ra_password", R.string.setting_ra_password, valueText = if (raPassword.isEmpty()) null else BULLET.repeat(raPassword.length), valueRes = if (raPassword.isEmpty()) R.string.value_not_set else null, isEditable = true))
@@ -788,9 +869,22 @@ class SettingsViewModel @Inject constructor(
                 add(SettingsItem("ra_login", R.string.setting_ra_login, isEditable = true))
             }
         }
+        "romm" -> buildList {
+            if (rommStore.token.isNullOrEmpty()) {
+                add(SettingsItem("romm_host", R.string.setting_romm_host, valueText = rommStore.host.ifEmpty { null }, valueRes = if (rommStore.host.isEmpty()) R.string.value_not_set else null, isEditable = true, canCycle = false))
+                add(SettingsItem("romm_allow_self_signed", R.string.setting_romm_allow_self_signed, valueRes = onOff(rommStore.allowSelfSigned)))
+                if (rommStore.host.isNotEmpty()) {
+                    add(SettingsItem("romm_pair", R.string.setting_romm_pair, isEditable = true, canCycle = false))
+                    add(SettingsItem("romm_pair_code", R.string.setting_romm_pair_code, isEditable = true, canCycle = false))
+                }
+            }
+        }
         "advanced" -> buildList {
             add(SettingsItem("logging", R.string.setting_logging, isEditable = true))
+            add(SettingsItem("screen_geometry", R.string.setting_screen_geometry, isEditable = true))
+            add(SettingsItem("regenerate_system_folders", R.string.setting_regenerate_system_folders, isEditable = true))
             add(SettingsItem("kitchen_code_bypass", R.string.setting_kitchen_code_bypass, valueRes = onOff(settings.kitchenCodeBypass)))
+            add(SettingsItem("experimental_features", R.string.setting_experimental_features, valueRes = onOff(settings.experimentalFeatures)))
             add(SettingsItem(
                 "release_channel",
                 R.string.settings_release_channel,

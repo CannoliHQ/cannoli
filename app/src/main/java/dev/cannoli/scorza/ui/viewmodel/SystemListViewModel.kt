@@ -43,10 +43,32 @@ class SystemListViewModel @Inject constructor(
 
     init {
         scope.launch {
-            scanScheduler.results.collectLatest {
-                refreshCountsForVisibleList()
+            scanScheduler.results.collectLatest { result ->
+                if (isMissingPlatformRow(result.platformTag)) rebuildFromDb()
+                else refreshCountsForVisibleList()
             }
         }
+    }
+
+    private fun isMissingPlatformRow(platformTag: String): Boolean {
+        val config = lastScanConfig ?: return false
+        if (config.contentMode != ContentMode.PLATFORMS) return false
+        val tag = platformTag.uppercase()
+        return _state.value.items.none { item ->
+            item is ListItem.PlatformItem && item.platform.allTags.any { it.uppercase() == tag }
+        }
+    }
+
+    private fun rebuildFromDb() {
+        val config = lastScanConfig ?: return
+        scan(
+            showRecentlyPlayed = config.showRecentlyPlayed,
+            contentMode = config.contentMode,
+            fghCollectionId = config.fghCollectionId,
+            toolsName = config.toolsName,
+            portsName = config.portsName,
+            scanDisk = false,
+        )
     }
 
     private fun refreshCountsForVisibleList() {
@@ -109,6 +131,16 @@ class SystemListViewModel @Inject constructor(
     private var savedPosition: Saved? = null
     private var currentFghCollectionId: Long? = null
 
+    private data class ScanConfig(
+        val showRecentlyPlayed: Boolean,
+        val contentMode: ContentMode,
+        val fghCollectionId: Long?,
+        val toolsName: String,
+        val portsName: String,
+    )
+
+    private var lastScanConfig: ScanConfig? = null
+
     fun savePosition(scrollIdx: Int = firstVisibleIndex) {
         val current = _state.value
         savedPosition = Saved(current.items.getOrNull(current.selectedIndex), current.selectedIndex, scrollIdx)
@@ -124,6 +156,7 @@ class SystemListViewModel @Inject constructor(
         val prevSelectedIndex = restored?.index ?: prev.selectedIndex
         val prevFirstVisible = restored?.scroll ?: firstVisibleIndex
         currentFghCollectionId = fghCollectionId
+        lastScanConfig = ScanConfig(showRecentlyPlayed, contentMode, fghCollectionId, toolsName, portsName)
 
         scope.launch(Dispatchers.IO) {
             if (scanDisk) {

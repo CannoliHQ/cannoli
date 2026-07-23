@@ -19,6 +19,10 @@ interface EmulatorBridge {
     fun getStateThumbnail(slot: Int): Bitmap?
     fun stateExists(slot: Int): Boolean
 
+    // Snapshot of the currently loaded game's achievements. Default empty for
+    // bridges without achievement support.
+    fun getAchievements(): List<AchievementInfo> = emptyList()
+
     // Disc management
     fun getDiskCount(): Int
     fun getDiskIndex(): Int
@@ -36,4 +40,16 @@ interface EmulatorBridge {
     val supportsNativeMenu: Boolean
     val supportsAchievements: Boolean
     val supportsUndo: Boolean
+
+    // RetroArch settings registry (RicottaArch host only)
+    fun raSettingsSupported(): Boolean = false
+    fun raGetSetting(key: String): RaSetting? = null
+    fun raSetSetting(key: String, value: String): Boolean = false
+    fun raSaveOverride(scope: RaOverrideScope) {}
+    fun setOnRaSettingApplied(callback: (key: String, value: String) -> Unit) {}
+
+    // Host-local boolean toggles not backed by RetroArch settings (e.g. Cannoli OSD
+    // prefs). Persisted by the host; the default is returned when unsupported.
+    fun getLocalToggle(key: String, default: Boolean): Boolean = default
+    fun setLocalToggle(key: String, value: Boolean) {}
 }

@@ -26,6 +26,7 @@ object DirectoryLayout {
             paths.configInputMappings,
             paths.backupDir,
             paths.guidesDir,
+            paths.cheatsDir,
             paths.wallpapersDir,
         ).forEach { it.mkdirs() }
 
@@ -38,13 +39,28 @@ object DirectoryLayout {
             } catch (_: Exception) {}
         }
 
-        for (tag in platformConfig.getAllTags()) {
-            File(romDirectory, tag).mkdirs()
+        val tags = platformConfig.getAllTags()
+        if (romDirNeedsScaffold(romDirectory)) {
+            scaffoldRomFolders(romDirectory, tags)
+        }
+        for (tag in tags) {
             paths.artFor(tag).mkdirs()
             paths.biosFor(tag).mkdirs()
             paths.savesFor(tag).mkdirs()
             paths.saveStatesFor(tag).mkdirs()
             paths.guidesFor(tag).mkdirs()
+            paths.cheatsFor(tag).mkdirs()
         }
+    }
+
+    fun romDirNeedsScaffold(romDirectory: File): Boolean =
+        romDirectory.listFiles()?.any { it.isDirectory && !it.name.startsWith(".") } != true
+
+    fun scaffoldRomFolders(romDirectory: File, tags: Collection<String>): Int {
+        var created = 0
+        for (tag in tags) {
+            if (File(romDirectory, tag).mkdirs()) created++
+        }
+        return created
     }
 }

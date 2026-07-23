@@ -1,87 +1,189 @@
 package dev.cannoli.scorza.ui.screens
 
 import dev.cannoli.ui.ELLIPSIS
+import dev.cannoli.ui.components.KeyboardLayout
+import dev.cannoli.ui.components.KeyboardState
 
-interface KeyboardInputState {
-    val currentName: String
-    val cursorPos: Int
-    val keyRow: Int
-    val keyCol: Int
-    val caps: Boolean
-    val symbols: Boolean
+enum class EmulatorMappingStatus { READY, NOT_INSTALLED, NEEDS_SETUP }
+data class EmulatorMappingEntry(val tag: String, val platformName: String, val coreDisplayName: String, val runnerLabel: String, val status: EmulatorMappingStatus = EmulatorMappingStatus.READY)
+data class EmulatorPickerOption(val coreId: String, val displayName: String, val runnerLabel: String, val appPackage: String? = null, val available: Boolean = true)
+
+enum class MappingActionKind { BIOS, OVERRIDES, RESET }
+
+sealed interface MappingItem {
+    val isSelectable: Boolean
+    data class SectionHeader(val label: String) : MappingItem { override val isSelectable = false }
+    data class Divider(val id: Int = 0) : MappingItem { override val isSelectable = false }
+    data class EmulatorOption(val option: EmulatorPickerOption, val isCurrent: Boolean, val downloadable: Boolean = false) : MappingItem {
+        override val isSelectable = true
+    }
+    data class Action(
+        val kind: MappingActionKind,
+        val label: String,
+        val status: String = "",
+        val statusIsWarning: Boolean = false,
+    ) : MappingItem { override val isSelectable = true }
 }
 
-data class CoreMappingEntry(val tag: String, val platformName: String, val coreDisplayName: String, val runnerLabel: String)
-data class CorePickerOption(val coreId: String, val displayName: String, val runnerLabel: String, val appPackage: String? = null)
+data class FirmwareStatus(val entry: dev.cannoli.scorza.config.FirmwareEntry, val present: Boolean)
 data class ColorEntry(val key: String, @androidx.annotation.StringRes val labelRes: Int, val hex: String, val color: Long)
 
 sealed interface DialogState {
     data object None : DialogState
-    data class MissingCore(val coreName: String) : DialogState
+    data class MissingCore(
+        val coreName: String,
+        val packageLabel: String? = null,
+    ) : DialogState
     data class MissingApp(val appName: String, val packageName: String) : DialogState
     data class LaunchError(val message: String) : DialogState
     data class ContextMenu(val gameName: String, val selectedOption: Int = 0, val options: List<String>) : DialogState
     data class BulkContextMenu(val gamePaths: List<String>, val selectedOption: Int = 0, val options: List<String>) : DialogState
     data class DeleteConfirm(val gameName: String, val bulkPaths: List<String>? = null) : DialogState
-    data class RenameInput(val gameName: String, override val currentName: String, override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
-    data class NewCollectionInput(val gamePaths: List<String> = emptyList(), val parentId: Long? = null, override val currentName: String = "", override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
-    data class CollectionRenameInput(val collectionId: Long, val oldDisplayName: String, override val currentName: String, override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
+    data class RenameInput(
+        val gameName: String,
+        val searchScope: String? = null,
+        @androidx.annotation.StringRes override val titleRes: Int? = null,
+        override val keyboard: KeyboardState = KeyboardState(),
+    ) : DialogState, KeyboardHost {
+        override fun withKeyboard(keyboard: KeyboardState) = copy(keyboard = keyboard)
+    }
+    data class NewCollectionInput(
+        val gamePaths: List<String> = emptyList(),
+        val parentId: Long? = null,
+        override val keyboard: KeyboardState = KeyboardState(),
+    ) : DialogState, KeyboardHost {
+        override val titleRes: Int get() = dev.cannoli.ui.R.string.keyboard_title_new_collection
+        override fun withKeyboard(keyboard: KeyboardState) = copy(keyboard = keyboard)
+    }
+    data class CollectionRenameInput(
+        val collectionId: Long,
+        val oldDisplayName: String,
+        override val keyboard: KeyboardState = KeyboardState(),
+    ) : DialogState, KeyboardHost {
+        override val titleRes: Int get() = dev.cannoli.ui.R.string.keyboard_title_rename_collection
+        override fun withKeyboard(keyboard: KeyboardState) = copy(keyboard = keyboard)
+    }
     data class DeleteCollectionConfirm(val collectionId: Long, val displayName: String) : DialogState
     data class RenameResult(val success: Boolean, val message: String) : DialogState
     data class CollectionCreated(val collectionName: String) : DialogState
     data class ColorPicker(val settingKey: String, val title: String, val currentColor: Long, val selectedRow: Int = 0, val selectedCol: Int = 0) : DialogState
     data class HexColorInput(val settingKey: String, val title: String, val currentHex: String = "", val selectedIndex: Int = 0) : DialogState
     data class About(val statusMessage: String? = null) : DialogState
-    data class Kitchen(val urls: List<String>, val selectedIndex: Int = 0, val pin: String, val requirePin: Boolean = true) : DialogState
+    data class Kitchen(val urls: List<String>, val selectedIndex: Int = 0, val pin: String, val requirePin: Boolean = true, val fromQuickMenu: Boolean = false) : DialogState
     data class RAAccount(val username: String, val score: Int = 0) : DialogState
     data class RALoggingIn(val message: String = "Logging in$ELLIPSIS") : DialogState
-    data class NewFolderInput(val parentPath: String, override val currentName: String = "", override val cursorPos: Int = 0, override val keyRow: Int = 2, override val keyCol: Int = 0, override val caps: Boolean = false, override val symbols: Boolean = false) : DialogState, KeyboardInputState
+    data class RAPreloadProgress(val gameName: String) : DialogState
+    data class RAPreloadResult(val success: Boolean, val message: String) : DialogState
+    data class RommPairing(
+        val host: String = "",
+        val message: String = "",
+        val waitingApproval: Boolean = false,
+        val qrBitmap: android.graphics.Bitmap? = null,
+    ) : DialogState
+    data class RommConnected(val host: String, val username: String? = null, val version: String? = null, val fromSettingsMenu: Boolean = false) : DialogState
+    data class NewFolderInput(
+        val parentPath: String,
+        override val keyboard: KeyboardState = KeyboardState(),
+    ) : DialogState, KeyboardHost {
+        override val titleRes: Int get() = dev.cannoli.ui.R.string.keyboard_title_new_folder
+        override fun withKeyboard(keyboard: KeyboardState) = copy(keyboard = keyboard)
+    }
+    data class KeyboardHelp(val restore: DialogState, val layout: KeyboardLayout) : DialogState
     data object QuitConfirm : DialogState
     data class UpdateDownload(val versionName: String, val changelog: String) : DialogState
     data object RestartRequired : DialogState
     data class IntentAuditResult(val message: String) : DialogState
+    data class SystemFoldersRegenerated(val message: String) : DialogState
+    data class PlatformResetConfirm(val tag: String, val platformName: String) : DialogState
+    data class QuickMenu(
+        val rows: List<dev.cannoli.scorza.ui.quickmenu.QuickMenuRow>,
+        val kitchenRunning: Boolean,
+        val selectedIndex: Int = 0,
+        val conflictCount: Int = 0,
+        val syncErrorCount: Int = 0,
+    ) : DialogState
+    data class QuickInfo(
+        val urls: List<String>,
+        val kitchenRunning: Boolean,
+        val selectedIndex: Int = 0,
+    ) : DialogState
+    data class RommDownloads(val selectedIndex: Int = 0) : DialogState
+    data class RommArtResults(
+        val results: dev.cannoli.scorza.romm.art.ArtFetchResults,
+        val selectedIndex: Int = 0,
+    ) : DialogState
+    data class RescanProgress(val progress: Float, val label: String) : DialogState
+    data class RommActionsMenu(
+        val selectedIndex: Int = 0,
+        val hasDownloads: Boolean = false,
+    ) : DialogState
+    data class RommSettingsMenu(
+        val selectedIndex: Int = 0,
+        val concurrent: Int = 2,
+        val artType: dev.cannoli.scorza.romm.RommArtType = dev.cannoli.scorza.romm.RommArtType.NONE,
+    ) : DialogState
+    data class RommAdvancedMenu(val selectedIndex: Int = 0) : DialogState
+    data class RommSaveSyncMenu(
+        val selectedIndex: Int = 0,
+        val supported: Boolean = true,
+        val enabled: Boolean = false,
+        val backupCount: Int = 5,
+        val pendingConflicts: Int = 0,
+        val syncErrors: Int = 0,
+        val hasBackups: Boolean = false,
+    ) : DialogState
+    data class RommConfirm(val action: RommConfirmAction, val downloadKey: String? = null) : DialogState
+    data class RommPlatformToggle(val items: List<RommPlatformToggleItem>, val selectedIndex: Int = 0) : DialogState
+    data class RommCollectionToggle(val items: List<RommCollectionToggleItem>, val selectedIndex: Int = 0) : DialogState
+    data class SyncHistory(val entries: List<SyncHistoryRow>, val selectedIndex: Int = 0, val fromSaveSyncMenu: Boolean = false) : DialogState
+    data class SyncErrors(val errors: List<dev.cannoli.scorza.romm.sync.SyncFailure>, val selectedIndex: Int = 0, val fromSaveSyncMenu: Boolean = false) : DialogState
+    data class RommSavesMenu(val title: String, val options: List<String>, val selectedIndex: Int = 0) : DialogState
+    data class SaveBackupGames(val games: List<dev.cannoli.scorza.romm.sync.SaveBackupGame>, val selectedIndex: Int = 0) : DialogState
+    data class SaveBackupList(val tag: String, val base: String, val displayName: String, val backups: List<dev.cannoli.scorza.romm.sync.SaveBackup>, val selectedIndex: Int = 0, val fromContextMenu: Boolean = false) : DialogState
+    data class SaveBackupRestoreConfirm(val tag: String, val base: String, val displayName: String, val stamp: Long, val dateLabel: String, val fromContextMenu: Boolean = false) : DialogState
+    data class ConflictsMenu(val rows: List<ConflictRow>, val selectedIndex: Int = 0, val fromSaveSyncMenu: Boolean = false) : DialogState
+    data object SaveSyncChecking : DialogState
+    data object ConflictsApplying : DialogState
+    data class SaveSyncConflict(
+        val conflict: dev.cannoli.scorza.romm.sync.PreLaunchOutcome.Conflict,
+        val selectedIndex: Int = 0,
+    ) : DialogState
+    data class SaveSyncStaleBlock(
+        val stale: dev.cannoli.scorza.romm.sync.PreLaunchOutcome.KnownStaleBlock,
+        val tag: String,
+        val base: String,
+        val selectedIndex: Int = 0,
+    ) : DialogState
+    data class RommVersionPicker(
+        val gameName: String,
+        val tag: String,
+        val members: List<RommVariantEntry>,
+        val selectedIndex: Int = 0,
+    ) : DialogState
 }
 
-fun DialogState.asKeyboardState(): KeyboardInputState? = this as? KeyboardInputState
+data class RommVariantEntry(val game: dev.cannoli.scorza.romm.RommGame, val label: String, val present: Boolean, val isPrimary: Boolean)
 
-fun DialogState.withKeyboard(row: Int, col: Int): DialogState = when (this) {
-    is DialogState.RenameInput -> copy(keyRow = row, keyCol = col)
-    is DialogState.NewCollectionInput -> copy(keyRow = row, keyCol = col)
-    is DialogState.CollectionRenameInput -> copy(keyRow = row, keyCol = col)
-    is DialogState.NewFolderInput -> copy(keyRow = row, keyCol = col)
-    else -> this
-}
+data class RommPlatformToggleItem(val tag: String, val displayName: String, val visible: Boolean)
+data class RommCollectionToggleItem(val group: dev.cannoli.scorza.romm.RommCollectionGroup, val displayName: String, val visible: Boolean)
 
-fun DialogState.withCursor(pos: Int): DialogState = when (this) {
-    is DialogState.RenameInput -> copy(cursorPos = pos)
-    is DialogState.NewCollectionInput -> copy(cursorPos = pos)
-    is DialogState.CollectionRenameInput -> copy(cursorPos = pos)
-    is DialogState.NewFolderInput -> copy(cursorPos = pos)
-    else -> this
-}
+enum class ConflictChoice { KEEP_LOCAL, USE_SERVER, SKIP }
+data class ConflictRow(
+    val gameKey: String,
+    val name: String,
+    val choice: ConflictChoice = ConflictChoice.SKIP,
+    val localMillis: Long? = null,
+    val serverMillis: Long? = null,
+)
 
-fun DialogState.withCaps(caps: Boolean): DialogState = when (this) {
-    is DialogState.RenameInput -> copy(caps = caps)
-    is DialogState.NewCollectionInput -> copy(caps = caps)
-    is DialogState.CollectionRenameInput -> copy(caps = caps)
-    is DialogState.NewFolderInput -> copy(caps = caps)
-    else -> this
-}
+enum class RommConfirmAction { REBUILD_CACHE, DISCONNECT, CANCEL_DOWNLOAD, CANCEL_ALL }
 
-fun DialogState.withSymbols(symbols: Boolean): DialogState = when (this) {
-    is DialogState.RenameInput -> copy(symbols = symbols)
-    is DialogState.NewCollectionInput -> copy(symbols = symbols)
-    is DialogState.CollectionRenameInput -> copy(symbols = symbols)
-    is DialogState.NewFolderInput -> copy(symbols = symbols)
-    else -> this
-}
-
-fun DialogState.withNameAndCursor(name: String, pos: Int): DialogState = when (this) {
-    is DialogState.RenameInput -> copy(currentName = name, cursorPos = pos)
-    is DialogState.NewCollectionInput -> copy(currentName = name, cursorPos = pos)
-    is DialogState.CollectionRenameInput -> copy(currentName = name, cursorPos = pos)
-    is DialogState.NewFolderInput -> copy(currentName = name, cursorPos = pos)
-    else -> this
+interface KeyboardHost {
+    val keyboard: KeyboardState
+    fun withKeyboard(keyboard: KeyboardState): DialogState
+    val currentName: String get() = keyboard.text
+    val cursorPos: Int get() = keyboard.cursorPos
+    @get:androidx.annotation.StringRes val titleRes: Int? get() = null
 }
 
 fun DialogState.withMenuDelta(delta: Int): DialogState? = when (this) {
@@ -93,20 +195,9 @@ fun DialogState.withMenuDelta(delta: Int): DialogState? = when (this) {
         if (options.isEmpty()) null
         else copy(selectedOption = (selectedOption + delta).mod(options.size))
     }
+    is DialogState.SaveSyncConflict -> copy(selectedIndex = (selectedIndex + delta).mod(2))
+    is DialogState.SaveSyncStaleBlock -> copy(selectedIndex = (selectedIndex + delta).mod(2))
     else -> null
-}
-
-fun DialogState.withBackspace(): DialogState? {
-    val ks = asKeyboardState() ?: return null
-    if (ks.cursorPos <= 0) return null
-    val newName = ks.currentName.removeRange(ks.cursorPos - 1, ks.cursorPos)
-    return withNameAndCursor(newName, ks.cursorPos - 1)
-}
-
-fun DialogState.withInsertedChar(char: String): DialogState? {
-    val ks = asKeyboardState() ?: return null
-    val newName = ks.currentName.substring(0, ks.cursorPos) + char + ks.currentName.substring(ks.cursorPos)
-    return withNameAndCursor(newName, ks.cursorPos + 1)
 }
 
 val DialogState.isFullScreen: Boolean
@@ -119,12 +210,41 @@ val DialogState.isFullScreen: Boolean
         is DialogState.NewCollectionInput,
         is DialogState.CollectionRenameInput,
         is DialogState.NewFolderInput,
+        is DialogState.KeyboardHelp,
         is DialogState.About,
         is DialogState.Kitchen,
         is DialogState.RAAccount,
         is DialogState.RALoggingIn,
+        is DialogState.RAPreloadProgress,
+        is DialogState.RAPreloadResult,
+        is DialogState.RommPairing,
+        is DialogState.RommConnected,
         is DialogState.UpdateDownload,
         is DialogState.RestartRequired,
-        is DialogState.IntentAuditResult -> true
+        is DialogState.IntentAuditResult,
+        is DialogState.SystemFoldersRegenerated,
+        is DialogState.QuickMenu,
+        is DialogState.RommDownloads,
+        is DialogState.RommArtResults,
+        is DialogState.RescanProgress,
+        is DialogState.RommActionsMenu,
+        is DialogState.RommSettingsMenu,
+        is DialogState.RommAdvancedMenu,
+        is DialogState.RommSaveSyncMenu,
+        is DialogState.RommConfirm,
+        is DialogState.RommPlatformToggle,
+        is DialogState.RommCollectionToggle,
+        is DialogState.QuickInfo,
+        is DialogState.SaveSyncConflict,
+        is DialogState.SaveSyncStaleBlock,
+        is DialogState.SyncHistory,
+        is DialogState.SyncErrors,
+        is DialogState.RommSavesMenu,
+        is DialogState.SaveBackupGames,
+        is DialogState.SaveBackupList,
+        is DialogState.SaveBackupRestoreConfirm,
+        is DialogState.ConflictsMenu,
+        is DialogState.ConflictsApplying,
+        is DialogState.RommVersionPicker -> true
         else -> false
     }

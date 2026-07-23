@@ -3,6 +3,7 @@ package dev.cannoli.scorza.boot
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.scopes.ActivityScoped
+import dev.cannoli.scorza.R
 import dev.cannoli.scorza.config.CannoliPaths
 import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.db.CannoliDatabase
@@ -26,6 +27,7 @@ import dev.cannoli.scorza.setup.SetupCoordinator
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import dev.cannoli.scorza.updater.UpdateManager
+import dev.cannoli.scorza.util.KitchenLog
 import dev.cannoli.scorza.util.ScanLog
 import dev.cannoli.scorza.util.StorageLog
 import kotlinx.coroutines.CoroutineScope
@@ -68,11 +70,13 @@ class BootInitializer @Inject constructor(
         val root = cannoliPaths.root
         val romDir = cannoliPaths.romDir
         val importPhase = if (hasLegacyData(root)) BootPhase.IMPORT else BootPhase.INITIAL_SCAN
-        onPhase(BootPhase.LIBRARY_REFRESH, 0f, "Preparing")
+        onPhase(BootPhase.LIBRARY_REFRESH, 0f, context.getString(R.string.boot_preparing))
 
         ScanLog.init(root.absolutePath)
         dev.cannoli.scorza.util.InputLog.init(root.absolutePath)
+        KitchenLog.init(root.absolutePath)
         StorageLog.init(root.absolutePath)
+        dev.cannoli.scorza.util.RommLog.init(root.absolutePath)
         dev.cannoli.scorza.util.ErrorLog.init(root.absolutePath)
         setupCoordinator.logStorageDiagnostics()
         platformConfig.load()
@@ -83,6 +87,7 @@ class BootInitializer @Inject constructor(
         ioScope.launch { dev.cannoli.scorza.util.DirectoryLayout.ensure(root, romDir, context.assets, platformConfig) }
 
         val importer = Importer(
+            context = context,
             cannoliRoot = root,
             romDirectory = romDir,
             db = cannoliDatabase,
@@ -98,7 +103,7 @@ class BootInitializer @Inject constructor(
 
         if (result is ImportResult.Failure) {
             ScanLog.write("ERROR import returned Failure: ${result.cause.message}")
-            return BootResult.Failure(result.cause.message ?: "Database import failed")
+            return BootResult.Failure(result.cause.message ?: context.getString(R.string.boot_import_failed))
         }
 
         ioScope.launch {
@@ -112,12 +117,8 @@ class BootInitializer @Inject constructor(
             if (updateManager.shouldAutoCheck()) {
                 ioScope.launch { updateManager.checkForUpdate() }
             }
-
-            ioScope.launch {
-                updateManager.updateAvailable.collect { info ->
-                    settingsViewModel.updateInfo = info
-                }
-            }
+            // updateAvailable -> settingsViewModel.updateInfo is now pushed lifecycle-bound
+            // from MainActivity.ReadyNavGraph so it cancels on Activity destroy.
 
             bindingController.onProgress = { keys, elapsedMs ->
                 val cs = nav.currentScreen

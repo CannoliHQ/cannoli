@@ -1,13 +1,15 @@
 package dev.cannoli.scorza.db
 
 import androidx.sqlite.SQLiteStatement
+import dev.cannoli.scorza.model.GameSearchQuery
 import dev.cannoli.scorza.model.LaunchTarget
 import dev.cannoli.scorza.model.ListItem
 import dev.cannoli.scorza.model.Rom
 import dev.cannoli.scorza.di.CannoliPathsProvider
 import dev.cannoli.scorza.util.ArtworkLookup
 import dev.cannoli.scorza.util.NaturalSort
-import org.json.JSONArray
+import dev.cannoli.scorza.util.RomNaming
+import dev.cannoli.scorza.util.TextNormalizer
 import java.io.File
 
 class RomsRepository(
@@ -41,10 +43,34 @@ class RomsRepository(
         }
     }
 
+    fun setRaCachedGameId(romId: Long, gameId: Int?) {
+        if (gameId == null) {
+            db.execute("UPDATE roms SET ra_cached_game_id = NULL WHERE id = ?", romId)
+        } else {
+            db.execute("UPDATE roms SET ra_cached_game_id = ? WHERE id = ?", gameId, romId)
+        }
+    }
+
     fun updateRomPath(romId: Long, newRelativePath: String) = db.execute(
         "UPDATE roms SET path = ? WHERE id = ?",
         newRelativePath, romId,
     )
+
+    // Renames a rom in place: updates the path plus every name-derived column the same way the
+    // scanner would, so the list re-sorts to the new name immediately instead of waiting for the
+    // file-watcher rescan (which then finds nothing changed and stays a no-op).
+    fun renameRom(romId: Long, newRelativePath: String, newBaseName: String) {
+        val (displayName, tags) = RomNaming.splitNameAndTags(newBaseName)
+        db.execute(
+            "UPDATE roms SET path = ?, display_name = ?, sort_key = ?, tags = ?, name_normalized = ? WHERE id = ?",
+            newRelativePath,
+            displayName,
+            NaturalSort.toSortKey(displayName),
+            tags,
+            TextNormalizer.normalize(displayName),
+            romId,
+        )
+    }
 
     fun updateRomPathsUnderPrefix(platformTag: String, oldPrefix: String, newPrefix: String) = db.execute(
         """
@@ -70,11 +96,30 @@ class RomsRepository(
         "SELECT tag FROM platforms ORDER BY sort_order, display_name COLLATE NOCASE",
     ) { it.getText(0) }
 
+    /** Lowercased filenames currently indexed for [platformTag], for RomM on-device matching. */
+    fun presentFileNames(platformTag: String): Set<String> = db.queryAll(
+        "SELECT path FROM roms WHERE platform_tag = ?", platformTag.uppercase(),
+    ) { File(it.getText(0)).name.lowercase() }.toSet()
+
+    fun allRelativePaths(): List<String> = db.queryAll("SELECT path FROM roms") { it.getText(0) }
+
+    fun searchAllGames(query: GameSearchQuery): List<Rom> {
+        val term = TextNormalizer.normalize(query.text)
+        if (term.isEmpty()) return emptyList()
+        return db.queryAll(
+            "$BASE_SELECT WHERE name_normalized LIKE ? ORDER BY display_name COLLATE NOCASE",
+            "%$term%",
+            mapper = ::rowToRom,
+        )
+    }
+
     fun setPlatformOrder(orderedTags: List<String>) = db.transaction { conn ->
         orderedTags.forEachIndexed { index, tag ->
             conn.execute("UPDATE platforms SET sort_order = ? WHERE tag = ?", index.toLong(), tag)
         }
     }
+
+    fun allRomsForPlatform(platformTag: String): List<Rom> = romsForPlatform(platformTag.uppercase())
 
     private fun romsForPlatform(platformTag: String): List<Rom> = db.queryAll(
         "$BASE_SELECT WHERE platform_tag = ? ORDER BY sort_key",
@@ -123,7 +168,6 @@ class RomsRepository(
         val relativePath = stmt.getText(1)
         val platformTag = stmt.getText(2)
         val absoluteFile = File(romDirectory, relativePath)
-        val discPaths = if (stmt.isNull(5)) null else parseDiscPaths(stmt.getText(5))
         return Rom(
             id = stmt.getLong(0),
             path = absoluteFile,
@@ -132,14 +176,10 @@ class RomsRepository(
             tags = if (stmt.isNull(4)) null else stmt.getText(4),
             artFile = artwork.find(platformTag, absoluteFile),
             launchTarget = LaunchTarget.RetroArch,
-            discFiles = discPaths?.map { File(romDirectory, it) },
-            raGameId = if (stmt.isNull(6)) null else stmt.getLong(6).toInt(),
+            raGameId = if (stmt.isNull(5)) null else stmt.getLong(5).toInt(),
+            lastPlayedAt = if (stmt.isNull(6)) null else stmt.getLong(6),
+            raCachedGameId = if (stmt.isNull(7)) null else stmt.getLong(7).toInt(),
         )
-    }
-
-    private fun parseDiscPaths(json: String): List<String>? {
-        val arr = try { JSONArray(json) } catch (_: Throwable) { return null }
-        return List(arr.length()) { arr.optString(it) }.filter { it.isNotEmpty() }
     }
 
     private fun Rom.relativeAfterPlatform(): String {
@@ -155,6 +195,6 @@ class RomsRepository(
     }
 
     private companion object {
-        const val BASE_SELECT = "SELECT id, path, platform_tag, display_name, tags, disc_paths, ra_game_id FROM roms"
+        const val BASE_SELECT = "SELECT id, path, platform_tag, display_name, tags, ra_game_id, last_played_at, ra_cached_game_id FROM roms"
     }
 }
