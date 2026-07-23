@@ -8,6 +8,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.launcher.ApkLauncher
+import dev.cannoli.scorza.launcher.DelfinoLauncher
 import dev.cannoli.scorza.launcher.EmuLauncher
 import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.LaunchManager
@@ -27,6 +28,11 @@ object LaunchModule {
     ): RetroArchLauncher = RetroArchLauncher(context) { settings.retroArchPackage }
 
     @Provides @Singleton
+    fun provideDelfinoLauncher(
+        @ApplicationContext context: Context,
+    ): DelfinoLauncher = DelfinoLauncher(context)
+
+    @Provides @Singleton
     fun provideLaunchManager(
         @ApplicationContext context: Context,
         settings: SettingsRepository,
@@ -34,11 +40,12 @@ object LaunchModule {
         retroArchLauncher: RetroArchLauncher,
         emuLauncher: EmuLauncher,
         apkLauncher: ApkLauncher,
+        delfinoLauncher: DelfinoLauncher,
         launchState: LaunchState,
         activeMappingHolder: dev.cannoli.scorza.input.runtime.ActiveMappingHolder,
         installedCoreService: InstalledCoreService,
     ): LaunchManager = LaunchManager(
         context, settings, platformConfig,
-        retroArchLauncher, emuLauncher, apkLauncher, launchState, activeMappingHolder, installedCoreService
+        retroArchLauncher, emuLauncher, apkLauncher, delfinoLauncher, launchState, activeMappingHolder, installedCoreService
     )
 }

@@ -33,6 +33,7 @@ class LaunchManager(
     private val retroArchLauncher: RetroArchLauncher,
     private val emuLauncher: EmuLauncher,
     private val apkLauncher: ApkLauncher,
+    private val delfinoLauncher: DelfinoLauncher,
     private val launchState: LaunchState,
     private val activeMappingHolder: dev.cannoli.scorza.input.runtime.ActiveMappingHolder,
     private val installedCoreService: InstalledCoreService? = null,
@@ -248,6 +249,13 @@ class LaunchManager(
         if (gameOverride?.appPackage != null) {
             val cfg = platformConfig.getAppConfig(rom.platformTag, gameOverride.appPackage)
             return launchResultDialog(apkLauncher.launchWithRom(gameOverride.appPackage, launchFile, cfg))
+        }
+
+        if (rom.platformTag in DELFINO_PLATFORMS) {
+            val delfinoPkg = DelfinoLauncher.installedPackage(context)
+            if (delfinoPkg != null) {
+                return launchResultDialog(delfinoLauncher.launch(buildDelfinoParams(rom), delfinoPkg))
+            }
         }
 
         val result = when (val target = rom.launchTarget) {
@@ -472,6 +480,25 @@ class LaunchManager(
     private fun normalizedRomName(rom: Rom): String =
         Normalizer.normalize(rom.path.nameWithoutExtension, Normalizer.Form.NFC)
 
+    private fun buildDelfinoParams(rom: Rom): dev.cannoli.igm.DelfinoLaunchParams {
+        val igm = buildRicottaIgm(rom)
+        val paths = CannoliPaths(settings.sdCardRoot)
+        return dev.cannoli.igm.DelfinoLaunchParams(
+            romPath = rom.path.absolutePath,
+            cannoliRoot = paths.root.absolutePath,
+            savesDir = null,
+            saveStatesDir = null,
+            biosDir = paths.biosFor(rom.platformTag).absolutePath,
+            userDir = null,
+            gameTitle = rom.displayName,
+            platformTag = rom.platformTag,
+            igmTriggerKeycodes = igm.igmTriggerKeycodes,
+            colors = igm.colors,
+            displaySettings = igm.displaySettings,
+            inputMapping = igm.inputMapping,
+        )
+    }
+
     private fun buildRicottaIgm(rom: Rom): RicottaIgm {
         val paths = CannoliPaths(settings.sdCardRoot)
         val romName = normalizedRomName(rom)
@@ -536,6 +563,7 @@ class LaunchManager(
 
     companion object {
         private const val CONFIG_VERSION = 6
+        val DELFINO_PLATFORMS = setOf("GC", "WII")
 
         fun extractBundledCores(context: Context): String {
             val coresDir = File(context.filesDir, "cores")
