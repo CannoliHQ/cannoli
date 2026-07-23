@@ -603,7 +603,7 @@ class PlatformConfig(
         "it.dbtecno.pizzaboyscbasic" to "Pizza Boy SC Basic",
         "com.hydra.noods" to "NooDS",
         "me.magnum.melondualds" to "melonDS DualDS",
-        "come.nanodata.armsx2" to "ARMSX2",
+        "com.armsx2" to "ARMSX2",
         "com.sbro.emucorex" to "EmuCoreX",
         "com.virtualapplications.play" to "Play!",
         "io.github.azaharplus.android" to "AzaharPlus",

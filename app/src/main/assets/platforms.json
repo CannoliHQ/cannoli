@@ -341,7 +341,7 @@
     "name": "PlayStation 2",
     "app": [
       { "package": "xyz.aethersx2.android", "activity": "xyz.aethersx2.android.EmulationActivity", "action": "android.intent.action.MAIN", "extras": [{ "key": "bootPath", "kind": "uri_string" }], "intentFlags": 268468224 },
-      { "package": "come.nanodata.armsx2", "activity": "kr.co.iefriends.pcsx2.activities.MainActivity", "action": "android.intent.action.VIEW" },
+      { "package": "com.armsx2", "activity": "com.armsx2.Main", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } },
       { "package": "com.sbro.emucorex", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } },
       "com.virtualapplications.play",
       "net.pcsx2.emulator"
