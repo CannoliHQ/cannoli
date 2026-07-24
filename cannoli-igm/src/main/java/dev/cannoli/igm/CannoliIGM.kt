@@ -190,6 +190,7 @@ fun CannoliIGM(
                 is IGMScreen.Emulator, is IGMScreen.EmulatorCategory,
                 is IGMScreen.Shortcuts, is IGMScreen.SavePrompt,
                 is IGMScreen.RaOptions, is IGMScreen.RaOptionsCategory,
+                is IGMScreen.ProviderSettings, is IGMScreen.SettingsExitPrompt,
                 is IGMScreen.Buttons -> {
                     val description = if (showDescription) {
                         settingsItems.getOrNull(screen.selectedIndex)?.hint
@@ -205,7 +206,8 @@ fun CannoliIGM(
                         screen is IGMScreen.Video ||
                         screen is IGMScreen.Advanced ||
                         screen is IGMScreen.ShaderSettings ||
-                        screen is IGMScreen.RaOptionsCategory
+                        screen is IGMScreen.RaOptionsCategory ||
+                        (screen is IGMScreen.ProviderSettings && screen.path.isNotEmpty())
                     val bottomBarRight = when {
                         isOptionList -> listOf(labels.confirm to stringResource(dev.cannoli.ui.R.string.label_info))
                         screen is IGMScreen.Shortcuts && screen.selectedIndex == 0 -> emptyList()
@@ -222,6 +224,9 @@ fun CannoliIGM(
                         )
                         screen is IGMScreen.RaOptions -> listOf(labels.north to stringResource(dev.cannoli.ui.R.string.label_ra_settings), labels.confirm to selectLabel)
                         screen is IGMScreen.RaOptionsCategory -> emptyList()
+                        screen is IGMScreen.ProviderSettings && screen.path.isEmpty() ->
+                            listOf(labels.confirm to selectLabel)
+                        screen is IGMScreen.ProviderSettings -> emptyList()
                         else -> listOf(labels.confirm to selectLabel)
                     }
                     val emulatorLabel = stringResource(dev.cannoli.ui.R.string.igm_emulator)
@@ -240,6 +245,9 @@ fun CannoliIGM(
                         is IGMScreen.RaOptionsCategory -> screen.categoryTitle.ifEmpty {
                             stringResource(dev.cannoli.ui.R.string.igm_settings)
                         }
+                        is IGMScreen.ProviderSettings -> screen.title
+                        is IGMScreen.SettingsExitPrompt ->
+                            stringResource(dev.cannoli.ui.R.string.igm_save_changes)
                         else -> stringResource(dev.cannoli.ui.R.string.igm_settings)
                     }
                     val bottomBarLeft = buildList {
@@ -255,7 +263,9 @@ fun CannoliIGM(
                         selectedIndex = screen.selectedIndex,
                         bottomBarLeft = bottomBarLeft,
                         bottomBarRight = bottomBarRight,
-                        coreInfo = if (screen is IGMScreen.RaOptionsCategory)
+                        coreInfo = if (screen is IGMScreen.RaOptionsCategory ||
+                            (screen is IGMScreen.ProviderSettings && screen.path.isNotEmpty())
+                        )
                             settingsItems.getOrNull(screen.selectedIndex)?.hint.orEmpty()
                         else coreInfo,
                         description = description,
@@ -518,9 +528,6 @@ fun CannoliIGM(
                         lineHeight = igmLineHeight,
                     )
                 }
-                // Rendered in a later task; keeping this a no-op here satisfies exhaustiveness
-                // now that IGMScreen has these two new subtypes.
-                is IGMScreen.ProviderSettings, is IGMScreen.SettingsExitPrompt -> {}
                 null -> {}
             }
 
