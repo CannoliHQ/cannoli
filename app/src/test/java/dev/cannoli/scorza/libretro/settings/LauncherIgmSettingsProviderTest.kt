@@ -96,4 +96,81 @@ class LauncherIgmSettingsProviderTest {
         p.activate("video.shaderSettings")
         assertEquals(listOf("openInfo", "openShaderSettings"), h.calls)
     }
+
+    @Test
+    fun `advanced hides controller rows when only one controller type exists`() {
+        val (p, _) = provider()
+        assertEquals(
+            listOf("Max FF Speed", "Show FPS", "Debug HUD"),
+            p.screen(listOf("advanced")).items.map { it.label },
+        )
+    }
+
+    @Test
+    fun `advanced shows a single controller row for one occupied port`() {
+        val host = FakeLauncherSettingsHost().apply {
+            controllerTypes = listOf(fakeControllerType(0), fakeControllerType(1))
+            occupiedPorts = listOf(0)
+        }
+        val (p, _) = provider(host)
+        assertEquals(
+            listOf("Controller Type", "Max FF Speed", "Show FPS", "Debug HUD"),
+            p.screen(listOf("advanced")).items.map { it.label },
+        )
+    }
+
+    @Test
+    fun `advanced shows per-port rows for multiple occupied ports`() {
+        val host = FakeLauncherSettingsHost().apply {
+            controllerTypes = listOf(fakeControllerType(0), fakeControllerType(1))
+            occupiedPorts = listOf(0, 2)
+        }
+        val (p, _) = provider(host)
+        assertEquals(
+            listOf("P1 Controller", "P3 Controller", "Max FF Speed", "Show FPS", "Debug HUD"),
+            p.screen(listOf("advanced")).items.map { it.label },
+        )
+    }
+
+    @Test
+    fun `max ff speed renders with an x suffix`() {
+        val host = FakeLauncherSettingsHost().apply { maxFfSpeed = 8 }
+        val (p, _) = provider(host)
+        val row = p.screen(listOf("advanced")).items
+            .filterIsInstance<GenericIgmSettingsItem.Choice>()
+            .first { it.label == "Max FF Speed" }
+        assertEquals("8x", row.value)
+    }
+
+    @Test
+    fun `input hides dpad mode unless experimental features are on`() {
+        val (p, _) = provider()
+        assertEquals(
+            listOf("Button Mappings", "Shortcuts", "Left Stick as D-Pad"),
+            p.screen(listOf("input")).items.map { it.label },
+        )
+    }
+
+    @Test
+    fun `input shows dpad mode when experimental features are on`() {
+        val host = FakeLauncherSettingsHost().apply { experimentalFeatures = true }
+        val (p, _) = provider(host)
+        val items = p.screen(listOf("input")).items
+        assertEquals(
+            listOf("Button Mappings", "Shortcuts", "Left Stick as D-Pad", "D-Pad Mode"),
+            items.map { it.label },
+        )
+        assertEquals(
+            "8-Way",
+            items.filterIsInstance<GenericIgmSettingsItem.Choice>().first { it.label == "D-Pad Mode" }.value,
+        )
+    }
+
+    @Test
+    fun `button mappings and shortcuts are actions`() {
+        val (p, host) = provider()
+        p.activate("input.buttons")
+        p.activate("input.shortcuts")
+        assertEquals(listOf("openButtons", "openShortcuts"), host.calls)
+    }
 }

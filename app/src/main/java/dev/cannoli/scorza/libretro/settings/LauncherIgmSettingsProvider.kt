@@ -17,6 +17,8 @@ class LauncherIgmSettingsProvider(
     override fun screen(path: List<String>): GenericIgmSettingsScreen = when (path.firstOrNull()) {
         null -> root()
         "video" -> video()
+        "advanced" -> advanced()
+        "input" -> input()
         else -> GenericIgmSettingsScreen("", emptyList())
     }
 
@@ -44,12 +46,57 @@ class LauncherIgmSettingsProvider(
         },
     )
 
+    private fun advanced() = GenericIgmSettingsScreen(
+        strings.categoryAdvanced,
+        buildList {
+            if (host.controllerTypes.size > 1) {
+                val ports = host.occupiedPorts
+                if (ports.size <= 1) {
+                    add(GenericIgmSettingsItem.Choice(
+                        "advanced.controller.0", strings.controllerType, host.deviceTypeLabel(0)))
+                } else {
+                    for (p in ports) add(GenericIgmSettingsItem.Choice(
+                        "advanced.controller.$p", "P${p + 1} Controller", host.deviceTypeLabel(p)))
+                }
+            }
+            add(GenericIgmSettingsItem.Choice("advanced.ffSpeed", strings.maxFfSpeed, "${host.maxFfSpeed}x"))
+            add(GenericIgmSettingsItem.Choice(
+                "advanced.showFps", strings.showFps, if (host.showFpsBaseline) strings.on else strings.off))
+            add(GenericIgmSettingsItem.Choice(
+                "advanced.debugHud", strings.debugHud, if (host.debugHud) strings.on else strings.off))
+        },
+    )
+
+    private fun input() = GenericIgmSettingsScreen(
+        strings.categoryInput,
+        buildList {
+            add(GenericIgmSettingsItem.Action("input.buttons", strings.buttonMappings))
+            add(GenericIgmSettingsItem.Action("input.shortcuts", strings.shortcuts))
+            add(GenericIgmSettingsItem.Choice(
+                "input.leftStick", strings.leftStickDpad,
+                if (host.leftStickAsDpad) strings.on else strings.off))
+            if (host.experimentalFeatures) {
+                add(GenericIgmSettingsItem.Choice(
+                    "input.dpadMode", strings.dpadMode,
+                    if (host.allowDiagonals) strings.dpad8Way else strings.dpad4Way))
+            }
+        },
+    )
+
     override fun cycle(itemKey: String, direction: Int) {
         when (itemKey) {
             "video.scaling" -> host.cycleScaling(direction)
             "video.sharpness" -> host.cycleSharpness(direction)
             "video.shader" -> host.cycleShader(direction)
             "video.overlay" -> host.cycleOverlay(direction)
+            "advanced.ffSpeed" -> host.cycleFfSpeed(direction)
+            "advanced.showFps" -> host.toggleShowFps()
+            "advanced.debugHud" -> host.toggleDebugHud()
+            "input.leftStick" -> host.toggleLeftStickAsDpad()
+            "input.dpadMode" -> host.toggleDpadMode()
+            else -> if (itemKey.startsWith("advanced.controller.")) {
+                host.cyclePortDeviceType(itemKey.substringAfterLast('.').toInt(), direction)
+            }
         }
     }
 
@@ -57,6 +104,8 @@ class LauncherIgmSettingsProvider(
         when (itemKey) {
             "info" -> host.openInfo()
             "video.shaderSettings" -> host.openShaderSettings()
+            "input.buttons" -> host.openButtonMappings()
+            "input.shortcuts" -> host.openShortcuts()
         }
     }
 
