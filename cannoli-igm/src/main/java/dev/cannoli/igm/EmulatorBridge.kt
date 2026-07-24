@@ -52,4 +52,6 @@ interface EmulatorBridge {
     // prefs). Persisted by the host; the default is returned when unsupported.
     fun getLocalToggle(key: String, default: Boolean): Boolean = default
     fun setLocalToggle(key: String, value: Boolean) {}
+
+    fun settingsProvider(): IgmSettingsProvider? = null
 }
