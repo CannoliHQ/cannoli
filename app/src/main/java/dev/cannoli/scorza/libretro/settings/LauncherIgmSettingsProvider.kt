@@ -19,6 +19,7 @@ class LauncherIgmSettingsProvider(
         "video" -> video()
         "advanced" -> advanced()
         "input" -> input()
+        "emulator" -> if (path.size == 1) emulator() else emulatorCategory(path[1])
         else -> GenericIgmSettingsScreen("", emptyList())
     }
 
@@ -83,6 +84,38 @@ class LauncherIgmSettingsProvider(
         },
     )
 
+    private fun hasCategories(): Boolean =
+        host.coreCategories.isNotEmpty() && host.coreOptions.any { it.category.isNotEmpty() }
+
+    private fun emulator(): GenericIgmSettingsScreen {
+        val items: List<GenericIgmSettingsItem> = when {
+            hasCategories() -> buildList {
+                val used = host.coreCategories.filter { cat -> host.coreOptions.any { it.category == cat.key } }
+                for (cat in used) {
+                    add(GenericIgmSettingsItem.Category(cat.key, cat.desc))
+                }
+                if (host.coreOptions.any { it.category.isEmpty() }) {
+                    add(GenericIgmSettingsItem.Category("", strings.other))
+                }
+            }
+            host.coreOptions.isEmpty() -> listOf(GenericIgmSettingsItem.Action("core.none", strings.noOptions))
+            else -> host.coreOptions.map(::optionRow)
+        }
+        return GenericIgmSettingsScreen(strings.categoryEmulator, items)
+    }
+
+    private fun emulatorCategory(categoryKey: String) = GenericIgmSettingsScreen(
+        host.coreCategories.firstOrNull { it.key == categoryKey }?.desc ?: strings.other,
+        host.coreOptions.filter { it.category == categoryKey }.map(::optionRow),
+    )
+
+    private fun optionRow(opt: dev.cannoli.scorza.libretro.LibretroRunner.CoreOption) = GenericIgmSettingsItem.Choice(
+        key = "core.${opt.key}",
+        label = opt.desc,
+        value = opt.values.find { it.value == opt.selected }?.label ?: opt.selected,
+        hint = opt.info.ifEmpty { null },
+    )
+
     override fun cycle(itemKey: String, direction: Int) {
         when (itemKey) {
             "video.scaling" -> host.cycleScaling(direction)
@@ -94,8 +127,10 @@ class LauncherIgmSettingsProvider(
             "advanced.debugHud" -> host.toggleDebugHud()
             "input.leftStick" -> host.toggleLeftStickAsDpad()
             "input.dpadMode" -> host.toggleDpadMode()
-            else -> if (itemKey.startsWith("advanced.controller.")) {
-                host.cyclePortDeviceType(itemKey.substringAfterLast('.').toInt(), direction)
+            else -> when {
+                itemKey.startsWith("core.") -> host.cycleCoreOption(itemKey.removePrefix("core."), direction)
+                itemKey.startsWith("advanced.controller.") ->
+                    host.cyclePortDeviceType(itemKey.substringAfterLast('.').toInt(), direction)
             }
         }
     }

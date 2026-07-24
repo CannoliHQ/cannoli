@@ -189,4 +189,87 @@ class LauncherIgmSettingsProviderTest {
             host.calls,
         )
     }
+
+    @Test
+    fun `emulator reports no options when the core has none`() {
+        val (p, _) = provider()
+        val items = p.screen(listOf("emulator")).items
+        assertEquals(listOf("No options available"), items.map { it.label })
+        assertTrue(items.single() !is GenericIgmSettingsItem.Category)
+    }
+
+    @Test
+    fun `emulator lists options flat when the core has no categories`() {
+        val host = FakeLauncherSettingsHost().apply {
+            coreOptions = listOf(
+                fakeOption(key = "blargg", desc = "Blargg NTSC Filter", selected = "off",
+                    values = listOf("off" to "Disabled", "on" to "Enabled"), category = ""),
+            )
+        }
+        val (p, _) = provider(host)
+        val items = p.screen(listOf("emulator")).items
+        assertEquals(listOf("Blargg NTSC Filter"), items.map { it.label })
+        assertEquals("Disabled", (items.first() as GenericIgmSettingsItem.Choice).value)
+    }
+
+    @Test
+    fun `emulator lists categories plus Other when uncategorized options exist`() {
+        val host = FakeLauncherSettingsHost().apply {
+            coreCategories = listOf(fakeCategory("video", "Video Options"))
+            coreOptions = listOf(
+                fakeOption("scale", "Scale", "1", listOf("1" to "1x"), category = "video"),
+                fakeOption("loose", "Loose", "a", listOf("a" to "A"), category = ""),
+            )
+        }
+        val (p, _) = provider(host)
+        val items = p.screen(listOf("emulator")).items
+        assertEquals(listOf("Video Options", "Other"), items.map { it.label })
+        assertTrue(items.all { it is GenericIgmSettingsItem.Category })
+    }
+
+    @Test
+    fun `emulator hides a category that has no options`() {
+        val host = FakeLauncherSettingsHost().apply {
+            coreCategories = listOf(fakeCategory("video", "Video Options"), fakeCategory("empty", "Empty Cat"))
+            coreOptions = listOf(fakeOption("scale", "Scale", "1", listOf("1" to "1x"), category = "video"))
+        }
+        val (p, _) = provider(host)
+        assertEquals(listOf("Video Options"), p.screen(listOf("emulator")).items.map { it.label })
+    }
+
+    @Test
+    fun `descending into a core category filters to that category`() {
+        val host = FakeLauncherSettingsHost().apply {
+            coreCategories = listOf(fakeCategory("video", "Video Options"))
+            coreOptions = listOf(
+                fakeOption("scale", "Scale", "1", listOf("1" to "1x"), category = "video"),
+                fakeOption("loose", "Loose", "a", listOf("a" to "A"), category = ""),
+            )
+        }
+        val (p, _) = provider(host)
+        assertEquals(listOf("Scale"), p.screen(listOf("emulator", "video")).items.map { it.label })
+    }
+
+    @Test
+    fun `the Other bucket holds uncategorized options`() {
+        val host = FakeLauncherSettingsHost().apply {
+            coreCategories = listOf(fakeCategory("video", "Video Options"))
+            coreOptions = listOf(
+                fakeOption("scale", "Scale", "1", listOf("1" to "1x"), category = "video"),
+                fakeOption("loose", "Loose", "a", listOf("a" to "A"), category = ""),
+            )
+        }
+        val (p, _) = provider(host)
+        assertEquals(listOf("Loose"), p.screen(listOf("emulator", "")).items.map { it.label })
+    }
+
+    @Test
+    fun `cycling a core option delegates with the option key`() {
+        val host = FakeLauncherSettingsHost().apply {
+            coreOptions = listOf(fakeOption("blargg", "Blargg", "off", listOf("off" to "Disabled"), ""))
+        }
+        val (p, h) = provider(host)
+        p.cycle("core.blargg", 1)
+        assertEquals(listOf("core:blargg:1"), h.calls)
+    }
 }
