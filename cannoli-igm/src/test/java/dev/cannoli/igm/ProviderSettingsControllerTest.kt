@@ -37,6 +37,42 @@ private class FakeProvider : IgmSettingsProvider {
     fun fireChanged() { onChanged?.invoke() }
 }
 
+private class NestedProvider : IgmSettingsProvider {
+    override fun screen(path: List<String>): GenericIgmSettingsScreen = when (path) {
+        emptyList<String>() -> GenericIgmSettingsScreen(
+            "Root",
+            listOf(
+                GenericIgmSettingsItem.Choice("a", "A", "x"),
+                GenericIgmSettingsItem.Category("sub", "Sub"),
+            ),
+        )
+        listOf("sub") -> GenericIgmSettingsScreen("Sub", listOf(GenericIgmSettingsItem.Choice("b", "B", "y")))
+        else -> GenericIgmSettingsScreen("", emptyList())
+    }
+    override fun cycle(itemKey: String, direction: Int) {}
+    override fun activate(itemKey: String) {}
+    override fun exitPrompt(): IgmSettingsExit = IgmSettingsExit.Close
+    override fun setOnChanged(callback: () -> Unit) {}
+}
+
+private class ShrinkProvider : IgmSettingsProvider {
+    var shrunk = false
+    override fun screen(path: List<String>): GenericIgmSettingsScreen =
+        if (shrunk) GenericIgmSettingsScreen("Root", listOf(GenericIgmSettingsItem.Choice("a", "A", "x")))
+        else GenericIgmSettingsScreen(
+            "Root",
+            listOf(
+                GenericIgmSettingsItem.Choice("a", "A", "x"),
+                GenericIgmSettingsItem.Choice("b", "B", "y"),
+                GenericIgmSettingsItem.Choice("c", "C", "z"),
+            ),
+        )
+    override fun cycle(itemKey: String, direction: Int) {}
+    override fun activate(itemKey: String) {}
+    override fun exitPrompt(): IgmSettingsExit = IgmSettingsExit.Close
+    override fun setOnChanged(callback: () -> Unit) {}
+}
+
 class ProviderSettingsControllerTest {
 
     private fun enter(p: FakeProvider = FakeProvider()): Pair<ProviderSettingsController, FakeProvider> {
@@ -73,13 +109,27 @@ class ProviderSettingsControllerTest {
     }
 
     @Test
-    fun `back from a category restores the parent cursor`() {
-        val (c, _) = enter()
+    fun `back restores a non-zero parent cursor`() {
+        val c = ProviderSettingsController(NestedProvider())
+        c.enter()
         c.onNav(ProviderSettingsController.Nav.DOWN)
-        c.onNav(ProviderSettingsController.Nav.UP)
         c.onNav(ProviderSettingsController.Nav.CONFIRM)
         val s = c.onNav(ProviderSettingsController.Nav.BACK) as ProviderSettingsController.State.Menu
         assertEquals(emptyList<String>(), s.path)
+        assertEquals(1, s.selectedIndex)
+    }
+
+    @Test
+    fun `cursor clamps when the item list shrinks`() {
+        val p = ShrinkProvider()
+        val c = ProviderSettingsController(p)
+        c.enter()
+        c.onNav(ProviderSettingsController.Nav.DOWN)
+        c.onNav(ProviderSettingsController.Nav.DOWN)
+        assertEquals(2, (c.state() as ProviderSettingsController.State.Menu).selectedIndex)
+        p.shrunk = true
+        val s = c.state() as ProviderSettingsController.State.Menu
+        assertEquals(1, s.items.size)
         assertEquals(0, s.selectedIndex)
     }
 

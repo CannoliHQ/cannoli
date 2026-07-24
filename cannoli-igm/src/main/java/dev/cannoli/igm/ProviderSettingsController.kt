@@ -39,6 +39,10 @@ class ProviderSettingsController(private val provider: IgmSettingsProvider) {
         prompt?.let { return State.Prompt(it.title, it.options, promptCursor) }
         val level = levels.lastOrNull() ?: return State.Closed
         val screen = provider.screen(level.path)
+        // The provider's item list can shrink between events (a cycle that hides
+        // gated options, a controller disconnect). Clamp so selectedIndex never
+        // points past the end.
+        level.cursor = level.cursor.coerceIn(0, (screen.items.size - 1).coerceAtLeast(0))
         return State.Menu(level.path, screen.title, level.cursor, screen.items)
     }
 
