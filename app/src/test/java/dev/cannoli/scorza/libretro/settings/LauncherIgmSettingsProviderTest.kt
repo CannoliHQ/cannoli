@@ -1,7 +1,9 @@
 package dev.cannoli.scorza.libretro.settings
 
 import dev.cannoli.igm.GenericIgmSettingsItem
+import dev.cannoli.igm.IgmSettingsExit
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LauncherIgmSettingsProviderTest {
@@ -17,8 +19,8 @@ class LauncherIgmSettingsProviderTest {
             listOf("Video", "Emulator", "Input", "Advanced", "Info"),
             items.map { it.label },
         )
-        assertEquals(4, items.count { it is GenericIgmSettingsItem.Category })
-        assertEquals(1, items.count { it is GenericIgmSettingsItem.Action })
+        assertTrue(items.dropLast(1).all { it is GenericIgmSettingsItem.Category })
+        assertTrue(items.last() is GenericIgmSettingsItem.Action)
     }
 
     @Test
@@ -42,12 +44,13 @@ class LauncherIgmSettingsProviderTest {
     }
 
     @Test
-    fun `shader settings is an action, the other video rows are choices`() {
+    fun `shader settings is the only action and overlay stays a choice`() {
         val host = FakeLauncherSettingsHost().apply { hasShaderParams = true }
         val (p, _) = provider(host)
         val items = p.screen(listOf("video")).items
-        assertEquals(1, items.count { it is GenericIgmSettingsItem.Action })
-        assertEquals(4, items.count { it is GenericIgmSettingsItem.Choice })
+        assertTrue(items.single { it.label == "Shader Settings" } is GenericIgmSettingsItem.Action)
+        assertTrue(items.single { it.label == "Overlay" } is GenericIgmSettingsItem.Choice)
+        assertTrue(items.single { it.label == "Shader" } is GenericIgmSettingsItem.Choice)
     }
 
     @Test
@@ -66,5 +69,31 @@ class LauncherIgmSettingsProviderTest {
         p.cycle("video.scaling", 1)
         p.cycle("video.sharpness", -1)
         assertEquals(listOf("scaling:1", "sharpness:-1"), host.calls)
+    }
+
+    @Test
+    fun `exit prompt closes when nothing is dirty`() {
+        val (p, _) = provider()
+        assertTrue(p.exitPrompt() is IgmSettingsExit.Close)
+    }
+
+    @Test
+    fun `exit prompt offers save scopes when dirty and routes each choice`() {
+        val host = FakeLauncherSettingsHost().apply { dirty = true; platformName = "SNES" }
+        val (p, h) = provider(host)
+        val prompt = p.exitPrompt() as IgmSettingsExit.Prompt
+        assertEquals(listOf("Save for SNES", "Save for this game", "Discard"), prompt.options)
+        prompt.onChoice(0)
+        prompt.onChoice(1)
+        prompt.onChoice(2)
+        assertEquals(listOf("savePlatform", "saveGame"), h.calls)
+    }
+
+    @Test
+    fun `info and shader settings activate the host`() {
+        val (p, h) = provider()
+        p.activate("info")
+        p.activate("video.shaderSettings")
+        assertEquals(listOf("openInfo", "openShaderSettings"), h.calls)
     }
 }
