@@ -99,7 +99,8 @@ class LauncherIgmSettingsProviderTest {
 
     @Test
     fun `advanced hides controller rows when only one controller type exists`() {
-        val (p, _) = provider()
+        val host = FakeLauncherSettingsHost().apply { controllerTypes = listOf(fakeControllerType(0)) }
+        val (p, _) = provider(host)
         assertEquals(
             listOf("Max FF Speed", "Show FPS", "Debug HUD"),
             p.screen(listOf("advanced")).items.map { it.label },
@@ -172,5 +173,20 @@ class LauncherIgmSettingsProviderTest {
         p.activate("input.buttons")
         p.activate("input.shortcuts")
         assertEquals(listOf("openButtons", "openShortcuts"), host.calls)
+    }
+
+    @Test
+    fun `cycling advanced and input rows delegates to the host`() {
+        val (p, host) = provider()
+        p.cycle("advanced.ffSpeed", 1)
+        p.cycle("advanced.showFps", 1)
+        p.cycle("advanced.debugHud", -1)
+        p.cycle("advanced.controller.2", 1)
+        p.cycle("input.leftStick", 1)
+        p.cycle("input.dpadMode", -1)
+        assertEquals(
+            listOf("ff:1", "showFps", "debugHud", "port2:1", "leftStick", "dpadMode"),
+            host.calls,
+        )
     }
 }
