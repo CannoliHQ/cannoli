@@ -518,6 +518,9 @@ fun CannoliIGM(
                         lineHeight = igmLineHeight,
                     )
                 }
+                // Rendered in a later task; keeping this a no-op here satisfies exhaustiveness
+                // now that IGMScreen has these two new subtypes.
+                is IGMScreen.ProviderSettings, is IGMScreen.SettingsExitPrompt -> {}
                 null -> {}
             }
 
