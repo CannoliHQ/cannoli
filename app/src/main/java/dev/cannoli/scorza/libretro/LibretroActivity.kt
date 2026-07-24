@@ -1386,6 +1386,8 @@ class LibretroActivity : ComponentActivity() {
         is IGMScreen.ReassignPlayers -> simpleIgmHandler { btn -> handleReassignPlayersInput(screen, btn) }
         is IGMScreen.RaOptions -> null
         is IGMScreen.RaOptionsCategory -> null
+        is IGMScreen.ProviderSettings -> null
+        is IGMScreen.SettingsExitPrompt -> null
         is IGMScreen.Buttons -> object : dev.cannoli.scorza.input.ScreenInputHandler {
             // Canonical events for nav between rows (works for hat-only D-pads where no KeyEvent
             // arrives). When the screen is in capture mode (listeningCanonical != null) we

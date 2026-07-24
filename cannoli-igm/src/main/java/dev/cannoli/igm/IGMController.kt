@@ -30,7 +30,6 @@ class IGMController(
     private var raSettings: List<RaSetting> = emptyList()
     private val raPending = mutableMapOf<String, Int>()
     private var raSaveThenNativeMenu = false
-    private var pendingExitPrompt: IgmSettingsExit.Prompt? = null
 
     private var inputTranslator = IgmInputTranslator(null)
 
@@ -227,8 +226,8 @@ class IGMController(
             is IGMScreen.Guide -> handleGuideKey(screen, normalized)
             is IGMScreen.Achievements -> handleAchievementsKey(screen, normalized)
             is IGMScreen.AchievementDetail -> handleAchievementDetailKey(screen, normalized)
-            is IGMScreen.ProviderSettings -> handleProviderSettingsKey(screen, normalized)
-            is IGMScreen.SettingsExitPrompt -> handleSettingsExitPromptKey(screen, normalized)
+            is IGMScreen.ProviderSettings -> handleProviderKey(normalized)
+            is IGMScreen.SettingsExitPrompt -> handleProviderKey(normalized)
             else -> {}
         }
     }
@@ -417,90 +416,56 @@ class IGMController(
         push(IGMScreen.SavePrompt())
     }
 
-    private val settingsProvider: IgmSettingsProvider? get() = bridge.settingsProvider()
+    private var providerNav: ProviderSettingsController? = null
 
     fun openProviderSettings() {
-        val p = settingsProvider ?: return
-        p.setOnChanged { refreshProviderItems() }
-        val screen = p.screen(emptyList())
-        settingsItems.value = screen.items.map(::toRenderItem)
-        push(IGMScreen.ProviderSettings(path = emptyList(), title = screen.title))
+        val provider = bridge.settingsProvider() ?: return
+        val nav = ProviderSettingsController(provider)
+        providerNav = nav
+        nav.setOnChanged { renderProviderState(nav.state()) }
+        renderProviderState(nav.enter())
     }
 
-    private fun toRenderItem(item: GenericIgmSettingsItem): IGMSettingsItem = when (item) {
+    private fun renderProviderState(state: ProviderSettingsController.State) {
+        when (state) {
+            is ProviderSettingsController.State.Menu -> {
+                val screen = IGMScreen.ProviderSettings(state.selectedIndex, state.path, state.title)
+                if (currentScreen is IGMScreen.ProviderSettings || currentScreen is IGMScreen.SettingsExitPrompt) {
+                    replaceTop(screen)
+                } else {
+                    push(screen)
+                }
+                settingsItems.value = state.items.map(::toProviderRenderItem)
+            }
+            is ProviderSettingsController.State.Prompt -> {
+                replaceTop(IGMScreen.SettingsExitPrompt(state.selectedIndex))
+                settingsItems.value = state.options.map { IGMSettingsItem(it) }
+            }
+            is ProviderSettingsController.State.Closed -> {
+                providerNav = null
+                if (currentScreen is IGMScreen.ProviderSettings || currentScreen is IGMScreen.SettingsExitPrompt) pop()
+            }
+        }
+    }
+
+    private fun toProviderRenderItem(item: GenericIgmSettingsItem): IGMSettingsItem = when (item) {
         is GenericIgmSettingsItem.Category -> IGMSettingsItem(item.label)
         is GenericIgmSettingsItem.Action -> IGMSettingsItem(item.label)
-        is GenericIgmSettingsItem.Choice ->
-            IGMSettingsItem(item.label, item.value, item.hint ?: item.description)
+        is GenericIgmSettingsItem.Choice -> IGMSettingsItem(item.label, item.value, item.hint ?: item.description)
     }
 
-    private fun refreshProviderItems() {
-        val screen = currentScreen as? IGMScreen.ProviderSettings ?: return
-        val p = settingsProvider ?: return
-        settingsItems.value = p.screen(screen.path).items.map(::toRenderItem)
-    }
-
-    private fun handleProviderSettingsKey(screen: IGMScreen.ProviderSettings, keycode: Int) {
-        val p = settingsProvider ?: return
-        val items = p.screen(screen.path).items
-        val count = items.size
-        when (keycode) {
-            19 -> if (count > 0) replaceTop(screen.copy(selectedIndex = (screen.selectedIndex - 1 + count) % count))
-            20 -> if (count > 0) replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count))
-            21, 22 -> {
-                val item = items.getOrNull(screen.selectedIndex) as? GenericIgmSettingsItem.Choice ?: return
-                p.cycle(item.key, if (keycode == 21) -1 else 1)
-                refreshProviderItems()
-            }
-            96 -> when (val item = items.getOrNull(screen.selectedIndex)) {
-                is GenericIgmSettingsItem.Category -> {
-                    val childPath = screen.path + item.key
-                    val child = p.screen(childPath)
-                    settingsItems.value = child.items.map(::toRenderItem)
-                    push(IGMScreen.ProviderSettings(path = childPath, title = child.title))
-                }
-                is GenericIgmSettingsItem.Action -> {
-                    p.activate(item.key)
-                    refreshProviderItems()
-                }
-                else -> {}
-            }
-            97, 4 -> if (screen.path.isEmpty()) exitProviderSettings() else {
-                pop()
-                refreshProviderItems()
-            }
+    private fun handleProviderKey(keycode: Int) {
+        val nav = providerNav ?: return
+        val button = when (keycode) {
+            19 -> ProviderSettingsController.Nav.UP
+            20 -> ProviderSettingsController.Nav.DOWN
+            21 -> ProviderSettingsController.Nav.LEFT
+            22 -> ProviderSettingsController.Nav.RIGHT
+            96 -> ProviderSettingsController.Nav.CONFIRM
+            97, 4 -> ProviderSettingsController.Nav.BACK
+            else -> return
         }
-    }
-
-    private fun exitProviderSettings() {
-        when (val exit = settingsProvider?.exitPrompt() ?: IgmSettingsExit.Close) {
-            is IgmSettingsExit.Close -> pop()
-            is IgmSettingsExit.Prompt -> {
-                pendingExitPrompt = exit
-                settingsItems.value = exit.options.map { IGMSettingsItem(it) }
-                push(IGMScreen.SettingsExitPrompt())
-            }
-        }
-    }
-
-    private fun handleSettingsExitPromptKey(screen: IGMScreen.SettingsExitPrompt, keycode: Int) {
-        val prompt = pendingExitPrompt ?: return
-        val count = prompt.options.size
-        when (keycode) {
-            19 -> replaceTop(screen.copy(selectedIndex = (screen.selectedIndex - 1 + count) % count))
-            20 -> replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1) % count))
-            96 -> {
-                prompt.onChoice(screen.selectedIndex)
-                finishExitPrompt()
-            }
-            97, 4 -> finishExitPrompt()
-        }
-    }
-
-    private fun finishExitPrompt() {
-        pendingExitPrompt = null
-        pop()
-        if (currentScreen is IGMScreen.ProviderSettings) pop()
+        renderProviderState(nav.onNav(button))
     }
 
     private fun selectMenuItem(index: Int) {
