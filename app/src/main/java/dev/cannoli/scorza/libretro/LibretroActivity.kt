@@ -34,6 +34,7 @@ import dev.cannoli.igm.AchievementInfo
 import dev.cannoli.igm.CheatManager
 import dev.cannoli.igm.CheatRowUi
 import dev.cannoli.igm.CheatSession
+import dev.cannoli.igm.GenericIgmSettingsItem
 import dev.cannoli.igm.GuideFile
 import dev.cannoli.igm.GuideManager
 import dev.cannoli.igm.GuideType
@@ -42,8 +43,12 @@ import dev.cannoli.igm.IGMSettings
 import dev.cannoli.igm.IGMSettingsItem
 import dev.cannoli.igm.IgmMenuAction
 import dev.cannoli.igm.InGameMenuOptions
+import dev.cannoli.igm.ProviderSettingsController
 import dev.cannoli.igm.ShortcutAction
 import dev.cannoli.scorza.R
+import dev.cannoli.scorza.libretro.settings.LauncherIgmSettingsProvider
+import dev.cannoli.scorza.libretro.settings.LauncherSettingsHost
+import dev.cannoli.scorza.libretro.settings.LauncherSettingsStrings
 import dev.cannoli.scorza.libretro.shader.PresetParser
 import dev.cannoli.scorza.libretro.shader.ShaderPipeline
 import dev.cannoli.scorza.settings.SettingsRepository
@@ -66,7 +71,7 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class LibretroActivity : ComponentActivity() {
+class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
 
     @Inject lateinit var settings: SettingsRepository
     @Inject lateinit var romsRepository: dev.cannoli.scorza.db.RomsRepository
@@ -153,10 +158,10 @@ class LibretroActivity : ComponentActivity() {
     private var scalingMode by mutableStateOf(ScalingMode.CORE_REPORTED)
     private var screenEffect by mutableStateOf(ScreenEffect.NONE)
     private var sharpness by mutableStateOf(Sharpness.SHARP)
-    private var debugHud by mutableStateOf(false)
+    override var debugHud by mutableStateOf(false)
     private var showFps by mutableStateOf(false)
-    private var showFpsBaseline by mutableStateOf(false)
-    private var maxFfSpeed by mutableIntStateOf(4)
+    override var showFpsBaseline by mutableStateOf(false)
+    override var maxFfSpeed by mutableIntStateOf(4)
     private var overlay by mutableStateOf("")
     private var overlayImages = emptyList<String>()
 
@@ -164,10 +169,10 @@ class LibretroActivity : ComponentActivity() {
     private var shaderPresets = emptyList<String>()
     private var shaderParams by mutableStateOf(emptyList<ShaderParamItem>())
 
-    private var coreOptions by mutableStateOf(emptyList<LibretroRunner.CoreOption>())
-    private var coreCategories by mutableStateOf(emptyList<LibretroRunner.CoreOptionCategory>())
+    override var coreOptions by mutableStateOf(emptyList<LibretroRunner.CoreOption>())
+    override var coreCategories by mutableStateOf(emptyList<LibretroRunner.CoreOptionCategory>())
     private var coreRequiresHwRender = false
-    private var controllerTypes by mutableStateOf(emptyList<LibretroRunner.ControllerType>())
+    override var controllerTypes by mutableStateOf(emptyList<LibretroRunner.ControllerType>())
     private var portDeviceTypes by mutableStateOf<Map<Int, Int>>(emptyMap())
 
     @Volatile
@@ -175,12 +180,12 @@ class LibretroActivity : ComponentActivity() {
 
     private var inputRemap by mutableStateOf<Map<dev.cannoli.scorza.input.CanonicalButton, Int>>(emptyMap())
 
-    private var leftStickAsDpad by mutableStateOf(false)
+    override var leftStickAsDpad by mutableStateOf(false)
 
     // A launcher setting, so it cannot change while a game is running. Read once.
-    private val experimentalFeatures: Boolean by lazy { settings.experimentalFeatures }
+    override val experimentalFeatures: Boolean by lazy { settings.experimentalFeatures }
 
-    private var allowDiagonals by mutableStateOf(true)
+    override var allowDiagonals by mutableStateOf(true)
 
     // The hot mask path reads this plain copy outside composition instead of the Compose state.
     // Mirrors the existing activeInputRemap / inputRemap pair. Forced back to "allow" when the
@@ -322,7 +327,7 @@ class LibretroActivity : ComponentActivity() {
     private var saveDir: String = ""
     private var platformTag: String = ""
     private var gameBaseName: String = ""
-    private var platformName: String = ""
+    override var platformName: String = ""
     private var cannoliRoot: String = ""
 
     private val currentSlot get() = slotManager.slots[selectedSlotIndex]
@@ -483,6 +488,74 @@ class LibretroActivity : ComponentActivity() {
         if (screenStack.isNotEmpty()) screenStack[screenStack.lastIndex] = screen
     }
 
+    private val igmSettingsProvider by lazy {
+        LauncherIgmSettingsProvider(
+            host = this,
+            strings = LauncherSettingsStrings(
+                buttonMappings = getString(R.string.igm_button_mappings),
+                shortcuts = getString(R.string.title_shortcuts),
+                leftStickDpad = getString(R.string.igm_left_stick_dpad),
+                dpadMode = getString(R.string.igm_dpad_mode),
+                on = getString(R.string.value_on),
+                off = getString(R.string.value_off),
+                dpad8Way = getString(R.string.value_dpad_8way),
+                dpad4Way = getString(R.string.value_dpad_4way),
+            ),
+        )
+    }
+
+    private var providerNav: ProviderSettingsController? = null
+    private var providerSettingsItems by mutableStateOf(emptyList<IGMSettingsItem>())
+
+    private fun openProviderSettings() {
+        val nav = ProviderSettingsController(igmSettingsProvider)
+        providerNav = nav
+        nav.setOnChanged { renderProviderState(nav.state()) }
+        renderProviderState(nav.enter())
+    }
+
+    private fun renderProviderState(state: ProviderSettingsController.State) {
+        when (state) {
+            is ProviderSettingsController.State.Menu -> {
+                val screen = IGMScreen.ProviderSettings(state.selectedIndex, state.path, state.title)
+                if (currentScreen is IGMScreen.ProviderSettings || currentScreen is IGMScreen.SettingsExitPrompt) {
+                    replaceTop(screen)
+                } else {
+                    push(screen)
+                }
+                providerSettingsItems = state.items.map(::toProviderRenderItem)
+            }
+            is ProviderSettingsController.State.Prompt -> {
+                replaceTop(IGMScreen.SettingsExitPrompt(state.selectedIndex))
+                providerSettingsItems = state.options.map { IGMSettingsItem(it) }
+            }
+            is ProviderSettingsController.State.Closed -> {
+                providerNav = null
+                if (currentScreen is IGMScreen.ProviderSettings || currentScreen is IGMScreen.SettingsExitPrompt) pop()
+            }
+        }
+    }
+
+    private fun toProviderRenderItem(item: GenericIgmSettingsItem): IGMSettingsItem = when (item) {
+        is GenericIgmSettingsItem.Category -> IGMSettingsItem(item.label)
+        is GenericIgmSettingsItem.Action -> IGMSettingsItem(item.label)
+        is GenericIgmSettingsItem.Choice -> IGMSettingsItem(item.label, item.value, item.hint ?: item.description)
+    }
+
+    private fun handleProviderButton(button: String?) {
+        val nav = providerNav ?: return
+        val n = when (button) {
+            "btn_up" -> ProviderSettingsController.Nav.UP
+            "btn_down" -> ProviderSettingsController.Nav.DOWN
+            "btn_left" -> ProviderSettingsController.Nav.LEFT
+            "btn_right" -> ProviderSettingsController.Nav.RIGHT
+            "btn_south" -> ProviderSettingsController.Nav.CONFIRM
+            "btn_east" -> ProviderSettingsController.Nav.BACK
+            else -> return
+        }
+        renderProviderState(nav.onNav(n))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -603,7 +676,12 @@ class LibretroActivity : ComponentActivity() {
                                     UndoType.RESET -> "Undo Reset"
                                     null -> null
                                 },
-                                settingsItems = if (screen is IGMScreen.Menu) emptyList() else buildSettingsItems(),
+                                settingsItems = when {
+                                    screen is IGMScreen.Menu -> emptyList()
+                                    screen is IGMScreen.ProviderSettings || screen is IGMScreen.SettingsExitPrompt ->
+                                        providerSettingsItems
+                                    else -> buildSettingsItems()
+                                },
                                 coreInfo = coreInfoText,
                                 debugHud = debugHud,
                                 showFps = showFps,
@@ -1386,8 +1464,8 @@ class LibretroActivity : ComponentActivity() {
         is IGMScreen.ReassignPlayers -> simpleIgmHandler { btn -> handleReassignPlayersInput(screen, btn) }
         is IGMScreen.RaOptions -> null
         is IGMScreen.RaOptionsCategory -> null
-        is IGMScreen.ProviderSettings -> null
-        is IGMScreen.SettingsExitPrompt -> null
+        is IGMScreen.ProviderSettings -> simpleIgmHandler { btn -> handleProviderButton(btn); true }
+        is IGMScreen.SettingsExitPrompt -> simpleIgmHandler { btn -> handleProviderButton(btn); true }
         is IGMScreen.Buttons -> object : dev.cannoli.scorza.input.ScreenInputHandler {
             // Canonical events for nav between rows (works for hat-only D-pads where no KeyEvent
             // arrives). When the screen is in capture mode (listeningCanonical != null) we
@@ -1789,7 +1867,7 @@ class LibretroActivity : ComponentActivity() {
                 refreshShaderParams()
                 frontendSnapshot = buildCurrentSettings()
                 shaderParamsDirty = false
-                push(IGMScreen.Settings())
+                openProviderSettings()
             }
             IgmMenuAction.REASSIGN -> {
                 push(IGMScreen.ReassignPlayers())
@@ -1875,7 +1953,7 @@ class LibretroActivity : ComponentActivity() {
 
     // --- Frontend ---
 
-    private fun scalingLabel() = when (scalingMode) {
+    override fun scalingLabel() = when (scalingMode) {
         ScalingMode.CORE_REPORTED -> getString(R.string.scaling_core_reported)
         ScalingMode.INTEGER -> getString(R.string.scaling_integer)
         ScalingMode.INTEGER_OVERSCALE -> getString(R.string.scaling_integer_overscale)
@@ -1883,12 +1961,15 @@ class LibretroActivity : ComponentActivity() {
         ScalingMode.FULLSCREEN -> getString(R.string.scaling_fullscreen)
     }
 
-    private fun sharpnessLabel() = when (sharpness) {
+    override fun sharpnessLabel() = when (sharpness) {
         Sharpness.SHARP -> "Sharp"
         Sharpness.SOFT -> "Soft"
     }
 
-    private fun overlayLabel() = if (overlay.isEmpty()) "None" else File(overlay).nameWithoutExtension
+    override fun shaderLabel() = if (screenEffect == ScreenEffect.NONE || shaderPreset.isEmpty()) "Off"
+        else File(shaderPreset).nameWithoutExtension
+
+    override fun overlayLabel() = if (overlay.isEmpty()) "None" else File(overlay).nameWithoutExtension
 
     private fun resolveOverlayPath(): String? =
         if (overlay.isEmpty()) null else File(dev.cannoli.scorza.config.CannoliPaths(cannoliRoot).overlaysFor(platformTag), overlay).absolutePath
@@ -1983,7 +2064,7 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
-    private fun cycleOverlay(direction: Int) {
+    override fun cycleOverlay(direction: Int) {
         if (overlayImages.isEmpty()) { overlay = ""; return }
         val currentIndex = overlayImages.indexOf(overlay)
         val newIndex = if (currentIndex == -1) {
@@ -2065,12 +2146,12 @@ class LibretroActivity : ComponentActivity() {
         .mapNotNull { it.port }
         .sorted()
 
-    private fun deviceTypeLabel(port: Int): String {
+    override fun deviceTypeLabel(port: Int): String {
         val typeId = portDeviceTypes[port] ?: LibretroRunner.DEVICE_JOYPAD
         return controllerTypes.firstOrNull { it.id == typeId }?.desc ?: "Standard"
     }
 
-    private fun cyclePortDeviceType(port: Int, direction: Int) {
+    override fun cyclePortDeviceType(port: Int, direction: Int) {
         if (controllerTypes.isEmpty()) return
         val currentTypeId = portDeviceTypes[port] ?: LibretroRunner.DEVICE_JOYPAD
         val currentIdx = controllerTypes.indexOfFirst { it.id == currentTypeId }.coerceAtLeast(0)
@@ -2094,11 +2175,8 @@ class LibretroActivity : ComponentActivity() {
         }
         when (index - portRows.size) {
             0 -> cycleFfSpeed(direction)
-            1 -> {
-                showFpsBaseline = !showFpsBaseline
-                showFps = showFpsBaseline
-            }
-            2 -> { debugHud = !debugHud; renderer.debugHud = debugHud }
+            1 -> toggleShowFps()
+            2 -> toggleDebugHud()
         }
     }
 
@@ -2112,7 +2190,7 @@ class LibretroActivity : ComponentActivity() {
         coreOptions = loadVisibleCoreOptions()
     }
 
-    private fun cycleShader(direction: Int) {
+    override fun cycleShader(direction: Int) {
         val now = android.os.SystemClock.uptimeMillis()
         if (now - lastShaderCycleMs < 250) return
         lastShaderCycleMs = now
@@ -2413,7 +2491,7 @@ class LibretroActivity : ComponentActivity() {
         return (Math.round(next / step) * step).coerceIn(min, max)
     }
 
-    private fun cycleFfSpeed(direction: Int) {
+    override fun cycleFfSpeed(direction: Int) {
         val idx = FF_SPEEDS.indexOf(maxFfSpeed).coerceAtLeast(0)
         maxFfSpeed = FF_SPEEDS[(idx + direction + FF_SPEEDS.size) % FF_SPEEDS.size]
         if (fastForwarding) renderer.fastForwardFrames = maxFfSpeed
@@ -2657,9 +2735,7 @@ class LibretroActivity : ComponentActivity() {
         is IGMScreen.Video -> buildList {
             add(IGMSettingsItem("Screen Scaling", scalingLabel()))
             add(IGMSettingsItem("Screen Sharpness", sharpnessLabel()))
-            val shaderLabel = if (screenEffect == ScreenEffect.NONE || shaderPreset.isEmpty()) "Off"
-                else File(shaderPreset).nameWithoutExtension
-            add(IGMSettingsItem("Shader", shaderLabel))
+            add(IGMSettingsItem("Shader", shaderLabel()))
             if (shaderParams.isNotEmpty()) add(IGMSettingsItem("Shader Settings"))
             add(IGMSettingsItem("Overlay", overlayLabel()))
         }
@@ -2824,14 +2900,14 @@ class LibretroActivity : ComponentActivity() {
         )
     }
 
-    private fun saveToPlatform() {
+    override fun saveToPlatform() {
         val settings = buildCurrentSettings()
         overrideManager.savePlatform(settings)
         platformBaseline = overrideManager.loadPlatformBaseline()
         activeInputRemap = settings.inputRemap
     }
 
-    private fun saveToGame() {
+    override fun saveToGame() {
         val settings = buildCurrentSettings()
         val baseline = platformBaseline ?: overrideManager.loadPlatformBaseline()
         overrideManager.saveGameDelta(settings, baseline)
@@ -3246,7 +3322,7 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
-    private fun toggleLeftStickAsDpad() {
+    override fun toggleLeftStickAsDpad() {
         leftStickAsDpad = !leftStickAsDpad
         // Drop any direction the stick was holding, or it stays latched in the port mask.
         stickDpadSync.reset()
@@ -3263,7 +3339,7 @@ class LibretroActivity : ComponentActivity() {
     // left to undo it.
     private fun effectiveAllowDiagonals(): Boolean = !experimentalFeatures || allowDiagonals
 
-    private fun toggleDpadMode() {
+    override fun toggleDpadMode() {
         allowDiagonals = !allowDiagonals
         activeAllowDiagonals = effectiveAllowDiagonals()
         diagonalLock.reset()
@@ -3330,4 +3406,41 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
+    // --- LauncherSettingsHost ---
+
+    override val hasShaderParams: Boolean get() = shaderParams.isNotEmpty()
+
+    override val occupiedPorts: List<Int> get() = occupiedPorts()
+
+    override fun cycleScaling(direction: Int) = cycleVideoValue(0, direction, hasShaderParams)
+
+    override fun cycleSharpness(direction: Int) = cycleVideoValue(1, direction, hasShaderParams)
+
+    override fun cycleCoreOption(optionKey: String, direction: Int) {
+        val index = coreOptions.indexOfFirst { it.key == optionKey }
+        if (index >= 0) cycleEmulatorValue(coreOptions, index, direction)
+    }
+
+    override fun toggleShowFps() {
+        showFpsBaseline = !showFpsBaseline
+        showFps = showFpsBaseline
+    }
+
+    override fun toggleDebugHud() {
+        debugHud = !debugHud
+        renderer.debugHud = debugHud
+    }
+
+    override fun openButtonMappings() { push(IGMScreen.Buttons()) }
+
+    override fun openShortcuts() { push(IGMScreen.Shortcuts()) }
+
+    override fun openShaderSettings() { push(IGMScreen.ShaderSettings()) }
+
+    override fun openInfo() { push(IGMScreen.Info()) }
+
+    override fun settingsDirty(): Boolean {
+        val snap = frontendSnapshot
+        return snap != null && (shaderParamsDirty || !buildCurrentSettings().frontendEquals(snap))
+    }
 }

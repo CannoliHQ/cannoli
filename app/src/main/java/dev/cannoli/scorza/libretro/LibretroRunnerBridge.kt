@@ -2,13 +2,15 @@ package dev.cannoli.scorza.libretro
 
 import android.graphics.Bitmap
 import dev.cannoli.igm.EmulatorBridge
+import dev.cannoli.igm.IgmSettingsProvider
 
 class LibretroRunnerBridge(
     private val runner: LibretroRunner,
     private val oldSaveSlotManager: SaveSlotManager,
     private val onQuit: () -> Unit,
     private val onPause: () -> Unit,
-    private val onUnpause: () -> Unit
+    private val onUnpause: () -> Unit,
+    private val igmSettingsProvider: () -> IgmSettingsProvider?
 ) : EmulatorBridge {
 
     override val supportsNativeMenu: Boolean = false
@@ -91,4 +93,6 @@ class LibretroRunnerBridge(
     override fun openAchievementsMenu() { /* no-op — achievements handled by RetroAchievementsManager */ }
 
     override fun setOnNativeMenuClosed(callback: () -> Unit) { /* no-op */ }
+
+    override fun settingsProvider(): IgmSettingsProvider? = igmSettingsProvider()
 }
