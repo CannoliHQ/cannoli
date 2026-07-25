@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Bottom bar labels -->
-    <string name="label_back">BACK</string>
+    <string name="label_back">Atrás</string>
     <string name="label_cancel" tools:ignore="ButtonCase">CANCEL</string>
     <string name="label_select">SELECT</string>
     <string name="label_play">PLAY</string>
