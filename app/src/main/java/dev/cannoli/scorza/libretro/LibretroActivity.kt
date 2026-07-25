@@ -1441,7 +1441,6 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
     private fun igmHandlerFor(screen: IGMScreen): dev.cannoli.scorza.input.ScreenInputHandler? = when (screen) {
         is IGMScreen.Menu -> simpleIgmHandler { btn -> handleMenuInput(screen, btn) }
         is IGMScreen.ShaderSettings -> simpleIgmHandler { btn -> handleShaderSettingsInput(screen, btn) }
-        is IGMScreen.SavePrompt -> null
         is IGMScreen.Info -> simpleIgmHandler { btn ->
             when (btn) {
                 "btn_east", "btn_south" -> { infoScrollDir = 0; pop(); true }
@@ -1456,8 +1455,6 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
         is IGMScreen.Guide -> simpleIgmHandler { btn -> handleGuideInput(screen, btn) }
         is IGMScreen.Cheats -> simpleIgmHandler { btn -> handleCheatsInput(screen, btn) }
         is IGMScreen.ReassignPlayers -> simpleIgmHandler { btn -> handleReassignPlayersInput(screen, btn) }
-        is IGMScreen.RaOptions -> null
-        is IGMScreen.RaOptionsCategory -> null
         is IGMScreen.ProviderSettings -> simpleIgmHandler { btn -> handleProviderButton(btn); true }
         is IGMScreen.SettingsExitPrompt -> simpleIgmHandler { btn -> handleProviderButton(btn); true }
         is IGMScreen.Buttons -> object : dev.cannoli.scorza.input.ScreenInputHandler {

@@ -182,8 +182,7 @@ fun CannoliIGM(
                     }
                 }
                 is IGMScreen.ShaderSettings,
-                is IGMScreen.Shortcuts, is IGMScreen.SavePrompt,
-                is IGMScreen.RaOptions, is IGMScreen.RaOptionsCategory,
+                is IGMScreen.Shortcuts,
                 is IGMScreen.ProviderSettings, is IGMScreen.SettingsExitPrompt,
                 is IGMScreen.Buttons -> {
                     val description = if (showDescription) {
@@ -195,7 +194,6 @@ fun CannoliIGM(
                         settingsItems.getOrNull(screen.selectedIndex)?.value != null
                     val showsCycleHint = (screen is IGMScreen.Shortcuts && screen.selectedIndex == 0) ||
                         screen is IGMScreen.ShaderSettings ||
-                        screen is IGMScreen.RaOptionsCategory ||
                         providerRowCycles
                     val bottomBarRight = when {
                         screen is IGMScreen.Shortcuts && screen.selectedIndex == 0 -> emptyList()
@@ -205,8 +203,6 @@ fun CannoliIGM(
                             labels.north to stringResource(dev.cannoli.ui.R.string.label_clear),
                             labels.confirm to stringResource(dev.cannoli.ui.R.string.label_press),
                         )
-                        screen is IGMScreen.RaOptions -> listOf(labels.north to stringResource(dev.cannoli.ui.R.string.label_ra_settings), labels.confirm to selectLabel)
-                        screen is IGMScreen.RaOptionsCategory -> emptyList()
                         screen is IGMScreen.ProviderSettings &&
                             settingsItems.getOrNull(screen.selectedIndex)?.value != null -> emptyList()
                         screen is IGMScreen.ProviderSettings ->
@@ -216,12 +212,7 @@ fun CannoliIGM(
                     val title = when (screen) {
                         is IGMScreen.ShaderSettings -> stringResource(dev.cannoli.ui.R.string.igm_shader_settings)
                         is IGMScreen.Shortcuts -> stringResource(dev.cannoli.ui.R.string.title_shortcuts)
-                        is IGMScreen.SavePrompt -> stringResource(dev.cannoli.ui.R.string.igm_save_changes)
                         is IGMScreen.Buttons -> stringResource(dev.cannoli.ui.R.string.igm_button_mappings)
-                        is IGMScreen.RaOptions -> stringResource(dev.cannoli.ui.R.string.igm_settings)
-                        is IGMScreen.RaOptionsCategory -> screen.categoryTitle.ifEmpty {
-                            stringResource(dev.cannoli.ui.R.string.igm_settings)
-                        }
                         is IGMScreen.ProviderSettings -> screen.title
                         is IGMScreen.SettingsExitPrompt ->
                             stringResource(dev.cannoli.ui.R.string.igm_save_changes)
@@ -240,9 +231,7 @@ fun CannoliIGM(
                         selectedIndex = screen.selectedIndex,
                         bottomBarLeft = bottomBarLeft,
                         bottomBarRight = bottomBarRight,
-                        coreInfo = if (screen is IGMScreen.RaOptionsCategory ||
-                            (screen is IGMScreen.ProviderSettings && screen.path.isNotEmpty())
-                        )
+                        coreInfo = if (screen is IGMScreen.ProviderSettings && screen.path.isNotEmpty())
                             settingsItems.getOrNull(screen.selectedIndex)?.hint.orEmpty()
                         else coreInfo,
                         description = description,

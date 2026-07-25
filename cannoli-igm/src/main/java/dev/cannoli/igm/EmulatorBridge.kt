@@ -41,13 +41,6 @@ interface EmulatorBridge {
     val supportsAchievements: Boolean
     val supportsUndo: Boolean
 
-    // RetroArch settings registry (RicottaArch host only)
-    fun raSettingsSupported(): Boolean = false
-    fun raGetSetting(key: String): RaSetting? = null
-    fun raSetSetting(key: String, value: String): Boolean = false
-    fun raSaveOverride(scope: RaOverrideScope) {}
-    fun setOnRaSettingApplied(callback: (key: String, value: String) -> Unit) {}
-
     // Host-local boolean toggles not backed by RetroArch settings (e.g. Cannoli OSD
     // prefs). Persisted by the host; the default is returned when unsupported.
     fun getLocalToggle(key: String, default: Boolean): Boolean = default

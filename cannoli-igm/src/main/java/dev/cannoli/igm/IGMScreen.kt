@@ -6,9 +6,6 @@ sealed class IGMScreen {
     data class Menu(override val selectedIndex: Int = 0, val confirmDeleteSlot: Boolean = false) : IGMScreen()
     data class Shortcuts(override val selectedIndex: Int = 0, val listening: Boolean = false, val heldKeys: Set<Int> = emptySet(), val countdownMs: Int = 0) : IGMScreen()
     data class ShaderSettings(override val selectedIndex: Int = 0) : IGMScreen()
-    data class RaOptions(override val selectedIndex: Int = 0) : IGMScreen()
-    data class RaOptionsCategory(override val selectedIndex: Int = 0, val categoryKey: String, val categoryTitle: String = "") : IGMScreen()
-    data class SavePrompt(override val selectedIndex: Int = 0) : IGMScreen()
     data class ProviderSettings(
         override val selectedIndex: Int = 0,
         val path: List<String> = emptyList(),
