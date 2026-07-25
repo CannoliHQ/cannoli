@@ -189,16 +189,15 @@ fun CannoliIGM(
                     val description = if (showDescription) {
                         settingsItems.getOrNull(screen.selectedIndex)?.hint
                     } else null
-                    val isOptionList = false
                     val changeLabel = stringResource(dev.cannoli.ui.R.string.label_change)
                     val selectLabel = stringResource(dev.cannoli.ui.R.string.label_select)
-                    val showsCycleHint = isOptionList ||
-                        (screen is IGMScreen.Shortcuts && screen.selectedIndex == 0) ||
+                    val providerRowCycles = screen is IGMScreen.ProviderSettings &&
+                        settingsItems.getOrNull(screen.selectedIndex)?.value != null
+                    val showsCycleHint = (screen is IGMScreen.Shortcuts && screen.selectedIndex == 0) ||
                         screen is IGMScreen.ShaderSettings ||
                         screen is IGMScreen.RaOptionsCategory ||
-                        (screen is IGMScreen.ProviderSettings && screen.path.isNotEmpty())
+                        providerRowCycles
                     val bottomBarRight = when {
-                        isOptionList -> listOf(labels.confirm to stringResource(dev.cannoli.ui.R.string.label_info))
                         screen is IGMScreen.Shortcuts && screen.selectedIndex == 0 -> emptyList()
                         screen is IGMScreen.Shortcuts -> listOf(labels.north to stringResource(dev.cannoli.ui.R.string.label_clear), labels.confirm to stringResource(dev.cannoli.ui.R.string.label_set))
                         screen is IGMScreen.ShaderSettings -> emptyList()
@@ -208,9 +207,10 @@ fun CannoliIGM(
                         )
                         screen is IGMScreen.RaOptions -> listOf(labels.north to stringResource(dev.cannoli.ui.R.string.label_ra_settings), labels.confirm to selectLabel)
                         screen is IGMScreen.RaOptionsCategory -> emptyList()
-                        screen is IGMScreen.ProviderSettings && screen.path.isEmpty() ->
+                        screen is IGMScreen.ProviderSettings &&
+                            settingsItems.getOrNull(screen.selectedIndex)?.value != null -> emptyList()
+                        screen is IGMScreen.ProviderSettings ->
                             listOf(labels.confirm to selectLabel)
-                        screen is IGMScreen.ProviderSettings -> emptyList()
                         else -> listOf(labels.confirm to selectLabel)
                     }
                     val title = when (screen) {

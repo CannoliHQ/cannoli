@@ -12,6 +12,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -117,9 +119,13 @@ fun IGMSettingsScreen(
                         style = typo.labelSmall.copy(
                             color = colors.text.copy(alpha = 0.7f)
                         ),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center,
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .padding(bottom = 44.dp)
+                            .fillMaxWidth(0.9f)
                     )
                 }
             }

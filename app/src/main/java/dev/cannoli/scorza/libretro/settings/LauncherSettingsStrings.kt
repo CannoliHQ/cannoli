@@ -17,7 +17,6 @@ data class LauncherSettingsStrings(
     val debugHud: String = "Debug HUD",
     val controllerType: String = "Controller Type",
     val noOptions: String = "No options available",
-    val noParameters: String = "No parameters",
     val other: String = "Other",
     val on: String = "On",
     val off: String = "Off",

@@ -539,7 +539,7 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
     private fun toProviderRenderItem(item: GenericIgmSettingsItem): IGMSettingsItem = when (item) {
         is GenericIgmSettingsItem.Category -> IGMSettingsItem(item.label)
         is GenericIgmSettingsItem.Action -> IGMSettingsItem(item.label)
-        is GenericIgmSettingsItem.Choice -> IGMSettingsItem(item.label, item.value, item.hint ?: item.description)
+        is GenericIgmSettingsItem.Choice -> IGMSettingsItem(item.label, item.value, item.hint)
     }
 
     private fun handleProviderButton(button: String?) {
