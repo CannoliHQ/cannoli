@@ -6,6 +6,7 @@
 <a href="https://github.com/CannoliHQ/cannoli/stargazers"><img src="https://img.shields.io/github/stars/CannoliHQ/cannoli?style=for-the-badge&labelColor=E8C896&color=555555" height="36" alt="Stars"></a>
 <a href="https://github.com/CannoliHQ/cannoli/releases"><img src="https://img.shields.io/github/downloads/CannoliHQ/cannoli/total?style=for-the-badge&labelColor=E8C896&color=555555" height="36" alt="Downloads"></a>
 <a href="https://cannoli.dev"><img src="https://img.shields.io/badge/Docs-cannoli.dev-555555?style=for-the-badge&labelColor=E8C896" height="36" alt="Docs"></a>
+<a href="https://crowdin.com/project/cannoli"><img src="https://img.shields.io/badge/Translate-Crowdin-555555?style=for-the-badge&labelColor=E8C896" height="36" alt="Translate"></a>
 
 </div>
 
