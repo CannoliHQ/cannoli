@@ -135,13 +135,14 @@ class LauncherIgmSettingsProvider(
         }
     }
 
-    override fun activate(itemKey: String) {
+    override fun activate(itemKey: String): IgmSettingsExit.Prompt? {
         when (itemKey) {
             "info" -> host.openInfo()
             "video.shaderSettings" -> host.openShaderSettings()
             "input.buttons" -> host.openButtonMappings()
             "input.shortcuts" -> host.openShortcuts()
         }
+        return null
     }
 
     override fun exitPrompt(): IgmSettingsExit =

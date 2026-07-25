@@ -17,7 +17,7 @@ private class IntProvider : IgmSettingsProvider {
         else -> GenericIgmSettingsScreen("", emptyList())
     }
     override fun cycle(itemKey: String, direction: Int) {}
-    override fun activate(itemKey: String) {}
+    override fun activate(itemKey: String): IgmSettingsExit.Prompt? = null
     override fun exitPrompt(): IgmSettingsExit = IgmSettingsExit.Close
     override fun setOnChanged(callback: () -> Unit) {}
 }

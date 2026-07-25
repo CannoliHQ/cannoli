@@ -9,6 +9,7 @@ private class FakeProvider : IgmSettingsProvider {
     val activations = mutableListOf<String>()
     var exit: IgmSettingsExit = IgmSettingsExit.Close
     var videoValue = "Off"
+    var actionPrompt: IgmSettingsExit.Prompt? = null
     private var onChanged: (() -> Unit)? = null
 
     override fun screen(path: List<String>): GenericIgmSettingsScreen = when (path) {
@@ -31,7 +32,10 @@ private class FakeProvider : IgmSettingsProvider {
         videoValue = "On"
     }
 
-    override fun activate(itemKey: String) { activations.add(itemKey) }
+    override fun activate(itemKey: String): IgmSettingsExit.Prompt? {
+        activations.add(itemKey)
+        return actionPrompt
+    }
     override fun exitPrompt(): IgmSettingsExit = exit
     override fun setOnChanged(callback: () -> Unit) { onChanged = callback }
     fun fireChanged() { onChanged?.invoke() }
@@ -50,7 +54,7 @@ private class NestedProvider : IgmSettingsProvider {
         else -> GenericIgmSettingsScreen("", emptyList())
     }
     override fun cycle(itemKey: String, direction: Int) {}
-    override fun activate(itemKey: String) {}
+    override fun activate(itemKey: String): IgmSettingsExit.Prompt? = null
     override fun exitPrompt(): IgmSettingsExit = IgmSettingsExit.Close
     override fun setOnChanged(callback: () -> Unit) {}
 }
@@ -68,7 +72,7 @@ private class ShrinkProvider : IgmSettingsProvider {
             ),
         )
     override fun cycle(itemKey: String, direction: Int) {}
-    override fun activate(itemKey: String) {}
+    override fun activate(itemKey: String): IgmSettingsExit.Prompt? = null
     override fun exitPrompt(): IgmSettingsExit = IgmSettingsExit.Close
     override fun setOnChanged(callback: () -> Unit) {}
 }
@@ -199,5 +203,20 @@ class ProviderSettingsControllerTest {
         p.videoValue = "On"
         val s = c.state() as ProviderSettingsController.State.Menu
         assertEquals(listOf("On"), s.items.map { (it as GenericIgmSettingsItem.Choice).value })
+    }
+
+    @Test
+    fun `an action that returns a prompt enters the prompt state`() {
+        val p = FakeProvider()
+        var chosen = -1
+        p.actionPrompt = IgmSettingsExit.Prompt("Save?", listOf("A", "B")) { chosen = it }
+        val c = ProviderSettingsController(p)
+        c.enter()
+        c.onNav(ProviderSettingsController.Nav.DOWN)
+        val s = c.onNav(ProviderSettingsController.Nav.CONFIRM) as ProviderSettingsController.State.Prompt
+        assertEquals(listOf("A", "B"), s.options)
+        c.onNav(ProviderSettingsController.Nav.DOWN)
+        assertTrue(c.onNav(ProviderSettingsController.Nav.CONFIRM) is ProviderSettingsController.State.Closed)
+        assertEquals(1, chosen)
     }
 }

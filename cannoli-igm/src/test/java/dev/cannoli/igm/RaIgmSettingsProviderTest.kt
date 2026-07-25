@@ -160,11 +160,41 @@ class RaIgmSettingsProviderTest {
     }
 
     @Test
-    fun `activating the RetroArch Menu action opens the native menu`() {
+    fun `activating the RetroArch Menu action opens the native menu when clean`() {
         val opened = mutableListOf<Unit>()
         val p = provider(host(), opened)
         p.screen(emptyList())
-        p.activate(RA_MENU_KEY)
+        assertNull(p.activate(RA_MENU_KEY))
+        assertEquals(1, opened.size)
+    }
+
+    @Test
+    fun `RetroArch Menu when dirty prompts to save first then opens the native menu`() {
+        val h = host()
+        val opened = mutableListOf<Unit>()
+        val p = provider(h, opened)
+        p.screen(listOf(LATENCY))
+        p.cycle("run_ahead_enabled", 1)
+        val prompt = p.activate(RA_MENU_KEY)!!
+        assertEquals(
+            listOf(RaOptionStrings().savePlatform, RaOptionStrings().saveGame, RaOptionStrings().dontSave),
+            prompt.options,
+        )
+        assertTrue(opened.isEmpty())
+        prompt.onChoice(1)
+        assertEquals(listOf(RaOverrideScope.GAME), h.savedScopes)
+        assertEquals(1, opened.size)
+    }
+
+    @Test
+    fun `RetroArch Menu when dirty and discarded still opens the native menu without saving`() {
+        val h = host()
+        val opened = mutableListOf<Unit>()
+        val p = provider(h, opened)
+        p.screen(listOf(LATENCY))
+        p.cycle("run_ahead_enabled", 1)
+        p.activate(RA_MENU_KEY)!!.onChoice(2)
+        assertTrue(h.savedScopes.isEmpty())
         assertEquals(1, opened.size)
     }
 

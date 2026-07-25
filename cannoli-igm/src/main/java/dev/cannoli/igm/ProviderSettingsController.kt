@@ -61,7 +61,15 @@ class ProviderSettingsController(private val provider: IgmSettingsProvider) {
             }
             Nav.CONFIRM -> when (val item = items.getOrNull(level.cursor)) {
                 is GenericIgmSettingsItem.Category -> levels.addLast(Level(level.path + item.key, 0))
-                is GenericIgmSettingsItem.Action -> { provider.activate(item.key); return State.ActionFired }
+                is GenericIgmSettingsItem.Action -> {
+                    val requested = provider.activate(item.key)
+                    if (requested != null) {
+                        prompt = requested
+                        promptCursor = 0
+                        return State.Prompt(requested.title, requested.options, 0)
+                    }
+                    return State.ActionFired
+                }
                 else -> {}
             }
             Nav.BACK -> if (levels.size > 1) levels.removeLast() else return exit()

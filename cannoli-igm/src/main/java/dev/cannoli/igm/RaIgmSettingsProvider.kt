@@ -110,8 +110,25 @@ class RaIgmSettingsProvider(
         replaceSetting(i, currentSettings[i].copy(value = value))
     }
 
-    override fun activate(itemKey: String) {
-        if (itemKey == RA_MENU_KEY) onOpenNativeMenu()
+    override fun activate(itemKey: String): IgmSettingsExit.Prompt? {
+        if (itemKey != RA_MENU_KEY) return null
+        if (!dirty) {
+            onOpenNativeMenu()
+            return null
+        }
+        // Unsaved RA changes: prompt to save first, then open the native menu, matching
+        // the old north-button shortcut (IGMController handleRaOptionsKey keycode 100).
+        return IgmSettingsExit.Prompt(
+            title = null,
+            options = listOf(strings.savePlatform, strings.saveGame, strings.dontSave),
+        ) { choice ->
+            when (choice) {
+                0 -> host.raSaveOverride(RaOverrideScope.CONTENT_DIR)
+                1 -> host.raSaveOverride(RaOverrideScope.GAME)
+            }
+            dirty = false
+            onOpenNativeMenu()
+        }
     }
 
     override fun exitPrompt(): IgmSettingsExit =
