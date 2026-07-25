@@ -121,6 +121,10 @@ class RaIgmSettingsProvider(
         return IgmSettingsExit.Prompt(
             title = null,
             options = listOf(strings.savePlatform, strings.saveGame, strings.dontSave),
+            onCancel = {
+                dirty = false
+                onOpenNativeMenu()
+            },
         ) { choice ->
             when (choice) {
                 0 -> host.raSaveOverride(RaOverrideScope.CONTENT_DIR)

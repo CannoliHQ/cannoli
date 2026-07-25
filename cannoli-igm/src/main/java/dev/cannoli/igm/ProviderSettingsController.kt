@@ -92,7 +92,7 @@ class ProviderSettingsController(private val provider: IgmSettingsProvider) {
             Nav.UP -> if (count > 0) promptCursor = (promptCursor - 1 + count) % count
             Nav.DOWN -> if (count > 0) promptCursor = (promptCursor + 1) % count
             Nav.CONFIRM -> { p.onChoice(promptCursor); return closeAll() }
-            Nav.BACK -> return closeAll()
+            Nav.BACK -> { p.onCancel?.invoke(); return closeAll() }
             else -> {}
         }
         return State.Prompt(p.title, p.options, promptCursor)

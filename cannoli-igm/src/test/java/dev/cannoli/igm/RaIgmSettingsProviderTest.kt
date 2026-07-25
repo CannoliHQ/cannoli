@@ -199,6 +199,19 @@ class RaIgmSettingsProviderTest {
     }
 
     @Test
+    fun `RetroArch Menu when dirty and cancelled opens the native menu without saving`() {
+        val h = host()
+        val opened = mutableListOf<Unit>()
+        val p = provider(h, opened)
+        p.screen(listOf(LATENCY))
+        p.cycle("run_ahead_enabled", 1)
+        val prompt = p.activate(RA_MENU_KEY)!!
+        prompt.onCancel!!.invoke()
+        assertTrue(h.savedScopes.isEmpty())
+        assertEquals(1, opened.size)
+    }
+
+    @Test
     fun `a restart-required setting carries the restart hint`() {
         val h = host()
         h.settings["video_threaded"] =

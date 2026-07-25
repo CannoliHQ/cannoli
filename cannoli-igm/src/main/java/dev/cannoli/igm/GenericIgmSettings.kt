@@ -21,6 +21,7 @@ sealed interface IgmSettingsExit {
     data class Prompt(
         val title: String?,
         val options: List<String>,
+        val onCancel: (() -> Unit)? = null,
         val onChoice: (Int) -> Unit,
     ) : IgmSettingsExit
 }
