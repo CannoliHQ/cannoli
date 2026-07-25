@@ -17,6 +17,7 @@ class ProviderSettingsController(private val provider: IgmSettingsProvider) {
             val selectedIndex: Int,
         ) : State
         data object Closed : State
+        data object ActionFired : State
     }
 
     private class Level(val path: List<String>, var cursor: Int)
@@ -60,7 +61,7 @@ class ProviderSettingsController(private val provider: IgmSettingsProvider) {
             }
             Nav.CONFIRM -> when (val item = items.getOrNull(level.cursor)) {
                 is GenericIgmSettingsItem.Category -> levels.addLast(Level(level.path + item.key, 0))
-                is GenericIgmSettingsItem.Action -> provider.activate(item.key)
+                is GenericIgmSettingsItem.Action -> { provider.activate(item.key); return State.ActionFired }
                 else -> {}
             }
             Nav.BACK -> if (levels.size > 1) levels.removeLast() else return exit()

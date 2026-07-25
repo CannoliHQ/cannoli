@@ -145,12 +145,21 @@ class ProviderSettingsControllerTest {
     }
 
     @Test
-    fun `confirm on an action dispatches and stays put`() {
+    fun `confirm on an action fires it and yields ActionFired`() {
         val (c, p) = enter()
         c.onNav(ProviderSettingsController.Nav.DOWN)
         val s = c.onNav(ProviderSettingsController.Nav.CONFIRM)
         assertEquals(listOf("info"), p.activations)
-        assertTrue(s is ProviderSettingsController.State.Menu)
+        assertTrue(s is ProviderSettingsController.State.ActionFired)
+    }
+
+    @Test
+    fun `state after an action is the unchanged menu`() {
+        val (c, _) = enter()
+        c.onNav(ProviderSettingsController.Nav.DOWN)
+        c.onNav(ProviderSettingsController.Nav.CONFIRM)
+        val s = c.state() as ProviderSettingsController.State.Menu
+        assertEquals(1, s.selectedIndex)
     }
 
     @Test

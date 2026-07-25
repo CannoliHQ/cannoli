@@ -533,6 +533,7 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
                 providerNav = null
                 if (currentScreen is IGMScreen.ProviderSettings || currentScreen is IGMScreen.SettingsExitPrompt) pop()
             }
+            is ProviderSettingsController.State.ActionFired -> { /* the activate() call already pushed its own screen (or nothing); don't touch the stack */ }
         }
     }
 

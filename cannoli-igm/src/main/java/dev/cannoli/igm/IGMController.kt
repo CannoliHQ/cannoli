@@ -445,6 +445,7 @@ class IGMController(
                 providerNav = null
                 if (currentScreen is IGMScreen.ProviderSettings || currentScreen is IGMScreen.SettingsExitPrompt) pop()
             }
+            is ProviderSettingsController.State.ActionFired -> { /* activate() pushed its own screen (or nothing); leave the stack untouched */ }
         }
     }
 
