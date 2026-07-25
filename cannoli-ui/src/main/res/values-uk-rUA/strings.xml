@@ -670,7 +670,7 @@
     <string name="kbd_help_group_action">Дія</string>
     <string name="kbd_help_move_selection">ПЕРЕМІЩЕННЯ ВИБОРУ</string>
     <string name="kbd_help_press">НАТИСНУТИ КЛАВІШУ</string>
-    <string name="kbd_help_backspace">BACKSPACE</string>
+    <string name="kbd_help_backspace">ВИДАЛИТИ</string>
     <string name="kbd_help_space">ПРОБІЛ</string>
     <string name="kbd_help_shift">SHIFT / CAPS (ТАП)</string>
     <string name="kbd_help_symbols">СИМВОЛИ (УТРИМАННЯ)</string>
