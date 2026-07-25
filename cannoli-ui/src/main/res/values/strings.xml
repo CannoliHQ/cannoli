@@ -91,9 +91,9 @@
     <string name="setting_font">Font</string>
     <string name="setting_title">Title</string>
     <string name="setting_bg_image">Background Image</string>
-    <string name="setting_wifi">Wi-Fi</string>
+    <string name="setting_wifi" translatable="false">Wi-Fi</string>
     <string name="setting_vpn">VPN</string>
-    <string name="setting_bluetooth">Bluetooth</string>
+    <string name="setting_bluetooth" translatable="false">Bluetooth</string>
     <string name="setting_clock">Clock</string>
     <string name="setting_battery">Battery</string>
     <string name="setting_kitchen_running">Kitchen Running</string>
@@ -125,8 +125,8 @@
     <string name="canonical_r1" translatable="false">R1</string>
     <string name="canonical_l2" translatable="false">L2</string>
     <string name="canonical_r2" translatable="false">R2</string>
-    <string name="canonical_l3">L3</string>
-    <string name="canonical_r3">R3</string>
+    <string name="canonical_l3" translatable="false">L3</string>
+    <string name="canonical_r3" translatable="false">R3</string>
     <string name="canonical_start">Start</string>
     <string name="canonical_select">Select</string>
     <string name="canonical_menu">Menu</string>
@@ -253,11 +253,11 @@
         <item quantity="one">%1$d added to downloads</item>
         <item quantity="other">%1$d added to downloads</item>
     </plurals>
-    <string name="download_percent">%1$d%%</string>
+    <string name="download_percent" translatable="false">%1$d%%</string>
     <string name="romm_download_notification_title">RomM Downloads</string>
     <string name="romm_download_notification_starting">Starting downloads</string>
     <string name="romm_download_notification_active">Downloading</string>
-    <string name="romm_download_notification_progress">%1$s  %2$d%%</string>
+    <string name="romm_download_notification_progress" translatable="false">%1$s  %2$d%%</string>
     <string name="romm_download_notification_count">%1$d downloading</string>
     <string name="romm_art_notification_active">Downloading box art</string>
     <string name="label_retry">RETRY</string>
@@ -324,11 +324,11 @@
     <string name="logging_rom_scan">ROM Scan</string>
     <string name="logging_input">Input</string>
     <string name="logging_session">Game Session</string>
-    <string name="logging_kitchen">Nonna\'s Kitchen</string>
+    <string name="logging_kitchen" translatable="false">Nonna\'s Kitchen</string>
     <string name="logging_storage">Storage</string>
-    <string name="logging_romm">RomM</string>
+    <string name="logging_romm" translatable="false">RomM</string>
     <string name="setting_input_tester">Input Tester</string>
-    <string name="input_tester_none">—</string>
+    <string name="input_tester_none" translatable="false">—</string>
     <string name="input_tester_device_format">P%1$d • %2$s • dev%3$d</string>
     <string name="input_tester_exit_hint">Hold Start + Select To Exit</string>
     <string name="input_tester_device_keyboard">keyboard</string>
@@ -345,7 +345,7 @@
     <string name="value_cannoli_root">Cannoli Root</string>
     <string name="value_platforms">Default</string>
     <string name="value_collections">Collections Only</string>
-    <string name="value_five_game_handheld">Five Game Handheld</string>
+    <string name="value_five_game_handheld" translatable="false">Five Game Handheld</string>
     <string name="value_fit">Fit</string>
     <string name="value_original">Original</string>
     <string name="value_fit_width">Fit Width</string>
@@ -412,7 +412,7 @@
     <!-- Formatted strings -->
     <string name="collection_created">%1$s Created</string>
     <string name="selected_count">%1$d Selected</string>
-    <string name="battery_level">%1$d%%</string>
+    <string name="battery_level" translatable="false">%1$d%%</string>
 
     <!-- Onboarding wizard -->
     <string name="onboarding_header">SET UP CANNOLI</string>
@@ -444,12 +444,12 @@
     <string name="origin_collection">Collection</string>
 
     <!-- About -->
-    <string name="about_title">Cannoli</string>
+    <string name="about_title" translatable="false">Cannoli</string>
     <string name="about_description">A frontend with just the right amount of filling!</string>
-    <string name="about_website">cannoli.dev</string>
+    <string name="about_website" translatable="false">cannoli.dev</string>
 
     <!-- Kitchen -->
-    <string name="kitchen_title">Nonna\'s Kitchen</string>
+    <string name="kitchen_title" translatable="false">Nonna\'s Kitchen</string>
     <string name="kitchen_notification_running">Nonna\'s Kitchen is running</string>
     <string name="kitchen_notification_active">File server active</string>
     <string name="kitchen_notification_stop">Stop</string>
@@ -476,7 +476,7 @@
     <!-- Quick menu -->
     <string name="quick_menu_title">Quick Menu</string>
     <string name="quick_menu_romm">Browse RomM</string>
-    <string name="quick_menu_kitchen">Nonna\'s Kitchen</string>
+    <string name="quick_menu_kitchen" translatable="false">Nonna\'s Kitchen</string>
     <string name="quick_menu_rescan">Rescan Library</string>
     <string name="quick_menu_info">Network Info</string>
     <string name="quick_menu_sync_history">Save Sync History</string>
@@ -490,7 +490,7 @@
     <string name="quick_info_offline">No network</string>
 
     <!-- RetroAchievements -->
-    <string name="ra_title">RetroAchievements</string>
+    <string name="ra_title" translatable="false">RetroAchievements</string>
     <string name="ra_logged_in_as">Logged in as</string>
     <string name="ra_login_failed">RA: Login failed</string>
     <string name="ra_login_invalid">Invalid username or password</string>
