@@ -2905,6 +2905,7 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
         overrideManager.savePlatform(settings)
         platformBaseline = overrideManager.loadPlatformBaseline()
         activeInputRemap = settings.inputRemap
+        showOsd(getString(R.string.osd_saved_for, platformName), OsdPosition.BottomCenter)
     }
 
     override fun saveToGame() {
@@ -2912,6 +2913,7 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
         val baseline = platformBaseline ?: overrideManager.loadPlatformBaseline()
         overrideManager.saveGameDelta(settings, baseline)
         activeInputRemap = settings.inputRemap
+        showOsd(getString(R.string.osd_saved_for_game), OsdPosition.BottomCenter)
     }
 
     private fun sourceLabel(source: OverrideSource): String = when (source) {
