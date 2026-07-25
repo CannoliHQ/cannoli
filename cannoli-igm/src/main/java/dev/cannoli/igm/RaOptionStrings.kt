@@ -1,6 +1,7 @@
 package dev.cannoli.igm
 
 data class RaOptionStrings(
+    val rootTitle: String = "Settings",
     val on: String = "On",
     val off: String = "Off",
     val restartHint: String = "Applies on relaunch",
