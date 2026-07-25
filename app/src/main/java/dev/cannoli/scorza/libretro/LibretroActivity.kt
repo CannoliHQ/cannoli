@@ -39,7 +39,6 @@ import dev.cannoli.igm.GuideFile
 import dev.cannoli.igm.GuideManager
 import dev.cannoli.igm.GuideType
 import dev.cannoli.igm.IGMScreen
-import dev.cannoli.igm.IGMSettings
 import dev.cannoli.igm.IGMSettingsItem
 import dev.cannoli.igm.IgmMenuAction
 import dev.cannoli.igm.InGameMenuOptions
@@ -1441,14 +1440,8 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
      */
     private fun igmHandlerFor(screen: IGMScreen): dev.cannoli.scorza.input.ScreenInputHandler? = when (screen) {
         is IGMScreen.Menu -> simpleIgmHandler { btn -> handleMenuInput(screen, btn) }
-        is IGMScreen.Settings -> simpleIgmHandler { btn -> handleCategoryInput(screen, btn) }
-        is IGMScreen.Video -> simpleIgmHandler { btn -> handleVideoInput(screen, btn) }
-        is IGMScreen.Input -> simpleIgmHandler { btn -> handleInputInput(screen, btn) }
-        is IGMScreen.Advanced -> simpleIgmHandler { btn -> handleAdvancedInput(screen, btn) }
         is IGMScreen.ShaderSettings -> simpleIgmHandler { btn -> handleShaderSettingsInput(screen, btn) }
-        is IGMScreen.Emulator -> simpleIgmHandler { btn -> handleEmulatorInput(screen, btn) }
-        is IGMScreen.EmulatorCategory -> simpleIgmHandler { btn -> handleEmulatorCategoryInput(screen, btn) }
-        is IGMScreen.SavePrompt -> simpleIgmHandler { btn -> handleSavePromptInput(screen, btn) }
+        is IGMScreen.SavePrompt -> null
         is IGMScreen.Info -> simpleIgmHandler { btn ->
             when (btn) {
                 "btn_east", "btn_south" -> { infoScrollDir = 0; pop(); true }
@@ -1914,44 +1907,6 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
         }
     }
 
-    // --- Settings category screen ---
-
-    private fun handleCategoryInput(screen: IGMScreen.Settings, button: String?): Boolean {
-        val count = IGMSettings.CATEGORIES.size
-        return when (button) {
-            "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
-            }
-            "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
-            }
-            "btn_south" -> {
-                when (screen.selectedIndex) {
-                    IGMSettings.VIDEO -> push(IGMScreen.Video())
-                    IGMSettings.EMULATOR -> {
-                        coreOptions = loadVisibleCoreOptions()
-                        coreCategories = runner.getCoreCategories()
-                        push(IGMScreen.Emulator())
-                    }
-                    IGMSettings.INPUT -> push(IGMScreen.Input())
-                    IGMSettings.ADVANCED -> push(IGMScreen.Advanced())
-                    IGMSettings.INFO -> push(IGMScreen.Info())
-                }
-                true
-            }
-            "btn_east" -> {
-                val snap = frontendSnapshot
-                if (snap != null && (shaderParamsDirty || !buildCurrentSettings().frontendEquals(snap))) {
-                    push(IGMScreen.SavePrompt())
-                } else {
-                    pop()
-                }
-                true
-            }
-            else -> true
-        }
-    }
-
     // --- Frontend ---
 
     override fun scalingLabel() = when (scalingMode) {
@@ -2078,32 +2033,6 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
         renderer.overlayPath = resolveOverlayPath()
     }
 
-    private fun handleVideoInput(screen: IGMScreen.Video, button: String?): Boolean {
-        val hasParams = shaderParams.isNotEmpty()
-        val count = buildSettingsItems().size
-        if (count == 0) return true
-        return when (button) {
-            "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
-            }
-            "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
-            }
-            "btn_left", "btn_right" -> {
-                val dir = if (button == "btn_right") 1 else -1
-                cycleVideoValue(screen.selectedIndex, dir, hasParams)
-                true
-            }
-            "btn_south" -> {
-                val shaderSettingsIdx = if (hasParams) 3 else -1
-                if (screen.selectedIndex == shaderSettingsIdx) push(IGMScreen.ShaderSettings())
-                true
-            }
-            "btn_east" -> { pop(); true }
-            else -> true
-        }
-    }
-
     private fun cycleVideoValue(index: Int, direction: Int, hasParams: Boolean) {
         when (index) {
             0 -> {
@@ -2119,26 +2048,6 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
             2 -> cycleShader(direction)
             3 -> if (!hasParams) cycleOverlay(direction)
             4 -> cycleOverlay(direction)
-        }
-    }
-
-    private fun handleAdvancedInput(screen: IGMScreen.Advanced, button: String?): Boolean {
-        val count = buildSettingsItems().size
-        if (count == 0) return true
-        return when (button) {
-            "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
-            }
-            "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
-            }
-            "btn_left", "btn_right" -> {
-                val dir = if (button == "btn_right") 1 else -1
-                cycleAdvancedValue(screen.selectedIndex, dir)
-                true
-            }
-            "btn_east" -> { pop(); true }
-            else -> true
         }
     }
 
@@ -2163,22 +2072,6 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
             applyForceAnalog(ct.id > 1)
         }
         runner.setControllerPortDevice(port, ct.id)
-    }
-
-    private fun cycleAdvancedValue(index: Int, direction: Int) {
-        val portRows = if (controllerTypes.size > 1) {
-            val ports = occupiedPorts()
-            if (ports.size <= 1) listOf(0) else ports
-        } else emptyList()
-        if (index < portRows.size) {
-            cyclePortDeviceType(portRows[index], direction)
-            return
-        }
-        when (index - portRows.size) {
-            0 -> cycleFfSpeed(direction)
-            1 -> toggleShowFps()
-            2 -> toggleDebugHud()
-        }
     }
 
     private fun applyForceAnalog(enable: Boolean) {
@@ -2500,98 +2393,6 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
 
     // --- Emulator ---
 
-    private fun emulatorMenuItems(): List<String> {
-        if (coreOptions.isEmpty()) return listOf("No options available")
-        val usedCategories = coreCategories.filter { cat -> coreOptions.any { it.category == cat.key } }
-        if (usedCategories.isEmpty()) return emptyList()
-        val items = usedCategories.map { it.desc }.toMutableList()
-        val uncategorized = coreOptions.filter { it.category.isEmpty() }
-        if (uncategorized.isNotEmpty()) items.add("Other")
-        return items
-    }
-
-    private fun emulatorHasCategories(): Boolean =
-        coreCategories.isNotEmpty() && coreOptions.any { it.category.isNotEmpty() }
-
-    private fun handleEmulatorInput(screen: IGMScreen.Emulator, button: String?): Boolean {
-        if (screen.showDescription) {
-            return if (button == "btn_east" || button == "btn_south") {
-                replaceTop(screen.copy(showDescription = false)); true
-            } else true
-        }
-        if (coreOptions.isEmpty()) {
-            return if (button == "btn_east") { pop(); true } else true
-        }
-        if (emulatorHasCategories()) {
-            val items = emulatorMenuItems()
-            val count = items.size
-            return when (button) {
-                "btn_up" -> {
-                    replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
-                }
-                "btn_down" -> {
-                    replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
-                }
-                "btn_south" -> {
-                    val usedCategories = coreCategories.filter { cat -> coreOptions.any { it.category == cat.key } }
-                    val cat = usedCategories.getOrNull(screen.selectedIndex)
-                    push(IGMScreen.EmulatorCategory(categoryKey = cat?.key ?: "", categoryTitle = cat?.desc ?: ""))
-                    true
-                }
-                "btn_east" -> { pop(); true }
-                else -> true
-            }
-        }
-        val count = coreOptions.size
-        return when (button) {
-            "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
-            }
-            "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
-            }
-            "btn_left" -> { cycleEmulatorValue(coreOptions, screen.selectedIndex, -1); true }
-            "btn_right" -> { cycleEmulatorValue(coreOptions, screen.selectedIndex, 1); true }
-            "btn_south" -> {
-                val info = coreOptions.getOrNull(screen.selectedIndex)?.info
-                if (!info.isNullOrEmpty()) replaceTop(screen.copy(showDescription = true))
-                true
-            }
-            "btn_east" -> { pop(); true }
-            else -> true
-        }
-    }
-
-    private fun handleEmulatorCategoryInput(screen: IGMScreen.EmulatorCategory, button: String?): Boolean {
-        if (screen.showDescription) {
-            return if (button == "btn_east" || button == "btn_south") {
-                replaceTop(screen.copy(showDescription = false)); true
-            } else true
-        }
-        val filtered = coreOptions.filter { it.category == screen.categoryKey }
-        if (filtered.isEmpty()) {
-            return if (button == "btn_east") { pop(); true } else true
-        }
-        val count = filtered.size
-        return when (button) {
-            "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
-            }
-            "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
-            }
-            "btn_left" -> { cycleEmulatorValue(filtered, screen.selectedIndex, -1); true }
-            "btn_right" -> { cycleEmulatorValue(filtered, screen.selectedIndex, 1); true }
-            "btn_south" -> {
-                val info = filtered.getOrNull(screen.selectedIndex)?.info
-                if (!info.isNullOrEmpty()) replaceTop(screen.copy(showDescription = true))
-                true
-            }
-            "btn_east" -> { pop(); true }
-            else -> true
-        }
-    }
-
     private fun loadVisibleCoreOptions(): List<LibretroRunner.CoreOption> {
         val all = runner.getCoreOptions()
         if (!coreRequiresHwRender) return all
@@ -2697,90 +2498,13 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
         overrideManager.saveShortcuts(shortcutSource, shortcuts)
     }
 
-    // --- Save Prompt ---
-
-    private fun handleSavePromptInput(screen: IGMScreen.SavePrompt, button: String?): Boolean {
-        val count = buildSettingsItems().size
-        if (count == 0) return true
-        return when (button) {
-            "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
-            }
-            "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
-            }
-            "btn_south" -> {
-                when (screen.selectedIndex) {
-                    0 -> { saveToPlatform(); showOsd(getString(R.string.osd_saved_for, platformName), OsdPosition.BottomCenter) }
-                    1 -> { saveToGame(); showOsd(getString(R.string.osd_saved_for_game), OsdPosition.BottomCenter) }
-                }
-                frontendSnapshot = null
-                shaderParamsDirty = false
-                pop(); pop()
-                true
-            }
-            "btn_east" -> {
-                frontendSnapshot = null
-                shaderParamsDirty = false
-                pop(); pop()
-                true
-            }
-            else -> true
-        }
-    }
-
     // --- Settings item builders ---
 
     private fun buildSettingsItems(): List<IGMSettingsItem> = when (val screen = currentScreen) {
-        is IGMScreen.Settings -> IGMSettings.CATEGORIES.map { IGMSettingsItem(it) }
-        is IGMScreen.Video -> buildList {
-            add(IGMSettingsItem("Screen Scaling", scalingLabel()))
-            add(IGMSettingsItem("Screen Sharpness", sharpnessLabel()))
-            add(IGMSettingsItem("Shader", shaderLabel()))
-            if (shaderParams.isNotEmpty()) add(IGMSettingsItem("Shader Settings"))
-            add(IGMSettingsItem("Overlay", overlayLabel()))
-        }
-        is IGMScreen.Input -> buildInputItems()
-        is IGMScreen.Advanced -> buildList {
-            if (controllerTypes.size > 1) {
-                val ports = occupiedPorts()
-                if (ports.size <= 1) {
-                    add(IGMSettingsItem("Controller Type", deviceTypeLabel(0)))
-                } else {
-                    for (p in ports) add(IGMSettingsItem("P${p + 1} Controller", deviceTypeLabel(p)))
-                }
-            }
-            add(IGMSettingsItem("Max FF Speed", "${maxFfSpeed}x"))
-            add(IGMSettingsItem("Show FPS", if (showFpsBaseline) "On" else "Off"))
-            add(IGMSettingsItem("Debug HUD", if (debugHud) "On" else "Off"))
-        }
         is IGMScreen.ShaderSettings -> {
             if (shaderParams.isEmpty()) listOf(IGMSettingsItem("No parameters"))
             else shaderParams.map { p ->
                 IGMSettingsItem(p.description, "%.2f".format(p.value))
-            }
-        }
-        is IGMScreen.Emulator -> {
-            if (emulatorHasCategories()) {
-                val usedCategories = coreCategories.filter { cat -> coreOptions.any { it.category == cat.key } }
-                val items = usedCategories.map { IGMSettingsItem(it.desc, hint = it.info.ifEmpty { null }) }.toMutableList()
-                val uncategorized = coreOptions.filter { it.category.isEmpty() }
-                if (uncategorized.isNotEmpty()) items.add(IGMSettingsItem("Other"))
-                items
-            } else if (coreOptions.isEmpty()) {
-                listOf(IGMSettingsItem("No options available"))
-            } else {
-                coreOptions.map { opt ->
-                    val label = opt.values.find { it.value == opt.selected }?.label ?: opt.selected
-                    IGMSettingsItem(opt.desc, label, hint = opt.info.ifEmpty { null })
-                }
-            }
-        }
-        is IGMScreen.EmulatorCategory -> {
-            val filtered = coreOptions.filter { it.category == screen.categoryKey }
-            filtered.map { opt ->
-                val label = opt.values.find { it.value == opt.selected }?.label ?: opt.selected
-                IGMSettingsItem(opt.desc, label, hint = opt.info.ifEmpty { null })
             }
         }
         is IGMScreen.Shortcuts -> buildList {
@@ -2792,32 +2516,8 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
                 add(IGMSettingsItem(getString(action.labelRes), label))
             }
         }
-        is IGMScreen.SavePrompt -> listOf(
-            IGMSettingsItem("Save for $platformName"),
-            IGMSettingsItem("Save for this game"),
-            IGMSettingsItem("Discard")
-        )
         is IGMScreen.Buttons -> buildButtonsItems(screen)
         else -> emptyList()
-    }
-
-    private fun buildInputItems(): List<IGMSettingsItem> = buildList {
-        add(IGMSettingsItem(getString(R.string.igm_button_mappings)))
-        add(IGMSettingsItem(getString(R.string.title_shortcuts)))
-        add(
-            IGMSettingsItem(
-                getString(R.string.igm_left_stick_dpad),
-                getString(if (leftStickAsDpad) R.string.value_on else R.string.value_off),
-            )
-        )
-        if (experimentalFeatures) {
-            add(
-                IGMSettingsItem(
-                    getString(R.string.igm_dpad_mode),
-                    getString(if (allowDiagonals) R.string.value_dpad_8way else R.string.value_dpad_4way),
-                )
-            )
-        }
     }
 
     private fun buildButtonsItems(screen: IGMScreen.Buttons): List<IGMSettingsItem> = buildList {
@@ -3295,34 +2995,6 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
         return mapping.bindings.entries.firstOrNull { (_, bindings) ->
             bindings.any { it is dev.cannoli.scorza.input.InputBinding.Button && it.keyCode == keyCode }
         }?.key
-    }
-
-    private fun handleInputInput(screen: IGMScreen.Input, button: String?): Boolean {
-        val count = buildInputItems().size
-        return when (button) {
-            "btn_up" -> {
-                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, -1))); true
-            }
-            "btn_down" -> {
-                replaceTop(screen.copy(selectedIndex = wrapIndex(screen.selectedIndex, count, 1))); true
-            }
-            "btn_left", "btn_right" -> {
-                when (screen.selectedIndex) {
-                    IGMSettings.Input.LEFT_STICK_DPAD -> toggleLeftStickAsDpad()
-                    IGMSettings.Input.DPAD_MODE -> toggleDpadMode()
-                }
-                true
-            }
-            "btn_south" -> {
-                when (screen.selectedIndex) {
-                    IGMSettings.Input.BUTTON_MAPPINGS -> push(IGMScreen.Buttons())
-                    IGMSettings.Input.SHORTCUTS -> push(IGMScreen.Shortcuts())
-                }
-                true
-            }
-            "btn_east" -> { pop(); true }
-            else -> true
-        }
     }
 
     override fun toggleLeftStickAsDpad() {
