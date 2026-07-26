@@ -2,8 +2,8 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Bottom bar labels -->
     <string name="label_back">RETOUR</string>
-    <string name="label_cancel" tools:ignore="ButtonCase">CANCELLER</string>
-    <string name="label_select">SELECTIONNER</string>
+    <string name="label_cancel" tools:ignore="ButtonCase">ANNULER</string>
+    <string name="label_select">SÉLECTIONNER</string>
     <string name="label_play">JOUER</string>
     <string name="label_launch">DÉMARRER</string>
     <string name="label_open">OUVRIR</string>
@@ -34,7 +34,7 @@
     <string name="label_update">MISE À JOUR</string>
     <string name="label_logout">DÉCONNECTER</string>
     <string name="label_offline_sets">PARAMÈTRES HORS CONNEXION</string>
-    <string name="label_hex">HEXADÉCIMAL</string>
+    <string name="label_hex">HEX</string>
     <string name="label_rename">RENOMMER</string>
     <string name="label_set">DÉFINIR</string>
     <string name="label_clear">EFFACER</string>
