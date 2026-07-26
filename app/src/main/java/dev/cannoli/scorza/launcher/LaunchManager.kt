@@ -21,6 +21,7 @@ import dev.cannoli.scorza.model.Rom
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.util.ArchiveExtractor
+import dev.cannoli.scorza.util.parseM3uDiscPaths
 import java.io.File
 import java.io.IOException
 import java.security.MessageDigest
@@ -496,6 +497,8 @@ class LaunchManager(
             colors = igm.colors,
             displaySettings = igm.displaySettings,
             inputMapping = igm.inputMapping,
+            discPaths = rom.path.takeIf { it.extension.equals("m3u", ignoreCase = true) }
+                ?.let(::parseM3uDiscPaths) ?: emptyList(),
         )
     }
 
