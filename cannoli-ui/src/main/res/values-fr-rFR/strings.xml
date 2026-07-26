@@ -73,7 +73,7 @@
     <string name="settings_status_bar">Status Bar</string>
     <string name="settings_input">Input</string>
     <string name="settings_emulation">Emulation</string>
-    <string name="settings_integrations">Integrations</string>
+    <string name="settings_integrations">Intégrations</string>
     <string name="settings_advanced">Advanced</string>
     <string name="settings_debug">Debug</string>
     <string name="settings_about">About</string>
@@ -130,7 +130,7 @@
     <string name="binding_axis_neg">Axis %1$d-</string>
     <string name="setting_shortcuts">Shortcuts</string>
     <string name="setting_swap_play_resume">Swap Play and Resume</string>
-    <string name="setting_main_menu_quit">Main Menu Quit</string>
+    <string name="setting_main_menu_quit"></string>
     <string name="setting_always_save_on_quit">Save State On Quit</string>
     <string name="setting_kitchen_code_bypass">Kitchen Code Bypass</string>
     <string name="setting_experimental_features">Experimental Features</string>
@@ -182,7 +182,7 @@
     <string name="romm_pair_rate_limited">Too many attempts, try again later</string>
     <string name="romm_unreachable">Could not reach server</string>
     <string name="romm_pair_waiting">Scan to pair this device</string>
-    <string name="romm_pair_denied">Pairing request denied</string>
+    <string name="romm_pair_denied">Demande d\'appairage refusée</string>
     <string name="romm_pair_expired">Pairing request expired</string>
     <string name="romm_server_too_old">RomM server is too old. Version 5.0 or newer is required.</string>
     <string name="romm_conn_title">RomM Connection Info</string>
