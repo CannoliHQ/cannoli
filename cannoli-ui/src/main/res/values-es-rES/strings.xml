@@ -2,30 +2,30 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Bottom bar labels -->
     <string name="label_back">Atrás</string>
-    <string name="label_cancel" tools:ignore="ButtonCase">CANCEL</string>
-    <string name="label_select">SELECT</string>
-    <string name="label_play">PLAY</string>
-    <string name="label_launch">LAUNCH</string>
-    <string name="label_open">OPEN</string>
-    <string name="label_save">SAVE</string>
-    <string name="label_load">LOAD</string>
-    <string name="label_change">CHANGE</string>
+    <string name="label_cancel" tools:ignore="ButtonCase">CANCELAR</string>
+    <string name="label_select">SELEECIONAR</string>
+    <string name="label_play">JUGAR</string>
+    <string name="label_launch">LANZAR</string>
+    <string name="label_open">ABRIR</string>
+    <string name="label_save">GUARDAR</string>
+    <string name="label_load">CARGAR</string>
+    <string name="label_change">CAMBIAR</string>
     <string name="label_firmware">FIRMWARE</string>
-    <string name="label_choose">CHOOSE</string>
-    <string name="label_close">CLOSE</string>
-    <string name="label_help">HELP</string>
-    <string name="label_remove">REMOVE SHORTCUT</string>
-    <string name="label_delete">DELETE</string>
-    <string name="label_confirm">CONFIRM</string>
-    <string name="label_toggle">TOGGLE</string>
-    <string name="label_new">NEW</string>
-    <string name="label_settings">SETTINGS</string>
-    <string name="label_resume">RESUME</string>
-    <string name="label_continue">CONTINUE</string>
-    <string name="label_new_folder">NEW</string>
-    <string name="label_parent">PARENT</string>
-    <string name="label_slot">SLOT</string>
-    <string name="label_disc">DISC</string>
+    <string name="label_choose">ELEGIR</string>
+    <string name="label_close">CERRAR</string>
+    <string name="label_help">AYUDA</string>
+    <string name="label_remove">ELIMINAR ACCESO DIRECTO</string>
+    <string name="label_delete">ELIMINAR</string>
+    <string name="label_confirm">CONFIRMAR</string>
+    <string name="label_toggle">ALTERNAR</string>
+    <string name="label_new">NUEVO</string>
+    <string name="label_settings">AJUSTES</string>
+    <string name="label_resume">REANUDAR</string>
+    <string name="label_continue">CONTINUAR</string>
+    <string name="label_new_folder">NUEVO</string>
+    <string name="label_parent">ELEMENTO PADRE</string>
+    <string name="label_slot">RANURA</string>
+    <string name="label_disc">DISCO</string>
     <string name="label_use_location">USE THIS LOCATION</string>
     <string name="label_quit">QUIT</string>
     <string name="label_stop">STOP</string>
@@ -49,9 +49,9 @@
     <string name="label_locked">LOCKED</string>
     <string name="label_reset_all">RESET ALL</string>
     <string name="label_remap">REMAP</string>
-    <string name="label_unmap">UNMAP</string>
+    <string name="label_unmap">DESMAPEAR</string>
     <string name="label_swap">SWAP</string>
-    <string name="label_grant">GRANT</string>
+    <string name="label_grant">CONCEDER</string>
     <string name="igm_reassign_players">Reassign Players</string>
     <!-- In-game shortcut actions -->
     <string name="shortcut_action_save_state">Save State</string>
