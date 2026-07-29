@@ -33,15 +33,18 @@
     <string name="label_credits">АВТОРИ</string>
     <string name="label_update">ОНОВИТИ</string>
     <string name="label_logout">ВИЙТИ З АКАУНТУ</string>
+    <!-- Bottom-bar button opening cached RetroAchievements sets for offline play. RA = RetroAchievements. -->
     <string name="label_offline_sets">ОФЛАЙН-НАБОРИ</string>
     <string name="label_hex">HEX</string>
     <string name="label_rename">ПЕРЕЙМЕНУВАТИ</string>
     <string name="label_set">ВСТАНОВИТИ</string>
     <string name="label_clear">ОЧИСТИТИ</string>
     <string name="label_press">НАТИСНІТЬ</string>
+    <!-- Bottom-bar button; opens Nonna's Kitchen. -->
     <string name="label_kitchen">КУХНЯ</string>
     <string name="label_hold_buttons" tools:ignore="TypographyEllipsis">УТРИМУЙТЕ ОДНУ АБО ДЕКІЛЬКА КНОПОК...</string>
     <string name="label_info">ІНФО</string>
+    <!-- Bottom-bar button. RA = RetroAchievements. -->
     <string name="label_ra_settings">НАЛАШТУВАННЯ RA</string>
     <string name="label_details">ДЕТАЛІ</string>
     <string name="label_all">УСІ</string>
@@ -52,14 +55,18 @@
     <string name="label_unmap">СКАСУВАТИ ПРИЗНАЧЕННЯ</string>
     <string name="label_swap">ПОМІНЯТИ</string>
     <string name="label_grant">НАДАТИ</string>
+    <!-- In-game menu action: reassign connected controllers to player slots. -->
     <string name="igm_reassign_players">Перепризначити гравців</string>
     <!-- In-game shortcut actions -->
     <string name="shortcut_action_save_state">Зберегти стан</string>
     <string name="shortcut_action_load_state">Завантажити стан</string>
     <string name="shortcut_action_reset_game">Скинути гру</string>
     <string name="shortcut_action_save_and_quit">Зберегти і вийти</string>
+    <!-- In-game shortcut action. "(Hold)" means it triggers on a long-press of the shortcut. -->
     <string name="shortcut_action_save_and_quit_hold">Зберегти і вийти (утримання)</string>
+    <!-- In-game shortcut action: cycle through the video scaling modes. -->
     <string name="shortcut_action_cycle_scaling">Перемкнути масштабування</string>
+    <!-- In-game shortcut action: cycle through the shader presets. -->
     <string name="shortcut_action_cycle_shader">Перемкнути шейдер</string>
     <string name="shortcut_action_toggle_ff">Перемкнути прискорення</string>
     <string name="shortcut_action_hold_ff">Утримувати прискорення</string>
@@ -77,6 +84,7 @@
     <string name="settings_advanced">Додатково</string>
     <string name="settings_debug">Налагодження</string>
     <string name="settings_about">Про програму</string>
+    <!-- Setting: which update channel to follow (e.g. stable versus test builds). -->
     <string name="settings_release_channel">Канал оновлень</string>
     <!-- Settings items -->
     <string name="setting_colors">Кольори</string>
@@ -84,13 +92,17 @@
     <string name="setting_art_scale">Масштаб обкладинки</string>
     <string name="setting_text_size">Розмір тексту</string>
     <string name="setting_font">Шрифт</string>
+    <!-- Appearance setting: shows or hides the title-bar heading text. "Title" here is the heading, not color or box art. -->
     <string name="setting_title">Назва</string>
     <string name="setting_bg_image">Фонове зображення</string>
     <string name="setting_vpn">VPN</string>
     <string name="setting_clock">Годинник</string>
     <string name="setting_battery">Батарея</string>
+    <!-- Status-bar indicator toggle: show when Nonna's Kitchen (file server) is running. -->
     <string name="setting_kitchen_running">«Кухня» запущена</string>
+    <!-- Status-bar indicator toggle for active RomM downloads. -->
     <string name="setting_downloads_running">Завантаження</string>
+    <!-- Status-bar indicator toggle: show when an app update is available. -->
     <string name="setting_updater">Доступне оновлення</string>
     <string name="setting_controllers">Контролери</string>
     <string name="controllers_connected_now">Підключено зараз</string>
@@ -99,10 +111,14 @@
     <string name="controllers_mapping_not_found">Розкладку не знайдено.</string>
     <string name="controllers_edit_buttons">Редагувати кнопки</string>
     <string name="controllers_name">Назва</string>
+    <!-- Controller setting: which face button acts as confirm/OK. -->
     <string name="controllers_confirm_button">Кнопка підтвердження</string>
+    <!-- Controller setting: which face-button glyph set to display (letters like A/B versus shapes). -->
     <string name="controllers_glyph_style">Стиль позначок</string>
+    <!-- Controller toggle: ignore this controller during gameplay (e.g. a media remote). -->
     <string name="controllers_exclude_from_gameplay">Виключити з ігрового процесу</string>
     <string name="controllers_reset_defaults">Скинути до типових</string>
+    <!-- Shown when a button has no assigned binding. -->
     <string name="controllers_not_bound">Не призначено</string>
     <!-- Confirm button values -->
     <!-- Canonical button labels -->
@@ -113,9 +129,13 @@
     <string name="canonical_start">Старт</string>
     <string name="canonical_select">Вибір</string>
     <string name="canonical_menu">Меню</string>
+    <!-- Face-button position, not a compass direction: the bottom face button (South/East/West/North layout). -->
     <string name="canonical_south">Південь</string>
+    <!-- Face-button position (not compass): the right face button. -->
     <string name="canonical_east">Схід</string>
+    <!-- Face-button position (not compass): the left face button. -->
     <string name="canonical_west">Захід</string>
+    <!-- Face-button position (not compass): the top face button. -->
     <string name="canonical_north">Північ</string>
     <!-- Glyph face button labels -->
     <!-- Hat directions -->
@@ -124,45 +144,71 @@
     <string name="hat_left">Вліво</string>
     <string name="hat_right">Вправо</string>
     <!-- Binding formatters -->
+    <!-- Input binding label. %1$d is the numeric key code. -->
     <string name="binding_key">Клавіша %1$d</string>
+    <!-- Input binding label. %1$s is the hat (D-pad) direction. -->
     <string name="binding_hat">Хат %1$s</string>
+    <!-- Input binding label. %1$d is the joystick axis index; + is the positive direction. -->
     <string name="binding_axis_pos">Вісь %1$d+</string>
+    <!-- Input binding label. %1$d is the joystick axis index; - is the negative direction. -->
     <string name="binding_axis_neg">Вісь %1$d-</string>
     <string name="setting_shortcuts">Ярлики</string>
+    <!-- Input setting toggle: swap the on-screen positions of the Play and Resume actions. -->
     <string name="setting_swap_play_resume">Поміняти місцями «Грати» і «Продовжити»</string>
+    <!-- Input setting toggle: controls whether the in-game Quit returns to the main menu. -->
     <string name="setting_main_menu_quit">Вихід у головне меню</string>
+    <!-- Input toggle: automatically save a state when quitting a game. -->
     <string name="setting_always_save_on_quit">Зберігати стан при виході</string>
+    <!-- Advanced setting toggle: skip the passcode gate for Nonna's Kitchen. Keep "Kitchen" consistent with the feature name. -->
     <string name="setting_kitchen_code_bypass">Обхід коду «Кухні»</string>
     <string name="setting_experimental_features">Експериментальні функції</string>
     <string name="setting_set_default_launcher">Встановити як лаунчер за замовчуванням</string>
+    <!-- Advanced action: recreate the standard platform/system folders. -->
     <string name="setting_regenerate_system_folders">Відновити системні папки</string>
+    <!-- Library setting: which content layout to show (platforms, collections only, or Five Game Handheld). -->
     <string name="setting_content_mode">Режим вмісту</string>
+    <!-- Library setting for the Five Game Handheld collection. Keep "5GH" as-is. -->
     <string name="setting_fgh_collection">Колекція 5GH</string>
     <string name="setting_show_recently_played">Недавно грані</string>
+    <!-- Opens the Tools manager (sideloaded utility apps). -->
     <string name="setting_manage_tools">Керування інструментами</string>
+    <!-- Opens the Ports manager. "Ports" means standalone native game ports. -->
     <string name="setting_manage_ports">Керування портами</string>
     <string name="setting_bg_tint">Відтінок фону</string>
+    <!-- Theme color for the title heading text. -->
     <string name="setting_color_title">Назва</string>
     <string name="setting_color_highlight">Виділення</string>
     <string name="setting_color_text">Текст</string>
+    <!-- Theme color: text drawn on the highlighted/selected row. -->
     <string name="setting_color_highlight_text">Текст виділення</string>
     <string name="setting_color_accent">Акцент</string>
     <string name="setting_color_background">Фон</string>
     <string name="setting_color_status_bar">Панель стану</string>
+    <!-- Settings row. %s is the emulator app name (e.g. RetroArch). -->
     <string name="setting_installed_cores">Встановлені ядра %s</string>
+    <!-- Screen title. %s is the emulator app name (e.g. RetroArch). -->
     <string name="title_installed_cores">Встановлені ядра %s</string>
     <string name="installed_cores_none">Ядра не знайдено</string>
+    <!-- Setting: the app's root storage folder on the SD card. -->
     <string name="setting_sd_root">Коренева папка Cannoli</string>
     <string name="setting_rom_directory">Папка ROM</string>
+    <!-- Setting: which installed RetroArch app/package to launch games with. -->
     <string name="setting_ra_package">Пакет RetroArch</string>
     <string name="setting_scan_library">Режим сканування</string>
+    <!-- Scan Mode value: scan the library automatically. -->
     <string name="value_automatically">Автоматично</string>
+    <!-- Scan Mode value: scan the library by hand. "Manual" here is the adverb (by hand), not a game's instruction manual. -->
     <string name="value_manually">Вручну</string>
+    <!-- RA = RetroAchievements account username. -->
     <string name="setting_ra_username">Ім\'я користувача</string>
+    <!-- RA = RetroAchievements account password. -->
     <string name="setting_ra_password">Пароль</string>
+    <!-- RA = RetroAchievements. Button to log in. -->
     <string name="setting_ra_login">Увійти</string>
     <!-- RomM -->
+    <!-- RomM server address (host/URL). -->
     <string name="setting_romm_host">Хост</string>
+    <!-- Toggle: sync save files with the RomM server. -->
     <string name="setting_romm_save_sync">Синхронізація збережень</string>
     <string name="setting_romm_save_backups">Резервні копії збережень</string>
     <string name="dialog_romm_device_name_title">Назвіть цей пристрій</string>
@@ -200,9 +246,12 @@
     <string name="romm_detail_not_on_device">Не на пристрої</string>
     <string name="romm_detail_download">ЗАВАНТАЖИТИ</string>
     <string name="romm_version_picker_title">Яку версію завантажити?</string>
+    <!-- Bottom-bar button opening the game's instruction manual (a document), not "manual/by hand". -->
     <string name="label_manual">ВРУЧНУ</string>
+    <!-- The game's instruction manual (document), not "manual/by hand". -->
     <string name="romm_download_manual">Вручну</string>
     <string name="romm_syncing" tools:ignore="TypographyEllipsis">Створення кешу...</string>
+    <!-- Cache-building status. %1$s is the platform name. -->
     <string name="romm_syncing_platform" tools:ignore="TypographyEllipsis">Створення кешу...\n%1$s</string>
     <string name="romm_sync_collections">Колекції</string>
     <string name="romm_sync_error">Не вдалося з\'єднатися з RomM. Показано кешовану бібліотеку.</string>
@@ -214,6 +263,7 @@
     <string name="romm_download_completed">Завершено</string>
     <string name="romm_osd_download_queued">Додано до завантажень</string>
     <string name="romm_osd_manual_queued">Інструкцію додано до завантажень</string>
+    <!-- Toast. %1$d = number added to the download queue. -->
     <plurals name="romm_osd_downloads_queued">
         <item quantity="one">%1$d додано до завантажень</item>
         <item quantity="few">%1$d додано до завантажень</item>
@@ -223,6 +273,7 @@
     <string name="romm_download_notification_title">Завантаження RomM</string>
     <string name="romm_download_notification_starting">Починається завантаження</string>
     <string name="romm_download_notification_active">Завантаження</string>
+    <!-- Notification. %1$d is the number of active downloads. -->
     <string name="romm_download_notification_count">Завантажується: %1$d</string>
     <string name="romm_art_notification_active">Завантаження обкладинок</string>
     <string name="label_retry">ПОВТОРИТИ</string>
@@ -239,6 +290,7 @@
     <string name="romm_settings_title">Налаштування RomM</string>
     <string name="romm_platforms_title">Показ платформ</string>
     <string name="romm_platforms_empty">Немає платформ</string>
+    <!-- Screen title. %1$s is the platform name. -->
     <string name="romm_firmware_screen_title">Прошивка %1$s</string>
     <string name="romm_global_search_title">Пошук</string>
     <string name="romm_no_results">Немає результатів</string>
@@ -251,9 +303,12 @@
     <string name="romm_art_off">Вимкнено</string>
     <string name="romm_art_box2d">Обкладинка 2D</string>
     <string name="romm_art_box3d">Обкладинка 3D</string>
+    <!-- Art type: a composite/mixed artwork image. -->
     <string name="romm_art_mix">Мікс</string>
+    <!-- Art type: the game's title-screen image, not a text title. -->
     <string name="romm_art_title">Назва</string>
     <string name="romm_art_screenshot">Скріншот</string>
+    <!-- Art type: the arcade marquee image. -->
     <string name="romm_art_marquee">Афіша</string>
     <string name="label_disconnect">ВІД\'ЄДНАТИ</string>
     <string name="romm_rebuild_confirm">Перебудувати локальний кеш RomM?</string>
@@ -270,7 +325,9 @@
     <string name="romm_art_done">ГОТОВО</string>
     <string name="romm_collections_title">Колекції</string>
     <string name="romm_collection_group_user">Мої колекції</string>
+    <!-- RomM "Virtual" collections (auto-grouped, e.g. by franchise or genre). -->
     <string name="romm_collection_group_virtual">Віртуальні</string>
+    <!-- RomM "Smart" collections (rule-based, auto-updating). -->
     <string name="romm_collection_group_smart">Розумні</string>
     <string name="romm_collections_my">Мої колекції</string>
     <string name="romm_collections_smart">Розумні колекції</string>
@@ -281,6 +338,7 @@
     <string name="romm_vtype_company">Компанії</string>
     <string name="romm_vtype_mode">Ігрові режими</string>
     <string name="setting_logging">Журналювання</string>
+    <!-- Advanced toggle: log the intents used to launch external emulators. -->
     <string name="setting_audit_emulator_intents">Аудит намірів емулятора</string>
     <string name="logging_title">Журналювання</string>
     <string name="logging_rom_scan">Сканування ROM</string>
@@ -288,10 +346,12 @@
     <string name="logging_session">Ігрова сесія</string>
     <string name="logging_storage">Сховище</string>
     <string name="setting_input_tester">Тест керування</string>
+    <!-- Input tester row. %1$d = player number, %2$s = device name, %3$d = device id. -->
     <string name="input_tester_device_format">Г%1$d • %2$s • пристрій%3$d</string>
     <string name="input_tester_exit_hint">Утримуйте Start + Select для виходу</string>
     <string name="input_tester_device_keyboard">клавіатура</string>
     <string name="input_tester_device_unknown">невідомо</string>
+    <!-- Input tester: the device sent events but has no button mapping. -->
     <string name="input_tester_unbound">Події без призначених дій</string>
     <!-- Setting values -->
     <string name="value_on">Увімк.</string>
@@ -301,6 +361,7 @@
     <string name="value_none">Немає</string>
     <string name="value_selected">Вибрано</string>
     <string name="value_cannoli_root">Коренева папка Cannoli</string>
+    <!-- Content Mode value: the default platform view. -->
     <string name="value_platforms">За замовчуванням</string>
     <string name="value_collections">Лише колекції</string>
     <string name="value_fit">Вписати</string>
@@ -316,10 +377,14 @@
     <string name="value_none_installed">Нічого не встановлено</string>
     <string name="value_active">Активний</string>
     <!-- Dialogs -->
+    <!-- %1$s = the list or collection name. -->
     <string name="empty_list">%1$s порожній(-я)</string>
+    <!-- Confirm dialog. %1$s = item name. -->
     <string name="dialog_delete_confirm">Видалити «%1$s»?</string>
+    <!-- Shown when a per-game override is deliberately set to empty. -->
     <string name="value_empty_override">(порожнє перевизначення)</string>
     <string name="emulator_platform_setting">Налаштування платформи</string>
+    <!-- %1$s = platform name. -->
     <string name="emulator_platform_setting_named">Налаштування платформи (%1$s)</string>
     <string name="rename_error_directory">Не вдалося перейменувати папку</string>
     <string name="rename_error_generic">Не вдалося перейменувати</string>
@@ -341,6 +406,7 @@
     <string name="import_ordering">Перенесення порядку сортування</string>
     <string name="import_archive">Архівування застарілих файлів</string>
     <string name="import_done">Готово</string>
+    <!-- Boot progress. %1$s = tag/category name. -->
     <string name="import_cataloging_tag">Каталогізація %1$s</string>
     <string name="housekeeping_db_title">Оновлення бібліотеки</string>
     <string name="housekeeping_db_subtitle">Перенесення застарілих даних</string>
@@ -353,19 +419,26 @@
     <string name="launch_error_generic">Не вдалося запустити гру</string>
     <string name="launch_error_update_ricotta">Оновіть RicottaArch, щоб продовжити</string>
     <string name="launch_error_update_cannoli">Оновіть Cannoli, щоб продовжити</string>
+    <!-- %1$s = core name, %2$s = emulator app. -->
     <string name="dialog_missing_core_pkg">%1$s не встановлено в %2$s.</string>
+    <!-- %1$s = core name. -->
     <string name="dialog_missing_core_plain">%1$s не встановлено.</string>
     <string name="dialog_missing_core_hint">Налаштуйте це у розділі «Прив\'язка емуляторів».</string>
+    <!-- %1$s = app name. -->
     <string name="dialog_missing_app">%1$s не встановлено.</string>
+    <!-- %1$s = folder path. -->
     <string name="dialog_missing_bios_header">Потрібен щонайменше один файл BIOS у %1$s:</string>
     <string name="dialog_title_missing_core">Відсутнє ядро</string>
     <string name="dialog_title_missing_app">Відсутній застосунок</string>
     <string name="dialog_title_launch_error">Помилка запуску</string>
     <string name="dialog_rename_success">Успішно перейменовано</string>
+    <!-- %1$s = error detail. -->
     <string name="dialog_rename_failed">Не вдалося перейменувати: %1$s</string>
     <string name="dialog_quit_confirm">Ви впевнені, що хочете вийти?</string>
     <!-- Formatted strings -->
+    <!-- %1$s = collection name. -->
     <string name="collection_created">%1$s створено</string>
+    <!-- %1$d = number of items selected. -->
     <string name="selected_count">Вибрано: %1$d</string>
     <!-- Onboarding wizard -->
     <string name="onboarding_header">НАЛАШТУВАННЯ CANNOLI</string>
@@ -384,25 +457,33 @@
     <string name="setup_folder_unset">Не вибрано</string>
     <!-- System list -->
     <string name="empty_content">Вміст не знайдено. Додайте щось!</string>
+    <!-- 5GH = Five Game Handheld; keep "5GH" as-is. -->
     <string name="empty_fgh_collection">Ваша колекція 5GH порожня. Наповніть її!</string>
     <string name="label_recently_played">Недавно зіграні</string>
     <string name="label_favorites">Улюблені</string>
     <string name="label_collections">Колекції</string>
+    <!-- Screen title. %1$s = the search query. -->
     <string name="global_search_title">Пошук: «%1$s»</string>
     <string name="origin_tools">Інструменти</string>
+    <!-- Section label: standalone game ports. -->
     <string name="origin_ports">Порти</string>
     <string name="origin_collection">Колекція</string>
     <!-- About -->
+    <!-- App tagline; playful, "filling" is a cannoli pun. Keep the light tone. -->
     <string name="about_description">Фронтенд із саме тією кількістю начинки, що треба!</string>
     <!-- Kitchen -->
+    <!-- Keep "Nonna's Kitchen" verbatim. -->
     <string name="kitchen_notification_running">«Кухня Нонни» запущена</string>
+    <!-- Nonna's Kitchen runs a local file server. -->
     <string name="kitchen_notification_active">Файловий сервер активний</string>
     <string name="kitchen_notification_stop">Зупинити</string>
+    <!-- Keep "Nonna's Kitchen" verbatim. -->
     <string name="kitchen_notification_error_title">Не вдалося запустити «Кухню Нонни»</string>
     <string name="kitchen_notification_error_text">Порт файлового сервера недоступний</string>
     <!-- Search -->
     <string name="search_global">Глобальний пошук</string>
     <string name="search_romm">Пошук RomM</string>
+    <!-- %1$s = platform name. -->
     <string name="search_in_platform">Пошук у %1$s</string>
     <!-- Keyboard entry headers -->
     <string name="keyboard_title_new_collection">Нова колекція</string>
@@ -426,15 +507,18 @@
     <string name="sync_relative_now">щойно</string>
     <string name="quick_info_title">Інформація про мережу</string>
     <string name="quick_info_ip">IP-адреса</string>
+    <!-- URL to reach the Nonna's Kitchen file server. -->
     <string name="quick_info_kitchen_url">URL «Кухні»</string>
     <string name="quick_info_kitchen_off">«Кухня» не запущена</string>
     <string name="quick_info_offline">Немає мережі</string>
     <!-- RetroAchievements -->
     <string name="ra_logged_in_as">Увійшли як</string>
+    <!-- RA = RetroAchievements. -->
     <string name="ra_login_failed">RA: не вдалося увійти</string>
     <string name="ra_login_invalid">Неправильне ім\'я користувача або пароль</string>
     <string name="ra_status_online">У мережі</string>
     <string name="ra_status_offline">Не в мережі</string>
+    <!-- %1$d = achievements awaiting sync. -->
     <string name="ra_status_offline_pending">Не в мережі • Очікує синхр.: %1$d</string>
     <string name="ra_detect_not_logged_in">Не увійшли</string>
     <string name="ra_detect_identifying">Розпізнавання гри…</string>
@@ -442,46 +526,67 @@
     <string name="ra_detect_no_achievements">Досягнення не опубліковано</string>
     <string name="ra_detect_initializing">Ініціалізація…</string>
     <string name="ra_detect_mem_failed">Не вдалося ініціалізувати пам\'ять</string>
+    <!-- %d = achievement count. -->
     <plurals name="ra_detect_active">
         <item quantity="one">Активно • %d досягнення</item>
         <item quantity="few">Активно • %d досягнення</item>
         <item quantity="many">Активно • %d досягнень</item>
         <item quantity="other">Активно • %d досягнення</item>
     </plurals>
+    <!-- %d = number of achievements synced. -->
     <plurals name="ra_sync_done">
         <item quantity="one">Синхронізовано %d досягнення</item>
         <item quantity="few">Синхронізовано %d досягнення</item>
         <item quantity="many">Синхронізовано %d досягнень</item>
         <item quantity="other">Синхронізовано %d досягнення</item>
     </plurals>
+    <!-- Counts of synced and failed achievements. -->
     <string name="ra_sync_partial">Синхронізовано: %1$d, помилок: %2$d</string>
+    <!-- OSD toast. %1$s = save slot name. -->
     <string name="osd_state_saved">Збережено в %1$s</string>
+    <!-- OSD toast. %1$s = save slot name. -->
     <string name="osd_state_loaded">Завантажено %1$s</string>
+    <!-- OSD toast. %1$s = save slot name. -->
     <string name="osd_state_deleted">Видалено %1$s</string>
     <string name="osd_reset">Скинуто</string>
+    <!-- OSD toast. %1$s = scaling mode name. -->
     <string name="osd_scaling">Масштабування: %1$s</string>
+    <!-- OSD toast. %1$s = shader preset name. -->
     <string name="osd_shader">Шейдер: %1$s</string>
+    <!-- OSD toast. %1$s = mode/item name. -->
     <string name="osd_switched_to">Перемкнено на %1$s</string>
+    <!-- OSD toast. %1$s = game name (setting saved per-game). -->
     <string name="osd_saved_for">Збережено для %1$s</string>
     <string name="osd_saved_for_game">Збережено для цієї гри</string>
+    <!-- OSD toast. %1$s = controller name, %2$s = player slot. -->
     <string name="osd_controller_connected_named">%1$s підключено до %2$s</string>
     <string name="osd_buttons_reset">Кнопки скинуто до типових</string>
+    <!-- %1$d = disc number (multi-disc games). -->
     <string name="osd_disc_fallback">Диск %1$d</string>
     <string name="igm_quit">Вийти</string>
     <string name="igm_cheats">Чит-коди</string>
     <string name="title_cheats">Чит-коди</string>
     <string name="label_restore_session">ВІДНОВИТИ ОСТАННЮ СЕСІЮ</string>
+    <!-- Scaling mode: use the size the emulator core reports. -->
     <string name="scaling_core_reported">Визначено ядром</string>
     <string name="scaling_integer">Ціле число</string>
+    <!-- Scaling mode: integer scaling pushed beyond 1x to fill more of the screen. -->
     <string name="scaling_integer_overscale">Ціле число з перевищенням</string>
+    <!-- Scaling mode: fit the screen while keeping the aspect ratio. -->
     <string name="scaling_aspect_screen">Співвідношення екрана</string>
     <string name="scaling_fullscreen">На весь екран</string>
+    <!-- Indicates a setting applies globally (all games). -->
     <string name="override_source_global">Глобально</string>
+    <!-- Indicates a setting applies only to the current game. -->
     <string name="override_source_game">Ця гра</string>
     <string name="device_controller">Контролер</string>
+    <!-- OSD toast. %1$d = player number, %2$s = controller name. -->
     <string name="osd_controller_connected">Г%1$d: %2$s</string>
+    <!-- OSD toast. %1$d = player number, %2$s = controller name. -->
     <string name="osd_controller_disconnected_port">Г%1$d: %2$s від\'єднано</string>
+    <!-- OSD toast. %1$s = controller name. -->
     <string name="osd_controller_disconnected">%1$s від\'єднано</string>
+    <!-- RA login OSD. %1$s = username, %2$s = display name, %3$d/%4$d = unlocked/total achievements. -->
     <string name="ra_login_success">RA: %1$s (%2$s) · %3$d/%4$d відкрито</string>
     <string name="ra_init_failed">RA: помилка ініціалізації</string>
     <string name="ra_load_not_recognized">RA: гру не розпізнано</string>
@@ -509,7 +614,9 @@
     <string name="igm_button_mappings">Призначення кнопок</string>
     <string name="igm_left_stick_dpad">Лівий стик як хрестовина</string>
     <string name="igm_dpad_mode">Режим хрестовини (БЕТА)</string>
+    <!-- D-Pad Mode value: 8 directions. -->
     <string name="value_dpad_8way">8-напрямковий</string>
+    <!-- D-Pad Mode value: 4 directions. -->
     <string name="value_dpad_4way">4-напрямковий</string>
     <string name="igm_save_and_quit">Зберегти і вийти</string>
     <string name="title_guide">Посібник</string>
@@ -517,41 +624,53 @@
     <!-- IGM info labels -->
     <string name="info_core">Ядро</string>
     <string name="info_rom">ROM</string>
+    <!-- Info label: whether the ROM was extracted from an archive. -->
     <string name="info_extracted">Розпаковано</string>
     <string name="info_save">Збереження</string>
     <string name="info_renderer">Рендерер</string>
     <string name="info_game_id">ID гри</string>
     <string name="info_ra_detection">Виявлення досягнень</string>
     <!-- IGM dialogs -->
+    <!-- %1$s = save slot name. -->
     <string name="igm_delete_slot">Видалити %1$s?</string>
     <string name="press_button_prompt" tools:ignore="TypographyEllipsis">Натисніть будь-яку кнопку...</string>
     <!-- Achievements -->
+    <!-- %1$d = unlocked count, %2$d = total. -->
     <string name="ach_title">Досягнення (%1$d/%2$d)</string>
+    <!-- Compact points label. %1$d = points. -->
     <string name="ach_points_short">%1$dоч.</string>
+    <!-- %1$d = points. -->
     <string name="ach_points">%1$d очок</string>
     <string name="ach_unlocked_pending">Відкрито \u2022 Очікує синхронізації</string>
+    <!-- %1$s = date the achievement was unlocked. -->
     <string name="ach_unlocked_date">Відкрито %1$s</string>
     <string name="ach_unlocked">Відкрито</string>
     <string name="ach_locked">Заблоковано</string>
     <string name="setting_portrait_margin">Відступ у портретному режимі</string>
+    <!-- Advanced setting: adjust the on-screen viewport rectangle. -->
     <string name="setting_screen_geometry">Геометрія екрана</string>
     <string name="setting_geo_width">Ширина</string>
     <string name="setting_geo_height">Висота</string>
     <string name="setting_geo_hpos">Горизонтальне положення</string>
     <string name="setting_geo_vpos">Вертикальне положення</string>
     <!-- Emulator Mapping -->
+    <!-- Setting: maps each platform to an emulator/core. -->
     <string name="setting_emulator_mapping">Прив\'язка емуляторів</string>
     <string name="label_reset">СКИНУТИ</string>
     <string name="label_show_all">ПОКАЗАТИ ВСІ</string>
     <string name="label_show_installed">ПОКАЗАТИ ВСТАНОВЛЕНІ</string>
+    <!-- The core is not bundled with the app. -->
     <string name="value_not_bundled">НЕ ВБУДОВАНО</string>
     <string name="value_no_overrides">Немає перевизначень для окремих ігор.</string>
     <string name="value_no_firmware">Для цього ядра прошивка не потрібна.</string>
     <string name="mapping_action_bios">Файли BIOS</string>
     <string name="mapping_action_overrides">Перевизначення для окремих ігор</string>
     <string name="mapping_action_reset">Скинути до типового</string>
+    <!-- %d = number of required BIOS files missing. -->
     <string name="mapping_required_missing">Відсутньо обов\'язкових: %d</string>
+    <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">Прив\'язка %s</string>
+    <!-- Screen title. %s = platform name. -->
     <string name="title_platform_bios">BIOS %s</string>
     <string name="filter_all">УСІ</string>
     <string name="filter_missing">ВІДСУТНІ</string>
@@ -559,27 +678,34 @@
     <string name="filter_mapped">ПРИЗНАЧЕНО</string>
     <string name="value_unmapped">Не призначено</string>
     <string name="label_download">ЗАВАНТАЖИТИ</string>
+    <!-- OSD toast. %1$s = core name. -->
     <string name="osd_downloading_core">Завантаження %1$s</string>
+    <!-- OSD toast. %1$s = core name. -->
     <string name="osd_core_downloaded">Завантажено %1$s</string>
+    <!-- OSD toast. %1$s = core name or error detail. -->
     <string name="osd_core_download_failed">Помилка завантаження: %1$s</string>
     <string name="osd_core_download_unknown_error">невідома помилка</string>
     <string name="bios_required">ОБОВ\'ЯЗКОВО</string>
     <string name="bios_optional">НЕОБОВ\'ЯЗКОВО</string>
     <string name="bios_present">Наявний</string>
     <string name="bios_missing">Відсутній</string>
+    <!-- %d = number of games with per-game overrides. -->
     <plurals name="override_game_count">
         <item quantity="one">%d гра</item>
         <item quantity="few">%d гри</item>
         <item quantity="many">%d ігор</item>
         <item quantity="other">%d гри</item>
     </plurals>
+    <!-- %d = number of items selected. -->
     <string name="bulk_selected">Вибрано: %d</string>
+    <!-- %d = number of items. -->
     <plurals name="bulk_delete_count">
         <item quantity="one">%d елемент</item>
         <item quantity="few">%d елементи</item>
         <item quantity="many">%d елементів</item>
         <item quantity="other">%d елемента</item>
     </plurals>
+    <!-- OSD toast. %d = number of cheats restored. -->
     <plurals name="osd_cheats_restored">
         <item quantity="one">Відновлено %d чит-код</item>
         <item quantity="few">Відновлено %d чит-коди</item>
@@ -587,6 +713,7 @@
         <item quantity="other">Відновлено %d чит-коду</item>
     </plurals>
     <string name="regenerate_system_folders_none">Усі системні папки вже наявні</string>
+    <!-- %d = number of system folders created. -->
     <plurals name="regenerate_system_folders_result">
         <item quantity="one">Створено %d системну папку</item>
         <item quantity="few">Створено %d системні папки</item>
@@ -595,38 +722,47 @@
     </plurals>
     <string name="value_no_cores_found">Ядра не знайдено</string>
     <string name="label_clear_override">ОЧИСТИТИ</string>
+    <!-- %1$s = platform name. -->
     <string name="dialog_reset_platform_confirm">Скинути %1$s? Це очистить вибір емулятора для цієї платформи та відновить типовий вбудований варіант.</string>
+    <!-- RA achievement preload. %1$s = game name. -->
     <string name="ra_preload_progress">Попереднє завантаження %1$s</string>
     <string name="ra_preload_none">Для цієї гри не знайдено досягнень</string>
     <string name="ra_preload_failed">Не вдалося завантажити. Перевірте з\'єднання.</string>
+    <!-- %1$d = achievements cached, %2$d = points. -->
     <plurals name="ra_preload_success">
         <item quantity="one">Кешовано %1$d досягнення (%2$d оч.) для гри офлайн</item>
         <item quantity="few">Кешовано %1$d досягнення (%2$d оч.) для гри офлайн</item>
         <item quantity="many">Кешовано %1$d досягнень (%2$d оч.) для гри офлайн</item>
         <item quantity="other">Кешовано %1$d досягнення (%2$d оч.) для гри офлайн</item>
     </plurals>
+    <!-- %1$d = games cached, %2$d = total games. -->
     <string name="ra_preload_bulk_done">Кешовано %1$d з %2$d ігор для гри офлайн</string>
     <string name="ra_offline_sets_title">Офлайн-набори досягнень</string>
     <string name="ra_offline_sets_empty">Немає кешованих наборів досягнень</string>
+    <!-- %1$d = achievement count, %2$s = set name. -->
     <string name="ra_offline_set_value">%1$d досягнень - %2$s</string>
     <string name="label_refresh">ОНОВИТИ</string>
     <!-- Save Slots screen -->
+    <!-- Screen title. %1$s = game name. -->
     <string name="save_slots_screen_title">Слоти %1$s</string>
     <string name="save_slots_active">Активний</string>
     <string name="save_slots_create">НОВИЙ СЛОТ</string>
     <string name="save_slots_rename">ПЕРЕЙМЕНУВАТИ</string>
     <string name="save_slots_delete">ВИДАЛИТИ</string>
     <string name="save_slots_switch">ПЕРЕМКНУТИ</string>
+    <!-- %1$s = slot name. -->
     <string name="save_slots_delete_confirm">Видалити слот «%1$s»?</string>
     <!-- Conflicts resolution screen -->
     <string name="conflicts_title">Конфлікти синхронізації</string>
     <string name="conflicts_applying">Застосування вирішень конфліктів...</string>
+    <!-- %1$d = number of saves that could not be applied. -->
     <plurals name="conflicts_apply_failed">
         <item quantity="one">Не вдалося застосувати %1$d збереження</item>
         <item quantity="few">Не вдалося застосувати %1$d збереження</item>
         <item quantity="many">Не вдалося застосувати %1$d збережень</item>
         <item quantity="other">Не вдалося застосувати %1$d збереження</item>
     </plurals>
+    <!-- %1$d = number of sync conflicts. -->
     <plurals name="quick_menu_conflicts">
         <item quantity="one">Конфлікти синхронізації (1)</item>
         <item quantity="few">Конфлікти синхронізації (%1$d)</item>
@@ -635,6 +771,7 @@
     </plurals>
     <string name="sync_errors_title">Помилки синхронізації</string>
     <string name="sync_errors_empty">Немає помилок синхронізації</string>
+    <!-- %1$d = number of sync errors. -->
     <plurals name="quick_menu_sync_errors">
         <item quantity="one">Помилки синхронізації (1)</item>
         <item quantity="few">Помилки синхронізації (%1$d)</item>
@@ -651,6 +788,7 @@
     <string name="save_backup_restore_pending">Збереження відновлено, синхронізується при підключенні</string>
     <string name="save_backup_restore_conflict">Збереження відновлено, вирішіть конфлікт синхронізації</string>
     <string name="save_backup_restore_failed">Не вдалося відновити</string>
+    <!-- %1$d = number of backups. -->
     <plurals name="save_backup_count">
         <item quantity="one">%1$d резервна копія</item>
         <item quantity="few">%1$d резервні копії</item>
@@ -662,6 +800,7 @@
     <string name="conflict_skip">Пропустити</string>
     <string name="conflict_yours">Ваша</string>
     <string name="conflict_server">Сервер</string>
+    <!-- Label marking the older save in a conflict. -->
     <string name="conflict_older">старіша</string>
     <!-- On-screen keyboard help overlay -->
     <string name="kbd_help_title">Керування клавіатурою</string>
