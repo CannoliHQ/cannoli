@@ -317,9 +317,9 @@
     <string name="romm_art_added">Artwork hinzugefügt</string>
     <string name="romm_art_already">Already had art</string>
     <string name="romm_art_no_match">No RomM match</string>
-    <string name="romm_art_failed">Failed</string>
+    <string name="romm_art_failed">Fehlgeschlagen</string>
     <string name="romm_art_section_no_match">No match</string>
-    <string name="romm_art_section_failed">Failed</string>
+    <string name="romm_art_section_failed">Fehlgeschlagen</string>
     <string name="romm_art_done">DONE</string>
     <string name="romm_collections_title">Collections</string>
     <string name="romm_collection_group_user">My Collections</string>
@@ -353,14 +353,14 @@
     <string name="input_tester_unbound">Events emitted without mappings</string>
     <!-- Setting values -->
     <string name="value_on">On</string>
-    <string name="value_off">Off</string>
+    <string name="value_off">Aus</string>
     <string name="value_show">Show</string>
     <string name="value_hide">Hide</string>
     <string name="value_none">None</string>
     <string name="value_selected">Selected</string>
     <string name="value_cannoli_root">Cannoli Root</string>
     <!-- Content Mode value: the default platform view. -->
-    <string name="value_platforms">Default</string>
+    <string name="value_platforms">Standard</string>
     <string name="value_collections">Collections Only</string>
     <string name="value_fit">Fit</string>
     <string name="value_original">Original</string>
@@ -457,7 +457,7 @@
     <string name="empty_content">No content found. Go add some!</string>
     <!-- 5GH = Five Game Handheld; keep "5GH" as-is. -->
     <string name="empty_fgh_collection">Your 5GH collection is empty. Go fill it!</string>
-    <string name="label_recently_played">Recently Played</string>
+    <string name="label_recently_played">Zuletzt gespielt</string>
     <string name="label_favorites">Favorites</string>
     <string name="label_collections">Collections</string>
     <!-- Screen title. %1$s = the search query. -->
@@ -592,10 +592,10 @@
     <string name="no_compatible_cores">No compatible cores found</string>
     <string name="no_collections">No collections</string>
     <string name="title_child_collections">Child Collections</string>
-    <string name="title_shortcuts">Shortcuts</string>
+    <string name="title_shortcuts">Tastenkürzel</string>
     <string name="shortcut_hold_prompt" tools:ignore="TypographyEllipsis">Hold one or more buttons...</string>
     <!-- Update download -->
-    <string name="update_retry">RETRY</string>
+    <string name="update_retry">WIEDERHOLEN</string>
     <string name="restart_required">Restart required to apply changes.</string>
     <!-- IGM screen titles -->
     <string name="igm_settings">Settings</string>
@@ -666,7 +666,7 @@
     <string name="title_platform_mapping">%s Mapping</string>
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_bios">%s BIOS</string>
-    <string name="filter_all">ALL</string>
+    <string name="filter_all">ALLE</string>
     <string name="filter_missing">MISSING</string>
     <string name="filter_unmapped">UNMAPPED</string>
     <string name="filter_mapped">MAPPED</string>
@@ -707,7 +707,7 @@
         <item quantity="other">Created %d system folders</item>
     </plurals>
     <string name="value_no_cores_found">No Cores Found</string>
-    <string name="label_clear_override">CLEAR</string>
+    <string name="label_clear_override">LEEREN</string>
     <!-- %1$s = platform name. -->
     <string name="dialog_reset_platform_confirm">Reset %1$s? This clears your emulator selection for this platform and restores the bundled default.</string>
     <!-- RA achievement preload. %1$s = game name. -->
@@ -729,10 +729,10 @@
     <!-- Save Slots screen -->
     <!-- Screen title. %1$s = game name. -->
     <string name="save_slots_screen_title">%1$s Slots</string>
-    <string name="save_slots_active">Active</string>
+    <string name="save_slots_active">Aktiv</string>
     <string name="save_slots_create">NEW SLOT</string>
-    <string name="save_slots_rename">RENAME</string>
-    <string name="save_slots_delete">DELETE</string>
+    <string name="save_slots_rename">UMBENENNEN</string>
+    <string name="save_slots_delete">LÖSCHEN</string>
     <string name="save_slots_switch">SWITCH</string>
     <!-- %1$s = slot name. -->
     <string name="save_slots_delete_confirm">Delete slot \"%1$s\"?</string>
@@ -792,5 +792,5 @@
     <string name="kbd_help_cursor_move">MOVE LEFT / RIGHT</string>
     <string name="kbd_help_cursor_jump">JUMP TO START / END</string>
     <string name="kbd_help_submit">SUBMIT</string>
-    <string name="kbd_help_cancel">CANCEL</string>
+    <string name="kbd_help_cancel">ABBRECHEN</string>
 </resources>
