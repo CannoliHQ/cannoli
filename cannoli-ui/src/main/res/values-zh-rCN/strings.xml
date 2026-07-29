@@ -42,7 +42,7 @@
     <string name="label_press">按下</string>
     <!-- Bottom-bar button; opens Nonna's Kitchen. -->
     <string name="label_kitchen">厨房</string>
-    <string name="label_hold_buttons" tools:ignore="TypographyEllipsis">按住一个或多个按键</string>
+    <string name="label_hold_buttons" tools:ignore="TypographyEllipsis">按住一个或多个按键…</string>
     <string name="label_info">信息</string>
     <!-- Bottom-bar button. RA = RetroAchievements. -->
     <string name="label_ra_settings">复古成就设定</string>
@@ -185,10 +185,10 @@
     <string name="setting_color_background">背景</string>
     <string name="setting_color_status_bar">状态栏</string>
     <!-- Settings row. %s is the emulator app name (e.g. RetroArch). -->
-    <string name="setting_installed_cores">%s 已安装的核心。</string>
+    <string name="setting_installed_cores">%s 已安装的核心</string>
     <!-- Screen title. %s is the emulator app name (e.g. RetroArch). -->
-    <string name="title_installed_cores">%s 已安装的核心。</string>
-    <string name="installed_cores_none">未找到核心。</string>
+    <string name="title_installed_cores">%s 已安装的核心</string>
+    <string name="installed_cores_none">未找到核心</string>
     <!-- Setting: the app's root storage folder on the SD card. -->
     <string name="setting_sd_root">Cannoli 根目录</string>
     <string name="setting_rom_directory">ROM 目录</string>
@@ -441,7 +441,7 @@
     <string name="onboarding_header">设置Cannoli</string>
     <string name="onboarding_permissions_title">权限和存储</string>
     <string name="onboarding_storage_label">存取权限</string>
-    <string name="onboarding_storage_rationale">Cannoli需要获取您ROMs，存档，封面和其他文件的权限。\n如缺少权限，Cannoli将无法正常工作</string>
+    <string name="onboarding_storage_rationale">Cannoli需要获取您ROMs，存档，封面和其他文件的权限。\n如缺少权限，Cannoli将无法正常工作。</string>
     <string name="onboarding_status_granted">已授权</string>
     <string name="onboarding_status_not_granted">未授权</string>
     <string name="onboarding_press_a_to_select_folder">按 A 选择文件夹</string>
