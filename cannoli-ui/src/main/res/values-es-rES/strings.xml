@@ -183,7 +183,7 @@
     <string name="setting_color_highlight_text">Highlight Text</string>
     <string name="setting_color_accent">Accent</string>
     <string name="setting_color_background">Background</string>
-    <string name="setting_color_status_bar">Status Bar</string>
+    <string name="setting_color_status_bar">BARRA DE ESTADO</string>
     <!-- Settings row. %s is the emulator app name (e.g. RetroArch). -->
     <string name="setting_installed_cores">%s Installed Cores</string>
     <!-- Screen title. %s is the emulator app name (e.g. RetroArch). -->
@@ -282,7 +282,7 @@
     <string name="romm_settings_platforms">Show / Hide Platforms</string>
     <string name="romm_settings_collections">Show / Hide Collections</string>
     <string name="romm_settings_server_info">Server Info</string>
-    <string name="romm_settings_advanced">Advanced</string>
+    <string name="romm_settings_advanced">AVANZADOS</string>
     <string name="romm_settings_rebuild">Rebuild Cache</string>
     <string name="romm_actions_title">RomM Quick Menu</string>
     <string name="romm_settings_title">RomM Settings</string>
@@ -340,7 +340,7 @@
     <string name="setting_audit_emulator_intents">Audit Emulator Intents</string>
     <string name="logging_title">Logging</string>
     <string name="logging_rom_scan">ROM Scan</string>
-    <string name="logging_input">Input</string>
+    <string name="logging_input">ENTRADA</string>
     <string name="logging_session">Game Session</string>
     <string name="logging_storage">Storage</string>
     <string name="setting_input_tester">Input Tester</string>
@@ -598,13 +598,13 @@
     <string name="update_retry">RETRY</string>
     <string name="restart_required">Restart required to apply changes.</string>
     <!-- IGM screen titles -->
-    <string name="igm_settings">Settings</string>
+    <string name="igm_settings">AJUSTES</string>
     <string name="igm_video">Video</string>
-    <string name="igm_advanced">Advanced</string>
+    <string name="igm_advanced">AVANZADOS</string>
     <string name="igm_shader_settings">Shader Settings</string>
     <string name="igm_emulator">Emulator</string>
     <string name="igm_save_changes">Save Changes</string>
-    <string name="igm_input">Input</string>
+    <string name="igm_input">ENTRADA</string>
     <string name="igm_button_mappings">Button Mappings</string>
     <string name="igm_left_stick_dpad">Left Stick as D-Pad</string>
     <string name="igm_dpad_mode">D-Pad Mode (BETA)</string>
@@ -612,7 +612,7 @@
     <string name="value_dpad_8way">8-Way</string>
     <!-- D-Pad Mode value: 4 directions. -->
     <string name="value_dpad_4way">4-Way</string>
-    <string name="igm_save_and_quit">Save and Quit</string>
+    <string name="igm_save_and_quit">GUARDAR Y SALIR</string>
     <string name="title_guide">Guide</string>
     <string name="guide_zoom">ZOOM</string>
     <!-- IGM info labels -->
@@ -666,7 +666,7 @@
     <string name="title_platform_mapping">%s Mapping</string>
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_bios">%s BIOS</string>
-    <string name="filter_all">ALL</string>
+    <string name="filter_all">TODOS</string>
     <string name="filter_missing">MISSING</string>
     <string name="filter_unmapped">UNMAPPED</string>
     <string name="filter_mapped">MAPPED</string>
@@ -707,7 +707,7 @@
         <item quantity="other">Created %d system folders</item>
     </plurals>
     <string name="value_no_cores_found">No Cores Found</string>
-    <string name="label_clear_override">CLEAR</string>
+    <string name="label_clear_override">LIMPIAR</string>
     <!-- %1$s = platform name. -->
     <string name="dialog_reset_platform_confirm">Reset %1$s? This clears your emulator selection for this platform and restores the bundled default.</string>
     <!-- RA achievement preload. %1$s = game name. -->
@@ -731,8 +731,8 @@
     <string name="save_slots_screen_title">%1$s Slots</string>
     <string name="save_slots_active">Active</string>
     <string name="save_slots_create">NEW SLOT</string>
-    <string name="save_slots_rename">RENAME</string>
-    <string name="save_slots_delete">DELETE</string>
+    <string name="save_slots_rename">RENOMBRAR</string>
+    <string name="save_slots_delete">ELIMINAR</string>
     <string name="save_slots_switch">SWITCH</string>
     <!-- %1$s = slot name. -->
     <string name="save_slots_delete_confirm">Delete slot \"%1$s\"?</string>
@@ -792,5 +792,5 @@
     <string name="kbd_help_cursor_move">MOVE LEFT / RIGHT</string>
     <string name="kbd_help_cursor_jump">JUMP TO START / END</string>
     <string name="kbd_help_submit">SUBMIT</string>
-    <string name="kbd_help_cancel">CANCEL</string>
+    <string name="kbd_help_cancel">CANCELAR</string>
 </resources>
