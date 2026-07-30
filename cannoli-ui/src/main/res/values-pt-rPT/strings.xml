@@ -10,7 +10,6 @@
     <string name="label_save">GUARDAR</string>
     <string name="label_load">CARREGAR</string>
     <string name="label_change">ALTERAR</string>
-    <string name="label_firmware">FIRMWARE</string>
     <string name="label_choose">ESCOLHER</string>
     <string name="label_close">FECHAR</string>
     <string name="label_help">AJUDA</string>
@@ -24,7 +23,6 @@
     <string name="label_continue">CONTINUAR</string>
     <string name="label_new_folder">NOVA</string>
     <string name="label_parent">SUPERIOR</string>
-    <string name="label_slot">SLOT</string>
     <string name="label_disc">DISCO</string>
     <string name="label_use_location">USAR ESTA LOCALIZAÇÃO</string>
     <string name="label_quit">SAIR</string>
@@ -35,7 +33,6 @@
     <string name="label_logout">TERMINAR SESSÃO</string>
     <!-- Bottom-bar button opening cached RetroAchievements sets for offline play. RA = RetroAchievements. -->
     <string name="label_offline_sets">CONJUNTOS OFFLINE</string>
-    <string name="label_hex">HEX</string>
     <string name="label_rename">RENOMEAR</string>
     <string name="label_set">DEFINIR</string>
     <string name="label_clear">LIMPAR</string>
@@ -43,7 +40,7 @@
     <!-- Bottom-bar button; opens Nonna's Kitchen. -->
     <string name="label_kitchen">COZINHA</string>
     <string name="label_hold_buttons" tools:ignore="TypographyEllipsis">MANTENHA PREMIDO UM OU MAIS BOTÕES...</string>
-    <string name="label_info">INFO</string>
+    <string name="label_info">INFORMAÇÃO</string>
     <!-- Bottom-bar button. RA = RetroAchievements. -->
     <string name="label_ra_settings">DEFINIÇÕES RA</string>
     <string name="label_details">DETALHES</string>
@@ -95,7 +92,6 @@
     <!-- Appearance setting: shows or hides the title-bar heading text. "Title" here is the heading, not color or box art. -->
     <string name="setting_title">Título</string>
     <string name="setting_bg_image">Imagem de Fundo</string>
-    <string name="setting_vpn">VPN</string>
     <string name="setting_clock">Relógio</string>
     <string name="setting_battery">Bateria</string>
     <!-- Status-bar indicator toggle: show when Nonna's Kitchen (file server) is running. -->
@@ -126,9 +122,6 @@
     <string name="canonical_dpad_down">D-Pad Baixo</string>
     <string name="canonical_dpad_left">D-Pad Esquerda</string>
     <string name="canonical_dpad_right">D-Pad Direita</string>
-    <string name="canonical_start">Start</string>
-    <string name="canonical_select">Select</string>
-    <string name="canonical_menu">Menu</string>
     <!-- Face-button position, not a compass direction: the bottom face button (South/East/West/North layout). -->
     <string name="canonical_south">Sul</string>
     <!-- Face-button position (not compass): the right face button. -->
@@ -147,7 +140,6 @@
     <!-- Input binding label. %1$d is the numeric key code. -->
     <string name="binding_key">Tecla %1$d</string>
     <!-- Input binding label. %1$s is the hat (D-pad) direction. -->
-    <string name="binding_hat">Hat %1$s</string>
     <!-- Input binding label. %1$d is the joystick axis index; + is the positive direction. -->
     <string name="binding_axis_pos">Eixo %1$d+</string>
     <!-- Input binding label. %1$d is the joystick axis index; - is the negative direction. -->
@@ -198,7 +190,6 @@
     <!-- Scan Mode value: scan the library automatically. -->
     <string name="value_automatically">Automático</string>
     <!-- Scan Mode value: scan the library by hand. "Manual" here is the adverb (by hand), not a game's instruction manual. -->
-    <string name="value_manually">Manual</string>
     <!-- RA = RetroAchievements account username. -->
     <string name="setting_ra_username">Nome de Utilizador</string>
     <!-- RA = RetroAchievements account password. -->
@@ -247,7 +238,6 @@
     <string name="romm_detail_download">TRANSFERIR</string>
     <string name="romm_version_picker_title">Transferir qual versão?</string>
     <!-- Bottom-bar button opening the game's instruction manual (a document), not "manual/by hand". -->
-    <string name="label_manual">MANUAL</string>
     <!-- The game's instruction manual (document), not "manual/by hand". -->
     <string name="romm_download_manual">Manual</string>
     <string name="romm_syncing" tools:ignore="TypographyEllipsis">A construir cache...</string>
@@ -345,7 +335,6 @@
     <string name="logging_storage">Armazenamento</string>
     <string name="setting_input_tester">Testador de Comandos</string>
     <!-- Input tester row. %1$d = player number, %2$s = device name, %3$d = device id. -->
-    <string name="input_tester_device_format">P%1$d • %2$s • dev%3$d</string>
     <string name="input_tester_exit_hint">Mantenha Start + Select Para Sair</string>
     <string name="input_tester_device_keyboard">teclado</string>
     <string name="input_tester_device_unknown">desconhecido</string>
@@ -368,8 +357,6 @@
     <string name="value_fit_height">Ajustar Altura</string>
     <string name="value_percent">Percentagem</string>
     <string name="value_icon">Ícone</string>
-    <string name="value_12h">12h</string>
-    <string name="value_24h">24h</string>
     <string name="value_not_set">Não definido</string>
     <string name="value_not_installed">Não Instalado</string>
     <string name="value_none_installed">Nenhum Instalado</string>
@@ -464,7 +451,6 @@
     <string name="global_search_title">Pesquisa: \"%1$s\"</string>
     <string name="origin_tools">Ferramentas</string>
     <!-- Section label: standalone game ports. -->
-    <string name="origin_ports">Ports</string>
     <string name="origin_collection">Coleção</string>
     <!-- About -->
     <!-- App tagline; playful, "filling" is a cannoli pun. Keep the light tone. -->
@@ -514,8 +500,6 @@
     <!-- RA = RetroAchievements. -->
     <string name="ra_login_failed">RA: Falha ao iniciar sessão</string>
     <string name="ra_login_invalid">Nome de utilizador ou palavra-passe inválidos</string>
-    <string name="ra_status_online">Online</string>
-    <string name="ra_status_offline">Offline</string>
     <!-- %1$d = achievements awaiting sync. -->
     <string name="ra_status_offline_pending">Offline • %1$d Pendente(s) de Sincronização</string>
     <string name="ra_detect_not_logged_in">Sessão não iniciada</string>
@@ -546,7 +530,6 @@
     <!-- OSD toast. %1$s = scaling mode name. -->
     <string name="osd_scaling">Escala: %1$s</string>
     <!-- OSD toast. %1$s = shader preset name. -->
-    <string name="osd_shader">Shader: %1$s</string>
     <!-- OSD toast. %1$s = mode/item name. -->
     <string name="osd_switched_to">Mudou para %1$s</string>
     <!-- OSD toast. %1$s = game name (setting saved per-game). -->
@@ -575,7 +558,6 @@
     <string name="override_source_game">Este Jogo</string>
     <string name="device_controller">Comando</string>
     <!-- OSD toast. %1$d = player number, %2$s = controller name. -->
-    <string name="osd_controller_connected">P%1$d: %2$s</string>
     <!-- OSD toast. %1$d = player number, %2$s = controller name. -->
     <string name="osd_controller_disconnected_port">P%1$d: %2$s desligado</string>
     <!-- OSD toast. %1$s = controller name. -->
@@ -614,10 +596,8 @@
     <string name="value_dpad_4way">4 Direções</string>
     <string name="igm_save_and_quit">Guardar e Sair</string>
     <string name="title_guide">Guia</string>
-    <string name="guide_zoom">ZOOM</string>
     <!-- IGM info labels -->
     <string name="info_core">Núcleo</string>
-    <string name="info_rom">ROM</string>
     <!-- Info label: whether the ROM was extracted from an archive. -->
     <string name="info_extracted">Extraído</string>
     <string name="info_save">Gravação</string>
@@ -632,7 +612,6 @@
     <!-- %1$d = unlocked count, %2$d = total. -->
     <string name="ach_title">Conquistas (%1$d/%2$d)</string>
     <!-- Compact points label. %1$d = points. -->
-    <string name="ach_points_short">%1$dpts</string>
     <!-- %1$d = points. -->
     <string name="ach_points">%1$d pontos</string>
     <string name="ach_unlocked_pending">Desbloqueada \u2022 Pendente de Sincronização</string>
@@ -691,10 +670,6 @@
     <!-- %d = number of items selected. -->
     <string name="bulk_selected">%d Selecionado(s)</string>
     <!-- %d = number of items. -->
-    <plurals name="bulk_delete_count">
-        <item quantity="one">%d item</item>
-        <item quantity="other">%d itens</item>
-    </plurals>
     <!-- OSD toast. %d = number of cheats restored. -->
     <plurals name="osd_cheats_restored">
         <item quantity="one">%d batota restaurada</item>
@@ -781,11 +756,10 @@
     <!-- On-screen keyboard help overlay -->
     <string name="kbd_help_title">Comandos do Teclado</string>
     <string name="kbd_help_group_type">Escrever</string>
-    <string name="kbd_help_group_cursor">Cursor</string>
     <string name="kbd_help_group_action">Ação</string>
     <string name="kbd_help_move_selection">MOVER SELEÇÃO</string>
     <string name="kbd_help_press">PRESSIONAR TECLA</string>
-    <string name="kbd_help_backspace">BACKSPACE</string>
+    <string name="kbd_help_backspace">APAGAR</string>
     <string name="kbd_help_space">ESPAÇO</string>
     <string name="kbd_help_shift">SHIFT / CAPS (TOQUE)</string>
     <string name="kbd_help_symbols">SÍMBOLOS (MANTER PREMIDO)</string>
