@@ -2,3 +2,6 @@ files:
   - source: /cannoli-ui/src/main/res/values/strings.xml
     translation: /cannoli-ui/src/main/res/values-%android_code%/strings.xml
     type: android
+    languages_mapping:
+      android_code:
+        es-419: b+es+419
