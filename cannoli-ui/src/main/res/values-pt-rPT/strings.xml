@@ -89,6 +89,7 @@
     <string name="setting_art_scale">Escala da Arte</string>
     <string name="setting_text_size">Tamanho do Texto</string>
     <string name="setting_font">Tipo de Letra</string>
+    <!-- Settings row label: opens the app language picker. -->
     <!-- Appearance setting: shows or hides the title-bar heading text. "Title" here is the heading, not color or box art. -->
     <string name="setting_title">Título</string>
     <string name="setting_bg_image">Imagem de Fundo</string>
