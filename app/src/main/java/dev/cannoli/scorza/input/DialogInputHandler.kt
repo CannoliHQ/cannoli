@@ -36,6 +36,7 @@ import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
 import dev.cannoli.scorza.util.AtomicRename
 import dev.cannoli.scorza.util.ErrorLog
+import dev.cannoli.scorza.util.RomDirectoryWalker
 import dev.cannoli.ui.KEY_BACKSPACE
 import dev.cannoli.ui.KEY_ENTER
 import dev.cannoli.ui.components.COLOR_GRID_COLS
@@ -68,6 +69,7 @@ class DialogInputHandler @Inject constructor(
     private val updateManager: dev.cannoli.scorza.updater.UpdateManager,
     private val atomicRename: AtomicRename,
     private val scanner: RomScanner,
+    private val romDirectoryWalker: RomDirectoryWalker,
     private val settingsViewModel: SettingsViewModel,
     private val gameListViewModel: GameListViewModel,
     private val systemListViewModel: SystemListViewModel,
@@ -2494,17 +2496,10 @@ class DialogInputHandler @Inject constructor(
 
     private fun deleteRomFiles(rom: dev.cannoli.scorza.model.Rom) {
         val romFile = rom.path
+        val gameDir = romDirectoryWalker.gameDirectory(romFile)
         when {
-            // Organizer-created bundle: subfolder is dedicated to this m3u (folder name == m3u stem).
-            romFile.extension.equals("m3u", ignoreCase = true) &&
-                romFile.parentFile?.name == romFile.nameWithoutExtension -> {
-                romFile.parentFile?.deleteRecursively()
-            }
-            // Organizer-created single-disc cue bundle: subfolder is dedicated to this cue (folder name == cue stem).
-            romFile.extension.equals("cue", ignoreCase = true) &&
-                romFile.parentFile?.name == romFile.nameWithoutExtension -> {
-                romFile.parentFile?.deleteRecursively()
-            }
+            // gameDir covers every organizer bundle shape (m3u, cue, disc-group, stem-matching rom folder).
+            gameDir != null -> gameDir.deleteRecursively()
             // User-authored m3u sitting alongside discs: delete each line and the m3u itself.
             romFile.extension.equals("m3u", ignoreCase = true) -> {
                 val parent = romFile.parentFile

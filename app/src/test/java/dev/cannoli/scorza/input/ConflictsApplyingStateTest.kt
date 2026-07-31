@@ -43,6 +43,7 @@ class ConflictsApplyingStateTest {
             updateManager = mockk(relaxed = true),
             atomicRename = mockk(relaxed = true),
             scanner = mockk(relaxed = true),
+            romDirectoryWalker = mockk(relaxed = true),
             settingsViewModel = mockk(relaxed = true),
             gameListViewModel = mockk(relaxed = true),
             systemListViewModel = mockk(relaxed = true),
