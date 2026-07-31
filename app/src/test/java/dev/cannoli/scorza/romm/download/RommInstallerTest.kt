@@ -3,13 +3,12 @@ package dev.cannoli.scorza.romm.download
 import dev.cannoli.scorza.romm.RommFile
 import dev.cannoli.scorza.romm.RommGame
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
-import java.util.zip.ZipEntry
-import java.util.zip.ZipOutputStream
 
 class RommInstallerTest {
 
@@ -31,23 +30,63 @@ class RommInstallerTest {
         assertTrue(!temp.exists())
     }
 
-    @Test fun `multi-part extracts the zip into a per-game subfolder and links the m3u`() {
+    @Test fun `multi-part renames the single top-level rom to the folder name and links it`() {
         val romDir = tmp.newFolder("Roms")
-        val zip = File(tmp.newFolder(), "z.zip")
-        ZipOutputStream(zip.outputStream()).use { z ->
-            for (n in listOf("FF7 (Disc 1).bin", "FF7 (Disc 2).bin", "FF7.m3u")) {
-                z.putNextEntry(ZipEntry(n)); z.write("x".toByteArray()); z.closeEntry()
-            }
-        }
-        val g = game("Final Fantasy VII", "Final Fantasy VII.zip",
-            listOf(f("FF7 (Disc 1).bin"), f("FF7 (Disc 2).bin")))
-        val result = installer.install(g, "PSX", zip, romDir)
-        val sub = File(romDir, "PSX/Final Fantasy VII")
-        assertTrue(File(sub, "FF7 (Disc 1).bin").exists())
-        assertTrue(File(sub, "FF7.m3u").exists())
+        val staging = tmp.newFolder("staging")
+        File(staging, "Game v65536 (World).nsp").writeText("base")
+        File(staging, "update").mkdirs()
+        File(staging, "update/Game upd.nsp").writeText("upd")
+        File(staging, "dlc").mkdirs()
+        File(staging, "dlc/Game dlc.nsp").writeText("dlc")
+        val g = game("Cool Game", "Cool Game", listOf(
+            f("Game v65536 (World).nsp"), f("Game upd.nsp"), f("Game dlc.nsp")))
+        val result = installer.install(g, "NSW", staging, romDir)
+        val dest = File(romDir, "NSW/Cool Game")
+        assertEquals("NSW/Cool Game/Cool Game.nsp", result.linkRelativePath)
+        assertEquals("Cool Game", result.artBaseName)
+        assertEquals("base", File(dest, "Cool Game.nsp").readText())
+        assertEquals("upd", File(dest, "update/Game upd.nsp").readText())
+        assertEquals("dlc", File(dest, "dlc/Game dlc.nsp").readText())
+        assertTrue(!staging.exists())
+    }
+
+    @Test fun `multi-part with several top-level files links the m3u as-is`() {
+        val romDir = tmp.newFolder("Roms")
+        val staging = tmp.newFolder("staging")
+        File(staging, "FF7 (Disc 1).bin").writeText("d1")
+        File(staging, "FF7 (Disc 2).bin").writeText("d2")
+        File(staging, "FF7.m3u").writeText("FF7 (Disc 1).bin\nFF7 (Disc 2).bin\n")
+        val g = game("Final Fantasy VII", "Final Fantasy VII", listOf(
+            f("FF7 (Disc 1).bin"), f("FF7 (Disc 2).bin"), f("FF7.m3u")))
+        val result = installer.install(g, "PSX", staging, romDir)
+        val dest = File(romDir, "PSX/Final Fantasy VII")
         assertEquals("PSX/Final Fantasy VII/FF7.m3u", result.linkRelativePath)
-        assertEquals("Final Fantasy VII", result.artBaseName)
-        assertTrue(!zip.exists())
+        assertTrue(File(dest, "FF7.m3u").exists())
+        assertTrue(!File(dest, "Final Fantasy VII.m3u").exists())
+        assertTrue(File(dest, "FF7 (Disc 1).bin").exists())
+        assertTrue(File(dest, "FF7 (Disc 2).bin").exists())
+    }
+
+    @Test fun `multi-part with several top-level files and no m3u links the folder`() {
+        val romDir = tmp.newFolder("Roms")
+        val staging = tmp.newFolder("staging")
+        File(staging, "Game (Disc 1).chd").writeText("d1")
+        File(staging, "Game (Disc 2).chd").writeText("d2")
+        val g = game("Some Game", "Some Game", listOf(f("Game (Disc 1).chd"), f("Game (Disc 2).chd")))
+        val result = installer.install(g, "PSX", staging, romDir)
+        assertEquals("PSX/Some Game", result.linkRelativePath)
+        assertTrue(File(romDir, "PSX/Some Game/Game (Disc 1).chd").exists())
+    }
+
+    @Test fun `multi-part rejects a game name that traverses out of the tag dir`() {
+        val romDir = tmp.newFolder("Roms")
+        val staging = tmp.newFolder("staging")
+        File(staging, "Game (Disc 1).chd").writeText("d1")
+        File(staging, "Game (Disc 2).chd").writeText("d2")
+        val g = game("..", "..", listOf(f("Game (Disc 1).chd"), f("Game (Disc 2).chd")))
+        assertThrows(Exception::class.java) { installer.install(g, "PSX", staging, romDir) }
+        assertTrue(romDir.exists())
+        assertTrue(staging.exists())
     }
 
     @Test fun `isMultiPart is true when the game has more than one file`() {
