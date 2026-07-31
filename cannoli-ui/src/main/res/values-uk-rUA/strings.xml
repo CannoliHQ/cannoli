@@ -92,6 +92,7 @@
     <string name="setting_art_scale">Масштаб обкладинки</string>
     <string name="setting_text_size">Розмір тексту</string>
     <string name="setting_font">Шрифт</string>
+    <!-- Settings row label: opens the app language picker. -->
     <!-- Appearance setting: shows or hides the title-bar heading text. "Title" here is the heading, not color or box art. -->
     <string name="setting_title">Назва</string>
     <string name="setting_bg_image">Фонове зображення</string>
