@@ -88,6 +88,7 @@
     <!-- Settings items -->
     <string name="setting_colors">COLORES</string>
     <string name="setting_art_width">ANCHO DEL ARTE</string>
+    <!-- Settings row label: opens the app language picker. -->
     <!-- Appearance setting: shows or hides the title-bar heading text. "Title" here is the heading, not color or box art. -->
     <!-- Status-bar indicator toggle: show when Nonna's Kitchen (file server) is running. -->
     <!-- Status-bar indicator toggle for active RomM downloads. -->
