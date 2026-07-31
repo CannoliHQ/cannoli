@@ -51,4 +51,29 @@ class SettingsRepositoryTest {
 
         assertEquals("external", settings.font)
     }
+
+    @Test fun `language persists to json and mirrors to cannoli_locale`() {
+        writeSettingsJson(tmp.root, "{}")
+        val settings = newRepo()
+        settings.sdCardRoot = tmp.root.absolutePath
+        assertEquals("en", settings.language)
+
+        settings.language = "fr-FR"
+        assertEquals("fr-FR", settings.language)
+
+        val mirror = ApplicationProvider.getApplicationContext<Context>()
+            .getSharedPreferences("cannoli_locale", Context.MODE_PRIVATE)
+            .getString("language", "")
+        assertEquals("fr-FR", mirror)
+    }
+
+    @Test fun `clearing language falls back to the English default`() {
+        writeSettingsJson(tmp.root, """{"language":"fr-FR"}""")
+        val settings = newRepo()
+        settings.sdCardRoot = tmp.root.absolutePath
+        assertEquals("fr-FR", settings.language)
+
+        settings.language = ""
+        assertEquals("en", settings.language)
+    }
 }
