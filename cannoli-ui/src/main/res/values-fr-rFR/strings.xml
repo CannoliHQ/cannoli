@@ -92,6 +92,7 @@
     <string name="setting_art_scale">Échelle de l\'image</string>
     <string name="setting_text_size">Taille du texte</string>
     <string name="setting_font">Police</string>
+    <!-- Settings row label: opens the app language picker. -->
     <!-- Appearance setting: shows or hides the title-bar heading text. "Title" here is the heading, not color or box art. -->
     <string name="setting_title">Titre</string>
     <string name="setting_bg_image">Image d\'arrière-plan</string>
