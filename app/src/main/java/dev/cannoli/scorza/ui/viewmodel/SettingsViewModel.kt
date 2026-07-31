@@ -51,13 +51,13 @@ class SettingsViewModel @Inject constructor(
         return resolved?.activityInfo?.packageName == appPackageName
     }
 
-    data class FontOption(val key: String, val label: String, val fontFamily: FontFamily)
+    data class FontOption(val key: String, val label: String, val fontFamily: FontFamily, val typeface: android.graphics.Typeface?)
 
     private var fontOptions: List<FontOption> = buildFontOptions()
 
     private fun buildFontOptions(): List<FontOption> = buildList {
-        add(FontOption("default", "Default", appFonts.mplus1Code))
-        add(FontOption("the_og", "The OG", appFonts.bpReplay))
+        add(FontOption("default", "Default", appFonts.mplus1Code, appFonts.mplus1CodeTypeface))
+        add(FontOption("the_og", "The OG", appFonts.bpReplay, appFonts.bpReplayTypeface))
         val fontsDir = cannoliRoot?.let { java.io.File(it, "Config/Fonts") }
         val exts = setOf("ttf", "otf")
         val customFiles = fontsDir?.listFiles()
@@ -67,13 +67,20 @@ class SettingsViewModel @Inject constructor(
             val typeface = try { android.graphics.Typeface.createFromFile(file) } catch (_: Exception) { null } ?: continue
             val family = FontFamily(androidx.compose.ui.text.font.Typeface(typeface))
             val label = FontNameParser.getFamilyName(file) ?: file.nameWithoutExtension
-            add(FontOption(file.name, label, family))
+            add(FontOption(file.name, label, family, typeface))
         }
     }
 
     private fun resolveFont(): FontFamily {
-        val key = settings.font
-        return fontOptions.firstOrNull { it.key == key }?.fontFamily ?: appFonts.mplus1Code
+        val chosen = fontOptions.firstOrNull { it.key == settings.font } ?: return appFonts.mplus1Code
+        val sample = dev.cannoli.scorza.i18n.LanguageCatalog.byTag(settings.language)?.coverageSample
+        if (sample != null) {
+            val typeface = chosen.typeface
+            if (typeface == null || !dev.cannoli.scorza.i18n.FontCoverage.covers(typeface, sample)) {
+                return appFonts.mplus1Code
+            }
+        }
+        return chosen.fontFamily
     }
 
     data class SettingsItem(
@@ -121,6 +128,7 @@ class SettingsViewModel @Inject constructor(
         val textSize: TextSize = TextSize.DEFAULT,
 
         val fontFamily: FontFamily = FontFamily.Default,
+        val languageTag: String = "",
         val title: String = "",
         val colorHighlight: Color = Color.White,
         val colorText: Color = Color.White,
@@ -163,6 +171,7 @@ class SettingsViewModel @Inject constructor(
         backgroundTint = settings.backgroundTint,
         textSize = settings.textSize,
         fontFamily = resolveFont(),
+        languageTag = settings.language,
         title = settings.title,
         colorHighlight = hexToColor(settings.colorHighlight) ?: Color.White,
         colorText = hexToColor(settings.colorText) ?: Color.White,
@@ -196,6 +205,7 @@ class SettingsViewModel @Inject constructor(
     )
 
     private val allCategories = listOf(
+        Category("general", R.string.settings_general),
         Category("display", R.string.settings_display),
         Category("library", R.string.settings_library),
         Category("input", R.string.settings_input),
@@ -424,6 +434,11 @@ class SettingsViewModel @Inject constructor(
             "font" -> {
                 val cur = fontOptions.indexOfFirst { it.key == settings.font }.coerceAtLeast(0)
                 settings.font = fontOptions[((cur + direction) % fontOptions.size + fontOptions.size) % fontOptions.size].key
+            }
+            "language" -> {
+                val tags = dev.cannoli.scorza.i18n.LanguageCatalog.ALL.map { it.tag }
+                val cur = tags.indexOf(settings.language).coerceAtLeast(0)
+                settings.language = tags[((cur + direction) % tags.size + tags.size) % tags.size]
             }
             "show_clock" -> {
                 if (!settings.showClock) {
@@ -730,13 +745,27 @@ class SettingsViewModel @Inject constructor(
     private fun onOff(value: Boolean) = if (value) R.string.value_on else R.string.value_off
     private fun showHide(value: Boolean) = if (value) R.string.value_show else R.string.value_hide
     private fun buildItemsForCategory(categoryKey: String): List<SettingsItem> = when (categoryKey) {
+        "general" -> buildList {
+            val langLabel = (dev.cannoli.scorza.i18n.LanguageCatalog.byTag(settings.language)
+                ?: dev.cannoli.scorza.i18n.LanguageCatalog.ALL.first()).nativeName
+            add(SettingsItem("language", R.string.setting_language, valueText = langLabel))
+            add(SettingsItem("title", R.string.setting_title, valueText = settings.title.ifEmpty { null }, valueRes = if (settings.title.isEmpty()) R.string.value_none else null, isEditable = true))
+            add(SettingsItem("swap_play_resume", R.string.setting_swap_play_resume, valueRes = onOff(settings.swapPlayResume)))
+            add(SettingsItem("main_menu_quit", R.string.setting_main_menu_quit, valueRes = onOff(settings.mainMenuQuit)))
+            if (!isTelevision && !isDefaultLauncher()) {
+                add(SettingsItem("set_default_launcher", R.string.setting_set_default_launcher, isEditable = true))
+            }
+        }
         "display" -> buildList {
+            add(SettingsItem("colors", R.string.setting_colors, isEditable = true))
             add(SettingsItem("bg_image", R.string.setting_bg_image, valueText = settings.backgroundImagePath?.let { java.io.File(it).name }, valueRes = if (settings.backgroundImagePath == null) R.string.value_none else null))
             if (settings.backgroundImagePath != null) {
                 val tintVal = settings.backgroundTint
                 add(SettingsItem("bg_tint", R.string.setting_bg_tint, valueText = if (tintVal == 0) null else "$tintVal%", valueRes = if (tintVal == 0) R.string.value_off else null))
             }
-            add(SettingsItem("colors", R.string.setting_colors, isEditable = true))
+            val currentFont = fontOptions.firstOrNull { it.key == settings.font } ?: fontOptions.first()
+            add(SettingsItem("font", R.string.setting_font, valueText = currentFont.label))
+            add(SettingsItem("text_size", R.string.setting_text_size, valueText = "${settings.textSize.sp}sp"))
             val artScaleRes = when (settings.artScale) {
                 ArtScale.FIT -> R.string.value_fit
                 ArtScale.ORIGINAL -> R.string.value_original
@@ -746,10 +775,6 @@ class SettingsViewModel @Inject constructor(
             add(SettingsItem("art_scale", R.string.setting_art_scale, valueRes = artScaleRes))
             val artW = settings.artWidth
             add(SettingsItem("art_width", R.string.setting_art_width, valueText = if (artW == 0) null else "$artW%", valueRes = if (artW == 0) R.string.value_off else null))
-            val currentFont = fontOptions.firstOrNull { it.key == settings.font } ?: fontOptions.first()
-            add(SettingsItem("font", R.string.setting_font, valueText = currentFont.label))
-            add(SettingsItem("text_size", R.string.setting_text_size, valueText = "${settings.textSize.sp}sp"))
-            add(SettingsItem("title", R.string.setting_title, valueText = settings.title.ifEmpty { null }, valueRes = if (settings.title.isEmpty()) R.string.value_none else null, isEditable = true))
             add(SettingsItem("status_bar", R.string.settings_status_bar, isEditable = true))
             val marginPx = settings.portraitMarginPx
             add(SettingsItem(
@@ -841,8 +866,6 @@ class SettingsViewModel @Inject constructor(
         "input" -> listOf(
             SettingsItem("controllers", R.string.setting_controllers, isEditable = true),
             SettingsItem("shortcuts", R.string.setting_shortcuts, isEditable = true),
-            SettingsItem("swap_play_resume", R.string.setting_swap_play_resume, valueRes = onOff(settings.swapPlayResume)),
-            SettingsItem("main_menu_quit", R.string.setting_main_menu_quit, valueRes = onOff(settings.mainMenuQuit)),
             SettingsItem("input_tester", R.string.setting_input_tester, isEditable = true)
         )
         "emulation" -> buildList {
@@ -890,9 +913,6 @@ class SettingsViewModel @Inject constructor(
                 R.string.settings_release_channel,
                 valueText = dev.cannoli.scorza.updater.ReleaseChannel.fromString(settings.releaseChannel).label
             ))
-            if (!isTelevision && !isDefaultLauncher()) {
-                add(SettingsItem("set_default_launcher", R.string.setting_set_default_launcher, isEditable = true))
-            }
         }
         "debug" -> listOf(
             SettingsItem("audit_emulator_intents", R.string.setting_audit_emulator_intents, isEditable = true)
