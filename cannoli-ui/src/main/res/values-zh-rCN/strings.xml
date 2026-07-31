@@ -92,6 +92,7 @@
     <string name="setting_art_scale">美术图比例</string>
     <string name="setting_text_size">文本大小</string>
     <string name="setting_font">字体</string>
+    <!-- Settings row label: opens the app language picker. -->
     <!-- Appearance setting: shows or hides the title-bar heading text. "Title" here is the heading, not color or box art. -->
     <string name="setting_title">标题</string>
     <string name="setting_bg_image">背景图像</string>
