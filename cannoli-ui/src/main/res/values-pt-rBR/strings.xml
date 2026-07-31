@@ -12,6 +12,7 @@
     <!-- Settings categories -->
     <!-- Setting: which update channel to follow (e.g. stable versus test builds). -->
     <!-- Settings items -->
+    <!-- Settings row label: opens the app language picker. -->
     <!-- Appearance setting: shows or hides the title-bar heading text. "Title" here is the heading, not color or box art. -->
     <!-- Status-bar indicator toggle: show when Nonna's Kitchen (file server) is running. -->
     <!-- Status-bar indicator toggle for active RomM downloads. -->
