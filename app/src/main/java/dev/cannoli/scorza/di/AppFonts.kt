@@ -12,11 +12,15 @@ import javax.inject.Singleton
 class AppFonts @Inject constructor(@ApplicationContext context: Context) {
     val mplus1Code: FontFamily
     val bpReplay: FontFamily
+    val mplus1CodeTypeface: Typeface
+    val bpReplayTypeface: Typeface
 
     init {
         val mplus = Typeface.createFromAsset(context.assets, "fonts/MPlus-1c-NerdFont-Bold.ttf")
+        mplus1CodeTypeface = mplus
         mplus1Code = FontFamily(ComposeTypeface(mplus))
         val bp = Typeface.createFromAsset(context.assets, "fonts/BPreplayBold-unhinted.otf")
+        bpReplayTypeface = bp
         bpReplay = FontFamily(ComposeTypeface(bp))
     }
 }

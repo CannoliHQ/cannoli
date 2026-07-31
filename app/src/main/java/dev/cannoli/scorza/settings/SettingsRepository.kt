@@ -175,6 +175,13 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         get() = jsonRead { optString(KEY_FONT, "default") }
         set(value) = jsonWrite { put(KEY_FONT, value) }
 
+    var language: String
+        get() = jsonRead { optString(KEY_LANGUAGE, "en") }
+        set(value) {
+            jsonWrite { if (value.isEmpty()) remove(KEY_LANGUAGE) else put(KEY_LANGUAGE, value) }
+            dev.cannoli.scorza.i18n.LocaleOverride.persist(context, value)
+        }
+
     var title: String
         get() = jsonRead { optString(KEY_TITLE, "") }
         set(value) = jsonWrite { if (value.isEmpty()) remove(KEY_TITLE) else put(KEY_TITLE, value) }
@@ -450,6 +457,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         private const val KEY_RA_PACKAGE = "ra_package"
         private const val KEY_TEXT_SIZE = "text_size"
         private const val KEY_FONT = "font"
+        private const val KEY_LANGUAGE = "language"
         private const val KEY_TITLE = "title"
         private const val KEY_TIME_FORMAT = "time_format"
         private const val KEY_BG_IMAGE = "bg_image"

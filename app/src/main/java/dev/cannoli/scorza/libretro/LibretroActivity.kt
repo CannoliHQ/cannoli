@@ -72,6 +72,10 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
 
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(dev.cannoli.scorza.i18n.LocaleOverride.wrap(newBase))
+    }
+
     @Inject lateinit var settings: SettingsRepository
     @Inject lateinit var romsRepository: dev.cannoli.scorza.db.RomsRepository
     @Inject lateinit var portRouter: dev.cannoli.scorza.input.runtime.PortRouter
