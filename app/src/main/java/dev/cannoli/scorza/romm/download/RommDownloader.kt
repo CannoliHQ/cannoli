@@ -7,6 +7,7 @@ import dev.cannoli.scorza.di.CannoliPathsProvider
 import dev.cannoli.scorza.romm.RommClient
 import dev.cannoli.scorza.romm.RommConnectionStore
 import dev.cannoli.scorza.romm.RommDownloadCancelled
+import dev.cannoli.scorza.romm.RommGame
 import dev.cannoli.scorza.romm.RommHttp
 import dev.cannoli.scorza.util.ArtworkLookup
 import dev.cannoli.scorza.util.RommLog
@@ -94,20 +95,22 @@ class RommDownloader(
     private fun runRom(item: RommDownloadItem) {
         val game = item.game ?: return
         val tempDir = File(paths.root, "Config/Cache/RommDownloads").apply { mkdirs() }
-        val temp = File(tempDir, "${item.rommId}.part")
-        val fileName = if (installer.isMultiPart(game)) "${game.name}.zip" else game.fsName
+        val multiPart = installer.isMultiPart(game)
+        val source = if (multiPart) File(tempDir, "${item.rommId}.parts") else File(tempDir, "${item.rommId}.part")
         try {
             queue.setStatus(item.key, DownloadStatus.Downloading(0, game.sizeBytes))
-            client.downloadRom(
-                romId = item.rommId,
-                fileName = fileName,
-                dest = temp,
-                isCancelled = { synchronized(cancelled) { item.key in cancelled } },
-                expectedTotal = game.sizeBytes,
-            ) { downloaded, total -> queue.setStatus(item.key, DownloadStatus.Downloading(downloaded, total)) }
+            if (multiPart) downloadParts(item, game, source) else {
+                client.downloadRom(
+                    romId = item.rommId,
+                    fileName = game.fsName,
+                    dest = source,
+                    isCancelled = { synchronized(cancelled) { item.key in cancelled } },
+                    expectedTotal = game.sizeBytes,
+                ) { downloaded, total -> queue.setStatus(item.key, DownloadStatus.Downloading(downloaded, total)) }
+            }
 
             scanScheduler.markLauncherMutation(item.tag)
-            val result = installer.install(game, item.tag, temp, paths.romDir)
+            val result = installer.install(game, item.tag, source, paths.romDir)
             runCatching {
                 adoptGuideDir(
                     CannoliPaths(paths.root).guidesFor(item.tag),
@@ -121,15 +124,40 @@ class RommDownloader(
             scanScheduler.runNow(item.tag)
             queue.setStatus(item.key, DownloadStatus.Done)
         } catch (e: RommDownloadCancelled) {
-            temp.delete()
+            deleteSource(source)
             queue.cancel(item.key)
         } catch (e: Exception) {
-            temp.delete()
+            deleteSource(source)
             RommLog.write("ERROR romm download ${item.rommId} failed: ${e.message}")
             queue.setStatus(item.key, DownloadStatus.Failed(e.message ?: "failed"))
         } finally {
             synchronized(cancelled) { cancelled.remove(item.key) }
         }
+    }
+
+    private fun downloadParts(item: RommDownloadItem, game: RommGame, staging: File) {
+        if (staging.exists()) staging.deleteRecursively()
+        staging.mkdirs()
+        var completed = 0L
+        for (file in game.files.sortedWith(compareBy({ it.subDir }, { it.fileName }))) {
+            val dest = File(if (file.subDir.isEmpty()) staging else File(staging, file.subDir), File(file.fileName).name)
+            if (!dest.canonicalPath.startsWith(staging.canonicalPath + File.separator)) {
+                throw Exception("invalid file path for ${file.fileName}")
+            }
+            client.downloadRomFile(
+                romId = item.rommId,
+                fileId = file.id,
+                fileName = File(file.fileName).name,
+                dest = dest,
+                isCancelled = { synchronized(cancelled) { item.key in cancelled } },
+                expectedTotal = file.sizeBytes,
+            ) { downloaded, _ -> queue.setStatus(item.key, DownloadStatus.Downloading(completed + downloaded, game.sizeBytes)) }
+            completed += dest.length()
+        }
+    }
+
+    private fun deleteSource(source: File) {
+        if (source.isDirectory) source.deleteRecursively() else source.delete()
     }
 
     private fun runManual(item: RommDownloadItem) {
