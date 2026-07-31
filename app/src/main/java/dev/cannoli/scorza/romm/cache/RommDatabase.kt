@@ -446,7 +446,7 @@ class RommDatabase(private val dbFileProvider: () -> File) {
     }
 
     private companion object {
-        const val SCHEMA_VERSION = 6
+        const val SCHEMA_VERSION = 7
         const val GLOBAL_SEARCH_LIMIT = 300
 
         const val GAME_COLUMNS =

@@ -19,6 +19,15 @@ class RommCacheJsonTest {
         assertEquals(emptyList<RommFile>(), RommCacheJson.decodeFiles(RommCacheJson.encodeFiles(emptyList())))
     }
 
+    @Test fun `files round-trip id and subDir`() {
+        val files = listOf(
+            RommFile("base.nsp", 10, null, null, null, id = 41, subDir = ""),
+            RommFile("upd.nsp", 5, "c", "m", "s", id = 42, subDir = "update"),
+        )
+        val decoded = RommCacheJson.decodeFiles(RommCacheJson.encodeFiles(files))
+        assertEquals(files, decoded)
+    }
+
     @Test fun `strings round-trip`() {
         val regions = listOf("USA", "Europe")
         assertEquals(regions, RommCacheJson.decodeStrings(RommCacheJson.encodeStrings(regions)))
