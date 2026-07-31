@@ -8,8 +8,9 @@ import java.io.File
 /**
  * Walks a ROM directory and returns the in-memory list of ROMs that should exist for a platform.
  * Reorganizes loose multi-disc sets into per-game subfolders with a generated `<base>.m3u` so
- * libretro cores resolve disc paths correctly. Honors ignore lists, m3u/cue dir launches,
- * disc grouping, name-map overrides, and tag/region splitting.
+ * libretro cores resolve disc paths correctly. Honors ignore lists, m3u/cue/stem-matching-rom
+ * dir launches (collapsing only when all top-level files share the folder's name), disc grouping,
+ * name-map overrides, and tag/region splitting.
  */
 class RomDirectoryWalker(
     private val pathsProvider: CannoliPathsProvider,
@@ -241,6 +242,10 @@ class RomDirectoryWalker(
         val discs = children.filter { discRegex.containsMatchIn(it.nameWithoutExtension) }
         if (discs.size > 1) {
             return DirLaunch(discs.sortedBy { it.name }.first())
+        }
+        val named = children.filter { it.nameWithoutExtension.equals(dir.name, ignoreCase = true) }
+        if (named.isNotEmpty() && named.size == children.size) {
+            return DirLaunch(named.maxBy { it.length() })
         }
         return null
     }

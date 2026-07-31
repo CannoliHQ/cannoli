@@ -143,6 +143,22 @@ class RomDirectoryWalkerTest {
     }
 
     @Test
+    fun `gameDirectory resolves a cue folder game`() {
+        write("PS/Cool Game/Cool Game.cue", "cue")
+        write("PS/Cool Game/Cool Game.bin", "bin")
+
+        val cue = File(romsDir, "PS/Cool Game/Cool Game.cue")
+        assertEquals(File(romsDir, "PS/Cool Game"), walker.gameDirectory(cue))
+    }
+
+    @Test
+    fun `gameDirectory is null for a loose m3u directly under the platform dir`() {
+        write("PS/Loose.m3u", "Loose (Disc 1).chd\n")
+        val m3u = File(romsDir, "PS/Loose.m3u")
+        assertEquals(null, walker.gameDirectory(m3u))
+    }
+
+    @Test
     fun `gameFiles for a loose single file returns just that file`() {
         write("NES/Mega Game.nes")
         val rom = File(romsDir, "NES/Mega Game.nes")
@@ -267,5 +283,58 @@ class RomDirectoryWalkerTest {
             listOf("Cool Game (Disc 1).chd", "Cool Game (Disc 2).chd"),
             File(romsDir, "PS/Cool Game/Cool Game.m3u").readLines().filter { it.isNotBlank() },
         )
+    }
+
+    @Test
+    fun `folder with rom named after it is one game launching that file`() {
+        write("NSW/Cool Game/Cool Game.nsp", "base")
+        write("NSW/Cool Game/update/Cool Game upd.nsp", "upd")
+        write("NSW/Cool Game/dlc/Cool Game dlc.nsp", "dlc")
+        val result = walker.walk("NSW", isArcade = false)!!
+        assertEquals(1, result.roms.size)
+        assertEquals("NSW${File.separator}Cool Game${File.separator}Cool Game.nsp", result.roms.single().relativePath)
+        assertEquals("Cool Game", result.roms.single().displayName)
+    }
+
+    @Test
+    fun `largest stem-matching file wins over sidecars`() {
+        write("NSW/Cool Game/Cool Game.nsp", "big rom content")
+        write("NSW/Cool Game/Cool Game.txt", "x")
+        val result = walker.walk("NSW", isArcade = false)!!
+        assertEquals(1, result.roms.size)
+        assertEquals("NSW${File.separator}Cool Game${File.separator}Cool Game.nsp", result.roms.single().relativePath)
+    }
+
+    @Test
+    fun `dirname m3u still wins over a stem-matching rom`() {
+        write("PS/Cool Game/Cool Game.m3u", "Cool Game (Disc 1).chd\n")
+        write("PS/Cool Game/Cool Game (Disc 1).chd")
+        write("PS/Cool Game/Cool Game.chd")
+        val result = walker.walk("PS", isArcade = false)!!
+        assertEquals("PS${File.separator}Cool Game${File.separator}Cool Game.m3u", result.roms.single().relativePath)
+    }
+
+    @Test
+    fun `folder without a stem-matching rom keeps per-file entries`() {
+        write("NSW/Two Games/Game A.nsp")
+        write("NSW/Two Games/Game B.nsp")
+        val result = walker.walk("NSW", isArcade = false)!!
+        assertEquals(2, result.roms.size)
+    }
+
+    @Test
+    fun `matching-rom folder is not a category folder and resolves gameDirectory`() {
+        write("NSW/Cool Game/Cool Game.nsp")
+        write("NSW/Cool Game/update/u.nsp")
+        assertEquals(emptyList<String>(), walker.categoryFolders("NSW").filter { it == "Cool Game" })
+        val primary = File(romsDir, "NSW/Cool Game/Cool Game.nsp")
+        assertEquals(File(romsDir, "NSW/Cool Game"), walker.gameDirectory(primary))
+    }
+
+    @Test fun `folder with a stem-matching rom and other roms keeps per-file entries`() {
+        write("NES/Mario/Mario.nes")
+        write("NES/Mario/Mario 2.nes")
+        val result = walker.walk("NES", isArcade = false)!!
+        assertEquals(2, result.roms.size)
     }
 }
