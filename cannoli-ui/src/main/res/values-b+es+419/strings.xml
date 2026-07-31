@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Bottom bar labels -->
+    <!-- Bottom-bar button opening cached RetroAchievements sets for offline play. RA = RetroAchievements. -->
+    <!-- Bottom-bar button; opens Nonna's Kitchen. -->
+    <!-- Bottom-bar button. RA = RetroAchievements. -->
+    <!-- In-game menu action: reassign connected controllers to player slots. -->
+    <!-- In-game shortcut actions -->
+    <!-- In-game shortcut action. "(Hold)" means it triggers on a long-press of the shortcut. -->
+    <!-- In-game shortcut action: cycle through the video scaling modes. -->
+    <!-- In-game shortcut action: cycle through the shader presets. -->
+    <!-- Settings categories -->
+    <!-- Setting: which update channel to follow (e.g. stable versus test builds). -->
+    <!-- Settings items -->
+    <!-- Settings row label: opens the app language picker. -->
+    <!-- Appearance setting: shows or hides the title-bar heading text. "Title" here is the heading, not color or box art. -->
+    <!-- Status-bar indicator toggle: show when Nonna's Kitchen (file server) is running. -->
+    <!-- Status-bar indicator toggle for active RomM downloads. -->
+    <!-- Status-bar indicator toggle: show when an app update is available. -->
+    <!-- Controller setting: which face button acts as confirm/OK. -->
+    <!-- Controller setting: which face-button glyph set to display (letters like A/B versus shapes). -->
+    <!-- Controller toggle: ignore this controller during gameplay (e.g. a media remote). -->
+    <!-- Shown when a button has no assigned binding. -->
+    <!-- Confirm button values -->
+    <!-- Canonical button labels -->
+    <!-- Face-button position, not a compass direction: the bottom face button (South/East/West/North layout). -->
+    <!-- Face-button position (not compass): the right face button. -->
+    <!-- Face-button position (not compass): the left face button. -->
+    <!-- Face-button position (not compass): the top face button. -->
+    <!-- Glyph face button labels -->
+    <!-- Hat directions -->
+    <!-- Binding formatters -->
+    <!-- Input binding label. %1$d is the numeric key code. -->
+    <!-- Input binding label. %1$s is the hat (D-pad) direction. -->
+    <!-- Input binding label. %1$d is the joystick axis index; + is the positive direction. -->
+    <!-- Input binding label. %1$d is the joystick axis index; - is the negative direction. -->
+    <!-- Input setting toggle: swap the on-screen positions of the Play and Resume actions. -->
+    <!-- Input setting toggle: controls whether the in-game Quit returns to the main menu. -->
+    <!-- Input toggle: automatically save a state when quitting a game. -->
+    <!-- Advanced setting toggle: skip the passcode gate for Nonna's Kitchen. Keep "Kitchen" consistent with the feature name. -->
+    <!-- Advanced action: recreate the standard platform/system folders. -->
+    <!-- Library setting: which content layout to show (platforms, collections only, or Five Game Handheld). -->
+    <!-- Library setting for the Five Game Handheld collection. Keep "5GH" as-is. -->
+    <!-- Opens the Tools manager (sideloaded utility apps). -->
+    <!-- Opens the Ports manager. "Ports" means standalone native game ports. -->
+    <!-- Theme color for the title heading text. -->
+    <!-- Theme color: text drawn on the highlighted/selected row. -->
+    <!-- Settings row. %s is the emulator app name (e.g. RetroArch). -->
+    <!-- Screen title. %s is the emulator app name (e.g. RetroArch). -->
+    <!-- Setting: the app's root storage folder on the SD card. -->
+    <!-- Setting: which installed RetroArch app/package to launch games with. -->
+    <!-- Scan Mode value: scan the library automatically. -->
+    <!-- Scan Mode value: scan the library by hand. "Manual" here is the adverb (by hand), not a game's instruction manual. -->
+    <!-- RA = RetroAchievements account username. -->
+    <!-- RA = RetroAchievements account password. -->
+    <!-- RA = RetroAchievements. Button to log in. -->
+    <!-- RomM -->
+    <!-- RomM server address (host/URL). -->
+    <!-- Toggle: sync save files with the RomM server. -->
+    <!-- Bottom-bar button opening the game's instruction manual (a document), not "manual/by hand". -->
+    <!-- The game's instruction manual (document), not "manual/by hand". -->
+    <!-- Cache-building status. %1$s is the platform name. -->
+    <!-- Toast. %1$d = number added to the download queue. -->
+    <!-- Notification. %1$d is the number of active downloads. -->
+    <!-- Screen title. %1$s is the platform name. -->
+    <!-- Art type: a composite/mixed artwork image. -->
+    <!-- Art type: the game's title-screen image, not a text title. -->
+    <!-- Art type: the arcade marquee image. -->
+    <!-- RomM "Virtual" collections (auto-grouped, e.g. by franchise or genre). -->
+    <!-- RomM "Smart" collections (rule-based, auto-updating). -->
+    <!-- Advanced toggle: log the intents used to launch external emulators. -->
+    <!-- Input tester row. %1$d = player number, %2$s = device name, %3$d = device id. -->
+    <!-- Input tester: the device sent events but has no button mapping. -->
+    <!-- Setting values -->
+    <!-- Content Mode value: the default platform view. -->
+    <!-- Dialogs -->
+    <!-- %1$s = the list or collection name. -->
+    <!-- Confirm dialog. %1$s = item name. -->
+    <!-- Shown when a per-game override is deliberately set to empty. -->
+    <!-- %1$s = platform name. -->
+    <!-- Boot progress. %1$s = tag/category name. -->
+    <!-- %1$s = core name, %2$s = emulator app. -->
+    <!-- %1$s = core name. -->
+    <!-- %1$s = app name. -->
+    <!-- %1$s = folder path. -->
+    <!-- %1$s = error detail. -->
+    <!-- Formatted strings -->
+    <!-- %1$s = collection name. -->
+    <!-- %1$d = number of items selected. -->
+    <!-- Onboarding wizard -->
+    <!-- Boot error screen -->
+    <!-- Storage row (shared with onboarding) -->
+    <!-- System list -->
+    <!-- 5GH = Five Game Handheld; keep "5GH" as-is. -->
+    <!-- Screen title. %1$s = the search query. -->
+    <!-- Section label: standalone game ports. -->
+    <!-- About -->
+    <!-- App tagline; playful, "filling" is a cannoli pun. Keep the light tone. -->
+    <!-- Kitchen -->
+    <!-- Keep "Nonna's Kitchen" verbatim. -->
+    <!-- Nonna's Kitchen runs a local file server. -->
+    <!-- Keep "Nonna's Kitchen" verbatim. -->
+    <!-- Search -->
+    <!-- %1$s = platform name. -->
+    <!-- Keyboard entry headers -->
+    <!-- Quick menu -->
+    <!-- URL to reach the Nonna's Kitchen file server. -->
+    <!-- RetroAchievements -->
+    <!-- RA = RetroAchievements. -->
+    <!-- %1$d = achievements awaiting sync. -->
+    <!-- %d = achievement count. -->
+    <!-- %d = number of achievements synced. -->
+    <!-- Counts of synced and failed achievements. -->
+    <!-- OSD toast. %1$s = save slot name. -->
+    <!-- OSD toast. %1$s = save slot name. -->
+    <!-- OSD toast. %1$s = save slot name. -->
+    <!-- OSD toast. %1$s = scaling mode name. -->
+    <!-- OSD toast. %1$s = shader preset name. -->
+    <!-- OSD toast. %1$s = mode/item name. -->
+    <!-- OSD toast. %1$s = game name (setting saved per-game). -->
+    <!-- OSD toast. %1$s = controller name, %2$s = player slot. -->
+    <!-- %1$d = disc number (multi-disc games). -->
+    <!-- Scaling mode: use the size the emulator core reports. -->
+    <!-- Scaling mode: integer scaling pushed beyond 1x to fill more of the screen. -->
+    <!-- Scaling mode: fit the screen while keeping the aspect ratio. -->
+    <!-- Indicates a setting applies globally (all games). -->
+    <!-- Indicates a setting applies only to the current game. -->
+    <!-- OSD toast. %1$d = player number, %2$s = controller name. -->
+    <!-- OSD toast. %1$d = player number, %2$s = controller name. -->
+    <!-- OSD toast. %1$s = controller name. -->
+    <!-- RA login OSD. %1$s = username, %2$s = display name, %3$d/%4$d = unlocked/total achievements. -->
+    <!-- Credits -->
+    <!-- Core picker / nav -->
+    <!-- Update download -->
+    <!-- IGM screen titles -->
+    <!-- D-Pad Mode value: 8 directions. -->
+    <!-- D-Pad Mode value: 4 directions. -->
+    <!-- IGM info labels -->
+    <!-- Info label: whether the ROM was extracted from an archive. -->
+    <!-- IGM dialogs -->
+    <!-- %1$s = save slot name. -->
+    <!-- Achievements -->
+    <!-- %1$d = unlocked count, %2$d = total. -->
+    <!-- Compact points label. %1$d = points. -->
+    <!-- %1$d = points. -->
+    <!-- %1$s = date the achievement was unlocked. -->
+    <!-- Advanced setting: adjust the on-screen viewport rectangle. -->
+    <!-- Emulator Mapping -->
+    <!-- Setting: maps each platform to an emulator/core. -->
+    <!-- The core is not bundled with the app. -->
+    <!-- %d = number of required BIOS files missing. -->
+    <!-- Screen title. %s = platform name. -->
+    <!-- Screen title. %s = platform name. -->
+    <!-- OSD toast. %1$s = core name. -->
+    <!-- OSD toast. %1$s = core name. -->
+    <!-- OSD toast. %1$s = core name or error detail. -->
+    <!-- %d = number of games with per-game overrides. -->
+    <!-- %d = number of items selected. -->
+    <!-- %d = number of items. -->
+    <!-- OSD toast. %d = number of cheats restored. -->
+    <!-- %d = number of system folders created. -->
+    <!-- %1$s = platform name. -->
+    <!-- RA achievement preload. %1$s = game name. -->
+    <!-- %1$d = achievements cached, %2$d = points. -->
+    <!-- %1$d = games cached, %2$d = total games. -->
+    <!-- %1$d = achievement count, %2$s = set name. -->
+    <!-- Save Slots screen -->
+    <!-- Screen title. %1$s = game name. -->
+    <!-- %1$s = slot name. -->
+    <!-- Conflicts resolution screen -->
+    <!-- %1$d = number of saves that could not be applied. -->
+    <!-- %1$d = number of sync conflicts. -->
+    <!-- %1$d = number of sync errors. -->
+    <!-- %1$d = number of backups. -->
+    <!-- Label marking the older save in a conflict. -->
+    <!-- On-screen keyboard help overlay -->
+</resources>
