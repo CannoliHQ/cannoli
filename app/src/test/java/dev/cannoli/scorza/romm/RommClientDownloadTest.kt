@@ -57,4 +57,24 @@ class RommClientDownloadTest {
             client().downloadRom(7, "x.sfc", dest, isCancelled = { false }) { _, _ -> }
         }
     }
+
+    @Test fun `downloadRomFile streams bytes and passes file_ids`() {
+        val payload = ByteArray(3000) { (it % 97).toByte() }
+        server.enqueue(MockResponse().setBody(Buffer().write(payload)))
+        val dest = File(tmp.newFolder(), "upd.nsp")
+        client().downloadRomFile(7, 42, "upd.nsp", dest, isCancelled = { false }) { _, _ -> }
+        assertTrue(dest.readBytes().contentEquals(payload))
+        val path = server.takeRequest().path!!
+        assertTrue(path, path.contains("file_ids=42"))
+        assertTrue(path, path.startsWith("/api/roms/7/content/"))
+    }
+
+    @Test fun `downloadRomFile aborts when cancelled and removes the partial file`() {
+        server.enqueue(MockResponse().setBody(Buffer().write(ByteArray(100000))))
+        val dest = File(tmp.newFolder(), "upd.nsp")
+        assertThrows(RommDownloadCancelled::class.java) {
+            client().downloadRomFile(7, 42, "upd.nsp", dest, isCancelled = { true }) { _, _ -> }
+        }
+        assertTrue(!dest.exists())
+    }
 }

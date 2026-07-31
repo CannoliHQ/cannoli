@@ -170,38 +170,7 @@ class RommClient(
         onProgress: (downloaded: Long, total: Long) -> Unit,
     ) {
         val url = endpoint("/api/roms/$romId/content").newBuilder().addPathSegment(fileName).build()
-        val request = Request.Builder().url(url).get().build()
-        val response: Response = try {
-            downloadClientProvider().newCall(request).execute()
-        } catch (e: IOException) {
-            throw RommException(null, "Network error: ${e.message}", e)
-        }
-        response.use {
-            if (!it.isSuccessful) throw RommException(it.code, "HTTP ${it.code} downloading rom $romId")
-            val body = it.body ?: throw RommException(it.code, "Empty body downloading rom $romId")
-            val total = body.contentLength().takeIf { len -> len > 0 } ?: expectedTotal
-            dest.parentFile?.mkdirs()
-            try {
-                body.byteStream().use { input ->
-                    dest.outputStream().use { output ->
-                        val buf = ByteArray(64 * 1024)
-                        var downloaded = 0L
-                        while (true) {
-                            if (isCancelled()) throw RommDownloadCancelled()
-                            val n = input.read(buf)
-                            if (n < 0) break
-                            output.write(buf, 0, n)
-                            downloaded += n
-                            onProgress(downloaded, total)
-                        }
-                    }
-                }
-            } catch (e: RommDownloadCancelled) {
-                dest.delete(); throw e
-            } catch (e: IOException) {
-                dest.delete(); throw RommException(it.code, "IO error downloading rom $romId: ${e.message}", e)
-            }
-        }
+        downloadToFile(url, "rom $romId", dest, isCancelled, expectedTotal, onProgress)
     }
 
     fun downloadFirmware(
@@ -213,6 +182,33 @@ class RommClient(
         onProgress: (downloaded: Long, total: Long) -> Unit,
     ) {
         val url = endpoint("/api/firmware/$firmwareId/content").newBuilder().addPathSegment(fileName).build()
+        downloadToFile(url, "firmware $firmwareId", dest, isCancelled, expectedTotal, onProgress)
+    }
+
+    fun downloadRomFile(
+        romId: Int,
+        fileId: Int,
+        fileName: String,
+        dest: File,
+        isCancelled: () -> Boolean,
+        expectedTotal: Long = 0L,
+        onProgress: (downloaded: Long, total: Long) -> Unit,
+    ) {
+        val url = endpoint("/api/roms/$romId/content").newBuilder()
+            .addPathSegment(fileName)
+            .addQueryParameter("file_ids", fileId.toString())
+            .build()
+        downloadToFile(url, "rom $romId file $fileId", dest, isCancelled, expectedTotal, onProgress)
+    }
+
+    private fun downloadToFile(
+        url: HttpUrl,
+        what: String,
+        dest: File,
+        isCancelled: () -> Boolean,
+        expectedTotal: Long,
+        onProgress: (downloaded: Long, total: Long) -> Unit,
+    ) {
         val request = Request.Builder().url(url).get().build()
         val response: Response = try {
             downloadClientProvider().newCall(request).execute()
@@ -220,8 +216,8 @@ class RommClient(
             throw RommException(null, "Network error: ${e.message}", e)
         }
         response.use {
-            if (!it.isSuccessful) throw RommException(it.code, "HTTP ${it.code} downloading firmware $firmwareId")
-            val body = it.body ?: throw RommException(it.code, "Empty body downloading firmware $firmwareId")
+            if (!it.isSuccessful) throw RommException(it.code, "HTTP ${it.code} downloading $what")
+            val body = it.body ?: throw RommException(it.code, "Empty body downloading $what")
             val total = body.contentLength().takeIf { len -> len > 0 } ?: expectedTotal
             dest.parentFile?.mkdirs()
             try {
@@ -242,7 +238,7 @@ class RommClient(
             } catch (e: RommDownloadCancelled) {
                 dest.delete(); throw e
             } catch (e: IOException) {
-                dest.delete(); throw RommException(it.code, "IO error downloading firmware $firmwareId: ${e.message}", e)
+                dest.delete(); throw RommException(it.code, "IO error downloading $what: ${e.message}", e)
             }
         }
     }
