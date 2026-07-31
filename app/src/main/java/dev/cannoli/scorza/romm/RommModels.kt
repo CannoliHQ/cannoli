@@ -15,6 +15,8 @@ data class RommFile(
     val crc: String?,
     val md5: String?,
     val sha1: String?,
+    val id: Int = 0,
+    val subDir: String = "",
 )
 
 data class RommGame(

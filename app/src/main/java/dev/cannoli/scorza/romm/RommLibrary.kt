@@ -114,7 +114,7 @@ internal fun SimpleRomDto.toDomain(): RommGame = RommGame(
     regions = regions,
     languages = languages,
     coverPath = pathCoverLarge,
-    files = files.map { RommFile(it.fileName, it.fileSizeBytes, it.crcHash, it.md5Hash, it.sha1Hash) },
+    files = files.map { RommFile(it.fileName, it.fileSizeBytes, it.crcHash, it.md5Hash, it.sha1Hash, it.id, rommFileSubDir(it.filePath, fullPath)) },
     companies = metadatum?.companies ?: emptyList(),
     genres = metadatum?.genres ?: emptyList(),
     gameModes = metadatum?.gameModes ?: emptyList(),
@@ -128,6 +128,12 @@ internal fun SimpleRomDto.toDomain(): RommGame = RommGame(
     groupKey = (siblings.map { it.id } + id).min(),
     isMainSibling = isMainSibling,
 )
+
+internal fun rommFileSubDir(filePath: String, romFullPath: String): String {
+    if (romFullPath.isEmpty() || filePath == romFullPath) return ""
+    if (!filePath.startsWith("$romFullPath/")) return ""
+    return filePath.removePrefix("$romFullPath/").trim('/')
+}
 
 internal fun FirmwareDto.toDomain() = RommFirmware(
     id = id, fileName = fileName, sizeBytes = fileSizeBytes,

@@ -38,6 +38,7 @@ data class RomFileDto(
     @SerialName("crc_hash") val crcHash: String? = null,
     @SerialName("md5_hash") val md5Hash: String? = null,
     @SerialName("sha1_hash") val sha1Hash: String? = null,
+    @SerialName("file_path") val filePath: String = "",
 )
 
 @Serializable
@@ -76,6 +77,7 @@ data class SimpleRomDto(
     val metadatum: RomMetadatumDto? = null,
     @SerialName("ss_metadata") val ssMetadata: SsMetadataDto? = null,
     @SerialName("updated_at") val updatedAt: String? = null,
+    @SerialName("full_path") val fullPath: String = "",
 )
 
 // Only the resources RomM stores and serves itself. The provider urls in ss_metadata (box3d_url and

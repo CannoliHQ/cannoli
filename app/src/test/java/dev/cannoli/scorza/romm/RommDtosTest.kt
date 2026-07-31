@@ -119,4 +119,25 @@ class RommDtosTest {
         assertEquals(1048576L, rom.files.first().fileSizeBytes)
         assertTrue(rom.regions.contains("USA"))
     }
+
+    @Test fun `rom file dto decodes file_path and rom decodes full_path`() {
+        val json = """{"id":9,"platform_id":1,"fs_name":"Game Name","full_path":"roms/switch/Game Name",
+            "files":[{"id":41,"file_name":"base.nsp","file_size_bytes":10,"file_path":"roms/switch/Game Name"},
+                     {"id":42,"file_name":"upd.nsp","file_size_bytes":5,"file_path":"roms/switch/Game Name/update"}]}"""
+        val dto = rommJson.decodeFromString(SimpleRomDto.serializer(), json)
+        assertEquals("roms/switch/Game Name", dto.fullPath)
+        assertEquals("roms/switch/Game Name/update", dto.files[1].filePath)
+        val game = dto.toDomain()
+        assertEquals(41, game.files[0].id)
+        assertEquals("", game.files[0].subDir)
+        assertEquals("update", game.files[1].subDir)
+    }
+
+    @Test fun `rommFileSubDir is empty for top-level and loose single files`() {
+        assertEquals("", rommFileSubDir("roms/switch/Game", "roms/switch/Game"))
+        assertEquals("", rommFileSubDir("roms/switch", "roms/switch/Game.nsp"))
+        assertEquals("update", rommFileSubDir("roms/switch/Game/update", "roms/switch/Game"))
+        assertEquals("dlc/extra", rommFileSubDir("roms/switch/Game/dlc/extra", "roms/switch/Game"))
+        assertEquals("", rommFileSubDir("roms/switch/Game Two/update", "roms/switch/Game"))
+    }
 }
