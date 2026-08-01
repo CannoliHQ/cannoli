@@ -21,6 +21,7 @@ class ArtworkLookup(private val pathsProvider: CannoliPathsProvider) {
 
     fun renameArt(platformTag: String, oldBasename: String, newBasename: String): Boolean {
         val existing = findByName(platformTag, oldBasename) ?: return false
+        if (findByName(platformTag, newBasename) != null) return false
         val ext = existing.extension
         val target = File(existing.parentFile, if (ext.isEmpty()) newBasename else "$newBasename.$ext")
         val renamed = existing.renameTo(target)

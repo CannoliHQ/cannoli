@@ -84,6 +84,14 @@ class ArtworkLookupTest {
         assertFalse(lookup.renameArt("TOOLS", "Missing", "Whatever"))
     }
 
+    @Test fun `renameArt refuses to overwrite existing art at the new name`() {
+        writeArt("TOOLS", "Alpha.png")
+        writeArt("TOOLS", "Beta.jpg")
+        assertFalse(lookup.renameArt("TOOLS", "Alpha", "Beta"))
+        assertTrue(File(root, "Art/TOOLS/Alpha.png").exists())
+        assertTrue(File(root, "Art/TOOLS/Beta.jpg").exists())
+    }
+
     @Test fun `deleteArt removes the file and clears the cache`() {
         writeArt("PORTS", "Doom.png")
         lookup.findByName("PORTS", "Doom")
