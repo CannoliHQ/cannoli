@@ -5,7 +5,7 @@ import android.util.Base64
 import fi.iki.elonen.NanoHTTPD
 import java.io.File
 
-class KitchenHttpServer(
+class KitchenHttpServer internal constructor(
     internal val cannoliRoot: File,
     private val assets: AssetManager,
     internal val romsRootProvider: () -> File = { File(cannoliRoot, "Roms") },
@@ -19,7 +19,6 @@ class KitchenHttpServer(
     internal val volumesProvider: () -> List<KitchenVolume> = { emptyList() },
     internal val apkInstalls: ApkInstalls? = null,
     internal val appsRepository: dev.cannoli.scorza.db.AppsRepository? = null,
-    @Suppress("EXPOSED_PARAMETER_TYPE")
     internal val settingsProvider: () -> SettingsResponse = { SettingsResponse("Tools", "Ports") },
 ) : NanoHTTPD(port) {
 
