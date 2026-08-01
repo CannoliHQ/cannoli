@@ -96,6 +96,15 @@ class RomDirectoryWalker(
         return if (launch.file == primaryFile) parent else null
     }
 
+    /** The `<romset>/` CHD folder belonging to an arcade game, which deleting the game must take
+     *  with it. Null when the game has no such folder. */
+    fun arcadeSupportDir(primaryFile: File, isArcade: Boolean): File? {
+        if (!isArcade) return null
+        if (primaryFile.extension.lowercase() !in ARCADE_ROMSET_EXTENSIONS) return null
+        val parent = primaryFile.parentFile ?: return null
+        return File(parent, primaryFile.nameWithoutExtension).takeIf { it.isDirectory }
+    }
+
     /** Every on-disk file that makes up the game launched by [primaryFile]. */
     fun gameFiles(primaryFile: File): List<File> {
         gameDirectory(primaryFile)?.let { dir ->

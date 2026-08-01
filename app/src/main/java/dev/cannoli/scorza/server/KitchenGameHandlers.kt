@@ -121,6 +121,8 @@ internal fun KitchenHttpServer.handleGames(
         2 -> return when (method) {
             "GET" -> jsonResponse(200, GamesResponse.buildOne(repo, cannoliRoot, romsRootProvider(), platformTag, platformTag, rom.id, romDirectoryWalker)!!)
             "DELETE" -> {
+                romDirectoryWalker?.arcadeSupportDir(rom.path, isArcadePlatform(platformTag))
+                    ?.deleteRecursively()
                 val gameDir = romDirectoryWalker?.gameDirectory(rom.path)
                 if (gameDir != null) gameDir.deleteRecursively()
                 else gameRomFiles(rom).forEach { if (isSecure(it)) it.delete() }

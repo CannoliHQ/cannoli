@@ -391,6 +391,45 @@ class RomDirectoryWalkerTest {
     }
 
     @Test
+    fun `arcade support dir resolves for a romset zip`() {
+        write("MAME/area51.zip")
+        write("MAME/area51/area51.chd")
+        val rom = File(romsDir, "MAME/area51.zip")
+        assertEquals(File(romsDir, "MAME/area51"), walker.arcadeSupportDir(rom, isArcade = true))
+    }
+
+    @Test
+    fun `arcade support dir resolves for a 7z romset`() {
+        write("MAME/kinst.7z")
+        write("MAME/kinst/kinst.chd")
+        val rom = File(romsDir, "MAME/kinst.7z")
+        assertEquals(File(romsDir, "MAME/kinst"), walker.arcadeSupportDir(rom, isArcade = true))
+    }
+
+    @Test
+    fun `arcade support dir is null when the platform is not arcade`() {
+        write("NSW/Cool Game.zip")
+        write("NSW/Cool Game/Cool Game.nsp")
+        val rom = File(romsDir, "NSW/Cool Game.zip")
+        assertEquals(null, walker.arcadeSupportDir(rom, isArcade = false))
+    }
+
+    @Test
+    fun `arcade support dir is null without a matching folder`() {
+        write("MAME/sf2.zip")
+        val rom = File(romsDir, "MAME/sf2.zip")
+        assertEquals(null, walker.arcadeSupportDir(rom, isArcade = true))
+    }
+
+    @Test
+    fun `arcade support dir is null for a non-archive rom`() {
+        write("MAME/pacman.chd")
+        write("MAME/pacman/pacman.chd")
+        val rom = File(romsDir, "MAME/pacman.chd")
+        assertEquals(null, walker.arcadeSupportDir(rom, isArcade = true))
+    }
+
+    @Test
     fun `non-arcade folder beside a same-named archive is still a game`() {
         write("NSW/Cool Game.zip")
         write("NSW/Cool Game/Cool Game.nsp")
