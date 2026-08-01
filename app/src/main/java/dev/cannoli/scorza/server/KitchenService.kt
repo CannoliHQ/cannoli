@@ -30,6 +30,7 @@ class KitchenService : Service() {
     @Inject lateinit var platformConfig: dev.cannoli.scorza.config.PlatformConfig
     @Inject lateinit var setupCoordinator: dev.cannoli.scorza.setup.SetupCoordinator
     @Inject lateinit var apkInstaller: ApkInstaller
+    @Inject lateinit var appsRepository: dev.cannoli.scorza.db.AppsRepository
 
     private var server: KitchenHttpServer? = null
     private var wifiLock: WifiManager.WifiLock? = null
@@ -90,6 +91,7 @@ class KitchenService : Service() {
                 }
             },
             apkInstalls = apkInstaller,
+            appsRepository = appsRepository,
         )
         try {
             s.startServer()

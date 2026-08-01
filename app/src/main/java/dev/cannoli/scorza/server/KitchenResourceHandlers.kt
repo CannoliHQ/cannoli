@@ -13,6 +13,17 @@ internal fun KitchenHttpServer.handleTags(): Response {
     return jsonResponse(200, TagsResponse.serializer(), TagsResponse(tags))
 }
 
+internal fun KitchenHttpServer.handleApps(): Response {
+    val repo = appsRepository ?: return errorResponse(503, "apps not available")
+    return jsonResponse(
+        200, AppsResponse.serializer(),
+        AppsResponse(
+            tools = repo.all(dev.cannoli.scorza.model.AppType.TOOL).map { it.displayName },
+            ports = repo.all(dev.cannoli.scorza.model.AppType.PORT).map { it.displayName },
+        ),
+    )
+}
+
 internal fun KitchenHttpServer.handleList(dir: File, displayPath: String, recursive: Boolean = false, roots: List<File> = defaultRoots()): Response {
     if (!isSecure(dir, roots)) {
         return errorResponse(403, "forbidden")

@@ -1,0 +1,117 @@
+package dev.cannoli.scorza.server
+
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
+import dev.cannoli.scorza.db.AppsRepository
+import dev.cannoli.scorza.db.CannoliDatabase
+import dev.cannoli.scorza.di.CannoliPathsProvider
+import dev.cannoli.scorza.model.AppType
+import dev.cannoli.scorza.settings.SettingsRepository
+import dev.cannoli.scorza.util.ArtworkLookup
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.Base64
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
+class KitchenAppsSettingsTest {
+
+    private var server: KitchenHttpServer? = null
+    private var root: File? = null
+    private val port = 17196
+
+    @After fun tearDown() {
+        server?.stopServer()
+        root?.deleteRecursively()
+    }
+
+    private fun newRoot(): File =
+        File.createTempFile("cannoli", "").also { it.delete(); it.mkdirs() }.also { root = it }
+
+    private fun appsRepo(dir: File): AppsRepository {
+        File(dir, "Config").mkdirs()
+        val settings = SettingsRepository(ApplicationProvider.getApplicationContext<Context>())
+        settings.sdCardRoot = dir.absolutePath
+        val paths = CannoliPathsProvider(settings)
+        return AppsRepository(CannoliDatabase(paths), ArtworkLookup(paths))
+    }
+
+    private fun start(dir: File, apps: AppsRepository? = null) {
+        val assets = ApplicationProvider.getApplicationContext<Context>().assets
+        val s = KitchenHttpServer(dir, assets, port = port, pin = PIN, appsRepository = apps)
+        s.startServer()
+        repeat(50) {
+            try {
+                URL("http://127.0.0.1:$port/api/auth").openConnection()
+                    .also { c -> (c as HttpURLConnection).connect(); c.disconnect() }
+                return@repeat
+            } catch (_: Exception) { Thread.sleep(40) }
+        }
+        server = s
+    }
+
+    private fun get(path: String): Pair<Int, String> {
+        val conn = URL("http://127.0.0.1:$port$path").openConnection() as HttpURLConnection
+        conn.requestMethod = "GET"
+        val token = Base64.getEncoder().encodeToString("nonna:$PIN".toByteArray())
+        conn.setRequestProperty("Authorization", "Basic $token")
+        val code = conn.responseCode
+        val text = (if (code in 200..299) conn.inputStream else conn.errorStream)
+            ?.readBytes()?.decodeToString() ?: ""
+        conn.disconnect()
+        return code to text
+    }
+
+    @Test fun `apps returns tool and port display names`() {
+        val dir = newRoot()
+        val repo = appsRepo(dir)
+        repo.upsert(AppType.TOOL, "Termux", "com.termux")
+        repo.upsert(AppType.PORT, "Portal 2", "com.valve.portal2")
+        start(dir, apps = repo)
+
+        val (code, body) = get("/api/apps")
+        assertEquals(200, code)
+        assertTrue(body.contains("Termux"))
+        assertTrue(body.contains("Portal 2"))
+    }
+
+    @Test fun `apps returns empty lists when there are none`() {
+        val dir = newRoot()
+        start(dir, apps = appsRepo(dir))
+
+        val (code, body) = get("/api/apps")
+        assertEquals(200, code)
+        assertEquals("""{"tools":[],"ports":[]}""", body)
+    }
+
+    @Test fun `apps is unavailable when the repository is not wired`() {
+        val dir = newRoot()
+        start(dir)
+
+        val (code, _) = get("/api/apps")
+        assertEquals(503, code)
+    }
+
+    @Test fun `apps does not leak package names`() {
+        val dir = newRoot()
+        val repo = appsRepo(dir)
+        repo.upsert(AppType.TOOL, "Termux", "com.termux")
+        start(dir, apps = repo)
+
+        val (_, body) = get("/api/apps")
+        assertFalse(body.contains("com.termux"))
+    }
+
+    private companion object {
+        const val PIN = "TESTPIN"
+    }
+}

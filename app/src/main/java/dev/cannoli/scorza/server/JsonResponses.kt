@@ -23,6 +23,9 @@ internal data class ErrorResponse(val error: String)
 internal data class TagsResponse(val tags: List<String>)
 
 @Serializable
+internal data class AppsResponse(val tools: List<String>, val ports: List<String>)
+
+@Serializable
 internal data class PlatformsResponse(val platforms: List<String>)
 
 @Serializable
