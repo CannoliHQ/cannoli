@@ -147,7 +147,6 @@
     "core": "pcsx_rearmed_libretro",
     "app": [
       { "package": "com.github.stenzek.duckstation", "activity": "com.github.stenzek.duckstation.EmulationActivity", "action": "android.intent.action.MAIN", "extras": [{ "key": "bootPath", "kind": "uri_string" }] },
-      "com.epsxe.ePSXe",
       { "package": "com.emulator.fpse64", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } },
       { "package": "com.emulator.fpse", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } }
     ]
@@ -341,28 +340,19 @@
     "name": "PlayStation 2",
     "app": [
       { "package": "xyz.aethersx2.android", "activity": "xyz.aethersx2.android.EmulationActivity", "action": "android.intent.action.MAIN", "extras": [{ "key": "bootPath", "kind": "uri_string" }], "intentFlags": 268468224 },
-      { "package": "com.armsx2", "activity": "com.armsx2.Main", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } },
-      { "package": "com.sbro.emucorex", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } },
-      "com.virtualapplications.play",
-      "net.pcsx2.emulator"
+      { "package": "com.armsx2", "activity": "com.armsx2.Main", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } }
     ]
   },
   "GC": {
     "name": "GameCube",
     "app": [
-      { "package": "org.dolphinemu.dolphinemu", "activity": "org.dolphinemu.dolphinemu.ui.main.MainActivity", "action": "android.intent.action.MAIN", "extras": [{ "key": "AutoStartFile", "kind": "path" }] },
-      { "package": "org.dolphinemu.handheld", "activity": "org.dolphinemu.dolphinemu.ui.main.MainActivity", "action": "android.intent.action.MAIN", "extras": [{ "key": "AutoStartFile", "kind": "path" }] },
-      { "package": "org.mm.jr", "action": "android.intent.action.VIEW", "extras": [{ "key": "AutoStartFile", "kind": "uri_string" }] },
-      { "package": "org.dolphinemu.mmjr", "action": "android.intent.action.VIEW", "extras": [{ "key": "AutoStartFile", "kind": "uri_string" }] }
+      { "package": "org.dolphinemu.dolphinemu", "activity": "org.dolphinemu.dolphinemu.ui.main.MainActivity", "action": "android.intent.action.MAIN", "extras": [{ "key": "AutoStartFile", "kind": "path" }] }
     ]
   },
   "WII": {
     "name": "Wii",
     "app": [
-      { "package": "org.dolphinemu.dolphinemu", "activity": "org.dolphinemu.dolphinemu.ui.main.MainActivity", "action": "android.intent.action.MAIN", "extras": [{ "key": "AutoStartFile", "kind": "path" }] },
-      { "package": "org.dolphinemu.handheld", "activity": "org.dolphinemu.dolphinemu.ui.main.MainActivity", "action": "android.intent.action.MAIN", "extras": [{ "key": "AutoStartFile", "kind": "path" }] },
-      { "package": "org.mm.jr", "action": "android.intent.action.VIEW", "extras": [{ "key": "AutoStartFile", "kind": "uri_string" }] },
-      { "package": "org.dolphinemu.mmjr", "action": "android.intent.action.VIEW", "extras": [{ "key": "AutoStartFile", "kind": "uri_string" }] }
+      { "package": "org.dolphinemu.dolphinemu", "activity": "org.dolphinemu.dolphinemu.ui.main.MainActivity", "action": "android.intent.action.MAIN", "extras": [{ "key": "AutoStartFile", "kind": "path" }] }
     ]
   },
   "3DS": {
@@ -404,14 +394,8 @@
   "NSW": {
     "name": "Nintendo Switch",
     "app": [
-      { "package": "dev.eden.eden_emulator", "action": "android.nfc.action.TECH_DISCOVERED", "data": { "kind": "file_provider" } },
-      { "package": "dev.legacy.eden_emulator", "action": "android.nfc.action.TECH_DISCOVERED", "data": { "kind": "file_provider" } },
-      { "package": "org.kenjinx.android", "action": "org.kenjinx.android.LAUNCH_GAME", "extras": [{ "key": "bootPath", "kind": "uri_string" }] },
-      { "package": "skyline.emu", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } },
-      { "package": "org.yuzu.yuzu_emu", "activity": "org.yuzu.yuzu_emu.activities.EmulationActivity" },
-      "org.stratoemu.strato",
-      { "package": "org.citron.emu", "activity": "org.citron.citron_emu.activities.EmulationActivity" },
-      { "package": "org.sudachi.sudachi_emu", "activity": "org.sudachi.sudachi_emu.activities.EmulationActivity" }
+      { "package": "dev.eden.eden_emulator", "action": "android.nfc.action.TECH_DISCOVERED", "data": { "kind": "file_provider" }, "intentFlags": 268468224  },
+      { "package": "dev.eden.eden_emulator.nightly", "action": "android.nfc.action.TECH_DISCOVERED", "data": { "kind": "file_provider" }, "intentFlags": 268468224 }
     ]
   }
 }
