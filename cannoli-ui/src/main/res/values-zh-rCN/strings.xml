@@ -15,6 +15,7 @@
     <string name="label_close">关闭</string>
     <string name="label_help">帮助</string>
     <string name="label_remove">移除快捷方式</string>
+    <string name="label_change_emulator">更换模拟器</string>
     <string name="label_delete">删除</string>
     <string name="label_confirm">确认</string>
     <string name="label_toggle">切换</string>
@@ -75,6 +76,7 @@
     <string name="shortcut_action_toggle_show_fps">切换 FPS 显示</string>
     <string name="settings_title">设置</string>
     <!-- Settings categories -->
+    <string name="settings_general">通常</string>
     <string name="settings_display">外观</string>
     <string name="settings_library">游戏库</string>
     <string name="settings_status_bar">状态栏</string>
@@ -93,6 +95,7 @@
     <string name="setting_text_size">文本大小</string>
     <string name="setting_font">字体</string>
     <!-- Settings row label: opens the app language picker. -->
+    <string name="setting_language">语言</string>
     <!-- Appearance setting: shows or hides the title-bar heading text. "Title" here is the heading, not color or box art. -->
     <string name="setting_title">标题</string>
     <string name="setting_bg_image">背景图像</string>
@@ -171,6 +174,8 @@
     <!-- Library setting for the Five Game Handheld collection. Keep "5GH" as-is. -->
     <string name="setting_fgh_collection">5GH 收藏集</string>
     <string name="setting_show_recently_played">最近玩过的</string>
+    <!-- Library setting: show or hide the Favorites entry on the main list. -->
+    <string name="setting_show_favorites">最爱的</string>
     <!-- Opens the Tools manager (sideloaded utility apps). -->
     <string name="setting_manage_tools">管理工具</string>
     <!-- Opens the Ports manager. "Ports" means standalone native game ports. -->
