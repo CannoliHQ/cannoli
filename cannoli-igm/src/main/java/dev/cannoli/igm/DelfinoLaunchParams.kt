@@ -4,7 +4,7 @@ import android.content.Intent
 import android.os.Parcel
 import android.os.Parcelable
 
-const val DELFINO_PROTOCOL_VERSION = 1
+const val DELFINO_PROTOCOL_VERSION = 2
 
 data class DelfinoLaunchParams(
     val romPath: String,
@@ -19,6 +19,7 @@ data class DelfinoLaunchParams(
     val colors: IgmColors?,
     val displaySettings: IgmDisplaySettings?,
     val inputMapping: IgmInputMapping?,
+    val discPaths: List<String> = emptyList(),
 ) : Parcelable {
 
     fun resolvedSavesDir(): String = savesDir ?: "$cannoliRoot/Saves"
@@ -46,6 +47,7 @@ data class DelfinoLaunchParams(
         dest.writeParcelable(colors, flags)
         dest.writeParcelable(displaySettings, flags)
         dest.writeParcelable(inputMapping, flags)
+        dest.writeStringList(discPaths)
     }
 
     companion object {
@@ -53,7 +55,8 @@ data class DelfinoLaunchParams(
         const val EXTRA_PROTOCOL = "DELFINO_PROTOCOL"
 
         fun readFromIntent(intent: Intent): DelfinoLaunchParams? {
-            if (intent.getIntExtra(EXTRA_PROTOCOL, -1) != DELFINO_PROTOCOL_VERSION) return null
+            val version = intent.getIntExtra(EXTRA_PROTOCOL, -1)
+            if (version != DELFINO_PROTOCOL_VERSION && version != 1) return null
             @Suppress("DEPRECATION")
             return intent.getParcelableExtra(EXTRA)
         }
@@ -62,7 +65,7 @@ data class DelfinoLaunchParams(
         val CREATOR = object : Parcelable.Creator<DelfinoLaunchParams> {
             override fun createFromParcel(p: Parcel): DelfinoLaunchParams {
                 val version = p.readInt()
-                if (version != DELFINO_PROTOCOL_VERSION) {
+                if (version != DELFINO_PROTOCOL_VERSION && version != 1) {
                     throw ProtocolMismatchException(version, DELFINO_PROTOCOL_VERSION)
                 }
                 val romPath = p.readString()!!
@@ -82,9 +85,11 @@ data class DelfinoLaunchParams(
                 @Suppress("DEPRECATION")
                 val inputMapping =
                     p.readParcelable<IgmInputMapping>(IgmInputMapping::class.java.classLoader)
+                val discPaths = if (version >= 2) (p.createStringArrayList() ?: emptyList()) else emptyList()
                 return DelfinoLaunchParams(
                     romPath, cannoliRoot, savesDir, saveStatesDir, biosDir, userDir,
                     gameTitle, platformTag, igmTriggerKeycodes, colors, displaySettings, inputMapping,
+                    discPaths,
                 )
             }
 
