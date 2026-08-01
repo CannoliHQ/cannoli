@@ -1568,13 +1568,15 @@ class DialogInputHandler @Inject constructor(
                 if (collection != null) openChildPicker(collection.id)
             }
             selected == MENU_DELETE_ART -> {
+                pendingContextReturn = null
                 if (rom != null) {
-                    pendingContextReturn = null
                     rom.artFile?.delete()
                     scanner.markLauncherMutation(rom.platformTag)
-                    gameListViewModel.reload()
-                    nav.dialogState.value = DialogState.None
+                } else if (app != null) {
+                    artworkLookup.deleteArt(app.type.artTag, app.displayName)
                 }
+                gameListViewModel.reload()
+                nav.dialogState.value = DialogState.None
             }
             selected == MENU_RA_GAME_ID || selected.startsWith("$MENU_RA_GAME_ID\t") -> {
                 if (rom != null) {
@@ -1985,6 +1987,7 @@ class DialogInputHandler @Inject constructor(
             if (isApk) {
                 add(MENU_MANAGE_COLLECTIONS)
                 add(MENU_RENAME)
+                if (app?.artFile != null) add(MENU_DELETE_ART)
                 add(MENU_REMOVE)
             } else {
                 addAll(gameContextOptions.map { menuItem ->
