@@ -6,6 +6,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dev.cannoli.scorza.settings.GlobalOverridesManager
 import dev.cannoli.scorza.settings.SettingsRepository
+import dev.cannoli.scorza.util.ArtworkLookup
 import dev.cannoli.scorza.util.AtomicRename
 import dev.cannoli.scorza.util.RomDirectoryWalker
 import java.io.File
@@ -20,6 +21,6 @@ object AppModule {
         GlobalOverridesManager { settings.sdCardRoot }
 
     @Provides @Singleton
-    fun provideAtomicRename(settings: SettingsRepository, walker: RomDirectoryWalker): AtomicRename =
-        AtomicRename(File(settings.sdCardRoot), walker)
+    fun provideAtomicRename(settings: SettingsRepository, walker: RomDirectoryWalker, artwork: ArtworkLookup): AtomicRename =
+        AtomicRename(File(settings.sdCardRoot), walker, artwork)
 }

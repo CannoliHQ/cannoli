@@ -23,14 +23,20 @@ class AtomicRenameTest {
 
     private lateinit var root: File
     private lateinit var renamer: AtomicRename
+    private lateinit var artwork: ArtworkLookup
+
+    private fun buildPaths(root: File): CannoliPathsProvider {
+        val paths = mockk<CannoliPathsProvider>()
+        every { paths.root } returns root
+        every { paths.romDir } returns File(root, "Roms")
+        return paths
+    }
 
     private fun buildWalker(root: File): RomDirectoryWalker {
         val romsDir = File(root, "Roms").also { it.mkdirs() }
         val assets = mockk<AssetManager>()
         every { assets.open(any()) } throws FileNotFoundException()
-        val paths = mockk<CannoliPathsProvider>()
-        every { paths.root } returns root
-        every { paths.romDir } returns romsDir
+        val paths = buildPaths(root)
         val arcade = mockk<ArcadeTitleLookup>()
         every { arcade.mapFor(any(), any()) } returns emptyMap()
         every { arcade.invalidate(any()) } just Runs
@@ -39,7 +45,9 @@ class AtomicRenameTest {
 
     @Before fun setUp() {
         root = tempFolder.root
-        renamer = AtomicRename(root, buildWalker(root))
+        val paths = buildPaths(root)
+        artwork = ArtworkLookup(paths)
+        renamer = AtomicRename(root, buildWalker(root), artwork)
     }
 
     private fun romsDir(tag: String) = File(root, "Roms/$tag").also { it.mkdirs() }
@@ -252,5 +260,17 @@ class AtomicRenameTest {
         assertFalse(result.success)
         assertEquals(AtomicRename.RenameError.ALREADY_EXISTS, result.error)
         assertTrue(rom.exists())
+    }
+
+    @Test fun `renamed art is resolvable through a warm ArtworkLookup cache`() {
+        val rom = File(romsDir("PS"), "Old.bin").writeWith("rom")
+        File(artDir("PS"), "Old.png").writeWith("art")
+        assertTrue(artwork.findByName("PS", "Old") != null)
+
+        val result = renamer.rename(rom, "New", "PS")
+
+        assertTrue(result.success)
+        assertTrue(artwork.findByName("PS", "New") != null)
+        assertTrue(artwork.findByName("PS", "Old") == null)
     }
 }

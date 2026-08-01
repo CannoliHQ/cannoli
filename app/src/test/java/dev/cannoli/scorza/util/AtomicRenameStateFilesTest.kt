@@ -31,7 +31,8 @@ class AtomicRenameStateFilesTest {
         val arcade = mockk<ArcadeTitleLookup>()
         every { arcade.mapFor(any(), any()) } returns emptyMap()
         every { arcade.invalidate(any()) } just Runs
-        return AtomicRename(root, RomDirectoryWalker(paths, assets, arcade))
+        val artwork = ArtworkLookup(paths)
+        return AtomicRename(root, RomDirectoryWalker(paths, assets, arcade), artwork)
     }
 
     @Test fun `rename renames state dir AND the files inside it`() {

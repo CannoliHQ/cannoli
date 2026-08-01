@@ -3,6 +3,7 @@ package dev.cannoli.scorza.launcher
 import android.content.res.AssetManager
 import dev.cannoli.scorza.di.CannoliPathsProvider
 import dev.cannoli.scorza.util.ArcadeTitleLookup
+import dev.cannoli.scorza.util.ArtworkLookup
 import dev.cannoli.scorza.util.AtomicRename
 import dev.cannoli.scorza.util.RomDirectoryWalker
 import io.mockk.Runs
@@ -42,7 +43,8 @@ class SaveIdentityMigratorTest {
         every { arcade.mapFor(any(), any()) } returns emptyMap()
         every { arcade.invalidate(any()) } just Runs
         val walker = RomDirectoryWalker(paths, assets, arcade)
-        return SaveIdentityMigrator(root, AtomicRename(root, walker))
+        val artwork = ArtworkLookup(paths)
+        return SaveIdentityMigrator(root, AtomicRename(root, walker, artwork))
     }
 
     private fun makeZip(zipName: String, innerName: String): File {

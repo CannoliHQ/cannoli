@@ -6,7 +6,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class AtomicRename(private val cannoliRoot: File, private val walker: RomDirectoryWalker) {
+class AtomicRename(private val cannoliRoot: File, private val walker: RomDirectoryWalker, private val artwork: ArtworkLookup) {
 
     private val paths = CannoliPaths(cannoliRoot)
     private val backupDir get() = paths.backupDir
@@ -68,10 +68,12 @@ class AtomicRename(private val cannoliRoot: File, private val walker: RomDirecto
             try {
                 rollback(backupTagDir, platformTag, romMoved, oldBaseName, newPrimary, artMoved)
             } catch (_: Exception) { }
+            artwork.invalidate(platformTag)
             if (e !is RenameFailure) ErrorLog.write("rename failed: ${e.message}")
             return RenameResult(false, (e as? RenameFailure)?.error ?: RenameError.RENAME_FAILED)
         }
 
+        artwork.invalidate(platformTag)
         return RenameResult(true, newPrimary = newPrimary)
     }
 
