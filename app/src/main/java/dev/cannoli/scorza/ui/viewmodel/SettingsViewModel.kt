@@ -243,6 +243,7 @@ class SettingsViewModel @Inject constructor(
         val showClock: Boolean,
         val batteryDisplay: BatteryDisplay,
         val showRecentlyPlayed: Boolean,
+        val showFavorites: Boolean,
         val contentMode: ContentMode,
         val fghCollectionId: Long?,
         val sdRoot: String,
@@ -487,6 +488,7 @@ class SettingsViewModel @Inject constructor(
                 }
             }
             "show_recently_played" -> settings.showRecentlyPlayed = !settings.showRecentlyPlayed
+            "show_favorites" -> settings.showFavorites = !settings.showFavorites
             "scan_library" -> settings.scanLibraryAutomatically = !settings.scanLibraryAutomatically
             "show_wifi" -> settings.showWifi = !settings.showWifi
             "show_bluetooth" -> settings.showBluetooth = !settings.showBluetooth
@@ -682,6 +684,7 @@ class SettingsViewModel @Inject constructor(
         showClock = settings.showClock,
         batteryDisplay = settings.batteryDisplay,
         showRecentlyPlayed = settings.showRecentlyPlayed,
+        showFavorites = settings.showFavorites,
         contentMode = settings.contentMode,
         fghCollectionId = settings.fghCollectionId,
         sdRoot = settings.sdCardRoot,
@@ -720,6 +723,7 @@ class SettingsViewModel @Inject constructor(
         settings.showClock = snap.showClock
         settings.batteryDisplay = snap.batteryDisplay
         settings.showRecentlyPlayed = snap.showRecentlyPlayed
+        settings.showFavorites = snap.showFavorites
         settings.contentMode = snap.contentMode
         settings.fghCollectionId = snap.fghCollectionId
         settings.sdCardRoot = snap.sdRoot
@@ -809,6 +813,7 @@ class SettingsViewModel @Inject constructor(
             }
             if (settings.contentMode != ContentMode.FIVE_GAME_HANDHELD) {
                 add(SettingsItem("show_recently_played", R.string.setting_show_recently_played, valueRes = showHide(settings.showRecentlyPlayed)))
+                add(SettingsItem("show_favorites", R.string.setting_show_favorites, valueRes = showHide(settings.showFavorites)))
             }
             if (settings.contentMode == ContentMode.PLATFORMS) {
             }

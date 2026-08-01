@@ -81,6 +81,7 @@ class SystemListInputHandler @Inject constructor(
         if (systemListViewModel.isReorderMode()) {
             systemListViewModel.cancelReorder(
                 showRecentlyPlayed = settings.showRecentlyPlayed,
+                showFavorites = settings.showFavorites,
                 contentMode = settings.contentMode,
                 fghCollectionId = launcherActions.validateFghCollection(),
                 toolsName = settings.toolsName,

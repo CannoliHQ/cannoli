@@ -159,7 +159,6 @@
     <!-- Input setting toggle: swap the on-screen positions of the Play and Resume actions. -->
     <string name="setting_swap_play_resume">Permuter la lecture et la reprise</string>
     <!-- Input setting toggle: controls whether the in-game Quit returns to the main menu. -->
-    <string name="setting_main_menu_quit"></string>
     <!-- Input toggle: automatically save a state when quitting a game. -->
     <string name="setting_always_save_on_quit">Enregistrer l\'état à la fermeture</string>
     <!-- Advanced setting toggle: skip the passcode gate for Nonna's Kitchen. Keep "Kitchen" consistent with the feature name. -->
@@ -173,6 +172,8 @@
     <!-- Library setting for the Five Game Handheld collection. Keep "5GH" as-is. -->
     <string name="setting_fgh_collection">Collection 5GH</string>
     <string name="setting_show_recently_played">Joués récemment</string>
+    <!-- Library setting: show or hide the Favorites entry on the main list. -->
+    <string name="setting_show_favorites">Favoris</string>
     <!-- Opens the Tools manager (sideloaded utility apps). -->
     <string name="setting_manage_tools">Gérer les outils</string>
     <!-- Opens the Ports manager. "Ports" means standalone native game ports. -->
@@ -638,7 +639,6 @@
     <string name="ach_points_short">%1$dpts</string>
     <!-- %1$d = points. -->
     <string name="ach_points">%1$d points</string>
-    <string name="ach_unlocked_pending"></string>
     <!-- %1$s = date the achievement was unlocked. -->
     <string name="ach_unlocked_date">%1$s Débloqué</string>
     <string name="ach_unlocked">Débloqué</string>

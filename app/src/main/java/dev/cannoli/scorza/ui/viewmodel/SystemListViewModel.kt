@@ -63,6 +63,7 @@ class SystemListViewModel @Inject constructor(
         val config = lastScanConfig ?: return
         scan(
             showRecentlyPlayed = config.showRecentlyPlayed,
+            showFavorites = config.showFavorites,
             contentMode = config.contentMode,
             fghCollectionId = config.fghCollectionId,
             toolsName = config.toolsName,
@@ -133,6 +134,7 @@ class SystemListViewModel @Inject constructor(
 
     private data class ScanConfig(
         val showRecentlyPlayed: Boolean,
+        val showFavorites: Boolean,
         val contentMode: ContentMode,
         val fghCollectionId: Long?,
         val toolsName: String,
@@ -147,7 +149,7 @@ class SystemListViewModel @Inject constructor(
         _state.update { it.copy(scrollTarget = scrollIdx) }
     }
 
-    fun scan(showRecentlyPlayed: Boolean = true, contentMode: ContentMode = ContentMode.PLATFORMS, fghCollectionId: Long? = null, toolsName: String = "Tools", portsName: String = "Ports", scanDisk: Boolean = true, onProgress: ((tag: String, current: Int, total: Int) -> Unit)? = null, onReady: () -> Unit = {}) {
+    fun scan(showRecentlyPlayed: Boolean = true, showFavorites: Boolean = true, contentMode: ContentMode = ContentMode.PLATFORMS, fghCollectionId: Long? = null, toolsName: String = "Tools", portsName: String = "Ports", scanDisk: Boolean = true, onProgress: ((tag: String, current: Int, total: Int) -> Unit)? = null, onReady: () -> Unit = {}) {
         val prev = _state.value
         val prevItemCount = prev.items.size
         val restored = savedPosition
@@ -156,7 +158,7 @@ class SystemListViewModel @Inject constructor(
         val prevSelectedIndex = restored?.index ?: prev.selectedIndex
         val prevFirstVisible = restored?.scroll ?: firstVisibleIndex
         currentFghCollectionId = fghCollectionId
-        lastScanConfig = ScanConfig(showRecentlyPlayed, contentMode, fghCollectionId, toolsName, portsName)
+        lastScanConfig = ScanConfig(showRecentlyPlayed, showFavorites, contentMode, fghCollectionId, toolsName, portsName)
 
         scope.launch(Dispatchers.IO) {
             if (scanDisk) {
@@ -212,7 +214,7 @@ class SystemListViewModel @Inject constructor(
                 if (showRecentlyPlayed && recentlyPlayedRepository.hasAny()) {
                     items.add(ListItem.RecentlyPlayedItem)
                 }
-                if (favoritesId != null) {
+                if (showFavorites && favoritesId != null) {
                     val hasFavorites = collectionsRepository.romIdsIn(favoritesId).isNotEmpty() ||
                         collectionsRepository.appIdsIn(favoritesId).isNotEmpty()
                     if (hasFavorites) items.add(ListItem.FavoritesItem)
@@ -403,10 +405,10 @@ class SystemListViewModel @Inject constructor(
         romScanner.ensureReservedPlatformTag(tag)
     }
 
-    fun cancelReorder(showRecentlyPlayed: Boolean = true, contentMode: ContentMode = ContentMode.PLATFORMS, fghCollectionId: Long? = null, toolsName: String = "Tools", portsName: String = "Ports") {
+    fun cancelReorder(showRecentlyPlayed: Boolean = true, showFavorites: Boolean = true, contentMode: ContentMode = ContentMode.PLATFORMS, fghCollectionId: Long? = null, toolsName: String = "Tools", portsName: String = "Ports") {
         val current = _state.value
         if (!current.reorderMode) return
-        scan(showRecentlyPlayed, contentMode, fghCollectionId, toolsName, portsName)
+        scan(showRecentlyPlayed, showFavorites, contentMode, fghCollectionId, toolsName, portsName)
     }
 
     private fun ListItem.isReorderable(): Boolean = this is ListItem.PlatformItem || this is ListItem.ToolsFolder || this is ListItem.PortsFolder || this is ListItem.CollectionItem || this is ListItem.GameItem
