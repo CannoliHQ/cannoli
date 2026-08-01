@@ -31,6 +31,14 @@ class RommSyncCoordinator(
     private val _progress = MutableStateFlow(SyncProgress(0, 0))
     val progress: StateFlow<SyncProgress> = _progress
 
+    /**
+     * The last completed sync failed and none has succeeded since, so the mirror may be out of
+     * date. Deliberately untouched when a sync starts: [status] flips to SYNCING on every run, so
+     * a retry would otherwise clear this and restore it moments later on a fast failure.
+     */
+    private val _stale = MutableStateFlow(false)
+    val stale: StateFlow<Boolean> = _stale
+
     private val mutex = Mutex()
 
     suspend fun syncFull() = run(full = true)
@@ -40,31 +48,44 @@ class RommSyncCoordinator(
         mutex.withLock {
             _status.value = SyncStatus.SYNCING
             _progress.value = SyncProgress(0, 0)
+            val startedAt = System.currentTimeMillis()
             try {
                 if (full) db.clearAll()
                 val cursor = if (full) null else db.getSyncState(KEY_CURSOR)
                 val ingested = mutableListOf<String?>()
+                RommLog.write("cache sync start full=$full cursor=$cursor")
 
-                val platformDtos = client.getPlatforms(updatedAfter = cursor)
+                // Always pull the whole platform list, even on a delta. RomM does not bump a
+                // platform's updated_at when a rom under it changes, so an updated_after-filtered
+                // list omits the platforms owning the changed roms: the sweep below would then
+                // discard every one of them, and the rom_count reconcile would have nothing to
+                // compare against.
+                val platformDtos = client.getPlatforms()
                 val supported = platformMap.toDomain(platformDtos)
                 val supportedIds = supported.map { it.id }.toSet()
                 val updatedById = platformDtos.associate { it.id to it.updatedAt }
                 val rows = supported.map { it to updatedById[it.id] }
                 if (full) db.replacePlatforms(rows) else db.upsertPlatforms(rows)
-                platformDtos.forEach { ingested.add(it.updatedAt) }
 
+                var pulled = 0
+                var stored = 0
+                var repulled = 0
                 if (full) {
                     supported.forEachIndexed { index, platform ->
                         _progress.value = SyncProgress(index, supported.size, platform.displayName)
-                        repullPlatform(platform.id, ingested, reconcile = false)
+                        pulled += repullPlatform(platform.id, ingested, reconcile = false)
                     }
+                    stored = pulled
                     _progress.value = SyncProgress(supported.size, supported.size)
                 } else {
-                    deltaSweep(cursor, supportedIds, ingested)
+                    val sweep = deltaSweep(cursor, supportedIds, ingested)
+                    pulled = sweep.first
+                    stored = sweep.second
                     val serverCounts = supported.associate { it.id to it.romCount }
                     val cachedCounts = db.gameCountsByPlatform()
                     RommSyncPlanner.platformsNeedingReconcile(cachedCounts, serverCounts).forEach {
-                        repullPlatform(it, ingested, reconcile = true)
+                        stored += repullPlatform(it, ingested, reconcile = true)
+                        repulled++
                     }
                 }
 
@@ -97,27 +118,43 @@ class RommSyncCoordinator(
                     if (stale.isNotEmpty()) db.deleteCollections(stale)
                 }.onFailure { RommLog.write("romm collection sync failed: ${it.message}") }
 
-                RommSyncPlanner.nextCursor(cursor, ingested)?.let { db.setSyncState(KEY_CURSOR, it) }
+                // Only rom timestamps feed the cursor: it filters roms, and platform rows can be
+                // stamped later than any rom, which would skip the gap between them for good.
+                val next = RommSyncPlanner.nextCursor(cursor, ingested)
+                next?.let { db.setSyncState(KEY_CURSOR, it) }
                 _status.value = SyncStatus.IDLE
+                _stale.value = false
+                RommLog.write(
+                    "cache sync done full=$full platforms=${supported.size} pulled=$pulled stored=$stored " +
+                        "repulled=$repulled cursor=$next ${System.currentTimeMillis() - startedAt}ms"
+                )
             } catch (t: Throwable) {
-                RommLog.write("ERROR romm sync failed: ${t.message}")
+                RommLog.write("ERROR romm cache sync failed: ${t.message}")
                 _status.value = SyncStatus.ERROR
+                _stale.value = true
             }
         }
     }
 
-    private fun deltaSweep(cursor: String?, supportedIds: Set<Int>, ingested: MutableList<String?>) {
+    /** Returns the roms the server returned paired with the subset actually cached. */
+    private fun deltaSweep(cursor: String?, supportedIds: Set<Int>, ingested: MutableList<String?>): Pair<Int, Int> {
+        var pulled = 0
+        var stored = 0
         var offset = 0
         while (true) {
             val page = client.getRoms(platformId = null, limit = PAGE, offset = offset, search = null, updatedAfter = cursor)
-            db.upsertGames(page.items.filter { it.platformId in supportedIds }.map { GameRecord(it.toDomain(), it.updatedAt) })
+            val supportedItems = page.items.filter { it.platformId in supportedIds }
+            db.upsertGames(supportedItems.map { GameRecord(it.toDomain(), it.updatedAt) })
             page.items.forEach { ingested.add(it.updatedAt) }
+            pulled += page.items.size
+            stored += supportedItems.size
             offset += page.items.size
             if (page.items.isEmpty() || offset >= page.total) break
         }
+        return pulled to stored
     }
 
-    private fun repullPlatform(platformId: Int, ingested: MutableList<String?>, reconcile: Boolean) {
+    private fun repullPlatform(platformId: Int, ingested: MutableList<String?>, reconcile: Boolean): Int {
         val seen = mutableSetOf<Int>()
         var offset = 0
         while (true) {
@@ -131,6 +168,7 @@ class RommSyncCoordinator(
             val stale = RommSyncPlanner.staleIds(db.cachedGameIds(platformId), seen)
             if (stale.isNotEmpty()) db.deleteGames(stale)
         }
+        return seen.size
     }
 
     private companion object {

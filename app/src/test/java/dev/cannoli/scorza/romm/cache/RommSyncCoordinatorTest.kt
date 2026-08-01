@@ -60,7 +60,7 @@ class RommSyncCoordinatorTest {
 
         assertEquals(listOf("SNES"), db.platforms().map { it.displayName })
         assertEquals(2, db.gamesCount(1, null))
-        // cursor = max updated_at across platforms + roms
+        // cursor = max rom updated_at
         assertEquals("2024-03-03T00:00:00", db.getSyncState("cursor"))
         // progress lands at completed == total (one supported platform), labelled for the finishing phase
         assertEquals(RommSyncCoordinator.SyncProgress(1, 1, "Collections"), coord.progress.value)
@@ -74,7 +74,7 @@ class RommSyncCoordinatorTest {
                 val path = request.path!!
                 return when {
                     path.startsWith("/api/platforms") -> {
-                        assertTrue(path.contains("updated_after=2024-01-01"))
+                        assertTrue(!path.contains("updated_after"))
                         json("""[{"id":1,"slug":"snes","rom_count":1,"display_name":"SNES","updated_at":"2024-04-04T00:00:00"}]""")
                     }
                     path.startsWith("/api/roms") -> json("""{"items":[
@@ -88,6 +88,55 @@ class RommSyncCoordinatorTest {
         coordinator().syncDelta()
 
         assertEquals(1, db.gamesCount(1, null))
+        assertEquals("2024-05-05T00:00:00", db.getSyncState("cursor"))
+    }
+
+    // RomM leaves a platform's updated_at alone when a rom under it changes, so the platform must
+    // still be in the supported set the sweep filters against or its roms get thrown away.
+    @Test fun `delta stores roms whose platform is older than the cursor`() = runBlocking {
+        db.replacePlatforms(listOf())
+        db.setSyncState("cursor", "2024-06-01T00:00:00")
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val path = request.path!!
+                return when {
+                    // The server honours updated_after, and this platform predates the cursor.
+                    path.startsWith("/api/platforms") && path.contains("updated_after") -> json("[]")
+                    path.startsWith("/api/platforms") -> json("""[{"id":1,"slug":"snes","rom_count":1,"display_name":"SNES","updated_at":"2024-01-01T00:00:00"}]""")
+                    path.startsWith("/api/roms") -> json("""{"items":[
+                        {"id":10,"platform_id":1,"fs_name":"a.sfc","name":"Alpha","updated_at":"2024-07-07T00:00:00"}
+                    ],"total":1,"limit":100,"offset":0}""")
+                    else -> json("{}")
+                }
+            }
+        }
+
+        coordinator().syncDelta()
+
+        assertEquals(setOf(10), db.cachedGameIds(1))
+        assertEquals("2024-07-07T00:00:00", db.getSyncState("cursor"))
+    }
+
+    @Test fun `cursor advances from rom timestamps only`() = runBlocking {
+        db.replacePlatforms(listOf())
+        db.setSyncState("cursor", "2024-01-01T00:00:00")
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val path = request.path!!
+                return when {
+                    // Platform stamped well after every rom; letting it feed the cursor would skip
+                    // everything updated in between on the next delta.
+                    path.startsWith("/api/platforms") -> json("""[{"id":1,"slug":"snes","rom_count":1,"display_name":"SNES","updated_at":"2024-09-09T00:00:00"}]""")
+                    path.startsWith("/api/roms") -> json("""{"items":[
+                        {"id":10,"platform_id":1,"fs_name":"a.sfc","name":"Alpha","updated_at":"2024-05-05T00:00:00"}
+                    ],"total":1,"limit":100,"offset":0}""")
+                    else -> json("{}")
+                }
+            }
+        }
+
+        coordinator().syncDelta()
+
         assertEquals("2024-05-05T00:00:00", db.getSyncState("cursor"))
     }
 
@@ -125,5 +174,32 @@ class RommSyncCoordinatorTest {
         val coord = coordinator()
         coord.syncFull()
         assertEquals(RommSyncCoordinator.SyncStatus.ERROR, coord.status.value)
+    }
+
+    @Test fun `stale is set by a failed sync and cleared by the next successful one`() = runBlocking {
+        var fail = true
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                if (fail) return MockResponse().setResponseCode(500)
+                val path = request.path!!
+                return when {
+                    path.startsWith("/api/platforms") -> json("""[{"id":1,"slug":"snes","rom_count":1,"display_name":"SNES","updated_at":"2024-01-01T00:00:00"}]""")
+                    path.startsWith("/api/roms") -> json("""{"items":[
+                        {"id":10,"platform_id":1,"fs_name":"a.sfc","name":"Alpha","updated_at":"2024-05-05T00:00:00"}
+                    ],"total":1,"limit":100,"offset":0}""")
+                    else -> json("{}")
+                }
+            }
+        }
+
+        val coord = coordinator()
+        assertEquals(false, coord.stale.value)
+
+        coord.syncDelta()
+        assertEquals(true, coord.stale.value)
+
+        fail = false
+        coord.syncDelta()
+        assertEquals(false, coord.stale.value)
     }
 }
