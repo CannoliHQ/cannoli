@@ -515,6 +515,9 @@ class DialogInputHandler @Inject constructor(
                             launcherActions.rescanSystemList()
                         }
                     }
+                } else {
+                    val tag = ds.platformTag
+                    if (tag != null) openPlatformEmulatorPicker(tag)
                 }
             }
             is DialogState.DeleteCollectionConfirm -> {
@@ -1695,6 +1698,28 @@ class DialogInputHandler @Inject constructor(
         ))
     }
 
+    private fun openPlatformEmulatorPicker(tag: String) {
+        val bundledCoresDir = LaunchManager.extractBundledCores(context)
+        val options = platformResolver.getCorePickerOptions(tag, context.packageManager,
+            installedRaCores = installedCoreService.configuredCores(), embeddedCoresDir = bundledCoresDir,
+            unresponsivePackages = installedCoreService.configuredUnresponsive())
+        val pickedApp = platformResolver.getUserAppMapping(tag)
+        val selectedIdx = if (pickedApp != null) {
+            options.indexOfFirst { it.appPackage == pickedApp }.coerceAtLeast(0)
+        } else {
+            val coreId = platformResolver.getCoreMapping(tag)
+            options.indexOfFirst { it.appPackage == null && it.coreId == coreId }.coerceAtLeast(0)
+        }
+        nav.dialogState.value = DialogState.None
+        nav.screenStack.add(LauncherScreen.EmulatorPicker(
+            tag = tag,
+            platformName = platformResolver.getDisplayName(tag),
+            cores = options,
+            selectedIndex = selectedIdx,
+            activeIndex = selectedIdx
+        ))
+    }
+
     private fun onBulkContextMenuConfirm(state: DialogState.BulkContextMenu) {
         pendingContextReturn = ContextReturn.Bulk(state.gamePaths, state.options)
         when (state.options[state.selectedOption]) {
@@ -2496,6 +2521,8 @@ class DialogInputHandler @Inject constructor(
 
     private fun deleteRomFiles(rom: dev.cannoli.scorza.model.Rom) {
         val romFile = rom.path
+        romDirectoryWalker.arcadeSupportDir(romFile, platformResolver.isArcade(rom.platformTag))
+            ?.deleteRecursively()
         val gameDir = romDirectoryWalker.gameDirectory(romFile)
         when {
             // gameDir covers every organizer bundle shape (m3u, cue, disc-group, stem-matching rom folder).

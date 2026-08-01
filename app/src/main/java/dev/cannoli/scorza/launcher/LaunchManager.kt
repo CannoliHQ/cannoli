@@ -248,13 +248,13 @@ class LaunchManager(
         val gameOverride = platformConfig.getGameOverride(rom.path.absolutePath)
         if (gameOverride?.appPackage != null) {
             val cfg = platformConfig.getAppConfig(rom.platformTag, gameOverride.appPackage)
-            return launchResultDialog(apkLauncher.launchWithRom(gameOverride.appPackage, launchFile, cfg))
+            return launchResultDialog(apkLauncher.launchWithRom(gameOverride.appPackage, launchFile, cfg), rom.platformTag)
         }
 
         if (rom.platformTag in DELFINO_PLATFORMS) {
             val delfinoPkg = DelfinoLauncher.installedPackage(context)
             if (delfinoPkg != null) {
-                return launchResultDialog(delfinoLauncher.launch(buildDelfinoParams(rom), delfinoPkg))
+                return launchResultDialog(delfinoLauncher.launch(buildDelfinoParams(rom), delfinoPkg), rom.platformTag)
             }
         }
 
@@ -271,7 +271,9 @@ class LaunchManager(
                     }
                 }
                 if (runnerPref == "App" || runnerPref == "Standalone") {
-                    val cfg = platformConfig.getFirstInstalledApp(rom.platformTag, context.packageManager)
+                    val cfg = platformConfig.getUserAppMapping(rom.platformTag)
+                        ?.let { platformConfig.getAppConfig(rom.platformTag, it) }
+                        ?: platformConfig.getFirstInstalledApp(rom.platformTag, context.packageManager)
                         ?: platformConfig.getAppPackage(rom.platformTag)?.let { platformConfig.getAppConfig(rom.platformTag, it) }
                     if (cfg != null) {
                         apkLauncher.launchWithRom(cfg.packageName, launchFile, cfg)
@@ -296,7 +298,7 @@ class LaunchManager(
                                 val info = context.packageManager.getApplicationInfo(raPackage, 0)
                                 context.packageManager.getApplicationLabel(info).toString()
                             } catch (_: PackageManager.NameNotFoundException) { raPackage }
-                            return errorAndReset(DialogState.MissingApp(appName, raPackage))
+                            return errorAndReset(DialogState.MissingApp(appName, raPackage, rom.platformTag))
                         }
                         // Core-install check applies to RicottaArch and to RetroArch installs
                         // that report their cores; it self-skips for installs that cannot
@@ -346,7 +348,7 @@ class LaunchManager(
             }
         }
 
-        return launchResultDialog(result)
+        return launchResultDialog(result, rom.platformTag)
     }
 
     fun launchApp(app: App): DialogState? {
@@ -389,13 +391,13 @@ class LaunchManager(
         return dialog
     }
 
-    private fun launchResultDialog(result: LaunchResult): DialogState? {
-        val dialog = toLaunchDialog(result)
+    private fun launchResultDialog(result: LaunchResult, platformTag: String? = null): DialogState? {
+        val dialog = toLaunchDialog(result, platformTag)
         if (dialog != null) launchState.launching = false
         return dialog
     }
 
-    private fun toLaunchDialog(result: LaunchResult): DialogState? {
+    private fun toLaunchDialog(result: LaunchResult, platformTag: String? = null): DialogState? {
         return when (result) {
             is LaunchResult.CoreNotInstalled -> DialogState.MissingCore(result.coreName)
             is LaunchResult.AppNotInstalled -> {
@@ -405,7 +407,7 @@ class LaunchManager(
                 } catch (_: PackageManager.NameNotFoundException) {
                     result.packageName
                 }
-                DialogState.MissingApp(appName, result.packageName)
+                DialogState.MissingApp(appName, result.packageName, platformTag)
             }
             is LaunchResult.Error -> DialogState.LaunchError(result.message)
             LaunchResult.Success -> null

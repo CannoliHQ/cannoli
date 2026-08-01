@@ -48,13 +48,23 @@ fun MissingCoreDialog(
 }
 
 @Composable
-fun MissingAppDialog(appName: String, showRemove: Boolean = false, buttonStyle: ButtonStyle = ButtonStyle()) {
+fun MissingAppDialog(
+    appName: String,
+    showRemove: Boolean = false,
+    showChangeEmulator: Boolean = false,
+    buttonStyle: ButtonStyle = ButtonStyle()
+) {
     OverlayScrim(
         bottomBar = {
-            if (showRemove) {
+            val confirmLabel = when {
+                showRemove -> stringResource(R.string.label_remove)
+                showChangeEmulator -> stringResource(R.string.label_change_emulator)
+                else -> null
+            }
+            if (confirmLabel != null) {
                 BottomBar(
                     leftItems = listOf(buttonStyle.back to stringResource(R.string.label_close)),
-                    rightItems = listOf(buttonStyle.confirm to stringResource(R.string.label_remove))
+                    rightItems = listOf(buttonStyle.confirm to confirmLabel)
                 )
             } else {
                 LegendPill(button = buttonStyle.back, label = stringResource(R.string.label_close))

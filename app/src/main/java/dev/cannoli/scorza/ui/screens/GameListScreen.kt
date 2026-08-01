@@ -335,6 +335,7 @@ fun GameListScreen(
         is DialogState.MissingApp -> MissingAppDialog(
             appName = dialogState.appName,
             showRemove = state.platformTag == "tools" || state.platformTag == "ports",
+            showChangeEmulator = dialogState.platformTag != null,
             buttonStyle = buttonStyle
         )
         is DialogState.LaunchError -> LaunchErrorDialog(dialogState.message, buttonStyle = buttonStyle)

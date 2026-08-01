@@ -34,7 +34,7 @@ sealed interface DialogState {
         val coreName: String,
         val packageLabel: String? = null,
     ) : DialogState
-    data class MissingApp(val appName: String, val packageName: String) : DialogState
+    data class MissingApp(val appName: String, val packageName: String, val platformTag: String? = null) : DialogState
     data class LaunchError(val message: String) : DialogState
     data class ContextMenu(val gameName: String, val selectedOption: Int = 0, val options: List<String>) : DialogState
     data class BulkContextMenu(val gamePaths: List<String>, val selectedOption: Int = 0, val options: List<String>) : DialogState
