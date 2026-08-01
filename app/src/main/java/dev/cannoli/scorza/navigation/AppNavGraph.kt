@@ -112,7 +112,7 @@ private fun RommBorderFrame() {
     Box(modifier = Modifier.fillMaxSize().border(ROMM_BORDER_WIDTH, ROMM_BORDER_COLOR))
 }
 
-private const val CACHE_SYNC_INDICATOR_DELAY_MS = 600L
+private const val CACHE_SYNC_INDICATOR_DELAY_MS = 1200L
 private const val CACHE_SYNC_INDICATOR_MIN_VISIBLE_MS = 800L
 
 /**
