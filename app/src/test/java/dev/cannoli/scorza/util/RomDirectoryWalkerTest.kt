@@ -181,7 +181,7 @@ class RomDirectoryWalkerTest {
         write("PS/Racing/Game (Disc 2).chd")
         write("PS/Racing/Game.m3u", "Game (Disc 1).chd\nGame (Disc 2).chd\n")
         walker.walk("PS", isArcade = false)
-        assertEquals(listOf("Racing", "RPGs"), walker.categoryFolders("PS"))
+        assertEquals(listOf("Racing", "RPGs"), walker.categoryFolders("PS", isArcade = false))
     }
 
     @Test
@@ -326,7 +326,7 @@ class RomDirectoryWalkerTest {
     fun `matching-rom folder is not a category folder and resolves gameDirectory`() {
         write("NSW/Cool Game/Cool Game.nsp")
         write("NSW/Cool Game/update/u.nsp")
-        assertEquals(emptyList<String>(), walker.categoryFolders("NSW").filter { it == "Cool Game" })
+        assertEquals(emptyList<String>(), walker.categoryFolders("NSW", isArcade = false).filter { it == "Cool Game" })
         val primary = File(romsDir, "NSW/Cool Game/Cool Game.nsp")
         assertEquals(File(romsDir, "NSW/Cool Game"), walker.gameDirectory(primary))
     }
@@ -336,5 +336,68 @@ class RomDirectoryWalkerTest {
         write("NES/Mario/Mario 2.nes")
         val result = walker.walk("NES", isArcade = false)!!
         assertEquals(2, result.roms.size)
+    }
+
+    @Test
+    fun `arcade chd folder beside its romset is not a game`() {
+        write("MAME/area51.zip")
+        write("MAME/area51/area51.chd")
+        val result = walker.walk("MAME", isArcade = true)!!
+        assertEquals(listOf("MAME${File.separator}area51.zip"), result.roms.map { it.relativePath })
+    }
+
+    @Test
+    fun `arcade chd folder holding several discs is not scanned`() {
+        write("MAME/blitz99.zip")
+        write("MAME/blitz99/blitz99.chd")
+        write("MAME/blitz99/blitz99b.chd")
+        val result = walker.walk("MAME", isArcade = true)!!
+        assertEquals(listOf("MAME${File.separator}blitz99.zip"), result.roms.map { it.relativePath })
+    }
+
+    @Test
+    fun `arcade chd folder named by disc id is not a game`() {
+        write("FBN/ikaruga.zip")
+        write("FBN/ikaruga/gdl-0010.chd")
+        val result = walker.walk("FBN", isArcade = true)!!
+        assertEquals(listOf("FBN${File.separator}ikaruga.zip"), result.roms.map { it.relativePath })
+    }
+
+    @Test
+    fun `arcade chd folder beside a 7z romset is not a game`() {
+        write("MAME/kinst.7z")
+        write("MAME/kinst/kinst.chd")
+        val result = walker.walk("MAME", isArcade = true)!!
+        assertEquals(listOf("MAME${File.separator}kinst.7z"), result.roms.map { it.relativePath })
+    }
+
+    @Test
+    fun `arcade support folder is not a category folder`() {
+        write("MAME/blitz99.zip")
+        write("MAME/blitz99/blitz99.chd")
+        write("MAME/blitz99/blitz99b.chd")
+        write("MAME/Fighting/sf2.zip")
+        assertEquals(listOf("Fighting"), walker.categoryFolders("MAME", isArcade = true))
+    }
+
+    @Test
+    fun `arcade folder without a matching romset still scans`() {
+        write("MAME/Fighting/sf2.zip")
+        val result = walker.walk("MAME", isArcade = true)!!
+        assertEquals(
+            listOf("MAME${File.separator}Fighting${File.separator}sf2.zip"),
+            result.roms.map { it.relativePath },
+        )
+    }
+
+    @Test
+    fun `non-arcade folder beside a same-named archive is still a game`() {
+        write("NSW/Cool Game.zip")
+        write("NSW/Cool Game/Cool Game.nsp")
+        val result = walker.walk("NSW", isArcade = false)!!
+        assertEquals(
+            listOf("NSW${File.separator}Cool Game.zip", "NSW${File.separator}Cool Game${File.separator}Cool Game.nsp"),
+            result.roms.map { it.relativePath }.sorted(),
+        )
     }
 }

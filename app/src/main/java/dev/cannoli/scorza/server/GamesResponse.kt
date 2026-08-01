@@ -70,9 +70,10 @@ object GamesResponse {
         platformTag: String,
         platformDisplayName: String,
         walker: RomDirectoryWalker? = null,
+        isArcade: Boolean = false,
     ): String {
         val games = roms.allRomsForPlatform(platformTag).map { gameJson(it, cannoliRoot, romsRoot, platformTag, walker) }
-        val folders = walker?.categoryFolders(platformTag) ?: emptyList()
+        val folders = walker?.categoryFolders(platformTag, isArcade) ?: emptyList()
         return serverJson.encodeToString(
             GamesListResponse.serializer(),
             GamesListResponse(platformTag, platformDisplayName, games, folders),

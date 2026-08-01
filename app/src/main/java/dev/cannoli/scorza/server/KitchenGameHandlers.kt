@@ -101,7 +101,13 @@ internal fun KitchenHttpServer.handleGames(
         if (platformTag !in repo.knownPlatformTags()) {
             return errorResponse(404, "platform not found")
         }
-        return jsonResponse(200, GamesResponse.buildList(repo, cannoliRoot, romsRootProvider(), platformTag, platformTag, romDirectoryWalker))
+        return jsonResponse(
+            200,
+            GamesResponse.buildList(
+                repo, cannoliRoot, romsRootProvider(), platformTag, platformTag,
+                romDirectoryWalker, isArcadePlatform(platformTag),
+            ),
+        )
     }
 
     val romId = segments[1].toLongOrNull()

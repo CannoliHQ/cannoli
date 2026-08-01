@@ -68,7 +68,7 @@ class RomDirectoryWalker(
     fun invalidateNameMap(tagDir: File) = arcadeTitleLookup.invalidate(tagDir)
 
     /** Every category (non-game) folder under the platform, as platform-relative slash paths. */
-    fun categoryFolders(platformTag: String): List<String> {
+    fun categoryFolders(platformTag: String, isArcade: Boolean): List<String> {
         ensureIgnoreLists()
         val tagDir = resolveTagDir(platformTag.uppercase()) ?: return emptyList()
         val out = mutableListOf<String>()
@@ -76,6 +76,7 @@ class RomDirectoryWalker(
             if (depth > MAX_DEPTH) return
             val subdirs = dir.listFiles { f -> f.isDirectory && !f.name.startsWith(".") } ?: return
             for (sub in subdirs) {
+                if (isArcade && isArcadeSupportDir(sub)) continue
                 if (findDirLaunchFile(sub) != null) continue
                 val rel = if (prefix.isEmpty()) sub.name else "$prefix/${sub.name}"
                 out.add(rel)
@@ -195,6 +196,7 @@ class RomDirectoryWalker(
         val (subdirs, files) = entries.partition { it.isDirectory }
 
         for (subdir in subdirs) {
+            if (isArcade && isArcadeSupportDir(subdir)) continue
             val launch = findDirLaunchFile(subdir)
             if (launch != null) {
                 val launchRel = "$relPrefix${subdir.name}${File.separator}${launch.file.name}"
@@ -232,6 +234,13 @@ class RomDirectoryWalker(
             val (displayName, tags) = if (override != null) override to null else RomNaming.splitNameAndTags(rawName)
             out.add(ScannedRom("$relPrefix${file.name}", displayName, tags))
         }
+    }
+
+    // MAME and FBNeo read a romset's CHDs from `<romset>/` sitting beside `<romset>.zip`, so that
+    // folder is support data for the archive rather than a game of its own.
+    private fun isArcadeSupportDir(dir: File): Boolean {
+        val parent = dir.parentFile ?: return false
+        return ARCADE_ROMSET_EXTENSIONS.any { File(parent, "${dir.name}.$it").isFile }
     }
 
     private fun findDirLaunchFile(dir: File): DirLaunch? {
@@ -629,5 +638,6 @@ class RomDirectoryWalker(
     private companion object {
         const val MAX_DEPTH = 16
         val PRIMARY_DISC_EXTENSIONS = listOf("cue", "chd", "gdi", "toc", "ccd", "iso", "img", "pbp", "bin")
+        val ARCADE_ROMSET_EXTENSIONS = listOf("zip", "7z")
     }
 }

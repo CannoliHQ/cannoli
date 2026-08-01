@@ -15,6 +15,7 @@ class KitchenHttpServer(
     internal val romsRepository: dev.cannoli.scorza.db.RomsRepository? = null,
     internal val scanPlatform: ((String) -> Unit)? = null,
     internal val romDirectoryWalker: dev.cannoli.scorza.util.RomDirectoryWalker? = null,
+    internal val isArcadePlatform: (String) -> Boolean = { false },
     internal val volumesProvider: () -> List<KitchenVolume> = { emptyList() },
     internal val apkInstalls: ApkInstalls? = null,
 ) : NanoHTTPD(port) {

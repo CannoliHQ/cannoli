@@ -27,6 +27,7 @@ class KitchenService : Service() {
     @Inject lateinit var settings: SettingsRepository
     @Inject lateinit var scanScheduler: ScanScheduler
     @Inject lateinit var romDirectoryWalker: dev.cannoli.scorza.util.RomDirectoryWalker
+    @Inject lateinit var platformConfig: dev.cannoli.scorza.config.PlatformConfig
     @Inject lateinit var setupCoordinator: dev.cannoli.scorza.setup.SetupCoordinator
     @Inject lateinit var apkInstaller: ApkInstaller
 
@@ -78,6 +79,7 @@ class KitchenService : Service() {
             romsRepository = romsRepository,
             scanPlatform = { tag -> scanScheduler.runNow(tag) },
             romDirectoryWalker = romDirectoryWalker,
+            isArcadePlatform = { tag -> platformConfig.isArcade(tag) },
             volumesProvider = {
                 setupCoordinator.detectStorageVolumes().mapIndexed { index, (label, path) ->
                     KitchenVolume(
