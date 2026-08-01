@@ -32,8 +32,36 @@ class RommNamesTest {
 
     @Test fun `base name strips characters exfat rejects`() {
         assertEquals(
-            "Zelda_ A Link to the Past",
+            "Zelda - A Link to the Past",
             guideBaseName(null, "Zelda: A Link to the Past.sfc"),
+        )
+    }
+
+    @Test fun `subtitle colon becomes dash-space`() {
+        assertEquals(
+            "Tetris Effect - Connected",
+            guideBaseName(null, "Tetris Effect: Connected.bin"),
+        )
+    }
+
+    @Test fun `name without colons unchanged`() {
+        assertEquals(
+            "Sonic the Hedgehog",
+            guideBaseName(null, "Sonic the Hedgehog.md"),
+        )
+    }
+
+    @Test fun `trailing colon is dropped`() {
+        assertEquals(
+            "Game",
+            guideBaseName(null, "Game:.rom"),
+        )
+    }
+
+    @Test fun `other illegal chars still become underscore`() {
+        assertEquals(
+            "Game_A - Game_B",
+            guideBaseName(null, "Game_A: Game*B.sfc"),
         )
     }
 

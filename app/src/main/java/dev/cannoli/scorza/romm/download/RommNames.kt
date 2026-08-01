@@ -2,7 +2,11 @@ package dev.cannoli.scorza.romm.download
 
 import java.io.File
 
-fun sanitizeFsName(name: String): String = name.replace(Regex("[/\\\\:*?\"<>|]"), "_").trim()
+fun sanitizeFsName(name: String): String =
+    name.replace(Regex("""\s*:\s*"""), " - ")
+        .replace(Regex("""[/\\*?"<>|]"""), "_")
+        .trim()
+        .removeSuffix(" -")
 
 /**
  * Guides are read from Guides/<tag>/<base name of the ROM file the launcher launches>, so a manual
