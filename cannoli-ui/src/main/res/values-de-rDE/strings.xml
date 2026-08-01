@@ -121,6 +121,7 @@
     <!-- Library setting for the Five Game Handheld collection. Keep "5GH" as-is. -->
     <string name="setting_fgh_collection">5GH Sammlung</string>
     <string name="setting_show_recently_played">Zuletzt gespielt</string>
+    <!-- Library setting: show or hide the Favorites entry on the main list. -->
     <!-- Opens the Tools manager (sideloaded utility apps). -->
     <string name="setting_manage_tools">Tools verwalten</string>
     <!-- Opens the Ports manager. "Ports" means standalone native game ports. -->
