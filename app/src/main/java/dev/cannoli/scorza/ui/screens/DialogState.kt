@@ -107,7 +107,7 @@ sealed interface DialogState {
         val kitchenRunning: Boolean,
         val selectedIndex: Int = 0,
     ) : DialogState
-    data class RommDownloads(val selectedIndex: Int = 0) : DialogState
+    data class RommDownloads(val selectedIndex: Int = 0, val fromQuickMenu: Boolean = false) : DialogState
     data class RommArtResults(
         val results: dev.cannoli.scorza.romm.art.ArtFetchResults,
         val selectedIndex: Int = 0,
@@ -132,7 +132,7 @@ sealed interface DialogState {
         val syncErrors: Int = 0,
         val hasBackups: Boolean = false,
     ) : DialogState
-    data class RommConfirm(val action: RommConfirmAction, val downloadKey: String? = null) : DialogState
+    data class RommConfirm(val action: RommConfirmAction, val downloadKey: String? = null, val fromQuickMenu: Boolean = false) : DialogState
     data class RommPlatformToggle(val items: List<RommPlatformToggleItem>, val selectedIndex: Int = 0) : DialogState
     data class RommCollectionToggle(val items: List<RommCollectionToggleItem>, val selectedIndex: Int = 0) : DialogState
     data class SyncHistory(val entries: List<SyncHistoryRow>, val selectedIndex: Int = 0, val fromSaveSyncMenu: Boolean = false) : DialogState

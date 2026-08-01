@@ -138,6 +138,7 @@ class DialogInputHandler @Inject constructor(
                 saveSyncEnabled = settings.rommSaveSyncEnabled,
                 pendingConflicts = count,
                 syncErrors = errorCount,
+                downloadCount = rommDownloader.queue.state.value.size,
             )
             withContext(Dispatchers.Main) {
                 nav.dialogState.value = DialogState.QuickMenu(
@@ -576,6 +577,7 @@ class DialogInputHandler @Inject constructor(
                         nav.dialogState.value = DialogState.None
                         nav.push(dev.cannoli.scorza.navigation.LauncherScreen.RommPlatformList())
                     }
+                    dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.DOWNLOADS -> nav.dialogState.value = DialogState.RommDownloads(fromQuickMenu = true)
                     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.SYNC_HISTORY -> openSyncHistory()
                     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.CONFLICTS -> openConflictsMenu(fromSaveSyncMenu = false)
                     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.ERRORS -> openSyncErrors(fromSaveSyncMenu = false)
@@ -607,6 +609,7 @@ class DialogInputHandler @Inject constructor(
                         nav.dialogState.value = DialogState.RommConfirm(
                             dev.cannoli.scorza.ui.screens.RommConfirmAction.CANCEL_DOWNLOAD,
                             downloadKey = item.key,
+                            fromQuickMenu = ds.fromQuickMenu,
                         )
                     else -> {}
                 }
@@ -932,6 +935,7 @@ class DialogInputHandler @Inject constructor(
                     saveSyncEnabled = settings.rommSaveSyncEnabled,
                     pendingConflicts = count,
                     syncErrors = errorCount,
+                    downloadCount = rommDownloader.queue.state.value.size,
                 )
                 withContext(Dispatchers.Main) {
                     nav.dialogState.value = DialogState.QuickMenu(
@@ -1058,6 +1062,7 @@ class DialogInputHandler @Inject constructor(
                 saveSyncEnabled = settings.rommSaveSyncEnabled,
                 pendingConflicts = count,
                 syncErrors = errorCount,
+                downloadCount = rommDownloader.queue.state.value.size,
             )
             nav.dialogState.value = DialogState.QuickMenu(
                 rows = rows,
@@ -1084,11 +1089,11 @@ class DialogInputHandler @Inject constructor(
             }
             dev.cannoli.scorza.ui.screens.RommConfirmAction.CANCEL_DOWNLOAD -> {
                 ds.downloadKey?.let { rommDownloader.cancel(it) }
-                nav.dialogState.value = DialogState.RommDownloads()
+                nav.dialogState.value = DialogState.RommDownloads(fromQuickMenu = ds.fromQuickMenu)
             }
             dev.cannoli.scorza.ui.screens.RommConfirmAction.CANCEL_ALL -> {
                 rommDownloader.cancelAll()
-                nav.dialogState.value = DialogState.RommDownloads()
+                nav.dialogState.value = DialogState.RommDownloads(fromQuickMenu = ds.fromQuickMenu)
             }
         }
     }
@@ -1209,7 +1214,22 @@ class DialogInputHandler @Inject constructor(
             is DialogState.PlatformResetConfirm -> {
                 nav.dialogState.value = DialogState.None
             }
-            is DialogState.RommDownloads -> nav.dialogState.value = DialogState.None
+            is DialogState.RommDownloads -> {
+                if (ds.fromQuickMenu) {
+                    val rows = dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.visibleRows(
+                        rommStore.isConfigured,
+                        dev.cannoli.scorza.server.KitchenManager.isRunning,
+                        downloadCount = rommDownloader.queue.state.value.size,
+                    )
+                    nav.dialogState.value = DialogState.QuickMenu(
+                        rows = rows,
+                        kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
+                        selectedIndex = rows.indexOf(dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.DOWNLOADS).coerceAtLeast(0)
+                    )
+                } else {
+                    nav.dialogState.value = DialogState.None
+                }
+            }
             is DialogState.RommArtResults -> {
                 rommArtFetcher.dismissResults()
                 nav.dialogState.value = DialogState.None
@@ -1261,9 +1281,9 @@ class DialogInputHandler @Inject constructor(
                             version = rommStore.serverVersion,
                         )
                     dev.cannoli.scorza.ui.screens.RommConfirmAction.CANCEL_DOWNLOAD ->
-                        nav.dialogState.value = DialogState.RommDownloads()
+                        nav.dialogState.value = DialogState.RommDownloads(fromQuickMenu = ds.fromQuickMenu)
                     dev.cannoli.scorza.ui.screens.RommConfirmAction.CANCEL_ALL ->
-                        nav.dialogState.value = DialogState.RommDownloads()
+                        nav.dialogState.value = DialogState.RommDownloads(fromQuickMenu = ds.fromQuickMenu)
                 }
             }
             is DialogState.RAPreloadResult -> {
@@ -1346,7 +1366,7 @@ class DialogInputHandler @Inject constructor(
                 )
             }
             is DialogState.RommDownloads -> if (rommDownloader.queue.activeCount() >= 2) {
-                nav.dialogState.value = DialogState.RommConfirm(dev.cannoli.scorza.ui.screens.RommConfirmAction.CANCEL_ALL)
+                nav.dialogState.value = DialogState.RommConfirm(dev.cannoli.scorza.ui.screens.RommConfirmAction.CANCEL_ALL, fromQuickMenu = ds.fromQuickMenu)
             }
             else -> {}
         }
@@ -1677,8 +1697,11 @@ class DialogInputHandler @Inject constructor(
         val options = platformResolver.getCorePickerOptions(tag, context.packageManager,
             installedRaCores = installedCoreService.configuredCores(), embeddedCoresDir = bundledCoresDir2,
             unresponsivePackages = installedCoreService.configuredUnresponsive())
-        val platformCoreId = platformResolver.getCoreMapping(tag)
-        val platformCoreName = options.firstOrNull { it.coreId == platformCoreId }?.displayName ?: platformCoreId
+        val platformCoreName = platformResolver.detailedMappingFor(
+            tag, context.packageManager,
+            installedRaCores = installedCoreService.configuredCores(), embeddedCoresDir = bundledCoresDir2,
+            unresponsivePackages = installedCoreService.configuredUnresponsive()
+        ).coreDisplayName
         val defaultLabel = if (platformCoreName.isNotEmpty()) context.getString(dev.cannoli.scorza.R.string.emulator_platform_setting_named, platformCoreName) else context.getString(dev.cannoli.scorza.R.string.emulator_platform_setting)
         val defaultOption = EmulatorPickerOption("", defaultLabel, "")
         val allOptions = listOf(defaultOption) + options
@@ -2393,8 +2416,8 @@ class DialogInputHandler @Inject constructor(
             run {
                 val result = atomicRename.rename(rom.path, newName, rom.platformTag)
                 if (result.success) {
-                    val newRomFile = File(rom.path.parentFile, "$newName.${rom.path.extension}")
-                    val newRelative = relativeRomPath(newRomFile)
+                    val newPrimary = result.newPrimary
+                    val newRelative = newPrimary?.let { relativeRomPath(it) }
                     if (newRelative != null) {
                         romsRepository.renameRom(rom.id, newRelative, newName)
                     }

@@ -41,4 +41,22 @@ class QuickMenuRowsTest {
         )
         assertEquals(rows.indexOf(QuickMenuRow.CONFLICTS) + 1, rows.indexOf(QuickMenuRow.ERRORS))
     }
+
+    @Test fun `downloads row present immediately after romm when paired`() {
+        val rows = QuickMenuRow.visibleRows(rommPaired = true, kitchenRunning = false, downloadCount = 3)
+        assertEquals(true, rows.contains(QuickMenuRow.DOWNLOADS))
+        assertEquals(rows.indexOf(QuickMenuRow.ROMM) + 1, rows.indexOf(QuickMenuRow.DOWNLOADS))
+    }
+
+    @Test fun `downloads row present and first when not paired`() {
+        val rows = QuickMenuRow.visibleRows(rommPaired = false, kitchenRunning = false, downloadCount = 3)
+        assertEquals(true, rows.contains(QuickMenuRow.DOWNLOADS))
+        assertEquals(false, rows.contains(QuickMenuRow.ROMM))
+        assertEquals(QuickMenuRow.DOWNLOADS, rows.first())
+    }
+
+    @Test fun `downloads row absent when queue empty`() {
+        val rows = QuickMenuRow.visibleRows(rommPaired = true, kitchenRunning = false, downloadCount = 0)
+        assertEquals(false, rows.contains(QuickMenuRow.DOWNLOADS))
+    }
 }
