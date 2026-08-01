@@ -3,8 +3,13 @@ package dev.cannoli.scorza.db
 import androidx.sqlite.SQLiteStatement
 import dev.cannoli.scorza.model.App
 import dev.cannoli.scorza.model.AppType
+import dev.cannoli.scorza.model.artTag
+import dev.cannoli.scorza.util.ArtworkLookup
 
-class AppsRepository(private val db: CannoliDatabase) {
+class AppsRepository(
+    private val db: CannoliDatabase,
+    private val artwork: ArtworkLookup,
+) {
     fun all(type: AppType? = null): List<App> = if (type != null) {
         db.queryAll(
             "SELECT $COLUMNS FROM apps WHERE type = ? ORDER BY sort_order, display_name COLLATE NOCASE",
@@ -54,13 +59,18 @@ class AppsRepository(private val db: CannoliDatabase) {
         }
     }
 
-    private fun rowToApp(stmt: SQLiteStatement): App = App(
-        id = stmt.getLong(0),
-        type = AppType.valueOf(stmt.getText(1)),
-        displayName = stmt.getText(2),
-        packageName = stmt.getText(3),
-        lastPlayedAt = if (stmt.isNull(4)) null else stmt.getLong(4),
-    )
+    private fun rowToApp(stmt: SQLiteStatement): App {
+        val type = AppType.valueOf(stmt.getText(1))
+        val displayName = stmt.getText(2)
+        return App(
+            id = stmt.getLong(0),
+            type = type,
+            displayName = displayName,
+            packageName = stmt.getText(3),
+            lastPlayedAt = if (stmt.isNull(4)) null else stmt.getLong(4),
+            artFile = artwork.findByName(type.artTag, displayName),
+        )
+    }
 
     private companion object {
         const val COLUMNS = "id, type, display_name, package_name, last_played_at"

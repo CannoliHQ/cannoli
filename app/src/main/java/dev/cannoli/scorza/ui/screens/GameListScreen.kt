@@ -79,7 +79,11 @@ private val ListItem.itemKey: String get() = when (this) {
 
 private val ListItem.isLeafSelectable: Boolean get() = this is ListItem.RomItem || this is ListItem.AppItem
 
-private val ListItem.artPath: String? get() = (this as? ListItem.RomItem)?.rom?.artFile?.absolutePath
+private val ListItem.artPath: String? get() = when (this) {
+    is ListItem.RomItem -> rom.artFile?.absolutePath
+    is ListItem.AppItem -> app.artFile?.absolutePath
+    else -> null
+}
 
 private val ListItem.resumeKey: String? get() = (this as? ListItem.RomItem)?.rom?.path?.absolutePath
 
