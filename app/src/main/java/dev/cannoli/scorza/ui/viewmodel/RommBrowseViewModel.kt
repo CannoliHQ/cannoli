@@ -83,6 +83,8 @@ class RommBrowseViewModel(
     val syncProgress: StateFlow<RommSyncCoordinator.SyncProgress> =
         syncCoordinator?.progress ?: MutableStateFlow(RommSyncCoordinator.SyncProgress(0, 0))
 
+    val syncStale: StateFlow<Boolean> = syncCoordinator?.stale ?: MutableStateFlow(false)
+
     private var current: RommPlatform? = null
     private var searchTerm: String? = null
 

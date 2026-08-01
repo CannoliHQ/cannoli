@@ -57,6 +57,16 @@ private fun cloudIcon(status: SaveSyncStatus): String? = when (status) {
     SaveSyncStatus.DISABLED -> null
 }
 
+private const val ICON_DATABASE_SYNC = "\uDB83\uDCFF" // mdi-database-sync (U+F0CFF)
+private const val ICON_DATABASE_ALERT = "\uDB85\uDE3A" // mdi-database-alert (U+F163A)
+
+// The RomM cache mirror, kept visually distinct from the cloud glyphs that mean save data.
+private fun cacheSyncIcon(status: RommCacheSyncStatus): String? = when (status) {
+    RommCacheSyncStatus.SYNCING -> ICON_DATABASE_SYNC
+    RommCacheSyncStatus.ERROR -> ICON_DATABASE_ALERT
+    RommCacheSyncStatus.IDLE -> null
+}
+
 private const val ICON_BLUETOOTH = "\uDB80\uDCAF"
 private const val ICON_WIFI = "\uDB81\uDDA9"
 private const val ICON_VPN = "\uDB82\uDFC4"
@@ -107,6 +117,7 @@ fun StatusBar(
     use24hTime: Boolean = false,
     textSizeSp: Int = 16,
     saveSyncStatus: SaveSyncStatus = SaveSyncStatus.DISABLED,
+    rommCacheSyncStatus: RommCacheSyncStatus = RommCacheSyncStatus.IDLE,
 ) {
     val context = LocalContext.current
     val scaleFactor = LocalScaleFactor.current
@@ -216,7 +227,7 @@ fun StatusBar(
     val showBtIcon = showBluetooth && hasBluetooth
     val showWifiIcon = showWifi && wifiConnected
     val showVpnIcon = showVpn && hasVpn
-    val anyVisible = cloudIcon(saveSyncStatus) != null || kitchenRunning || downloadCount > 0 || downloadsActive || showUpdateIcon || showBtIcon || showWifiIcon || showVpnIcon || showBattery || showClock
+    val anyVisible = cloudIcon(saveSyncStatus) != null || cacheSyncIcon(rommCacheSyncStatus) != null || kitchenRunning || downloadCount > 0 || downloadsActive || showUpdateIcon || showBtIcon || showWifiIcon || showVpnIcon || showBattery || showClock
 
     if (!anyVisible) return
 
@@ -226,6 +237,7 @@ fun StatusBar(
         horizontalArrangement = Arrangement.spacedBy((6 * scaleFactor).dp)
     ) {
         cloudIcon(saveSyncStatus)?.let { Text(text = it, style = iconStyle) }
+        cacheSyncIcon(rommCacheSyncStatus)?.let { Text(text = it, style = iconStyle) }
         if (kitchenRunning) Text(text = ICON_KITCHEN, style = iconStyle)
         if (downloadCount > 0) {
             Row(verticalAlignment = Alignment.CenterVertically) {
