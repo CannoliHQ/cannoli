@@ -349,7 +349,6 @@
   },
   "GC": {
     "name": "GameCube",
-    "core": "dolphin_libretro",
     "app": [
       { "package": "org.dolphinemu.dolphinemu", "activity": "org.dolphinemu.dolphinemu.ui.main.MainActivity", "action": "android.intent.action.MAIN", "extras": [{ "key": "AutoStartFile", "kind": "path" }] },
       { "package": "org.dolphinemu.handheld", "activity": "org.dolphinemu.dolphinemu.ui.main.MainActivity", "action": "android.intent.action.MAIN", "extras": [{ "key": "AutoStartFile", "kind": "path" }] },
@@ -359,7 +358,6 @@
   },
   "WII": {
     "name": "Wii",
-    "core": "dolphin_libretro",
     "app": [
       { "package": "org.dolphinemu.dolphinemu", "activity": "org.dolphinemu.dolphinemu.ui.main.MainActivity", "action": "android.intent.action.MAIN", "extras": [{ "key": "AutoStartFile", "kind": "path" }] },
       { "package": "org.dolphinemu.handheld", "activity": "org.dolphinemu.dolphinemu.ui.main.MainActivity", "action": "android.intent.action.MAIN", "extras": [{ "key": "AutoStartFile", "kind": "path" }] },
@@ -369,16 +367,8 @@
   },
   "3DS": {
     "name": "Nintendo 3DS",
-    "core": "citra_libretro",
     "app": [
-      { "package": "org.azahar_emu.azahar", "activity": "org.citra.citra_emu.activities.EmulationActivity", "extras": [{ "key": "SelectedGame", "kind": "path" }] },
-      { "package": "io.github.azaharplus.android", "data": { "kind": "file_provider" } },
-      { "package": "org.citra.citra_emu", "activity": "org.citra.citra_emu.activities.EmulationActivity", "extras": [{ "key": "SelectedGame", "kind": "path" }] },
-      { "package": "org.citra.citra_emu.canary", "data": { "kind": "file_provider" } },
-      { "package": "io.github.borked3ds.android", "activity": "io.github.borked3ds.android.activities.EmulationActivity" },
-      { "package": "io.github.lime3ds.android", "data": { "kind": "file_provider" } },
-      { "package": "io.github.mandarine3ds.mandarine", "data": { "kind": "file_provider" } },
-      { "package": "com.panda3ds.pandroid", "data": { "kind": "file_provider" } }
+      { "package": "org.azahar_emu.azahar", "activity": "org.citra.citra_emu.activities.EmulationActivity", "data": { "kind": "file_provider" }, "intentFlags": 268468224 }
     ]
   },
   "WIIU": {

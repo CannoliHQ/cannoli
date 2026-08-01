@@ -244,6 +244,10 @@ class PlatformConfig(
 
     fun getAppPackage(tag: String): String? = userApps[tag] ?: defaultApps[tag.uppercase()]?.firstOrNull()?.packageName
 
+    // The explicit standalone pick only, with no fall back to the list default, so launch can
+    // tell "the user chose this app" apart from "this app happens to be listed first".
+    fun getUserAppMapping(tag: String): String? = userApps[tag]
+
     fun getAppOptions(tag: String): List<AppConfig> = defaultApps[tag.uppercase()] ?: emptyList()
 
     fun getAppConfig(tag: String, packageName: String): AppConfig {
@@ -587,9 +591,6 @@ class PlatformConfig(
         "org.mm.jr" to "Dolphin MMJR",
         "org.dolphinemu.mmjr" to "Dolphin MMJR2",
         "org.azahar_emu.azahar" to "Azahar",
-        "org.citra.citra_emu" to "Citra",
-        "io.github.lime3ds.android" to "Lime3DS",
-        "com.panda3ds.pandroid" to "Panda3DS",
         "info.cemu.cemu" to "Cemu",
         "org.vita3k.emulator" to "Vita3K",
         "aenu.aps3e" to "aPS3e",
@@ -606,9 +607,6 @@ class PlatformConfig(
         "com.armsx2" to "ARMSX2",
         "com.sbro.emucorex" to "EmuCoreX",
         "com.virtualapplications.play" to "Play!",
-        "io.github.azaharplus.android" to "AzaharPlus",
-        "org.citra.citra_emu.canary" to "Citra Canary",
-        "io.github.mandarine3ds.mandarine" to "Mandarine",
         "dev.eden.eden_emulator" to "Eden",
         "dev.legacy.eden_emulator" to "Eden (Legacy)",
         "org.kenjinx.android" to "Kenji-NX",
