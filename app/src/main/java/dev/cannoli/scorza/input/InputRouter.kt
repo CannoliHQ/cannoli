@@ -382,9 +382,11 @@ class InputRouter @Inject constructor(
         },
         onBack = { nav.pop() },
         onNorth = {
-            nav.replaceTop(emulatorMappingBuilder.buildPlatformMapping(
-                tag, platformName, showAll = !showAll, selectedIndex = 0, scrollTarget = 0,
-            ))
+            if (canToggleShowAll) {
+                nav.replaceTop(emulatorMappingBuilder.buildPlatformMapping(
+                    tag, platformName, showAll = !showAll, selectedIndex = 0, scrollTarget = 0,
+                ))
+            }
         },
     )
 

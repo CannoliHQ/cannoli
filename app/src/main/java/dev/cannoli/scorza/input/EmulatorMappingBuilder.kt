@@ -111,6 +111,12 @@ class EmulatorMappingBuilder @Inject constructor(
             section = emulatorSection(true)
         }
 
+        // Installed-only is always a subset of Show All, so equal option counts mean the
+        // toggle would not change anything and the legend is hidden.
+        val optionCount = section.count { it is MappingItem.EmulatorOption }
+        val canToggleShowAll =
+            emulatorSection(!effectiveShowAll).count { it is MappingItem.EmulatorOption } != optionCount
+
         val items = mutableListOf<MappingItem>()
         items.addAll(section)
         items.add(MappingItem.Divider())
@@ -143,6 +149,7 @@ class EmulatorMappingBuilder @Inject constructor(
             platformName = platformName,
             items = items,
             showAll = effectiveShowAll,
+            canToggleShowAll = canToggleShowAll,
             overridesCount = overridesCount,
             resettable = resettable,
             selectedIndex = selectedIndex.coerceIn(0, (selectableCount - 1).coerceAtLeast(0)),

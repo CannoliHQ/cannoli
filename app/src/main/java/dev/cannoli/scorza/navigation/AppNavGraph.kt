@@ -202,6 +202,7 @@ sealed class LauncherScreen {
         val platformName: String,
         val items: List<dev.cannoli.scorza.ui.screens.MappingItem>,
         val showAll: Boolean = false,
+        val canToggleShowAll: Boolean = true,
         val overridesCount: Int = 0,
         val resettable: Boolean = false,
         override val selectedIndex: Int = 0,
@@ -722,7 +723,7 @@ fun AppNavGraph(
                     listLineHeight = listLineHeight,
                     fullWidth = true,
                     rightBottomItems = buildList {
-                        add(labels.north to yLabel)
+                        if (currentScreen.canToggleShowAll) add(labels.north to yLabel)
                         if (highlightedIndex >= 0) add(labels.confirm to confirmLabel)
                     },
                     buttonStyle = labels
