@@ -1,5 +1,11 @@
 package dev.cannoli.scorza.util
 
+import android.content.res.AssetManager
+import dev.cannoli.scorza.di.CannoliPathsProvider
+import io.mockk.Runs
+import io.mockk.every
+import io.mockk.just
+import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -9,6 +15,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
+import java.io.FileNotFoundException
 
 class AtomicRenameTest {
 
@@ -17,9 +24,22 @@ class AtomicRenameTest {
     private lateinit var root: File
     private lateinit var renamer: AtomicRename
 
+    private fun buildWalker(root: File): RomDirectoryWalker {
+        val romsDir = File(root, "Roms").also { it.mkdirs() }
+        val assets = mockk<AssetManager>()
+        every { assets.open(any()) } throws FileNotFoundException()
+        val paths = mockk<CannoliPathsProvider>()
+        every { paths.root } returns root
+        every { paths.romDir } returns romsDir
+        val arcade = mockk<ArcadeTitleLookup>()
+        every { arcade.mapFor(any(), any()) } returns emptyMap()
+        every { arcade.invalidate(any()) } just Runs
+        return RomDirectoryWalker(paths, assets, arcade)
+    }
+
     @Before fun setUp() {
         root = tempFolder.root
-        renamer = AtomicRename(root)
+        renamer = AtomicRename(root, buildWalker(root))
     }
 
     private fun romsDir(tag: String) = File(root, "Roms/$tag").also { it.mkdirs() }
@@ -196,5 +216,41 @@ class AtomicRenameTest {
                 "Other.bin\tAnother Game",
             mapText
         )
+    }
+
+    @Test fun `rename cascades a folder game and reports the new primary`() {
+        val tagDir = romsDir("NSW")
+        val gameDir = File(tagDir, "Old Game").also { it.mkdirs() }
+        val rom = File(gameDir, "Old Game.nsp").writeWith("rom")
+        File(gameDir, "updates").mkdirs()
+        File(gameDir, "updates/patch.nsp").writeWith("upd")
+        val art = File(artDir("NSW"), "Old Game.png").writeWith("art")
+        val save = File(savesDir("NSW"), "Old Game.srm").writeWith("save")
+
+        val result = renamer.rename(rom, "New Game", "NSW")
+
+        assertTrue(result.success)
+        val newDir = File(tagDir, "New Game")
+        assertEquals(File(newDir, "New Game.nsp"), result.newPrimary)
+        assertEquals("rom", File(newDir, "New Game.nsp").readText())
+        assertEquals("upd", File(newDir, "updates/patch.nsp").readText())
+        assertFalse(gameDir.exists())
+        assertTrue(File(artDir("NSW"), "New Game.png").exists())
+        assertTrue(File(savesDir("NSW"), "New Game.srm").exists())
+        assertFalse(art.exists())
+        assertFalse(save.exists())
+    }
+
+    @Test fun `folder game rename fails with ALREADY_EXISTS when target folder taken`() {
+        val tagDir = romsDir("NSW")
+        val gameDir = File(tagDir, "Old Game").also { it.mkdirs() }
+        val rom = File(gameDir, "Old Game.nsp").writeWith("rom")
+        File(tagDir, "New Game").mkdirs()
+
+        val result = renamer.rename(rom, "New Game", "NSW")
+
+        assertFalse(result.success)
+        assertEquals(AtomicRename.RenameError.ALREADY_EXISTS, result.error)
+        assertTrue(rom.exists())
     }
 }

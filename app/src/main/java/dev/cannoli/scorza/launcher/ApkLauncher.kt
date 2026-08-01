@@ -49,6 +49,12 @@ class ApkLauncher @Inject constructor(
         return when (config.launchMethod) {
             LaunchMethod.INTENT -> dispatchIntent(resolved, config, romFile, packageName)
             LaunchMethod.SHELL  -> shellLauncher.launch(ShellCommandFormatter.format(resolved))
+            // LaunchManager routes these to DelfinoLauncher; the params protocol cannot be
+            // expressed as a generic intent, so reaching here means a misrouted launch.
+            LaunchMethod.DELFINO -> {
+                debugLog("  -> delfino config reached ApkLauncher; misrouted")
+                LaunchResult.Error(context.getString(dev.cannoli.scorza.R.string.launch_error_generic))
+            }
         }
     }
 

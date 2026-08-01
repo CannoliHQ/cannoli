@@ -8,7 +8,9 @@ import dev.cannoli.igm.BatteryDisplayMode
 import dev.cannoli.igm.IgmColors
 import dev.cannoli.igm.IgmDisplaySettings
 import dev.cannoli.igm.TimeFormatMode
+import dev.cannoli.scorza.config.AppConfig
 import dev.cannoli.scorza.config.CannoliPaths
+import dev.cannoli.scorza.config.LaunchMethod
 import dev.cannoli.scorza.input.runtime.confirmButton
 import dev.cannoli.scorza.input.runtime.labelSet
 import dev.cannoli.scorza.launcher.toIgmInputMapping
@@ -37,6 +39,7 @@ class LaunchManager(
     private val delfinoLauncher: DelfinoLauncher,
     private val launchState: LaunchState,
     private val activeMappingHolder: dev.cannoli.scorza.input.runtime.ActiveMappingHolder,
+    private val atomicRename: dev.cannoli.scorza.util.AtomicRename,
     private val installedCoreService: InstalledCoreService? = null,
 ) {
     private var raConfigPath: String? = null
@@ -249,14 +252,7 @@ class LaunchManager(
         val gameOverride = platformConfig.getGameOverride(rom.path.absolutePath)
         if (gameOverride?.appPackage != null) {
             val cfg = platformConfig.getAppConfig(rom.platformTag, gameOverride.appPackage)
-            return launchResultDialog(apkLauncher.launchWithRom(gameOverride.appPackage, launchFile, cfg), rom.platformTag)
-        }
-
-        if (rom.platformTag in DELFINO_PLATFORMS) {
-            val delfinoPkg = DelfinoLauncher.installedPackage(context)
-            if (delfinoPkg != null) {
-                return launchResultDialog(delfinoLauncher.launch(buildDelfinoParams(rom), delfinoPkg), rom.platformTag)
-            }
+            return launchResultDialog(launchStandalone(rom, launchFile, cfg), rom.platformTag)
         }
 
         val result = when (val target = rom.launchTarget) {
@@ -277,7 +273,7 @@ class LaunchManager(
                         ?: platformConfig.getFirstInstalledApp(rom.platformTag, context.packageManager)
                         ?: platformConfig.getAppPackage(rom.platformTag)?.let { platformConfig.getAppConfig(rom.platformTag, it) }
                     if (cfg != null) {
-                        apkLauncher.launchWithRom(cfg.packageName, launchFile, cfg)
+                        launchStandalone(rom, launchFile, cfg)
                     } else {
                         LaunchResult.CoreNotInstalled("unknown")
                     }
@@ -432,7 +428,7 @@ class LaunchManager(
         originalRomPath?.let { orig ->
             val archive = File(orig)
             if (archive.absolutePath != rom.path.absolutePath && ArchiveExtractor.isArchive(archive)) {
-                SaveIdentityMigrator(File(settings.sdCardRoot)).migrateOnLaunch(rom.platformTag, romName, archive)
+                SaveIdentityMigrator(File(settings.sdCardRoot), atomicRename).migrateOnLaunch(rom.platformTag, romName, archive)
             }
         }
 
@@ -482,6 +478,13 @@ class LaunchManager(
 
     private fun normalizedRomName(rom: Rom): String =
         Normalizer.normalize(rom.path.nameWithoutExtension, Normalizer.Form.NFC)
+
+    private fun launchStandalone(rom: Rom, launchFile: File, cfg: AppConfig): LaunchResult =
+        if (cfg.launchMethod == LaunchMethod.DELFINO) {
+            delfinoLauncher.launch(buildDelfinoParams(rom), cfg.packageName)
+        } else {
+            apkLauncher.launchWithRom(cfg.packageName, launchFile, cfg)
+        }
 
     private fun buildDelfinoParams(rom: Rom): dev.cannoli.igm.DelfinoLaunchParams {
         val igm = buildRicottaIgm(rom)
@@ -568,7 +571,6 @@ class LaunchManager(
 
     companion object {
         private const val CONFIG_VERSION = 6
-        val DELFINO_PLATFORMS = setOf("GC", "WII")
 
         fun extractBundledCores(context: Context): String {
             val coresDir = File(context.filesDir, "cores")

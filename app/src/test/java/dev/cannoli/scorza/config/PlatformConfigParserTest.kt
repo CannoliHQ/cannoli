@@ -60,6 +60,11 @@ class PlatformConfigParserTest {
         assertEquals(LaunchMethod.SHELL, cfg.launchMethod)
     }
 
+    @Test fun `delfino entry parses the delfino launch method`() {
+        val cfg = parse("""{"package":"dev.cannoli.delfino","launchMethod":"delfino"}""")
+        assertEquals(LaunchMethod.DELFINO, cfg.launchMethod)
+    }
+
     @Test fun `file_provider data with grant default true`() {
         val cfg = parse("""{"package":"com.sky.SkyEmu","data":{"kind":"file_provider"}}""")
         val data = cfg.data as DataBinding.FileProvider

@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.launcher
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -48,6 +49,20 @@ class IntentAuditor @Inject constructor(
                 if (!installed) continue
 
                 totalInstalled++
+                if (cfg.launchMethod == LaunchMethod.DELFINO) {
+                    sb.appendLine("    method:   ${cfg.launchMethod}")
+                    sb.appendLine("    activity: ${DelfinoLauncher.ACTIVITY}")
+                    val delfinoIntent = Intent()
+                        .setComponent(ComponentName(cfg.packageName, DelfinoLauncher.ACTIVITY))
+                    val delfinoResolved = pm.resolveActivity(delfinoIntent, PackageManager.MATCH_DEFAULT_ONLY)
+                    if (delfinoResolved != null) {
+                        sb.appendLine("    resolved: ${delfinoResolved.activityInfo.packageName}/${delfinoResolved.activityInfo.name}")
+                    } else {
+                        totalFailed++
+                        sb.appendLine("    resolved: NO (Delfino launch activity not exported)")
+                    }
+                    continue
+                }
                 sb.appendLine("    action:   ${cfg.action}")
                 sb.appendLine("    activity: ${cfg.activity ?: "<none>"}")
                 sb.appendLine("    data:     ${cfg.data}")

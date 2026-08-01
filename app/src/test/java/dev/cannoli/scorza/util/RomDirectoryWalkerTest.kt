@@ -189,13 +189,14 @@ class RomDirectoryWalkerTest {
         write("NES/Mega Game.nes", "rom")
         val rom = File(romsDir, "NES/Mega Game.nes")
 
-        val outcome = walker.renameGame(rom, "Super Game")
+        val result = walker.renameGame(rom, "Super Game")
 
-        assertEquals(RomDirectoryWalker.RenameOutcome.RENAMED, outcome)
+        assertEquals(RomDirectoryWalker.RenameOutcome.RENAMED, result.outcome)
         assertFalse(rom.exists())
         val renamed = File(romsDir, "NES/Super Game.nes")
         assertTrue(renamed.exists())
         assertEquals("rom", renamed.readText())
+        assertEquals(renamed, result.newPrimary)
     }
 
     @Test
@@ -206,9 +207,9 @@ class RomDirectoryWalkerTest {
         walker.walk("PS", isArcade = false)
 
         val m3u = File(romsDir, "PS/Cool Game/Cool Game.m3u")
-        val outcome = walker.renameGame(m3u, "Rad Game")
+        val result = walker.renameGame(m3u, "Rad Game")
 
-        assertEquals(RomDirectoryWalker.RenameOutcome.RENAMED, outcome)
+        assertEquals(RomDirectoryWalker.RenameOutcome.RENAMED, result.outcome)
         assertFalse(File(romsDir, "PS/Cool Game").exists())
         val newDir = File(romsDir, "PS/Rad Game")
         assertTrue(newDir.exists())
@@ -224,6 +225,7 @@ class RomDirectoryWalkerTest {
             ),
             File(newDir, "Rad Game.m3u").readLines().filter { it.isNotBlank() },
         )
+        assertEquals(File(newDir, "Rad Game.m3u"), result.newPrimary)
     }
 
     @Test
@@ -232,14 +234,15 @@ class RomDirectoryWalkerTest {
         write("PS/Cool Game/Cool Game.bin", "bin")
 
         val cue = File(romsDir, "PS/Cool Game/Cool Game.cue")
-        val outcome = walker.renameGame(cue, "Rad Game")
+        val result = walker.renameGame(cue, "Rad Game")
 
-        assertEquals(RomDirectoryWalker.RenameOutcome.RENAMED, outcome)
+        assertEquals(RomDirectoryWalker.RenameOutcome.RENAMED, result.outcome)
         assertFalse(File(romsDir, "PS/Cool Game").exists())
         val newDir = File(romsDir, "PS/Rad Game")
         assertTrue(newDir.exists())
         assertTrue(File(newDir, "Rad Game.cue").exists())
         assertTrue(File(newDir, "Rad Game.bin").exists())
+        assertEquals(File(newDir, "Rad Game.cue"), result.newPrimary)
     }
 
     @Test
@@ -247,10 +250,10 @@ class RomDirectoryWalkerTest {
         write("NES/Mega Game.nes", "rom")
         val rom = File(romsDir, "NES/Mega Game.nes")
 
-        assertEquals(RomDirectoryWalker.RenameOutcome.RENAMED, walker.renameGame(rom, "Mega Game"))
+        assertEquals(RomDirectoryWalker.RenameOutcome.RENAMED, walker.renameGame(rom, "Mega Game").outcome)
         assertTrue(rom.exists())
 
-        assertEquals(RomDirectoryWalker.RenameOutcome.RENAMED, walker.renameGame(rom, "mega game"))
+        assertEquals(RomDirectoryWalker.RenameOutcome.RENAMED, walker.renameGame(rom, "mega game").outcome)
         assertTrue(rom.exists())
     }
 
@@ -262,7 +265,7 @@ class RomDirectoryWalkerTest {
 
         assertEquals(
             RomDirectoryWalker.RenameOutcome.NAME_TAKEN,
-            walker.renameGame(rom, "Super Game"),
+            walker.renameGame(rom, "Super Game").outcome,
         )
         assertTrue(rom.exists())
     }

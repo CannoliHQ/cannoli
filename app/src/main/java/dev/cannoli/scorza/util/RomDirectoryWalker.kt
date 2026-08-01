@@ -132,27 +132,37 @@ class RomDirectoryWalker(
 
     enum class RenameOutcome { RENAMED, NAME_TAKEN, FAILED }
 
+    /** [newPrimary] is non-null exactly when [outcome] is RENAMED: the primary file's new
+     *  location, cascaded to match the folder/file's new name. */
+    data class RenameGameResult(val outcome: RenameOutcome, val newPrimary: File? = null)
+
     /** Renames a game. For a single-file game, renames the rom file. For a folder game, cascades:
      *  the folder, the launch file, the disc files, and the m3u contents all take the new name. */
-    fun renameGame(primaryFile: File, newName: String): RenameOutcome {
-        if (newName.isBlank()) return RenameOutcome.FAILED
+    fun renameGame(primaryFile: File, newName: String): RenameGameResult {
+        if (newName.isBlank()) return RenameGameResult(RenameOutcome.FAILED)
 
         val dir = gameDirectory(primaryFile)
         if (dir == null) {
             val currentBase = primaryFile.nameWithoutExtension
-            if (newName.equals(currentBase, ignoreCase = true)) return RenameOutcome.RENAMED
+            if (newName.equals(currentBase, ignoreCase = true)) {
+                return RenameGameResult(RenameOutcome.RENAMED, primaryFile)
+            }
             val ext = primaryFile.extension
             val target = File(primaryFile.parentFile, if (ext.isEmpty()) newName else "$newName.$ext")
-            if (target.exists()) return RenameOutcome.NAME_TAKEN
-            return if (primaryFile.renameTo(target)) RenameOutcome.RENAMED else RenameOutcome.FAILED
+            if (target.exists()) return RenameGameResult(RenameOutcome.NAME_TAKEN)
+            return if (primaryFile.renameTo(target)) {
+                RenameGameResult(RenameOutcome.RENAMED, target)
+            } else {
+                RenameGameResult(RenameOutcome.FAILED)
+            }
         }
 
         val oldBase = dir.name
-        if (newName.equals(oldBase, ignoreCase = true)) return RenameOutcome.RENAMED
+        if (newName.equals(oldBase, ignoreCase = true)) return RenameGameResult(RenameOutcome.RENAMED, primaryFile)
         val newDir = File(dir.parentFile, newName)
-        if (newDir.exists()) return RenameOutcome.NAME_TAKEN
+        if (newDir.exists()) return RenameGameResult(RenameOutcome.NAME_TAKEN)
 
-        if (!dir.renameTo(newDir)) return RenameOutcome.FAILED
+        if (!dir.renameTo(newDir)) return RenameGameResult(RenameOutcome.FAILED)
 
         val prefixed = newDir.listFiles { f ->
             f.isFile && f.name.startsWith(oldBase) && run {
@@ -161,14 +171,16 @@ class RomDirectoryWalker(
             }
         }.orEmpty()
         val renamed = mutableListOf<Pair<File, File>>()
+        var newPrimary: File? = null
         for (file in prefixed) {
             val target = File(newDir, newName + file.name.removePrefix(oldBase))
+            if (file.name == primaryFile.name) newPrimary = target
             if (file.renameTo(target)) {
                 renamed.add(file to target)
             } else {
                 for ((from, to) in renamed.asReversed()) to.renameTo(from)
                 newDir.renameTo(dir)
-                return RenameOutcome.FAILED
+                return RenameGameResult(RenameOutcome.FAILED)
             }
         }
 
@@ -182,7 +194,7 @@ class RomDirectoryWalker(
             m3u.writeText(primaries.joinToString("\n") { it.name } + "\n")
         }
 
-        return RenameOutcome.RENAMED
+        return RenameGameResult(RenameOutcome.RENAMED, newPrimary ?: File(newDir, primaryFile.name))
     }
 
     data class WalkResult(

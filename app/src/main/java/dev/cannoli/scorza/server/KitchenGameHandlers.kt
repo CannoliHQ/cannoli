@@ -334,23 +334,20 @@ internal fun KitchenHttpServer.handleGames(
                     return errorResponse(400, "invalid name")
                 }
                 if (!isSecure(rom.path)) return errorResponse(403, "forbidden")
-                val gameDirBefore = romDirectoryWalker?.gameDirectory(rom.path)
-                when (romDirectoryWalker?.renameGame(rom.path, name)) {
-                    dev.cannoli.scorza.util.RomDirectoryWalker.RenameOutcome.RENAMED -> {
-                        val ext = rom.path.extension
-                        val newPrimary = if (gameDirBefore == null) {
-                            File(rom.path.parentFile, if (ext.isEmpty()) name else "$name.$ext")
-                        } else {
-                            val newDir = File(gameDirBefore.parentFile, name)
-                            File(newDir, if (ext.isEmpty()) name else "$name.$ext")
+                val renamer = atomicRename ?: return errorResponse(500, "rename unavailable")
+                val result = renamer.rename(rom.path, name, platformTag)
+                when {
+                    result.success -> {
+                        val newPrimary = result.newPrimary
+                        if (newPrimary != null) {
+                            val romsRoot = romsRootProvider()
+                            val newRelPath = newPrimary.absolutePath.removePrefix("${romsRoot.absolutePath}${File.separator}")
+                            repo.updateRomPath(rom.id, newRelPath)
                         }
-                        val romsRoot = romsRootProvider()
-                        val newRelPath = newPrimary.absolutePath.removePrefix("${romsRoot.absolutePath}${File.separator}")
-                        repo.updateRomPath(rom.id, newRelPath)
                         scanPlatform?.invoke(platformTag)
                         okResponse()
                     }
-                    dev.cannoli.scorza.util.RomDirectoryWalker.RenameOutcome.NAME_TAKEN ->
+                    result.error == dev.cannoli.scorza.util.AtomicRename.RenameError.ALREADY_EXISTS ->
                         errorResponse(409, "a game with that name already exists")
                     else -> errorResponse(500, "rename failed")
                 }

@@ -15,6 +15,7 @@ import dev.cannoli.scorza.launcher.LaunchManager
 import dev.cannoli.scorza.launcher.LaunchState
 import dev.cannoli.scorza.launcher.RetroArchLauncher
 import dev.cannoli.scorza.settings.SettingsRepository
+import dev.cannoli.scorza.util.AtomicRename
 import javax.inject.Singleton
 
 @Module
@@ -43,9 +44,11 @@ object LaunchModule {
         delfinoLauncher: DelfinoLauncher,
         launchState: LaunchState,
         activeMappingHolder: dev.cannoli.scorza.input.runtime.ActiveMappingHolder,
+        atomicRename: AtomicRename,
         installedCoreService: InstalledCoreService,
     ): LaunchManager = LaunchManager(
         context, settings, platformConfig,
-        retroArchLauncher, emuLauncher, apkLauncher, delfinoLauncher, launchState, activeMappingHolder, installedCoreService
+        retroArchLauncher, emuLauncher, apkLauncher, delfinoLauncher, launchState, activeMappingHolder,
+        atomicRename, installedCoreService
     )
 }

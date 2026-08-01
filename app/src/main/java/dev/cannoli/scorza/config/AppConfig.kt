@@ -30,4 +30,4 @@ enum class ExtraValueKind {
     STRING_ARRAY,
 }
 
-enum class LaunchMethod { INTENT, SHELL }
+enum class LaunchMethod { INTENT, SHELL, DELFINO }

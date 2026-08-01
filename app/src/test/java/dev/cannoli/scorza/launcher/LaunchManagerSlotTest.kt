@@ -38,6 +38,7 @@ class LaunchManagerSlotTest {
             delfinoLauncher = mockk(relaxed = true),
             launchState = mockk(relaxed = true),
             activeMappingHolder = mockk(relaxed = true),
+            atomicRename = mockk(relaxed = true),
         )
     }
 

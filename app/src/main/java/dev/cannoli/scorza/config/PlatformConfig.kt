@@ -540,12 +540,15 @@ class PlatformConfig(
         return options
     }
 
+    // The curated name wins over the installed app's own label, which is often decorated
+    // (MMJR2 ships as "Dolphin |MMJR2|") or inconsistent with how the app is known.
     private fun resolveAppLabel(pm: PackageManager, packageName: String): String {
+        knownAppLabels[packageName]?.let { return it }
         return try {
             val info = pm.getApplicationInfo(packageName, 0)
             pm.getApplicationLabel(info).toString()
         } catch (_: PackageManager.NameNotFoundException) {
-            knownAppLabels[packageName] ?: packageName
+            packageName
         }
     }
 
@@ -587,6 +590,9 @@ class PlatformConfig(
         "org.ppsspp.ppssppgold" to "PPSSPP Gold",
         "xyz.aethersx2.android" to "NetherSX2",
         "org.dolphinemu.dolphinemu" to "Dolphin",
+        "org.dolphinemu.mmjr" to "Dolphin MMJR2",
+        "dev.cannoli.delfino" to "Delfino",
+        "dev.cannoli.delfino.debug" to "Delfino (Debug)",
         "org.azahar_emu.azahar" to "Azahar",
         "info.cemu.cemu" to "Cemu",
         "org.vita3k.emulator" to "Vita3K",
@@ -748,6 +754,7 @@ class PlatformConfig(
         private fun parseLaunchMethod(s: String): LaunchMethod = when (s) {
             "intent" -> LaunchMethod.INTENT
             "shell" -> LaunchMethod.SHELL
+            "delfino" -> LaunchMethod.DELFINO
             else -> throw IllegalArgumentException("Unknown launchMethod: `$s`")
         }
     }

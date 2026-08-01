@@ -11,7 +11,7 @@ import java.text.Normalizer
 // archive's inner entry name rather than the library (zip) name. Lazy: runs at
 // launch, short-circuits once library-named data exists. Sunset once the early
 // user base has rolled forward - delete this class and its launchEmbedded call.
-class SaveIdentityMigrator(private val cannoliRoot: File) {
+class SaveIdentityMigrator(cannoliRoot: File, private val atomicRename: AtomicRename) {
 
     private val paths = CannoliPaths(cannoliRoot)
 
@@ -22,7 +22,7 @@ class SaveIdentityMigrator(private val cannoliRoot: File) {
         val innerBase = Normalizer.normalize(File(innerRaw).nameWithoutExtension, Normalizer.Form.NFC)
         if (innerBase == libraryBaseName) return
 
-        AtomicRename(cannoliRoot).relocateSaveData(platformTag, innerBase, libraryBaseName)
+        atomicRename.relocateSaveData(platformTag, innerBase, libraryBaseName)
     }
 
     private fun libraryDataExists(tag: String, base: String): Boolean {

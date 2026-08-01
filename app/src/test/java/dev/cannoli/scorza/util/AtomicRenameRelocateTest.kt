@@ -1,5 +1,11 @@
 package dev.cannoli.scorza.util
 
+import android.content.res.AssetManager
+import dev.cannoli.scorza.di.CannoliPathsProvider
+import io.mockk.Runs
+import io.mockk.every
+import io.mockk.just
+import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -7,12 +13,26 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
+import java.io.FileNotFoundException
 
 class AtomicRenameRelocateTest {
 
     @get:Rule val tmp = TemporaryFolder()
 
     private fun write(f: File, text: String) { f.parentFile?.mkdirs(); f.writeText(text) }
+
+    private fun renamer(root: File): AtomicRename {
+        val romsDir = File(root, "Roms").also { it.mkdirs() }
+        val assets = mockk<AssetManager>()
+        every { assets.open(any()) } throws FileNotFoundException()
+        val paths = mockk<CannoliPathsProvider>()
+        every { paths.root } returns root
+        every { paths.romDir } returns romsDir
+        val arcade = mockk<ArcadeTitleLookup>()
+        every { arcade.mapFor(any(), any()) } returns emptyMap()
+        every { arcade.invalidate(any()) } just Runs
+        return AtomicRename(root, RomDirectoryWalker(paths, assets, arcade))
+    }
 
     @Test fun `relocate moves state dir inner files and srm to new base`() {
         val root = tmp.root
@@ -24,7 +44,7 @@ class AtomicRenameRelocateTest {
         write(File(root, "Save States/$tag/$oldBase/$oldBase.state.png"), "P")
         write(File(root, "Saves/$tag/$oldBase.srm"), "R")
 
-        val result = AtomicRename(root).relocateSaveData(tag, oldBase, newBase)
+        val result = renamer(root).relocateSaveData(tag, oldBase, newBase)
 
         assertTrue(result.success)
         assertFalse(File(root, "Save States/$tag/$oldBase").exists())
@@ -35,14 +55,14 @@ class AtomicRenameRelocateTest {
     }
 
     @Test fun `relocate is a noop when nothing exists under old base`() {
-        val result = AtomicRename(tmp.root).relocateSaveData("SNES", "Nope", "Other")
+        val result = renamer(tmp.root).relocateSaveData("SNES", "Nope", "Other")
         assertTrue(result.success)
     }
 
     @Test fun `relocate moves srm when no state dir exists`() {
         val root = tmp.root
         write(File(root, "Saves/SNES/Old.srm"), "R")
-        val result = AtomicRename(root).relocateSaveData("SNES", "Old", "New")
+        val result = renamer(root).relocateSaveData("SNES", "Old", "New")
         assertTrue(result.success)
         assertFalse(File(root, "Saves/SNES/Old.srm").exists())
         assertEquals("R", File(root, "Saves/SNES/New.srm").readText())
@@ -53,7 +73,7 @@ class AtomicRenameRelocateTest {
         val tag = "SNES"
         write(File(root, "Save States/$tag/Old/Old.state"), "S")
         File(root, "Save States/$tag/New").mkdirs()
-        val result = AtomicRename(root).relocateSaveData(tag, "Old", "New")
+        val result = renamer(root).relocateSaveData(tag, "Old", "New")
         assertTrue(result.success)
         assertEquals("S", File(root, "Save States/$tag/New/New.state").readText())
     }
@@ -63,7 +83,7 @@ class AtomicRenameRelocateTest {
         val tag = "GBC"
         write(File(root, "Saves/$tag/Old.srm"), "S")
         write(File(root, "Saves/$tag/Old.rtc"), "T")
-        val result = AtomicRename(root).relocateSaveData(tag, "Old", "New")
+        val result = renamer(root).relocateSaveData(tag, "Old", "New")
         assertTrue(result.success)
         assertEquals("S", File(root, "Saves/$tag/New.srm").readText())
         assertEquals("T", File(root, "Saves/$tag/New.rtc").readText())

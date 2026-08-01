@@ -6,7 +6,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class AtomicRename(private val cannoliRoot: File) {
+class AtomicRename(private val cannoliRoot: File, private val walker: RomDirectoryWalker) {
 
     private val paths = CannoliPaths(cannoliRoot)
     private val backupDir get() = paths.backupDir
@@ -16,7 +16,7 @@ class AtomicRename(private val cannoliRoot: File) {
 
     enum class RenameError { CANNOT_RESOLVE_DIR, ALREADY_EXISTS, BACKUP_FAILED, RENAME_FAILED, RELOCATE_FAILED }
 
-    data class RenameResult(val success: Boolean, val error: RenameError? = null)
+    data class RenameResult(val success: Boolean, val error: RenameError? = null, val newPrimary: File? = null)
 
     // Carries a structured error through the throw/catch so the raw exception text can be
     // logged (not surfaced) while the UI maps the code to a localized message.
@@ -24,8 +24,8 @@ class AtomicRename(private val cannoliRoot: File) {
 
     fun rename(romFile: File, newBaseName: String, platformTag: String): RenameResult {
         val oldBaseName = romFile.nameWithoutExtension
-        val extension = romFile.extension
         val romDir = romFile.parentFile ?: return RenameResult(false, RenameError.CANNOT_RESOLVE_DIR)
+        val gameDirBefore = walker.gameDirectory(romFile)
 
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
         val backupTagDir = File(backupDir, "$platformTag/${oldBaseName}-$timestamp")
@@ -43,32 +43,36 @@ class AtomicRename(private val cannoliRoot: File) {
             return RenameResult(false, RenameError.BACKUP_FAILED)
         }
 
-        val newRomFile = File(romDir, "$newBaseName.$extension")
         var romMoved = false
+        var newPrimary: File = romFile
         var artMoved: Pair<File, File>? = null
         try {
-            if (newRomFile.exists() && newRomFile != romFile) {
-                throw RenameFailure(RenameError.ALREADY_EXISTS)
+            val moved = walker.renameGame(romFile, newBaseName)
+            when (moved.outcome) {
+                RomDirectoryWalker.RenameOutcome.NAME_TAKEN -> throw RenameFailure(RenameError.ALREADY_EXISTS)
+                RomDirectoryWalker.RenameOutcome.FAILED -> throw RenameFailure(RenameError.RENAME_FAILED)
+                RomDirectoryWalker.RenameOutcome.RENAMED -> Unit
             }
-            if (!romFile.renameTo(newRomFile)) {
-                throw RenameFailure(RenameError.RENAME_FAILED)
-            }
+            newPrimary = moved.newPrimary ?: throw RenameFailure(RenameError.RENAME_FAILED)
             romMoved = true
             findArtFile(platformTag, oldBaseName)?.let { artFile ->
                 val newArtFile = File(artFile.parentFile, "$newBaseName.${artFile.extension}")
                 if (artFile.renameTo(newArtFile)) artMoved = artFile to newArtFile
             }
             moveSaveData(platformTag, oldBaseName, newBaseName)
-            updateMapFile(romDir, romFile.name, "$newBaseName.$extension")
+            // Arcade map.txt applies to loose files; folder games already moved with their parent dir.
+            if (gameDirBefore == null) {
+                updateMapFile(romDir, romFile.name, newPrimary.name)
+            }
         } catch (e: Exception) {
             try {
-                rollback(backupTagDir, platformTag, romMoved, romFile, newRomFile, artMoved)
+                rollback(backupTagDir, platformTag, romMoved, oldBaseName, newPrimary, artMoved)
             } catch (_: Exception) { }
             if (e !is RenameFailure) ErrorLog.write("rename failed: ${e.message}")
             return RenameResult(false, (e as? RenameFailure)?.error ?: RenameError.RENAME_FAILED)
         }
 
-        return RenameResult(true)
+        return RenameResult(true, newPrimary = newPrimary)
     }
 
     // Reconciles a game's save data to a new base name without touching the ROM file or
@@ -199,11 +203,11 @@ class AtomicRename(private val cannoliRoot: File) {
         backupTagDir: File,
         tag: String,
         romMoved: Boolean,
-        originalRom: File,
-        newRomFile: File,
+        oldBaseName: String,
+        newPrimary: File,
         artMoved: Pair<File, File>?,
     ) {
-        if (romMoved && !originalRom.exists()) newRomFile.renameTo(originalRom)
+        if (romMoved) walker.renameGame(newPrimary, oldBaseName)
         artMoved?.let { (oldArt, newArt) ->
             if (!oldArt.exists()) newArt.renameTo(oldArt)
         }
