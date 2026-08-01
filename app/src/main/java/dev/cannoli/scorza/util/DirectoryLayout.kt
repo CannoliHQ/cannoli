@@ -3,6 +3,8 @@ package dev.cannoli.scorza.util
 import android.content.res.AssetManager
 import dev.cannoli.scorza.config.CannoliPaths
 import dev.cannoli.scorza.config.PlatformConfig
+import dev.cannoli.scorza.model.AppType
+import dev.cannoli.scorza.model.artTag
 import java.io.File
 
 object DirectoryLayout {
@@ -50,6 +52,9 @@ object DirectoryLayout {
             paths.saveStatesFor(tag).mkdirs()
             paths.guidesFor(tag).mkdirs()
             paths.cheatsFor(tag).mkdirs()
+        }
+        for (type in AppType.entries) {
+            paths.artFor(type.artTag).mkdirs()
         }
     }
 

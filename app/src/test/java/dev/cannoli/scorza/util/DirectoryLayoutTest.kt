@@ -6,8 +6,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import org.junit.runner.RunWith
+import org.robolectric.annotation.Config
 import java.io.File
 
+@RunWith(org.robolectric.RobolectricTestRunner::class)
+@Config(sdk = [34])
 class DirectoryLayoutTest {
     @get:Rule val tmp = TemporaryFolder()
 
@@ -54,5 +58,17 @@ class DirectoryLayoutTest {
         DirectoryLayout.scaffoldRomFolders(rom, listOf("NES"))
         val createdAgain = DirectoryLayout.scaffoldRomFolders(rom, listOf("NES"))
         assertEquals(0, createdAgain)
+    }
+
+    @Test fun ensure_creates_tools_and_ports_art_dirs() {
+        val root = tmp.newFolder("cannoli")
+        val rom = tmp.newFolder("Roms")
+        val assets = androidx.test.core.app.ApplicationProvider
+            .getApplicationContext<android.content.Context>().assets
+        val config = dev.cannoli.scorza.config.PlatformConfig({ root }, assets)
+        DirectoryLayout.ensure(root, rom, assets, config)
+
+        assertTrue(File(root, "Art/TOOLS").isDirectory)
+        assertTrue(File(root, "Art/PORTS").isDirectory)
     }
 }
