@@ -24,6 +24,9 @@ internal fun KitchenHttpServer.handleApps(): Response {
     )
 }
 
+internal fun KitchenHttpServer.handleSettings(): Response =
+    jsonResponse(200, SettingsResponse.serializer(), settingsProvider())
+
 internal fun KitchenHttpServer.handleList(dir: File, displayPath: String, recursive: Boolean = false, roots: List<File> = defaultRoots()): Response {
     if (!isSecure(dir, roots)) {
         return errorResponse(403, "forbidden")

@@ -26,6 +26,9 @@ internal data class TagsResponse(val tags: List<String>)
 internal data class AppsResponse(val tools: List<String>, val ports: List<String>)
 
 @Serializable
+internal data class SettingsResponse(val toolsName: String, val portsName: String)
+
+@Serializable
 internal data class PlatformsResponse(val platforms: List<String>)
 
 @Serializable

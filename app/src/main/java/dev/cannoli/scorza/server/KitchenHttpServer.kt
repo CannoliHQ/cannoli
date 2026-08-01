@@ -19,6 +19,8 @@ class KitchenHttpServer(
     internal val volumesProvider: () -> List<KitchenVolume> = { emptyList() },
     internal val apkInstalls: ApkInstalls? = null,
     internal val appsRepository: dev.cannoli.scorza.db.AppsRepository? = null,
+    @Suppress("EXPOSED_PARAMETER_TYPE")
+    internal val settingsProvider: () -> SettingsResponse = { SettingsResponse("Tools", "Ports") },
 ) : NanoHTTPD(port) {
 
     private val socketTimeoutMs = 30_000
@@ -121,6 +123,7 @@ class KitchenHttpServer(
             method == "GET" && resource == "info" -> handleInfo()
             method == "GET" && resource == "tags" -> handleTags()
             method == "GET" && resource == "apps" -> handleApps()
+            method == "GET" && resource == "settings" -> handleSettings()
             resource == "games" -> {
                 val gameSegments = apiSegments.drop(1)
                 handleGames(method, gameSegments, query, headers, session)

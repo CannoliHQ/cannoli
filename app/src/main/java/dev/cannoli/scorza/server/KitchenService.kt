@@ -92,6 +92,7 @@ class KitchenService : Service() {
             },
             apkInstalls = apkInstaller,
             appsRepository = appsRepository,
+            settingsProvider = { SettingsResponse(settings.toolsName, settings.portsName) },
         )
         try {
             s.startServer()
