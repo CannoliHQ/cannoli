@@ -19,6 +19,7 @@ import dev.cannoli.scorza.launcher.LaunchManager
 import dev.cannoli.scorza.model.AppType
 import dev.cannoli.scorza.model.CollectionType
 import dev.cannoli.scorza.model.ListItem
+import dev.cannoli.scorza.model.artTag
 import dev.cannoli.scorza.model.recentKey
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
@@ -75,6 +76,7 @@ class DialogInputHandler @Inject constructor(
     private val systemListViewModel: SystemListViewModel,
     private val romsRepository: RomsRepository,
     private val appsRepository: AppsRepository,
+    private val artworkLookup: dev.cannoli.scorza.util.ArtworkLookup,
     private val launcherActions: LauncherActions,
     private val activityActions: ActivityActions,
     private val controllersViewModel: dev.cannoli.scorza.ui.viewmodel.ControllersViewModel,
@@ -2358,6 +2360,7 @@ class DialogInputHandler @Inject constructor(
         nav.dialogState.value = DialogState.None
         ioScope.launch {
             if (item is ListItem.AppItem) {
+                artworkLookup.renameArt(item.app.type.artTag, currentName, newName)
                 appsRepository.updateDisplayName(item.app.id, newName)
                 gameListViewModel.reload()
                 launcherActions.rescanSystemList()

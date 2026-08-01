@@ -49,6 +49,7 @@ class ConflictsApplyingStateTest {
             systemListViewModel = mockk(relaxed = true),
             romsRepository = mockk(relaxed = true),
             appsRepository = mockk(relaxed = true),
+            artworkLookup = mockk(relaxed = true),
             launcherActions = mockk(relaxed = true),
             activityActions = mockk(relaxed = true),
             controllersViewModel = mockk(relaxed = true),
