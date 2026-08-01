@@ -10,12 +10,29 @@ class ArtworkLookup(private val pathsProvider: CannoliPathsProvider) {
     private val cache = ConcurrentHashMap<String, Map<String, File>>()
 
     fun find(platformTag: String, romFile: File): File? {
-        val basename = artBasename(romFile)
-        val map = cache.getOrPut(platformTag) { buildMap(platformTag) }
-        val hit = map[basename]
+        val hit = findByName(platformTag, artBasename(romFile))
         if (hit != null) return hit
         if (romFile.name.endsWith(".p8.png", ignoreCase = true)) return romFile
         return null
+    }
+
+    fun findByName(platformTag: String, basename: String): File? =
+        cache.getOrPut(platformTag) { buildMap(platformTag) }[basename]
+
+    fun renameArt(platformTag: String, oldBasename: String, newBasename: String): Boolean {
+        val existing = findByName(platformTag, oldBasename) ?: return false
+        val ext = existing.extension
+        val target = File(existing.parentFile, if (ext.isEmpty()) newBasename else "$newBasename.$ext")
+        val renamed = existing.renameTo(target)
+        invalidate(platformTag)
+        return renamed
+    }
+
+    fun deleteArt(platformTag: String, basename: String): Boolean {
+        val existing = findByName(platformTag, basename) ?: return false
+        val deleted = existing.delete()
+        invalidate(platformTag)
+        return deleted
     }
 
     fun invalidate(platformTag: String) {
