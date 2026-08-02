@@ -386,8 +386,9 @@
     <string name="dialog_delete_confirm">「%1$s」を削除しますか？</string>
     <!-- Shown when a per-game override is deliberately set to empty. -->
     <string name="value_empty_override">(空の上書き)</string>
+    <!-- Shown in place of an emulator name when a platform has no emulator mapped yet. -->
     <string name="emulator_platform_setting">プラットフォーム設定</string>
-    <!-- %1$s = platform name. -->
+    <!-- %1$s = the emulator name the platform is mapped to. -->
     <string name="emulator_platform_setting_named">プラットフォーム設定 (%1$s)</string>
     <string name="rename_error_directory">ディレクトリ名を変更できませんでした</string>
     <string name="rename_error_generic">名前の変更に失敗しました</string>
@@ -502,6 +503,7 @@
     <!-- Quick menu -->
     <string name="quick_menu_title">クイックメニュー</string>
     <string name="quick_menu_romm">RomMを閲覧する</string>
+    <string name="quick_menu_download_queue">キューをダウンロード</string>
     <string name="quick_menu_rescan">ライブラリを再スキャン</string>
     <string name="quick_menu_info">ネットワーク情報</string>
     <string name="quick_menu_sync_history">同期履歴を保存</string>
