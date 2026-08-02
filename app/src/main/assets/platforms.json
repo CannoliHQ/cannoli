@@ -357,6 +357,16 @@
             }
           }
         ]
+      },
+      {
+        "package": "gamehub.lite",
+        "activity": "com.xj.landscape.launcher.ui.gamedetail.GameDetailActivity",
+        "action": "gamehub.lite.LAUNCH_GAME",
+        "extras": [
+          { "key": "steamAppId", "kind": "string", "value": "{rom_contents}" },
+          { "key": "autoStartGame", "kind": "bool", "value": "true" }
+        ],
+        "intentFlags": 1342210048
       }
     ]
   },
