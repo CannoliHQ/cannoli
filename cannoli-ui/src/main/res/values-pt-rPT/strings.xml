@@ -10,10 +10,12 @@
     <string name="label_save">GUARDAR</string>
     <string name="label_load">CARREGAR</string>
     <string name="label_change">ALTERAR</string>
+    <string name="label_firmware">FIRMAR</string>
     <string name="label_choose">ESCOLHER</string>
     <string name="label_close">FECHAR</string>
     <string name="label_help">AJUDA</string>
     <string name="label_remove">REMOVER ATALHO</string>
+    <string name="label_change_emulator">ALTERAR EMULADOR</string>
     <string name="label_delete">ELIMINAR</string>
     <string name="label_confirm">CONFIRMAR</string>
     <string name="label_toggle">ALTERNAR</string>
@@ -23,6 +25,7 @@
     <string name="label_continue">CONTINUAR</string>
     <string name="label_new_folder">NOVA</string>
     <string name="label_parent">SUPERIOR</string>
+    <string name="label_slot">ESPAÇO</string>
     <string name="label_disc">DISCO</string>
     <string name="label_use_location">USAR ESTA LOCALIZAÇÃO</string>
     <string name="label_quit">SAIR</string>
@@ -33,6 +36,7 @@
     <string name="label_logout">TERMINAR SESSÃO</string>
     <!-- Bottom-bar button opening cached RetroAchievements sets for offline play. RA = RetroAchievements. -->
     <string name="label_offline_sets">CONJUNTOS OFFLINE</string>
+    <string name="label_hex">EX</string>
     <string name="label_rename">RENOMEAR</string>
     <string name="label_set">DEFINIR</string>
     <string name="label_clear">LIMPAR</string>
@@ -72,6 +76,7 @@
     <string name="shortcut_action_toggle_show_fps">Alternar Visualização de FPS</string>
     <string name="settings_title">Definições</string>
     <!-- Settings categories -->
+    <string name="settings_general">Gerais</string>
     <string name="settings_display">Aparência</string>
     <string name="settings_library">Biblioteca</string>
     <string name="settings_status_bar">Barra de Estado</string>
@@ -90,9 +95,11 @@
     <string name="setting_text_size">Tamanho do Texto</string>
     <string name="setting_font">Tipo de Letra</string>
     <!-- Settings row label: opens the app language picker. -->
+    <string name="setting_language">IDIOMA</string>
     <!-- Appearance setting: shows or hides the title-bar heading text. "Title" here is the heading, not color or box art. -->
     <string name="setting_title">Título</string>
     <string name="setting_bg_image">Imagem de Fundo</string>
+    <string name="setting_vpn">VPN</string>
     <string name="setting_clock">Relógio</string>
     <string name="setting_battery">Bateria</string>
     <!-- Status-bar indicator toggle: show when Nonna's Kitchen (file server) is running. -->
@@ -123,6 +130,9 @@
     <string name="canonical_dpad_down">D-Pad Baixo</string>
     <string name="canonical_dpad_left">D-Pad Esquerda</string>
     <string name="canonical_dpad_right">D-Pad Direita</string>
+    <string name="canonical_start">Iniciar</string>
+    <string name="canonical_select">Selecionar</string>
+    <string name="canonical_menu">Menu</string>
     <!-- Face-button position, not a compass direction: the bottom face button (South/East/West/North layout). -->
     <string name="canonical_south">Sul</string>
     <!-- Face-button position (not compass): the right face button. -->
@@ -141,6 +151,7 @@
     <!-- Input binding label. %1$d is the numeric key code. -->
     <string name="binding_key">Tecla %1$d</string>
     <!-- Input binding label. %1$s is the hat (D-pad) direction. -->
+    <string name="binding_hat">Chapéu %1$s</string>
     <!-- Input binding label. %1$d is the joystick axis index; + is the positive direction. -->
     <string name="binding_axis_pos">Eixo %1$d+</string>
     <!-- Input binding label. %1$d is the joystick axis index; - is the negative direction. -->
@@ -163,6 +174,8 @@
     <!-- Library setting for the Five Game Handheld collection. Keep "5GH" as-is. -->
     <string name="setting_fgh_collection">Coleção 5GH</string>
     <string name="setting_show_recently_played">Jogados Recentemente</string>
+    <!-- Library setting: show or hide the Favorites entry on the main list. -->
+    <string name="setting_show_favorites">Favoritos</string>
     <!-- Opens the Tools manager (sideloaded utility apps). -->
     <string name="setting_manage_tools">Gerir Ferramentas</string>
     <!-- Opens the Ports manager. "Ports" means standalone native game ports. -->
@@ -191,6 +204,7 @@
     <!-- Scan Mode value: scan the library automatically. -->
     <string name="value_automatically">Automático</string>
     <!-- Scan Mode value: scan the library by hand. "Manual" here is the adverb (by hand), not a game's instruction manual. -->
+    <string name="value_manually">Manualmente</string>
     <!-- RA = RetroAchievements account username. -->
     <string name="setting_ra_username">Nome de Utilizador</string>
     <!-- RA = RetroAchievements account password. -->
@@ -239,6 +253,7 @@
     <string name="romm_detail_download">TRANSFERIR</string>
     <string name="romm_version_picker_title">Transferir qual versão?</string>
     <!-- Bottom-bar button opening the game's instruction manual (a document), not "manual/by hand". -->
+    <string name="label_manual">MANUAL</string>
     <!-- The game's instruction manual (document), not "manual/by hand". -->
     <string name="romm_download_manual">Manual</string>
     <string name="romm_syncing" tools:ignore="TypographyEllipsis">A construir cache...</string>
@@ -336,6 +351,7 @@
     <string name="logging_storage">Armazenamento</string>
     <string name="setting_input_tester">Testador de Comandos</string>
     <!-- Input tester row. %1$d = player number, %2$s = device name, %3$d = device id. -->
+    <string name="input_tester_device_format">P%1$d • %2$s • Dev%3$d</string>
     <string name="input_tester_exit_hint">Mantenha Start + Select Para Sair</string>
     <string name="input_tester_device_keyboard">teclado</string>
     <string name="input_tester_device_unknown">desconhecido</string>
@@ -358,6 +374,8 @@
     <string name="value_fit_height">Ajustar Altura</string>
     <string name="value_percent">Percentagem</string>
     <string name="value_icon">Ícone</string>
+    <string name="value_12h">12h</string>
+    <string name="value_24h">24h</string>
     <string name="value_not_set">Não definido</string>
     <string name="value_not_installed">Não Instalado</string>
     <string name="value_none_installed">Nenhum Instalado</string>
@@ -369,8 +387,10 @@
     <string name="dialog_delete_confirm">Eliminar \"%1$s\"?</string>
     <!-- Shown when a per-game override is deliberately set to empty. -->
     <string name="value_empty_override">(substituição vazia)</string>
+    <!-- Shown in place of an emulator name when a platform has no emulator mapped yet. -->
+    <string name="value_needs_setup">Precisa de configuração</string>
     <string name="emulator_platform_setting">Definição da Plataforma</string>
-    <!-- %1$s = platform name. -->
+    <!-- %1$s = the emulator name the platform is mapped to. -->
     <string name="emulator_platform_setting_named">Definição da Plataforma (%1$s)</string>
     <string name="rename_error_directory">Falha ao renomear o diretório</string>
     <string name="rename_error_generic">Falha ao renomear</string>
@@ -403,6 +423,7 @@
     <string name="launch_error_resolve_file">Falha ao resolver o ficheiro de arranque</string>
     <string name="launch_error_extract">Falha ao extrair o arquivo</string>
     <string name="launch_error_generic">Falha ao iniciar o jogo</string>
+    <!-- %1$s = file name. -->
     <string name="launch_error_update_ricotta">Atualize o RicottaArch para continuar</string>
     <string name="launch_error_update_cannoli">Atualize o Cannoli para continuar</string>
     <!-- %1$s = core name, %2$s = emulator app. -->
@@ -425,7 +446,7 @@
     <!-- %1$s = collection name. -->
     <string name="collection_created">%1$s Criada</string>
     <!-- %1$d = number of items selected. -->
-    <string name="selected_count">%1$d Selecionado(s)</string>
+    <string name="selected_count">%1$d Selecionado</string>
     <!-- Onboarding wizard -->
     <string name="onboarding_header">CONFIGURAR O CANNOLI</string>
     <string name="onboarding_permissions_title">Permissões e Armazenamento</string>
@@ -452,6 +473,7 @@
     <string name="global_search_title">Pesquisa: \"%1$s\"</string>
     <string name="origin_tools">Ferramentas</string>
     <!-- Section label: standalone game ports. -->
+    <string name="origin_ports">Portas</string>
     <string name="origin_collection">Coleção</string>
     <!-- About -->
     <!-- App tagline; playful, "filling" is a cannoli pun. Keep the light tone. -->
@@ -484,6 +506,7 @@
     <!-- Quick menu -->
     <string name="quick_menu_title">Menu Rápido</string>
     <string name="quick_menu_romm">Explorar RomM</string>
+    <string name="quick_menu_download_queue">Fila de Transferências</string>
     <string name="quick_menu_rescan">Reanalisar Biblioteca</string>
     <string name="quick_menu_info">Informação de Rede</string>
     <string name="quick_menu_sync_history">Histórico de Sincronização</string>
@@ -501,6 +524,8 @@
     <!-- RA = RetroAchievements. -->
     <string name="ra_login_failed">RA: Falha ao iniciar sessão</string>
     <string name="ra_login_invalid">Nome de utilizador ou palavra-passe inválidos</string>
+    <string name="ra_status_online">Disponível</string>
+    <string name="ra_status_offline">Desconectado</string>
     <!-- %1$d = achievements awaiting sync. -->
     <string name="ra_status_offline_pending">Offline • %1$d Pendente(s) de Sincronização</string>
     <string name="ra_detect_not_logged_in">Sessão não iniciada</string>
@@ -531,6 +556,7 @@
     <!-- OSD toast. %1$s = scaling mode name. -->
     <string name="osd_scaling">Escala: %1$s</string>
     <!-- OSD toast. %1$s = shader preset name. -->
+    <string name="osd_shader">Sombreador: %1$s</string>
     <!-- OSD toast. %1$s = mode/item name. -->
     <string name="osd_switched_to">Mudou para %1$s</string>
     <!-- OSD toast. %1$s = game name (setting saved per-game). -->
@@ -559,6 +585,7 @@
     <string name="override_source_game">Este Jogo</string>
     <string name="device_controller">Comando</string>
     <!-- OSD toast. %1$d = player number, %2$s = controller name. -->
+    <string name="osd_controller_connected">P%1$d: %2$s</string>
     <!-- OSD toast. %1$d = player number, %2$s = controller name. -->
     <string name="osd_controller_disconnected_port">P%1$d: %2$s desligado</string>
     <!-- OSD toast. %1$s = controller name. -->
@@ -597,8 +624,10 @@
     <string name="value_dpad_4way">4 Direções</string>
     <string name="igm_save_and_quit">Guardar e Sair</string>
     <string name="title_guide">Guia</string>
+    <string name="guide_zoom">ZOOM</string>
     <!-- IGM info labels -->
     <string name="info_core">Núcleo</string>
+    <string name="info_rom">Rascunho</string>
     <!-- Info label: whether the ROM was extracted from an archive. -->
     <string name="info_extracted">Extraído</string>
     <string name="info_save">Gravação</string>
@@ -613,6 +642,7 @@
     <!-- %1$d = unlocked count, %2$d = total. -->
     <string name="ach_title">Conquistas (%1$d/%2$d)</string>
     <!-- Compact points label. %1$d = points. -->
+    <string name="ach_points_short">%1$dpts</string>
     <!-- %1$d = points. -->
     <string name="ach_points">%1$d pontos</string>
     <string name="ach_unlocked_pending">Desbloqueada \u2022 Pendente de Sincronização</string>
@@ -671,6 +701,10 @@
     <!-- %d = number of items selected. -->
     <string name="bulk_selected">%d Selecionado(s)</string>
     <!-- %d = number of items. -->
+    <plurals name="bulk_delete_count">
+        <item quantity="one">Item %d</item>
+        <item quantity="other">%d itens</item>
+    </plurals>
     <!-- OSD toast. %d = number of cheats restored. -->
     <plurals name="osd_cheats_restored">
         <item quantity="one">%d batota restaurada</item>
@@ -757,6 +791,7 @@
     <!-- On-screen keyboard help overlay -->
     <string name="kbd_help_title">Comandos do Teclado</string>
     <string name="kbd_help_group_type">Escrever</string>
+    <string name="kbd_help_group_cursor">Cursor</string>
     <string name="kbd_help_group_action">Ação</string>
     <string name="kbd_help_move_selection">MOVER SELEÇÃO</string>
     <string name="kbd_help_press">PRESSIONAR TECLA</string>
