@@ -666,6 +666,7 @@
     <string name="mapping_action_reset">既定にリセット</string>
     <!-- %d = number of required BIOS files missing. -->
     <string name="mapping_required_missing">%d は不足しています</string>
+    <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">%s マッピング</string>
     <!-- Screen title. %s = platform name. -->
