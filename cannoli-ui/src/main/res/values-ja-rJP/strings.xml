@@ -1,177 +1,791 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Bottom bar labels -->
+    <string name="label_back">戻る</string>
+    <string name="label_cancel" tools:ignore="ButtonCase">キャンセル</string>
+    <string name="label_select">選択</string>
+    <string name="label_play">プレイ</string>
+    <string name="label_launch">起動</string>
+    <string name="label_open">開く</string>
+    <string name="label_save">保存</string>
+    <string name="label_load">ロード</string>
+    <string name="label_change">変更</string>
+    <string name="label_firmware">FIRWARE</string>
+    <string name="label_choose">選択</string>
+    <string name="label_close">閉じる</string>
+    <string name="label_help">ヘルプ</string>
+    <string name="label_remove">ショットカットを削除</string>
+    <string name="label_change_emulator">エミレーターの変更</string>
+    <string name="label_delete">削除</string>
+    <string name="label_confirm">確認する</string>
+    <string name="label_toggle">切り替え</string>
+    <string name="label_new">新規</string>
+    <string name="label_settings">設定</string>
+    <string name="label_resume">再開</string>
+    <string name="label_continue">続ける</string>
+    <string name="label_new_folder">新規</string>
+    <string name="label_parent">たとえば、</string>
+    <string name="label_slot">SLOT</string>
+    <string name="label_disc">DISC</string>
+    <string name="label_use_location">この場所を使用</string>
+    <string name="label_quit">終了</string>
+    <string name="label_stop">停止</string>
+    <string name="label_interface">インターフェイス</string>
+    <string name="label_credits">クレジット</string>
+    <string name="label_update">更新</string>
+    <string name="label_logout">LOGOUT</string>
     <!-- Bottom-bar button opening cached RetroAchievements sets for offline play. RA = RetroAchievements. -->
+    <string name="label_offline_sets">オフラインセット</string>
+    <string name="label_hex">HEX</string>
+    <string name="label_rename">名前の変更</string>
+    <string name="label_set">設定</string>
+    <string name="label_clear">消去</string>
+    <string name="label_press">プレス</string>
     <!-- Bottom-bar button; opens Nonna's Kitchen. -->
+    <string name="label_kitchen">シチリア</string>
+    <string name="label_hold_buttons" tools:ignore="TypographyEllipsis">1つまたは複数のボタンを長押ししてください...</string>
+    <string name="label_info">情報</string>
     <!-- Bottom-bar button. RA = RetroAchievements. -->
+    <string name="label_ra_settings">RAの設定</string>
+    <string name="label_details">詳細</string>
+    <string name="label_all">すべて</string>
+    <string name="label_unlocked">アンロックしました</string>
+    <string name="label_locked">ロック済み</string>
+    <string name="label_reset_all">すべてリセット</string>
+    <string name="label_remap">REMAP</string>
+    <string name="label_unmap">UNMAP</string>
+    <string name="label_swap">SWAP</string>
+    <string name="label_grant">Grant</string>
     <!-- In-game menu action: reassign connected controllers to player slots. -->
+    <string name="igm_reassign_players">プレイヤーを再割り当て</string>
     <!-- In-game shortcut actions -->
+    <string name="shortcut_action_save_state">状態を保存</string>
+    <string name="shortcut_action_load_state">状態を読み込む</string>
+    <string name="shortcut_action_reset_game">ゲームをリセット</string>
+    <string name="shortcut_action_save_and_quit">保存して終了</string>
     <!-- In-game shortcut action. "(Hold)" means it triggers on a long-press of the shortcut. -->
+    <string name="shortcut_action_save_and_quit_hold">保存して終了 (Hold)</string>
     <!-- In-game shortcut action: cycle through the video scaling modes. -->
+    <string name="shortcut_action_cycle_scaling">サイクルスケール</string>
     <!-- In-game shortcut action: cycle through the shader presets. -->
+    <string name="shortcut_action_cycle_shader">サイクルシェーダー</string>
+    <string name="shortcut_action_toggle_ff">早送り切り替え</string>
+    <string name="shortcut_action_hold_ff">急いで前に進む</string>
+    <string name="shortcut_action_open_guide">ガイドを開く</string>
+    <string name="shortcut_action_open_menu">ゲーム内メニューを開く</string>
+    <string name="shortcut_action_toggle_show_fps">FPS表示の切り替え</string>
+    <string name="settings_title">設定</string>
     <!-- Settings categories -->
+    <string name="settings_general">全般</string>
+    <string name="settings_display">外観</string>
+    <string name="settings_library">ライブラリ</string>
+    <string name="settings_status_bar">ステータスバー</string>
+    <string name="settings_input">Input</string>
+    <string name="settings_emulation">エミュレーション</string>
+    <string name="settings_integrations">統合</string>
+    <string name="settings_advanced">高度な設定</string>
+    <string name="settings_debug">Debug</string>
+    <string name="settings_about">About</string>
     <!-- Setting: which update channel to follow (e.g. stable versus test builds). -->
+    <string name="settings_release_channel">チャンネルをリリース</string>
     <!-- Settings items -->
+    <string name="setting_colors">色</string>
+    <string name="setting_art_width">アートの幅</string>
+    <string name="setting_art_scale">アートスケール</string>
+    <string name="setting_text_size">文字サイズ</string>
+    <string name="setting_font">Font</string>
     <!-- Settings row label: opens the app language picker. -->
+    <string name="setting_language">言語</string>
     <!-- Appearance setting: shows or hides the title-bar heading text. "Title" here is the heading, not color or box art. -->
+    <string name="setting_title">タイトル</string>
+    <string name="setting_bg_image">背景画像</string>
+    <string name="setting_vpn">VPN</string>
+    <string name="setting_clock">時計</string>
+    <string name="setting_battery">バッテリー</string>
     <!-- Status-bar indicator toggle: show when Nonna's Kitchen (file server) is running. -->
+    <string name="setting_kitchen_running">キッチンの実行</string>
     <!-- Status-bar indicator toggle for active RomM downloads. -->
+    <string name="setting_downloads_running">ダウンロード</string>
     <!-- Status-bar indicator toggle: show when an app update is available. -->
+    <string name="setting_updater">アップデートがあります</string>
+    <string name="setting_controllers">コントローラ</string>
+    <string name="controllers_connected_now">今接続しました</string>
+    <string name="controllers_saved_mappings">保存されたマッピング</string>
+    <string name="controllers_empty_connected">開始するにはコントローラーを接続してください。</string>
+    <string name="controllers_mapping_not_found">マッピングが見つかりません。</string>
+    <string name="controllers_edit_buttons">ボタンを編集</string>
+    <string name="controllers_name">名前</string>
     <!-- Controller setting: which face button acts as confirm/OK. -->
+    <string name="controllers_confirm_button">確認ボタン</string>
     <!-- Controller setting: which face-button glyph set to display (letters like A/B versus shapes). -->
+    <string name="controllers_glyph_style">グリフスタイル</string>
     <!-- Controller toggle: ignore this controller during gameplay (e.g. a media remote). -->
+    <string name="controllers_exclude_from_gameplay">ゲームプレイから除外</string>
+    <string name="controllers_reset_defaults">デフォルトをリセット</string>
     <!-- Shown when a button has no assigned binding. -->
+    <string name="controllers_not_bound">拘束されていません</string>
     <!-- Confirm button values -->
     <!-- Canonical button labels -->
+    <string name="canonical_dpad_up">方向パッド上</string>
+    <string name="canonical_dpad_down">方向パッド下</string>
+    <string name="canonical_dpad_left">方向パッド左</string>
+    <string name="canonical_dpad_right">方向パッド右</string>
+    <string name="canonical_start">開始</string>
+    <string name="canonical_select">選択</string>
+    <string name="canonical_menu">メニュー</string>
     <!-- Face-button position, not a compass direction: the bottom face button (South/East/West/North layout). -->
+    <string name="canonical_south">South</string>
     <!-- Face-button position (not compass): the right face button. -->
+    <string name="canonical_east">East</string>
     <!-- Face-button position (not compass): the left face button. -->
+    <string name="canonical_west">西へ</string>
     <!-- Face-button position (not compass): the top face button. -->
+    <string name="canonical_north">North</string>
     <!-- Glyph face button labels -->
     <!-- Hat directions -->
+    <string name="hat_up">上へ</string>
+    <string name="hat_down">下</string>
+    <string name="hat_left">左</string>
+    <string name="hat_right">右</string>
     <!-- Binding formatters -->
     <!-- Input binding label. %1$d is the numeric key code. -->
+    <string name="binding_key">キー %1$d</string>
     <!-- Input binding label. %1$s is the hat (D-pad) direction. -->
+    <string name="binding_hat">帽子 %1$s</string>
     <!-- Input binding label. %1$d is the joystick axis index; + is the positive direction. -->
+    <string name="binding_axis_pos">Axis %1$d+</string>
     <!-- Input binding label. %1$d is the joystick axis index; - is the negative direction. -->
+    <string name="binding_axis_neg">Axis %1$d-</string>
+    <string name="setting_shortcuts">ショートカット</string>
     <!-- Input setting toggle: swap the on-screen positions of the Play and Resume actions. -->
+    <string name="setting_swap_play_resume">再生と再開を入れ替え</string>
     <!-- Input setting toggle: controls whether the in-game Quit returns to the main menu. -->
+    <string name="setting_main_menu_quit">メインメニューを終了</string>
     <!-- Input toggle: automatically save a state when quitting a game. -->
+    <string name="setting_always_save_on_quit">終了時に状態を保存</string>
     <!-- Advanced setting toggle: skip the passcode gate for Nonna's Kitchen. Keep "Kitchen" consistent with the feature name. -->
+    <string name="setting_kitchen_code_bypass">キッチンコードバイパス</string>
+    <string name="setting_experimental_features">実験的な機能</string>
+    <string name="setting_set_default_launcher">デフォルトランチャーとして設定</string>
     <!-- Advanced action: recreate the standard platform/system folders. -->
+    <string name="setting_regenerate_system_folders">システムフォルダを再生成</string>
     <!-- Library setting: which content layout to show (platforms, collections only, or Five Game Handheld). -->
+    <string name="setting_content_mode">コンテンツモード</string>
     <!-- Library setting for the Five Game Handheld collection. Keep "5GH" as-is. -->
+    <string name="setting_fgh_collection">5GHコレクション</string>
+    <string name="setting_show_recently_played">最近プレイした曲</string>
+    <!-- Library setting: show or hide the Favorites entry on the main list. -->
+    <string name="setting_show_favorites">お気に入り</string>
     <!-- Opens the Tools manager (sideloaded utility apps). -->
+    <string name="setting_manage_tools">ツールを管理</string>
     <!-- Opens the Ports manager. "Ports" means standalone native game ports. -->
+    <string name="setting_manage_ports">ポートの管理</string>
+    <string name="setting_bg_tint">背景の色</string>
     <!-- Theme color for the title heading text. -->
+    <string name="setting_color_title">タイトル</string>
+    <string name="setting_color_highlight">強調表示</string>
+    <string name="setting_color_text">テキスト</string>
     <!-- Theme color: text drawn on the highlighted/selected row. -->
+    <string name="setting_color_highlight_text">テキストを強調表示</string>
+    <string name="setting_color_accent">アクセント：</string>
+    <string name="setting_color_background">背景</string>
+    <string name="setting_color_status_bar">ステータスバー</string>
     <!-- Settings row. %s is the emulator app name (e.g. RetroArch). -->
+    <string name="setting_installed_cores">%s インストールされたコア</string>
     <!-- Screen title. %s is the emulator app name (e.g. RetroArch). -->
+    <string name="title_installed_cores">%s インストールされたコア</string>
+    <string name="installed_cores_none">コアが見つかりません</string>
     <!-- Setting: the app's root storage folder on the SD card. -->
+    <string name="setting_sd_root">Cannoliルート</string>
+    <string name="setting_rom_directory">ROM ディレクトリ</string>
     <!-- Setting: which installed RetroArch app/package to launch games with. -->
+    <string name="setting_ra_package">RetroArchパッケージ</string>
+    <string name="setting_scan_library">スキャンモード</string>
     <!-- Scan Mode value: scan the library automatically. -->
+    <string name="value_automatically">自動</string>
     <!-- Scan Mode value: scan the library by hand. "Manual" here is the adverb (by hand), not a game's instruction manual. -->
+    <string name="value_manually">マニュアル</string>
     <!-- RA = RetroAchievements account username. -->
+    <string name="setting_ra_username">ユーザー名</string>
     <!-- RA = RetroAchievements account password. -->
+    <string name="setting_ra_password">パスワード</string>
     <!-- RA = RetroAchievements. Button to log in. -->
+    <string name="setting_ra_login">ログイン</string>
     <!-- RomM -->
     <!-- RomM server address (host/URL). -->
+    <string name="setting_romm_host">ホスト</string>
     <!-- Toggle: sync save files with the RomM server. -->
+    <string name="setting_romm_save_sync">同期を保存</string>
+    <string name="setting_romm_save_backups">バックアップを保存</string>
+    <string name="dialog_romm_device_name_title">このデバイスに名前を付ける</string>
+    <string name="romm_save_sync_needs_500">RomM5.0以上が必要です</string>
+    <string name="save_conflict_title">競合を保存</string>
+    <string name="save_conflict_keep_local">このデバイスを保持</string>
+    <string name="save_conflict_use_server">サーバーを使用</string>
+    <string name="save_conflict_subtitle">サーバー上で変更されました</string>
+    <string name="save_stale_title">サーバーには新しいセーブ機能があります</string>
+    <string name="save_stale_play_local">とにかくローカルでプレイする</string>
+    <string name="setting_romm_allow_self_signed">自己署名証明書を許可する</string>
+    <string name="setting_romm_pair">他のデバイスとペアリングする</string>
+    <string name="setting_romm_pair_code">コードとペアリングする</string>
+    <string name="romm_connecting">RomMに接続中</string>
+    <string name="romm_pair_invalid">Invalid pairing code</string>
+    <string name="romm_pair_failed">ペアリングに失敗しました</string>
+    <string name="romm_pair_rate_limited">試行回数が多すぎます。後でもう一度お試しください。</string>
+    <string name="romm_unreachable">サーバーに接続できませんでした</string>
+    <string name="romm_pair_waiting">このデバイスをスキャンしてペアリングしてください</string>
+    <string name="romm_pair_denied">ペアリングリクエストが拒否されました</string>
+    <string name="romm_pair_expired">ペアリングリクエストの有効期限が切れました</string>
+    <string name="romm_server_too_old">RomMサーバーが古すぎます。バージョン5.0以降が必要です。</string>
+    <string name="romm_conn_title">RomM接続情報</string>
+    <string name="romm_conn_account">アカウント</string>
+    <string name="romm_conn_server">サーバー</string>
+    <string name="romm_detail_region">地域</string>
+    <string name="romm_detail_revision">リビジョン</string>
+    <string name="romm_detail_size">サイズ</string>
+    <string name="romm_detail_languages">言語</string>
+    <string name="romm_detail_publisher">発行者</string>
+    <string name="romm_detail_released">解放済み</string>
+    <string name="romm_detail_genre">ジャンル</string>
+    <string name="romm_detail_players">プレイヤー</string>
+    <string name="romm_detail_on_device">デバイス上</string>
+    <string name="romm_detail_not_on_device">デバイス上にありません</string>
+    <string name="romm_detail_download">ダウンロード</string>
+    <string name="romm_version_picker_title">どのバージョンをダウンロードしますか？</string>
     <!-- Bottom-bar button opening the game's instruction manual (a document), not "manual/by hand". -->
+    <string name="label_manual">マニュアル</string>
     <!-- The game's instruction manual (document), not "manual/by hand". -->
+    <string name="romm_download_manual">マニュアル</string>
+    <string name="romm_syncing" tools:ignore="TypographyEllipsis">キャッシュを構築しています...</string>
     <!-- Cache-building status. %1$s is the platform name. -->
+    <string name="romm_syncing_platform" tools:ignore="TypographyEllipsis">キャッシュを構築中...\n%1$s</string>
+    <string name="romm_sync_collections">コレクション</string>
+    <string name="romm_sync_error">RomMに到達できませんでした。キャッシュされたライブラリを表示しています。</string>
+    <string name="romm_download_queue">キューをダウンロード</string>
+    <string name="romm_download_queued">キューに入りました</string>
+    <string name="romm_download_downloading">ダウンロード中</string>
+    <string name="romm_download_failed">失敗しました</string>
+    <string name="romm_download_empty">ダウンロードなし</string>
+    <string name="romm_download_completed">完了</string>
+    <string name="romm_osd_download_queued">ダウンロードに追加しました</string>
+    <string name="romm_osd_manual_queued">手動でダウンロードを追加</string>
     <!-- Toast. %1$d = number added to the download queue. -->
+    <plurals name="romm_osd_downloads_queued">
+        <item quantity="other">%1$d をダウンロードに追加しました</item>
+    </plurals>
+    <string name="romm_download_notification_title">RomMダウンロード</string>
+    <string name="romm_download_notification_starting">ダウンロードを開始</string>
+    <string name="romm_download_notification_active">ダウンロード中</string>
     <!-- Notification. %1$d is the number of active downloads. -->
+    <string name="romm_download_notification_count">%1$d をダウンロード中</string>
+    <string name="romm_art_notification_active">ボックスアートをダウンロード中</string>
+    <string name="label_retry">再試行する</string>
+    <string name="label_cancel_all">すべてキャンセル</string>
+    <string name="romm_settings_concurrent">同時ダウンロード</string>
+    <string name="romm_settings_cover_art">カバーアート</string>
+    <string name="romm_settings_download_art">不足しているアートをダウンロード</string>
+    <string name="romm_settings_platforms">プラットフォームの表示/非表示</string>
+    <string name="romm_settings_collections">コレクションの表示/非表示</string>
+    <string name="romm_settings_server_info">サーバー情報</string>
+    <string name="romm_settings_advanced">高度な設定</string>
+    <string name="romm_settings_rebuild">Rebuild Cache</string>
+    <string name="romm_actions_title">RomMクイックメニュー</string>
+    <string name="romm_settings_title">RomM設定</string>
+    <string name="romm_platforms_title">プラットフォームを表示</string>
+    <string name="romm_platforms_empty">プラットフォームがありません</string>
     <!-- Screen title. %1$s is the platform name. -->
+    <string name="romm_firmware_screen_title">%1$s ファームウェア</string>
+    <string name="romm_global_search_title">検索</string>
+    <string name="romm_no_results">結果がありません</string>
+    <string name="romm_firmware_loading">読み込み中</string>
+    <string name="romm_firmware_empty">ファームウェアがありません</string>
+    <string name="romm_firmware_error">ファームウェアを読み込めませんでした</string>
+    <string name="romm_firmware_not_on_device">デバイスではありません</string>
+    <string name="romm_firmware_on_device">デバイス上</string>
+    <string name="romm_art_default">デフォルト</string>
+    <string name="romm_art_off">オフ</string>
+    <string name="romm_art_box2d">2D ボックス</string>
+    <string name="romm_art_box3d">Box 3D</string>
     <!-- Art type: a composite/mixed artwork image. -->
+    <string name="romm_art_mix">ミックス</string>
     <!-- Art type: the game's title-screen image, not a text title. -->
+    <string name="romm_art_title">タイトル</string>
+    <string name="romm_art_screenshot">スクリーンショット</string>
     <!-- Art type: the arcade marquee image. -->
+    <string name="romm_art_marquee">Marquee</string>
+    <string name="label_disconnect">切断</string>
+    <string name="romm_rebuild_confirm">RomMローカルキャッシュを再構築しますか？</string>
+    <string name="romm_disconnect_confirm">RomMから切断しますか？</string>
+    <string name="romm_cancel_confirm">このダウンロードをキャンセルしますか？</string>
+    <string name="romm_cancel_all_confirm">すべてのダウンロードをキャンセルしますか？</string>
+    <string name="romm_art_results_title">ボックスアートの結果</string>
+    <string name="romm_art_added">アートを追加</string>
+    <string name="romm_art_already">既にアートを持っています</string>
+    <string name="romm_art_no_match">ROMMが一致しません</string>
+    <string name="romm_art_failed">失敗しました</string>
+    <string name="romm_art_section_no_match">一致するものはありません</string>
+    <string name="romm_art_section_failed">失敗しました</string>
+    <string name="romm_art_done">完了</string>
+    <string name="romm_collections_title">コレクション</string>
+    <string name="romm_collection_group_user">マイコレクション</string>
     <!-- RomM "Virtual" collections (auto-grouped, e.g. by franchise or genre). -->
+    <string name="romm_collection_group_virtual">仮想設定</string>
     <!-- RomM "Smart" collections (rule-based, auto-updating). -->
+    <string name="romm_collection_group_smart">スマート</string>
+    <string name="romm_collections_my">マイコレクション</string>
+    <string name="romm_collections_smart">スマートコレクション</string>
+    <string name="romm_collections_virtual">仮想コレクション</string>
+    <string name="romm_vtype_franchise">フランチャイズ</string>
+    <string name="romm_vtype_collection">コレクション</string>
+    <string name="romm_vtype_genre">Genres</string>
+    <string name="romm_vtype_company">会社名</string>
+    <string name="romm_vtype_mode">ゲームモード</string>
+    <string name="setting_logging">ログ</string>
     <!-- Advanced toggle: log the intents used to launch external emulators. -->
+    <string name="setting_audit_emulator_intents">監査エミュレータの目的</string>
+    <string name="logging_title">ログ</string>
+    <string name="logging_rom_scan">ROM スキャン</string>
+    <string name="logging_input">Input</string>
+    <string name="logging_session">ゲームセッション</string>
+    <string name="logging_storage">ストレージ</string>
+    <string name="setting_input_tester">Input Tester</string>
     <!-- Input tester row. %1$d = player number, %2$s = device name, %3$d = device id. -->
+    <string name="input_tester_device_format">P%1$d • %2$s • Dev%3$d</string>
+    <string name="input_tester_exit_hint">スタートキーを押したままにして終了します</string>
+    <string name="input_tester_device_keyboard">keyboard</string>
+    <string name="input_tester_device_unknown">不明</string>
     <!-- Input tester: the device sent events but has no button mapping. -->
+    <string name="input_tester_unbound">マッピングなしで発生するイベント</string>
     <!-- Setting values -->
+    <string name="value_on">オン</string>
+    <string name="value_off">オフ</string>
+    <string name="value_show">表示</string>
+    <string name="value_hide">非表示</string>
+    <string name="value_none">なし</string>
+    <string name="value_selected">選択済み</string>
+    <string name="value_cannoli_root">Cannoliルート</string>
     <!-- Content Mode value: the default platform view. -->
+    <string name="value_platforms">デフォルト</string>
+    <string name="value_collections">コレクションのみ</string>
+    <string name="value_fit">合わせる</string>
+    <string name="value_original">オリジナル</string>
+    <string name="value_fit_width">Fit Width</string>
+    <string name="value_fit_height">高さを合わせる</string>
+    <string name="value_percent">割合</string>
+    <string name="value_icon">アイコン</string>
+    <string name="value_12h">12時間</string>
+    <string name="value_24h">24時間</string>
+    <string name="value_not_set">未設定</string>
+    <string name="value_not_installed">インストールされていない</string>
+    <string name="value_none_installed">インストールされていません</string>
+    <string name="value_active">アクティブ</string>
     <!-- Dialogs -->
     <!-- %1$s = the list or collection name. -->
+    <string name="empty_list">%1$s は空です</string>
     <!-- Confirm dialog. %1$s = item name. -->
+    <string name="dialog_delete_confirm">「%1$s」を削除しますか？</string>
     <!-- Shown when a per-game override is deliberately set to empty. -->
-    <!-- %1$s = platform name. -->
+    <string name="value_empty_override">(空の上書き)</string>
+    <!-- Shown in place of an emulator name when a platform has no emulator mapped yet. -->
+    <string name="value_needs_setup">セットアップが必要</string>
+    <string name="emulator_platform_setting">プラットフォーム設定</string>
+    <!-- %1$s = the emulator name the platform is mapped to. -->
+    <string name="emulator_platform_setting_named">プラットフォーム設定 (%1$s)</string>
+    <string name="rename_error_directory">ディレクトリ名を変更できませんでした</string>
+    <string name="rename_error_generic">名前の変更に失敗しました</string>
+    <string name="rename_cannot_resolve_dir">ゲームフォルダが見つかりませんでした</string>
+    <string name="rename_already_exists">その名前のゲームは既に存在します</string>
+    <string name="rename_backup_failed">データをバックアップできませんでした</string>
+    <string name="rename_relocate_failed">保存データを移動できませんでした</string>
+    <string name="boot_preparing">準備中</string>
+    <string name="boot_import_failed">データベースのインポートに失敗しました</string>
+    <string name="import_platforms">プラットフォームのカタログ</string>
+    <string name="import_roms">ROMディレクトリを歩く</string>
+    <string name="import_apps">アプリのカタログ</string>
+    <string name="import_favorites">お気に入りコレクションを作成中</string>
+    <string name="import_collections">コレクションの移行</string>
+    <string name="import_collection_parents">コレクション階層の移行</string>
+    <string name="import_overrides">ゲームオーバーライドを移行中</string>
+    <string name="import_ra_ids">RetroAchievements IDの移行</string>
+    <string name="import_recently_played">最近再生されたデータの移行</string>
+    <string name="import_ordering">順序を移行中</string>
+    <string name="import_archive">レガシーファイルをアーカイブ中</string>
+    <string name="import_done">完了</string>
     <!-- Boot progress. %1$s = tag/category name. -->
+    <string name="import_cataloging_tag">カタログ %1$s</string>
+    <string name="housekeeping_db_title">ライブラリの更新</string>
+    <string name="housekeeping_db_subtitle">レガシーデータの移行</string>
+    <string name="housekeeping_initial_title">ライブラリの設定</string>
+    <string name="housekeeping_refresh_title">ライブラリを更新中</string>
+    <string name="update_download_error_server">ダウンロードに失敗しました。サーバーがエラーを返しました。しばらくしてからもう一度お試しください。</string>
+    <string name="update_download_error_network">ダウンロードに失敗しました。接続を確認してもう一度お試しください。</string>
+    <string name="launch_error_resolve_file">起動ファイルの解決に失敗しました</string>
+    <string name="launch_error_extract">アーカイブの抽出に失敗しました</string>
+    <string name="launch_error_generic">ゲームの起動に失敗しました</string>
+    <!-- %1$s = file name. -->
+    <string name="launch_error_update_ricotta">続行するには RicottaArch を更新</string>
+    <string name="launch_error_update_cannoli">Cannoliを更新して続行する</string>
     <!-- %1$s = core name, %2$s = emulator app. -->
+    <string name="dialog_missing_core_pkg">%1$s は %2$s にインストールされていません。</string>
     <!-- %1$s = core name. -->
+    <string name="dialog_missing_core_plain">%1$s はインストールされていません。</string>
+    <string name="dialog_missing_core_hint">エミュレータマッピングで設定します。</string>
     <!-- %1$s = app name. -->
+    <string name="dialog_missing_app">%1$s はインストールされていません。</string>
     <!-- %1$s = folder path. -->
+    <string name="dialog_missing_bios_header">%1$sには少なくとも1つのBIOSファイルが必要です:</string>
+    <string name="dialog_title_missing_core">欠けているコア</string>
+    <string name="dialog_title_missing_app">不足しているアプリ</string>
+    <string name="dialog_title_launch_error">起動に失敗しました</string>
+    <string name="dialog_rename_success">名前を変更しました</string>
     <!-- %1$s = error detail. -->
+    <string name="dialog_rename_failed">名前の変更に失敗しました: %1$s</string>
+    <string name="dialog_quit_confirm">本当に終了しますか？</string>
     <!-- Formatted strings -->
     <!-- %1$s = collection name. -->
+    <string name="collection_created">%1$s が作成されました</string>
     <!-- %1$d = number of items selected. -->
+    <string name="selected_count">%1$d Selected</string>
     <!-- Onboarding wizard -->
+    <string name="onboarding_header">キャンセルを設定</string>
+    <string name="onboarding_permissions_title">権限とストレージ</string>
+    <string name="onboarding_storage_label">ストレージアクセス</string>
+    <string name="onboarding_storage_rationale">CannoliはROMや保存、アートなどへのアクセスが必要です。\nこれがなければCannoliは何もできません。</string>
+    <string name="onboarding_status_granted">付与済み</string>
+    <string name="onboarding_status_not_granted">許可されていません</string>
+    <string name="onboarding_press_a_to_select_folder">Aを押してフォルダを選択</string>
+    <string name="onboarding_storage_locked_hint">アクセス許可が付与されると設定できます。</string>
+    <string name="onboarding_select_folder">フォルダーを選択</string>
+    <string name="onboarding_location_label">場所</string>
     <!-- Boot error screen -->
+    <string name="boot_error_title">問題が発生しました</string>
     <!-- Storage row (shared with onboarding) -->
+    <string name="setup_folder_unset">未選択</string>
     <!-- System list -->
+    <string name="empty_content">コンテンツが見つかりませんでした。追加してください！</string>
     <!-- 5GH = Five Game Handheld; keep "5GH" as-is. -->
+    <string name="empty_fgh_collection">5GHのコレクションは空です。いっぱいにしましょう！</string>
+    <string name="label_recently_played">最近プレイした曲</string>
+    <string name="label_favorites">お気に入り</string>
+    <string name="label_collections">コレクション</string>
     <!-- Screen title. %1$s = the search query. -->
+    <string name="global_search_title">検索: \"%1$s\"</string>
+    <string name="origin_tools">ツール</string>
     <!-- Section label: standalone game ports. -->
+    <string name="origin_ports">ポート</string>
+    <string name="origin_collection">コレクション</string>
     <!-- About -->
     <!-- App tagline; playful, "filling" is a cannoli pun. Keep the light tone. -->
+    <string name="about_description">ちょうど充填量のフロントエンド!</string>
     <!-- Kitchen -->
     <!-- Keep "Nonna's Kitchen" verbatim. -->
+    <string name="kitchen_notification_running">Nonnaのキッチンが稼働しています</string>
     <!-- Nonna's Kitchen runs a local file server. -->
+    <string name="kitchen_notification_active">ファイルサーバーがアクティブです</string>
+    <string name="kitchen_notification_stop">停止</string>
     <!-- Keep "Nonna's Kitchen" verbatim. -->
+    <string name="kitchen_notification_error_title">Nonna キッチンを起動できませんでした</string>
+    <string name="kitchen_notification_error_text">ファイルサーバーのポートが利用できません</string>
     <!-- Search -->
+    <string name="search_global">グローバル検索</string>
+    <string name="search_romm">RomM検索</string>
     <!-- %1$s = platform name. -->
+    <string name="search_in_platform">%1$s 検索</string>
     <!-- Keyboard entry headers -->
+    <string name="keyboard_title_new_collection">新しいコレクション</string>
+    <string name="keyboard_title_rename_collection">コレクションの名前を変更</string>
+    <string name="keyboard_title_new_folder">新規フォルダ</string>
+    <string name="keyboard_title_rename_game">ゲームの名前を変更</string>
+    <string name="keyboard_title_rename_app">アプリの名前を変更</string>
+    <string name="keyboard_title_rename_folder">フォルダの名前を変更</string>
+    <string name="keyboard_title_rename_platform">プラットフォーム名を変更</string>
+    <string name="keyboard_title_new_slot">新しいスロット</string>
+    <string name="keyboard_title_rename_slot">スロット名の変更</string>
+    <string name="keyboard_title_rename_controller">コントローラーの名前を変更</string>
     <!-- Quick menu -->
+    <string name="quick_menu_title">クイックメニュー</string>
+    <string name="quick_menu_romm">RomMを閲覧する</string>
+    <string name="quick_menu_download_queue">キューをダウンロード</string>
+    <string name="quick_menu_rescan">ライブラリを再スキャン</string>
+    <string name="quick_menu_info">ネットワーク情報</string>
+    <string name="quick_menu_sync_history">同期履歴を保存</string>
+    <string name="sync_history_title">同期履歴を保存</string>
+    <string name="sync_history_empty">同期履歴がありません</string>
+    <string name="sync_relative_now">ちょうど今</string>
+    <string name="quick_info_title">ネットワーク情報</string>
+    <string name="quick_info_ip">IP アドレス</string>
     <!-- URL to reach the Nonna's Kitchen file server. -->
+    <string name="quick_info_kitchen_url">キッチンURL</string>
+    <string name="quick_info_kitchen_off">キッチンが稼働していません</string>
+    <string name="quick_info_offline">ネットワークがありません</string>
     <!-- RetroAchievements -->
+    <string name="ra_logged_in_as">としてログイン</string>
     <!-- RA = RetroAchievements. -->
+    <string name="ra_login_failed">RA: ログインに失敗しました</string>
+    <string name="ra_login_invalid">ユーザー名またはパスワードが正しくありません</string>
+    <string name="ra_status_online">オンライン</string>
+    <string name="ra_status_offline">オフライン</string>
     <!-- %1$d = achievements awaiting sync. -->
+    <string name="ra_status_offline_pending">オフライン • %1$d 保留中の同期</string>
+    <string name="ra_detect_not_logged_in">ログインしていません</string>
+    <string name="ra_detect_not_recognized">ゲームが認識されていません</string>
+    <string name="ra_detect_no_achievements">成果は公開されていません</string>
+    <string name="ra_detect_mem_failed">メモリ初期化に失敗しました</string>
     <!-- %d = achievement count. -->
+    <plurals name="ra_detect_active">
+        <item quantity="other">アクティブ • %d アチーブメント数</item>
+    </plurals>
     <!-- %d = number of achievements synced. -->
+    <plurals name="ra_sync_done">
+        <item quantity="other">%d 達成を同期しました</item>
+    </plurals>
     <!-- Counts of synced and failed achievements. -->
+    <string name="ra_sync_partial">%1$d 同期、 %2$d 失敗</string>
     <!-- OSD toast. %1$s = save slot name. -->
+    <string name="osd_state_saved">%1$s に保存しました</string>
     <!-- OSD toast. %1$s = save slot name. -->
+    <string name="osd_state_loaded">読み込まれた %1$s</string>
     <!-- OSD toast. %1$s = save slot name. -->
+    <string name="osd_state_deleted">%1$sを削除しました</string>
+    <string name="osd_reset">Reset</string>
     <!-- OSD toast. %1$s = scaling mode name. -->
+    <string name="osd_scaling">拡大縮小: %1$s</string>
     <!-- OSD toast. %1$s = shader preset name. -->
+    <string name="osd_shader">シェーダー: %1$s</string>
     <!-- OSD toast. %1$s = mode/item name. -->
+    <string name="osd_switched_to">%1$sに切り替えました</string>
     <!-- OSD toast. %1$s = game name (setting saved per-game). -->
+    <string name="osd_saved_for">%1$s に保存しました</string>
+    <string name="osd_saved_for_game">このゲームに保存しました</string>
     <!-- OSD toast. %1$s = controller name, %2$s = player slot. -->
+    <string name="osd_controller_connected_named">%1$s は %2$s に接続されました</string>
+    <string name="osd_buttons_reset">ボタンをデフォルトにリセット</string>
     <!-- %1$d = disc number (multi-disc games). -->
+    <string name="osd_disc_fallback">ディスク %1$d</string>
+    <string name="igm_quit">終了</string>
+    <string name="igm_cheats">チート</string>
+    <string name="title_cheats">チート</string>
+    <string name="label_restore_session">最後のセッションを復元</string>
     <!-- Scaling mode: use the size the emulator core reports. -->
+    <string name="scaling_core_reported">コアが報告されました</string>
+    <string name="scaling_integer">整数</string>
     <!-- Scaling mode: integer scaling pushed beyond 1x to fill more of the screen. -->
+    <string name="scaling_integer_overscale">Integer Overscale</string>
     <!-- Scaling mode: fit the screen while keeping the aspect ratio. -->
+    <string name="scaling_aspect_screen">アスペクト画面</string>
+    <string name="scaling_fullscreen">全画面</string>
     <!-- Indicates a setting applies globally (all games). -->
+    <string name="override_source_global">グローバル</string>
     <!-- Indicates a setting applies only to the current game. -->
+    <string name="override_source_game">このゲーム</string>
+    <string name="device_controller">コントローラ</string>
     <!-- OSD toast. %1$d = player number, %2$s = controller name. -->
+    <string name="osd_controller_connected">P%1$d: %2$s</string>
     <!-- OSD toast. %1$d = player number, %2$s = controller name. -->
+    <string name="osd_controller_disconnected_port">P%1$d: %2$s が切断されました</string>
     <!-- OSD toast. %1$s = controller name. -->
+    <string name="osd_controller_disconnected">%1$s が切断されました</string>
     <!-- RA login OSD. %1$s = username, %2$s = display name, %3$d/%4$d = unlocked/total achievements. -->
+    <string name="ra_login_success">RA: %1$s (%2$s) · %3$d/%4$d ロック解除</string>
+    <string name="ra_init_failed">RA: 初期化に失敗しました</string>
+    <string name="ra_load_not_recognized">RA: ゲームが認識されていません</string>
+    <string name="ra_load_no_achievements">RA: このゲームの実績はありません</string>
+    <string name="ra_load_offline_pending">RA: オフライン (ゲームデータ利用不可)</string>
     <!-- Credits -->
+    <string name="credits_title">クレジットとライセンス</string>
     <!-- Core picker / nav -->
+    <string name="no_compatible_cores">互換性のあるコアが見つかりません</string>
+    <string name="no_collections">コレクションがありません</string>
+    <string name="title_child_collections">子コレクション</string>
+    <string name="title_shortcuts">ショートカット</string>
+    <string name="shortcut_hold_prompt" tools:ignore="TypographyEllipsis">1 つ以上のボタンを長押ししてください...</string>
     <!-- Update download -->
+    <string name="update_retry">再試行する</string>
+    <string name="restart_required">変更を適用するには再起動が必要です。</string>
     <!-- IGM screen titles -->
+    <string name="igm_settings">設定</string>
+    <string name="igm_video">ビデオ</string>
+    <string name="igm_advanced">高度な設定</string>
+    <string name="igm_shader_settings">シェーダーの設定</string>
+    <string name="igm_emulator">エミュレーター</string>
+    <string name="igm_save_changes">変更を保存</string>
+    <string name="igm_input">Input</string>
+    <string name="igm_button_mappings">ボタンのマッピング</string>
+    <string name="igm_left_stick_dpad">方向パッドとして左スティック</string>
+    <string name="igm_dpad_mode">方向パッドモード（ベータ版）</string>
     <!-- D-Pad Mode value: 8 directions. -->
+    <string name="value_dpad_8way">8-way</string>
     <!-- D-Pad Mode value: 4 directions. -->
+    <string name="value_dpad_4way">4-way</string>
+    <string name="igm_save_and_quit">保存して終了</string>
+    <string name="title_guide">ガイド</string>
+    <string name="guide_zoom">ズーム</string>
     <!-- IGM info labels -->
+    <string name="info_core">コア</string>
+    <string name="info_rom">ROM</string>
     <!-- Info label: whether the ROM was extracted from an archive. -->
+    <string name="info_extracted">抽出済み</string>
+    <string name="info_save">保存</string>
+    <string name="info_renderer">レンダラー</string>
+    <string name="info_game_id">ゲームID</string>
+    <string name="info_ra_detection">実績検出</string>
     <!-- IGM dialogs -->
     <!-- %1$s = save slot name. -->
+    <string name="igm_delete_slot">%1$s を削除しますか？</string>
+    <string name="press_button_prompt" tools:ignore="TypographyEllipsis">任意のボタンを押してください...</string>
     <!-- Achievements -->
     <!-- %1$d = unlocked count, %2$d = total. -->
+    <string name="ach_title">実績 (%1$d/%2$d)</string>
     <!-- Compact points label. %1$d = points. -->
+    <string name="ach_points_short">%1$dpts</string>
     <!-- %1$d = points. -->
+    <string name="ach_points">%1$d ポイント</string>
     <!-- %1$s = date the achievement was unlocked. -->
+    <string name="ach_unlocked_date">解放された %1$s</string>
+    <string name="ach_unlocked">ロック解除済み</string>
+    <string name="ach_locked">ロック中</string>
+    <string name="setting_portrait_margin">ポートレートの余白（余白）</string>
     <!-- Advanced setting: adjust the on-screen viewport rectangle. -->
+    <string name="setting_screen_geometry">スクリーンジオメトリー</string>
+    <string name="setting_geo_width">Width</string>
+    <string name="setting_geo_height">高さ</string>
+    <string name="setting_geo_hpos">水平方向の位置</string>
+    <string name="setting_geo_vpos">縦の位置</string>
     <!-- Emulator Mapping -->
     <!-- Setting: maps each platform to an emulator/core. -->
+    <string name="setting_emulator_mapping">エミュレータのマッピング</string>
+    <string name="label_reset">RESET</string>
+    <string name="label_show_all">すべて表示</string>
+    <string name="label_show_installed">インストール済みを表示</string>
     <!-- The core is not bundled with the app. -->
+    <string name="value_not_bundled">バンドルしていません</string>
+    <string name="value_no_overrides">ゲームごとのオーバーライドはありません。</string>
+    <string name="value_no_firmware">このコアにファームウェアは必要ありません。</string>
+    <string name="mapping_action_bios">BIOS ファイル</string>
+    <string name="mapping_action_overrides">ゲーム毎のオーバーライド</string>
+    <string name="mapping_action_reset">既定にリセット</string>
     <!-- %d = number of required BIOS files missing. -->
+    <string name="mapping_required_missing">%d は不足しています</string>
     <!-- Screen title. %s = platform name. -->
+    <string name="title_platform_mapping">%s マッピング</string>
     <!-- Screen title. %s = platform name. -->
+    <string name="title_platform_bios">%s BIOS</string>
+    <string name="filter_all">すべて</string>
+    <string name="filter_missing">不足しています</string>
+    <string name="filter_unmapped">不足しています</string>
+    <string name="filter_mapped">マッピング</string>
+    <string name="value_unmapped">マップされていません</string>
+    <string name="label_download">ダウンロード</string>
     <!-- OSD toast. %1$s = core name. -->
+    <string name="osd_downloading_core">ダウンロード中 %1$s</string>
     <!-- OSD toast. %1$s = core name. -->
+    <string name="osd_core_downloaded">ダウンロード済み %1$s</string>
     <!-- OSD toast. %1$s = core name or error detail. -->
+    <string name="osd_core_download_failed">ダウンロードに失敗しました: %1$s</string>
+    <string name="osd_core_download_unknown_error">不明なエラー</string>
+    <string name="bios_required">必須</string>
+    <string name="bios_optional">オプション</string>
+    <string name="bios_present">プレゼント</string>
+    <string name="bios_missing">見つかりません</string>
     <!-- %d = number of games with per-game overrides. -->
+    <plurals name="override_game_count">
+        <item quantity="other">%d ゲーム</item>
+    </plurals>
     <!-- %d = number of items selected. -->
+    <string name="bulk_selected">%d Selected</string>
     <!-- %d = number of items. -->
+    <plurals name="bulk_delete_count">
+        <item quantity="other">%d 件のアイテム</item>
+    </plurals>
     <!-- OSD toast. %d = number of cheats restored. -->
+    <plurals name="osd_cheats_restored">
+        <item quantity="other">%d チートが復元されました</item>
+    </plurals>
+    <string name="regenerate_system_folders_none">すべてのシステムフォルダが既に存在します</string>
     <!-- %d = number of system folders created. -->
+    <plurals name="regenerate_system_folders_result">
+        <item quantity="other">%d システムフォルダを作成しました</item>
+    </plurals>
+    <string name="value_no_cores_found">コアが見つかりません</string>
+    <string name="label_clear_override">消去</string>
     <!-- %1$s = platform name. -->
+    <string name="dialog_reset_platform_confirm">%1$sをリセットしますか? このプラットフォームのエミュレータの選択を解除し、バンドルされたデフォルトを復元します。</string>
     <!-- RA achievement preload. %1$s = game name. -->
+    <string name="ra_preload_progress">%1$s のプリロード中</string>
+    <string name="ra_preload_none">このゲームの実績は見つかりませんでした</string>
+    <string name="ra_preload_failed">プリロードに失敗しました。接続を確認してください。</string>
     <!-- %1$d = achievements cached, %2$d = points. -->
+    <plurals name="ra_preload_success">
+        <item quantity="other">オフライン再生のために、 %1$d 実績をキャッシュしました (%2$d pts)</item>
+    </plurals>
     <!-- %1$d = games cached, %2$d = total games. -->
+    <string name="ra_preload_bulk_done">オフラインでプレイするための %1$d %2$d ゲームの Anumber@@2 をキャッシュしました</string>
+    <string name="ra_offline_sets_title">オフライン実績セット</string>
+    <string name="ra_offline_sets_empty">キャッシュされた実績セットはありません</string>
     <!-- %1$d = achievement count, %2$s = set name. -->
+    <string name="ra_offline_set_value">%1$d 実績 - %2$s</string>
+    <string name="label_refresh">更新</string>
     <!-- Save Slots screen -->
     <!-- Screen title. %1$s = game name. -->
+    <string name="save_slots_screen_title">%1$s スロット</string>
+    <string name="save_slots_active">アクティブ</string>
+    <string name="save_slots_create">New Slot</string>
+    <string name="save_slots_rename">名前の変更</string>
+    <string name="save_slots_delete">削除</string>
+    <string name="save_slots_switch">スイッチ</string>
     <!-- %1$s = slot name. -->
+    <string name="save_slots_delete_confirm">スロット \"%1$s\" を削除しますか？</string>
     <!-- Conflicts resolution screen -->
+    <string name="conflicts_title">競合を同期</string>
+    <string name="conflicts_applying">競合を適用しています...</string>
     <!-- %1$d = number of saves that could not be applied. -->
+    <plurals name="conflicts_apply_failed">
+        <item quantity="other">%1$d セーブを適用できませんでした</item>
+    </plurals>
     <!-- %1$d = number of sync conflicts. -->
+    <plurals name="quick_menu_conflicts">
+        <item quantity="other">競合を同期 (%1$d)</item>
+    </plurals>
+    <string name="sync_errors_title">同期エラー</string>
+    <string name="sync_errors_empty">同期エラーはありません</string>
     <!-- %1$d = number of sync errors. -->
+    <plurals name="quick_menu_sync_errors">
+        <item quantity="other">同期エラー (%1$d)</item>
+    </plurals>
+    <string name="save_backup_restore">バックアップから復元</string>
+    <string name="save_backup_games_title">保存を復元</string>
+    <string name="save_backup_list_title">バックアップ</string>
+    <string name="save_backup_none">バックアップがありません</string>
+    <string name="save_backup_restore_confirm">このバックアップを復元しますか？\n現在の保存が最初にバックアップされてから、現在のRomMの保存になります。</string>
+    <string name="save_backup_restore_done">保存を復元しました</string>
+    <string name="save_backup_restore_synced">保存を復元し、現在のものとして設定</string>
+    <string name="save_backup_restore_pending">復元されたデータを保存し、オンラインのときに同期します</string>
+    <string name="save_backup_restore_conflict">復元された保存し、同期の競合を解決します</string>
+    <string name="save_backup_restore_failed">復元に失敗しました</string>
     <!-- %1$d = number of backups. -->
+    <plurals name="save_backup_count">
+        <item quantity="other">%1$d バックアップ</item>
+    </plurals>
+    <string name="conflict_keep_local">ローカルを保持</string>
+    <string name="conflict_use_server">サーバーを使用</string>
+    <string name="conflict_skip">スキップ</string>
+    <string name="conflict_yours">あなたのもの</string>
+    <string name="conflict_server">サーバー</string>
     <!-- Label marking the older save in a conflict. -->
+    <string name="conflict_older">古い</string>
     <!-- On-screen keyboard help overlay -->
+    <string name="kbd_help_title">キーボードコントロール</string>
+    <string name="kbd_help_group_type">タイプ</string>
+    <string name="kbd_help_group_cursor">Cursor</string>
+    <string name="kbd_help_group_action">アクション</string>
+    <string name="kbd_help_move_selection">選択を移動</string>
+    <string name="kbd_help_press">タイプ キー</string>
+    <string name="kbd_help_backspace">バックスペースキー</string>
+    <string name="kbd_help_space">スペース</string>
+    <string name="kbd_help_shift">SHIFT / CAPS (TAP)</string>
+    <string name="kbd_help_symbols">SYMBOLS (HOLD)</string>
+    <string name="kbd_help_cursor_move">左に移動/右</string>
+    <string name="kbd_help_cursor_jump">ジャンプして開始 / 終了</string>
+    <string name="kbd_help_submit">送信</string>
+    <string name="kbd_help_cancel">キャンセル</string>
 </resources>
