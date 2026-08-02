@@ -37,6 +37,7 @@ object ScanModule {
         return PlatformConfig(
             { paths.root }, context.assets, coreInfo, bundledCoresDir,
             context.getString(dev.cannoli.scorza.R.string.value_empty_override),
+            context.getString(dev.cannoli.scorza.R.string.value_needs_setup),
         )
     }
 }
