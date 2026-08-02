@@ -770,7 +770,12 @@ class PlatformConfig(
             val map = obj.optJSONObject("map")?.let { m ->
                 m.keys().asSequence().associateWith { m.getString(it) }
             }
-            return ExtraSpec(key, kind, values, value, map)
+            val whenExtension = obj.optJSONArray("whenExtension")?.let { arr ->
+                (0 until arr.length())
+                    .map { arr.getString(it).removePrefix(".").lowercase() }
+                    .toSet()
+            }
+            return ExtraSpec(key, kind, values, value, map, whenExtension)
         }
 
         private fun parseLaunchMethod(s: String): LaunchMethod = when (s) {

@@ -137,10 +137,58 @@ class EmulatorIntentBuilderTest {
         activity = "com.xj.landscape.launcher.ui.gamedetail.GameDetailActivity",
         action = "gamehub.lite.LAUNCH_GAME",
         extras = listOf(
-            ExtraSpec("steamAppId", ExtraValueKind.STRING, value = "{rom_contents}"),
+            ExtraSpec(
+                "steamAppId", ExtraValueKind.STRING, value = "{rom_id}",
+                whenExtension = setOf("steam", "steamappid"),
+            ),
+            ExtraSpec(
+                "localGameId", ExtraValueKind.STRING, value = "{rom_id}",
+                whenExtension = setOf("localgameid", "txt"),
+            ),
             ExtraSpec("autoStartGame", ExtraValueKind.BOOL, value = "true"),
         ),
     )
+
+    @Test fun `steam shortcut sends only steamAppId`() {
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val romFile = tmp.newFile("Super Hexagon.steamappid").apply { writeText("[steamappid] 221640\n") }
+        val resolved = EmulatorIntentBuilder.resolve(ctx, gameHubLite(), romFile)
+
+        val keys = resolved.extras.map { it.key }
+        assertEquals(listOf("steamAppId", "autoStartGame"), keys)
+        assertEquals("221640", (resolved.extras[0] as ResolvedExtra.StringExtra).value)
+    }
+
+    @Test fun `local shortcut sends only localGameId`() {
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val romFile = tmp.newFile("My Game.localgameid")
+            .apply { writeText("[localgameid] local_cc0c8d82-9ade-428f-b86d-afd587f7d71d\n") }
+        val resolved = EmulatorIntentBuilder.resolve(ctx, gameHubLite(), romFile)
+
+        val keys = resolved.extras.map { it.key }
+        assertEquals(listOf("localGameId", "autoStartGame"), keys)
+        assertEquals(
+            "local_cc0c8d82-9ade-428f-b86d-afd587f7d71d",
+            (resolved.extras[0] as ResolvedExtra.StringExtra).value,
+        )
+    }
+
+    @Test fun `a txt shortcut is treated as a local game id`() {
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val romFile = tmp.newFile("My Game.txt")
+            .apply { writeText("[localgameid] local_abc\n") }
+        val resolved = EmulatorIntentBuilder.resolve(ctx, gameHubLite(), romFile)
+
+        assertEquals(listOf("localGameId", "autoStartGame"), resolved.extras.map { it.key })
+    }
+
+    @Test fun `an untagged id is used as written`() {
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val romFile = tmp.newFile("Bare.steam").apply { writeText("221640\n") }
+        val resolved = EmulatorIntentBuilder.resolve(ctx, gameHubLite(), romFile)
+
+        assertEquals("221640", (resolved.extras[0] as ResolvedExtra.StringExtra).value)
+    }
 
     @Test fun `bool extra resolves to a boolean`() {
         val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()

@@ -27,6 +27,8 @@ data class ExtraSpec(
     val values: List<String>? = null,
     val value: String? = null,
     val map: Map<String, String>? = null,
+    // Lowercase, no leading dot. Null means the extra applies to every file.
+    val whenExtension: Set<String>? = null,
 )
 
 enum class ExtraValueKind {

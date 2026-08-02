@@ -85,7 +85,13 @@ object EmulatorIntentBuilder {
         return intent
     }
 
-    private fun resolveExtra(context: Context, spec: ExtraSpec, romFile: File): ResolvedExtra? = when (spec.kind) {
+    private fun resolveExtra(context: Context, spec: ExtraSpec, romFile: File): ResolvedExtra? {
+        val allowed = spec.whenExtension
+        if (allowed != null && romFile.extension.lowercase() !in allowed) return null
+        return resolveExtraValue(context, spec, romFile)
+    }
+
+    private fun resolveExtraValue(context: Context, spec: ExtraSpec, romFile: File): ResolvedExtra? = when (spec.kind) {
         ExtraValueKind.FILE_PATH ->
             ResolvedExtra.StringExtra(spec.key, romFile.absolutePath)
         ExtraValueKind.FILE_URI_STRING ->
@@ -124,8 +130,16 @@ object EmulatorIntentBuilder {
     private fun substitute(template: String, romFile: File): String {
         var out = template
         if (out.contains(ROM_CONTENTS)) out = out.replace(ROM_CONTENTS, firstNonBlankLine(romFile))
+        if (out.contains(ROM_ID)) out = out.replace(ROM_ID, romId(romFile))
         if (out.contains(ROM_EXTENSION)) out = out.replace(ROM_EXTENSION, romFile.extension.lowercase())
         return out
+    }
+
+    // Shortcut files are shared between launchers and may tag the id with its type,
+    // as in `[steamappid] 570`. A bare id is equally valid.
+    private fun romId(romFile: File): String {
+        val line = firstNonBlankLine(romFile)
+        return TAGGED_ID.matchEntire(line)?.groupValues?.get(1)?.trim() ?: line
     }
 
     private fun firstNonBlankLine(romFile: File): String = try {
@@ -135,7 +149,9 @@ object EmulatorIntentBuilder {
     }
 
     private const val ROM_CONTENTS = "{rom_contents}"
+    private const val ROM_ID = "{rom_id}"
     private const val ROM_EXTENSION = "{rom_extension}"
+    private val TAGGED_ID = Regex("""^\[[^]]+]\s*(.+)$""")
 
     private fun fileProviderUri(context: Context, romFile: File): Uri =
         context.romFileProviderUri(romFile)
