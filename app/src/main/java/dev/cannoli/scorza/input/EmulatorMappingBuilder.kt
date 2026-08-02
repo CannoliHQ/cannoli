@@ -14,6 +14,7 @@ import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.screens.EmulatorMappingEntry
 import dev.cannoli.scorza.ui.screens.MappingActionKind
 import dev.cannoli.scorza.ui.screens.MappingItem
+import dev.cannoli.scorza.util.sortedNatural
 import java.io.File
 import javax.inject.Inject
 
@@ -24,12 +25,27 @@ class EmulatorMappingBuilder @Inject constructor(
     private val settings: SettingsRepository,
     @ActivityContext private val context: Context,
 ) {
-    fun detailedMappings(): List<EmulatorMappingEntry> = platformConfig.getDetailedMappings(
-        context.packageManager,
-        installedCoreService.configuredCores(),
-        LaunchManager.extractBundledCores(context),
-        installedCoreService.configuredUnresponsive(),
-    )
+    fun detailedMappings(): List<EmulatorMappingEntry> {
+        val entries = platformConfig.getDetailedMappings(
+            context.packageManager,
+            installedCoreService.configuredCores(),
+            LaunchManager.extractBundledCores(context),
+            installedCoreService.configuredUnresponsive(),
+        )
+        // MAME and FBN are both named Arcade; tag the name so the two rows are tellable apart.
+        val shared = entries.groupingBy { it.platformName }.eachCount().filterValues { it > 1 }.keys
+        if (shared.isEmpty()) return entries
+        return entries.map { entry ->
+            if (entry.platformName in shared) {
+                entry.copy(platformName = context.getString(
+                    dev.cannoli.scorza.R.string.mapping_platform_name_with_tag,
+                    entry.platformName, entry.tag,
+                ))
+            } else {
+                entry
+            }
+        }.sortedNatural { it.platformName }
+    }
 
     fun filter(all: List<EmulatorMappingEntry>, filter: Int): List<EmulatorMappingEntry> = when (filter) {
         1 -> all.filter { it.status == dev.cannoli.scorza.ui.screens.EmulatorMappingStatus.NOT_INSTALLED }

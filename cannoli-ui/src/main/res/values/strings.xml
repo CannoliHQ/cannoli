@@ -745,6 +745,8 @@
     <string name="mapping_action_reset">Reset to default</string>
     <!-- %d = number of required BIOS files missing. -->
     <string name="mapping_required_missing">%d required missing</string>
+    <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
+    <string name="mapping_platform_name_with_tag">%1$s (%2$s)</string>
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">%s Mapping</string>
     <!-- Screen title. %s = platform name. -->
