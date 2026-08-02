@@ -5,7 +5,7 @@ supported_extensions = "j64|jag|rom|abs|cof|bin|prg"
 corename = "Virtual Jaguar"
 license = "GPLv3"
 permissions = ""
-display_version = "v2.2.0"
+display_version = "v2.3.2"
 categories = "Emulator"
 
 # Hardware Information
@@ -29,4 +29,4 @@ needs_fullpath = "false"
 disk_control = "false"
 is_experimental = "false"
 
-description = "A port of the Virtual Jaguar emulator, originally based on Potato Emulation, to libretro. The accurate blitter is SIMD-accelerated (SSE2 on x86, NEON on ARM), and a Fast Blitter core option is available that trades some accuracy for additional speed on lower-end hardware. Supports a high-level BIOS that lets most commercial titles boot without a real BIOS image, plus save states, SRAM, cheat codes, and RetroAchievements."
+description = "A port of the Virtual Jaguar emulator, originally based on Potato Emulation, to libretro. The accurate blitter is SIMD-accelerated (SSE2 on x86, NEON on ARM), and the Blitter core option can be set to 'Fast' to trade some accuracy for additional speed on lower-end hardware. Supports a high-level BIOS that lets most commercial titles boot without a real BIOS image, plus save states, SRAM, cheat codes, and RetroAchievements."
