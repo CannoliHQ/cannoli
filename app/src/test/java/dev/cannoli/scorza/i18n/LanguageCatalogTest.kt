@@ -12,7 +12,10 @@ class LanguageCatalogTest {
 
     @Test fun `tags are in the expected order and complete`() {
         assertEquals(
-            listOf("en", "fr-FR", "pt-PT", "uk-UA", "zh-CN"),
+            listOf(
+                "en", "zh-CN", "fr-FR", "de-DE", "el-GR",
+                "it-IT", "ja-JP", "pt-BR", "pt-PT", "es-ES", "uk-UA"
+            ),
             LanguageCatalog.ALL.map { it.tag }
         )
     }
@@ -23,7 +26,7 @@ class LanguageCatalogTest {
     }
 
     @Test fun `only non-latin languages carry a coverage sample`() {
-        val nonLatin = setOf("uk-UA", "zh-CN")
+        val nonLatin = setOf("el-GR", "ja-JP", "uk-UA", "zh-CN")
         for (o in LanguageCatalog.ALL) {
             if (o.tag in nonLatin) assertNotNull("expected sample for ${o.tag}", o.coverageSample)
             else assertNull("unexpected sample for ${o.tag}", o.coverageSample)
@@ -33,6 +36,12 @@ class LanguageCatalogTest {
     @Test fun `arabic is excluded`() {
         assertNull(LanguageCatalog.byTag("ar-SA"))
         assertFalse(LanguageCatalog.ALL.any { it.tag.startsWith("ar") })
+    }
+
+    // values-b+es+419 ships as an empty shell: comments only, zero translations.
+    @Test fun `untranslated es-419 is excluded`() {
+        assertNull(LanguageCatalog.byTag("es-419"))
+        assertFalse(LanguageCatalog.ALL.any { it.tag == "es-419" })
     }
 
     @Test fun `endonyms are non-blank`() {
