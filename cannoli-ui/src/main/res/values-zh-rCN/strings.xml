@@ -167,6 +167,7 @@
     <string name="setting_kitchen_code_bypass">跳过厨房密码</string>
     <string name="setting_experimental_features">实验特性</string>
     <string name="setting_set_default_launcher">设置为默认启动器</string>
+    <!-- Same row as setting_set_default_launcher, shown when Cannoli is already the default launcher and the user wants to pick another one. -->
     <!-- Advanced action: recreate the standard platform/system folders. -->
     <string name="setting_regenerate_system_folders">重新生成系统文件夹</string>
     <!-- Library setting: which content layout to show (platforms, collections only, or Five Game Handheld). -->
