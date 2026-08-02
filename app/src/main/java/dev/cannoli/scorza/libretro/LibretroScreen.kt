@@ -31,6 +31,8 @@ import dev.cannoli.igm.TimeFormatMode
 import dev.cannoli.scorza.input.runtime.confirmButton
 import dev.cannoli.scorza.input.runtime.labelSet
 import dev.cannoli.ui.components.OsdHost
+import dev.cannoli.ui.components.pillLineHeightSp
+import dev.cannoli.ui.components.pillScaleFor
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.Radius
 import kotlinx.coroutines.delay
@@ -101,7 +103,8 @@ fun LibretroScreen(
 
     val config = IGMHostConfig(
         fontSizeSp = settings.textSize.sp,
-        lineHeightSp = settings.textSize.sp + 10,
+        lineHeightSp = pillLineHeightSp(settings.textSize.sp),
+        pillScale = pillScaleFor(settings.textSize.sp),
         scaleFactor = settings.textSize.sp / 22f,
         portraitMarginPx = settings.portraitMarginPx,
         geometryWidthPct = settings.screenGeometryWidth,

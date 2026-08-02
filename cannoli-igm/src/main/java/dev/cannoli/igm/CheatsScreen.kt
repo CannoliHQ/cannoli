@@ -23,12 +23,11 @@ import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.SectionedList
 import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.components.pillItemHeight
-import dev.cannoli.ui.components.screenPadding
+import dev.cannoli.ui.components.pillVerticalPadding
+import dev.cannoli.ui.components.screenInsets
 import dev.cannoli.ui.theme.Spacing
 
 data class CheatRowUi(val label: String, val enabled: Boolean, val supported: Boolean)
-
-private val verticalPadding = 6.dp
 
 @Composable
 fun CheatsScreen(
@@ -42,13 +41,14 @@ fun CheatsScreen(
     fontSize: TextUnit = 22.sp,
     lineHeight: TextUnit = 32.sp,
 ) {
+    val verticalPadding = pillVerticalPadding()
     val itemHeight = pillItemHeight(lineHeight, verticalPadding)
 
     ScreenBackground(backgroundImagePath = null, backgroundAlpha = 0.85f, backgroundColor = Color.Black) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(screenPadding)
+                .padding(screenInsets())
         ) {
             Column(
                 modifier = Modifier

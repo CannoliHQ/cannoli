@@ -14,9 +14,8 @@ data class PlayerSlotInfo(val port: Int, val displayName: String)
 // built-in runner and ricotta) so cannoli-igm stays free of app/settings dependencies.
 data class IGMHostConfig(
     val fontSizeSp: Int,
-    // Expected: fontSizeSp + 10 (matches the launcher's igm line-height derivation).
-    val lineHeightSp: Int,
-    // Expected: fontSizeSp / 22f (matches the launcher's igm scale-factor derivation).
+    val lineHeightSp: Float,
+    val pillScale: Float,
     val scaleFactor: Float,
     val portraitMarginPx: Int,
     val geometryWidthPct: Int,

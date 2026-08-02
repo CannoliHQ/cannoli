@@ -24,14 +24,13 @@ import dev.cannoli.ui.components.PillRowText
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.footerReservation
-import dev.cannoli.ui.components.pillInternalH
+import dev.cannoli.ui.components.pillInternalPadding
 import dev.cannoli.ui.components.pillItemHeight
-import dev.cannoli.ui.components.screenPadding
+import dev.cannoli.ui.components.pillVerticalPadding
+import dev.cannoli.ui.components.screenInsets
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliTypography
 import dev.cannoli.ui.theme.Spacing
-
-private val verticalPadding = 6.dp
 
 @Composable
 fun IGMSettingsScreen(
@@ -46,6 +45,7 @@ fun IGMSettingsScreen(
     lineHeight: TextUnit = 32.sp
 ) {
     val typo = LocalCannoliTypography.current
+    val verticalPadding = pillVerticalPadding()
     val itemHeight = pillItemHeight(lineHeight, verticalPadding)
     val colors = LocalCannoliColors.current
 
@@ -53,7 +53,7 @@ fun IGMSettingsScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(screenPadding)
+                .padding(screenInsets())
         ) {
             if (description != null) {
                 Column(
@@ -72,7 +72,7 @@ fun IGMSettingsScreen(
                         style = typo.bodyMedium.copy(
                             color = colors.text.copy(alpha = 0.8f)
                         ),
-                        modifier = Modifier.padding(start = pillInternalH)
+                        modifier = Modifier.padding(start = pillInternalPadding())
                     )
                 }
             } else {

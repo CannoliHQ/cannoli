@@ -50,11 +50,12 @@ import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.StatusBar
 import dev.cannoli.ui.components.footerReservation
-import dev.cannoli.ui.components.pillInternalH
-import dev.cannoli.ui.components.screenPadding
+import dev.cannoli.ui.components.pillInternalPadding
+import dev.cannoli.ui.components.screenInsets
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliFont
 import dev.cannoli.ui.theme.LocalCannoliTypography
+import dev.cannoli.ui.theme.LocalPillScale
 import dev.cannoli.ui.theme.LocalScaleFactor
 import dev.cannoli.ui.theme.Radius
 import dev.cannoli.ui.theme.Spacing
@@ -94,6 +95,7 @@ fun CannoliIGM(
     val isGuideScreen = screen is IGMScreen.Guide
     val igmFontSize = config.fontSizeSp.sp
     val igmLineHeight = config.lineHeightSp.sp
+    val igmPillScale = config.pillScale
     val igmScaleFactor = config.scaleFactor
     val igmTypography = buildCannoliTypography(baseSizeSp = config.fontSizeSp, fontFamily = LocalCannoliFont.current)
     val labels = ButtonStyle(config.buttonLabelSet, config.confirmButton)
@@ -121,6 +123,7 @@ fun CannoliIGM(
         LocalStatusBarLeftEdge provides statusBarLeftEdge,
         LocalScaleFactor provides igmScaleFactor,
         LocalCannoliTypography provides igmTypography,
+        LocalPillScale provides igmPillScale,
     ) {
         Box(modifier = Modifier.fillMaxSize().padding(viewportPadding)) {
             when (screen) {
@@ -174,7 +177,7 @@ fun CannoliIGM(
                             BottomBar(
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
-                                    .padding(screenPadding),
+                                    .padding(screenInsets()),
                                 leftItems = listOf(labels.back to stringResource(dev.cannoli.ui.R.string.label_cancel)),
                                 rightItems = listOf(labels.north to stringResource(dev.cannoli.ui.R.string.label_delete))
                             )
@@ -250,7 +253,7 @@ fun CannoliIGM(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(screenPadding)
+                                .padding(screenInsets())
                         ) {
                             Column(
                                 modifier = Modifier
@@ -262,7 +265,7 @@ fun CannoliIGM(
                                     fontSize = igmFontSize,
                                     lineHeight = igmLineHeight
                                 )
-                                val infoModifier = Modifier.padding(start = pillInternalH)
+                                val infoModifier = Modifier.padding(start = pillInternalPadding())
                                 val infoScrollState = remember { ScrollState(0) }
                                 LaunchedEffect(infoScrollDir) {
                                     while (infoScrollDir != 0) {
@@ -414,7 +417,7 @@ fun CannoliIGM(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(screenPadding),
+                                .padding(screenInsets()),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(

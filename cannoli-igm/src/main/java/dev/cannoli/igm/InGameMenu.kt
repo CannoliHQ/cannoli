@@ -44,7 +44,8 @@ import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.components.pillItemHeight
-import dev.cannoli.ui.components.screenPadding
+import dev.cannoli.ui.components.pillVerticalPadding
+import dev.cannoli.ui.components.screenInsets
 import dev.cannoli.ui.theme.GrayText
 import dev.cannoli.ui.theme.PolaroidDark
 import dev.cannoli.ui.theme.PolaroidInactive
@@ -52,8 +53,6 @@ import dev.cannoli.ui.theme.PolaroidSelect
 import dev.cannoli.ui.theme.Radius
 import dev.cannoli.ui.theme.Spacing
 
-
-private val verticalPadding = 6.dp
 
 @Composable
 fun InGameMenu(
@@ -76,6 +75,7 @@ fun InGameMenu(
     lineHeight: TextUnit = 32.sp,
     buttonStyle: ButtonStyle = ButtonStyle()
 ) {
+    val verticalPadding = pillVerticalPadding()
     val itemHeight = pillItemHeight(lineHeight, verticalPadding)
     val showThumbnail = selectedIndex == menuOptions.saveStateIndex || selectedIndex == menuOptions.loadStateIndex
     val onDiscRow = selectedIndex == menuOptions.switchDiscIndex
@@ -84,7 +84,7 @@ fun InGameMenu(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(screenPadding)
+                .padding(screenInsets())
         ) {
             Column(
                 modifier = Modifier
