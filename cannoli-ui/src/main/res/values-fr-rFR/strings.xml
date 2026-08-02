@@ -387,8 +387,9 @@
     <string name="dialog_delete_confirm">Supprimer \"%1$s\" ?</string>
     <!-- Shown when a per-game override is deliberately set to empty. -->
     <string name="value_empty_override">(surcharge vide)</string>
+    <!-- Shown in place of an emulator name when a platform has no emulator mapped yet. -->
     <string name="emulator_platform_setting">Paramètre de la plateforme</string>
-    <!-- %1$s = platform name. -->
+    <!-- %1$s = the emulator name the platform is mapped to. -->
     <string name="emulator_platform_setting_named">Paramètre de la plateforme (%1$s)</string>
     <string name="rename_error_directory">Impossible de renommer le dossier</string>
     <string name="rename_error_generic">Échec du renommage</string>
@@ -503,6 +504,7 @@
     <!-- Quick menu -->
     <string name="quick_menu_title">Menu Rapide</string>
     <string name="quick_menu_romm">Parcourir RomM</string>
+    <string name="quick_menu_download_queue">File d\'attente de téléchargement</string>
     <string name="quick_menu_rescan">Rescanner la Bibliothèque</string>
     <string name="quick_menu_info">Infos réseau</string>
     <string name="quick_menu_sync_history">Historique des Synchronisations de Sauvegarde</string>
