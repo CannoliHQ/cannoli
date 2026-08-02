@@ -25,6 +25,7 @@ import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.romm.download.DownloadStatus
 import dev.cannoli.scorza.romm.download.inDisplayOrder
+import dev.cannoli.scorza.romm.download.sanitizeFsName
 import dev.cannoli.scorza.romm.sync.RomKeys
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.screens.ColorEntry
@@ -97,6 +98,7 @@ class DialogInputHandler @Inject constructor(
     private val rommDevicePairing: dev.cannoli.scorza.romm.RommDevicePairing,
 ) : DialogPrecedence {
     private val applyingConflicts = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val quickMenuRebuild = java.util.concurrent.atomic.AtomicBoolean(false)
     private val selectHoldHandler = Handler(Looper.getMainLooper())
     private val selectHoldRunnable = Runnable {
         nav.selectHeld = true
@@ -110,6 +112,41 @@ class DialogInputHandler @Inject constructor(
 
     override fun cancelSelectHold() {
         selectHoldHandler.removeCallbacks(selectHoldRunnable)
+    }
+
+    private suspend fun quickMenuState(selected: dev.cannoli.scorza.ui.quickmenu.QuickMenuRow? = null): DialogState.QuickMenu {
+        val conflicts = saveSyncService.pendingConflictCount()
+        val errors = saveSyncStatusHolder.errors.value.size
+        val rows = dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.visibleRows(
+            rommPaired = rommStore.isConfigured,
+            kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
+            saveSyncEnabled = settings.rommSaveSyncEnabled,
+            pendingConflicts = conflicts,
+            syncErrors = errors,
+            downloadCount = rommDownloader.queue.state.value.size,
+        )
+        return DialogState.QuickMenu(
+            rows = rows,
+            kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
+            selectedIndex = selected?.let { rows.indexOf(it).coerceAtLeast(0) } ?: 0,
+            conflictCount = conflicts,
+            syncErrorCount = errors,
+        )
+    }
+
+    // Single-flight: held Back / Menu key-repeat re-enters these branches before the
+    // coroutine below completes. Without this guard a second rebuild can win the race
+    // and overwrite fresher badge counts with stale ones (or, for Kitchen, double-rescan).
+    private fun openQuickMenu(selected: dev.cannoli.scorza.ui.quickmenu.QuickMenuRow? = null) {
+        if (!quickMenuRebuild.compareAndSet(false, true)) return
+        ioScope.launch {
+            try {
+                val st = quickMenuState(selected)
+                withContext(Dispatchers.Main) { nav.dialogState.value = st }
+            } finally {
+                quickMenuRebuild.set(false)
+            }
+        }
     }
 
     override fun onMenu(): Boolean {
@@ -129,26 +166,7 @@ class DialogInputHandler @Inject constructor(
             return true
         }
         if (isQuickMenuBlockedScreen()) return false
-        ioScope.launch {
-            val count = saveSyncService.pendingConflictCount()
-            val errorCount = saveSyncStatusHolder.errors.value.size
-            val rows = dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.visibleRows(
-                rommPaired = rommStore.isConfigured,
-                kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
-                saveSyncEnabled = settings.rommSaveSyncEnabled,
-                pendingConflicts = count,
-                syncErrors = errorCount,
-                downloadCount = rommDownloader.queue.state.value.size,
-            )
-            withContext(Dispatchers.Main) {
-                nav.dialogState.value = DialogState.QuickMenu(
-                    rows = rows,
-                    kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
-                    conflictCount = count,
-                    syncErrorCount = errorCount,
-                )
-            }
-        }
+        openQuickMenu()
         return true
     }
 
@@ -929,23 +947,7 @@ class DialogInputHandler @Inject constructor(
                     nav.dialogState.value = buildSaveSyncMenu(selectedIndex = idx, pendingConflicts = count)
                 }
             } else {
-                val rows = dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.visibleRows(
-                    rommPaired = rommStore.isConfigured,
-                    kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
-                    saveSyncEnabled = settings.rommSaveSyncEnabled,
-                    pendingConflicts = count,
-                    syncErrors = errorCount,
-                    downloadCount = rommDownloader.queue.state.value.size,
-                )
-                withContext(Dispatchers.Main) {
-                    nav.dialogState.value = DialogState.QuickMenu(
-                        rows = rows,
-                        kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
-                        selectedIndex = rows.indexOf(quickRow).coerceAtLeast(0),
-                        conflictCount = count,
-                        syncErrorCount = errorCount,
-                    )
-                }
+                openQuickMenu(quickRow)
             }
         }
     }
@@ -1055,22 +1057,7 @@ class DialogInputHandler @Inject constructor(
                 .coerceAtLeast(0)
             nav.dialogState.value = buildSaveSyncMenu(selectedIndex = idx, pendingConflicts = count)
         } else {
-            val errorCount = saveSyncStatusHolder.errors.value.size
-            val rows = dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.visibleRows(
-                rommPaired = rommStore.isConfigured,
-                kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
-                saveSyncEnabled = settings.rommSaveSyncEnabled,
-                pendingConflicts = count,
-                syncErrors = errorCount,
-                downloadCount = rommDownloader.queue.state.value.size,
-            )
-            nav.dialogState.value = DialogState.QuickMenu(
-                rows = rows,
-                kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
-                selectedIndex = rows.indexOf(dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.CONFLICTS).coerceAtLeast(0),
-                conflictCount = count,
-                syncErrorCount = errorCount,
-            )
+            openQuickMenu(dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.CONFLICTS)
         }
     }
 
@@ -1139,12 +1126,7 @@ class DialogInputHandler @Inject constructor(
                 nav.dialogState.value = DialogState.None
             }
             is DialogState.QuickInfo -> {
-                val rows = dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.visibleRows(rommStore.isConfigured, dev.cannoli.scorza.server.KitchenManager.isRunning)
-                nav.dialogState.value = DialogState.QuickMenu(
-                    rows = rows,
-                    kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
-                    selectedIndex = rows.indexOf(dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.INFO).coerceAtLeast(0)
-                )
+                openQuickMenu(dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.INFO)
             }
             is DialogState.DeleteConfirm,
             is DialogState.DeleteCollectionConfirm -> {
@@ -1176,12 +1158,10 @@ class DialogInputHandler @Inject constructor(
             }
             is DialogState.Kitchen -> {
                 if (ds.fromQuickMenu) {
-                    val rows = dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.visibleRows(rommStore.isConfigured, dev.cannoli.scorza.server.KitchenManager.isRunning)
-                    nav.dialogState.value = DialogState.QuickMenu(
-                        rows = rows,
-                        kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
-                        selectedIndex = rows.indexOf(dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.KITCHEN).coerceAtLeast(0)
-                    )
+                    // Rebuild already in flight from a held Back key-repeat: swallow this
+                    // re-entry so rescanSystemList() below does not double-run.
+                    if (quickMenuRebuild.get()) return true
+                    openQuickMenu(dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.KITCHEN)
                 } else {
                     nav.dialogState.value = DialogState.None
                 }
@@ -1216,16 +1196,7 @@ class DialogInputHandler @Inject constructor(
             }
             is DialogState.RommDownloads -> {
                 if (ds.fromQuickMenu) {
-                    val rows = dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.visibleRows(
-                        rommStore.isConfigured,
-                        dev.cannoli.scorza.server.KitchenManager.isRunning,
-                        downloadCount = rommDownloader.queue.state.value.size,
-                    )
-                    nav.dialogState.value = DialogState.QuickMenu(
-                        rows = rows,
-                        kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
-                        selectedIndex = rows.indexOf(dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.DOWNLOADS).coerceAtLeast(0)
-                    )
+                    openQuickMenu(dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.DOWNLOADS)
                 } else {
                     nav.dialogState.value = DialogState.None
                 }
@@ -1593,7 +1564,7 @@ class DialogInputHandler @Inject constructor(
                     rom.artFile?.delete()
                     scanner.markLauncherMutation(rom.platformTag)
                 } else if (app != null) {
-                    artworkLookup.deleteArt(app.type.artTag, app.displayName)
+                    artworkLookup.deleteArt(app.type.artTag, sanitizeFsName(app.displayName))
                 }
                 gameListViewModel.reload()
                 nav.dialogState.value = DialogState.None
@@ -1814,13 +1785,17 @@ class DialogInputHandler @Inject constructor(
             MENU_DELETE_ART -> {
                 pendingContextReturn = null
                 val pathSet = state.gamePaths.toSet()
-                gameListViewModel.state.value.items
-                    .filterIsInstance<ListItem.RomItem>()
-                    .filter { it.rom.path.absolutePath in pathSet }
-                    .forEach { romItem ->
-                        romItem.rom.artFile?.delete()
-                        scanner.markLauncherMutation(romItem.rom.platformTag)
+                gameListViewModel.state.value.items.forEach { item ->
+                    when {
+                        item is ListItem.RomItem && item.rom.path.absolutePath in pathSet -> {
+                            item.rom.artFile?.delete()
+                            scanner.markLauncherMutation(item.rom.platformTag)
+                        }
+                        item is ListItem.AppItem && item.recentKey() in pathSet -> {
+                            artworkLookup.deleteArt(item.app.type.artTag, sanitizeFsName(item.app.displayName))
+                        }
                     }
+                }
                 gameListViewModel.reload()
                 nav.dialogState.value = DialogState.None
             }
@@ -2403,7 +2378,7 @@ class DialogInputHandler @Inject constructor(
         nav.dialogState.value = DialogState.None
         ioScope.launch {
             if (item is ListItem.AppItem) {
-                artworkLookup.renameArt(item.app.type.artTag, currentName, newName)
+                artworkLookup.renameArt(item.app.type.artTag, sanitizeFsName(currentName), sanitizeFsName(newName))
                 appsRepository.updateDisplayName(item.app.id, newName)
                 gameListViewModel.reload()
                 launcherActions.rescanSystemList()
