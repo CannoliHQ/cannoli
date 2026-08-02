@@ -45,6 +45,7 @@ object DirectoryLayout {
         if (romDirNeedsScaffold(romDirectory)) {
             scaffoldRomFolders(romDirectory, tags)
         }
+        seedRomFolderOnce(romDirectory, paths.configState, "PC")
         for (tag in tags) {
             paths.artFor(tag).mkdirs()
             paths.biosFor(tag).mkdirs()
@@ -56,6 +57,20 @@ object DirectoryLayout {
         for (type in AppType.entries) {
             paths.artFor(type.artTag).mkdirs()
         }
+    }
+
+    // Tags added after a user's install was scaffolded never get a Roms folder, because the
+    // scaffold only runs on an empty Roms directory. Seed such a tag once, keyed by a marker so
+    // a folder the user then deletes stays deleted.
+    fun seedRomFolderOnce(romDirectory: File, stateDir: File, tag: String): Boolean {
+        val marker = File(stateDir, ".seeded_$tag")
+        if (marker.exists()) return false
+        val created = File(romDirectory, tag).mkdirs()
+        try {
+            marker.parentFile?.mkdirs()
+            marker.writeText("1")
+        } catch (_: Exception) {}
+        return created
     }
 
     fun romDirNeedsScaffold(romDirectory: File): Boolean =

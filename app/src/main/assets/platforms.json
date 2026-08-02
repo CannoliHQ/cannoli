@@ -335,6 +335,31 @@
     "name": "Amiga",
     "core": "puae_libretro"
   },
+  "PC": {
+    "name": "PC",
+    "app": [
+      {
+        "package": "app.gamenative",
+        "activity": "app.gamenative.MainActivity",
+        "action": "app.gamenative.LAUNCH_GAME",
+        "extras": [
+          { "key": "app_id", "kind": "int", "value": "{rom_contents}" },
+          {
+            "key": "game_source",
+            "kind": "string",
+            "value": "{rom_extension}",
+            "map": {
+              "steam": "STEAM",
+              "epic": "EPIC",
+              "gog": "GOG",
+              "amazon": "AMAZON",
+              "pcgame": "CUSTOM_GAME"
+            }
+          }
+        ]
+      }
+    ]
+  },
 
   "PS2": {
     "name": "PlayStation 2",

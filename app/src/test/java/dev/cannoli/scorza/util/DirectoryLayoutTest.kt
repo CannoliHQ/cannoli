@@ -60,6 +60,37 @@ class DirectoryLayoutTest {
         assertEquals(0, createdAgain)
     }
 
+    @Test fun seedRomFolderOnce_creates_the_tag_folder_and_marker() {
+        val rom = tmp.newFolder("Roms")
+        val state = tmp.newFolder("State")
+        assertTrue(DirectoryLayout.seedRomFolderOnce(rom, state, "PC"))
+        assertTrue(File(rom, "PC").isDirectory)
+        assertTrue(File(state, ".seeded_PC").isFile)
+    }
+
+    @Test fun seedRomFolderOnce_does_not_recreate_a_deleted_folder() {
+        val rom = tmp.newFolder("Roms")
+        val state = tmp.newFolder("State")
+        DirectoryLayout.seedRomFolderOnce(rom, state, "PC")
+        File(rom, "PC").delete()
+
+        assertFalse(DirectoryLayout.seedRomFolderOnce(rom, state, "PC"))
+        assertFalse(File(rom, "PC").exists())
+    }
+
+    @Test fun ensure_seeds_the_pc_rom_folder_on_an_existing_install() {
+        val root = tmp.newFolder("cannoli")
+        val rom = tmp.newFolder("Roms")
+        File(rom, "NES").mkdirs()
+        val assets = androidx.test.core.app.ApplicationProvider
+            .getApplicationContext<android.content.Context>().assets
+        val config = dev.cannoli.scorza.config.PlatformConfig({ root }, assets)
+        DirectoryLayout.ensure(root, rom, assets, config)
+
+        assertTrue(File(rom, "PC").isDirectory)
+        assertFalse(File(rom, "SNES").exists())
+    }
+
     @Test fun ensure_creates_tools_and_ports_art_dirs() {
         val root = tmp.newFolder("cannoli")
         val rom = tmp.newFolder("Roms")
