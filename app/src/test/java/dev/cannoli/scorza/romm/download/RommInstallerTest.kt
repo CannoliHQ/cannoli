@@ -38,13 +38,13 @@ class RommInstallerTest {
         File(staging, "update/Game upd.nsp").writeText("upd")
         File(staging, "dlc").mkdirs()
         File(staging, "dlc/Game dlc.nsp").writeText("dlc")
-        val g = game("Cool Game", "Cool Game", listOf(
+        val g = game("Cool Game", "Cool Game (World)", listOf(
             f("Game v65536 (World).nsp"), f("Game upd.nsp"), f("Game dlc.nsp")))
         val result = installer.install(g, "NSW", staging, romDir)
-        val dest = File(romDir, "NSW/Cool Game")
-        assertEquals("NSW/Cool Game/Cool Game.nsp", result.linkRelativePath)
-        assertEquals("Cool Game", result.artBaseName)
-        assertEquals("base", File(dest, "Cool Game.nsp").readText())
+        val dest = File(romDir, "NSW/Cool Game (World)")
+        assertEquals("NSW/Cool Game (World)/Cool Game (World).nsp", result.linkRelativePath)
+        assertEquals("Cool Game (World)", result.artBaseName)
+        assertEquals("base", File(dest, "Cool Game (World).nsp").readText())
         assertEquals("upd", File(dest, "update/Game upd.nsp").readText())
         assertEquals("dlc", File(dest, "dlc/Game dlc.nsp").readText())
         assertTrue(!staging.exists())
@@ -56,13 +56,13 @@ class RommInstallerTest {
         File(staging, "FF7 (Disc 1).bin").writeText("d1")
         File(staging, "FF7 (Disc 2).bin").writeText("d2")
         File(staging, "FF7.m3u").writeText("FF7 (Disc 1).bin\nFF7 (Disc 2).bin\n")
-        val g = game("Final Fantasy VII", "Final Fantasy VII", listOf(
+        val g = game("Final Fantasy VII", "Final Fantasy VII (USA)", listOf(
             f("FF7 (Disc 1).bin"), f("FF7 (Disc 2).bin"), f("FF7.m3u")))
         val result = installer.install(g, "PSX", staging, romDir)
-        val dest = File(romDir, "PSX/Final Fantasy VII")
-        assertEquals("PSX/Final Fantasy VII/FF7.m3u", result.linkRelativePath)
+        val dest = File(romDir, "PSX/Final Fantasy VII (USA)")
+        assertEquals("PSX/Final Fantasy VII (USA)/FF7.m3u", result.linkRelativePath)
         assertTrue(File(dest, "FF7.m3u").exists())
-        assertTrue(!File(dest, "Final Fantasy VII.m3u").exists())
+        assertTrue(!File(dest, "Final Fantasy VII (USA).m3u").exists())
         assertTrue(File(dest, "FF7 (Disc 1).bin").exists())
         assertTrue(File(dest, "FF7 (Disc 2).bin").exists())
     }

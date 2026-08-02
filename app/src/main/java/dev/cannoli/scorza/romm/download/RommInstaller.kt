@@ -27,7 +27,7 @@ class RommInstaller {
     }
 
     private fun installMultiPart(game: RommGame, tag: String, tagDir: File, staging: File): InstallResult {
-        val folderName = sanitizeFsName(game.name)
+        val folderName = sanitizeFsName(game.fsName)
         val topLevel = staging.listFiles { f: File -> f.isFile }.orEmpty().sortedBy { it.name.lowercase() }
         val single = topLevel.singleOrNull()
         val launchName = when {
