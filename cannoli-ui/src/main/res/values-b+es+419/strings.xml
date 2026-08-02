@@ -152,6 +152,7 @@
     <!-- Setting: maps each platform to an emulator/core. -->
     <!-- The core is not bundled with the app. -->
     <!-- %d = number of required BIOS files missing. -->
+    <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
     <!-- Screen title. %s = platform name. -->
     <!-- Screen title. %s = platform name. -->
     <!-- OSD toast. %1$s = core name. -->
