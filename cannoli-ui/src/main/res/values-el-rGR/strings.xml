@@ -658,6 +658,7 @@
     <string name="mapping_action_reset">Επαναφορά προεπιλογών</string>
     <!-- %d = number of required BIOS files missing. -->
     <string name="mapping_required_missing">Λείπει το %d</string>
+    <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">Αντιστοίχιση %s</string>
     <!-- Screen title. %s = platform name. -->
