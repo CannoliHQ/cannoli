@@ -108,6 +108,94 @@ class EmulatorIntentBuilderTest {
         assertEquals(listOf("-r", "PCSE00065"), extra.values)
     }
 
+    private fun gameNative(): AppConfig = AppConfig(
+        packageName = "app.gamenative",
+        activity = "app.gamenative.MainActivity",
+        action = "app.gamenative.LAUNCH_GAME",
+        extras = listOf(
+            ExtraSpec("app_id", ExtraValueKind.INT, value = "{rom_contents}"),
+            ExtraSpec(
+                "game_source", ExtraValueKind.STRING, value = "{rom_extension}",
+                map = mapOf("steam" to "STEAM", "epic" to "EPIC", "pcgame" to "CUSTOM_GAME"),
+            ),
+        ),
+    )
+
+    @Test fun `int extra reads the app id from the file contents`() {
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val romFile = tmp.newFile("Hades.steam").apply { writeText("1145360") }
+        val resolved = EmulatorIntentBuilder.resolve(ctx, gameNative(), romFile)
+
+        val appId = resolved.extras[0] as ResolvedExtra.IntExtra
+        assertEquals("app_id", appId.key)
+        assertEquals(1145360, appId.value)
+    }
+
+    @Test fun `string extra maps the file extension to a game source`() {
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val romFile = tmp.newFile("Control.epic").apply { writeText("1234567\n") }
+        val resolved = EmulatorIntentBuilder.resolve(ctx, gameNative(), romFile)
+
+        val source = resolved.extras[1] as ResolvedExtra.StringExtra
+        assertEquals("game_source", source.key)
+        assertEquals("EPIC", source.value)
+    }
+
+    @Test fun `custom game extension maps to CUSTOM_GAME`() {
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val romFile = tmp.newFile("My Mod Setup.pcgame").apply { writeText("42") }
+        val resolved = EmulatorIntentBuilder.resolve(ctx, gameNative(), romFile)
+
+        assertEquals("CUSTOM_GAME", (resolved.extras[1] as ResolvedExtra.StringExtra).value)
+    }
+
+    @Test fun `unmapped extension drops the extra instead of sending a blank one`() {
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val romFile = tmp.newFile("Mystery.itch").apply { writeText("99") }
+        val resolved = EmulatorIntentBuilder.resolve(ctx, gameNative(), romFile)
+
+        assertEquals(1, resolved.extras.size)
+        assertEquals(99, (resolved.extras[0] as ResolvedExtra.IntExtra).value)
+    }
+
+    @Test fun `gamenative intent carries app_id as an int extra`() {
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val romFile = tmp.newFile("Hades.steam").apply { writeText("1145360") }
+        val cfg = gameNative()
+        val intent = EmulatorIntentBuilder.toAndroidIntent(
+            ctx, EmulatorIntentBuilder.resolve(ctx, cfg, romFile), cfg,
+        )
+
+        assertEquals("app.gamenative.LAUNCH_GAME", intent.action)
+        assertEquals(
+            ComponentName("app.gamenative", "app.gamenative.MainActivity"),
+            intent.component,
+        )
+        assertNull(intent.data)
+        assertEquals(1145360, intent.getIntExtra("app_id", -1))
+        assertEquals("STEAM", intent.getStringExtra("game_source"))
+    }
+
+    @Test fun `non numeric contents reject the launch`() {
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val romFile = tmp.newFile("Broken.steam").apply { writeText("not-an-id") }
+        try {
+            EmulatorIntentBuilder.resolve(ctx, gameNative(), romFile)
+            error("expected IllegalArgumentException")
+        } catch (_: IllegalArgumentException) {
+        }
+    }
+
+    @Test fun `empty file rejects the launch`() {
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val romFile = tmp.newFile("Empty.steam")
+        try {
+            EmulatorIntentBuilder.resolve(ctx, gameNative(), romFile)
+            error("expected IllegalArgumentException")
+        } catch (_: IllegalArgumentException) {
+        }
+    }
+
     @Test fun `custom scheme builds scheme URI with rom path`() {
         val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
         val romFile = rom()

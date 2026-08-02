@@ -89,6 +89,38 @@ class PlatformConfigParserTest {
         assertEquals(ExtraValueKind.FILE_URI_PARCELABLE, cfg.extras[0].kind)
     }
 
+    @Test fun `gamenative entry parses int and mapped string extras`() {
+        val cfg = parse("""
+            {
+              "package": "app.gamenative",
+              "activity": "app.gamenative.MainActivity",
+              "action": "app.gamenative.LAUNCH_GAME",
+              "extras": [
+                { "key": "app_id", "kind": "int", "value": "{rom_contents}" },
+                { "key": "game_source", "kind": "string", "value": "{rom_extension}",
+                  "map": { "steam": "STEAM", "pcgame": "CUSTOM_GAME" } }
+              ]
+            }
+        """.trimIndent())
+        assertEquals("app.gamenative.LAUNCH_GAME", cfg.action)
+        assertEquals(ExtraValueKind.INT, cfg.extras[0].kind)
+        assertEquals("{rom_contents}", cfg.extras[0].value)
+        assertNull(cfg.extras[0].map)
+        assertEquals(ExtraValueKind.STRING, cfg.extras[1].kind)
+        assertEquals("{rom_extension}", cfg.extras[1].value)
+        assertEquals(mapOf("steam" to "STEAM", "pcgame" to "CUSTOM_GAME"), cfg.extras[1].map)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `int extra without value throws`() {
+        parse("""{"package":"com.example","extras":[{"key":"app_id","kind":"int"}]}""")
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `string extra without value throws`() {
+        parse("""{"package":"com.example","extras":[{"key":"src","kind":"string"}]}""")
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun `unknown extra kind throws`() {
         parse("""{"package":"com.example","extras":[{"key":"k","kind":"weird"}]}""")

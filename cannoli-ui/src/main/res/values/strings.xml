@@ -469,6 +469,8 @@
     <string name="launch_error_resolve_file">Failed to resolve launch file</string>
     <string name="launch_error_extract">Failed to extract archive</string>
     <string name="launch_error_generic">Failed to launch game</string>
+    <!-- %1$s = file name. -->
+    <string name="launch_error_bad_game_file">Could not read a game ID from %1$s</string>
     <string name="launch_error_update_ricotta">Update RicottaArch to continue</string>
     <string name="launch_error_update_cannoli">Update Cannoli to continue</string>
     <!-- %1$s = core name, %2$s = emulator app. -->

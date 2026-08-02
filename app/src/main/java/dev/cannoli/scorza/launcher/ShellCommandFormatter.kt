@@ -16,6 +16,7 @@ data class ResolvedIntent(
 sealed class ResolvedExtra {
     abstract val key: String
     data class StringExtra(override val key: String, val value: String) : ResolvedExtra()
+    data class IntExtra(override val key: String, val value: Int) : ResolvedExtra()
     data class UriExtra(override val key: String, val value: Uri) : ResolvedExtra()
     data class StringArrayExtra(override val key: String, val values: List<String>) : ResolvedExtra()
 }
@@ -37,6 +38,7 @@ object ShellCommandFormatter {
             add("-f"); add(resolved.flagsHex)
             for (extra in resolved.extras) when (extra) {
                 is ResolvedExtra.StringExtra -> { add("--es"); add(extra.key); add(extra.value) }
+                is ResolvedExtra.IntExtra    -> { add("--ei"); add(extra.key); add(extra.value.toString()) }
                 is ResolvedExtra.UriExtra    -> { add("--eu"); add(extra.key); add(extra.value.toString()) }
                 is ResolvedExtra.StringArrayExtra -> {
                     add("--esa"); add(extra.key)
@@ -57,6 +59,7 @@ object ShellCommandFormatter {
                 add(e.key)
                 when (e) {
                     is ResolvedExtra.StringExtra -> add(e.value)
+                    is ResolvedExtra.IntExtra    -> add(e.value.toString())
                     is ResolvedExtra.UriExtra    -> add(e.value.toString())
                     is ResolvedExtra.StringArrayExtra -> addAll(e.values)
                 }

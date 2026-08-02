@@ -45,7 +45,14 @@ class ApkLauncher @Inject constructor(
             debugLog("  -> package not installed")
             return LaunchResult.AppNotInstalled(packageName)
         }
-        val resolved = EmulatorIntentBuilder.resolve(context, config, romFile)
+        val resolved = try {
+            EmulatorIntentBuilder.resolve(context, config, romFile)
+        } catch (e: IllegalArgumentException) {
+            debugLog("  -> extra resolution failed: ${e.message}")
+            return LaunchResult.Error(
+                context.getString(dev.cannoli.scorza.R.string.launch_error_bad_game_file, romFile.name)
+            )
+        }
         return when (config.launchMethod) {
             LaunchMethod.INTENT -> dispatchIntent(resolved, config, romFile, packageName)
             LaunchMethod.SHELL  -> shellLauncher.launch(ShellCommandFormatter.format(resolved))

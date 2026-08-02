@@ -124,6 +124,7 @@ class IntentAuditor @Inject constructor(
             when (e) {
                 is ResolvedExtra.UriExtra -> e.value.scheme == "content"
                 is ResolvedExtra.StringExtra -> e.value.startsWith("content://")
+                is ResolvedExtra.IntExtra -> false
                 is ResolvedExtra.StringArrayExtra -> e.values.any { it.startsWith("content://") }
             }
         }

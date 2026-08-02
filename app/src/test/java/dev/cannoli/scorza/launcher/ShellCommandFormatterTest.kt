@@ -116,6 +116,30 @@ class ShellCommandFormatterTest {
         )
     }
 
+    @Test fun `int extra uses --ei`() {
+        val resolved = ResolvedIntent(
+            component = ComponentName("app.gamenative", "app.gamenative.MainActivity"),
+            packageName = null,
+            action = "app.gamenative.LAUNCH_GAME",
+            dataUri = null,
+            mimeType = null,
+            flagsHex = "0x10000000",
+            extras = listOf(
+                ResolvedExtra.IntExtra("app_id", 1145360),
+                ResolvedExtra.StringExtra("game_source", "STEAM"),
+            )
+        )
+        assertEquals(
+            listOf("am", "start",
+                "-n", "app.gamenative/app.gamenative.MainActivity",
+                "-a", "app.gamenative.LAUNCH_GAME",
+                "-f", "0x10000000",
+                "--ei", "app_id", "1145360",
+                "--es", "game_source", "STEAM"),
+            ShellCommandFormatter.format(resolved)
+        )
+    }
+
     @Test fun `single quote in any value rejects with IllegalArgumentException`() {
         val resolved = ResolvedIntent(
             component = null,

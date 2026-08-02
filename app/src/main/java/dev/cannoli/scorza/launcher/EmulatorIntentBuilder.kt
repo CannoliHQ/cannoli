@@ -23,7 +23,7 @@ object EmulatorIntentBuilder {
             is DataBinding.CustomScheme -> Uri.parse("${d.scheme}://${d.authority}")
                 .buildUpon().appendPath(romFile.absolutePath).build()
         }
-        val resolvedExtras = config.extras.map { spec -> resolveExtra(context, spec, romFile) }
+        val resolvedExtras = config.extras.mapNotNull { spec -> resolveExtra(context, spec, romFile) }
         return ResolvedIntent(
             component = component,
             packageName = pkgOnly,
@@ -69,6 +69,7 @@ object EmulatorIntentBuilder {
                 context.grantUriPermission(config.packageName, extra.value, Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 if (clipDataUri == null) clipDataUri = extra.value
             }
+            is ResolvedExtra.IntExtra -> intent.putExtra(extra.key, extra.value)
             is ResolvedExtra.StringArrayExtra ->
                 intent.putExtra(extra.key, extra.values.toTypedArray())
         }
@@ -83,23 +84,50 @@ object EmulatorIntentBuilder {
         return intent
     }
 
-    private fun resolveExtra(context: Context, spec: ExtraSpec, romFile: File): ResolvedExtra = when (spec.kind) {
+    private fun resolveExtra(context: Context, spec: ExtraSpec, romFile: File): ResolvedExtra? = when (spec.kind) {
         ExtraValueKind.FILE_PATH ->
             ResolvedExtra.StringExtra(spec.key, romFile.absolutePath)
         ExtraValueKind.FILE_URI_STRING ->
             ResolvedExtra.StringExtra(spec.key, fileProviderUri(context, romFile).toString())
         ExtraValueKind.FILE_URI_PARCELABLE ->
             ResolvedExtra.UriExtra(spec.key, fileProviderUri(context, romFile))
-        ExtraValueKind.STRING_ARRAY -> {
-            val romContents by lazy {
-                romFile.readText().lineSequence().firstOrNull { it.isNotBlank() }?.trim().orEmpty()
-            }
-            val resolved = spec.values.orEmpty().map {
-                if (it == "{rom_contents}") romContents else it
-            }
-            ResolvedExtra.StringArrayExtra(spec.key, resolved)
+        ExtraValueKind.STRING_ARRAY ->
+            ResolvedExtra.StringArrayExtra(spec.key, spec.values.orEmpty().map { substitute(it, romFile) })
+        ExtraValueKind.STRING ->
+            resolveValue(spec, romFile)?.let { ResolvedExtra.StringExtra(spec.key, it) }
+        ExtraValueKind.INT -> {
+            val raw = resolveValue(spec, romFile)
+            val number = raw?.toIntOrNull() ?: throw IllegalArgumentException(
+                "ExtraSpec `${spec.key}`: expected an integer from ${romFile.name}, got `${raw.orEmpty()}`"
+            )
+            ResolvedExtra.IntExtra(spec.key, number)
         }
     }
+
+    // A value that resolves to nothing, or to a lookup the map has no entry for, drops the extra
+    // rather than sending a blank one. Receivers apply their own default for a missing extra.
+    private fun resolveValue(spec: ExtraSpec, romFile: File): String? {
+        val resolved = substitute(spec.value ?: return null, romFile)
+        if (resolved.isEmpty()) return null
+        val map = spec.map ?: return resolved
+        return map[resolved]
+    }
+
+    private fun substitute(template: String, romFile: File): String {
+        var out = template
+        if (out.contains(ROM_CONTENTS)) out = out.replace(ROM_CONTENTS, firstNonBlankLine(romFile))
+        if (out.contains(ROM_EXTENSION)) out = out.replace(ROM_EXTENSION, romFile.extension.lowercase())
+        return out
+    }
+
+    private fun firstNonBlankLine(romFile: File): String = try {
+        romFile.useLines { lines -> lines.firstOrNull { it.isNotBlank() }?.trim() }.orEmpty()
+    } catch (_: Exception) {
+        ""
+    }
+
+    private const val ROM_CONTENTS = "{rom_contents}"
+    private const val ROM_EXTENSION = "{rom_extension}"
 
     private fun fileProviderUri(context: Context, romFile: File): Uri =
         context.romFileProviderUri(romFile)
