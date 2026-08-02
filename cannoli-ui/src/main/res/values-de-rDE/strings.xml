@@ -667,6 +667,7 @@
     <string name="mapping_action_reset">Auf Standard zurücksetzen</string>
     <!-- %d = number of required BIOS files missing. -->
     <string name="mapping_required_missing">%d erforderlich</string>
+    <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">%s Zuordnung</string>
     <!-- Screen title. %s = platform name. -->
