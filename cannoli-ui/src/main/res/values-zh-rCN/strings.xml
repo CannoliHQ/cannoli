@@ -387,6 +387,7 @@
     <!-- Shown when a per-game override is deliberately set to empty. -->
     <string name="value_empty_override">(空覆盖)</string>
     <!-- Shown in place of an emulator name when a platform has no emulator mapped yet. -->
+    <string name="value_needs_setup">需要设置</string>
     <string name="emulator_platform_setting">平台设置</string>
     <!-- %1$s = the emulator name the platform is mapped to. -->
     <string name="emulator_platform_setting_named">平台设置 (%1$s)</string>
@@ -421,6 +422,7 @@
     <string name="launch_error_resolve_file">无法解析启动文件</string>
     <string name="launch_error_extract">提取归档失败</string>
     <string name="launch_error_generic">无法启动游戏</string>
+    <!-- %1$s = file name. -->
     <string name="launch_error_update_ricotta">更新 RicottaArch 以继续</string>
     <string name="launch_error_update_cannoli">更新 Cannoli 以继续</string>
     <!-- %1$s = core name, %2$s = emulator app. -->
