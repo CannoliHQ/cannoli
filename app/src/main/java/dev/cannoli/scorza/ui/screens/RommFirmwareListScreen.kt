@@ -26,9 +26,9 @@ import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.SectionedList
 import dev.cannoli.ui.components.footerReservation
-import dev.cannoli.ui.components.pillInternalH
+import dev.cannoli.ui.components.pillInternalPadding
 import dev.cannoli.ui.components.pillItemHeight
-import dev.cannoli.ui.components.screenPadding
+import dev.cannoli.ui.components.screenInsets
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliFont
 import dev.cannoli.ui.theme.Spacing
@@ -54,7 +54,7 @@ fun RommFirmwareListScreen(
     val muted = colors.text.copy(alpha = 0.45f)
 
     ScreenBackground(backgroundImagePath = backgroundImagePath, backgroundTint = backgroundTint) {
-        Box(modifier = Modifier.fillMaxSize().padding(screenPadding)) {
+        Box(modifier = Modifier.fillMaxSize().padding(screenInsets())) {
             Column(modifier = Modifier.fillMaxSize().padding(bottom = footerReservation())) {
                 ScreenTitle(
                     text = title,
@@ -68,21 +68,21 @@ fun RommFirmwareListScreen(
                         color = muted,
                         fontFamily = font,
                         fontSize = listFontSize,
-                        modifier = Modifier.padding(start = pillInternalH),
+                        modifier = Modifier.padding(start = pillInternalPadding()),
                     )
                     error -> Text(
                         text = stringResource(R.string.romm_firmware_error),
                         color = muted,
                         fontFamily = font,
                         fontSize = listFontSize,
-                        modifier = Modifier.padding(start = pillInternalH),
+                        modifier = Modifier.padding(start = pillInternalPadding()),
                     )
                     rows.isEmpty() -> Text(
                         text = stringResource(R.string.romm_firmware_empty),
                         color = muted,
                         fontFamily = font,
                         fontSize = listFontSize,
-                        modifier = Modifier.padding(start = pillInternalH),
+                        modifier = Modifier.padding(start = pillInternalPadding()),
                     )
                     else -> {
                         val sections = listOf(

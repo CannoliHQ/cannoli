@@ -20,7 +20,7 @@ import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.footerReservation
-import dev.cannoli.ui.components.screenPadding
+import dev.cannoli.ui.components.screenInsets
 import dev.cannoli.ui.theme.GrayText
 import dev.cannoli.ui.theme.LocalCannoliTypography
 import dev.cannoli.ui.theme.Spacing
@@ -32,7 +32,7 @@ fun BootErrorScreen(
 ) {
     val typo = LocalCannoliTypography.current
     ScreenBackground(backgroundImagePath = null) {
-        Box(modifier = Modifier.fillMaxSize().padding(screenPadding)) {
+        Box(modifier = Modifier.fillMaxSize().padding(screenInsets())) {
             Column(modifier = Modifier.fillMaxSize().padding(bottom = footerReservation())) {
                 ScreenTitle(text = stringResource(R.string.boot_error_title), fontSize = 22.sp, lineHeight = 32.sp)
                 Spacer(modifier = Modifier.height(Spacing.Md))

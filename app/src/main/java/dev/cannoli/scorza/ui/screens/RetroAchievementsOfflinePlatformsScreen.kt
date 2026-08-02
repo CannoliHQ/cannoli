@@ -26,7 +26,7 @@ import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.components.pillItemHeight
-import dev.cannoli.ui.components.screenPadding
+import dev.cannoli.ui.components.screenInsets
 import dev.cannoli.ui.theme.Spacing
 
 @Composable
@@ -43,7 +43,7 @@ fun RetroAchievementsOfflinePlatformsScreen(
 ) {
     val platforms = screen.platforms
     ScreenBackground(backgroundImagePath = backgroundImagePath, backgroundTint = backgroundTint) {
-        Box(modifier = modifier.fillMaxSize().padding(screenPadding)) {
+        Box(modifier = modifier.fillMaxSize().padding(screenInsets())) {
             Column(modifier = Modifier.fillMaxSize().padding(bottom = footerReservation())) {
                 ScreenTitle(
                     text = stringResource(dev.cannoli.ui.R.string.ra_offline_sets_title),

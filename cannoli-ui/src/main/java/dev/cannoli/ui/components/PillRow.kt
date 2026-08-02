@@ -8,6 +8,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
@@ -36,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliIconFont
+import dev.cannoli.ui.theme.LocalPillScale
 import dev.cannoli.ui.theme.LocalScaleFactor
 import dev.cannoli.ui.theme.Radius
 import kotlinx.coroutines.delay
@@ -43,12 +46,47 @@ import kotlinx.coroutines.delay
 val screenPadding = 20.dp
 val pillInternalH = 14.dp
 
+// Short handhelds (the 3.5" AYANEO Pocket Micro is ~320dp tall) spend over a third of the
+// screen on chrome, which costs a whole list row. Halve the vertical edge padding there.
+private const val CompactScreenHeightDp = 400
+
+@Composable
+fun screenInsets(): PaddingValues {
+    val compact = LocalConfiguration.current.screenHeightDp < CompactScreenHeightDp
+    return PaddingValues(
+        horizontal = screenPadding,
+        vertical = if (compact) screenPadding / 2 else screenPadding
+    )
+}
+
 @Composable
 fun footerReservation(): Dp = (48 * LocalScaleFactor.current).dp
 
+// Pill geometry is a pure function of the text size so every host derives the same rows.
+// It scales down from the reference size and never up, keeping small text at the reference
+// proportions instead of drowning it in fixed padding.
+const val PillReferenceTextSp = 24f
+private const val PillLineHeightExtraSp = 10f
+private const val PillVerticalPaddingDp = 6f
+private const val PillInsetDp = 2f
+
+fun pillScaleFor(textSizeSp: Int): Float = minOf(1f, textSizeSp / PillReferenceTextSp)
+
+fun pillLineHeightSp(textSizeSp: Int): Float =
+    textSizeSp + PillLineHeightExtraSp * pillScaleFor(textSizeSp)
+
+@Composable
+fun pillVerticalPadding(): Dp = (PillVerticalPaddingDp * LocalPillScale.current).dp
+
+@Composable
+private fun pillInset(): Dp = (PillInsetDp * LocalPillScale.current).dp
+
+@Composable
+fun pillInternalPadding(): Dp = pillInternalH * LocalPillScale.current
+
 @Composable
 fun pillItemHeight(lineHeight: TextUnit, verticalPadding: Dp): Dp {
-    return with(LocalDensity.current) { lineHeight.toDp() } + verticalPadding * 2 + 4.dp
+    return with(LocalDensity.current) { lineHeight.toDp() } + verticalPadding * 2 + pillInset() * 2
 }
 
 const val MarqueeInitialDelayMs = 800L
@@ -86,10 +124,10 @@ fun PillRow(
         Box(
             modifier = modifier
                 .then(heightMod)
-                .padding(vertical = 2.dp)
+                .padding(vertical = pillInset())
                 .clip(Radius.Pill)
                 .background(colors.highlight)
-                .padding(horizontal = pillInternalH, vertical = verticalPadding),
+                .padding(horizontal = pillInternalPadding(), vertical = verticalPadding),
             contentAlignment = Alignment.CenterStart
         ) {
             content()
@@ -98,8 +136,8 @@ fun PillRow(
         Box(
             modifier = modifier
                 .then(heightMod)
-                .padding(vertical = 2.dp)
-                .padding(horizontal = pillInternalH, vertical = verticalPadding),
+                .padding(vertical = pillInset())
+                .padding(horizontal = pillInternalPadding(), vertical = verticalPadding),
             contentAlignment = Alignment.CenterStart
         ) {
             content()

@@ -37,7 +37,7 @@ import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.components.pillItemHeight
-import dev.cannoli.ui.components.screenPadding
+import dev.cannoli.ui.components.screenInsets
 import dev.cannoli.ui.theme.Spacing
 
 private const val ICON_VARIANTS = "\uDB86\uDC92" // mdi-card-multiple-outline (U+F1892)
@@ -70,7 +70,7 @@ fun RommGameListScreen(
     val showArt = artWidth > 0 && games.isNotEmpty() && artType != dev.cannoli.scorza.romm.RommArtType.NONE
 
     ScreenBackground(backgroundImagePath = backgroundImagePath, backgroundTint = backgroundTint) {
-        Box(modifier = Modifier.fillMaxSize().padding(screenPadding)) {
+        Box(modifier = Modifier.fillMaxSize().padding(screenInsets())) {
             Column(modifier = Modifier.fillMaxSize().padding(bottom = footerReservation())) {
                 ScreenTitle(
                     text = if (search.isBlank()) title else "$title: “$search”",

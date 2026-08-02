@@ -84,10 +84,14 @@ import dev.cannoli.ui.components.RommCacheSyncStatus
 import dev.cannoli.ui.components.SectionHeader
 import dev.cannoli.ui.components.StatusBar
 import dev.cannoli.ui.components.pillItemHeight
-import dev.cannoli.ui.components.screenPadding
+import dev.cannoli.ui.components.pillLineHeightSp
+import dev.cannoli.ui.components.pillScaleFor
+import dev.cannoli.ui.components.pillVerticalPadding
+import dev.cannoli.ui.components.screenInsets
 import dev.cannoli.ui.theme.CannoliColors
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliFont
+import dev.cannoli.ui.theme.LocalPillScale
 import dev.cannoli.ui.theme.LocalCannoliTypography
 import dev.cannoli.ui.theme.LocalScaleFactor
 import dev.cannoli.ui.theme.Radius
@@ -474,9 +478,9 @@ fun AppNavGraph(
     val dialog by dialogState.collectAsState()
     val appSettings by settingsViewModel.appSettings.collectAsState()
 
+    val pillScale = pillScaleFor(appSettings.textSize.sp)
     val listFontSize = appSettings.textSize.sp.sp
-    val listLineHeight = (appSettings.textSize.sp + 10).sp
-    val listVerticalPadding = 6.dp
+    val listLineHeight = pillLineHeightSp(appSettings.textSize.sp).sp
 
     val labels = dev.cannoli.ui.ButtonStyle(
         activeMapping.labelSet(dev.cannoli.ui.ButtonLabelSet.PLUMBER),
@@ -503,7 +507,6 @@ fun AppNavGraph(
         statusBar = appSettings.colorStatusBar
     )
 
-    val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
     val statusBarLeftEdge = remember { mutableIntStateOf(Int.MAX_VALUE) }
 
     val scaleFactor = appSettings.textSize.sp / 22f
@@ -521,8 +524,12 @@ fun AppNavGraph(
         LocalStatusBarLeftEdge provides statusBarLeftEdge,
         LocalScaleFactor provides scaleFactor,
         LocalCannoliTypography provides cannoliTypography,
-        LocalViewportInsets provides viewportInsets
+        LocalViewportInsets provides viewportInsets,
+        LocalPillScale provides pillScale
     ) {
+    // Must resolve inside the provider so they match what PillRow actually renders.
+    val listVerticalPadding = pillVerticalPadding()
+    val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
     Box(modifier = Modifier.fillMaxSize().displayCutoutPadding().padding(effectiveViewportPadding())) {
     Box(modifier = Modifier.fillMaxSize()) {
         when (currentScreen) {
@@ -1892,7 +1899,7 @@ fun AppNavGraph(
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(screenPadding)
+                .padding(screenInsets())
                 .onGloballyPositioned { coords ->
                     statusBarLeftEdge.intValue = coords.positionInWindow().x.toInt()
                 }

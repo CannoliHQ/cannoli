@@ -30,7 +30,7 @@ import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.components.pillItemHeight
-import dev.cannoli.ui.components.screenPadding
+import dev.cannoli.ui.components.screenInsets
 import dev.cannoli.ui.theme.Spacing
 
 @Composable
@@ -54,7 +54,7 @@ fun RommPlatformListScreen(
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
     val totalItemCount = platforms.size + (if (showCollectionsRow) 1 else 0)
     ScreenBackground(backgroundImagePath = backgroundImagePath, backgroundTint = backgroundTint) {
-        Box(modifier = Modifier.fillMaxSize().padding(screenPadding)) {
+        Box(modifier = Modifier.fillMaxSize().padding(screenInsets())) {
             Column(modifier = Modifier.fillMaxSize().padding(bottom = footerReservation())) {
                 ScreenTitle(
                     text = stringResource(R.string.romm_browse_title),

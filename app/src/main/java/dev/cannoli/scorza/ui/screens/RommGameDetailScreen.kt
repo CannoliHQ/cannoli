@@ -40,8 +40,8 @@ import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.footerReservation
-import dev.cannoli.ui.components.pillInternalH
-import dev.cannoli.ui.components.screenPadding
+import dev.cannoli.ui.components.pillInternalPadding
+import dev.cannoli.ui.components.screenInsets
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliFont
 import dev.cannoli.ui.theme.Spacing
@@ -66,7 +66,7 @@ fun RommGameDetailScreen(
     buttonStyle: ButtonStyle = ButtonStyle(),
 ) {
     ScreenBackground(backgroundImagePath = null) {
-        BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(screenPadding)) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(screenInsets())) {
             val scale = RommGameDetailLayout.scaleFor(maxWidth.value, maxHeight.value)
             val coverW = maxWidth * 0.32f
 
@@ -93,7 +93,7 @@ fun RommGameDetailScreen(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
-                            .padding(start = pillInternalH)
+                            .padding(start = pillInternalPadding())
                             .verticalScroll(scrollState),
                     ) {
                         DetailBody(game, scale)
@@ -126,7 +126,7 @@ private fun Subtitle(platformName: String, localState: LocalState, scale: Float)
     val font = LocalCannoliFont.current
     val muted = colors.text.copy(alpha = 0.45f)
     val onDevice = localState == LocalState.PRESENT
-    Row(modifier = Modifier.padding(start = pillInternalH), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier = Modifier.padding(start = pillInternalPadding()), verticalAlignment = Alignment.CenterVertically) {
         Text(text = platformName, color = colors.text.copy(alpha = 0.6f), fontFamily = font, fontSize = (13 * scale).sp)
         Spacer(modifier = Modifier.width((12 * scale).dp))
         Box(

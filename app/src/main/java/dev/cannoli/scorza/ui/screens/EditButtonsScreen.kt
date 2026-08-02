@@ -39,7 +39,7 @@ import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.components.pillItemHeight
-import dev.cannoli.ui.components.screenPadding
+import dev.cannoli.ui.components.screenInsets
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.Radius
 import dev.cannoli.ui.theme.Spacing
@@ -73,7 +73,7 @@ fun EditButtonsScreen(
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .padding(screenPadding)
+                .padding(screenInsets())
         ) {
             if (mapping == null) {
                 Column(

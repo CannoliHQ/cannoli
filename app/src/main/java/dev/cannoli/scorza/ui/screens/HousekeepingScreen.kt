@@ -21,7 +21,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.cannoli.scorza.R
 import dev.cannoli.ui.components.CannoliProgressBar
-import dev.cannoli.ui.components.screenPadding
+import dev.cannoli.ui.components.screenInsets
 import dev.cannoli.ui.theme.GrayText
 import dev.cannoli.ui.theme.LocalCannoliTypography
 import dev.cannoli.ui.theme.Spacing
@@ -44,7 +44,7 @@ fun HousekeepingScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .padding(screenPadding),
+            .padding(screenInsets()),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {

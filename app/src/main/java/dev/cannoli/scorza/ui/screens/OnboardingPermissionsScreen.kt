@@ -33,7 +33,7 @@ import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.DPAD_HORIZONTAL
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.footerReservation
-import dev.cannoli.ui.components.screenPadding
+import dev.cannoli.ui.components.screenInsets
 import dev.cannoli.ui.theme.CannoliTypography
 import dev.cannoli.ui.theme.GrayText
 import dev.cannoli.ui.theme.LocalCannoliColors
@@ -71,7 +71,7 @@ fun OnboardingPermissionsScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .padding(screenPadding)
+            .padding(screenInsets())
     ) {
         Column(
             modifier = Modifier

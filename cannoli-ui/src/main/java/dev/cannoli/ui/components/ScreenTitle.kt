@@ -73,10 +73,11 @@ private fun TitleText(
     MarqueeEffect(scrollState, active = true, key = text)
 
     val scaledFontSizeSp = fontSize.value * 1.3f
+    val internalPadding = pillInternalPadding()
 
     BoxWithConstraints(modifier = modifier) {
         val containerWidthPx = with(density) { maxWidth.toPx() }
-        val paddingPx = with(density) { (screenPadding + pillInternalH).toPx() }
+        val paddingPx = with(density) { (screenPadding + internalPadding).toPx() }
         val gapPx = with(density) { 16.dp.toPx() }
         val availableWidthPx = if (statusBarLeftPx < Int.MAX_VALUE) {
             (statusBarLeftPx - paddingPx - gapPx).coerceAtLeast(0f)
@@ -107,7 +108,7 @@ private fun TitleText(
             maxLines = 1,
             softWrap = false,
             modifier = Modifier
-                .padding(start = pillInternalH)
+                .padding(start = internalPadding)
                 .then(
                     if (statusBarLeftPx < Int.MAX_VALUE) Modifier.widthIn(max = availableWidthDp)
                     else Modifier
