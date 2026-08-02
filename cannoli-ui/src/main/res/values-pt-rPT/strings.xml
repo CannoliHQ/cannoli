@@ -388,6 +388,7 @@
     <!-- Shown when a per-game override is deliberately set to empty. -->
     <string name="value_empty_override">(substituição vazia)</string>
     <!-- Shown in place of an emulator name when a platform has no emulator mapped yet. -->
+    <string name="value_needs_setup">Precisa de configuração</string>
     <string name="emulator_platform_setting">Definição da Plataforma</string>
     <!-- %1$s = the emulator name the platform is mapped to. -->
     <string name="emulator_platform_setting_named">Definição da Plataforma (%1$s)</string>
@@ -422,6 +423,7 @@
     <string name="launch_error_resolve_file">Falha ao resolver o ficheiro de arranque</string>
     <string name="launch_error_extract">Falha ao extrair o arquivo</string>
     <string name="launch_error_generic">Falha ao iniciar o jogo</string>
+    <!-- %1$s = file name. -->
     <string name="launch_error_update_ricotta">Atualize o RicottaArch para continuar</string>
     <string name="launch_error_update_cannoli">Atualize o Cannoli para continuar</string>
     <!-- %1$s = core name, %2$s = emulator app. -->
