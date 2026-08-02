@@ -2,6 +2,7 @@ package dev.cannoli.scorza.input.runtime
 
 import dev.cannoli.scorza.input.autoconfig.RetroArchCfgEntry
 import dev.cannoli.scorza.input.repo.MappingRepository
+import dev.cannoli.scorza.input.resolver.DevKeyboardMapping
 import dev.cannoli.scorza.input.resolver.MappingResolver
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -55,18 +56,53 @@ class ControllerBridgeTest {
         )
     }
 
+    private val keyboardFacts = ControllerBridge.DeviceFacts(
+        androidDeviceId = 4,
+        descriptor = "kbd-1",
+        name = "AVD Keyboard",
+        vendorId = 0,
+        productId = 0,
+        sourceMask = android.view.InputDevice.SOURCE_KEYBOARD,
+        keyboardType = android.view.InputDevice.KEYBOARD_TYPE_ALPHABETIC,
+    )
+
+    // AVDs enumerate this alongside the host keyboard. It is what `adb shell input` injects under,
+    // and its id is negative because Android marks virtual devices with id < 0.
+    private val virtualKeyboardFacts = ControllerBridge.DeviceFacts(
+        androidDeviceId = ControllerBridge.VIRTUAL_KEYBOARD_ID,
+        descriptor = "a718a782d34bc767f4689c232d64d527998ea7fd",
+        name = "Virtual",
+        vendorId = 0,
+        productId = 0,
+        sourceMask = android.view.InputDevice.SOURCE_KEYBOARD,
+        keyboardType = android.view.InputDevice.KEYBOARD_TYPE_ALPHABETIC,
+    )
+
+    // The AVD's host keyboard, which really does land on device id 0.
+    private val hostKeyboardFacts = ControllerBridge.DeviceFacts(
+        androidDeviceId = 0,
+        descriptor = "qwerty2-desc",
+        name = "qwerty2",
+        vendorId = 0,
+        productId = 0,
+        sourceMask = android.view.InputDevice.SOURCE_KEYBOARD or android.view.InputDevice.SOURCE_DPAD,
+        keyboardType = android.view.InputDevice.KEYBOARD_TYPE_ALPHABETIC,
+    )
+
     private fun makeBridge(
         resolver: MappingResolver = makeResolver(),
         portRouter: PortRouter = PortRouter(),
         activeMappingHolder: ActiveMappingHolder = ActiveMappingHolder(),
         clock: () -> Long = { 1_000L },
         buildModel: String = "Pixel",
+        devKeyboardEnabled: Boolean = false,
     ): ControllerBridge = ControllerBridge(
         resolver = resolver,
         portRouter = portRouter,
         activeMappingHolder = activeMappingHolder,
         clock = clock,
         buildModel = buildModel,
+        devKeyboardEnabled = devKeyboardEnabled,
     )
 
     @Test
@@ -419,5 +455,179 @@ class ControllerBridgeTest {
         // Siblings of pad B route to pad B's gamepad.
         assertEquals(1, portRouter.portFor(13))
         assertEquals(1, portRouter.portFor(14))
+    }
+
+    @Test
+    fun dev_keyboard_disabled_leaves_keyboard_unenrolled() {
+        val portRouter = PortRouter()
+        val bridge = makeBridge(portRouter = portRouter, devKeyboardEnabled = false)
+
+        bridge.settleSyncForTest(listOf(keyboardFacts))
+
+        assertNull(portRouter.mappingFor(keyboardFacts.androidDeviceId))
+        assertNull(portRouter.mappingFor(ControllerBridge.VIRTUAL_KEYBOARD_ID))
+    }
+
+    @Test
+    fun dev_keyboard_enabled_enrolls_keyboard_with_keyboard_bindings() {
+        val portRouter = PortRouter()
+        val bridge = makeBridge(portRouter = portRouter, devKeyboardEnabled = true)
+
+        bridge.settleSyncForTest(listOf(keyboardFacts))
+
+        val mapping = portRouter.mappingFor(keyboardFacts.androidDeviceId)
+        assertNotNull(mapping)
+        assertEquals(DevKeyboardMapping.ID, mapping?.id)
+        // Enter, not the AndroidDefault BTN_A keycode 96, proves the resolver was bypassed.
+        assertEquals(
+            listOf(dev.cannoli.scorza.input.InputBinding.Button(android.view.KeyEvent.KEYCODE_ENTER)),
+            mapping?.bindings?.get(dev.cannoli.scorza.input.CanonicalButton.BTN_SOUTH)?.take(1),
+        )
+    }
+
+    @Test
+    fun dev_keyboard_mapping_is_never_persisted() {
+        val repo = MappingRepository(tempFolder.root)
+        val portRouter = PortRouter()
+        val bridge = ControllerBridge(
+            resolver = makeResolver(),
+            portRouter = portRouter,
+            activeMappingHolder = ActiveMappingHolder(),
+            mappingRepository = repo,
+            clock = { 1_000L },
+            buildModel = "Pixel",
+            devKeyboardEnabled = true,
+        )
+
+        bridge.settleSyncForTest(listOf(keyboardFacts))
+        portRouter.activate(keyboardFacts.androidDeviceId, 1_000L)
+
+        assertTrue(repo.list().none { it.id == DevKeyboardMapping.ID })
+    }
+
+    @Test
+    fun adb_injected_virtual_keyboard_aliases_onto_the_dev_keyboard() {
+        val portRouter = PortRouter()
+        val bridge = makeBridge(portRouter = portRouter, devKeyboardEnabled = true)
+
+        bridge.settleSyncForTest(listOf(keyboardFacts))
+
+        // Events injected by `adb shell input` arrive under VIRTUAL_KEYBOARD_ID and must resolve
+        // to the same evaluator and mapping as the physical keyboard.
+        assertEquals(
+            DevKeyboardMapping.ID,
+            portRouter.mappingFor(ControllerBridge.VIRTUAL_KEYBOARD_ID)?.id,
+        )
+        assertNotNull(portRouter.evaluatorFor(ControllerBridge.VIRTUAL_KEYBOARD_ID))
+        assertTrue(
+            portRouter.aliasesFor(keyboardFacts.androidDeviceId)
+                .contains(ControllerBridge.VIRTUAL_KEYBOARD_ID)
+        )
+    }
+
+    @Test
+    fun dev_keyboard_falls_back_to_virtual_device_when_no_keyboard_is_attached() {
+        val portRouter = PortRouter()
+        val bridge = makeBridge(portRouter = portRouter, devKeyboardEnabled = true)
+
+        bridge.settleSyncForTest(listOf(mouseFacts))
+
+        assertEquals(
+            DevKeyboardMapping.ID,
+            portRouter.mappingFor(ControllerBridge.VIRTUAL_KEYBOARD_ID)?.id,
+        )
+    }
+
+    @Test
+    fun dev_keyboard_lowest_id_wins_when_several_keyboards_are_attached() {
+        val portRouter = PortRouter()
+        val bridge = makeBridge(portRouter = portRouter, devKeyboardEnabled = true)
+        val second = keyboardFacts.copy(androidDeviceId = 9, descriptor = "kbd-2", name = "Other Keys")
+
+        bridge.settleSyncForTest(listOf(second, keyboardFacts))
+
+        assertEquals(DevKeyboardMapping.ID, portRouter.mappingFor(4)?.id)
+        assertNull(portRouter.mappingFor(9))
+    }
+
+    @Test
+    fun dev_keyboard_prefers_the_host_keyboard_over_the_virtual_endpoint() {
+        val portRouter = PortRouter()
+        val bridge = makeBridge(portRouter = portRouter, devKeyboardEnabled = true)
+
+        // Both enumerate on a real AVD. Selecting the numerically lowest id picked 'Virtual' at
+        // -1, leaving everything typed on the host keyboard unrouted.
+        bridge.settleSyncForTest(listOf(virtualKeyboardFacts, hostKeyboardFacts))
+
+        assertEquals(DevKeyboardMapping.ID, portRouter.mappingFor(0)?.id)
+        assertTrue(
+            portRouter.aliasesFor(0).contains(ControllerBridge.VIRTUAL_KEYBOARD_ID)
+        )
+        // Both paths must reach the same evaluator: host typing and `adb shell input`.
+        assertEquals(
+            DevKeyboardMapping.ID,
+            portRouter.mappingFor(ControllerBridge.VIRTUAL_KEYBOARD_ID)?.id,
+        )
+    }
+
+    @Test
+    fun is_dev_keyboard_device_is_true_only_for_the_enrolled_keyboard_and_its_alias() {
+        val portRouter = PortRouter()
+        val bridge = makeBridge(portRouter = portRouter, devKeyboardEnabled = true)
+
+        bridge.settleSyncForTest(listOf(hostKeyboardFacts, stadiaFacts))
+
+        assertTrue(bridge.isDevKeyboardDevice(hostKeyboardFacts.androidDeviceId))
+        assertTrue(bridge.isDevKeyboardDevice(ControllerBridge.VIRTUAL_KEYBOARD_ID))
+        assertFalse(bridge.isDevKeyboardDevice(stadiaFacts.androidDeviceId))
+    }
+
+    @Test
+    fun unenrolled_keyboard_sourced_device_is_not_a_dev_keyboard_device() {
+        val portRouter = PortRouter()
+        val bridge = makeBridge(portRouter = portRouter, devKeyboardEnabled = true)
+
+        // A handheld's GPIO menu button is keyboard-sourced but non-alphabetic, so the bridge
+        // never enrolls it. MainActivity's BACK shim keys off this, and must keep treating it as
+        // an ordinary device even while the feature is switched on.
+        val gpioMenuButton = ControllerBridge.DeviceFacts(
+            androidDeviceId = 7,
+            descriptor = "gpio-keys-desc",
+            name = "gpio-keys",
+            vendorId = 0,
+            productId = 0,
+            sourceMask = android.view.InputDevice.SOURCE_KEYBOARD,
+            keyboardType = android.view.InputDevice.KEYBOARD_TYPE_NON_ALPHABETIC,
+        )
+        bridge.settleSyncForTest(listOf(gpioMenuButton))
+
+        assertFalse(bridge.isDevKeyboardDevice(7))
+    }
+
+    @Test
+    fun is_dev_keyboard_device_is_false_when_the_feature_is_off() {
+        val portRouter = PortRouter()
+        val bridge = makeBridge(portRouter = portRouter, devKeyboardEnabled = false)
+
+        bridge.settleSyncForTest(listOf(hostKeyboardFacts))
+
+        assertFalse(bridge.isDevKeyboardDevice(hostKeyboardFacts.androidDeviceId))
+        assertFalse(bridge.isDevKeyboardDevice(ControllerBridge.VIRTUAL_KEYBOARD_ID))
+    }
+
+    @Test
+    fun gamepad_advertising_keyboard_source_keeps_its_resolved_mapping() {
+        val portRouter = PortRouter()
+        val bridge = makeBridge(portRouter = portRouter, devKeyboardEnabled = true)
+        val padWithKeyboardSource = stadiaFacts.copy(
+            sourceMask = ControllerBridge.SOURCE_GAMEPAD or android.view.InputDevice.SOURCE_KEYBOARD,
+            keyboardType = android.view.InputDevice.KEYBOARD_TYPE_ALPHABETIC,
+        )
+
+        bridge.settleSyncForTest(listOf(padWithKeyboardSource))
+
+        val mapping = portRouter.mappingFor(stadiaFacts.androidDeviceId)
+        assertNotNull(mapping)
+        assertFalse(DevKeyboardMapping.ID == mapping?.id)
     }
 }

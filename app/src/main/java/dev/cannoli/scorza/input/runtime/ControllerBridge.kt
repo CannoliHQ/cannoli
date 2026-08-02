@@ -10,6 +10,7 @@ import androidx.annotation.VisibleForTesting
 import dev.cannoli.scorza.input.CanonicalButton
 import dev.cannoli.scorza.input.ConnectedDevice
 import dev.cannoli.scorza.input.hints.ControllerHintTable
+import dev.cannoli.scorza.input.resolver.DevKeyboardMapping
 import dev.cannoli.scorza.input.resolver.MappingResolver
 
 class ControllerBridge(
@@ -22,6 +23,12 @@ class ControllerBridge(
     private val hints: ControllerHintTable? = null,
     private val clock: () -> Long = { System.currentTimeMillis() },
     private val buildModel: String = Build.MODEL ?: "",
+    /**
+     * Enrolls an attached keyboard as a synthetic controller so the launcher and IGM can be driven
+     * from an Android Virtual Device with no gamepad attached. Debug + AVD only; see the wiring in
+     * ControllerBindingsModule. Off here by default so release behaviour cannot change.
+     */
+    val devKeyboardEnabled: Boolean = false,
 ) {
 
     data class DeviceFacts(
@@ -32,6 +39,7 @@ class ControllerBridge(
         val productId: Int,
         val sourceMask: Int,
         val isExternal: Boolean = true,
+        val keyboardType: Int = InputDevice.KEYBOARD_TYPE_NONE,
     )
 
     private var listener: InputManager.InputDeviceListener? = null
@@ -112,6 +120,17 @@ class ControllerBridge(
     @VisibleForTesting
     fun handleActivationForTest(device: ConnectedDevice) = handleActivation(device)
 
+    /**
+     * True only for events from the keyboard actually enrolled as the dev controller (or its
+     * `adb shell input` alias). Callers that special-case keyboard-sourced events must ask this
+     * rather than reading [devKeyboardEnabled], so a device the bridge never enrolled -- a
+     * handheld's GPIO menu button, say -- keeps its normal handling even if the AVD gate is
+     * somehow wrong about the host.
+     */
+    fun isDevKeyboardDevice(androidDeviceId: Int): Boolean =
+        devKeyboardEnabled &&
+            portRouter.mappingFor(androidDeviceId)?.id == DevKeyboardMapping.ID
+
     fun markLaunchTrigger(androidDeviceId: Int) {
         portRouter.markLaunchTrigger(androidDeviceId)
     }
@@ -159,14 +178,23 @@ class ControllerBridge(
     private fun settle(forcedFacts: List<DeviceFacts>? = null) {
         dev.cannoli.scorza.util.InputLog.write("--- settle ---")
 
-        val factsList = forcedFacts ?: enumerateFacts()
+        val enumerated = forcedFacts ?: enumerateFacts()
+        val devKeyboard = devKeyboardFacts(enumerated)
+        // The virtual keyboard that `adb shell input` injects under is never returned by
+        // InputDevice.getDeviceIds(), so on a headless AVD it has to be appended by hand.
+        val factsList = if (devKeyboard != null && enumerated.none { it.androidDeviceId == devKeyboard.androidDeviceId }) {
+            enumerated + devKeyboard
+        } else {
+            enumerated
+        }
+        val devKeyboardId = devKeyboard?.androidDeviceId
 
         // Build the sibling-folding candidate set from ALL InputDevices, not just gamepads, so the
         // auxiliary endpoints (touchpad/IMU/keyboard/mouse) can contribute their MAC-bearing
         // descriptors when the gamepad's own is degenerate.
         val candidates = mutableListOf<SiblingFolder.Candidate>()
         for (facts in factsList) {
-            val gamepad = isGamepad(facts)
+            val gamepad = isGamepad(facts) || facts.androidDeviceId == devKeyboardId
             if (gamepad && blacklist?.isBlocked(facts.name, facts.vendorId) == true) {
                 dev.cannoli.scorza.util.InputLog.write(
                     "  blacklisted id=${facts.androidDeviceId} name='${facts.name}' vid=${facts.vendorId}"
@@ -221,6 +249,13 @@ class ControllerBridge(
             }
         }
 
+        // `adb shell input keyevent` injects under KeyCharacterMap.VIRTUAL_KEYBOARD, a device that
+        // never enumerates. Aliasing it onto the dev keyboard's entry lets injected keys resolve
+        // through the same evaluator and port instead of needing a second synthetic controller.
+        if (devKeyboardId != null && devKeyboardId != VIRTUAL_KEYBOARD_ID) {
+            targetAliases[VIRTUAL_KEYBOARD_ID] = devKeyboardId
+        }
+
         val existingEntryIds = portRouter.snapshotEntries().map { it.androidDeviceId }.toSet()
         val targetEntryIds = targetEntries.keys
 
@@ -241,6 +276,16 @@ class ControllerBridge(
 
         for (id in targetEntryIds - existingEntryIds) {
             val connected = targetEntries.getValue(id)
+            // Bypass the resolver entirely: its fallback tier hands out AndroidDefaultMappingFactory
+            // gamepad keycodes, which a keyboard can never produce. persistent=false by
+            // construction, and no pendingSaves entry, so this never reaches the MappingRepository.
+            if (id == devKeyboardId) {
+                portRouter.onConnect(connected, DevKeyboardMapping.create(connected))
+                dev.cannoli.scorza.util.InputLog.write(
+                    "  enrolled dev keyboard id=$id name='${connected.name}'"
+                )
+                continue
+            }
             val persistenceDescriptor = clusterDescriptors[id]
             val resolved = resolver.resolve(connected, persistenceDescriptor)
             val hintApplied = applyHintFromOriginalIdentity(resolved.mapping, connected)
@@ -344,6 +389,34 @@ class ControllerBridge(
             (sources and SOURCE_JOYSTICK) == SOURCE_JOYSTICK
     }
 
+    // Alphabetic-only: it excludes the DPAD-and-buttons-only virtual devices an AVD also exposes,
+    // so we bind the host keyboard rather than a system endpoint. Gamepads are excluded outright
+    // because pads commonly advertise SOURCE_KEYBOARD too, and they must keep their real mapping.
+    private fun isDevKeyboard(facts: DeviceFacts): Boolean =
+        (facts.sourceMask and InputDevice.SOURCE_KEYBOARD) == InputDevice.SOURCE_KEYBOARD &&
+            facts.keyboardType == InputDevice.KEYBOARD_TYPE_ALPHABETIC &&
+            !isGamepad(facts)
+
+    /**
+     * The single keyboard to enroll as the dev controller, or null when the feature is off.
+     *
+     * An AVD enumerates two alphabetic keyboards: the host keyboard the user types on (a real
+     * device, id >= 0) and 'Virtual' (id -1), the endpoint `adb shell input` injects under.
+     * Physical devices are preferred because only they carry real keystrokes; the virtual id is
+     * then aliased onto the winner so both paths drive the same controller. Among real keyboards
+     * the lowest id wins, so several attached keyboards cannot produce competing controllers.
+     *
+     * Falls back to a synthesized virtual entry when nothing enumerates at all, so `adb shell
+     * input` still drives the UI on a headless AVD.
+     */
+    private fun devKeyboardFacts(enumerated: List<DeviceFacts>): DeviceFacts? {
+        if (!devKeyboardEnabled) return null
+        val keyboards = enumerated.filter { isDevKeyboard(it) }
+        return keyboards.filter { it.androidDeviceId >= 0 }.minByOrNull { it.androidDeviceId }
+            ?: keyboards.minByOrNull { it.androidDeviceId }
+            ?: VIRTUAL_KEYBOARD_FACTS
+    }
+
     private fun InputDevice.toFacts(): DeviceFacts = DeviceFacts(
         androidDeviceId = id,
         descriptor = descriptor,
@@ -352,11 +425,26 @@ class ControllerBridge(
         productId = productId,
         sourceMask = sources,
         isExternal = isExternalCompat(),
+        keyboardType = keyboardType,
     )
 
     companion object {
         const val SOURCE_GAMEPAD: Int = InputDevice.SOURCE_GAMEPAD
         const val SOURCE_JOYSTICK: Int = InputDevice.SOURCE_JOYSTICK
         private const val SETTLE_DELAY_MS = 500L
+
+        const val VIRTUAL_KEYBOARD_ID: Int = android.view.KeyCharacterMap.VIRTUAL_KEYBOARD
+
+        @VisibleForTesting
+        val VIRTUAL_KEYBOARD_FACTS = DeviceFacts(
+            androidDeviceId = VIRTUAL_KEYBOARD_ID,
+            descriptor = "dev_keyboard_virtual",
+            name = DevKeyboardMapping.DISPLAY_NAME,
+            vendorId = 0,
+            productId = 0,
+            sourceMask = InputDevice.SOURCE_KEYBOARD,
+            isExternal = false,
+            keyboardType = InputDevice.KEYBOARD_TYPE_ALPHABETIC,
+        )
     }
 }

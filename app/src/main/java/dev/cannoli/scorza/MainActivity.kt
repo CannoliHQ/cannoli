@@ -508,7 +508,12 @@ class MainActivity : ComponentActivity(), ActivityActions {
             editButtonsController.captureRawKeyEvent(event.keyCode)
             return true
         }
-        if (!AndroidGamepadKeyNames.isGamepadEvent(event)) {
+        // The dev keyboard binds BACK to its own back button and needs it to reach the normal
+        // pipeline, so the GPIO menu-button shim below is skipped for that device only. Scoped to
+        // the event's own device rather than the feature flag: a GPIO menu button is not an
+        // enrolled keyboard, so it keeps the shim even if the AVD gate misjudges the host.
+        if (!AndroidGamepadKeyNames.isGamepadEvent(event) &&
+            !controllerBridge.isDevKeyboardDevice(event.deviceId)) {
             when (event.keyCode) {
                 KeyEvent.KEYCODE_BACK -> {
                     val currentScreenForKey = nav.currentScreen

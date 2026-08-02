@@ -85,5 +85,7 @@ object ControllerBindingsModule {
         blacklist = blacklist,
         bundledCfgs = bundled,
         hints = hints,
+        devKeyboardEnabled = dev.cannoli.scorza.BuildConfig.DEBUG &&
+            dev.cannoli.scorza.util.DeviceType.isAvd(),
     )
 }
