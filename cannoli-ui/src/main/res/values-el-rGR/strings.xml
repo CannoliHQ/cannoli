@@ -384,6 +384,7 @@
     <!-- Shown when a per-game override is deliberately set to empty. -->
     <string name="value_empty_override">(άδεια παράκαμψη)</string>
     <!-- Shown in place of an emulator name when a platform has no emulator mapped yet. -->
+    <string name="value_needs_setup">Χρειάζεται ρύθμιση</string>
     <string name="emulator_platform_setting">Ρύθμιση Πλατφόρμας</string>
     <!-- %1$s = the emulator name the platform is mapped to. -->
     <string name="emulator_platform_setting_named">Ρύθμιση Πλατφόρμας (%1$s)</string>
@@ -418,6 +419,7 @@
     <string name="launch_error_resolve_file">Αποτυχία επίλυσης του αρχείου εκκίνησης</string>
     <string name="launch_error_extract">Αποτυχία εξαγωγής συμπιεσμένου αρχείου</string>
     <string name="launch_error_generic">Αποτυχία εκκίνησης παιχνιδιού</string>
+    <!-- %1$s = file name. -->
     <string name="launch_error_update_ricotta">Ενημέρωση του RicottaArch για να συνεχίσετε</string>
     <string name="launch_error_update_cannoli">Ενημερώστε το Cannoli για να συνεχίσετε</string>
     <!-- %1$s = core name, %2$s = emulator app. -->
