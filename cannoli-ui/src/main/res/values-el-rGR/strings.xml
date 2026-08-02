@@ -383,8 +383,9 @@
     <string name="dialog_delete_confirm">Διαγραφή \"%1$s\"?</string>
     <!-- Shown when a per-game override is deliberately set to empty. -->
     <string name="value_empty_override">(άδεια παράκαμψη)</string>
+    <!-- Shown in place of an emulator name when a platform has no emulator mapped yet. -->
     <string name="emulator_platform_setting">Ρύθμιση Πλατφόρμας</string>
-    <!-- %1$s = platform name. -->
+    <!-- %1$s = the emulator name the platform is mapped to. -->
     <string name="emulator_platform_setting_named">Ρύθμιση Πλατφόρμας (%1$s)</string>
     <string name="rename_error_directory">Αποτυχία μετονομασίας καταλόγου</string>
     <string name="rename_error_generic">Η μετονομασία απέτυχε</string>
@@ -496,6 +497,7 @@
     <!-- Quick menu -->
     <string name="quick_menu_title">Γρήγορο Μενού</string>
     <string name="quick_menu_romm">Περιήγηση Σε Romm</string>
+    <string name="quick_menu_download_queue">Αναμονή Λήψης</string>
     <string name="quick_menu_rescan">Επανασάρωση Βιβλιοθήκης</string>
     <string name="quick_menu_info">Πληροφορίες Δικτύου</string>
     <string name="quick_menu_sync_history">Αποθήκευση Ιστορικού Συγχρονισμού</string>
