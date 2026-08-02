@@ -30,11 +30,15 @@ data class ColorEntry(val key: String, @androidx.annotation.StringRes val labelR
 
 sealed interface DialogState {
     data object None : DialogState
+    // gamePath is set only when the emulator that failed came from a per-game override, so
+    // recovery edits the mapping that actually failed instead of the platform-wide one.
     data class MissingCore(
         val coreName: String,
         val packageLabel: String? = null,
+        val platformTag: String? = null,
+        val gamePath: String? = null,
     ) : DialogState
-    data class MissingApp(val appName: String, val packageName: String, val platformTag: String? = null) : DialogState
+    data class MissingApp(val appName: String, val packageName: String, val platformTag: String? = null, val gamePath: String? = null) : DialogState
     data class LaunchError(val message: String) : DialogState
     data class ContextMenu(val gameName: String, val selectedOption: Int = 0, val options: List<String>) : DialogState
     data class BulkContextMenu(val gamePaths: List<String>, val selectedOption: Int = 0, val options: List<String>) : DialogState

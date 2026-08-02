@@ -519,10 +519,10 @@ class DialogInputHandler @Inject constructor(
                         }
                     }
                 } else {
-                    val tag = ds.platformTag
-                    if (tag != null) openPlatformEmulatorPicker(tag)
+                    openEmulatorRecovery(ds.platformTag, ds.gamePath)
                 }
             }
+            is DialogState.MissingCore -> openEmulatorRecovery(ds.platformTag, ds.gamePath)
             is DialogState.DeleteCollectionConfirm -> {
                 val glState = gameListViewModel.state.value
                 val deletingFromParent = glState.isCollection && !glState.isCollectionsList
@@ -1691,8 +1691,10 @@ class DialogInputHandler @Inject constructor(
         }
     }
 
-    private fun openEmulatorPicker(rom: dev.cannoli.scorza.model.Rom) {
-        val tag = rom.platformTag
+    private fun openEmulatorPicker(rom: dev.cannoli.scorza.model.Rom) =
+        openGameEmulatorPicker(rom.platformTag, rom.path.absolutePath, rom.displayName)
+
+    private fun openGameEmulatorPicker(tag: String, gamePath: String, displayName: String) {
         val bundledCoresDir2 = LaunchManager.extractBundledCores(context)
         val options = platformResolver.getCorePickerOptions(tag, context.packageManager,
             installedRaCores = installedCoreService.configuredCores(), embeddedCoresDir = bundledCoresDir2,
@@ -1705,7 +1707,7 @@ class DialogInputHandler @Inject constructor(
         val defaultLabel = if (platformCoreName.isNotEmpty()) context.getString(dev.cannoli.scorza.R.string.emulator_platform_setting_named, platformCoreName) else context.getString(dev.cannoli.scorza.R.string.emulator_platform_setting)
         val defaultOption = EmulatorPickerOption("", defaultLabel, "")
         val allOptions = listOf(defaultOption) + options
-        val override = platformResolver.getGameOverride(rom.path.absolutePath)
+        val override = platformResolver.getGameOverride(gamePath)
         val selectedIdx = if (override?.appPackage != null) {
             allOptions.indexOfFirst { it.appPackage == override.appPackage }.coerceAtLeast(0)
         } else if (override != null) {
@@ -1717,12 +1719,27 @@ class DialogInputHandler @Inject constructor(
         nav.dialogState.value = DialogState.None
         nav.screenStack.add(LauncherScreen.EmulatorPicker(
             tag = tag,
-            platformName = rom.displayName,
+            platformName = displayName,
             cores = allOptions,
             selectedIndex = selectedIdx,
-            gamePath = rom.path.absolutePath,
+            gamePath = gamePath,
             activeIndex = selectedIdx
         ))
+    }
+
+    // A failed launch recovers by editing whichever mapping supplied the emulator that failed:
+    // the per-game override when the launch came from one, the platform mapping otherwise.
+    private fun openEmulatorRecovery(platformTag: String?, gamePath: String?) {
+        val tag = platformTag ?: return
+        pendingContextReturn = null
+        if (gamePath == null) {
+            openPlatformEmulatorPicker(tag)
+            return
+        }
+        val selected = (gameListViewModel.getSelectedItem() as? ListItem.RomItem)?.rom
+        val displayName = selected?.takeIf { it.path.absolutePath == gamePath }?.displayName
+            ?: java.io.File(gamePath).nameWithoutExtension
+        openGameEmulatorPicker(tag, gamePath, displayName)
     }
 
     private fun openPlatformEmulatorPicker(tag: String) {

@@ -19,10 +19,20 @@ import dev.cannoli.ui.theme.LocalCannoliColors
 fun MissingCoreDialog(
     coreName: String,
     packageLabel: String? = null,
+    showChangeEmulator: Boolean = false,
     buttonStyle: ButtonStyle = ButtonStyle()
 ) {
     OverlayScrim(
-        bottomBar = { LegendPill(button = buttonStyle.back, label = stringResource(R.string.label_close)) }
+        bottomBar = {
+            if (showChangeEmulator) {
+                BottomBar(
+                    leftItems = listOf(buttonStyle.back to stringResource(R.string.label_close)),
+                    rightItems = listOf(buttonStyle.confirm to stringResource(R.string.label_change_emulator))
+                )
+            } else {
+                LegendPill(button = buttonStyle.back, label = stringResource(R.string.label_close))
+            }
+        }
     ) {
         Text(
             text = stringResource(R.string.dialog_title_missing_core),

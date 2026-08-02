@@ -334,6 +334,7 @@ fun GameListScreen(
         is DialogState.MissingCore -> MissingCoreDialog(
             coreName = dialogState.coreName,
             packageLabel = dialogState.packageLabel,
+            showChangeEmulator = dialogState.platformTag != null,
             buttonStyle = buttonStyle
         )
         is DialogState.MissingApp -> MissingAppDialog(

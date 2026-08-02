@@ -252,8 +252,11 @@ class LaunchManager(
         val gameOverride = platformConfig.getGameOverride(rom.path.absolutePath)
         if (gameOverride?.appPackage != null) {
             val cfg = platformConfig.getAppConfig(rom.platformTag, gameOverride.appPackage)
-            return launchResultDialog(launchStandalone(rom, launchFile, cfg), rom.platformTag)
+            return launchResultDialog(
+                launchStandalone(rom, launchFile, cfg), rom.platformTag, rom.path.absolutePath
+            )
         }
+        val overrideGamePath = if (!gameOverride?.coreId.isNullOrEmpty()) rom.path.absolutePath else null
 
         val result = when (val target = rom.launchTarget) {
             is LaunchTarget.RetroArch -> {
@@ -295,7 +298,7 @@ class LaunchManager(
                                 val info = context.packageManager.getApplicationInfo(raPackage, 0)
                                 context.packageManager.getApplicationLabel(info).toString()
                             } catch (_: PackageManager.NameNotFoundException) { raPackage }
-                            return errorAndReset(DialogState.MissingApp(appName, raPackage, rom.platformTag))
+                            return errorAndReset(DialogState.MissingApp(appName, raPackage, rom.platformTag, overrideGamePath))
                         }
                         // Core-install check applies to RicottaArch and to RetroArch installs
                         // that report their cores; it self-skips for installs that cannot
@@ -306,7 +309,7 @@ class LaunchManager(
                             && !installedCoreService.hasCoreInPackage(core, raPackage)) {
                             val label = InstalledCoreService.getPackageLabel(raPackage)
                             val coreName = platformConfig.getCoreDisplayName(core)
-                            return errorAndReset(DialogState.MissingCore(coreName, label))
+                            return errorAndReset(DialogState.MissingCore(coreName, label, rom.platformTag, overrideGamePath))
                         }
                         if (RetroArchLauncher.isRicotta(raPackage)) {
                             syncRetroArchConfig(File(settings.sdCardRoot))
@@ -388,15 +391,15 @@ class LaunchManager(
         return dialog
     }
 
-    private fun launchResultDialog(result: LaunchResult, platformTag: String? = null): DialogState? {
-        val dialog = toLaunchDialog(result, platformTag)
+    private fun launchResultDialog(result: LaunchResult, platformTag: String? = null, gamePath: String? = null): DialogState? {
+        val dialog = toLaunchDialog(result, platformTag, gamePath)
         if (dialog != null) launchState.launching = false
         return dialog
     }
 
-    private fun toLaunchDialog(result: LaunchResult, platformTag: String? = null): DialogState? {
+    private fun toLaunchDialog(result: LaunchResult, platformTag: String? = null, gamePath: String? = null): DialogState? {
         return when (result) {
-            is LaunchResult.CoreNotInstalled -> DialogState.MissingCore(result.coreName)
+            is LaunchResult.CoreNotInstalled -> DialogState.MissingCore(result.coreName, platformTag = platformTag, gamePath = gamePath)
             is LaunchResult.AppNotInstalled -> {
                 val appName = try {
                     val info = context.packageManager.getApplicationInfo(result.packageName, 0)
@@ -404,7 +407,7 @@ class LaunchManager(
                 } catch (_: PackageManager.NameNotFoundException) {
                     result.packageName
                 }
-                DialogState.MissingApp(appName, result.packageName, platformTag)
+                DialogState.MissingApp(appName, result.packageName, platformTag, gamePath)
             }
             is LaunchResult.Error -> DialogState.LaunchError(result.message)
             LaunchResult.Success -> null
