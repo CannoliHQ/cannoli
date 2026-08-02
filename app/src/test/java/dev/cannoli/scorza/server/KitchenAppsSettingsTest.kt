@@ -37,11 +37,15 @@ class KitchenAppsSettingsTest {
     private fun newRoot(): File =
         File.createTempFile("cannoli", "").also { it.delete(); it.mkdirs() }.also { root = it }
 
-    private fun appsRepo(dir: File): AppsRepository {
+    private fun pathsFor(dir: File): CannoliPathsProvider {
         File(dir, "Config").mkdirs()
         val settings = SettingsRepository(ApplicationProvider.getApplicationContext<Context>())
         settings.sdCardRoot = dir.absolutePath
-        val paths = CannoliPathsProvider(settings)
+        return CannoliPathsProvider(settings)
+    }
+
+    private fun appsRepo(dir: File): AppsRepository {
+        val paths = pathsFor(dir)
         return AppsRepository(CannoliDatabase(paths), ArtworkLookup(paths))
     }
 
@@ -119,6 +123,33 @@ class KitchenAppsSettingsTest {
         val (_, body) = get("/api/apps")
         assertFalse(body.contains("com.termux"))
         assertFalse(body.contains("com.valve.portal2"))
+    }
+
+    @Test fun `apps returns sanitized art basenames`() {
+        val dir = newRoot()
+        val repo = appsRepo(dir)
+        repo.upsert(AppType.TOOL, "Moonlight: Game Streaming", "com.limelight")
+        start(dir, apps = repo)
+
+        val (code, body) = get("/api/apps")
+        assertEquals(200, code)
+        assertTrue(body.contains("Moonlight - Game Streaming"))
+    }
+
+    @Test fun `apps does not build the art cache the launcher reads`() {
+        val dir = newRoot()
+        val paths = pathsFor(dir)
+        val db = CannoliDatabase(paths)
+        AppsRepository(db, ArtworkLookup(paths)).upsert(AppType.TOOL, "Termux", "com.termux")
+
+        val repo = AppsRepository(db, ArtworkLookup(paths))
+        start(dir, apps = repo)
+        assertEquals(200, get("/api/apps").first)
+
+        File(dir, "Art/TOOLS").mkdirs()
+        File(dir, "Art/TOOLS/Termux.png").writeBytes(ByteArray(4))
+
+        assertEquals("Termux.png", repo.all(AppType.TOOL).single().artFile?.name)
     }
 
     @Test fun `settings returns the configured names`() {

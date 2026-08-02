@@ -4,6 +4,7 @@ import androidx.sqlite.SQLiteStatement
 import dev.cannoli.scorza.model.App
 import dev.cannoli.scorza.model.AppType
 import dev.cannoli.scorza.model.artTag
+import dev.cannoli.scorza.romm.download.sanitizeFsName
 import dev.cannoli.scorza.util.ArtworkLookup
 
 class AppsRepository(
@@ -22,6 +23,13 @@ class AppsRepository(
             mapper = ::rowToApp,
         )
     }
+
+    // Deliberately not all(type).map { ... }: rowToApp resolves artwork, which would build and cache
+    // the tag's art map on the singleton ArtworkLookup before the Kitchen has uploaded anything.
+    fun artBasenames(type: AppType): List<String> = db.queryAll(
+        "SELECT display_name FROM apps WHERE type = ? ORDER BY sort_order, display_name COLLATE NOCASE",
+        type.name,
+    ) { sanitizeFsName(it.getText(0)) }
 
     fun byId(appId: Long): App? = db.queryOne(
         "SELECT $COLUMNS FROM apps WHERE id = ?", appId, mapper = ::rowToApp,
@@ -68,7 +76,7 @@ class AppsRepository(
             displayName = displayName,
             packageName = stmt.getText(3),
             lastPlayedAt = if (stmt.isNull(4)) null else stmt.getLong(4),
-            artFile = artwork.findByName(type.artTag, displayName),
+            artFile = artwork.findByName(type.artTag, sanitizeFsName(displayName)),
         )
     }
 

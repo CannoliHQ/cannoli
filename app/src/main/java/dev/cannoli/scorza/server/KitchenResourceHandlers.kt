@@ -18,8 +18,8 @@ internal fun KitchenHttpServer.handleApps(): Response {
     return jsonResponse(
         200, AppsResponse.serializer(),
         AppsResponse(
-            tools = repo.all(dev.cannoli.scorza.model.AppType.TOOL).map { it.displayName },
-            ports = repo.all(dev.cannoli.scorza.model.AppType.PORT).map { it.displayName },
+            tools = repo.artBasenames(dev.cannoli.scorza.model.AppType.TOOL),
+            ports = repo.artBasenames(dev.cannoli.scorza.model.AppType.PORT),
         ),
     )
 }

@@ -63,6 +63,30 @@ class AppsRepositoryTest {
         assertNull(repo.byId(id)?.artFile)
     }
 
+    @Test fun `a colon in the display name resolves the sanitized art file`() {
+        val art = writeArt("TOOLS", "Moonlight - Game Streaming.png")
+        val id = repo.upsert(AppType.TOOL, "Moonlight: Game Streaming", "com.limelight")
+        assertEquals(art, repo.byId(id)?.artFile)
+    }
+
+    @Test fun `a slash in the display name resolves the sanitized art file`() {
+        val art = writeArt("PORTS", "Doom_Doom II.png")
+        val id = repo.upsert(AppType.PORT, "Doom/Doom II", "org.gzdoom")
+        assertEquals(art, repo.byId(id)?.artFile)
+    }
+
+    @Test fun `artBasenames returns sanitized names in list order`() {
+        repo.upsert(AppType.TOOL, "Moonlight: Game Streaming", "com.limelight")
+        repo.upsert(AppType.TOOL, "Termux", "com.termux")
+        assertEquals(listOf("Moonlight - Game Streaming", "Termux"), repo.artBasenames(AppType.TOOL))
+    }
+
+    @Test fun `artBasenames only returns the requested type`() {
+        repo.upsert(AppType.TOOL, "Termux", "com.termux")
+        repo.upsert(AppType.PORT, "Portal 2", "com.valve.portal2")
+        assertEquals(listOf("Portal 2"), repo.artBasenames(AppType.PORT))
+    }
+
     @Test fun `all resolves art for every row`() {
         val art = writeArt("TOOLS", "Termux.png")
         repo.upsert(AppType.TOOL, "Termux", "com.termux")
