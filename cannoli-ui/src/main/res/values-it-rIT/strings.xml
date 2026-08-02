@@ -387,8 +387,9 @@
     <string name="dialog_delete_confirm">Eliminare \"%1$s\"?</string>
     <!-- Shown when a per-game override is deliberately set to empty. -->
     <string name="value_empty_override">(override vuota)</string>
+    <!-- Shown in place of an emulator name when a platform has no emulator mapped yet. -->
     <string name="emulator_platform_setting">Impostazioni Piattaforma</string>
-    <!-- %1$s = platform name. -->
+    <!-- %1$s = the emulator name the platform is mapped to. -->
     <string name="emulator_platform_setting_named">Impostazioni Piattaforma (%1$s)</string>
     <string name="rename_error_directory">Impossibile rinominare la directory</string>
     <string name="rename_error_generic">Rinomina fallita</string>
@@ -503,6 +504,7 @@
     <!-- Quick menu -->
     <string name="quick_menu_title">Menu Veloce</string>
     <string name="quick_menu_romm">Sfoglia RomM</string>
+    <string name="quick_menu_download_queue">Coda Di Download</string>
     <string name="quick_menu_rescan">Riscansiona Libreria</string>
     <string name="quick_menu_info">Informazioni Di Rete</string>
     <string name="quick_menu_sync_history">Salva Cronologia Sincronizzazione</string>
