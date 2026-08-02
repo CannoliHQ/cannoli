@@ -200,6 +200,8 @@
     <string name="setting_kitchen_code_bypass">Kitchen Code Bypass</string>
     <string name="setting_experimental_features">Experimental Features</string>
     <string name="setting_set_default_launcher">Set as Default Launcher</string>
+    <!-- Same row as setting_set_default_launcher, shown when Cannoli is already the default launcher and the user wants to pick another one. -->
+    <string name="setting_change_default_launcher">Use a Different Launcher</string>
     <!-- Advanced action: recreate the standard platform/system folders. -->
     <string name="setting_regenerate_system_folders">Regenerate System Folders</string>
     <!-- Library setting: which content layout to show (platforms, collections only, or Five Game Handheld). -->

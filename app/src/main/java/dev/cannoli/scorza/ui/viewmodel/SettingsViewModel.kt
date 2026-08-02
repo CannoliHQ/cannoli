@@ -756,8 +756,13 @@ class SettingsViewModel @Inject constructor(
             add(SettingsItem("title", R.string.setting_title, valueText = settings.title.ifEmpty { null }, valueRes = if (settings.title.isEmpty()) R.string.value_none else null, isEditable = true))
             add(SettingsItem("swap_play_resume", R.string.setting_swap_play_resume, valueRes = onOff(settings.swapPlayResume)))
             add(SettingsItem("main_menu_quit", R.string.setting_main_menu_quit, valueRes = onOff(settings.mainMenuQuit)))
-            if (!isTelevision && !isDefaultLauncher()) {
-                add(SettingsItem("set_default_launcher", R.string.setting_set_default_launcher, isEditable = true))
+            if (!isTelevision) {
+                val launcherLabel = if (isDefaultLauncher()) {
+                    R.string.setting_change_default_launcher
+                } else {
+                    R.string.setting_set_default_launcher
+                }
+                add(SettingsItem("set_default_launcher", launcherLabel, isEditable = true))
             }
         }
         "display" -> buildList {
