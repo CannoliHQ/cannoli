@@ -35,7 +35,7 @@ class PlatformsJsonAssetTest {
 
         val appId = app.extras.single { it.key == "app_id" }
         assertEquals(ExtraValueKind.INT, appId.kind)
-        assertEquals("{rom_contents}", appId.value)
+        assertEquals("{rom_id}", appId.value)
 
         val source = app.extras.single { it.key == "game_source" }
         assertEquals(ExtraValueKind.STRING, source.kind)
@@ -43,6 +43,7 @@ class PlatformsJsonAssetTest {
         assertEquals(
             mapOf(
                 "steam" to "STEAM",
+                "steamappid" to "STEAM",
                 "epic" to "EPIC",
                 "gog" to "GOG",
                 "amazon" to "AMAZON",
@@ -66,7 +67,13 @@ class PlatformsJsonAssetTest {
 
         val steamAppId = hub.extras.single { it.key == "steamAppId" }
         assertEquals(ExtraValueKind.STRING, steamAppId.kind)
-        assertEquals("{rom_contents}", steamAppId.value)
+        assertEquals("{rom_id}", steamAppId.value)
+        assertEquals(setOf("steam", "steamappid"), steamAppId.whenExtension)
+
+        val localGameId = hub.extras.single { it.key == "localGameId" }
+        assertEquals(ExtraValueKind.STRING, localGameId.kind)
+        assertEquals("{rom_id}", localGameId.value)
+        assertEquals(setOf("localgameid", "txt"), localGameId.whenExtension)
 
         // GameHub opens the game's detail page without this and waits for a tap on Play Now.
         val autoStart = hub.extras.single { it.key == "autoStartGame" }
