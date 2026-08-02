@@ -78,7 +78,8 @@
     <!-- %1$s = the list or collection name. -->
     <!-- Confirm dialog. %1$s = item name. -->
     <!-- Shown when a per-game override is deliberately set to empty. -->
-    <!-- %1$s = platform name. -->
+    <!-- Shown in place of an emulator name when a platform has no emulator mapped yet. -->
+    <!-- %1$s = the emulator name the platform is mapped to. -->
     <!-- Boot progress. %1$s = tag/category name. -->
     <!-- %1$s = core name, %2$s = emulator app. -->
     <!-- %1$s = core name. -->
