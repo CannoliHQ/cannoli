@@ -101,7 +101,11 @@ class SystemListViewModel @Inject constructor(
                 is dev.cannoli.scorza.model.ListItem.AppItem -> i.app.displayName
                 else -> ""
             }
-            val artFile: java.io.File? get() = (item as? dev.cannoli.scorza.model.ListItem.RomItem)?.rom?.artFile
+            val artFile: java.io.File? get() = when (val i = item) {
+                is dev.cannoli.scorza.model.ListItem.RomItem -> i.rom.artFile
+                is dev.cannoli.scorza.model.ListItem.AppItem -> i.app.artFile
+                else -> null
+            }
             val tags: String? get() = (item as? dev.cannoli.scorza.model.ListItem.RomItem)?.rom?.tags
             val recentKey: String get() = when (val i = item) {
                 is dev.cannoli.scorza.model.ListItem.RomItem -> i.rom.path.absolutePath
