@@ -390,6 +390,7 @@
     <!-- Shown when a per-game override is deliberately set to empty. -->
     <string name="value_empty_override">(порожнє перевизначення)</string>
     <!-- Shown in place of an emulator name when a platform has no emulator mapped yet. -->
+    <string name="value_needs_setup">Потребує налаштування</string>
     <string name="emulator_platform_setting">Налаштування платформи</string>
     <!-- %1$s = the emulator name the platform is mapped to. -->
     <string name="emulator_platform_setting_named">Налаштування платформи (%1$s)</string>
@@ -424,6 +425,7 @@
     <string name="launch_error_resolve_file">Не вдалося визначити файл запуску</string>
     <string name="launch_error_extract">Не вдалося розпакувати архів</string>
     <string name="launch_error_generic">Не вдалося запустити гру</string>
+    <!-- %1$s = file name. -->
     <string name="launch_error_update_ricotta">Оновіть RicottaArch, щоб продовжити</string>
     <string name="launch_error_update_cannoli">Оновіть Cannoli, щоб продовжити</string>
     <!-- %1$s = core name, %2$s = emulator app. -->
