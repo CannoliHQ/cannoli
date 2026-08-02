@@ -529,6 +529,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
 }
 
 enum class TextSize(val sp: Int) {
+    SP10(10), SP12(12), SP14(14),
     SP16(16), SP18(18), SP20(20), SP22(22), SP24(24), SP26(26), SP28(28), SP30(30);
     companion object {
         val DEFAULT = SP24
