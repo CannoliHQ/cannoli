@@ -320,7 +320,14 @@ class LaunchManager(
                             retroArchLauncher.launchRetroArchIntent(launchFile, core, raConfig, raPackage)
                         }
                     } else {
-                        LaunchResult.CoreNotInstalled("unknown")
+                        // App-only platform (no core) that reached here has nothing installed to
+                        // run it, so name the app it wants instead of a core it never had.
+                        val appPkg = platformConfig.getAppPackage(rom.platformTag)
+                        if (appPkg != null && !context.isPackageInstalled(appPkg)) {
+                            LaunchResult.AppNotInstalled(appPkg)
+                        } else {
+                            LaunchResult.CoreNotInstalled("unknown")
+                        }
                     }
                 }
             }
