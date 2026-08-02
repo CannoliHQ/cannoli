@@ -167,6 +167,7 @@
     <string name="setting_kitchen_code_bypass">Παράκαμψη Κωδικού Κουζίνας</string>
     <string name="setting_experimental_features">Πειραματικά Χαρακτηριστικά</string>
     <string name="setting_set_default_launcher">Ορισμός ως προεπιλεγμένο πρόγραμμα εκκίνησης</string>
+    <!-- Same row as setting_set_default_launcher, shown when Cannoli is already the default launcher and the user wants to pick another one. -->
     <!-- Advanced action: recreate the standard platform/system folders. -->
     <string name="setting_regenerate_system_folders">Αναδημιουργία Φακέλων Συστήματος</string>
     <!-- Library setting: which content layout to show (platforms, collections only, or Five Game Handheld). -->
