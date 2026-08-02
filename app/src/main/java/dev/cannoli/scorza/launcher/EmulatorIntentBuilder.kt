@@ -70,6 +70,7 @@ object EmulatorIntentBuilder {
                 if (clipDataUri == null) clipDataUri = extra.value
             }
             is ResolvedExtra.IntExtra -> intent.putExtra(extra.key, extra.value)
+            is ResolvedExtra.BoolExtra -> intent.putExtra(extra.key, extra.value)
             is ResolvedExtra.StringArrayExtra ->
                 intent.putExtra(extra.key, extra.values.toTypedArray())
         }
@@ -101,6 +102,13 @@ object EmulatorIntentBuilder {
                 "ExtraSpec `${spec.key}`: expected an integer from ${romFile.name}, got `${raw.orEmpty()}`"
             )
             ResolvedExtra.IntExtra(spec.key, number)
+        }
+        ExtraValueKind.BOOL -> {
+            val raw = resolveValue(spec, romFile)
+            val flag = raw?.lowercase()?.toBooleanStrictOrNull() ?: throw IllegalArgumentException(
+                "ExtraSpec `${spec.key}`: expected true or false, got `${raw.orEmpty()}`"
+            )
+            ResolvedExtra.BoolExtra(spec.key, flag)
         }
     }
 

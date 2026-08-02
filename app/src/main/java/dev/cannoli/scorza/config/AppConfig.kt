@@ -36,6 +36,7 @@ enum class ExtraValueKind {
     STRING_ARRAY,
     STRING,
     INT,
+    BOOL,
 }
 
 enum class LaunchMethod { INTENT, SHELL, DELFINO }

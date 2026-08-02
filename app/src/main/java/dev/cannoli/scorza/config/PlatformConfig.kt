@@ -754,6 +754,7 @@ class PlatformConfig(
                 "string_array" -> ExtraValueKind.STRING_ARRAY
                 "string" -> ExtraValueKind.STRING
                 "int" -> ExtraValueKind.INT
+                "bool" -> ExtraValueKind.BOOL
                 else -> throw IllegalArgumentException("ExtraSpec `${key}`: unknown kind `${obj.optString("kind")}`")
             }
             val values = if (kind == ExtraValueKind.STRING_ARRAY) {
@@ -761,7 +762,7 @@ class PlatformConfig(
                     ?: throw IllegalArgumentException("ExtraSpec `${key}`: kind `string_array` requires `values`")
                 (0 until arr.length()).map { arr.getString(it) }
             } else null
-            val value = if (kind == ExtraValueKind.STRING || kind == ExtraValueKind.INT) {
+            val value = if (kind == ExtraValueKind.STRING || kind == ExtraValueKind.INT || kind == ExtraValueKind.BOOL) {
                 obj.optString("value").ifEmpty {
                     throw IllegalArgumentException("ExtraSpec `${key}`: kind `${obj.optString("kind")}` requires `value`")
                 }

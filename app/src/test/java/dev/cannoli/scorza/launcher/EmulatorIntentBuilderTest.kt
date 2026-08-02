@@ -9,6 +9,7 @@ import dev.cannoli.scorza.config.ExtraValueKind
 import dev.cannoli.scorza.config.LaunchMethod
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -129,6 +130,44 @@ class EmulatorIntentBuilderTest {
         val appId = resolved.extras[0] as ResolvedExtra.IntExtra
         assertEquals("app_id", appId.key)
         assertEquals(1145360, appId.value)
+    }
+
+    private fun gameHubLite(): AppConfig = AppConfig(
+        packageName = "gamehub.lite",
+        activity = "com.xj.landscape.launcher.ui.gamedetail.GameDetailActivity",
+        action = "gamehub.lite.LAUNCH_GAME",
+        extras = listOf(
+            ExtraSpec("steamAppId", ExtraValueKind.STRING, value = "{rom_contents}"),
+            ExtraSpec("autoStartGame", ExtraValueKind.BOOL, value = "true"),
+        ),
+    )
+
+    @Test fun `bool extra resolves to a boolean`() {
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val romFile = tmp.newFile("Super Hexagon.steam").apply { writeText("221640\n") }
+        val resolved = EmulatorIntentBuilder.resolve(ctx, gameHubLite(), romFile)
+
+        val steamAppId = resolved.extras[0] as ResolvedExtra.StringExtra
+        assertEquals("steamAppId", steamAppId.key)
+        assertEquals("221640", steamAppId.value)
+
+        val autoStart = resolved.extras[1] as ResolvedExtra.BoolExtra
+        assertEquals("autoStartGame", autoStart.key)
+        assertEquals(true, autoStart.value)
+    }
+
+    @Test fun `bool extra rejects a non boolean value`() {
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val romFile = tmp.newFile("Broken.steam").apply { writeText("221640") }
+        val config = AppConfig(
+            packageName = "gamehub.lite",
+            activity = "com.xj.landscape.launcher.ui.gamedetail.GameDetailActivity",
+            action = "gamehub.lite.LAUNCH_GAME",
+            extras = listOf(ExtraSpec("autoStartGame", ExtraValueKind.BOOL, value = "{rom_contents}")),
+        )
+        assertThrows(IllegalArgumentException::class.java) {
+            EmulatorIntentBuilder.resolve(ctx, config, romFile)
+        }
     }
 
     @Test fun `string extra maps the file extension to a game source`() {

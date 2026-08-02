@@ -140,6 +140,30 @@ class ShellCommandFormatterTest {
         )
     }
 
+    @Test fun `bool extra uses --ez`() {
+        val resolved = ResolvedIntent(
+            component = ComponentName("gamehub.lite", "com.xj.landscape.launcher.ui.gamedetail.GameDetailActivity"),
+            packageName = null,
+            action = "gamehub.lite.LAUNCH_GAME",
+            dataUri = null,
+            mimeType = null,
+            flagsHex = "0x10000000",
+            extras = listOf(
+                ResolvedExtra.StringExtra("steamAppId", "221640"),
+                ResolvedExtra.BoolExtra("autoStartGame", true),
+            )
+        )
+        assertEquals(
+            listOf("am", "start",
+                "-n", "gamehub.lite/com.xj.landscape.launcher.ui.gamedetail.GameDetailActivity",
+                "-a", "gamehub.lite.LAUNCH_GAME",
+                "-f", "0x10000000",
+                "--es", "steamAppId", "221640",
+                "--ez", "autoStartGame", "true"),
+            ShellCommandFormatter.format(resolved)
+        )
+    }
+
     @Test fun `single quote in any value rejects with IllegalArgumentException`() {
         val resolved = ResolvedIntent(
             component = null,
