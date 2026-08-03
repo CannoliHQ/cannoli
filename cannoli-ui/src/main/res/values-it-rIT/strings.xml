@@ -670,12 +670,12 @@
     <string name="value_no_firmware">Nessun firmware richiesto per questo nucleo.</string>
     <string name="mapping_action_bios">File BIOS</string>
     <string name="mapping_action_overrides">Sovrascrittura per gioco</string>
-    <string name="mapping_action_reset">Ripristina impostazioni predefinite</string>
     <!-- %d = number of required BIOS files missing. -->
     <string name="mapping_required_missing">%d richiesto mancante</string>
     <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">Mappatura %s</string>
+    <!-- Screen title for the per-game emulator picker. %s = game name. -->
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_bios">%s BIOS</string>
     <string name="filter_all">TUTTI</string>
@@ -721,7 +721,6 @@
     <string name="value_no_cores_found">Nessun Core Trovato</string>
     <string name="label_clear_override">CLEAR</string>
     <!-- %1$s = platform name. -->
-    <string name="dialog_reset_platform_confirm">Ripristinare %1$s? Questo cancella la tua selezione emulatore per questa piattaforma e ripristina il valore predefinito bundle.</string>
     <!-- RA achievement preload. %1$s = game name. -->
     <string name="ra_preload_progress">Ricaricamento %1$s</string>
     <string name="ra_preload_none">Nessun risultato trovato per questo gioco</string>
