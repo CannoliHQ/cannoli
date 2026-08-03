@@ -167,6 +167,8 @@
     <string name="setting_kitchen_code_bypass">跳过厨房密码</string>
     <string name="setting_experimental_features">实验特性</string>
     <string name="setting_set_default_launcher">设置为默认启动器</string>
+    <!-- Same row as setting_set_default_launcher, shown when Cannoli is already the default launcher and the user wants to pick another one. -->
+    <string name="setting_change_default_launcher">更换启动器</string>
     <!-- Advanced action: recreate the standard platform/system folders. -->
     <string name="setting_regenerate_system_folders">重新生成系统文件夹</string>
     <!-- Library setting: which content layout to show (platforms, collections only, or Five Game Handheld). -->
@@ -423,6 +425,7 @@
     <string name="launch_error_extract">提取归档失败</string>
     <string name="launch_error_generic">无法启动游戏</string>
     <!-- %1$s = file name. -->
+    <string name="launch_error_bad_game_file">无法从 %1$s 读取游戏ID</string>
     <string name="launch_error_update_ricotta">更新 RicottaArch 以继续</string>
     <string name="launch_error_update_cannoli">更新 Cannoli 以继续</string>
     <!-- %1$s = core name, %2$s = emulator app. -->
@@ -669,6 +672,8 @@
     <string name="mapping_action_reset">重置为默认值</string>
     <!-- %d = number of required BIOS files missing. -->
     <string name="mapping_required_missing">缺少%d</string>
+    <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
+    <string name="mapping_platform_name_with_tag">%1$s (%2$s)</string>
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">%s 映射</string>
     <!-- Screen title. %s = platform name. -->

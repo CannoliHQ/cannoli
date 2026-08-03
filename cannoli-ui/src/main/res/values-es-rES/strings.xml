@@ -167,6 +167,7 @@
     <string name="setting_kitchen_code_bypass">Código Kitchen Bypass</string>
     <string name="setting_experimental_features">Características experimentales</string>
     <string name="setting_set_default_launcher">Establecer como lanzador predeterminado</string>
+    <!-- Same row as setting_set_default_launcher, shown when Cannoli is already the default launcher and the user wants to pick another one. -->
     <!-- Advanced action: recreate the standard platform/system folders. -->
     <string name="setting_regenerate_system_folders">Regenerar Carpetas del Sistema</string>
     <!-- Library setting: which content layout to show (platforms, collections only, or Five Game Handheld). -->
@@ -672,6 +673,7 @@
     <string name="mapping_action_reset">Restablecer por defecto</string>
     <!-- %d = number of required BIOS files missing. -->
     <string name="mapping_required_missing">%d faltante</string>
+    <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">%s mapeo</string>
     <!-- Screen title. %s = platform name. -->

@@ -38,6 +38,7 @@
     <!-- Input setting toggle: controls whether the in-game Quit returns to the main menu. -->
     <!-- Input toggle: automatically save a state when quitting a game. -->
     <!-- Advanced setting toggle: skip the passcode gate for Nonna's Kitchen. Keep "Kitchen" consistent with the feature name. -->
+    <!-- Same row as setting_set_default_launcher, shown when Cannoli is already the default launcher and the user wants to pick another one. -->
     <!-- Advanced action: recreate the standard platform/system folders. -->
     <!-- Library setting: which content layout to show (platforms, collections only, or Five Game Handheld). -->
     <!-- Library setting for the Five Game Handheld collection. Keep "5GH" as-is. -->
@@ -152,6 +153,7 @@
     <!-- Setting: maps each platform to an emulator/core. -->
     <!-- The core is not bundled with the app. -->
     <!-- %d = number of required BIOS files missing. -->
+    <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
     <!-- Screen title. %s = platform name. -->
     <!-- Screen title. %s = platform name. -->
     <!-- OSD toast. %1$s = core name. -->
