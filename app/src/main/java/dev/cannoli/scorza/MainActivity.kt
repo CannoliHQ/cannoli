@@ -211,16 +211,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
             val boot by bootSequencer.state.collectAsState()
             val appSettings = if (boot is BootState.Ready) settingsViewModel.get().appSettings.collectAsState().value else null
             val themeFont = appSettings?.fontFamily ?: appFonts.mplus1Code
-            val baseContext = androidx.compose.ui.platform.LocalContext.current
-            val localizedContext = if (appSettings != null) {
-                androidx.compose.runtime.remember(appSettings.languageTag, baseContext) {
-                    localeContext(baseContext, appSettings.languageTag)
-                }
-            } else baseContext
-            CompositionLocalProvider(
-                androidx.compose.ui.platform.LocalContext provides localizedContext,
-                androidx.compose.ui.platform.LocalConfiguration provides localizedContext.resources.configuration,
-            ) {
+            dev.cannoli.scorza.i18n.ProvideLocalizedResources(appSettings?.languageTag) {
             CannoliTheme(fontFamily = themeFont, iconFontFamily = appFonts.mplus1Code) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     CompositionLocalProvider(
@@ -710,13 +701,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
 
     override fun attachBaseContext(newBase: android.content.Context) {
         super.attachBaseContext(dev.cannoli.scorza.i18n.LocaleOverride.wrap(newBase))
-    }
-
-    private fun localeContext(base: android.content.Context, tag: String): android.content.Context {
-        val locales = android.os.LocaleList.forLanguageTags(tag.ifEmpty { "en" })
-        val config = android.content.res.Configuration(base.resources.configuration)
-        config.setLocales(locales)
-        return base.createConfigurationContext(config)
     }
 
     override fun restartApp() {
