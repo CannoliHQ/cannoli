@@ -53,8 +53,14 @@ tasks:
       - rm -rf {{.CORES_DIR}}
 
   credits:sync:
-    desc: Sync credits.json to CreditsOverlay.kt, README.md, and taskfile.yml
+    desc: Sync credits.json to CreditsData.kt, taskfile.yml, and release.yml
     cmds:
+      - python3 scripts/sync_credits.py
+
+  credits:contributors:
+    desc: Refresh localization contributors in credits.json from Crowdin, then resync
+    cmds:
+      - python3 scripts/sync_crowdin_contributors.py
       - python3 scripts/sync_credits.py
 
   kitchen:

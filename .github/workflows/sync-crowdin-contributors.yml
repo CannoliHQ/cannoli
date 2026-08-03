@@ -1,0 +1,74 @@
+name: Sync Crowdin Contributors
+
+on:
+  schedule:
+    - cron: '0 6 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PR_CREATE_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # The parser is the part that breaks silently, so gate the API call on it.
+      - name: Test the report parser
+        working-directory: scripts
+        run: python3 -m unittest discover -s . -p 'test_*.py'
+
+      - name: Refresh contributors from Crowdin
+        env:
+          CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
+          CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
+        run: python3 scripts/sync_crowdin_contributors.py
+
+      - name: Regenerate CreditsData.kt
+        run: python3 scripts/sync_credits.py
+
+      - name: Check for changes
+        id: diff
+        run: |
+          if git diff --quiet -- credits.json app/src/main/java/dev/cannoli/scorza/ui/components/CreditsData.kt; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            {
+              echo 'summary<<EOF'
+              git diff --unified=0 -- credits.json | grep '^[+-] *{ "language"' || true
+              echo EOF
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create pull request
+        if: steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.PR_CREATE_TOKEN }}
+          branch: sync/crowdin-contributors
+          commit-message: "credits: refresh localization contributors from Crowdin"
+          title: "credits: refresh localization contributors from Crowdin"
+          body: |
+            Automated refresh of the `localization` block in `credits.json` from the Crowdin
+            top members report, plus the regenerated `CreditsData.kt`.
+
+            ```diff
+            ${{ steps.diff.outputs.summary }}
+            ```
+
+            Crowdin is the source of truth here: the block is regenerated wholly, so anyone
+            hand-added to `credits.json` will have been dropped. Contributors are listed by
+            real name, falling back to the Crowdin handle. Languages that `LanguageCatalog`
+            does not offer are skipped, since `CreditsDataTest` requires every tag to resolve.
+
+            Check the names read the way the contributors would want before merging.
+          delete-branch: true

@@ -21,3 +21,6 @@ app/src/main/assets/autoconfig/
 
 # Built by CI from the CannoliHQ/kitchen repo. Not tracked in git.
 app/src/main/assets/kitchen/
+
+# Bytecode from the scripts/ test suite.
+__pycache__/

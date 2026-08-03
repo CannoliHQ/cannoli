@@ -13,6 +13,16 @@ translation happens in a web editor on Crowdin.
 Approved translations are pulled into the app automatically, so there is
 nothing to install or upload.
 
+## Credit
+
+Translators are listed in the app under Settings, About, Credits, grouped by
+language. That list is refreshed from Crowdin every week, so there is nothing
+to add yourself to. You will appear once you have translated at least one word.
+
+The name shown is your Crowdin full name if you have set one, otherwise your
+username. If you would rather be credited differently, change your Crowdin
+profile name and it will follow on the next refresh.
+
 ## A few rules that keep translations working
 
 - **Keep placeholders exactly as written.** Text like `%1$s`, `%d`, or `%%`
