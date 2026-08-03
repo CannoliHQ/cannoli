@@ -24,6 +24,8 @@ import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.settings.GlobalOverridesManager
 import dev.cannoli.scorza.settings.SettingsRepository
+import dev.cannoli.scorza.ui.components.CREDITS_ROOT_ROWS
+import dev.cannoli.scorza.ui.components.CreditsRootRow
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.input.runtime.InputDispatcher
 import dev.cannoli.scorza.util.NaturalSort
@@ -203,6 +205,7 @@ class InputRouter @Inject constructor(
         is LauncherScreen.AppPicker         -> appPickerHandler()
         is LauncherScreen.ShortcutBinding   -> shortcutBindingHandler()
         is LauncherScreen.Credits           -> creditsHandler()
+        is LauncherScreen.CreditsSection    -> creditsSectionHandler()
         is LauncherScreen.InstalledCores    -> installedCoresHandler()
         is LauncherScreen.RommPlatformList      -> rommPlatformListHandler()
         is LauncherScreen.RommGameList          -> rommGameListHandler()
@@ -471,7 +474,16 @@ class InputRouter @Inject constructor(
         },
     )
 
-    private fun creditsHandler() = scrollable<LauncherScreen.Credits>()
+    private fun creditsHandler() = scrollable<LauncherScreen.Credits>(
+        onConfirm = {
+            val row = CREDITS_ROOT_ROWS.getOrNull(selectedIndex)
+            if (row is CreditsRootRow.Category) {
+                nav.push(LauncherScreen.CreditsSection(row.category))
+            }
+        },
+    )
+
+    private fun creditsSectionHandler() = scrollable<LauncherScreen.CreditsSection>()
 
     private fun installedCoresHandler() = scrollable<LauncherScreen.InstalledCores>(
         onBack = {

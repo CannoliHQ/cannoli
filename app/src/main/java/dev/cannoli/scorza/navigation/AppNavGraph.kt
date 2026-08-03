@@ -43,8 +43,11 @@ import dev.cannoli.scorza.input.runtime.labelSet
 import dev.cannoli.scorza.ui.LocalViewportInsets
 import dev.cannoli.scorza.util.buttonLabel
 import dev.cannoli.scorza.ui.ViewportInsetsPx
-import dev.cannoli.scorza.ui.components.CREDITS
+import dev.cannoli.scorza.ui.components.CREDITS_ROOT_ROWS
+import dev.cannoli.scorza.ui.components.CreditsCategory
+import dev.cannoli.scorza.ui.components.CreditsCategoryOverlay
 import dev.cannoli.scorza.ui.components.CreditsOverlay
+import dev.cannoli.scorza.ui.components.creditsItemCount
 import dev.cannoli.scorza.ui.components.DialogOverlay
 import dev.cannoli.scorza.ui.components.ListDialogScreen
 import dev.cannoli.scorza.ui.effectiveViewportPadding
@@ -295,7 +298,15 @@ sealed class LauncherScreen {
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
     }
     data class Credits(override val selectedIndex: Int = 0, override val scrollTarget: Int = 0) : LauncherScreen(), ScrollableScreen {
-        override val itemCount: Int get() = CREDITS.size
+        override val itemCount: Int get() = CREDITS_ROOT_ROWS.size
+        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
+    }
+    data class CreditsSection(
+        val category: CreditsCategory,
+        override val selectedIndex: Int = 0,
+        override val scrollTarget: Int = 0,
+    ) : LauncherScreen(), ScrollableScreen {
+        override val itemCount: Int get() = creditsItemCount(category)
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
     }
     data class RommPlatformList(
@@ -1226,6 +1237,25 @@ fun AppNavGraph(
                     listFontSize = listFontSize,
                     listLineHeight = listLineHeight,
                     listVerticalPadding = listVerticalPadding,
+                    buttonStyle = labels,
+                    onListStateChanged = onListStateChanged
+                )
+            }
+            is LauncherScreen.CreditsSection -> {
+                if (inputRouter != null) {
+                    val handler = remember { inputRouter.currentHandler() }
+                    dev.cannoli.scorza.input.screen.compose.ScreenInput(handler)
+                }
+                CreditsCategoryOverlay(
+                    category = currentScreen.category,
+                    selectedIndex = currentScreen.selectedIndex,
+                    scrollTarget = currentScreen.scrollTarget,
+                    backgroundImagePath = appSettings.backgroundImagePath,
+                    backgroundTint = appSettings.backgroundTint,
+                    listFontSize = listFontSize,
+                    listLineHeight = listLineHeight,
+                    listVerticalPadding = listVerticalPadding,
+                    buttonStyle = labels,
                     onListStateChanged = onListStateChanged
                 )
             }
@@ -1815,6 +1845,7 @@ fun AppNavGraph(
                 || dialog is DialogState.UpdateDownload
                 || dialog is KeyboardHost
         val hideForScreen = currentScreen is LauncherScreen.Credits
+                || currentScreen is LauncherScreen.CreditsSection
                 || currentScreen is LauncherScreen.DirectoryBrowser
                 || currentScreen is LauncherScreen.InputTester
                 || currentScreen is LauncherScreen.OnboardingPermissions

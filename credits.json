@@ -46,5 +46,13 @@
     { "name": "rsn8887", "shader": "sharp-bilinear-simple", "license": "Public domain" },
     { "name": "SoltanGris42", "shader": "zfast-crt", "license": "GPLv2" },
     { "name": "SoltanGris42", "shader": "zfast-lcd", "license": "GPLv2" }
+  ],
+  "localization": [
+    { "language": "zh-CN", "contributors": ["Bobby Chiang"] },
+    { "language": "fr-FR", "contributors": ["Christophe Coquelet", "Dominic Drolet"] },
+    { "language": "de-DE", "contributors": ["frysee"] },
+    { "language": "pt-PT", "contributors": ["Christian Paolo Ramos"] },
+    { "language": "es-ES", "contributors": ["Luke Nance", "Raadon", "ramsay nieve"] },
+    { "language": "uk-UA", "contributors": ["MeEdytor"] }
   ]
 }

@@ -1,56 +1,49 @@
 package dev.cannoli.scorza.ui.components
 
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import dev.cannoli.scorza.R
+import dev.cannoli.scorza.i18n.LanguageCatalog
+import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.components.List
+import dev.cannoli.ui.components.ListSection
 import dev.cannoli.ui.components.PillRowKeyValue
+import dev.cannoli.ui.components.PillRowText
+import dev.cannoli.ui.components.SectionedList
 import dev.cannoli.ui.components.pillItemHeight
 
-data class CreditEntry(val name: String, val detail: String)
+enum class CreditsCategory(@StringRes val titleRes: Int) {
+    Cores(R.string.credits_cores),
+    Shaders(R.string.credits_shaders),
+    Fonts(R.string.credits_fonts),
+    Libraries(R.string.credits_libraries),
+    Localization(R.string.credits_localization),
+}
 
-val CREDITS: List<CreditEntry> = listOf(
-    CreditEntry("Hallie", "My beautiful wife who makes me better in every way"),
-    CreditEntry("Shaun Inman", "MinUI"),
-    CreditEntry("Abraham McCampbell", "Cannoli Logo"),
-    CreditEntry("M+ Fonts Project", "OFL"),
-    CreditEntry("BPreplay", "OFL"),
-    CreditEntry("Nerd Fonts", "OFL"),
-    CreditEntry("Apache Commons Compress", "Apache 2.0"),
-    CreditEntry("PdfiumAndroid (io.legere)", "Apache 2.0"),
-    CreditEntry("XZ for Java", "Public domain"),
-    CreditEntry("ZXing", "Apache 2.0"),
-    CreditEntry("FBNeo", "Non-commercial"),
-    CreditEntry("Gambatte", "GPLv2"),
-    CreditEntry("Genesis Plus GX", "Non-commercial"),
-    CreditEntry("Handy", "Zlib"),
-    CreditEntry("MAME 2003-Plus", "MAME"),
-    CreditEntry("Mednafen NGP", "GPLv2"),
-    CreditEntry("Mednafen PCE FAST", "GPLv2"),
-    CreditEntry("Mednafen VB", "GPLv2"),
-    CreditEntry("Mednafen WonderSwan", "GPLv2"),
-    CreditEntry("mGBA", "MPLv2.0"),
-    CreditEntry("Nestopia", "GPLv2"),
-    CreditEntry("PCSX ReARMed", "GPLv2"),
-    CreditEntry("PokeMini", "GPLv3"),
-    CreditEntry("ProSystem", "GPLv2"),
-    CreditEntry("Snes9x", "Non-commercial"),
-    CreditEntry("Stella", "GPLv2"),
-    CreditEntry("SwanStation", "GPLv3"),
-    CreditEntry("crt-aperture by EasyMode", "GPL"),
-    CreditEntry("crt-cannoli by Cannoli (based on EasyMode)", "GPL"),
-    CreditEntry("crt-easymode by EasyMode", "GPL"),
-    CreditEntry("crt-geom by cgwg / Themaister / DOLLS", "GPLv2"),
-    CreditEntry("crt-lottes-fast by Timothy Lottes / hunterk", "Public domain"),
-    CreditEntry("dot by Themaister", "Public domain"),
-    CreditEntry("lcd3x by Gigaherz", "Public domain"),
-    CreditEntry("scanline by hunterk", "Public domain"),
-    CreditEntry("sharp-bilinear-simple by rsn8887", "Public domain"),
-    CreditEntry("zfast-crt by SoltanGris42", "GPLv2"),
-    CreditEntry("zfast-lcd by SoltanGris42", "GPLv2"),
-)
+sealed interface CreditsRootRow {
+    data class Person(val entry: CreditEntry) : CreditsRootRow
+    data class Category(val category: CreditsCategory) : CreditsRootRow
+}
+
+val CREDITS_ROOT_ROWS: List<CreditsRootRow> =
+    CREDITS_INSPIRATION.map { CreditsRootRow.Person(it) } +
+        CreditsCategory.entries.map { CreditsRootRow.Category(it) }
+
+fun creditEntriesFor(category: CreditsCategory): List<CreditEntry> = when (category) {
+    CreditsCategory.Cores -> CREDITS_CORES
+    CreditsCategory.Shaders -> CREDITS_SHADERS
+    CreditsCategory.Fonts -> CREDITS_FONTS
+    CreditsCategory.Libraries -> CREDITS_LIBRARIES
+    CreditsCategory.Localization -> emptyList()
+}
+
+fun creditsItemCount(category: CreditsCategory): Int = when (category) {
+    CreditsCategory.Localization -> CREDITS_LOCALIZATION.sumOf { it.contributors.size }
+    else -> creditEntriesFor(category).size
+}
 
 @Composable
 fun CreditsOverlay(
@@ -61,9 +54,11 @@ fun CreditsOverlay(
     listFontSize: TextUnit,
     listLineHeight: TextUnit,
     listVerticalPadding: Dp,
+    buttonStyle: ButtonStyle = ButtonStyle(),
     onListStateChanged: ((androidx.compose.foundation.lazy.LazyListState?) -> Unit)? = null
 ) {
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
+    val selectedRow = CREDITS_ROOT_ROWS.getOrNull(selectedIndex)
     ListDialogScreen(
         backgroundImagePath = backgroundImagePath,
         backgroundTint = backgroundTint,
@@ -71,23 +66,107 @@ fun CreditsOverlay(
         listFontSize = listFontSize,
         listLineHeight = listLineHeight,
         fullWidth = true,
-        rightBottomItems = emptyList()
+        buttonStyle = buttonStyle,
+        rightBottomItems = if (selectedRow is CreditsRootRow.Category) {
+            listOf(buttonStyle.confirm to stringResource(R.string.label_select))
+        } else {
+            emptyList()
+        }
     ) {
         List(
-            items = CREDITS,
+            items = CREDITS_ROOT_ROWS,
             selectedIndex = selectedIndex,
             scrollTarget = scrollTarget,
             itemHeight = itemHeight,
             onListStateChanged = onListStateChanged
-        ) { _, entry, isSelected ->
-            PillRowKeyValue(
-                label = entry.name,
-                value = entry.detail,
-                isSelected = isSelected,
+        ) { _, row, isSelected ->
+            when (row) {
+                is CreditsRootRow.Person -> PillRowKeyValue(
+                    label = row.entry.name,
+                    value = row.entry.detail,
+                    isSelected = isSelected,
+                    fontSize = listFontSize,
+                    lineHeight = listLineHeight,
+                    verticalPadding = listVerticalPadding
+                )
+                is CreditsRootRow.Category -> PillRowText(
+                    label = stringResource(row.category.titleRes),
+                    isSelected = isSelected,
+                    fontSize = listFontSize,
+                    lineHeight = listLineHeight,
+                    verticalPadding = listVerticalPadding
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun CreditsCategoryOverlay(
+    category: CreditsCategory,
+    selectedIndex: Int,
+    scrollTarget: Int,
+    backgroundImagePath: String?,
+    backgroundTint: Int,
+    listFontSize: TextUnit,
+    listLineHeight: TextUnit,
+    listVerticalPadding: Dp,
+    buttonStyle: ButtonStyle = ButtonStyle(),
+    onListStateChanged: ((androidx.compose.foundation.lazy.LazyListState?) -> Unit)? = null
+) {
+    val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
+    ListDialogScreen(
+        backgroundImagePath = backgroundImagePath,
+        backgroundTint = backgroundTint,
+        title = stringResource(category.titleRes),
+        listFontSize = listFontSize,
+        listLineHeight = listLineHeight,
+        fullWidth = true,
+        buttonStyle = buttonStyle,
+        rightBottomItems = emptyList()
+    ) {
+        if (category == CreditsCategory.Localization) {
+            val sections = CREDITS_LOCALIZATION.map { credit ->
+                ListSection(
+                    header = LanguageCatalog.byTag(credit.languageTag)?.nativeName ?: credit.languageTag,
+                    items = credit.contributors
+                )
+            }
+            SectionedList(
+                sections = sections,
+                selectedIndex = selectedIndex,
                 fontSize = listFontSize,
                 lineHeight = listLineHeight,
-                verticalPadding = listVerticalPadding
-            )
+                verticalPadding = listVerticalPadding,
+                itemHeight = itemHeight,
+                scrollTarget = scrollTarget,
+                onListStateChanged = onListStateChanged
+            ) { _, name, isSelected ->
+                PillRowText(
+                    label = name,
+                    isSelected = isSelected,
+                    fontSize = listFontSize,
+                    lineHeight = listLineHeight,
+                    verticalPadding = listVerticalPadding
+                )
+            }
+        } else {
+            List(
+                items = creditEntriesFor(category),
+                selectedIndex = selectedIndex,
+                scrollTarget = scrollTarget,
+                itemHeight = itemHeight,
+                onListStateChanged = onListStateChanged
+            ) { _, entry, isSelected ->
+                PillRowKeyValue(
+                    label = entry.name,
+                    value = entry.detail,
+                    isSelected = isSelected,
+                    fontSize = listFontSize,
+                    lineHeight = listLineHeight,
+                    verticalPadding = listVerticalPadding
+                )
+            }
         }
     }
 }

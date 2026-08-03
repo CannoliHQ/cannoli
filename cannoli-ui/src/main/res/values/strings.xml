@@ -666,6 +666,11 @@
 
     <!-- Credits -->
     <string name="credits_title">Credits and Licenses</string>
+    <string name="credits_cores">Emulator Cores</string>
+    <string name="credits_shaders">Shaders</string>
+    <string name="credits_fonts">Fonts</string>
+    <string name="credits_libraries">Libraries</string>
+    <string name="credits_localization">Localization Contributors</string>
 
     <!-- Core picker / nav -->
     <string name="no_compatible_cores">No compatible cores found</string>

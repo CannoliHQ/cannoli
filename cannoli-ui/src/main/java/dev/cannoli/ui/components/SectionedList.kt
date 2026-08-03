@@ -39,6 +39,7 @@ fun <T> SectionedList(
     itemHeight: Dp = Dp.Unspecified,
     scrollTarget: Int = 0,
     listState: LazyListState = rememberLazyListState(initialFirstVisibleItemIndex = scrollTarget.coerceAtLeast(0)),
+    onListStateChanged: ((LazyListState?) -> Unit)? = null,
     itemContent: @Composable (index: Int, item: T, isSelected: Boolean) -> Unit
 ) {
     val items = sections.flattenItems()
@@ -49,7 +50,8 @@ fun <T> SectionedList(
         modifier = modifier,
         itemHeight = itemHeight,
         scrollTarget = scrollTarget,
-        listState = listState
+        listState = listState,
+        onListStateChanged = onListStateChanged
     ) { index, item, isSelected ->
         val header = headers[index]
         if (header != null) {
