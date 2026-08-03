@@ -676,12 +676,12 @@
     <string name="value_no_firmware">Для цього ядра прошивка не потрібна.</string>
     <string name="mapping_action_bios">Файли BIOS</string>
     <string name="mapping_action_overrides">Перевизначення для окремих ігор</string>
-    <string name="mapping_action_reset">Скинути до типового</string>
     <!-- %d = number of required BIOS files missing. -->
     <string name="mapping_required_missing">Відсутньо обов\'язкових: %d</string>
     <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">Прив\'язка %s</string>
+    <!-- Screen title for the per-game emulator picker. %s = game name. -->
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_bios">BIOS %s</string>
     <string name="filter_all">УСІ</string>
@@ -735,7 +735,6 @@
     <string name="value_no_cores_found">Ядра не знайдено</string>
     <string name="label_clear_override">ОЧИСТИТИ</string>
     <!-- %1$s = platform name. -->
-    <string name="dialog_reset_platform_confirm">Скинути %1$s? Це очистить вибір емулятора для цієї платформи та відновить типовий вбудований варіант.</string>
     <!-- RA achievement preload. %1$s = game name. -->
     <string name="ra_preload_progress">Попереднє завантаження %1$s</string>
     <string name="ra_preload_none">Для цієї гри не знайдено досягнень</string>
