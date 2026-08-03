@@ -669,13 +669,13 @@
     <string name="value_no_firmware">此核心不需要固件。</string>
     <string name="mapping_action_bios">BIOS文件</string>
     <string name="mapping_action_overrides">游戏覆盖</string>
-    <string name="mapping_action_reset">重置为默认值</string>
     <!-- %d = number of required BIOS files missing. -->
     <string name="mapping_required_missing">缺少%d</string>
     <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
     <string name="mapping_platform_name_with_tag">%1$s (%2$s)</string>
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">%s 映射</string>
+    <!-- Screen title for the per-game emulator picker. %s = game name. -->
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_bios">%s BIOS</string>
     <string name="filter_all">全部</string>
@@ -717,7 +717,6 @@
     <string name="value_no_cores_found">未找到核心</string>
     <string name="label_clear_override">清除</string>
     <!-- %1$s = platform name. -->
-    <string name="dialog_reset_platform_confirm">重置 %1$s吗？这将清除您对此平台的模拟器选择，并还原捆绑的默认值。</string>
     <!-- RA achievement preload. %1$s = game name. -->
     <string name="ra_preload_progress">预加载 %1$s</string>
     <string name="ra_preload_none">没有找到这个游戏的成就</string>
