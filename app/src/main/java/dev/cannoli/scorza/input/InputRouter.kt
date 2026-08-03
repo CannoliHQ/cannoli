@@ -53,6 +53,7 @@ class InputRouter @Inject constructor(
     val loggingSettingsHandler: LoggingSettingsInputHandler,
     private val scrollListFactory: ScrollListInputHandler.Factory,
     private val platformConfig: PlatformConfig,
+    private val gameOverrideStore: dev.cannoli.scorza.db.GameOverrideStore,
     private val installedCoreService: InstalledCoreService,
     private val emulatorMappingBuilder: EmulatorMappingBuilder,
     private val globalOverrides: GlobalOverridesManager,
@@ -193,7 +194,6 @@ class InputRouter @Inject constructor(
      */
     private fun scrollableHandlerFor(screen: LauncherScreen.ScrollableScreen): ScreenInputHandler = when (screen) {
         is LauncherScreen.EmulatorMapping     -> emulatorMappingHandler()
-        is LauncherScreen.EmulatorPicker      -> emulatorPickerHandler()
         is LauncherScreen.PlatformMapping     -> platformMappingHandler()
         is LauncherScreen.BiosStatus          -> biosStatusHandler()
         is LauncherScreen.PlatformOverrides   -> platformOverridesHandler()
@@ -321,45 +321,33 @@ class InputRouter @Inject constructor(
         },
     )
 
-    private fun emulatorPickerHandler() = scrollable<LauncherScreen.EmulatorPicker>(
-        onConfirm = { dialogHandler.onEmulatorPickerConfirm(this) },
-        onBack = {
-            val s = this
-            nav.pop()
-            if (s.gamePath != null) {
-                dialogHandler.restoreContextMenu()
-            } else {
-                val cm = nav.screenStack.lastOrNull()
-                if (cm is LauncherScreen.EmulatorMapping) {
-                    val all = emulatorMappingBuilder.detailedMappings()
-                    val filtered = emulatorMappingBuilder.filter(all, cm.filter)
-                    val idx = filtered.indexOfFirst { it.tag == s.tag }.coerceAtLeast(0)
-                    nav.screenStack[nav.screenStack.lastIndex] =
-                        cm.copy(mappings = filtered, allMappings = all, selectedIndex = idx)
-                }
-            }
-        },
-    )
-
     private fun platformMappingHandler() = scrollable<LauncherScreen.PlatformMapping>(
         onConfirm = {
             val item = selectableItems.getOrNull(selectedIndex) ?: return@scrollable
             when (item) {
+                is dev.cannoli.scorza.ui.screens.MappingItem.PlatformDefault -> {
+                    val id = romId ?: return@scrollable
+                    gameOverrideStore.clear(id)
+                    nav.pop()
+                    dialogHandler.restoreContextMenu()
+                }
                 is dev.cannoli.scorza.ui.screens.MappingItem.EmulatorOption -> {
                     val opt = item.option
+                    val choice = dev.cannoli.scorza.config.EmulatorChoice(
+                        source = opt.source,
+                        coreId = opt.coreId,
+                        appPackage = opt.appPackage,
+                    )
+                    val id = romId
                     if (item.downloadable) {
-                        downloadCoreThenAssign(tag, platformName, opt.coreId, showAll, selectedIndex, scrollTarget)
+                        downloadCoreThenAssign(this, opt.coreId)
+                    } else if (id != null) {
+                        gameOverrideStore.put(id, choice)
+                        nav.pop()
+                        dialogHandler.restoreContextMenu()
                     } else {
-                        if (opt.appPackage != null) {
-                            platformConfig.setAppMapping(tag, opt.appPackage)
-                        } else {
-                            platformConfig.setCoreMapping(tag, opt.coreId, opt.runnerLabel)
-                        }
-                        platformConfig.saveCoreMappings()
-                        nav.replaceTop(emulatorMappingBuilder.buildPlatformMapping(
-                            tag, platformName, showAll = showAll,
-                            selectedIndex = selectedIndex, scrollTarget = scrollTarget,
-                        ))
+                        platformConfig.setPlatformChoice(tag, choice)
+                        nav.replaceTop(emulatorMappingBuilder.rebuild(this))
                         refreshEmulatorMappingOnStack()
                     }
                 }
@@ -368,9 +356,9 @@ class InputRouter @Inject constructor(
                         nav.push(emulatorMappingBuilder.buildBiosStatus(tag, platformName))
                     }
                     dev.cannoli.scorza.ui.screens.MappingActionKind.OVERRIDES -> {
-                        val list = platformConfig.getPlatformOverrides(tag)
                         nav.push(LauncherScreen.PlatformOverrides(
-                            tag = tag, platformName = platformName, overrides = list,
+                            tag = tag, platformName = platformName,
+                            overrides = emulatorMappingBuilder.overrideRows(tag),
                         ))
                     }
                     dev.cannoli.scorza.ui.screens.MappingActionKind.RESET -> {
@@ -380,11 +368,15 @@ class InputRouter @Inject constructor(
                 else -> Unit
             }
         },
-        onBack = { nav.pop() },
+        onBack = {
+            val scoped = romId != null
+            nav.pop()
+            if (scoped) dialogHandler.restoreContextMenu()
+        },
         onNorth = {
             if (canToggleShowAll) {
-                nav.replaceTop(emulatorMappingBuilder.buildPlatformMapping(
-                    tag, platformName, showAll = !showAll, selectedIndex = 0, scrollTarget = 0,
+                nav.replaceTop(emulatorMappingBuilder.rebuild(
+                    this, showAll = !showAll, selectedIndex = 0, scrollTarget = 0,
                 ))
             }
         },
@@ -398,19 +390,19 @@ class InputRouter @Inject constructor(
         onNorth = {
             val entry = overrides.getOrNull(selectedIndex)
             if (entry != null) {
-                platformConfig.clearGameOverride(entry.first)
-                val refreshed = platformConfig.getPlatformOverrides(tag)
-                if (refreshed.isEmpty()) {
-                    nav.pop()
-                    val mapping = nav.screenStack.lastOrNull() as? LauncherScreen.PlatformMapping
-                    if (mapping != null) {
-                        nav.screenStack[nav.screenStack.lastIndex] = emulatorMappingBuilder.buildPlatformMapping(
-                            mapping.tag, mapping.platformName, showAll = mapping.showAll,
-                            selectedIndex = mapping.selectedIndex, scrollTarget = mapping.scrollTarget,
-                        )
-                    }
-                } else {
-                    nav.replaceTop(copy(overrides = refreshed, selectedIndex = selectedIndex.coerceAtMost(refreshed.lastIndex)))
+                gameOverrideStore.clear(entry.romId)
+                val refreshed = emulatorMappingBuilder.overrideRows(tag)
+                // The parent screen shows an override count, so it is rebuilt whether or not the
+                // list emptied. Only rebuilding on empty left a stale "N games" behind.
+                val mappingIdx = nav.screenStack.indexOfLast { it is LauncherScreen.PlatformMapping }
+                if (refreshed.isEmpty()) nav.pop()
+                else nav.replaceTop(copy(overrides = refreshed, selectedIndex = selectedIndex.coerceAtMost(refreshed.lastIndex)))
+                if (mappingIdx >= 0) {
+                    val mapping = nav.screenStack[mappingIdx] as LauncherScreen.PlatformMapping
+                    nav.screenStack[mappingIdx] = emulatorMappingBuilder.buildPlatformMapping(
+                        mapping.tag, mapping.platformName, showAll = mapping.showAll,
+                        selectedIndex = mapping.selectedIndex, scrollTarget = mapping.scrollTarget,
+                    )
                 }
             }
         },
@@ -691,26 +683,28 @@ class InputRouter @Inject constructor(
         },
     )
 
-    private fun downloadCoreThenAssign(
-        tag: String,
-        platformName: String,
-        coreId: String,
-        showAll: Boolean,
-        selectedIndex: Int,
-        scrollTarget: Int,
-    ) {
+    private fun downloadCoreThenAssign(screen: LauncherScreen.PlatformMapping, coreId: String) {
         val pkg = settings.retroArchPackage
-        val label = InstalledCoreService.getPackageLabel(pkg)
         val coreName = platformConfig.getCoreDisplayName(coreId)
+        val romId = screen.romId
+        val before = if (romId != null) gameOverrideStore.get(romId) else platformConfig.getPlatformChoice(screen.tag)
+        val choice = dev.cannoli.scorza.config.EmulatorChoice(
+            source = dev.cannoli.scorza.config.EmulatorSource.RetroArch, coreId = coreId,
+        )
         coreInstaller.downloadCore(pkg, coreId, coreName) {
-            platformConfig.setCoreMapping(tag, coreId, label)
-            platformConfig.saveCoreMappings()
+            // A download can land a couple of minutes later. Writing unconditionally would
+            // overwrite a newer explicit pick, which is exactly what the never-auto-change
+            // rule forbids, so bail if the selection moved while it ran.
+            val now = if (romId != null) gameOverrideStore.get(romId) else platformConfig.getPlatformChoice(screen.tag)
+            if (now != before) {
+                dev.cannoli.scorza.util.ErrorLog.write("core download finished after the selection changed, not assigning")
+                return@downloadCore
+            }
+            if (romId != null) gameOverrideStore.put(romId, choice)
+            else platformConfig.setPlatformChoice(screen.tag, choice)
             val top = nav.currentScreen as? LauncherScreen.PlatformMapping
-            if (top != null && top.tag == tag) {
-                nav.replaceTop(emulatorMappingBuilder.buildPlatformMapping(
-                    tag, platformName, showAll = showAll,
-                    selectedIndex = selectedIndex, scrollTarget = scrollTarget,
-                ))
+            if (top != null && top.tag == screen.tag && top.romId == screen.romId) {
+                nav.replaceTop(emulatorMappingBuilder.rebuild(screen))
             }
             refreshEmulatorMappingOnStack()
         }

@@ -53,6 +53,7 @@ class LauncherActions @Inject constructor(
     private val appsRepository: AppsRepository,
     private val launchManager: LaunchManager,
     private val platformConfig: PlatformConfig,
+    private val gameOverrideStore: dev.cannoli.scorza.db.GameOverrideStore,
     private val artworkLookup: ArtworkLookup,
     private val arcadeTitleLookup: ArcadeTitleLookup,
     private val nav: NavigationController,
@@ -168,7 +169,7 @@ class LauncherActions @Inject constructor(
         }
         val tag = rom.platformTag
         val base = java.text.Normalizer.normalize(rom.path.nameWithoutExtension, java.text.Normalizer.Form.NFC)
-        val emulator = RomKeys.coreDisplayNameFor(rom, platformConfig)
+        val emulator = RomKeys.coreDisplayNameFor(rom, platformConfig, gameOverrideStore.get(rom.id))
         pendingLaunch = { if (resume) launchManager.resumeRom(rom) else launchManager.launchRom(rom) }
         nav.dialogState.value = DialogState.SaveSyncChecking
         ioScope.launch {

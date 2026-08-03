@@ -214,6 +214,37 @@ internal object Migrations {
                 """.trimIndent()
             )
         },
+        Migration(12) { db ->
+            db.execSQL(
+                """
+                CREATE TABLE game_overrides_v12 (
+                    rom_id INTEGER PRIMARY KEY REFERENCES roms(id) ON DELETE CASCADE,
+                    source TEXT NOT NULL,
+                    core_id TEXT,
+                    app_package TEXT
+                )
+                """.trimIndent()
+            )
+            // runner held the picker's display caption, so the source has to be recovered from
+            // it with the same rules the cores.json v1 migration uses.
+            db.execSQL(
+                """
+                INSERT INTO game_overrides_v12 (rom_id, source, core_id, app_package)
+                SELECT rom_id,
+                       CASE
+                         WHEN runner = 'Internal' THEN 'Internal'
+                         WHEN runner IN ('Standalone', 'App') THEN 'Standalone'
+                         WHEN runner IS NOT NULL AND runner <> '' THEN 'RetroArch'
+                         WHEN app_package IS NOT NULL THEN 'Standalone'
+                         ELSE 'RetroArch'
+                       END,
+                       core_id, app_package
+                FROM game_overrides
+                """.trimIndent()
+            )
+            db.execSQL("DROP TABLE game_overrides")
+            db.execSQL("ALTER TABLE game_overrides_v12 RENAME TO game_overrides")
+        },
     )
 
     val current: Int = all.maxOf { it.version }

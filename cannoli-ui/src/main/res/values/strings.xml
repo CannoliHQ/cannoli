@@ -438,6 +438,7 @@
     <!-- Shown in place of an emulator name when a platform has no emulator mapped yet. -->
     <string name="value_needs_setup">Needs setup</string>
     <string name="emulator_platform_setting">Platform Setting</string>
+    <string name="emulator_platform_default">Platform Default</string>
     <!-- %1$s = the emulator name the platform is mapped to. -->
     <string name="emulator_platform_setting_named">Platform Setting (%1$s)</string>
     <string name="rename_error_directory">Failed to rename directory</string>
@@ -744,13 +745,15 @@
     <string name="value_no_firmware">No firmware required for this core.</string>
     <string name="mapping_action_bios">BIOS Files</string>
     <string name="mapping_action_overrides">Per-game overrides</string>
-    <string name="mapping_action_reset">Reset to default</string>
+    <string name="mapping_action_reset">Reset to Default</string>
     <!-- %d = number of required BIOS files missing. -->
     <string name="mapping_required_missing">%d required missing</string>
     <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
     <string name="mapping_platform_name_with_tag">%1$s (%2$s)</string>
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">%s Mapping</string>
+    <!-- Screen title for the per-game emulator picker. %s = game name. -->
+    <string name="title_game_mapping">%s Emulator</string>
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_bios">%s BIOS</string>
     <string name="filter_all">ALL</string>
@@ -796,7 +799,7 @@
     <string name="value_no_cores_found">No Cores Found</string>
     <string name="label_clear_override">CLEAR</string>
     <!-- %1$s = platform name. -->
-    <string name="dialog_reset_platform_confirm">Reset %1$s? This clears your emulator selection for this platform and restores the bundled default.</string>
+    <string name="dialog_reset_platform_confirm">Reset %1$s? Your pick is replaced by Cannoli\'s default, or cleared if there is none.</string>
     <!-- RA achievement preload. %1$s = game name. -->
     <string name="ra_preload_progress">Preloading %1$s</string>
     <string name="ra_preload_none">No achievements found for this game</string>

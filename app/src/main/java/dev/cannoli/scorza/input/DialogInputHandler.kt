@@ -76,6 +76,7 @@ class DialogInputHandler @Inject constructor(
     private val gameListViewModel: GameListViewModel,
     private val systemListViewModel: SystemListViewModel,
     private val romsRepository: RomsRepository,
+    private val gameOverrideStore: dev.cannoli.scorza.db.GameOverrideStore,
     private val appsRepository: AppsRepository,
     private val artworkLookup: dev.cannoli.scorza.util.ArtworkLookup,
     private val launcherActions: LauncherActions,
@@ -537,10 +538,10 @@ class DialogInputHandler @Inject constructor(
                         }
                     }
                 } else {
-                    openEmulatorRecovery(ds.platformTag, ds.gamePath)
+                    openEmulatorRecovery(ds.platformTag, ds.romId)
                 }
             }
-            is DialogState.MissingCore -> openEmulatorRecovery(ds.platformTag, ds.gamePath)
+            is DialogState.MissingCore -> openEmulatorRecovery(ds.platformTag, ds.romId)
             is DialogState.DeleteCollectionConfirm -> {
                 val glState = gameListViewModel.state.value
                 val deletingFromParent = glState.isCollection && !glState.isCollectionsList
@@ -894,7 +895,9 @@ class DialogInputHandler @Inject constructor(
 
     private fun doRestore(ds: DialogState.SaveBackupRestoreConfirm) {
         ioScope.launch {
-            val resolveGame = dev.cannoli.scorza.romm.sync.rommResolveGame(platformResolver, romDir())
+            val resolveGame = dev.cannoli.scorza.romm.sync.rommResolveGame(platformResolver, romDir()) { key ->
+                romsRepository.romIdForRelativePath(key)?.let { gameOverrideStore.get(it) }
+            }
             val outcome = saveSyncService.restoreBackupToHead(ds.tag, ds.base, ds.stamp, resolveGame)
             val count = saveSyncService.pendingConflictCount()
             withContext(Dispatchers.Main) {
@@ -1004,7 +1007,9 @@ class DialogInputHandler @Inject constructor(
         if (!applyingConflicts.compareAndSet(false, true)) return
         val fromSaveSyncMenu = ds.fromSaveSyncMenu
         val rows = ds.rows
-        val resolveGame = dev.cannoli.scorza.romm.sync.rommResolveGame(platformResolver, romDir())
+        val resolveGame = dev.cannoli.scorza.romm.sync.rommResolveGame(platformResolver, romDir()) { key ->
+                romsRepository.romIdForRelativePath(key)?.let { gameOverrideStore.get(it) }
+            }
         nav.dialogState.value = DialogState.ConflictsApplying
         ioScope.launch {
             try {
@@ -1649,7 +1654,7 @@ class DialogInputHandler @Inject constructor(
         val romId = saveSyncService.isSyncableGame(gameKey) ?: return
         val tag = rom.platformTag
         val base = java.text.Normalizer.normalize(rom.path.nameWithoutExtension, java.text.Normalizer.Form.NFC)
-        val emulator = RomKeys.coreDisplayNameFor(rom, platformResolver)
+        val emulator = RomKeys.coreDisplayNameFor(rom, platformResolver, gameOverrideStore.get(rom.id))
         ioScope.launch {
             val slots = runCatching { slotManager.listSlots(gameKey, romId) }.onFailure { e ->
                 ErrorLog.write("save_slots_open: ${e.message}")
@@ -1663,75 +1668,36 @@ class DialogInputHandler @Inject constructor(
     }
 
     private fun openEmulatorPicker(rom: dev.cannoli.scorza.model.Rom) =
-        openGameEmulatorPicker(rom.platformTag, rom.path.absolutePath, rom.displayName)
+        openGameEmulatorPicker(rom.platformTag, rom.id, rom.displayName)
 
-    private fun openGameEmulatorPicker(tag: String, gamePath: String, displayName: String) {
-        val bundledCoresDir2 = LaunchManager.extractBundledCores(context)
-        val options = platformResolver.getCorePickerOptions(tag, context.packageManager,
-            installedRaCores = installedCoreService.configuredCores(), embeddedCoresDir = bundledCoresDir2,
-            unresponsivePackages = installedCoreService.configuredUnresponsive())
-        val platformCoreName = platformResolver.detailedMappingFor(
-            tag, context.packageManager,
-            installedRaCores = installedCoreService.configuredCores(), embeddedCoresDir = bundledCoresDir2,
-            unresponsivePackages = installedCoreService.configuredUnresponsive()
-        ).coreDisplayName
-        val defaultLabel = if (platformCoreName.isNotEmpty()) context.getString(dev.cannoli.scorza.R.string.emulator_platform_setting_named, platformCoreName) else context.getString(dev.cannoli.scorza.R.string.emulator_platform_setting)
-        val defaultOption = EmulatorPickerOption("", defaultLabel, "")
-        val allOptions = listOf(defaultOption) + options
-        val override = platformResolver.getGameOverride(gamePath)
-        val selectedIdx = if (override?.appPackage != null) {
-            allOptions.indexOfFirst { it.appPackage == override.appPackage }.coerceAtLeast(0)
-        } else if (override != null) {
-            allOptions.indexOfFirst { it.coreId == override.coreId && (it.runnerLabel == override.runner || override.runner == null) }
-                .coerceAtLeast(0)
-        } else {
-            0
-        }
+    private fun openGameEmulatorPicker(tag: String, romId: Long?, displayName: String) {
         nav.dialogState.value = DialogState.None
-        nav.screenStack.add(LauncherScreen.EmulatorPicker(
-            tag = tag,
-            platformName = displayName,
-            cores = allOptions,
-            selectedIndex = selectedIdx,
-            gamePath = gamePath,
-            activeIndex = selectedIdx
+        nav.screenStack.add(emulatorMappingBuilder.buildPlatformMapping(
+            tag = tag, platformName = platformResolver.getDisplayName(tag), showAll = false,
+            defaultShowAllIfEmpty = true, romId = romId, gameName = displayName, selectCurrent = true,
         ))
     }
 
     // A failed launch recovers by editing whichever mapping supplied the emulator that failed:
     // the per-game override when the launch came from one, the platform mapping otherwise.
-    private fun openEmulatorRecovery(platformTag: String?, gamePath: String?) {
+    private fun openEmulatorRecovery(platformTag: String?, romId: Long?) {
         val tag = platformTag ?: return
         pendingContextReturn = null
-        if (gamePath == null) {
+        if (romId == null) {
             openPlatformEmulatorPicker(tag)
             return
         }
         val selected = (gameListViewModel.getSelectedItem() as? ListItem.RomItem)?.rom
-        val displayName = selected?.takeIf { it.path.absolutePath == gamePath }?.displayName
-            ?: java.io.File(gamePath).nameWithoutExtension
-        openGameEmulatorPicker(tag, gamePath, displayName)
+        val displayName = selected?.takeIf { it.id == romId }?.displayName
+            ?: platformResolver.getDisplayName(tag)
+        openGameEmulatorPicker(tag, romId, displayName)
     }
 
     private fun openPlatformEmulatorPicker(tag: String) {
-        val bundledCoresDir = LaunchManager.extractBundledCores(context)
-        val options = platformResolver.getCorePickerOptions(tag, context.packageManager,
-            installedRaCores = installedCoreService.configuredCores(), embeddedCoresDir = bundledCoresDir,
-            unresponsivePackages = installedCoreService.configuredUnresponsive())
-        val pickedApp = platformResolver.getUserAppMapping(tag)
-        val selectedIdx = if (pickedApp != null) {
-            options.indexOfFirst { it.appPackage == pickedApp }.coerceAtLeast(0)
-        } else {
-            val coreId = platformResolver.getCoreMapping(tag)
-            options.indexOfFirst { it.appPackage == null && it.coreId == coreId }.coerceAtLeast(0)
-        }
         nav.dialogState.value = DialogState.None
-        nav.screenStack.add(LauncherScreen.EmulatorPicker(
-            tag = tag,
-            platformName = platformResolver.getDisplayName(tag),
-            cores = options,
-            selectedIndex = selectedIdx,
-            activeIndex = selectedIdx
+        nav.screenStack.add(emulatorMappingBuilder.buildPlatformMapping(
+            tag = tag, platformName = platformResolver.getDisplayName(tag), showAll = false,
+            defaultShowAllIfEmpty = true, selectCurrent = true,
         ))
     }
 
@@ -1935,39 +1901,8 @@ class DialogInputHandler @Inject constructor(
         restoreContextMenu()
     }
 
-    fun onEmulatorPickerConfirm(screen: LauncherScreen.EmulatorPicker) {
-        val chosen = screen.cores.getOrNull(screen.selectedIndex) ?: return
-        if (screen.gamePath != null) {
-            if (chosen.coreId.isEmpty() && chosen.appPackage == null) {
-                platformResolver.setGameOverride(screen.gamePath, null, null)
-                platformResolver.setGameAppOverride(screen.gamePath, null)
-            } else if (chosen.appPackage != null) {
-                platformResolver.setGameAppOverride(screen.gamePath, chosen.appPackage)
-            } else {
-                platformResolver.setGameOverride(screen.gamePath, chosen.coreId, chosen.runnerLabel)
-            }
-            nav.screenStack.removeAt(nav.screenStack.lastIndex)
-            restoreContextMenu()
-        } else {
-            if (chosen.appPackage != null) {
-                platformResolver.setAppMapping(screen.tag, chosen.appPackage)
-            } else {
-                platformResolver.setCoreMapping(screen.tag, chosen.coreId, chosen.runnerLabel)
-            }
-            platformResolver.saveCoreMappings()
-            nav.screenStack.removeAt(nav.screenStack.lastIndex)
-            val cm = nav.screenStack.lastOrNull()
-            if (cm is LauncherScreen.EmulatorMapping) {
-                val all = emulatorMappingBuilder.detailedMappings()
-                val filtered = emulatorMappingBuilder.filter(all, cm.filter)
-                val idx = filtered.indexOfFirst { it.tag == screen.tag }.coerceAtLeast(0)
-                nav.screenStack[nav.screenStack.lastIndex] = cm.copy(mappings = filtered, allMappings = all, selectedIndex = idx)
-            }
-        }
-    }
-
     private fun onPlatformReset(state: DialogState.PlatformResetConfirm) {
-        platformResolver.resetPlatformMapping(state.tag)
+        platformResolver.resetPlatformToDefault(state.tag, context.packageManager)
         nav.dialogState.value = DialogState.None
         val mapping = nav.screenStack.lastOrNull() as? LauncherScreen.PlatformMapping ?: return
         nav.screenStack[nav.screenStack.lastIndex] = emulatorMappingBuilder.buildPlatformMapping(
@@ -2007,26 +1942,17 @@ class DialogInputHandler @Inject constructor(
             } else {
                 addAll(gameContextOptions.map { menuItem ->
                     when {
-                        menuItem == MENU_EMULATOR_OVERRIDE && romPath != null -> {
-                        val bundledCoresDir = LaunchManager.extractBundledCores(context)
-                        val options = platformResolver.getCorePickerOptions(platformTag, context.packageManager,
-                            installedRaCores = installedCoreService.configuredCores(), embeddedCoresDir = bundledCoresDir,
-                            unresponsivePackages = installedCoreService.configuredUnresponsive())
-                        val override = platformResolver.getGameOverride(romPath)
-                        if (override != null) {
-                            val match = if (override.appPackage != null) {
-                                options.firstOrNull { it.appPackage == override.appPackage }
-                            } else {
-                                options.firstOrNull { it.coreId == override.coreId && (override.runner == null || it.runnerLabel == override.runner) }
-                            }
-                            if (match != null) {
-                                val desc = if (match.appPackage != null) match.displayName
-                                    else "${match.runnerLabel} (${match.displayName})"
-                                "$MENU_EMULATOR_OVERRIDE\t$desc"
-                            } else menuItem
-                        } else {
-                            "$MENU_EMULATOR_OVERRIDE\tPlatform Default"
-                        }
+                        menuItem == MENU_EMULATOR_OVERRIDE && rom != null -> {
+                            // Reads the stored choice directly. Matching it back against a
+                            // generated option list used to blank this row whenever the option
+                            // could no longer be produced, e.g. an undownloaded Ricotta core.
+                            val desc = gameOverrideStore.get(rom.id)?.let {
+                                platformResolver.describeChoice(
+                                    it, context.packageManager,
+                                    InstalledCoreService.getPackageLabel(settings.retroArchPackage),
+                                )
+                            } ?: context.getString(dev.cannoli.scorza.R.string.emulator_platform_default)
+                            "$MENU_EMULATOR_OVERRIDE\t$desc"
                         }
                         menuItem == MENU_RA_GAME_ID -> "$MENU_RA_GAME_ID\t${rom?.raGameId?.toString() ?: "Autodetect"}"
                         else -> menuItem

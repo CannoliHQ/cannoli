@@ -1,7 +1,8 @@
 package dev.cannoli.scorza.launcher
 
 import dev.cannoli.scorza.config.AppConfig
-import dev.cannoli.scorza.config.GameCoreOverride
+import dev.cannoli.scorza.config.EmulatorChoice
+import dev.cannoli.scorza.config.EmulatorSource
 import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.input.DeviceMapping
 import dev.cannoli.scorza.input.runtime.ActiveMappingHolder
@@ -27,6 +28,7 @@ class LaunchManagerRecoveryTargetTest {
     private val platformConfig = mockk<PlatformConfig>(relaxed = true)
     private val apkLauncher = mockk<ApkLauncher>(relaxed = true)
     private val installedCoreService = mockk<InstalledCoreService>(relaxed = true)
+    private val gameOverrides = mockk<dev.cannoli.scorza.db.GameOverrideStore>(relaxed = true)
 
     private fun rom(root: File): Rom {
         val romFile = File(root, "roms/GC/Mario.iso").apply { parentFile!!.mkdirs(); writeText("x") }
@@ -37,7 +39,7 @@ class LaunchManagerRecoveryTargetTest {
         val settings = mockk<SettingsRepository>(relaxed = true)
         every { settings.sdCardRoot } returns root.absolutePath
         every { settings.retroArchPackage } returns RA
-        every { platformConfig.getGameOverride(any()) } returns null
+        every { gameOverrides.get(any()) } returns null
         every { installedCoreService.cacheReady } returns true
         every { installedCoreService.unresponsivePackages } returns emptySet()
         every { installedCoreService.hasCoreInPackage(any(), any()) } returns false
@@ -55,6 +57,7 @@ class LaunchManagerRecoveryTargetTest {
             activeMappingHolder = activeMappingHolder,
             atomicRename = mockk(relaxed = true),
             installedCoreService = installedCoreService,
+            gameOverrides = gameOverrides,
         )
     }
 
@@ -62,22 +65,23 @@ class LaunchManagerRecoveryTargetTest {
         val root = tmp.newFolder()
         val mgr = manager(root)
         val gc = rom(root)
-        every { platformConfig.getGameOverride(gc.path.absolutePath) } returns
-            GameCoreOverride(appPackage = MISSING)
+        every { gameOverrides.get(gc.id) } returns
+            EmulatorChoice(EmulatorSource.Standalone, appPackage = MISSING)
         every { platformConfig.getAppConfig("GC", MISSING) } returns AppConfig(MISSING)
         every { apkLauncher.launchWithRom(any(), any(), any()) } returns
             LaunchResult.AppNotInstalled(MISSING)
 
         val dialog = mgr.launchRom(gc) as DialogState.MissingApp
 
-        assertEquals(gc.path.absolutePath, dialog.gamePath)
+        assertEquals(gc.id, dialog.romId)
     }
 
     @Test fun `a platform level app that is not installed points recovery at the platform`() {
         val root = tmp.newFolder()
         val mgr = manager(root)
         val gc = rom(root)
-        every { platformConfig.getRunnerPreference("GC") } returns "Standalone"
+        every { platformConfig.getPlatformChoice("GC") } returns
+            dev.cannoli.scorza.config.EmulatorChoice(dev.cannoli.scorza.config.EmulatorSource.Standalone)
         every { platformConfig.getUserAppMapping("GC") } returns MISSING
         every { platformConfig.getAppConfig("GC", MISSING) } returns AppConfig(MISSING)
         every { apkLauncher.launchWithRom(any(), any(), any()) } returns
@@ -85,7 +89,7 @@ class LaunchManagerRecoveryTargetTest {
 
         val dialog = mgr.launchRom(gc) as DialogState.MissingApp
 
-        assertNull(dialog.gamePath)
+        assertNull(dialog.romId)
         assertEquals("GC", dialog.platformTag)
     }
 
@@ -93,12 +97,12 @@ class LaunchManagerRecoveryTargetTest {
         val root = tmp.newFolder()
         val mgr = manager(root)
         val gc = rom(root)
-        every { platformConfig.getGameOverride(gc.path.absolutePath) } returns
-            GameCoreOverride(coreId = "dolphin_libretro", runner = "RetroArch")
+        every { gameOverrides.get(gc.id) } returns
+            EmulatorChoice(EmulatorSource.RetroArch, coreId = "dolphin_libretro")
 
         val dialog = mgr.launchRom(gc) as DialogState.MissingCore
 
-        assertEquals(gc.path.absolutePath, dialog.gamePath)
+        assertEquals(gc.id, dialog.romId)
         assertEquals("GC", dialog.platformTag)
         // Pins the core-install check as the branch under test, not the generic "unknown" fallback.
         assertEquals(InstalledCoreService.getPackageLabel(RA), dialog.packageLabel)
@@ -107,12 +111,15 @@ class LaunchManagerRecoveryTargetTest {
     @Test fun `a platform level core that is missing points recovery at the platform`() {
         val root = tmp.newFolder()
         val mgr = manager(root)
-        every { platformConfig.getRunnerPreference("GC") } returns "RetroArch"
+        every { platformConfig.getPlatformChoice("GC") } returns
+            dev.cannoli.scorza.config.EmulatorChoice(
+                dev.cannoli.scorza.config.EmulatorSource.RetroArch, "dolphin_libretro",
+            )
         every { platformConfig.getCoreName("GC") } returns "dolphin_libretro"
 
         val dialog = mgr.launchRom(rom(root)) as DialogState.MissingCore
 
-        assertNull(dialog.gamePath)
+        assertNull(dialog.romId)
         assertEquals("GC", dialog.platformTag)
         assertEquals(InstalledCoreService.getPackageLabel(RA), dialog.packageLabel)
     }

@@ -20,7 +20,7 @@ class PlatformConfigStandaloneDisplayTest {
 
     @Test fun `standalone selection renders app name not bundled core`() {
         val pc = config()
-        pc.setAppMapping("NES", "com.explusalpha.NesEmu")
+        pc.setPlatformChoice("NES", EmulatorChoice(EmulatorSource.Standalone, appPackage = "com.explusalpha.NesEmu"))
         // Simulate RetroArch installed with nestopia_libretro so coreStatus returns "Present",
         // which is the scenario where the bug manifests (core branch fires instead of standalone).
         val installedRaCores = mapOf("org.libretro.retroarch" to setOf("nestopia_libretro"))
@@ -54,14 +54,28 @@ class PlatformConfigStandaloneDisplayTest {
         assertEquals(EmulatorMappingStatus.READY, entry.status)
     }
 
-    @Test fun `reload discards uncommitted edits save persists them`() {
+    // A pick now persists as part of making it, so there is no uncommitted window in which a
+    // reload could discard it. The old two-step set-then-save was the source of the "who forgot
+    // to call saveCoreMappings" bug class.
+    @Test fun `a pick persists immediately and survives a reload`() {
         val pc = config()
-        pc.setCoreMapping("NES", "nestopia_libretro", "RetroArch")
-        pc.reloadCoreMappings()
         assertFalse(pc.hasUserMapping("NES"))
-        pc.setCoreMapping("NES", "nestopia_libretro", "RetroArch")
-        pc.saveCoreMappings()
+        pc.setPlatformChoice("NES", EmulatorChoice(EmulatorSource.RetroArch, "nestopia_libretro"))
         pc.reloadCoreMappings()
         assertTrue(pc.hasUserMapping("NES"))
+        assertEquals(
+            EmulatorChoice(EmulatorSource.RetroArch, "nestopia_libretro"),
+            pc.getPlatformChoice("NES"),
+        )
+    }
+
+    @Test fun `reset persists immediately too`() {
+        val pc = config()
+        pc.setPlatformChoice("NES", EmulatorChoice(EmulatorSource.RetroArch, "nestopia_libretro"))
+        pc.resetPlatformToDefault(
+            "NES", ApplicationProvider.getApplicationContext<android.content.Context>().packageManager,
+        )
+        pc.reloadCoreMappings()
+        assertFalse(pc.hasUserMapping("NES"))
     }
 }

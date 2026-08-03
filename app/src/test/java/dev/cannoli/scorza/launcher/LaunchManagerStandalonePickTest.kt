@@ -1,7 +1,8 @@
 package dev.cannoli.scorza.launcher
 
 import dev.cannoli.scorza.config.AppConfig
-import dev.cannoli.scorza.config.GameCoreOverride
+import dev.cannoli.scorza.config.EmulatorChoice
+import dev.cannoli.scorza.config.EmulatorSource
 import dev.cannoli.scorza.config.LaunchMethod
 import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.input.DeviceMapping
@@ -26,6 +27,7 @@ class LaunchManagerStandalonePickTest {
     private val platformConfig = mockk<PlatformConfig>(relaxed = true)
     private val apkLauncher = mockk<ApkLauncher>(relaxed = true)
     private val delfinoLauncher = mockk<DelfinoLauncher>(relaxed = true)
+    private val gameOverrides = mockk<dev.cannoli.scorza.db.GameOverrideStore>(relaxed = true)
 
     private fun rom(root: File): Rom {
         val romFile = File(root, "roms/3ds/Zelda.3ds").apply { parentFile!!.mkdirs(); writeText("x") }
@@ -42,12 +44,13 @@ class LaunchManagerStandalonePickTest {
     private fun manager(root: File): LaunchManager {
         val settings = mockk<SettingsRepository>(relaxed = true)
         every { settings.sdCardRoot } returns root.absolutePath
-        every { platformConfig.getGameOverride(any()) } returns null
-        every { platformConfig.getRunnerPreference("3DS") } returns "Standalone"
+        every { gameOverrides.get(any()) } returns null
+        every { platformConfig.getPlatformChoice("3DS") } returns
+            dev.cannoli.scorza.config.EmulatorChoice(dev.cannoli.scorza.config.EmulatorSource.Standalone)
         // GC has no bundled core and no stored runner, so launch falls through to the
         // standalone app list.
         every { platformConfig.getCoreName("GC") } returns null
-        every { platformConfig.getRunnerPreference("GC") } returns null
+        every { platformConfig.getPlatformChoice("GC") } returns null
         every { apkLauncher.launchWithRom(any(), any(), any()) } returns LaunchResult.Success
         every { delfinoLauncher.launch(any(), any()) } returns LaunchResult.Success
         val activeMappingHolder = mockk<ActiveMappingHolder>(relaxed = true)
@@ -63,6 +66,7 @@ class LaunchManagerStandalonePickTest {
             launchState = mockk(relaxed = true),
             activeMappingHolder = activeMappingHolder,
             atomicRename = mockk(relaxed = true),
+            gameOverrides = gameOverrides,
         )
     }
 
@@ -142,8 +146,8 @@ class LaunchManagerStandalonePickTest {
         val root = tmp.newFolder()
         val mgr = manager(root)
         val gc = gcRom(root)
-        every { platformConfig.getGameOverride(gc.path.absolutePath) } returns
-            GameCoreOverride(appPackage = DELFINO)
+        every { gameOverrides.get(gc.id) } returns
+            EmulatorChoice(EmulatorSource.Standalone, appPackage = DELFINO)
         every { platformConfig.getAppConfig("GC", DELFINO) } returns delfinoConfig()
 
         mgr.launchRom(gc)

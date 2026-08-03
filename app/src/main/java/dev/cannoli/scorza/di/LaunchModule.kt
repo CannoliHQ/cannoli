@@ -46,9 +46,10 @@ object LaunchModule {
         activeMappingHolder: dev.cannoli.scorza.input.runtime.ActiveMappingHolder,
         atomicRename: AtomicRename,
         installedCoreService: InstalledCoreService,
+        gameOverrides: dev.cannoli.scorza.db.GameOverrideStore,
     ): LaunchManager = LaunchManager(
         context, settings, platformConfig,
         retroArchLauncher, emuLauncher, apkLauncher, delfinoLauncher, launchState, activeMappingHolder,
-        atomicRename, installedCoreService
+        atomicRename, installedCoreService, gameOverrides
     )
 }

@@ -22,32 +22,32 @@ class PlatformSettingLabelTest {
 
     @Test fun `standalone pick on a platform with no default core names the picked app`() {
         val pc = config()
-        pc.setAppMapping("GC", "org.dolphinemu.mmjr")
+        pc.setPlatformChoice("GC", EmulatorChoice(EmulatorSource.Standalone, appPackage = "org.dolphinemu.mmjr"))
         assertEquals("Dolphin MMJR2", label(pc, "GC"))
     }
 
     @Test fun `a different standalone pick on the same platform is distinguished`() {
         val pc = config()
-        pc.setAppMapping("GC", "dev.cannoli.delfino")
+        pc.setPlatformChoice("GC", EmulatorChoice(EmulatorSource.Standalone, appPackage = "dev.cannoli.delfino"))
         assertEquals("Delfino", label(pc, "GC"))
     }
 
     @Test fun `standalone pick on a platform with a default core names the app not the core`() {
         val pc = config()
-        pc.setAppMapping("NES", "com.explusalpha.NesEmu")
+        pc.setPlatformChoice("NES", EmulatorChoice(EmulatorSource.Standalone, appPackage = "com.explusalpha.NesEmu"))
         assertEquals("NES.emu", label(pc, "NES"))
     }
 
     @Test fun `a core pick still names the core`() {
         val pc = config()
-        pc.setCoreMapping("NES", "fceumm_libretro", "RetroArch")
+        pc.setPlatformChoice("NES", EmulatorChoice(EmulatorSource.RetroArch, "fceumm_libretro"))
         assertEquals(pc.getCoreDisplayName("fceumm_libretro"), label(pc, "NES"))
     }
 
     @Test fun `standalone with no app installed reports needs setup`() {
         val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
         val pc = config()
-        pc.setCoreMapping("GC", "", "Standalone")
+        pc.setPlatformChoice("GC", EmulatorChoice(EmulatorSource.Standalone))
         val entry = pc.detailedMappingFor("GC", ctx.packageManager)
         assertEquals(EmulatorMappingStatus.NEEDS_SETUP, entry.status)
         assertEquals("Needs setup", entry.coreDisplayName)

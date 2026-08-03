@@ -80,6 +80,9 @@ class BootInitializer @Inject constructor(
         dev.cannoli.scorza.util.ErrorLog.init(root.absolutePath)
         setupCoordinator.logStorageDiagnostics()
         platformConfig.load()
+        // Backfill only. Fills platforms that have no stored choice and never touches one the
+        // user made, so it is safe to run on every boot rather than only on first run.
+        platformConfig.seedUnsetPlatforms(context.packageManager)
         ioScope.launch {
             launchManager.syncRetroArchAssets(root)
             launchManager.syncRetroArchConfig(root)

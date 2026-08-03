@@ -9,6 +9,7 @@ import dagger.hilt.components.SingletonComponent
 import dev.cannoli.scorza.db.AppsRepository
 import dev.cannoli.scorza.db.CannoliDatabase
 import dev.cannoli.scorza.db.CollectionsRepository
+import dev.cannoli.scorza.db.GameOverrideStore
 import dev.cannoli.scorza.db.RecentlyPlayedRepository
 import dev.cannoli.scorza.db.RomScanner
 import dev.cannoli.scorza.db.RommLinkRepository
@@ -25,6 +26,10 @@ object DatabaseModule {
     @Provides @Singleton
     fun provideCannoliDatabase(paths: CannoliPathsProvider): CannoliDatabase =
         CannoliDatabase(paths)
+
+    @Provides @Singleton
+    fun provideGameOverrideStore(db: CannoliDatabase): GameOverrideStore =
+        GameOverrideStore(db)
 
     @Provides @Singleton
     fun provideArtworkLookup(paths: CannoliPathsProvider): ArtworkLookup =

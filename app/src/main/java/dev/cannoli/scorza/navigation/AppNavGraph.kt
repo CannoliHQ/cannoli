@@ -197,10 +197,6 @@ sealed class LauncherScreen {
         override val itemCount: Int get() = mappings.size
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
     }
-    data class EmulatorPicker(val tag: String, val platformName: String, val cores: List<EmulatorPickerOption>, override val selectedIndex: Int = 0, val gamePath: String? = null, override val scrollTarget: Int = 0, val activeIndex: Int = 0) : LauncherScreen(), ScrollableScreen {
-        override val itemCount: Int get() = cores.size
-        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
-    }
     data class PlatformMapping(
         val tag: String,
         val platformName: String,
@@ -209,6 +205,10 @@ sealed class LauncherScreen {
         val canToggleShowAll: Boolean = true,
         val overridesCount: Int = 0,
         val resettable: Boolean = false,
+        // Non-null scopes the screen to a single game: it edits that game's override instead
+        // of the platform mapping, and drops the platform-wide actions.
+        val romId: Long? = null,
+        val gameName: String? = null,
         override val selectedIndex: Int = 0,
         override val scrollTarget: Int = 0,
     ) : LauncherScreen(), ScrollableScreen {
@@ -226,13 +226,15 @@ sealed class LauncherScreen {
         override val selectedIndex: Int = 0,
         override val scrollTarget: Int = 0,
     ) : LauncherScreen(), ScrollableScreen {
-        override val itemCount: Int get() = 0
+        // Was hardcoded to 0, so the list never scrolled and cores with long firmware lists
+        // (fbneo declares 23 entries) had most of them unreachable.
+        override val itemCount: Int get() = firmware.size
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
     }
     data class PlatformOverrides(
         val tag: String,
         val platformName: String,
-        val overrides: List<Pair<String, String>>,
+        val overrides: List<dev.cannoli.scorza.ui.screens.GameOverrideRow>,
         override val selectedIndex: Int = 0,
         override val scrollTarget: Int = 0,
     ) : LauncherScreen(), ScrollableScreen {
@@ -648,60 +650,6 @@ fun AppNavGraph(
                     }
                 }
             }
-            is LauncherScreen.EmulatorPicker -> {
-                if (inputRouter != null) {
-                    val handler = remember { inputRouter.currentHandler() }
-                    dev.cannoli.scorza.input.screen.compose.ScreenInput(handler)
-                }
-                ListDialogScreen(
-                    backgroundImagePath = appSettings.backgroundImagePath,
-                    backgroundTint = appSettings.backgroundTint,
-                    title = currentScreen.platformName,
-                    listFontSize = listFontSize,
-                    listLineHeight = listLineHeight,
-                    fullWidth = true,
-                    rightBottomItems = listOf(labels.confirm to stringResource(R.string.label_select)),
-                    buttonStyle = labels
-                ) {
-                    if (currentScreen.cores.isEmpty()) {
-                        Text(
-                            text = stringResource(R.string.no_compatible_cores),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = cannoliColors.text.copy(alpha = 0.6f),
-                            modifier = Modifier.padding(start = 14.dp)
-                        )
-                    } else {
-                        List(
-                            items = currentScreen.cores,
-                            selectedIndex = currentScreen.selectedIndex,
-                            itemHeight = itemHeight,
-                            scrollTarget = currentScreen.scrollTarget,
-                            onListStateChanged = onListStateChanged
-                        ) { index, option, isSelected ->
-                            val label = if (option.runnerLabel.isEmpty()) option.displayName
-                                else "${option.displayName} (${option.runnerLabel})"
-                            if (index == currentScreen.activeIndex) {
-                                PillRowKeyValue(
-                                    label = label,
-                                    value = stringResource(R.string.value_active),
-                                    isSelected = isSelected,
-                                    fontSize = listFontSize,
-                                    lineHeight = listLineHeight,
-                                    verticalPadding = listVerticalPadding
-                                )
-                            } else {
-                                PillRowText(
-                                    label = label,
-                                    isSelected = isSelected,
-                                    fontSize = listFontSize,
-                                    lineHeight = listLineHeight,
-                                    verticalPadding = listVerticalPadding
-                                )
-                            }
-                        }
-                    }
-                }
-            }
             is LauncherScreen.PlatformMapping -> {
                 if (inputRouter != null) {
                     val handler = remember { inputRouter.currentHandler() }
@@ -725,7 +673,10 @@ fun AppNavGraph(
                 ListDialogScreen(
                     backgroundImagePath = appSettings.backgroundImagePath,
                     backgroundTint = appSettings.backgroundTint,
-                    title = stringResource(R.string.title_platform_mapping, currentScreen.platformName),
+                    title = if (currentScreen.romId != null)
+                        stringResource(R.string.title_game_mapping, currentScreen.gameName.orEmpty())
+                    else
+                        stringResource(R.string.title_platform_mapping, currentScreen.platformName),
                     listFontSize = listFontSize,
                     listLineHeight = listLineHeight,
                     fullWidth = true,
@@ -745,6 +696,14 @@ fun AppNavGraph(
                         when (item) {
                             is dev.cannoli.scorza.ui.screens.MappingItem.SectionHeader -> SectionHeader(
                                 text = item.label,
+                                fontSize = listFontSize,
+                                lineHeight = listLineHeight,
+                                verticalPadding = listVerticalPadding,
+                            )
+                            is dev.cannoli.scorza.ui.screens.MappingItem.PlatformDefault -> PillRowKeyValue(
+                                label = item.label,
+                                value = if (item.isCurrent) stringResource(R.string.value_active) else "",
+                                isSelected = isSelected,
                                 fontSize = listFontSize,
                                 lineHeight = listLineHeight,
                                 verticalPadding = listVerticalPadding,
@@ -934,10 +893,9 @@ fun AppNavGraph(
                             scrollTarget = currentScreen.scrollTarget,
                             onListStateChanged = onListStateChanged
                         ) { _, item, isSelected ->
-                            val romName = java.io.File(item.first).nameWithoutExtension
                             PillRowKeyValue(
-                                label = romName,
-                                value = item.second,
+                                label = item.gameName,
+                                value = item.label,
                                 isSelected = isSelected,
                                 fontSize = listFontSize,
                                 lineHeight = listLineHeight,

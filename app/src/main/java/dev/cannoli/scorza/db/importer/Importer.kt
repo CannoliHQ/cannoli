@@ -268,23 +268,21 @@ class Importer(
     }
 
     private fun importGameOverrides(romIdsByRelative: Map<String, Long>) {
-        for ((absolutePath, override) in platformConfig.snapshotGameOverrides()) {
-            val romId = relativizeRom(File(absolutePath))?.let { romIdsByRelative[it] }
-            if (romId == null) {
-                orphan("game_override", absolutePath)
-                continue
-            }
-            conn.execute(
-                """
-                INSERT OR REPLACE INTO game_overrides (rom_id, core_id, runner, app_package)
-                VALUES (?, ?, ?, ?)
-                """.trimIndent(),
-                romId,
-                override.coreId.takeIf { it.isNotEmpty() },
-                override.runner,
-                override.appPackage,
-            )
-        }
+        platformConfig.migrateV1GameOverrides(
+            resolveRomId = { absolutePath -> relativizeRom(File(absolutePath))?.let { romIdsByRelative[it] } },
+            put = { romId, choice ->
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO game_overrides (rom_id, source, core_id, app_package)
+                    VALUES (?, ?, ?, ?)
+                    """.trimIndent(),
+                    romId,
+                    choice.source.name,
+                    choice.coreId.takeIf { it.isNotEmpty() },
+                    choice.appPackage,
+                )
+            },
+        )
     }
 
     private fun importRaGameIds(romIdsByRelative: Map<String, Long>) {
@@ -435,9 +433,10 @@ class Importer(
 
     private fun archiveLegacyFiles(backupDir: File) {
         backupDir.mkdirs()
+        // cores.json is deliberately absent: unlike everything below it, no table supersedes
+        // it and PlatformConfig still reads it, so archiving it lost every emulator mapping.
         val candidates = listOf(
             paths.collectionsDir,
-            paths.coresJson,
             paths.raGameIdsFile,
             paths.raGameIdsLegacyFile,
             paths.recentlyPlayedFile,

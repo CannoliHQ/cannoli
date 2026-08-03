@@ -31,6 +31,9 @@ class RomsRepository(
         return db.queryOne("$BASE_SELECT WHERE path = ?", relative, mapper = ::rowToRom)
     }
 
+    fun romIdForRelativePath(relative: String): Long? =
+        db.queryOne("SELECT id FROM roms WHERE path = ?", relative) { it.getLong(0) }
+
     fun gameById(romId: Long): Rom? = db.queryOne(
         "$BASE_SELECT WHERE id = ?", romId, mapper = ::rowToRom,
     )

@@ -18,23 +18,19 @@ class PlatformConfigResetTest {
         return PlatformConfig(File(ctx.cacheDir, "reset-root").apply { mkdirs() }, ctx.assets)
     }
 
-    @Test fun `reset clears user core runner app and reports no user mapping`() {
+    // No bundled cores and no installed apps in this fixture, so the default resolves to
+    // nothing and the platform is left unmapped.
+    @Test fun `reset with no resolvable default leaves the platform unmapped`() {
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
         val pc = config()
-        pc.setCoreMapping("NES", "nestopia_libretro", "RetroArch")
+        pc.setPlatformChoice("NES", EmulatorChoice(EmulatorSource.RetroArch, "nestopia_libretro"))
         assertTrue(pc.hasUserMapping("NES"))
-        pc.resetPlatformMapping("NES")
+        pc.resetPlatformToDefault("NES", ctx.packageManager)
         assertFalse(pc.hasUserMapping("NES"))
     }
 
-    @Test fun `clearGameOverride removes a single override and getPlatformOverrides reflects it`() {
-        val pc = config()
-        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
-        val romsDir = File(File(ctx.cacheDir, "reset-root"), "Roms")
-        val tagDir = File(romsDir, "NES")
-        val path = File(tagDir, "game.nes").absolutePath
-        pc.setGameOverride(path, "nestopia_libretro", "RetroArch")
-        assertEquals(1, pc.getPlatformOverrides("NES").size)
-        pc.clearGameOverride(path)
-        assertEquals(0, pc.getPlatformOverrides("NES").size)
-    }
+    // Per-game overrides moved out of PlatformConfig into the game_overrides table. The clearing
+    // and per-platform listing this file used to cover now live in GameOverrideStoreTest, against
+    // a real database, which additionally covers the delete cascade and the GB/GBA prefix case
+    // this path-keyed version could not reach.
 }

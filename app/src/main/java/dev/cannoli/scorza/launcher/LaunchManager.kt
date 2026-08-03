@@ -10,6 +10,7 @@ import dev.cannoli.igm.IgmDisplaySettings
 import dev.cannoli.igm.TimeFormatMode
 import dev.cannoli.scorza.config.AppConfig
 import dev.cannoli.scorza.config.CannoliPaths
+import dev.cannoli.scorza.config.EmulatorSource
 import dev.cannoli.scorza.config.LaunchMethod
 import dev.cannoli.scorza.input.runtime.confirmButton
 import dev.cannoli.scorza.input.runtime.labelSet
@@ -41,7 +42,13 @@ class LaunchManager(
     private val activeMappingHolder: dev.cannoli.scorza.input.runtime.ActiveMappingHolder,
     private val atomicRename: dev.cannoli.scorza.util.AtomicRename,
     private val installedCoreService: InstalledCoreService? = null,
+    private val gameOverrides: dev.cannoli.scorza.db.GameOverrideStore? = null,
 ) {
+    // Per-game overrides are keyed by rom_id, which the scanner keeps stable across renames,
+    // moves and auto-organize, so an override follows its game instead of being orphaned.
+    private fun overrideFor(rom: Rom): dev.cannoli.scorza.config.EmulatorChoice? =
+        gameOverrides?.get(rom.id)
+
     private var raConfigPath: String? = null
 
     init {
@@ -197,14 +204,17 @@ class LaunchManager(
     }
 
     fun getEmbeddedCorePath(rom: Rom): String? {
-        val gameOverride = platformConfig.getGameOverride(rom.path.absolutePath)
-        if (gameOverride?.appPackage != null) return null
         val target = rom.launchTarget
         if (target is LaunchTarget.Embedded) return target.corePath
         if (target !is LaunchTarget.RetroArch) return null
-        val core = gameOverride?.coreId ?: platformConfig.getCoreName(rom.platformTag) ?: return null
-        val runnerPref = gameOverride?.runner ?: platformConfig.getRunnerPreference(rom.platformTag)
-        if (runnerPref == "RetroArch" || runnerPref == "RicottaArch") return null
+        val gameOverride = overrideFor(rom)
+        val source = gameOverride?.source
+            ?: platformConfig.getPlatformChoice(rom.platformTag)?.source
+        // Only an Internal selection may use the bundled core. A platform mapped to a standalone
+        // app used to fall through here, so A launched the app while Resume launched the core.
+        if (source != null && source != EmulatorSource.Internal) return null
+        val core = gameOverride?.coreId?.ifEmpty { null }
+            ?: platformConfig.getCoreName(rom.platformTag) ?: return null
         return findEmbeddedCore(core)
     }
 
@@ -252,28 +262,34 @@ class LaunchManager(
         val launchFile = resolveLaunchFile(rom, extractArchives = false)
             ?: return errorAndReset(DialogState.LaunchError(context.getString(dev.cannoli.scorza.R.string.launch_error_resolve_file)))
 
-        val gameOverride = platformConfig.getGameOverride(rom.path.absolutePath)
-        if (gameOverride?.appPackage != null) {
+        val gameOverride = overrideFor(rom)
+        if (gameOverride?.source == EmulatorSource.Standalone && gameOverride.appPackage != null) {
             val cfg = platformConfig.getAppConfig(rom.platformTag, gameOverride.appPackage)
             return launchResultDialog(
-                launchStandalone(rom, launchFile, cfg), rom.platformTag, rom.path.absolutePath
+                launchStandalone(rom, launchFile, cfg), rom.platformTag, rom.id
             )
         }
-        val overrideGamePath = if (!gameOverride?.coreId.isNullOrEmpty()) rom.path.absolutePath else null
+        val overrideRomId = if (gameOverride != null) rom.id else null
 
         val result = when (val target = rom.launchTarget) {
             is LaunchTarget.RetroArch -> {
-                var runnerPref = gameOverride?.runner ?: platformConfig.getRunnerPreference(rom.platformTag)
-                if (runnerPref == null) {
-                    val core = gameOverride?.coreId ?: platformConfig.getCoreName(rom.platformTag)
-                    val embeddedAvailable = core?.let { findEmbeddedCore(it) != null } ?: false
-                    val raAvailable = core != null && installedCoreService?.installedCores?.any { it.value.contains(core) } == true
-                    if (!embeddedAvailable && !raAvailable
-                        && platformConfig.getFirstInstalledApp(rom.platformTag, context.packageManager) != null) {
-                        runnerPref = "Standalone"
-                    }
-                }
-                if (runnerPref == "App" || runnerPref == "Standalone") {
+                val resolvedCore = gameOverride?.coreId?.ifEmpty { null }
+                    ?: platformConfig.getCoreName(rom.platformTag)
+                val source = pickSource(
+                    gameSource = gameOverride?.source,
+                    platformSource = platformConfig.getPlatformChoice(rom.platformTag)?.source,
+                    embeddedAvailable = { resolvedCore?.let { findEmbeddedCore(it) != null } ?: false },
+                    // configuredCores, not installedCores: a core present only in a RetroArch the
+                    // user is not using must not suppress the standalone fallback.
+                    raAvailable = {
+                        resolvedCore != null &&
+                            installedCoreService?.configuredCores()?.any { it.value.contains(resolvedCore) } == true
+                    },
+                    standaloneAvailable = {
+                        platformConfig.getFirstInstalledApp(rom.platformTag, context.packageManager) != null
+                    },
+                )
+                if (source == EmulatorSource.Standalone) {
                     val cfg = platformConfig.getUserAppMapping(rom.platformTag)
                         ?.let { platformConfig.getAppConfig(rom.platformTag, it) }
                         ?: platformConfig.getFirstInstalledApp(rom.platformTag, context.packageManager)
@@ -284,11 +300,11 @@ class LaunchManager(
                         LaunchResult.CoreNotInstalled("unknown")
                     }
                 } else {
-                    val core = gameOverride?.coreId ?: platformConfig.getCoreName(rom.platformTag)
+                    val core = resolvedCore
                     if (core != null) {
-                        if (runnerPref != "RetroArch" && runnerPref != "RicottaArch") {
+                        if (source != EmulatorSource.RetroArch) {
                             val embeddedCorePath = findEmbeddedCore(core)
-                            debugLog("RetroArch target: core=$core runnerPref=$runnerPref embeddedCorePath=$embeddedCorePath")
+                            debugLog("RetroArch target: core=$core source=$source embeddedCorePath=$embeddedCorePath")
                             if (embeddedCorePath != null) {
                                 val embeddedFile = resolveLaunchFile(rom, extractArchives = true)
                                     ?: return errorAndReset(DialogState.LaunchError(context.getString(dev.cannoli.scorza.R.string.launch_error_extract)))
@@ -301,7 +317,7 @@ class LaunchManager(
                                 val info = context.packageManager.getApplicationInfo(raPackage, 0)
                                 context.packageManager.getApplicationLabel(info).toString()
                             } catch (_: PackageManager.NameNotFoundException) { raPackage }
-                            return errorAndReset(DialogState.MissingApp(appName, raPackage, rom.platformTag, overrideGamePath))
+                            return errorAndReset(DialogState.MissingApp(appName, raPackage, rom.platformTag, overrideRomId))
                         }
                         // Core-install check applies to RicottaArch and to RetroArch installs
                         // that report their cores; it self-skips for installs that cannot
@@ -312,7 +328,7 @@ class LaunchManager(
                             && !installedCoreService.hasCoreInPackage(core, raPackage)) {
                             val label = InstalledCoreService.getPackageLabel(raPackage)
                             val coreName = platformConfig.getCoreDisplayName(core)
-                            return errorAndReset(DialogState.MissingCore(coreName, label, rom.platformTag, overrideGamePath))
+                            return errorAndReset(DialogState.MissingCore(coreName, label, rom.platformTag, overrideRomId))
                         }
                         if (RetroArchLauncher.isRicotta(raPackage)) {
                             syncRetroArchConfig(File(settings.sdCardRoot))
@@ -381,10 +397,31 @@ class LaunchManager(
         if (embeddedCorePath != null) {
             return launchEmbedded(rom.copy(path = launchFile), embeddedCorePath, resumeSlot, originalRomPath = rom.path.absolutePath)
         }
-        val gameOverride = platformConfig.getGameOverride(rom.path.absolutePath)
-        val core = gameOverride?.coreId ?: platformConfig.getCoreName(rom.platformTag) ?: run { launchState.launching = false; launchState.lastLaunched = null; return null }
+        val gameOverride = overrideFor(rom)
+        val core = gameOverride?.coreId?.ifEmpty { null }
+            ?: platformConfig.getCoreName(rom.platformTag)
+            ?: run { launchState.launching = false; launchState.lastLaunched = null; return null }
         val raPackage = settings.retroArchPackage
-        if (RetroArchLauncher.isRicotta(raPackage)) {
+        // Resume used to fire and forget: it discarded the LaunchResult and returned without
+        // clearing launching, so a failed startActivity never reached onResume and every later
+        // launch became a silent no-op. It now runs the same pre-checks and funnel as launchRom.
+        if (!context.isPackageInstalled(raPackage)) {
+            return errorAndReset(DialogState.MissingApp(
+                InstalledCoreService.getPackageLabel(raPackage), raPackage,
+                rom.platformTag, rom.id,
+            ))
+        }
+        if (installedCoreService != null
+            && installedCoreService.cacheReady
+            && raPackage !in installedCoreService.unresponsivePackages
+            && !installedCoreService.hasCoreInPackage(core, raPackage)) {
+            return errorAndReset(DialogState.MissingCore(
+                platformConfig.getCoreDisplayName(core),
+                InstalledCoreService.getPackageLabel(raPackage),
+                rom.platformTag, rom.id,
+            ))
+        }
+        val result = if (RetroArchLauncher.isRicotta(raPackage)) {
             syncRetroArchConfig(File(settings.sdCardRoot))
             val launchConfig = buildGameConfig(rom, resume = true, slot = resumeSlot) ?: raConfigPath
             retroArchLauncher.launchRicotta(launchFile, core, launchConfig, raPackage, buildRicottaIgm(rom))
@@ -392,7 +429,7 @@ class LaunchManager(
             val raConfig = "/storage/emulated/0/Android/data/$raPackage/files/retroarch.cfg"
             retroArchLauncher.launchRetroArchIntent(launchFile, core, raConfig, raPackage)
         }
-        return null
+        return launchResultDialog(result, rom.platformTag, rom.id)
     }
 
     private fun errorAndReset(dialog: DialogState): DialogState {
@@ -401,23 +438,20 @@ class LaunchManager(
         return dialog
     }
 
-    private fun launchResultDialog(result: LaunchResult, platformTag: String? = null, gamePath: String? = null): DialogState? {
-        val dialog = toLaunchDialog(result, platformTag, gamePath)
+    private fun launchResultDialog(result: LaunchResult, platformTag: String? = null, romId: Long? = null): DialogState? {
+        val dialog = toLaunchDialog(result, platformTag, romId)
         if (dialog != null) launchState.launching = false
         return dialog
     }
 
-    private fun toLaunchDialog(result: LaunchResult, platformTag: String? = null, gamePath: String? = null): DialogState? {
+    private fun toLaunchDialog(result: LaunchResult, platformTag: String? = null, romId: Long? = null): DialogState? {
         return when (result) {
-            is LaunchResult.CoreNotInstalled -> DialogState.MissingCore(result.coreName, platformTag = platformTag, gamePath = gamePath)
+            is LaunchResult.CoreNotInstalled -> DialogState.MissingCore(result.coreName, platformTag = platformTag, romId = romId)
             is LaunchResult.AppNotInstalled -> {
-                val appName = try {
-                    val info = context.packageManager.getApplicationInfo(result.packageName, 0)
-                    context.packageManager.getApplicationLabel(info).toString()
-                } catch (_: PackageManager.NameNotFoundException) {
-                    result.packageName
-                }
-                DialogState.MissingApp(appName, result.packageName, platformTag, gamePath)
+                // getApplicationLabel cannot resolve a package that is not installed, and this
+                // branch only fires when it is not, so use the curated label like MissingCore does.
+                val appName = InstalledCoreService.getPackageLabel(result.packageName)
+                DialogState.MissingApp(appName, result.packageName, platformTag, romId)
             }
             is LaunchResult.Error -> DialogState.LaunchError(result.message)
             LaunchResult.Success -> null
@@ -584,6 +618,23 @@ class LaunchManager(
 
     companion object {
         private const val CONFIG_VERSION = 7
+
+        // Null means no stored preference anywhere, so the caller falls through to its embedded
+        // core probe and then RetroArch, which is what the pre-identity code did implicitly.
+        // The availability probes are lazy because a stored choice decides the answer on its
+        // own, and probing the filesystem to reach a conclusion already known is wasted work.
+        fun pickSource(
+            gameSource: EmulatorSource?,
+            platformSource: EmulatorSource?,
+            embeddedAvailable: () -> Boolean,
+            raAvailable: () -> Boolean,
+            standaloneAvailable: () -> Boolean,
+        ): EmulatorSource? {
+            val stored = gameSource ?: platformSource
+            if (stored != null) return stored
+            if (!embeddedAvailable() && !raAvailable() && standaloneAvailable()) return EmulatorSource.Standalone
+            return null
+        }
 
         fun extractBundledCores(context: Context): String {
             val coresDir = File(context.filesDir, "cores")
