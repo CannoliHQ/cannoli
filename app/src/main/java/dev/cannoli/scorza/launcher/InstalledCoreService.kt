@@ -33,28 +33,39 @@ class InstalledCoreService @Inject constructor(
     var cacheReady: Boolean = false
         private set
 
+    // Cores marked installed since the current query began, unioned back in at publish time.
+    private val markedSinceQuery = mutableMapOf<String, MutableSet<String>>()
+
     suspend fun queryAllPackages() {
-        val result = mutableMapOf<String, Set<String>>()
-        val unresponsive = mutableSetOf<String>()
+        synchronized(this) { markedSinceQuery.clear() }
+        val answered = mutableMapOf<String, Set<String>>()
+        val silent = mutableSetOf<String>()
         for (pkg in discoverRaPackages()) {
+            // An empty reply is not the same as no reply. A freshly installed RicottaArch has
+            // no cores by design and genuinely answers zero; treating that as unresponsive made
+            // the shipped default package skip the missing-core check and report every platform
+            // as ready.
             val cores = queryPackage(pkg)
-            if (cores.isNotEmpty()) result[pkg] = cores
-            else unresponsive.add(pkg)
+            if (cores == null) silent.add(pkg) else answered[pkg] = cores
         }
-        publishQueryResult(result, unresponsive)
+        publishQueryResult(answered, silent)
     }
 
-    // Synchronized on the same monitor as markInstalled so the two writers never interleave,
-    // and the query result is unioned with the current map so a core marked installed mid-query
-    // (right after a download) is not clobbered by a query that started before the install.
+    // Synchronized on the same monitor as markInstalled so the two writers never interleave.
     @Synchronized
-    private fun publishQueryResult(result: Map<String, Set<String>>, unresponsive: Set<String>) {
-        val merged = HashMap(result)
-        for ((pkg, cores) in installedCores) {
-            merged[pkg] = (merged[pkg] ?: emptySet()) + cores
-        }
+    private fun publishQueryResult(answered: Map<String, Set<String>>, silent: Set<String>) {
+        val merged = HashMap<String, Set<String>>()
+        // A package that did not answer keeps whatever was cached, since there is no fresh
+        // information about it.
+        for ((pkg, cores) in installedCores) if (pkg !in answered) merged[pkg] = cores
+        // A package that did answer is replaced wholesale, so a core deleted inside RetroArch
+        // stops being reported. Unioning everything used to make deletions invisible forever.
+        // Cores marked installed while this query was in flight are re-added, which is what the
+        // blanket union was really protecting.
+        for ((pkg, cores) in answered) merged[pkg] = cores + markedSinceQuery[pkg].orEmpty()
+        markedSinceQuery.clear()
         installedCores = merged
-        unresponsivePackages = unresponsive - merged.keys
+        unresponsivePackages = silent
         cacheReady = true
     }
 
@@ -64,7 +75,8 @@ class InstalledCoreService @Inject constructor(
             .filter { it.startsWith("com.retroarch") || it.startsWith("dev.cannoli.ricotta") }
     }
 
-    private suspend fun queryPackage(pkg: String, timeoutMs: Long = 3000L): Set<String> =
+    /** Null means the package never answered. An empty set means it answered with no cores. */
+    private suspend fun queryPackage(pkg: String, timeoutMs: Long = 3000L): Set<String>? =
         suspendCancellableCoroutine { cont ->
             val token = Any()
             val receiver = object : BroadcastReceiver() {
@@ -89,7 +101,7 @@ class InstalledCoreService @Inject constructor(
 
             handler.postAtTime({
                 try { context.unregisterReceiver(receiver) } catch (_: Exception) {}
-                if (cont.isActive) cont.resume(emptySet())
+                if (cont.isActive) cont.resume(null)
             }, token, android.os.SystemClock.uptimeMillis() + timeoutMs)
 
             cont.invokeOnCancellation {
@@ -106,6 +118,9 @@ class InstalledCoreService @Inject constructor(
         val existing = installedCores[pkg].orEmpty()
         installedCores = installedCores + (pkg to existing + coreId)
         unresponsivePackages = unresponsivePackages - pkg
+        // Recorded so a query that started before this download cannot publish a stale set
+        // that omits the core we just installed.
+        markedSinceQuery.getOrPut(pkg) { mutableSetOf() }.add(coreId)
     }
 
     fun configuredCores(): Map<String, Set<String>> {
