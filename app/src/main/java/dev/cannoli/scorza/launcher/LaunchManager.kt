@@ -203,13 +203,16 @@ class LaunchManager(
         return if (coreFile.exists()) coreFile.absolutePath else null
     }
 
+    /** The stored source that applies to this ROM, game override first. Null means unset. */
+    private fun sourceFor(rom: Rom): EmulatorSource? =
+        overrideFor(rom)?.source ?: platformConfig.getPlatformChoice(rom.platformTag)?.source
+
     fun getEmbeddedCorePath(rom: Rom): String? {
         val target = rom.launchTarget
         if (target is LaunchTarget.Embedded) return target.corePath
         if (target !is LaunchTarget.RetroArch) return null
         val gameOverride = overrideFor(rom)
-        val source = gameOverride?.source
-            ?: platformConfig.getPlatformChoice(rom.platformTag)?.source
+        val source = sourceFor(rom)
         // Only an Internal selection may use the bundled core. A platform mapped to a standalone
         // app used to fall through here, so A launched the app while Resume launched the core.
         if (source != null && source != EmulatorSource.Internal) return null
@@ -245,6 +248,9 @@ class LaunchManager(
         val result = mutableSetOf<String>()
         for (rom in roms) {
             if (!hasSaveState(rom)) continue
+            // Slots are a Cannoli and libretro concept. A standalone app manages its own saves,
+            // so offering Resume for one promises something no external emulator can honour.
+            if (sourceFor(rom) == EmulatorSource.Standalone) continue
             val target = rom.launchTarget
             val embedded = target is LaunchTarget.Embedded || getEmbeddedCorePath(rom) != null
             if (embedded || (target is LaunchTarget.RetroArch && RetroArchLauncher.isRicotta(settings.retroArchPackage))) {
@@ -398,6 +404,20 @@ class LaunchManager(
             return launchEmbedded(rom.copy(path = launchFile), embeddedCorePath, resumeSlot, originalRomPath = rom.path.absolutePath)
         }
         val gameOverride = overrideFor(rom)
+        // Resume had no standalone branch, so a platform mapped to an uninstalled standalone app
+        // fell straight through to the RetroArch path and launched the platform default core.
+        // Play reported the app as missing; Resume silently ran a different emulator.
+        if (sourceFor(rom) == EmulatorSource.Standalone) {
+            val cfg = gameOverride?.appPackage?.let { platformConfig.getAppConfig(rom.platformTag, it) }
+                ?: platformConfig.getUserAppMapping(rom.platformTag)
+                    ?.let { platformConfig.getAppConfig(rom.platformTag, it) }
+                ?: platformConfig.getFirstInstalledApp(rom.platformTag, context.packageManager)
+            return launchResultDialog(
+                if (cfg != null) launchStandalone(rom, launchFile, cfg)
+                else LaunchResult.CoreNotInstalled("unknown"),
+                rom.platformTag, rom.id,
+            )
+        }
         val core = gameOverride?.coreId?.ifEmpty { null }
             ?: platformConfig.getCoreName(rom.platformTag)
             ?: run { launchState.launching = false; launchState.lastLaunched = null; return null }

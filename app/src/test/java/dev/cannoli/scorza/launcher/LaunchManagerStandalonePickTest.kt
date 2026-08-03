@@ -27,6 +27,7 @@ class LaunchManagerStandalonePickTest {
     private val platformConfig = mockk<PlatformConfig>(relaxed = true)
     private val apkLauncher = mockk<ApkLauncher>(relaxed = true)
     private val delfinoLauncher = mockk<DelfinoLauncher>(relaxed = true)
+    private val retroArchLauncher = mockk<RetroArchLauncher>(relaxed = true)
     private val gameOverrides = mockk<dev.cannoli.scorza.db.GameOverrideStore>(relaxed = true)
 
     private fun rom(root: File): Rom {
@@ -59,7 +60,7 @@ class LaunchManagerStandalonePickTest {
             context = mockk(relaxed = true),
             settings = settings,
             platformConfig = platformConfig,
-            retroArchLauncher = mockk(relaxed = true),
+            retroArchLauncher = retroArchLauncher,
             emuLauncher = mockk(relaxed = true),
             apkLauncher = apkLauncher,
             delfinoLauncher = delfinoLauncher,
@@ -140,6 +141,32 @@ class LaunchManagerStandalonePickTest {
         mgr.launchRom(gcRom(root))
 
         assertEquals(DELFINO, delfinoPackage())
+    }
+
+    // Play reported the missing app but Resume fell through to the RetroArch path and ran the
+    // platform default core, so one button launched an emulator the user had not chosen.
+    @Test fun `resume routes a standalone mapping to the same launcher as play`() {
+        val root = tmp.newFolder()
+        val mgr = manager(root)
+        every { platformConfig.getUserAppMapping("3DS") } returns "com.picked.emu"
+        every { platformConfig.getAppConfig("3DS", "com.picked.emu") } returns AppConfig("com.picked.emu")
+
+        mgr.resumeRom(rom(root), 0)
+
+        assertEquals("com.picked.emu", launchedPackage(root))
+    }
+
+    @Test fun `resume on a standalone mapping never reaches the retroarch launcher`() {
+        val root = tmp.newFolder()
+        val mgr = manager(root)
+        every { platformConfig.getUserAppMapping("3DS") } returns "com.picked.emu"
+        every { platformConfig.getAppConfig("3DS", "com.picked.emu") } returns AppConfig("com.picked.emu")
+        every { platformConfig.getCoreName("3DS") } returns "some_libretro"
+
+        mgr.resumeRom(rom(root), 0)
+
+        verify(exactly = 0) { retroArchLauncher.launchRicotta(any(), any(), any(), any(), any()) }
+        verify(exactly = 0) { retroArchLauncher.launchRetroArchIntent(any(), any(), any(), any()) }
     }
 
     @Test fun `a per game delfino override routes to the delfino launcher`() {
