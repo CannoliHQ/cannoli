@@ -160,6 +160,7 @@
     <!-- Input setting toggle: swap the on-screen positions of the Play and Resume actions. -->
     <string name="setting_swap_play_resume">Permuter la lecture et la reprise</string>
     <!-- Input setting toggle: controls whether the in-game Quit returns to the main menu. -->
+    <string name="setting_main_menu_quit"></string>
     <!-- Input toggle: automatically save a state when quitting a game. -->
     <string name="setting_always_save_on_quit">Enregistrer l\'état à la fermeture</string>
     <!-- Advanced setting toggle: skip the passcode gate for Nonna's Kitchen. Keep "Kitchen" consistent with the feature name. -->
@@ -167,6 +168,7 @@
     <string name="setting_experimental_features">Fonctionnalités expérimentales</string>
     <string name="setting_set_default_launcher">Définir comme Launcher par défaut</string>
     <!-- Same row as setting_set_default_launcher, shown when Cannoli is already the default launcher and the user wants to pick another one. -->
+    <string name="setting_change_default_launcher">Utiliser un autre Launcher</string>
     <!-- Advanced action: recreate the standard platform/system folders. -->
     <string name="setting_regenerate_system_folders">Régénérer les dossiers système</string>
     <!-- Library setting: which content layout to show (platforms, collections only, or Five Game Handheld). -->
@@ -424,6 +426,7 @@
     <string name="launch_error_extract">Impossible d\'extraire l\'archive</string>
     <string name="launch_error_generic">Impossible de lancer le jeu</string>
     <!-- %1$s = file name. -->
+    <string name="launch_error_bad_game_file">Impossible de lire un ID de jeu depuis %1$s</string>
     <string name="launch_error_update_ricotta">Mettre à jour RicottaArch pour continuer</string>
     <string name="launch_error_update_cannoli">Mettre à jour Cannoli pour continuer</string>
     <!-- %1$s = core name, %2$s = emulator app. -->
@@ -645,6 +648,7 @@
     <string name="ach_points_short">%1$dpts</string>
     <!-- %1$d = points. -->
     <string name="ach_points">%1$d points</string>
+    <string name="ach_unlocked_pending"></string>
     <!-- %1$s = date the achievement was unlocked. -->
     <string name="ach_unlocked_date">%1$s Débloqué</string>
     <string name="ach_unlocked">Débloqué</string>
@@ -672,6 +676,7 @@
     <!-- %d = number of required BIOS files missing. -->
     <string name="mapping_required_missing">%d requis manquant</string>
     <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
+    <string name="mapping_platform_name_with_tag">%1$s (%2$s)</string>
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">Mapping %s</string>
     <!-- Screen title. %s = platform name. -->
