@@ -138,6 +138,9 @@ class LaunchManager(
             put("screenshot_directory", "$rootPath/Media/Screenshots")
             put("recording_output_directory", "$rootPath/Media/Recordings")
             put("sort_savefiles_by_content_enable", "true")
+            // RetroArch defaults this to true and would nest the core name under the content
+            // directory, giving Saves/GBA/mGBA instead of the Saves/GBA the internal runner writes.
+            put("sort_savefiles_enable", "false")
             put("savestate_file_compression", "false")
             put("savestate_block_format", "false")
             put("savestate_thumbnail_enable", "true")
@@ -580,7 +583,7 @@ class LaunchManager(
             )
 
     companion object {
-        private const val CONFIG_VERSION = 6
+        private const val CONFIG_VERSION = 7
 
         fun extractBundledCores(context: Context): String {
             val coresDir = File(context.filesDir, "cores")
