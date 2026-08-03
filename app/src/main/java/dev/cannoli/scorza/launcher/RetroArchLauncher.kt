@@ -12,6 +12,7 @@ import dev.cannoli.igm.IgmDisplaySettings
 import dev.cannoli.igm.IgmInputMapping
 import dev.cannoli.igm.RICOTTA_PROTOCOL_VERSION
 import dev.cannoli.igm.RicottaLaunchParams
+import dev.cannoli.scorza.i18n.LocaleOverride
 import java.io.File
 
 sealed interface ProtocolVerdict {
@@ -71,6 +72,7 @@ class RetroArchLauncher(
             colors = igm.colors,
             displaySettings = igm.displaySettings,
             inputMapping = igm.inputMapping,
+            localeTag = LocaleOverride.currentTag(context),
         )
 
         val intent = Intent().apply {

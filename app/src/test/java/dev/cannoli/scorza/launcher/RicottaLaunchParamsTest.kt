@@ -64,6 +64,7 @@ class RicottaLaunchParamsTest {
             menuConfirm = dev.cannoli.igm.CanonicalButton.BTN_EAST,
             menuBack = dev.cannoli.igm.CanonicalButton.BTN_SOUTH,
         ),
+        localeTag = "pt-BR",
     )
 
     private fun roundTrip(params: RicottaLaunchParams): RicottaLaunchParams {
@@ -93,6 +94,36 @@ class RicottaLaunchParamsTest {
             colors = null,
         )
         assertEquals(original, roundTrip(original))
+    }
+
+    // localeTag is the last field precisely so this degrades instead of corrupting the ones before
+    // it. Sender and receiver ship together, so this only covers a stale install.
+    @Test fun `an older parcel that omits the trailing locale tag reads as no override`() {
+        val params = sample()
+        val parcel = Parcel.obtain()
+        try {
+            parcel.writeInt(RICOTTA_PROTOCOL_VERSION)
+            parcel.writeString(params.coreId)
+            parcel.writeString(params.romPath)
+            parcel.writeString(params.configFilePath)
+            parcel.writeString(params.gameTitle)
+            parcel.writeString(params.stateBasePath)
+            parcel.writeString(params.cannoliRoot)
+            parcel.writeString(params.platformTag)
+            parcel.writeString(params.platformName)
+            parcel.writeIntArray(params.igmTriggerKeycodes.toIntArray())
+            parcel.writeInt(1)
+            parcel.writeInt(1)
+            parcel.writeInt(params.preferredRefreshRate!!)
+            parcel.writeParcelable(params.colors, 0)
+            parcel.writeParcelable(params.displaySettings, 0)
+            parcel.writeParcelable(params.inputMapping, 0)
+            parcel.setDataPosition(0)
+
+            assertEquals(params.copy(localeTag = ""), RicottaLaunchParams.CREATOR.createFromParcel(parcel))
+        } finally {
+            parcel.recycle()
+        }
     }
 
     @Test fun `rejects mismatched protocol version before reading other fields`() {

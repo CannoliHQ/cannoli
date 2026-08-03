@@ -51,6 +51,10 @@ data class RicottaLaunchParams(
     val colors: IgmColors?,
     val displaySettings: IgmDisplaySettings,
     val inputMapping: IgmInputMapping? = null,
+    // BCP-47 tag of the launcher's selected language, empty for the device default. Must stay the
+    // last parcel field: a sender that predates it reads back as null here instead of shifting
+    // every field after it.
+    val localeTag: String = "",
 ) : Parcelable {
     override fun describeContents() = 0
 
@@ -77,6 +81,7 @@ data class RicottaLaunchParams(
         dest.writeParcelable(colors, flags)
         dest.writeParcelable(displaySettings, flags)
         dest.writeParcelable(inputMapping, flags)
+        dest.writeString(localeTag)
     }
 
     companion object {
@@ -117,10 +122,11 @@ data class RicottaLaunchParams(
                 val displaySettings = p.readParcelable<IgmDisplaySettings>(IgmDisplaySettings::class.java.classLoader)!!
                 @Suppress("DEPRECATION")
                 val inputMapping = p.readParcelable<IgmInputMapping>(IgmInputMapping::class.java.classLoader)
+                val localeTag = p.readString().orEmpty()
                 return RicottaLaunchParams(
                     coreId, romPath, configFilePath, gameTitle, stateBasePath,
                     cannoliRoot, platformTag, platformName, igmTriggerKeycodes, quitOnFocusLoss,
-                    preferredRefreshRate, colors, displaySettings, inputMapping,
+                    preferredRefreshRate, colors, displaySettings, inputMapping, localeTag,
                 )
             }
 
