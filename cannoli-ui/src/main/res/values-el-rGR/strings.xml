@@ -656,12 +656,12 @@
     <string name="value_no_firmware">Δεν απαιτείται υλικολογισμικό για αυτόν τον πυρήνα.</string>
     <string name="mapping_action_bios">Αρχεία BIOS</string>
     <string name="mapping_action_overrides">Παρακάμψεις σε παιχνίδι</string>
-    <string name="mapping_action_reset">Επαναφορά προεπιλογών</string>
     <!-- %d = number of required BIOS files missing. -->
     <string name="mapping_required_missing">Λείπει το %d</string>
     <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">Αντιστοίχιση %s</string>
+    <!-- Screen title for the per-game emulator picker. %s = game name. -->
     <!-- Screen title. %s = platform name. -->
     <string name="filter_all">ΟΛΑ</string>
     <string name="filter_missing">ΔΙΑΦΟΡΑ</string>
@@ -706,7 +706,6 @@
     <string name="value_no_cores_found">Δεν Βρέθηκαν Πυρήνες</string>
     <string name="label_clear_override">ΚΑΘΑΡΙΣΜΟΣ</string>
     <!-- %1$s = platform name. -->
-    <string name="dialog_reset_platform_confirm">Επαναφορά %1$s? Αυτό καθαρίζει την επιλογή εξομοιωτή σας για αυτήν την πλατφόρμα και επαναφέρει την προκαθορισμένη ομαδοποίηση.</string>
     <!-- RA achievement preload. %1$s = game name. -->
     <string name="ra_preload_progress">Προφόρτωση %1$s</string>
     <string name="ra_preload_none">Δεν βρέθηκαν επιτεύγματα για αυτό το παιχνίδι</string>
