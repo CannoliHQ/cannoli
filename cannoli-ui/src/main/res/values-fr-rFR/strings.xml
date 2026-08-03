@@ -672,13 +672,13 @@
     <string name="value_no_firmware">Aucun firmware n\'est requis pour ce noyau.</string>
     <string name="mapping_action_bios">Fichiers BIOS</string>
     <string name="mapping_action_overrides">Surcharge par jeu</string>
-    <string name="mapping_action_reset">Rétablir par défaut</string>
     <!-- %d = number of required BIOS files missing. -->
     <string name="mapping_required_missing">%d requis manquant</string>
     <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
     <string name="mapping_platform_name_with_tag">%1$s (%2$s)</string>
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">Mapping %s</string>
+    <!-- Screen title for the per-game emulator picker. %s = game name. -->
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_bios">BIOS %s</string>
     <string name="filter_all">TOUT</string>
@@ -724,7 +724,6 @@
     <string name="value_no_cores_found">Aucun Noyau Trouvé</string>
     <string name="label_clear_override">EFFACER</string>
     <!-- %1$s = platform name. -->
-    <string name="dialog_reset_platform_confirm">Réinitialiser %1$s? Cela efface votre sélection d\'émulateurs pour cette plateforme et restaure la valeur par défaut groupée.</string>
     <!-- RA achievement preload. %1$s = game name. -->
     <string name="ra_preload_progress">Préchargement de %1$s</string>
     <string name="ra_preload_none">Aucun succès trouvé pour ce jeu</string>
