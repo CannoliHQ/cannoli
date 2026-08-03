@@ -1,5 +1,6 @@
 package dev.cannoli.ui.components
 
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,18 +40,21 @@ fun ListScrollEffect(
             return@LaunchedEffect
         }
         val viewportHeight = listState.layoutInfo.viewportEndOffset
-        val itemSize = visible.firstOrNull()?.size ?: 0
-        // Rows that fit in the viewport, derived from the (uniform) row height so it holds even when
-        // the list is currently scrolled and not every row is on screen. Counting only the rows that
-        // happen to be fully visible right now under-counts after a scroll and wrongly concludes the
-        // list can't fit, which then pushes the top row off to reveal the selection.
+        // The tallest row on screen, not the first one: SectionedList draws the header inside the
+        // item, so sampling whichever row happens to be on top reads a plain row as the whole list's
+        // height and doubles the capacity. Taking the max keeps the estimate conservative, so the
+        // fits-on-one-screen branch below can never fire for a list that does not actually fit.
+        val itemSize = visible.maxOfOrNull { it.size } ?: 0
+        // Rows that fit in the viewport, derived from the row height so it holds even when the list
+        // is currently scrolled and not every row is on screen. Counting only the rows that happen to
+        // be fully visible right now under-counts after a scroll and wrongly concludes the list can't
+        // fit, which then pushes the top row off to reveal the selection.
         val capacity = if (itemSize > 0) (viewportHeight / itemSize).coerceAtLeast(1) else visible.size
         if (itemCount <= capacity) {
             if (listState.firstVisibleItemIndex != 0) listState.scrollToItem(0)
             return@LaunchedEffect
         }
         val fullyVisible = visible.filter { info -> info.offset >= 0 && info.offset + info.size <= viewportHeight }
-        val fullyVisibleCount = fullyVisible.size.coerceAtLeast(1)
         val firstFullyVisible = fullyVisible.firstOrNull()?.index ?: 0
         val lastFullyVisible = fullyVisible.lastOrNull()?.index ?: 0
 
@@ -63,8 +67,14 @@ fun ListScrollEffect(
             val target = if (jumped && index < capacity) 0 else index
             listState.scrollToItem(target)
         } else if (index > lastFullyVisible) {
-            val targetFirst = (index - fullyVisibleCount + 1).coerceAtLeast(0)
-            listState.scrollToItem(targetFirst)
+            // Reveal the row at the bottom edge. Counting rows back from the selection would assume
+            // every row is the same height, which SectionedList breaks by drawing the header inside
+            // the item; the count taken from the old window then overshoots and leaves the selection
+            // clipped. Scroll the row to the top so it gets measured, then give back the slack.
+            listState.scrollToItem(index)
+            val revealed = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }
+            val slack = listState.layoutInfo.viewportEndOffset - (revealed?.size ?: 0)
+            if (slack > 0) listState.scrollBy(-slack.toFloat())
         }
     }
 }
