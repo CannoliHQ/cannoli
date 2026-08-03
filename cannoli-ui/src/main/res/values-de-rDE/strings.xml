@@ -665,12 +665,12 @@
     <string name="value_no_firmware">Für diesen Kern ist keine Firmware erforderlich.</string>
     <string name="mapping_action_bios">BIOS-Dateien</string>
     <string name="mapping_action_overrides">Spiel-Überschreibungen</string>
-    <string name="mapping_action_reset">Auf Standard zurücksetzen</string>
     <!-- %d = number of required BIOS files missing. -->
     <string name="mapping_required_missing">%d erforderlich</string>
     <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">%s Zuordnung</string>
+    <!-- Screen title for the per-game emulator picker. %s = game name. -->
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_bios">%s BIOS</string>
     <string name="filter_all">ALLE</string>
@@ -716,7 +716,6 @@
     <string name="value_no_cores_found">Keine Kerne gefunden</string>
     <string name="label_clear_override">LEEREN</string>
     <!-- %1$s = platform name. -->
-    <string name="dialog_reset_platform_confirm">%1$szurücksetzen? Dies löscht Ihre Emulator-Auswahl für diese Plattform und stellt den gebündelten Standard wieder her.</string>
     <!-- RA achievement preload. %1$s = game name. -->
     <string name="ra_preload_progress">Vorladen %1$s</string>
     <string name="ra_preload_none">Keine Erfolge für dieses Spiel gefunden</string>
