@@ -1903,6 +1903,7 @@ class DialogInputHandler @Inject constructor(
 
     private fun onPlatformReset(state: DialogState.PlatformResetConfirm) {
         platformResolver.resetPlatformToDefault(state.tag, context.packageManager)
+        launcherActions.scanResumableGames()
         nav.dialogState.value = DialogState.None
         val mapping = nav.screenStack.lastOrNull() as? LauncherScreen.PlatformMapping ?: return
         nav.screenStack[nav.screenStack.lastIndex] = emulatorMappingBuilder.buildPlatformMapping(

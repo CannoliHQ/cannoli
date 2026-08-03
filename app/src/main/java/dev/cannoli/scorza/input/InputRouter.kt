@@ -328,6 +328,7 @@ class InputRouter @Inject constructor(
                 is dev.cannoli.scorza.ui.screens.MappingItem.PlatformDefault -> {
                     val id = romId ?: return@scrollable
                     gameOverrideStore.clear(id)
+                    mappingChanged()
                     nav.pop()
                     dialogHandler.restoreContextMenu()
                 }
@@ -343,10 +344,12 @@ class InputRouter @Inject constructor(
                         downloadCoreThenAssign(this, opt.coreId)
                     } else if (id != null) {
                         gameOverrideStore.put(id, choice)
+                        mappingChanged()
                         nav.pop()
                         dialogHandler.restoreContextMenu()
                     } else {
                         platformConfig.setPlatformChoice(tag, choice)
+                        mappingChanged()
                         nav.replaceTop(emulatorMappingBuilder.rebuild(this))
                         refreshEmulatorMappingOnStack()
                     }
@@ -391,6 +394,7 @@ class InputRouter @Inject constructor(
             val entry = overrides.getOrNull(selectedIndex)
             if (entry != null) {
                 gameOverrideStore.clear(entry.romId)
+                mappingChanged()
                 val refreshed = emulatorMappingBuilder.overrideRows(tag)
                 // The parent screen shows an override count, so it is rebuilt whether or not the
                 // list emptied. Only rebuilding on empty left a stale "N games" behind.
@@ -702,6 +706,7 @@ class InputRouter @Inject constructor(
             }
             if (romId != null) gameOverrideStore.put(romId, choice)
             else platformConfig.setPlatformChoice(screen.tag, choice)
+            mappingChanged()
             val top = nav.currentScreen as? LauncherScreen.PlatformMapping
             if (top != null && top.tag == screen.tag && top.romId == screen.romId) {
                 nav.replaceTop(emulatorMappingBuilder.rebuild(screen))
@@ -709,6 +714,11 @@ class InputRouter @Inject constructor(
             refreshEmulatorMappingOnStack()
         }
     }
+
+    // Which emulator a game uses decides whether Resume is offered at all, so the resumable
+    // set has to be recomputed on every mapping write. Without this the RESUME legend kept
+    // whatever it was when the list loaded until the user left and re-entered.
+    private fun mappingChanged() = launcherActions.scanResumableGames()
 
     private fun refreshEmulatorMappingOnStack() {
         val idx = nav.screenStack.indexOfLast { it is LauncherScreen.EmulatorMapping }
