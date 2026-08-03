@@ -664,12 +664,12 @@
     <string name="value_no_firmware">このコアにファームウェアは必要ありません。</string>
     <string name="mapping_action_bios">BIOS ファイル</string>
     <string name="mapping_action_overrides">ゲーム毎のオーバーライド</string>
-    <string name="mapping_action_reset">既定にリセット</string>
     <!-- %d = number of required BIOS files missing. -->
     <string name="mapping_required_missing">%d は不足しています</string>
     <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">%s マッピング</string>
+    <!-- Screen title for the per-game emulator picker. %s = game name. -->
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_bios">%s BIOS</string>
     <string name="filter_all">すべて</string>
@@ -711,7 +711,6 @@
     <string name="value_no_cores_found">コアが見つかりません</string>
     <string name="label_clear_override">消去</string>
     <!-- %1$s = platform name. -->
-    <string name="dialog_reset_platform_confirm">%1$sをリセットしますか? このプラットフォームのエミュレータの選択を解除し、バンドルされたデフォルトを復元します。</string>
     <!-- RA achievement preload. %1$s = game name. -->
     <string name="ra_preload_progress">%1$s のプリロード中</string>
     <string name="ra_preload_none">このゲームの実績は見つかりませんでした</string>
