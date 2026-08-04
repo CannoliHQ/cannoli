@@ -49,7 +49,15 @@ fun ListScrollEffect(
         // is currently scrolled and not every row is on screen. Counting only the rows that happen to
         // be fully visible right now under-counts after a scroll and wrongly concludes the list can't
         // fit, which then pushes the top row off to reveal the selection.
-        val capacity = if (itemSize > 0) (viewportHeight / itemSize).coerceAtLeast(1) else visible.size
+        // k rows occupy k*size + (k-1)*spacing, so the spacing has to come out of the estimate or a
+        // list that exactly fills the screen reads as one row short. Measured from the gap between
+        // two rows rather than assumed, and taken at its widest to stay on the conservative side.
+        val spacing = visible.zipWithNext()
+            .maxOfOrNull { (above, below) -> below.offset - (above.offset + above.size) }
+            ?.coerceAtLeast(0) ?: 0
+        val capacity = if (itemSize > 0) {
+            ((viewportHeight + spacing) / (itemSize + spacing)).coerceAtLeast(1)
+        } else visible.size
         if (itemCount <= capacity) {
             if (listState.firstVisibleItemIndex != 0) listState.scrollToItem(0)
             return@LaunchedEffect

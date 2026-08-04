@@ -59,8 +59,19 @@ fun screenInsets(): PaddingValues {
     )
 }
 
+// Hosts that solve a rhythm reserve exactly what the bar measures plus one gap. The in-game menu
+// does not solve one, so it keeps the reservation it has always had.
 @Composable
-fun footerReservation(): Dp = (48 * LocalScaleFactor.current).dp
+fun footerReservation(): Dp =
+    LocalListRhythm.current?.footerReserve ?: (48 * LocalScaleFactor.current).dp
+
+/** The spacer between a [ScreenTitle] and the list below it. */
+@Composable
+fun listTitleSpacing(): Dp = LocalListRhythm.current?.titleSpacer ?: 8.dp
+
+/** Gap between two adjacent row labels when nothing is spread into it. */
+@Composable
+fun pillNominalGap(): Dp = (pillVerticalPadding() + pillInset()) * 2
 
 // Pill geometry is a pure function of the text size so every host derives the same rows.
 // It scales down from the reference size and never up, keeping small text at the reference
@@ -68,7 +79,9 @@ fun footerReservation(): Dp = (48 * LocalScaleFactor.current).dp
 const val PillReferenceTextSp = 24f
 private const val PillLineHeightExtraSp = 10f
 private const val PillVerticalPaddingDp = 6f
-private const val PillInsetDp = 2f
+// Rows sit flush, so the row pitch is the pill itself and the highlight carries the separation.
+// MinUI lays its list out the same way: `SCALE1(PADDING + (j * PILL_SIZE))`, pills contiguous.
+private const val PillInsetDp = 0f
 
 fun pillScaleFor(textSizeSp: Int): Float = minOf(1f, textSizeSp / PillReferenceTextSp)
 

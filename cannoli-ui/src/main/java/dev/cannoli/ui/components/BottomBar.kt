@@ -9,19 +9,66 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliFont
 import dev.cannoli.ui.theme.LocalScaleFactor
 import dev.cannoli.ui.theme.Radius
+
+private const val GlyphTextSp = 14f
+private const val GlyphPadVDp = 4f
+private const val LegendTextSp = 12f
+private const val LegendPadVDp = 6f
+
+@Composable
+private fun barTextStyle(sizeSp: Float, sf: Float): TextStyle = TextStyle(
+    fontFamily = LocalCannoliFont.current,
+    fontWeight = FontWeight.Bold,
+    fontSize = (sizeSp * sf).sp,
+    lineHeight = (sizeSp * sf).sp,
+    platformStyle = PlatformTextStyle(includeFontPadding = false),
+    lineHeightStyle = LineHeightStyle(
+        alignment = LineHeightStyle.Alignment.Center,
+        trim = LineHeightStyle.Trim.Both
+    ),
+)
+
+/**
+ * What the bar actually measures, so the space reserved under a list matches it.
+ *
+ * The text is measured rather than taken as its line height: both runs set [LineHeightStyle.Trim]
+ * to `Both`, which trims the line box back to the glyphs, so a run renders shorter than the line
+ * height asks for. Assuming otherwise over-reserved by about 5dp.
+ */
+@Composable
+fun bottomBarHeight(): Dp {
+    val sf = LocalScaleFactor.current
+    val density = LocalDensity.current
+    val measurer = rememberTextMeasurer()
+    val glyphStyle = barTextStyle(GlyphTextSp, sf)
+    val legendStyle = barTextStyle(LegendTextSp, sf)
+    return remember(glyphStyle, legendStyle, density, sf) {
+        val glyphText = measurer.measure("A", glyphStyle, constraints = Constraints()).size.height
+        val legendText = measurer.measure("A", legendStyle, constraints = Constraints()).size.height
+        with(density) {
+            val glyphPill = glyphText.toDp() + (GlyphPadVDp * 2 * sf).dp
+            maxOf(glyphPill, legendText.toDp()) + (LegendPadVDp * 2 * sf).dp
+        }
+    }
+}
 
 @Composable
 fun GlyphPill(content: @Composable () -> Unit) {
@@ -31,7 +78,7 @@ fun GlyphPill(content: @Composable () -> Unit) {
         modifier = Modifier
             .clip(Radius.Pill)
             .background(innerPill)
-            .padding(horizontal = (10 * sf).dp, vertical = (4 * sf).dp),
+            .padding(horizontal = (10 * sf).dp, vertical = (GlyphPadVDp * sf).dp),
         contentAlignment = Alignment.Center
     ) {
         content()
@@ -45,18 +92,7 @@ fun GlyphPill(button: String) {
     GlyphPill {
         Text(
             text = button,
-            style = TextStyle(
-                fontFamily = LocalCannoliFont.current,
-                fontWeight = FontWeight.Bold,
-                fontSize = (14 * sf).sp,
-                lineHeight = (14 * sf).sp,
-                platformStyle = PlatformTextStyle(includeFontPadding = false),
-                lineHeightStyle = LineHeightStyle(
-                    alignment = LineHeightStyle.Alignment.Center,
-                    trim = LineHeightStyle.Trim.Both
-                ),
-                color = accent
-            )
+            style = barTextStyle(GlyphTextSp, sf).copy(color = accent)
         )
     }
 }
@@ -71,7 +107,7 @@ fun LegendPill(label: String, glyphs: @Composable () -> Unit) {
         modifier = Modifier
             .clip(Radius.Pill)
             .background(outerPill)
-            .padding(start = (5 * sf).dp, end = (14 * sf).dp, top = (6 * sf).dp, bottom = (6 * sf).dp),
+            .padding(start = (5 * sf).dp, end = (14 * sf).dp, top = (LegendPadVDp * sf).dp, bottom = (LegendPadVDp * sf).dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy((8 * sf).dp)
     ) {
@@ -79,18 +115,7 @@ fun LegendPill(label: String, glyphs: @Composable () -> Unit) {
 
         Text(
             text = label,
-            style = TextStyle(
-                fontFamily = LocalCannoliFont.current,
-                fontWeight = FontWeight.Bold,
-                fontSize = (12 * sf).sp,
-                lineHeight = (12 * sf).sp,
-                platformStyle = PlatformTextStyle(includeFontPadding = false),
-                lineHeightStyle = LineHeightStyle(
-                    alignment = LineHeightStyle.Alignment.Center,
-                    trim = LineHeightStyle.Trim.Both
-                ),
-                color = accent
-            )
+            style = barTextStyle(LegendTextSp, sf).copy(color = accent)
         )
     }
 }
