@@ -21,12 +21,47 @@ class KitchenHttpServer internal constructor(
     internal val apkInstalls: ApkInstalls? = null,
     internal val appsRepository: dev.cannoli.scorza.db.AppsRepository? = null,
     internal val settingsProvider: () -> SettingsResponse = { SettingsResponse("Tools", "Ports") },
+    internal val artThumbnails: ArtThumbnails? = null,
 ) : NanoHTTPD(port) {
 
     private val socketTimeoutMs = 30_000
 
+    private val socketByHandler = java.util.concurrent.ConcurrentHashMap<ClientHandler, java.net.Socket>()
+    private val requestSocket = ThreadLocal<java.net.Socket?>()
+
+    override fun createClientHandler(finalAccept: java.net.Socket, inputStream: java.io.InputStream): ClientHandler {
+        val handler = super.createClientHandler(finalAccept, inputStream)
+        socketByHandler[handler] = finalAccept
+        return handler
+    }
+
+    /** Best-effort check that the client is still there. A peer that has gone away leaves the
+     *  socket readable at EOF; nothing more is expected on the wire because every response sets
+     *  Connection: close, so consuming here cannot eat a pipelined request. */
+    internal fun clientGone(): Boolean {
+        val socket = requestSocket.get() ?: return false
+        if (socket.isClosed) return true
+        return try {
+            val previous = socket.soTimeout
+            socket.soTimeout = 1
+            try {
+                socket.getInputStream().read() == -1
+            } catch (_: java.net.SocketTimeoutException) {
+                false
+            } finally {
+                socket.soTimeout = previous
+            }
+        } catch (_: Throwable) { false }
+    }
+
     fun startServer() {
         dev.cannoli.scorza.util.KitchenLog.log("starting on port $port")
+        setAsyncRunner(
+            KitchenAsyncRunner(
+                onExec = { handler -> requestSocket.set(socketByHandler.remove(handler)) },
+                onDone = { requestSocket.remove() },
+            )
+        )
         start(socketTimeoutMs, false)
         dev.cannoli.scorza.util.KitchenLog.log("started on port $listeningPort")
     }
@@ -40,6 +75,8 @@ class KitchenHttpServer internal constructor(
         val started = System.currentTimeMillis()
         val response = try {
             dispatch(session)
+        } catch (_: RequestAbandonedException) {
+            errorResponse(499, "client disconnected")
         } catch (e: Exception) {
             dev.cannoli.scorza.util.KitchenLog.logError("request failed", e)
             errorResponse(500, "internal")
@@ -66,6 +103,13 @@ class KitchenHttpServer internal constructor(
                 override fun getRequestStatus() = code
                 override fun getDescription() = code.toString()
             }
+
+    /** Falls back to null, and so to the original file, whenever a thumbnail is unavailable or not
+     *  worth making. Art must still be served if scaling fails. */
+    private fun thumbnailFor(source: File, widthParam: String?): File? {
+        val width = widthParam?.toIntOrNull() ?: return null
+        return artThumbnails?.thumbnail(source, width)
+    }
 
     internal fun jsonResponse(code: Int, json: String): Response =
         decorate(newFixedLengthResponse(status(code), "application/json", json))
@@ -157,7 +201,15 @@ class KitchenHttpServer internal constructor(
                 val response = when (method) {
                     "GET" -> {
                         if (targetDir.isFile && isSecure(targetDir)) {
-                            fileResponse(targetDir, mimeForPath(targetDir.name))
+                            val thumb = if (resource == "art") thumbnailFor(targetDir, query["w"]) else null
+                            val response = if (thumb != null) fileResponse(thumb, "image/webp")
+                            else fileResponse(targetDir, mimeForPath(targetDir.name))
+                            // Safe to pin only because the caller passed a version token, so any
+                            // change to the art produces a different url rather than a stale hit.
+                            if (resource == "art" && !query["v"].isNullOrBlank()) {
+                                response.addHeader("Cache-Control", "public, max-age=31536000, immutable")
+                            }
+                            response
                         } else {
                             handleList(targetDir, displayPath, query["recursive"] == "true")
                         }

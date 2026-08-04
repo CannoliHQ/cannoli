@@ -106,6 +106,7 @@ internal fun KitchenHttpServer.handleGames(
             GamesResponse.buildList(
                 repo, cannoliRoot, romsRootProvider(), platformTag, platformTag,
                 romDirectoryWalker, isArcadePlatform(platformTag),
+                isCancelled = { clientGone() },
             ),
         )
     }

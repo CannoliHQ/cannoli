@@ -95,6 +95,7 @@ class KitchenService : Service() {
             apkInstalls = apkInstaller,
             appsRepository = appsRepository,
             settingsProvider = { SettingsResponse(settings.toolsName, settings.portsName) },
+            artThumbnails = ArtThumbnails(File(cacheDir, "art-thumbs")),
         )
         try {
             s.startServer()
