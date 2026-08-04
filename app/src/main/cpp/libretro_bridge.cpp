@@ -9,7 +9,9 @@
 #include <mutex>
 #include <android/log.h>
 #include <zlib.h>
+#include <EGL/egl.h>
 #include "libretro.h"
+#include "libretro_frontend.h"
 #include "frame_buffer.h"
 #include "native_audio.h"
 #include "cheat_engine.h"
@@ -19,11 +21,6 @@ static void bridge_log(const char *level_str, int prio, const char *fmt, ...) __
 #define LOGI(...) bridge_log("INFO",  ANDROID_LOG_INFO,  __VA_ARGS__)
 #define LOGW(...) bridge_log("WARN",  ANDROID_LOG_WARN,  __VA_ARGS__)
 #define LOGE(...) bridge_log("ERROR", ANDROID_LOG_ERROR, __VA_ARGS__)
-
-// Not declared by this project's trimmed libretro.h; typedefs follow the same
-// pattern as the rest of the core API function pointers below.
-typedef void (*retro_cheat_reset_t)(void);
-typedef void (*retro_cheat_set_t)(unsigned, bool, const char *);
 
 static struct {
     void *handle;
@@ -97,7 +94,13 @@ static bool g_options_dirty = false;
 // Disk control
 static struct retro_disk_control_callback g_disk_control = {0};
 static bool g_has_disk_control = false;
-static const char *(*g_get_image_label)(unsigned index) = nullptr;
+static retro_get_image_label_t g_get_image_label = nullptr;
+
+// HW render. GL cores draw into an FBO the renderer owns and publishes through
+// nativeSetHwFramebuffer; video_refresh then reports the frame as already on the GPU.
+static struct retro_hw_render_callback g_hw_render = {};
+static bool g_hw_render_enabled = false;
+static unsigned g_hw_framebuffer = 0;
 
 // Controller info
 struct ControllerTypeInfo {
@@ -113,7 +116,9 @@ static unsigned g_memory_descriptor_count = 0;
 
 // --- Log ring buffer (shared by bridge_log and core_log) ---
 
-static const int LOG_RING_SIZE = 64;
+// Sized so a chatty core's load-time output cannot evict the frontend's own negotiation
+// lines before they are flushed to the session log.
+static const int LOG_RING_SIZE = 512;
 static std::string g_log_ring[LOG_RING_SIZE];
 static int g_log_ring_head = 0;
 static int g_log_ring_count = 0;
@@ -156,6 +161,7 @@ static void core_log(enum retro_log_level level, const char *fmt, ...) {
         case RETRO_LOG_INFO:  prio = ANDROID_LOG_INFO;  level_str = "INFO";  break;
         case RETRO_LOG_WARN:  prio = ANDROID_LOG_WARN;  level_str = "WARN";  break;
         case RETRO_LOG_ERROR: prio = ANDROID_LOG_ERROR;  level_str = "ERROR"; break;
+        case RETRO_LOG_DUMMY: break;
     }
     __android_log_vprint(prio, "LibretroCore", fmt, args);
     va_end(args);
@@ -166,7 +172,20 @@ static void core_log(enum retro_log_level level, const char *fmt, ...) {
     va_end(args2);
 }
 
+// The switch below compares cmd with the experimental bit stripped, so case labels must
+// be stripped too. Upstream flags commands the old trimmed header did not, and an
+// unstripped label silently stops matching.
+#define ENV_CMD(x) ((x) & ~0x10000U)
+
 static unsigned g_rotation = 0;
+
+static uintptr_t RETRO_CALLCONV hw_get_current_framebuffer(void) {
+    return (uintptr_t)g_hw_framebuffer;
+}
+
+static retro_proc_address_t RETRO_CALLCONV hw_get_proc_address(const char *sym) {
+    return (retro_proc_address_t)eglGetProcAddress(sym);
+}
 
 static bool environment_cb(unsigned cmd, void *data) {
     cmd &= ~0x10000U; /* strip RETRO_ENVIRONMENT_EXPERIMENTAL flag */
@@ -175,44 +194,78 @@ static bool environment_cb(unsigned cmd, void *data) {
             g_rotation = *(const unsigned *)data & 3;
             return true;
 
-        case RETRO_ENVIRONMENT_GET_OVERSCAN:
+        case ENV_CMD(RETRO_ENVIRONMENT_GET_OVERSCAN):
             *(bool *)data = true;
             return true;
 
-        case RETRO_ENVIRONMENT_GET_CAN_DUPE:
+        case ENV_CMD(RETRO_ENVIRONMENT_GET_CAN_DUPE):
             *(bool *)data = true;
             return true;
 
-        case RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS:
+        case ENV_CMD(RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS):
             return true;
 
-        case RETRO_ENVIRONMENT_GET_INPUT_BITMASKS:
+        case ENV_CMD(RETRO_ENVIRONMENT_GET_INPUT_BITMASKS):
             return true;
 
-        case RETRO_ENVIRONMENT_GET_CORE_OPTIONS_VERSION:
+        case ENV_CMD(RETRO_ENVIRONMENT_GET_CORE_OPTIONS_VERSION):
             *(unsigned *)data = 2;
             return true;
 
-        case RETRO_ENVIRONMENT_SET_PIXEL_FORMAT:
+        case ENV_CMD(RETRO_ENVIRONMENT_SET_HW_RENDER): {
+            auto *cb = (struct retro_hw_render_callback *)data;
+            if (!cb) return false;
+            // GLES only. A core asking for desktop GL, Vulkan or D3D gets a false here and
+            // is expected to fall back to its software renderer.
+            if (cb->context_type != RETRO_HW_CONTEXT_OPENGLES2 &&
+                cb->context_type != RETRO_HW_CONTEXT_OPENGLES3 &&
+                cb->context_type != RETRO_HW_CONTEXT_OPENGLES_VERSION) {
+                LOGW("HW render rejected: unsupported context type %u", cb->context_type);
+                return false;
+            }
+            cb->get_current_framebuffer = hw_get_current_framebuffer;
+            cb->get_proc_address = hw_get_proc_address;
+            g_hw_render = *cb;
+            g_hw_render_enabled = true;
+            LOGI("HW render accepted: type=%u version=%u.%u depth=%d stencil=%d bottom_left=%d cache=%d",
+                 cb->context_type, cb->version_major, cb->version_minor,
+                 cb->depth, cb->stencil, cb->bottom_left_origin, cb->cache_context);
+            return true;
+        }
+
+        case ENV_CMD(RETRO_ENVIRONMENT_GET_PREFERRED_HW_RENDER):
+            // Answering this stops a core from defaulting to an API we cannot provide.
+            *(unsigned *)data = RETRO_HW_CONTEXT_OPENGLES3;
+            LOGI("Preferred hw render queried, answering OPENGLES3");
+            return true;
+
+        case ENV_CMD(RETRO_ENVIRONMENT_SET_HW_SHARED_CONTEXT):
+            // Returning true would promise the core a context it can use from its own
+            // thread. GLSurfaceView owns the only context we have, so decline honestly
+            // and log it: a core that needs this will render nothing.
+            LOGW("Core asked for a shared hw context; declined (not supported)");
+            return false;
+
+        case ENV_CMD(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT):
             g_pixel_format = *(const unsigned *)data;
             LOGI("Pixel format set to: %u", g_pixel_format);
             return true;
 
-        case RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY:
+        case ENV_CMD(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY):
             *(const char **)data = g_system_dir;
             return true;
 
-        case RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY:
+        case ENV_CMD(RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY):
             *(const char **)data = g_save_dir;
             return true;
 
-        case RETRO_ENVIRONMENT_GET_LOG_INTERFACE: {
+        case ENV_CMD(RETRO_ENVIRONMENT_GET_LOG_INTERFACE): {
             auto *cb = (struct retro_log_callback *)data;
             cb->log = core_log;
             return true;
         }
 
-        case RETRO_ENVIRONMENT_SET_VARIABLES: {
+        case ENV_CMD(RETRO_ENVIRONMENT_SET_VARIABLES): {
             g_core_options.clear();
             g_core_categories.clear();
             auto *vars = (const struct retro_variable *)data;
@@ -243,7 +296,7 @@ static bool environment_cb(unsigned cmd, void *data) {
             return true;
         }
 
-        case RETRO_ENVIRONMENT_SET_CORE_OPTIONS: {
+        case ENV_CMD(RETRO_ENVIRONMENT_SET_CORE_OPTIONS): {
             g_core_options.clear();
             g_core_categories.clear();
             auto *def = (const struct retro_core_option_definition *)data;
@@ -265,7 +318,7 @@ static bool environment_cb(unsigned cmd, void *data) {
             return true;
         }
 
-        case RETRO_ENVIRONMENT_SET_CORE_OPTIONS_INTL: {
+        case ENV_CMD(RETRO_ENVIRONMENT_SET_CORE_OPTIONS_INTL): {
             auto *intl = (const struct retro_core_options_intl *)data;
             if (intl && intl->us) {
                 environment_cb(RETRO_ENVIRONMENT_SET_CORE_OPTIONS, (void *)intl->us);
@@ -273,7 +326,7 @@ static bool environment_cb(unsigned cmd, void *data) {
             return true;
         }
 
-        case RETRO_ENVIRONMENT_SET_VARIABLE: {
+        case ENV_CMD(RETRO_ENVIRONMENT_SET_VARIABLE): {
             auto *var = (const struct retro_variable *)data;
             if (!var) return true;
             if (!var->key) return true;
@@ -284,7 +337,7 @@ static bool environment_cb(unsigned cmd, void *data) {
             return true;
         }
 
-        case RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2: {
+        case ENV_CMD(RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2): {
             g_core_options.clear();
             g_core_categories.clear();
             auto *opts = (const struct retro_core_options_v2 *)data;
@@ -326,7 +379,7 @@ static bool environment_cb(unsigned cmd, void *data) {
             return true;
         }
 
-        case RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2_INTL: {
+        case ENV_CMD(RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2_INTL): {
             auto *intl = (const struct retro_core_options_v2_intl *)data;
             if (intl && intl->us) {
                 // Reuse the v2 handler by faking the environment call
@@ -335,10 +388,10 @@ static bool environment_cb(unsigned cmd, void *data) {
             return true;
         }
 
-        case RETRO_ENVIRONMENT_SET_CORE_OPTIONS_UPDATE_DISPLAY_CALLBACK:
+        case ENV_CMD(RETRO_ENVIRONMENT_SET_CORE_OPTIONS_UPDATE_DISPLAY_CALLBACK):
             return false;
 
-        case RETRO_ENVIRONMENT_GET_VARIABLE: {
+        case ENV_CMD(RETRO_ENVIRONMENT_GET_VARIABLE): {
             auto *var = (struct retro_variable *)data;
             if (!var || !var->key) return false;
             auto it = g_option_overrides.find(var->key);
@@ -355,15 +408,15 @@ static bool environment_cb(unsigned cmd, void *data) {
             return false;
         }
 
-        case RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE:
+        case ENV_CMD(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE):
             *(bool *)data = g_options_dirty;
             g_options_dirty = false;
             return true;
 
-        case RETRO_ENVIRONMENT_SET_SUPPORT_NO_GAME:
+        case ENV_CMD(RETRO_ENVIRONMENT_SET_SUPPORT_NO_GAME):
             return true;
 
-        case RETRO_ENVIRONMENT_SET_DISK_CONTROL_INTERFACE: {
+        case ENV_CMD(RETRO_ENVIRONMENT_SET_DISK_CONTROL_INTERFACE): {
             if (!data) {
                 memset(&g_disk_control, 0, sizeof(g_disk_control));
                 g_has_disk_control = false;
@@ -378,7 +431,7 @@ static bool environment_cb(unsigned cmd, void *data) {
             return true;
         }
 
-        case RETRO_ENVIRONMENT_SET_DISK_CONTROL_EXT_INTERFACE: {
+        case ENV_CMD(RETRO_ENVIRONMENT_SET_DISK_CONTROL_EXT_INTERFACE): {
             if (!data) {
                 memset(&g_disk_control, 0, sizeof(g_disk_control));
                 g_has_disk_control = false;
@@ -399,11 +452,11 @@ static bool environment_cb(unsigned cmd, void *data) {
             return true;
         }
 
-        case RETRO_ENVIRONMENT_GET_LANGUAGE:
+        case ENV_CMD(RETRO_ENVIRONMENT_GET_LANGUAGE):
             *(unsigned *)data = 0; // RETRO_LANGUAGE_ENGLISH
             return true;
 
-        case RETRO_ENVIRONMENT_SET_CONTROLLER_INFO: {
+        case ENV_CMD(RETRO_ENVIRONMENT_SET_CONTROLLER_INFO): {
             auto *info = (const struct retro_controller_info *)data;
             for (int p = 0; p < MAX_PORTS && info[p].num_types > 0; p++) {
                 g_controller_types[p].clear();
@@ -416,7 +469,7 @@ static bool environment_cb(unsigned cmd, void *data) {
             return true;
         }
 
-        case RETRO_ENVIRONMENT_SET_MEMORY_MAPS: {
+        case ENV_CMD(RETRO_ENVIRONMENT_SET_MEMORY_MAPS): {
             const struct retro_memory_map *mmap = (const struct retro_memory_map *)data;
             free(g_memory_descriptors);
             g_memory_descriptor_count = mmap->num_descriptors;
@@ -439,6 +492,15 @@ static bool environment_cb(unsigned cmd, void *data) {
 
 static void video_refresh_cb(const void *data, unsigned width, unsigned height, size_t pitch) {
     if (!data) return;
+
+    // The core rendered into our FBO, so only the geometry is news.
+    if (data == RETRO_HW_FRAME_BUFFER_VALID) {
+        std::lock_guard<std::mutex> lock(g_frame_mutex);
+        g_frame_width = width;
+        g_frame_height = height;
+        g_frame_ready = true;
+        return;
+    }
 
     size_t bpp = (g_pixel_format == RETRO_PIXEL_FORMAT_XRGB8888) ? 4 : 2;
     size_t needed = width * height * bpp;
@@ -573,6 +635,9 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeLoadCore(JNIEnv *env, jobj
     memset(&g_disk_control, 0, sizeof(g_disk_control));
     g_has_disk_control = false;
     g_get_image_label = nullptr;
+    memset(&g_hw_render, 0, sizeof(g_hw_render));
+    g_hw_render_enabled = false;
+    g_hw_framebuffer = 0;
     for (int p = 0; p < MAX_PORTS; p++) g_controller_types[p].clear();
 
     cheat_engine_clear();
@@ -820,6 +885,66 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeHasNewFrame(JNIEnv *, jobj
 }
 
 JNIEXPORT void JNICALL
+Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeConsumeFrame(JNIEnv *, jobject) {
+    std::lock_guard<std::mutex> lock(g_frame_mutex);
+    g_frame_ready = false;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeIsHwRender(JNIEnv *, jobject) {
+    return g_hw_render_enabled ? JNI_TRUE : JNI_FALSE;
+}
+
+// [contextType, versionMajor, versionMinor, depth, stencil, bottomLeftOrigin, cacheContext]
+JNIEXPORT jintArray JNICALL
+Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeGetHwRenderInfo(JNIEnv *env, jobject) {
+    jintArray result = env->NewIntArray(7);
+    jint vals[7] = {
+        (jint)g_hw_render.context_type,
+        (jint)g_hw_render.version_major,
+        (jint)g_hw_render.version_minor,
+        g_hw_render.depth ? 1 : 0,
+        g_hw_render.stencil ? 1 : 0,
+        g_hw_render.bottom_left_origin ? 1 : 0,
+        g_hw_render.cache_context ? 1 : 0,
+    };
+    env->SetIntArrayRegion(result, 0, 7, vals);
+    return result;
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeSetHwFramebuffer(JNIEnv *, jobject, jint fbo) {
+    g_hw_framebuffer = (unsigned)fbo;
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeHwContextReset(JNIEnv *, jobject) {
+    if (g_hw_render_enabled && g_hw_render.context_reset) {
+        LOGI("HW render: context_reset");
+        g_hw_render.context_reset();
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeHwContextDestroy(JNIEnv *, jobject) {
+    if (g_hw_render_enabled && g_hw_render.context_destroy) {
+        LOGI("HW render: context_destroy");
+        g_hw_render.context_destroy();
+    }
+}
+
+// FBO sizing. The core may report a base geometry smaller than what it will draw.
+JNIEXPORT jintArray JNICALL
+Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeGetMaxGeometry(JNIEnv *env, jobject) {
+    struct retro_system_av_info av_info = {};
+    if (core.get_system_av_info) core.get_system_av_info(&av_info);
+    jintArray result = env->NewIntArray(2);
+    jint vals[2] = { (jint)av_info.geometry.max_width, (jint)av_info.geometry.max_height };
+    env->SetIntArrayRegion(result, 0, 2, vals);
+    return result;
+}
+
+JNIEXPORT void JNICALL
 Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeCopyFrame(JNIEnv *env, jobject, jobject buffer) {
     std::lock_guard<std::mutex> lock(g_frame_mutex);
     if (!g_frame_buf || !g_frame_ready) return;
@@ -1057,6 +1182,9 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeDeinit(JNIEnv *env, jobjec
     memset(&g_disk_control, 0, sizeof(g_disk_control));
     g_has_disk_control = false;
     g_get_image_label = nullptr;
+    memset(&g_hw_render, 0, sizeof(g_hw_render));
+    g_hw_render_enabled = false;
+    g_hw_framebuffer = 0;
     for (int p = 0; p < MAX_PORTS; p++) g_controller_types[p].clear();
 }
 
@@ -1198,8 +1326,10 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeSetDiskIndex(JNIEnv *, job
 JNIEXPORT jstring JNICALL
 Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeGetDiskLabel(JNIEnv *env, jobject, jint index) {
     if (g_get_image_label) {
-        const char *label = g_get_image_label((unsigned)index);
-        if (label && label[0]) return env->NewStringUTF(label);
+        char label[256] = {0};
+        if (g_get_image_label((unsigned)index, label, sizeof(label)) && label[0]) {
+            return env->NewStringUTF(label);
+        }
     }
     return nullptr;
 }
