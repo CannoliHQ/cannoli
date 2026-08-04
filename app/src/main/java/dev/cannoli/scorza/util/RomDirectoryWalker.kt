@@ -23,6 +23,10 @@ class RomDirectoryWalker(
     private val discRegex = Regex("""\s*\((Disc|Disk)\s*\d+\)|\s*\(CD\d+\)""", RegexOption.IGNORE_CASE)
     private val cueFileLineRegex = Regex("""^\s*FILE\s+(?:"([^"]+)"|(\S+))\s+\w+\s*$""", RegexOption.IGNORE_CASE)
 
+    private data class CachedFolders(val stamp: Long, val isArcade: Boolean, val folders: List<String>)
+
+    private val categoryFolderCache = java.util.concurrent.ConcurrentHashMap<String, CachedFolders>()
+
     @Volatile private var ignoredExtensions: Set<String> = emptySet()
     @Volatile private var ignoredFiles: Set<String> = emptySet()
     @Volatile private var ignoreListsLoaded = false
@@ -67,10 +71,29 @@ class RomDirectoryWalker(
 
     fun invalidateNameMap(tagDir: File) = arcadeTitleLookup.invalidate(tagDir)
 
+    /** Invalidates the cached folder list for a tag. Called when the launcher or Nonna's Kitchen
+     *  changes a platform's contents, since a folder created below the top level does not move the
+     *  tag directory's own timestamp. */
+    fun invalidateCategoryFolders(platformTag: String) {
+        categoryFolderCache.remove(platformTag.uppercase())
+    }
+
     /** Every category (non-game) folder under the platform, as platform-relative slash paths. */
     fun categoryFolders(platformTag: String, isArcade: Boolean): List<String> {
+        val tag = platformTag.uppercase()
+        val tagDir = resolveTagDir(tag) ?: return emptyList()
+        // Finding the subfolders means stat-ing every entry, so a platform holding a few thousand
+        // loose ROMs pays for all of them to discover a handful of directories, or none at all.
+        // The timestamp catches top-level edits; deeper ones arrive via invalidateCategoryFolders.
+        val stamp = tagDir.lastModified()
+        categoryFolderCache[tag]?.let { if (it.stamp == stamp && it.isArcade == isArcade) return it.folders }
+        val folders = walkCategoryFolders(tagDir, isArcade)
+        categoryFolderCache[tag] = CachedFolders(stamp, isArcade, folders)
+        return folders
+    }
+
+    private fun walkCategoryFolders(tagDir: File, isArcade: Boolean): List<String> {
         ensureIgnoreLists()
-        val tagDir = resolveTagDir(platformTag.uppercase()) ?: return emptyList()
         val out = mutableListOf<String>()
         fun walk(dir: File, prefix: String, depth: Int) {
             if (depth > MAX_DEPTH) return

@@ -33,6 +33,9 @@ class RomScanner(
     fun scanPlatform(platformTag: String, isArcade: Boolean = false): SyncCounts {
         val tag = platformTag.uppercase()
         ensurePlatformRow(tag)
+        // Every path that adds, moves or removes a folder ends up here, so this is the one place
+        // that has to drop the cached folder list.
+        walker.invalidateCategoryFolders(tag)
         val result = walker.walk(tag, isArcade) ?: return clearPlatform(tag).also {
             ScanLog.write("scanPlatform $tag: no rom dir, cleared ${it.removed}")
         }

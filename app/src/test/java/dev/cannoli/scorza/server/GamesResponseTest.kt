@@ -14,6 +14,8 @@ import io.mockk.mockk
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -65,7 +67,6 @@ class GamesResponseTest {
         assertEquals(42, game.getLong("id"))
         assertEquals("chrono.sfc", game.getString("rom"))
         assertEquals("Chrono Trigger", game.getString("displayName"))
-        assertEquals(1024L, game.getLong("size"))
         assertFalse(game.getBoolean("hasArt"))
         assertEquals(0, game.getInt("savesCount"))
         assertEquals(0, game.getInt("statesCount"))
@@ -123,18 +124,85 @@ class GamesResponseTest {
         val game = JSONObject(GamesResponse.buildList(repo, tmp.root, File(tmp.root, "Roms"), "SNES", "Super Nintendo"))
             .getJSONArray("games").getJSONObject(0)
         assertTrue(game.getBoolean("hasArt"))
-        assertEquals("/files/art/SNES/zelda.png", game.getString("artUrl"))
+        val artUrl = game.getString("artUrl")
+        assertEquals("/api/art/SNES/zelda.png", artUrl.substringBefore('?'))
+        assertTrue(artUrl, artUrl.substringAfter('?').startsWith("v="))
     }
 
     @Test
-    fun `missing rom file emits zeroed size and modified`() {
-        val rom = fakeRom(9, "SNES/phantom.sfc", "Phantom")
+    fun `artUrl percent-encodes characters that would break the path`() {
+        File(tmp.root, "Art/SNES/Sonic & Knuckles (USA).png")
+            .apply { parentFile.mkdirs(); writeBytes(ByteArray(4)) }
+        val romDir = File(tmp.root, "Roms/SNES").also { it.mkdirs() }
+        File(romDir, "Sonic & Knuckles (USA).sfc").writeBytes(ByteArray(64))
+        val rom = fakeRom(7, "SNES/Sonic & Knuckles (USA).sfc", "Sonic & Knuckles")
         val repo = mockRepo(listOf(rom))
 
         val game = JSONObject(GamesResponse.buildList(repo, tmp.root, File(tmp.root, "Roms"), "SNES", "Super Nintendo"))
             .getJSONArray("games").getJSONObject(0)
+        assertEquals(
+            "/api/art/SNES/Sonic%20%26%20Knuckles%20%28USA%29.png",
+            game.getString("artUrl").substringBefore('?'),
+        )
+    }
+
+    @Test
+    fun `artUrl carries a version token that changes when the art directory changes`() {
+        val artDir = File(tmp.root, "Art/SNES").apply { mkdirs() }
+        File(artDir, "zelda.png").writeBytes(ByteArray(4))
+        val romDir = File(tmp.root, "Roms/SNES").also { it.mkdirs() }
+        File(romDir, "zelda.sfc").writeBytes(ByteArray(64))
+        val repo = mockRepo(listOf(fakeRom(3, "SNES/zelda.sfc", "Zelda")))
+
+        fun currentArtUrl(): String =
+            JSONObject(GamesResponse.buildList(repo, tmp.root, File(tmp.root, "Roms"), "SNES", "Super Nintendo"))
+                .getJSONArray("games").getJSONObject(0).getString("artUrl")
+
+        val before = currentArtUrl()
+        artDir.setLastModified(artDir.lastModified() + 10_000)
+        val after = currentArtUrl()
+
+        assertEquals(before.substringBefore('?'), after.substringBefore('?'))
+        assertNotEquals(before.substringAfter('?'), after.substringAfter('?'))
+    }
+
+    @Test
+    fun `game detail emits zeroed size and modified for a missing rom file`() {
+        val rom = fakeRom(9, "SNES/phantom.sfc", "Phantom")
+        val repo = mockk<RomsRepository>()
+        every { repo.gameById(9L) } returns rom
+
+        val game = JSONObject(
+            GamesResponse.buildOne(repo, tmp.root, File(tmp.root, "Roms"), "SNES", "Super Nintendo", 9L)!!
+        )
         assertEquals(0L, game.getLong("size"))
         assertEquals(0L, game.getLong("modified"))
+    }
+
+    @Test
+    fun `game detail reports the rom file size`() {
+        val romDir = File(tmp.root, "Roms/SNES").also { it.mkdirs() }
+        File(romDir, "chrono.sfc").writeBytes(ByteArray(1024))
+        val rom = fakeRom(42, "SNES/chrono.sfc", "Chrono Trigger")
+        val repo = mockk<RomsRepository>()
+        every { repo.gameById(42L) } returns rom
+
+        val game = JSONObject(
+            GamesResponse.buildOne(repo, tmp.root, File(tmp.root, "Roms"), "SNES", "Super Nintendo", 42L)!!
+        )
+        assertEquals(1024L, game.getLong("size"))
+    }
+
+    @Test
+    fun `the games list omits size and modified`() {
+        val romDir = File(tmp.root, "Roms/SNES").also { it.mkdirs() }
+        File(romDir, "chrono.sfc").writeBytes(ByteArray(1024))
+        val repo = mockRepo(listOf(fakeRom(42, "SNES/chrono.sfc", "Chrono Trigger")))
+
+        val game = JSONObject(GamesResponse.buildList(repo, tmp.root, File(tmp.root, "Roms"), "SNES", "Super Nintendo"))
+            .getJSONArray("games").getJSONObject(0)
+        assertFalse(game.has("size"))
+        assertFalse(game.has("modified"))
     }
 
     @Test
@@ -249,5 +317,96 @@ class GamesResponseTest {
         val folders = parsed.getJSONArray("folders")
         assertEquals(1, folders.length())
         assertEquals("RPGs", folders.getString(0))
+    }
+
+    private fun listingsForLibraryOf(gameCount: Int): Int {
+        val root = tmp.newFolder("lib$gameCount")
+        val romDir = File(root, "Roms/SNES").also { it.mkdirs() }
+        listOf("Art", "Saves", "Save States", "Guides", "Cheats")
+            .forEach { File(root, "$it/SNES").mkdirs() }
+        val roms = (0 until gameCount).map { i ->
+            File(romDir, "Game $i.sfc").writeBytes(ByteArray(16))
+            File(root, "Art/SNES/Game $i.png").writeBytes(ByteArray(4))
+            Rom(
+                id = i.toLong(),
+                path = File(romDir, "Game $i.sfc"),
+                platformTag = "SNES",
+                displayName = "Game $i",
+                tags = null,
+                artFile = null,
+                launchTarget = LaunchTarget.RetroArch,
+                raGameId = null,
+            )
+        }
+        val repo = mockk<RomsRepository>()
+        every { repo.allRomsForPlatform("SNES") } returns roms
+
+        var listings = 0
+        GamesResponse.buildList(
+            repo, root, File(root, "Roms"), "SNES", "Super Nintendo",
+            listDir = { listings++; it.listFiles() },
+        )
+        return listings
+    }
+
+    @Test
+    fun `buildList stops early once the client has gone away`() {
+        val root = tmp.newFolder("abandoned")
+        val romDir = File(root, "Roms/SNES").also { it.mkdirs() }
+        val roms = (0 until 500).map { i ->
+            File(romDir, "Game $i.sfc").writeBytes(ByteArray(16))
+            Rom(
+                id = i.toLong(),
+                path = File(romDir, "Game $i.sfc"),
+                platformTag = "SNES",
+                displayName = "Game $i",
+                tags = null,
+                artFile = null,
+                launchTarget = LaunchTarget.RetroArch,
+                raGameId = null,
+            )
+        }
+        val repo = mockk<RomsRepository>()
+        every { repo.allRomsForPlatform("SNES") } returns roms
+
+        assertThrows(RequestAbandonedException::class.java) {
+            GamesResponse.buildList(
+                repo, root, File(root, "Roms"), "SNES", "Super Nintendo",
+                isCancelled = { true },
+            )
+        }
+    }
+
+    @Test
+    fun `buildList completes when the client is still connected`() {
+        val root = tmp.newFolder("connected")
+        val romDir = File(root, "Roms/SNES").also { it.mkdirs() }
+        val roms = (0 until 500).map { i ->
+            File(romDir, "Game $i.sfc").writeBytes(ByteArray(16))
+            Rom(
+                id = i.toLong(),
+                path = File(romDir, "Game $i.sfc"),
+                platformTag = "SNES",
+                displayName = "Game $i",
+                tags = null,
+                artFile = null,
+                launchTarget = LaunchTarget.RetroArch,
+                raGameId = null,
+            )
+        }
+        val repo = mockk<RomsRepository>()
+        every { repo.allRomsForPlatform("SNES") } returns roms
+
+        val json = GamesResponse.buildList(
+            repo, root, File(root, "Roms"), "SNES", "Super Nintendo",
+            isCancelled = { false },
+        )
+        assertEquals(500, JSONObject(json).getJSONArray("games").length())
+    }
+
+    @Test
+    fun `resource directories are listed once each regardless of library size`() {
+        assertEquals(5, listingsForLibraryOf(50))
+        assertEquals(5, listingsForLibraryOf(200))
     }
 }
