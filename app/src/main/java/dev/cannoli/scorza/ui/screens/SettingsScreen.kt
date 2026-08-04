@@ -28,10 +28,11 @@ import dev.cannoli.ui.components.PillRowKeyValue
 import dev.cannoli.ui.components.PillRowText
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
+import dev.cannoli.ui.components.WithoutScreenTitle
 import dev.cannoli.ui.components.footerReservation
+import dev.cannoli.ui.components.listTitleSpacing
 import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.screenInsets
-import dev.cannoli.ui.theme.Spacing
 
 @Composable
 fun SettingsScreen(
@@ -54,6 +55,7 @@ fun SettingsScreen(
             .padding(screenInsets())
     ) {
         if (state.inSubList) {
+            WithoutScreenTitle(active = state.activeCategoryLabel == null) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -66,7 +68,7 @@ fun SettingsScreen(
                         fontSize = listFontSize,
                         lineHeight = listLineHeight,
                     )
-                    Spacer(modifier = Modifier.height(Spacing.Sm))
+                    Spacer(modifier = Modifier.height(listTitleSpacing()))
                 }
                 List(
                     items = state.items,
@@ -98,6 +100,7 @@ fun SettingsScreen(
                     }
                     }
                 }
+            }
             }
 
             val selectedItem = state.items.getOrNull(state.selectedIndex)
@@ -148,7 +151,7 @@ fun SettingsScreen(
                     fontSize = listFontSize,
                     lineHeight = listLineHeight,
                 )
-                Spacer(modifier = Modifier.height(Spacing.Sm))
+                Spacer(modifier = Modifier.height(listTitleSpacing()))
                 List(
                     items = state.categories,
                     selectedIndex = state.categoryIndex,

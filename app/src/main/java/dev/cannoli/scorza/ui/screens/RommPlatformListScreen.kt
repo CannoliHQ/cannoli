@@ -29,6 +29,7 @@ import dev.cannoli.ui.components.PillRowKeyValue
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.footerReservation
+import dev.cannoli.ui.components.listTitleSpacing
 import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.screenInsets
 import dev.cannoli.ui.theme.Spacing
@@ -61,7 +62,7 @@ fun RommPlatformListScreen(
                     fontSize = listFontSize,
                     lineHeight = listLineHeight,
                 )
-                Spacer(modifier = Modifier.height(Spacing.Sm))
+                Spacer(modifier = Modifier.height(listTitleSpacing()))
                 val offset = if (showCollectionsRow) 1 else 0
                 val clampedIndex = selectedIndex.coerceIn(0, (totalItemCount - 1).coerceAtLeast(0))
                 List(

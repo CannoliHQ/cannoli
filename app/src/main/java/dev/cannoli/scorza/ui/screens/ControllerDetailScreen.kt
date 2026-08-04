@@ -29,11 +29,11 @@ import dev.cannoli.ui.components.PillRowKeyValue
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.footerReservation
+import dev.cannoli.ui.components.listTitleSpacing
 import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.screenInsets
 import dev.cannoli.ui.theme.ErrorText
 import dev.cannoli.ui.theme.LocalCannoliColors
-import dev.cannoli.ui.theme.Spacing
 
 private sealed interface ControllerDetailEntry {
     data class KeyValue(val label: String, val value: String) : ControllerDetailEntry
@@ -75,7 +75,7 @@ fun ControllerDetailScreen(
                         fontSize = listFontSize,
                         lineHeight = listLineHeight,
                     )
-                    Spacer(modifier = Modifier.height(Spacing.Sm))
+                    Spacer(modifier = Modifier.height(listTitleSpacing()))
                     NotFoundHint(
                         fontSize = listFontSize,
                         lineHeight = listLineHeight,
@@ -137,7 +137,7 @@ fun ControllerDetailScreen(
                     fontSize = listFontSize,
                     lineHeight = listLineHeight,
                 )
-                Spacer(modifier = Modifier.height(Spacing.Sm))
+                Spacer(modifier = Modifier.height(listTitleSpacing()))
                 List(
                     items = entries,
                     selectedIndex = screen.selectedIndex.coerceIn(0, entries.size - 1),

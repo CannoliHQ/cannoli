@@ -25,9 +25,9 @@ import dev.cannoli.ui.components.PillRowKeyValue
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.footerReservation
+import dev.cannoli.ui.components.listTitleSpacing
 import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.screenInsets
-import dev.cannoli.ui.theme.Spacing
 
 @Composable
 fun LoggingSettingsScreen(
@@ -51,7 +51,7 @@ fun LoggingSettingsScreen(
                     fontSize = listFontSize,
                     lineHeight = listLineHeight,
                 )
-                Spacer(modifier = Modifier.height(Spacing.Sm))
+                Spacer(modifier = Modifier.height(listTitleSpacing()))
                 List(
                     items = categories,
                     selectedIndex = screen.selectedIndex.coerceIn(0, categories.size - 1),

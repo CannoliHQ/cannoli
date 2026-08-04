@@ -32,9 +32,9 @@ import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.SectionHeader
 import dev.cannoli.ui.components.footerReservation
+import dev.cannoli.ui.components.listTitleSpacing
 import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.screenInsets
-import dev.cannoli.ui.theme.Spacing
 
 sealed interface ControllersListEntry {
     val isSelectable: Boolean
@@ -103,7 +103,7 @@ fun ControllersScreen(
                     fontSize = listFontSize,
                     lineHeight = listLineHeight,
                 )
-                Spacer(modifier = Modifier.height(Spacing.Sm))
+                Spacer(modifier = Modifier.height(listTitleSpacing()))
                 List(
                     items = entries,
                     selectedIndex = highlightedEntryIndex,

@@ -64,6 +64,7 @@ import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.UpdateDownloadOverlay
 import dev.cannoli.ui.components.footerReservation
+import dev.cannoli.ui.components.listTitleSpacing
 import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.screenPadding
 import dev.cannoli.ui.theme.Spacing
@@ -1238,7 +1239,7 @@ internal fun ListDialogScreen(
                     fontSize = listFontSize,
                     lineHeight = listLineHeight
                 )
-                Spacer(modifier = Modifier.height(Spacing.Sm))
+                Spacer(modifier = Modifier.height(listTitleSpacing()))
                 content()
             }
             val left = if (showBackButton) listOf(buttonStyle.back to stringResource(R.string.label_back)) + leftBottomItems else leftBottomItems

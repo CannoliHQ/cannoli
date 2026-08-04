@@ -35,11 +35,11 @@ import dev.cannoli.ui.components.PillRowKeyValue
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.footerReservation
+import dev.cannoli.ui.components.listTitleSpacing
 import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.screenInsets
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.Radius
-import dev.cannoli.ui.theme.Spacing
 
 private const val ICON_VARIANTS = "󱢒" // mdi-card-multiple-outline (U+F1892)
 
@@ -76,7 +76,7 @@ fun RommCollectionGameListScreen(
                     fontSize = listFontSize,
                     lineHeight = listLineHeight,
                 )
-                Spacer(modifier = Modifier.height(Spacing.Sm))
+                Spacer(modifier = Modifier.height(listTitleSpacing()))
                 if (loading) {
                     // Blank during the load gap so a freshly-entered list never flashes "No results".
                     Box(modifier = Modifier.fillMaxSize()) {}

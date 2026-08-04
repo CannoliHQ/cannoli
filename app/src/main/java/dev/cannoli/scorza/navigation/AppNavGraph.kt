@@ -3,6 +3,9 @@ package dev.cannoli.scorza.navigation
 import android.os.SystemClock
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -86,11 +89,17 @@ import dev.cannoli.ui.components.PillRowText
 import dev.cannoli.ui.components.RommCacheSyncStatus
 import dev.cannoli.ui.components.SectionHeader
 import dev.cannoli.ui.components.StatusBar
+import dev.cannoli.ui.components.LocalListRhythm
+import dev.cannoli.ui.components.LocalUntitledListRhythm
+import dev.cannoli.ui.components.bottomBarHeight
 import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.pillLineHeightSp
+import dev.cannoli.ui.components.pillNominalGap
 import dev.cannoli.ui.components.pillScaleFor
 import dev.cannoli.ui.components.pillVerticalPadding
 import dev.cannoli.ui.components.screenInsets
+import dev.cannoli.ui.components.screenTitleMetrics
+import dev.cannoli.ui.components.solveListRhythm
 import dev.cannoli.ui.theme.CannoliColors
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliFont
@@ -543,7 +552,34 @@ fun AppNavGraph(
     // Must resolve inside the provider so they match what PillRow actually renders.
     val listVerticalPadding = pillVerticalPadding()
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
-    Box(modifier = Modifier.fillMaxSize().displayCutoutPadding().padding(effectiveViewportPadding())) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize().displayCutoutPadding().padding(effectiveViewportPadding())) {
+    // Solved once here so the title spacer, the row spacing and the footer reservation all come from
+    // the same division of the screen; every list screen lays out inside these same bounds.
+    val insets = screenInsets()
+    // Every fixed height below is laid out as whole pixels, so the solve has to round the same way
+    // or its row count drifts from the one Compose actually places.
+    val density = LocalDensity.current
+    fun Dp.snap(): Dp = with(density) { roundToPx().toDp() }
+    val available = (maxHeight - insets.calculateTopPadding() - insets.calculateBottomPadding()).snap()
+    val titleMetrics = screenTitleMetrics(listFontSize, listLineHeight)
+    val barHeight = bottomBarHeight().snap()
+    val rowHeight = itemHeight.snap()
+    val pixel = with(density) { 1.toDp() }
+    val titleHeight = titleMetrics.height.snap()
+    // What each end needs beyond the shared row spacing for the gaps to read alike: under the title,
+    // the row's own below-ink space less the title's deeper descent; over the footer, the row's
+    // above-ink leading, which the legend pill's solid edge has no counterpart for.
+    val edge = pillNominalGap() / 2
+    val topExtra = titleMetrics.rowBelowInk + edge - titleMetrics.titleBelowInk
+    val bottomExtra = titleMetrics.rowAboveInk + edge
+    val rhythm =
+        solveListRhythm(available, titleHeight, barHeight, rowHeight, topExtra, bottomExtra, true, pixel)
+    val untitledRhythm =
+        solveListRhythm(available, titleHeight, barHeight, rowHeight, topExtra, bottomExtra, false, pixel)
+    CompositionLocalProvider(
+        LocalListRhythm provides rhythm,
+        LocalUntitledListRhythm provides untitledRhythm
+    ) {
     Box(modifier = Modifier.fillMaxSize()) {
         when (currentScreen) {
             is LauncherScreen.SystemList -> {
@@ -1927,6 +1963,7 @@ fun AppNavGraph(
         Box(modifier = Modifier.fillMaxSize().border(2.dp, cannoliColors.accent))
     }
     OsdHost(controller = osdController)
+    }
     }
     }
 }

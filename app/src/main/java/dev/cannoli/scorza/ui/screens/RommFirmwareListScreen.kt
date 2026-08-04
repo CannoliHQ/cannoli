@@ -26,12 +26,12 @@ import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.SectionedList
 import dev.cannoli.ui.components.footerReservation
+import dev.cannoli.ui.components.listTitleSpacing
 import dev.cannoli.ui.components.pillInternalPadding
 import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.screenInsets
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliFont
-import dev.cannoli.ui.theme.Spacing
 
 @Composable
 fun RommFirmwareListScreen(
@@ -61,7 +61,7 @@ fun RommFirmwareListScreen(
                     fontSize = listFontSize,
                     lineHeight = listLineHeight,
                 )
-                Spacer(modifier = Modifier.height(Spacing.Sm))
+                Spacer(modifier = Modifier.height(listTitleSpacing()))
                 when {
                     loading -> Text(
                         text = stringResource(R.string.romm_firmware_loading),

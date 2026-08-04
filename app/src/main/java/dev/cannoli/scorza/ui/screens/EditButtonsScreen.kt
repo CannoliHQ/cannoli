@@ -38,6 +38,7 @@ import dev.cannoli.ui.components.PillRowKeyValue
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.footerReservation
+import dev.cannoli.ui.components.listTitleSpacing
 import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.screenInsets
 import dev.cannoli.ui.theme.LocalCannoliColors
@@ -86,7 +87,7 @@ fun EditButtonsScreen(
                         fontSize = listFontSize,
                         lineHeight = listLineHeight,
                     )
-                    Spacer(modifier = Modifier.height(Spacing.Sm))
+                    Spacer(modifier = Modifier.height(listTitleSpacing()))
                     Box(modifier = Modifier.padding(start = 14.dp)) {
                         Text(
                             text = stringResource(R.string.controllers_mapping_not_found),
@@ -118,7 +119,7 @@ fun EditButtonsScreen(
                     fontSize = listFontSize,
                     lineHeight = listLineHeight,
                 )
-                Spacer(modifier = Modifier.height(Spacing.Sm))
+                Spacer(modifier = Modifier.height(listTitleSpacing()))
                 List(
                     items = entries,
                     selectedIndex = screen.selectedIndex.coerceIn(0, entries.size - 1),
