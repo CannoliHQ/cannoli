@@ -4,6 +4,7 @@
 import unittest
 
 from sync_crowdin_contributors import (
+    crowdin_handle,
     display_name,
     parse_report,
     render_block,
@@ -56,9 +57,20 @@ class DisplayNameTest(unittest.TestCase):
         self.assertEqual("Dominic Drolet", display_name("Dominic Drolet (drolet.dominic)"))
 
 
+class CrowdinHandleTest(unittest.TestCase):
+    def test_handle_comes_from_the_parentheses(self):
+        self.assertEqual("pawndev", crowdin_handle("Christophe Coquelet (pawndev)"))
+
+    def test_bare_handle_is_its_own_handle(self):
+        self.assertEqual("frysee", crowdin_handle("frysee"))
+
+    def test_case_is_folded(self):
+        self.assertEqual("brandonkowalski", crowdin_handle("Brandon Kowalski (BrandonKowalski)"))
+
+
 class SplitLanguagesTest(unittest.TestCase):
     def setUp(self):
-        self.known = sorted(NAME_TO_TAG, key=len, reverse=True)
+        self.known = NAME_TO_TAG
 
     def test_single(self):
         self.assertEqual((["French"], ""), split_languages("French", self.known))
@@ -66,10 +78,10 @@ class SplitLanguagesTest(unittest.TestCase):
     def test_multiple(self):
         self.assertEqual(
             (["French", "Italian"], ""),
-            split_languages("French, Italian", self.known),
+            split_languages("French; Italian", self.known),
         )
 
-    # The separator also appears inside the name, so a naive split would yield "Brazilian".
+    # Crowdin separates languages with ";" precisely because a name may contain ",".
     def test_comma_inside_a_language_name(self):
         self.assertEqual(
             (["Portuguese, Brazilian"], ""),
@@ -79,7 +91,24 @@ class SplitLanguagesTest(unittest.TestCase):
     def test_comma_inside_a_name_alongside_another(self):
         self.assertEqual(
             (["Portuguese, Brazilian", "German"], ""),
-            split_languages("Portuguese, Brazilian, German", self.known),
+            split_languages("Portuguese, Brazilian; German", self.known),
+        )
+
+    # Verbatim from the export that broke the comma-splitting version.
+    def test_every_language_at_once(self):
+        cell = (
+            "Ukrainian; Portuguese; French; German; Chinese Simplified; "
+            "Spanish; Italian; Portuguese, Brazilian; Greek; Japanese"
+        )
+        self.assertEqual(
+            (
+                [
+                    "Ukrainian", "Portuguese", "French", "German", "Chinese Simplified",
+                    "Spanish", "Italian", "Portuguese, Brazilian", "Greek", "Japanese",
+                ],
+                "",
+            ),
+            split_languages(cell, self.known),
         )
 
     def test_plain_portuguese_still_resolves(self):
@@ -88,6 +117,11 @@ class SplitLanguagesTest(unittest.TestCase):
     def test_unknown_language_is_reported_as_leftover(self):
         found, leftover = split_languages("Klingon", self.known)
         self.assertEqual([], found)
+        self.assertEqual("Klingon", leftover)
+
+    def test_known_languages_survive_an_unknown_neighbour(self):
+        found, leftover = split_languages("French; Klingon; German", self.known)
+        self.assertEqual(["French", "German"], found)
         self.assertEqual("Klingon", leftover)
 
 
@@ -132,8 +166,21 @@ class ParseReportTest(unittest.TestCase):
         self.assertNotIn("ar-SA", parsed)
         self.assertEqual(self.parse(), parsed)
 
+    def test_excluded_handle_is_dropped(self):
+        text = REPORT + (
+            '"Brandon Kowalski (BrandonKowalski)","German; Greek",900,900,0,0,0,0,900,'
+            '"2026-08-01 10:00:00"\n'
+        )
+        parsed = self.parse(text)
+        self.assertEqual(self.parse(), parsed)
+        self.assertNotIn("el-GR", parsed)
+
+    def test_excluded_handle_is_dropped_without_a_real_name(self):
+        text = REPORT + 'BRANDONKOWALSKI,Greek,900,900,0,0,0,0,900,"2026-08-01 10:00:00"\n'
+        self.assertNotIn("el-GR", self.parse(text))
+
     def test_a_contributor_in_two_languages_lands_in_both(self):
-        text = REPORT + '"Poly Glot (polyglot)","German, Italian",40,40,0,0,0,0,40,"2026-07-25 14:35:25"\n'
+        text = REPORT + '"Poly Glot (polyglot)","German; Italian",40,40,0,0,0,0,40,"2026-07-25 14:35:25"\n'
         parsed = self.parse(text)
         self.assertEqual(["frysee", "Poly Glot"], parsed["de-DE"])
         self.assertEqual(["Poly Glot"], parsed["it-IT"])

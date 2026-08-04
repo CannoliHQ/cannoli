@@ -21,6 +21,10 @@ API = "https://api.crowdin.com/api/v2"
 CATALOG = os.path.join(ROOT, "app/src/main/java/dev/cannoli/scorza/i18n/LanguageCatalog.kt")
 CREDITS = os.path.join(ROOT, "credits.json")
 
+# Crowdin credits pre-translated strings to whoever applied them. Lowercase handles, matched
+# on the handle rather than the display name so a rename cannot smuggle anyone back in.
+EXCLUDED_HANDLES = {"brandonkowalski"}
+
 
 def request(url, token=None, method="GET", payload=None):
     data = json.dumps(payload).encode() if payload is not None else None
@@ -86,28 +90,28 @@ def download_report(token, project_id, report_id):
 
 
 def split_languages(cell, known_names):
-    """Split a Languages cell into Crowdin language names.
+    """Split a Languages cell into Crowdin language names, plus whatever went unrecognized.
 
-    Longest match first, because several names contain the separator itself
+    Crowdin separates with ";" because a name may contain a comma of its own
     ("Portuguese, Brazilian", "Spanish, Latin America").
     """
-    found = []
-    rest = cell.strip()
-    while rest:
-        match = next(
-            (name for name in known_names if rest == name or rest.startswith(name + ", ")),
-            None,
-        )
-        if match is None:
-            return found, rest
-        found.append(match)
-        rest = rest[len(match):].lstrip(", ").strip()
-    return found, ""
+    found, unknown = [], []
+    for part in (piece.strip() for piece in cell.split(";")):
+        if not part:
+            continue
+        (found if part in known_names else unknown).append(part)
+    return found, "; ".join(unknown)
 
 
 def display_name(raw):
     """Real name when Crowdin has one, otherwise the bare handle."""
     return raw.split(" (")[0].strip() if " (" in raw else raw.strip()
+
+
+def crowdin_handle(raw):
+    """The Crowdin username, lowercased: the parenthesized half, or the whole cell without a real name."""
+    handle = raw.split(" (", 1)[1].rsplit(")", 1)[0] if " (" in raw else raw
+    return handle.strip().lower()
 
 
 def parse_report(csv_text, name_to_tag, allowed_tags):
@@ -122,19 +126,20 @@ def parse_report(csv_text, name_to_tag, allowed_tags):
     if words_column is None:
         sys.exit(f"Crowdin report has no Translated column; got {reader.fieldnames}")
 
-    known_names = sorted(name_to_tag, key=len, reverse=True)
     by_tag = {}
     skipped = set()
     for row in reader:
+        if crowdin_handle(row["Name"]) in EXCLUDED_HANDLES:
+            continue
         try:
             translated = int((row.get(words_column) or "0").replace(",", ""))
         except ValueError:
             translated = 0
         if translated <= 0:
             continue
-        languages, leftover = split_languages(row["Languages"], known_names)
+        languages, leftover = split_languages(row["Languages"], name_to_tag)
         if leftover:
-            sys.exit(f"unrecognized Crowdin language in {row['Languages']!r} (stuck at {leftover!r})")
+            sys.exit(f"unrecognized Crowdin language in {row['Languages']!r}: {leftover!r}")
         for language in languages:
             tag = name_to_tag[language]
             if tag not in allowed_tags:
