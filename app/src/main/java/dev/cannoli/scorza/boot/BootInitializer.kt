@@ -117,6 +117,8 @@ class BootInitializer @Inject constructor(
             gameListViewModel.showFavoriteStars = settings.contentMode != ContentMode.FIVE_GAME_HANDHELD
             settingsViewModel.reinitialize(root, context.packageManager, context.packageName, collectionsRepository)
 
+            ioScope.launch { updateManager.purgeStaleDownloads() }
+
             if (updateManager.shouldAutoCheck()) {
                 ioScope.launch { updateManager.checkForUpdate() }
             }

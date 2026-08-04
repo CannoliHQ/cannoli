@@ -4,11 +4,14 @@ import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.os.StatFs
+import android.text.format.Formatter
 import androidx.core.content.FileProvider
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.cannoli.scorza.BuildConfig
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.settings.SettingsRepository
+import dev.cannoli.scorza.util.StorageLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -104,6 +107,19 @@ class UpdateManager @Inject constructor(
         }
     }
 
+    // The install runs in the system installer after downloadAndInstall returns, so the APK
+    // cannot be deleted at the call site. Nothing else reclaims it, and the filename carries
+    // the version, so every update used to strand another ~300 MB here. No install from this
+    // process can be in flight at startup, which makes it the one safe place to sweep.
+    suspend fun purgeStaleDownloads() = withContext(Dispatchers.IO) {
+        val dir = File(context.cacheDir, "updates")
+        val freed = dir.listFiles().orEmpty().sumOf { f ->
+            val size = f.length()
+            if (f.isFile && f.delete()) size else 0L
+        }
+        if (freed > 0) StorageLog.write("purged $freed bytes of stale update downloads")
+    }
+
     suspend fun downloadAndInstall(info: UpdateInfo) = withContext(Dispatchers.IO) {
         downloadCancelled = false
         _downloadError.value = null
@@ -123,6 +139,16 @@ class UpdateManager @Inject constructor(
                 return@withContext
             }
             val total = conn.contentLength.toLong()
+            val available = availableBytes()
+            if (!hasRoom(total, available)) {
+                _downloadError.value = context.getString(
+                    R.string.update_download_error_space,
+                    Formatter.formatShortFileSize(context, requiredFor(total)),
+                    Formatter.formatShortFileSize(context, available),
+                )
+                _downloadProgress.value = -1f
+                return@withContext
+            }
             var downloaded = 0L
             conn.inputStream.use { input ->
                 apkFile.outputStream().use { output ->
@@ -152,6 +178,10 @@ class UpdateManager @Inject constructor(
         }
     }
 
+    // A StatFs failure must not block an update, so an unreadable partition reads as unlimited.
+    private fun availableBytes(): Long =
+        runCatching { StatFs(context.cacheDir.path).availableBytes }.getOrDefault(Long.MAX_VALUE)
+
     fun cancelDownload() {
         downloadCancelled = true
     }
@@ -176,6 +206,20 @@ class UpdateManager @Inject constructor(
         val net = cm.activeNetwork ?: return false
         val caps = cm.getNetworkCapabilities(net) ?: return false
         return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+
+    companion object {
+        private const val INSTALL_HEADROOM_BYTES = 48L * 1024 * 1024
+
+        // The system installer stages its own copy of the APK on the same partition, and the
+        // old version is not released until the new one commits, so the download is only half
+        // of what the install actually needs. Headroom covers dexopt output.
+        internal fun requiredFor(contentLength: Long) = contentLength * 2 + INSTALL_HEADROOM_BYTES
+
+        // A server that sends no Content-Length leaves nothing to check against, so the
+        // download proceeds rather than being blocked on a number we do not have.
+        internal fun hasRoom(contentLength: Long, available: Long): Boolean =
+            contentLength <= 0L || available >= requiredFor(contentLength)
     }
 
     private fun fetchJson(urlStr: String): JSONObject {

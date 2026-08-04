@@ -469,6 +469,7 @@
     <string name="housekeeping_refresh_title">Refreshing library</string>
     <string name="update_download_error_server">Download failed. Server returned an error. Try again later.</string>
     <string name="update_download_error_network">Download failed. Check your connection and try again.</string>
+    <string name="update_download_error_space">Not enough storage. Updating needs about %1$s free, and %2$s is available.</string>
     <string name="launch_error_resolve_file">Failed to resolve launch file</string>
     <string name="launch_error_extract">Failed to extract archive</string>
     <string name="launch_error_generic">Failed to launch game</string>
