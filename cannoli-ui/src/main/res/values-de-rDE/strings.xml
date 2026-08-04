@@ -594,6 +594,9 @@
     <string name="ra_load_offline_pending">RA: Offline (Spieldaten nicht verfügbar)</string>
     <!-- Credits -->
     <string name="credits_title">Credits und Lizenzen</string>
+    <string name="credits_cores">Emulatorkerne</string>
+    <string name="credits_shaders">Shaders</string>
+    <string name="credits_fonts">Schriftarten</string>
     <!-- Core picker / nav -->
     <string name="no_compatible_cores">Keine kompatiblen Kerne gefunden</string>
     <string name="no_collections">Keine Sammlungen</string>
