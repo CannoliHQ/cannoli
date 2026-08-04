@@ -168,6 +168,7 @@
     <string name="setting_experimental_features">Experimentelle Funktionen</string>
     <string name="setting_set_default_launcher">Als Standard-Launcher festlegen</string>
     <!-- Same row as setting_set_default_launcher, shown when Cannoli is already the default launcher and the user wants to pick another one. -->
+    <string name="setting_change_default_launcher">Verwende einen anderen Launcher</string>
     <!-- Advanced action: recreate the standard platform/system folders. -->
     <string name="setting_regenerate_system_folders">Systemordner neu generieren</string>
     <!-- Library setting: which content layout to show (platforms, collections only, or Five Game Handheld). -->
@@ -391,6 +392,7 @@
     <!-- Shown in place of an emulator name when a platform has no emulator mapped yet. -->
     <string name="value_needs_setup">Benötigt Einrichtung</string>
     <string name="emulator_platform_setting">Plattform-Einstellung</string>
+    <string name="emulator_platform_default">Plattformstandard</string>
     <!-- %1$s = the emulator name the platform is mapped to. -->
     <string name="emulator_platform_setting_named">Plattform-Einstellung (%1$s)</string>
     <string name="rename_error_directory">Verzeichnis konnte nicht umbenannt werden</string>
@@ -425,6 +427,7 @@
     <string name="launch_error_extract">Archiv konnte nicht extrahiert werden</string>
     <string name="launch_error_generic">Spiel konnte nicht gestartet werden</string>
     <!-- %1$s = file name. -->
+    <string name="launch_error_bad_game_file">Konnte Spiel-ID von %1$s nicht lesen</string>
     <string name="launch_error_update_ricotta">RicottaArch aktualisieren, um fortzufahren</string>
     <string name="launch_error_update_cannoli">Cannoli aktualisieren um fortzufahren</string>
     <!-- %1$s = core name, %2$s = emulator app. -->
@@ -528,6 +531,7 @@
     <string name="ra_status_online">Online</string>
     <string name="ra_status_offline">Offline</string>
     <!-- %1$d = achievements awaiting sync. -->
+    <string name="ra_status_offline_pending">Offline • %1$d Ausstehende Synchronisierung</string>
     <string name="ra_detect_not_logged_in">Nicht angemeldet</string>
     <string name="ra_detect_identifying">Spiel… wird identifiziert</string>
     <string name="ra_detect_not_recognized">Spiel nicht erkannt</string>
@@ -535,6 +539,10 @@
     <string name="ra_detect_initializing">Initialisiere…</string>
     <string name="ra_detect_mem_failed">Speicherinit fehlgeschlagen</string>
     <!-- %d = achievement count. -->
+    <plurals name="ra_detect_active">
+        <item quantity="one">Aktiv • %d Erfolg</item>
+        <item quantity="other">Aktiv • %d Erfolge</item>
+    </plurals>
     <!-- %d = number of achievements synced. -->
     <plurals name="ra_sync_done">
         <item quantity="one">%d Erfolge synchronisiert</item>
@@ -597,6 +605,8 @@
     <string name="credits_cores">Emulatorkerne</string>
     <string name="credits_shaders">Shaders</string>
     <string name="credits_fonts">Schriftarten</string>
+    <string name="credits_libraries">Bibliotheken</string>
+    <string name="credits_localization">Lokalisierungsmitwirkende</string>
     <!-- Core picker / nav -->
     <string name="no_compatible_cores">Keine kompatiblen Kerne gefunden</string>
     <string name="no_collections">Keine Sammlungen</string>
@@ -668,12 +678,15 @@
     <string name="value_no_firmware">Für diesen Kern ist keine Firmware erforderlich.</string>
     <string name="mapping_action_bios">BIOS-Dateien</string>
     <string name="mapping_action_overrides">Spiel-Überschreibungen</string>
+    <string name="mapping_action_reset">Auf Standard zurücksetzen</string>
     <!-- %d = number of required BIOS files missing. -->
     <string name="mapping_required_missing">%d erforderlich</string>
     <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
+    <string name="mapping_platform_name_with_tag">%1$s (%2$s)</string>
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">%s Zuordnung</string>
     <!-- Screen title for the per-game emulator picker. %s = game name. -->
+    <string name="title_game_mapping">%s Emulator</string>
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_bios">%s BIOS</string>
     <string name="filter_all">ALLE</string>
@@ -719,6 +732,7 @@
     <string name="value_no_cores_found">Keine Kerne gefunden</string>
     <string name="label_clear_override">LEEREN</string>
     <!-- %1$s = platform name. -->
+    <string name="dialog_reset_platform_confirm">%1$szurücksetzen? Ihre Auswahl wird durch Cannolis Standard ersetzt oder gelöscht, wenn keine vorhanden ist.</string>
     <!-- RA achievement preload. %1$s = game name. -->
     <string name="ra_preload_progress">Vorladen %1$s</string>
     <string name="ra_preload_none">Keine Erfolge für dieses Spiel gefunden</string>
