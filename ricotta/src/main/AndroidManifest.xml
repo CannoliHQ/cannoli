@@ -11,7 +11,9 @@
     <application>
         <activity
             android:name="com.retroarch.browser.mainmenu.MainMenuActivity"
-            tools:node="merge">
+            android:exported="false"
+            tools:node="merge"
+            tools:replace="android:exported">
             <intent-filter tools:node="removeAll"/>
         </activity>
 
@@ -29,5 +31,21 @@
             android:process=":retroarch"
             tools:node="merge"
             tools:replace="android:exported" />
+
+        <activity
+            android:name="com.retroarch.browser.debug.CoreSideloadActivity"
+            android:exported="false"
+            tools:node="merge"
+            tools:replace="android:exported"/>
+
+        <receiver
+            android:name="com.retroarch.browser.receiver.InstalledCoresReceiver"
+            android:exported="false"
+            tools:node="merge"
+            tools:replace="android:exported"/>
+
+        <provider
+            android:name="com.retroarch.browser.provider.RetroDocumentsProvider"
+            tools:node="remove"/>
     </application>
 </manifest>

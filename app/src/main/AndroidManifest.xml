@@ -27,7 +27,8 @@
     <application
         android:name=".CannoliApp"
         android:banner="@drawable/tv_banner"
-        tools:replace="android:name,android:banner"
+        android:requestLegacyExternalStorage="false"
+        tools:replace="android:name,android:banner,android:requestLegacyExternalStorage"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"

@@ -41,12 +41,10 @@ android {
             assets.srcDirs("$phoenixDir/assets")
             jniLibs.srcDir("$phoenixCommonDir/libs")
         }
-        getByName("debug") {
-            manifest.srcFile("src/main/AndroidManifest.xml")
-        }
-        getByName("release") {
-            manifest.srcFile("src/main/AndroidManifest.xml")
-        }
+    }
+
+    buildTypes.all {
+        sourceSets.getByName(name).manifest.srcFile("src/main/AndroidManifest.xml")
     }
 
     externalNativeBuild {
