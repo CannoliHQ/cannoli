@@ -92,7 +92,7 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
     private lateinit var renderer: LibretroRenderer
     private lateinit var slotManager: SaveSlotManager
     private lateinit var overrideManager: OverrideManager
-    private var glSurfaceView: GLSurfaceView? = null
+    private var glSurfaceView: LibretroGlView? = null
     private var gameView: android.view.View? = null
     private var vsyncCallback: android.view.Choreographer.FrameCallback? = null
     private var es3Supported: Boolean = true
@@ -251,6 +251,9 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
     private val audioStatsRunnable = object : Runnable {
         override fun run() {
             sessionLog.log("audio ${runner.getAudioDiagnostics()}")
+            // Drain anything the core logged mid-session. The post-load flush only catches
+            // startup, and a session that ends without onPause never reaches a quit-time drain.
+            for (line in runner.getCoreLogs()) sessionLog.log("  core: $line")
             audioStatsHandler.postDelayed(this, 5000)
         }
     }
@@ -714,6 +717,10 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
                                     rootPrefix = cannoliRoot,
                                     originalRomPath = originalRomPath,
                                     rendererName = renderer.backendName,
+                                    coreRenderMode = getString(
+                                        if (runner.isHwRender()) R.string.info_core_render_hardware
+                                        else R.string.info_core_render_software
+                                    ),
                                     raStatus = raManager?.let { ra ->
                                         if (ra.isLoggedIn) {
                                             "${ra.username} (${ra.getStatus()})"
@@ -768,7 +775,7 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
             val coreInfoRepoForHw = dev.cannoli.scorza.config.CoreInfoRepository(assets)
             val coreIdForHw = File(corePath).name.removeSuffix("_android.so")
             coreRequiresHwRender = coreInfoRepoForHw.requiresHwRender(coreIdForHw)
-            if (coreRequiresHwRender) sessionLog.log("core declares hw_render=true; hiding GPU-scaling options")
+            if (coreRequiresHwRender) sessionLog.log("core declares hw_render=true")
             val coreBaseName = File(corePath).nameWithoutExtension
             gameBaseName = if (romPath.isNotEmpty()) File(romPath).nameWithoutExtension else ""
             overrideManager = OverrideManager(cannoliRoot, platformTag, gameBaseName, coreBaseName)
@@ -795,6 +802,9 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
                 return@launch
             }
             sessionLog.log("loadGame succeeded: fps=${avInfo.fps} sampleRate=${avInfo.sampleRate}")
+            // Also on the success path: hw render negotiation and unhandled env calls happen
+            // during a load that works, and they were previously logcat-only.
+            for (line in runner.getCoreLogs()) sessionLog.log("  core: $line")
             val memDescs = runner.getMemoryDescriptors()
             sessionLog.log("Memory descriptors: count=${memDescs.size}")
             for (line in memDescs) sessionLog.log("  mmap: $line")
@@ -876,19 +886,45 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
                     }
                 }
                 renderer = glesBackend
+                slotManager.hwFrameCapture = { w, h ->
+                    runOnGlThread(300L, null) { glesBackend.readHwFramePixels(w, h) }
+                }
                 pushShaderParamsToRenderer()
 
                 val eglLog: (String) -> Unit = { msg -> if (dev.cannoli.scorza.util.LoggingPrefs.session) sessionLog.log(msg) }
-                val glVersion = if (es3Supported) 3 else 2
-                glSurfaceView = GLSurfaceView(activity).apply {
-                    setEGLContextClientVersion(glVersion)
-                    setEGLConfigChooser(LoggingEglConfigChooser(glVersion, eglLog))
-                    setEGLContextFactory(LoggingEglContextFactory(glVersion, eglLog))
+                // retro_load_game has already run, so a HW render core has declared what it needs
+                // and the context can be built to match instead of guessed at.
+                val hwRender = runner.isHwRender()
+                val hwInfo = if (hwRender) runner.getHwRenderInfo() else null
+                val glVersion = when {
+                    hwInfo == null -> if (es3Supported) 3 else 2
+                    hwInfo.contextType == LibretroRunner.HW_CONTEXT_OPENGLES2 -> 2
+                    else -> 3
+                }
+                // Only OPENGLES_VERSION carries a meaningful minor; OPENGLES3 just means "3.x".
+                val glMinor = hwInfo
+                    ?.takeIf { it.contextType == LibretroRunner.HW_CONTEXT_OPENGLES_VERSION }
+                    ?.versionMinor ?: 0
+                if (hwRender) {
+                    sessionLog.log("hw render core: requesting GLES$glVersion.$glMinor context" +
+                        " depth=${hwInfo?.depth} stencil=${hwInfo?.stencil}")
+                }
+                glSurfaceView = LibretroGlView(activity).apply {
+                    contextClientVersion = glVersion
+                    contextMinorVersion = glMinor
+                    depthBits = if (hwInfo?.depth == true) 16 else 0
+                    stencilBits = if (hwInfo?.stencil == true) 8 else 0
+                    logger = eglLog
+                    // A core presenting on its own thread holds EGL handles the bridge hands it.
+                    // Revoking them before teardown stops that thread calling into a destroyed
+                    // display, which killed the process on quit.
+                    onBeforeShutdown = { runner.setCoreEglContext(0L, 0L, 0L) }
+                    // Renders on request only; the Choreographer pacer drives requestRender.
+                    // The context survives pause, so a HW render core keeps its GL objects.
                     setRenderer(glesBackend)
-                    renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
                     addOnAttachStateChangeListener(object : android.view.View.OnAttachStateChangeListener {
-                        override fun onViewAttachedToWindow(v: android.view.View) { eglLog("GLSurfaceView attached to window") }
-                        override fun onViewDetachedFromWindow(v: android.view.View) { eglLog("GLSurfaceView detached from window") }
+                        override fun onViewAttachedToWindow(v: android.view.View) { eglLog("GL view attached to window") }
+                        override fun onViewDetachedFromWindow(v: android.view.View) { eglLog("GL view detached from window") }
                     })
                     val requestedFps = avInfo.fps.toFloat()
                     holder.addCallback(object : android.view.SurfaceHolder.Callback {
@@ -2396,7 +2432,10 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
 
     private fun loadVisibleCoreOptions(): List<LibretroRunner.CoreOption> {
         val all = runner.getCoreOptions()
-        if (!coreRequiresHwRender) return all
+        // Internal resolution, MSAA and PGXP only no-op when a core that wants a GPU context
+        // did not get one. Once HW render is actually live these take effect, so the filter
+        // now keys off the negotiated result rather than the core_info declaration.
+        if (!coreRequiresHwRender || runner.isHwRender()) return all
         return all.filterNot { isHwRenderGatedOption(it) }
     }
 

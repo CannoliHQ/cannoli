@@ -14,6 +14,10 @@ class SaveSlotManager(private val stateBasePath: String) {
 
     var raManager: RetroAchievementsManager? = null
 
+    // Set by the activity for HW render cores, where the frame is on the GPU and copyLastFrame
+    // has nothing to hand back. Returns null if the GL thread cannot be reached in time.
+    var hwFrameCapture: ((Int, Int) -> IntArray?)? = null
+
     val slots = SharedSlotManager().slots
 
     fun statePath(slot: Slot): String = StateSlotPaths.statePath(stateBasePath, slot.index)
@@ -142,13 +146,18 @@ class SaveSlotManager(private val stateBasePath: String) {
         val h = runner.getFrameHeight()
         if (w == 0 || h == 0) return
 
+        val pixels = hwFrameCapture?.takeIf { runner.isHwRender() }?.invoke(w, h)
+            ?: softwareFramePixels(runner, w, h)
+        writeScreenshot(runner, pixels, w, h, path)
+    }
+
+    private fun softwareFramePixels(runner: LibretroRunner, w: Int, h: Int): IntArray {
         val pixelFormat = runner.getPixelFormat()
         val bpp = if (pixelFormat == LibretroRunner.PIXEL_FORMAT_XRGB8888) 4 else 2
         val buf = ByteBuffer.allocateDirect(w * h * bpp).order(ByteOrder.nativeOrder())
         runner.copyLastFrame(buf)
         buf.position(0)
 
-        var bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val pixels = IntArray(w * h)
 
         if (pixelFormat == LibretroRunner.PIXEL_FORMAT_XRGB8888) {
@@ -168,7 +177,17 @@ class SaveSlotManager(private val stateBasePath: String) {
                 pixels[i] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
             }
         }
+        return pixels
+    }
 
+    private fun writeScreenshot(
+        runner: LibretroRunner,
+        pixels: IntArray,
+        w: Int,
+        h: Int,
+        path: String,
+    ) {
+        var bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         bitmap.setPixels(pixels, 0, w, 0, 0, w, h)
 
         val rotation = runner.getRotation()

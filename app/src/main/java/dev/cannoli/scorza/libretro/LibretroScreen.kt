@@ -44,6 +44,7 @@ data class GameInfo(
     val rootPrefix: String = "",
     val originalRomPath: String? = null,
     val rendererName: String = "",
+    val coreRenderMode: String = "",
     val raStatus: String? = null,
     val raGameId: String? = null,
     val raDetection: String? = null
@@ -135,6 +136,7 @@ fun LibretroScreen(
         extractedPath = if (gameInfo.originalRomPath != null) gameInfo.romPath else "",
         savePath = gameInfo.savePath ?: "",
         rendererName = gameInfo.rendererName,
+        coreRenderMode = gameInfo.coreRenderMode,
         raStatus = gameInfo.raStatus ?: "",
         raGameId = gameInfo.raGameId ?: "",
         raDetection = gameInfo.raDetection ?: "",

@@ -10,6 +10,8 @@ data class IgmGameInfo(
     // Empty string = hide the row (host maps a null source value to "").
     val savePath: String = "",
     val rendererName: String = "",
+    // Empty string = hide the row, so a host that does not report it is unaffected.
+    val coreRenderMode: String = "",
     val raStatus: String = "",
     val raGameId: String = "",
     val raDetection: String = "",

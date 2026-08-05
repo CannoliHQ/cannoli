@@ -710,6 +710,10 @@
     <string name="info_extracted">Extracted</string>
     <string name="info_save">Save</string>
     <string name="info_renderer">Renderer</string>
+    <!-- Info label: whether the core draws through the GPU or on the CPU. -->
+    <string name="info_core_render">Core Render</string>
+    <string name="info_core_render_hardware">Hardware</string>
+    <string name="info_core_render_software">Software</string>
     <string name="info_game_id">Game ID</string>
     <string name="info_ra_detection">Achievement Detection</string>
 

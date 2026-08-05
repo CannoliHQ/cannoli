@@ -10,6 +10,8 @@
 #include <android/log.h>
 #include <zlib.h>
 #include <EGL/egl.h>
+#include <GLES2/gl2.h>
+#include <pthread.h>
 #include "libretro.h"
 #include "libretro_frontend.h"
 #include "frame_buffer.h"
@@ -63,6 +65,7 @@ static size_t g_frame_pitch = 0;
 static bool g_frame_ready = false;
 
 static JavaVM *g_jvm = nullptr;
+static pthread_t g_run_thread = 0;
 
 // Paths
 static char g_system_dir[512] = {0};
@@ -100,7 +103,17 @@ static retro_get_image_label_t g_get_image_label = nullptr;
 // nativeSetHwFramebuffer; video_refresh then reports the frame as already on the GPU.
 static struct retro_hw_render_callback g_hw_render = {};
 static bool g_hw_render_enabled = false;
+static bool g_hw_shared_context = false;
 static unsigned g_hw_framebuffer = 0;
+
+// A core may present from its own thread, and GL work there needs a context bound to THAT
+// thread. RetroArch gets this for free because its draw path runs inside video_refresh and
+// calls eglMakeCurrent every frame; we bind it here instead.
+static EGLDisplay g_core_egl_display = EGL_NO_DISPLAY;
+static EGLSurface g_core_egl_surface = EGL_NO_SURFACE;
+static EGLContext g_core_egl_context = EGL_NO_CONTEXT;
+// Cores that present on the run thread keep the original single-thread path.
+static bool g_core_presents_off_thread = false;
 
 // Controller info
 struct ControllerTypeInfo {
@@ -240,11 +253,12 @@ static bool environment_cb(unsigned cmd, void *data) {
             return true;
 
         case ENV_CMD(RETRO_ENVIRONMENT_SET_HW_SHARED_CONTEXT):
-            // Returning true would promise the core a context it can use from its own
-            // thread. GLSurfaceView owns the only context we have, so decline honestly
-            // and log it: a core that needs this will render nothing.
-            LOGW("Core asked for a shared hw context; declined (not supported)");
-            return false;
+            // The renderer answers this by creating a second EGL context in the same share
+            // group and binding it around core calls. Asked for before any GL exists, so the
+            // promise is made here and kept in setUpHwFramebuffer.
+            g_hw_shared_context = true;
+            LOGI("Core asked for a shared hw context; accepted");
+            return true;
 
         case ENV_CMD(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT):
             g_pixel_format = *(const unsigned *)data;
@@ -491,6 +505,37 @@ static bool environment_cb(unsigned cmd, void *data) {
 }
 
 static void video_refresh_cb(const void *data, unsigned width, unsigned height, size_t pitch) {
+    // Which thread presents decides whether get_current_framebuffer's FBO name is even valid
+    // where the core draws. FBOs are per-context, so a core presenting from its own thread
+    // cannot use ours. Logged once per transition to keep it out of the frame path.
+    {
+        static pthread_t s_last_video_thread = 0;
+        pthread_t self = pthread_self();
+        if (!pthread_equal(self, s_last_video_thread)) {
+            s_last_video_thread = self;
+            LOGI("video_refresh thread=%p run_thread=%p same=%d",
+                 (void *)self, (void *)g_run_thread,
+                 pthread_equal(self, g_run_thread) ? 1 : 0);
+        }
+        // Only when the core presents from a thread that is not the one running retro_run.
+        // A core that presents on the run thread already has the renderer's context there, and
+        // rebinding would steal that thread's context and surface out from under the draw.
+        if (g_run_thread != 0 && !pthread_equal(self, g_run_thread)) {
+            g_core_presents_off_thread = true;
+            if (g_core_egl_context != EGL_NO_CONTEXT &&
+                eglGetCurrentContext() != g_core_egl_context) {
+                if (eglMakeCurrent(g_core_egl_display, g_core_egl_surface,
+                                   g_core_egl_surface, g_core_egl_context)) {
+                    LOGI("core context bound to presenting thread %p", (void *)self);
+                } else {
+                    LOGW("binding core context on presenting thread failed err=0x%x", eglGetError());
+                }
+            }
+            // The renderer samples this texture from another context, and shared-object writes
+            // are not visible across contexts without a sync point.
+            if (g_core_egl_context != EGL_NO_CONTEXT) glFinish();
+        }
+    }
     if (!data) return;
 
     // The core rendered into our FBO, so only the geometry is news.
@@ -637,6 +682,7 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeLoadCore(JNIEnv *env, jobj
     g_get_image_label = nullptr;
     memset(&g_hw_render, 0, sizeof(g_hw_render));
     g_hw_render_enabled = false;
+    g_hw_shared_context = false;
     g_hw_framebuffer = 0;
     for (int p = 0; p < MAX_PORTS; p++) g_controller_types[p].clear();
 
@@ -810,6 +856,14 @@ extern "C" void ra_process_frame(void);
 
 JNIEXPORT void JNICALL
 Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeRun(JNIEnv *, jobject) {
+    // Logged rather than compared across threads: the previous racy read of g_run_thread
+    // reported 0 and made the comparison meaningless.
+    static bool s_logged_run_thread = false;
+    if (!s_logged_run_thread) {
+        s_logged_run_thread = true;
+        LOGI("retro_run thread=%p", (void *)pthread_self());
+    }
+    g_run_thread = pthread_self();
     core.run();
     cheat_engine_apply();
     ra_process_frame();
@@ -895,6 +949,16 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeIsHwRender(JNIEnv *, jobje
     return g_hw_render_enabled ? JNI_TRUE : JNI_FALSE;
 }
 
+JNIEXPORT jboolean JNICALL
+Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeHwWantsSharedContext(JNIEnv *, jobject) {
+    return g_hw_shared_context ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeCorePresentsOffThread(JNIEnv *, jobject) {
+    return g_core_presents_off_thread ? JNI_TRUE : JNI_FALSE;
+}
+
 // [contextType, versionMajor, versionMinor, depth, stencil, bottomLeftOrigin, cacheContext]
 JNIEXPORT jintArray JNICALL
 Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeGetHwRenderInfo(JNIEnv *env, jobject) {
@@ -915,6 +979,16 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeGetHwRenderInfo(JNIEnv *en
 JNIEXPORT void JNICALL
 Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeSetHwFramebuffer(JNIEnv *, jobject, jint fbo) {
     g_hw_framebuffer = (unsigned)fbo;
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeSetCoreEglContext(
+        JNIEnv *, jobject, jlong display, jlong surface, jlong context) {
+    g_core_egl_display = (EGLDisplay)(uintptr_t)display;
+    g_core_egl_surface = (EGLSurface)(uintptr_t)surface;
+    g_core_egl_context = (EGLContext)(uintptr_t)context;
+    LOGI("core EGL handles registered (ctx=%p surf=%p)",
+         (void *)g_core_egl_context, (void *)g_core_egl_surface);
 }
 
 JNIEXPORT void JNICALL
@@ -1184,6 +1258,7 @@ Java_dev_cannoli_scorza_libretro_LibretroRunner_nativeDeinit(JNIEnv *env, jobjec
     g_get_image_label = nullptr;
     memset(&g_hw_render, 0, sizeof(g_hw_render));
     g_hw_render_enabled = false;
+    g_hw_shared_context = false;
     g_hw_framebuffer = 0;
     for (int p = 0; p < MAX_PORTS; p++) g_controller_types[p].clear();
 }

@@ -1,7 +1,9 @@
 package dev.cannoli.scorza.libretro
 
 import android.graphics.BitmapFactory
+import android.opengl.EGL14
 import android.opengl.GLES20
+import android.opengl.GLES30
 import android.opengl.GLSurfaceView
 import android.opengl.GLUtils
 import android.util.Log
@@ -98,6 +100,25 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
     private var loggedFirstFrame = false
 
     private var textureId = 0
+    private var hwRender = false
+    private var hwFbo = 0
+    private var hwDepthRb = 0
+    private var hwMaxWidth = 0
+    private var hwMaxHeight = 0
+    private var hwBottomLeftOrigin = true
+    private var hwContextLive = false
+    // Set only when the core asked for a shared context. Cores that did not keep the
+    // single-context path they already work on.
+    private var hwSharedCtx: android.opengl.EGLContext? = null
+    private var hwMainCtx: android.opengl.EGLContext? = null
+    // Both contexts share the window surface, as RetroArch does. The core's context is the one
+    // current at swap time, so it has to hold the surface being swapped.
+    private var hwEglDisplay: android.opengl.EGLDisplay? = null
+    private var hwEglSurface: android.opengl.EGLSurface? = null
+    private var hwCoreSurface: android.opengl.EGLSurface? = null
+    private var hwReadFbo = 0
+    private var hwTexCoordW = -1
+    private var hwTexCoordH = -1
     private var programNone = 0
     private var frameBuffer: ByteBuffer? = null
     private var lastWidth = 0
@@ -184,6 +205,248 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
         sharpnessDirty = true
         overlayDirty = true
         pipelineDirty = true
+
+        hwContextLive = false
+        // A new GL context means the old shared one belongs to a dead share group.
+        hwSharedCtx = null
+        hwMainCtx = null
+        hwEglDisplay = null
+        hwEglSurface = null
+        hwCoreSurface = null
+        hwReadFbo = 0
+        hwFbo = 0
+        hwDepthRb = 0
+        hwRender = runner.isHwRender()
+        if (hwRender) setUpHwFramebuffer()
+    }
+
+    // The core draws into an FBO we own. Handing its colour attachment back as textureId lets
+    // the shader pipeline, overlay and viewport math downstream stay identical to the SW path.
+    private fun setUpHwFramebuffer() {
+        val info = runner.getHwRenderInfo()
+        val (maxW, maxH) = runner.getMaxGeometry()
+        hwMaxWidth = maxW.coerceAtLeast(1)
+        hwMaxHeight = maxH.coerceAtLeast(1)
+        hwBottomLeftOrigin = info.bottomLeftOrigin
+        hwTexCoordW = -1
+        hwTexCoordH = -1
+        logger?.invoke(
+            "hw render: ${hwMaxWidth}x${hwMaxHeight} ctx=${info.contextType}" +
+                " v${info.versionMajor}.${info.versionMinor} depth=${info.depth}" +
+                " stencil=${info.stencil} bottomLeft=${info.bottomLeftOrigin}"
+        )
+
+        val texIds = IntArray(1)
+        GLES20.glGenTextures(1, texIds, 0)
+        textureId = texIds[0]
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId)
+        GLES20.glTexImage2D(
+            GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA,
+            hwMaxWidth, hwMaxHeight, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null
+        )
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_NEAREST)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
+
+        val fboIds = IntArray(1)
+        GLES20.glGenFramebuffers(1, fboIds, 0)
+        hwFbo = fboIds[0]
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, hwFbo)
+        GLES20.glFramebufferTexture2D(
+            GLES20.GL_FRAMEBUFFER, GLES20.GL_COLOR_ATTACHMENT0,
+            GLES20.GL_TEXTURE_2D, textureId, 0
+        )
+
+        if (info.depth) {
+            val rbIds = IntArray(1)
+            GLES20.glGenRenderbuffers(1, rbIds, 0)
+            hwDepthRb = rbIds[0]
+            GLES20.glBindRenderbuffer(GLES20.GL_RENDERBUFFER, hwDepthRb)
+            val packed = info.stencil && ShaderPipeline.es3Supported
+            val format = when {
+                packed -> GLES30.GL_DEPTH24_STENCIL8
+                else -> GLES20.GL_DEPTH_COMPONENT16
+            }
+            GLES20.glRenderbufferStorage(GLES20.GL_RENDERBUFFER, format, hwMaxWidth, hwMaxHeight)
+            val attachment =
+                if (packed) GLES30.GL_DEPTH_STENCIL_ATTACHMENT else GLES20.GL_DEPTH_ATTACHMENT
+            GLES20.glFramebufferRenderbuffer(
+                GLES20.GL_FRAMEBUFFER, attachment, GLES20.GL_RENDERBUFFER, hwDepthRb
+            )
+            if (info.stencil && !packed) {
+                logger?.invoke("hw render: stencil requested but unavailable without ES3")
+            }
+        }
+
+        val status = GLES20.glCheckFramebufferStatus(GLES20.GL_FRAMEBUFFER)
+        if (status != GLES20.GL_FRAMEBUFFER_COMPLETE) {
+            logger?.invoke("hw render: FBO incomplete (status=0x${Integer.toHexString(status)})")
+            hwRender = false
+            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
+            return
+        }
+        // glTexImage2D with no data leaves contents undefined, which reads as static and is
+        // indistinguishable from the core not drawing. Start from a known black.
+        GLES20.glClearColor(0f, 0f, 0f, 1f)
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
+
+        if (runner.hwWantsSharedContext() && createSharedContext()) {
+            // The core renders in its own context, so it needs an FBO created there. The
+            // colour texture and depth buffer are shared, only the container is not.
+            hwReadFbo = hwFbo
+            var coreFbo = 0
+            if (bindCoreContext()) {
+                coreFbo = buildFboForSharedTexture()
+                if (coreFbo == 0) bindMainContext()
+            }
+            if (coreFbo == 0) {
+                logger?.invoke("hw render: shared-context FBO failed, falling back to single context")
+                destroySharedContext()
+            } else {
+                hwFbo = coreFbo
+                logger?.invoke("hw render: shared context ready (core fbo=$coreFbo, read fbo=$hwReadFbo)")
+            }
+        }
+
+        runner.setHwFramebuffer(hwFbo)
+        if (hwSharedCtx != null) {
+            // context_reset creates the core's GL objects, so it runs in the core's context.
+            bindCoreContext()
+            runner.hwContextReset()
+            // Then hand the context back: the core presents from its own thread, and that
+            // thread claims it on the next video_refresh. It cannot if we are still holding it.
+            bindMainContext()
+            runner.setCoreEglContext(
+                handleOf(hwEglDisplay), handleOf(hwCoreSurface), handleOf(hwSharedCtx)
+            )
+        } else {
+            runner.hwContextReset()
+        }
+        hwContextLive = true
+    }
+
+    // EGL14 objects wrap a native handle that the bridge needs as a plain pointer.
+    private fun handleOf(o: Any?): Long = when (o) {
+        is android.opengl.EGLDisplay -> o.nativeHandle
+        is android.opengl.EGLSurface -> o.nativeHandle
+        is android.opengl.EGLContext -> o.nativeHandle
+        else -> 0L
+    }
+
+    private fun createSharedContext(): Boolean {
+        val display = EGL14.eglGetCurrentDisplay()
+        val mainCtx = EGL14.eglGetCurrentContext()
+        if (display == EGL14.EGL_NO_DISPLAY || mainCtx == EGL14.EGL_NO_CONTEXT) return false
+
+        val cfgId = IntArray(1)
+        if (!EGL14.eglQueryContext(display, mainCtx, EGL14.EGL_CONFIG_ID, cfgId, 0)) return false
+        val configs = arrayOfNulls<android.opengl.EGLConfig>(1)
+        val found = IntArray(1)
+        val cfgAttribs = intArrayOf(EGL14.EGL_CONFIG_ID, cfgId[0], EGL14.EGL_NONE)
+        if (!EGL14.eglChooseConfig(display, cfgAttribs, 0, configs, 0, 1, found, 0) || found[0] < 1) {
+            return false
+        }
+        val version = if (ShaderPipeline.es3Supported) 3 else 2
+        val ctxAttribs = intArrayOf(EGL14.EGL_CONTEXT_CLIENT_VERSION, version, EGL14.EGL_NONE)
+        val ctx = EGL14.eglCreateContext(display, configs[0], mainCtx, ctxAttribs, 0)
+        if (ctx == null || ctx == EGL14.EGL_NO_CONTEXT) {
+            logger?.invoke("hw render: eglCreateContext(shared) failed err=0x${
+                Integer.toHexString(EGL14.eglGetError())}")
+            return false
+        }
+        hwSharedCtx = ctx
+        hwMainCtx = mainCtx
+        hwEglDisplay = display
+        hwEglSurface = EGL14.eglGetCurrentSurface(EGL14.EGL_DRAW)
+
+        // The core's context lives on the core's presenting thread, so it cannot share our
+        // window surface: EGL forbids one surface being current to two contexts at once.
+        // RetroArch avoids this only because it never has two threads holding contexts.
+        val pbAttribs = intArrayOf(EGL14.EGL_WIDTH, 1, EGL14.EGL_HEIGHT, 1, EGL14.EGL_NONE)
+        val pbuffer = EGL14.eglCreatePbufferSurface(display, configs[0], pbAttribs, 0)
+        if (pbuffer == null || pbuffer == EGL14.EGL_NO_SURFACE) {
+            logger?.invoke("hw render: pbuffer for core context failed err=0x${
+                Integer.toHexString(EGL14.eglGetError())}")
+            EGL14.eglDestroyContext(display, ctx)
+            hwSharedCtx = null
+            return false
+        }
+        hwCoreSurface = pbuffer
+        return true
+    }
+
+    private fun destroySharedContext() {
+        val ctx = hwSharedCtx ?: return
+        val coreSurface = hwCoreSurface
+        // Our context has to be the live one before the core's is destroyed.
+        bindMainContext()
+        hwSharedCtx = null
+        hwCoreSurface = null
+        val display = hwEglDisplay
+        hwMainCtx = null
+        hwEglDisplay = null
+        hwEglSurface = null
+        runner.setCoreEglContext(0L, 0L, 0L)
+        if (display != null) {
+            if (coreSurface != null) EGL14.eglDestroySurface(display, coreSurface)
+            EGL14.eglDestroyContext(display, ctx)
+        }
+    }
+
+    private fun bindContext(ctx: android.opengl.EGLContext?, label: String): Boolean {
+        if (ctx == null) return false
+        val display = hwEglDisplay ?: return false
+        // The core's context is paired with its own off-screen surface; ours keeps the window.
+        val surface = (if (ctx == hwSharedCtx) hwCoreSurface else hwEglSurface) ?: return false
+        if (EGL14.eglMakeCurrent(display, surface, surface, ctx)) return true
+        logger?.invoke("hw render: makeCurrent($label) failed err=0x${
+            Integer.toHexString(EGL14.eglGetError())}")
+        return false
+    }
+
+    private fun bindMainContext() = bindContext(hwMainCtx, "main")
+
+    private fun bindCoreContext() = bindContext(hwSharedCtx, "core")
+
+    // Runs block with our own context current regardless of which one is live, so queued GL
+    // work outside the draw phase cannot read through an FBO belonging to the other context.
+    private inline fun <T> withMainContext(block: () -> T): T? {
+        if (hwSharedCtx == null) return block()
+        val restore = EGL14.eglGetCurrentContext() == hwSharedCtx
+        if (restore && !bindMainContext()) return null
+        try {
+            return block()
+        } finally {
+            if (restore) bindCoreContext()
+        }
+    }
+
+    private fun buildFboForSharedTexture(): Int {
+        val ids = IntArray(1)
+        GLES20.glGenFramebuffers(1, ids, 0)
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, ids[0])
+        GLES20.glFramebufferTexture2D(
+            GLES20.GL_FRAMEBUFFER, GLES20.GL_COLOR_ATTACHMENT0,
+            GLES20.GL_TEXTURE_2D, textureId, 0
+        )
+        if (hwDepthRb != 0) {
+            val info = runner.getHwRenderInfo()
+            val packed = info.stencil && ShaderPipeline.es3Supported
+            val attachment =
+                if (packed) GLES30.GL_DEPTH_STENCIL_ATTACHMENT else GLES20.GL_DEPTH_ATTACHMENT
+            GLES20.glFramebufferRenderbuffer(
+                GLES20.GL_FRAMEBUFFER, attachment, GLES20.GL_RENDERBUFFER, hwDepthRb
+            )
+        }
+        val status = GLES20.glCheckFramebufferStatus(GLES20.GL_FRAMEBUFFER)
+        if (status != GLES20.GL_FRAMEBUFFER_COMPLETE) {
+            logger?.invoke("hw render: shared FBO incomplete (status=0x${
+                Integer.toHexString(status)})")
+            return 0
+        }
+        return ids[0]
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) = guard("onSurfaceChanged") {
@@ -196,12 +459,23 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
         }
     }
 
+    // The core's context stays current between frames, matching RetroArch: a core may touch GL
+    // from a worker thread at any point, not only inside retro_run. We drop to our own context
+    // for the draw and hand it straight back.
     override fun onDrawFrame(gl: GL10?) = guard("onDrawFrame") {
         if (!loggedFirstFrame) {
             loggedFirstFrame = true
             logger?.invoke("GL first frame: surface=${surfaceWidth}x${surfaceHeight}")
         }
-        if (!paused) {
+        // Our context stays on this thread throughout. The core's belongs to whichever thread
+        // presents, which claims it in video_refresh; taking it back here would strand that
+        // thread without a context again.
+        runEmulationPhase()
+        drawPhase()
+    }
+
+    private fun runEmulationPhase() {
+        if (!paused && !(hwRender && !hwContextLive)) {
             val now = System.nanoTime()
             val delta = if (lastDrawNanos == 0L) 0L else now - lastDrawNanos
             lastDrawNanos = now
@@ -223,7 +497,9 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
                 }
             }
         }
+    }
 
+    private fun drawPhase() {
         val w = runner.getFrameWidth()
         val h = runner.getFrameHeight()
         if (w != loggedFrameW || h != loggedFrameH) {
@@ -246,7 +522,9 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
             return
         }
 
-        if (runner.hasNewFrame()) {
+        if (hwRender) {
+            runner.consumeFrame()
+        } else if (runner.hasNewFrame()) {
             val pixelFormat = runner.getPixelFormat()
             val bpp = if (pixelFormat == LibretroRunner.PIXEL_FORMAT_XRGB8888) 4 else 2
             val needed = w * h * bpp
@@ -325,7 +603,9 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
         }
 
         val rotation = runner.getRotation()
-        if (rotation != lastRotation) {
+        if (hwRender) {
+            updateHwTexCoords(w, h)
+        } else if (rotation != lastRotation) {
             lastRotation = rotation
             val coords = rotatedTexCoords[rotation and 3]
             texCoordBuffer.clear()
@@ -379,8 +659,95 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
     }
 
     private fun runEmulatedFrame() {
-        runner.run()
+        if (hwSharedCtx != null && runner.corePresentsOffThread()) {
+            // The core owns its context on its own thread; touching GL state here would fight
+            // it, and our context stays current for the draw that follows.
+            runner.run()
+        } else if (hwSharedCtx != null) {
+            // Presents on this thread, so drive it exactly as the non-shared path does.
+            bindCoreContext()
+            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, hwFbo)
+            GLES20.glViewport(0, 0, hwMaxWidth, hwMaxHeight)
+            runner.run()
+            GLES20.glFinish()
+            bindMainContext()
+        } else {
+            if (hwRender) {
+                GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, hwFbo)
+                GLES20.glViewport(0, 0, hwMaxWidth, hwMaxHeight)
+            }
+            runner.run()
+            if (hwRender) resetGlStateAfterCore()
+        }
         fpsMeter.tick(System.nanoTime())
+    }
+
+    // Under HW render the frame only ever exists on the GPU, so a save state thumbnail has to
+    // read it back off the FBO. Must run on the GL thread. glReadPixels returns rows bottom-up.
+    fun readHwFramePixels(w: Int, h: Int): IntArray? = withMainContext {
+        readHwFramePixelsLocked(w, h)
+    }
+
+    private fun readHwFramePixelsLocked(w: Int, h: Int): IntArray? {
+        if (!hwRender || w <= 0 || h <= 0) return null
+        if (w > hwMaxWidth || h > hwMaxHeight) return null
+        // Read through our own FBO; hwFbo belongs to the core's context on the shared path.
+        val readFbo = if (hwSharedCtx != null) hwReadFbo else hwFbo
+        if (readFbo == 0) return null
+        val buf = ByteBuffer.allocateDirect(w * h * 4).order(ByteOrder.nativeOrder())
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, readFbo)
+        GLES20.glReadPixels(0, 0, w, h, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buf)
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
+        if (GLES20.glGetError() != GLES20.GL_NO_ERROR) return null
+        val pixels = IntArray(w * h)
+        for (y in 0 until h) {
+            val src = (h - 1 - y) * w * 4
+            val dst = y * w
+            for (x in 0 until w) {
+                val i = src + x * 4
+                val r = buf.get(i).toInt() and 0xFF
+                val g = buf.get(i + 1).toInt() and 0xFF
+                val b = buf.get(i + 2).toInt() and 0xFF
+                pixels[dst + x] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
+            }
+        }
+        return pixels
+    }
+
+    // A core leaves GL state arbitrary. Everything the blit path assumes has to be put back,
+    // or the frame lands garbled rather than missing.
+    private fun resetGlStateAfterCore() {
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
+        if (ShaderPipeline.es3Supported) GLES30.glBindVertexArray(0)
+        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0)
+        GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, 0)
+        GLES20.glDisable(GLES20.GL_DEPTH_TEST)
+        GLES20.glDisable(GLES20.GL_STENCIL_TEST)
+        GLES20.glDisable(GLES20.GL_SCISSOR_TEST)
+        GLES20.glDisable(GLES20.GL_CULL_FACE)
+        GLES20.glDisable(GLES20.GL_BLEND)
+        GLES20.glColorMask(true, true, true, true)
+        GLES20.glDepthMask(true)
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
+        GLES20.glUseProgram(0)
+    }
+
+    // The frame occupies a w*h corner of the max-sized FBO, and a GL core's origin is already
+    // bottom-left, so neither the 0..1 range nor the SW path's Y-flip applies.
+    private fun updateHwTexCoords(w: Int, h: Int) {
+        if (w == hwTexCoordW && h == hwTexCoordH) return
+        hwTexCoordW = w
+        hwTexCoordH = h
+        val u = w.toFloat() / hwMaxWidth
+        val v = h.toFloat() / hwMaxHeight
+        val coords = if (hwBottomLeftOrigin) {
+            floatArrayOf(0f, 0f, u, 0f, 0f, v, u, v)
+        } else {
+            floatArrayOf(0f, v, u, v, 0f, 0f, u, 0f)
+        }
+        texCoordBuffer.clear()
+        texCoordBuffer.put(coords)
+        texCoordBuffer.position(0)
     }
 
     private fun drawSimple(w: Int, h: Int, vpX: Int, vpY: Int, vpW: Int, vpH: Int) {

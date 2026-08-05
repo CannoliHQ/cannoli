@@ -40,6 +40,6 @@ target_compile_definitions(rcheevos PUBLIC RC_CLIENT_SUPPORTS_HASH)
 
 # --- retro_bridge (libretro core runner) ---
 add_library(retro_bridge SHARED libretro_bridge.cpp cheat_engine.cpp ra_integration.c native_audio.cpp)
-target_link_libraries(retro_bridge rcheevos speex_resampler oboe::oboe z EGL ${log-lib})
+target_link_libraries(retro_bridge rcheevos speex_resampler oboe::oboe z EGL GLESv2 ${log-lib})
 target_include_directories(retro_bridge PRIVATE third_party/rcheevos/include third_party/rcheevos/src)
 

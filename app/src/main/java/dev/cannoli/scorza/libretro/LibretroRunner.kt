@@ -21,6 +21,10 @@ class LibretroRunner {
         const val DEVICE_NONE = 0
         const val DEVICE_JOYPAD = 1
         const val MAX_PORTS = 4
+
+        const val HW_CONTEXT_OPENGLES2 = 2
+        const val HW_CONTEXT_OPENGLES3 = 4
+        const val HW_CONTEXT_OPENGLES_VERSION = 5
     }
 
     fun loadCore(corePath: String): Boolean = nativeLoadCore(corePath)
@@ -69,8 +73,47 @@ class LibretroRunner {
     fun getFrameWidth(): Int = nativeGetFrameWidth()
     fun getFrameHeight(): Int = nativeGetFrameHeight()
     fun hasNewFrame(): Boolean = nativeHasNewFrame()
+    fun consumeFrame() = nativeConsumeFrame()
     fun copyFrame(buffer: ByteBuffer) = nativeCopyFrame(buffer)
     fun copyLastFrame(buffer: ByteBuffer) = nativeCopyLastFrame(buffer)
+
+    data class HwRenderInfo(
+        val contextType: Int,
+        val versionMajor: Int,
+        val versionMinor: Int,
+        val depth: Boolean,
+        val stencil: Boolean,
+        val bottomLeftOrigin: Boolean,
+        val cacheContext: Boolean,
+    )
+
+    fun isHwRender(): Boolean = nativeIsHwRender()
+    fun hwWantsSharedContext(): Boolean = nativeHwWantsSharedContext()
+    fun corePresentsOffThread(): Boolean = nativeCorePresentsOffThread()
+
+    fun getHwRenderInfo(): HwRenderInfo {
+        val a = nativeGetHwRenderInfo()
+        return HwRenderInfo(
+            contextType = a[0],
+            versionMajor = a[1],
+            versionMinor = a[2],
+            depth = a[3] != 0,
+            stencil = a[4] != 0,
+            bottomLeftOrigin = a[5] != 0,
+            cacheContext = a[6] != 0,
+        )
+    }
+
+    fun setHwFramebuffer(fbo: Int) = nativeSetHwFramebuffer(fbo)
+    fun setCoreEglContext(display: Long, surface: Long, context: Long) =
+        nativeSetCoreEglContext(display, surface, context)
+    fun hwContextReset() = nativeHwContextReset()
+    fun hwContextDestroy() = nativeHwContextDestroy()
+
+    fun getMaxGeometry(): Pair<Int, Int> {
+        val a = nativeGetMaxGeometry()
+        return a[0] to a[1]
+    }
 
     fun saveState(path: String): Boolean = nativeSaveState(path)
     fun loadState(path: String): Boolean = nativeLoadState(path)
@@ -168,6 +211,16 @@ class LibretroRunner {
     private external fun nativeGetFrameWidth(): Int
     private external fun nativeGetFrameHeight(): Int
     private external fun nativeHasNewFrame(): Boolean
+    private external fun nativeConsumeFrame()
+    private external fun nativeIsHwRender(): Boolean
+    private external fun nativeHwWantsSharedContext(): Boolean
+    private external fun nativeCorePresentsOffThread(): Boolean
+    private external fun nativeGetHwRenderInfo(): IntArray
+    private external fun nativeSetHwFramebuffer(fbo: Int)
+    private external fun nativeSetCoreEglContext(display: Long, surface: Long, context: Long)
+    private external fun nativeHwContextReset()
+    private external fun nativeHwContextDestroy()
+    private external fun nativeGetMaxGeometry(): IntArray
     private external fun nativeCopyFrame(buffer: ByteBuffer)
     private external fun nativeCopyLastFrame(buffer: ByteBuffer)
     private external fun nativeSaveState(path: String): Boolean

@@ -297,6 +297,10 @@ fun CannoliIGM(
                                         Spacer(modifier = Modifier.height(12.dp))
                                         InfoRow(stringResource(dev.cannoli.ui.R.string.info_renderer), gameInfo.rendererName, infoModifier)
                                     }
+                                    if (gameInfo.coreRenderMode.isNotEmpty()) {
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        InfoRow(stringResource(dev.cannoli.ui.R.string.info_core_render), gameInfo.coreRenderMode, infoModifier)
+                                    }
                                     if (gameInfo.raStatus.isNotEmpty()) {
                                         Spacer(modifier = Modifier.height(12.dp))
                                         InfoRow(stringResource(dev.cannoli.ui.R.string.ra_title), gameInfo.raStatus, infoModifier)
