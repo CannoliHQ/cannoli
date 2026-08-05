@@ -34,6 +34,13 @@ class GameMoveHandlerTest {
         raGameId = null,
     )
 
+    private fun repoFor(rom: Rom): RomsRepository {
+        val repo = mockk<RomsRepository>()
+        every { repo.knownPlatformTags() } returns listOf(rom.platformTag)
+        every { repo.gameById(rom.id) } returns rom
+        return repo
+    }
+
     private fun makeServer(
         root: File,
         repo: RomsRepository,
@@ -54,8 +61,7 @@ class GameMoveHandlerTest {
         val romFile = File(nesDir, "Game.nes").also { it.writeText("ROM") }
 
         val rom = makeRom(1L, romFile)
-        val repo = mockk<RomsRepository>()
-        every { repo.gameById(1L) } returns rom
+        val repo = repoFor(rom)
         every { repo.updateRomPath(any(), any()) } returns true
 
         val server = makeServer(tmp.root, repo)
@@ -84,8 +90,7 @@ class GameMoveHandlerTest {
         val m3u = File(gameFolder, "MyGame.m3u")
         val rom = makeRom(2L, m3u, "NES")
 
-        val repo = mockk<RomsRepository>()
-        every { repo.gameById(2L) } returns rom
+        val repo = repoFor(rom)
         every { repo.updateRomPath(any(), any()) } returns true
 
         val walker = mockk<RomDirectoryWalker>()
@@ -114,8 +119,7 @@ class GameMoveHandlerTest {
         File(rpgsDir, "Game.nes").writeText("EXISTING")
 
         val rom = makeRom(3L, romFile)
-        val repo = mockk<RomsRepository>()
-        every { repo.gameById(3L) } returns rom
+        val repo = repoFor(rom)
 
         val server = makeServer(tmp.root, repo)
         val response = server.handleGames(
@@ -136,8 +140,7 @@ class GameMoveHandlerTest {
         val romFile = File(nesDir, "Game.nes").also { it.writeText("ROM") }
 
         val rom = makeRom(4L, romFile)
-        val repo = mockk<RomsRepository>()
-        every { repo.gameById(4L) } returns rom
+        val repo = repoFor(rom)
 
         val server = makeServer(tmp.root, repo)
         val response = server.handleGames(
@@ -158,8 +161,7 @@ class GameMoveHandlerTest {
         val romFile = File(subDir, "Game.nes").also { it.writeText("ROM") }
 
         val rom = makeRom(5L, romFile)
-        val repo = mockk<RomsRepository>()
-        every { repo.gameById(5L) } returns rom
+        val repo = repoFor(rom)
         every { repo.updateRomPath(any(), any()) } returns true
 
         val server = makeServer(tmp.root, repo)
@@ -182,8 +184,7 @@ class GameMoveHandlerTest {
         val romFile = File(nesDir, "Game.nes").also { it.writeText("ROM") }
 
         val rom = makeRom(6L, romFile)
-        val repo = mockk<RomsRepository>()
-        every { repo.gameById(6L) } returns rom
+        val repo = repoFor(rom)
 
         val server = makeServer(tmp.root, repo)
         val response = server.handleGames(
@@ -205,8 +206,7 @@ class GameMoveHandlerTest {
         val romFile = File(subDir, "Game.nes").also { it.writeText("ROM") }
 
         val rom = makeRom(7L, romFile)
-        val repo = mockk<RomsRepository>()
-        every { repo.gameById(7L) } returns rom
+        val repo = repoFor(rom)
 
         val server = makeServer(tmp.root, repo)
         val response = server.handleGames(

@@ -5,9 +5,12 @@ import fi.iki.elonen.NanoHTTPD.Response
 import java.io.File
 
 internal fun KitchenHttpServer.handleTags(): Response {
+    val repo = romsRepository ?: return errorResponse(503, "tags not available")
+    val canonical = repo.knownPlatformTags().associateBy { it.lowercase(java.util.Locale.ROOT) }
     val romsDir = romsRootProvider()
     val tags = romsDir.listFiles { f -> f.isDirectory }
-        ?.map { it.name }
+        ?.mapNotNull { canonical[it.name.lowercase(java.util.Locale.ROOT)] }
+        ?.distinct()
         ?.sorted()
         ?: emptyList()
     return jsonResponse(200, TagsResponse.serializer(), TagsResponse(tags))

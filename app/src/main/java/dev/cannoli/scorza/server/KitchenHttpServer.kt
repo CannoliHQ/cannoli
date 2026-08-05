@@ -197,7 +197,11 @@ class KitchenHttpServer internal constructor(
                 val subpath = apiSegments.drop(1).joinToString("/")
                 val displayPath = if (subpath.isEmpty()) baseDir else "$baseDir/$subpath"
                 val resourceRoot = if (resource == "roms") romsRootProvider() else File(cannoliRoot, baseDir)
-                val targetDir = if (subpath.isEmpty()) resourceRoot else File(resourceRoot, subpath)
+                val targetDir = when {
+                    subpath.isEmpty() -> resourceRoot
+                    resource == "roms" -> romsTarget(resourceRoot, apiSegments.drop(1))
+                    else -> File(resourceRoot, subpath)
+                }
                 val response = when (method) {
                     "GET" -> {
                         if (targetDir.isFile && isSecure(targetDir)) {
@@ -251,6 +255,16 @@ class KitchenHttpServer internal constructor(
         }
     }
 
+    /** Browsing is the one resource rooted in the user's own ROM directory rather than a directory
+     *  Cannoli laid out itself, so the canonical tag in the url has to be matched back to the
+     *  folder that is really on disk. The other resource dirs are created with canonical names.
+     *  Falling back to the tag keeps uploads and mkdir working for a platform with no folder yet. */
+    private fun romsTarget(romsRoot: File, segments: List<String>): File {
+        val tagDir = romDirectoryWalker?.resolveTagDir(segments[0]) ?: File(romsRoot, segments[0])
+        val rest = segments.drop(1)
+        return if (rest.isEmpty()) tagDir else File(tagDir, rest.joinToString(File.separator))
+    }
+
     internal fun readBody(session: IHTTPSession): String {
         val contentLength = session.headers["content-length"]?.toIntOrNull() ?: 0
         if (contentLength <= 0) return ""
@@ -295,6 +309,13 @@ class KitchenHttpServer internal constructor(
 
     private fun handleAuthStatus(): Response =
         jsonResponse(200, AuthStatusResponse.serializer(), AuthStatusResponse(required = !codeBypass))
+
+    /** A ROM directory the launcher did not scaffold keeps whatever folder names the user already
+     *  had, and the launcher resolves those case-insensitively. Every tag entering the api is
+     *  matched the same way and answered in the one spelling the database uses, so the frontend's
+     *  display names, icons and grouping key off the same string the games endpoint accepts. */
+    internal fun canonicalTag(raw: String): String? =
+        romsRepository?.knownPlatformTags()?.firstOrNull { it.equals(raw, ignoreCase = true) }
 
     internal fun defaultRoots(): List<File> {
         val roms = try { romsRootProvider() } catch (_: Exception) { null }

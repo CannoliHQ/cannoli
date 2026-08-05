@@ -94,13 +94,11 @@ internal fun KitchenHttpServer.handleGames(
     val repo = romsRepository
         ?: return errorResponse(503, "games not available")
     if (segments.isEmpty()) return errorResponse(404, "not found")
-    val platformTag = segments[0]
+    val platformTag = canonicalTag(segments[0])
+        ?: return errorResponse(404, "platform not found")
 
     if (segments.size == 1) {
         if (method != "GET") return errorResponse(405, "method not allowed")
-        if (platformTag !in repo.knownPlatformTags()) {
-            return errorResponse(404, "platform not found")
-        }
         return jsonResponse(
             200,
             GamesResponse.buildList(
