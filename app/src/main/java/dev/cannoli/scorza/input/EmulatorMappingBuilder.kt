@@ -135,6 +135,14 @@ class EmulatorMappingBuilder @Inject constructor(
                     EmulatorSource.Standalone -> EmulatorSource.Standalone.displayName
                 }
                 section.add(MappingItem.SectionHeader(header))
+                if (source == EmulatorSource.RetroArch) {
+                    val noticeRes = when (raReporting) {
+                        CoreReporting.UNSUPPORTED -> dev.cannoli.scorza.R.string.mapping_notice_cannot_report_cores
+                        CoreReporting.SILENT -> dev.cannoli.scorza.R.string.mapping_notice_no_response
+                        CoreReporting.REPORTS -> null
+                    }
+                    noticeRes?.let { section.add(MappingItem.Notice(context.getString(it))) }
+                }
                 options.forEach {
                     section.add(MappingItem.EmulatorOption(
                         it, isCurrent(it),

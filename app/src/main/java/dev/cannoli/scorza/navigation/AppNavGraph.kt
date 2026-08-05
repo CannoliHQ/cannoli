@@ -749,6 +749,12 @@ fun AppNavGraph(
                                 lineHeight = listLineHeight,
                                 verticalPadding = listVerticalPadding,
                             )
+                            is dev.cannoli.scorza.ui.screens.MappingItem.Notice -> SectionHeader(
+                                text = "$ICON_NOT_INSTALLED  ${item.text}",
+                                fontSize = listFontSize,
+                                lineHeight = listLineHeight,
+                                verticalPadding = listVerticalPadding,
+                            )
                             is dev.cannoli.scorza.ui.screens.MappingItem.PlatformDefault -> PillRowKeyValue(
                                 label = item.label,
                                 value = if (item.isCurrent) stringResource(R.string.value_active) else "",
