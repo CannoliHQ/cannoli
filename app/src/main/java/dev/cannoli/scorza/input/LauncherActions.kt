@@ -121,7 +121,7 @@ class LauncherActions @Inject constructor(
     /** Rescans behind the progress overlay. A disk scan can run for a long time on a slow card, so
      *  anything that triggers one from the UI shows this rather than leaving the launcher looking
      *  hung with no indication that work is happening. */
-    fun rescanWithProgress(reconcileOrphans: Boolean = false) {
+    fun rescanWithProgress(reconcileOrphans: Boolean = false, onComplete: (() -> Unit)? = null) {
         nav.dialogState.value = DialogState.RescanProgress(
             0f, context.getString(dev.cannoli.scorza.R.string.boot_preparing),
         )
@@ -133,7 +133,10 @@ class LauncherActions @Inject constructor(
                     current.toFloat() / total.coerceAtLeast(1), tag,
                 )
             },
-            onComplete = { nav.dialogState.value = DialogState.None },
+            onComplete = {
+                nav.dialogState.value = DialogState.None
+                onComplete?.invoke()
+            },
         )
     }
 
@@ -188,12 +191,25 @@ class LauncherActions @Inject constructor(
         settings.romDirectory = newRomDirectory
         invalidateAllLibraryCaches()
         settingsViewModel.refreshActiveCategory()
+        // Straight from the confirmation onto the scan screen. Clearing the dialog and waiting for
+        // the scaffold to finish first flashes the settings list back up in between.
+        nav.dialogState.value = DialogState.RescanProgress(
+            0f, context.getString(dev.cannoli.scorza.R.string.boot_preparing),
+        )
         ioScope.launch {
             val romDir = pathsProvider.romDir
             if (dev.cannoli.scorza.util.DirectoryLayout.romDirNeedsScaffold(romDir)) {
                 dev.cannoli.scorza.util.DirectoryLayout.scaffoldRomFolders(romDir, platformConfig.getAllTags())
             }
-            withContext(Dispatchers.Main) { rescanWithProgress(reconcileOrphans = true) }
+            withContext(Dispatchers.Main) {
+                // The settings screens below were built against the old library, so the scan lands
+                // the user back on the main list rather than where they started.
+                rescanWithProgress(reconcileOrphans = true) {
+                    nav.screenStack.clear()
+                    nav.screenStack.add(LauncherScreen.SystemList)
+                    settingsViewModel.resetToCategoryList()
+                }
+            }
         }
     }
 

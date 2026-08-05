@@ -403,6 +403,22 @@ class SettingsViewModel @Inject constructor(
         _appSettings.value = readAppSettings()
     }
 
+    /** Drops back to the category list outright, however deep the user was. The active category
+     *  outlives the screen, so without this a flow that ends elsewhere leaves settings reopening
+     *  inside whichever sub-list it was abandoned in. */
+    fun resetToCategoryList() {
+        _state.update {
+            it.copy(
+                activeCategory = null,
+                parentCategory = null,
+                parentSelectedIndex = 0,
+                activeCategoryLabel = null,
+                items = emptyList(),
+                selectedIndex = 0,
+            )
+        }
+    }
+
     fun exitSubList(): Boolean {
         val current = _state.value
         if (!current.inSubList) return false
