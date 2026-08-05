@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.os.Handler
 import android.os.Looper
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -12,6 +13,16 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
+
+const val ACTION_QUERY_INSTALLED_CORES = "com.retroarch.QUERY_INSTALLED_CORES"
+const val ACTION_INSTALLED_CORES_RESULT = "com.retroarch.INSTALLED_CORES_RESULT"
+
+// Resolving the receiver answers the real question. Version numbers cannot: every nightly
+// reports the same versionName, and the Play Store flavor computes versionCode by an
+// unrelated formula that would permanently fail a date comparison.
+fun PackageManager.hasCoreQueryReceiver(packageName: String): Boolean =
+    queryBroadcastReceivers(Intent(ACTION_QUERY_INSTALLED_CORES).setPackage(packageName), 0)
+        .any { it.activityInfo?.packageName == packageName }
 
 @Singleton
 class InstalledCoreService @Inject constructor(
@@ -91,11 +102,11 @@ class InstalledCoreService @Inject constructor(
 
             context.registerReceiver(
                 receiver,
-                IntentFilter("com.retroarch.INSTALLED_CORES_RESULT"),
+                IntentFilter(ACTION_INSTALLED_CORES_RESULT),
                 Context.RECEIVER_EXPORTED
             )
 
-            context.sendBroadcast(Intent("com.retroarch.QUERY_INSTALLED_CORES").apply {
+            context.sendBroadcast(Intent(ACTION_QUERY_INSTALLED_CORES).apply {
                 setPackage(pkg)
             })
 
