@@ -59,9 +59,13 @@ class KitchenPlatformTagTest {
         raGameId = null,
     )
 
-    private fun start(dir: File, repo: RomsRepository) {
+    private fun start(dir: File, repo: RomsRepository?, configuredTags: Collection<String> = emptyList()) {
         val assets = ApplicationProvider.getApplicationContext<Context>().assets
-        val s = KitchenHttpServer(dir, assets, port = port, pin = PIN, romsRepository = repo)
+        val s = KitchenHttpServer(
+            dir, assets, port = port, pin = PIN,
+            romsRepository = repo,
+            platformTagsProvider = { configuredTags },
+        )
         s.startServer()
         repeat(50) {
             try {
@@ -114,6 +118,32 @@ class KitchenPlatformTagTest {
 
         val stranded = advertisedTags().filter { gamesStatus(it) != 200 }
         assertEquals(emptyList<String>(), stranded)
+    }
+
+    @Test fun `a platform with no database row yet is still listed and served`() {
+        val dir = newRoot()
+        File(dir, "Roms/NGPC").mkdirs()
+        start(dir, repoWith(), configuredTags = listOf("NGPC"))
+
+        assertEquals(listOf("NGPC"), advertisedTags())
+        assertEquals(200, gamesStatus("NGPC"))
+    }
+
+    @Test fun `tools and ports are left to the apps endpoint`() {
+        val dir = newRoot()
+        listOf("GB", "TOOLS", "PORTS").forEach { File(dir, "Roms/$it").mkdirs() }
+        start(dir, repoWith("GB", "TOOLS", "PORTS"))
+
+        assertEquals(listOf("GB"), advertisedTags())
+    }
+
+    @Test fun `tags stay renderable when no repository is wired`() {
+        val dir = newRoot()
+        File(dir, "Roms/GB").mkdirs()
+        start(dir, repo = null, configuredTags = listOf("GB"))
+
+        assertEquals(200, get("/api/tags").first)
+        assertEquals(listOf("GB"), advertisedTags())
     }
 
     private companion object {

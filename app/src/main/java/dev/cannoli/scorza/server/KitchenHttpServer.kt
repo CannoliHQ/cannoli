@@ -17,6 +17,7 @@ class KitchenHttpServer internal constructor(
     internal val romDirectoryWalker: dev.cannoli.scorza.util.RomDirectoryWalker? = null,
     internal val atomicRename: dev.cannoli.scorza.util.AtomicRename? = null,
     internal val isArcadePlatform: (String) -> Boolean = { false },
+    internal val platformTagsProvider: () -> Collection<String> = { emptyList() },
     internal val volumesProvider: () -> List<KitchenVolume> = { emptyList() },
     internal val apkInstalls: ApkInstalls? = null,
     internal val appsRepository: dev.cannoli.scorza.db.AppsRepository? = null,
@@ -310,12 +311,18 @@ class KitchenHttpServer internal constructor(
     private fun handleAuthStatus(): Response =
         jsonResponse(200, AuthStatusResponse.serializer(), AuthStatusResponse(required = !codeBypass))
 
+    /** Every platform tag Cannoli recognises. The database is the usual source, but a platform only
+     *  gains a row once it has been scanned, so the configured tags are folded in to keep a folder
+     *  for a never-scanned platform both visible and reachable. */
+    internal fun allPlatformTags(): List<String> =
+        (romsRepository?.knownPlatformTags().orEmpty() + platformTagsProvider()).distinct()
+
     /** A ROM directory the launcher did not scaffold keeps whatever folder names the user already
      *  had, and the launcher resolves those case-insensitively. Every tag entering the api is
      *  matched the same way and answered in the one spelling the database uses, so the frontend's
      *  display names, icons and grouping key off the same string the games endpoint accepts. */
     internal fun canonicalTag(raw: String): String? =
-        romsRepository?.knownPlatformTags()?.firstOrNull { it.equals(raw, ignoreCase = true) }
+        allPlatformTags().firstOrNull { it.equals(raw, ignoreCase = true) }
 
     internal fun defaultRoots(): List<File> {
         val roms = try { romsRootProvider() } catch (_: Exception) { null }
@@ -356,6 +363,10 @@ class KitchenHttpServer internal constructor(
     }
 
     companion object {
+        // The dashboard appends these itself from /api/apps, so listing them as platforms too
+        // would put a second, duplicate tile on screen.
+        internal val RESERVED_APP_TAGS = setOf("TOOLS", "PORTS")
+
         private val RESOURCE_DIRS = mapOf(
             "roms" to "Roms",
             "art" to "Art",
