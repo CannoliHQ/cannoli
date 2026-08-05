@@ -54,7 +54,6 @@ class CannoliPaths(val root: File) {
     val ignoreExtensionsRoms: File get() = File(configDir, "ignore_extensions_roms.txt")
     val ignoreFilesRoms: File get() = File(configDir, "ignore_files_roms.txt")
     val recentlyPlayedFile: File get() = File(configState, "recently_played.txt")
-    val quickResumeFile: File get() = File(configState, "quick_resume.txt")
     val guidePositionsFile: File get() = File(configState, "guide_positions.ini")
     val cheatStateFile: File get() = File(configState, "cheat_state.ini")
     val raGameIdsFile: File get() = File(configRetroAchievements, "ra_game_ids.txt")

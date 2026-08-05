@@ -9,7 +9,6 @@ import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.db.CannoliDatabase
 import dev.cannoli.scorza.db.CollectionsRepository
 import dev.cannoli.scorza.db.ScanScheduler
-import dev.cannoli.scorza.db.RomsRepository
 import dev.cannoli.scorza.db.importer.ImportProgress
 import dev.cannoli.scorza.db.importer.ImportResult
 import dev.cannoli.scorza.db.importer.Importer
@@ -60,7 +59,6 @@ class BootInitializer @Inject constructor(
     private val updateManager: UpdateManager,
     private val bindingController: BindingController,
     private val nav: NavigationController,
-    private val romsRepository: RomsRepository,
     private val launchManager: LaunchManager,
     private val launcherActions: LauncherActions,
     private val setupCoordinator: SetupCoordinator,
@@ -148,26 +146,6 @@ class BootInitializer @Inject constructor(
                 val cs = nav.currentScreen
                 if (cs is LauncherScreen.ShortcutBinding && cs.listening) {
                     nav.replaceTop(cs.copy(listening = false, heldKeys = emptySet(), countdownMs = 0))
-                }
-            }
-
-            val quickResume = CannoliPaths(root).quickResumeFile
-            if (quickResume.exists()) {
-                val lines = try { quickResume.readLines() } catch (_: Exception) { emptyList() }
-                quickResume.delete()
-                if (lines.size >= 2) {
-                    val romFile = File(lines[0])
-                    if (romFile.exists()) {
-                        val rom = romsRepository.gameByPath(romFile.absolutePath)
-                        if (rom != null) {
-                            val errorDialog = launchManager.resumeRom(rom)
-                            if (errorDialog != null) {
-                                nav.dialogState.value = errorDialog
-                            } else {
-                                launcherActions.recordRecentlyPlayedByPath(romFile.absolutePath)
-                            }
-                        }
-                    }
                 }
             }
 

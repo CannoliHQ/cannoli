@@ -2826,7 +2826,6 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
 
     private fun quit() {
         isRunning = false
-        if (cannoliRoot.isNotEmpty()) dev.cannoli.scorza.config.CannoliPaths(cannoliRoot).quickResumeFile.delete()
         cleanup()
         finish()
     }
@@ -2859,11 +2858,6 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
             //     try { File("$stateBasePath.auto.ra").writeBytes(data) } catch (_: Exception) {}
             // }
             autoSavedOnStop = true
-            if (cannoliRoot.isNotEmpty() && romPath.isNotEmpty()) {
-                val f = dev.cannoli.scorza.config.CannoliPaths(cannoliRoot).quickResumeFile
-                f.parentFile?.mkdirs()
-                f.writeText("$romPath\n$platformTag")
-            }
         }
     }
 
@@ -2871,7 +2865,6 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
     override fun onResume() {
         super.onResume(); overridePendingTransition(0, 0); glSurfaceView?.onResume(); startVsyncPacer(); goFullscreen()
         if (::sessionLog.isInitialized) sessionLog.log("onResume")
-        if (autoSavedOnStop && cannoliRoot.isNotEmpty()) dev.cannoli.scorza.config.CannoliPaths(cannoliRoot).quickResumeFile.delete()
         autoSavedOnStop = false
         if (::inputDispatcher.isInitialized) {
             wireDispatcherForIGM()
