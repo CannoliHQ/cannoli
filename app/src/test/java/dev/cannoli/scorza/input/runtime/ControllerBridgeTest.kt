@@ -1,5 +1,10 @@
 package dev.cannoli.scorza.input.runtime
 
+import dev.cannoli.scorza.input.CanonicalButton
+import dev.cannoli.scorza.input.DeviceMapping
+import dev.cannoli.scorza.input.DeviceMatchRule
+import dev.cannoli.scorza.input.InputBinding
+import dev.cannoli.scorza.input.MappingSource
 import dev.cannoli.scorza.input.autoconfig.RetroArchCfgEntry
 import dev.cannoli.scorza.input.repo.MappingRepository
 import dev.cannoli.scorza.input.resolver.DevKeyboardMapping
@@ -302,6 +307,37 @@ class ControllerBridgeTest {
     }
 
     @Test
+    fun saved_mapping_that_appears_after_first_settle_is_picked_up_on_resettle() {
+        // Boot order on a fresh install: the bridge enumerates before MANAGE_EXTERNAL_STORAGE is
+        // granted, so the mappings directory reads empty and the pad falls back to the bundled cfg.
+        // The re-settle that runs once storage is available has to pick up the saved profile.
+        val repo = MappingRepository(tempFolder.root)
+        val portRouter = PortRouter()
+        val active = ActiveMappingHolder()
+        val bridge = makeBridge(portRouter = portRouter, activeMappingHolder = active)
+
+        bridge.settleSyncForTest(listOf(stadiaFacts))
+        portRouter.activate(stadiaFacts.androidDeviceId, 1_000L)
+        assertEquals(MappingSource.RETROARCH_AUTOCONFIG, portRouter.mappingFor(7)?.source)
+
+        repo.save(
+            DeviceMapping(
+                id = "stadia_user",
+                displayName = "Stadia (user)",
+                match = DeviceMatchRule(vendorId = 6353, productId = 37888),
+                bindings = mapOf(CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(190))),
+                source = MappingSource.USER_WIZARD,
+                userEdited = true,
+            )
+        )
+        bridge.settleSyncForTest(listOf(stadiaFacts))
+
+        assertEquals("stadia_user", portRouter.mappingFor(7)?.id)
+        assertEquals("stadia_user", active.active.value?.id)
+        assertTrue(portRouter.evaluatorFor(7)?.keyCodeIsBound(190) == true)
+    }
+
+    @Test
     fun two_distinct_controllers_get_separate_ports() {
         var ticks = 1_000L
         val portRouter = PortRouter()
@@ -351,6 +387,92 @@ class ControllerBridgeTest {
         // Removing an activated device still fires onDeviceRemoved.
         bridge.settleSyncForTest(listOf(stadiaFacts))
         assertEquals(listOf(12), removed)
+    }
+
+    /**
+     * A bridge whose bundled cfg and hint table disagree about the hint: the importer applies the
+     * cfg's VID/PID hint, the bridge's hint pass prefers the device's reported VID/PID. That
+     * rebind is what parks a pending save at enrollment, which activation then flushes.
+     */
+    private fun makePendingSaveBridge(
+        portRouter: PortRouter,
+        repo: MappingRepository,
+    ): ControllerBridge {
+        val ra = listOf(
+            RetroArchCfgEntry(
+                deviceName = "Stadia Controller",
+                vendorId = 1111,
+                productId = 2222,
+                buttonBindings = mapOf("b_btn" to 96),
+            ),
+        )
+        val hints = dev.cannoli.scorza.input.hints.ControllerHintTable.fromJson(
+            """
+            {
+              "default": {"menuConfirm": "BTN_EAST", "glyphStyle": "PLUMBER"},
+              "vid_pid": [
+                {"vendor_id": 1111, "product_id": 2222, "menuConfirm": "BTN_EAST", "glyphStyle": "PLUMBER"},
+                {"vendor_id": 6353, "product_id": 37888, "menuConfirm": "BTN_SOUTH", "glyphStyle": "REDMOND"}
+              ]
+            }
+            """
+        )
+        val bundled = dev.cannoli.scorza.input.autoconfig.BundledAutoconfigEntries.forTest(ra)
+        return ControllerBridge(
+            resolver = MappingResolver(MappingRepository(tempFolder.root), bundled, hints, tempFolder.root),
+            portRouter = portRouter,
+            activeMappingHolder = ActiveMappingHolder(),
+            mappingRepository = repo,
+            bundledCfgs = bundled,
+            hints = hints,
+            clock = { 1_000L },
+            buildModel = "Pixel",
+        )
+    }
+
+    @Test
+    fun activation_survives_a_failing_pending_save() {
+        // Activation runs on the key event that first drives a controller, so a write that cannot
+        // land (the mappings directory is unreachable before storage permission is granted) must
+        // not throw out of input dispatch.
+        val unwritable = java.io.File(tempFolder.newFile("not-a-directory"), "Mappings")
+        val portRouter = PortRouter()
+        val bridge = makePendingSaveBridge(portRouter, MappingRepository(unwritable))
+
+        bridge.settleSyncForTest(listOf(stadiaFacts))
+        portRouter.activate(stadiaFacts.androidDeviceId, 1_000L)
+
+        assertTrue(portRouter.isActivated(stadiaFacts.androidDeviceId))
+    }
+
+    @Test
+    fun pending_save_does_not_overwrite_a_user_edited_mapping_on_disk() {
+        // Mapping ids are derived from device identity, so the mapping resolved on a boot that
+        // could not read the mappings directory lands on the same filename as the profile the
+        // user edited. That file is the user's intent and outranks anything machine-derived.
+        val repo = MappingRepository(tempFolder.root)
+        val portRouter = PortRouter()
+        val bridge = makePendingSaveBridge(portRouter, repo)
+
+        bridge.settleSyncForTest(listOf(stadiaFacts))
+        val id = portRouter.mappingFor(stadiaFacts.androidDeviceId)!!.id
+        repo.save(
+            DeviceMapping(
+                id = id,
+                displayName = "Stadia (mine)",
+                match = DeviceMatchRule(vendorId = 6353, productId = 37888),
+                bindings = mapOf(CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(190))),
+                source = MappingSource.USER_WIZARD,
+                userEdited = true,
+            )
+        )
+
+        portRouter.activate(stadiaFacts.androidDeviceId, 1_000L)
+
+        val onDisk = repo.findById(id)
+        assertTrue(onDisk!!.userEdited)
+        assertEquals("Stadia (mine)", onDisk.displayName)
+        assertEquals(listOf(InputBinding.Button(190)), onDisk.bindings[CanonicalButton.BTN_SOUTH])
     }
 
     @Test
