@@ -168,6 +168,7 @@
     <string name="setting_experimental_features">Características experimentales</string>
     <string name="setting_set_default_launcher">Establecer como lanzador predeterminado</string>
     <!-- Same row as setting_set_default_launcher, shown when Cannoli is already the default launcher and the user wants to pick another one. -->
+    <string name="setting_change_default_launcher">Usar un launcher diferente</string>
     <!-- Advanced action: recreate the standard platform/system folders. -->
     <string name="setting_regenerate_system_folders">Regenerar Carpetas del Sistema</string>
     <!-- Library setting: which content layout to show (platforms, collections only, or Five Game Handheld). -->
@@ -599,6 +600,11 @@
     <string name="ra_load_offline_pending">RA: Desconectado (datos del juego no disponibles)</string>
     <!-- Credits -->
     <string name="credits_title">Créditos y licencias</string>
+    <string name="credits_cores">Núcleos de emulador</string>
+    <string name="credits_shaders">Sombreador</string>
+    <string name="credits_fonts">Fuentes</string>
+    <string name="credits_libraries">Bibliotecas</string>
+    <string name="credits_localization">Ubicacion de los colaboradores</string>
     <!-- Core picker / nav -->
     <string name="no_compatible_cores">Núcleos compatibles no encontrados</string>
     <string name="no_collections">No hay colecciones</string>
@@ -670,12 +676,15 @@
     <string name="value_no_firmware">No se requiere firmware para este núcleo.</string>
     <string name="mapping_action_bios">Archivos BIOS</string>
     <string name="mapping_action_overrides">Anulaciones por partida</string>
+    <string name="mapping_action_reset">Restablecer valores por defecto</string>
     <!-- %d = number of required BIOS files missing. -->
     <string name="mapping_required_missing">%d faltante</string>
     <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
+    <string name="mapping_platform_name_with_tag">%1$s (%2$s)</string>
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">%s mapeo</string>
     <!-- Screen title for the per-game emulator picker. %s = game name. -->
+    <string name="title_game_mapping">Emulador %s</string>
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_bios">%s BIOS</string>
     <string name="filter_all">TODOS</string>
@@ -726,6 +735,10 @@
     <string name="ra_preload_none">No se han encontrado logros para este juego</string>
     <string name="ra_preload_failed">La precarga falló. Compruebe su conexión.</string>
     <!-- %1$d = achievements cached, %2$d = points. -->
+    <plurals name="ra_preload_success">
+        <item quantity="one">Logro %1$d en caché (%2$d pts) para jugar sin conexión</item>
+        <item quantity="other">Logro %1$d en caché (%2$d pts) para jugar sin conexión</item>
+    </plurals>
     <!-- %1$d = games cached, %2$d = total games. -->
     <string name="ra_offline_sets_title">Conjuntos de Logros Desconectados</string>
     <string name="ra_offline_sets_empty">Ningún logro se almacena</string>
