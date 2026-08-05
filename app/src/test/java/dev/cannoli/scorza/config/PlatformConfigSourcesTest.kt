@@ -67,13 +67,6 @@ class PlatformConfigSourcesTest {
         assertEquals(CoreAvailability.AVAILABLE, reported!!.availability)
     }
 
-    @Test fun `RA is unresponsive only when nothing reports and a package is unresponsive`() {
-        val pc = config()
-        val candidate = "nestopia_libretro"
-        assertFalse(pc.isRetroArchUnresponsive("NES", emptyMap(), emptySet()))
-        assertTrue(pc.isRetroArchUnresponsive("NES", emptyMap(), setOf("com.retroarch")))
-        assertFalse(pc.isRetroArchUnresponsive("NES", mapOf("com.retroarch" to setOf(candidate)), emptySet()))
-    }
 
     @Test fun `getFirmwareStatus reports presence per firmware entry against the bios dir`() {
         val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()

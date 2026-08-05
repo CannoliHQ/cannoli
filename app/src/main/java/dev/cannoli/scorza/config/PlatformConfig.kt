@@ -591,21 +591,6 @@ class PlatformConfig(
         }
     }
 
-    fun isRetroArchUnresponsive(
-        tag: String,
-        installedRaCores: Map<String, Set<String>>,
-        unresponsivePackages: Set<String>
-    ): Boolean {
-        val upper = tag.uppercase()
-        val candidateCoreIds = buildSet {
-            defaultCores[upper]?.let { add(it) }
-            coreInfo?.getCoresForTag(tag)?.forEach { add(it.id) }
-        }
-        val anyReports = installedRaCores.any { (pkg, cores) ->
-            pkg !in unresponsivePackages && candidateCoreIds.any { it in cores }
-        }
-        return !anyReports && unresponsivePackages.isNotEmpty()
-    }
 
     // The curated name wins over the installed app's own label, which is often decorated
     // (MMJR2 ships as "Dolphin |MMJR2|") or inconsistent with how the app is known.
