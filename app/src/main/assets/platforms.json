@@ -63,6 +63,7 @@
   },
   "N64": {
     "name": "Nintendo 64",
+    "core": "mupen64plus_next_gles3_libretro",
     "app": [
       { "package": "org.mupen64plusae.v3.fzurita.pro", "activity": "paulscode.android.mupen64plusae.SplashActivity", "action": "android.intent.action.VIEW", "data": { "kind": "absolute_path" } },
       { "package": "org.mupen64plusae.v3.fzurita", "activity": "paulscode.android.mupen64plusae.SplashActivity", "action": "android.intent.action.VIEW", "data": { "kind": "absolute_path" } },
