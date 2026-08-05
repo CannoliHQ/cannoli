@@ -4,7 +4,7 @@ import dev.cannoli.ui.ELLIPSIS
 import dev.cannoli.ui.components.KeyboardLayout
 import dev.cannoli.ui.components.KeyboardState
 
-enum class EmulatorMappingStatus { READY, NOT_INSTALLED, NEEDS_SETUP }
+enum class EmulatorMappingStatus { READY, NOT_INSTALLED, NEEDS_SETUP, UNKNOWN }
 data class EmulatorMappingEntry(val tag: String, val platformName: String, val coreDisplayName: String, val runnerLabel: String, val status: EmulatorMappingStatus = EmulatorMappingStatus.READY)
 // Three-valued because a boolean forced "not reported" and "confirmed absent" to share a
 // value, which is how the picker came to label unknowable cores Not Installed.

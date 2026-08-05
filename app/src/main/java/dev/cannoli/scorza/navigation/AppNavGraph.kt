@@ -118,6 +118,9 @@ enum class OnboardingPermission { STORAGE }
 // Nerd Font md-alert glyph; flags a mapped emulator we can confirm is not installed.
 private const val ICON_NOT_INSTALLED = "\uDB80\uDC26"
 
+// Nerd Font md-help_circle_outline glyph; flags a mapped emulator whose core we cannot confirm.
+private const val ICON_UNKNOWN = "\uDB81\uDE25"
+
 // RomM brand purple; the screen-edge border shown while browsing RomM.
 private val ROMM_BORDER_COLOR = Color(0xFF553E98)
 private val ROMM_BORDER_WIDTH = 2.dp
@@ -679,9 +682,11 @@ fun AppNavGraph(
                             entry.runnerLabel.isEmpty() -> entry.coreDisplayName
                             else -> "${entry.coreDisplayName} (${entry.runnerLabel})"
                         }
-                        val valueIcon = if (entry.status == dev.cannoli.scorza.ui.screens.EmulatorMappingStatus.NOT_INSTALLED) {
-                            ICON_NOT_INSTALLED
-                        } else null
+                        val valueIcon = when (entry.status) {
+                            dev.cannoli.scorza.ui.screens.EmulatorMappingStatus.NOT_INSTALLED -> ICON_NOT_INSTALLED
+                            dev.cannoli.scorza.ui.screens.EmulatorMappingStatus.UNKNOWN -> ICON_UNKNOWN
+                            else -> null
+                        }
                         PillRowKeyValue(
                             label = entry.platformName,
                             value = value,

@@ -67,7 +67,10 @@ class EmulatorMappingBuilder @Inject constructor(
     fun filter(all: List<EmulatorMappingEntry>, filter: Int): List<EmulatorMappingEntry> = when (filter) {
         1 -> all.filter { it.status == dev.cannoli.scorza.ui.screens.EmulatorMappingStatus.NOT_INSTALLED }
         2 -> all.filter { it.status == dev.cannoli.scorza.ui.screens.EmulatorMappingStatus.NEEDS_SETUP }
-        3 -> all.filter { it.status == dev.cannoli.scorza.ui.screens.EmulatorMappingStatus.READY }
+        3 -> all.filter {
+            it.status == dev.cannoli.scorza.ui.screens.EmulatorMappingStatus.READY ||
+                it.status == dev.cannoli.scorza.ui.screens.EmulatorMappingStatus.UNKNOWN
+        }
         else -> all
     }
 

@@ -410,12 +410,12 @@ class PlatformConfig(
         pm: PackageManager? = null,
         installedRaCores: Map<String, Set<String>> = emptyMap(),
         embeddedCoresDir: String? = null,
-        unresponsivePackages: Set<String> = emptySet(),
+        unreportablePackages: Set<String> = emptySet(),
         raLabel: String = "RetroArch",
     ): List<dev.cannoli.scorza.ui.screens.EmulatorMappingEntry> {
         val tags = (defaultCores.keys + defaultApps.keys + userChoices.keys)
         return tags.map { tag ->
-            detailedMappingFor(tag, pm, installedRaCores, embeddedCoresDir, unresponsivePackages, raLabel)
+            detailedMappingFor(tag, pm, installedRaCores, embeddedCoresDir, unreportablePackages, raLabel)
         }.sortedNatural { it.platformName }
     }
 
@@ -424,7 +424,7 @@ class PlatformConfig(
         pm: PackageManager? = null,
         installedRaCores: Map<String, Set<String>> = emptyMap(),
         embeddedCoresDir: String? = null,
-        unresponsivePackages: Set<String> = emptySet(),
+        unreportablePackages: Set<String> = emptySet(),
         raLabel: String = "RetroArch",
     ): dev.cannoli.scorza.ui.screens.EmulatorMappingEntry {
         val choice = userChoices[tag]
@@ -462,11 +462,15 @@ class PlatformConfig(
             )
         } else {
             val resolvedRunner = getRunnerLabel(tag, coreId, raLabel)
-            val status = coreStatus(tag, coreId, resolvedRunner, installedRaCores, embeddedCoresDir, unresponsivePackages)
-            // "Missing" is a confirmed absence (internal .so or new-RA report). "Unknown"
-            // means RetroArch cannot report its cores (older RA), so we cannot claim the
-            // core is missing - show it as picked rather than false-flagging it.
-            val mappingStatus = if (status == "Missing") EmulatorMappingStatus.NOT_INSTALLED else EmulatorMappingStatus.READY
+            val status = coreStatus(tag, coreId, resolvedRunner, installedRaCores, embeddedCoresDir, unreportablePackages)
+            // "Missing" is a confirmed absence: an internal .so that is not on disk, or a
+            // RetroArch that reported its cores and did not name this one. "Unknown" means no
+            // report is possible, so the row must not claim either way.
+            val mappingStatus = when (status) {
+                "Missing" -> EmulatorMappingStatus.NOT_INSTALLED
+                "Unknown" -> EmulatorMappingStatus.UNKNOWN
+                else -> EmulatorMappingStatus.READY
+            }
             dev.cannoli.scorza.ui.screens.EmulatorMappingEntry(
                 tag = tag, platformName = getDisplayName(tag),
                 coreDisplayName = getCoreDisplayName(coreId),
@@ -480,7 +484,7 @@ class PlatformConfig(
         tag: String, coreId: String, runner: String,
         installedRaCores: Map<String, Set<String>>,
         embeddedCoresDir: String?,
-        unresponsivePackages: Set<String>
+        unreportablePackages: Set<String>
     ): String {
         if (runner == "Internal") {
             val dir = embeddedCoresDir ?: nativeLibDir ?: return "Missing"
@@ -488,7 +492,7 @@ class PlatformConfig(
         }
         if (runner == "External") return "Present"
         if (installedRaCores.any { it.value.contains(coreId) }) return "Present"
-        if (unresponsivePackages.isNotEmpty()) return "Unknown"
+        if (unreportablePackages.isNotEmpty()) return "Unknown"
         return "Missing"
     }
 

@@ -45,13 +45,13 @@ class PlatformConfigStandaloneDisplayTest {
         assertEquals(EmulatorMappingStatus.READY, entry.status)
     }
 
-    @Test fun `a mapped core on a RetroArch that cannot report cores is not flagged`() {
+    @Test fun `a mapped core on a RetroArch that cannot report cores is UNKNOWN`() {
         val pc = config()
-        // RA present but cannot report its cores (unresponsive): coreStatus "Unknown" -> show as picked.
-        val entry = pc.getDetailedMappings(unresponsivePackages = setOf("org.libretro.retroarch"))
+        // RA present but cannot report its cores: coreStatus "Unknown", which must not be collapsed into READY.
+        val entry = pc.getDetailedMappings(unreportablePackages = setOf("org.libretro.retroarch"))
             .first { it.tag == "NES" }
         assertEquals(pc.getCoreDisplayName("nestopia_libretro"), entry.coreDisplayName)
-        assertEquals(EmulatorMappingStatus.READY, entry.status)
+        assertEquals(EmulatorMappingStatus.UNKNOWN, entry.status)
     }
 
     // A pick now persists as part of making it, so there is no uncommitted window in which a
