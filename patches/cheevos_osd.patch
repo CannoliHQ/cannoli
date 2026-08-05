@@ -1,0 +1,25 @@
+diff --git a/cheevos/cheevos.c b/cheevos/cheevos.c
+index ffb5e128a1..d3f1cb8ba2 100644
+--- a/cheevos/cheevos.c
++++ b/cheevos/cheevos.c
+@@ -388,6 +388,12 @@ static void rcheevos_award_achievement(const rc_client_achievement_t* cheevo)
+    /* Show the on screen message. */
+    if (settings->bools.cheevos_visibility_unlock)
+    {
++#ifdef HAVE_RICOTTA_OSD
++      {
++         extern void ricotta_osd_achievement(const char *title);
++         ricotta_osd_achievement(cheevo->title);
++      }
++#else
+ #if defined(HAVE_GFX_WIDGETS)
+       if (gfx_widgets_ready())
+       {
+@@ -450,6 +456,7 @@ static void rcheevos_award_achievement(const rc_client_achievement_t* cheevo)
+          runloop_msg_queue_push(cheevo->description, strlen(cheevo->description), 0, 3 * 60, false, NULL,
+             MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_INFO);
+       }
++#endif /* HAVE_RICOTTA_OSD */
+    }
+ 
+ #ifdef HAVE_AUDIOMIXER

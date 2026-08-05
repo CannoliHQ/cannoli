@@ -5,3 +5,7 @@
 [submodule "app/src/main/cpp/third_party/speexdsp"]
 	path = app/src/main/cpp/third_party/speexdsp
 	url = https://github.com/xiph/speexdsp.git
+[submodule "retroarch"]
+	path = retroarch
+	url = https://github.com/libretro/RetroArch.git
+	ignore = dirty

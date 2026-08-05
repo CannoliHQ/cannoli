@@ -1,0 +1,79 @@
+diff --git a/disk_control_interface.c b/disk_control_interface.c
+index f0a281a793..69e192dff5 100644
+--- a/disk_control_interface.c
++++ b/disk_control_interface.c
+@@ -447,6 +447,17 @@ bool disk_control_set_index(
+       else
+          RARCH_LOG("[Disc] %s\n", msg);
+ 
++#ifdef HAVE_RICOTTA_OSD
++      /* Cannoli owns the disc-change notification (type 7; slot = disk index). */
++      if (verbosity && !err)
++      {
++         extern void ricotta_osd_event(int type, int slot);
++         ricotta_osd_event(7, (int)index);
++      }
++      else if (err)
++         runloop_msg_queue_push(msg, _len, 2, msg_duration, true, NULL,
++               MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_ERROR);
++#else
+       /* Errors should always be displayed */
+       if (verbosity)
+ #ifdef HAVE_GFX_WIDGETS
+@@ -458,6 +469,7 @@ bool disk_control_set_index(
+       else if (err)
+          runloop_msg_queue_push(msg, _len, 2, msg_duration, true, NULL,
+                MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_ERROR);
++#endif
+    }
+ 
+    /* If operation was successful, update disk
+diff --git a/tasks/task_autodetect.c b/tasks/task_autodetect.c
+index f52e0f1b6b..69c84166bb 100644
+--- a/tasks/task_autodetect.c
++++ b/tasks/task_autodetect.c
+@@ -806,10 +806,20 @@ static void input_autoconfigure_connect_handler(retro_task_t *task)
+       {
+          /* A valid autoconfig was applied */
+          if (!(autoconfig_handle->flags & AUTOCONF_FLAG_SUPPRESS_NOTIFICATIONS))
++#ifdef HAVE_RICOTTA_OSD
++            /* Cannoli owns the controller-connected notification (type 9;
++             * slot = 1-based port). Leave task_title empty so the task
++             * framework does not also show the native message. */
++            {
++               extern void ricotta_osd_event(int type, int slot);
++               ricotta_osd_event(9, (int)autoconfig_handle->port + 1);
++            }
++#else
+             snprintf(task_title, sizeof(task_title),
+                   msg_hash_to_str(MSG_DEVICE_CONFIGURED_IN_PORT_NR),
+                   device_display_name,
+                   autoconfig_handle->port + 1);
++#endif
+       }
+       /* Device is autoconfigured, but a (most likely
+        * incorrect) fallback definition was used... */
+diff --git a/tasks/task_screenshot.c b/tasks/task_screenshot.c
+index e32fad61db..857e96da77 100644
+--- a/tasks/task_screenshot.c
++++ b/tasks/task_screenshot.c
+@@ -282,10 +282,19 @@ static void task_screenshot_callback(retro_task_t *task,
+    if (!(state = (screenshot_task_state_t*)task->state))
+       return;
+ 
++#ifdef HAVE_RICOTTA_OSD
++   /* Cannoli owns the screenshot notification (type 8). */
++   if (!(state->flags & SS_TASK_FLAG_SILENCE))
++   {
++      extern void ricotta_osd_event(int type, int slot);
++      ricotta_osd_event(8, 0);
++   }
++#else
+    if (    !(state->flags & SS_TASK_FLAG_SILENCE)
+          && (state->flags & SS_TASK_FLAG_WIDGETS_READY))
+       gfx_widget_screenshot_taken(dispwidget_get_ptr(),
+             state->shotname, state->filename);
++#endif
+ 
+    free(state);
+    /* Must explicitly set task->state to NULL here,

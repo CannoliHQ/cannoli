@@ -1,0 +1,21 @@
+diff --git a/gfx/gfx_widgets.c b/gfx/gfx_widgets.c
+index 638b9ed71f..7ce1736be1 100644
+--- a/gfx/gfx_widgets.c
++++ b/gfx/gfx_widgets.c
+@@ -1902,6 +1902,8 @@ void gfx_widgets_frame(void *data)
+    }
+ 
+    /* Indicators */
++#ifndef HAVE_RICOTTA_IGM
++   /* The Cannoli IGM owns the pause UX; suppress RetroArch's pause indicator. */
+    if (widgets_is_paused)
+       top_right_x_advance -= gfx_widgets_draw_indicator(
+             p_dispwidget,
+@@ -1915,6 +1917,7 @@ void gfx_widgets_frame(void *data)
+             (onscreen_panels ? p_dispwidget->simple_widget_height : 0),
+             top_right_x_advance,
+             MSG_PAUSED);
++#endif
+ 
+    if (widgets_is_fastmotion)
+       top_right_x_advance -= gfx_widgets_draw_indicator(

@@ -1,0 +1,21 @@
+diff --git a/retroarch.c b/retroarch.c
+index b4b8a1da0d..8da6215511 100644
+--- a/retroarch.c
++++ b/retroarch.c
+@@ -3590,8 +3590,16 @@ bool command_event(enum event_command cmd, void *data)
+          {
+             const char *_msg = msg_hash_to_str(MSG_RESET);
+             RARCH_LOG("[Core] %s.\n", _msg);
++#ifdef HAVE_RICOTTA_OSD
++            {
++               /* Cannoli owns the reset notification (type 2). */
++               extern void ricotta_osd_event(int type, int slot);
++               ricotta_osd_event(2, 0);
++            }
++#else
+             runloop_msg_queue_push(_msg, strlen(_msg), 1, 120, true, NULL,
+                   MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_INFO);
++#endif
+ 
+             core_reset();
+ #ifdef HAVE_CHEEVOS

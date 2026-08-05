@@ -1,0 +1,50 @@
+diff --git a/tasks/task_save.c b/tasks/task_save.c
+index 551193d353..99dee7187c 100644
+--- a/tasks/task_save.c
++++ b/tasks/task_save.c
+@@ -615,6 +615,15 @@ static void task_save_handler(retro_task_t *task)
+    }
+    else if (state->written == state->size)
+    {
++#ifdef HAVE_RICOTTA_OSD
++      /* Cannoli owns the save-state notification: emit a structured event
++       * (type 0 = save, 4 = undo-save; slot < 0 = auto) and skip native text. */
++      extern void ricotta_osd_event(int type, int slot);
++      task_free_title(task);
++      ricotta_osd_event((state->flags & SAVE_TASK_FLAG_UNDO_SAVE) ? 4 : 0,
++            state->state_slot);
++      task_save_handler_finished(task, state);
++#else
+       char       *msg      = NULL;
+ 
+       task_free_title(task);
+@@ -642,6 +651,7 @@ static void task_save_handler(retro_task_t *task)
+ 
+       if (msg)
+          free(msg);
++#endif
+    }
+ }
+ 
+@@ -849,6 +859,13 @@ static void task_load_handler(retro_task_t *task)
+    {
+       task_free_title(task);
+ 
++#ifdef HAVE_RICOTTA_OSD
++      /* Cannoli owns the load-state notification (type 1; slot < 0 = auto). */
++      {
++         extern void ricotta_osd_event(int type, int slot);
++         ricotta_osd_event(1, state->state_slot);
++      }
++#else
+       if (!((flg & RETRO_TASK_FLG_MUTE) > 0))
+       {
+          char msg[128];
+@@ -871,6 +888,7 @@ static void task_load_handler(retro_task_t *task)
+ 
+          task_set_title(task, strdup(msg));
+       }
++#endif
+ 
+       task_load_handler_finished(task, state);
+    }

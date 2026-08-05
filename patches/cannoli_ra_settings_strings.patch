@@ -1,0 +1,20 @@
+diff --git a/pkg/android/phoenix/res/values/strings_cannoli.xml b/pkg/android/phoenix/res/values/strings_cannoli.xml
+new file mode 100644
+index 0000000000..271b594975
+--- /dev/null
++++ b/pkg/android/phoenix/res/values/strings_cannoli.xml
+@@ -0,0 +1,14 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="igm_ra_on">On</string>
++    <string name="igm_ra_off">Off</string>
++    <string name="igm_ra_restart_hint">Applies on relaunch</string>
++    <string name="igm_ra_save_platform">Save for %1$s</string>
++    <string name="igm_ra_save_game">Save for this game</string>
++    <string name="igm_ra_dont_save">Discard</string>
++    <string name="igm_ra_native_menu">RetroArch Menu</string>
++    <string name="igm_ra_audio">Audio</string>
++    <string name="igm_ra_latency">Latency</string>
++    <string name="igm_ra_speed">Speed &amp; Rewind</string>
++    <string name="igm_ra_osd">On-Screen Display</string>
++</resources>

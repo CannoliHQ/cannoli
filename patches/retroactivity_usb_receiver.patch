@@ -1,0 +1,17 @@
+diff --git a/pkg/android/phoenix-common/src/com/retroarch/browser/retroactivity/RetroActivityCommon.java b/pkg/android/phoenix-common/src/com/retroarch/browser/retroactivity/RetroActivityCommon.java
+index 2847e59c03..1774f63fb8 100644
+--- a/pkg/android/phoenix-common/src/com/retroarch/browser/retroactivity/RetroActivityCommon.java
++++ b/pkg/android/phoenix-common/src/com/retroarch/browser/retroactivity/RetroActivityCommon.java
+@@ -139,7 +139,11 @@ public class RetroActivityCommon extends NativeActivity
+     cleanupSymlinks();
+     updateSymlinks();
+ 
+-    registerReceiver(mUsbPermissionReceiver, new IntentFilter(ACTION_USB_PERMISSION));
++    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
++      registerReceiver(mUsbPermissionReceiver, new IntentFilter(ACTION_USB_PERMISSION), Context.RECEIVER_NOT_EXPORTED);
++    } else {
++      registerReceiver(mUsbPermissionReceiver, new IntentFilter(ACTION_USB_PERMISSION));
++    }
+     ((InputManager) getSystemService(Context.INPUT_SERVICE))
+             .registerInputDeviceListener(this, null);
+     PlayCoreManager.getInstance().onCreate(this);
