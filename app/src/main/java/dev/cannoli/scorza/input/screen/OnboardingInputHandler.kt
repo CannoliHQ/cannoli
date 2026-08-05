@@ -104,10 +104,8 @@ class OnboardingInputHandler @Inject constructor(
                             nav.dialogState.value = DialogState.RestartRequired
                         }
                         BrowsePurpose.ROM_DIRECTORY -> {
-                            settings.romDirectory = resolved
-                            launcherActions.invalidateAllLibraryCaches()
                             nav.pop()
-                            nav.dialogState.value = DialogState.RestartRequired
+                            launcherActions.confirmRomDirectoryChange(resolved)
                         }
                     }
                 } else {

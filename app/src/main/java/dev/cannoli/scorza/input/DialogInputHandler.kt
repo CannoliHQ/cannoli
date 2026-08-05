@@ -583,6 +583,10 @@ class DialogInputHandler @Inject constructor(
             is DialogState.RestartRequired -> {
                 activityActions.restartApp()
             }
+            is DialogState.LibrarySwitchConfirm -> {
+                nav.dialogState.value = DialogState.None
+                launcherActions.applyRomDirectoryChange(ds.newRomDirectory)
+            }
             is DialogState.IntentAuditResult -> {
                 nav.dialogState.value = DialogState.None
             }
@@ -1190,6 +1194,9 @@ class DialogInputHandler @Inject constructor(
                 nav.dialogState.value = DialogState.None
             }
             is DialogState.RestartRequired -> {}
+            is DialogState.LibrarySwitchConfirm -> {
+                nav.dialogState.value = DialogState.None
+            }
             is DialogState.IntentAuditResult -> {
                 nav.dialogState.value = DialogState.None
             }

@@ -270,6 +270,14 @@ fun DialogOverlay(
             RestartOverlay(message = stringResource(R.string.restart_required), buttonStyle = buttonStyle)
         }
 
+        is DialogState.LibrarySwitchConfirm -> {
+            ConfirmOverlay(
+                message = stringResource(R.string.library_switch_confirm),
+                buttonStyle = buttonStyle,
+                confirmLabel = stringResource(R.string.label_proceed),
+            )
+        }
+
         is DialogState.IntentAuditResult -> {
             RestartOverlay(message = dialogState.message, buttonStyle = buttonStyle)
         }
@@ -1185,7 +1193,12 @@ fun rommArtLabelRes(artType: RommArtType): Int = when (artType) {
 }
 
 @Composable
-private fun ConfirmOverlay(message: String, buttonStyle: ButtonStyle) {
+private fun ConfirmOverlay(
+    message: String,
+    buttonStyle: ButtonStyle,
+    cancelLabel: String? = null,
+    confirmLabel: String? = null,
+) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -1203,8 +1216,8 @@ private fun ConfirmOverlay(message: String, buttonStyle: ButtonStyle) {
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(screenPadding),
-            leftItems = listOf(buttonStyle.back to stringResource(R.string.label_cancel)),
-            rightItems = listOf(buttonStyle.confirm to stringResource(R.string.label_confirm))
+            leftItems = listOf(buttonStyle.back to (cancelLabel ?: stringResource(R.string.label_cancel))),
+            rightItems = listOf(buttonStyle.confirm to (confirmLabel ?: stringResource(R.string.label_confirm)))
         )
     }
 }

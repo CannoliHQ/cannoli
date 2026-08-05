@@ -17,6 +17,7 @@
     <string name="label_change_emulator">CHANGE EMULATOR</string>
     <string name="label_delete">DELETE</string>
     <string name="label_confirm">CONFIRM</string>
+    <string name="label_proceed">PROCEED</string>
     <string name="label_toggle">TOGGLE</string>
     <string name="label_new">NEW</string>
     <string name="label_settings">SETTINGS</string>
@@ -683,6 +684,11 @@
     <!-- Update download -->
     <string name="update_retry">RETRY</string>
     <string name="restart_required">Restart required to apply changes.</string>
+
+    <!-- Shown before the ROM directory is changed or cleared, since the rescan that follows prunes
+         database entries for every ROM that is not at the same relative path under the new
+         directory. Cannoli and RetroAchievements are product names; leave them untranslated. -->
+    <string name="library_switch_confirm">Changing the ROM directory is a destructive action.\n\nAs Cannoli rescans, it clears ROMs it can no longer find from its database. Favorites, collections, game overrides, recently played and RetroAchievements Game ID overrides are all pruned for ROMs that do not appear under the same relative path in the new ROM directory.\n\nROM files, saves and save states on disk are untouched.</string>
 
     <!-- IGM screen titles -->
     <string name="igm_settings">Settings</string>

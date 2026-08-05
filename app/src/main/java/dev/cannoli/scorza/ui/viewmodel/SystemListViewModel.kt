@@ -153,7 +153,7 @@ class SystemListViewModel @Inject constructor(
         _state.update { it.copy(scrollTarget = scrollIdx) }
     }
 
-    fun scan(showRecentlyPlayed: Boolean = true, showFavorites: Boolean = true, contentMode: ContentMode = ContentMode.PLATFORMS, fghCollectionId: Long? = null, toolsName: String = "Tools", portsName: String = "Ports", scanDisk: Boolean = true, onProgress: ((tag: String, current: Int, total: Int) -> Unit)? = null, onReady: () -> Unit = {}) {
+    fun scan(showRecentlyPlayed: Boolean = true, showFavorites: Boolean = true, contentMode: ContentMode = ContentMode.PLATFORMS, fghCollectionId: Long? = null, toolsName: String = "Tools", portsName: String = "Ports", scanDisk: Boolean = true, reconcileOrphans: Boolean = false, onProgress: ((tag: String, current: Int, total: Int) -> Unit)? = null, onReady: () -> Unit = {}) {
         val prev = _state.value
         val prevItemCount = prev.items.size
         val restored = savedPosition
@@ -166,7 +166,7 @@ class SystemListViewModel @Inject constructor(
 
         scope.launch(Dispatchers.IO) {
             if (scanDisk) {
-                scanAllPlatformDirs { tag, current, total ->
+                scanAllPlatformDirs(reconcileOrphans) { tag, current, total ->
                     withContext(Dispatchers.Main) { onProgress?.invoke(tag, current, total) }
                 }
             }
@@ -290,17 +290,25 @@ class SystemListViewModel @Inject constructor(
         }
     }
 
-    private suspend fun scanAllPlatformDirs(onProgress: (suspend (String, Int, Int) -> Unit)? = null) {
+    /** [reconcileOrphans] folds in platforms that still hold rows but no longer have a folder,
+     *  which the directory walk alone can never reach and only a scan of that tag clears. It is
+     *  passed in by the actions that move the library, never inferred, so an unreadable listing on
+     *  a slow card cannot quietly wipe a platform the user still has. */
+    private suspend fun scanAllPlatformDirs(
+        reconcileOrphans: Boolean = false,
+        onProgress: (suspend (String, Int, Int) -> Unit)? = null,
+    ) {
         if (!romDirectory.exists()) return
         val tagDirs = romDirectory.listFiles { f -> f.isDirectory && !f.name.startsWith(".") } ?: return
-        val known = tagDirs.filter { platformConfig.isKnownTag(it.name.uppercase()) }
-        known.forEachIndexed { i, dir ->
-            val tag = dir.name.uppercase()
+        val onDisk = tagDirs.map { it.name.uppercase() }
+        val orphaned = if (reconcileOrphans) romsRepository.platformCounts().keys.map { it.uppercase() } else emptyList()
+        val known = (onDisk + orphaned).distinct().filter { platformConfig.isKnownTag(it) }
+        known.forEachIndexed { i, tag ->
             onProgress?.invoke(tag, i, known.size)
             romScanner.scanPlatform(tag, isArcade = platformConfig.isArcade(tag))
         }
         if (known.isNotEmpty()) {
-            onProgress?.invoke(known.last().name.uppercase(), known.size, known.size)
+            onProgress?.invoke(known.last(), known.size, known.size)
         }
     }
 

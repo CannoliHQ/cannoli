@@ -609,8 +609,7 @@ class SettingsViewModel @Inject constructor(
         settings.backgroundImagePath = if (newIndex < 0) null else images[newIndex].absolutePath
     }
 
-    fun clearRomDirectory() {
-        settings.romDirectory = ""
+    fun refreshActiveCategory() {
         val catKey = _state.value.activeCategory ?: return
         _state.update { it.copy(items = buildItemsForCategory(catKey)) }
     }

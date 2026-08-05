@@ -112,6 +112,8 @@ sealed interface DialogState {
     data object QuitConfirm : DialogState
     data class UpdateDownload(val versionName: String, val changelog: String) : DialogState
     data object RestartRequired : DialogState
+    /** [newRomDirectory] is empty when clearing the pick, which resolves back to the Cannoli root. */
+    data class LibrarySwitchConfirm(val newRomDirectory: String) : DialogState
     data class IntentAuditResult(val message: String) : DialogState
     data class SystemFoldersRegenerated(val message: String) : DialogState
     data class PlatformResetConfirm(val tag: String, val platformName: String) : DialogState
@@ -241,6 +243,7 @@ val DialogState.isFullScreen: Boolean
         is DialogState.RommConnected,
         is DialogState.UpdateDownload,
         is DialogState.RestartRequired,
+        is DialogState.LibrarySwitchConfirm,
         is DialogState.IntentAuditResult,
         is DialogState.SystemFoldersRegenerated,
         is DialogState.QuickMenu,

@@ -95,6 +95,7 @@ class LauncherActions @Inject constructor(
 
     fun rescanSystemList(
         scanDisk: Boolean = true,
+        reconcileOrphans: Boolean = false,
         onProgress: ((String, Int, Int) -> Unit)? = null,
         onComplete: (() -> Unit)? = null,
     ) {
@@ -108,6 +109,7 @@ class LauncherActions @Inject constructor(
             toolsName = settings.toolsName,
             portsName = settings.portsName,
             scanDisk = scanDisk,
+            reconcileOrphans = reconcileOrphans,
             onProgress = onProgress,
             onReady = {
                 onComplete?.invoke()
@@ -152,6 +154,30 @@ class LauncherActions @Inject constructor(
         artworkLookup.invalidateAll()
         arcadeTitleLookup.invalidateAll()
     }
+
+    /** Asks before writing the setting, so declining leaves the library exactly as it was. Pass an
+     *  empty [newRomDirectory] to clear the pick back to the Cannoli root. */
+    fun confirmRomDirectoryChange(newRomDirectory: String) {
+        nav.dialogState.value = DialogState.LibrarySwitchConfirm(newRomDirectory)
+    }
+
+    /** Everything that resolves the ROM directory reads it on demand, and the watcher rebinds when
+     *  the scan restarts it, so the change only needs the caches dropped, the new place scaffolded
+     *  and the library reconciled against it. Reconciling is what prunes the entries the new
+     *  location cannot account for, and this is the only path that does it. */
+    fun applyRomDirectoryChange(newRomDirectory: String) {
+        settings.romDirectory = newRomDirectory
+        invalidateAllLibraryCaches()
+        settingsViewModel.refreshActiveCategory()
+        ioScope.launch {
+            val romDir = pathsProvider.romDir
+            if (dev.cannoli.scorza.util.DirectoryLayout.romDirNeedsScaffold(romDir)) {
+                dev.cannoli.scorza.util.DirectoryLayout.scaffoldRomFolders(romDir, platformConfig.getAllTags())
+            }
+            withContext(Dispatchers.Main) { rescanSystemList(reconcileOrphans = true) }
+        }
+    }
+
 
     fun launchSelected(item: ListItem, resume: Boolean): DialogState? {
         return when (item) {
