@@ -1,0 +1,305 @@
+package com.retroarch.browser.retroactivity
+
+import android.content.Context
+import android.content.Intent
+import android.hardware.input.InputManager
+import android.os.Build
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.Message
+import android.util.Log
+import android.view.PointerIcon
+import android.view.View
+import android.view.WindowManager
+import android.widget.Toast
+import com.retroarch.browser.preferences.util.ConfigFile
+import com.retroarch.browser.preferences.util.UserPreferences
+import dev.cannoli.ricotta.RicottaArchBridge
+import java.io.File
+
+class RetroActivityFuture : RetroActivityCamera() {
+
+    private var quitfocus = false
+    private lateinit var mDecorView: View
+    private var igmOverlay: IGMOverlay? = null
+    private var osdOverlay: OsdOverlay? = null
+
+    private val mHandler = object : Handler(Looper.getMainLooper()) {
+        override fun handleMessage(msg: Message) {
+            val state = msg.arg1 == HANDLER_ARG_TRUE
+            when (msg.what) {
+                HANDLER_WHAT_TOGGLE_IMMERSIVE -> attemptToggleImmersiveMode(state)
+                HANDLER_WHAT_TOGGLE_POINTER_CAPTURE -> attemptTogglePointerCapture(state)
+                HANDLER_WHAT_TOGGLE_POINTER_NVIDIA -> attemptToggleNvidiaCursorVisibility(state)
+                HANDLER_WHAT_TOGGLE_POINTER_ICON -> attemptTogglePointerIcon(state)
+            }
+        }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        val libretro = intent.getStringExtra("LIBRETRO")
+        if (!libretro.isNullOrEmpty() && !File(libretro).exists()) {
+            super.onCreate(savedInstanceState)
+            Toast.makeText(applicationContext, "Core not installed: ${File(libretro).name}", Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
+
+        super.onCreate(savedInstanceState)
+
+        isRunning = true
+        mDecorView = window.decorView
+        quitfocus = intent.hasExtra("QUITFOCUS")
+
+        try {
+            val params = dev.cannoli.igm.RicottaLaunchParams.readFromIntent(intent)
+            val gameTitle = (params?.gameTitle?.takeIf { it.isNotEmpty() }
+                ?: intent.getStringExtra("ROM")?.substringAfterLast('/')?.substringBeforeLast('.')
+                ?: "Game")
+            val stateBasePath = params?.stateBasePath ?: ""
+            val cannoliRoot = params?.cannoliRoot ?: ""
+            val platformTag = params?.platformTag ?: ""
+            val platformName = params?.platformName ?: ""
+            val colors = params?.colors
+            val localeTag = params?.localeTag ?: ""
+
+            val ds = params?.displaySettings
+            val fontSizeSp = ds?.fontSizeSp ?: 24
+            val hostConfig = dev.cannoli.igm.IGMHostConfig(
+                fontSizeSp = fontSizeSp,
+                lineHeightSp = dev.cannoli.ui.components.pillLineHeightSp(fontSizeSp),
+                pillScale = dev.cannoli.ui.components.pillScaleFor(fontSizeSp),
+                scaleFactor = fontSizeSp / 22f,
+                portraitMarginPx = ds?.portraitMarginPx ?: 0,
+                geometryWidthPct = 100,
+                geometryHeightPct = 100,
+                geometryXPct = 0,
+                geometryYPct = 0,
+                showWifi = ds?.showWifi ?: true,
+                showBluetooth = ds?.showBluetooth ?: true,
+                showVpn = ds?.showVpn ?: false,
+                showClock = ds?.showClock ?: true,
+                batteryDisplay = ds?.batteryDisplay ?: dev.cannoli.igm.BatteryDisplayMode.ICON,
+                timeFormat = ds?.timeFormat ?: dev.cannoli.igm.TimeFormatMode.TWELVE_HOUR,
+                buttonLabelSet = ds?.buttonLabelSet ?: dev.cannoli.ui.ButtonLabelSet.PLUMBER,
+                confirmButton = ds?.confirmButton ?: dev.cannoli.ui.ConfirmButton.SOUTH,
+                keyCodeName = { android.view.KeyEvent.keyCodeToString(it) },
+            )
+
+            val bridge = RicottaArchBridge(stateBasePath)
+            igmOverlay = IGMOverlay(
+                this, bridge, gameTitle, hostConfig, cannoliRoot, platformTag, platformName,
+                colors?.highlight, colors?.text, colors?.highlightText,
+                colors?.accent, colors?.title, localeTag,
+            )
+            igmOverlay?.onCreate(savedInstanceState)
+            params?.let { bridge.setIgmTriggerKeycodes(it.igmTriggerKeycodes.toIntArray()) }
+            igmOverlay?.controller?.setInputMapping(params?.inputMapping)
+
+            val osdFont = runCatching {
+                val tf = android.graphics.Typeface.createFromAsset(assets, "fonts/MPlus-1c-NerdFont-Bold.ttf")
+                androidx.compose.ui.text.font.FontFamily(androidx.compose.ui.text.font.Typeface(tf))
+            }.getOrDefault(androidx.compose.ui.text.font.FontFamily.Default)
+            val osd = OsdOverlay(
+                this, osdFont,
+                colors?.highlight, colors?.text, colors?.highlightText,
+                colors?.accent, colors?.title,
+            )
+            osd.attach(savedInstanceState)
+            osdOverlay = osd
+            bridge.onOsdEvent = { type, slot ->
+                if (osdEventAllowed(type)) osd.showMessage(osdEventText(type, slot))
+            }
+            bridge.onOsdAchievement = { title -> osd.showAchievement(title) }
+            bridge.localToggleGet = { key, def -> osdPrefs().getBoolean(key, def) }
+            bridge.localToggleSet = { key, value -> osdPrefs().edit().putBoolean(key, value).apply() }
+        } catch (e: Exception) {
+            Log.e("RicottaArch", "Failed to initialize IGM overlay", e)
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+
+        val newRom = intent.getStringExtra("ROM")
+        val newCore = intent.getStringExtra("LIBRETRO")
+        val currentRom = getIntent()?.getStringExtra("ROM")
+        val currentCore = getIntent()?.getStringExtra("LIBRETRO")
+
+        if ((newRom != null && newRom != currentRom) ||
+            (newCore != null && newCore != currentCore)
+        ) {
+            val restartIntent = Intent(intent).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            }
+            startActivity(restartIntent)
+            System.exit(0)
+        } else {
+            setIntent(intent)
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        igmOverlay?.onResume()
+        setSustainedPerformanceMode(sustainedPerformanceMode)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            intent.getStringExtra("REFRESH")?.let { refresh ->
+                val params = window.attributes
+                params.preferredRefreshRate = refresh.toFloat()
+                window.attributes = params
+            }
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            try {
+                val configFile = ConfigFile(UserPreferences.getDefaultConfigPath(this))
+                if (configFile.getBoolean("video_notch_write_over_enable")) {
+                    window.attributes.layoutInDisplayCutoutMode =
+                        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                }
+            } catch (e: Exception) {
+                Log.w("RetroActivityFuture", "Key doesn't exist yet: ${e.message}")
+            }
+        }
+    }
+
+    override fun onPause() {
+        igmOverlay?.onPause()
+        super.onPause()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (quitfocus) System.exit(0)
+    }
+
+    override fun onDestroy() {
+        osdOverlay?.detach()
+        igmOverlay?.onDestroy()
+        super.onDestroy()
+        isRunning = false
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        sendUiMessage(HANDLER_WHAT_TOGGLE_IMMERSIVE, hasFocus)
+
+        try {
+            val configFile = ConfigFile(UserPreferences.getDefaultConfigPath(this))
+            if (configFile.getBoolean("input_auto_mouse_grab")) {
+                inputGrabMouse(hasFocus)
+            }
+        } catch (e: Exception) {
+            Log.w("RetroActivityFuture", "[onWindowFocusChanged] exception thrown: ${e.message}")
+        }
+    }
+
+    private fun sendUiMessage(what: Int, state: Boolean) {
+        val msg = mHandler.obtainMessage(what, if (state) HANDLER_ARG_TRUE else HANDLER_ARG_FALSE, -1)
+        mHandler.sendMessageDelayed(msg, HANDLER_MESSAGE_DELAY_DEFAULT_MS.toLong())
+    }
+
+    fun inputGrabMouse(state: Boolean) {
+        sendUiMessage(HANDLER_WHAT_TOGGLE_POINTER_CAPTURE, state)
+        sendUiMessage(HANDLER_WHAT_TOGGLE_POINTER_NVIDIA, state)
+        sendUiMessage(HANDLER_WHAT_TOGGLE_POINTER_ICON, state)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun attemptToggleImmersiveMode(state: Boolean) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            try {
+                mDecorView.systemUiVisibility = if (state) {
+                    (View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                            or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                            or View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_LOW_PROFILE
+                            or View.SYSTEM_UI_FLAG_IMMERSIVE)
+                } else {
+                    (View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                            or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN)
+                }
+            } catch (e: Exception) {
+                Log.w("RetroActivityFuture", "[attemptToggleImmersiveMode] exception: ${e.message}")
+            }
+        }
+    }
+
+    private fun attemptTogglePointerCapture(state: Boolean) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                if (state) mDecorView.requestPointerCapture() else mDecorView.releasePointerCapture()
+            } catch (e: Exception) {
+                Log.w("RetroActivityFuture", "[attemptTogglePointerCapture] exception: ${e.message}")
+            }
+        }
+    }
+
+    private fun attemptToggleNvidiaCursorVisibility(state: Boolean) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            try {
+                val method = InputManager::class.java.getMethod("setCursorVisibility", Boolean::class.javaPrimitiveType)
+                val inputManager = getSystemService(Context.INPUT_SERVICE) as InputManager
+                method.invoke(inputManager, !state)
+            } catch (_: NoSuchMethodException) {
+            } catch (e: Exception) {
+                Log.w("RetroActivityFuture", "[attemptToggleNvidiaCursorVisibility] exception: ${e.message}")
+            }
+        }
+    }
+
+    private fun attemptTogglePointerIcon(state: Boolean) {
+        if (Build.VERSION.SDK_INT in Build.VERSION_CODES.N until Build.VERSION_CODES.O) {
+            try {
+                mDecorView.pointerIcon = if (state) {
+                    PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL)
+                } else null
+            } catch (e: Exception) {
+                Log.w("RetroActivityFuture", "[attemptTogglePointerIcon] exception: ${e.message}")
+            }
+        }
+    }
+
+    // Formats a structured OSD event into a Cannoli pill. No string parsing -
+    // type and slot come straight from the source site. RetroArch state_slot N
+    // matches the IGM's "Slot N"; slot < 0 is the auto slot.
+    private fun osdEventText(type: Int, slot: Int): String {
+        val where = if (slot < 0) "Auto" else "Slot $slot"
+        return when (type) {
+            0 -> "Saved · $where"
+            1 -> "Loaded · $where"
+            2 -> "Reset"
+            4 -> "Save undone"
+            7 -> "Disc ${slot + 1}"
+            8 -> "Screenshot saved"
+            9 -> "Controller P$slot"
+            else -> "Saved · $where"
+        }
+    }
+
+    // RA-key-backed OSD toggles gate natively in ricotta_osd_event; reset has no
+    // RA key (Cannoli pref), so it gates here.
+    private fun osdEventAllowed(type: Int): Boolean = when (type) {
+        2 -> osdPrefs().getBoolean("cannoli_osd_reset", true)
+        else -> true
+    }
+
+    private fun osdPrefs() =
+        android.preference.PreferenceManager.getDefaultSharedPreferences(this)
+
+    companion object {
+        @JvmField
+        @Volatile
+        var isRunning = false
+
+        private const val HANDLER_WHAT_TOGGLE_IMMERSIVE = 1
+        private const val HANDLER_WHAT_TOGGLE_POINTER_CAPTURE = 2
+        private const val HANDLER_WHAT_TOGGLE_POINTER_NVIDIA = 3
+        private const val HANDLER_WHAT_TOGGLE_POINTER_ICON = 4
+        private const val HANDLER_ARG_TRUE = 1
+        private const val HANDLER_ARG_FALSE = 0
+        private const val HANDLER_MESSAGE_DELAY_DEFAULT_MS = 300
+    }
+}
