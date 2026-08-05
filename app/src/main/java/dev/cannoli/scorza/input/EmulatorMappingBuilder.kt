@@ -167,7 +167,7 @@ class EmulatorMappingBuilder @Inject constructor(
         // cores.json can name a core that is not a candidate for the tag. Without this the
         // screen reads as unset while the choice is still live at launch.
         if (current != null && section.none { it is MappingItem.EmulatorOption && it.isCurrent }) {
-            synthesizeCurrentRow(current)?.let { row ->
+            synthesizeCurrentRow(current, raCannotReport)?.let { row ->
                 val header = when (current.source) {
                     EmulatorSource.Internal -> EmulatorSource.Internal.displayName
                     EmulatorSource.RetroArch -> raLabel
@@ -274,7 +274,10 @@ class EmulatorMappingBuilder @Inject constructor(
         gameName = screen.gameName,
     )
 
-    private fun synthesizeCurrentRow(current: dev.cannoli.scorza.config.EmulatorChoice): MappingItem.EmulatorOption? {
+    private fun synthesizeCurrentRow(
+        current: dev.cannoli.scorza.config.EmulatorChoice,
+        raCannotReport: Boolean,
+    ): MappingItem.EmulatorOption? {
         val name = when (current.source) {
             EmulatorSource.Standalone -> {
                 val pkg = current.appPackage ?: return null
@@ -291,14 +294,15 @@ class EmulatorMappingBuilder @Inject constructor(
             EmulatorSource.RetroArch -> raLabel
             EmulatorSource.Standalone -> EmulatorSource.Standalone.displayName
         }
+        val availability = currentRowAvailability(current.source, raCannotReport)
         return MappingItem.EmulatorOption(
             dev.cannoli.scorza.ui.screens.EmulatorPickerOption(
                 coreId = current.coreId, displayName = name,
                 source = current.source, runnerLabel = label,
-                appPackage = current.appPackage, availability = CoreAvailability.UNAVAILABLE,
+                appPackage = current.appPackage, availability = availability,
             ),
             isCurrent = true,
-            downloadable = isDownloadable(current.source, CoreAvailability.UNAVAILABLE, settings.retroArchPackage),
+            downloadable = isDownloadable(current.source, availability, settings.retroArchPackage),
         )
     }
 
@@ -331,5 +335,12 @@ class EmulatorMappingBuilder @Inject constructor(
             source == EmulatorSource.RetroArch &&
                 availability == CoreAvailability.UNAVAILABLE &&
                 RetroArchLauncher.isRicotta(raPackage)
+
+        // A synthesized current row can only claim UNAVAILABLE when the availability check
+        // actually ran. When RetroArch cannot report, "not in the candidate list" is unknowable,
+        // not confirmed absent.
+        fun currentRowAvailability(source: EmulatorSource, raCannotReport: Boolean): CoreAvailability =
+            if (source == EmulatorSource.RetroArch && raCannotReport) CoreAvailability.UNKNOWN
+            else CoreAvailability.UNAVAILABLE
     }
 }
