@@ -8,7 +8,6 @@ import dev.cannoli.scorza.config.EmulatorSource
 import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.LaunchManager
-import dev.cannoli.scorza.launcher.RetroArchLauncher
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.screens.EmulatorMappingEntry
@@ -129,7 +128,7 @@ class EmulatorMappingBuilder @Inject constructor(
                 options.forEach {
                     section.add(MappingItem.EmulatorOption(
                         it, isCurrent(it),
-                        downloadable = isDownloadable(source, it.available, settings.retroArchPackage),
+                        downloadable = isDownloadable(source, it.available, settings.retroArchPackage, context.packageName),
                     ))
                 }
             }
@@ -281,7 +280,7 @@ class EmulatorMappingBuilder @Inject constructor(
                 appPackage = current.appPackage, available = false,
             ),
             isCurrent = true,
-            downloadable = isDownloadable(current.source, false, settings.retroArchPackage),
+            downloadable = isDownloadable(current.source, false, settings.retroArchPackage, context.packageName),
         )
     }
 
@@ -306,7 +305,9 @@ class EmulatorMappingBuilder @Inject constructor(
     }
 
     companion object {
-        fun isDownloadable(source: EmulatorSource, available: Boolean, raPackage: String): Boolean =
-            source == EmulatorSource.RetroArch && !available && RetroArchLauncher.isRicotta(raPackage)
+        // Downloadable only for the embedded RetroArch: cores for a stock RetroArch install are
+        // the user's own to manage, so Cannoli offers no download affordance for those.
+        fun isDownloadable(source: EmulatorSource, available: Boolean, raPackage: String, packageName: String): Boolean =
+            source == EmulatorSource.RetroArch && !available && (raPackage.isEmpty() || raPackage == packageName)
     }
 }

@@ -3,9 +3,7 @@ package dev.cannoli.igm
 import android.os.Parcel
 import android.os.Parcelable
 
-/** Bumped whenever the launch contract changes. Sender and receiver must match. */
-const val RICOTTA_PROTOCOL_VERSION = 3
-
+// Still used by DelfinoLaunchParams, whose sender and receiver remain separate builds.
 class ProtocolMismatchException(val found: Int, val expected: Int) : RuntimeException(
     "Ricotta launch protocol mismatch: parcel=$found, app=$expected",
 )
@@ -59,13 +57,10 @@ data class RicottaLaunchParams(
     override fun describeContents() = 0
 
     fun writeToIntent(intent: android.content.Intent) {
-        intent.putExtra(EXTRA_PROTOCOL, RICOTTA_PROTOCOL_VERSION)
         intent.putExtra(EXTRA, this)
     }
 
     override fun writeToParcel(dest: Parcel, flags: Int) {
-        // protocolVersion is FIELD #1 and is always this build's version.
-        dest.writeInt(RICOTTA_PROTOCOL_VERSION)
         dest.writeString(coreId)
         dest.writeString(romPath)
         dest.writeString(configFilePath)
@@ -88,11 +83,7 @@ data class RicottaLaunchParams(
         /** Intent extra key carrying the parcelled params. */
         const val EXTRA = "RICOTTA_PARAMS"
 
-        /** Intent extra key carrying the plain-int protocol version for fast mismatch detection. */
-        const val EXTRA_PROTOCOL = "RICOTTA_PROTOCOL"
-
         fun readFromIntent(intent: android.content.Intent): RicottaLaunchParams? {
-            if (intent.getIntExtra(EXTRA_PROTOCOL, -1) != RICOTTA_PROTOCOL_VERSION) return null
             @Suppress("DEPRECATION")
             return intent.getParcelableExtra(EXTRA)
         }
@@ -100,10 +91,6 @@ data class RicottaLaunchParams(
         @JvmField
         val CREATOR = object : Parcelable.Creator<RicottaLaunchParams> {
             override fun createFromParcel(p: Parcel): RicottaLaunchParams {
-                val version = p.readInt()
-                if (version != RICOTTA_PROTOCOL_VERSION) {
-                    throw ProtocolMismatchException(version, RICOTTA_PROTOCOL_VERSION)
-                }
                 val coreId = p.readString()!!
                 val romPath = p.readString()!!
                 val configFilePath = p.readString()

@@ -4,14 +4,11 @@ import android.os.Parcel
 import dev.cannoli.igm.BatteryDisplayMode
 import dev.cannoli.igm.IgmColors
 import dev.cannoli.igm.IgmDisplaySettings
-import dev.cannoli.igm.ProtocolMismatchException
-import dev.cannoli.igm.RICOTTA_PROTOCOL_VERSION
 import dev.cannoli.igm.RicottaLaunchParams
 import dev.cannoli.igm.TimeFormatMode
 import dev.cannoli.ui.ButtonLabelSet
 import dev.cannoli.ui.ConfirmButton
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertThrows
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -102,7 +99,6 @@ class RicottaLaunchParamsTest {
         val params = sample()
         val parcel = Parcel.obtain()
         try {
-            parcel.writeInt(RICOTTA_PROTOCOL_VERSION)
             parcel.writeString(params.coreId)
             parcel.writeString(params.romPath)
             parcel.writeString(params.configFilePath)
@@ -126,37 +122,10 @@ class RicottaLaunchParamsTest {
         }
     }
 
-    @Test fun `rejects mismatched protocol version before reading other fields`() {
-        val parcel = Parcel.obtain()
-        try {
-            parcel.writeInt(RICOTTA_PROTOCOL_VERSION + 1) // wrong version as field #1
-            parcel.writeString("garbage")                  // would mis-parse if read
-            parcel.setDataPosition(0)
-            val ex = assertThrows(ProtocolMismatchException::class.java) {
-                RicottaLaunchParams.CREATOR.createFromParcel(parcel)
-            }
-            assertEquals(RICOTTA_PROTOCOL_VERSION + 1, ex.found)
-            assertEquals(RICOTTA_PROTOCOL_VERSION, ex.expected)
-        } finally {
-            parcel.recycle()
-        }
-    }
-
     @Test fun `writeToIntent then readFromIntent round trips`() {
         val intent = android.content.Intent()
         val params = sample()
         params.writeToIntent(intent)
-        assertEquals(RICOTTA_PROTOCOL_VERSION, intent.getIntExtra(RicottaLaunchParams.EXTRA_PROTOCOL, -1))
         assertEquals(params, RicottaLaunchParams.readFromIntent(intent))
-    }
-
-    @Test fun `readFromIntent returns null on missing or mismatched protocol`() {
-        val empty = android.content.Intent()
-        org.junit.Assert.assertNull(RicottaLaunchParams.readFromIntent(empty))
-
-        val bad = android.content.Intent()
-        sample().writeToIntent(bad)
-        bad.putExtra(RicottaLaunchParams.EXTRA_PROTOCOL, RICOTTA_PROTOCOL_VERSION + 1)
-        org.junit.Assert.assertNull(RicottaLaunchParams.readFromIntent(bad))
     }
 }

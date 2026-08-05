@@ -248,6 +248,11 @@ class LaunchManager(
 
     private fun hasSaveState(rom: Rom): Boolean = findMostRecentSlot(rom) != null
 
+    // Empty (unset) or the app's own package both mean the in-APK RetroArch. Anything else
+    // names a stock RetroArch install the user pointed Cannoli at.
+    private fun usesEmbeddedRetroArch(): Boolean =
+        settings.retroArchPackage.isEmpty() || settings.retroArchPackage == context.packageName
+
     fun findResumableRoms(roms: List<Rom>): Set<String> {
         val result = mutableSetOf<String>()
         for (rom in roms) {
@@ -257,7 +262,7 @@ class LaunchManager(
             if (sourceFor(rom) == EmulatorSource.Standalone) continue
             val target = rom.launchTarget
             val embedded = target is LaunchTarget.Embedded || getEmbeddedCorePath(rom) != null
-            if (embedded || (target is LaunchTarget.RetroArch && RetroArchLauncher.isRicotta(settings.retroArchPackage))) {
+            if (embedded || (target is LaunchTarget.RetroArch && usesEmbeddedRetroArch())) {
                 result.add(rom.path.absolutePath)
             }
         }
@@ -340,10 +345,10 @@ class LaunchManager(
                             val coreName = platformConfig.getCoreDisplayName(core)
                             return errorAndReset(DialogState.MissingCore(coreName, label, rom.platformTag, overrideRomId))
                         }
-                        if (RetroArchLauncher.isRicotta(raPackage)) {
+                        if (usesEmbeddedRetroArch()) {
                             syncRetroArchConfig(File(settings.sdCardRoot))
                             val launchConfig = buildGameConfig(rom) ?: raConfigPath
-                            retroArchLauncher.launchRicotta(launchFile, core, launchConfig, raPackage, buildRicottaIgm(rom))
+                            retroArchLauncher.launchRicotta(launchFile, core, launchConfig, buildRicottaIgm(rom))
                         } else {
                             val raConfig = "/storage/emulated/0/Android/data/$raPackage/files/retroarch.cfg"
                             retroArchLauncher.launchRetroArchIntent(launchFile, core, raConfig, raPackage)
@@ -445,10 +450,10 @@ class LaunchManager(
                 rom.platformTag, rom.id,
             ))
         }
-        val result = if (RetroArchLauncher.isRicotta(raPackage)) {
+        val result = if (usesEmbeddedRetroArch()) {
             syncRetroArchConfig(File(settings.sdCardRoot))
             val launchConfig = buildGameConfig(rom, resume = true, slot = resumeSlot) ?: raConfigPath
-            retroArchLauncher.launchRicotta(launchFile, core, launchConfig, raPackage, buildRicottaIgm(rom))
+            retroArchLauncher.launchRicotta(launchFile, core, launchConfig, buildRicottaIgm(rom))
         } else {
             val raConfig = "/storage/emulated/0/Android/data/$raPackage/files/retroarch.cfg"
             retroArchLauncher.launchRetroArchIntent(launchFile, core, raConfig, raPackage)

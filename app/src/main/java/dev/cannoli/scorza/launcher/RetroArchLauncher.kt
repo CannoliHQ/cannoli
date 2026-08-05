@@ -10,16 +10,9 @@ import androidx.core.content.FileProvider
 import dev.cannoli.igm.IgmColors
 import dev.cannoli.igm.IgmDisplaySettings
 import dev.cannoli.igm.IgmInputMapping
-import dev.cannoli.igm.RICOTTA_PROTOCOL_VERSION
 import dev.cannoli.igm.RicottaLaunchParams
 import dev.cannoli.scorza.i18n.LocaleOverride
 import java.io.File
-
-sealed interface ProtocolVerdict {
-    data object Ok : ProtocolVerdict
-    data class UpdateRicotta(val installed: Int, val required: Int) : ProtocolVerdict
-    data class UpdateCannoli(val installed: Int, val required: Int) : ProtocolVerdict
-}
 
 data class RicottaIgm(
     val gameTitle: String,
@@ -39,24 +32,14 @@ class RetroArchLauncher(
     private val context: Context,
     private val getRetroArchPackage: () -> String,
 ) {
-    // Managed RicottaArch: structured, version-negotiated launch contract that drives the
-    // shared Cannoli in-game menu.
+    // Managed RicottaArch: structured launch contract that drives the shared Cannoli in-game
+    // menu, targeting the RetroArch component embedded in this APK.
     fun launchRicotta(
         romFile: File,
         coreId: String,
         configPath: String? = null,
-        targetPackage: String? = null,
         igm: RicottaIgm,
     ): LaunchResult {
-        val pkg = targetPackage ?: getRetroArchPackage()
-        if (!context.isPackageInstalled(pkg)) return LaunchResult.AppNotInstalled(pkg)
-
-        when (checkProtocol(readInstalledProtocol(pkg), RICOTTA_PROTOCOL_VERSION)) {
-            ProtocolVerdict.Ok -> Unit
-            is ProtocolVerdict.UpdateRicotta -> return LaunchResult.Error(context.getString(dev.cannoli.scorza.R.string.launch_error_update_ricotta))
-            is ProtocolVerdict.UpdateCannoli -> return LaunchResult.Error(context.getString(dev.cannoli.scorza.R.string.launch_error_update_cannoli))
-        }
-
         val params = RicottaLaunchParams(
             coreId = coreId,
             romPath = romFile.absolutePath,
@@ -76,7 +59,7 @@ class RetroArchLauncher(
         )
 
         val intent = Intent().apply {
-            component = ComponentName(pkg, "dev.cannoli.ricotta.RicottaLaunchActivity")
+            component = ComponentName(context, "dev.cannoli.ricotta.RicottaLaunchActivity")
             params.writeToIntent(this)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
@@ -104,23 +87,6 @@ class RetroArchLauncher(
         }
 
         return context.startActivityNoAnim(intent, "Failed to launch RetroArch")
-    }
-
-    private fun readInstalledProtocol(pkg: String): Int = try {
-        val ai = context.packageManager.getApplicationInfo(pkg, PackageManager.GET_META_DATA)
-        ai.metaData?.getInt("cannoli.protocol", -1) ?: -1
-    } catch (_: PackageManager.NameNotFoundException) {
-        -1
-    }
-
-    companion object {
-        fun isRicotta(pkg: String): Boolean = pkg.startsWith("dev.cannoli.ricotta")
-
-        fun checkProtocol(installedProtocol: Int, requiredProtocol: Int): ProtocolVerdict = when {
-            installedProtocol == requiredProtocol -> ProtocolVerdict.Ok
-            installedProtocol < requiredProtocol -> ProtocolVerdict.UpdateRicotta(installedProtocol, requiredProtocol)
-            else -> ProtocolVerdict.UpdateCannoli(installedProtocol, requiredProtocol)
-        }
     }
 }
 

@@ -475,8 +475,6 @@
     <string name="launch_error_generic">Failed to launch game</string>
     <!-- %1$s = file name. -->
     <string name="launch_error_bad_game_file">Could not read a game ID from %1$s</string>
-    <string name="launch_error_update_ricotta">Update RicottaArch to continue</string>
-    <string name="launch_error_update_cannoli">Update Cannoli to continue</string>
     <!-- %1$s = core name, %2$s = emulator app. -->
     <string name="dialog_missing_core_pkg">%1$s isn\'t installed in %2$s.</string>
     <!-- %1$s = core name. -->
