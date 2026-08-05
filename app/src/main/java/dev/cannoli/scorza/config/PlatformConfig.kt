@@ -7,6 +7,7 @@ import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.isPackageInstalled
 import dev.cannoli.scorza.model.LaunchTarget
 import dev.cannoli.scorza.model.Platform
+import dev.cannoli.scorza.ui.screens.CoreAvailability
 import dev.cannoli.scorza.ui.screens.EmulatorMappingStatus
 import dev.cannoli.core.IniData
 import dev.cannoli.core.IniParser
@@ -518,6 +519,7 @@ class PlatformConfig(
         embeddedCoresDir: String? = null,
         pm: PackageManager? = null,
         raLabel: String = "RetroArch",
+        coreReportingUnavailable: Boolean = false,
     ): List<dev.cannoli.scorza.ui.screens.EmulatorPickerOption> {
         val upper = tag.uppercase()
         val candidateCoreIds = buildSet {
@@ -536,7 +538,7 @@ class PlatformConfig(
                     includeAll -> dev.cannoli.scorza.ui.screens.EmulatorPickerOption(
                         coreId = coreId, displayName = getCoreDisplayName(coreId),
                         source = EmulatorSource.Internal, runnerLabel = EmulatorSource.Internal.displayName,
-                        available = false,
+                        availability = CoreAvailability.UNAVAILABLE,
                     )
                     else -> null
                 }
@@ -549,9 +551,18 @@ class PlatformConfig(
                         source = EmulatorSource.RetroArch,
                         runnerLabel = InstalledCoreService.getPackageLabel(pkg),
                     )
+                    // Installed-only is not a filter that can be computed against a package
+                    // that reports nothing, so the section ignores includeAll rather than
+                    // filtering every candidate away and reading as "you have no cores".
+                    coreReportingUnavailable -> dev.cannoli.scorza.ui.screens.EmulatorPickerOption(
+                        coreId = coreId, displayName = getCoreDisplayName(coreId),
+                        source = EmulatorSource.RetroArch, runnerLabel = raLabel,
+                        availability = CoreAvailability.UNKNOWN,
+                    )
                     includeAll -> dev.cannoli.scorza.ui.screens.EmulatorPickerOption(
                         coreId = coreId, displayName = getCoreDisplayName(coreId),
-                        source = EmulatorSource.RetroArch, runnerLabel = raLabel, available = false,
+                        source = EmulatorSource.RetroArch, runnerLabel = raLabel,
+                        availability = CoreAvailability.UNAVAILABLE,
                     )
                     else -> null
                 }
@@ -568,7 +579,7 @@ class PlatformConfig(
                     includeAll -> dev.cannoli.scorza.ui.screens.EmulatorPickerOption(
                         coreId = "", displayName = appName,
                         source = EmulatorSource.Standalone, runnerLabel = EmulatorSource.Standalone.displayName,
-                        appPackage = cfg.packageName, available = false,
+                        appPackage = cfg.packageName, availability = CoreAvailability.UNAVAILABLE,
                     )
                     else -> null
                 }

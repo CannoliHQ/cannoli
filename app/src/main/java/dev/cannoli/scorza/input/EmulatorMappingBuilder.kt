@@ -6,11 +6,13 @@ import dagger.hilt.android.scopes.ActivityScoped
 import dev.cannoli.scorza.config.CannoliPaths
 import dev.cannoli.scorza.config.EmulatorSource
 import dev.cannoli.scorza.config.PlatformConfig
+import dev.cannoli.scorza.launcher.CoreReporting
 import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.LaunchManager
 import dev.cannoli.scorza.launcher.RetroArchLauncher
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.settings.SettingsRepository
+import dev.cannoli.scorza.ui.screens.CoreAvailability
 import dev.cannoli.scorza.ui.screens.EmulatorMappingEntry
 import dev.cannoli.scorza.ui.screens.MappingActionKind
 import dev.cannoli.scorza.ui.screens.MappingItem
@@ -82,6 +84,8 @@ class EmulatorMappingBuilder @Inject constructor(
     ): LauncherScreen.PlatformMapping {
         val bundled = LaunchManager.extractBundledCores(context)
         val installedRaCores = installedCoreService.configuredCores()
+        val raReporting = installedCoreService.configuredReporting()
+        val raCannotReport = raReporting != CoreReporting.REPORTS
         val sources = platformConfig.availableSources(tag = tag, embeddedCoresDir = bundled)
         // Game scope reads the per-game override; platform scope reads the platform choice.
         val current =
@@ -109,6 +113,7 @@ class EmulatorMappingBuilder @Inject constructor(
                     tag = tag, source = source, includeAll = includeAll,
                     installedRaCores = installedRaCores,
                     embeddedCoresDir = bundled, pm = context.packageManager, raLabel = raLabel,
+                    coreReportingUnavailable = raCannotReport,
                 )
                 // Always surface the current mapping even when its core/app is not installed
                 // and Show All is off, so a missing or bundled-default mapping stays visible.
@@ -117,6 +122,7 @@ class EmulatorMappingBuilder @Inject constructor(
                         tag = tag, source = source, includeAll = true,
                         installedRaCores = installedRaCores,
                         embeddedCoresDir = bundled, pm = context.packageManager, raLabel = raLabel,
+                        coreReportingUnavailable = raCannotReport,
                     ).firstOrNull { isCurrent(it) }?.let { options = options + it }
                 }
                 if (options.isEmpty()) continue
@@ -129,7 +135,7 @@ class EmulatorMappingBuilder @Inject constructor(
                 options.forEach {
                     section.add(MappingItem.EmulatorOption(
                         it, isCurrent(it),
-                        downloadable = isDownloadable(source, it.available, settings.retroArchPackage),
+                        downloadable = isDownloadable(source, it.availability, settings.retroArchPackage),
                     ))
                 }
             }
@@ -278,10 +284,10 @@ class EmulatorMappingBuilder @Inject constructor(
             dev.cannoli.scorza.ui.screens.EmulatorPickerOption(
                 coreId = current.coreId, displayName = name,
                 source = current.source, runnerLabel = label,
-                appPackage = current.appPackage, available = false,
+                appPackage = current.appPackage, availability = CoreAvailability.UNAVAILABLE,
             ),
             isCurrent = true,
-            downloadable = isDownloadable(current.source, false, settings.retroArchPackage),
+            downloadable = isDownloadable(current.source, CoreAvailability.UNAVAILABLE, settings.retroArchPackage),
         )
     }
 
@@ -306,7 +312,13 @@ class EmulatorMappingBuilder @Inject constructor(
     }
 
     companion object {
-        fun isDownloadable(source: EmulatorSource, available: Boolean, raPackage: String): Boolean =
-            source == EmulatorSource.RetroArch && !available && RetroArchLauncher.isRicotta(raPackage)
+        fun isDownloadable(
+            source: EmulatorSource,
+            availability: CoreAvailability,
+            raPackage: String,
+        ): Boolean =
+            source == EmulatorSource.RetroArch &&
+                availability == CoreAvailability.UNAVAILABLE &&
+                RetroArchLauncher.isRicotta(raPackage)
     }
 }

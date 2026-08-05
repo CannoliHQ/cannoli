@@ -759,7 +759,7 @@ fun AppNavGraph(
                                 val opt = item.option
                                 val value = when {
                                     item.isCurrent -> stringResource(R.string.value_active)
-                                    !opt.available -> {
+                                    opt.availability == dev.cannoli.scorza.ui.screens.CoreAvailability.UNAVAILABLE -> {
                                         val resId = when (opt.runnerLabel) {
                                             "Internal" -> R.string.value_not_bundled
                                             else -> R.string.value_not_installed
@@ -775,7 +775,9 @@ fun AppNavGraph(
                                     fontSize = listFontSize,
                                     lineHeight = listLineHeight,
                                     verticalPadding = listVerticalPadding,
-                                    valueIcon = if (item.isCurrent && !opt.available) ICON_NOT_INSTALLED else null
+                                    valueIcon = if (item.isCurrent &&
+                                        opt.availability == dev.cannoli.scorza.ui.screens.CoreAvailability.UNAVAILABLE
+                                    ) ICON_NOT_INSTALLED else null
                                 )
                             }
                             is dev.cannoli.scorza.ui.screens.MappingItem.Action -> {

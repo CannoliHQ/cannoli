@@ -6,6 +6,9 @@ import dev.cannoli.ui.components.KeyboardState
 
 enum class EmulatorMappingStatus { READY, NOT_INSTALLED, NEEDS_SETUP }
 data class EmulatorMappingEntry(val tag: String, val platformName: String, val coreDisplayName: String, val runnerLabel: String, val status: EmulatorMappingStatus = EmulatorMappingStatus.READY)
+// Three-valued because a boolean forced "not reported" and "confirmed absent" to share a
+// value, which is how the picker came to label unknowable cores Not Installed.
+enum class CoreAvailability { AVAILABLE, UNAVAILABLE, UNKNOWN }
 // source is the identity; runnerLabel is display only. Matching on the caption is what made a
 // selection vanish whenever the configured RetroArch package changed its label.
 data class EmulatorPickerOption(
@@ -14,7 +17,7 @@ data class EmulatorPickerOption(
     val source: dev.cannoli.scorza.config.EmulatorSource,
     val runnerLabel: String,
     val appPackage: String? = null,
-    val available: Boolean = true,
+    val availability: CoreAvailability = CoreAvailability.AVAILABLE,
 )
 
 enum class MappingActionKind { BIOS, OVERRIDES, RESET }

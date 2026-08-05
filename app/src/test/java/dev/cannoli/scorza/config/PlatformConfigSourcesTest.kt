@@ -1,6 +1,8 @@
 package dev.cannoli.scorza.config
 
 import androidx.test.core.app.ApplicationProvider
+import dev.cannoli.scorza.ui.screens.CoreAvailability
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertFalse
 import org.junit.Test
@@ -33,7 +35,36 @@ class PlatformConfigSourcesTest {
         val all = pc.emulatorOptionsForSource("NES", EmulatorSource.Internal, includeAll = true)
         assertTrue(all.size >= installedOnly.size)
         all.filter { opt -> installedOnly.none { it.coreId == opt.coreId } }
-            .forEach { assertFalse(it.available) }
+            .forEach { assertEquals(CoreAvailability.UNAVAILABLE, it.availability) }
+    }
+
+    @Test fun `when RetroArch cannot report, every candidate core is offered as unknown regardless of includeAll`() {
+        val pc = config()
+        val installedOnly = pc.emulatorOptionsForSource(
+            "NES", EmulatorSource.RetroArch, includeAll = false, coreReportingUnavailable = true,
+        )
+        val all = pc.emulatorOptionsForSource(
+            "NES", EmulatorSource.RetroArch, includeAll = true, coreReportingUnavailable = true,
+        )
+        assertTrue("installed-only must not hide cores it cannot rule out", installedOnly.isNotEmpty())
+        assertEquals(
+            "the toggle must not change a list that cannot be filtered",
+            all.map { it.coreId }.toSet(), installedOnly.map { it.coreId }.toSet(),
+        )
+        installedOnly.forEach { assertEquals(CoreAvailability.UNKNOWN, it.availability) }
+    }
+
+    @Test fun `a reported core stays available even while the package cannot report others`() {
+        val pc = config()
+        val candidate = "nestopia_libretro"
+        val options = pc.emulatorOptionsForSource(
+            "NES", EmulatorSource.RetroArch, includeAll = false,
+            installedRaCores = mapOf("com.retroarch" to setOf(candidate)),
+            coreReportingUnavailable = true,
+        )
+        val reported = options.firstOrNull { it.coreId == candidate }
+        assertTrue("the reported core must still be listed", reported != null)
+        assertEquals(CoreAvailability.AVAILABLE, reported!!.availability)
     }
 
     @Test fun `RA is unresponsive only when nothing reports and a package is unresponsive`() {
