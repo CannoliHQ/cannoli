@@ -843,6 +843,8 @@
     <!-- Conflicts resolution screen -->
     <string name="conflicts_title">Sync Conflicts</string>
     <string name="conflicts_applying">Applying conflicts...</string>
+    <!-- Shown while saves are checked against the server before a game launches. -->
+    <string name="save_sync_checking">Checking saves...</string>
     <!-- %1$d = number of saves that could not be applied. -->
     <plurals name="conflicts_apply_failed">
         <item quantity="one">%1$d save could not be applied</item>

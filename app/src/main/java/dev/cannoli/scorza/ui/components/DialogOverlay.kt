@@ -47,12 +47,15 @@ import dev.cannoli.ui.components.ColorPickerOverlay
 import dev.cannoli.ui.components.HexColorInputOverlay
 import dev.cannoli.ui.components.KeyboardHelpOverlay
 import dev.cannoli.ui.components.KeyboardOverlay
+import dev.cannoli.ui.components.LaunchErrorDialog
 import dev.cannoli.ui.components.List
 import dev.cannoli.ui.components.ListSection
 import dev.cannoli.ui.components.PillRowInfo
 import dev.cannoli.ui.components.PillRowKeyValue
 import dev.cannoli.ui.components.PillRowText
 import dev.cannoli.ui.components.MessageOverlay
+import dev.cannoli.ui.components.MissingAppDialog
+import dev.cannoli.ui.components.MissingCoreDialog
 import dev.cannoli.ui.components.OverlayScrim
 import dev.cannoli.ui.components.SectionedList
 import dev.cannoli.ui.components.RAAccountOverlay
@@ -87,7 +90,10 @@ fun DialogOverlay(
     downloadError: String? = null,
     downloads: List<RommDownloadItem> = emptyList(),
     updateAvailable: Boolean = false,
-    buttonStyle: ButtonStyle = ButtonStyle()
+    buttonStyle: ButtonStyle = ButtonStyle(),
+    // Only the Tools and Ports lists offer to drop a shortcut for an app that has gone missing,
+    // and that depends on the list being viewed rather than on anything the dialog carries.
+    appListPlatformTag: String? = null,
 ) {
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
     when (dialogState) {
@@ -920,6 +926,73 @@ fun DialogOverlay(
             OverlayScrim {
                 androidx.compose.material3.Text(
                     text = stringResource(R.string.conflicts_applying),
+                    color = LocalCannoliColors.current.text,
+                    fontSize = listFontSize,
+                    lineHeight = listLineHeight,
+                )
+            }
+        }
+
+        is DialogState.MissingCore -> MissingCoreDialog(
+            coreName = dialogState.coreName,
+            packageLabel = dialogState.packageLabel,
+            showChangeEmulator = dialogState.platformTag != null,
+            buttonStyle = buttonStyle,
+        )
+
+        is DialogState.MissingApp -> MissingAppDialog(
+            appName = dialogState.appName,
+            showRemove = appListPlatformTag == "tools" || appListPlatformTag == "ports",
+            showChangeEmulator = dialogState.platformTag != null,
+            buttonStyle = buttonStyle,
+        )
+
+        is DialogState.LaunchError -> LaunchErrorDialog(dialogState.message, buttonStyle = buttonStyle)
+
+        is DialogState.DeleteConfirm -> ConfirmOverlay(
+            message = stringResource(R.string.dialog_delete_confirm, dialogState.gameName),
+            buttonStyle = buttonStyle,
+            confirmLabel = stringResource(R.string.label_delete),
+        )
+
+        is DialogState.DeleteCollectionConfirm -> ConfirmOverlay(
+            message = stringResource(R.string.dialog_delete_confirm, dialogState.displayName),
+            buttonStyle = buttonStyle,
+            confirmLabel = stringResource(R.string.label_delete),
+        )
+
+        is DialogState.QuitConfirm -> ConfirmOverlay(
+            message = stringResource(R.string.dialog_quit_confirm),
+            buttonStyle = buttonStyle,
+            confirmLabel = stringResource(R.string.label_quit),
+        )
+
+        is DialogState.PlatformResetConfirm -> ConfirmOverlay(
+            message = stringResource(R.string.dialog_reset_platform_confirm, dialogState.platformName),
+            buttonStyle = buttonStyle,
+            confirmLabel = stringResource(R.string.label_reset),
+        )
+
+        is DialogState.RenameResult -> MessageOverlay(
+            message = if (dialogState.success) {
+                stringResource(R.string.dialog_rename_success)
+            } else {
+                stringResource(R.string.dialog_rename_failed, dialogState.message)
+            },
+            buttonStyle = buttonStyle,
+        )
+
+        is DialogState.CollectionCreated -> MessageOverlay(
+            message = stringResource(R.string.collection_created, dialogState.collectionName),
+            buttonStyle = buttonStyle,
+        )
+
+        // Held across a network round trip to the server while input is already blocked, so
+        // without this the launcher reads as frozen for as long as the server takes to answer.
+        is DialogState.SaveSyncChecking -> {
+            OverlayScrim {
+                androidx.compose.material3.Text(
+                    text = stringResource(R.string.save_sync_checking),
                     color = LocalCannoliColors.current.text,
                     fontSize = listFontSize,
                     lineHeight = listLineHeight,

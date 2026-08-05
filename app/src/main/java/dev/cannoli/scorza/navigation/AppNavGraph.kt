@@ -73,7 +73,6 @@ import dev.cannoli.scorza.ui.screens.SaveSlotsScreen
 import dev.cannoli.scorza.ui.screens.SaveStatePickerScreen
 import dev.cannoli.scorza.ui.screens.SettingsScreen
 import dev.cannoli.scorza.ui.screens.SystemListScreen
-import dev.cannoli.scorza.ui.screens.isFullScreen
 import dev.cannoli.scorza.ui.viewmodel.ControllersViewModel
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.scorza.ui.viewmodel.InputTesterViewModel
@@ -592,7 +591,6 @@ fun AppNavGraph(
                     listFontSize = listFontSize,
                     listLineHeight = listLineHeight,
                     listVerticalPadding = listVerticalPadding,
-                    dialogState = dialog,
                     onListStateChanged = onListStateChanged,
                     title = appSettings.title,
                     mainMenuQuit = appSettings.mainMenuQuit,
@@ -614,7 +612,6 @@ fun AppNavGraph(
                     listFontSize = listFontSize,
                     listLineHeight = listLineHeight,
                     listVerticalPadding = listVerticalPadding,
-                    dialogState = dialog,
                     onListStateChanged = onListStateChanged,
                     resumableGames = resumableGames,
                     swapPlayResume = appSettings.swapPlayResume,
@@ -806,17 +803,6 @@ fun AppNavGraph(
                             }
                         }
                     }
-                }
-                when (dialog) {
-                    is DialogState.PlatformResetConfirm -> ConfirmOverlay(
-                        message = stringResource(
-                            R.string.dialog_reset_platform_confirm,
-                            (dialog as DialogState.PlatformResetConfirm).platformName
-                        ),
-                        confirmLabel = stringResource(R.string.label_reset),
-                        buttonStyle = labels
-                    )
-                    else -> {}
                 }
             }
             is LauncherScreen.BiosStatus -> {
@@ -1859,21 +1845,23 @@ fun AppNavGraph(
                 nav?.dialogState?.value = DialogState.RommArtResults(finished.results)
             }
         }
-        if (dialog.isFullScreen) {
-            DialogOverlay(
-                dialogState = dialog,
-                backgroundImagePath = appSettings.backgroundImagePath,
-                backgroundTint = appSettings.backgroundTint,
-                listFontSize = listFontSize,
-                listLineHeight = listLineHeight,
-                listVerticalPadding = listVerticalPadding,
-                downloadProgress = downloadProgress,
-                downloadError = downloadError,
-                downloads = overlayDownloads,
-                updateAvailable = updateAvailable,
-                buttonStyle = labels,
-            )
-        }
+        // No allowlist gate here on purpose: DialogOverlay's own when decides what it draws and
+        // falls through to nothing for states a screen renders itself. A second list to keep in
+        // sync is how a dialog ends up set and consuming input while drawing nothing.
+        DialogOverlay(
+            dialogState = dialog,
+            backgroundImagePath = appSettings.backgroundImagePath,
+            backgroundTint = appSettings.backgroundTint,
+            listFontSize = listFontSize,
+            listLineHeight = listLineHeight,
+            listVerticalPadding = listVerticalPadding,
+            downloadProgress = downloadProgress,
+            downloadError = downloadError,
+            downloads = overlayDownloads,
+            updateAvailable = updateAvailable,
+            buttonStyle = labels,
+            appListPlatformTag = gameListViewModel?.state?.collectAsState()?.value?.platformTag,
+        )
 
         val systemListState = systemListViewModel?.state?.collectAsState()?.value
         val hideForDialog = dialog is DialogState.About
