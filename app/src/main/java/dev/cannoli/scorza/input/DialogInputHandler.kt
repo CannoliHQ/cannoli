@@ -605,18 +605,7 @@ class DialogInputHandler @Inject constructor(
                     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.CONFLICTS -> openConflictsMenu(fromSaveSyncMenu = false)
                     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.ERRORS -> openSyncErrors(fromSaveSyncMenu = false)
                     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.KITCHEN -> launcherActions.openKitchen(fromQuickMenu = true)
-                    dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.RESCAN -> {
-                        nav.dialogState.value = DialogState.RescanProgress(
-                            0f, context.getString(dev.cannoli.scorza.R.string.boot_preparing))
-                        launcherActions.rescanSystemList(
-                            scanDisk = true,
-                            onProgress = { tag, current, total ->
-                                nav.dialogState.value = DialogState.RescanProgress(
-                                    current.toFloat() / total.coerceAtLeast(1), tag)
-                            },
-                            onComplete = { nav.dialogState.value = DialogState.None },
-                        )
-                    }
+                    dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.RESCAN -> launcherActions.rescanWithProgress()
                     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.INFO -> {
                         val urls = dev.cannoli.scorza.server.KitchenManager.getUrls(hasVpn = hasActiveVpn())
                         nav.dialogState.value = DialogState.QuickInfo(urls = urls, kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning)

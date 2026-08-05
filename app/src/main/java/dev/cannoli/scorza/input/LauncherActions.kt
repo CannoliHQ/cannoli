@@ -118,6 +118,25 @@ class LauncherActions @Inject constructor(
         )
     }
 
+    /** Rescans behind the progress overlay. A disk scan can run for a long time on a slow card, so
+     *  anything that triggers one from the UI shows this rather than leaving the launcher looking
+     *  hung with no indication that work is happening. */
+    fun rescanWithProgress(reconcileOrphans: Boolean = false) {
+        nav.dialogState.value = DialogState.RescanProgress(
+            0f, context.getString(dev.cannoli.scorza.R.string.boot_preparing),
+        )
+        rescanSystemList(
+            scanDisk = true,
+            reconcileOrphans = reconcileOrphans,
+            onProgress = { tag, current, total ->
+                nav.dialogState.value = DialogState.RescanProgress(
+                    current.toFloat() / total.coerceAtLeast(1), tag,
+                )
+            },
+            onComplete = { nav.dialogState.value = DialogState.None },
+        )
+    }
+
     fun refreshLauncherLists() {
         if (systemListViewModel.state.value.isLoading) return
         rescanSystemList()
@@ -174,7 +193,7 @@ class LauncherActions @Inject constructor(
             if (dev.cannoli.scorza.util.DirectoryLayout.romDirNeedsScaffold(romDir)) {
                 dev.cannoli.scorza.util.DirectoryLayout.scaffoldRomFolders(romDir, platformConfig.getAllTags())
             }
-            withContext(Dispatchers.Main) { rescanSystemList(reconcileOrphans = true) }
+            withContext(Dispatchers.Main) { rescanWithProgress(reconcileOrphans = true) }
         }
     }
 

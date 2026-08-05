@@ -38,10 +38,15 @@ class SystemListScanTargetsTest {
 
     @Before fun setUp() = Dispatchers.setMain(Dispatchers.Unconfined)
 
-    @After fun tearDown() = Dispatchers.resetMain()
+    @After fun tearDown() {
+        created.forEach { it.close() }
+        created.clear()
+        Dispatchers.resetMain()
+    }
 
     private lateinit var romScanner: RomScanner
     private lateinit var romsRepository: RomsRepository
+    private val created = mutableListOf<SystemListViewModel>()
 
     private fun viewModel(romDir: File, indexed: Map<String, Int>): SystemListViewModel {
         romScanner = mockk(relaxed = true)
@@ -73,7 +78,7 @@ class SystemListScanTargetsTest {
             cannoliPaths = paths,
             romDirectoryWatcher = mockk<RomDirectoryWatcher>(relaxed = true),
             scanScheduler = scheduler,
-        )
+        ).also { created.add(it) }
     }
 
     /** The tags handed to the scanner, in call order. */
