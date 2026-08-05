@@ -4,11 +4,14 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import dev.cannoli.igm.RicottaLaunchParams
+import java.io.File
 
 object RicottaLaunchTranslator {
 
+    // filesDir/cores, matching LaunchManager.findEmbeddedCore, InstalledCoreService.localCores
+    // and EmbeddedCoreDownloader. RicottaArch used dataDir/cores, which is a different directory.
     fun coreLibPath(context: Context, coreId: String): String =
-        "${context.applicationInfo.dataDir}/cores/${coreId}_android.so"
+        File(context.filesDir, "cores/${coreId}_android.so").absolutePath
 
     fun toRetroIntent(context: Context, params: RicottaLaunchParams): Intent =
         Intent().apply {

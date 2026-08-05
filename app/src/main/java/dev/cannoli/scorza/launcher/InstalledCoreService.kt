@@ -9,6 +9,7 @@ import android.os.Looper
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.cannoli.scorza.settings.SettingsRepository
 import kotlinx.coroutines.suspendCancellableCoroutine
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
@@ -110,8 +111,11 @@ class InstalledCoreService @Inject constructor(
             }
         }
 
+    // installedCores is only ever populated by querying other apps. For the in-APK RetroArch
+    // there is no query, so answer from the directory the same way configuredCores does.
     fun hasCoreInPackage(coreId: String, pkg: String): Boolean =
-        installedCores[pkg]?.contains(coreId) == true
+        if (isEmbedded(pkg)) coreId in localCores()
+        else installedCores[pkg]?.contains(coreId) == true
 
     @Synchronized
     fun markInstalled(pkg: String, coreId: String) {
@@ -123,13 +127,29 @@ class InstalledCoreService @Inject constructor(
         markedSinceQuery.getOrPut(pkg) { mutableSetOf() }.add(coreId)
     }
 
+    // Core ids, not filenames. This set is compared against a resolved core id (markInstalled
+    // stores ids too, and raAvailable does value.contains(resolvedCore)), so returning
+    // "mgba_libretro_android.so" here would never match "mgba_libretro".
+    private fun localCores(): Set<String> =
+        File(context.filesDir, "cores").listFiles()
+            ?.map { it.name }
+            ?.filter { it.endsWith("_android.so") }
+            ?.map { it.removeSuffix("_android.so") }
+            ?.toSet()
+            ?: emptySet()
+
+    // Empty (unset) or this app's own package both mean the in-APK RetroArch.
+    private fun isEmbedded(pkg: String): Boolean = pkg.isEmpty() || pkg == context.packageName
+
     fun configuredCores(): Map<String, Set<String>> {
         val pkg = settings.retroArchPackage
+        if (isEmbedded(pkg)) return mapOf(pkg to localCores())
         return installedCores.filterKeys { it == pkg }
     }
 
     fun configuredUnresponsive(): Set<String> {
         val pkg = settings.retroArchPackage
+        if (pkg.isEmpty() || pkg == context.packageName) return emptySet()
         return if (pkg in unresponsivePackages) setOf(pkg) else emptySet()
     }
 

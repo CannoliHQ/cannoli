@@ -7,7 +7,9 @@ import android.content.IntentFilter
 import android.os.Handler
 import android.os.Looper
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import kotlin.coroutines.resume
 
@@ -18,11 +20,31 @@ class CoreDownloadService @Inject constructor(
 
     data class Result(val kind: String, val core: String?, val ok: Boolean, val error: String?)
 
+    // Empty (unset) or the app's own package both mean the in-APK RetroArch.
+    private fun isEmbedded(pkg: String): Boolean = pkg.isEmpty() || pkg == context.packageName
+
     suspend fun downloadCore(
         pkg: String,
         coreId: String,
         forceInfoRefresh: Boolean = false,
         timeoutMs: Long = 120_000L,
+    ): Result {
+        // The broadcast exists to ask another app to fetch a core. For the in-APK RetroArch
+        // there is nobody to ask: this app does the download. Broadcasting here would wait out
+        // the full timeout for a reply that can never come.
+        if (isEmbedded(pkg)) {
+            return withContext(Dispatchers.IO) {
+                EmbeddedCoreDownloader.download(context, coreId, forceInfoRefresh)
+            }
+        }
+        return awaitDownload(pkg, coreId, forceInfoRefresh, timeoutMs)
+    }
+
+    private suspend fun awaitDownload(
+        pkg: String,
+        coreId: String,
+        forceInfoRefresh: Boolean,
+        timeoutMs: Long,
     ): Result = await(
         send = {
             Intent(ACTION_DOWNLOAD).apply {

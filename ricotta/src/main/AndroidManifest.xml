@@ -38,11 +38,7 @@
             tools:node="merge"
             tools:replace="android:exported"/>
 
-        <receiver
-            android:name="com.retroarch.browser.receiver.InstalledCoresReceiver"
-            android:exported="false"
-            tools:node="merge"
-            tools:replace="android:exported"/>
+        <receiver android:name="com.retroarch.browser.receiver.InstalledCoresReceiver" tools:node="remove"/>
 
         <provider
             android:name="com.retroarch.browser.provider.RetroDocumentsProvider"
