@@ -87,6 +87,7 @@ class LibretroRunner {
         val cacheContext: Boolean,
     )
 
+    fun setHwRenderAllowed(allowed: Boolean) = nativeSetHwRenderAllowed(allowed)
     fun isHwRender(): Boolean = nativeIsHwRender()
     fun hwWantsSharedContext(): Boolean = nativeHwWantsSharedContext()
     fun corePresentsOffThread(): Boolean = nativeCorePresentsOffThread()
@@ -212,6 +213,7 @@ class LibretroRunner {
     private external fun nativeGetFrameHeight(): Int
     private external fun nativeHasNewFrame(): Boolean
     private external fun nativeConsumeFrame()
+    private external fun nativeSetHwRenderAllowed(allowed: Boolean)
     private external fun nativeIsHwRender(): Boolean
     private external fun nativeHwWantsSharedContext(): Boolean
     private external fun nativeCorePresentsOffThread(): Boolean

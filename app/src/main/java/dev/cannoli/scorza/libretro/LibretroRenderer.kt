@@ -107,6 +107,7 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
     private var hwMaxHeight = 0
     private var hwBottomLeftOrigin = true
     private var hwContextLive = false
+    @Volatile var hwSetupFailed = false; private set
     // Set only when the core asked for a shared context. Cores that did not keep the
     // single-context path they already work on.
     private var hwSharedCtx: android.opengl.EGLContext? = null
@@ -236,6 +237,8 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
                 " stencil=${info.stencil} bottomLeft=${info.bottomLeftOrigin}"
         )
 
+        // The 1x1 placeholder from onSurfaceCreated is about to be orphaned by the reassignment.
+        if (textureId != 0) GLES20.glDeleteTextures(1, intArrayOf(textureId), 0)
         val texIds = IntArray(1)
         GLES20.glGenTextures(1, texIds, 0)
         textureId = texIds[0]
@@ -281,8 +284,12 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
 
         val status = GLES20.glCheckFramebufferStatus(GLES20.GL_FRAMEBUFFER)
         if (status != GLES20.GL_FRAMEBUFFER_COMPLETE) {
-            logger?.invoke("hw render: FBO incomplete (status=0x${Integer.toHexString(status)})")
+            // There is no usable fallback: a HW core never fills the software frame buffer, so
+            // this ends as a permanently blank screen. Say so rather than fail quietly.
+            logger?.invoke("hw render: FBO incomplete (status=0x${Integer.toHexString(status)})" +
+                " - video will be blank, the core cannot render without it")
             hwRender = false
+            hwSetupFailed = true
             GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
             return
         }
@@ -684,13 +691,21 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
 
     // Under HW render the frame only ever exists on the GPU, so a save state thumbnail has to
     // read it back off the FBO. Must run on the GL thread. glReadPixels returns rows bottom-up.
-    fun readHwFramePixels(w: Int, h: Int): IntArray? = withMainContext {
-        readHwFramePixelsLocked(w, h)
+    fun readHwFrame(w: Int, h: Int): android.graphics.Bitmap? = withMainContext {
+        readHwFrameLocked(w, h)
     }
 
-    private fun readHwFramePixelsLocked(w: Int, h: Int): IntArray? {
+    // GL_RGBA byte order matches Bitmap.ARGB_8888's in-memory layout, so the buffer goes
+    // straight in. The old per-pixel loop was ~338k bounds-checked reads at native res and
+    // scaled with internal resolution, which now that upscaling is selectable would blow the
+    // caller's timeout.
+    private fun readHwFrameLocked(w: Int, h: Int): android.graphics.Bitmap? {
         if (!hwRender || w <= 0 || h <= 0) return null
-        if (w > hwMaxWidth || h > hwMaxHeight) return null
+        // A core can report a frame larger than the FBO after an internal-resolution change,
+        // since we do not resize on SET_SYSTEM_AV_INFO. Read what is actually there rather
+        // than giving up and letting the caller fall back to a garbage software frame.
+        @Suppress("NAME_SHADOWING") val w = w.coerceAtMost(hwMaxWidth)
+        @Suppress("NAME_SHADOWING") val h = h.coerceAtMost(hwMaxHeight)
         // Read through our own FBO; hwFbo belongs to the core's context on the shared path.
         val readFbo = if (hwSharedCtx != null) hwReadFbo else hwFbo
         if (readFbo == 0) return null
@@ -699,19 +714,17 @@ class LibretroRenderer(private val runner: LibretroRunner) : GLSurfaceView.Rende
         GLES20.glReadPixels(0, 0, w, h, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buf)
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
         if (GLES20.glGetError() != GLES20.GL_NO_ERROR) return null
-        val pixels = IntArray(w * h)
-        for (y in 0 until h) {
-            val src = (h - 1 - y) * w * 4
-            val dst = y * w
-            for (x in 0 until w) {
-                val i = src + x * 4
-                val r = buf.get(i).toInt() and 0xFF
-                val g = buf.get(i + 1).toInt() and 0xFF
-                val b = buf.get(i + 2).toInt() and 0xFF
-                pixels[dst + x] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
-            }
-        }
-        return pixels
+        buf.position(0)
+        val raw = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
+        raw.copyPixelsFromBuffer(buf)
+        // Cores routinely leave alpha at 0. copyPixelsFromBuffer takes the bytes verbatim, so
+        // without this the PNG is fully transparent and reads as a blank white thumbnail.
+        raw.setHasAlpha(false)
+        // glReadPixels returns rows bottom-up; the flip runs in native code.
+        val matrix = android.graphics.Matrix().apply { setScale(1f, -1f) }
+        val flipped = android.graphics.Bitmap.createBitmap(raw, 0, 0, w, h, matrix, false)
+        if (flipped !== raw) raw.recycle()
+        return flipped
     }
 
     // A core leaves GL state arbitrary. Everything the blit path assumes has to be put back,

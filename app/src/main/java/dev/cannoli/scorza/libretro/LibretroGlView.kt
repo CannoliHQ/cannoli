@@ -14,6 +14,8 @@ import java.util.ArrayDeque
 private const val EGL_CONTEXT_MINOR_VERSION = 0x30FB
 private const val EGL_OPENGL_ES2_BIT = 0x0004
 private const val EGL_OPENGL_ES3_BIT = 0x0040
+private const val SURFACE_RELEASE_TIMEOUT_MS = 2000L
+private const val SHUTDOWN_JOIN_TIMEOUT_MS = 3000L
 
 /**
  * Replacement for GLSurfaceView that hands EGL ownership to us.
@@ -44,6 +46,9 @@ class LibretroGlView(context: Context) : SurfaceView(context), SurfaceHolder.Cal
         check(thread == null) { "setRenderer called twice" }
         thread = RenderThread(renderer).also { it.start() }
     }
+
+    /** True when the caller is already the render thread, so queueing would self-deadlock. */
+    val isOnRenderThread: Boolean get() = Thread.currentThread() === thread
 
     fun requestRender() = thread?.requestRender() ?: Unit
 
@@ -93,8 +98,12 @@ class LibretroGlView(context: Context) : SurfaceView(context), SurfaceHolder.Cal
         private var display: EGLDisplay = EGL14.EGL_NO_DISPLAY
         private var config: EGLConfig? = null
         private var eglContext: EGLContext = EGL14.EGL_NO_CONTEXT
-        private var eglSurface: EGLSurface = EGL14.EGL_NO_SURFACE
+        // Read by onSurfaceLost on the main thread while it waits for teardown.
+        @Volatile private var eglSurface: EGLSurface = EGL14.EGL_NO_SURFACE
         private var surfaceCreatedSent = false
+        // GLSurfaceView guarantees onSurfaceChanged precedes the first onDrawFrame, and
+        // renderers are written against that; hold rendering until it has been delivered.
+        private var surfaceChangedSent = false
 
         fun requestRender() = synchronized(lock) {
             renderRequested = true
@@ -128,9 +137,17 @@ class LibretroGlView(context: Context) : SurfaceView(context), SurfaceHolder.Cal
             surfaceLost = true
             lock.notifyAll()
             // The EGL surface must be gone before the Android surface is, or the driver is left
-            // holding a dead window.
+            // holding a dead window. Bounded, because this runs on the main thread and the GL
+            // thread can be an arbitrarily long way into a core frame: a stuck core must not
+            // turn into an ANR.
+            val deadline = System.nanoTime() + SURFACE_RELEASE_TIMEOUT_MS * 1_000_000L
             while (eglSurface != EGL14.EGL_NO_SURFACE && !quit) {
-                try { lock.wait(500L) } catch (_: InterruptedException) { return }
+                val remainingMs = (deadline - System.nanoTime()) / 1_000_000L
+                if (remainingMs <= 0) {
+                    logger?.invoke("timed out waiting for EGL surface release")
+                    break
+                }
+                try { lock.wait(remainingMs) } catch (_: InterruptedException) { return }
             }
         }
 
@@ -139,7 +156,10 @@ class LibretroGlView(context: Context) : SurfaceView(context), SurfaceHolder.Cal
                 quit = true
                 lock.notifyAll()
             }
-            try { join(1000L) } catch (_: InterruptedException) {}
+            // Longer than a single core frame, so teardown does not race a GL thread still
+            // inside retro_run and then tear EGL down underneath it.
+            try { join(SHUTDOWN_JOIN_TIMEOUT_MS) } catch (_: InterruptedException) {}
+            if (isAlive) logger?.invoke("GL thread still running after shutdown timeout")
         }
 
         override fun run() {
@@ -160,28 +180,36 @@ class LibretroGlView(context: Context) : SurfaceView(context), SurfaceHolder.Cal
                 var pending: Runnable? = null
                 var doRender = false
                 var doResize = false
+                var width = 0
+                var height = 0
 
                 synchronized(lock) {
                     while (true) {
                         if (quit) return
-                        if (surfaceLost && eglSurface != EGL14.EGL_NO_SURFACE) {
-                            releaseSurface()
-                            lock.notifyAll()
-                        }
+                        if (surfaceLost && eglSurface != EGL14.EGL_NO_SURFACE) releaseSurface()
                         if (events.isNotEmpty()) { pending = events.poll(); break }
                         val ready = holderRef != null && !surfaceLost && !paused
                         if (ready && sizeChanged) { doResize = true; sizeChanged = false; break }
-                        if (ready && renderRequested) { renderRequested = false; doRender = true; break }
+                        if (ready && renderRequested && surfaceChangedSent) {
+                            renderRequested = false; doRender = true; break
+                        }
                         try { lock.wait() } catch (_: InterruptedException) { return }
                     }
+                    width = surfaceWidth
+                    height = surfaceHeight
                 }
 
+                // Before running queued work, not after: queued events do GL (save state
+                // thumbnails go through here) and would otherwise run with no context current
+                // after a surface loss. Events still run when GL is unavailable so callers
+                // waiting on a latch are not left to time out.
+                val haveGl = ensureContextAndSurface()
                 pending?.let { it.run(); continue }
-
-                if (!ensureContextAndSurface()) continue
+                if (!haveGl) continue
 
                 if (doResize) {
-                    renderer.onSurfaceChanged(null, surfaceWidth, surfaceHeight)
+                    renderer.onSurfaceChanged(null, width, height)
+                    synchronized(lock) { surfaceChangedSent = true }
                 }
                 if (doRender) {
                     renderer.onDrawFrame(null)
@@ -226,6 +254,7 @@ class LibretroGlView(context: Context) : SurfaceView(context), SurfaceHolder.Cal
                     surfaceCreatedSent = true
                     renderer.onSurfaceCreated(null, null)
                 }
+                // Re-deliver geometry for the new surface before anything draws against it.
                 synchronized(lock) { if (surfaceWidth > 0) sizeChanged = true }
             }
             return true
@@ -299,6 +328,8 @@ class LibretroGlView(context: Context) : SurfaceView(context), SurfaceHolder.Cal
             return true
         }
 
+        // Always notifies: onSurfaceLost blocks the main thread until this lands, and two of
+        // the call sites are outside the lock.
         private fun releaseSurface() {
             if (eglSurface == EGL14.EGL_NO_SURFACE) return
             EGL14.eglMakeCurrent(
@@ -306,6 +337,10 @@ class LibretroGlView(context: Context) : SurfaceView(context), SurfaceHolder.Cal
             )
             EGL14.eglDestroySurface(display, eglSurface)
             eglSurface = EGL14.EGL_NO_SURFACE
+            synchronized(lock) {
+                surfaceChangedSent = false
+                lock.notifyAll()
+            }
         }
 
         private fun releaseContext() {

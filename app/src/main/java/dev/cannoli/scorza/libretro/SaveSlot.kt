@@ -16,7 +16,7 @@ class SaveSlotManager(private val stateBasePath: String) {
 
     // Set by the activity for HW render cores, where the frame is on the GPU and copyLastFrame
     // has nothing to hand back. Returns null if the GL thread cannot be reached in time.
-    var hwFrameCapture: ((Int, Int) -> IntArray?)? = null
+    var hwFrameCapture: ((Int, Int) -> Bitmap?)? = null
 
     val slots = SharedSlotManager().slots
 
@@ -146,9 +146,16 @@ class SaveSlotManager(private val stateBasePath: String) {
         val h = runner.getFrameHeight()
         if (w == 0 || h == 0) return
 
-        val pixels = hwFrameCapture?.takeIf { runner.isHwRender() }?.invoke(w, h)
-            ?: softwareFramePixels(runner, w, h)
-        writeScreenshot(runner, pixels, w, h, path)
+        val bitmap = if (runner.isHwRender()) {
+            // No software fallback here: a hardware frame never reaches g_frame_buf, so the
+            // software path would write a thumbnail of uninitialised memory.
+            hwFrameCapture?.invoke(w, h) ?: return
+        } else {
+            Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888).apply {
+                setPixels(softwareFramePixels(runner, w, h), 0, w, 0, 0, w, h)
+            }
+        }
+        writeScreenshot(runner, bitmap, path)
     }
 
     private fun softwareFramePixels(runner: LibretroRunner, w: Int, h: Int): IntArray {
@@ -182,19 +189,16 @@ class SaveSlotManager(private val stateBasePath: String) {
 
     private fun writeScreenshot(
         runner: LibretroRunner,
-        pixels: IntArray,
-        w: Int,
-        h: Int,
+        source: Bitmap,
         path: String,
     ) {
-        var bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-        bitmap.setPixels(pixels, 0, w, 0, 0, w, h)
+        var bitmap = source
 
         val rotation = runner.getRotation()
         if (rotation != 0) {
             val matrix = android.graphics.Matrix()
             matrix.postRotate(-rotation * 90f)
-            val rotated = Bitmap.createBitmap(bitmap, 0, 0, w, h, matrix, false)
+            val rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, false)
             bitmap.recycle()
             bitmap = rotated
         }

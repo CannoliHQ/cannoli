@@ -135,6 +135,9 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
     // issued outside the render loop.
     private inline fun <T> runOnGlThread(timeoutMs: Long, default: T, crossinline block: () -> T): T {
         val view = glSurfaceView ?: return default
+        // Nested calls happen: a state save runs here and its thumbnail capture asks again.
+        // Queueing from the render thread would wait on a thread that is busy waiting.
+        if (view.isOnRenderThread) return block()
         val latch = CountDownLatch(1)
         var result: T = default
         view.queueEvent {
@@ -433,6 +436,23 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
         // Substrings (lowercase) matched against "<key> <desc>" for cores declaring hw_render=true.
         // These options only take effect with a hardware GL/Vulkan context, which the built-in
         // runner does not provide, so we hide them rather than let users toggle no-ops.
+        // Substrings (lowercase) in a core option value or label that name a graphics API the
+        // built-in runner cannot provide.
+        private val UNSUPPORTED_API_VALUES = listOf("vulkan", "d3d11", "direct3d")
+
+        // Cores permitted to negotiate a GPU context. Everything absent from this set is
+        // declined and falls back to its software renderer, exactly as it behaved before
+        // hardware rendering existed. Only add a core after its save states are verified.
+        // ~5s at 60fps. Long enough for a slow core to finish coming up, short enough that a
+        // genuinely bad state stops retrying rather than hammering unserialize forever.
+        private const val RESUME_MAX_FRAMES = 300
+
+        private val HW_RENDER_ALLOWED_CORES = setOf(
+            "flycast_libretro",
+            "mupen64plus_next_gles3_libretro",
+        )
+
+
         private val HW_RENDER_GATED_PATTERNS = listOf(
             "resolution",
             "internal_res",
@@ -776,6 +796,12 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
             val coreIdForHw = File(corePath).name.removeSuffix("_android.so")
             coreRequiresHwRender = coreInfoRepoForHw.requiresHwRender(coreIdForHw)
             if (coreRequiresHwRender) sessionLog.log("core declares hw_render=true")
+            // Opt-in. Cores that shipped on a software path stay on it: turning them hardware
+            // changes save state behaviour, which regressed PS1 resume. Only the platforms
+            // hardware rendering newly made possible are enabled.
+            val hwAllowed = coreIdForHw in HW_RENDER_ALLOWED_CORES
+            runner.setHwRenderAllowed(hwAllowed)
+            sessionLog.log("hw render allowed=$hwAllowed for $coreIdForHw")
             val coreBaseName = File(corePath).nameWithoutExtension
             gameBaseName = if (romPath.isNotEmpty()) File(romPath).nameWithoutExtension else ""
             overrideManager = OverrideManager(cannoliRoot, platformTag, gameBaseName, coreBaseName)
@@ -809,13 +835,6 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
             sessionLog.log("Memory descriptors: count=${memDescs.size}")
             for (line in memDescs) sessionLog.log("  mmap: $line")
             if (sramPath.isNotEmpty() && File(sramPath).exists()) runner.loadSRAM(sramPath)
-            if (resumeSlot >= 0) {
-                val slot = slotManager.slots.getOrNull(resumeSlot)
-                if (slot != null && slotManager.stateExists(slot)) {
-                    slotManager.loadState(runner, slot)
-                    withContext(kotlinx.coroutines.Dispatchers.Main) { selectedSlotIndex = resumeSlot }
-                }
-            }
             withContext(kotlinx.coroutines.Dispatchers.Main) {
                 val (coreName, coreVersion) = runner.getSystemInfo()
                 coreInfoText = if (coreVersion.isNotEmpty()) "$coreName $coreVersion" else coreName
@@ -871,7 +890,31 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
                 // sees the intermediate state. Remove when FBNeo fixes this upstream.
                 var verticalReinitPhase = 0
                 val verticalToggle = prepareVerticalModeReinit()
+                // Resume runs here rather than during load: a core only brings its renderer up
+                // on the first retro_run, so unserialising before that restores video state
+                // onto nothing and the picture stays black while audio runs.
+                var pendingResume = if (resumeSlot >= 0) {
+                    slotManager.slots.getOrNull(resumeSlot)?.takeIf { slotManager.stateExists(it) }
+                } else null
+                if (resumeSlot >= 0 && pendingResume == null) {
+                    sessionLog.log("resume: slot $resumeSlot has no state")
+                }
+                var resumeAttempts = 0
                 glesBackend.onFrameRendered = {
+                    pendingResume?.let { slot ->
+                        // Some cores reject unserialize until they have run for a while:
+                        // mupen64plus refuses on the first frames but accepts the same state
+                        // moments later. Retry per frame rather than pick a magic delay.
+                        resumeAttempts++
+                        if (slotManager.loadState(runner, slot)) {
+                            pendingResume = null
+                            sessionLog.log("resume: slot=${slot.label} loaded after $resumeAttempts frame(s)")
+                            runOnUiThread { selectedSlotIndex = resumeSlot }
+                        } else if (resumeAttempts >= RESUME_MAX_FRAMES) {
+                            pendingResume = null
+                            sessionLog.logError("resume: slot=${slot.label} refused after $resumeAttempts frames")
+                        }
+                    }
                     if (startupCountdown > 0 && --startupCountdown == 0) {
                         runner.setAudioMuted(false)
                         sessionLog.log("startup reveal: unmute and reveal")
@@ -887,7 +930,7 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
                 }
                 renderer = glesBackend
                 slotManager.hwFrameCapture = { w, h ->
-                    runOnGlThread(300L, null) { glesBackend.readHwFramePixels(w, h) }
+                    runOnGlThread(300L, null) { glesBackend.readHwFrame(w, h) }
                 }
                 pushShaderParamsToRenderer()
 
@@ -958,6 +1001,7 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
                 gameView = glSurfaceView
                 startVsyncPacer()
                 sessionLog.log("renderer initialized: ${renderer.backendName}")
+
 
                 loading = false
                 sessionLog.log("render loop starting")
@@ -2432,10 +2476,7 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
 
     private fun loadVisibleCoreOptions(): List<LibretroRunner.CoreOption> {
         val all = runner.getCoreOptions()
-        // Internal resolution, MSAA and PGXP only no-op when a core that wants a GPU context
-        // did not get one. Once HW render is actually live these take effect, so the filter
-        // now keys off the negotiated result rather than the core_info declaration.
-        if (!coreRequiresHwRender || runner.isHwRender()) return all
+        if (!coreRequiresHwRender) return all
         return all.filterNot { isHwRenderGatedOption(it) }
     }
 
@@ -2444,11 +2485,28 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
         return HW_RENDER_GATED_PATTERNS.any { it in haystack }
     }
 
+    // The runner only ever provides a GLES context, so a value naming another graphics API
+    // cannot load: picking one fails retro_load_game with no explanation. mupen64plus's
+    // parallel RDP plugin is the case that bites, since its name does not say Vulkan.
+    private fun selectableValues(
+        opt: LibretroRunner.CoreOption
+    ): List<LibretroRunner.CoreOptionValue> {
+        val filtered = opt.values.filterNot { v ->
+            val label = (v.value + " " + v.label).lowercase()
+            UNSUPPORTED_API_VALUES.any { it in label } ||
+                (opt.key.contains("rdp-plugin") && v.value.equals("parallel", ignoreCase = true))
+        }
+        // Never strip everything, and never strip whatever is currently applied.
+        return if (filtered.isEmpty()) opt.values
+        else filtered + opt.values.filter { it.value == opt.selected && it !in filtered }
+    }
+
     private fun cycleEmulatorValue(options: List<LibretroRunner.CoreOption>, index: Int, direction: Int) {
         val opt = options.getOrNull(index) ?: return
-        if (opt.values.isEmpty()) return
-        val curIdx = opt.values.indexOfFirst { it.value == opt.selected }.coerceAtLeast(0)
-        val newVal = opt.values[(curIdx + direction + opt.values.size) % opt.values.size]
+        val values = selectableValues(opt)
+        if (values.isEmpty()) return
+        val curIdx = values.indexOfFirst { it.value == opt.selected }.coerceAtLeast(0)
+        val newVal = values[(curIdx + direction + values.size) % values.size]
         runner.setCoreOption(opt.key, newVal.value)
         coreOptions = loadVisibleCoreOptions()
     }
@@ -2865,7 +2923,6 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
 
     private fun quit() {
         isRunning = false
-        if (cannoliRoot.isNotEmpty()) dev.cannoli.scorza.config.CannoliPaths(cannoliRoot).quickResumeFile.delete()
         cleanup()
         finish()
     }
@@ -2898,11 +2955,6 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
             //     try { File("$stateBasePath.auto.ra").writeBytes(data) } catch (_: Exception) {}
             // }
             autoSavedOnStop = true
-            if (cannoliRoot.isNotEmpty() && romPath.isNotEmpty()) {
-                val f = dev.cannoli.scorza.config.CannoliPaths(cannoliRoot).quickResumeFile
-                f.parentFile?.mkdirs()
-                f.writeText("$romPath\n$platformTag")
-            }
         }
     }
 
@@ -2910,7 +2962,6 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
     override fun onResume() {
         super.onResume(); overridePendingTransition(0, 0); glSurfaceView?.onResume(); startVsyncPacer(); goFullscreen()
         if (::sessionLog.isInitialized) sessionLog.log("onResume")
-        if (autoSavedOnStop && cannoliRoot.isNotEmpty()) dev.cannoli.scorza.config.CannoliPaths(cannoliRoot).quickResumeFile.delete()
         autoSavedOnStop = false
         if (::inputDispatcher.isInitialized) {
             wireDispatcherForIGM()
