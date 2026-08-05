@@ -392,6 +392,7 @@
     <!-- Shown in place of an emulator name when a platform has no emulator mapped yet. -->
     <string name="value_needs_setup">Configuration nécessaire</string>
     <string name="emulator_platform_setting">Paramètre de la plateforme</string>
+    <string name="emulator_platform_default">Plateforme par défaut</string>
     <!-- %1$s = the emulator name the platform is mapped to. -->
     <string name="emulator_platform_setting_named">Paramètre de la plateforme (%1$s)</string>
     <string name="rename_error_directory">Impossible de renommer le dossier</string>
@@ -422,6 +423,7 @@
     <string name="housekeeping_refresh_title">Actualisation de la bibliothèque</string>
     <string name="update_download_error_server">Échec du téléchargement. Le serveur a renvoyé une erreur. Réessayez plus tard.</string>
     <string name="update_download_error_network">Le téléchargement a échoué. Vérifiez votre connexion et réessayez.</string>
+    <string name="update_download_error_space">Pas assez de stockage. La mise à jour a besoin de %1$s gratuitement, et %2$s est disponible.</string>
     <string name="launch_error_resolve_file">Impossible de résoudre le fichier de lancement</string>
     <string name="launch_error_extract">Impossible d\'extraire l\'archive</string>
     <string name="launch_error_generic">Impossible de lancer le jeu</string>
@@ -601,6 +603,11 @@
     <string name="ra_load_offline_pending">RA: Hors ligne (données de jeu indisponibles)</string>
     <!-- Credits -->
     <string name="credits_title">Crédits et licences</string>
+    <string name="credits_cores">Noyaux d\'émulateur</string>
+    <string name="credits_shaders">Shaders</string>
+    <string name="credits_fonts">Polices</string>
+    <string name="credits_libraries">Bibliothèques</string>
+    <string name="credits_localization">Contributeurs à la traduction</string>
     <!-- Core picker / nav -->
     <string name="no_compatible_cores">Aucun noyau compatible trouvé</string>
     <string name="no_collections">Aucune collection</string>
@@ -672,6 +679,7 @@
     <string name="value_no_firmware">Aucun firmware n\'est requis pour ce noyau.</string>
     <string name="mapping_action_bios">Fichiers BIOS</string>
     <string name="mapping_action_overrides">Surcharge par jeu</string>
+    <string name="mapping_action_reset">Rétablir par défaut</string>
     <!-- %d = number of required BIOS files missing. -->
     <string name="mapping_required_missing">%d requis manquant</string>
     <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
@@ -679,6 +687,7 @@
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">Mapping %s</string>
     <!-- Screen title for the per-game emulator picker. %s = game name. -->
+    <string name="title_game_mapping">Émulateur %s</string>
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_bios">BIOS %s</string>
     <string name="filter_all">TOUT</string>
@@ -724,6 +733,7 @@
     <string name="value_no_cores_found">Aucun Noyau Trouvé</string>
     <string name="label_clear_override">EFFACER</string>
     <!-- %1$s = platform name. -->
+    <string name="dialog_reset_platform_confirm">Réinitialiser %1$s? Votre choix est remplacé par la valeur par défaut de Cannoli, ou effacé s\'il n\'y en a pas.</string>
     <!-- RA achievement preload. %1$s = game name. -->
     <string name="ra_preload_progress">Préchargement de %1$s</string>
     <string name="ra_preload_none">Aucun succès trouvé pour ce jeu</string>
