@@ -116,6 +116,11 @@ class LaunchManager(
             put("sort_savestates_enable", "false")
             put("sort_savestates_by_content_enable", "false")
             put("state_slot", raSlot.toString())
+            // RetroArch's own auto-save is how ricotta saves on quit; the built-in runner does the
+            // equivalent explicitly in LibretroActivity. Both write the Auto slot, so both gate on
+            // the same setting. This lives here, not in the base config, because the base is
+            // hash-gated and would not pick up a toggle until CONFIG_VERSION moved.
+            put("savestate_auto_save", if (settings.alwaysSaveOnQuit) "true" else "false")
             if (resume) {
                 put("savestate_auto_load", "true")
             }
@@ -151,7 +156,6 @@ class LaunchManager(
             put("savestate_file_compression", "false")
             put("savestate_block_format", "false")
             put("savestate_thumbnail_enable", "true")
-            put("savestate_auto_save", "true")
             put("config_save_on_exit", "false")
             put("video_font_enable", "false")
             put("auto_overrides_enable", "true")
