@@ -45,7 +45,7 @@ class EmulatorMappingBuilder @Inject constructor(
             context.packageManager,
             installedCoreService.configuredCores(),
             LaunchManager.extractBundledCores(context),
-            installedCoreService.configuredUnresponsive(),
+            installedCoreService.configuredUnreportable(),
         )
         // MAME and FBN are both named Arcade; tag the name so the two rows are tellable apart.
         val shared = entries.groupingBy { it.platformName }.eachCount().filterValues { it > 1 }.keys
@@ -176,7 +176,7 @@ class EmulatorMappingBuilder @Inject constructor(
         if (romId != null) {
             val platformLabel = platformConfig.detailedMappingFor(
                 tag, context.packageManager, installedRaCores, bundled,
-                installedCoreService.configuredUnresponsive(), raLabel,
+                installedCoreService.configuredUnreportable(), raLabel,
             ).coreDisplayName
             val label = if (platformLabel.isNotEmpty()) {
                 context.getString(dev.cannoli.scorza.R.string.emulator_platform_setting_named, platformLabel)

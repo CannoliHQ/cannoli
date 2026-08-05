@@ -17,6 +17,8 @@ import kotlin.coroutines.resume
 const val ACTION_QUERY_INSTALLED_CORES = "com.retroarch.QUERY_INSTALLED_CORES"
 const val ACTION_INSTALLED_CORES_RESULT = "com.retroarch.INSTALLED_CORES_RESULT"
 
+enum class CoreReporting { REPORTS, UNSUPPORTED, SILENT }
+
 // Resolving the receiver answers the real question. Version numbers cannot: every nightly
 // reports the same versionName, and the Play Store flavor computes versionCode by an
 // unrelated formula that would permanently fail a date comparison.
@@ -41,6 +43,10 @@ class InstalledCoreService @Inject constructor(
         private set
 
     @Volatile
+    var unsupportedPackages: Set<String> = emptySet()
+        private set
+
+    @Volatile
     var cacheReady: Boolean = false
         private set
 
@@ -51,7 +57,14 @@ class InstalledCoreService @Inject constructor(
         synchronized(this) { markedSinceQuery.clear() }
         val answered = mutableMapOf<String, Set<String>>()
         val silent = mutableSetOf<String>()
+        val unsupported = mutableSetOf<String>()
         for (pkg in discoverRaPackages()) {
+            // No receiver means no reply is coming, so paying the timeout would only stall
+            // the scan by three seconds per package to learn nothing.
+            if (!context.packageManager.hasCoreQueryReceiver(pkg)) {
+                unsupported.add(pkg)
+                continue
+            }
             // An empty reply is not the same as no reply. A freshly installed RicottaArch has
             // no cores by design and genuinely answers zero; treating that as unresponsive made
             // the shipped default package skip the missing-core check and report every platform
@@ -59,12 +72,16 @@ class InstalledCoreService @Inject constructor(
             val cores = queryPackage(pkg)
             if (cores == null) silent.add(pkg) else answered[pkg] = cores
         }
-        publishQueryResult(answered, silent)
+        publishQueryResult(answered, silent, unsupported)
     }
 
     // Synchronized on the same monitor as markInstalled so the two writers never interleave.
     @Synchronized
-    private fun publishQueryResult(answered: Map<String, Set<String>>, silent: Set<String>) {
+    private fun publishQueryResult(
+        answered: Map<String, Set<String>>,
+        silent: Set<String>,
+        unsupported: Set<String>,
+    ) {
         val merged = HashMap<String, Set<String>>()
         // A package that did not answer keeps whatever was cached, since there is no fresh
         // information about it.
@@ -77,6 +94,7 @@ class InstalledCoreService @Inject constructor(
         markedSinceQuery.clear()
         installedCores = merged
         unresponsivePackages = silent
+        unsupportedPackages = unsupported
         cacheReady = true
     }
 
@@ -139,9 +157,19 @@ class InstalledCoreService @Inject constructor(
         return installedCores.filterKeys { it == pkg }
     }
 
-    fun configuredUnresponsive(): Set<String> {
+    fun reportingFor(pkg: String): CoreReporting = when (pkg) {
+        in unsupportedPackages -> CoreReporting.UNSUPPORTED
+        in unresponsivePackages -> CoreReporting.SILENT
+        else -> CoreReporting.REPORTS
+    }
+
+    fun canReport(pkg: String): Boolean = reportingFor(pkg) == CoreReporting.REPORTS
+
+    fun configuredReporting(): CoreReporting = reportingFor(settings.retroArchPackage)
+
+    fun configuredUnreportable(): Set<String> {
         val pkg = settings.retroArchPackage
-        return if (pkg in unresponsivePackages) setOf(pkg) else emptySet()
+        return if (canReport(pkg)) emptySet() else setOf(pkg)
     }
 
     companion object {

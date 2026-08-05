@@ -28,12 +28,13 @@ class InstalledCorePublishTest {
         svc: InstalledCoreService,
         answered: Map<String, Set<String>>,
         silent: Set<String> = emptySet(),
+        unsupported: Set<String> = emptySet(),
     ) {
         val m = InstalledCoreService::class.java.getDeclaredMethod(
-            "publishQueryResult", Map::class.java, Set::class.java,
+            "publishQueryResult", Map::class.java, Set::class.java, Set::class.java,
         )
         m.isAccessible = true
-        m.invoke(svc, answered, silent)
+        m.invoke(svc, answered, silent, unsupported)
     }
 
     @Test fun `a package that answers zero cores is installed, not unresponsive`() {
@@ -82,7 +83,47 @@ class InstalledCorePublishTest {
         assertFalse(RICOTTA in svc.unresponsivePackages)
     }
 
+    @Test fun `a package with no receiver is unsupported, not silent`() {
+        val svc = service()
+        publish(svc, answered = emptyMap(), unsupported = setOf(STOCK))
+        assertTrue(STOCK in svc.unsupportedPackages)
+        assertFalse("no receiver is a different fact from no answer", STOCK in svc.unresponsivePackages)
+        assertEquals(CoreReporting.UNSUPPORTED, svc.reportingFor(STOCK))
+    }
+
+    @Test fun `a silent package reports as silent`() {
+        val svc = service()
+        publish(svc, answered = emptyMap(), silent = setOf(STOCK))
+        assertEquals(CoreReporting.SILENT, svc.reportingFor(STOCK))
+    }
+
+    @Test fun `an answering package reports as reporting`() {
+        val svc = service()
+        publish(svc, answered = mapOf(STOCK to setOf("a_libretro")))
+        assertEquals(CoreReporting.REPORTS, svc.reportingFor(STOCK))
+    }
+
+    @Test fun `an unqueried package is assumed to report so no notice flashes before the first scan`() {
+        assertEquals(CoreReporting.REPORTS, service().reportingFor(STOCK))
+    }
+
+    @Test fun `canReport is false for both ways of not knowing`() {
+        val svc = service()
+        publish(svc, answered = emptyMap(), silent = setOf(RICOTTA), unsupported = setOf(STOCK))
+        assertFalse(svc.canReport(STOCK))
+        assertFalse(svc.canReport(RICOTTA))
+    }
+
+    @Test fun `an unsupported package that gains the receiver stops being unsupported`() {
+        val svc = service()
+        publish(svc, answered = emptyMap(), unsupported = setOf(STOCK))
+        publish(svc, answered = mapOf(STOCK to setOf("a_libretro")))
+        assertFalse(STOCK in svc.unsupportedPackages)
+        assertEquals(CoreReporting.REPORTS, svc.reportingFor(STOCK))
+    }
+
     private companion object {
         const val RICOTTA = "dev.cannoli.ricotta.aarch64"
+        const val STOCK = "com.retroarch.aarch64"
     }
 }
