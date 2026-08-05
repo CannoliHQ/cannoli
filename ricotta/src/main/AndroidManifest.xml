@@ -7,4 +7,27 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         tools:node="remove"/>
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
+
+    <application>
+        <activity
+            android:name="com.retroarch.browser.mainmenu.MainMenuActivity"
+            tools:node="merge">
+            <intent-filter tools:node="removeAll"/>
+        </activity>
+
+        <activity
+            android:name="dev.cannoli.ricotta.RicottaLaunchActivity"
+            android:exported="false"
+            android:process=":retroarch"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:noHistory="true" />
+
+        <activity
+            android:name="com.retroarch.browser.retroactivity.RetroActivityFuture"
+            android:exported="false"
+            android:process=":retroarch"
+            tools:node="merge"
+            tools:replace="android:exported" />
+    </application>
 </manifest>

@@ -114,6 +114,7 @@ android {
 dependencies {
     implementation(project(":cannoli-igm"))
     implementation(project(":cannoli-core"))
+    implementation(project(":ricotta"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.lifecycle.runtime.ktx)

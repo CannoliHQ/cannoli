@@ -30,6 +30,7 @@ android {
 
     sourceSets {
         getByName("main") {
+            manifest.srcFile("$phoenixDir/AndroidManifest.xml")
             java.srcDirs(
                 "$phoenixDir/src",
                 "$phoenixCommonDir/src",
@@ -39,6 +40,12 @@ android {
             res.srcDirs("$phoenixDir/res", "$phoenixCommonDir/res")
             assets.srcDirs("$phoenixDir/assets")
             jniLibs.srcDir("$phoenixCommonDir/libs")
+        }
+        getByName("debug") {
+            manifest.srcFile("src/main/AndroidManifest.xml")
+        }
+        getByName("release") {
+            manifest.srcFile("src/main/AndroidManifest.xml")
         }
     }
 
