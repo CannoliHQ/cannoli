@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import coil.compose.AsyncImage
+import dev.cannoli.ui.theme.CannoliIcons
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.Radius
 import dev.cannoli.scorza.romm.LocalState
@@ -39,8 +40,6 @@ import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.components.listTitleSpacing
 import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.screenInsets
-
-private const val ICON_VARIANTS = "\uDB86\uDC92" // mdi-card-multiple-outline (U+F1892)
 
 @Composable
 fun RommGameListScreen(
@@ -127,7 +126,7 @@ fun RommGameListScreen(
                                 fontSize = listFontSize,
                                 lineHeight = listLineHeight,
                                 verticalPadding = listVerticalPadding,
-                                valueIcon = if (folded) ICON_VARIANTS else null,
+                                valueIcon = if (folded) CannoliIcons.Variants.glyph else null,
                                 dotIndicator = if (row.anyPresent) true else null,
                                 checkState = if (checkable) row.game.id in checkedIds else null,
                             )

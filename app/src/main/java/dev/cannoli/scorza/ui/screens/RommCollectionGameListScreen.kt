@@ -38,10 +38,10 @@ import dev.cannoli.ui.components.footerReservation
 import dev.cannoli.ui.components.listTitleSpacing
 import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.screenInsets
+import dev.cannoli.ui.theme.CannoliIcons
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.Radius
 
-private const val ICON_VARIANTS = "󱢒" // mdi-card-multiple-outline (U+F1892)
 
 @Composable
 fun RommCollectionGameListScreen(
@@ -121,7 +121,7 @@ fun RommCollectionGameListScreen(
                                     fontSize = listFontSize,
                                     lineHeight = listLineHeight,
                                     verticalPadding = listVerticalPadding,
-                                    valueIcon = if (folded) ICON_VARIANTS else null,
+                                    valueIcon = if (folded) CannoliIcons.Variants.glyph else null,
                                     dotIndicator = if (row.anyPresent) true else null,
                                     checkState = if (checkable) row.game.id in checkedIds else null,
                                 )

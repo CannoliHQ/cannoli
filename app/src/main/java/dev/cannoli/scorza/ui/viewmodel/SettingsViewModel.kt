@@ -940,7 +940,8 @@ class SettingsViewModel @Inject constructor(
             ))
         }
         "debug" -> listOf(
-            SettingsItem("audit_emulator_intents", R.string.setting_audit_emulator_intents, isEditable = true)
+            SettingsItem("audit_emulator_intents", R.string.setting_audit_emulator_intents, isEditable = true),
+            SettingsItem("icon_gallery", R.string.setting_icon_gallery, isEditable = true),
         )
         else -> emptyList()
     }

@@ -38,6 +38,7 @@ import dev.cannoli.scorza.romm.RommArtType
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.DPAD_HORIZONTAL
 import dev.cannoli.ui.START_GLYPH
+import dev.cannoli.ui.theme.CannoliIcons
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliFont
 import dev.cannoli.ui.theme.LocalCannoliIconFont
@@ -72,11 +73,6 @@ import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.screenPadding
 import dev.cannoli.ui.theme.Spacing
 
-private const val ICON_PRIMARY = "\u2605"
-private const val ICON_CHECK_CIRCLE = "\uF058"
-private const val ICON_SYNC_DOWNLOAD = "\uF063"
-private const val ICON_SYNC_UPLOAD = "\uF062"
-private const val ICON_SYNC_ALERT = "\uF071"
 
 @Composable
 fun DialogOverlay(
@@ -371,7 +367,7 @@ fun DialogOverlay(
             ) {
                 List(items = dialogState.members, selectedIndex = dialogState.selectedIndex, itemHeight = itemHeight) { _, entry, isSelected ->
                     PillRowKeyValue(
-                        label = if (entry.isPrimary) "$ICON_PRIMARY ${entry.label}" else entry.label,
+                        label = if (entry.isPrimary) "${CannoliIcons.Primary.glyph} ${entry.label}" else entry.label,
                         value = dev.cannoli.scorza.ui.screens.RommGameDetailLayout.formatBytes(entry.game.sizeBytes),
                         isSelected = isSelected,
                         fontSize = listFontSize,
@@ -1013,9 +1009,9 @@ private fun SyncHistoryRowItem(row: SyncHistoryRow, isSelected: Boolean, fontSiz
     val textColor = if (isSelected) colors.highlightText else colors.text
     val muted = textColor.copy(alpha = 0.55f)
     val glyph = when (row.direction) {
-        SyncDirection.UPLOAD -> ICON_SYNC_UPLOAD
-        SyncDirection.DOWNLOAD -> ICON_SYNC_DOWNLOAD
-        SyncDirection.CONFLICT, SyncDirection.ERROR -> ICON_SYNC_ALERT
+        SyncDirection.UPLOAD -> CannoliIcons.SyncUpload.glyph
+        SyncDirection.DOWNLOAD -> CannoliIcons.SyncDownload.glyph
+        SyncDirection.CONFLICT, SyncDirection.ERROR -> CannoliIcons.SyncAlert.glyph
     }
     dev.cannoli.ui.components.PillRow(
         isSelected = isSelected,
@@ -1105,7 +1101,7 @@ private fun DownloadRow(item: RommDownloadItem, isSelected: Boolean, fontSize: T
         verticalPadding = verticalPadding
     ) {
         if (item.status == DownloadStatus.Done) {
-            Text(ICON_CHECK_CIRCLE, color = text, fontFamily = LocalCannoliIconFont.current, fontSize = (fontSize.value * 0.9f).sp)
+            Text(CannoliIcons.CheckCircle.glyph, color = text, fontFamily = LocalCannoliIconFont.current, fontSize = (fontSize.value * 0.9f).sp, lineHeight = lineHeight)
         } else {
             val right = when (val s = item.status) {
                 is DownloadStatus.Downloading ->
