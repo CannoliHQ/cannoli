@@ -219,24 +219,30 @@ class IGMOverlay(
         }
         composeView = view
 
-        // A panel window rather than a Dialog, added once and never removed.
-        //
-        // A Dialog detaches its content view on dismiss, which disposes the composition, so every
-        // open rebuilt the whole menu tree. Retaining the composition instead is not a fix either:
-        // the recomposer belongs to the window, so a retained composition on a dismissed Dialog
-        // stops recomposing and the selection highlight freezes. Keeping one window attached for
-        // the session avoids both, and OsdOverlay already draws over the same GL surface this way.
-        //
-        // Deferred until the activity window is attached so the token is available.
-        activity.window.decorView.post {
-            runCatching { activity.windowManager.addView(view, panelParams(focusable = false)) }
-            // Composition already happens here: AbstractComposeView creates it in
-            // onAttachedToWindow, not at layout, so visibility does not defer it. What the first
-            // open still pays for is the first draw, rasterizing glyphs for the custom font and
-            // allocating the window's surface, and a view that is never drawn cannot pay that
-            // early. GONE rather than INVISIBLE so there is no layout pass during gameplay.
-            view.visibility = View.GONE
-        }
+        // The window itself is added on first open, by attachIfNeeded.
+    }
+
+    private var attached = false
+
+    /**
+     * A panel window rather than a Dialog, added once and kept for the session.
+     *
+     * A Dialog detaches its content view on dismiss, which disposes the composition, so every open
+     * rebuilt the whole menu tree. Retaining the composition instead is not a fix either: the
+     * recomposer belongs to the window, so a retained composition on a dismissed Dialog stops
+     * recomposing and the selection highlight freezes. One window kept for the session avoids both.
+     *
+     * Added here rather than at startup because a panel window whose root view is GONE never draws,
+     * and so never reports drawn. The transition into the game waited out its full five second
+     * timeout on it, with the emulator already running and audible behind a screen still showing
+     * the launcher. Attaching on first open keeps that off the launch path entirely.
+     */
+    private fun attachIfNeeded(view: ComposeView): Boolean {
+        if (attached) return true
+        attached = runCatching {
+            activity.windowManager.addView(view, panelParams(focusable = true))
+        }.isSuccess
+        return attached
     }
 
     /**
@@ -274,7 +280,8 @@ class IGMOverlay(
     }
 
     fun onDestroy() {
-        composeView?.let { runCatching { activity.windowManager.removeView(it) } }
+        if (attached) composeView?.let { runCatching { activity.windowManager.removeView(it) } }
+        attached = false
         lifecycleOwner.performDestroy()
         composeView = null
     }
@@ -295,6 +302,7 @@ class IGMOverlay(
         bridge.pause()
         bridge.setIGMVisible(true)
         composeView?.let { v ->
+            if (!attachIfNeeded(v)) return@let
             v.visibility = View.VISIBLE
             runCatching { activity.windowManager.updateViewLayout(v, panelParams(focusable = true)) }
             v.requestFocus()
@@ -322,6 +330,7 @@ class IGMOverlay(
         showing = false
         bridge.setIGMVisible(false)
         composeView?.let { v ->
+            if (!attached) return@let
             // Flags first, then hide: the window stops taking input before it stops drawing, so
             // no key can land on a menu that is on its way out.
             runCatching { activity.windowManager.updateViewLayout(v, panelParams(focusable = false)) }
