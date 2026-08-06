@@ -106,6 +106,17 @@ class EmulatorMappingBuilder @Inject constructor(
             }
         }
 
+        // Shared by emulatorSection and the synthesized-row fallback so both agree on when the
+        // RetroArch section carries a reporting notice.
+        fun retroArchNotice(): MappingItem.Notice? {
+            val noticeRes = when (raReporting) {
+                CoreReporting.UNSUPPORTED -> dev.cannoli.scorza.R.string.mapping_notice_cannot_report_cores
+                CoreReporting.SILENT -> dev.cannoli.scorza.R.string.mapping_notice_no_response
+                CoreReporting.REPORTS -> null
+            }
+            return noticeRes?.let { MappingItem.Notice(context.getString(it)) }
+        }
+
         fun emulatorSection(useShowAll: Boolean): List<MappingItem> {
             val section = mutableListOf<MappingItem>()
             for (source in sources) {
@@ -136,12 +147,7 @@ class EmulatorMappingBuilder @Inject constructor(
                 }
                 section.add(MappingItem.SectionHeader(header))
                 if (source == EmulatorSource.RetroArch) {
-                    val noticeRes = when (raReporting) {
-                        CoreReporting.UNSUPPORTED -> dev.cannoli.scorza.R.string.mapping_notice_cannot_report_cores
-                        CoreReporting.SILENT -> dev.cannoli.scorza.R.string.mapping_notice_no_response
-                        CoreReporting.REPORTS -> null
-                    }
-                    noticeRes?.let { section.add(MappingItem.Notice(context.getString(it))) }
+                    retroArchNotice()?.let { section.add(it) }
                 }
                 options.forEach {
                     section.add(MappingItem.EmulatorOption(
@@ -175,9 +181,14 @@ class EmulatorMappingBuilder @Inject constructor(
                 }
                 val at = section.indexOfFirst { it is MappingItem.SectionHeader && it.label == header }
                 if (at >= 0) {
-                    section.add(at + 1, row)
+                    // The notice, when present, must stay directly under its header.
+                    val insertAt = if (section.getOrNull(at + 1) is MappingItem.Notice) at + 2 else at + 1
+                    section.add(insertAt, row)
                 } else {
                     section.add(MappingItem.SectionHeader(header))
+                    if (current.source == EmulatorSource.RetroArch) {
+                        retroArchNotice()?.let { section.add(it) }
+                    }
                     section.add(row)
                 }
             }
@@ -333,7 +344,7 @@ class EmulatorMappingBuilder @Inject constructor(
             raPackage: String,
         ): Boolean =
             source == EmulatorSource.RetroArch &&
-                availability == CoreAvailability.UNAVAILABLE &&
+                availability != CoreAvailability.AVAILABLE &&
                 RetroArchLauncher.isRicotta(raPackage)
 
         // A synthesized current row can only claim UNAVAILABLE when the availability check

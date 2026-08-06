@@ -87,6 +87,7 @@ import dev.cannoli.ui.components.PillRowKeyValue
 import dev.cannoli.ui.components.PillRowText
 import dev.cannoli.ui.components.RommCacheSyncStatus
 import dev.cannoli.ui.components.SectionHeader
+import dev.cannoli.ui.components.SectionNotice
 import dev.cannoli.ui.components.StatusBar
 import dev.cannoli.ui.components.LocalListRhythm
 import dev.cannoli.ui.components.LocalUntitledListRhythm
@@ -749,8 +750,9 @@ fun AppNavGraph(
                                 lineHeight = listLineHeight,
                                 verticalPadding = listVerticalPadding,
                             )
-                            is dev.cannoli.scorza.ui.screens.MappingItem.Notice -> SectionHeader(
-                                text = "$ICON_NOT_INSTALLED  ${item.text}",
+                            is dev.cannoli.scorza.ui.screens.MappingItem.Notice -> SectionNotice(
+                                icon = ICON_NOT_INSTALLED,
+                                text = item.text,
                                 fontSize = listFontSize,
                                 lineHeight = listLineHeight,
                                 verticalPadding = listVerticalPadding,

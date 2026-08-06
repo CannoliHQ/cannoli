@@ -67,7 +67,6 @@ class PlatformConfigSourcesTest {
         assertEquals(CoreAvailability.AVAILABLE, reported!!.availability)
     }
 
-
     @Test fun `getFirmwareStatus reports presence per firmware entry against the bios dir`() {
         val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
         val coreInfo = CoreInfoRepository(ctx.assets)

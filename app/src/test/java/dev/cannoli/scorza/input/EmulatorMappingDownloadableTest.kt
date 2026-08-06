@@ -28,9 +28,17 @@ class EmulatorMappingDownloadableTest {
         assertFalse(EmulatorMappingBuilder.isDownloadable(EmulatorSource.Standalone, availability = CoreAvailability.UNAVAILABLE, raPackage = ricotta))
     }
 
-    @Test fun `an unknown core is not offered as a download`() {
-        assertFalse(EmulatorMappingBuilder.isDownloadable(
+    @Test fun `an unknown core on Ricotta is downloadable`() {
+        // SILENT RicottaArch reports UNKNOWN for every candidate core. Withholding the download
+        // here is what stranded a freshly installed RicottaArch that has never been launched.
+        assertTrue(EmulatorMappingBuilder.isDownloadable(
             EmulatorSource.RetroArch, CoreAvailability.UNKNOWN, ricotta,
+        ))
+    }
+
+    @Test fun `an unknown core on stock RetroArch is not downloadable`() {
+        assertFalse(EmulatorMappingBuilder.isDownloadable(
+            EmulatorSource.RetroArch, CoreAvailability.UNKNOWN, stock,
         ))
     }
 
@@ -59,8 +67,8 @@ class EmulatorMappingDownloadableTest {
         )
     }
 
-    @Test fun `an unknown current row is not offered as a download`() {
+    @Test fun `an unknown current row on Ricotta is downloadable`() {
         val availability = EmulatorMappingBuilder.currentRowAvailability(EmulatorSource.RetroArch, raCannotReport = true)
-        assertFalse(EmulatorMappingBuilder.isDownloadable(EmulatorSource.RetroArch, availability, ricotta))
+        assertTrue(EmulatorMappingBuilder.isDownloadable(EmulatorSource.RetroArch, availability, ricotta))
     }
 }

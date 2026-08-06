@@ -591,7 +591,6 @@ class PlatformConfig(
         }
     }
 
-
     // The curated name wins over the installed app's own label, which is often decorated
     // (MMJR2 ships as "Dolphin |MMJR2|") or inconsistent with how the app is known.
     private fun resolveAppLabel(pm: PackageManager, packageName: String): String {
