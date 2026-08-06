@@ -701,12 +701,14 @@ class InputRouter @Inject constructor(
     )
 
     private fun downloadCoreThenAssign(screen: LauncherScreen.PlatformMapping, coreId: String) {
-        val pkg = settings.retroArchPackage
+        // Downloads only ever target the embedded RetroArch: cores for a separately installed
+        // RetroArch are the user's own to manage, so that is the source the result is assigned to.
+        val pkg = context.packageName
         val coreName = platformConfig.getCoreDisplayName(coreId)
         val romId = screen.romId
         val before = if (romId != null) gameOverrideStore.get(romId) else platformConfig.getPlatformChoice(screen.tag)
         val choice = dev.cannoli.scorza.config.EmulatorChoice(
-            source = dev.cannoli.scorza.config.EmulatorSource.RetroArch, coreId = coreId,
+            source = dev.cannoli.scorza.config.EmulatorSource.Embedded, coreId = coreId,
         )
         coreInstaller.downloadCore(pkg, coreId, coreName) {
             // A download can land a couple of minutes later. Writing unconditionally would

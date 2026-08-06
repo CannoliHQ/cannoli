@@ -11,26 +11,22 @@ class LaunchSourceRoutingTest {
     private fun pick(
         gameSource: EmulatorSource? = null,
         platformSource: EmulatorSource? = null,
-        embedded: Boolean = false,
         ra: Boolean = false,
         standalone: Boolean = false,
-    ) = LaunchManager.pickSource(gameSource, platformSource, { embedded }, { ra }, { standalone })
+    ) = LaunchManager.pickSource(gameSource, platformSource, { ra }, { standalone })
 
     @Test fun `a game choice wins over the platform choice`() = assertEquals(
-        EmulatorSource.Internal,
-        pick(EmulatorSource.Internal, EmulatorSource.RetroArch, embedded = true, ra = true, standalone = true),
+        EmulatorSource.Standalone,
+        pick(EmulatorSource.Standalone, EmulatorSource.RetroArch, ra = true, standalone = true),
     )
 
     @Test fun `the platform choice applies when the game has none`() = assertEquals(
         EmulatorSource.RetroArch,
-        pick(platformSource = EmulatorSource.RetroArch, embedded = true, ra = true, standalone = true),
+        pick(platformSource = EmulatorSource.RetroArch, ra = true, standalone = true),
     )
 
     @Test fun `with no choice and only a standalone app it picks Standalone`() =
         assertEquals(EmulatorSource.Standalone, pick(standalone = true))
-
-    @Test fun `with no choice and an embedded core it defers to the embedded path`() =
-        assertNull(pick(embedded = true, standalone = true))
 
     @Test fun `with no choice and a retroarch core it defers to retroarch`() =
         assertNull(pick(ra = true, standalone = true))
@@ -44,7 +40,7 @@ class LaunchSourceRoutingTest {
 
     @Test fun `an explicit Standalone choice never falls back to a core`() = assertEquals(
         EmulatorSource.Standalone,
-        pick(platformSource = EmulatorSource.Standalone, embedded = true, ra = true),
+        pick(platformSource = EmulatorSource.Standalone, ra = true),
     )
 
     // A stored choice decides on its own, so the filesystem and package probes must not run.
@@ -52,8 +48,7 @@ class LaunchSourceRoutingTest {
         var probed = false
         LaunchManager.pickSource(
             gameSource = null,
-            platformSource = EmulatorSource.Internal,
-            embeddedAvailable = { probed = true; true },
+            platformSource = EmulatorSource.RetroArch,
             raAvailable = { probed = true; true },
             standaloneAvailable = { probed = true; true },
         )

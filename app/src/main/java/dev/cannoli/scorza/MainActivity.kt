@@ -8,8 +8,6 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.provider.Settings
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -54,8 +52,6 @@ import dev.cannoli.scorza.input.LauncherActions
 import dev.cannoli.scorza.input.runtime.ControllerBridge
 import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.LaunchManager
-import dev.cannoli.scorza.libretro.LibretroActivity
-import dev.cannoli.scorza.libretro.RetroAchievementsManager
 import dev.cannoli.scorza.navigation.AppNavGraph
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
@@ -131,15 +127,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     private val isReady: Boolean get() = bootSequencer.state.value is BootState.Ready
 
     private var coreQueryReceiver: android.content.BroadcastReceiver? = null
-    private var loginManager: RetroAchievementsManager? = null
     private var pairingUiJob: kotlinx.coroutines.Job? = null
-    private val loginPollHandler = Handler(Looper.getMainLooper())
-    private val loginPollRunnable: Runnable = object : Runnable {
-        override fun run() {
-            loginManager?.idle()
-            if (loginManager != null) loginPollHandler.postDelayed(this, 100)
-        }
-    }
     private var coldStart = true
 
     private val storagePermissionLauncher = registerForActivityResult(
@@ -401,34 +389,24 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Suppress("DEPRECATION")
     override fun onResume() {
         super.onResume()
-        // Re-wire the dispatcher to launcher dispatch shape on each resume. LibretroActivity
-        // overwrites these callbacks with IGM-specific wiring when it runs; we restore the
-        // launcher's wiring when we come back.
+        // Re-wire the dispatcher to launcher dispatch shape on each resume, so returning from an
+        // emulator always lands on the launcher's wiring.
         router.wire(inputDispatcher)
         registerControllerOsd()
         menuNavigationPoller.start()
         bootSequencer.advance()
         launchState.launching = false
         val justExited = launchState.lastLaunched
-        if (justExited != null && !LibretroActivity.isRunning) {
+        if (justExited != null) {
             launchState.lastLaunched = null
         }
-        if (!LibretroActivity.isRunning) {
-            syncScheduler.start()
-            // The just-played save is uploaded by the sweep itself; force one so it runs now.
-            if (justExited != null) syncScheduler.syncNow()
-        }
+        syncScheduler.start()
+        // The just-played save is uploaded by the sweep itself; force one so it runs now.
+        if (justExited != null) syncScheduler.syncNow()
         if (!isReady) return
         if (!coldStart) overridePendingTransition(0, 0)
         coldStart = false
         hideSystemUI()
-        if (LibretroActivity.isRunning) {
-            val intent = Intent(this, LibretroActivity::class.java)
-            intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-            val opts = ActivityOptions.makeCustomAnimation(this, 0, 0).toBundle()
-            startActivity(intent, opts)
-            return
-        }
         settings.reload()
         settingsViewModel.get().load()
         val activeDialogState = nav.dialogState
@@ -446,7 +424,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
         syncScheduler.stop()
         menuNavigationPoller.stop()
         // Cancel any in-flight stick auto-repeat so it does not keep firing dispatcher callbacks
-        // after LibretroActivity has rewired them.
+        // once the launcher is no longer in front.
         stickAutoRepeat.stop()
         controllerBridge.onDeviceAdded = null
         controllerBridge.onDeviceRemoved = null
@@ -462,9 +440,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
         controllerBridge.stop(this)
         super.onDestroy()
         unregisterCoreQueryReceiver()
-        loginPollHandler.removeCallbacks(loginPollRunnable)
-        loginManager?.destroy()
-        loginManager = null
         settings.shutdown()
         if (isReady) {
             systemListViewModel.get().close()
@@ -712,28 +687,10 @@ class MainActivity : ComponentActivity(), ActivityActions {
     }
 
     override fun startRaLogin(username: String, password: String) {
-        val ra = RetroAchievementsManager(
-            context = this,
-            onLogin = { success, nameOrError, token ->
-                if (success && token != null) {
-                    settings.raUsername = nameOrError
-                    settings.raToken = token
-                    settings.raPassword = password
-                    settingsViewModel.get().raPassword = ""
-                    nav.dialogState.value = DialogState.RAAccount(username = nameOrError)
-                } else {
-                    nav.dialogState.value = DialogState.RALoggingIn(message = getString(R.string.ra_login_invalid))
-                }
-                loginPollHandler.removeCallbacks(loginPollRunnable)
-                loginManager?.destroy()
-                loginManager = null
-            }
-        )
-        ra.init()
-        ra.loginWithPassword(username, password)
-        loginManager = ra
-        loginPollHandler.postDelayed(loginPollRunnable, 100)
-        nav.dialogState.value = DialogState.RALoggingIn()
+        // Login runs through rcheevos, which lived in the internal runner. The account UI is kept
+        // intact for the port onto RetroArch's own rcheevos; until then there is nothing to log in
+        // to. See reference/retroachievements/.
+        nav.dialogState.value = DialogState.RALoggingIn(message = getString(R.string.ra_login_unavailable))
     }
 
     override fun startRommPairing(host: String) {

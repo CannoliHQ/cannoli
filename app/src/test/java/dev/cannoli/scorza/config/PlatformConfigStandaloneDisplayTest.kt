@@ -37,9 +37,15 @@ class PlatformConfigStandaloneDisplayTest {
         assertEquals(EmulatorMappingStatus.NOT_INSTALLED, entry.status)
     }
 
+    // These two are about an external RetroArch, which is the only runner whose core list comes
+    // from a query and can therefore be unknown. An unset platform now defaults to the embedded
+    // runner, which reads a directory and always knows, so the choice has to be explicit.
+    private val RA = "org.libretro.retroarch"
+
     @Test fun `a mapped core that is installed is READY`() {
         val pc = config()
-        val installedRaCores = mapOf("org.libretro.retroarch" to setOf("nestopia_libretro"))
+        pc.setPlatformChoice("NES", EmulatorChoice(EmulatorSource.RetroArch, "nestopia_libretro", RA))
+        val installedRaCores = mapOf(RA to setOf("nestopia_libretro"))
         val entry = pc.getDetailedMappings(installedRaCores = installedRaCores).first { it.tag == "NES" }
         assertEquals(pc.getCoreDisplayName("nestopia_libretro"), entry.coreDisplayName)
         assertEquals(EmulatorMappingStatus.READY, entry.status)
@@ -47,8 +53,9 @@ class PlatformConfigStandaloneDisplayTest {
 
     @Test fun `a mapped core on a RetroArch that cannot report cores is UNKNOWN`() {
         val pc = config()
+        pc.setPlatformChoice("NES", EmulatorChoice(EmulatorSource.RetroArch, "nestopia_libretro", RA))
         // RA present but cannot report its cores: coreStatus "Unknown", which must not be collapsed into READY.
-        val entry = pc.getDetailedMappings(unreportablePackages = setOf("org.libretro.retroarch"))
+        val entry = pc.getDetailedMappings(unreportablePackages = setOf(RA))
             .first { it.tag == "NES" }
         assertEquals(pc.getCoreDisplayName("nestopia_libretro"), entry.coreDisplayName)
         assertEquals(EmulatorMappingStatus.UNKNOWN, entry.status)

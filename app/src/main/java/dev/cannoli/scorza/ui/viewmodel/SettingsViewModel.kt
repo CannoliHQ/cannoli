@@ -216,7 +216,7 @@ class SettingsViewModel @Inject constructor(
     ) + if (BuildConfig.DEBUG) listOf(Category("debug", R.string.settings_debug)) else emptyList()
 
     private fun detectInstalledRaPackages(): List<String> {
-        val pm = packageManager ?: return listOf(settings.retroArchPackage)
+        val pm = packageManager ?: return emptyList()
         return pm.getInstalledPackages(0)
             .map { it.packageName }
             .filter { it.startsWith("com.retroarch") || it.startsWith("dev.cannoli.ricotta") }
@@ -554,13 +554,6 @@ class SettingsViewModel @Inject constructor(
             "experimental_features" -> {
                 settings.experimentalFeatures = !settings.experimentalFeatures
             }
-            "ra_package" -> {
-                val pkgs = detectInstalledRaPackages()
-                if (pkgs.isNotEmpty()) {
-                    val cur = pkgs.indexOf(settings.retroArchPackage).coerceAtLeast(0)
-                    settings.retroArchPackage = pkgs[((cur + direction) % pkgs.size + pkgs.size) % pkgs.size]
-                }
-            }
             "release_channel" -> {
                 val channels = dev.cannoli.scorza.updater.ReleaseChannel.entries
                 val cur = channels.indexOfFirst { it.name == settings.releaseChannel }.coerceAtLeast(0)
@@ -895,14 +888,10 @@ class SettingsViewModel @Inject constructor(
         )
         "emulation" -> buildList {
             add(SettingsItem("core_mapping", R.string.setting_emulator_mapping, isEditable = true))
-            val pkgs = detectInstalledRaPackages()
-            if (pkgs.isNotEmpty() && settings.retroArchPackage !in pkgs) {
-                settings.retroArchPackage = pkgs.first()
-            }
-            add(SettingsItem("ra_package", R.string.setting_ra_package, valueText = if (pkgs.isEmpty()) null else settings.retroArchPackage, valueRes = if (pkgs.isEmpty()) R.string.value_none_installed else null, canCycle = pkgs.size > 1))
-            if (pkgs.isNotEmpty()) {
-                val pkgLabel = InstalledCoreService.getPackageLabel(settings.retroArchPackage)
-                add(SettingsItem("installed_cores", R.string.setting_installed_cores, labelText = context.getString(R.string.setting_installed_cores, pkgLabel), isEditable = true))
+            // No RetroArch package row: which RetroArch runs a platform is part of the mapping
+            // itself now, so a global package would only be a second thing claiming that answer.
+            if (detectInstalledRaPackages().isNotEmpty()) {
+                add(SettingsItem("installed_cores", R.string.setting_installed_cores_all, isEditable = true))
             }
             add(SettingsItem("always_save_on_quit", R.string.setting_always_save_on_quit, valueRes = onOff(settings.alwaysSaveOnQuit)))
         }

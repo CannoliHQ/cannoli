@@ -6,21 +6,27 @@ import org.junit.Test
 
 class RaPreloadEligibilityTest {
     @Test fun eligible_whenAllConditionsMet() {
-        assertTrue(RaPreloadEligibility.isEligible("SNES", embeddedCorePresent = true, raLoggedIn = true))
+        assertTrue(RaPreloadEligibility.isEligible("SNES", raLoggedIn = true, runnerSupportsAchievements = true))
     }
-    @Test fun ineligible_whenNotEmbeddedCore() {
-        assertFalse(RaPreloadEligibility.isEligible("SNES", embeddedCorePresent = false, raLoggedIn = true))
+    @Test fun ineligible_whenRunnerCannotReportAchievements() {
+        assertFalse(RaPreloadEligibility.isEligible("SNES", raLoggedIn = true, runnerSupportsAchievements = false))
     }
     @Test fun ineligible_whenNotLoggedIn() {
-        assertFalse(RaPreloadEligibility.isEligible("SNES", embeddedCorePresent = true, raLoggedIn = false))
+        assertFalse(RaPreloadEligibility.isEligible("SNES", raLoggedIn = false, runnerSupportsAchievements = true))
     }
     @Test fun ineligible_whenPlatformNull() {
-        assertFalse(RaPreloadEligibility.isEligible(null, embeddedCorePresent = true, raLoggedIn = true))
+        assertFalse(RaPreloadEligibility.isEligible(null, raLoggedIn = true, runnerSupportsAchievements = true))
     }
     @Test fun ineligible_whenPlatformNotRaMapped() {
-        assertFalse(RaPreloadEligibility.isEligible("3DS", embeddedCorePresent = true, raLoggedIn = true))
+        assertFalse(RaPreloadEligibility.isEligible("3DS", raLoggedIn = true, runnerSupportsAchievements = true))
     }
     @Test fun platformTag_caseInsensitive() {
-        assertTrue(RaPreloadEligibility.isEligible("snes", embeddedCorePresent = true, raLoggedIn = true))
+        assertTrue(RaPreloadEligibility.isEligible("snes", raLoggedIn = true, runnerSupportsAchievements = true))
+    }
+
+    // Guards the dormant state itself: with the internal runner gone there is nothing that can
+    // read a preloaded set, so the default must keep every row hidden.
+    @Test fun ineligible_byDefaultWhileAchievementsAreDormant() {
+        assertFalse(RaPreloadEligibility.isEligible("SNES", raLoggedIn = true))
     }
 }

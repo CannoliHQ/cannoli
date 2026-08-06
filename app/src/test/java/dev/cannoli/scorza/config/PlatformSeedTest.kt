@@ -28,10 +28,10 @@ class PlatformSeedTest {
 
     private fun pm() = ApplicationProvider.getApplicationContext<android.content.Context>().packageManager
 
-    @Test fun `a bundled core seeds Internal`() {
+    @Test fun `a bundled core seeds Embedded`() {
         val pc = config("seed-int", bundled = listOf("mgba_libretro"))
         pc.seedUnsetPlatforms(pm())
-        assertEquals(EmulatorChoice(EmulatorSource.Internal, "mgba_libretro"), pc.getPlatformChoice("GBA"))
+        assertEquals(EmulatorChoice(EmulatorSource.Embedded, "mgba_libretro"), pc.getPlatformChoice("GBA"))
     }
 
     @Test fun `no bundled core and no installed app leaves the platform unset`() {
@@ -77,8 +77,8 @@ class PlatformSeedTest {
         val pc = config("seed-reset", bundled = listOf("mgba_libretro"))
         pc.setPlatformChoice("GBA", EmulatorChoice(EmulatorSource.Standalone, appPackage = "com.picked.emu"))
         val restored = pc.resetPlatformToDefault("GBA", pm())
-        assertEquals(EmulatorChoice(EmulatorSource.Internal, "mgba_libretro"), restored)
-        assertEquals(EmulatorChoice(EmulatorSource.Internal, "mgba_libretro"), pc.getPlatformChoice("GBA"))
+        assertEquals(EmulatorChoice(EmulatorSource.Embedded, "mgba_libretro"), restored)
+        assertEquals(EmulatorChoice(EmulatorSource.Embedded, "mgba_libretro"), pc.getPlatformChoice("GBA"))
     }
 
     @Test fun `reset on a platform with no default leaves it unmapped`() {
@@ -93,7 +93,7 @@ class PlatformSeedTest {
         pc.setPlatformChoice("GBA", EmulatorChoice(EmulatorSource.RetroArch, "gpsp_libretro"))
         pc.resetPlatformToDefault("GBA", pm())
         pc.reloadCoreMappings()
-        assertEquals(EmulatorChoice(EmulatorSource.Internal, "mgba_libretro"), pc.getPlatformChoice("GBA"))
+        assertEquals(EmulatorChoice(EmulatorSource.Embedded, "mgba_libretro"), pc.getPlatformChoice("GBA"))
     }
 
     @Test fun `a later release adding a bundled core backfills an untouched platform`() {
@@ -104,7 +104,7 @@ class PlatformSeedTest {
         val libs = File(tmp.root, "seed-later-libs")
         File(libs, "mgba_libretro_android.so").writeText("stub")
         assertTrue(pc.seedUnsetPlatforms(pm()) > 0)
-        assertEquals(EmulatorSource.Internal, pc.getPlatformChoice("GBA")?.source)
+        assertEquals(EmulatorSource.Embedded, pc.getPlatformChoice("GBA")?.source)
     }
 
     @Test fun `a failed load suppresses seeding entirely`() {
@@ -119,6 +119,6 @@ class PlatformSeedTest {
         val pc = config("seed-persist", bundled = listOf("mgba_libretro"))
         pc.seedUnsetPlatforms(pm())
         pc.reloadCoreMappings()
-        assertEquals(EmulatorChoice(EmulatorSource.Internal, "mgba_libretro"), pc.getPlatformChoice("GBA"))
+        assertEquals(EmulatorChoice(EmulatorSource.Embedded, "mgba_libretro"), pc.getPlatformChoice("GBA"))
     }
 }

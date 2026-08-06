@@ -8,42 +8,30 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class EmulatorMappingDownloadableTest {
-    private val ownPackage = "dev.cannoli.scorza"
-    private val stock = "com.retroarch.aarch64"
 
-    @Test fun `not-installed RetroArch core on the embedded RetroArch is downloadable`() {
-        assertTrue(EmulatorMappingBuilder.isDownloadable(EmulatorSource.RetroArch, CoreAvailability.UNAVAILABLE, raPackage = ownPackage, packageName = ownPackage))
+    @Test fun `a missing core on the embedded RetroArch is downloadable`() {
+        assertTrue(EmulatorMappingBuilder.isDownloadable(EmulatorSource.Embedded, CoreAvailability.UNAVAILABLE))
     }
 
-    @Test fun `not-installed RetroArch core with an unset package is downloadable`() {
-        assertTrue(EmulatorMappingBuilder.isDownloadable(EmulatorSource.RetroArch, CoreAvailability.UNAVAILABLE, raPackage = "", packageName = ownPackage))
+    @Test fun `an installed core on the embedded RetroArch is not downloadable`() {
+        assertFalse(EmulatorMappingBuilder.isDownloadable(EmulatorSource.Embedded, CoreAvailability.AVAILABLE))
     }
 
-    @Test fun `installed RetroArch core is not downloadable`() {
-        assertFalse(EmulatorMappingBuilder.isDownloadable(EmulatorSource.RetroArch, CoreAvailability.AVAILABLE, raPackage = ownPackage, packageName = ownPackage))
+    // Cores for a separately installed RetroArch are the user's own to manage, so Cannoli offers
+    // no download affordance for them however the availability check came out.
+    @Test fun `no core on an external RetroArch is downloadable`() {
+        assertFalse(EmulatorMappingBuilder.isDownloadable(EmulatorSource.RetroArch, CoreAvailability.UNAVAILABLE))
+        assertFalse(EmulatorMappingBuilder.isDownloadable(EmulatorSource.RetroArch, CoreAvailability.UNKNOWN))
     }
 
-    @Test fun `not-installed core on stock RetroArch is not downloadable`() {
-        assertFalse(EmulatorMappingBuilder.isDownloadable(EmulatorSource.RetroArch, CoreAvailability.UNAVAILABLE, raPackage = stock, packageName = ownPackage))
+    @Test fun `Standalone sources are never downloadable`() {
+        assertFalse(EmulatorMappingBuilder.isDownloadable(EmulatorSource.Standalone, CoreAvailability.UNAVAILABLE))
     }
 
-    @Test fun `Internal and Standalone sources are never downloadable`() {
-        assertFalse(EmulatorMappingBuilder.isDownloadable(EmulatorSource.Internal, CoreAvailability.UNAVAILABLE, raPackage = ownPackage, packageName = ownPackage))
-        assertFalse(EmulatorMappingBuilder.isDownloadable(EmulatorSource.Standalone, CoreAvailability.UNAVAILABLE, raPackage = ownPackage, packageName = ownPackage))
-    }
-
+    // The embedded runner reads a directory, so an unknown core still means "not there yet" and
+    // must stay downloadable. Withholding the download is what stranded a fresh install.
     @Test fun `an unknown core on the embedded RetroArch is downloadable`() {
-        // A RetroArch that cannot report reports UNKNOWN for every candidate core. Withholding
-        // the download here is what stranded an install that has never been launched.
-        assertTrue(EmulatorMappingBuilder.isDownloadable(
-            EmulatorSource.RetroArch, CoreAvailability.UNKNOWN, ownPackage, ownPackage,
-        ))
-    }
-
-    @Test fun `an unknown core on stock RetroArch is not downloadable`() {
-        assertFalse(EmulatorMappingBuilder.isDownloadable(
-            EmulatorSource.RetroArch, CoreAvailability.UNKNOWN, stock, ownPackage,
-        ))
+        assertTrue(EmulatorMappingBuilder.isDownloadable(EmulatorSource.Embedded, CoreAvailability.UNKNOWN))
     }
 
     @Test fun `a RetroArch row is unknown when RetroArch cannot report`() {
@@ -60,11 +48,16 @@ class EmulatorMappingDownloadableTest {
         )
     }
 
-    @Test fun `Internal and Standalone rows are unavailable regardless of RetroArch reporting`() {
+    // The embedded runner always knows: its cores are a directory listing, not a query, so it has
+    // no unknown state even while an external RetroArch is failing to report.
+    @Test fun `an Embedded row is unavailable regardless of RetroArch reporting`() {
         assertEquals(
             CoreAvailability.UNAVAILABLE,
-            EmulatorMappingBuilder.currentRowAvailability(EmulatorSource.Internal, raCannotReport = true),
+            EmulatorMappingBuilder.currentRowAvailability(EmulatorSource.Embedded, raCannotReport = true),
         )
+    }
+
+    @Test fun `Standalone rows are unavailable regardless of RetroArch reporting`() {
         assertEquals(
             CoreAvailability.UNAVAILABLE,
             EmulatorMappingBuilder.currentRowAvailability(EmulatorSource.Standalone, raCannotReport = true),
@@ -72,7 +65,7 @@ class EmulatorMappingDownloadableTest {
     }
 
     @Test fun `an unknown current row on the embedded RetroArch is downloadable`() {
-        val availability = EmulatorMappingBuilder.currentRowAvailability(EmulatorSource.RetroArch, raCannotReport = true)
-        assertTrue(EmulatorMappingBuilder.isDownloadable(EmulatorSource.RetroArch, availability, ownPackage, ownPackage))
+        val availability = EmulatorMappingBuilder.currentRowAvailability(EmulatorSource.Embedded, raCannotReport = true)
+        assertTrue(EmulatorMappingBuilder.isDownloadable(EmulatorSource.Embedded, availability))
     }
 }

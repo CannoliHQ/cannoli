@@ -82,7 +82,7 @@ class MappingCurrentSelectionTest {
     }
 
     @Test fun `platform internal core is current`() =
-        assertExactlyOneCurrent("cur-p-int", EmulatorChoice(EmulatorSource.Internal, "mgba_libretro"), false)
+        assertExactlyOneCurrent("cur-p-int", EmulatorChoice(EmulatorSource.Embedded, "mgba_libretro"), false)
 
     @Test fun `platform retroarch core is current`() =
         assertExactlyOneCurrent("cur-p-ra", EmulatorChoice(EmulatorSource.RetroArch, "mgba_libretro"), false)
@@ -93,7 +93,7 @@ class MappingCurrentSelectionTest {
         )
 
     @Test fun `game internal core is current`() =
-        assertExactlyOneCurrent("cur-g-int", EmulatorChoice(EmulatorSource.Internal, "mgba_libretro"), true)
+        assertExactlyOneCurrent("cur-g-int", EmulatorChoice(EmulatorSource.Embedded, "mgba_libretro"), true)
 
     @Test fun `game retroarch core is current`() =
         assertExactlyOneCurrent("cur-g-ra", EmulatorChoice(EmulatorSource.RetroArch, "mgba_libretro"), true)
@@ -131,7 +131,7 @@ class MappingCurrentSelectionTest {
 
     @Test fun `game scope drops the platform wide actions and platform scope keeps them`() {
         val f = fixture("cur-actions")
-        f.config.setPlatformChoice("GBA", EmulatorChoice(EmulatorSource.Internal, "mgba_libretro"))
+        f.config.setPlatformChoice("GBA", EmulatorChoice(EmulatorSource.Embedded, "mgba_libretro"))
         val scoped = f.builder.buildPlatformMapping("GBA", "GBA", showAll = true, romId = f.romId)
         assertTrue(scoped.items.none { it is MappingItem.Action })
         assertEquals(f.romId, scoped.romId)

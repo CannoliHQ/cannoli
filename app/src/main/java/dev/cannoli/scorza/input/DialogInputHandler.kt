@@ -1769,7 +1769,6 @@ class DialogInputHandler @Inject constructor(
                         rom.path.absolutePath in pathSet &&
                             dev.cannoli.scorza.ra.RaPreloadEligibility.isEligible(
                                 platformTag = rom.platformTag,
-                                embeddedCorePresent = launchManager.getEmbeddedCorePath(rom) != null,
                                 raLoggedIn = settings.raToken.isNotEmpty(),
                             )
                     }
@@ -1944,7 +1943,7 @@ class DialogInputHandler @Inject constructor(
                             val desc = gameOverrideStore.get(rom.id)?.let {
                                 platformResolver.describeChoice(
                                     it, context.packageManager,
-                                    InstalledCoreService.getPackageLabel(settings.retroArchPackage),
+                                    dev.cannoli.scorza.config.EmulatorSource.RetroArch.displayName,
                                 )
                             } ?: context.getString(dev.cannoli.scorza.R.string.emulator_platform_default)
                             "$MENU_EMULATOR_OVERRIDE\t$desc"
@@ -1959,7 +1958,6 @@ class DialogInputHandler @Inject constructor(
                 }
                 if (rom != null && dev.cannoli.scorza.ra.RaPreloadEligibility.isEligible(
                         platformTag = rom.platformTag,
-                        embeddedCorePresent = launchManager.getEmbeddedCorePath(rom) != null,
                         raLoggedIn = settings.raToken.isNotEmpty(),
                     )
                 ) {

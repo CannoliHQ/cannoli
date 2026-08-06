@@ -43,11 +43,19 @@ class MappingNoticeTest {
         val config = PlatformConfig(root, ctx.assets).also { it.load() }
         val settings = dev.cannoli.scorza.settings.SettingsRepository(ctx).also { it.sdCardRoot = root.absolutePath }
         val cores = mockk<InstalledCoreService>(relaxed = true)
-        every { cores.configuredCores() } returns emptyMap()
-        every { cores.configuredReporting() } returns reporting
+        // The notice reports on the external installs the section lists, so the fixture needs one
+        // present and in the given reporting state.
+        val raPackage = "com.retroarch"
+        every { cores.externalRaCores() } returns emptyMap()
+        every { cores.externalRaPackages() } returns listOf(raPackage)
+        every { cores.reportingFor(raPackage) } returns reporting
+        every { cores.unreportableRaPackages() } returns
+            if (reporting == CoreReporting.REPORTS) emptySet() else setOf(raPackage)
         val store = GameOverrideStore(db)
-        val raLabel = InstalledCoreService.getPackageLabel(settings.retroArchPackage)
-        return Fixture(EmulatorMappingBuilder(config, cores, settings, store, ctx), raLabel)
+        return Fixture(
+            EmulatorMappingBuilder(config, cores, settings, store, ctx),
+            dev.cannoli.scorza.config.EmulatorSource.RetroArch.displayName,
+        )
     }
 
     private fun retroArchHeaderIndex(items: List<MappingItem>, raLabel: String): Int =

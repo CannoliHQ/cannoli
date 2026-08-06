@@ -270,13 +270,18 @@ class SettingsInputHandler @Inject constructor(
     }
 
     private fun queryInstalledCores() {
-        val selectedPkg = settings.retroArchPackage
-        val pkgLabel = InstalledCoreService.getPackageLabel(selectedPkg)
-        nav.push(LauncherScreen.InstalledCores(title = context.getString(dev.cannoli.scorza.R.string.title_installed_cores, pkgLabel)))
+        nav.push(LauncherScreen.InstalledCores(
+            title = context.getString(dev.cannoli.scorza.R.string.title_installed_cores_all)
+        ))
         ioScope.launch {
             installedCoreService.queryAllPackages()
-            val cores = (installedCoreService.installedCores[selectedPkg] ?: emptySet())
-                .map { coreId -> platformConfig.getCoreDisplayName(coreId) }
+            // Every install's cores, each labelled with the install it came from, since no single
+            // RetroArch is "the" one any more.
+            val cores = installedCoreService.externalRaCores()
+                .flatMap { (pkg, ids) ->
+                    val label = InstalledCoreService.getPackageLabel(pkg)
+                    ids.map { "${platformConfig.getCoreDisplayName(it)} ($label)" }
+                }
                 .sorted()
             withContext(Dispatchers.Main) {
                 val screen = nav.screenStack.lastOrNull() as? LauncherScreen.InstalledCores ?: return@withContext

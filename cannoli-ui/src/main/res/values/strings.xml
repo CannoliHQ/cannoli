@@ -228,8 +228,10 @@
     <string name="setting_color_status_bar">Status Bar</string>
     <!-- Settings row. %s is the emulator app name (e.g. RetroArch). -->
     <string name="setting_installed_cores">%s Installed Cores</string>
+    <string name="setting_installed_cores_all">Installed Cores</string>
     <!-- Screen title. %s is the emulator app name (e.g. RetroArch). -->
     <string name="title_installed_cores">%s Installed Cores</string>
+    <string name="title_installed_cores_all">Installed Cores</string>
     <string name="installed_cores_none">No cores found</string>
     <!-- Setting: the app's root storage folder on the SD card. -->
     <string name="setting_sd_root">Cannoli Root</string>
@@ -591,6 +593,7 @@
     <!-- RA = RetroAchievements. -->
     <string name="ra_login_failed">RA: Login failed</string>
     <string name="ra_login_invalid">Invalid username or password</string>
+    <string name="ra_login_unavailable">Achievements are unavailable in this build</string>
     <string name="ra_status_online">Online</string>
     <string name="ra_status_offline">Offline</string>
     <!-- %1$d = achievements awaiting sync. -->

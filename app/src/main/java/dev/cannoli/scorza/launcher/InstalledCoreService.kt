@@ -180,11 +180,22 @@ class InstalledCoreService @Inject constructor(
     // Empty (unset) or this app's own package both mean the in-APK RetroArch.
     private fun isEmbedded(pkg: String): Boolean = pkg.isEmpty() || pkg == context.packageName
 
-    fun configuredCores(): Map<String, Set<String>> {
-        val pkg = settings.retroArchPackage
-        if (isEmbedded(pkg)) return mapOf(pkg to localCores())
-        return installedCores.filterKeys { it == pkg }
-    }
+    /**
+     * Every detected external RetroArch install. The in-APK RetroArch is deliberately absent: it
+     * is not discovered by a package scan and is reached through [EmulatorSource.Embedded], not by
+     * naming a package. Sorted so the picker's row order is stable across scans.
+     */
+    fun externalRaPackages(): List<String> = knownPackages.sorted()
+
+    /** Cores each external install reported. Keyed by package, so no single install is special. */
+    fun externalRaCores(): Map<String, Set<String>> = installedCores
+
+    /** Installs that are present but whose core list cannot be trusted, for whatever reason. */
+    fun unreportableRaPackages(): Set<String> =
+        knownPackages.filterNotTo(mutableSetOf()) { canReport(it) }
+
+    /** Cores available to the in-APK RetroArch, which is a directory listing rather than a query. */
+    fun embeddedCores(): Set<String> = localCores()
 
     // Ordered so the two "we have nothing to go on" cases are settled before any classification
     // drawn from a scan, since those sets are only meaningful once a scan has actually run.
@@ -198,15 +209,6 @@ class InstalledCoreService @Inject constructor(
 
     fun canReport(pkg: String): Boolean = reportingFor(pkg) == CoreReporting.REPORTS
 
-    fun configuredReporting(): CoreReporting = reportingFor(settings.retroArchPackage)
-
-    fun configuredUnreportable(): Set<String> {
-        val pkg = settings.retroArchPackage
-        // The embedded RetroArch is this package. It never appears in a scan of installed
-        // RetroArch packages, so asking canReport about it would report it as unreportable.
-        if (pkg.isEmpty() || pkg == context.packageName) return emptySet()
-        return if (canReport(pkg)) emptySet() else setOf(pkg)
-    }
 
     companion object {
         private val PACKAGE_LABELS = mapOf(

@@ -44,26 +44,12 @@ android {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")
         }
 
-        externalNativeBuild {
-            cmake {
-                arguments("-DANDROID_STL=c++_shared")
-            }
-        }
-
         buildConfigField("String", "BUILD_DATE", "\"${buildDate()}\"")
         buildConfigField("String", "GIT_HASH", "\"${gitCommitHash()}\"")
     }
 
     buildFeatures {
         buildConfig = true
-        prefab = true
-    }
-
-    externalNativeBuild {
-        cmake {
-            path = file("src/main/cpp/CMakeLists.txt")
-            version = "3.22.1"
-        }
     }
 
     signingConfigs {
@@ -140,7 +126,6 @@ dependencies {
     implementation("org.apache.commons:commons-compress:1.27.1")
     implementation("org.tukaani:xz:1.10")
     implementation("io.legere:pdfiumandroid:1.0.35")
-    implementation("com.google.oboe:oboe:1.9.3")
     implementation(libs.nanohttpd)
     implementation(libs.commons.fileupload.core)
     implementation(libs.kotlinx.serialization.json)

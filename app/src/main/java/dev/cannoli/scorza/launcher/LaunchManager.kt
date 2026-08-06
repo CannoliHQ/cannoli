@@ -16,7 +16,6 @@ import dev.cannoli.scorza.input.runtime.confirmButton
 import dev.cannoli.scorza.input.runtime.labelSet
 import dev.cannoli.scorza.launcher.toIgmInputMapping
 import dev.cannoli.scorza.config.PlatformConfig
-import dev.cannoli.scorza.libretro.LibretroActivity
 import dev.cannoli.scorza.libretro.SaveSlotManager
 import dev.cannoli.scorza.model.App
 import dev.cannoli.scorza.model.LaunchTarget
@@ -66,37 +65,21 @@ class LaunchManager(
         } catch (_: IOException) {}
     }
 
+    /**
+     * Ensures the embedded RetroArch has a config to load.
+     *
+     * This used to seed itself from whichever external RetroArch the global setting named, and
+     * re-sync whenever that file changed. With the source split there is no single external
+     * RetroArch to copy from, and Cannoli owns the embedded runner's config outright, so the
+     * config is simply generated when absent.
+     */
     fun syncRetroArchConfig(root: File) {
         val raDir = CannoliPaths(root).configRetroArch
         raDir.mkdirs()
         val localConfig = File(raDir, "retroarch.cfg")
-        val hashFile = File(raDir, ".ra_config_hash")
-
-        val raPackage = settings.retroArchPackage
-        val sourceConfig = File("/storage/emulated/0/Android/data/$raPackage/files/retroarch.cfg")
-
-        if (!sourceConfig.exists()) {
-            if (!localConfig.exists()) {
-                localConfig.writeText(buildMinimalConfig(root.absolutePath))
-            }
-            raConfigPath = localConfig.absolutePath
-            return
+        if (!localConfig.exists()) {
+            localConfig.writeText(buildMinimalConfig(root.absolutePath))
         }
-
-        val sourceBytes = try { sourceConfig.readBytes() } catch (_: IOException) {
-            if (!localConfig.exists()) localConfig.writeText(buildMinimalConfig(root.absolutePath))
-            raConfigPath = localConfig.absolutePath
-            return
-        }
-        val sourceHash = sha256(sourceBytes, "$CONFIG_VERSION:${settings.raUsername}:${settings.raToken}".toByteArray())
-        val storedHash = if (hashFile.exists()) try { hashFile.readText().trim() } catch (_: IOException) { "" } else ""
-
-        if (sourceHash != storedHash || !localConfig.exists()) {
-            val patched = patchRetroArchConfig(String(sourceBytes), root.absolutePath)
-            localConfig.writeText(patched)
-            hashFile.writeText(sourceHash)
-        }
-
         raConfigPath = localConfig.absolutePath
     }
 
@@ -201,29 +184,9 @@ class LaunchManager(
         return rom.path
     }
 
-    fun findEmbeddedCore(coreName: String): String? {
-        val soName = "${coreName}_android.so"
-        val coreFile = File(context.filesDir, "cores/$soName")
-        return if (coreFile.exists()) coreFile.absolutePath else null
-    }
-
     /** The stored source that applies to this ROM, game override first. Null means unset. */
     private fun sourceFor(rom: Rom): EmulatorSource? =
         overrideFor(rom)?.source ?: platformConfig.getPlatformChoice(rom.platformTag)?.source
-
-    fun getEmbeddedCorePath(rom: Rom): String? {
-        val target = rom.launchTarget
-        if (target is LaunchTarget.Embedded) return target.corePath
-        if (target !is LaunchTarget.RetroArch) return null
-        val gameOverride = overrideFor(rom)
-        val source = sourceFor(rom)
-        // Only an Internal selection may use the bundled core. A platform mapped to a standalone
-        // app used to fall through here, so A launched the app while Resume launched the core.
-        if (source != null && source != EmulatorSource.Internal) return null
-        val core = gameOverride?.coreId?.ifEmpty { null }
-            ?: platformConfig.getCoreName(rom.platformTag) ?: return null
-        return findEmbeddedCore(core)
-    }
 
     fun saveStateBasePath(rom: Rom): String {
         val romName = normalizedRomName(rom)
@@ -248,21 +211,24 @@ class LaunchManager(
 
     private fun hasSaveState(rom: Rom): Boolean = findMostRecentSlot(rom) != null
 
-    // Empty (unset) or the app's own package both mean the in-APK RetroArch. Anything else
-    // names a stock RetroArch install the user pointed Cannoli at.
-    private fun usesEmbeddedRetroArch(): Boolean =
-        settings.retroArchPackage.isEmpty() || settings.retroArchPackage == context.packageName
+    // Nothing stored resolves to the embedded runner, which is the only one always present.
+    private fun usesEmbeddedRetroArch(rom: Rom): Boolean =
+        (sourceFor(rom) ?: EmulatorSource.Embedded) == EmulatorSource.Embedded
+
+    /** The external RetroArch a choice names, game override first. */
+    private fun externalRaPackageFor(rom: Rom): String? =
+        overrideFor(rom)?.takeIf { it.source == EmulatorSource.RetroArch }?.appPackage
+            ?: platformConfig.getPlatformChoice(rom.platformTag)
+                ?.takeIf { it.source == EmulatorSource.RetroArch }?.appPackage
 
     fun findResumableRoms(roms: List<Rom>): Set<String> {
         val result = mutableSetOf<String>()
         for (rom in roms) {
             if (!hasSaveState(rom)) continue
             // Slots are a Cannoli and libretro concept. A standalone app manages its own saves,
-            // so offering Resume for one promises something no external emulator can honour.
-            if (sourceFor(rom) == EmulatorSource.Standalone) continue
-            val target = rom.launchTarget
-            val embedded = target is LaunchTarget.Embedded || getEmbeddedCorePath(rom) != null
-            if (embedded || (target is LaunchTarget.RetroArch && usesEmbeddedRetroArch())) {
+            // so offering Resume for one promises something no external emulator can honour. A
+            // separately installed RetroArch manages its own states the same way.
+            if (rom.launchTarget is LaunchTarget.RetroArch && usesEmbeddedRetroArch(rom)) {
                 result.add(rom.path.absolutePath)
             }
         }
@@ -293,12 +259,15 @@ class LaunchManager(
                 val source = pickSource(
                     gameSource = gameOverride?.source,
                     platformSource = platformConfig.getPlatformChoice(rom.platformTag)?.source,
-                    embeddedAvailable = { resolvedCore?.let { findEmbeddedCore(it) != null } ?: false },
-                    // configuredCores, not installedCores: a core present only in a RetroArch the
-                    // user is not using must not suppress the standalone fallback.
+                    // Any runner that can load the core counts, embedded or external. This only
+                    // decides whether to fall back to a standalone app when nothing is stored.
                     raAvailable = {
-                        resolvedCore != null &&
-                            installedCoreService?.configuredCores()?.any { it.value.contains(resolvedCore) } == true
+                        val core = resolvedCore
+                        val svc = installedCoreService
+                        core != null && svc != null && (
+                            core in svc.embeddedCores() ||
+                                svc.externalRaCores().any { core in it.value }
+                            )
                     },
                     standaloneAvailable = {
                         platformConfig.getFirstInstalledApp(rom.platformTag, context.packageManager) != null
@@ -317,41 +286,41 @@ class LaunchManager(
                 } else {
                     val core = resolvedCore
                     if (core != null) {
-                        if (source != EmulatorSource.RetroArch) {
-                            val embeddedCorePath = findEmbeddedCore(core)
-                            debugLog("RetroArch target: core=$core source=$source embeddedCorePath=$embeddedCorePath")
-                            if (embeddedCorePath != null) {
-                                val embeddedFile = resolveLaunchFile(rom, extractArchives = true)
-                                    ?: return errorAndReset(DialogState.LaunchError(context.getString(dev.cannoli.scorza.R.string.launch_error_extract)))
-                                return launchEmbedded(rom.copy(path = embeddedFile), embeddedCorePath, originalRomPath = rom.path.absolutePath)
+                        debugLog("RetroArch target: core=$core source=$source")
+                        // Null source means nothing is stored yet, which resolves to the runner
+                        // that is always present.
+                        val raPackage = if (source == EmulatorSource.RetroArch) {
+                            externalRaPackageFor(rom)
+                                ?: return errorAndReset(DialogState.MissingApp(
+                                    EmulatorSource.RetroArch.displayName, "",
+                                    rom.platformTag, overrideRomId,
+                                ))
+                        } else null
+                        if (raPackage != null) {
+                            if (!context.isPackageInstalled(raPackage)) {
+                                val appName = try {
+                                    val info = context.packageManager.getApplicationInfo(raPackage, 0)
+                                    context.packageManager.getApplicationLabel(info).toString()
+                                } catch (_: PackageManager.NameNotFoundException) { raPackage }
+                                return errorAndReset(DialogState.MissingApp(appName, raPackage, rom.platformTag, overrideRomId))
                             }
-                        }
-                        val raPackage = settings.retroArchPackage
-                        if (!context.isPackageInstalled(raPackage)) {
-                            val appName = try {
-                                val info = context.packageManager.getApplicationInfo(raPackage, 0)
-                                context.packageManager.getApplicationLabel(info).toString()
-                            } catch (_: PackageManager.NameNotFoundException) { raPackage }
-                            return errorAndReset(DialogState.MissingApp(appName, raPackage, rom.platformTag, overrideRomId))
-                        }
-                        // The core-install check applies to any package that can report its
-                        // cores. It self-skips for one that cannot, since a missing report is
-                        // not evidence of a missing core.
-                        if (installedCoreService != null
-                            && installedCoreService.cacheReady
-                            && installedCoreService.canReport(raPackage)
-                            && !installedCoreService.hasCoreInPackage(core, raPackage)) {
-                            val label = InstalledCoreService.getPackageLabel(raPackage)
-                            val coreName = platformConfig.getCoreDisplayName(core)
-                            return errorAndReset(DialogState.MissingCore(coreName, label, rom.platformTag, overrideRomId))
-                        }
-                        if (usesEmbeddedRetroArch()) {
+                            // The core-install check applies to any package that can report its
+                            // cores. It self-skips for one that cannot, since a missing report is
+                            // not evidence of a missing core.
+                            if (installedCoreService != null
+                                && installedCoreService.cacheReady
+                                && installedCoreService.canReport(raPackage)
+                                && !installedCoreService.hasCoreInPackage(core, raPackage)) {
+                                val label = InstalledCoreService.getPackageLabel(raPackage)
+                                val coreName = platformConfig.getCoreDisplayName(core)
+                                return errorAndReset(DialogState.MissingCore(coreName, label, rom.platformTag, overrideRomId))
+                            }
+                            val raConfig = "/storage/emulated/0/Android/data/$raPackage/files/retroarch.cfg"
+                            retroArchLauncher.launchRetroArchIntent(launchFile, core, raConfig, raPackage)
+                        } else {
                             syncRetroArchConfig(File(settings.sdCardRoot))
                             val launchConfig = buildGameConfig(rom) ?: raConfigPath
                             retroArchLauncher.launchRicotta(launchFile, core, launchConfig, buildRicottaIgm(rom))
-                        } else {
-                            val raConfig = "/storage/emulated/0/Android/data/$raPackage/files/retroarch.cfg"
-                            retroArchLauncher.launchRetroArchIntent(launchFile, core, raConfig, raPackage)
                         }
                     } else {
                         // App-only platform (no core) that reached here has nothing installed to
@@ -382,11 +351,6 @@ class LaunchManager(
                     apkLauncher.launch(pkg)
                 }
             }
-            is LaunchTarget.Embedded -> {
-                val embeddedFile = resolveLaunchFile(rom, extractArchives = true)
-                    ?: return errorAndReset(DialogState.LaunchError(context.getString(dev.cannoli.scorza.R.string.launch_error_extract)))
-                return launchEmbedded(rom.copy(path = embeddedFile), target.corePath, originalRomPath = rom.path.absolutePath)
-            }
         }
 
         return launchResultDialog(result, rom.platformTag)
@@ -406,12 +370,8 @@ class LaunchManager(
         if (launchState.launching) return null
         launchState.launching = true
         launchState.lastLaunched = rom
-        val embeddedCorePath = getEmbeddedCorePath(rom)
-        val launchFile = resolveLaunchFile(rom, extractArchives = embeddedCorePath != null)
+        val launchFile = resolveLaunchFile(rom, extractArchives = false)
             ?: run { launchState.launching = false; launchState.lastLaunched = null; return null }
-        if (embeddedCorePath != null) {
-            return launchEmbedded(rom.copy(path = launchFile), embeddedCorePath, resumeSlot, originalRomPath = rom.path.absolutePath)
-        }
         val gameOverride = overrideFor(rom)
         // Resume had no standalone branch, so a platform mapped to an uninstalled standalone app
         // fell straight through to the RetroArch path and launched the platform default core.
@@ -430,27 +390,29 @@ class LaunchManager(
         val core = gameOverride?.coreId?.ifEmpty { null }
             ?: platformConfig.getCoreName(rom.platformTag)
             ?: run { launchState.launching = false; launchState.lastLaunched = null; return null }
-        val raPackage = settings.retroArchPackage
         // Resume used to fire and forget: it discarded the LaunchResult and returned without
         // clearing launching, so a failed startActivity never reached onResume and every later
         // launch became a silent no-op. It now runs the same pre-checks and funnel as launchRom.
-        if (!context.isPackageInstalled(raPackage)) {
-            return errorAndReset(DialogState.MissingApp(
-                InstalledCoreService.getPackageLabel(raPackage), raPackage,
-                rom.platformTag, rom.id,
-            ))
+        val raPackage = if (usesEmbeddedRetroArch(rom)) null else externalRaPackageFor(rom)
+        if (raPackage != null) {
+            if (!context.isPackageInstalled(raPackage)) {
+                return errorAndReset(DialogState.MissingApp(
+                    InstalledCoreService.getPackageLabel(raPackage), raPackage,
+                    rom.platformTag, rom.id,
+                ))
+            }
+            if (installedCoreService != null
+                && installedCoreService.cacheReady
+                && installedCoreService.canReport(raPackage)
+                && !installedCoreService.hasCoreInPackage(core, raPackage)) {
+                return errorAndReset(DialogState.MissingCore(
+                    platformConfig.getCoreDisplayName(core),
+                    InstalledCoreService.getPackageLabel(raPackage),
+                    rom.platformTag, rom.id,
+                ))
+            }
         }
-        if (installedCoreService != null
-            && installedCoreService.cacheReady
-            && installedCoreService.canReport(raPackage)
-            && !installedCoreService.hasCoreInPackage(core, raPackage)) {
-            return errorAndReset(DialogState.MissingCore(
-                platformConfig.getCoreDisplayName(core),
-                InstalledCoreService.getPackageLabel(raPackage),
-                rom.platformTag, rom.id,
-            ))
-        }
-        val result = if (usesEmbeddedRetroArch()) {
+        val result = if (raPackage == null) {
             syncRetroArchConfig(File(settings.sdCardRoot))
             val launchConfig = buildGameConfig(rom, resume = true, slot = resumeSlot) ?: raConfigPath
             retroArchLauncher.launchRicotta(launchFile, core, launchConfig, buildRicottaIgm(rom))
@@ -502,61 +464,6 @@ class LaunchManager(
             val stamp = synchronized(debugFmt) { debugFmt.format(java.util.Date()) }
             dev.cannoli.scorza.util.LogWriter.write(debugSink, "$stamp $message\n")
         } catch (_: Exception) {}
-    }
-
-    fun launchEmbedded(rom: Rom, corePath: String, resumeSlot: Int = -1, originalRomPath: String? = null): DialogState? {
-        val paths = CannoliPaths(settings.sdCardRoot)
-        val romName = normalizedRomName(rom)
-
-        originalRomPath?.let { orig ->
-            val archive = File(orig)
-            if (archive.absolutePath != rom.path.absolutePath && ArchiveExtractor.isArchive(archive)) {
-                SaveIdentityMigrator(File(settings.sdCardRoot), atomicRename).migrateOnLaunch(rom.platformTag, romName, archive)
-            }
-        }
-
-        val saveDir = paths.savesFor(rom.platformTag)
-        saveDir.mkdirs()
-        val stateBase = paths.saveStateBase(rom.platformTag, romName)
-        stateBase.parentFile?.mkdirs()
-
-        val args = LaunchArgs(
-            gameTitle = rom.displayName,
-            corePath = corePath,
-            romPath = rom.path.absolutePath,
-            originalRomPath = originalRomPath?.takeIf { it != rom.path.absolutePath },
-            sramPath = paths.sramFile(rom.platformTag, romName).absolutePath,
-            statePath = stateBase.absolutePath,
-            systemDir = paths.biosFor(rom.platformTag).absolutePath,
-            saveDir = saveDir.absolutePath,
-            platformTag = rom.platformTag,
-            platformName = platformConfig.getDisplayName(rom.platformTag),
-            cannoliRoot = paths.root.absolutePath,
-            colorHighlight = settings.colorHighlight,
-            colorText = settings.colorText,
-            colorHighlightText = settings.colorHighlightText,
-            colorAccent = settings.colorAccent,
-            colorTitle = settings.colorTitle,
-            colorBackground = settings.colorBackground,
-            colorStatusBar = settings.colorStatusBar,
-            font = settings.font,
-            debugLogging = settings.loggingSession,
-            raUsername = settings.raUsername,
-            raToken = settings.raToken,
-            raPassword = settings.raPassword,
-            raGameId = rom.raGameId,
-            romId = rom.id,
-            resumeSlot = resumeSlot,
-        )
-        val intent = args.writeTo(Intent(context, LibretroActivity::class.java))
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        val opts = ActivityOptions.makeCustomAnimation(context, 0, 0).toBundle()
-        return try {
-            context.startActivity(intent, opts)
-            null
-        } catch (t: Throwable) {
-            errorAndReset(DialogState.LaunchError(context.getString(dev.cannoli.scorza.R.string.launch_error_generic)))
-        }
     }
 
     private fun normalizedRomName(rom: Rom): String =
@@ -662,13 +569,12 @@ class LaunchManager(
         fun pickSource(
             gameSource: EmulatorSource?,
             platformSource: EmulatorSource?,
-            embeddedAvailable: () -> Boolean,
             raAvailable: () -> Boolean,
             standaloneAvailable: () -> Boolean,
         ): EmulatorSource? {
             val stored = gameSource ?: platformSource
             if (stored != null) return stored
-            if (!embeddedAvailable() && !raAvailable() && standaloneAvailable()) return EmulatorSource.Standalone
+            if (!raAvailable() && standaloneAvailable()) return EmulatorSource.Standalone
             return null
         }
 

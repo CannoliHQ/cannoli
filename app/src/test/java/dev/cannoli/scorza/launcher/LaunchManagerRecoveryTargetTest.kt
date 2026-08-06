@@ -100,7 +100,7 @@ class LaunchManagerRecoveryTargetTest {
         val mgr = manager(root)
         val gc = rom(root)
         every { gameOverrides.get(gc.id) } returns
-            EmulatorChoice(EmulatorSource.RetroArch, coreId = "dolphin_libretro")
+            EmulatorChoice(EmulatorSource.RetroArch, coreId = "dolphin_libretro", appPackage = RA)
 
         val dialog = mgr.launchRom(gc) as DialogState.MissingCore
 
@@ -115,7 +115,7 @@ class LaunchManagerRecoveryTargetTest {
         val mgr = manager(root)
         every { platformConfig.getPlatformChoice("GC") } returns
             dev.cannoli.scorza.config.EmulatorChoice(
-                dev.cannoli.scorza.config.EmulatorSource.RetroArch, "dolphin_libretro",
+                dev.cannoli.scorza.config.EmulatorSource.RetroArch, "dolphin_libretro", RA,
             )
         every { platformConfig.getCoreName("GC") } returns "dolphin_libretro"
 
@@ -131,7 +131,7 @@ class LaunchManagerRecoveryTargetTest {
         val mgr = manager(root)
         every { platformConfig.getPlatformChoice("GC") } returns
             dev.cannoli.scorza.config.EmulatorChoice(
-                dev.cannoli.scorza.config.EmulatorSource.RetroArch, "dolphin_libretro",
+                dev.cannoli.scorza.config.EmulatorSource.RetroArch, "dolphin_libretro", RA,
             )
         every { platformConfig.getCoreName("GC") } returns "dolphin_libretro"
         every { installedCoreService.canReport(any()) } returns false
