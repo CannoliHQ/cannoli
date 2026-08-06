@@ -329,12 +329,12 @@ class LaunchManager(
                             } catch (_: PackageManager.NameNotFoundException) { raPackage }
                             return errorAndReset(DialogState.MissingApp(appName, raPackage, rom.platformTag, overrideRomId))
                         }
-                        // Core-install check applies to RicottaArch and to RetroArch installs
-                        // that report their cores; it self-skips for installs that cannot
-                        // (unresponsivePackages), since the user owns those.
+                        // The core-install check applies to any package that can report its
+                        // cores. It self-skips for one that cannot, since a missing report is
+                        // not evidence of a missing core.
                         if (installedCoreService != null
                             && installedCoreService.cacheReady
-                            && raPackage !in installedCoreService.unresponsivePackages
+                            && installedCoreService.canReport(raPackage)
                             && !installedCoreService.hasCoreInPackage(core, raPackage)) {
                             val label = InstalledCoreService.getPackageLabel(raPackage)
                             val coreName = platformConfig.getCoreDisplayName(core)
@@ -437,7 +437,7 @@ class LaunchManager(
         }
         if (installedCoreService != null
             && installedCoreService.cacheReady
-            && raPackage !in installedCoreService.unresponsivePackages
+            && installedCoreService.canReport(raPackage)
             && !installedCoreService.hasCoreInPackage(core, raPackage)) {
             return errorAndReset(DialogState.MissingCore(
                 platformConfig.getCoreDisplayName(core),
