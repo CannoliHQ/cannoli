@@ -144,8 +144,22 @@ class IGMOverlay(
         // Wire up controller callbacks
         controller.onClose = { hide() }
         controller.onOpenNativeMenu = {
-            hide()
-            bridge.openNativeMenu()
+            // Not a close: the overlay window steps aside for RetroArch's menu with its screen
+            // stack intact, and comes back on the same row when that menu closes.
+            suspendedForNativeMenu = true
+            hideWindow()
+            bridge.unpause()
+            controller.suspendForNativeMenu()
+        }
+        controller.onNativeMenuClosed = {
+            if (suspendedForNativeMenu) {
+                suspendedForNativeMenu = false
+                // RetroArch's menu can write and delete states of its own, so nothing the IGM
+                // cached about the slots survives the trip.
+                controller.invalidateSlotCache()
+                controller.refreshSlotInfo()
+                showWindow()
+            }
         }
         bridge.onOpenNativeMenu = controller.onOpenNativeMenu
 
@@ -266,12 +280,18 @@ class IGMOverlay(
     }
 
     private var showing = false
+    private var suspendedForNativeMenu = false
 
     fun show() {
         if (showing) return
+        suspendedForNativeMenu = false
+        controller.openMenu()
+        showWindow()
+    }
+
+    private fun showWindow() {
         showing = true
         showTimeMs = System.currentTimeMillis()
-        controller.openMenu()
         bridge.pause()
         bridge.setIGMVisible(true)
         composeView?.let { v ->
@@ -292,6 +312,13 @@ class IGMOverlay(
 
     fun hide() {
         if (!showing) return
+        suspendedForNativeMenu = false
+        hideWindow()
+        controller.closeMenu()
+        bridge.unpause()
+    }
+
+    private fun hideWindow() {
         showing = false
         bridge.setIGMVisible(false)
         composeView?.let { v ->
@@ -300,8 +327,6 @@ class IGMOverlay(
             runCatching { activity.windowManager.updateViewLayout(v, panelParams(focusable = false)) }
             v.visibility = View.GONE
         }
-        controller.closeMenu()
-        bridge.unpause()
     }
 
     fun isVisible(): Boolean = showing

@@ -59,6 +59,8 @@ static JNIEnv *g_native_env = NULL;
 static volatile long long g_igm_open_time = 0;
 
 /* Menu close polling */
+#define MENU_POLL_INTERVAL_MS 50
+#define MENU_OPEN_TIMEOUT_MS  2000
 static pthread_t g_menu_poll_thread;
 static volatile int g_menu_poll_active = 0;
 
@@ -344,6 +346,8 @@ static void *menu_close_poll_func(void *arg)
 {
    JNIEnv *env = NULL;
    int attached = 0;
+   int menu_seen_alive = 0;
+   int waited_ms = 0;
 
    (void)arg;
 
@@ -355,18 +359,35 @@ static void *menu_close_poll_func(void *arg)
       attached = 1;
    }
 
-   /* Poll until menu closes */
+   /* Poll until menu closes.
+    *
+    * The toggle that brought us here was enqueued, not run, so the menu is not alive yet when this
+    * thread starts. Watching for it to close straight away therefore reported a close on the first
+    * poll: wait for it to come up first. If it never does, give up quietly rather than report a
+    * close that did not happen, since the caller can always ask for the menu again. */
    while (g_menu_poll_active)
    {
       struct menu_state *menu_st = menu_state_get_ptr();
-      if (menu_st && !(menu_st->flags & MENU_ST_FLAG_ALIVE))
+      int alive = menu_st && (menu_st->flags & MENU_ST_FLAG_ALIVE);
+
+      if (!menu_seen_alive)
+      {
+         if (alive)
+            menu_seen_alive = 1;
+         else if (waited_ms >= MENU_OPEN_TIMEOUT_MS)
+            break;
+         else
+            waited_ms += MENU_POLL_INTERVAL_MS;
+      }
+      else if (!alive)
       {
          /* Menu has closed - notify Kotlin */
          if (g_bridge_obj && g_on_menu_closed_mid)
             (*env)->CallVoidMethod(env, g_bridge_obj, g_on_menu_closed_mid);
          break;
       }
-      usleep(50000); /* 50ms */
+
+      usleep(MENU_POLL_INTERVAL_MS * 1000);
    }
 
    g_menu_poll_active = 0;

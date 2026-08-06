@@ -135,13 +135,15 @@ class IGMController(
         refreshSlotInfo()
     }
 
-    fun openNativeMenu() {
-        // Remembered here too, since this comes back through openMenu when RetroArch's own menu
-        // closes and should return the player to the row they left.
+    // Handing off to RetroArch's own menu is a step further in, not a close, so the screen stack is
+    // left standing and the IGM comes back on the row it left when that menu closes. Clearing it
+    // here and reopening at the root was also visible: the overlay window keeps its last drawn
+    // frame while hidden and presents it again on the way back, so the return flashed the settings
+    // row before the root menu landed.
+    fun suspendForNativeMenu() {
         rememberMenuIndex()
-        screenStack.clear()
+        bridge.setOnNativeMenuClosed { onNativeMenuClosed?.invoke() }
         bridge.openNativeMenu()
-        bridge.setOnNativeMenuClosed { openMenu() }
     }
 
     fun openAchievements() {
@@ -239,6 +241,9 @@ class IGMController(
 
     /** Callback for when the IGM wants to open the native menu */
     var onOpenNativeMenu: (() -> Unit)? = null
+
+    /** Callback for when RetroArch's own menu has closed and the IGM should come back up */
+    var onNativeMenuClosed: (() -> Unit)? = null
 
     /**
      * Handle a key event from the gamepad.

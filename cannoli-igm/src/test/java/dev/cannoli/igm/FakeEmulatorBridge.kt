@@ -31,9 +31,15 @@ open class FakeEmulatorBridge : EmulatorBridge {
     override fun getDiskIndex() = 0
     override fun setDiskIndex(index: Int) {}
     override fun getDiskLabel(index: Int): String? = null
-    override fun openNativeMenu() {}
+    var nativeMenuOpened = 0
+    private var menuClosedCallback: (() -> Unit)? = null
+
+    /** Stands in for RetroArch's menu-close poller. */
+    fun closeNativeMenu() = menuClosedCallback?.invoke()
+
+    override fun openNativeMenu() { nativeMenuOpened++ }
     override fun openAchievementsMenu() {}
-    override fun setOnNativeMenuClosed(callback: () -> Unit) {}
+    override fun setOnNativeMenuClosed(callback: () -> Unit) { menuClosedCallback = callback }
     override val supportsNativeMenu = true
     override val supportsAchievements = false
     override val supportsUndo = true
