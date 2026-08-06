@@ -52,14 +52,27 @@ class IGMController(
 
     private val saveSlotManager = SaveSlotManager()
 
+    // The menu reopens where it was left rather than snapping back to the top. Clamped rather
+    // than trusted, because the option list is contextual: a disc row or a cheats row can appear
+    // or disappear between opens and would otherwise leave the index past the end.
+    private var lastMenuIndex = 0
+
     fun openMenu() {
+        val lastIndex = (buildMenuOptions().options.size - 1).coerceAtLeast(0)
         screenStack.clear()
-        screenStack.add(IGMScreen.Menu())
+        screenStack.add(IGMScreen.Menu(selectedIndex = lastMenuIndex.coerceIn(0, lastIndex)))
         refreshSlotInfo()
     }
 
     fun closeMenu() {
+        rememberMenuIndex()
         screenStack.clear()
+    }
+
+    private fun rememberMenuIndex() {
+        (screenStack.firstOrNull { it is IGMScreen.Menu } as? IGMScreen.Menu)?.let {
+            lastMenuIndex = it.selectedIndex
+        }
     }
 
     fun push(screen: IGMScreen) {
@@ -123,6 +136,9 @@ class IGMController(
     }
 
     fun openNativeMenu() {
+        // Remembered here too, since this comes back through openMenu when RetroArch's own menu
+        // closes and should return the player to the row they left.
+        rememberMenuIndex()
         screenStack.clear()
         bridge.openNativeMenu()
         bridge.setOnNativeMenuClosed { openMenu() }

@@ -1,18 +1,16 @@
 package com.retroarch.browser.retroactivity
 
 import android.app.Activity
-import android.app.Dialog
 import android.content.Context
 import android.content.res.Configuration
-import android.graphics.drawable.ColorDrawable
+import android.graphics.PixelFormat
 import android.os.Bundle
 import android.os.LocaleList
 import android.view.ContextThemeWrapper
 import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
-import android.widget.FrameLayout
-import androidx.core.view.WindowCompat
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.runtime.Composable
@@ -45,7 +43,7 @@ import androidx.compose.ui.text.font.Typeface as ComposeTypeface
 import dev.cannoli.ricotta.RicottaArchBridge
 import java.util.Locale
 
-private const val IGM_DIALOG_THEME = android.R.style.Theme_Translucent_NoTitleBar_Fullscreen
+private const val IGM_OVERLAY_THEME = android.R.style.Theme_Translucent_NoTitleBar_Fullscreen
 
 // applyOverrideConfiguration has to land before anything reads resources off the wrapper, so the
 // context is built once up front rather than adjusted later.
@@ -53,7 +51,7 @@ private fun localeContext(activity: Activity, tag: String): Context {
     if (tag.isEmpty()) return activity
     val locale = Locale.forLanguageTag(tag)
     if (locale.language.isEmpty()) return activity
-    return ContextThemeWrapper(activity, IGM_DIALOG_THEME).apply {
+    return ContextThemeWrapper(activity, IGM_OVERLAY_THEME).apply {
         applyOverrideConfiguration(Configuration().apply { setLocales(LocaleList(locale)) })
     }
 }
@@ -119,12 +117,11 @@ class IGMOverlay(
 ) {
     // The launcher's language choice, applied to the IGM only. Wrapping the activity itself would
     // re-localize RetroArch's own resources; ContextThemeWrapper keeps the activity as base so the
-    // Dialog still resolves a window token.
+    // overlay window still resolves a token from it.
     private val uiContext: Context = localeContext(activity, localeTag)
 
     val controller = IGMController(bridge, gameTitle)
     private var composeView: ComposeView? = null
-    private var dialog: Dialog? = null
     private val lifecycleOwner = IGMLifecycleOwner()
     private var showTimeMs = 0L
     private var fontFamily: FontFamily = FontFamily.Default
@@ -178,44 +175,77 @@ class IGMOverlay(
         val view = ComposeView(uiContext).apply {
             setViewTreeLifecycleOwner(lifecycleOwner)
             setViewTreeSavedStateRegistryOwner(lifecycleOwner)
+            isFocusable = true
+            isFocusableInTouchMode = true
+            // The platform draws a focus highlight around a focused view that does not define its
+            // own, which showed up as a border around the whole menu once this view started taking
+            // focus. The menu draws its own selection, so suppress it.
+            defaultFocusHighlightEnabled = false
 
             setContent {
                 IGMContent()
             }
-        }
-        composeView = view
 
-        // Use a full-screen Dialog to render on top of NativeActivity's GL surface
-        dialog = Dialog(uiContext, IGM_DIALOG_THEME).apply {
-            setContentView(view)
-            window?.apply {
-                setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT)
-                setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
-                clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-                // Lay the Dialog content out edge-to-edge from creation, the same way the
-                // built-in runner's activity does (WindowCompat, not the deprecated
-                // systemUiVisibility flags), so the content bounds are settled on the first
-                // frame instead of shifting as the immersive transition lands.
-                WindowCompat.setDecorFitsSystemWindows(this, false)
-            }
-            setCancelable(false)
-            // Handle gamepad input through the Dialog when IGM is visible,
-            // since NativeActivity's AInputQueue loses focus when a Dialog is showing
+            // Same contract the Dialog's listener had: consume everything so nothing reaches the
+            // game, and ignore the menu key briefly after opening so the press that opened the
+            // menu does not immediately close it.
             setOnKeyListener { _, keyCode, event ->
                 if (event.action == KeyEvent.ACTION_DOWN) {
-                    // Debounce BACK/menu keys for 500ms after opening to prevent
-                    // the same button press that opened the menu from closing it
                     val isMenuKey = keyCode == KeyEvent.KEYCODE_BACK
                             || keyCode == KeyEvent.KEYCODE_BUTTON_MODE
                             || keyCode == KeyEvent.KEYCODE_MENU
                     if (isMenuKey && System.currentTimeMillis() - showTimeMs < 500) {
-                        // Ignore — this is the same press that opened the menu
+                        // Ignore, this is the same press that opened the menu
                     } else {
                         controller.handleKeyDown(keyCode)
                     }
                 }
-                true // consume all events to prevent Dialog dismissal
+                true
             }
+        }
+        composeView = view
+
+        // A panel window rather than a Dialog, added once and never removed.
+        //
+        // A Dialog detaches its content view on dismiss, which disposes the composition, so every
+        // open rebuilt the whole menu tree. Retaining the composition instead is not a fix either:
+        // the recomposer belongs to the window, so a retained composition on a dismissed Dialog
+        // stops recomposing and the selection highlight freezes. Keeping one window attached for
+        // the session avoids both, and OsdOverlay already draws over the same GL surface this way.
+        //
+        // Deferred until the activity window is attached so the token is available.
+        activity.window.decorView.post {
+            runCatching { activity.windowManager.addView(view, panelParams(focusable = false)) }
+            // Composition already happens here: AbstractComposeView creates it in
+            // onAttachedToWindow, not at layout, so visibility does not defer it. What the first
+            // open still pays for is the first draw, rasterizing glyphs for the custom font and
+            // allocating the window's surface, and a view that is never drawn cannot pay that
+            // early. GONE rather than INVISIBLE so there is no layout pass during gameplay.
+            view.visibility = View.GONE
+        }
+    }
+
+    /**
+     * Focusable only while the menu is up. RetroArch's native input hook consumes gamepad input
+     * whenever the IGM is visible and does not forward it, so the menu has to hold window focus to
+     * receive keys, exactly as the Dialog did. Hidden, the window is neither focusable nor
+     * touchable and the game is unaffected.
+     */
+    private fun panelParams(focusable: Boolean) = WindowManager.LayoutParams(
+        WindowManager.LayoutParams.MATCH_PARENT,
+        WindowManager.LayoutParams.MATCH_PARENT,
+        WindowManager.LayoutParams.TYPE_APPLICATION_PANEL,
+        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+            if (focusable) 0
+            else WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+        PixelFormat.TRANSLUCENT,
+    ).apply {
+        token = activity.window.decorView.windowToken
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
         }
     }
 
@@ -230,8 +260,7 @@ class IGMOverlay(
     }
 
     fun onDestroy() {
-        dialog?.dismiss()
-        dialog = null
+        composeView?.let { runCatching { activity.windowManager.removeView(it) } }
         lifecycleOwner.performDestroy()
         composeView = null
     }
@@ -245,25 +274,19 @@ class IGMOverlay(
         controller.openMenu()
         bridge.pause()
         bridge.setIGMVisible(true)
-        dialog?.let { d ->
-            val w = d.window
-            // Show the Dialog non-focusable first so gaining focus does not disturb the
-            // activity's immersive state, then drive the Dialog's own window into the same
-            // edge-to-edge immersive mode the built-in runner uses. Restore focus for input.
-            w?.setFlags(
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-            )
-            d.show()
-            if (w != null) {
-                WindowCompat.setDecorFitsSystemWindows(w, false)
-                WindowInsetsControllerCompat(w, w.decorView).apply {
-                    hide(WindowInsetsCompat.Type.systemBars())
-                    systemBarsBehavior =
-                        WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                }
+        composeView?.let { v ->
+            v.visibility = View.VISIBLE
+            runCatching { activity.windowManager.updateViewLayout(v, panelParams(focusable = true)) }
+            v.requestFocus()
+            // Immersive state belongs to whichever window holds focus, so taking focus brings the
+            // system bars back over the game: a strip along the bottom, and the menu shifting as
+            // the insets change. This window has to ask for immersive mode on its own behalf, the
+            // same thing the Dialog used to do through its Window.
+            ViewCompat.getWindowInsetsController(v)?.apply {
+                hide(WindowInsetsCompat.Type.systemBars())
+                systemBarsBehavior =
+                    WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             }
-            w?.clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
         }
     }
 
@@ -271,7 +294,12 @@ class IGMOverlay(
         if (!showing) return
         showing = false
         bridge.setIGMVisible(false)
-        dialog?.dismiss()
+        composeView?.let { v ->
+            // Flags first, then hide: the window stops taking input before it stops drawing, so
+            // no key can land on a menu that is on its way out.
+            runCatching { activity.windowManager.updateViewLayout(v, panelParams(focusable = false)) }
+            v.visibility = View.GONE
+        }
         controller.closeMenu()
         bridge.unpause()
     }
