@@ -1930,6 +1930,8 @@ fun AppNavGraph(
         val hideForDialog = dialog is DialogState.About
                 || dialog is DialogState.Kitchen
                 || dialog is DialogState.UpdateDownload
+                || dialog is DialogState.Launching
+                || dialog is DialogState.SaveSyncChecking
                 || dialog is KeyboardHost
         val hideForScreen = currentScreen is LauncherScreen.Credits
                 || currentScreen is LauncherScreen.CreditsSection

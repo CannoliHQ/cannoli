@@ -432,8 +432,14 @@ class LaunchManager(
 
     private fun launchResultDialog(result: LaunchResult, platformTag: String? = null, romId: Long? = null): DialogState? {
         val dialog = toLaunchDialog(result, platformTag, romId)
-        if (dialog != null) launchState.launching = false
-        return dialog
+        if (dialog != null) {
+            launchState.launching = false
+            return dialog
+        }
+        // Success. The emulator has been asked to start but has not taken the screen yet, and on a
+        // cold process that gap is seconds. Cleared by MainActivity.onResume when the launcher
+        // comes back.
+        return DialogState.Launching
     }
 
     private fun toLaunchDialog(result: LaunchResult, platformTag: String? = null, romId: Long? = null): DialogState? {

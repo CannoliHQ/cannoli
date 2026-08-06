@@ -1140,7 +1140,11 @@ class DialogInputHandler @Inject constructor(
             }
             is DialogState.MissingCore,
             is DialogState.MissingApp,
-            is DialogState.LaunchError -> {
+            is DialogState.LaunchError,
+            // Dismissable on purpose. It normally clears when the launcher resumes, but a launch
+            // that somehow never backgrounds the launcher would otherwise leave it on screen with
+            // no way out. Dismissing it does not cancel anything.
+            is DialogState.Launching -> {
                 nav.dialogState.value = DialogState.None
             }
             is DialogState.UpdateDownload -> {

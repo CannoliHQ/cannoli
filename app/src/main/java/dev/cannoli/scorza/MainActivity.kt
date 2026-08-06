@@ -409,6 +409,11 @@ class MainActivity : ComponentActivity(), ActivityActions {
         menuNavigationPoller.start()
         bootSequencer.advance()
         launchState.launching = false
+        // The emulator has taken the screen and given it back, so whatever was starting has
+        // either started or failed. Either way this is stale.
+        if (nav.dialogState.value is DialogState.Launching) {
+            nav.dialogState.value = DialogState.None
+        }
         val justExited = launchState.lastLaunched
         if (justExited != null) {
             launchState.lastLaunched = null

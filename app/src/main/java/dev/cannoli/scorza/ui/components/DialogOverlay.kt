@@ -945,6 +945,8 @@ fun DialogOverlay(
 
         is DialogState.LaunchError -> LaunchErrorDialog(dialogState.message, buttonStyle = buttonStyle)
 
+        is DialogState.Launching -> dev.cannoli.ui.components.LaunchScrim()
+
         is DialogState.DeleteConfirm -> ConfirmOverlay(
             message = stringResource(R.string.dialog_delete_confirm, dialogState.gameName),
             buttonStyle = buttonStyle,
@@ -983,18 +985,11 @@ fun DialogOverlay(
             buttonStyle = buttonStyle,
         )
 
-        // Held across a network round trip to the server while input is already blocked, so
-        // without this the launcher reads as frozen for as long as the server takes to answer.
-        is DialogState.SaveSyncChecking -> {
-            OverlayScrim {
-                androidx.compose.material3.Text(
-                    text = stringResource(R.string.save_sync_checking),
-                    color = LocalCannoliColors.current.text,
-                    fontSize = listFontSize,
-                    lineHeight = listLineHeight,
-                )
-            }
-        }
+        // Held across a network round trip to the server while input is already blocked. The same
+        // black ground as a launch with nothing to report, since that is what this is on its way
+        // to being: the line only surfaces if the server takes long enough to look like a hang.
+        is DialogState.SaveSyncChecking ->
+            dev.cannoli.ui.components.LaunchScrim(status = stringResource(R.string.save_sync_checking))
 
         else -> {}
     }
