@@ -18,6 +18,7 @@
     <string name="label_change_emulator">CHANGER L\'ÉMULATEUR</string>
     <string name="label_delete">SUPPRIMER</string>
     <string name="label_confirm">CONFIRMER</string>
+    <string name="label_proceed">CONTINUER</string>
     <string name="label_toggle">BASCULER</string>
     <string name="label_new">NOUVEAU</string>
     <string name="label_settings">PARAMÈTRES</string>
@@ -618,6 +619,7 @@
     <!-- Shown before the ROM directory is changed or cleared, since the rescan that follows prunes
          database entries for every ROM that is not at the same relative path under the new
          directory. Cannoli and RetroAchievements are product names; leave them untranslated. -->
+    <string name="library_switch_confirm">Changer le dossier de ROM est une action destructrice.\n\nCannoli re-scanne, efface les ROMs qu\'il ne trouve plus dans sa base de données. Les favoris, collections, surcharges de jeux, ID de jeux RetroAchievements et les jeux récents seront tous supprimés pour les ROMs qui n\'apparaissent pas sous le même chemin relatif dans le nouveau dossier de ROM.\n\nLes ROMs, sauvegardes et sauvegarde d\'état sur le disque restes inchangés.</string>
     <!-- IGM screen titles -->
     <string name="igm_settings">Paramètres</string>
     <string name="igm_video">Vidéo</string>
@@ -686,8 +688,11 @@
     <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
     <string name="mapping_platform_name_with_tag">%1$s (%2$s)</string>
     <!-- Shown above the RetroArch core list when the installed build predates the receiver that answers core queries. -->
+    <string name="mapping_notice_cannot_report_cores">Cette version de RetroArch ne peut pas rapporter les noyaux installés</string>
     <!-- Shown when RetroArch has the receiver but did not answer the query. -->
+    <string name="mapping_notice_no_response">RetroArch ne répond pas</string>
     <!-- Shown above the core list when the configured RetroArch package is not installed at all. -->
+    <string name="mapping_notice_not_installed">RetroArch n\'est pas installé</string>
     <!-- Debug builds only: a gallery of every Nerd Font glyph the launcher draws. Never shipped to users, so not sent to translators. -->
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">Mapping %s</string>
@@ -769,6 +774,7 @@
     <string name="conflicts_title">Conflit de synchronisation</string>
     <string name="conflicts_applying">Application des conflits...</string>
     <!-- Shown while saves are checked against the server before a game launches. -->
+    <string name="save_sync_checking">Vérification des sauvegardes...</string>
     <!-- %1$d = number of saves that could not be applied. -->
     <plurals name="conflicts_apply_failed">
         <item quantity="one">%1$d Sauvegardes n\'ont pas pu être appliquées</item>
