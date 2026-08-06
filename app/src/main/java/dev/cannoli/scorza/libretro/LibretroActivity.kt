@@ -425,6 +425,9 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
     )
 
     companion object {
+        // Bounded on purpose: onStop and onDestroy must not wait on a stalled card.
+        private const val LOG_FLUSH_TIMEOUT_MS = 250L
+
         private val FF_SPEEDS = listOf(2, 3, 4, 6, 8)
 
         // Substrings (lowercase) matched against "<key> <desc>" for cores declaring hw_render=true.
@@ -2859,6 +2862,7 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
             // }
             autoSavedOnStop = true
         }
+        dev.cannoli.scorza.util.LogWriter.flush(LOG_FLUSH_TIMEOUT_MS)
     }
 
     @Suppress("DEPRECATION")
@@ -2910,6 +2914,7 @@ class LibretroActivity : ComponentActivity(), LauncherSettingsHost {
             sessionLog.log("onDestroy (isFinishing=$isFinishing, isChangingConfigurations=$isChangingConfigurations)")
             sessionLog.close()
         }
+        dev.cannoli.scorza.util.LogWriter.flush(LOG_FLUSH_TIMEOUT_MS)
         isRunning = false
         if (::controllerBridge.isInitialized) {
             controllerBridge.onDeviceAdded = null
