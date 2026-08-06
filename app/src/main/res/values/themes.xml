@@ -4,11 +4,16 @@
         <item name="android:windowFullscreen">true</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowBackground">@android:color/black</item>
+        <!-- The launcher side of the pair. Which window's animation style applies depends on
+             which one is closing, so suppressing it only on the emulator leaves the return
+             animated. -->
+        <item name="android:windowAnimationStyle">@style/Animation.Cannoli.None</item>
     </style>
 
     <style name="Theme.Cannoli.Splash" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@android:color/black</item>
         <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_splash</item>
         <item name="postSplashScreenTheme">@style/Theme.Cannoli</item>
+        <item name="android:windowAnimationStyle">@style/Animation.Cannoli.None</item>
     </style>
 </resources>

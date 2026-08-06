@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!--
+      Every window animation, named individually.
+
+      Setting windowAnimationStyle to @null is not the same thing and does not reliably suppress
+      anything: the platform falls back to its defaults. Naming each animation is what actually
+      turns them off.
+
+      Both the activity and task sets are listed because which one applies depends on whether the
+      windows involved share a task, and that is a layout detail no theme should have to care
+      about. RetroArch moved between the two when it stopped owning its own task, and the
+      transitions came back precisely because only the task set had been suppressed.
+    -->
+    <style name="Animation.Cannoli.None" parent="@android:style/Animation">
+        <item name="android:activityOpenEnterAnimation">@null</item>
+        <item name="android:activityOpenExitAnimation">@null</item>
+        <item name="android:activityCloseEnterAnimation">@null</item>
+        <item name="android:activityCloseExitAnimation">@null</item>
+        <item name="android:taskOpenEnterAnimation">@null</item>
+        <item name="android:taskOpenExitAnimation">@null</item>
+        <item name="android:taskCloseEnterAnimation">@null</item>
+        <item name="android:taskCloseExitAnimation">@null</item>
+        <item name="android:taskToFrontEnterAnimation">@null</item>
+        <item name="android:taskToFrontExitAnimation">@null</item>
+        <item name="android:taskToBackEnterAnimation">@null</item>
+        <item name="android:taskToBackExitAnimation">@null</item>
+    </style>
+
+</resources>
