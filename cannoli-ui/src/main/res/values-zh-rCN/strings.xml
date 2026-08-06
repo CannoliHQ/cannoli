@@ -84,7 +84,6 @@
     <string name="settings_emulation">模拟</string>
     <string name="settings_integrations">集成</string>
     <string name="settings_advanced">高级设置</string>
-    <string name="settings_debug">调试</string>
     <string name="settings_about">关于</string>
     <!-- Setting: which update channel to follow (e.g. stable versus test builds). -->
     <string name="settings_release_channel">发布通道</string>
@@ -344,7 +343,6 @@
     <string name="romm_vtype_mode">游戏模式</string>
     <string name="setting_logging">日志记录中</string>
     <!-- Advanced toggle: log the intents used to launch external emulators. -->
-    <string name="setting_audit_emulator_intents">查看模拟器Intents</string>
     <string name="logging_title">日志</string>
     <string name="logging_rom_scan">扫描ROM</string>
     <string name="logging_input">输入</string>
@@ -607,6 +605,9 @@
     <!-- Update download -->
     <string name="update_retry">重试</string>
     <string name="restart_required">重启以应用更改。</string>
+    <!-- Shown before the ROM directory is changed or cleared, since the rescan that follows prunes
+         database entries for every ROM that is not at the same relative path under the new
+         directory. Cannoli and RetroAchievements are product names; leave them untranslated. -->
     <!-- IGM screen titles -->
     <string name="igm_settings">设置</string>
     <string name="igm_video">视频</string>
@@ -673,6 +674,10 @@
     <string name="mapping_required_missing">缺少%d</string>
     <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
     <string name="mapping_platform_name_with_tag">%1$s (%2$s)</string>
+    <!-- Shown above the RetroArch core list when the installed build predates the receiver that answers core queries. -->
+    <!-- Shown when RetroArch has the receiver but did not answer the query. -->
+    <!-- Shown above the core list when the configured RetroArch package is not installed at all. -->
+    <!-- Debug builds only: a gallery of every Nerd Font glyph the launcher draws. Never shipped to users, so not sent to translators. -->
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">%s 映射</string>
     <!-- Screen title for the per-game emulator picker. %s = game name. -->
@@ -745,6 +750,7 @@
     <!-- Conflicts resolution screen -->
     <string name="conflicts_title">同步冲突</string>
     <string name="conflicts_applying">正在应用冲突...</string>
+    <!-- Shown while saves are checked against the server before a game launches. -->
     <!-- %1$d = number of saves that could not be applied. -->
     <plurals name="conflicts_apply_failed">
         <item quantity="other">%1$d 存档无法应用</item>
