@@ -59,24 +59,21 @@ fun SectionNotice(
             .padding(horizontal = 14.dp, vertical = verticalPadding),
         contentAlignment = Alignment.CenterStart
     ) {
+        // One style for both, so the glyph and the sentence resolve identical line metrics and
+        // CenterVertically has equal-height boxes to centre. Deriving them separately left the
+        // icon on the theme's line height and the text on the caller's.
+        val noticeStyle = MaterialTheme.typography.bodyMedium.copy(
+            fontSize = (fontSize.value * 0.72f).sp,
+            lineHeight = lineHeight,
+            color = colors.text.copy(alpha = 0.6f)
+        )
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = icon,
-                fontFamily = LocalCannoliIconFont.current,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontSize = (fontSize.value * 0.72f).sp,
-                    color = colors.text.copy(alpha = 0.6f)
-                )
+                style = noticeStyle.copy(fontFamily = LocalCannoliIconFont.current)
             )
             Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = text,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontSize = (fontSize.value * 0.72f).sp,
-                    lineHeight = lineHeight,
-                    color = colors.text.copy(alpha = 0.6f)
-                )
-            )
+            Text(text = text, style = noticeStyle)
         }
     }
 }

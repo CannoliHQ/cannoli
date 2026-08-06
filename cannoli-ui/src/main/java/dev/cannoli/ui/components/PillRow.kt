@@ -287,10 +287,13 @@ fun PillRowKeyValue(
                 Spacer(modifier = Modifier.width(8.dp))
             }
             if (valueIcon != null) {
+                // Same style as the value beside it, differing only in family. Passing fontSize
+                // alone left lineHeight unspecified, so the glyph resolved the icon font's own
+                // metrics while the value used the theme's, and CenterVertically then centred two
+                // boxes of different heights.
                 Text(
                     text = valueIcon,
-                    fontFamily = LocalCannoliIconFont.current,
-                    fontSize = valueStyle.fontSize,
+                    style = valueStyle.copy(fontFamily = LocalCannoliIconFont.current),
                     color = labelColor,
                     maxLines = 1
                 )
