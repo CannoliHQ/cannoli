@@ -18,6 +18,7 @@ class KitchenLogTest {
 
     @After fun tearDown() {
         LoggingPrefs.kitchen = false
+        LogWriter.flush(5000)
         root.deleteRecursively()
     }
 
@@ -26,12 +27,14 @@ class KitchenLogTest {
     @Test fun doesNotWriteWhenDisabled() {
         LoggingPrefs.kitchen = false
         KitchenLog.log("hello")
+        LogWriter.flush(5000)
         assertFalse(logFile().exists())
     }
 
     @Test fun writesWhenEnabled() {
         LoggingPrefs.kitchen = true
         KitchenLog.log("hello")
+        LogWriter.flush(5000)
         assertTrue(logFile().exists())
         assertTrue(logFile().readText().contains("hello"))
     }
@@ -39,6 +42,7 @@ class KitchenLogTest {
     @Test fun logErrorIncludesThrowableDetail() {
         LoggingPrefs.kitchen = true
         KitchenLog.logError("boom", IllegalStateException("bad value"))
+        LogWriter.flush(5000)
         val text = logFile().readText()
         assertTrue(text.contains("boom"))
         assertTrue(text.contains("IllegalStateException"))

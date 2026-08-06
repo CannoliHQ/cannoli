@@ -482,13 +482,20 @@ class LaunchManager(
         }
     }
 
+    private val debugSink = dev.cannoli.scorza.util.LogSink(0)
+    private val debugFmt = java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.US)
+    private var debugSinkRoot: String? = null
+
     private fun debugLog(message: String) {
         if (!dev.cannoli.scorza.util.LoggingPrefs.session) return
         try {
-            val dir = CannoliPaths(settings.sdCardRoot).logsDir
-            dir.mkdirs()
-            val f = File(dir, "launch_debug.log")
-            f.appendText("${java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.US).format(java.util.Date())} $message\n")
+            val root = settings.sdCardRoot
+            if (root != debugSinkRoot) {
+                debugSinkRoot = root
+                debugSink.open(File(CannoliPaths(root).logsDir, "launch_debug.log"))
+            }
+            val stamp = synchronized(debugFmt) { debugFmt.format(java.util.Date()) }
+            dev.cannoli.scorza.util.LogWriter.write(debugSink, "$stamp $message\n")
         } catch (_: Exception) {}
     }
 
