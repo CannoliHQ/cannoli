@@ -90,6 +90,8 @@ class LaunchManager(
         val romName = normalizedRomName(rom)
         val stateDir = paths.saveStateDir(rom.platformTag, romName)
         stateDir.mkdirs()
+        val saveDir = paths.savesFor(rom.platformTag)
+        saveDir.mkdirs()
         val biosDir = paths.biosFor(rom.platformTag)
         biosDir.mkdirs()
         val raSlot = if (slot > 0) slot - 1 else 0
@@ -98,6 +100,14 @@ class LaunchManager(
             put("savestate_directory", stateDir.absolutePath)
             put("sort_savestates_enable", "false")
             put("sort_savestates_by_content_enable", "false")
+            // Named outright rather than derived. RetroArch's by-content sorting appends the ROM's
+            // parent directory, which is the platform directory only for a loose ROM: a bundled
+            // multi-disc game at Roms/PSX/Game/disc1.cue would land in Saves/Game. Resolving the
+            // platform tag here keeps every game on one system in Saves/<tag>, which is where the
+            // launcher and save sync both look.
+            put("savefile_directory", saveDir.absolutePath)
+            put("sort_savefiles_enable", "false")
+            put("sort_savefiles_by_content_enable", "false")
             put("state_slot", raSlot.toString())
             // RetroArch's own auto-save is how ricotta saves on quit; the built-in runner does the
             // equivalent explicitly in LibretroActivity. Both write the Auto slot, so both gate on
@@ -114,15 +124,6 @@ class LaunchManager(
         return launchConfig.absolutePath
     }
 
-    private fun buildMinimalConfig(rootPath: String) = buildString {
-        appendLine("savefile_directory = \"$rootPath/Saves\"")
-        appendLine("savestate_directory = \"$rootPath/Save States\"")
-        appendLine("sort_savefiles_by_content_enable = \"true\"")
-        appendLine("savestate_file_compression = \"false\"")
-        appendLine("config_save_on_exit = \"false\"")
-        appendLine("video_font_enable = \"false\"")
-        appendLine("assets_directory = \"$rootPath/Config/Assets\"")
-    }
 
     private fun patchRetroArchConfig(source: String, rootPath: String): String {
         val raUser = settings.raUsername
@@ -566,6 +567,31 @@ class LaunchManager(
         // core probe and then RetroArch, which is what the pre-identity code did implicitly.
         // The availability probes are lazy because a stored choice decides the answer on its
         // own, and probing the filesystem to reach a conclusion already known is wasted work.
+        /**
+         * The base config the embedded RetroArch loads when nothing else has written one.
+         *
+         * RetroArch derives its save and state directories by appending to the configured ones,
+         * and both sort flags default to on. Cannoli's layout is one directory per system, so the
+         * content-directory level is wanted and the core level never is: leaving
+         * `sort_savefiles_enable` at its default gives `Saves/GBA/mGBA` instead of `Saves/GBA`.
+         * Both flags are therefore stated outright rather than left to the defaults.
+         */
+        fun buildMinimalConfig(rootPath: String) = buildString {
+            appendLine("savefile_directory = \"$rootPath/Saves\"")
+            appendLine("savestate_directory = \"$rootPath/Save States\"")
+            appendLine("sort_savefiles_by_content_enable = \"true\"")
+            appendLine("sort_savefiles_enable = \"false\"")
+            // buildGameConfig pins the state directory exactly and turns both of these off. These
+            // only decide where states land if that per-game write fails and the base is launched
+            // on its own, so they mirror the savefile rule rather than contradicting it.
+            appendLine("sort_savestates_by_content_enable = \"true\"")
+            appendLine("sort_savestates_enable = \"false\"")
+            appendLine("savestate_file_compression = \"false\"")
+            appendLine("config_save_on_exit = \"false\"")
+            appendLine("video_font_enable = \"false\"")
+            appendLine("assets_directory = \"$rootPath/Config/Assets\"")
+        }
+
         fun pickSource(
             gameSource: EmulatorSource?,
             platformSource: EmulatorSource?,
