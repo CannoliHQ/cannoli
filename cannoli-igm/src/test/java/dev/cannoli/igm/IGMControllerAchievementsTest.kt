@@ -16,7 +16,7 @@ class IGMControllerAchievementsTest {
     )
 
     @Test fun openAchievementsPushesPopulatedScreen() {
-        val c = IGMController(bridgeWith(sample), "Game")
+        val c = testController(bridgeWith(sample))
         c.openMenu(); c.openAchievements()
         val screen = c.currentScreen
         assertTrue(screen is IGMScreen.Achievements)
@@ -24,14 +24,14 @@ class IGMControllerAchievementsTest {
     }
 
     @Test fun filterCyclesWithWest() {
-        val c = IGMController(bridgeWith(sample), "Game")
+        val c = testController(bridgeWith(sample))
         c.openMenu(); c.openAchievements()
         c.handleKeyDown(99)
         assertEquals(1, (c.currentScreen as IGMScreen.Achievements).filter)
     }
 
     @Test fun southOpensDetailEastReturns() {
-        val c = IGMController(bridgeWith(sample), "Game")
+        val c = testController(bridgeWith(sample))
         c.openMenu(); c.openAchievements()
         c.handleKeyDown(96)
         assertTrue(c.currentScreen is IGMScreen.AchievementDetail)
@@ -40,7 +40,7 @@ class IGMControllerAchievementsTest {
     }
 
     @Test fun filterCyclesWithDeviceMappedWestKeycode() {
-        val c = IGMController(bridgeWith(sample), "Game")
+        val c = testController(bridgeWith(sample))
         c.setInputMapping(
             IgmInputMapping(
                 buttonKeycodes = mapOf(CanonicalButton.BTN_WEST to listOf(100)),
@@ -60,7 +60,7 @@ class IGMControllerAchievementsTest {
             AchievementInfo(1, "Alpha", "first", 5, unlocked = true),
             AchievementInfo(2, "Beta", "second", 10, unlocked = true),
         )
-        val c = IGMController(bridgeWith(allUnlocked), "Game")
+        val c = testController(bridgeWith(allUnlocked))
         c.openMenu(); c.openAchievements()
         val before = (c.currentScreen as IGMScreen.Achievements).filter
         c.handleKeyDown(99)

@@ -29,7 +29,7 @@ private class ProviderBridge : FakeEmulatorBridge() {
 class IGMControllerProviderSettingsTest {
 
     private fun openSettings(): IGMController {
-        val c = IGMController(ProviderBridge(), "Game")
+        val c = testController(ProviderBridge())
         c.openMenu()
         val menu = c.buildMenuOptions()
         val settingsIndex = (0 until menu.options.size).first { menu.actionAt(it) == IgmMenuAction.SETTINGS }

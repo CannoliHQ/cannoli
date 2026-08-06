@@ -4,11 +4,19 @@ import android.graphics.Bitmap
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 class IGMController(
     val bridge: EmulatorBridge,
-    val gameTitle: String
+    val gameTitle: String,
+    private val scope: CoroutineScope = MainScope(),
+    private val io: CoroutineDispatcher = Dispatchers.IO,
 ) {
     val screenStack = mutableStateListOf<IGMScreen>()
     val currentScreen: IGMScreen? get() = screenStack.lastOrNull()
@@ -72,16 +80,39 @@ class IGMController(
         }
     }
 
+    // Occupancy is 11 stat calls against the SD card. It only changes when a state is written
+    // or deleted, and both go through this controller, so it is read once and invalidated
+    // rather than re-read on every open.
+    private var occupancyCache: List<Boolean>? = null
+
+    fun invalidateSlotCache() { occupancyCache = null }
+
     fun refreshSlotInfo() {
         val slot = saveSlotManager.slots[selectedSlotIndex.intValue]
-        slotExists.value = bridge.stateExists(slot.index)
-        slotThumbnail.value = bridge.getStateThumbnail(slot.index)
-        slotOccupied.value = saveSlotManager.slots.map { bridge.stateExists(it.index) }
+        occupancyCache?.let { slotOccupied.value = it }
+        scope.launch {
+            val exists = withContext(io) { bridge.stateExists(slot.index) }
+            slotExists.value = exists
+
+            if (occupancyCache == null) {
+                val occupancy = withContext(io) {
+                    saveSlotManager.slots.map { bridge.stateExists(it.index) }
+                }
+                occupancyCache = occupancy
+                slotOccupied.value = occupancy
+            }
+
+            // Last, and separately: this one decodes a bitmap and is the slowest of the three.
+            slotThumbnail.value = withContext(io) { bridge.getStateThumbnail(slot.index) }
+        }
     }
 
+    // Writing a state changes occupancy, so the cache cannot survive it. Loading does not.
+    // Anything added later that deletes a state, or undoes a save, must invalidate here too.
     fun saveState() {
         val slot = saveSlotManager.slots[selectedSlotIndex.intValue]
         saveSlotManager.saveState(bridge, slot)
+        invalidateSlotCache()
         refreshSlotInfo()
     }
 

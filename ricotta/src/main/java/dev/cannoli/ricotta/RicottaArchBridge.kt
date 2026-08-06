@@ -108,7 +108,21 @@ class RicottaArchBridge(
     override fun getStateThumbnail(slot: Int): Bitmap? {
         val file = File(StateSlotPaths.thumbnailPath(stateBasePath, slot))
         if (!file.exists()) return null
-        return BitmapFactory.decodeFile(file.absolutePath)
+        // Two passes: measure, then decode subsampled. A save-state screenshot is drawn at a
+        // fraction of its stored size, and decoding it at full resolution is the slowest thing
+        // the menu does on open.
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(file.absolutePath, bounds)
+        var sample = 1
+        while (bounds.outWidth / sample > THUMBNAIL_MAX_PX ||
+            bounds.outHeight / sample > THUMBNAIL_MAX_PX
+        ) {
+            sample *= 2
+        }
+        return BitmapFactory.decodeFile(
+            file.absolutePath,
+            BitmapFactory.Options().apply { inSampleSize = sample },
+        )
     }
 
     override fun stateExists(slot: Int): Boolean =
@@ -230,6 +244,9 @@ class RicottaArchBridge(
     private external fun nativeRaSaveOverride(scope: Int)
 
     companion object {
+        // Comfortably above what the menu draws, so subsampling never shows.
+        private const val THUMBNAIL_MAX_PX = 640
+
         init {
             // The native library is already loaded by RetroActivityCommon
             // System.loadLibrary("retroarch-activity")

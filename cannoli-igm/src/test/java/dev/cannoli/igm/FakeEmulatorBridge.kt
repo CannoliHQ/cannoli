@@ -1,6 +1,18 @@
 package dev.cannoli.igm
 
 import android.graphics.Bitmap
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+
+/**
+ * An IGMController whose slot refresh runs inline.
+ *
+ * The production default is a MainScope, which a JVM unit test has no main dispatcher for. Tests
+ * that are not about slot IO use this so opening a menu behaves exactly as it did before that work
+ * moved off the main thread. Tests that are about it inject their own scheduler instead.
+ */
+fun testController(bridge: EmulatorBridge, gameTitle: String = "Game"): IGMController =
+    IGMController(bridge, gameTitle, CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined)
 
 open class FakeEmulatorBridge : EmulatorBridge {
     override fun reset() {}
