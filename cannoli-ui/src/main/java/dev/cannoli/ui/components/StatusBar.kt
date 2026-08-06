@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.ui.R
+import dev.cannoli.ui.theme.CannoliIcons
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliFont
 import dev.cannoli.ui.theme.LocalCannoliIconFont
@@ -42,63 +43,34 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private const val ICON_CLOUD_SYNC = "\uDB81\uDE3F"
-private const val ICON_CLOUD_CHECK = "\uDB80\uDD60"
-private const val ICON_CLOUD_ALERT = "\uDB82\uDDE0"
-private const val ICON_CLOUD_OFF = "\uDB80\uDD64"
-private const val ICON_ALERT_CIRCLE = "\uDB80\uDC28" // mdi-alert-circle (U+F0028)
-
 private fun cloudIcon(status: SaveSyncStatus): String? = when (status) {
-    SaveSyncStatus.CHECKING, SaveSyncStatus.UPLOADING, SaveSyncStatus.DOWNLOADING -> ICON_CLOUD_SYNC
-    SaveSyncStatus.UP_TO_DATE -> ICON_CLOUD_CHECK
-    SaveSyncStatus.CONFLICT -> ICON_CLOUD_ALERT
-    SaveSyncStatus.ERROR -> ICON_ALERT_CIRCLE
-    SaveSyncStatus.OFFLINE -> ICON_CLOUD_OFF
+    SaveSyncStatus.CHECKING, SaveSyncStatus.UPLOADING, SaveSyncStatus.DOWNLOADING -> CannoliIcons.CloudSync.glyph
+    SaveSyncStatus.UP_TO_DATE -> CannoliIcons.CloudCheck.glyph
+    SaveSyncStatus.CONFLICT -> CannoliIcons.CloudAlert.glyph
+    SaveSyncStatus.ERROR -> CannoliIcons.AlertCircle.glyph
+    SaveSyncStatus.OFFLINE -> CannoliIcons.CloudOff.glyph
     SaveSyncStatus.DISABLED -> null
 }
 
-private const val ICON_DATABASE_SYNC = "\uDB83\uDCFF" // mdi-database-sync (U+F0CFF)
-private const val ICON_DATABASE_ALERT = "\uDB85\uDE3A" // mdi-database-alert (U+F163A)
-
 // The RomM cache mirror, kept visually distinct from the cloud glyphs that mean save data.
 private fun cacheSyncIcon(status: RommCacheSyncStatus): String? = when (status) {
-    RommCacheSyncStatus.SYNCING -> ICON_DATABASE_SYNC
-    RommCacheSyncStatus.ERROR -> ICON_DATABASE_ALERT
+    RommCacheSyncStatus.SYNCING -> CannoliIcons.DatabaseSync.glyph
+    RommCacheSyncStatus.ERROR -> CannoliIcons.DatabaseAlert.glyph
     RommCacheSyncStatus.IDLE -> null
 }
 
-private const val ICON_BLUETOOTH = "\uDB80\uDCAF"
-private const val ICON_WIFI = "\uDB81\uDDA9"
-private const val ICON_VPN = "\uDB82\uDFC4"
-private const val ICON_UPDATE = "\uDB81\uDEB0"
-private const val ICON_KITCHEN = "\uF0F5"
-private const val ICON_DOWNLOAD = "\uF019"
-private const val ICON_CHARGING = "\uF0E7"
-
-private const val ICON_BATTERY_FULL = "\uDB80\uDC79"
-private const val ICON_BATTERY_90 = "\uDB80\uDC82"
-private const val ICON_BATTERY_80 = "\uDB80\uDC81"
-private const val ICON_BATTERY_70 = "\uDB80\uDC80"
-private const val ICON_BATTERY_60 = "\uDB80\uDC7F"
-private const val ICON_BATTERY_50 = "\uDB80\uDC7E"
-private const val ICON_BATTERY_40 = "\uDB80\uDC7D"
-private const val ICON_BATTERY_30 = "\uDB80\uDC7C"
-private const val ICON_BATTERY_20 = "\uDB80\uDC7B"
-private const val ICON_BATTERY_10 = "\uDB80\uDC7A"
-private const val ICON_BATTERY_ALERT = "\uDB80\uDC83"
-
 private fun batteryLevelIcon(percent: Int): String = when {
-    percent >= 95 -> ICON_BATTERY_FULL
-    percent >= 85 -> ICON_BATTERY_90
-    percent >= 75 -> ICON_BATTERY_80
-    percent >= 65 -> ICON_BATTERY_70
-    percent >= 55 -> ICON_BATTERY_60
-    percent >= 45 -> ICON_BATTERY_50
-    percent >= 35 -> ICON_BATTERY_40
-    percent >= 25 -> ICON_BATTERY_30
-    percent >= 15 -> ICON_BATTERY_20
-    percent >= 5 -> ICON_BATTERY_10
-    else -> ICON_BATTERY_ALERT
+    percent >= 95 -> CannoliIcons.BatteryFull.glyph
+    percent >= 85 -> CannoliIcons.Battery90.glyph
+    percent >= 75 -> CannoliIcons.Battery80.glyph
+    percent >= 65 -> CannoliIcons.Battery70.glyph
+    percent >= 55 -> CannoliIcons.Battery60.glyph
+    percent >= 45 -> CannoliIcons.Battery50.glyph
+    percent >= 35 -> CannoliIcons.Battery40.glyph
+    percent >= 25 -> CannoliIcons.Battery30.glyph
+    percent >= 15 -> CannoliIcons.Battery20.glyph
+    percent >= 5 -> CannoliIcons.Battery10.glyph
+    else -> CannoliIcons.BatteryAlert.glyph
 }
 
 @Composable
@@ -238,22 +210,22 @@ fun StatusBar(
     ) {
         cloudIcon(saveSyncStatus)?.let { Text(text = it, style = iconStyle) }
         cacheSyncIcon(rommCacheSyncStatus)?.let { Text(text = it, style = iconStyle) }
-        if (kitchenRunning) Text(text = ICON_KITCHEN, style = iconStyle)
+        if (kitchenRunning) Text(text = CannoliIcons.Kitchen.glyph, style = iconStyle)
         if (downloadCount > 0) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = ICON_DOWNLOAD, style = iconStyle)
+                Text(text = CannoliIcons.Download.glyph, style = iconStyle)
                 Spacer(modifier = Modifier.width((3 * scaleFactor).dp))
                 Text(text = downloadCount.toString(), style = textStyle)
             }
         } else if (downloadsActive) {
-            Text(text = ICON_DOWNLOAD, style = iconStyle)
+            Text(text = CannoliIcons.Download.glyph, style = iconStyle)
         }
-        if (showUpdateIcon) Text(text = ICON_UPDATE, style = iconStyle)
-        if (showBtIcon) Text(text = ICON_BLUETOOTH, style = iconStyle)
-        if (showWifiIcon) Text(text = ICON_WIFI, style = iconStyle)
-        if (showVpnIcon) Text(text = ICON_VPN, style = iconStyle)
+        if (showUpdateIcon) Text(text = CannoliIcons.Update.glyph, style = iconStyle)
+        if (showBtIcon) Text(text = CannoliIcons.Bluetooth.glyph, style = iconStyle)
+        if (showWifiIcon) Text(text = CannoliIcons.Wifi.glyph, style = iconStyle)
+        if (showVpnIcon) Text(text = CannoliIcons.Vpn.glyph, style = iconStyle)
         if (showBattery) {
-            if (isCharging) Text(text = ICON_CHARGING, style = iconStyle)
+            if (isCharging) Text(text = CannoliIcons.Charging.glyph, style = iconStyle)
             if (batteryIconOnly) {
                 Text(text = batteryLevelIcon(batteryLevel), style = iconStyle)
             } else {

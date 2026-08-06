@@ -17,6 +17,7 @@ class KitchenHttpServer internal constructor(
     internal val romDirectoryWalker: dev.cannoli.scorza.util.RomDirectoryWalker? = null,
     internal val atomicRename: dev.cannoli.scorza.util.AtomicRename? = null,
     internal val isArcadePlatform: (String) -> Boolean = { false },
+    internal val platformTagsProvider: () -> Collection<String> = { emptyList() },
     internal val volumesProvider: () -> List<KitchenVolume> = { emptyList() },
     internal val apkInstalls: ApkInstalls? = null,
     internal val appsRepository: dev.cannoli.scorza.db.AppsRepository? = null,
@@ -197,7 +198,11 @@ class KitchenHttpServer internal constructor(
                 val subpath = apiSegments.drop(1).joinToString("/")
                 val displayPath = if (subpath.isEmpty()) baseDir else "$baseDir/$subpath"
                 val resourceRoot = if (resource == "roms") romsRootProvider() else File(cannoliRoot, baseDir)
-                val targetDir = if (subpath.isEmpty()) resourceRoot else File(resourceRoot, subpath)
+                val targetDir = when {
+                    subpath.isEmpty() -> resourceRoot
+                    resource == "roms" -> romsTarget(resourceRoot, apiSegments.drop(1))
+                    else -> File(resourceRoot, subpath)
+                }
                 val response = when (method) {
                     "GET" -> {
                         if (targetDir.isFile && isSecure(targetDir)) {
@@ -251,6 +256,16 @@ class KitchenHttpServer internal constructor(
         }
     }
 
+    /** Browsing is the one resource rooted in the user's own ROM directory rather than a directory
+     *  Cannoli laid out itself, so the canonical tag in the url has to be matched back to the
+     *  folder that is really on disk. The other resource dirs are created with canonical names.
+     *  Falling back to the tag keeps uploads and mkdir working for a platform with no folder yet. */
+    private fun romsTarget(romsRoot: File, segments: List<String>): File {
+        val tagDir = romDirectoryWalker?.resolveTagDir(segments[0]) ?: File(romsRoot, segments[0])
+        val rest = segments.drop(1)
+        return if (rest.isEmpty()) tagDir else File(tagDir, rest.joinToString(File.separator))
+    }
+
     internal fun readBody(session: IHTTPSession): String {
         val contentLength = session.headers["content-length"]?.toIntOrNull() ?: 0
         if (contentLength <= 0) return ""
@@ -296,6 +311,19 @@ class KitchenHttpServer internal constructor(
     private fun handleAuthStatus(): Response =
         jsonResponse(200, AuthStatusResponse.serializer(), AuthStatusResponse(required = !codeBypass))
 
+    /** Every platform tag Cannoli recognises. The database is the usual source, but a platform only
+     *  gains a row once it has been scanned, so the configured tags are folded in to keep a folder
+     *  for a never-scanned platform both visible and reachable. */
+    internal fun allPlatformTags(): List<String> =
+        (romsRepository?.knownPlatformTags().orEmpty() + platformTagsProvider()).distinct()
+
+    /** A ROM directory the launcher did not scaffold keeps whatever folder names the user already
+     *  had, and the launcher resolves those case-insensitively. Every tag entering the api is
+     *  matched the same way and answered in the one spelling the database uses, so the frontend's
+     *  display names, icons and grouping key off the same string the games endpoint accepts. */
+    internal fun canonicalTag(raw: String): String? =
+        allPlatformTags().firstOrNull { it.equals(raw, ignoreCase = true) }
+
     internal fun defaultRoots(): List<File> {
         val roms = try { romsRootProvider() } catch (_: Exception) { null }
         return listOfNotNull(cannoliRoot, roms)
@@ -335,6 +363,10 @@ class KitchenHttpServer internal constructor(
     }
 
     companion object {
+        // The dashboard appends these itself from /api/apps, so listing them as platforms too
+        // would put a second, duplicate tile on screen.
+        internal val RESERVED_APP_TAGS = setOf("TOOLS", "PORTS")
+
         private val RESOURCE_DIRS = mapOf(
             "roms" to "Roms",
             "art" to "Art",

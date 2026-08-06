@@ -1,7 +1,6 @@
 package dev.cannoli.scorza.ui.screens
 
 import dev.cannoli.ui.components.KeyboardController
-import dev.cannoli.ui.components.KeyboardLayout
 import dev.cannoli.ui.components.KeyboardState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -152,17 +151,4 @@ class DialogStateTest {
         assertTrue(DialogState.ContextMenu(gameName = "g", options = listOf("a")) !is KeyboardHost)
     }
 
-    // ---- isFullScreen ----
-
-    @Test fun `isFullScreen is true for context menus and input states`() {
-        assertTrue(DialogState.ContextMenu(gameName = "g", options = listOf("a")).isFullScreen)
-        assertTrue(DialogState.BulkContextMenu(gamePaths = listOf("/x"), options = listOf("a")).isFullScreen)
-        assertTrue(DialogState.RenameInput(gameName = "g").isFullScreen)
-        assertTrue(DialogState.About().isFullScreen)
-    }
-
-    @Test fun `keyboard help is full screen so its overlay renders`() {
-        val help = DialogState.KeyboardHelp(DialogState.RenameInput(gameName = "g"), KeyboardLayout.Default)
-        assertTrue(help.isFullScreen)
-    }
 }

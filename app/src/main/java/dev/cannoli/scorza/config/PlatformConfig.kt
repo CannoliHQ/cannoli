@@ -7,6 +7,7 @@ import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.isPackageInstalled
 import dev.cannoli.scorza.model.LaunchTarget
 import dev.cannoli.scorza.model.Platform
+import dev.cannoli.scorza.ui.screens.CoreAvailability
 import dev.cannoli.scorza.ui.screens.EmulatorMappingStatus
 import dev.cannoli.core.IniData
 import dev.cannoli.core.IniParser
@@ -409,12 +410,12 @@ class PlatformConfig(
         pm: PackageManager? = null,
         installedRaCores: Map<String, Set<String>> = emptyMap(),
         embeddedCoresDir: String? = null,
-        unresponsivePackages: Set<String> = emptySet(),
+        unreportablePackages: Set<String> = emptySet(),
         raLabel: String = "RetroArch",
     ): List<dev.cannoli.scorza.ui.screens.EmulatorMappingEntry> {
         val tags = (defaultCores.keys + defaultApps.keys + userChoices.keys)
         return tags.map { tag ->
-            detailedMappingFor(tag, pm, installedRaCores, embeddedCoresDir, unresponsivePackages, raLabel)
+            detailedMappingFor(tag, pm, installedRaCores, embeddedCoresDir, unreportablePackages, raLabel)
         }.sortedNatural { it.platformName }
     }
 
@@ -423,7 +424,7 @@ class PlatformConfig(
         pm: PackageManager? = null,
         installedRaCores: Map<String, Set<String>> = emptyMap(),
         embeddedCoresDir: String? = null,
-        unresponsivePackages: Set<String> = emptySet(),
+        unreportablePackages: Set<String> = emptySet(),
         raLabel: String = "RetroArch",
     ): dev.cannoli.scorza.ui.screens.EmulatorMappingEntry {
         val choice = userChoices[tag]
@@ -461,11 +462,15 @@ class PlatformConfig(
             )
         } else {
             val resolvedRunner = getRunnerLabel(tag, coreId, raLabel)
-            val status = coreStatus(tag, coreId, resolvedRunner, installedRaCores, embeddedCoresDir, unresponsivePackages)
-            // "Missing" is a confirmed absence (internal .so or new-RA report). "Unknown"
-            // means RetroArch cannot report its cores (older RA), so we cannot claim the
-            // core is missing - show it as picked rather than false-flagging it.
-            val mappingStatus = if (status == "Missing") EmulatorMappingStatus.NOT_INSTALLED else EmulatorMappingStatus.READY
+            val status = coreStatus(tag, coreId, resolvedRunner, installedRaCores, embeddedCoresDir, unreportablePackages)
+            // "Missing" is a confirmed absence: an internal .so that is not on disk, or a
+            // RetroArch that reported its cores and did not name this one. "Unknown" means no
+            // report is possible, so the row must not claim either way.
+            val mappingStatus = when (status) {
+                "Missing" -> EmulatorMappingStatus.NOT_INSTALLED
+                "Unknown" -> EmulatorMappingStatus.UNKNOWN
+                else -> EmulatorMappingStatus.READY
+            }
             dev.cannoli.scorza.ui.screens.EmulatorMappingEntry(
                 tag = tag, platformName = getDisplayName(tag),
                 coreDisplayName = getCoreDisplayName(coreId),
@@ -479,7 +484,7 @@ class PlatformConfig(
         tag: String, coreId: String, runner: String,
         installedRaCores: Map<String, Set<String>>,
         embeddedCoresDir: String?,
-        unresponsivePackages: Set<String>
+        unreportablePackages: Set<String>
     ): String {
         if (runner == "Internal") {
             val dir = embeddedCoresDir ?: nativeLibDir ?: return "Missing"
@@ -487,7 +492,7 @@ class PlatformConfig(
         }
         if (runner == "External") return "Present"
         if (installedRaCores.any { it.value.contains(coreId) }) return "Present"
-        if (unresponsivePackages.isNotEmpty()) return "Unknown"
+        if (unreportablePackages.isNotEmpty()) return "Unknown"
         return "Missing"
     }
 
@@ -518,6 +523,7 @@ class PlatformConfig(
         embeddedCoresDir: String? = null,
         pm: PackageManager? = null,
         raLabel: String = "RetroArch",
+        coreReportingUnavailable: Boolean = false,
     ): List<dev.cannoli.scorza.ui.screens.EmulatorPickerOption> {
         val upper = tag.uppercase()
         val candidateCoreIds = buildSet {
@@ -536,7 +542,7 @@ class PlatformConfig(
                     includeAll -> dev.cannoli.scorza.ui.screens.EmulatorPickerOption(
                         coreId = coreId, displayName = getCoreDisplayName(coreId),
                         source = EmulatorSource.Internal, runnerLabel = EmulatorSource.Internal.displayName,
-                        available = false,
+                        availability = CoreAvailability.UNAVAILABLE,
                     )
                     else -> null
                 }
@@ -549,9 +555,18 @@ class PlatformConfig(
                         source = EmulatorSource.RetroArch,
                         runnerLabel = InstalledCoreService.getPackageLabel(pkg),
                     )
+                    // Installed-only is not a filter that can be computed against a package
+                    // that reports nothing, so the section ignores includeAll rather than
+                    // filtering every candidate away and reading as "you have no cores".
+                    coreReportingUnavailable -> dev.cannoli.scorza.ui.screens.EmulatorPickerOption(
+                        coreId = coreId, displayName = getCoreDisplayName(coreId),
+                        source = EmulatorSource.RetroArch, runnerLabel = raLabel,
+                        availability = CoreAvailability.UNKNOWN,
+                    )
                     includeAll -> dev.cannoli.scorza.ui.screens.EmulatorPickerOption(
                         coreId = coreId, displayName = getCoreDisplayName(coreId),
-                        source = EmulatorSource.RetroArch, runnerLabel = raLabel, available = false,
+                        source = EmulatorSource.RetroArch, runnerLabel = raLabel,
+                        availability = CoreAvailability.UNAVAILABLE,
                     )
                     else -> null
                 }
@@ -568,28 +583,12 @@ class PlatformConfig(
                     includeAll -> dev.cannoli.scorza.ui.screens.EmulatorPickerOption(
                         coreId = "", displayName = appName,
                         source = EmulatorSource.Standalone, runnerLabel = EmulatorSource.Standalone.displayName,
-                        appPackage = cfg.packageName, available = false,
+                        appPackage = cfg.packageName, availability = CoreAvailability.UNAVAILABLE,
                     )
                     else -> null
                 }
             }
         }
-    }
-
-    fun isRetroArchUnresponsive(
-        tag: String,
-        installedRaCores: Map<String, Set<String>>,
-        unresponsivePackages: Set<String>
-    ): Boolean {
-        val upper = tag.uppercase()
-        val candidateCoreIds = buildSet {
-            defaultCores[upper]?.let { add(it) }
-            coreInfo?.getCoresForTag(tag)?.forEach { add(it.id) }
-        }
-        val anyReports = installedRaCores.any { (pkg, cores) ->
-            pkg !in unresponsivePackages && candidateCoreIds.any { it in cores }
-        }
-        return !anyReports && unresponsivePackages.isNotEmpty()
     }
 
     // The curated name wins over the installed app's own label, which is often decorated

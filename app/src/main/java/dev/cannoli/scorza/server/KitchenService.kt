@@ -83,6 +83,7 @@ class KitchenService : Service() {
             romDirectoryWalker = romDirectoryWalker,
             atomicRename = atomicRename,
             isArcadePlatform = { tag -> platformConfig.isArcade(tag) },
+            platformTagsProvider = { platformConfig.getAllTags().map { it.uppercase() } },
             volumesProvider = {
                 setupCoordinator.detectStorageVolumes().mapIndexed { index, (label, path) ->
                     KitchenVolume(

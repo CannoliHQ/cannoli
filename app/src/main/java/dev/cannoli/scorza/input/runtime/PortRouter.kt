@@ -201,6 +201,17 @@ class PortRouter(private val maxPorts: Int = 4) {
         recompute()
     }
 
+    /**
+     * Swap the mapping bound to one device, keyed by device id rather than mapping id so a
+     * profile with a different id (a saved template replacing a resolver fallback) can take over.
+     */
+    fun replaceMapping(androidDeviceId: Int, mapping: DeviceMapping) {
+        val entry = entries[resolveId(androidDeviceId)] ?: return
+        entry.mapping = mapping
+        entry.evaluator = PortEvaluator(mapping)
+        recompute()
+    }
+
     fun mappingForPort(port: Int): DeviceMapping? =
         entries.values.firstOrNull { it.port == port }?.mapping
 

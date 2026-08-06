@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.os.Handler
 import android.os.Looper
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -13,6 +14,21 @@ import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
+
+const val ACTION_QUERY_INSTALLED_CORES = "com.retroarch.QUERY_INSTALLED_CORES"
+const val ACTION_INSTALLED_CORES_RESULT = "com.retroarch.INSTALLED_CORES_RESULT"
+
+// UNSCANNED and NOT_INSTALLED exist because absence of information is not information. Folding
+// them into REPORTS made the picker label every core Not Installed both before the boot scan
+// landed and when no RetroArch was installed at all.
+enum class CoreReporting { REPORTS, UNSUPPORTED, SILENT, NOT_INSTALLED, UNSCANNED }
+
+// Resolving the receiver answers the real question. Version numbers cannot: every nightly
+// reports the same versionName, and the Play Store flavor computes versionCode by an
+// unrelated formula that would permanently fail a date comparison.
+fun PackageManager.hasCoreQueryReceiver(packageName: String): Boolean =
+    queryBroadcastReceivers(Intent(ACTION_QUERY_INSTALLED_CORES).setPackage(packageName), 0)
+        .any { it.activityInfo?.packageName == packageName }
 
 @Singleton
 class InstalledCoreService @Inject constructor(
@@ -31,6 +47,14 @@ class InstalledCoreService @Inject constructor(
         private set
 
     @Volatile
+    var unsupportedPackages: Set<String> = emptySet()
+        private set
+
+    @Volatile
+    var knownPackages: Set<String> = emptySet()
+        private set
+
+    @Volatile
     var cacheReady: Boolean = false
         private set
 
@@ -41,7 +65,15 @@ class InstalledCoreService @Inject constructor(
         synchronized(this) { markedSinceQuery.clear() }
         val answered = mutableMapOf<String, Set<String>>()
         val silent = mutableSetOf<String>()
-        for (pkg in discoverRaPackages()) {
+        val unsupported = mutableSetOf<String>()
+        val discovered = discoverRaPackages()
+        for (pkg in discovered) {
+            // No receiver means no reply is coming, so paying the timeout would only stall
+            // the scan by three seconds per package to learn nothing.
+            if (!context.packageManager.hasCoreQueryReceiver(pkg)) {
+                unsupported.add(pkg)
+                continue
+            }
             // An empty reply is not the same as no reply. A freshly installed RicottaArch has
             // no cores by design and genuinely answers zero; treating that as unresponsive made
             // the shipped default package skip the missing-core check and report every platform
@@ -49,12 +81,17 @@ class InstalledCoreService @Inject constructor(
             val cores = queryPackage(pkg)
             if (cores == null) silent.add(pkg) else answered[pkg] = cores
         }
-        publishQueryResult(answered, silent)
+        publishQueryResult(answered, silent, unsupported, discovered.toSet())
     }
 
     // Synchronized on the same monitor as markInstalled so the two writers never interleave.
     @Synchronized
-    private fun publishQueryResult(answered: Map<String, Set<String>>, silent: Set<String>) {
+    private fun publishQueryResult(
+        answered: Map<String, Set<String>>,
+        silent: Set<String>,
+        unsupported: Set<String>,
+        known: Set<String>,
+    ) {
         val merged = HashMap<String, Set<String>>()
         // A package that did not answer keeps whatever was cached, since there is no fresh
         // information about it.
@@ -67,6 +104,8 @@ class InstalledCoreService @Inject constructor(
         markedSinceQuery.clear()
         installedCores = merged
         unresponsivePackages = silent
+        unsupportedPackages = unsupported
+        knownPackages = known
         cacheReady = true
     }
 
@@ -92,11 +131,11 @@ class InstalledCoreService @Inject constructor(
 
             context.registerReceiver(
                 receiver,
-                IntentFilter("com.retroarch.INSTALLED_CORES_RESULT"),
+                IntentFilter(ACTION_INSTALLED_CORES_RESULT),
                 Context.RECEIVER_EXPORTED
             )
 
-            context.sendBroadcast(Intent("com.retroarch.QUERY_INSTALLED_CORES").apply {
+            context.sendBroadcast(Intent(ACTION_QUERY_INSTALLED_CORES).apply {
                 setPackage(pkg)
             })
 
@@ -147,10 +186,26 @@ class InstalledCoreService @Inject constructor(
         return installedCores.filterKeys { it == pkg }
     }
 
-    fun configuredUnresponsive(): Set<String> {
+    // Ordered so the two "we have nothing to go on" cases are settled before any classification
+    // drawn from a scan, since those sets are only meaningful once a scan has actually run.
+    fun reportingFor(pkg: String): CoreReporting = when {
+        !cacheReady -> CoreReporting.UNSCANNED
+        pkg !in knownPackages -> CoreReporting.NOT_INSTALLED
+        pkg in unsupportedPackages -> CoreReporting.UNSUPPORTED
+        pkg in unresponsivePackages -> CoreReporting.SILENT
+        else -> CoreReporting.REPORTS
+    }
+
+    fun canReport(pkg: String): Boolean = reportingFor(pkg) == CoreReporting.REPORTS
+
+    fun configuredReporting(): CoreReporting = reportingFor(settings.retroArchPackage)
+
+    fun configuredUnreportable(): Set<String> {
         val pkg = settings.retroArchPackage
+        // The embedded RetroArch is this package. It never appears in a scan of installed
+        // RetroArch packages, so asking canReport about it would report it as unreportable.
         if (pkg.isEmpty() || pkg == context.packageName) return emptySet()
-        return if (pkg in unresponsivePackages) setOf(pkg) else emptySet()
+        return if (canReport(pkg)) emptySet() else setOf(pkg)
     }
 
     companion object {

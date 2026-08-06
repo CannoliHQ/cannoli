@@ -38,6 +38,7 @@ import dev.cannoli.scorza.romm.RommArtType
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.DPAD_HORIZONTAL
 import dev.cannoli.ui.START_GLYPH
+import dev.cannoli.ui.theme.CannoliIcons
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliFont
 import dev.cannoli.ui.theme.LocalCannoliIconFont
@@ -47,12 +48,15 @@ import dev.cannoli.ui.components.ColorPickerOverlay
 import dev.cannoli.ui.components.HexColorInputOverlay
 import dev.cannoli.ui.components.KeyboardHelpOverlay
 import dev.cannoli.ui.components.KeyboardOverlay
+import dev.cannoli.ui.components.LaunchErrorDialog
 import dev.cannoli.ui.components.List
 import dev.cannoli.ui.components.ListSection
 import dev.cannoli.ui.components.PillRowInfo
 import dev.cannoli.ui.components.PillRowKeyValue
 import dev.cannoli.ui.components.PillRowText
 import dev.cannoli.ui.components.MessageOverlay
+import dev.cannoli.ui.components.MissingAppDialog
+import dev.cannoli.ui.components.MissingCoreDialog
 import dev.cannoli.ui.components.OverlayScrim
 import dev.cannoli.ui.components.SectionedList
 import dev.cannoli.ui.components.RAAccountOverlay
@@ -69,11 +73,6 @@ import dev.cannoli.ui.components.pillItemHeight
 import dev.cannoli.ui.components.screenPadding
 import dev.cannoli.ui.theme.Spacing
 
-private const val ICON_PRIMARY = "\u2605"
-private const val ICON_CHECK_CIRCLE = "\uF058"
-private const val ICON_SYNC_DOWNLOAD = "\uF063"
-private const val ICON_SYNC_UPLOAD = "\uF062"
-private const val ICON_SYNC_ALERT = "\uF071"
 
 @Composable
 fun DialogOverlay(
@@ -87,7 +86,10 @@ fun DialogOverlay(
     downloadError: String? = null,
     downloads: List<RommDownloadItem> = emptyList(),
     updateAvailable: Boolean = false,
-    buttonStyle: ButtonStyle = ButtonStyle()
+    buttonStyle: ButtonStyle = ButtonStyle(),
+    // Only the Tools and Ports lists offer to drop a shortcut for an app that has gone missing,
+    // and that depends on the list being viewed rather than on anything the dialog carries.
+    appListPlatformTag: String? = null,
 ) {
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
     when (dialogState) {
@@ -270,6 +272,14 @@ fun DialogOverlay(
             RestartOverlay(message = stringResource(R.string.restart_required), buttonStyle = buttonStyle)
         }
 
+        is DialogState.LibrarySwitchConfirm -> {
+            ConfirmOverlay(
+                message = stringResource(R.string.library_switch_confirm),
+                buttonStyle = buttonStyle,
+                confirmLabel = stringResource(R.string.label_proceed),
+            )
+        }
+
         is DialogState.IntentAuditResult -> {
             RestartOverlay(message = dialogState.message, buttonStyle = buttonStyle)
         }
@@ -357,7 +367,7 @@ fun DialogOverlay(
             ) {
                 List(items = dialogState.members, selectedIndex = dialogState.selectedIndex, itemHeight = itemHeight) { _, entry, isSelected ->
                     PillRowKeyValue(
-                        label = if (entry.isPrimary) "$ICON_PRIMARY ${entry.label}" else entry.label,
+                        label = if (entry.isPrimary) "${CannoliIcons.Primary.glyph} ${entry.label}" else entry.label,
                         value = dev.cannoli.scorza.ui.screens.RommGameDetailLayout.formatBytes(entry.game.sizeBytes),
                         isSelected = isSelected,
                         fontSize = listFontSize,
@@ -919,6 +929,73 @@ fun DialogOverlay(
             }
         }
 
+        is DialogState.MissingCore -> MissingCoreDialog(
+            coreName = dialogState.coreName,
+            packageLabel = dialogState.packageLabel,
+            showChangeEmulator = dialogState.platformTag != null,
+            buttonStyle = buttonStyle,
+        )
+
+        is DialogState.MissingApp -> MissingAppDialog(
+            appName = dialogState.appName,
+            showRemove = appListPlatformTag == "tools" || appListPlatformTag == "ports",
+            showChangeEmulator = dialogState.platformTag != null,
+            buttonStyle = buttonStyle,
+        )
+
+        is DialogState.LaunchError -> LaunchErrorDialog(dialogState.message, buttonStyle = buttonStyle)
+
+        is DialogState.DeleteConfirm -> ConfirmOverlay(
+            message = stringResource(R.string.dialog_delete_confirm, dialogState.gameName),
+            buttonStyle = buttonStyle,
+            confirmLabel = stringResource(R.string.label_delete),
+        )
+
+        is DialogState.DeleteCollectionConfirm -> ConfirmOverlay(
+            message = stringResource(R.string.dialog_delete_confirm, dialogState.displayName),
+            buttonStyle = buttonStyle,
+            confirmLabel = stringResource(R.string.label_delete),
+        )
+
+        is DialogState.QuitConfirm -> ConfirmOverlay(
+            message = stringResource(R.string.dialog_quit_confirm),
+            buttonStyle = buttonStyle,
+            confirmLabel = stringResource(R.string.label_quit),
+        )
+
+        is DialogState.PlatformResetConfirm -> ConfirmOverlay(
+            message = stringResource(R.string.dialog_reset_platform_confirm, dialogState.platformName),
+            buttonStyle = buttonStyle,
+            confirmLabel = stringResource(R.string.label_reset),
+        )
+
+        is DialogState.RenameResult -> MessageOverlay(
+            message = if (dialogState.success) {
+                stringResource(R.string.dialog_rename_success)
+            } else {
+                stringResource(R.string.dialog_rename_failed, dialogState.message)
+            },
+            buttonStyle = buttonStyle,
+        )
+
+        is DialogState.CollectionCreated -> MessageOverlay(
+            message = stringResource(R.string.collection_created, dialogState.collectionName),
+            buttonStyle = buttonStyle,
+        )
+
+        // Held across a network round trip to the server while input is already blocked, so
+        // without this the launcher reads as frozen for as long as the server takes to answer.
+        is DialogState.SaveSyncChecking -> {
+            OverlayScrim {
+                androidx.compose.material3.Text(
+                    text = stringResource(R.string.save_sync_checking),
+                    color = LocalCannoliColors.current.text,
+                    fontSize = listFontSize,
+                    lineHeight = listLineHeight,
+                )
+            }
+        }
+
         else -> {}
     }
 }
@@ -932,9 +1009,9 @@ private fun SyncHistoryRowItem(row: SyncHistoryRow, isSelected: Boolean, fontSiz
     val textColor = if (isSelected) colors.highlightText else colors.text
     val muted = textColor.copy(alpha = 0.55f)
     val glyph = when (row.direction) {
-        SyncDirection.UPLOAD -> ICON_SYNC_UPLOAD
-        SyncDirection.DOWNLOAD -> ICON_SYNC_DOWNLOAD
-        SyncDirection.CONFLICT, SyncDirection.ERROR -> ICON_SYNC_ALERT
+        SyncDirection.UPLOAD -> CannoliIcons.SyncUpload.glyph
+        SyncDirection.DOWNLOAD -> CannoliIcons.SyncDownload.glyph
+        SyncDirection.CONFLICT, SyncDirection.ERROR -> CannoliIcons.SyncAlert.glyph
     }
     dev.cannoli.ui.components.PillRow(
         isSelected = isSelected,
@@ -1024,7 +1101,7 @@ private fun DownloadRow(item: RommDownloadItem, isSelected: Boolean, fontSize: T
         verticalPadding = verticalPadding
     ) {
         if (item.status == DownloadStatus.Done) {
-            Text(ICON_CHECK_CIRCLE, color = text, fontFamily = LocalCannoliIconFont.current, fontSize = (fontSize.value * 0.9f).sp)
+            Text(CannoliIcons.CheckCircle.glyph, color = text, fontFamily = LocalCannoliIconFont.current, fontSize = (fontSize.value * 0.9f).sp, lineHeight = lineHeight)
         } else {
             val right = when (val s = item.status) {
                 is DownloadStatus.Downloading ->
@@ -1185,7 +1262,12 @@ fun rommArtLabelRes(artType: RommArtType): Int = when (artType) {
 }
 
 @Composable
-private fun ConfirmOverlay(message: String, buttonStyle: ButtonStyle) {
+private fun ConfirmOverlay(
+    message: String,
+    buttonStyle: ButtonStyle,
+    cancelLabel: String? = null,
+    confirmLabel: String? = null,
+) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -1203,8 +1285,8 @@ private fun ConfirmOverlay(message: String, buttonStyle: ButtonStyle) {
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(screenPadding),
-            leftItems = listOf(buttonStyle.back to stringResource(R.string.label_cancel)),
-            rightItems = listOf(buttonStyle.confirm to stringResource(R.string.label_confirm))
+            leftItems = listOf(buttonStyle.back to (cancelLabel ?: stringResource(R.string.label_cancel))),
+            rightItems = listOf(buttonStyle.confirm to (confirmLabel ?: stringResource(R.string.label_confirm)))
         )
     }
 }

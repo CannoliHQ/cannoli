@@ -4,10 +4,18 @@ import fi.iki.elonen.NanoHTTPD
 import fi.iki.elonen.NanoHTTPD.Response
 import java.io.File
 
+/** Answers with the canonical spelling of every platform that has a folder, so the dashboard keys
+ *  its labels, icons, grouping and game requests off the same string the games endpoint accepts.
+ *  Never fails the request: an empty list leaves the dashboard empty, where an error status would
+ *  leave it unable to render at all. */
 internal fun KitchenHttpServer.handleTags(): Response {
+    val canonical = allPlatformTags()
+        .filter { it !in KitchenHttpServer.RESERVED_APP_TAGS }
+        .associateBy { it.lowercase(java.util.Locale.ROOT) }
     val romsDir = romsRootProvider()
     val tags = romsDir.listFiles { f -> f.isDirectory }
-        ?.map { it.name }
+        ?.mapNotNull { canonical[it.name.lowercase(java.util.Locale.ROOT)] }
+        ?.distinct()
         ?.sorted()
         ?: emptyList()
     return jsonResponse(200, TagsResponse.serializer(), TagsResponse(tags))

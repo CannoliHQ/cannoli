@@ -103,6 +103,14 @@ android {
     }
     testOptions {
         unitTests.isIncludeAndroidResources = true
+        unitTests.all {
+            // The Compose/Robolectric tests never reach idle once enough other classes have run in
+            // the same JVM, and every one of them then burns Espresso's full 60s timeout. No single
+            // test is responsible: any half of the suite passes, unions fail. Restarting the JVM
+            // periodically keeps that accumulation bounded. Full suite: 9m18s red without this, 1m
+            // green with it. Raising the value trades reliability for a few seconds.
+            it.forkEvery = 10
+        }
     }
     lint {
         abortOnError = true

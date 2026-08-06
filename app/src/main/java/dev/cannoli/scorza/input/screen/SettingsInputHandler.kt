@@ -122,6 +122,7 @@ class SettingsInputHandler @Inject constructor(
             "screen_geometry" -> settingsViewModel.enterSubCategory("screen_geometry", dev.cannoli.scorza.R.string.setting_screen_geometry)
             "logging" -> nav.push(LauncherScreen.LoggingSettings())
             "audit_emulator_intents" -> runIntentAudit()
+            "icon_gallery" -> nav.push(LauncherScreen.IconGallery())
             "shortcuts" -> nav.push(LauncherScreen.ShortcutBinding(shortcuts = globalOverrides.readShortcuts()))
             "input_tester" -> {
                 inputTesterController.enter()
@@ -132,10 +133,6 @@ class SettingsInputHandler @Inject constructor(
                 Intent(android.provider.Settings.ACTION_HOME_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             )
             "installed_cores" -> queryInstalledCores()
-            "rebuild_cache" -> {
-                launcherActions.invalidateAllLibraryCaches()
-                launcherActions.rescanSystemList()
-            }
             "manage_tools" -> openAppPicker("tools")
             "manage_ports" -> openAppPicker("ports")
             "regenerate_system_folders" -> {
@@ -219,9 +216,7 @@ class SettingsInputHandler @Inject constructor(
     override fun onNorth() {
         val item = settingsViewModel.getSelectedItem()
         if (item?.key == "rom_directory" && settings.romDirectory.isNotEmpty()) {
-            settingsViewModel.clearRomDirectory()
-            launcherActions.invalidateAllLibraryCaches()
-            nav.dialogState.value = DialogState.RestartRequired
+            launcherActions.confirmRomDirectoryChange("")
             return
         }
         if (settingsViewModel.state.value.activeCategory == "screen_geometry") {

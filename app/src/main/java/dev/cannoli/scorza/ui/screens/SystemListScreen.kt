@@ -65,7 +65,6 @@ fun SystemListScreen(
     listFontSize: TextUnit = 22.sp,
     listLineHeight: TextUnit = 32.sp,
     listVerticalPadding: Dp = 8.dp,
-    dialogState: DialogState = DialogState.None,
     onListStateChanged: ((androidx.compose.foundation.lazy.LazyListState?) -> Unit)? = null,
     title: String = "",
     mainMenuQuit: Boolean = false,
@@ -300,7 +299,4 @@ fun SystemListScreen(
         }
     }
 
-    if (dialogState is DialogState.QuitConfirm) {
-        ConfirmOverlay(message = stringResource(R.string.dialog_quit_confirm), buttonStyle = buttonStyle, confirmLabel = stringResource(R.string.label_quit))
-    }
 }

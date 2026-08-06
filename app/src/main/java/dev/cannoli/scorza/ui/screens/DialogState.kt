@@ -4,8 +4,11 @@ import dev.cannoli.ui.ELLIPSIS
 import dev.cannoli.ui.components.KeyboardLayout
 import dev.cannoli.ui.components.KeyboardState
 
-enum class EmulatorMappingStatus { READY, NOT_INSTALLED, NEEDS_SETUP }
+enum class EmulatorMappingStatus { READY, NOT_INSTALLED, NEEDS_SETUP, UNKNOWN }
 data class EmulatorMappingEntry(val tag: String, val platformName: String, val coreDisplayName: String, val runnerLabel: String, val status: EmulatorMappingStatus = EmulatorMappingStatus.READY)
+// Three-valued because a boolean forced "not reported" and "confirmed absent" to share a
+// value, which is how the picker came to label unknowable cores Not Installed.
+enum class CoreAvailability { AVAILABLE, UNAVAILABLE, UNKNOWN }
 // source is the identity; runnerLabel is display only. Matching on the caption is what made a
 // selection vanish whenever the configured RetroArch package changed its label.
 data class EmulatorPickerOption(
@@ -14,7 +17,7 @@ data class EmulatorPickerOption(
     val source: dev.cannoli.scorza.config.EmulatorSource,
     val runnerLabel: String,
     val appPackage: String? = null,
-    val available: Boolean = true,
+    val availability: CoreAvailability = CoreAvailability.AVAILABLE,
 )
 
 enum class MappingActionKind { BIOS, OVERRIDES, RESET }
@@ -22,6 +25,7 @@ enum class MappingActionKind { BIOS, OVERRIDES, RESET }
 sealed interface MappingItem {
     val isSelectable: Boolean
     data class SectionHeader(val label: String) : MappingItem { override val isSelectable = false }
+    data class Notice(val text: String) : MappingItem { override val isSelectable = false }
     data class Divider(val id: Int = 0) : MappingItem { override val isSelectable = false }
     data class EmulatorOption(val option: EmulatorPickerOption, val isCurrent: Boolean, val downloadable: Boolean = false) : MappingItem {
         override val isSelectable = true
@@ -112,6 +116,8 @@ sealed interface DialogState {
     data object QuitConfirm : DialogState
     data class UpdateDownload(val versionName: String, val changelog: String) : DialogState
     data object RestartRequired : DialogState
+    /** [newRomDirectory] is empty when clearing the pick, which resolves back to the Cannoli root. */
+    data class LibrarySwitchConfirm(val newRomDirectory: String) : DialogState
     data class IntentAuditResult(val message: String) : DialogState
     data class SystemFoldersRegenerated(val message: String) : DialogState
     data class PlatformResetConfirm(val tag: String, val platformName: String) : DialogState
@@ -219,52 +225,3 @@ fun DialogState.withMenuDelta(delta: Int): DialogState? = when (this) {
     is DialogState.SaveSyncStaleBlock -> copy(selectedIndex = (selectedIndex + delta).mod(2))
     else -> null
 }
-
-val DialogState.isFullScreen: Boolean
-    get() = when (this) {
-        is DialogState.ContextMenu,
-        is DialogState.BulkContextMenu,
-        is DialogState.ColorPicker,
-        is DialogState.HexColorInput,
-        is DialogState.RenameInput,
-        is DialogState.NewCollectionInput,
-        is DialogState.CollectionRenameInput,
-        is DialogState.NewFolderInput,
-        is DialogState.KeyboardHelp,
-        is DialogState.About,
-        is DialogState.Kitchen,
-        is DialogState.RAAccount,
-        is DialogState.RALoggingIn,
-        is DialogState.RAPreloadProgress,
-        is DialogState.RAPreloadResult,
-        is DialogState.RommPairing,
-        is DialogState.RommConnected,
-        is DialogState.UpdateDownload,
-        is DialogState.RestartRequired,
-        is DialogState.IntentAuditResult,
-        is DialogState.SystemFoldersRegenerated,
-        is DialogState.QuickMenu,
-        is DialogState.RommDownloads,
-        is DialogState.RommArtResults,
-        is DialogState.RescanProgress,
-        is DialogState.RommActionsMenu,
-        is DialogState.RommSettingsMenu,
-        is DialogState.RommAdvancedMenu,
-        is DialogState.RommSaveSyncMenu,
-        is DialogState.RommConfirm,
-        is DialogState.RommPlatformToggle,
-        is DialogState.RommCollectionToggle,
-        is DialogState.QuickInfo,
-        is DialogState.SaveSyncConflict,
-        is DialogState.SaveSyncStaleBlock,
-        is DialogState.SyncHistory,
-        is DialogState.SyncErrors,
-        is DialogState.RommSavesMenu,
-        is DialogState.SaveBackupGames,
-        is DialogState.SaveBackupList,
-        is DialogState.SaveBackupRestoreConfirm,
-        is DialogState.ConflictsMenu,
-        is DialogState.ConflictsApplying,
-        is DialogState.RommVersionPicker -> true
-        else -> false
-    }

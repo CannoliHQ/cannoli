@@ -13,6 +13,7 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
@@ -29,6 +30,7 @@ class LaunchManagerRecoveryTargetTest {
     private val apkLauncher = mockk<ApkLauncher>(relaxed = true)
     private val installedCoreService = mockk<InstalledCoreService>(relaxed = true)
     private val gameOverrides = mockk<dev.cannoli.scorza.db.GameOverrideStore>(relaxed = true)
+    private val retroArchLauncher = mockk<RetroArchLauncher>(relaxed = true)
 
     private fun rom(root: File): Rom {
         val romFile = File(root, "roms/GC/Mario.iso").apply { parentFile!!.mkdirs(); writeText("x") }
@@ -41,7 +43,7 @@ class LaunchManagerRecoveryTargetTest {
         every { settings.retroArchPackage } returns RA
         every { gameOverrides.get(any()) } returns null
         every { installedCoreService.cacheReady } returns true
-        every { installedCoreService.unresponsivePackages } returns emptySet()
+        every { installedCoreService.canReport(any()) } returns true
         every { installedCoreService.hasCoreInPackage(any(), any()) } returns false
         val activeMappingHolder = mockk<ActiveMappingHolder>(relaxed = true)
         every { activeMappingHolder.active } returns MutableStateFlow<DeviceMapping?>(null)
@@ -49,7 +51,7 @@ class LaunchManagerRecoveryTargetTest {
             context = mockk(relaxed = true),
             settings = settings,
             platformConfig = platformConfig,
-            retroArchLauncher = mockk(relaxed = true),
+            retroArchLauncher = retroArchLauncher,
             emuLauncher = mockk(relaxed = true),
             apkLauncher = apkLauncher,
             delfinoLauncher = mockk(relaxed = true),
@@ -122,6 +124,23 @@ class LaunchManagerRecoveryTargetTest {
         assertNull(dialog.romId)
         assertEquals("GC", dialog.platformTag)
         assertEquals(InstalledCoreService.getPackageLabel(RA), dialog.packageLabel)
+    }
+
+    @Test fun `a package that cannot report its cores skips the core install precheck`() {
+        val root = tmp.newFolder()
+        val mgr = manager(root)
+        every { platformConfig.getPlatformChoice("GC") } returns
+            dev.cannoli.scorza.config.EmulatorChoice(
+                dev.cannoli.scorza.config.EmulatorSource.RetroArch, "dolphin_libretro",
+            )
+        every { platformConfig.getCoreName("GC") } returns "dolphin_libretro"
+        every { installedCoreService.canReport(any()) } returns false
+        every { installedCoreService.hasCoreInPackage(any(), any()) } returns false
+        every { retroArchLauncher.launchRetroArchIntent(any(), any(), any(), any()) } returns LaunchResult.Success
+
+        val dialog = mgr.launchRom(rom(root))
+
+        assertFalse(dialog is DialogState.MissingCore)
     }
 
     companion object {

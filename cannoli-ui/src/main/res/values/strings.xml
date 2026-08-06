@@ -17,6 +17,7 @@
     <string name="label_change_emulator">CHANGE EMULATOR</string>
     <string name="label_delete">DELETE</string>
     <string name="label_confirm">CONFIRM</string>
+    <string name="label_proceed">PROCEED</string>
     <string name="label_toggle">TOGGLE</string>
     <string name="label_new">NEW</string>
     <string name="label_settings">SETTINGS</string>
@@ -86,7 +87,7 @@
     <string name="settings_emulation">Emulation</string>
     <string name="settings_integrations">Integrations</string>
     <string name="settings_advanced">Advanced</string>
-    <string name="settings_debug">Debug</string>
+    <string name="settings_debug" translatable="false">Debug</string>
     <string name="settings_retroachievements" translatable="false">RetroAchievements</string>
     <string name="settings_romm" translatable="false">RomM</string>
     <string name="settings_about">About</string>
@@ -385,7 +386,7 @@
 
     <string name="setting_logging">Logging</string>
     <!-- Advanced toggle: log the intents used to launch external emulators. -->
-    <string name="setting_audit_emulator_intents">Audit Emulator Intents</string>
+    <string name="setting_audit_emulator_intents" translatable="false">Audit Emulator Intents</string>
     <string name="logging_title">Logging</string>
     <string name="logging_rom_scan">ROM Scan</string>
     <string name="logging_input">Input</string>
@@ -682,6 +683,11 @@
     <string name="update_retry">RETRY</string>
     <string name="restart_required">Restart required to apply changes.</string>
 
+    <!-- Shown before the ROM directory is changed or cleared, since the rescan that follows prunes
+         database entries for every ROM that is not at the same relative path under the new
+         directory. Cannoli and RetroAchievements are product names; leave them untranslated. -->
+    <string name="library_switch_confirm">Changing the ROM directory is a destructive action.\n\nAs Cannoli rescans, it clears ROMs it can no longer find from its database. Favorites, collections, game overrides, recently played and RetroAchievements Game ID overrides are all pruned for ROMs that do not appear under the same relative path in the new ROM directory.\n\nROM files, saves and save states on disk are untouched.</string>
+
     <!-- IGM screen titles -->
     <string name="igm_settings">Settings</string>
     <string name="igm_video">Video</string>
@@ -754,6 +760,15 @@
     <string name="mapping_required_missing">%d required missing</string>
     <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
     <string name="mapping_platform_name_with_tag">%1$s (%2$s)</string>
+    <!-- Shown above the RetroArch core list when the installed build predates the receiver that answers core queries. -->
+    <string name="mapping_notice_cannot_report_cores">This RetroArch version cannot report installed cores</string>
+    <!-- Shown when RetroArch has the receiver but did not answer the query. -->
+    <string name="mapping_notice_no_response">RetroArch did not respond</string>
+    <!-- Shown above the core list when the configured RetroArch package is not installed at all. -->
+    <string name="mapping_notice_not_installed">RetroArch is not installed</string>
+    <!-- Debug builds only: a gallery of every Nerd Font glyph the launcher draws. Never shipped to users, so not sent to translators. -->
+    <string name="setting_icon_gallery" translatable="false">Icon Gallery</string>
+    <string name="title_icon_gallery" translatable="false">Icon Gallery</string>
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">%s Mapping</string>
     <!-- Screen title for the per-game emulator picker. %s = game name. -->
@@ -835,6 +850,8 @@
     <!-- Conflicts resolution screen -->
     <string name="conflicts_title">Sync Conflicts</string>
     <string name="conflicts_applying">Applying conflicts...</string>
+    <!-- Shown while saves are checked against the server before a game launches. -->
+    <string name="save_sync_checking">Checking saves...</string>
     <!-- %1$d = number of saves that could not be applied. -->
     <plurals name="conflicts_apply_failed">
         <item quantity="one">%1$d save could not be applied</item>

@@ -403,6 +403,22 @@ class SettingsViewModel @Inject constructor(
         _appSettings.value = readAppSettings()
     }
 
+    /** Drops back to the category list outright, however deep the user was. The active category
+     *  outlives the screen, so without this a flow that ends elsewhere leaves settings reopening
+     *  inside whichever sub-list it was abandoned in. */
+    fun resetToCategoryList() {
+        _state.update {
+            it.copy(
+                activeCategory = null,
+                parentCategory = null,
+                parentSelectedIndex = 0,
+                activeCategoryLabel = null,
+                items = emptyList(),
+                selectedIndex = 0,
+            )
+        }
+    }
+
     fun exitSubList(): Boolean {
         val current = _state.value
         if (!current.inSubList) return false
@@ -609,8 +625,7 @@ class SettingsViewModel @Inject constructor(
         settings.backgroundImagePath = if (newIndex < 0) null else images[newIndex].absolutePath
     }
 
-    fun clearRomDirectory() {
-        settings.romDirectory = ""
+    fun refreshActiveCategory() {
         val catKey = _state.value.activeCategory ?: return
         _state.update { it.copy(items = buildItemsForCategory(catKey)) }
     }
@@ -925,7 +940,8 @@ class SettingsViewModel @Inject constructor(
             ))
         }
         "debug" -> listOf(
-            SettingsItem("audit_emulator_intents", R.string.setting_audit_emulator_intents, isEditable = true)
+            SettingsItem("audit_emulator_intents", R.string.setting_audit_emulator_intents, isEditable = true),
+            SettingsItem("icon_gallery", R.string.setting_icon_gallery, isEditable = true),
         )
         else -> emptyList()
     }

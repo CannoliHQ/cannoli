@@ -95,7 +95,6 @@ fun GameListScreen(
     listFontSize: TextUnit = 22.sp,
     listLineHeight: TextUnit = 32.sp,
     listVerticalPadding: Dp = 8.dp,
-    dialogState: DialogState = DialogState.None,
     onListStateChanged: ((androidx.compose.foundation.lazy.LazyListState?) -> Unit)? = null,
     resumableGames: Set<String> = emptySet(),
     swapPlayResume: Boolean = false,
@@ -312,47 +311,7 @@ fun GameListScreen(
                 rightItems = rightItems
             )
 
-            when (dialogState) {
-                is DialogState.RenameResult -> MessageOverlay(
-                    message = if (dialogState.success) {
-                        stringResource(R.string.dialog_rename_success)
-                    } else {
-                        stringResource(R.string.dialog_rename_failed, dialogState.message)
-                    },
-                    buttonStyle = buttonStyle
-                )
-                is DialogState.CollectionCreated -> MessageOverlay(
-                    message = stringResource(R.string.collection_created, dialogState.collectionName),
-                    buttonStyle = buttonStyle
-                )
-                else -> {}
-            }
         }
-    }
-
-    when (dialogState) {
-        is DialogState.MissingCore -> MissingCoreDialog(
-            coreName = dialogState.coreName,
-            packageLabel = dialogState.packageLabel,
-            showChangeEmulator = dialogState.platformTag != null,
-            buttonStyle = buttonStyle
-        )
-        is DialogState.MissingApp -> MissingAppDialog(
-            appName = dialogState.appName,
-            showRemove = state.platformTag == "tools" || state.platformTag == "ports",
-            showChangeEmulator = dialogState.platformTag != null,
-            buttonStyle = buttonStyle
-        )
-        is DialogState.LaunchError -> LaunchErrorDialog(dialogState.message, buttonStyle = buttonStyle)
-        is DialogState.DeleteConfirm -> ConfirmOverlay(
-            message = stringResource(R.string.dialog_delete_confirm, dialogState.gameName),
-            buttonStyle = buttonStyle
-        )
-        is DialogState.DeleteCollectionConfirm -> ConfirmOverlay(
-            message = stringResource(R.string.dialog_delete_confirm, dialogState.displayName),
-            buttonStyle = buttonStyle
-        )
-        else -> {}
     }
 }
 

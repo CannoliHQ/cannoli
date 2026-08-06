@@ -334,12 +334,12 @@ class LaunchManager(
                             } catch (_: PackageManager.NameNotFoundException) { raPackage }
                             return errorAndReset(DialogState.MissingApp(appName, raPackage, rom.platformTag, overrideRomId))
                         }
-                        // Core-install check applies to RicottaArch and to RetroArch installs
-                        // that report their cores; it self-skips for installs that cannot
-                        // (unresponsivePackages), since the user owns those.
+                        // The core-install check applies to any package that can report its
+                        // cores. It self-skips for one that cannot, since a missing report is
+                        // not evidence of a missing core.
                         if (installedCoreService != null
                             && installedCoreService.cacheReady
-                            && raPackage !in installedCoreService.unresponsivePackages
+                            && installedCoreService.canReport(raPackage)
                             && !installedCoreService.hasCoreInPackage(core, raPackage)) {
                             val label = InstalledCoreService.getPackageLabel(raPackage)
                             val coreName = platformConfig.getCoreDisplayName(core)
@@ -442,7 +442,7 @@ class LaunchManager(
         }
         if (installedCoreService != null
             && installedCoreService.cacheReady
-            && raPackage !in installedCoreService.unresponsivePackages
+            && installedCoreService.canReport(raPackage)
             && !installedCoreService.hasCoreInPackage(core, raPackage)) {
             return errorAndReset(DialogState.MissingCore(
                 platformConfig.getCoreDisplayName(core),
@@ -487,13 +487,20 @@ class LaunchManager(
         }
     }
 
+    private val debugSink = dev.cannoli.scorza.util.LogSink(0)
+    private val debugFmt = java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.US)
+    private var debugSinkRoot: String? = null
+
     private fun debugLog(message: String) {
         if (!dev.cannoli.scorza.util.LoggingPrefs.session) return
         try {
-            val dir = CannoliPaths(settings.sdCardRoot).logsDir
-            dir.mkdirs()
-            val f = File(dir, "launch_debug.log")
-            f.appendText("${java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.US).format(java.util.Date())} $message\n")
+            val root = settings.sdCardRoot
+            if (root != debugSinkRoot) {
+                debugSinkRoot = root
+                debugSink.open(File(CannoliPaths(root).logsDir, "launch_debug.log"))
+            }
+            val stamp = synchronized(debugFmt) { debugFmt.format(java.util.Date()) }
+            dev.cannoli.scorza.util.LogWriter.write(debugSink, "$stamp $message\n")
         } catch (_: Exception) {}
     }
 

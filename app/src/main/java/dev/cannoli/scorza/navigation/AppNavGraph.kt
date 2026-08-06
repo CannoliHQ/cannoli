@@ -73,7 +73,6 @@ import dev.cannoli.scorza.ui.screens.SaveSlotsScreen
 import dev.cannoli.scorza.ui.screens.SaveStatePickerScreen
 import dev.cannoli.scorza.ui.screens.SettingsScreen
 import dev.cannoli.scorza.ui.screens.SystemListScreen
-import dev.cannoli.scorza.ui.screens.isFullScreen
 import dev.cannoli.scorza.ui.viewmodel.ControllersViewModel
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.scorza.ui.viewmodel.InputTesterViewModel
@@ -81,6 +80,8 @@ import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
 import dev.cannoli.ui.components.ConfirmOverlay
 import dev.cannoli.ui.components.List
+import dev.cannoli.ui.components.ListSection
+import dev.cannoli.ui.components.SectionedList
 import dev.cannoli.ui.components.LocalStatusBarLeftEdge
 import dev.cannoli.ui.components.MessageOverlay
 import dev.cannoli.ui.components.OsdHost
@@ -88,6 +89,7 @@ import dev.cannoli.ui.components.PillRowKeyValue
 import dev.cannoli.ui.components.PillRowText
 import dev.cannoli.ui.components.RommCacheSyncStatus
 import dev.cannoli.ui.components.SectionHeader
+import dev.cannoli.ui.components.SectionNotice
 import dev.cannoli.ui.components.StatusBar
 import dev.cannoli.ui.components.LocalListRhythm
 import dev.cannoli.ui.components.LocalUntitledListRhythm
@@ -101,6 +103,7 @@ import dev.cannoli.ui.components.screenInsets
 import dev.cannoli.ui.components.screenTitleMetrics
 import dev.cannoli.ui.components.solveListRhythm
 import dev.cannoli.ui.theme.CannoliColors
+import dev.cannoli.ui.theme.CannoliIcons
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliFont
 import dev.cannoli.ui.theme.LocalPillScale
@@ -115,9 +118,6 @@ import kotlinx.coroutines.flow.StateFlow
 enum class BrowsePurpose { SD_ROOT, ROM_DIRECTORY, SETUP }
 
 enum class OnboardingPermission { STORAGE }
-
-// Nerd Font md-alert glyph; flags a mapped emulator we can confirm is not installed.
-private const val ICON_NOT_INSTALLED = "\uDB80\uDC26"
 
 // RomM brand purple; the screen-edge border shown while browsing RomM.
 private val ROMM_BORDER_COLOR = Color(0xFF553E98)
@@ -419,6 +419,12 @@ sealed class LauncherScreen {
         override val itemCount: Int get() = cores.size
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
     }
+    // Debug builds only. Renders CannoliIcons.all so what you see is what the app draws, rather
+    // than a second hand-maintained list that could disagree with it.
+    data class IconGallery(override val selectedIndex: Int = 0, override val scrollTarget: Int = 0) : LauncherScreen(), ScrollableScreen {
+        override val itemCount: Int get() = dev.cannoli.ui.theme.CannoliIcons.all.size
+        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
+    }
     data class DirectoryBrowser(
         val purpose: BrowsePurpose,
         val currentPath: String,
@@ -592,7 +598,6 @@ fun AppNavGraph(
                     listFontSize = listFontSize,
                     listLineHeight = listLineHeight,
                     listVerticalPadding = listVerticalPadding,
-                    dialogState = dialog,
                     onListStateChanged = onListStateChanged,
                     title = appSettings.title,
                     mainMenuQuit = appSettings.mainMenuQuit,
@@ -614,7 +619,6 @@ fun AppNavGraph(
                     listFontSize = listFontSize,
                     listLineHeight = listLineHeight,
                     listVerticalPadding = listVerticalPadding,
-                    dialogState = dialog,
                     onListStateChanged = onListStateChanged,
                     resumableGames = resumableGames,
                     swapPlayResume = appSettings.swapPlayResume,
@@ -682,9 +686,11 @@ fun AppNavGraph(
                             entry.runnerLabel.isEmpty() -> entry.coreDisplayName
                             else -> "${entry.coreDisplayName} (${entry.runnerLabel})"
                         }
-                        val valueIcon = if (entry.status == dev.cannoli.scorza.ui.screens.EmulatorMappingStatus.NOT_INSTALLED) {
-                            ICON_NOT_INSTALLED
-                        } else null
+                        val valueIcon = when (entry.status) {
+                            dev.cannoli.scorza.ui.screens.EmulatorMappingStatus.NOT_INSTALLED -> CannoliIcons.NotInstalled.glyph
+                            dev.cannoli.scorza.ui.screens.EmulatorMappingStatus.UNKNOWN -> CannoliIcons.Unknown.glyph
+                            else -> null
+                        }
                         PillRowKeyValue(
                             label = entry.platformName,
                             value = value,
@@ -747,6 +753,13 @@ fun AppNavGraph(
                                 lineHeight = listLineHeight,
                                 verticalPadding = listVerticalPadding,
                             )
+                            is dev.cannoli.scorza.ui.screens.MappingItem.Notice -> SectionNotice(
+                                icon = CannoliIcons.NotInstalled.glyph,
+                                text = item.text,
+                                fontSize = listFontSize,
+                                lineHeight = listLineHeight,
+                                verticalPadding = listVerticalPadding,
+                            )
                             is dev.cannoli.scorza.ui.screens.MappingItem.PlatformDefault -> PillRowKeyValue(
                                 label = item.label,
                                 value = if (item.isCurrent) stringResource(R.string.value_active) else "",
@@ -762,7 +775,7 @@ fun AppNavGraph(
                                 val opt = item.option
                                 val value = when {
                                     item.isCurrent -> stringResource(R.string.value_active)
-                                    !opt.available -> {
+                                    opt.availability == dev.cannoli.scorza.ui.screens.CoreAvailability.UNAVAILABLE -> {
                                         val resId = when (opt.runnerLabel) {
                                             "Internal" -> R.string.value_not_bundled
                                             else -> R.string.value_not_installed
@@ -778,7 +791,9 @@ fun AppNavGraph(
                                     fontSize = listFontSize,
                                     lineHeight = listLineHeight,
                                     verticalPadding = listVerticalPadding,
-                                    valueIcon = if (item.isCurrent && !opt.available) ICON_NOT_INSTALLED else null
+                                    valueIcon = if (item.isCurrent &&
+                                        opt.availability == dev.cannoli.scorza.ui.screens.CoreAvailability.UNAVAILABLE
+                                    ) CannoliIcons.NotInstalled.glyph else null
                                 )
                             }
                             is dev.cannoli.scorza.ui.screens.MappingItem.Action -> {
@@ -791,7 +806,7 @@ fun AppNavGraph(
                                         fontSize = listFontSize,
                                         lineHeight = listLineHeight,
                                         verticalPadding = listVerticalPadding,
-                                        valueIcon = ICON_NOT_INSTALLED
+                                        valueIcon = CannoliIcons.NotInstalled.glyph
                                     )
                                 } else {
                                     PillRowKeyValue(
@@ -806,17 +821,6 @@ fun AppNavGraph(
                             }
                         }
                     }
-                }
-                when (dialog) {
-                    is DialogState.PlatformResetConfirm -> ConfirmOverlay(
-                        message = stringResource(
-                            R.string.dialog_reset_platform_confirm,
-                            (dialog as DialogState.PlatformResetConfirm).platformName
-                        ),
-                        confirmLabel = stringResource(R.string.label_reset),
-                        buttonStyle = labels
-                    )
-                    else -> {}
                 }
             }
             is LauncherScreen.BiosStatus -> {
@@ -883,9 +887,11 @@ fun AppNavGraph(
                                         Spacer(modifier = Modifier.width(8.dp))
                                         if (requiredMissing) {
                                             Text(
-                                                text = ICON_NOT_INSTALLED,
-                                                fontFamily = dev.cannoli.ui.theme.LocalCannoliIconFont.current,
-                                                fontSize = listFontSize,
+                                                text = CannoliIcons.NotInstalled.glyph,
+                                                style = MaterialTheme.typography.bodySmall.copy(
+                                                    fontFamily = dev.cannoli.ui.theme.LocalCannoliIconFont.current,
+                                                    fontSize = listFontSize,
+                                                ),
                                                 color = cannoliColors.text
                                             )
                                             Spacer(modifier = Modifier.width(4.dp))
@@ -1195,6 +1201,49 @@ fun AppNavGraph(
                                 }
                             }
                         }
+                    }
+                }
+            }
+            is LauncherScreen.IconGallery -> {
+                if (inputRouter != null) {
+                    val handler = remember { inputRouter.currentHandler() }
+                    dev.cannoli.scorza.input.screen.compose.ScreenInput(handler)
+                }
+                ListDialogScreen(
+                    backgroundImagePath = appSettings.backgroundImagePath,
+                    backgroundTint = appSettings.backgroundTint,
+                    title = stringResource(R.string.title_icon_gallery),
+                    listFontSize = listFontSize,
+                    listLineHeight = listLineHeight,
+                    fullWidth = true,
+                    rightBottomItems = emptyList(),
+                    buttonStyle = labels
+                ) {
+                    val sections = remember {
+                        CannoliIcons.all.groupBy { it.category }
+                            .map { (header, icons) -> ListSection(header = header, items = icons) }
+                    }
+                    SectionedList(
+                        sections = sections,
+                        selectedIndex = currentScreen.selectedIndex,
+                        fontSize = listFontSize,
+                        lineHeight = listLineHeight,
+                        verticalPadding = listVerticalPadding,
+                        itemHeight = itemHeight,
+                        scrollTarget = currentScreen.scrollTarget,
+                        onListStateChanged = onListStateChanged
+                    ) { _, icon, isSelected ->
+                        // The glyph sits immediately left of the name it claims to be, so a
+                        // codepoint that resolves to the wrong glyph is visible at a glance.
+                        PillRowKeyValue(
+                            label = "${icon.constantName}: ${icon.purpose}",
+                            value = icon.glyphName,
+                            isSelected = isSelected,
+                            fontSize = listFontSize,
+                            lineHeight = listLineHeight,
+                            verticalPadding = listVerticalPadding,
+                            valueIcon = icon.glyph,
+                        )
                     }
                 }
             }
@@ -1859,21 +1908,23 @@ fun AppNavGraph(
                 nav?.dialogState?.value = DialogState.RommArtResults(finished.results)
             }
         }
-        if (dialog.isFullScreen) {
-            DialogOverlay(
-                dialogState = dialog,
-                backgroundImagePath = appSettings.backgroundImagePath,
-                backgroundTint = appSettings.backgroundTint,
-                listFontSize = listFontSize,
-                listLineHeight = listLineHeight,
-                listVerticalPadding = listVerticalPadding,
-                downloadProgress = downloadProgress,
-                downloadError = downloadError,
-                downloads = overlayDownloads,
-                updateAvailable = updateAvailable,
-                buttonStyle = labels,
-            )
-        }
+        // No allowlist gate here on purpose: DialogOverlay's own when decides what it draws and
+        // falls through to nothing for states a screen renders itself. A second list to keep in
+        // sync is how a dialog ends up set and consuming input while drawing nothing.
+        DialogOverlay(
+            dialogState = dialog,
+            backgroundImagePath = appSettings.backgroundImagePath,
+            backgroundTint = appSettings.backgroundTint,
+            listFontSize = listFontSize,
+            listLineHeight = listLineHeight,
+            listVerticalPadding = listVerticalPadding,
+            downloadProgress = downloadProgress,
+            downloadError = downloadError,
+            downloads = overlayDownloads,
+            updateAvailable = updateAvailable,
+            buttonStyle = labels,
+            appListPlatformTag = gameListViewModel?.state?.collectAsState()?.value?.platformTag,
+        )
 
         val systemListState = systemListViewModel?.state?.collectAsState()?.value
         val hideForDialog = dialog is DialogState.About

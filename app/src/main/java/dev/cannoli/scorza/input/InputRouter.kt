@@ -207,6 +207,7 @@ class InputRouter @Inject constructor(
         is LauncherScreen.Credits           -> creditsHandler()
         is LauncherScreen.CreditsSection    -> creditsSectionHandler()
         is LauncherScreen.InstalledCores    -> installedCoresHandler()
+        is LauncherScreen.IconGallery       -> scrollable<LauncherScreen.IconGallery>()
         is LauncherScreen.RommPlatformList      -> rommPlatformListHandler()
         is LauncherScreen.RommGameList          -> rommGameListHandler()
         is LauncherScreen.RommGlobalSearch      -> rommGlobalSearchHandler()

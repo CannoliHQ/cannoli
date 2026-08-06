@@ -109,12 +109,40 @@ class ControllerBridge(
 
     private fun handleActivation(device: ConnectedDevice) {
         val id = device.androidDeviceId
-        pendingSavesById.remove(id)?.let { mappingRepository?.save(it) }
+        pendingSavesById.remove(id)?.let { persistDerived(it) }
         portRouter.mappingFor(id)?.let { activeMappingHolder.set(it) }
         // Activation is always a deliberate user press, so fire onDeviceAdded regardless of
         // whether the device was present during the initial enumeration burst. Suppression for
         // built-in devices is handled by the OSD layer, not here.
         onDeviceAdded?.invoke(device)
+    }
+
+    /**
+     * Write a mapping the resolver derived, never one the user authored.
+     *
+     * Mapping ids come from device identity, so a mapping resolved while the mappings directory
+     * was unreadable (enumeration runs before storage permission is granted) targets the same
+     * file as the profile the user edited for that pad. The on-disk flag is what decides, not the
+     * flag on the mapping being written, which is false on everything freshly resolved.
+     *
+     * Failures are logged rather than raised: this runs inside the key event that activates a
+     * controller, and the mapping is re-derived on the next boot anyway.
+     */
+    private fun persistDerived(mapping: dev.cannoli.scorza.input.DeviceMapping) {
+        val repository = mappingRepository ?: return
+        runCatching {
+            if (repository.findById(mapping.id)?.userEdited == true) {
+                dev.cannoli.scorza.util.InputLog.write(
+                    "  save skipped for ${mapping.id}: user-edited mapping on disk"
+                )
+                return@runCatching
+            }
+            repository.save(mapping)
+        }.onFailure {
+            dev.cannoli.scorza.util.InputLog.write(
+                "  save failed for ${mapping.id}: ${it::class.java.simpleName} ${it.message}"
+            )
+        }
     }
 
     @VisibleForTesting
@@ -298,6 +326,36 @@ class ControllerBridge(
             portRouter.onConnect(connected, hintApplied)
             dev.cannoli.scorza.util.InputLog.write(
                 "  enrolled id=${connected.androidDeviceId} mapping=${hintApplied.id} persistent=${resolved.persistent} glyph=${hintApplied.glyphStyle} desc='${persistenceDescriptor ?: "-"}' pending"
+            )
+        }
+
+        // Devices that survived from the previous settle keep their entry, so re-resolve them here
+        // rather than leaving whatever the first settle produced. The launcher enumerates before
+        // MANAGE_EXTERNAL_STORAGE is granted, so that first resolve reads an empty mappings
+        // directory and hands out a fallback; the re-settle after the grant is what swaps the
+        // user's saved profile in. Only a mapping that actually changed is applied, so ordinary
+        // settles (one per device add/remove) leave enrolled controllers alone.
+        for (id in targetEntryIds intersect existingEntryIds) {
+            if (id == devKeyboardId) continue
+            val connected = targetEntries.getValue(id)
+            val current = portRouter.mappingFor(id) ?: continue
+            val persistenceDescriptor = clusterDescriptors[id]
+            val resolved = resolver.resolve(connected, persistenceDescriptor)
+            val hintApplied = applyHintFromOriginalIdentity(resolved.mapping, connected)
+            if (hintApplied == current) continue
+            val hintChanged = hintApplied !== resolved.mapping
+            if (!hintApplied.userEdited && hintChanged) {
+                pendingSavesById[id] = hintApplied
+            } else {
+                // Any parked save described the mapping we are replacing.
+                pendingSavesById.remove(id)
+            }
+            portRouter.replaceMapping(id, hintApplied)
+            if (activeMappingHolder.active.value?.id == current.id) {
+                activeMappingHolder.set(hintApplied)
+            }
+            dev.cannoli.scorza.util.InputLog.write(
+                "  re-resolved id=$id mapping=${current.id} -> ${hintApplied.id} persistent=${resolved.persistent} glyph=${hintApplied.glyphStyle} desc='${persistenceDescriptor ?: "-"}'"
             )
         }
 
