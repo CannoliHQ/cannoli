@@ -76,6 +76,45 @@ class MappingNoticeTest {
         assertEquals(expected, (notice as MappingItem.Notice).text)
     }
 
+    @Test fun `a RetroArch that is not installed says so instead of flagging every core`() {
+        val f = fixture("notice-absent", CoreReporting.NOT_INSTALLED)
+        val screen = f.builder.buildPlatformMapping("GBA", "GBA", showAll = true)
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val expected = ctx.getString(dev.cannoli.scorza.R.string.mapping_notice_not_installed)
+
+        val headerAt = retroArchHeaderIndex(screen.items, f.raLabel)
+        assertTrue("RetroArch header must be present", headerAt >= 0)
+        val notice = screen.items[headerAt + 1]
+        assertTrue(notice is MappingItem.Notice)
+        assertEquals(expected, (notice as MappingItem.Notice).text)
+
+        // The bug this fixes: every core row was stamped Not Installed, which is noise once the
+        // notice has named the real problem.
+        val raRows = screen.items.drop(headerAt).filterIsInstance<MappingItem.EmulatorOption>()
+            .filter { it.option.source == dev.cannoli.scorza.config.EmulatorSource.RetroArch }
+        assertTrue("the RetroArch section must still offer cores", raRows.isNotEmpty())
+        raRows.forEach {
+            assertEquals(CoreAvailability.UNKNOWN, it.option.availability)
+        }
+    }
+
+    // A notice that appears mid-boot and then vanishes reads as a glitch, so the pre-scan window
+    // stays silent. The rows still must not claim the cores are absent.
+    @Test fun `an unscanned RetroArch shows no notice and claims nothing about its cores`() {
+        val f = fixture("notice-unscanned", CoreReporting.UNSCANNED)
+        val screen = f.builder.buildPlatformMapping("GBA", "GBA", showAll = true)
+        assertTrue(screen.items.none { it is MappingItem.Notice })
+
+        val headerAt = retroArchHeaderIndex(screen.items, f.raLabel)
+        assertTrue("RetroArch header must be present", headerAt >= 0)
+        val raRows = screen.items.drop(headerAt).filterIsInstance<MappingItem.EmulatorOption>()
+            .filter { it.option.source == dev.cannoli.scorza.config.EmulatorSource.RetroArch }
+        assertTrue(raRows.isNotEmpty())
+        raRows.forEach {
+            assertEquals(CoreAvailability.UNKNOWN, it.option.availability)
+        }
+    }
+
     @Test fun `silent RetroArch shows the no-response notice directly under its header`() {
         val f = fixture("notice-silent", CoreReporting.SILENT)
         val screen = f.builder.buildPlatformMapping("GBA", "GBA", showAll = true)

@@ -10,6 +10,7 @@ import dev.cannoli.scorza.launcher.CoreReporting
 import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.LaunchManager
 import dev.cannoli.scorza.launcher.RetroArchLauncher
+import dev.cannoli.scorza.launcher.isPackageInstalled
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.screens.CoreAvailability
@@ -31,6 +32,10 @@ class EmulatorMappingBuilder @Inject constructor(
     // Derived from the configured package on every read, so switching RicottaArch to stock
     // RetroArch relabels everything instead of leaving stale captions behind.
     private val raLabel: String get() = InstalledCoreService.getPackageLabel(settings.retroArchPackage)
+
+    // Read live rather than from the scan, so it stays right during the window before the first
+    // scan publishes and after the user installs or removes RetroArch behind the launcher's back.
+    private val raInstalled: Boolean get() = context.isPackageInstalled(settings.retroArchPackage)
 
     /** Per-game override rows for a platform, resolved through the rom_id join. */
     fun overrideRows(tag: String): List<dev.cannoli.scorza.ui.screens.GameOverrideRow> =
@@ -112,6 +117,11 @@ class EmulatorMappingBuilder @Inject constructor(
             val noticeRes = when (raReporting) {
                 CoreReporting.UNSUPPORTED -> dev.cannoli.scorza.R.string.mapping_notice_cannot_report_cores
                 CoreReporting.SILENT -> dev.cannoli.scorza.R.string.mapping_notice_no_response
+                CoreReporting.NOT_INSTALLED -> dev.cannoli.scorza.R.string.mapping_notice_not_installed
+                // No notice while a scan is still in flight. One that appears for a moment during
+                // boot and then vanishes reads as a glitch, and the blank rows already avoid
+                // claiming anything.
+                CoreReporting.UNSCANNED -> null
                 CoreReporting.REPORTS -> null
             }
             return noticeRes?.let { MappingItem.Notice(context.getString(it)) }
@@ -152,7 +162,7 @@ class EmulatorMappingBuilder @Inject constructor(
                 options.forEach {
                     section.add(MappingItem.EmulatorOption(
                         it, isCurrent(it),
-                        downloadable = isDownloadable(source, it.availability, settings.retroArchPackage),
+                        downloadable = isDownloadable(source, it.availability, settings.retroArchPackage, raInstalled),
                     ))
                 }
             }
@@ -313,7 +323,7 @@ class EmulatorMappingBuilder @Inject constructor(
                 appPackage = current.appPackage, availability = availability,
             ),
             isCurrent = true,
-            downloadable = isDownloadable(current.source, availability, settings.retroArchPackage),
+            downloadable = isDownloadable(current.source, availability, settings.retroArchPackage, raInstalled),
         )
     }
 
@@ -338,13 +348,18 @@ class EmulatorMappingBuilder @Inject constructor(
     }
 
     companion object {
+        // raInstalled is required because the package name alone only says which RetroArch is
+        // configured, not that it is there. Offering to download a core into a package that is
+        // not installed sends the user into a flow with nothing at the end of it.
         fun isDownloadable(
             source: EmulatorSource,
             availability: CoreAvailability,
             raPackage: String,
+            raInstalled: Boolean,
         ): Boolean =
             source == EmulatorSource.RetroArch &&
                 availability != CoreAvailability.AVAILABLE &&
+                raInstalled &&
                 RetroArchLauncher.isRicotta(raPackage)
 
         // A synthesized current row can only claim UNAVAILABLE when the availability check

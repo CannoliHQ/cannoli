@@ -17,7 +17,10 @@ import kotlin.coroutines.resume
 const val ACTION_QUERY_INSTALLED_CORES = "com.retroarch.QUERY_INSTALLED_CORES"
 const val ACTION_INSTALLED_CORES_RESULT = "com.retroarch.INSTALLED_CORES_RESULT"
 
-enum class CoreReporting { REPORTS, UNSUPPORTED, SILENT }
+// UNSCANNED and NOT_INSTALLED exist because absence of information is not information. Folding
+// them into REPORTS made the picker label every core Not Installed both before the boot scan
+// landed and when no RetroArch was installed at all.
+enum class CoreReporting { REPORTS, UNSUPPORTED, SILENT, NOT_INSTALLED, UNSCANNED }
 
 // Resolving the receiver answers the real question. Version numbers cannot: every nightly
 // reports the same versionName, and the Play Store flavor computes versionCode by an
@@ -47,6 +50,10 @@ class InstalledCoreService @Inject constructor(
         private set
 
     @Volatile
+    var knownPackages: Set<String> = emptySet()
+        private set
+
+    @Volatile
     var cacheReady: Boolean = false
         private set
 
@@ -58,7 +65,8 @@ class InstalledCoreService @Inject constructor(
         val answered = mutableMapOf<String, Set<String>>()
         val silent = mutableSetOf<String>()
         val unsupported = mutableSetOf<String>()
-        for (pkg in discoverRaPackages()) {
+        val discovered = discoverRaPackages()
+        for (pkg in discovered) {
             // No receiver means no reply is coming, so paying the timeout would only stall
             // the scan by three seconds per package to learn nothing.
             if (!context.packageManager.hasCoreQueryReceiver(pkg)) {
@@ -72,7 +80,7 @@ class InstalledCoreService @Inject constructor(
             val cores = queryPackage(pkg)
             if (cores == null) silent.add(pkg) else answered[pkg] = cores
         }
-        publishQueryResult(answered, silent, unsupported)
+        publishQueryResult(answered, silent, unsupported, discovered.toSet())
     }
 
     // Synchronized on the same monitor as markInstalled so the two writers never interleave.
@@ -81,6 +89,7 @@ class InstalledCoreService @Inject constructor(
         answered: Map<String, Set<String>>,
         silent: Set<String>,
         unsupported: Set<String>,
+        known: Set<String>,
     ) {
         val merged = HashMap<String, Set<String>>()
         // A package that did not answer keeps whatever was cached, since there is no fresh
@@ -95,6 +104,7 @@ class InstalledCoreService @Inject constructor(
         installedCores = merged
         unresponsivePackages = silent
         unsupportedPackages = unsupported
+        knownPackages = known
         cacheReady = true
     }
 
@@ -157,9 +167,13 @@ class InstalledCoreService @Inject constructor(
         return installedCores.filterKeys { it == pkg }
     }
 
-    fun reportingFor(pkg: String): CoreReporting = when (pkg) {
-        in unsupportedPackages -> CoreReporting.UNSUPPORTED
-        in unresponsivePackages -> CoreReporting.SILENT
+    // Ordered so the two "we have nothing to go on" cases are settled before any classification
+    // drawn from a scan, since those sets are only meaningful once a scan has actually run.
+    fun reportingFor(pkg: String): CoreReporting = when {
+        !cacheReady -> CoreReporting.UNSCANNED
+        pkg !in knownPackages -> CoreReporting.NOT_INSTALLED
+        pkg in unsupportedPackages -> CoreReporting.UNSUPPORTED
+        pkg in unresponsivePackages -> CoreReporting.SILENT
         else -> CoreReporting.REPORTS
     }
 

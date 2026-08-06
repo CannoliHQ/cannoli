@@ -12,33 +12,44 @@ class EmulatorMappingDownloadableTest {
     private val stock = "com.retroarch.aarch64"
 
     @Test fun `not-installed RetroArch core on Ricotta is downloadable`() {
-        assertTrue(EmulatorMappingBuilder.isDownloadable(EmulatorSource.RetroArch, availability = CoreAvailability.UNAVAILABLE, raPackage = ricotta))
+        assertTrue(EmulatorMappingBuilder.isDownloadable(EmulatorSource.RetroArch, availability = CoreAvailability.UNAVAILABLE, raPackage = ricotta, raInstalled = true))
     }
 
     @Test fun `installed RetroArch core is not downloadable`() {
-        assertFalse(EmulatorMappingBuilder.isDownloadable(EmulatorSource.RetroArch, availability = CoreAvailability.AVAILABLE, raPackage = ricotta))
+        assertFalse(EmulatorMappingBuilder.isDownloadable(EmulatorSource.RetroArch, availability = CoreAvailability.AVAILABLE, raPackage = ricotta, raInstalled = true))
     }
 
     @Test fun `not-installed core on stock RetroArch is not downloadable`() {
-        assertFalse(EmulatorMappingBuilder.isDownloadable(EmulatorSource.RetroArch, availability = CoreAvailability.UNAVAILABLE, raPackage = stock))
+        assertFalse(EmulatorMappingBuilder.isDownloadable(EmulatorSource.RetroArch, availability = CoreAvailability.UNAVAILABLE, raPackage = stock, raInstalled = true))
     }
 
     @Test fun `Internal and Standalone sources are never downloadable`() {
-        assertFalse(EmulatorMappingBuilder.isDownloadable(EmulatorSource.Internal, availability = CoreAvailability.UNAVAILABLE, raPackage = ricotta))
-        assertFalse(EmulatorMappingBuilder.isDownloadable(EmulatorSource.Standalone, availability = CoreAvailability.UNAVAILABLE, raPackage = ricotta))
+        assertFalse(EmulatorMappingBuilder.isDownloadable(EmulatorSource.Internal, availability = CoreAvailability.UNAVAILABLE, raPackage = ricotta, raInstalled = true))
+        assertFalse(EmulatorMappingBuilder.isDownloadable(EmulatorSource.Standalone, availability = CoreAvailability.UNAVAILABLE, raPackage = ricotta, raInstalled = true))
     }
 
     @Test fun `an unknown core on Ricotta is downloadable`() {
         // SILENT RicottaArch reports UNKNOWN for every candidate core. Withholding the download
         // here is what stranded a freshly installed RicottaArch that has never been launched.
         assertTrue(EmulatorMappingBuilder.isDownloadable(
-            EmulatorSource.RetroArch, CoreAvailability.UNKNOWN, ricotta,
+            EmulatorSource.RetroArch, CoreAvailability.UNKNOWN, ricotta, raInstalled = true,
         ))
     }
 
     @Test fun `an unknown core on stock RetroArch is not downloadable`() {
         assertFalse(EmulatorMappingBuilder.isDownloadable(
-            EmulatorSource.RetroArch, CoreAvailability.UNKNOWN, stock,
+            EmulatorSource.RetroArch, CoreAvailability.UNKNOWN, stock, raInstalled = true,
+        ))
+    }
+
+    // The package name says which RetroArch is configured, not that it is present. A download
+    // into a package that is not installed has nothing at the end of it.
+    @Test fun `nothing is downloadable when the configured RetroArch is not installed`() {
+        assertFalse(EmulatorMappingBuilder.isDownloadable(
+            EmulatorSource.RetroArch, CoreAvailability.UNAVAILABLE, ricotta, raInstalled = false,
+        ))
+        assertFalse(EmulatorMappingBuilder.isDownloadable(
+            EmulatorSource.RetroArch, CoreAvailability.UNKNOWN, ricotta, raInstalled = false,
         ))
     }
 
@@ -69,6 +80,6 @@ class EmulatorMappingDownloadableTest {
 
     @Test fun `an unknown current row on Ricotta is downloadable`() {
         val availability = EmulatorMappingBuilder.currentRowAvailability(EmulatorSource.RetroArch, raCannotReport = true)
-        assertTrue(EmulatorMappingBuilder.isDownloadable(EmulatorSource.RetroArch, availability, ricotta))
+        assertTrue(EmulatorMappingBuilder.isDownloadable(EmulatorSource.RetroArch, availability, ricotta, raInstalled = true))
     }
 }

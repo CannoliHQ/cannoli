@@ -29,12 +29,13 @@ class InstalledCorePublishTest {
         answered: Map<String, Set<String>>,
         silent: Set<String> = emptySet(),
         unsupported: Set<String> = emptySet(),
+        known: Set<String> = answered.keys + silent + unsupported,
     ) {
         val m = InstalledCoreService::class.java.getDeclaredMethod(
-            "publishQueryResult", Map::class.java, Set::class.java, Set::class.java,
+            "publishQueryResult", Map::class.java, Set::class.java, Set::class.java, Set::class.java,
         )
         m.isAccessible = true
-        m.invoke(svc, answered, silent, unsupported)
+        m.invoke(svc, answered, silent, unsupported, known)
     }
 
     @Test fun `a package that answers zero cores is installed, not unresponsive`() {
@@ -103,15 +104,33 @@ class InstalledCorePublishTest {
         assertEquals(CoreReporting.REPORTS, svc.reportingFor(STOCK))
     }
 
-    @Test fun `an unqueried package is assumed to report so no notice flashes before the first scan`() {
-        assertEquals(CoreReporting.REPORTS, service().reportingFor(STOCK))
+    // This used to assert REPORTS, on the theory that an optimistic default stopped the notice
+    // flashing during boot. That made "no information yet" indistinguishable from "reported",
+    // so the picker labelled every core Not Installed until the boot scan landed.
+    @Test fun `a package is unscanned until the first query publishes`() {
+        assertEquals(CoreReporting.UNSCANNED, service().reportingFor(STOCK))
     }
 
-    @Test fun `canReport is false for both ways of not knowing`() {
+    @Test fun `a package that is not installed is not mistaken for one that reported`() {
+        val svc = service()
+        publish(svc, answered = mapOf(RICOTTA to setOf("a_libretro")))
+        assertEquals(CoreReporting.NOT_INSTALLED, svc.reportingFor(STOCK))
+    }
+
+    @Test fun `an uninstalled package survives a scan that found nothing at all`() {
+        val svc = service()
+        publish(svc, answered = emptyMap())
+        assertTrue("a scan that discovers nothing still counts as a scan", svc.cacheReady)
+        assertEquals(CoreReporting.NOT_INSTALLED, svc.reportingFor(STOCK))
+    }
+
+    @Test fun `canReport is false for every way of not knowing`() {
         val svc = service()
         publish(svc, answered = emptyMap(), silent = setOf(RICOTTA), unsupported = setOf(STOCK))
-        assertFalse(svc.canReport(STOCK))
-        assertFalse(svc.canReport(RICOTTA))
+        assertFalse("silent", svc.canReport(RICOTTA))
+        assertFalse("no receiver", svc.canReport(STOCK))
+        assertFalse("not installed", svc.canReport("com.retroarch.absent"))
+        assertFalse("never scanned", service().canReport(STOCK))
     }
 
     @Test fun `an unsupported package that gains the receiver stops being unsupported`() {

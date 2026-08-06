@@ -87,7 +87,7 @@
     <string name="settings_emulation">Emulation</string>
     <string name="settings_integrations">Integrations</string>
     <string name="settings_advanced">Advanced</string>
-    <string name="settings_debug">Debug</string>
+    <string name="settings_debug" translatable="false">Debug</string>
     <string name="settings_retroachievements" translatable="false">RetroAchievements</string>
     <string name="settings_romm" translatable="false">RomM</string>
     <string name="settings_about">About</string>
@@ -386,7 +386,7 @@
 
     <string name="setting_logging">Logging</string>
     <!-- Advanced toggle: log the intents used to launch external emulators. -->
-    <string name="setting_audit_emulator_intents">Audit Emulator Intents</string>
+    <string name="setting_audit_emulator_intents" translatable="false">Audit Emulator Intents</string>
     <string name="logging_title">Logging</string>
     <string name="logging_rom_scan">ROM Scan</string>
     <string name="logging_input">Input</string>
@@ -766,6 +766,11 @@
     <string name="mapping_notice_cannot_report_cores">This RetroArch version cannot report installed cores</string>
     <!-- Shown when RetroArch has the receiver but did not answer the query. -->
     <string name="mapping_notice_no_response">RetroArch did not respond</string>
+    <!-- Shown above the core list when the configured RetroArch package is not installed at all. -->
+    <string name="mapping_notice_not_installed">RetroArch is not installed</string>
+    <!-- Debug builds only: a gallery of every Nerd Font glyph the launcher draws. Never shipped to users, so not sent to translators. -->
+    <string name="setting_icon_gallery" translatable="false">Icon Gallery</string>
+    <string name="title_icon_gallery" translatable="false">Icon Gallery</string>
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">%s Mapping</string>
     <!-- Screen title for the per-game emulator picker. %s = game name. -->
