@@ -111,6 +111,9 @@ dependencies {
     implementation(project(":ricotta"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)
+    // Installs baseline-prof.txt at runtime. Cannoli is sideloaded, so the profile never reaches
+    // the installer the way a Play install would, and without this the embedded profile is inert.
+    implementation(libs.androidx.profileinstaller)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
