@@ -84,7 +84,6 @@
     <string name="settings_emulation">Emulação</string>
     <string name="settings_integrations">Integrações</string>
     <string name="settings_advanced">Avançado</string>
-    <string name="settings_debug">Debug</string>
     <string name="settings_about">SOBRE</string>
     <!-- Setting: which update channel to follow (e.g. stable versus test builds). -->
     <string name="settings_release_channel">Canal de lançamento</string>
@@ -344,7 +343,6 @@
     <string name="romm_vtype_mode">Modos de Jogo</string>
     <string name="setting_logging">Registro</string>
     <!-- Advanced toggle: log the intents used to launch external emulators. -->
-    <string name="setting_audit_emulator_intents">Intensões de Auditoria</string>
     <string name="logging_title">Registro</string>
     <string name="logging_rom_scan">Escaneamento de ROM</string>
     <string name="logging_input">Input</string>
@@ -607,6 +605,9 @@
     <!-- Update download -->
     <string name="update_retry">RETENTAR</string>
     <string name="restart_required">Reinicie necessário para aplicar as alterações.</string>
+    <!-- Shown before the ROM directory is changed or cleared, since the rescan that follows prunes
+         database entries for every ROM that is not at the same relative path under the new
+         directory. Cannoli and RetroAchievements are product names; leave them untranslated. -->
     <!-- IGM screen titles -->
     <string name="igm_settings">Confirgurações</string>
     <string name="igm_video">Vídeo</string>
@@ -672,6 +673,10 @@
     <!-- %d = number of required BIOS files missing. -->
     <string name="mapping_required_missing">%d necessário faltando</string>
     <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
+    <!-- Shown above the RetroArch core list when the installed build predates the receiver that answers core queries. -->
+    <!-- Shown when RetroArch has the receiver but did not answer the query. -->
+    <!-- Shown above the core list when the configured RetroArch package is not installed at all. -->
+    <!-- Debug builds only: a gallery of every Nerd Font glyph the launcher draws. Never shipped to users, so not sent to translators. -->
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">Mapeamento %s</string>
     <!-- Screen title for the per-game emulator picker. %s = game name. -->
@@ -748,6 +753,7 @@
     <!-- Conflicts resolution screen -->
     <string name="conflicts_title">Sincronizar Conflitos</string>
     <string name="conflicts_applying">Aplicando conflitos...</string>
+    <!-- Shown while saves are checked against the server before a game launches. -->
     <!-- %1$d = number of saves that could not be applied. -->
     <plurals name="conflicts_apply_failed">
         <item quantity="one">Não foi possível aplicar o save %1$d</item>
