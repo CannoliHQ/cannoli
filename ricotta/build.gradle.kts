@@ -37,7 +37,8 @@ android {
                 "$retroarchDir/libretro-common/vfs/saf/src",
                 "$retroarchDir/pkg/android/play-core-stub",
             )
-            res.srcDirs("$phoenixDir/res", "$phoenixCommonDir/res")
+            // Ricotta's own res comes last so it can add to phoenix's rather than replace it.
+            res.srcDirs("$phoenixDir/res", "$phoenixCommonDir/res", "src/main/res")
             assets.srcDirs("$phoenixDir/assets")
             jniLibs.srcDir("$phoenixCommonDir/libs")
         }

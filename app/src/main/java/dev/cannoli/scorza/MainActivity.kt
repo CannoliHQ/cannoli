@@ -164,6 +164,19 @@ class MainActivity : ComponentActivity(), ActivityActions {
         }
         super.onCreate(savedInstanceState)
 
+        // A launcher intent does not reuse this task when a game is running, it stacks a second
+        // MainActivity on top of the emulator, and every icon tap adds another. Standing aside
+        // when we are not the task root lets the activity underneath resume, which puts the
+        // player back in their game exactly as the task switcher does, and keeps the stack from
+        // growing. Only launcher intents qualify: any other caller has a real reason to be here.
+        val fromLauncherIcon = intent?.action == Intent.ACTION_MAIN &&
+            (intent.hasCategory(Intent.CATEGORY_LAUNCHER) ||
+                intent.hasCategory(Intent.CATEGORY_LEANBACK_LAUNCHER))
+        if (!isTaskRoot && fromLauncherIcon) {
+            finish()
+            return
+        }
+
         // Belt-and-suspenders: ensure the launcher window does not hold FLAG_KEEP_SCREEN_ON,
         // so the system display timeout applies. The IGM activity manages its own flag.
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)

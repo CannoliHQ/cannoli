@@ -52,7 +52,8 @@
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout|uiMode|density|navigation|touchscreen"
             android:launchMode="singleTop"
             android:resizeableActivity="false"
-            android:windowLayoutInDisplayCutoutMode="shortEdges">
+            android:windowLayoutInDisplayCutoutMode="shortEdges"
+            android:alwaysRetainTaskState="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -61,15 +62,6 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
-
-        <activity
-            android:name=".libretro.LibretroActivity"
-            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout|uiMode|density|navigation|touchscreen"
-            android:theme="@style/Theme.Cannoli"
-            android:immersive="true"
-            android:resizeableActivity="false"
-            android:preferMinimalPostProcessing="true"
-            android:windowLayoutInDisplayCutoutMode="shortEdges" />
 
         <provider
             android:name=".launcher.CannoliFileProvider"

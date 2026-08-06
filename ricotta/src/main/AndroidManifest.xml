@@ -21,7 +21,7 @@
             android:name="dev.cannoli.ricotta.RicottaLaunchActivity"
             android:exported="false"
             android:process=":retroarch"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:theme="@style/Theme.Ricotta.Launch"
             android:excludeFromRecents="true"
             android:noHistory="true" />
 
@@ -29,8 +29,10 @@
             android:name="com.retroarch.browser.retroactivity.RetroActivityFuture"
             android:exported="false"
             android:process=":retroarch"
+            android:theme="@style/Theme.Ricotta.Game"
+            android:launchMode="singleTop"
             tools:node="merge"
-            tools:replace="android:exported" />
+            tools:replace="android:exported,android:theme,android:launchMode" />
 
         <activity
             android:name="com.retroarch.browser.debug.CoreSideloadActivity"

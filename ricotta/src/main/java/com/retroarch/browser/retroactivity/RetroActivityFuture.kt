@@ -122,22 +122,29 @@ class RetroActivityFuture : RetroActivityCamera() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
 
-        val newRom = intent.getStringExtra("ROM")
-        val newCore = intent.getStringExtra("LIBRETRO")
-        val currentRom = getIntent()?.getStringExtra("ROM")
-        val currentCore = getIntent()?.getStringExtra("LIBRETRO")
-
-        if ((newRom != null && newRom != currentRom) ||
-            (newCore != null && newCore != currentCore)
-        ) {
-            val restartIntent = Intent(intent).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-            }
-            startActivity(restartIntent)
-            System.exit(0)
-        } else {
+        // Every launch restarts, including a relaunch of the game already running.
+        //
+        // This used to restart only when the ROM or core differed, and continue the running
+        // session otherwise. That was unreachable while backgrounding killed the process, but now
+        // that a backgrounded session survives it would silently override the launcher: the
+        // launcher decides whether a launch is a fresh Play or a Resume and encodes it in the
+        // config this intent points at, so carrying on regardless would drop Play back into a game
+        // already in progress and make Resume's slot never load. Same ROM relaunched is precisely
+        // the case that has to restart, so comparing content cannot be the test.
+        if (intent.getStringExtra("ROM") == null) {
             setIntent(intent)
+            return
         }
+
+        // NEW_TASK only. This activity shares the launcher's task, so CLEAR_TASK would take
+        // MainActivity down with it and leave nothing to come back to. Task affinity puts the
+        // replacement back on the same task, and exiting is what gives the next game a clean core
+        // rather than one carrying the last one's state.
+        val restartIntent = Intent(intent).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        startActivity(restartIntent)
+        System.exit(0)
     }
 
     override fun onResume() {
@@ -171,16 +178,19 @@ class RetroActivityFuture : RetroActivityCamera() {
         super.onPause()
     }
 
-    override fun onStop() {
-        super.onStop()
-        if (quitfocus) System.exit(0)
-    }
-
     override fun onDestroy() {
         osdOverlay?.detach()
         igmOverlay?.onDestroy()
         super.onDestroy()
         isRunning = false
+        // `quitfocus` means "do not linger once the player has moved on". Finishing is the signal
+        // for that; stopping is not. This used to run in onStop, which cannot tell a player who is
+        // done from a screen that locked, a call that came in, or a home press they meant to come
+        // back from, and killed a running game in all of those cases.
+        //
+        // Quitting from the in-game menu does not depend on this: it enqueues CMD_EVENT_QUIT and
+        // RetroArch exits on its own.
+        if (quitfocus && isFinishing) System.exit(0)
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
