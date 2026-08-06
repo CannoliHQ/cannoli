@@ -421,8 +421,6 @@
     <string name="launch_error_extract">Αποτυχία εξαγωγής συμπιεσμένου αρχείου</string>
     <string name="launch_error_generic">Αποτυχία εκκίνησης παιχνιδιού</string>
     <!-- %1$s = file name. -->
-    <string name="launch_error_update_ricotta">Ενημέρωση του RicottaArch για να συνεχίσετε</string>
-    <string name="launch_error_update_cannoli">Ενημερώστε το Cannoli για να συνεχίσετε</string>
     <!-- %1$s = core name, %2$s = emulator app. -->
     <string name="dialog_missing_core_pkg">Το %1$s δεν είναι εγκατεστημένο στο %2$s.</string>
     <!-- %1$s = core name. -->

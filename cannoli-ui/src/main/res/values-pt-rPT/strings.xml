@@ -425,8 +425,6 @@
     <string name="launch_error_extract">Falha ao extrair o arquivo</string>
     <string name="launch_error_generic">Falha ao iniciar o jogo</string>
     <!-- %1$s = file name. -->
-    <string name="launch_error_update_ricotta">Atualize o RicottaArch para continuar</string>
-    <string name="launch_error_update_cannoli">Atualize o Cannoli para continuar</string>
     <!-- %1$s = core name, %2$s = emulator app. -->
     <string name="dialog_missing_core_pkg">%1$s não está instalado em %2$s.</string>
     <!-- %1$s = core name. -->

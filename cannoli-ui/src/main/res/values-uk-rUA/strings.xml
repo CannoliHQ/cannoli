@@ -427,8 +427,6 @@
     <string name="launch_error_extract">Не вдалося розпакувати архів</string>
     <string name="launch_error_generic">Не вдалося запустити гру</string>
     <!-- %1$s = file name. -->
-    <string name="launch_error_update_ricotta">Оновіть RicottaArch, щоб продовжити</string>
-    <string name="launch_error_update_cannoli">Оновіть Cannoli, щоб продовжити</string>
     <!-- %1$s = core name, %2$s = emulator app. -->
     <string name="dialog_missing_core_pkg">%1$s не встановлено в %2$s.</string>
     <!-- %1$s = core name. -->

@@ -425,8 +425,6 @@
     <string name="launch_error_extract">Estrazione dell\'archivio non riuscita</string>
     <string name="launch_error_generic">Impossibile avviare la partita</string>
     <!-- %1$s = file name. -->
-    <string name="launch_error_update_ricotta">Aggiorna RicottaArch per continuare</string>
-    <string name="launch_error_update_cannoli">Aggiorna Cannoli per continuare</string>
     <!-- %1$s = core name, %2$s = emulator app. -->
     <string name="dialog_missing_core_pkg">%1$s non è installato in %2$s.</string>
     <!-- %1$s = core name. -->

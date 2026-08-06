@@ -424,8 +424,6 @@
     <string name="launch_error_extract">アーカイブの抽出に失敗しました</string>
     <string name="launch_error_generic">ゲームの起動に失敗しました</string>
     <!-- %1$s = file name. -->
-    <string name="launch_error_update_ricotta">続行するには RicottaArch を更新</string>
-    <string name="launch_error_update_cannoli">Cannoliを更新して続行する</string>
     <!-- %1$s = core name, %2$s = emulator app. -->
     <string name="dialog_missing_core_pkg">%1$s は %2$s にインストールされていません。</string>
     <!-- %1$s = core name. -->

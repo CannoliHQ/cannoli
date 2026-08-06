@@ -353,8 +353,6 @@
     <string name="launch_error_resolve_file">Failed to resolve launch file</string>
     <string name="launch_error_extract">Failed to extract archive</string>
     <string name="launch_error_generic">Failed to launch game</string>
-    <string name="launch_error_update_ricotta">Update RicottaArch to continue</string>
-    <string name="launch_error_update_cannoli">Update Cannoli to continue</string>
     <string name="dialog_missing_core_pkg">%1$s isn\'t installed in %2$s.</string>
     <string name="dialog_missing_core_plain">%1$s isn\'t installed.</string>
     <string name="dialog_missing_core_hint">Set it up in Emulator Mapping.</string>

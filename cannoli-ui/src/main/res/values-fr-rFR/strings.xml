@@ -424,8 +424,6 @@
     <string name="launch_error_extract">Impossible d\'extraire l\'archive</string>
     <string name="launch_error_generic">Impossible de lancer le jeu</string>
     <!-- %1$s = file name. -->
-    <string name="launch_error_update_ricotta">Mettre à jour RicottaArch pour continuer</string>
-    <string name="launch_error_update_cannoli">Mettre à jour Cannoli pour continuer</string>
     <!-- %1$s = core name, %2$s = emulator app. -->
     <string name="dialog_missing_core_pkg">%1$s n\'est pas installé dans %2$s.</string>
     <!-- %1$s = core name. -->

@@ -426,8 +426,6 @@
     <string name="launch_error_generic">无法启动游戏</string>
     <!-- %1$s = file name. -->
     <string name="launch_error_bad_game_file">无法从 %1$s 读取游戏ID</string>
-    <string name="launch_error_update_ricotta">更新 RicottaArch 以继续</string>
-    <string name="launch_error_update_cannoli">更新 Cannoli 以继续</string>
     <!-- %1$s = core name, %2$s = emulator app. -->
     <string name="dialog_missing_core_pkg">%1$s 没有安装在 %2$s 中。</string>
     <!-- %1$s = core name. -->
