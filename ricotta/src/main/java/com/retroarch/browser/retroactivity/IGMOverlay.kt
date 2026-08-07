@@ -163,7 +163,7 @@ class IGMOverlay(
             rootTitle = uiContext.getString(R.string.igm_settings),
             on = uiContext.getString(AppR.string.igm_ra_on),
             off = uiContext.getString(AppR.string.igm_ra_off),
-            restartHint = uiContext.getString(AppR.string.igm_ra_restart_hint),
+            restartHint = uiContext.getString(R.string.igm_restart_hint),
             savePlatform = uiContext.getString(AppR.string.igm_ra_save_platform, platformName),
             saveGame = uiContext.getString(AppR.string.igm_ra_save_game),
             dontSave = uiContext.getString(AppR.string.igm_ra_dont_save),

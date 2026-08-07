@@ -4,7 +4,7 @@ data class RaOptionStrings(
     val rootTitle: String = "Settings",
     val on: String = "On",
     val off: String = "Off",
-    val restartHint: String = "Applies on relaunch",
+    val restartHint: String = "Applies On Relaunch",
     val savePlatform: String = "Save for Platform",
     val saveGame: String = "Save for this game",
     val dontSave: String = "Discard",

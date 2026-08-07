@@ -116,9 +116,7 @@ fun IGMSettingsScreen(
                 if (coreInfo.isNotEmpty()) {
                     Text(
                         text = coreInfo,
-                        style = typo.labelSmall.copy(
-                            color = colors.text.copy(alpha = 0.7f)
-                        ),
+                        style = typo.labelSmall.copy(color = colors.text),
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         textAlign = TextAlign.Center,

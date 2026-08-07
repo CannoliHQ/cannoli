@@ -159,8 +159,15 @@ class RicottaArchBridge(
             onOpenNativeMenu = { onOpenNativeMenu?.invoke() },
         )
 
-    override fun coreOptionKeys(): List<String> =
-        nativeCoreOptionKeys()?.map { "$CORE_OPTION_PREFIX$it" } ?: emptyList()
+    override fun coreOptions(): List<dev.cannoli.igm.CoreOptionRef> =
+        nativeCoreOptionKeys()?.map { entry ->
+            val parts = entry.split('|', limit = 3)
+            dev.cannoli.igm.CoreOptionRef(
+                key = "$CORE_OPTION_PREFIX${parts[0]}",
+                categoryKey = parts.getOrNull(1).orEmpty(),
+                categoryLabel = parts.getOrNull(2).orEmpty(),
+            )
+        } ?: emptyList()
 
     override fun raGetSetting(key: String): RaSetting? {
         val arr = nativeRaGetSetting(key) ?: return null

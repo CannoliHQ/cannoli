@@ -10,7 +10,7 @@ private const val PREFIX = "core::"
 private class CoreOptionHost(private val keys: List<String>) : RaSettingsHost {
     val written = mutableListOf<Pair<String, String>>()
 
-    override fun coreOptionKeys() = keys.map { "$PREFIX$it" }
+    override fun coreOptions() = keys.map { CoreOptionRef(key = "$PREFIX$it") }
 
     override fun raGetSetting(key: String): RaSetting? {
         if (!key.startsWith(PREFIX)) return null
@@ -68,5 +68,63 @@ class RaIgmSettingsCoreOptionsTest {
         assertEquals(1, host.written.size)
         assertEquals("${PREFIX}gambatte_gb_colorization", host.written[0].first)
         assertEquals("enabled", host.written[0].second)
+    }
+}
+
+private class CategorisedHost(private val refs: List<CoreOptionRef>) : RaSettingsHost {
+    override fun coreOptions() = refs
+    override fun raGetSetting(key: String) = RaSetting(
+        key = key,
+        label = "${key.removePrefix(PREFIX)} (Restart)",
+        type = RaSettingType.ENUM,
+        value = "a",
+        options = listOf("a", "b"),
+    )
+    override fun raSetSetting(key: String, value: String) = true
+    override fun raSaveOverride(scope: RaOverrideScope) {}
+    override fun setOnRaSettingApplied(callback: (String, String) -> Unit) {}
+    override fun getLocalToggle(key: String, default: Boolean) = default
+    override fun setLocalToggle(key: String, value: Boolean) {}
+}
+
+class RaIgmSettingsCoreCategoriesTest {
+
+    private fun provider(refs: List<CoreOptionRef>) =
+        RaIgmSettingsProvider(host = CategorisedHost(refs), onOpenNativeMenu = {})
+
+    @Test fun `a core with categories shows them instead of a flat list`() {
+        val p = provider(listOf(
+            CoreOptionRef("${PREFIX}a", "video", "Video"),
+            CoreOptionRef("${PREFIX}b", "audio", "Audio"),
+        ))
+        val screen = p.screen(listOf("emulator"))
+        assertEquals(2, screen.items.size)
+        assertEquals("Video", (screen.items[0] as GenericIgmSettingsItem.Category).label)
+    }
+
+    @Test fun `drilling into a category lists only its options`() {
+        val p = provider(listOf(
+            CoreOptionRef("${PREFIX}a", "video", "Video"),
+            CoreOptionRef("${PREFIX}b", "audio", "Audio"),
+            CoreOptionRef("${PREFIX}c", "video", "Video"),
+        ))
+        val screen = p.screen(listOf("emulator", "video"))
+        assertEquals(2, screen.items.size)
+        assertEquals("Video", screen.title)
+    }
+
+    // One menu leading to a single menu is worse than no menu, so a flat core skips the level.
+    @Test fun `a core with no categories goes straight to its options`() {
+        val p = provider(listOf(CoreOptionRef("${PREFIX}a"), CoreOptionRef("${PREFIX}b")))
+        val screen = p.screen(listOf("emulator"))
+        assertEquals(2, screen.items.size)
+        assertTrue(screen.items.all { it is GenericIgmSettingsItem.Choice })
+    }
+
+    @Test fun `the restart suffix comes off the label and becomes the hint`() {
+        val p = provider(listOf(CoreOptionRef("${PREFIX}gb_model")))
+        val row = p.screen(listOf("emulator")).items[0] as GenericIgmSettingsItem.Choice
+        assertEquals("gb_model", row.label)
+        assertEquals("Applies On Relaunch", row.hint)
     }
 }

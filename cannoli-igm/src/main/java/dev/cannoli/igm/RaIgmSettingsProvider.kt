@@ -28,15 +28,45 @@ class RaIgmSettingsProvider(
 
     override fun setOnChanged(callback: () -> Unit) { onChanged = callback }
 
-    override fun screen(path: List<String>): GenericIgmSettingsScreen = when (val category = path.firstOrNull()) {
-        null -> root()
-        else -> categoryScreen(category)
+    override fun screen(path: List<String>): GenericIgmSettingsScreen = when {
+        path.isEmpty() -> root()
+        path.first() == EMULATOR_CATEGORY -> emulatorScreen(path.getOrNull(1))
+        else -> categoryScreen(path.first())
+    }
+
+    // A core that declares categories gets a screen of them; one that does not gets its options
+    // straight away, so a flat core is never a menu that leads to a single menu.
+    private fun emulatorScreen(categoryKey: String?): GenericIgmSettingsScreen {
+        val options = host.coreOptions()
+        val cats = options.filter { it.categoryKey.isNotEmpty() }
+            .distinctBy { it.categoryKey }
+        if (categoryKey == null && cats.size > 1) {
+            return GenericIgmSettingsScreen(
+                strings.categoryTitles[EMULATOR_CATEGORY] ?: EMULATOR_CATEGORY,
+                cats.map { GenericIgmSettingsItem.Category(it.categoryKey, it.categoryLabel.ifEmpty { it.categoryKey }) },
+            )
+        }
+        val wanted = if (categoryKey == null) options else options.filter { it.categoryKey == categoryKey }
+        // Reload only on a change of screen. screen() runs on every render, and a write is queued
+        // onto the emulator thread, so reloading each time read the old value straight back over
+        // the row the user had just changed.
+        val cacheKey = if (categoryKey == null) EMULATOR_CATEGORY else "$EMULATOR_CATEGORY/$categoryKey"
+        if (cacheKey != currentCategory) loadCoreOptions(wanted, cacheKey)
+        val title = cats.firstOrNull { it.categoryKey == categoryKey }?.categoryLabel
+            ?: strings.categoryTitles[EMULATOR_CATEGORY] ?: EMULATOR_CATEGORY
+        return GenericIgmSettingsScreen(title, currentSettings.map(::rowFor))
+    }
+
+    private fun loadCoreOptions(refs: List<CoreOptionRef>, cacheKey: String) {
+        pending.clear()
+        currentCategory = cacheKey
+        currentSettings = refs.mapNotNull { host.raGetSetting(it.key)?.let(::withRestartHint) }
     }
 
     private fun root(): GenericIgmSettingsScreen {
         val items = buildList {
             // Only cores that expose options get the row, so it is absent rather than empty.
-            if (host.coreOptionKeys().isNotEmpty()) {
+            if (host.coreOptions().isNotEmpty()) {
                 add(GenericIgmSettingsItem.Category(
                     EMULATOR_CATEGORY,
                     strings.categoryTitles[EMULATOR_CATEGORY] ?: EMULATOR_CATEGORY,
@@ -59,11 +89,7 @@ class RaIgmSettingsProvider(
     private fun loadCategory(categoryKey: String) {
         pending.clear()
         currentCategory = categoryKey
-        val keys = if (categoryKey == EMULATOR_CATEGORY) {
-            host.coreOptionKeys()
-        } else {
-            RaOptionCatalog.categories.first { it.key == categoryKey }.settingKeys
-        }
+        val keys = RaOptionCatalog.categories.first { it.key == categoryKey }.settingKeys
         currentSettings = keys.mapNotNull { key ->
             if (key.startsWith(LOCAL_TOGGLE_PREFIX)) {
                 RaSetting(
@@ -73,7 +99,7 @@ class RaIgmSettingsProvider(
                     value = if (host.getLocalToggle(key, true)) "true" else "false",
                 )
             } else {
-                host.raGetSetting(key)
+                host.raGetSetting(key)?.let(::withRestartHint)
             }
         }
     }
@@ -160,3 +186,15 @@ class RaIgmSettingsProvider(
             dirty = false
         }
 }
+
+// Cores put the restart notice in the option description themselves, which eats row width and
+// repeats on every affected row. The flag drives the hint the screen already shows for the
+// selected row, so the words come off the label.
+private val RESTART_SUFFIX = Regex("""[\s\-–—]*\(\s*(?:restart|reboot)\s*\)\s*$""", RegexOption.IGNORE_CASE)
+
+internal fun withRestartHint(s: RaSetting): RaSetting =
+    if (RESTART_SUFFIX.containsMatchIn(s.label)) {
+        s.copy(label = s.label.replace(RESTART_SUFFIX, ""), requiresRestart = true)
+    } else {
+        s
+    }

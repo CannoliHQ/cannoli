@@ -34,6 +34,8 @@
     <string name="igm_achievements">Achievements</string>
     <string name="igm_reset">Reset</string>
     <string name="igm_switch_disc">Switch Disc</string>
+    <!-- Shown for a setting the emulator only picks up on the next launch. -->
+    <string name="igm_restart_hint">Applies On Relaunch</string>
     <!-- Shown in place of a save state thumbnail when the slot has never been written. -->
     <string name="igm_slot_empty">Empty</string>
     <!-- The save state slot RetroArch writes on its own. Uppercased where it is drawn as a badge. -->

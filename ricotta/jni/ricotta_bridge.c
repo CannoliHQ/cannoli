@@ -382,12 +382,30 @@ Java_dev_cannoli_ricotta_RicottaArchBridge_nativeCoreOptionKeys(
    if (!out)
       return NULL;
 
+   /* "optionKey|categoryKey|categoryLabel". Cores that declare no categories leave the last two
+    * empty and the caller shows one flat list. */
    for (i = 0, n = 0; i < opt->size; i++)
    {
+      char entry[512];
+      const char *cat_key;
+      const char *cat_desc = "";
+      size_t c;
+
       if (!opt->opts[i].key || !core_option_manager_get_visible(opt, i))
          continue;
+
+      cat_key = opt->opts[i].category_key ? opt->opts[i].category_key : "";
+      for (c = 0; c < opt->cats_size; c++)
+      {
+         if (opt->cats[c].key && !strcmp(opt->cats[c].key, cat_key))
+         {
+            cat_desc = opt->cats[c].desc ? opt->cats[c].desc : "";
+            break;
+         }
+      }
+      snprintf(entry, sizeof(entry), "%s|%s|%s", opt->opts[i].key, cat_key, cat_desc);
       (*env)->SetObjectArrayElement(env, out, (jsize)n++,
-            (*env)->NewStringUTF(env, opt->opts[i].key));
+            (*env)->NewStringUTF(env, entry));
    }
    return out;
 }

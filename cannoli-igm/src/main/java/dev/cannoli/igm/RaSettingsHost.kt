@@ -1,8 +1,8 @@
 package dev.cannoli.igm
 
 interface RaSettingsHost {
-    /** Keys of the options the running core exposes, already prefixed for [raGetSetting]. */
-    fun coreOptionKeys(): List<String> = emptyList()
+    /** Options the running core exposes, in the order the core declares them. */
+    fun coreOptions(): List<CoreOptionRef> = emptyList()
 
     fun raGetSetting(key: String): RaSetting?
     fun raSetSetting(key: String, value: String): Boolean
