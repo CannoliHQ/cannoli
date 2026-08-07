@@ -18,6 +18,7 @@
     <string name="label_change_emulator">REGISTRAR EMULATOR</string>
     <string name="label_delete">ELIMINAR</string>
     <string name="label_confirm">CONFIRMAR</string>
+    <string name="label_proceed">CONTINUAR</string>
     <string name="label_toggle">ALTERNAR</string>
     <string name="label_new">NUEVO</string>
     <string name="label_settings">AJUSTES</string>
@@ -390,6 +391,7 @@
     <!-- Shown in place of an emulator name when a platform has no emulator mapped yet. -->
     <string name="value_needs_setup">Necesita configuración</string>
     <string name="emulator_platform_setting">Configuración de Plataforma</string>
+    <string name="emulator_platform_default">Plataforma por defecto</string>
     <!-- %1$s = the emulator name the platform is mapped to. -->
     <string name="emulator_platform_setting_named">Configuración de la plataforma (%1$s)</string>
     <string name="rename_error_directory">Error al renombrar el directorio</string>
