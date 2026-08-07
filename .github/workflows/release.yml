@@ -20,8 +20,13 @@ on:
 
 env:
   BUILDBOT: https://buildbot.libretro.com/nightly/android/latest
+  # Bundling a core costs three copies: both ABIs in the APK, plus the one
+  # extracted on the device. fbneo and mame2003_plus alone were 172 MB of that,
+  # which a TV box cannot spare, so arcade is downloaded on demand instead. The
+  # emulator picker installs a missing core, and a launch that finds none offers
+  # its way there, so nothing is unreachable without them.
   CORES: >-
-    fbneo gambatte genesis_plus_gx handy mame2003_plus mednafen_ngp
+    gambatte genesis_plus_gx handy mednafen_ngp
     mednafen_pce_fast mednafen_vb mednafen_wswan mgba nestopia pcsx_rearmed
     pokemini prosystem snes9x stella swanstation
 
