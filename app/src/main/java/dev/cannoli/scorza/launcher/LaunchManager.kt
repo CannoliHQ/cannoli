@@ -610,12 +610,28 @@ class LaunchManager(
             return null
         }
 
+        /**
+         * Cores this function extracted last time and the APK no longer carries.
+         *
+         * The stamp file records what was extracted, so a core the user downloaded is never a
+         * candidate: it was never in the manifest. The rule before this deleted anything in the
+         * directory that was not bundled, which wiped every downloaded core on the first launch
+         * after any app update.
+         *
+         * A stamp written before the manifest existed is a bare version line, which reads as an
+         * empty manifest and removes nothing. That is the safe direction; the manifest is written
+         * on the way out and the next update prunes precisely.
+         */
+        internal fun staleBundledCores(stamp: List<String>, extractedNow: Set<String>): List<String> =
+            stamp.drop(1).filter { it.isNotEmpty() && it !in extractedNow }
+
         fun extractBundledCores(context: Context): String {
             val coresDir = File(context.filesDir, "cores")
             coresDir.mkdirs()
             val versionFile = File(coresDir, ".version")
             val currentVersion = File(context.applicationInfo.sourceDir).lastModified().toString()
-            if (versionFile.exists() && versionFile.readText() == currentVersion) return coresDir.absolutePath
+            val stamp = if (versionFile.exists()) versionFile.readLines() else emptyList()
+            if (stamp.firstOrNull() == currentVersion) return coresDir.absolutePath
             val extracted = mutableSetOf<String>()
             java.util.zip.ZipFile(context.applicationInfo.sourceDir).use { apkZip ->
                 val abi = android.os.Build.SUPPORTED_ABIS.firstOrNull() ?: "arm64-v8a"
@@ -628,10 +644,8 @@ class LaunchManager(
                     extracted.add(name)
                 }
             }
-            coresDir.listFiles()?.forEach { f ->
-                if (f.name.endsWith("_libretro_android.so") && f.name !in extracted) f.delete()
-            }
-            versionFile.writeText(currentVersion)
+            staleBundledCores(stamp, extracted).forEach { File(coresDir, it).delete() }
+            versionFile.writeText((listOf(currentVersion) + extracted.sorted()).joinToString("\n"))
             return coresDir.absolutePath
         }
     }
