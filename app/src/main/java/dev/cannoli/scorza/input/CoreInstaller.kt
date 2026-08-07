@@ -28,7 +28,7 @@ class CoreInstaller @Inject constructor(
             durationMs = 120_000L,
         )
         ioScope.launch {
-            val result = coreDownloadService.downloadCore(pkg, coreId)
+            val result = coreDownloadService.downloadCore(coreId)
             withContext(Dispatchers.Main) {
                 if (result.ok) {
                     installedCoreService.markInstalled(pkg, coreId)
