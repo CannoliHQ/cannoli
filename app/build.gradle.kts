@@ -65,6 +65,9 @@ android {
 
     buildTypes {
         debug {
+            // Its own package so a dev build sits beside an installed release instead of
+            // replacing it. Both still read the same Cannoli directory on the SD card.
+            applicationIdSuffix = ".debug"
             if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.getByName("release")
             }
@@ -86,6 +89,11 @@ android {
             matchingFallbacks += listOf("debug")
         }
     }
+
+    // initWith copies the package suffix but not the source set, so profiling would install
+    // over the debug build under the release name.
+    sourceSets.getByName("profiling").res.srcDir("src/debug/res")
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
