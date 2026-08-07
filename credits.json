@@ -16,11 +16,9 @@
     { "name": "ZXing", "what": "QR Code Library", "license": "Apache 2.0" }
   ],
   "cores": [
-    { "name": "FBNeo", "id": "fbneo", "what": "Neo Geo / Arcade", "license": "Non-commercial" },
     { "name": "Gambatte", "id": "gambatte", "what": "Game Boy / Color", "license": "GPLv2" },
     { "name": "Genesis Plus GX", "id": "genesis_plus_gx", "what": "Genesis / SMS / GG", "license": "Non-commercial" },
     { "name": "Handy", "id": "handy", "what": "Atari Lynx", "license": "Zlib" },
-    { "name": "MAME 2003-Plus", "id": "mame2003_plus", "what": "Arcade", "license": "MAME" },
     { "name": "Mednafen NGP", "id": "mednafen_ngp", "what": "NGP / NGPC", "license": "GPLv2" },
     { "name": "Mednafen PCE FAST", "id": "mednafen_pce_fast", "what": "PC Engine", "license": "GPLv2" },
     { "name": "Mednafen VB", "id": "mednafen_vb", "what": "Virtual Boy", "license": "GPLv2" },

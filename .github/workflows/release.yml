@@ -26,9 +26,9 @@ env:
   # emulator picker installs a missing core, and a launch that finds none offers
   # its way there, so nothing is unreachable without them.
   CORES: >-
-    gambatte genesis_plus_gx handy mednafen_ngp
-    mednafen_pce_fast mednafen_vb mednafen_wswan mgba nestopia pcsx_rearmed
-    pokemini prosystem snes9x stella swanstation
+    gambatte genesis_plus_gx handy mednafen_ngp mednafen_pce_fast mednafen_vb
+    mednafen_wswan mgba nestopia pcsx_rearmed pokemini prosystem snes9x stella
+    swanstation
 
 jobs:
   build:
