@@ -115,7 +115,8 @@ class IGMOverlay(
     private val colorHighlightText: String? = null,
     private val colorAccent: String? = null,
     private val colorTitle: String? = null,
-    localeTag: String = ""
+    localeTag: String = "",
+    private val romBaseName: String = "",
 ) {
     // The launcher's language choice, applied to the IGM only. Wrapping the activity itself would
     // re-localize RetroArch's own resources; ContextThemeWrapper keeps the activity as base so the

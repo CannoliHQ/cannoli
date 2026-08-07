@@ -49,10 +49,13 @@ data class RicottaLaunchParams(
     val colors: IgmColors?,
     val displaySettings: IgmDisplaySettings,
     val inputMapping: IgmInputMapping? = null,
-    // BCP-47 tag of the launcher's selected language, empty for the device default. Must stay the
-    // last parcel field: a sender that predates it reads back as null here instead of shifting
-    // every field after it.
+    // BCP-47 tag of the launcher's selected language, empty for the device default.
     val localeTag: String = "",
+    // The ROM file's base name, NFC-normalized: the key every Cannoli side directory uses
+    // (Cheats/<tag>/<romBaseName>/). Not gameTitle, which has (region) and [dump] tags stripped.
+    // Must stay the last parcel field: a sender that predates it reads back as empty here instead
+    // of shifting every field after it.
+    val romBaseName: String = "",
 ) : Parcelable {
     override fun describeContents() = 0
 
@@ -77,6 +80,7 @@ data class RicottaLaunchParams(
         dest.writeParcelable(displaySettings, flags)
         dest.writeParcelable(inputMapping, flags)
         dest.writeString(localeTag)
+        dest.writeString(romBaseName)
     }
 
     companion object {
@@ -110,10 +114,12 @@ data class RicottaLaunchParams(
                 @Suppress("DEPRECATION")
                 val inputMapping = p.readParcelable<IgmInputMapping>(IgmInputMapping::class.java.classLoader)
                 val localeTag = p.readString().orEmpty()
+                val romBaseName = p.readString().orEmpty()
                 return RicottaLaunchParams(
                     coreId, romPath, configFilePath, gameTitle, stateBasePath,
                     cannoliRoot, platformTag, platformName, igmTriggerKeycodes, quitOnFocusLoss,
                     preferredRefreshRate, colors, displaySettings, inputMapping, localeTag,
+                    romBaseName,
                 )
             }
 

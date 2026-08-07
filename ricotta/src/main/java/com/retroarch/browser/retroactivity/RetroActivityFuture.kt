@@ -64,6 +64,9 @@ class RetroActivityFuture : RetroActivityCamera() {
             val platformName = params?.platformName ?: ""
             val colors = params?.colors
             val localeTag = params?.localeTag ?: ""
+            val romBaseName = params?.romBaseName?.takeIf { it.isNotEmpty() }
+                ?: intent.getStringExtra("ROM")?.substringAfterLast('/')?.substringBeforeLast('.')
+                ?: gameTitle
 
             val ds = params?.displaySettings
             val fontSizeSp = ds?.fontSizeSp ?: 24
@@ -92,7 +95,7 @@ class RetroActivityFuture : RetroActivityCamera() {
             igmOverlay = IGMOverlay(
                 this, bridge, stateBasePath, gameTitle, hostConfig, cannoliRoot, platformTag, platformName,
                 colors?.highlight, colors?.text, colors?.highlightText,
-                colors?.accent, colors?.title, localeTag,
+                colors?.accent, colors?.title, localeTag, romBaseName,
             )
             igmOverlay?.onCreate(savedInstanceState)
             params?.let { bridge.setIgmTriggerKeycodes(it.igmTriggerKeycodes.toIntArray()) }

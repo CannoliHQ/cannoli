@@ -512,6 +512,7 @@ class LaunchManager(
                 confirmButton = activeMappingHolder.active.value.confirmButton(),
             ),
             inputMapping = activeMappingHolder.active.value.toIgmInputMapping(),
+            romBaseName = romName,
         )
     }
 

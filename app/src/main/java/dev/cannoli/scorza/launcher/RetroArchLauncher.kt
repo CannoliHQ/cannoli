@@ -26,6 +26,7 @@ data class RicottaIgm(
     val colors: IgmColors? = null,
     val displaySettings: IgmDisplaySettings,
     val inputMapping: IgmInputMapping? = null,
+    val romBaseName: String = "",
 )
 
 class RetroArchLauncher(
@@ -56,6 +57,7 @@ class RetroArchLauncher(
             displaySettings = igm.displaySettings,
             inputMapping = igm.inputMapping,
             localeTag = LocaleOverride.currentTag(context),
+            romBaseName = igm.romBaseName,
         )
 
         val intent = Intent().apply {
