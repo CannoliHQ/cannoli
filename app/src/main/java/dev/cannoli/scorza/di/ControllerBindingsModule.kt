@@ -9,6 +9,7 @@ import dagger.hilt.components.SingletonComponent
 import dev.cannoli.scorza.config.CannoliPaths
 import dev.cannoli.scorza.input.autoconfig.AssetCfgSource
 import dev.cannoli.scorza.input.autoconfig.AutoconfigLoader
+import dev.cannoli.scorza.input.autoconfig.AutoconfigRepository
 import dev.cannoli.scorza.input.autoconfig.BundledAutoconfigEntries
 import dev.cannoli.scorza.input.repo.MappingRepository
 import dev.cannoli.scorza.input.resolver.MappingResolver
@@ -40,16 +41,19 @@ object ControllerBindingsModule {
 
     @Provides
     @Singleton
+    fun provideAutoconfigRepository(paths: CannoliPathsProvider): AutoconfigRepository =
+        AutoconfigRepository { CannoliPaths(paths.root).configInputAutoconfigAndroid }
+
+    @Provides
+    @Singleton
     fun provideMappingResolver(
-        repository: MappingRepository,
+        diskRepository: AutoconfigRepository,
         bundled: BundledAutoconfigEntries,
-        paths: CannoliPathsProvider,
         hints: dev.cannoli.scorza.input.hints.ControllerHintTable,
     ): MappingResolver = MappingResolver(
-        repository = repository,
+        diskRepository = diskRepository,
         bundledRetroArchEntries = bundled,
         hints = hints,
-        mappingsDir = CannoliPaths(paths.root).configInputMappings,
     )
 
     @Provides

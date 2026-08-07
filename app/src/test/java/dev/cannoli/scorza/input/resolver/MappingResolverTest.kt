@@ -1,15 +1,16 @@
 package dev.cannoli.scorza.input.resolver
 
+import dev.cannoli.scorza.input.autoconfig.AutoconfigRepository
+import dev.cannoli.scorza.input.autoconfig.BundledAutoconfigEntries
 import dev.cannoli.scorza.input.autoconfig.RetroArchCfgEntry
+import dev.cannoli.scorza.input.autoconfig.RetroArchCfgParser
 import dev.cannoli.scorza.input.CanonicalButton
 import dev.cannoli.scorza.input.ConnectedDevice
-import dev.cannoli.scorza.input.DeviceMatchRule
-import dev.cannoli.scorza.input.DeviceMapping
+import dev.cannoli.scorza.input.GlyphStyle
 import dev.cannoli.scorza.input.InputBinding
 import dev.cannoli.scorza.input.MappingSource
-import dev.cannoli.scorza.input.repo.MappingRepository
+import dev.cannoli.scorza.input.hints.ControllerHintTable
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -17,84 +18,119 @@ import org.junit.rules.TemporaryFolder
 
 class MappingResolverTest {
 
-    @get:Rule val tempFolder = TemporaryFolder()
+    @get:Rule val tmp = TemporaryFolder()
 
-    private val device = ConnectedDevice(
-        androidDeviceId = 7,
-        descriptor = "abc",
-        name = "Stadia Controller",
-        vendorId = 6353,
-        productId = 37888,
-        androidBuildModel = "Pixel",
+    private fun device(
+        androidDeviceId: Int = 7,
+        descriptor: String = "abc",
+        name: String = "Stadia Controller",
+        vendorId: Int = 6353,
+        productId: Int = 37888,
+        androidBuildModel: String = "Pixel",
+    ) = ConnectedDevice(
+        androidDeviceId = androidDeviceId,
+        descriptor = descriptor,
+        name = name,
+        vendorId = vendorId,
+        productId = productId,
+        androidBuildModel = androidBuildModel,
         sourceMask = 0,
         connectedAtMillis = 0L,
     )
 
-    private val defaultHints = dev.cannoli.scorza.input.hints.ControllerHintTable.fromJson(
-        """{"default":{"menuConfirm":"BTN_EAST","glyphStyle":"PLUMBER"}}"""
-    )
+    private fun hints(
+        json: String = """{"default":{"menuConfirm":"BTN_EAST","glyphStyle":"PLUMBER"}}""",
+    ) = ControllerHintTable.fromJson(json)
 
-    private fun makeRepo() = MappingRepository(tempFolder.root)
+    private fun diskRepo() = AutoconfigRepository { tmp.root }
 
-    private fun makeResolver(
-        repo: MappingRepository,
-        bundledRa: List<RetroArchCfgEntry> = emptyList(),
+    private fun resolver(
+        bundled: List<RetroArchCfgEntry> = emptyList(),
+        hintTable: ControllerHintTable = hints(),
     ) = MappingResolver(
-        repo,
-        dev.cannoli.scorza.input.autoconfig.BundledAutoconfigEntries.forTest(bundledRa),
-        defaultHints,
-        tempFolder.root,
+        diskRepository = diskRepo(),
+        bundledRetroArchEntries = BundledAutoconfigEntries.forTest(bundled),
+        hints = hintTable,
     )
+
+    private fun writeCfg(name: String, contents: String) =
+        java.io.File(tmp.root, name).writeText(contents)
 
     @Test
-    fun returns_existing_on_disk_template_when_match_rule_scores_above_zero() {
-        val repo = makeRepo()
-        val saved = DeviceMapping(
-            id = "stadia_user",
-            displayName = "Stadia (user)",
-            match = DeviceMatchRule(vendorId = 6353, productId = 37888),
-            bindings = mapOf(CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96))),
-            source = MappingSource.USER_WIZARD,
-            userEdited = true,
+    fun `disk user file beats bundled entry for the same pad`() {
+        java.io.File(tmp.root, "PadA.cfg").writeText(
+            "input_device = \"Pad A\"\ninput_vendor_id = \"1\"\ninput_product_id = \"2\"\ninput_b_btn = \"96\"\n"
         )
-        repo.save(saved)
-
-        val resolved = makeResolver(repo).resolve(device)
-
-        assertEquals("stadia_user", resolved.mapping.id)
-        assertTrue(resolved.persistent)
+        java.io.File(tmp.root, "PadA_user.cfg").writeText(
+            "input_device = \"Pad A\"\ninput_vendor_id = \"1\"\ninput_product_id = \"2\"\ninput_b_btn = \"97\"\ncannoli_user = \"true\"\n"
+        )
+        val resolved = resolver().resolve(device(name = "Pad A", vendorId = 1, productId = 2))
+        assertTrue(resolved.userEdited)
+        assertEquals(listOf(InputBinding.Button(97)), resolved.bindings[CanonicalButton.BTN_SOUTH])
     }
 
     @Test
-    fun on_score_tie_picks_most_recently_edited_template() {
-        val repo = makeRepo()
-        repo.save(
-            DeviceMapping(
-                id = "older",
-                displayName = "older",
-                match = DeviceMatchRule(name = "Stadia Controller"),
-                bindings = mapOf(CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96))),
-                source = MappingSource.RETROARCH_AUTOCONFIG,
-            )
+    fun `asset entries are used when the disk dir is empty`() {
+        val bundled = RetroArchCfgParser.parse(
+            "input_device = \"Pad A\"\ninput_vendor_id = \"1\"\ninput_product_id = \"2\"\ninput_b_btn = \"96\"\n"
         )
-        Thread.sleep(20)
-        repo.save(
-            DeviceMapping(
-                id = "newer",
-                displayName = "newer",
-                match = DeviceMatchRule(name = "Stadia Controller"),
-                bindings = mapOf(CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96))),
-                source = MappingSource.RETROARCH_AUTOCONFIG,
-            )
+        val resolved = resolver(bundled = listOf(bundled)).resolve(device(name = "Pad A", vendorId = 1, productId = 2))
+        assertEquals(MappingSource.RETROARCH_AUTOCONFIG, resolved.source)
+        assertEquals(listOf(InputBinding.Button(96)), resolved.bindings[CanonicalButton.BTN_SOUTH])
+    }
+
+    @Test
+    fun returns_existing_disk_cfg_that_matches_on_vid_pid_alone() {
+        writeCfg(
+            "stadia_user.cfg",
+            """
+            input_vendor_id = "6353"
+            input_product_id = "37888"
+            input_b_btn = "96"
+            cannoli_user = "true"
+            """.trimIndent()
         )
 
-        val resolved = makeResolver(repo).resolve(device)
-        assertEquals("newer", resolved.mapping.id)
+        val resolved = resolver().resolve(device())
+
+        assertEquals("stadia_user", resolved.id)
+        assertTrue(resolved.userEdited)
+    }
+
+    @Test
+    fun user_cfg_carrying_the_device_descriptor_wins_over_another_user_cfg() {
+        // Two user files describe the same make and model; only the descriptor tells the two
+        // physical pads apart, so it is what picks the file.
+        writeCfg(
+            "other_pad_user.cfg",
+            """
+            input_device = "Stadia Controller"
+            input_vendor_id = "6353"
+            input_product_id = "37888"
+            input_b_btn = "96"
+            cannoli_descriptor = "other-pad"
+            cannoli_user = "true"
+            """.trimIndent()
+        )
+        writeCfg(
+            "this_pad_user.cfg",
+            """
+            input_device = "Stadia Controller"
+            input_vendor_id = "6353"
+            input_product_id = "37888"
+            input_b_btn = "97"
+            cannoli_descriptor = "abc"
+            cannoli_user = "true"
+            """.trimIndent()
+        )
+
+        val resolved = resolver().resolve(device())
+
+        assertEquals("this_pad_user", resolved.id)
     }
 
     @Test
     fun no_disk_match_falls_through_to_ra_autoconfig_when_bundled_entry_matches() {
-        val repo = makeRepo()
         val ra = listOf(
             RetroArchCfgEntry(
                 deviceName = "Stadia Controller",
@@ -103,40 +139,37 @@ class MappingResolverTest {
                 buttonBindings = mapOf("b_btn" to 96),
             )
         )
-        val resolved = makeResolver(repo, bundledRa = ra).resolve(device)
-        assertEquals(MappingSource.RETROARCH_AUTOCONFIG, resolved.mapping.source)
-        assertFalse(resolved.persistent)
-        assertEquals(0, repo.list().size)
+        val resolved = resolver(bundled = ra).resolve(device())
+        assertEquals(MappingSource.RETROARCH_AUTOCONFIG, resolved.source)
+        assertEquals(0, tmp.root.listFiles()!!.size)
     }
 
     @Test
     fun nothing_matches_yields_runtime_android_default_not_persisted() {
-        val repo = makeRepo()
-        val resolved = makeResolver(repo).resolve(device)
-        assertEquals(MappingSource.ANDROID_DEFAULT, resolved.mapping.source)
-        assertFalse(resolved.persistent)
-        assertEquals(0, repo.list().size)
+        val resolved = resolver().resolve(device())
+        assertEquals(MappingSource.ANDROID_DEFAULT, resolved.source)
+        assertEquals(0, tmp.root.listFiles()!!.size)
     }
 
     @Test
     fun resolver_priority_is_disk_then_ra_then_default() {
-        val repo = makeRepo()
-        val saved = DeviceMapping(
-            id = "disk_wins",
-            displayName = "Disk wins",
-            match = DeviceMatchRule(vendorId = 6353, productId = 37888),
-            bindings = mapOf(CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96))),
-            source = MappingSource.RETROARCH_AUTOCONFIG,
+        writeCfg(
+            "disk_wins.cfg",
+            """
+            input_device = "Stadia Controller"
+            input_vendor_id = "6353"
+            input_product_id = "37888"
+            input_b_btn = "96"
+            """.trimIndent()
         )
-        repo.save(saved)
         val ra = listOf(
             RetroArchCfgEntry(
                 deviceName = "Stadia Controller", vendorId = 6353, productId = 37888,
                 buttonBindings = mapOf("b_btn" to 96),
             )
         )
-        val resolved = makeResolver(repo, bundledRa = ra).resolve(device)
-        assertEquals("disk_wins", resolved.mapping.id)
+        val resolved = resolver(bundled = ra).resolve(device())
+        assertEquals("disk_wins", resolved.id)
     }
 
     // Retroid handhelds rewrite a paired BT pad's gamepad endpoint to report the built-in's
@@ -145,16 +178,13 @@ class MappingResolverTest {
     // built-in's button layout and the saved file's [match] block gets the built-in's identity.
     @Test
     fun phantom_rewrite_prefers_name_matching_cfg_over_vidpid_matching_cfg() {
-        val repo = makeRepo()
-        val phantomDualSense = ConnectedDevice(
+        val phantomDualSense = device(
             androidDeviceId = 11,
             descriptor = "c575e892a6bb353df4b1327e81beedf84b540eb4",
             name = "DualSense Wireless Controller",
             vendorId = 8226,
             productId = 12289,
             androidBuildModel = "Retroid Pocket Classic",
-            sourceMask = 0,
-            connectedAtMillis = 0L,
         )
         val ra = listOf(
             RetroArchCfgEntry(
@@ -168,137 +198,105 @@ class MappingResolverTest {
                 buttonBindings = mapOf("b_btn" to 96, "a_btn" to 97),
             ),
         )
-        val resolved = makeResolver(repo, bundledRa = ra).resolve(phantomDualSense)
-        assertEquals(MappingSource.RETROARCH_AUTOCONFIG, resolved.mapping.source)
-        assertEquals("DualSense Wireless Controller", resolved.mapping.match.name)
-        assertEquals(1356, resolved.mapping.match.vendorId)
-        assertEquals(3302, resolved.mapping.match.productId)
+        val resolved = resolver(bundled = ra).resolve(phantomDualSense)
+        assertEquals(MappingSource.RETROARCH_AUTOCONFIG, resolved.source)
+        assertEquals("DualSense Wireless Controller", resolved.match.name)
+        assertEquals(1356, resolved.match.vendorId)
+        assertEquals(3302, resolved.match.productId)
     }
 
     @Test
-    fun saved_mapping_still_wins_when_descriptor_changes_across_reconnect() {
-        // First connect: user saves a mapping. Mapping's DeviceMatchRule captures the current
-        // descriptor along with name+VID/PID. Later, Android rotates the descriptor (BT nonce flip,
-        // phantom rewrite, or simply a fresh InputDevice id for the same physical pad). The saved
-        // mapping must still resolve.
-        val repo = makeRepo()
-        val saved = DeviceMapping(
-            id = "stadia_user",
-            displayName = "Stadia (user)",
-            match = DeviceMatchRule(
-                name = "Stadia Controller",
-                vendorId = 6353,
-                productId = 37888,
-                descriptor = "first-session-descriptor",
-            ),
-            bindings = mapOf(CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96))),
-            source = MappingSource.USER_WIZARD,
-            userEdited = true,
+    fun user_cfg_still_wins_when_descriptor_changes_across_reconnect() {
+        // First connect: the user's edits are written under the descriptor of that session. Later,
+        // Android rotates the descriptor (BT nonce flip, phantom rewrite, or simply a fresh
+        // InputDevice id for the same physical pad). The user's file must still resolve.
+        writeCfg(
+            "stadia_user.cfg",
+            """
+            input_device = "Stadia Controller"
+            input_vendor_id = "6353"
+            input_product_id = "37888"
+            input_b_btn = "96"
+            cannoli_descriptor = "first-session-descriptor"
+            cannoli_user = "true"
+            """.trimIndent()
         )
-        repo.save(saved)
 
-        val reconnect = device.copy(descriptor = "second-session-descriptor")
-        val resolved = makeResolver(repo).resolve(reconnect)
+        val resolved = resolver().resolve(device(descriptor = "second-session-descriptor"))
 
-        assertEquals("stadia_user", resolved.mapping.id)
-        assertTrue(resolved.persistent)
+        assertEquals("stadia_user", resolved.id)
+        assertTrue(resolved.userEdited)
     }
 
     @Test
-    fun two_same_model_pads_both_resolve_to_same_saved_mapping() {
-        // Two physically distinct Pro pads of the same make/model. Both score 150 against the
-        // saved mapping (name +50, VID/PID +100) regardless of descriptor. After the descriptor
-        // demotion, either pad's connect resolves to the same template.
-        val repo = makeRepo()
-        repo.save(
-            DeviceMapping(
-                id = "switch_pro_user",
-                displayName = "Switch Pro (user)",
-                match = DeviceMatchRule(
-                    name = "Nintendo Switch Pro Controller",
-                    vendorId = 1406,
-                    productId = 8201,
-                    descriptor = "first-pad-descriptor",
-                ),
-                bindings = mapOf(CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96))),
-                source = MappingSource.USER_WIZARD,
-                userEdited = true,
-            )
+    fun two_same_model_pads_both_resolve_to_same_user_cfg() {
+        // Two physically distinct Pro pads of the same make/model. The file names one pad's
+        // descriptor, so the other pad falls back to name + VID/PID and lands on the same file.
+        writeCfg(
+            "switch_pro_user.cfg",
+            """
+            input_device = "Nintendo Switch Pro Controller"
+            input_vendor_id = "1406"
+            input_product_id = "8201"
+            input_b_btn = "96"
+            cannoli_descriptor = "first-pad-descriptor"
+            cannoli_user = "true"
+            """.trimIndent()
         )
 
-        val padOne = ConnectedDevice(
-            androidDeviceId = 7,
+        val padOne = device(
             descriptor = "first-pad-descriptor",
             name = "Nintendo Switch Pro Controller",
             vendorId = 1406,
             productId = 8201,
-            androidBuildModel = "Pixel",
-            sourceMask = 0,
-            connectedAtMillis = 0L,
         )
         val padTwo = padOne.copy(androidDeviceId = 8, descriptor = "second-pad-descriptor")
 
-        val resolver = makeResolver(repo)
-        assertEquals("switch_pro_user", resolver.resolve(padOne).mapping.id)
-        assertEquals("switch_pro_user", resolver.resolve(padTwo).mapping.id)
+        assertEquals("switch_pro_user", resolver().resolve(padOne).id)
+        assertEquals("switch_pro_user", resolver().resolve(padTwo).id)
     }
 
     @Test
-    fun saved_mapping_resolves_for_bluetooth_pad_with_zero_vid_pid() {
-        // Common BT controller failure mode: kernel reports VID 0, PID 0. The saved mapping must
+    fun user_cfg_resolves_for_bluetooth_pad_with_zero_vid_pid() {
+        // Common BT controller failure mode: kernel reports VID 0, PID 0. The user's file must
         // still resolve via name alone.
-        val repo = makeRepo()
-        repo.save(
-            DeviceMapping(
-                id = "bt_pad_user",
-                displayName = "Bluetooth Gamepad (user)",
-                match = DeviceMatchRule(
-                    name = "Bluetooth Gamepad",
-                    vendorId = null,
-                    productId = null,
-                ),
-                bindings = mapOf(CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96))),
-                source = MappingSource.USER_WIZARD,
-                userEdited = true,
-            )
+        writeCfg(
+            "bt_pad_user.cfg",
+            """
+            input_device = "Bluetooth Gamepad"
+            input_b_btn = "96"
+            cannoli_user = "true"
+            """.trimIndent()
         )
 
-        val btPad = ConnectedDevice(
+        val btPad = device(
             androidDeviceId = 9,
             descriptor = "some-bt-descriptor",
             name = "Bluetooth Gamepad",
             vendorId = 0,
             productId = 0,
-            androidBuildModel = "Pixel",
-            sourceMask = 0,
-            connectedAtMillis = 0L,
         )
 
-        val resolved = makeResolver(repo).resolve(btPad)
-        assertEquals("bt_pad_user", resolved.mapping.id)
-        assertTrue(resolved.persistent)
+        val resolved = resolver().resolve(btPad)
+
+        assertEquals("bt_pad_user", resolved.id)
+        assertTrue(resolved.userEdited)
     }
 
     @Test
-    fun bundled_ra_cfg_outranks_saved_ANDROID_DEFAULT_with_matching_identity() {
-        // The cold-boot race could persist an ANDROID_DEFAULT mapping that matches a device
-        // for which a bundled RA cfg also exists. Tier 1 excludes ANDROID_DEFAULT, tier 2
-        // picks the bundled cfg, so the user gets device-correct bindings (e.g. Nintendo
-        // face buttons) instead of the AKEYCODE baseline.
-        val repo = makeRepo()
-        repo.save(
-            DeviceMapping(
-                id = "stadia_default",
-                displayName = "Stadia (default)",
-                match = DeviceMatchRule(
-                    name = "Stadia Controller",
-                    vendorId = 6353,
-                    productId = 37888,
-                ),
-                bindings = mapOf(CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96))),
-                source = MappingSource.ANDROID_DEFAULT,
-                userEdited = false,
-            )
+    fun user_cfg_outranks_bundled_ra_cfg() {
+        // User customization must always beat the bundled cfg, even when both match. Without this
+        // guarantee, a user's edits would be silently reverted by an update that ships a new
+        // bundled cfg.
+        writeCfg(
+            "stadia_user_custom.cfg",
+            """
+            input_device = "Stadia Controller"
+            input_vendor_id = "6353"
+            input_product_id = "37888"
+            input_b_btn = "96"
+            cannoli_user = "true"
+            """.trimIndent()
         )
         val raEntry = RetroArchCfgEntry(
             deviceName = "Stadia Controller",
@@ -307,43 +305,10 @@ class MappingResolverTest {
             buttonBindings = mapOf("a_btn" to 96, "b_btn" to 97),
         )
 
-        val resolved = makeResolver(repo, bundledRa = listOf(raEntry)).resolve(device)
+        val resolved = resolver(bundled = listOf(raEntry)).resolve(device())
 
-        assertEquals(MappingSource.RETROARCH_AUTOCONFIG, resolved.mapping.source)
-        assertFalse(resolved.persistent)
-    }
-
-    @Test
-    fun saved_USER_WIZARD_outranks_bundled_ra_cfg() {
-        // User customization (USER_WIZARD source) must always beat the bundled cfg, even
-        // when both match. Without this guarantee, a user's edits would be silently reverted
-        // by an update that ships a new bundled cfg.
-        val repo = makeRepo()
-        repo.save(
-            DeviceMapping(
-                id = "stadia_user_custom",
-                displayName = "Stadia (user)",
-                match = DeviceMatchRule(
-                    name = "Stadia Controller",
-                    vendorId = 6353,
-                    productId = 37888,
-                ),
-                bindings = mapOf(CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96))),
-                source = MappingSource.USER_WIZARD,
-                userEdited = true,
-            )
-        )
-        val raEntry = RetroArchCfgEntry(
-            deviceName = "Stadia Controller",
-            vendorId = 6353,
-            productId = 37888,
-            buttonBindings = mapOf("a_btn" to 96, "b_btn" to 97),
-        )
-
-        val resolved = makeResolver(repo, bundledRa = listOf(raEntry)).resolve(device)
-
-        assertEquals("stadia_user_custom", resolved.mapping.id)
-        assertTrue(resolved.persistent)
+        assertEquals("stadia_user_custom", resolved.id)
+        assertTrue(resolved.userEdited)
     }
 
     @Test
@@ -353,7 +318,7 @@ class MappingResolverTest {
         // name, but its header carries the pad's true VID. Hint lookup must prefer the cfg's
         // VID/PID over the device's reported (phantom) VID/PID so a DualSense connected via
         // such a host doesn't inherit the host's hint (e.g. Nintendo BTN_EAST/PLUMBER).
-        val sonyAwareHints = dev.cannoli.scorza.input.hints.ControllerHintTable.fromJson(
+        val sonyAwareHints = hints(
             """
             {
               "vid_pid": [
@@ -372,13 +337,7 @@ class MappingResolverTest {
             productId = 3302,
             buttonBindings = mapOf("a_btn" to 96, "b_btn" to 97),
         )
-        val resolver = MappingResolver(
-            makeRepo(),
-            dev.cannoli.scorza.input.autoconfig.BundledAutoconfigEntries.forTest(listOf(raEntry)),
-            sonyAwareHints,
-            tempFolder.root,
-        )
-        val phantomDualsense = ConnectedDevice(
+        val phantomDualsense = device(
             androidDeviceId = 11,
             descriptor = "phantom-bt",
             name = "DualSense Wireless Controller",
@@ -386,44 +345,38 @@ class MappingResolverTest {
             vendorId = 8226,
             productId = 12289,
             androidBuildModel = "Retroid Pocket Classic",
-            sourceMask = 0,
-            connectedAtMillis = 0L,
         )
 
-        val resolved = resolver.resolve(phantomDualsense)
+        val resolved = resolver(bundled = listOf(raEntry), hintTable = sonyAwareHints)
+            .resolve(phantomDualsense)
 
-        assertEquals(dev.cannoli.scorza.input.CanonicalButton.BTN_SOUTH, resolved.mapping.menuConfirm)
-        assertEquals(dev.cannoli.scorza.input.GlyphStyle.SHAPES, resolved.mapping.glyphStyle)
-        assertEquals(dev.cannoli.scorza.input.MappingSource.RETROARCH_AUTOCONFIG, resolved.mapping.source)
+        assertEquals(CanonicalButton.BTN_SOUTH, resolved.menuConfirm)
+        assertEquals(GlyphStyle.SHAPES, resolved.glyphStyle)
+        assertEquals(MappingSource.RETROARCH_AUTOCONFIG, resolved.source)
     }
 
     @Test
-    fun saved_ANDROID_DEFAULT_wins_tier_3_when_no_bundled_cfg_matches() {
-        // When no bundled cfg matches (tier 2 misses), a saved ANDROID_DEFAULT mapping is
-        // preferred over regenerating a fresh baseline at tier 4 -- preserves the user's
-        // cosmetic toggles (glyph style, menu confirm side, display name) across sessions.
-        val repo = makeRepo()
-        repo.save(
-            DeviceMapping(
-                id = "stadia_default_with_cosmetic",
-                displayName = "Stadia",
-                match = DeviceMatchRule(
-                    name = "Stadia Controller",
-                    vendorId = 6353,
-                    productId = 37888,
-                ),
-                bindings = mapOf(CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96))),
-                source = MappingSource.ANDROID_DEFAULT,
-                userEdited = true,
-                glyphStyle = dev.cannoli.scorza.input.GlyphStyle.REDMOND,
-            )
+    fun user_cfg_cosmetic_choices_survive_when_no_bundled_cfg_matches() {
+        // The user's cosmetic toggles (glyph style, menu confirm side, display name) live in the
+        // same file as their bindings, so they come back on the next resolve without a bundled
+        // cfg being involved at all.
+        writeCfg(
+            "stadia_user_cosmetic.cfg",
+            """
+            input_device = "Stadia Controller"
+            input_vendor_id = "6353"
+            input_product_id = "37888"
+            input_b_btn = "96"
+            input_device_display_name = "Stadia"
+            cannoli_glyph_style = "REDMOND"
+            cannoli_user = "true"
+            """.trimIndent()
         )
 
-        val resolved = makeResolver(repo).resolve(device)
+        val resolved = resolver().resolve(device())
 
-        assertEquals("stadia_default_with_cosmetic", resolved.mapping.id)
-        assertEquals(dev.cannoli.scorza.input.GlyphStyle.REDMOND, resolved.mapping.glyphStyle)
-        assertTrue(resolved.persistent)
+        assertEquals("stadia_user_cosmetic", resolved.id)
+        assertEquals("Stadia", resolved.displayName)
+        assertEquals(GlyphStyle.REDMOND, resolved.glyphStyle)
     }
-
 }

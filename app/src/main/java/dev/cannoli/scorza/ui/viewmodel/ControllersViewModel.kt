@@ -102,7 +102,7 @@ class ControllersViewModel @Inject constructor(
         repository.delete(mapping.id)
         val connected = portRouter.snapshotEntries().firstOrNull { it.mapping.id == mapping.id }
         if (connected != null) {
-            val fresh = resolver.resolve(connected.device).mapping
+            val fresh = resolver.resolve(connected.device)
             portRouter.updateMapping(fresh, rebuildEvaluator = true)
             if (activeMappingHolder.active.value?.id == mapping.id) {
                 activeMappingHolder.set(fresh)

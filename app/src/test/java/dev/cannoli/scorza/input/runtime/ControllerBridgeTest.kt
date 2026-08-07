@@ -5,6 +5,7 @@ import dev.cannoli.scorza.input.DeviceMapping
 import dev.cannoli.scorza.input.DeviceMatchRule
 import dev.cannoli.scorza.input.InputBinding
 import dev.cannoli.scorza.input.MappingSource
+import dev.cannoli.scorza.input.autoconfig.AutoconfigRepository
 import dev.cannoli.scorza.input.autoconfig.RetroArchCfgEntry
 import dev.cannoli.scorza.input.repo.MappingRepository
 import dev.cannoli.scorza.input.resolver.DevKeyboardMapping
@@ -40,8 +41,11 @@ class ControllerBridgeTest {
         sourceMask = 0x2002,
     )
 
+    private val autoconfigDir: java.io.File get() = java.io.File(tempFolder.root, "Autoconfig")
+
+    private val autoconfigRepo = AutoconfigRepository { autoconfigDir }
+
     private fun makeResolver(): MappingResolver {
-        val repo = MappingRepository(tempFolder.root)
         val ra = listOf(
             RetroArchCfgEntry(
                 deviceName = "Stadia Controller",
@@ -54,10 +58,9 @@ class ControllerBridgeTest {
             """{"default":{"menuConfirm":"BTN_EAST","glyphStyle":"PLUMBER"}}"""
         )
         return MappingResolver(
-            repo,
+            autoconfigRepo,
             dev.cannoli.scorza.input.autoconfig.BundledAutoconfigEntries.forTest(ra),
             hints,
-            tempFolder.root,
         )
     }
 
@@ -309,9 +312,8 @@ class ControllerBridgeTest {
     @Test
     fun saved_mapping_that_appears_after_first_settle_is_picked_up_on_resettle() {
         // Boot order on a fresh install: the bridge enumerates before MANAGE_EXTERNAL_STORAGE is
-        // granted, so the mappings directory reads empty and the pad falls back to the bundled cfg.
-        // The re-settle that runs once storage is available has to pick up the saved profile.
-        val repo = MappingRepository(tempFolder.root)
+        // granted, so the autoconfig directory reads empty and the pad falls back to the bundled
+        // cfg. The re-settle that runs once storage is available has to pick up the user's file.
         val portRouter = PortRouter()
         val active = ActiveMappingHolder()
         val bridge = makeBridge(portRouter = portRouter, activeMappingHolder = active)
@@ -320,16 +322,18 @@ class ControllerBridgeTest {
         portRouter.activate(stadiaFacts.androidDeviceId, 1_000L)
         assertEquals(MappingSource.RETROARCH_AUTOCONFIG, portRouter.mappingFor(7)?.source)
 
-        repo.save(
-            DeviceMapping(
-                id = "stadia_user",
-                displayName = "Stadia (user)",
-                match = DeviceMatchRule(vendorId = 6353, productId = 37888),
-                bindings = mapOf(CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(190))),
-                source = MappingSource.USER_WIZARD,
-                userEdited = true,
-            )
+        autoconfigDir.mkdirs()
+        java.io.File(autoconfigDir, "stadia_user.cfg").writeText(
+            """
+            input_device = "Stadia Controller"
+            input_vendor_id = "6353"
+            input_product_id = "37888"
+            input_b_btn = "190"
+            cannoli_user = "true"
+            """.trimIndent()
         )
+        // The store caches its listing, so a file that appears behind its back has to be announced.
+        autoconfigRepo.invalidate()
         bridge.settleSyncForTest(listOf(stadiaFacts))
 
         assertEquals("stadia_user", portRouter.mappingFor(7)?.id)
@@ -419,7 +423,7 @@ class ControllerBridgeTest {
         )
         val bundled = dev.cannoli.scorza.input.autoconfig.BundledAutoconfigEntries.forTest(ra)
         return ControllerBridge(
-            resolver = MappingResolver(MappingRepository(tempFolder.root), bundled, hints, tempFolder.root),
+            resolver = MappingResolver(autoconfigRepo, bundled, hints),
             portRouter = portRouter,
             activeMappingHolder = ActiveMappingHolder(),
             mappingRepository = repo,

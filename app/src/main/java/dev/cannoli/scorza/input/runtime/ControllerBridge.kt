@@ -305,8 +305,8 @@ class ControllerBridge(
         for (id in targetEntryIds - existingEntryIds) {
             val connected = targetEntries.getValue(id)
             // Bypass the resolver entirely: its fallback tier hands out AndroidDefaultMappingFactory
-            // gamepad keycodes, which a keyboard can never produce. persistent=false by
-            // construction, and no pendingSaves entry, so this never reaches the MappingRepository.
+            // gamepad keycodes, which a keyboard can never produce. No pendingSaves entry either,
+            // so this never reaches the MappingRepository.
             if (id == devKeyboardId) {
                 portRouter.onConnect(connected, DevKeyboardMapping.create(connected))
                 dev.cannoli.scorza.util.InputLog.write(
@@ -316,16 +316,16 @@ class ControllerBridge(
             }
             val persistenceDescriptor = clusterDescriptors[id]
             val resolved = resolver.resolve(connected, persistenceDescriptor)
-            val hintApplied = applyHintFromOriginalIdentity(resolved.mapping, connected)
+            val hintApplied = applyHintFromOriginalIdentity(resolved, connected)
             // Park the save until the device actually proves itself by producing input. Never write
             // back over a userEdited mapping. Phantom stubs that never fire never get persisted.
-            val hintChanged = hintApplied !== resolved.mapping
+            val hintChanged = hintApplied !== resolved
             if (!hintApplied.userEdited && hintChanged) {
                 pendingSavesById[connected.androidDeviceId] = hintApplied
             }
             portRouter.onConnect(connected, hintApplied)
             dev.cannoli.scorza.util.InputLog.write(
-                "  enrolled id=${connected.androidDeviceId} mapping=${hintApplied.id} persistent=${resolved.persistent} glyph=${hintApplied.glyphStyle} desc='${persistenceDescriptor ?: "-"}' pending"
+                "  enrolled id=${connected.androidDeviceId} mapping=${hintApplied.id} glyph=${hintApplied.glyphStyle} desc='${persistenceDescriptor ?: "-"}' pending"
             )
         }
 
@@ -341,9 +341,9 @@ class ControllerBridge(
             val current = portRouter.mappingFor(id) ?: continue
             val persistenceDescriptor = clusterDescriptors[id]
             val resolved = resolver.resolve(connected, persistenceDescriptor)
-            val hintApplied = applyHintFromOriginalIdentity(resolved.mapping, connected)
+            val hintApplied = applyHintFromOriginalIdentity(resolved, connected)
             if (hintApplied == current) continue
-            val hintChanged = hintApplied !== resolved.mapping
+            val hintChanged = hintApplied !== resolved
             if (!hintApplied.userEdited && hintChanged) {
                 pendingSavesById[id] = hintApplied
             } else {
@@ -355,7 +355,7 @@ class ControllerBridge(
                 activeMappingHolder.set(hintApplied)
             }
             dev.cannoli.scorza.util.InputLog.write(
-                "  re-resolved id=$id mapping=${current.id} -> ${hintApplied.id} persistent=${resolved.persistent} glyph=${hintApplied.glyphStyle} desc='${persistenceDescriptor ?: "-"}'"
+                "  re-resolved id=$id mapping=${current.id} -> ${hintApplied.id} glyph=${hintApplied.glyphStyle} desc='${persistenceDescriptor ?: "-"}'"
             )
         }
 
