@@ -1,6 +1,9 @@
 package dev.cannoli.igm
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -55,38 +58,65 @@ class CheatManagerTest {
     }
 
     @Test
-    fun rememberedSetsRoundTrip() {
+    fun lastUsedRoundTrips() {
         val m = CheatManager(tmp.root.absolutePath, "snes", "Game")
-        m.saveRemembered(mapOf("a.cht" to setOf(0, 2), "b.cht" to emptySet()))
+        m.saveLastUsed("a.cht", setOf("aaaa1111", "bbbb2222"))
 
-        val loaded = m.loadRemembered()
+        val loaded = m.loadLastUsed()
 
-        assertEquals(setOf(0, 2), loaded["a.cht"])
-        assertEquals(null, loaded["b.cht"])
+        assertEquals("a.cht", loaded?.fileName)
+        assertEquals(setOf("aaaa1111", "bbbb2222"), loaded?.hashes)
         assertTrue(File(tmp.root, "Config/State/cheat_state.ini").exists())
     }
 
     @Test
-    fun rememberedSetsAreScopedPerGame() {
+    fun lastUsedIsScopedPerGame() {
         val m1 = CheatManager(tmp.root.absolutePath, "snes", "GameOne")
         val m2 = CheatManager(tmp.root.absolutePath, "snes", "GameTwo")
-        m1.saveRemembered(mapOf("a.cht" to setOf(1)))
-        m2.saveRemembered(mapOf("a.cht" to setOf(3)))
+        m1.saveLastUsed("a.cht", setOf("1111"))
+        m2.saveLastUsed("b.cht", setOf("2222"))
 
-        assertEquals(setOf(1), m1.loadRemembered()["a.cht"])
-        assertEquals(setOf(3), m2.loadRemembered()["a.cht"])
+        assertEquals("a.cht", m1.loadLastUsed()?.fileName)
+        assertEquals(setOf("1111"), m1.loadLastUsed()?.hashes)
+        assertEquals("b.cht", m2.loadLastUsed()?.fileName)
     }
 
     @Test
-    fun saveReplacesOnlyThisGamesKeys() {
+    fun savingReplacesThisGamesEntryOnly() {
         val other = CheatManager(tmp.root.absolutePath, "nes", "Other")
-        other.saveRemembered(mapOf("x.cht" to setOf(5)))
+        other.saveLastUsed("x.cht", setOf("9999"))
         val m = CheatManager(tmp.root.absolutePath, "snes", "Game")
-        m.saveRemembered(mapOf("a.cht" to setOf(0)))
-        m.saveRemembered(mapOf("b.cht" to setOf(1)))
+        m.saveLastUsed("a.cht", setOf("1111"))
+        m.saveLastUsed("b.cht", setOf("2222"))
 
-        assertEquals(null, m.loadRemembered()["a.cht"])
-        assertEquals(setOf(1), m.loadRemembered()["b.cht"])
-        assertEquals(setOf(5), other.loadRemembered()["x.cht"])
+        assertEquals("b.cht", m.loadLastUsed()?.fileName)
+        assertEquals(setOf("2222"), m.loadLastUsed()?.hashes)
+        assertEquals("x.cht", other.loadLastUsed()?.fileName)
+    }
+
+    @Test
+    fun v1EntriesAreIgnoredAndCleanedOnSave() {
+        val state = File(tmp.root, "Config/State/cheat_state.ini")
+        state.parentFile!!.mkdirs()
+        state.writeText("[enabled]\nsnes/Game/a.cht=0,2\nnes/Other/x.cht=1\n")
+        val m = CheatManager(tmp.root.absolutePath, "snes", "Game")
+
+        assertNull(m.loadLastUsed())
+
+        m.saveLastUsed("a.cht", setOf("1111"))
+        val text = state.readText()
+        assertFalse(text.contains("snes/Game/a.cht"))
+        assertTrue(text.contains("nes/Other/x.cht"))
+    }
+
+    @Test
+    fun identityHashIsStableAndSeparatesDescFromCode() {
+        assertEquals(CheatIdentity.hash("Infinite HP", "AAAA"), CheatIdentity.hash("Infinite HP", "AAAA"))
+        assertNotEquals(CheatIdentity.hash("Infinite HP", "AAAA"), CheatIdentity.hash("Infinite", "HPAAAA"))
+    }
+
+    @Test
+    fun identityHashMatchesPinnedVector() {
+        assertEquals("e1f8f72c", CheatIdentity.hash("Infinite Lives", "AAAA-BBBB"))
     }
 }

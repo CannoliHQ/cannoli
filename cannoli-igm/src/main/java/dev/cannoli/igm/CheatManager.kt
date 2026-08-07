@@ -4,6 +4,17 @@ import dev.cannoli.core.IniParser
 import dev.cannoli.core.IniWriter
 import java.io.File
 
+object CheatIdentity {
+    fun of(desc: String, code: String): String = "$desc|$code"
+
+    // String.hashCode is specified by the JLS, so this value is stable across processes and
+    // devices. It only has to survive a .cht file being reordered or re-edited, which the v1
+    // index format did not.
+    fun hash(desc: String, code: String): String = "%08x".format(of(desc, code).hashCode())
+}
+
+data class LastUsedCheats(val fileName: String, val hashes: Set<String>)
+
 class CheatManager(
     cannoliRoot: String,
     private val platformTag: String,
@@ -65,5 +76,36 @@ class CheatManager(
         }
         sections["enabled"] = enabled
         IniWriter.write(stateFile, sections)
+    }
+
+    private val gameKey = "$platformTag/$gameBaseName"
+
+    fun loadLastUsed(): LastUsedCheats? {
+        val raw = IniParser.parse(stateFile).get(SECTION, gameKey) ?: return null
+        val fileName = raw.substringBefore(':', "")
+        if (fileName.isEmpty()) return null
+        val hashes = raw.substringAfter(':', "")
+            .split(',')
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .toSet()
+        return LastUsedCheats(fileName, hashes)
+    }
+
+    fun saveLastUsed(fileName: String, hashes: Set<String>) {
+        val sections = IniParser.parse(stateFile).sections.toMutableMap()
+        val current = (sections[SECTION] ?: emptyMap()).toMutableMap()
+        current[gameKey] = fileName + ":" + hashes.sorted().joinToString(",")
+        sections[SECTION] = current
+        // v1 wrote one key per cheat file under [enabled], holding positional indexes. Nothing
+        // reads it any more, so this game's rows go on the next write and other games' rows stay.
+        val legacy = (sections[LEGACY_SECTION] ?: emptyMap()).toMutableMap()
+        if (legacy.keys.removeAll { it.startsWith("$gameKey/") }) sections[LEGACY_SECTION] = legacy
+        IniWriter.write(stateFile, sections)
+    }
+
+    companion object {
+        private const val SECTION = "last_used"
+        private const val LEGACY_SECTION = "enabled"
     }
 }
