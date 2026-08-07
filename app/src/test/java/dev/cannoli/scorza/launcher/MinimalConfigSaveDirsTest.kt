@@ -44,7 +44,7 @@ class MinimalConfigSaveDirsTest {
         assertEquals("false", valueOf("config_save_on_exit"))
 
     @Test fun `RetroArch reads the Cannoli autoconfig directory`() =
-        assertEquals("/sd/Cannoli/Config/Input/Autoconfig", valueOf("input_autoconfig_directory"))
+        assertEquals("/sd/Cannoli/Config/Input/Autoconfig", valueOf("joypad_autoconfig_dir"))
 }
 
 /**

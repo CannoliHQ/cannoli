@@ -117,7 +117,7 @@ class LaunchManager(
             // Also in the base config, and repeated here for the same reason: an install made
             // before this existed already has a base config and will never be handed a new one.
             put("savestate_thumbnail_enable", "true")
-            put("input_autoconfig_directory", paths.configInputAutoconfig.absolutePath)
+            put("joypad_autoconfig_dir", paths.configInputAutoconfig.absolutePath)
             if (resume) {
                 put("savestate_auto_load", "true")
             }
@@ -565,7 +565,7 @@ class LaunchManager(
             appendLine("assets_directory = \"$rootPath/Config/Assets\"")
             // RetroArch appends the joypad driver name to this, so it scans Autoconfig/android,
             // which is where the seeder writes the cfgs Cannoli and RetroArch now share.
-            appendLine("input_autoconfig_directory = \"$rootPath/Config/Input/Autoconfig\"")
+            appendLine("joypad_autoconfig_dir = \"$rootPath/Config/Input/Autoconfig\"")
         }
 
         fun pickSource(

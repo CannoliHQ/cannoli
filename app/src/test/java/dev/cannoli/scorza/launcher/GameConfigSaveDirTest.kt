@@ -113,7 +113,7 @@ class GameConfigSaveDirTest {
         val cfg = launchedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA"))
         assertEquals(
             File(root, "Config/Input/Autoconfig").absolutePath,
-            cfg["input_autoconfig_directory"],
+            cfg["joypad_autoconfig_dir"],
         )
     }
 
