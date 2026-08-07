@@ -768,6 +768,7 @@
     <string name="conflicts_title">Conflictos de sincronización</string>
     <string name="conflicts_applying">Aplicando conflictos...</string>
     <!-- Shown while saves are checked against the server before a game launches. -->
+    <string name="save_sync_checking">Comprobando guardados...</string>
     <!-- %1$d = number of saves that could not be applied. -->
     <plurals name="conflicts_apply_failed">
         <item quantity="one">No se pudo aplicar el guardado %1$d</item>
@@ -796,6 +797,10 @@
     <string name="save_backup_restore_conflict">Guardar restaurado, resolver el conflicto de sincronización</string>
     <string name="save_backup_restore_failed">Restauración fallida</string>
     <!-- %1$d = number of backups. -->
+    <plurals name="save_backup_count">
+        <item quantity="one">Respaldo %1$d</item>
+        <item quantity="other">Respaldos %1$d</item>
+    </plurals>
     <string name="conflict_keep_local">Mantener local</string>
     <string name="conflict_use_server">Usar servidor</string>
     <string name="conflict_skip">Saltar</string>
