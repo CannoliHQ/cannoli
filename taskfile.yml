@@ -5,17 +5,22 @@ vars:
   CORES_DIR: app/src/main/jniLibs
   KITCHEN_SRC: ../cannoli-kitchen
   KITCHEN_DEST: app/src/main/assets/kitchen
+  PKG: dev.cannoli.scorza
+  # Pass DEVICE=<serial> when more than one is attached. `task devices` lists them.
+  ADB: adb {{if .DEVICE}}-s {{.DEVICE}} {{end}}
 
 tasks:
   cores:
+    # Keep in step with CORES in .github/workflows/release.yml. fbneo and mame2003_plus are
+    # deliberately absent: they were 172 MB across both ABIs, and bundling pays for a core three
+    # times over, once per ABI in the APK and once extracted on the device. Arcade downloads on
+    # demand through the emulator picker instead.
     desc: Fetch bundled libretro cores for arm64-v8a and armeabi-v7a
     vars:
       CORES:
-        - fbneo
         - gambatte
         - genesis_plus_gx
         - handy
-        - mame2003_plus
         - mednafen_ngp
         - mednafen_pce_fast
         - mednafen_vb
@@ -51,6 +56,51 @@ tasks:
     desc: Remove all downloaded cores
     cmds:
       - rm -rf {{.CORES_DIR}}
+
+  test:
+    desc: Run the JVM unit tests
+    cmds:
+      - ./gradlew :app:testDebugUnitTest :cannoli-igm:testDebugUnitTest
+
+  install:
+    desc: Build and install the debug APK
+    cmds:
+      - ./gradlew :app:assembleDebug
+      - '{{.ADB}}install -r app/build/outputs/apk/debug/app-debug.apk'
+
+  profile:
+    desc: Build, install and AOT compile the profiling APK, the only build launch timings are real on
+    cmds:
+      - ./gradlew :app:assembleProfiling
+      - '{{.ADB}}install -r app/build/outputs/apk/profiling/app-profiling.apk'
+      # Installing always resets dexopt to `verify`. Starting once lets ProfileInstaller write the
+      # baseline profile, and the compile is what actually applies it.
+      - '{{.ADB}}logcat -c'
+      - '{{.ADB}}shell am start -n {{.PKG}}/.MainActivity'
+      - |
+        for i in $(seq 1 20); do
+          n=$({{.ADB}}shell "logcat -d 2>/dev/null | grep -c ProfileInstaller")
+          [ "$n" != "0" ] && break
+          sleep 3
+        done
+      - '{{.ADB}}shell cmd package compile -m speed-profile -f {{.PKG}}'
+      - task: dexopt
+
+  dexopt:
+    desc: Show how the installed app is compiled; anything but speed-profile makes launch timings meaningless
+    cmds:
+      - '{{.ADB}}shell "dumpsys package {{.PKG}} | grep -A6 \"Dexopt state\"" | grep "status=" || true'
+
+  launch:timings:
+    desc: Launch timings for recent game launches, read out of the events buffer
+    cmds:
+      # The events buffer holds well over an hour, so play first and read after. wm_activity_launch_time
+      # is the system's own measure to first draw; MainActivity stopping long after RetroArch resumes
+      # means the transition stalled rather than the launch being slow.
+      - |
+        {{.ADB}}shell logcat -b events -d -v time \
+          | grep -E 'am_proc_bound.*retroarch|wm_on_create_called.*(Ricotta|RetroActivity)|wm_activity_launch_time|wm_on_stop_called.*MainActivity' \
+          | tail -24
 
   credits:sync:
     desc: Sync credits.json to CreditsData.kt, taskfile.yml, and release.yml
