@@ -16,6 +16,8 @@ import dev.cannoli.scorza.di.CannoliPathsProvider
 import dev.cannoli.scorza.di.IoScope
 import dev.cannoli.scorza.input.BindingController
 import dev.cannoli.scorza.input.LauncherActions
+import dev.cannoli.scorza.input.autoconfig.AutoconfigRepository
+import dev.cannoli.scorza.input.autoconfig.AutoconfigSeeder
 import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.LaunchManager
 import dev.cannoli.scorza.navigation.LauncherScreen
@@ -62,6 +64,8 @@ class BootInitializer @Inject constructor(
     private val launchManager: LaunchManager,
     private val launcherActions: LauncherActions,
     private val setupCoordinator: SetupCoordinator,
+    private val autoconfigSeeder: AutoconfigSeeder,
+    private val autoconfigRepository: AutoconfigRepository,
 ) {
 
     suspend fun run(onPhase: (BootPhase, Float, String) -> Unit): BootResult {
@@ -82,6 +86,10 @@ class BootInitializer @Inject constructor(
         // user made, so it is safe to run on every boot rather than only on first run.
         platformConfig.seedUnsetPlatforms(context.packageManager)
         ioScope.launch {
+            autoconfigSeeder.seedIfNeeded()
+            // A resolve that lands between the seed and the next controller settle would otherwise
+            // be served the listing taken before any cfg was on disk.
+            autoconfigRepository.invalidate()
             launchManager.syncRetroArchAssets(root)
             launchManager.syncRetroArchConfig(root)
         }

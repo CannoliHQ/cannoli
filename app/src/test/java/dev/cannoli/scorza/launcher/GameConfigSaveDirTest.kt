@@ -106,6 +106,17 @@ class GameConfigSaveDirTest {
         assertEquals("false", cfg["sort_savestates_by_content_enable"])
     }
 
+    // The base config is written once and only when it is absent, so an install made before the
+    // key existed would never see it. Only the per-launch overlay reaches every user.
+    @Test fun `every launch pins the Cannoli autoconfig directory`() {
+        val root = tmp.newFolder()
+        val cfg = launchedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA"))
+        assertEquals(
+            File(root, "Config/Input/Autoconfig").absolutePath,
+            cfg["input_autoconfig_directory"],
+        )
+    }
+
     // A platform nobody has mapped resolves to the embedded runner, so it still gets a
     // Cannoli-authored config rather than falling through to an external RetroArch.
     @Test fun `an unmapped platform still launches on the embedded runner`() {

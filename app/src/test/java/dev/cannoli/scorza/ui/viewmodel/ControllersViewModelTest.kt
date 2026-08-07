@@ -3,7 +3,9 @@ package dev.cannoli.scorza.ui.viewmodel
 import dev.cannoli.scorza.input.ConnectedDevice
 import dev.cannoli.scorza.input.DeviceMapping
 import dev.cannoli.scorza.input.autoconfig.AutoconfigRepository
+import dev.cannoli.scorza.input.autoconfig.AutoconfigSeeder
 import dev.cannoli.scorza.input.autoconfig.BundledAutoconfigEntries
+import dev.cannoli.scorza.input.autoconfig.MapCfgSource
 import dev.cannoli.scorza.input.hints.ControllerHintTable
 import dev.cannoli.scorza.input.resolver.MappingResolver
 import dev.cannoli.scorza.input.runtime.ActiveMappingHolder
@@ -14,12 +16,14 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.io.File
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ControllersViewModelTest {
@@ -41,7 +45,23 @@ class ControllersViewModelTest {
         MappingResolver(repository, BundledAutoconfigEntries.forTest(emptyList()), hints)
     }
 
-    private fun vm() = ControllersViewModel(repository, portRouter, activeMappingHolder, resolver, hints)
+    private val bundledAssets = MapCfgSource(
+        mapOf(
+            "autoconfig/android/stadia.cfg" to """
+                input_device = "Stadia Controller"
+                input_vendor_id = "6353"
+                input_product_id = "37888"
+                input_b_btn = "96"
+            """.trimIndent()
+        )
+    )
+
+    private val seeder by lazy {
+        AutoconfigSeeder(bundledAssets, { tmp.root }, { File(tmp.root, "Mappings") }, versionCode = 1)
+    }
+
+    private fun vm() =
+        ControllersViewModel(repository, portRouter, activeMappingHolder, resolver, hints, seeder)
 
     private val stadia = ConnectedDevice(
         androidDeviceId = 7,
@@ -140,6 +160,33 @@ class ControllersViewModelTest {
         assertEquals("stadia", activeMappingHolder.active.value?.id)
         assertTrue(portRouter.evaluatorFor(7)?.keyCodeIsBound(96) == true)
         assertTrue(model.state.value.savedMappings.isEmpty())
+    }
+
+    // An edit overwrites the bundled cfg it came from, so deleting it would leave RetroArch a hole
+    // where its own database entry used to be.
+    @Test
+    fun `reset puts the pristine bundled cfg back on disk`() {
+        writeStadiaBundled()
+        val mapping = connectStadia()
+        val model = vm()
+        val renamed = model.renameMapping(mapping, "Couch Pad")
+        assertTrue(repository.findById("stadia")?.cannoliUser == true)
+
+        model.resetMapping(renamed)
+
+        val restored = repository.findById("stadia") ?: error("expected the bundled cfg back on disk")
+        assertFalse(restored.cannoliUser)
+        assertEquals("Stadia Controller", portRouter.mappingFor(7)?.displayName)
+    }
+
+    @Test
+    fun `reset of a cfg with no bundled counterpart leaves no file`() {
+        writeStadiaUser()
+        val model = vm()
+
+        model.resetMapping(model.state.value.savedMappings.single())
+
+        assertFalse(File(tmp.root, "stadia_user.cfg").exists())
     }
 
     @Test

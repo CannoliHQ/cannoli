@@ -20,7 +20,7 @@ class AutoconfigSeederTest {
     )
 
     private fun seeder(target: File, legacy: File, version: Int = 1) =
-        AutoconfigSeeder(assets, target, legacy, version)
+        AutoconfigSeeder(assets, { target }, { legacy }, version)
 
     @Test
     fun `seeds all assets and stamps the version`() {
@@ -58,6 +58,42 @@ class AutoconfigSeederTest {
         val target = tmp.newFolder("android")
         File(target, ".seed_version").mkdirs()
         seeder(target, tmp.newFolder("Mappings")).seedIfNeeded()
+    }
+
+    // The SD root can change under a running app, so the seeder has to read the directory the way
+    // the repository does: when it seeds, not when it was built.
+    @Test
+    fun `the target directory is resolved at seed time`() {
+        var target = tmp.newFolder("first")
+        val legacy = tmp.newFolder("Mappings")
+        val seeder = AutoconfigSeeder(assets, { target }, { legacy }, 1)
+        target = tmp.newFolder("second")
+
+        seeder.seedIfNeeded()
+
+        assertTrue(File(target, "PadA.cfg").exists())
+        assertFalse(File(tmp.root, "first/PadA.cfg").exists())
+    }
+
+    @Test
+    fun `reseeding one file restores the bundled content over a user edit`() {
+        val target = tmp.newFolder("android")
+        val seeder = seeder(target, tmp.newFolder("Mappings"))
+        seeder.seedIfNeeded()
+        File(target, "PadA.cfg").writeText("input_device = \"Pad A\"\ncannoli_user = \"true\"\n")
+
+        assertTrue(seeder.reseedSingle("PadA.cfg"))
+
+        assertEquals("input_device = \"Pad A\"\ninput_b_btn = \"96\"\n", File(target, "PadA.cfg").readText())
+    }
+
+    @Test
+    fun `reseeding a file with no bundled counterpart writes nothing`() {
+        val target = tmp.newFolder("android")
+
+        assertFalse(seeder(target, tmp.newFolder("Mappings")).reseedSingle("PadZ.cfg"))
+
+        assertFalse(File(target, "PadZ.cfg").exists())
     }
 
     @Test

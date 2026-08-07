@@ -42,6 +42,9 @@ class MinimalConfigSaveDirsTest {
     // config written on exit would silently clobber whatever was generated here.
     @Test fun `RetroArch does not save its config on exit`() =
         assertEquals("false", valueOf("config_save_on_exit"))
+
+    @Test fun `RetroArch reads the Cannoli autoconfig directory`() =
+        assertEquals("/sd/Cannoli/Config/Input/Autoconfig", valueOf("input_autoconfig_directory"))
 }
 
 /**

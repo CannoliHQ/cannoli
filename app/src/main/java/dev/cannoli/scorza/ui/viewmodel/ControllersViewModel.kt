@@ -6,6 +6,7 @@ import dev.cannoli.scorza.input.ConnectedDevice
 import dev.cannoli.scorza.input.DeviceMapping
 import dev.cannoli.scorza.input.GlyphStyle
 import dev.cannoli.scorza.input.autoconfig.AutoconfigRepository
+import dev.cannoli.scorza.input.autoconfig.AutoconfigSeeder
 import dev.cannoli.scorza.input.autoconfig.RetroArchCfgEntry
 import dev.cannoli.scorza.input.hints.ControllerHintTable
 import dev.cannoli.scorza.input.resolver.MappingResolver
@@ -40,6 +41,7 @@ class ControllersViewModel @Inject constructor(
     private val activeMappingHolder: ActiveMappingHolder,
     private val resolver: MappingResolver,
     private val hints: ControllerHintTable,
+    private val seeder: AutoconfigSeeder,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val _state = MutableStateFlow(ControllersUiState())
@@ -123,6 +125,8 @@ class ControllersViewModel @Inject constructor(
 
     fun resetMapping(mapping: DeviceMapping) {
         repository.delete(mapping.id)
+        // The seeder writes outside the repository, so the cache has to be dropped again.
+        if (seeder.reseedSingle("${mapping.id}.cfg")) repository.invalidate()
         val connected = portRouter.snapshotEntries().firstOrNull { it.mapping.id == mapping.id }
         if (connected != null) {
             val fresh = resolver.resolve(connected.device)

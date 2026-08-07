@@ -10,6 +10,7 @@ import dev.cannoli.scorza.config.CannoliPaths
 import dev.cannoli.scorza.input.autoconfig.AssetCfgSource
 import dev.cannoli.scorza.input.autoconfig.AutoconfigLoader
 import dev.cannoli.scorza.input.autoconfig.AutoconfigRepository
+import dev.cannoli.scorza.input.autoconfig.AutoconfigSeeder
 import dev.cannoli.scorza.input.autoconfig.BundledAutoconfigEntries
 import dev.cannoli.scorza.input.resolver.MappingResolver
 import dev.cannoli.scorza.input.runtime.ActiveMappingHolder
@@ -37,6 +38,18 @@ object ControllerBindingsModule {
     @Singleton
     fun provideAutoconfigRepository(paths: CannoliPathsProvider): AutoconfigRepository =
         AutoconfigRepository { CannoliPaths(paths.root).configInputAutoconfigAndroid }
+
+    @Provides
+    @Singleton
+    fun provideAutoconfigSeeder(
+        @ApplicationContext context: Context,
+        paths: CannoliPathsProvider,
+    ): AutoconfigSeeder = AutoconfigSeeder(
+        source = AssetCfgSource(context),
+        targetDirProvider = { CannoliPaths(paths.root).configInputAutoconfigAndroid },
+        legacyMappingsDirProvider = { CannoliPaths(paths.root).configInputMappings },
+        versionCode = dev.cannoli.scorza.BuildConfig.VERSION_CODE,
+    )
 
     @Provides
     @Singleton
