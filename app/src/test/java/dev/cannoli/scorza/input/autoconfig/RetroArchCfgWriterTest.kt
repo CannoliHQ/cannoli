@@ -93,6 +93,26 @@ class RetroArchCfgWriterTest {
     }
 
     @Test
+    fun `a hat bound to the menu never claims the menu toggle key`() {
+        val mapping = sampleMapping()
+        val cfg = RetroArchCfgWriter.write(
+            mapping.copy(
+                bindings = mapping.bindings +
+                    (CanonicalButton.BTN_MENU to listOf(InputBinding.Hat(16, HatDirection.UP)))
+            )
+        )
+        assertTrue(!cfg.contains("input_menu_toggle_btn"))
+    }
+
+    @Test
+    fun `quotes are stripped from emitted values`() {
+        val cfg = RetroArchCfgWriter.write(sampleMapping().copy(displayName = """Brandon"s Pad"""))
+        assertTrue(cfg.contains("""input_device_display_name = "Brandons Pad""""))
+        val entry = RetroArchCfgParser.parse(cfg, fileName = "8BitDo_Pro_2.cfg")
+        assertEquals("Brandons Pad", entry.displayName)
+    }
+
+    @Test
     fun `user mapping records the exact menu keycodes`() {
         val mapping = sampleMapping()
         val cfg = RetroArchCfgWriter.write(

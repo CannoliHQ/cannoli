@@ -40,8 +40,12 @@ object RetroArchCfgWriter {
 
         for ((canonical, bindings) in mapping.bindings) {
             val btnKey = CANONICAL_TO_BTN[canonical] ?: continue
+            // RetroArch reads this file too, and it opens its own menu on whatever
+            // input_menu_toggle_btn names. A hat or axis there would fire in-game because motion
+            // events never reach the launcher's keycode intercept, so the menu takes buttons only.
             val effective = if (canonical == CanonicalButton.BTN_MENU) {
-                bindings.filterNot { it is InputBinding.Button && it.keyCode in INJECTED_MENU_DEFAULTS }
+                bindings.filterIsInstance<InputBinding.Button>()
+                    .filterNot { it.keyCode in INJECTED_MENU_DEFAULTS }
             } else {
                 bindings
             }
@@ -89,10 +93,14 @@ object RetroArchCfgWriter {
                     .joinToString(",") { it.keyCode.toString() },
             )
         }
+
+        for (line in mapping.unmodeledLines) appendLine(line)
     }
 
+    // A quote inside a value would produce a line the parser cannot match, so the edit would
+    // silently revert on the next read and RetroArch would see a malformed key.
     private fun StringBuilder.line(key: String, value: String?) {
-        if (value != null) appendLine("$key = \"$value\"")
+        if (value != null) appendLine("$key = \"${value.replace("\"", "")}\"")
     }
 
     private fun axisKeyFor(canonical: CanonicalButton, axis: InputBinding.Axis): String? {

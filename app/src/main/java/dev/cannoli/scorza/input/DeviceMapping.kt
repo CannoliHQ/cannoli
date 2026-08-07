@@ -12,4 +12,7 @@ data class DeviceMapping(
     val defaultControllerTypeId: Int? = null,
     val source: MappingSource,
     val userEdited: Boolean = false,
+    // Lines from the cfg this mapping was imported from that the model does not own, kept in file
+    // order so rewriting the file does not strip what RetroArch still reads from it.
+    val unmodeledLines: List<String> = emptyList(),
 )

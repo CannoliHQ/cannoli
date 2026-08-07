@@ -25,11 +25,25 @@ object RetroArchCfgParser {
         val bindings = mutableMapOf<String, Int>()
         val axes = mutableMapOf<String, AxisRef>()
         val hats = mutableMapOf<String, HatRef>()
+        val unmodeledLines = mutableListOf<String>()
 
         for (rawLine in source.lineSequence()) {
             val line = rawLine.trim()
             if (line.isEmpty() || line.startsWith("#")) continue
-            val match = LINE_REGEX.matchEntire(line) ?: continue
+            val match = LINE_REGEX.matchEntire(line)
+            // Managed keys always come back from the model, including the ones written in a form
+            // this parser cannot read (some bundled cfgs leave the value unquoted); passing those
+            // through would leave the file with two lines for the same key.
+            val fullKey = if (match != null) {
+                "${match.groupValues[1]}_${match.groupValues[2]}"
+            } else {
+                line.substringBefore('=').trim()
+            }
+            if (fullKey !in RetroArchCfgEntry.MANAGED_KEYS) {
+                unmodeledLines.add(line)
+                continue
+            }
+            if (match == null) continue
             val prefix = match.groupValues[1]
             val key = match.groupValues[2]
             val value = match.groupValues[3]
@@ -76,7 +90,8 @@ object RetroArchCfgParser {
         return RetroArchCfgEntry(
             deviceName, vendorId, productId, bindings, axes, hats,
             displayName, descriptor, buildModel, sourceMask, confirmButton, glyphStyle,
-            excludeFromGameplay, cannoliUser, defaultControllerType, cannoliMenuKeycodes, fileName
+            excludeFromGameplay, cannoliUser, defaultControllerType, cannoliMenuKeycodes, fileName,
+            unmodeledLines
         )
     }
 

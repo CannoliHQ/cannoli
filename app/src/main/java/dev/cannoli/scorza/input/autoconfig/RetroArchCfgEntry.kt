@@ -32,6 +32,7 @@ data class RetroArchCfgEntry(
     // list means the user cleared the menu. RA's menu_toggle_btn can express neither.
     val cannoliMenuKeycodes: List<Int>? = null,
     val fileName: String? = null,
+    val unmodeledLines: List<String> = emptyList(),
 ) {
     companion object {
         val SUPPORTED_BUTTON_KEYS = setOf(
@@ -51,5 +52,31 @@ data class RetroArchCfgEntry(
             "r_x_plus_axis", "r_x_minus_axis",
             "r_y_plus_axis", "r_y_minus_axis",
         )
+
+        // Keys RetroArchCfgWriter regenerates from the model; every other line in a cfg is carried
+        // through untouched. input_menu_toggle_btn stays managed even when the writer deliberately
+        // omits it, so a cleared menu never leaves the old line behind for RetroArch to read.
+        val MANAGED_KEYS: Set<String> = buildSet {
+            add("input_driver")
+            add("input_device")
+            add("input_device_display_name")
+            add("input_vendor_id")
+            add("input_product_id")
+            SUPPORTED_BUTTON_KEYS.mapTo(this) { "input_$it" }
+            SUPPORTED_AXIS_KEYS.mapTo(this) { "input_$it" }
+            addAll(
+                listOf(
+                    "cannoli_user",
+                    "cannoli_confirm_button",
+                    "cannoli_glyph_style",
+                    "cannoli_exclude_from_gameplay",
+                    "cannoli_default_controller_type",
+                    "cannoli_descriptor",
+                    "cannoli_build_model",
+                    "cannoli_source_mask",
+                    "cannoli_menu_keycodes",
+                )
+            )
+        }
     }
 }

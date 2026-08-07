@@ -173,6 +173,31 @@ class EditButtonsControllerTest {
         assertEquals(AnalogRole.LEFT_STICK_X, l3Axis.analogRole)
     }
 
+    @Test fun `a hat capture on the menu button leaves the mapping unchanged`() {
+        val template = emptyTemplate().copy(
+            bindings = mapOf(CanonicalButton.BTN_MENU to listOf(InputBinding.Button(4))),
+        )
+        controller.startListening(template, CanonicalButton.BTN_MENU)
+        clockMs = 0
+        controller.captureRawAxisEvent(mapOf(16 to -1f))
+        clockMs = 500
+        assertNull(controller.tickAndMaybeFinalize())
+        clockMs = 5001
+        assertNull(controller.tickAndMaybeFinalize())
+        assertNull(repo.findById("test"))
+        assertEquals(listOf(InputBinding.Button(4)), template.bindings[CanonicalButton.BTN_MENU])
+    }
+
+    @Test fun `a key capture on the menu button still binds`() {
+        val template = emptyTemplate()
+        controller.startListening(template, CanonicalButton.BTN_MENU)
+        clockMs = 0
+        controller.captureRawKeyEvent(318)
+        clockMs = 500
+        val finalized = controller.tickAndMaybeFinalize() ?: error("expected finalized")
+        assertEquals(listOf(InputBinding.Button(318)), finalized.bindings[CanonicalButton.BTN_MENU])
+    }
+
     @Test fun `binding edit promotes source from ANDROID_DEFAULT to USER_WIZARD`() {
         // ANDROID_DEFAULT-sourced mappings are bumped to tier 3 in MappingResolver so a
         // bundled RA cfg can win for the device. When the user actually customizes a button

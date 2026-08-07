@@ -137,6 +137,7 @@ object RetroArchAutoconfigImporter {
             defaultControllerTypeId = entry.defaultControllerType,
             source = if (entry.cannoliUser) MappingSource.USER_WIZARD else MappingSource.RETROARCH_AUTOCONFIG,
             userEdited = entry.cannoliUser,
+            unmodeledLines = entry.unmodeledLines,
         )
     }
 

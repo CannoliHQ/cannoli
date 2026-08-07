@@ -57,6 +57,10 @@ class EditButtonsController @Inject constructor(
 
     fun captureRawAxisEvent(axisValues: Map<Int, Float>) {
         if (pendingCanonical == null) return
+        // A hat or axis on the menu would be written as input_menu_toggle_btn, which RetroArch
+        // acts on in-game because motion events bypass the keycode intercept. Keys only, and
+        // ignoring the event outright leaves the existing menu binding alone.
+        if (pendingCanonical == CanonicalButton.BTN_MENU) return
         for ((axis, value) in axisValues) {
             if (abs(value) < AXIS_DETECT_THRESHOLD) continue
             val prev = capturedAxes[axis] ?: 0f
