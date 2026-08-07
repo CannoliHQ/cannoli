@@ -1,4 +1,4 @@
-package dev.cannoli.scorza.ra
+package dev.cannoli.scorza.achievements
 
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient

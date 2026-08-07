@@ -1,4 +1,4 @@
-package dev.cannoli.scorza.ra
+package dev.cannoli.scorza.achievements
 
 object RaHasher {
     fun hashRom(path: String, consoleId: Int): String? =

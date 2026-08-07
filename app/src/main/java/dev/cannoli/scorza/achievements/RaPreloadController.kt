@@ -1,4 +1,4 @@
-package dev.cannoli.scorza.ra
+package dev.cannoli.scorza.achievements
 
 import android.content.Context
 import dagger.hilt.android.qualifiers.ActivityContext

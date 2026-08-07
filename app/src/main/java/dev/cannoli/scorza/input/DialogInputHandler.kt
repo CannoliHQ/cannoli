@@ -88,7 +88,7 @@ class DialogInputHandler @Inject constructor(
     private val rommDownloader: dev.cannoli.scorza.romm.download.RommDownloader,
     private val rommBrowseViewModel: dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel,
     private val rommArtFetcher: dev.cannoli.scorza.romm.art.RommArtFetcher,
-    private val raPreloadController: dev.cannoli.scorza.ra.RaPreloadController,
+    private val raPreloadController: dev.cannoli.scorza.achievements.RaPreloadController,
     private val deviceRegistrar: dev.cannoli.scorza.romm.sync.DeviceRegistrar,
     private val saveSyncService: dev.cannoli.scorza.romm.sync.SaveSyncService,
     private val slotManager: dev.cannoli.scorza.romm.sync.SlotManager,
@@ -1292,7 +1292,7 @@ class DialogInputHandler @Inject constructor(
             }
             is DialogState.RAAccount -> {
                 nav.dialogState.value = DialogState.None
-                val store = dev.cannoli.scorza.ra.RaOfflineStore(
+                val store = dev.cannoli.scorza.achievements.RaOfflineStore(
                     dev.cannoli.scorza.config.CannoliPaths(settings.sdCardRoot).configRaOffline
                 )
                 val platforms = store.entries()
@@ -1692,7 +1692,7 @@ class DialogInputHandler @Inject constructor(
                     .map { it.rom }
                     .filter { rom ->
                         rom.path.absolutePath in pathSet &&
-                            dev.cannoli.scorza.ra.RaPreloadEligibility.isEligible(
+                            dev.cannoli.scorza.achievements.RaPreloadEligibility.isEligible(
                                 platformTag = rom.platformTag,
                                 raLoggedIn = settings.raToken.isNotEmpty(),
                             )
@@ -1881,13 +1881,13 @@ class DialogInputHandler @Inject constructor(
                     val idx = indexOf(MENU_DELETE_GAME)
                     if (idx >= 0) add(idx, MENU_DELETE_ART) else add(MENU_DELETE_ART)
                 }
-                if (rom != null && dev.cannoli.scorza.ra.RaPreloadEligibility.isEligible(
+                if (rom != null && dev.cannoli.scorza.achievements.RaPreloadEligibility.isEligible(
                         platformTag = rom.platformTag,
                         raLoggedIn = settings.raToken.isNotEmpty(),
                     )
                 ) {
                     val cached = rom.raCachedGameId?.let { gid ->
-                        dev.cannoli.scorza.ra.RaOfflineStore(
+                        dev.cannoli.scorza.achievements.RaOfflineStore(
                             dev.cannoli.scorza.config.CannoliPaths(settings.sdCardRoot).configRaOffline
                         ).isCached(gid)
                     } ?: false

@@ -1,4 +1,4 @@
-package dev.cannoli.scorza.ra
+package dev.cannoli.scorza.achievements
 
 import dev.cannoli.scorza.db.RomsRepository
 import dev.cannoli.scorza.model.Rom

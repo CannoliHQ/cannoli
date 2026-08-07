@@ -1,4 +1,4 @@
-package dev.cannoli.scorza.ra
+package dev.cannoli.scorza.achievements
 
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

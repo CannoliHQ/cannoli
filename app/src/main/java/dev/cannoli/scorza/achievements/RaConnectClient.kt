@@ -1,4 +1,4 @@
-package dev.cannoli.scorza.ra
+package dev.cannoli.scorza.achievements
 
 import okhttp3.FormBody
 import okhttp3.OkHttpClient

@@ -68,7 +68,7 @@ class InputRouter @Inject constructor(
     private val rommBrowseViewModel: dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel,
     private val rommDownloader: dev.cannoli.scorza.romm.download.RommDownloader,
     private val osdController: dev.cannoli.ui.components.OsdController,
-    private val raPreloadController: dev.cannoli.scorza.ra.RaPreloadController,
+    private val raPreloadController: dev.cannoli.scorza.achievements.RaPreloadController,
     @IoScope private val ioScope: CoroutineScope,
 ) {
     var unregisterCoreQueryReceiver: () -> Unit = {}
@@ -221,7 +221,7 @@ class InputRouter @Inject constructor(
         else -> object : ScreenInputHandler {}
     }
 
-    private fun raOfflineStore() = dev.cannoli.scorza.ra.RaOfflineStore(
+    private fun raOfflineStore() = dev.cannoli.scorza.achievements.RaOfflineStore(
         dev.cannoli.scorza.config.CannoliPaths(settings.sdCardRoot).configRaOffline
     )
 

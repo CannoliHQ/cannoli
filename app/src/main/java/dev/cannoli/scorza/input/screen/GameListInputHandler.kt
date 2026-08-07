@@ -197,7 +197,7 @@ class GameListInputHandler @Inject constructor(
                 } else {
                     options.add(MENU_MANAGE_COLLECTIONS)
                     if (settings.raToken.isNotEmpty() &&
-                        dev.cannoli.scorza.ra.RaConsoles.MAP.containsKey(glState.platformTag.uppercase())
+                        dev.cannoli.scorza.achievements.RaConsoles.MAP.containsKey(glState.platformTag.uppercase())
                     ) {
                         options.add(MENU_PRELOAD_ACHIEVEMENTS)
                     }
