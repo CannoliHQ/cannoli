@@ -28,6 +28,9 @@ data class RetroArchCfgEntry(
     val excludeFromGameplay: Boolean = false,
     val cannoliUser: Boolean = false,
     val defaultControllerType: Int? = null,
+    // Null means the key is absent, so the importer injects the platform menu defaults; an empty
+    // list means the user cleared the menu. RA's menu_toggle_btn can express neither.
+    val cannoliMenuKeycodes: List<Int>? = null,
     val fileName: String? = null,
 ) {
     companion object {

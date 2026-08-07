@@ -80,11 +80,18 @@ object RetroArchAutoconfigImporter {
                 )
         }
 
-        // Seed BTN_MENU with KEYCODE_BACK (4) + KEYCODE_BUTTON_MODE (110) if cfg didn't supply one.
-        val menuBindings = bindings.getOrPut(CanonicalButton.BTN_MENU) { mutableListOf() }
-        for (defaultKey in listOf(4, 110)) {
-            if (menuBindings.none { it is InputBinding.Button && it.keyCode == defaultKey }) {
-                menuBindings.add(InputBinding.Button(defaultKey))
+        // A cfg the user edited states its menu exactly, including an empty one. Otherwise seed
+        // BTN_MENU with KEYCODE_BACK (4) + KEYCODE_BUTTON_MODE (110) on top of whatever the cfg has.
+        val menuKeycodes = entry.cannoliMenuKeycodes
+        if (menuKeycodes != null) {
+            bindings[CanonicalButton.BTN_MENU] =
+                menuKeycodes.mapTo(mutableListOf<InputBinding>()) { InputBinding.Button(it) }
+        } else {
+            val menuBindings = bindings.getOrPut(CanonicalButton.BTN_MENU) { mutableListOf() }
+            for (defaultKey in listOf(4, 110)) {
+                if (menuBindings.none { it is InputBinding.Button && it.keyCode == defaultKey }) {
+                    menuBindings.add(InputBinding.Button(defaultKey))
+                }
             }
         }
 

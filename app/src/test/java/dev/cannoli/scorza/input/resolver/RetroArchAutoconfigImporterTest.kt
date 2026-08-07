@@ -153,6 +153,40 @@ class RetroArchAutoconfigImporterTest {
         assertEquals(GlyphStyle.SHAPES, tpl.glyphStyle)
     }
 
+    @Test fun `cannoli menu keycodes replace the platform defaults`() {
+        val entry = RetroArchCfgEntry(
+            deviceName = "Stadia Controller", vendorId = 6353, productId = 37888,
+            buttonBindings = mapOf("b_btn" to 96, "menu_toggle_btn" to 318),
+            cannoliUser = true,
+            cannoliMenuKeycodes = listOf(318),
+        )
+        val t = RetroArchAutoconfigImporter.import(entry, device, defaultHints)
+        assertEquals(listOf(InputBinding.Button(318)), t.bindings[CanonicalButton.BTN_MENU])
+    }
+
+    @Test fun `an empty cannoli menu keycode list clears the menu`() {
+        val entry = RetroArchCfgEntry(
+            deviceName = "Stadia Controller", vendorId = 6353, productId = 37888,
+            buttonBindings = mapOf("b_btn" to 96),
+            cannoliUser = true,
+            cannoliMenuKeycodes = emptyList(),
+        )
+        val t = RetroArchAutoconfigImporter.import(entry, device, defaultHints)
+        assertEquals(emptyList<InputBinding>(), t.bindings[CanonicalButton.BTN_MENU].orEmpty())
+    }
+
+    @Test fun `absent cannoli menu keycodes keep the injected platform defaults`() {
+        val entry = RetroArchCfgEntry(
+            deviceName = "Stadia Controller", vendorId = 6353, productId = 37888,
+            buttonBindings = mapOf("b_btn" to 96),
+        )
+        val t = RetroArchAutoconfigImporter.import(entry, device, defaultHints)
+        assertEquals(
+            listOf(InputBinding.Button(4), InputBinding.Button(110)),
+            t.bindings[CanonicalButton.BTN_MENU],
+        )
+    }
+
     @Test fun `cannoli keys override hints and mark user mappings`() {
         val entry = RetroArchCfgParser.parse(
             """

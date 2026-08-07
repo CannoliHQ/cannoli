@@ -79,6 +79,16 @@ object RetroArchCfgWriter {
         mapping.match.descriptor?.let { line("cannoli_descriptor", it) }
         mapping.match.androidBuildModel?.let { line("cannoli_build_model", it) }
         mapping.match.sourceMask?.let { line("cannoli_source_mask", it.toString()) }
+        // input_menu_toggle_btn is lossy by design (one keycode, defaults stripped), so a user's
+        // menu edit is kept verbatim here or the importer would inject the defaults back over it.
+        if (mapping.userEdited) {
+            line(
+                "cannoli_menu_keycodes",
+                mapping.bindings[CanonicalButton.BTN_MENU].orEmpty()
+                    .filterIsInstance<InputBinding.Button>()
+                    .joinToString(",") { it.keyCode.toString() },
+            )
+        }
     }
 
     private fun StringBuilder.line(key: String, value: String?) {

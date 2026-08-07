@@ -161,6 +161,30 @@ class RetroArchCfgParserTest {
         org.junit.Assert.assertFalse(entry.cannoliUser)
         assertNull(entry.confirmButton)
         org.junit.Assert.assertFalse(entry.excludeFromGameplay)
+        assertNull(entry.cannoliMenuKeycodes)
         assertNull(entry.fileName)
+    }
+
+    @Test
+    fun `parses the cannoli menu keycode list`() {
+        val entry = RetroArchCfgParser.parse(
+            """
+            input_device = "Pad"
+            input_menu_toggle_btn = "318"
+            cannoli_menu_keycodes = "318,4"
+            """.trimIndent()
+        )
+        assertEquals(listOf(318, 4), entry.cannoliMenuKeycodes)
+    }
+
+    @Test
+    fun `an empty cannoli menu keycode list parses as a cleared menu`() {
+        val entry = RetroArchCfgParser.parse(
+            """
+            input_device = "Pad"
+            cannoli_menu_keycodes = ""
+            """.trimIndent()
+        )
+        assertEquals(emptyList<Int>(), entry.cannoliMenuKeycodes)
     }
 }

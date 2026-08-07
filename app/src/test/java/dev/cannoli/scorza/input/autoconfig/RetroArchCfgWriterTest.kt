@@ -93,6 +93,64 @@ class RetroArchCfgWriterTest {
     }
 
     @Test
+    fun `user mapping records the exact menu keycodes`() {
+        val mapping = sampleMapping()
+        val cfg = RetroArchCfgWriter.write(
+            mapping.copy(
+                bindings = mapping.bindings + (CanonicalButton.BTN_MENU to listOf(InputBinding.Button(318), InputBinding.Button(4)))
+            )
+        )
+        assertTrue(cfg.contains("cannoli_menu_keycodes = \"318,4\""))
+    }
+
+    @Test
+    fun `user mapping records a cleared menu as an empty keycode list`() {
+        val mapping = sampleMapping()
+        val cfg = RetroArchCfgWriter.write(
+            mapping.copy(bindings = mapping.bindings + (CanonicalButton.BTN_MENU to emptyList()))
+        )
+        assertTrue(cfg.contains("cannoli_menu_keycodes = \"\""))
+    }
+
+    @Test
+    fun `bundled mapping omits the menu keycodes`() {
+        val cfg = RetroArchCfgWriter.write(
+            sampleMapping().copy(source = MappingSource.RETROARCH_AUTOCONFIG, userEdited = false)
+        )
+        assertTrue(!cfg.contains("cannoli_menu_keycodes"))
+    }
+
+    @Test
+    fun `a cleared menu survives write parse and import`() {
+        val mapping = sampleMapping()
+        val cleared = mapping.copy(bindings = mapping.bindings + (CanonicalButton.BTN_MENU to emptyList()))
+        val entry = RetroArchCfgParser.parse(RetroArchCfgWriter.write(cleared), fileName = "8BitDo_Pro_2.cfg")
+        val device = ConnectedDevice(
+            androidDeviceId = 1, descriptor = "abc123", name = "8BitDo Pro 2",
+            vendorId = 11720, productId = 24582, androidBuildModel = "",
+            sourceMask = 0, connectedAtMillis = 0L,
+        )
+        val imported = RetroArchAutoconfigImporter.import(entry, device, defaultHints)
+        assertEquals(emptyList<InputBinding>(), imported.bindings[CanonicalButton.BTN_MENU].orEmpty())
+    }
+
+    @Test
+    fun `an edited menu survives write parse and import`() {
+        val mapping = sampleMapping()
+        val edited = mapping.copy(
+            bindings = mapping.bindings + (CanonicalButton.BTN_MENU to listOf(InputBinding.Button(318)))
+        )
+        val entry = RetroArchCfgParser.parse(RetroArchCfgWriter.write(edited), fileName = "8BitDo_Pro_2.cfg")
+        val device = ConnectedDevice(
+            androidDeviceId = 1, descriptor = "abc123", name = "8BitDo Pro 2",
+            vendorId = 11720, productId = 24582, androidBuildModel = "",
+            sourceMask = 0, connectedAtMillis = 0L,
+        )
+        val imported = RetroArchAutoconfigImporter.import(entry, device, defaultHints)
+        assertEquals(listOf(InputBinding.Button(318)), imported.bindings[CanonicalButton.BTN_MENU])
+    }
+
+    @Test
     fun `round trips through the importer`() {
         val original = sampleMapping()
         val cfg = RetroArchCfgWriter.write(original)
