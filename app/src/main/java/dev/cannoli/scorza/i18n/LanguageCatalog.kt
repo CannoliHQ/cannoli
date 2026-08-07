@@ -7,9 +7,7 @@ data class LanguageOption(
 )
 
 object LanguageCatalog {
-    // Only languages translated enough to be usable are offered here. Add a
-    // language once it crosses a usable completion bar on Crowdin.
-    // English first, then alphabetical by English language name (not by endonym).
+    // Only languages translated enough to be usable are offered here.
     val ALL: List<LanguageOption> = listOf(
         LanguageOption("en", "English", null),
         LanguageOption("zh-CN", "简体中文", "简体中文"),

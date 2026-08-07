@@ -19,10 +19,6 @@ fun ProvideLocalizedResources(languageTag: String?, content: @Composable () -> U
     } else {
         baseContext
     }
-    // Read the live configuration rather than the context's own copy: that read is what makes this
-    // scope recompose on rotation, so the configuration handed downstream is the new one and not the
-    // one captured at first composition. The activity handles orientation changes itself, so nothing
-    // else would ever replace it.
     val baseConfiguration = LocalConfiguration.current
     val localizedConfiguration = if (languageTag != null) {
         LocaleOverride.configurationFor(baseConfiguration, languageTag)

@@ -16,8 +16,6 @@ object LocaleOverride {
         base.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY, tag).apply()
     }
 
-    // Only the locale is overridden; every other field comes from the configuration handed in, so
-    // pass the live one to keep orientation and screen size current.
     fun configurationFor(base: Configuration, tag: String): Configuration =
         Configuration(base).apply { setLocales(LocaleList.forLanguageTags(tag.ifEmpty { "en" })) }
 
