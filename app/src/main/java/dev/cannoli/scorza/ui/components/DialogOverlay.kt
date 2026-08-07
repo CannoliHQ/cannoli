@@ -34,6 +34,7 @@ import dev.cannoli.scorza.romm.download.inDisplayOrder
 import dev.cannoli.scorza.ui.screens.ConflictChoice
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.screens.KeyboardHost
+import dev.cannoli.scorza.ui.screens.RaTokenState
 import dev.cannoli.scorza.romm.RommArtType
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.DPAD_HORIZONTAL
@@ -59,7 +60,6 @@ import dev.cannoli.ui.components.MissingAppDialog
 import dev.cannoli.ui.components.MissingCoreDialog
 import dev.cannoli.ui.components.OverlayScrim
 import dev.cannoli.ui.components.SectionedList
-import dev.cannoli.ui.components.RAAccountOverlay
 import dev.cannoli.ui.components.RALoggingInOverlay
 import dev.cannoli.ui.components.RommConnectedOverlay
 import dev.cannoli.ui.components.RommPairingOverlay
@@ -224,11 +224,50 @@ fun DialogOverlay(
         }
 
         is DialogState.RAAccount -> {
-            RAAccountOverlay(username = dialogState.username, buttonStyle = buttonStyle)
+            val rows = RaAccountRow.entries.toList()
+            ListDialogScreen(
+                backgroundImagePath = backgroundImagePath,
+                backgroundTint = backgroundTint,
+                title = stringResource(R.string.ra_title),
+                listFontSize = listFontSize,
+                listLineHeight = listLineHeight,
+                leftBottomItems = if (rows[dialogState.selectedIndex].isCycle)
+                    listOf(DPAD_HORIZONTAL to stringResource(R.string.label_change)) else emptyList(),
+                rightBottomItems = listOf(buttonStyle.confirm to stringResource(R.string.label_select)),
+                buttonStyle = buttonStyle
+            ) {
+                List(items = rows, selectedIndex = dialogState.selectedIndex, itemHeight = itemHeight) { _, row, isSelected ->
+                    when (row) {
+                        RaAccountRow.ACCOUNT -> PillRowKeyValue(
+                            label = dialogState.username,
+                            value = stringResource(raTokenStatusRes(dialogState.tokenState)),
+                            isSelected = isSelected,
+                            fontSize = listFontSize,
+                            lineHeight = listLineHeight,
+                            verticalPadding = listVerticalPadding
+                        )
+                        RaAccountRow.HARDCORE -> PillRowKeyValue(
+                            label = stringResource(R.string.ra_account_row_hardcore),
+                            value = stringResource(if (dialogState.hardcore) R.string.value_on else R.string.value_off),
+                            isSelected = isSelected,
+                            fontSize = listFontSize,
+                            lineHeight = listLineHeight,
+                            verticalPadding = listVerticalPadding
+                        )
+                        else -> PillRowText(
+                            label = stringResource(row.labelRes),
+                            isSelected = isSelected,
+                            fontSize = listFontSize,
+                            lineHeight = listLineHeight,
+                            verticalPadding = listVerticalPadding
+                        )
+                    }
+                }
+            }
         }
 
         is DialogState.RALoggingIn -> {
-            RALoggingInOverlay(message = dialogState.message, buttonStyle = buttonStyle)
+            RALoggingInOverlay(message = dialogState.message, failed = dialogState.failed, buttonStyle = buttonStyle)
         }
 
         is DialogState.RAPreloadProgress -> {
@@ -1216,6 +1255,13 @@ enum class RommActionRow(@androidx.annotation.StringRes val labelRes: Int) {
     }
 }
 
+enum class RaAccountRow(@androidx.annotation.StringRes val labelRes: Int, val isCycle: Boolean = false) {
+    ACCOUNT(R.string.ra_account_row_account),
+    HARDCORE(R.string.ra_account_row_hardcore, isCycle = true),
+    OFFLINE_SETS(R.string.ra_account_row_offline_sets),
+    LOG_OUT(R.string.ra_account_row_log_out),
+}
+
 enum class RommSettingsRow(@androidx.annotation.StringRes val labelRes: Int, val isCycle: Boolean = false) {
     COVER_ART(R.string.romm_settings_cover_art, isCycle = true),
     CONCURRENT(R.string.romm_settings_concurrent, isCycle = true),
@@ -1242,6 +1288,14 @@ enum class RommSaveSyncRow {
                 if (hasBackups) add(RESTORE)
             }
     }
+}
+
+@androidx.annotation.StringRes
+fun raTokenStatusRes(state: RaTokenState): Int = when (state) {
+    RaTokenState.CHECKING -> R.string.ra_token_checking
+    RaTokenState.VALID -> R.string.ra_token_valid
+    RaTokenState.INVALID -> R.string.ra_token_invalid
+    RaTokenState.UNREACHABLE -> R.string.ra_token_offline
 }
 
 @androidx.annotation.StringRes

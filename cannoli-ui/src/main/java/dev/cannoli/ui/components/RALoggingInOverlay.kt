@@ -14,11 +14,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.R
+import dev.cannoli.ui.theme.ErrorText
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliTypography
 
 @Composable
-fun RALoggingInOverlay(message: String, buttonStyle: ButtonStyle = ButtonStyle()) {
+fun RALoggingInOverlay(message: String, failed: Boolean = false, buttonStyle: ButtonStyle = ButtonStyle()) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -36,7 +37,9 @@ fun RALoggingInOverlay(message: String, buttonStyle: ButtonStyle = ButtonStyle()
             )
             Text(
                 text = message,
-                style = typo.bodyMedium.copy(color = LocalCannoliColors.current.text.copy(alpha = 0.6f))
+                style = typo.bodyMedium.copy(
+                    color = if (failed) ErrorText else LocalCannoliColors.current.text.copy(alpha = 0.6f)
+                )
             )
         }
         BottomBar(

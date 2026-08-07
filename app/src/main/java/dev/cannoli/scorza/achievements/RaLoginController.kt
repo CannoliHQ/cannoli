@@ -8,6 +8,7 @@ import dev.cannoli.scorza.di.IoScope
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.screens.DialogState
+import dev.cannoli.scorza.ui.screens.RaTokenState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -63,13 +64,14 @@ class RaLoginController(
             val res = runCatching { clientProvider().validateToken(user, token) }.getOrNull()
             // A network failure is not evidence the token is bad, so only a reachable server
             // that rejects it flips the row to invalid.
-            val valid = when {
-                res == null || res.code !in 200..299 -> null
-                else -> res.body.contains("\"Success\":true")
+            val state = when {
+                res == null || res.code !in 200..299 -> RaTokenState.UNREACHABLE
+                res.body.contains("\"Success\":true") -> RaTokenState.VALID
+                else -> RaTokenState.INVALID
             }
             withContext(Dispatchers.Main) {
                 val ds = nav.dialogState.value
-                if (ds is DialogState.RAAccount) nav.dialogState.value = ds.copy(tokenValid = valid)
+                if (ds is DialogState.RAAccount) nav.dialogState.value = ds.copy(tokenState = state)
             }
         }
     }
@@ -83,7 +85,7 @@ class RaLoginController(
                 nav.dialogState.value = DialogState.RAAccount(
                     username = result.username,
                     score = result.score,
-                    tokenValid = true,
+                    tokenState = RaTokenState.VALID,
                     hardcore = settings.raHardcore,
                 )
             }

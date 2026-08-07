@@ -5,7 +5,9 @@ import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.settings.SettingsRepository
+import dev.cannoli.scorza.ui.components.raTokenStatusRes
 import dev.cannoli.scorza.ui.screens.DialogState
+import dev.cannoli.scorza.ui.screens.RaTokenState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import okhttp3.OkHttpClient
@@ -74,6 +76,57 @@ class RaLoginControllerTest {
         val ds = nav.dialogState.value
         assertTrue(ds is DialogState.RAAccount)
         assertEquals("Bob", (ds as DialogState.RAAccount).username)
+        assertEquals(RaTokenState.VALID, ds.tokenState)
+        server.shutdown()
+    }
+
+    @Test fun `an unreachable server leaves the token unverified, not checking`() {
+        val s = settings().apply { raToken = "abc123" }
+
+        controller(s, null).openAccountMenu()
+        drainMain()
+
+        val ds = nav.dialogState.value as DialogState.RAAccount
+        assertEquals(RaTokenState.UNREACHABLE, ds.tokenState)
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        assertEquals("Offline, not verified", context.getString(raTokenStatusRes(ds.tokenState)))
+    }
+
+    @Test fun `invalid only comes from a reachable server rejecting the token`() {
+        val server = MockWebServer()
+        server.enqueue(MockResponse().setResponseCode(500))
+        server.enqueue(MockResponse().setBody("""{"Success":false}"""))
+        server.start()
+        val s = settings().apply { raToken = "abc123" }
+        val c = controller(s, server)
+
+        c.openAccountMenu()
+        drainMain()
+        assertEquals(
+            RaTokenState.UNREACHABLE,
+            (nav.dialogState.value as DialogState.RAAccount).tokenState,
+        )
+
+        c.openAccountMenu()
+        drainMain()
+        assertEquals(
+            RaTokenState.INVALID,
+            (nav.dialogState.value as DialogState.RAAccount).tokenState,
+        )
+
+        server.shutdown()
+    }
+
+    @Test fun `a reachable server accepting the token marks it valid`() {
+        val server = MockWebServer()
+        server.enqueue(MockResponse().setBody("""{"Success":true,"User":"Bob"}"""))
+        server.start()
+        val s = settings().apply { raToken = "abc123" }
+
+        controller(s, server).openAccountMenu()
+        drainMain()
+
+        assertEquals(RaTokenState.VALID, (nav.dialogState.value as DialogState.RAAccount).tokenState)
         server.shutdown()
     }
 

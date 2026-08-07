@@ -55,6 +55,7 @@ class SettingsInputHandler @Inject constructor(
     @ApplicationContext private val context: Context,
     private val rommStore: dev.cannoli.scorza.romm.RommConnectionStore,
     private val cannoliPaths: CannoliPathsProvider,
+    private val raLoginController: dev.cannoli.scorza.achievements.RaLoginController,
 ) : ScreenInputHandler {
 
     override fun onUp() {
@@ -95,7 +96,7 @@ class SettingsInputHandler @Inject constructor(
 
         when (val key = settingsViewModel.enterSelected()) {
             "integrations_ra" -> {
-                if (settings.raToken.isNotEmpty()) nav.dialogState.value = DialogState.RAAccount(username = settings.raUsername)
+                if (settings.raToken.isNotEmpty()) raLoginController.openAccountMenu()
                 else settingsViewModel.enterSubCategory("retroachievements", dev.cannoli.scorza.R.string.settings_retroachievements)
             }
             "integrations_romm" -> {

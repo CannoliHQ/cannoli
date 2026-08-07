@@ -45,6 +45,14 @@ sealed interface MappingItem {
 /** One row of the per-game overrides list. Keyed by rom_id, not by path. */
 data class GameOverrideRow(val romId: Long, val gameName: String, val label: String)
 
+/**
+ * What is known about the stored RetroAchievements token.
+ *
+ * [UNREACHABLE] is not [INVALID]: failing to reach the server is no evidence the token is bad, and
+ * it is not [CHECKING] either, because nothing is still in flight.
+ */
+enum class RaTokenState { CHECKING, VALID, INVALID, UNREACHABLE }
+
 data class FirmwareStatus(val entry: dev.cannoli.scorza.config.FirmwareEntry, val present: Boolean)
 data class ColorEntry(val key: String, @androidx.annotation.StringRes val labelRes: Int, val hex: String, val color: Long)
 
@@ -112,9 +120,12 @@ sealed interface DialogState {
     data class RAAccount(
         val username: String,
         val score: Int = 0,
-        val tokenValid: Boolean? = null,
+        val tokenState: RaTokenState = RaTokenState.CHECKING,
         val hardcore: Boolean = false,
-    ) : DialogState
+        override val selectedIndex: Int = 0,
+    ) : ListDialog {
+        override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
+    }
     data class RALoggingIn(val message: String = "Logging in$ELLIPSIS", val failed: Boolean = false) : DialogState
     data class RAPreloadProgress(val gameName: String) : DialogState
     data class RAPreloadResult(val success: Boolean, val message: String) : DialogState

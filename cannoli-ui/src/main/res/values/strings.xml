@@ -610,6 +610,14 @@
     <!-- RetroAchievements -->
     <string name="ra_title" translatable="false">RetroAchievements</string>
     <string name="ra_logged_in_as">Logged in as</string>
+    <string name="ra_account_row_account">Account</string>
+    <string name="ra_account_row_hardcore">Hardcore Mode</string>
+    <string name="ra_account_row_offline_sets">Offline Sets</string>
+    <string name="ra_account_row_log_out">Log Out</string>
+    <string name="ra_token_checking">Checking…</string>
+    <string name="ra_token_valid">Signed in</string>
+    <string name="ra_token_invalid">Session expired, log in again</string>
+    <string name="ra_token_offline">Offline, not verified</string>
     <!-- RA = RetroAchievements. -->
     <string name="ra_login_failed">RA: Login failed</string>
     <string name="ra_login_invalid">Invalid username or password</string>
