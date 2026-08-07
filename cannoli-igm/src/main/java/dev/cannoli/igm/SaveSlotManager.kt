@@ -4,10 +4,9 @@ import android.graphics.Bitmap
 
 class SaveSlotManager {
 
-    data class Slot(val index: Int, val label: String)
+    data class Slot(val index: Int)
 
-    val slots = listOf(Slot(0, "Auto")) +
-        (0..9).map { Slot(it + 1, "Slot $it") }
+    val slots = (0..10).map { Slot(it) }
 
     fun saveState(bridge: EmulatorBridge, slot: Slot) = bridge.saveState(slot.index)
     fun loadState(bridge: EmulatorBridge, slot: Slot) = bridge.loadState(slot.index)

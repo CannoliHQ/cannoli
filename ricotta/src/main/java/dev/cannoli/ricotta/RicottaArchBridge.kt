@@ -144,10 +144,10 @@ class RicottaArchBridge(
         }
     }
 
-    override fun getDiskCount() = 0  // TODO: implement
-    override fun getDiskIndex() = 0  // TODO: implement
-    override fun setDiskIndex(index: Int) {}  // TODO: implement
-    override fun getDiskLabel(index: Int): String? = null
+    override fun getDiskCount() = nativeDiskCount()
+    override fun getDiskIndex() = nativeDiskIndex()
+    override fun setDiskIndex(index: Int) = nativeSetDiskIndex(index)
+    override fun getDiskLabel(index: Int): String? = nativeDiskLabel(index)
 
     var raStrings: dev.cannoli.igm.RaOptionStrings = dev.cannoli.igm.RaOptionStrings()
     var onOpenNativeMenu: (() -> Unit)? = null
@@ -158,6 +158,9 @@ class RicottaArchBridge(
             strings = raStrings,
             onOpenNativeMenu = { onOpenNativeMenu?.invoke() },
         )
+
+    override fun coreOptionKeys(): List<String> =
+        nativeCoreOptionKeys()?.map { "$CORE_OPTION_PREFIX$it" } ?: emptyList()
 
     override fun raGetSetting(key: String): RaSetting? {
         val arr = nativeRaGetSetting(key) ?: return null
@@ -233,6 +236,11 @@ class RicottaArchBridge(
     private external fun nativeUnpause()
     private external fun nativeIsPaused(): Boolean
     private external fun nativeMenuToggle()
+    private external fun nativeCoreOptionKeys(): Array<String>?
+    private external fun nativeDiskCount(): Int
+    private external fun nativeDiskIndex(): Int
+    private external fun nativeDiskLabel(index: Int): String?
+    private external fun nativeSetDiskIndex(index: Int)
     private external fun nativeSetIGMVisible(visible: Boolean)
     private external fun nativeSetIgmTriggerKeycodes(keycodes: IntArray)
     private external fun nativeGetAchievementData(): String
@@ -241,6 +249,8 @@ class RicottaArchBridge(
     private external fun nativeRaSaveOverride(scope: Int)
 
     companion object {
+        // Matches RICOTTA_CORE_OPT_PREFIX in ricotta_bridge.c.
+        const val CORE_OPTION_PREFIX = "core::"
         private const val THUMBNAIL_MAX_PX = 640
 
         init {

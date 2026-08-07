@@ -5,7 +5,7 @@ import org.junit.Test
 
 class InGameMenuOptionsTest {
     @Test fun `ricotta config order`() {
-        val o = InGameMenuOptions(hasDiscs = false, discLabel = "Disc 1", hasAchievements = true)
+        val o = InGameMenuOptions(hasDiscs = false, hasAchievements = true)
         assertEquals(
             listOf(IgmMenuAction.RESUME, IgmMenuAction.SAVE_STATE, IgmMenuAction.LOAD_STATE,
                 IgmMenuAction.ACHIEVEMENTS, IgmMenuAction.SETTINGS, IgmMenuAction.RESET, IgmMenuAction.QUIT),
@@ -19,7 +19,7 @@ class InGameMenuOptionsTest {
     }
 
     @Test fun `all disabled`() {
-        val o = InGameMenuOptions(hasDiscs = false, discLabel = "Disc 1")
+        val o = InGameMenuOptions(hasDiscs = false)
         assertEquals(
             listOf(IgmMenuAction.RESUME, IgmMenuAction.SAVE_STATE, IgmMenuAction.LOAD_STATE,
                 IgmMenuAction.SETTINGS, IgmMenuAction.RESET, IgmMenuAction.QUIT),
@@ -30,7 +30,7 @@ class InGameMenuOptionsTest {
     }
 
     @Test fun `full config`() {
-        val o = InGameMenuOptions(hasDiscs = true, discLabel = "Disc 1", hasAchievements = true, hasGuides = true, hasReassign = true)
+        val o = InGameMenuOptions(hasDiscs = true, hasAchievements = true, hasGuides = true, hasReassign = true)
         assertEquals(10, o.actions.size)
         assertEquals(IgmMenuAction.RESET, o.actionAt(o.resetIndex))
         assertEquals(IgmMenuAction.QUIT, o.actionAt(o.quitIndex))

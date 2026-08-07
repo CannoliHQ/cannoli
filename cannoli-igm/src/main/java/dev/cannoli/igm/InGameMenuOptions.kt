@@ -4,13 +4,11 @@ enum class IgmMenuAction { RESUME, SAVE_STATE, LOAD_STATE, ACHIEVEMENTS, GUIDE, 
 
 class InGameMenuOptions(
     hasDiscs: Boolean,
-    val discLabel: String,
+    val discIndex: Int = 0,
     hasAchievements: Boolean = false,
     val hasGuides: Boolean = false,
     val hasCheats: Boolean = false,
-    val cheatsLabel: String = "Cheats",
     hasReassign: Boolean = false,
-    quitLabel: String = "Quit",
 ) {
     val actions: List<IgmMenuAction> = buildList {
         add(IgmMenuAction.RESUME)
@@ -24,22 +22,6 @@ class InGameMenuOptions(
         if (hasReassign) add(IgmMenuAction.REASSIGN)
         add(IgmMenuAction.RESET)
         add(IgmMenuAction.QUIT)
-    }
-
-    val options: List<String> = actions.map { action ->
-        when (action) {
-            IgmMenuAction.RESUME -> "Resume"
-            IgmMenuAction.SAVE_STATE -> "Save State"
-            IgmMenuAction.LOAD_STATE -> "Load State"
-            IgmMenuAction.ACHIEVEMENTS -> "Achievements"
-            IgmMenuAction.GUIDE -> "Guide"
-            IgmMenuAction.CHEATS -> cheatsLabel
-            IgmMenuAction.SETTINGS -> "Settings"
-            IgmMenuAction.SWITCH_DISC -> discLabel
-            IgmMenuAction.REASSIGN -> "Reassign Players"
-            IgmMenuAction.RESET -> "Reset"
-            IgmMenuAction.QUIT -> quitLabel
-        }
     }
 
     val resumeIndex get() = actions.indexOf(IgmMenuAction.RESUME)

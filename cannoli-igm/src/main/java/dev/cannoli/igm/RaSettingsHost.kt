@@ -1,6 +1,9 @@
 package dev.cannoli.igm
 
 interface RaSettingsHost {
+    /** Keys of the options the running core exposes, already prefixed for [raGetSetting]. */
+    fun coreOptionKeys(): List<String> = emptyList()
+
     fun raGetSetting(key: String): RaSetting?
     fun raSetSetting(key: String, value: String): Boolean
     fun raSaveOverride(scope: RaOverrideScope)

@@ -30,6 +30,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -104,14 +105,17 @@ fun InGameMenu(
                             .then(if (showThumbnail) Modifier.weight(0.4f) else Modifier.weight(1f))
                     ) {
                         List(
-                            items = menuOptions.options,
+                            items = menuOptions.actions,
                             selectedIndex = selectedIndex,
                             itemHeight = itemHeight
-                        ) { index, option, isSelected ->
-                            if (index == menuOptions.switchDiscIndex) {
+                        ) { _, action, isSelected ->
+                            if (action == IgmMenuAction.SWITCH_DISC) {
                                 PillRowKeyValue(
-                                    label = option,
-                                    value = menuOptions.discLabel,
+                                    label = igmMenuLabel(action),
+                                    value = stringResource(
+                                        dev.cannoli.ui.R.string.igm_disc_number,
+                                        menuOptions.discIndex + 1,
+                                    ),
                                     isSelected = isSelected,
                                     fontSize = fontSize,
                                     lineHeight = lineHeight,
@@ -119,7 +123,7 @@ fun InGameMenu(
                                 )
                             } else {
                                 PillRowText(
-                                    label = option,
+                                    label = igmMenuLabel(action),
                                     isSelected = isSelected,
                                     fontSize = fontSize,
                                     lineHeight = lineHeight,
@@ -207,7 +211,7 @@ fun PolaroidFrame(
                 )
             } else {
                 Text(
-                    text = "Empty",
+                    text = stringResource(dev.cannoli.ui.R.string.igm_slot_empty),
                     style = MaterialTheme.typography.bodyMedium,
                     color = GrayText
                 )
@@ -231,7 +235,7 @@ fun PolaroidFrame(
                     .padding(horizontal = 4.dp, vertical = 1.dp)
             ) {
                 Text(
-                    text = "AUTO",
+                    text = stringResource(dev.cannoli.ui.R.string.igm_slot_auto).uppercase(),
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontWeight = FontWeight.Bold,
                         fontSize = 10.sp,
@@ -271,3 +275,20 @@ fun PolaroidFrame(
         }
     }
 }
+
+@Composable
+private fun igmMenuLabel(action: IgmMenuAction): String = stringResource(
+    when (action) {
+        IgmMenuAction.RESUME -> dev.cannoli.ui.R.string.igm_resume
+        IgmMenuAction.SAVE_STATE -> dev.cannoli.ui.R.string.igm_save_state
+        IgmMenuAction.LOAD_STATE -> dev.cannoli.ui.R.string.igm_load_state
+        IgmMenuAction.ACHIEVEMENTS -> dev.cannoli.ui.R.string.igm_achievements
+        IgmMenuAction.GUIDE -> dev.cannoli.ui.R.string.igm_guide
+        IgmMenuAction.CHEATS -> dev.cannoli.ui.R.string.igm_cheats
+        IgmMenuAction.SETTINGS -> dev.cannoli.ui.R.string.igm_settings
+        IgmMenuAction.SWITCH_DISC -> dev.cannoli.ui.R.string.igm_switch_disc
+        IgmMenuAction.REASSIGN -> dev.cannoli.ui.R.string.igm_reassign_players
+        IgmMenuAction.RESET -> dev.cannoli.ui.R.string.igm_reset
+        IgmMenuAction.QUIT -> dev.cannoli.ui.R.string.igm_quit
+    }
+)

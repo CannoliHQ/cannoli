@@ -2,6 +2,7 @@ package dev.cannoli.igm
 
 private const val LOCAL_TOGGLE_PREFIX = "cannoli_"
 private const val RA_MENU_KEY = "__ra_menu__"
+private const val EMULATOR_CATEGORY = "emulator"
 
 class RaIgmSettingsProvider(
     private val host: RaSettingsHost,
@@ -34,6 +35,13 @@ class RaIgmSettingsProvider(
 
     private fun root(): GenericIgmSettingsScreen {
         val items = buildList {
+            // Only cores that expose options get the row, so it is absent rather than empty.
+            if (host.coreOptionKeys().isNotEmpty()) {
+                add(GenericIgmSettingsItem.Category(
+                    EMULATOR_CATEGORY,
+                    strings.categoryTitles[EMULATOR_CATEGORY] ?: EMULATOR_CATEGORY,
+                ))
+            }
             for (cat in RaOptionCatalog.categories) {
                 add(GenericIgmSettingsItem.Category(cat.key, strings.categoryTitles[cat.key] ?: cat.key))
             }
@@ -49,10 +57,14 @@ class RaIgmSettingsProvider(
     }
 
     private fun loadCategory(categoryKey: String) {
-        val category = RaOptionCatalog.categories.first { it.key == categoryKey }
         pending.clear()
         currentCategory = categoryKey
-        currentSettings = category.settingKeys.mapNotNull { key ->
+        val keys = if (categoryKey == EMULATOR_CATEGORY) {
+            host.coreOptionKeys()
+        } else {
+            RaOptionCatalog.categories.first { it.key == categoryKey }.settingKeys
+        }
+        currentSettings = keys.mapNotNull { key ->
             if (key.startsWith(LOCAL_TOGGLE_PREFIX)) {
                 RaSetting(
                     key = key,

@@ -55,7 +55,8 @@ class IGMController(
     private var lastMenuIndex = 0
 
     fun openMenu() {
-        val lastIndex = (buildMenuOptions().options.size - 1).coerceAtLeast(0)
+        refreshDiskInfo()
+        val lastIndex = (buildMenuOptions().actions.size - 1).coerceAtLeast(0)
         screenStack.clear()
         screenStack.add(IGMScreen.Menu(selectedIndex = lastMenuIndex.coerceIn(0, lastIndex)))
         refreshSlotInfo()
@@ -253,7 +254,7 @@ class IGMController(
 
     private fun handleMenuKey(screen: IGMScreen.Menu, keycode: Int) {
         val menuOptions = buildMenuOptions()
-        val itemCount = menuOptions.options.size
+        val itemCount = menuOptions.actions.size
 
         when (keycode) {
             19 /* DPAD_UP */ -> {
@@ -265,16 +266,24 @@ class IGMController(
                 replaceTop(screen.copy(selectedIndex = newIndex))
             }
             21 /* DPAD_LEFT */ -> {
-                // Change save slot left
-                val newSlot = if (selectedSlotIndex.intValue <= 0) saveSlotManager.slots.size - 1 else selectedSlotIndex.intValue - 1
-                selectedSlotIndex.intValue = newSlot
-                refreshSlotInfo()
+                if (menuOptions.actionAt(screen.selectedIndex) == IgmMenuAction.SWITCH_DISC) {
+                    cycleDisc(-1)
+                } else {
+                    // Change save slot left
+                    val newSlot = if (selectedSlotIndex.intValue <= 0) saveSlotManager.slots.size - 1 else selectedSlotIndex.intValue - 1
+                    selectedSlotIndex.intValue = newSlot
+                    refreshSlotInfo()
+                }
             }
             22 /* DPAD_RIGHT */ -> {
-                // Change save slot right
-                val newSlot = if (selectedSlotIndex.intValue >= saveSlotManager.slots.size - 1) 0 else selectedSlotIndex.intValue + 1
-                selectedSlotIndex.intValue = newSlot
-                refreshSlotInfo()
+                if (menuOptions.actionAt(screen.selectedIndex) == IgmMenuAction.SWITCH_DISC) {
+                    cycleDisc(1)
+                } else {
+                    // Change save slot right
+                    val newSlot = if (selectedSlotIndex.intValue >= saveSlotManager.slots.size - 1) 0 else selectedSlotIndex.intValue + 1
+                    selectedSlotIndex.intValue = newSlot
+                    refreshSlotInfo()
+                }
             }
             96 /* BUTTON_A - confirm */ -> {
                 selectMenuItem(screen.selectedIndex)
@@ -287,10 +296,28 @@ class IGMController(
 
     private var menuOptions: InGameMenuOptions? = null
 
+    private var diskCount = 0
+    val currentDiskIndex = mutableIntStateOf(0)
+
+    fun refreshDiskInfo() {
+        diskCount = bridge.getDiskCount()
+        currentDiskIndex.intValue = bridge.getDiskIndex()
+    }
+
+    // The set is queued onto the emulator's own thread, so the index is moved here rather than
+    // read back, and refreshDiskInfo corrects it on the next open.
+    private fun cycleDisc(direction: Int) {
+        if (diskCount <= 1) return
+        val next = ((currentDiskIndex.intValue + direction) + diskCount) % diskCount
+        if (next == currentDiskIndex.intValue) return
+        bridge.setDiskIndex(next)
+        currentDiskIndex.intValue = next
+    }
+
     fun buildMenuOptions(): InGameMenuOptions {
         val opts = InGameMenuOptions(
-            hasDiscs = bridge.getDiskCount() > 1,
-            discLabel = "Disc ${bridge.getDiskIndex() + 1}",
+            hasDiscs = diskCount > 1,
+            discIndex = currentDiskIndex.intValue,
             hasAchievements = bridge.supportsAchievements,
             hasGuides = guideFiles.value.isNotEmpty()
         )

@@ -21,10 +21,14 @@ open class FakeEmulatorBridge : EmulatorBridge {
     override fun getStateSlotCount() = 11
     override fun getStateThumbnail(slot: Int): Bitmap? = null
     override fun stateExists(slot: Int) = false
-    override fun getDiskCount() = 0
-    override fun getDiskIndex() = 0
-    override fun setDiskIndex(index: Int) {}
-    override fun getDiskLabel(index: Int): String? = null
+    var discs = 0
+    var disc = 0
+    var discLabels: List<String?> = emptyList()
+
+    override fun getDiskCount() = discs
+    override fun getDiskIndex() = disc
+    override fun setDiskIndex(index: Int) { disc = index }
+    override fun getDiskLabel(index: Int): String? = discLabels.getOrNull(index)
     var nativeMenuOpened = 0
     private var menuClosedCallback: (() -> Unit)? = null
 

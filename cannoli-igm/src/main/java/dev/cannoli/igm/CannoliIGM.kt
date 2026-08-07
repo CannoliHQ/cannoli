@@ -159,8 +159,13 @@ fun CannoliIGM(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 modifier = Modifier.padding(24.dp)
                             ) {
+                                val slotName = if (selectedSlot.index == 0) {
+                                    stringResource(dev.cannoli.ui.R.string.igm_slot_auto)
+                                } else {
+                                    stringResource(dev.cannoli.ui.R.string.igm_slot_numbered, selectedSlot.index - 1)
+                                }
                                 Text(
-                                    text = stringResource(dev.cannoli.ui.R.string.igm_delete_slot, selectedSlot.label),
+                                    text = stringResource(dev.cannoli.ui.R.string.igm_delete_slot, slotName),
                                     style = MaterialTheme.typography.titleLarge,
                                     color = Color.White
                                 )
@@ -478,7 +483,7 @@ fun CannoliIGM(
                         val name = portToName[port] ?: "—"
                         val display = if (port == screen.swapWithIndex) "→ $name" else name
                         IGMSettingsItem(
-                            label = "Player ${port + 1}",
+                            label = stringResource(dev.cannoli.ui.R.string.igm_player_port, port + 1),
                             value = display,
                         )
                     }

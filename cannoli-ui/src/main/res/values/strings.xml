@@ -27,6 +27,23 @@
     <string name="label_parent">PARENT</string>
     <string name="label_slot">SLOT</string>
     <string name="label_disc">DISC</string>
+    <string name="igm_resume">Resume</string>
+    <string name="igm_save_state">Save State</string>
+    <string name="igm_load_state">Load State</string>
+    <string name="igm_guide">Guide</string>
+    <string name="igm_achievements">Achievements</string>
+    <string name="igm_reset">Reset</string>
+    <string name="igm_switch_disc">Switch Disc</string>
+    <!-- Shown in place of a save state thumbnail when the slot has never been written. -->
+    <string name="igm_slot_empty">Empty</string>
+    <!-- The save state slot RetroArch writes on its own. Uppercased where it is drawn as a badge. -->
+    <string name="igm_slot_auto">Auto</string>
+    <!-- %1$d = save state slot number. -->
+    <string name="igm_slot_numbered">Slot %1$d</string>
+    <!-- %1$d = controller port, counting from 1. -->
+    <string name="igm_player_port">Player %1$d</string>
+    <!-- %1$d = disc number, counting from 1. -->
+    <string name="igm_disc_number">Disc %1$d</string>
     <string name="label_use_location">USE THIS LOCATION</string>
     <string name="label_quit">QUIT</string>
     <string name="label_stop">STOP</string>

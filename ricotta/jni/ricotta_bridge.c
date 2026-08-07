@@ -33,6 +33,7 @@ static long long get_time_ms(void)
 #include "../../../../menu/menu_setting.h"
 #include "../../../../cheevos/cheevos_locals.h"
 #include "../../../../deps/rcheevos/include/rc_client.h"
+#include "../../../../disk_control_interface.h"
 
 /* Cached JVM and bridge object refs for callbacks */
 static JavaVM *g_jvm           = NULL;
@@ -70,6 +71,7 @@ static volatile int g_menu_poll_active = 0;
 #define RICOTTA_CMD_QUEUE_SIZE 32
 #define RICOTTA_QCMD_RA_SET           -1
 #define RICOTTA_QCMD_RA_SAVE_OVERRIDE -2
+#define RICOTTA_QCMD_DISK_SET         -3
 typedef struct
 {
    int   cmd;
@@ -138,6 +140,14 @@ void ricotta_bridge_poll_commands(void)
             ricotta_ra_apply(entry.ra_key, entry.ra_value);
          free(entry.ra_key);
          free(entry.ra_value);
+         continue;
+      }
+      if (entry.cmd == RICOTTA_QCMD_DISK_SET)
+      {
+         runloop_state_t *runloop_st = runloop_state_get_ptr();
+         if (runloop_st)
+            disk_control_set_index(
+                  &runloop_st->system.disk_control, (unsigned)entry.slot, true);
          continue;
       }
       if (entry.cmd == RICOTTA_QCMD_RA_SAVE_OVERRIDE)
@@ -258,10 +268,142 @@ static int ricotta_ra_format_value(rarch_setting_t *s, char *buf, size_t len)
    }
 }
 
+/* Core options live in a separate namespace from RetroArch's own settings and are keyed by the
+ * core, so they carry this prefix to keep the two apart on one get/set path. */
+#define RICOTTA_CORE_OPT_PREFIX "core::"
+
+static core_option_manager_t *ricotta_core_options(void)
+{
+   runloop_state_t *runloop_st = runloop_state_get_ptr();
+   return runloop_st ? runloop_st->core_options : NULL;
+}
+
+/* Index of the core option with this key, or -1. */
+static long ricotta_core_opt_index(const char *key)
+{
+   size_t i;
+   core_option_manager_t *opt = ricotta_core_options();
+   if (!opt || !key)
+      return -1;
+   for (i = 0; i < opt->size; i++)
+      if (opt->opts[i].key && !strcmp(opt->opts[i].key, key))
+         return (long)i;
+   return -1;
+}
+
+static void ricotta_core_opt_apply(const char *key, const char *value)
+{
+   size_t v;
+   core_option_manager_t *opt = ricotta_core_options();
+   long idx = ricotta_core_opt_index(key);
+   if (!opt || idx < 0)
+      return;
+   {
+      struct core_option *o = &opt->opts[idx];
+      if (!o->val_labels)
+         return;
+      for (v = 0; v < o->val_labels->size; v++)
+      {
+         if (!strcmp(o->val_labels->elems[v].data, value))
+         {
+            core_option_manager_set_val(opt, (size_t)idx, v, true);
+            return;
+         }
+      }
+   }
+}
+
+/* Same eight-element layout nativeRaGetSetting returns, so one decoder serves both. A core option
+ * is always a labelled value list, which is the ENUM case. */
+static jobjectArray ricotta_core_opt_describe(JNIEnv *env, const char *key)
+{
+   size_t v;
+   char opts_buf[1024];
+   jobjectArray out;
+   jclass str_cls;
+   core_option_manager_t *opt = ricotta_core_options();
+   long idx = ricotta_core_opt_index(key);
+   struct core_option *o;
+
+   if (!opt || idx < 0)
+      return NULL;
+
+   o           = &opt->opts[idx];
+   opts_buf[0] = '\0';
+   if (o->val_labels)
+   {
+      for (v = 0; v < o->val_labels->size; v++)
+      {
+         if (v)
+            strlcat(opts_buf, "|", sizeof(opts_buf));
+         strlcat(opts_buf, o->val_labels->elems[v].data, sizeof(opts_buf));
+      }
+   }
+
+   str_cls = (*env)->FindClass(env, "java/lang/String");
+   out     = (*env)->NewObjectArray(env, 8, str_cls, NULL);
+   if (!out)
+      return NULL;
+
+   (*env)->SetObjectArrayElement(env, out, 0, (*env)->NewStringUTF(env,
+         core_option_manager_get_desc(opt, (size_t)idx, true)));
+   (*env)->SetObjectArrayElement(env, out, 1, (*env)->NewStringUTF(env, "ENUM"));
+   (*env)->SetObjectArrayElement(env, out, 2, (*env)->NewStringUTF(env,
+         core_option_manager_get_val_label(opt, (size_t)idx)));
+   (*env)->SetObjectArrayElement(env, out, 3, (*env)->NewStringUTF(env, ""));
+   (*env)->SetObjectArrayElement(env, out, 4, (*env)->NewStringUTF(env, ""));
+   (*env)->SetObjectArrayElement(env, out, 5, (*env)->NewStringUTF(env, ""));
+   (*env)->SetObjectArrayElement(env, out, 6, (*env)->NewStringUTF(env, opts_buf));
+   (*env)->SetObjectArrayElement(env, out, 7, (*env)->NewStringUTF(env, "0"));
+   return out;
+}
+
+JNIEXPORT jobjectArray JNICALL
+Java_dev_cannoli_ricotta_RicottaArchBridge_nativeCoreOptionKeys(
+      JNIEnv *env, jobject obj)
+{
+   size_t i, n = 0;
+   jobjectArray out;
+   jclass str_cls;
+   core_option_manager_t *opt = ricotta_core_options();
+   (void)obj;
+
+   if (!opt || opt->size == 0)
+      return NULL;
+
+   for (i = 0; i < opt->size; i++)
+      if (opt->opts[i].key && core_option_manager_get_visible(opt, i))
+         n++;
+   if (n == 0)
+      return NULL;
+
+   str_cls = (*env)->FindClass(env, "java/lang/String");
+   out     = (*env)->NewObjectArray(env, (jsize)n, str_cls, NULL);
+   if (!out)
+      return NULL;
+
+   for (i = 0, n = 0; i < opt->size; i++)
+   {
+      if (!opt->opts[i].key || !core_option_manager_get_visible(opt, i))
+         continue;
+      (*env)->SetObjectArrayElement(env, out, (jsize)n++,
+            (*env)->NewStringUTF(env, opt->opts[i].key));
+   }
+   return out;
+}
+
 static void ricotta_ra_apply(const char *key, const char *value)
 {
    settings_t *settings;
-   rarch_setting_t *s = ricotta_ra_find(key);
+   rarch_setting_t *s;
+
+   if (!strncmp(key, RICOTTA_CORE_OPT_PREFIX, strlen(RICOTTA_CORE_OPT_PREFIX)))
+   {
+      ricotta_core_opt_apply(key + strlen(RICOTTA_CORE_OPT_PREFIX), value);
+      return;
+   }
+
+   s = ricotta_ra_find(key);
    if (!s)
       return;
    if (ricotta_ra_is_combobox(s))
@@ -624,6 +766,64 @@ Java_dev_cannoli_ricotta_RicottaArchBridge_nativeMenuToggle(
    }
 }
 
+static disk_control_interface_t *ricotta_disk_control(void)
+{
+   runloop_state_t *runloop_st = runloop_state_get_ptr();
+   if (!runloop_st)
+      return NULL;
+   return &runloop_st->system.disk_control;
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_cannoli_ricotta_RicottaArchBridge_nativeDiskCount(
+      JNIEnv *env, jobject obj)
+{
+   disk_control_interface_t *dc = ricotta_disk_control();
+   (void)env;
+   (void)obj;
+   if (!dc || !disk_control_enabled(dc))
+      return 0;
+   return (jint)disk_control_get_num_images(dc);
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_cannoli_ricotta_RicottaArchBridge_nativeDiskIndex(
+      JNIEnv *env, jobject obj)
+{
+   disk_control_interface_t *dc = ricotta_disk_control();
+   (void)env;
+   (void)obj;
+   if (!dc || !disk_control_enabled(dc))
+      return 0;
+   return (jint)disk_control_get_image_index(dc);
+}
+
+JNIEXPORT jstring JNICALL
+Java_dev_cannoli_ricotta_RicottaArchBridge_nativeDiskLabel(
+      JNIEnv *env, jobject obj, jint index)
+{
+   char label[256];
+   disk_control_interface_t *dc = ricotta_disk_control();
+   (void)obj;
+
+   label[0] = '\0';
+   if (!dc || !disk_control_enabled(dc))
+      return NULL;
+   disk_control_get_image_label(dc, (unsigned)index, label, sizeof(label));
+   if (!label[0])
+      return NULL;
+   return (*env)->NewStringUTF(env, label);
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_ricotta_RicottaArchBridge_nativeSetDiskIndex(
+      JNIEnv *env, jobject obj, jint index)
+{
+   (void)env;
+   (void)obj;
+   ricotta_enqueue_command(RICOTTA_QCMD_DISK_SET, (int)index, 0);
+}
+
 JNIEXPORT jboolean JNICALL
 Java_dev_cannoli_ricotta_RicottaArchBridge_nativeIsPaused(
       JNIEnv *env, jobject obj)
@@ -652,7 +852,16 @@ Java_dev_cannoli_ricotta_RicottaArchBridge_nativeRaGetSetting(
    (void)obj;
 
    key = (*env)->GetStringUTFChars(env, jkey, NULL);
-   s   = key ? ricotta_ra_find(key) : NULL;
+
+   if (key && !strncmp(key, RICOTTA_CORE_OPT_PREFIX, strlen(RICOTTA_CORE_OPT_PREFIX)))
+   {
+      jobjectArray co = ricotta_core_opt_describe(
+            env, key + strlen(RICOTTA_CORE_OPT_PREFIX));
+      (*env)->ReleaseStringUTFChars(env, jkey, key);
+      return co;
+   }
+
+   s = key ? ricotta_ra_find(key) : NULL;
    if (key)
       (*env)->ReleaseStringUTFChars(env, jkey, key);
    if (!s)

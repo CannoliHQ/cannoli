@@ -169,6 +169,7 @@ class IGMOverlay(
             dontSave = uiContext.getString(AppR.string.igm_ra_dont_save),
             nativeMenu = uiContext.getString(AppR.string.igm_ra_native_menu),
             categoryTitles = mapOf(
+                "emulator" to uiContext.getString(R.string.igm_emulator),
                 "video" to uiContext.getString(R.string.igm_video),
                 "audio" to uiContext.getString(AppR.string.igm_ra_audio),
                 "latency" to uiContext.getString(AppR.string.igm_ra_latency),

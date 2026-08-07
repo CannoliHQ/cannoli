@@ -32,7 +32,7 @@ class IGMControllerProviderSettingsTest {
         val c = testController(ProviderBridge())
         c.openMenu()
         val menu = c.buildMenuOptions()
-        val settingsIndex = (0 until menu.options.size).first { menu.actionAt(it) == IgmMenuAction.SETTINGS }
+        val settingsIndex = menu.settingsIndex
         repeat(settingsIndex) { c.handleKeyDown(20) }
         c.handleKeyDown(96)
         return c
