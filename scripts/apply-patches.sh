@@ -32,6 +32,7 @@ BRIDGE_SRC="$RICOTTA_DIR/jni/ricotta_bridge.c"
 BRIDGE_DST="$RA_DIR/pkg/android/phoenix-common/jni/ricotta_bridge.c"
 # Only copy when changed so the destination mtime is stable and ndk-build's
 # incremental compilation isn't invalidated on every build.
+[ -f "$BRIDGE_DST" ] && chmod u+w "$BRIDGE_DST"
 if ! cmp -s "$BRIDGE_SRC" "$BRIDGE_DST"; then
     cp "$BRIDGE_SRC" "$BRIDGE_DST"
     echo "Copied ricotta_bridge.c"
@@ -69,5 +70,19 @@ DEFINES += -DHAVE_RICOTTA_OSD' "$ANDROID_MK"
     fi
     echo "Added HAVE_RICOTTA_OSD define"
 fi
+
+# Read-only so an edit fails loudly. Both are generated: this script copies the bridge from
+# ricotta/jni, and cannoli_ra_settings_strings.patch creates the strings file. Editing either in
+# place is silently lost, because the next clean run overwrites it and a dirty tree makes
+# git apply --check fail, which this script reports as "already applied".
+#
+# Deliberately not applied to the upstream files the patches modify: git apply --check cannot read
+# a file it has no write access to, and every patch would then look already applied.
+for generated in \
+    "$BRIDGE_DST" \
+    "$RA_DIR/pkg/android/phoenix/res/values/strings_cannoli.xml"
+do
+    [ -f "$generated" ] && chmod a-w "$generated"
+done
 
 echo "Ready to build."
