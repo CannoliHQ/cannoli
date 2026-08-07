@@ -136,6 +136,9 @@
     <!-- Credits -->
     <!-- Core picker / nav -->
     <!-- Update download -->
+    <!-- Shown before the ROM directory is changed or cleared, since the rescan that follows prunes
+         database entries for every ROM that is not at the same relative path under the new
+         directory. Cannoli and RetroAchievements are product names; leave them untranslated. -->
     <!-- IGM screen titles -->
     <!-- D-Pad Mode value: 8 directions. -->
     <!-- D-Pad Mode value: 4 directions. -->
@@ -154,7 +157,12 @@
     <!-- The core is not bundled with the app. -->
     <!-- %d = number of required BIOS files missing. -->
     <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
+    <!-- Shown above the RetroArch core list when the installed build predates the receiver that answers core queries. -->
+    <!-- Shown when RetroArch has the receiver but did not answer the query. -->
+    <!-- Shown above the core list when the configured RetroArch package is not installed at all. -->
+    <!-- Debug builds only: a gallery of every Nerd Font glyph the launcher draws. Never shipped to users, so not sent to translators. -->
     <!-- Screen title. %s = platform name. -->
+    <!-- Screen title for the per-game emulator picker. %s = game name. -->
     <!-- Screen title. %s = platform name. -->
     <!-- OSD toast. %1$s = core name. -->
     <!-- OSD toast. %1$s = core name. -->
@@ -173,6 +181,7 @@
     <!-- Screen title. %1$s = game name. -->
     <!-- %1$s = slot name. -->
     <!-- Conflicts resolution screen -->
+    <!-- Shown while saves are checked against the server before a game launches. -->
     <!-- %1$d = number of saves that could not be applied. -->
     <!-- %1$d = number of sync conflicts. -->
     <!-- %1$d = number of sync errors. -->

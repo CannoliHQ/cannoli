@@ -84,7 +84,6 @@
     <string name="settings_emulation">Емуляція</string>
     <string name="settings_integrations">Інтеграції</string>
     <string name="settings_advanced">Додатково</string>
-    <string name="settings_debug">Налагодження</string>
     <string name="settings_about">Про програму</string>
     <!-- Setting: which update channel to follow (e.g. stable versus test builds). -->
     <string name="settings_release_channel">Канал оновлень</string>
@@ -168,6 +167,7 @@
     <string name="setting_experimental_features">Експериментальні функції</string>
     <string name="setting_set_default_launcher">Встановити як лаунчер за замовчуванням</string>
     <!-- Same row as setting_set_default_launcher, shown when Cannoli is already the default launcher and the user wants to pick another one. -->
+    <string name="setting_change_default_launcher">Використовуєте інший лаунчер</string>
     <!-- Advanced action: recreate the standard platform/system folders. -->
     <string name="setting_regenerate_system_folders">Відновити системні папки</string>
     <!-- Library setting: which content layout to show (platforms, collections only, or Five Game Handheld). -->
@@ -346,7 +346,6 @@
     <string name="romm_vtype_mode">Ігрові режими</string>
     <string name="setting_logging">Журналювання</string>
     <!-- Advanced toggle: log the intents used to launch external emulators. -->
-    <string name="setting_audit_emulator_intents">Аудит намірів емулятора</string>
     <string name="logging_title">Журналювання</string>
     <string name="logging_rom_scan">Сканування ROM</string>
     <string name="logging_input">Керування</string>
@@ -393,6 +392,7 @@
     <!-- Shown in place of an emulator name when a platform has no emulator mapped yet. -->
     <string name="value_needs_setup">Потребує налаштування</string>
     <string name="emulator_platform_setting">Налаштування платформи</string>
+    <string name="emulator_platform_default">Платформа за замовчуванням</string>
     <!-- %1$s = the emulator name the platform is mapped to. -->
     <string name="emulator_platform_setting_named">Налаштування платформи (%1$s)</string>
     <string name="rename_error_directory">Не вдалося перейменувати папку</string>
@@ -423,10 +423,12 @@
     <string name="housekeeping_refresh_title">Оновлення бібліотеки</string>
     <string name="update_download_error_server">Не вдалося завантажити. Сервер повернув помилку. Спробуйте пізніше.</string>
     <string name="update_download_error_network">Не вдалося завантажити. Перевірте з\'єднання та спробуйте ще раз.</string>
+    <string name="update_download_error_space">Недостатньо місця. Для оновлення потрібно приблизно %1$s безплатно, а доступно %2$s.</string>
     <string name="launch_error_resolve_file">Не вдалося визначити файл запуску</string>
     <string name="launch_error_extract">Не вдалося розпакувати архів</string>
     <string name="launch_error_generic">Не вдалося запустити гру</string>
     <!-- %1$s = file name. -->
+    <string name="launch_error_bad_game_file">Не вдалося прочитати ідентифікатор гри з %1$s</string>
     <string name="launch_error_update_ricotta">Оновіть RicottaArch, щоб продовжити</string>
     <string name="launch_error_update_cannoli">Оновіть Cannoli, щоб продовжити</string>
     <!-- %1$s = core name, %2$s = emulator app. -->
@@ -605,6 +607,11 @@
     <string name="ra_load_offline_pending">RA: офлайн (дані гри недоступні)</string>
     <!-- Credits -->
     <string name="credits_title">Автори та ліцензії</string>
+    <string name="credits_cores">Ядра емулятора</string>
+    <string name="credits_shaders">Шейдери</string>
+    <string name="credits_fonts">Шрифти</string>
+    <string name="credits_libraries">Бібліотеки</string>
+    <string name="credits_localization">Автори локалізації</string>
     <!-- Core picker / nav -->
     <string name="no_compatible_cores">Сумісні ядра не знайдено</string>
     <string name="no_collections">Немає колекцій</string>
@@ -614,6 +621,9 @@
     <!-- Update download -->
     <string name="update_retry">ПОВТОРИТИ</string>
     <string name="restart_required">Для застосування змін потрібен перезапуск.</string>
+    <!-- Shown before the ROM directory is changed or cleared, since the rescan that follows prunes
+         database entries for every ROM that is not at the same relative path under the new
+         directory. Cannoli and RetroAchievements are product names; leave them untranslated. -->
     <!-- IGM screen titles -->
     <string name="igm_settings">Налаштування</string>
     <string name="igm_video">Відео</string>
@@ -676,12 +686,19 @@
     <string name="value_no_firmware">Для цього ядра прошивка не потрібна.</string>
     <string name="mapping_action_bios">Файли BIOS</string>
     <string name="mapping_action_overrides">Перевизначення для окремих ігор</string>
-    <string name="mapping_action_reset">Скинути до типового</string>
+    <string name="mapping_action_reset">Скинути до замовчування</string>
     <!-- %d = number of required BIOS files missing. -->
     <string name="mapping_required_missing">Відсутньо обов\'язкових: %d</string>
     <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
+    <string name="mapping_platform_name_with_tag">%1$s (%2$s)</string>
+    <!-- Shown above the RetroArch core list when the installed build predates the receiver that answers core queries. -->
+    <!-- Shown when RetroArch has the receiver but did not answer the query. -->
+    <!-- Shown above the core list when the configured RetroArch package is not installed at all. -->
+    <!-- Debug builds only: a gallery of every Nerd Font glyph the launcher draws. Never shipped to users, so not sent to translators. -->
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">Прив\'язка %s</string>
+    <!-- Screen title for the per-game emulator picker. %s = game name. -->
+    <string name="title_game_mapping">Емулятор %s</string>
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_bios">BIOS %s</string>
     <string name="filter_all">УСІ</string>
@@ -735,7 +752,7 @@
     <string name="value_no_cores_found">Ядра не знайдено</string>
     <string name="label_clear_override">ОЧИСТИТИ</string>
     <!-- %1$s = platform name. -->
-    <string name="dialog_reset_platform_confirm">Скинути %1$s? Це очистить вибір емулятора для цієї платформи та відновить типовий вбудований варіант.</string>
+    <string name="dialog_reset_platform_confirm">Скинути %1$s? Ваш вибір замінюється на вибір Cannoli за замовчуванням або очищується, якщо його немає.</string>
     <!-- RA achievement preload. %1$s = game name. -->
     <string name="ra_preload_progress">Попереднє завантаження %1$s</string>
     <string name="ra_preload_none">Для цієї гри не знайдено досягнень</string>
@@ -767,6 +784,7 @@
     <!-- Conflicts resolution screen -->
     <string name="conflicts_title">Конфлікти синхронізації</string>
     <string name="conflicts_applying">Застосування вирішень конфліктів...</string>
+    <!-- Shown while saves are checked against the server before a game launches. -->
     <!-- %1$d = number of saves that could not be applied. -->
     <plurals name="conflicts_apply_failed">
         <item quantity="one">Не вдалося застосувати %1$d збереження</item>
