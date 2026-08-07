@@ -237,22 +237,6 @@ class DialogInputHandler @Inject constructor(
             is DialogState.SaveSyncStaleBlock -> {
                 ds.withMenuDelta(-1)?.let { nav.dialogState.value = it }
             }
-            is DialogState.QuickMenu -> {
-                val newIdx = (ds.selectedIndex - 1).mod(ds.rows.size)
-                nav.dialogState.value = ds.copy(selectedIndex = newIdx)
-            }
-            is DialogState.RommActionsMenu -> {
-                val size = dev.cannoli.scorza.ui.components.RommActionRow.visibleRows(ds.hasDownloads).size
-                nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(size))
-            }
-            is DialogState.RommSettingsMenu -> {
-                val size = dev.cannoli.scorza.ui.components.RommSettingsRow.entries.size
-                nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(size))
-            }
-            is DialogState.RommSaveSyncMenu -> {
-                val size = dev.cannoli.scorza.ui.components.RommSaveSyncRow.visibleRows(ds.supported, ds.enabled, ds.pendingConflicts, ds.syncErrors, ds.hasBackups).size
-                nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(size))
-            }
             is KeyboardHost -> nav.dialogState.value = ds.withKeyboard(KeyboardController.moveSelection(ds.keyboard, Direction.UP))
             is DialogState.ColorPicker -> {
                 val totalRows = (COLOR_PRESETS.size + COLOR_GRID_COLS - 1) / COLOR_GRID_COLS
@@ -267,10 +251,6 @@ class DialogInputHandler @Inject constructor(
                 val newRow = if (curRow <= 0) totalRows - 1 else curRow - 1
                 val newIdx = (newRow * rowSize + col).coerceAtMost(HEX_KEYS.lastIndex)
                 nav.dialogState.value = ds.copy(selectedIndex = newIdx)
-            }
-            is DialogState.RommArtResults -> {
-                val size = artResultRowCount(ds)
-                if (size > 0) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(size))
             }
             is ListDialog -> moveSelection(ds, -1)
             else -> {}
@@ -291,6 +271,18 @@ class DialogInputHandler @Inject constructor(
         is DialogState.ConflictsMenu -> ds.rows.size
         is DialogState.RommAdvancedMenu -> dev.cannoli.scorza.ui.components.ROMM_ADVANCED_ROWS.size
         is DialogState.RommDownloads -> rommDownloader.queue.state.value.size
+        is DialogState.QuickMenu -> ds.rows.size
+        is DialogState.QuickInfo -> ds.urls.size
+        is DialogState.Kitchen -> ds.urls.size
+        is DialogState.RommArtResults -> artResultRowCount(ds)
+        is DialogState.RommActionsMenu ->
+            dev.cannoli.scorza.ui.components.RommActionRow.visibleRows(ds.hasDownloads).size
+        is DialogState.RommSettingsMenu ->
+            dev.cannoli.scorza.ui.components.RommSettingsRow.entries.size
+        is DialogState.RommSaveSyncMenu ->
+            dev.cannoli.scorza.ui.components.RommSaveSyncRow.visibleRows(
+                ds.supported, ds.enabled, ds.pendingConflicts, ds.syncErrors, ds.hasBackups,
+            ).size
     }
 
     private fun moveSelection(ds: ListDialog, delta: Int) {
@@ -309,22 +301,6 @@ class DialogInputHandler @Inject constructor(
             is DialogState.SaveSyncStaleBlock -> {
                 ds.withMenuDelta(1)?.let { nav.dialogState.value = it }
             }
-            is DialogState.QuickMenu -> {
-                val newIdx = (ds.selectedIndex + 1).mod(ds.rows.size)
-                nav.dialogState.value = ds.copy(selectedIndex = newIdx)
-            }
-            is DialogState.RommActionsMenu -> {
-                val size = dev.cannoli.scorza.ui.components.RommActionRow.visibleRows(ds.hasDownloads).size
-                nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(size))
-            }
-            is DialogState.RommSettingsMenu -> {
-                val size = dev.cannoli.scorza.ui.components.RommSettingsRow.entries.size
-                nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(size))
-            }
-            is DialogState.RommSaveSyncMenu -> {
-                val size = dev.cannoli.scorza.ui.components.RommSaveSyncRow.visibleRows(ds.supported, ds.enabled, ds.pendingConflicts, ds.syncErrors, ds.hasBackups).size
-                nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(size))
-            }
             is KeyboardHost -> nav.dialogState.value = ds.withKeyboard(KeyboardController.moveSelection(ds.keyboard, Direction.DOWN))
             is DialogState.ColorPicker -> {
                 val totalRows = (COLOR_PRESETS.size + COLOR_GRID_COLS - 1) / COLOR_GRID_COLS
@@ -340,10 +316,6 @@ class DialogInputHandler @Inject constructor(
                 val newIdx = (newRow * rowSize + col).coerceAtMost(HEX_KEYS.lastIndex)
                 nav.dialogState.value = ds.copy(selectedIndex = newIdx)
             }
-            is DialogState.RommArtResults -> {
-                val size = artResultRowCount(ds)
-                if (size > 0) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(size))
-            }
             is ListDialog -> moveSelection(ds, 1)
             else -> {}
         }
@@ -354,18 +326,6 @@ class DialogInputHandler @Inject constructor(
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
         when (ds) {
-            is DialogState.Kitchen -> {
-                if (ds.urls.size > 1) {
-                    val newIdx = (ds.selectedIndex - 1 + ds.urls.size) % ds.urls.size
-                    nav.dialogState.value = ds.copy(selectedIndex = newIdx)
-                }
-            }
-            is DialogState.QuickInfo -> {
-                if (ds.urls.size > 1) {
-                    val newIdx = (ds.selectedIndex - 1 + ds.urls.size) % ds.urls.size
-                    nav.dialogState.value = ds.copy(selectedIndex = newIdx)
-                }
-            }
             is DialogState.RommSettingsMenu -> cycleRommSettings(ds, -1)
             is DialogState.RommSaveSyncMenu -> cycleRommSaveSync(ds, -1)
             is DialogState.ConflictsMenu -> cycleConflictChoice(ds, -1)
@@ -390,18 +350,6 @@ class DialogInputHandler @Inject constructor(
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
         when (ds) {
-            is DialogState.Kitchen -> {
-                if (ds.urls.size > 1) {
-                    val newIdx = (ds.selectedIndex + 1) % ds.urls.size
-                    nav.dialogState.value = ds.copy(selectedIndex = newIdx)
-                }
-            }
-            is DialogState.QuickInfo -> {
-                if (ds.urls.size > 1) {
-                    val newIdx = (ds.selectedIndex + 1) % ds.urls.size
-                    nav.dialogState.value = ds.copy(selectedIndex = newIdx)
-                }
-            }
             is DialogState.RommSettingsMenu -> cycleRommSettings(ds, 1)
             is DialogState.RommSaveSyncMenu -> cycleRommSaveSync(ds, 1)
             is DialogState.ConflictsMenu -> cycleConflictChoice(ds, 1)

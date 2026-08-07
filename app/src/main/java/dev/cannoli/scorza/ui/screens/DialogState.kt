@@ -106,7 +106,9 @@ sealed interface DialogState {
     data class ColorPicker(val settingKey: String, val title: String, val currentColor: Long, val selectedRow: Int = 0, val selectedCol: Int = 0) : DialogState
     data class HexColorInput(val settingKey: String, val title: String, val currentHex: String = "", val selectedIndex: Int = 0) : DialogState
     data class About(val statusMessage: String? = null) : DialogState
-    data class Kitchen(val urls: List<String>, val selectedIndex: Int = 0, val pin: String, val requirePin: Boolean = true, val fromQuickMenu: Boolean = false) : DialogState
+    data class Kitchen(val urls: List<String>, override val selectedIndex: Int = 0, val pin: String, val requirePin: Boolean = true, val fromQuickMenu: Boolean = false) : ListDialog {
+        override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
+    }
     data class RAAccount(val username: String, val score: Int = 0) : DialogState
     data class RALoggingIn(val message: String = "Logging in$ELLIPSIS") : DialogState
     data class RAPreloadProgress(val gameName: String) : DialogState
@@ -137,44 +139,56 @@ sealed interface DialogState {
     data class QuickMenu(
         val rows: List<dev.cannoli.scorza.ui.quickmenu.QuickMenuRow>,
         val kitchenRunning: Boolean,
-        val selectedIndex: Int = 0,
+        override val selectedIndex: Int = 0,
         val conflictCount: Int = 0,
         val syncErrorCount: Int = 0,
-    ) : DialogState
+    ) : ListDialog {
+        override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
+    }
     data class QuickInfo(
         val urls: List<String>,
         val kitchenRunning: Boolean,
-        val selectedIndex: Int = 0,
-    ) : DialogState
+        override val selectedIndex: Int = 0,
+    ) : ListDialog {
+        override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
+    }
     data class RommDownloads(override val selectedIndex: Int = 0, val fromQuickMenu: Boolean = false) : ListDialog {
         override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
     }
     data class RommArtResults(
         val results: dev.cannoli.scorza.romm.art.ArtFetchResults,
-        val selectedIndex: Int = 0,
-    ) : DialogState
+        override val selectedIndex: Int = 0,
+    ) : ListDialog {
+        override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
+    }
     data class RescanProgress(val progress: Float, val label: String) : DialogState
     data class RommActionsMenu(
-        val selectedIndex: Int = 0,
+        override val selectedIndex: Int = 0,
         val hasDownloads: Boolean = false,
-    ) : DialogState
+    ) : ListDialog {
+        override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
+    }
     data class RommSettingsMenu(
-        val selectedIndex: Int = 0,
+        override val selectedIndex: Int = 0,
         val concurrent: Int = 2,
         val artType: dev.cannoli.scorza.romm.RommArtType = dev.cannoli.scorza.romm.RommArtType.NONE,
-    ) : DialogState
+    ) : ListDialog {
+        override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
+    }
     data class RommAdvancedMenu(override val selectedIndex: Int = 0) : ListDialog {
         override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
     }
     data class RommSaveSyncMenu(
-        val selectedIndex: Int = 0,
+        override val selectedIndex: Int = 0,
         val supported: Boolean = true,
         val enabled: Boolean = false,
         val backupCount: Int = 5,
         val pendingConflicts: Int = 0,
         val syncErrors: Int = 0,
         val hasBackups: Boolean = false,
-    ) : DialogState
+    ) : ListDialog {
+        override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
+    }
     data class RommConfirm(val action: RommConfirmAction, val downloadKey: String? = null, val fromQuickMenu: Boolean = false) : DialogState
     data class RommPlatformToggle(val items: List<RommPlatformToggleItem>, override val selectedIndex: Int = 0) : ListDialog {
         override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
