@@ -686,7 +686,9 @@
     <string name="mapping_platform_name_with_tag">%1$s (%2$s)</string>
     <!-- Shown above the RetroArch core list when the installed build predates the receiver that answers core queries. -->
     <!-- Shown when RetroArch has the receiver but did not answer the query. -->
+    <string name="mapping_notice_no_response">RetroArch no respondió</string>
     <!-- Shown above the core list when the configured RetroArch package is not installed at all. -->
+    <string name="mapping_notice_not_installed">RetroArch no está instalado</string>
     <!-- Debug builds only: a gallery of every Nerd Font glyph the launcher draws. Never shipped to users, so not sent to translators. -->
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">%s mapeo</string>
