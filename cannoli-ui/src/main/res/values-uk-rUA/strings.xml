@@ -40,21 +40,17 @@
     <string name="label_rename">ПЕРЕЙМЕНУВАТИ</string>
     <string name="label_set">ВСТАНОВИТИ</string>
     <string name="label_clear">ОЧИСТИТИ</string>
-    <string name="label_press">НАТИСНІТЬ</string>
     <!-- Bottom-bar button; opens Nonna's Kitchen. -->
     <string name="label_kitchen">КУХНЯ</string>
     <string name="label_hold_buttons" tools:ignore="TypographyEllipsis">УТРИМУЙТЕ ОДНУ АБО ДЕКІЛЬКА КНОПОК...</string>
-    <string name="label_info">ІНФО</string>
     <!-- Bottom-bar button. RA = RetroAchievements. -->
     <string name="label_ra_settings">НАЛАШТУВАННЯ RA</string>
     <string name="label_details">ДЕТАЛІ</string>
     <string name="label_all">УСІ</string>
     <string name="label_unlocked">ВІДКРИТО</string>
     <string name="label_locked">ЗАБЛОКОВАНО</string>
-    <string name="label_reset_all">СКИНУТИ ВСЕ</string>
     <string name="label_remap">ПЕРЕПРИЗНАЧИТИ</string>
     <string name="label_unmap">СКАСУВАТИ ПРИЗНАЧЕННЯ</string>
-    <string name="label_swap">ПОМІНЯТИ</string>
     <string name="label_grant">НАДАТИ</string>
     <!-- In-game menu action: reassign connected controllers to player slots. -->
     <string name="igm_reassign_players">Перепризначити гравців</string>
@@ -559,9 +555,7 @@
     <string name="osd_state_deleted">Видалено %1$s</string>
     <string name="osd_reset">Скинуто</string>
     <!-- OSD toast. %1$s = scaling mode name. -->
-    <string name="osd_scaling">Масштабування: %1$s</string>
     <!-- OSD toast. %1$s = shader preset name. -->
-    <string name="osd_shader">Шейдер: %1$s</string>
     <!-- OSD toast. %1$s = mode/item name. -->
     <string name="osd_switched_to">Перемкнено на %1$s</string>
     <!-- OSD toast. %1$s = game name (setting saved per-game). -->
@@ -569,7 +563,6 @@
     <string name="osd_saved_for_game">Збережено для цієї гри</string>
     <!-- OSD toast. %1$s = controller name, %2$s = player slot. -->
     <string name="osd_controller_connected_named">%1$s підключено до %2$s</string>
-    <string name="osd_buttons_reset">Кнопки скинуто до типових</string>
     <!-- %1$d = disc number (multi-disc games). -->
     <string name="osd_disc_fallback">Диск %1$d</string>
     <string name="igm_quit">Вийти</string>
@@ -577,13 +570,8 @@
     <string name="title_cheats">Чит-коди</string>
     <string name="label_restore_session">ВІДНОВИТИ ОСТАННЮ СЕСІЮ</string>
     <!-- Scaling mode: use the size the emulator core reports. -->
-    <string name="scaling_core_reported">Визначено ядром</string>
-    <string name="scaling_integer">Ціле число</string>
     <!-- Scaling mode: integer scaling pushed beyond 1x to fill more of the screen. -->
-    <string name="scaling_integer_overscale">Ціле число з перевищенням</string>
     <!-- Scaling mode: fit the screen while keeping the aspect ratio. -->
-    <string name="scaling_aspect_screen">Співвідношення екрана</string>
-    <string name="scaling_fullscreen">На весь екран</string>
     <!-- Indicates a setting applies globally (all games). -->
     <string name="override_source_global">Глобально</string>
     <!-- Indicates a setting applies only to the current game. -->
@@ -615,30 +603,14 @@
     <!-- IGM screen titles -->
     <string name="igm_settings">Налаштування</string>
     <string name="igm_video">Відео</string>
-    <string name="igm_advanced">Додатково</string>
-    <string name="igm_shader_settings">Налаштування шейдера</string>
     <string name="igm_emulator">Емулятор</string>
     <string name="igm_save_changes">Зберегти зміни</string>
-    <string name="igm_input">Керування</string>
-    <string name="igm_button_mappings">Призначення кнопок</string>
-    <string name="igm_left_stick_dpad">Лівий стик як хрестовина</string>
-    <string name="igm_dpad_mode">Режим хрестовини (БЕТА)</string>
     <!-- D-Pad Mode value: 8 directions. -->
-    <string name="value_dpad_8way">8-напрямковий</string>
     <!-- D-Pad Mode value: 4 directions. -->
-    <string name="value_dpad_4way">4-напрямковий</string>
-    <string name="igm_save_and_quit">Зберегти і вийти</string>
     <string name="title_guide">Посібник</string>
     <string name="guide_zoom">МАСШТАБ</string>
     <!-- IGM info labels -->
-    <string name="info_core">Ядро</string>
-    <string name="info_rom">ROM</string>
     <!-- Info label: whether the ROM was extracted from an archive. -->
-    <string name="info_extracted">Розпаковано</string>
-    <string name="info_save">Збереження</string>
-    <string name="info_renderer">Рендерер</string>
-    <string name="info_game_id">ID гри</string>
-    <string name="info_ra_detection">Виявлення досягнень</string>
     <!-- IGM dialogs -->
     <!-- %1$s = save slot name. -->
     <string name="igm_delete_slot">Видалити %1$s?</string>

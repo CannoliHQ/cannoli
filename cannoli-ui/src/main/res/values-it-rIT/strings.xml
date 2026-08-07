@@ -40,21 +40,17 @@
     <string name="label_rename">RINOMINA</string>
     <string name="label_set">SET</string>
     <string name="label_clear">CLEAR</string>
-    <string name="label_press">STAMPA</string>
     <!-- Bottom-bar button; opens Nonna's Kitchen. -->
     <string name="label_kitchen">CUCINA</string>
     <string name="label_hold_buttons" tools:ignore="TypographyEllipsis">HOLD ONE O MORE BUTTONS...</string>
-    <string name="label_info">INFO</string>
     <!-- Bottom-bar button. RA = RetroAchievements. -->
     <string name="label_ra_settings">IMPOSTAZIONI RA</string>
     <string name="label_details">DETTAGLI</string>
     <string name="label_all">TUTTI</string>
     <string name="label_unlocked">SBLOCCATO</string>
     <string name="label_locked">BLOCCATO</string>
-    <string name="label_reset_all">RIPRISTINA TUTTO</string>
     <string name="label_remap">REMAP</string>
     <string name="label_unmap">UNMAP</string>
-    <string name="label_swap">SWAP</string>
     <string name="label_grant">AIUTO</string>
     <!-- In-game menu action: reassign connected controllers to player slots. -->
     <string name="igm_reassign_players">Riassegna Giocatori</string>
@@ -553,9 +549,7 @@
     <string name="osd_state_deleted">Eliminato %1$s</string>
     <string name="osd_reset">Reset</string>
     <!-- OSD toast. %1$s = scaling mode name. -->
-    <string name="osd_scaling">Scala: %1$s</string>
     <!-- OSD toast. %1$s = shader preset name. -->
-    <string name="osd_shader">Shader: %1$s</string>
     <!-- OSD toast. %1$s = mode/item name. -->
     <string name="osd_switched_to">Passato a %1$s</string>
     <!-- OSD toast. %1$s = game name (setting saved per-game). -->
@@ -563,7 +557,6 @@
     <string name="osd_saved_for_game">Salvato per questa partita</string>
     <!-- OSD toast. %1$s = controller name, %2$s = player slot. -->
     <string name="osd_controller_connected_named">%1$s connesso a %2$s</string>
-    <string name="osd_buttons_reset">Pulsanti Ripristina Predefiniti</string>
     <!-- %1$d = disc number (multi-disc games). -->
     <string name="osd_disc_fallback">%1$d Disco</string>
     <string name="igm_quit">Esci</string>
@@ -571,13 +564,8 @@
     <string name="title_cheats">Trucchi</string>
     <string name="label_restore_session">RIPRISTINA LA SESSIONE ULTIMA</string>
     <!-- Scaling mode: use the size the emulator core reports. -->
-    <string name="scaling_core_reported">Core Reported</string>
-    <string name="scaling_integer">Intero</string>
     <!-- Scaling mode: integer scaling pushed beyond 1x to fill more of the screen. -->
-    <string name="scaling_integer_overscale">Integer Overscale</string>
     <!-- Scaling mode: fit the screen while keeping the aspect ratio. -->
-    <string name="scaling_aspect_screen">Schermo Aspetto</string>
-    <string name="scaling_fullscreen">Schermo</string>
     <!-- Indicates a setting applies globally (all games). -->
     <string name="override_source_global">Globale</string>
     <!-- Indicates a setting applies only to the current game. -->
@@ -609,30 +597,14 @@
     <!-- IGM screen titles -->
     <string name="igm_settings">Impostazioni</string>
     <string name="igm_video">Video</string>
-    <string name="igm_advanced">Avanzate</string>
-    <string name="igm_shader_settings">Impostazioni Shader</string>
     <string name="igm_emulator">Emulatore</string>
     <string name="igm_save_changes">Salva Modifiche</string>
-    <string name="igm_input">Input</string>
-    <string name="igm_button_mappings">Mappature Pulsanti</string>
-    <string name="igm_left_stick_dpad">Bastone sinistro come D-Pad</string>
-    <string name="igm_dpad_mode">Modalità D-Pad (BETA)</string>
     <!-- D-Pad Mode value: 8 directions. -->
-    <string name="value_dpad_8way">8-Modo</string>
     <!-- D-Pad Mode value: 4 directions. -->
-    <string name="value_dpad_4way">4-Modo</string>
-    <string name="igm_save_and_quit">Salva ed esci</string>
     <string name="title_guide">Guida</string>
     <string name="guide_zoom">ZOOM</string>
     <!-- IGM info labels -->
-    <string name="info_core">Core</string>
-    <string name="info_rom">ROM</string>
     <!-- Info label: whether the ROM was extracted from an archive. -->
-    <string name="info_extracted">Estratto</string>
-    <string name="info_save">Salva</string>
-    <string name="info_renderer">Renderer</string>
-    <string name="info_game_id">Id Partita</string>
-    <string name="info_ra_detection">Rilevamento Risultati</string>
     <!-- IGM dialogs -->
     <!-- %1$s = save slot name. -->
     <string name="igm_delete_slot">Eliminare %1$s?</string>

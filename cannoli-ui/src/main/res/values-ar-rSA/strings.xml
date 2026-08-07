@@ -38,19 +38,15 @@
     <string name="label_rename">RENAME</string>
     <string name="label_set">SET</string>
     <string name="label_clear">CLEAR</string>
-    <string name="label_press">PRESS</string>
     <string name="label_kitchen">KITCHEN</string>
     <string name="label_hold_buttons" tools:ignore="TypographyEllipsis">HOLD ONE OR MORE BUTTONS...</string>
-    <string name="label_info">INFO</string>
     <string name="label_ra_settings">RA SETTINGS</string>
     <string name="label_details">DETAILS</string>
     <string name="label_all">ALL</string>
     <string name="label_unlocked">UNLOCKED</string>
     <string name="label_locked">LOCKED</string>
-    <string name="label_reset_all">RESET ALL</string>
     <string name="label_remap">REMAP</string>
     <string name="label_unmap">UNMAP</string>
-    <string name="label_swap">SWAP</string>
     <string name="label_grant">GRANT</string>
     <string name="igm_reassign_players">Reassign Players</string>
     <!-- In-game shortcut actions -->
@@ -463,23 +459,15 @@
     <string name="osd_state_loaded">Loaded %1$s</string>
     <string name="osd_state_deleted">Deleted %1$s</string>
     <string name="osd_reset">Reset</string>
-    <string name="osd_scaling">Scaling: %1$s</string>
-    <string name="osd_shader">Shader: %1$s</string>
     <string name="osd_switched_to">Switched to %1$s</string>
     <string name="osd_saved_for">Saved for %1$s</string>
     <string name="osd_saved_for_game">Saved for this game</string>
     <string name="osd_controller_connected_named">%1$s connected to %2$s</string>
-    <string name="osd_buttons_reset">Buttons Reset To Default</string>
     <string name="osd_disc_fallback">Disc %1$d</string>
     <string name="igm_quit">Quit</string>
     <string name="igm_cheats">Cheats</string>
     <string name="title_cheats">Cheats</string>
     <string name="label_restore_session">RESTORE LAST SESSION</string>
-    <string name="scaling_core_reported">Core Reported</string>
-    <string name="scaling_integer">Integer</string>
-    <string name="scaling_integer_overscale">Integer Overscale</string>
-    <string name="scaling_aspect_screen">Aspect Screen</string>
-    <string name="scaling_fullscreen">Fullscreen</string>
     <string name="override_source_global">Global</string>
     <string name="override_source_game">This Game</string>
     <string name="device_controller">Controller</string>
@@ -505,27 +493,11 @@
     <!-- IGM screen titles -->
     <string name="igm_settings">Settings</string>
     <string name="igm_video">Video</string>
-    <string name="igm_advanced">Advanced</string>
-    <string name="igm_shader_settings">Shader Settings</string>
     <string name="igm_emulator">Emulator</string>
     <string name="igm_save_changes">Save Changes</string>
-    <string name="igm_input">Input</string>
-    <string name="igm_button_mappings">Button Mappings</string>
-    <string name="igm_left_stick_dpad">Left Stick as D-Pad</string>
-    <string name="igm_dpad_mode">D-Pad Mode (BETA)</string>
-    <string name="value_dpad_8way">8-Way</string>
-    <string name="value_dpad_4way">4-Way</string>
-    <string name="igm_save_and_quit">Save and Quit</string>
     <string name="title_guide">Guide</string>
     <string name="guide_zoom">ZOOM</string>
     <!-- IGM info labels -->
-    <string name="info_core">Core</string>
-    <string name="info_rom">ROM</string>
-    <string name="info_extracted">Extracted</string>
-    <string name="info_save">Save</string>
-    <string name="info_renderer">Renderer</string>
-    <string name="info_game_id">Game ID</string>
-    <string name="info_ra_detection">Achievement Detection</string>
     <!-- IGM dialogs -->
     <string name="igm_delete_slot">Delete %1$s?</string>
     <string name="press_button_prompt" tools:ignore="TypographyEllipsis">Press any button...</string>

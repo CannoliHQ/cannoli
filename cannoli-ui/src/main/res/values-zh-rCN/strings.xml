@@ -40,21 +40,17 @@
     <string name="label_rename">重命名</string>
     <string name="label_set">设置</string>
     <string name="label_clear">清除</string>
-    <string name="label_press">按下</string>
     <!-- Bottom-bar button; opens Nonna's Kitchen. -->
     <string name="label_kitchen">厨房</string>
     <string name="label_hold_buttons" tools:ignore="TypographyEllipsis">按住一个或多个按键…</string>
-    <string name="label_info">信息</string>
     <!-- Bottom-bar button. RA = RetroAchievements. -->
     <string name="label_ra_settings">复古成就设定</string>
     <string name="label_details">详情</string>
     <string name="label_all">全部</string>
     <string name="label_unlocked">已解锁</string>
     <string name="label_locked">锁定的</string>
-    <string name="label_reset_all">重置全部</string>
     <string name="label_remap">重映射</string>
     <string name="label_unmap">取消映射</string>
-    <string name="label_swap">切换</string>
     <string name="label_grant">授权</string>
     <!-- In-game menu action: reassign connected controllers to player slots. -->
     <string name="igm_reassign_players">重新指定玩家</string>
@@ -552,9 +548,7 @@
     <string name="osd_state_deleted">已删除 %1$s</string>
     <string name="osd_reset">重置</string>
     <!-- OSD toast. %1$s = scaling mode name. -->
-    <string name="osd_scaling">缩放： %1$s</string>
     <!-- OSD toast. %1$s = shader preset name. -->
-    <string name="osd_shader">着色器：%1$s</string>
     <!-- OSD toast. %1$s = mode/item name. -->
     <string name="osd_switched_to">切换到 %1$s</string>
     <!-- OSD toast. %1$s = game name (setting saved per-game). -->
@@ -562,7 +556,6 @@
     <string name="osd_saved_for_game">为这个游戏保存</string>
     <!-- OSD toast. %1$s = controller name, %2$s = player slot. -->
     <string name="osd_controller_connected_named">%1$s 已连接到 %2$s</string>
-    <string name="osd_buttons_reset">按钮重置为默认值</string>
     <!-- %1$d = disc number (multi-disc games). -->
     <string name="osd_disc_fallback">光盘 %1$d</string>
     <string name="igm_quit">退出</string>
@@ -570,13 +563,8 @@
     <string name="title_cheats">作弊码</string>
     <string name="label_restore_session">还原上一次会话</string>
     <!-- Scaling mode: use the size the emulator core reports. -->
-    <string name="scaling_core_reported">核心已报告</string>
-    <string name="scaling_integer">整数</string>
     <!-- Scaling mode: integer scaling pushed beyond 1x to fill more of the screen. -->
-    <string name="scaling_integer_overscale">整数过缩放</string>
     <!-- Scaling mode: fit the screen while keeping the aspect ratio. -->
-    <string name="scaling_aspect_screen">屏幕比例</string>
-    <string name="scaling_fullscreen">全屏</string>
     <!-- Indicates a setting applies globally (all games). -->
     <string name="override_source_global">全局</string>
     <!-- Indicates a setting applies only to the current game. -->
@@ -608,30 +596,14 @@
     <!-- IGM screen titles -->
     <string name="igm_settings">设置</string>
     <string name="igm_video">视频</string>
-    <string name="igm_advanced">高级</string>
-    <string name="igm_shader_settings">着色器设置</string>
     <string name="igm_emulator">模拟器</string>
     <string name="igm_save_changes">保存更改</string>
-    <string name="igm_input">输入</string>
-    <string name="igm_button_mappings">按键映射</string>
-    <string name="igm_left_stick_dpad">左摇杆作为方向键</string>
-    <string name="igm_dpad_mode">方向键模式 (BETA)</string>
     <!-- D-Pad Mode value: 8 directions. -->
-    <string name="value_dpad_8way">8向</string>
     <!-- D-Pad Mode value: 4 directions. -->
-    <string name="value_dpad_4way">4向</string>
-    <string name="igm_save_and_quit">保存并退出</string>
     <string name="title_guide">指南</string>
     <string name="guide_zoom">缩放</string>
     <!-- IGM info labels -->
-    <string name="info_core">核心</string>
-    <string name="info_rom">ROM</string>
     <!-- Info label: whether the ROM was extracted from an archive. -->
-    <string name="info_extracted">已解压</string>
-    <string name="info_save">保存</string>
-    <string name="info_renderer">渲染器</string>
-    <string name="info_game_id">游戏ID</string>
-    <string name="info_ra_detection">成就检测</string>
     <!-- IGM dialogs -->
     <!-- %1$s = save slot name. -->
     <string name="igm_delete_slot">删除 %1$s 吗？</string>

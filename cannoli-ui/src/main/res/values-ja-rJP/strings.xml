@@ -40,21 +40,17 @@
     <string name="label_rename">名前の変更</string>
     <string name="label_set">設定</string>
     <string name="label_clear">消去</string>
-    <string name="label_press">プレス</string>
     <!-- Bottom-bar button; opens Nonna's Kitchen. -->
     <string name="label_kitchen">シチリア</string>
     <string name="label_hold_buttons" tools:ignore="TypographyEllipsis">1つまたは複数のボタンを長押ししてください...</string>
-    <string name="label_info">情報</string>
     <!-- Bottom-bar button. RA = RetroAchievements. -->
     <string name="label_ra_settings">RAの設定</string>
     <string name="label_details">詳細</string>
     <string name="label_all">すべて</string>
     <string name="label_unlocked">アンロックしました</string>
     <string name="label_locked">ロック済み</string>
-    <string name="label_reset_all">すべてリセット</string>
     <string name="label_remap">REMAP</string>
     <string name="label_unmap">UNMAP</string>
-    <string name="label_swap">SWAP</string>
     <string name="label_grant">Grant</string>
     <!-- In-game menu action: reassign connected controllers to player slots. -->
     <string name="igm_reassign_players">プレイヤーを再割り当て</string>
@@ -548,9 +544,7 @@
     <string name="osd_state_deleted">%1$sを削除しました</string>
     <string name="osd_reset">Reset</string>
     <!-- OSD toast. %1$s = scaling mode name. -->
-    <string name="osd_scaling">拡大縮小: %1$s</string>
     <!-- OSD toast. %1$s = shader preset name. -->
-    <string name="osd_shader">シェーダー: %1$s</string>
     <!-- OSD toast. %1$s = mode/item name. -->
     <string name="osd_switched_to">%1$sに切り替えました</string>
     <!-- OSD toast. %1$s = game name (setting saved per-game). -->
@@ -558,7 +552,6 @@
     <string name="osd_saved_for_game">このゲームに保存しました</string>
     <!-- OSD toast. %1$s = controller name, %2$s = player slot. -->
     <string name="osd_controller_connected_named">%1$s は %2$s に接続されました</string>
-    <string name="osd_buttons_reset">ボタンをデフォルトにリセット</string>
     <!-- %1$d = disc number (multi-disc games). -->
     <string name="osd_disc_fallback">ディスク %1$d</string>
     <string name="igm_quit">終了</string>
@@ -566,13 +559,8 @@
     <string name="title_cheats">チート</string>
     <string name="label_restore_session">最後のセッションを復元</string>
     <!-- Scaling mode: use the size the emulator core reports. -->
-    <string name="scaling_core_reported">コアが報告されました</string>
-    <string name="scaling_integer">整数</string>
     <!-- Scaling mode: integer scaling pushed beyond 1x to fill more of the screen. -->
-    <string name="scaling_integer_overscale">Integer Overscale</string>
     <!-- Scaling mode: fit the screen while keeping the aspect ratio. -->
-    <string name="scaling_aspect_screen">アスペクト画面</string>
-    <string name="scaling_fullscreen">全画面</string>
     <!-- Indicates a setting applies globally (all games). -->
     <string name="override_source_global">グローバル</string>
     <!-- Indicates a setting applies only to the current game. -->
@@ -604,30 +592,14 @@
     <!-- IGM screen titles -->
     <string name="igm_settings">設定</string>
     <string name="igm_video">ビデオ</string>
-    <string name="igm_advanced">高度な設定</string>
-    <string name="igm_shader_settings">シェーダーの設定</string>
     <string name="igm_emulator">エミュレーター</string>
     <string name="igm_save_changes">変更を保存</string>
-    <string name="igm_input">Input</string>
-    <string name="igm_button_mappings">ボタンのマッピング</string>
-    <string name="igm_left_stick_dpad">方向パッドとして左スティック</string>
-    <string name="igm_dpad_mode">方向パッドモード（ベータ版）</string>
     <!-- D-Pad Mode value: 8 directions. -->
-    <string name="value_dpad_8way">8-way</string>
     <!-- D-Pad Mode value: 4 directions. -->
-    <string name="value_dpad_4way">4-way</string>
-    <string name="igm_save_and_quit">保存して終了</string>
     <string name="title_guide">ガイド</string>
     <string name="guide_zoom">ズーム</string>
     <!-- IGM info labels -->
-    <string name="info_core">コア</string>
-    <string name="info_rom">ROM</string>
     <!-- Info label: whether the ROM was extracted from an archive. -->
-    <string name="info_extracted">抽出済み</string>
-    <string name="info_save">保存</string>
-    <string name="info_renderer">レンダラー</string>
-    <string name="info_game_id">ゲームID</string>
-    <string name="info_ra_detection">実績検出</string>
     <!-- IGM dialogs -->
     <!-- %1$s = save slot name. -->
     <string name="igm_delete_slot">%1$s を削除しますか？</string>
