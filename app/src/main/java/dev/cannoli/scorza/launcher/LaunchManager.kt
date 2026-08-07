@@ -48,6 +48,13 @@ class LaunchManager(
     private fun overrideFor(rom: Rom): dev.cannoli.scorza.config.EmulatorChoice? =
         gameOverrides?.get(rom.id)
 
+    private fun cheevosFor(rom: Rom): Map<String, String> = cheevosOverrides(
+        username = settings.raUsername,
+        token = settings.raToken,
+        hardcore = settings.raHardcore,
+        forceSoftcore = rom.forceSoftcore,
+    )
+
     private var raConfigPath: String? = null
 
     init {
@@ -95,6 +102,8 @@ class LaunchManager(
         val biosDir = paths.biosFor(rom.platformTag)
         biosDir.mkdirs()
         val raSlot = if (slot > 0) slot - 1 else 0
+        val cheevos = cheevosFor(rom)
+        val hardcore = hardcoreInEffect(cheevos)
         val gameOverrides = buildMap {
             put("system_directory", biosDir.absolutePath)
             put("savestate_directory", stateDir.absolutePath)
@@ -109,18 +118,12 @@ class LaunchManager(
             put("sort_savefiles_enable", "false")
             put("sort_savefiles_by_content_enable", "false")
             put("state_slot", raSlot.toString())
-            // RetroArch's own auto-save is how ricotta saves on quit; the built-in runner does the
-            // equivalent explicitly in LibretroActivity. Both write the Auto slot, so both gate on
-            // the same setting. This lives here, not in the base config, because the base is
-            // hash-gated and would not pick up a toggle until CONFIG_VERSION moved.
-            put("savestate_auto_save", if (settings.alwaysSaveOnQuit) "true" else "false")
             // Also in the base config, and repeated here for the same reason: an install made
             // before this existed already has a base config and will never be handed a new one.
             put("savestate_thumbnail_enable", "true")
             put("joypad_autoconfig_dir", paths.configInputAutoconfig.absolutePath)
-            if (resume) {
-                put("savestate_auto_load", "true")
-            }
+            putAll(cheevos)
+            putAll(autoStateOverrides(hardcore, resume, settings.alwaysSaveOnQuit))
         }
         val patched = applyOverrides(baseConfig, gameOverrides)
         val launchConfig = paths.raLaunchCfg
@@ -193,6 +196,11 @@ class LaunchManager(
         val result = mutableSetOf<String>()
         for (rom in roms) {
             if (!hasSaveState(rom)) continue
+            // Under hardcore RetroArch refuses to load a state at all, so resume is offering
+            // something it cannot deliver. Hiding it here covers every affordance at once:
+            // nav.resumableGames is the only thing the legend, the North action, the swapped
+            // confirm and the hold-to-pick-a-slot gesture consult.
+            if (hardcoreInEffect(cheevosFor(rom))) continue
             // Slots are a Cannoli and libretro concept. A standalone app manages its own saves,
             // so offering Resume for one promises something no external emulator can honour. A
             // separately installed RetroArch manages its own states the same way.
@@ -533,6 +541,50 @@ class LaunchManager(
 
     companion object {
         private const val CONFIG_VERSION = 7
+
+        // Hardcore is always stated because RetroArch defaults it to true, so enabling cheevos
+        // without it would put every player into hardcore.
+        fun cheevosOverrides(
+            username: String,
+            token: String,
+            hardcore: Boolean,
+            forceSoftcore: Boolean,
+        ): Map<String, String> {
+            if (username.isEmpty() || token.isEmpty()) return emptyMap()
+            return mapOf(
+                "cheevos_enable" to "true",
+                "cheevos_username" to username,
+                "cheevos_token" to token,
+                "cheevos_hardcore_mode_enable" to (hardcore && !forceSoftcore).toString(),
+                "cheevos_verbose_enable" to "true",
+                "cheevos_badges_enable" to "false",
+            )
+        }
+
+        // Read from the emission rather than the settings so the launch config, the resume
+        // affordance and the IGM's save state rows can never disagree.
+        fun hardcoreInEffect(cheevos: Map<String, String>): Boolean =
+            cheevos["cheevos_hardcore_mode_enable"] == "true"
+
+        /**
+         * The auto-slot keys for one launch. They live here rather than in the base config,
+         * which is hash-gated and would not pick up a toggle until CONFIG_VERSION moved.
+         *
+         * Hardcore writes neither: the auto slot's only consumer is resume, which is hidden
+         * under hardcore. config.def.h defaults both to false, so an absent key is off and
+         * bridge.savesOnQuit reads back false, skipping the IGM's auto-slot rotation too.
+         */
+        fun autoStateOverrides(
+            hardcore: Boolean,
+            resume: Boolean,
+            alwaysSaveOnQuit: Boolean,
+        ): Map<String, String> {
+            if (hardcore) return emptyMap()
+            return buildMap {
+                put("savestate_auto_save", if (alwaysSaveOnQuit) "true" else "false")
+                if (resume) put("savestate_auto_load", "true")
+            }
+        }
 
         // Null means no stored preference anywhere, so the caller falls through to its embedded
         // core probe and then RetroArch, which is what the pre-identity code did implicitly.

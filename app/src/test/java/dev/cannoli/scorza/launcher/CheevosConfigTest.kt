@@ -1,0 +1,93 @@
+package dev.cannoli.scorza.launcher
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+/**
+ * RetroArch defaults cheevos_hardcore_mode_enable to true, so enabling cheevos without stating
+ * hardcore silently turns it on. Every enabled emission pins it.
+ */
+class CheevosConfigTest {
+
+    private fun keys(
+        username: String = "bob",
+        token: String = "abc123",
+        hardcore: Boolean = false,
+        forceSoftcore: Boolean = false,
+    ) = LaunchManager.cheevosOverrides(username, token, hardcore, forceSoftcore)
+
+    @Test fun `a logged in account emits the account keys`() {
+        val k = keys()
+        assertEquals("true", k["cheevos_enable"])
+        assertEquals("bob", k["cheevos_username"])
+        assertEquals("abc123", k["cheevos_token"])
+        assertEquals("true", k["cheevos_verbose_enable"])
+        assertEquals("false", k["cheevos_badges_enable"])
+    }
+
+    @Test fun `the password is never emitted`() {
+        assertNull(keys()["cheevos_password"])
+    }
+
+    @Test fun `hardcore is always stated`() {
+        assertEquals("false", keys(hardcore = false)["cheevos_hardcore_mode_enable"])
+        assertEquals("true", keys(hardcore = true)["cheevos_hardcore_mode_enable"])
+    }
+
+    @Test fun `a per game force softcore beats the global toggle`() {
+        assertEquals("false", keys(hardcore = true, forceSoftcore = true)["cheevos_hardcore_mode_enable"])
+    }
+
+    @Test fun `hardcore is in effect only when the emission turns it on`() {
+        assertTrue(LaunchManager.hardcoreInEffect(keys(hardcore = true)))
+        assertFalse(LaunchManager.hardcoreInEffect(keys(hardcore = false)))
+    }
+
+    @Test fun `a force softcore game keeps its save states`() {
+        assertFalse(LaunchManager.hardcoreInEffect(keys(hardcore = true, forceSoftcore = true)))
+    }
+
+    @Test fun `a logged out player keeps save states whatever the toggle says`() {
+        assertFalse(LaunchManager.hardcoreInEffect(keys(token = "", hardcore = true)))
+        assertFalse(LaunchManager.hardcoreInEffect(keys(username = "", hardcore = true)))
+    }
+
+    @Test fun `hardcore writes neither auto state key`() {
+        assertTrue(
+            LaunchManager.autoStateOverrides(hardcore = true, resume = true, alwaysSaveOnQuit = true).isEmpty()
+        )
+    }
+
+    @Test fun `a force softcore game still writes both auto state keys`() {
+        val k = LaunchManager.autoStateOverrides(
+            hardcore = LaunchManager.hardcoreInEffect(keys(hardcore = true, forceSoftcore = true)),
+            resume = true,
+            alwaysSaveOnQuit = true,
+        )
+        assertEquals("true", k["savestate_auto_save"])
+        assertEquals("true", k["savestate_auto_load"])
+    }
+
+    @Test fun `outside hardcore the auto save still follows always save on quit`() {
+        val off = LaunchManager.autoStateOverrides(hardcore = false, resume = false, alwaysSaveOnQuit = false)
+        assertEquals("false", off["savestate_auto_save"])
+        assertNull(off["savestate_auto_load"])
+    }
+
+    @Test fun `no token means no cheevos keys at all`() {
+        assertTrue(keys(token = "").isEmpty())
+        assertTrue(keys(username = "").isEmpty())
+    }
+
+    @Test fun `force softcore alone does not enable cheevos`() {
+        assertTrue(keys(token = "", forceSoftcore = true).isEmpty())
+    }
+
+    @Test fun `hardcore is off unless the emission says otherwise`() {
+        assertFalse(keys().containsValue("cheevos_password"))
+        assertEquals("false", keys()["cheevos_hardcore_mode_enable"])
+    }
+}
