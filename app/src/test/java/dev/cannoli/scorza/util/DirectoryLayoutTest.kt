@@ -91,6 +91,17 @@ class DirectoryLayoutTest {
         assertFalse(File(rom, "SNES").exists())
     }
 
+    @Test fun ensure_does_not_recreate_the_legacy_mappings_dir() {
+        val root = tmp.newFolder("cannoli")
+        val rom = tmp.newFolder("Roms")
+        val assets = androidx.test.core.app.ApplicationProvider
+            .getApplicationContext<android.content.Context>().assets
+        val config = dev.cannoli.scorza.config.PlatformConfig({ root }, assets)
+        DirectoryLayout.ensure(root, rom, assets, config)
+
+        assertFalse(File(root, "Config/Input/Mappings").exists())
+    }
+
     @Test fun ensure_creates_tools_and_ports_art_dirs() {
         val root = tmp.newFolder("cannoli")
         val rom = tmp.newFolder("Roms")

@@ -25,7 +25,6 @@ object DirectoryLayout {
             paths.configOverridesCores,
             paths.configOverridesSystems,
             paths.configOverridesGames,
-            paths.configInputMappings,
             paths.backupDir,
             paths.guidesDir,
             paths.cheatsDir,
