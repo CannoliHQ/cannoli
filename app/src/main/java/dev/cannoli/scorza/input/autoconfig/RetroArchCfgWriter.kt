@@ -54,6 +54,7 @@ object RetroArchCfgWriter {
             // bindings too (l3_btn alongside the l_x/l_y stick keys), and each axis writes its
             // own separate key.
             var digitalWritten = false
+            val axisKeysWritten = mutableSetOf<String>()
             for (binding in effective) {
                 when (binding) {
                     is InputBinding.Button -> if (!digitalWritten) {
@@ -66,7 +67,12 @@ object RetroArchCfgWriter {
                     }
                     is InputBinding.Axis -> {
                         val key = axisKeyFor(canonical, binding)
-                        if (key != null) {
+                        // A pad reporting the same logical trigger on two axes (LTRIGGER and
+                        // BRAKE, say) captures two bindings on one canonical. RA holds one value
+                        // per key, so only the first binding that resolves to a given key claims
+                        // it; a stick's plus and minus bindings resolve to distinct keys and both
+                        // still write.
+                        if (key != null && axisKeysWritten.add(key)) {
                             val sign = if (binding.activeMax >= 0f) "+" else "-"
                             line("input_$key", "$sign${binding.axis}")
                         }

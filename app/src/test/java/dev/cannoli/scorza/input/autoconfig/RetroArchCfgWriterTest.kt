@@ -171,6 +171,36 @@ class RetroArchCfgWriterTest {
     }
 
     @Test
+    fun `two digital button axis bindings on one canonical emit only the first axis line`() {
+        val mapping = sampleMapping()
+        val cfg = RetroArchCfgWriter.write(
+            mapping.copy(
+                bindings = mapping.bindings + (
+                    CanonicalButton.BTN_L2 to listOf(
+                        InputBinding.Axis(
+                            axis = 17, restingValue = -1f, activeMin = 0f, activeMax = 1f,
+                            digitalThreshold = 0.5f, analogRole = AnalogRole.DIGITAL_BUTTON,
+                        ),
+                        InputBinding.Axis(
+                            axis = 23, restingValue = 0f, activeMin = 0f, activeMax = 1f,
+                            digitalThreshold = 0.5f, analogRole = AnalogRole.DIGITAL_BUTTON,
+                        ),
+                    )
+                )
+            )
+        )
+        val lines = cfg.lineSequence().filter { it.startsWith("input_l2_axis") }.toList()
+        assertEquals(listOf("input_l2_axis = \"+17\""), lines)
+    }
+
+    @Test
+    fun `stick plus and minus axis bindings on one canonical both still emit`() {
+        val cfg = RetroArchCfgWriter.write(sampleMapping())
+        assertTrue(cfg.contains("input_l_x_plus_axis = \"+0\""))
+        assertTrue(cfg.contains("input_l_x_minus_axis = \"-0\""))
+    }
+
+    @Test
     fun `round trips through the importer`() {
         val original = sampleMapping()
         val cfg = RetroArchCfgWriter.write(original)
