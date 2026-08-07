@@ -13,6 +13,7 @@ data class Rom(
     val raGameId: Int? = null,
     val lastPlayedAt: Long? = null,
     val raCachedGameId: Int? = null,
+    val forceSoftcore: Boolean = false,
 ) {
     val isMultiDisc: Boolean
         get() = path.extension.equals("m3u", ignoreCase = true)

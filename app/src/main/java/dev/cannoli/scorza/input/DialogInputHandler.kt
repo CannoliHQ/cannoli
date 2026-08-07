@@ -227,7 +227,7 @@ class DialogInputHandler @Inject constructor(
     private var pendingContextReturn: ContextReturn? = null
     var openGuides: ((dev.cannoli.scorza.model.Rom) -> Unit)? = null
 
-    private val gameContextOptions = listOf(MENU_MANAGE_COLLECTIONS, MENU_EMULATOR_OVERRIDE, MENU_RA_GAME_ID, MENU_RENAME, MENU_DELETE_GAME)
+    private val gameContextOptions = listOf(MENU_MANAGE_COLLECTIONS, MENU_EMULATOR_OVERRIDE, MENU_RA_GAME_ID, MENU_FORCE_SOFTCORE, MENU_RENAME, MENU_DELETE_GAME)
 
     override fun onUp(): Boolean {
         val ds = nav.dialogState.value
@@ -1508,6 +1508,15 @@ class DialogInputHandler @Inject constructor(
                     )
                 }
             }
+            selected == MENU_FORCE_SOFTCORE || selected.startsWith("$MENU_FORCE_SOFTCORE\t") -> {
+                if (rom != null) {
+                    val next = !rom.forceSoftcore
+                    ioScope.launch {
+                        romsRepository.setForceSoftcore(rom.id, next)
+                        gameListViewModel.reload { restoreContextMenu() }
+                    }
+                }
+            }
             selected == MENU_PRELOAD_ACHIEVEMENTS || selected.startsWith("$MENU_PRELOAD_ACHIEVEMENTS\t") -> {
                 if (rom != null) {
                     raPreloadController.preloadRom(rom)
@@ -1880,6 +1889,11 @@ class DialogInputHandler @Inject constructor(
                             "$MENU_EMULATOR_OVERRIDE\t$desc"
                         }
                         menuItem == MENU_RA_GAME_ID -> "$MENU_RA_GAME_ID\t${rom?.raGameId?.toString() ?: "Autodetect"}"
+                        menuItem == MENU_FORCE_SOFTCORE -> {
+                            val value = if (rom?.forceSoftcore == true) dev.cannoli.ui.R.string.value_on
+                            else dev.cannoli.ui.R.string.value_off
+                            "$MENU_FORCE_SOFTCORE\t${context.getString(value)}"
+                        }
                         else -> menuItem
                     }
                 })

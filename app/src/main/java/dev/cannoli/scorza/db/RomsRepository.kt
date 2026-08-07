@@ -54,6 +54,11 @@ class RomsRepository(
         }
     }
 
+    fun setForceSoftcore(romId: Long, forceSoftcore: Boolean) = db.execute(
+        "UPDATE roms SET force_softcore = ? WHERE id = ?",
+        if (forceSoftcore) 1L else 0L, romId,
+    )
+
     fun updateRomPath(romId: Long, newRelativePath: String) = db.execute(
         "UPDATE roms SET path = ? WHERE id = ?",
         newRelativePath, romId,
@@ -182,6 +187,7 @@ class RomsRepository(
             raGameId = if (stmt.isNull(5)) null else stmt.getLong(5).toInt(),
             lastPlayedAt = if (stmt.isNull(6)) null else stmt.getLong(6),
             raCachedGameId = if (stmt.isNull(7)) null else stmt.getLong(7).toInt(),
+            forceSoftcore = !stmt.isNull(8) && stmt.getLong(8) != 0L,
         )
     }
 
@@ -198,6 +204,6 @@ class RomsRepository(
     }
 
     private companion object {
-        const val BASE_SELECT = "SELECT id, path, platform_tag, display_name, tags, ra_game_id, last_played_at, ra_cached_game_id FROM roms"
+        const val BASE_SELECT = "SELECT id, path, platform_tag, display_name, tags, ra_game_id, last_played_at, ra_cached_game_id, force_softcore FROM roms"
     }
 }
