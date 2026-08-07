@@ -120,6 +120,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var saveSyncStatusHolder: dev.cannoli.scorza.romm.sync.SaveSyncStatusHolder
     @Inject lateinit var cannoliPathsProvider: dev.cannoli.scorza.di.CannoliPathsProvider
     @field:dev.cannoli.scorza.di.IoScope @Inject lateinit var ioScope: kotlinx.coroutines.CoroutineScope
+    @Inject lateinit var raLoginController: dev.cannoli.scorza.achievements.RaLoginController
 
     private val isTv: Boolean by lazy { dev.cannoli.scorza.util.DeviceType.isTv(this) }
 
@@ -701,10 +702,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     }
 
     override fun startRaLogin(username: String, password: String) {
-        // Login runs through rcheevos, which lived in the internal runner. The account UI is kept
-        // intact for the port onto RetroArch's own rcheevos; until then there is nothing to log in
-        // to. See reference/retroachievements/.
-        nav.dialogState.value = DialogState.RALoggingIn(message = getString(R.string.ra_login_unavailable))
+        raLoginController.login(username, password)
     }
 
     override fun startRommPairing(host: String) {

@@ -109,8 +109,13 @@ sealed interface DialogState {
     data class Kitchen(val urls: List<String>, override val selectedIndex: Int = 0, val pin: String, val requirePin: Boolean = true, val fromQuickMenu: Boolean = false) : ListDialog {
         override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
     }
-    data class RAAccount(val username: String, val score: Int = 0) : DialogState
-    data class RALoggingIn(val message: String = "Logging in$ELLIPSIS") : DialogState
+    data class RAAccount(
+        val username: String,
+        val score: Int = 0,
+        val tokenValid: Boolean? = null,
+        val hardcore: Boolean = false,
+    ) : DialogState
+    data class RALoggingIn(val message: String = "Logging in$ELLIPSIS", val failed: Boolean = false) : DialogState
     data class RAPreloadProgress(val gameName: String) : DialogState
     data class RAPreloadResult(val success: Boolean, val message: String) : DialogState
     data class RommPairing(

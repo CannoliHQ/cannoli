@@ -1096,6 +1096,12 @@ class DialogInputHandler @Inject constructor(
             }
             is DialogState.RALoggingIn -> {
                 nav.dialogState.value = DialogState.None
+                if (ds.failed && settingsViewModel.state.value.activeCategory != "retroachievements") {
+                    settingsViewModel.enterSubCategory(
+                        "retroachievements",
+                        dev.cannoli.scorza.R.string.settings_retroachievements,
+                    )
+                }
             }
             is DialogState.RommConnected -> {
                 if (ds.fromSettingsMenu) backToRommSettings(dev.cannoli.scorza.ui.components.RommSettingsRow.SERVER_INFO)

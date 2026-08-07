@@ -613,7 +613,9 @@
     <!-- RA = RetroAchievements. -->
     <string name="ra_login_failed">RA: Login failed</string>
     <string name="ra_login_invalid">Invalid username or password</string>
-    <string name="ra_login_unavailable">Achievements are unavailable in this build</string>
+    <string name="ra_login_progress">Logging in…</string>
+    <string name="ra_login_network">Could not reach RetroAchievements. Check your connection.</string>
+    <string name="ra_login_missing_credentials">Enter a username and password first</string>
     <string name="ra_status_online">Online</string>
     <string name="ra_status_offline">Offline</string>
     <!-- %1$d = achievements awaiting sync. -->
