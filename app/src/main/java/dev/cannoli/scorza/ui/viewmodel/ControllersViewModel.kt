@@ -2,10 +2,14 @@ package dev.cannoli.scorza.ui.viewmodel
 
 import dagger.hilt.android.scopes.ActivityScoped
 import dev.cannoli.scorza.input.CanonicalButton
+import dev.cannoli.scorza.input.ConnectedDevice
 import dev.cannoli.scorza.input.DeviceMapping
 import dev.cannoli.scorza.input.GlyphStyle
-import dev.cannoli.scorza.input.repo.MappingRepository
+import dev.cannoli.scorza.input.autoconfig.AutoconfigRepository
+import dev.cannoli.scorza.input.autoconfig.RetroArchCfgEntry
+import dev.cannoli.scorza.input.hints.ControllerHintTable
 import dev.cannoli.scorza.input.resolver.MappingResolver
+import dev.cannoli.scorza.input.resolver.RetroArchAutoconfigImporter
 import dev.cannoli.scorza.input.runtime.ActiveMappingHolder
 import dev.cannoli.scorza.input.runtime.PortRouter
 import kotlinx.coroutines.CoroutineScope
@@ -31,10 +35,11 @@ data class ControllersUiState(
 
 @ActivityScoped
 class ControllersViewModel @Inject constructor(
-    private val repository: MappingRepository,
+    private val repository: AutoconfigRepository,
     private val portRouter: PortRouter,
     private val activeMappingHolder: ActiveMappingHolder,
     private val resolver: MappingResolver,
+    private val hints: ControllerHintTable,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val _state = MutableStateFlow(ControllersUiState())
@@ -60,11 +65,29 @@ class ControllersViewModel @Inject constructor(
             compareBy<ConnectedRow> { it.port ?: Int.MAX_VALUE }
                 .thenBy(String.CASE_INSENSITIVE_ORDER) { it.mapping.displayName }
         )
-        val saved = repository.list()
+        val saved = repository.listEntries()
+            .filter { it.cannoliUser }
+            .map { RetroArchAutoconfigImporter.import(it, syntheticDevice(it), hints) }
             .filter { it.id !in connectedIds }
             .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.displayName })
         _state.value = ControllersUiState(connected = sortedConnected, savedMappings = saved)
     }
+
+    // The importer fills a cfg's gaps from the device it was matched against, but a saved profile
+    // is listed precisely when its pad is absent, so the cfg has to stand in for its own device.
+    private fun syntheticDevice(entry: RetroArchCfgEntry): ConnectedDevice = ConnectedDevice(
+        androidDeviceId = -1,
+        descriptor = entry.descriptor.orEmpty(),
+        name = entry.deviceName,
+        vendorId = entry.vendorId ?: 0,
+        productId = entry.productId ?: 0,
+        androidBuildModel = entry.buildModel.orEmpty(),
+        sourceMask = entry.sourceMask ?: 0,
+        connectedAtMillis = 0L,
+    )
+
+    fun mappingById(id: String): DeviceMapping? =
+        repository.findById(id)?.let { RetroArchAutoconfigImporter.import(it, syntheticDevice(it), hints) }
 
     private fun refreshFromCurrentSnapshots() {
         recompute(portRouter.entrySnapshots.value)
@@ -103,7 +126,9 @@ class ControllersViewModel @Inject constructor(
         val connected = portRouter.snapshotEntries().firstOrNull { it.mapping.id == mapping.id }
         if (connected != null) {
             val fresh = resolver.resolve(connected.device)
-            portRouter.updateMapping(fresh, rebuildEvaluator = true)
+            // A mapping's id is the cfg it came from, so reset hands the pad a mapping under a
+            // different id than the one being replaced. Only the device-keyed swap can do that.
+            portRouter.replaceMapping(connected.androidDeviceId, fresh)
             if (activeMappingHolder.active.value?.id == mapping.id) {
                 activeMappingHolder.set(fresh)
             }

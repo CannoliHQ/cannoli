@@ -12,7 +12,7 @@ import dev.cannoli.scorza.input.MappingSource
 /**
  * Mapping for the development-only keyboard controller, used to drive the launcher and the IGM
  * from an Android Virtual Device where no gamepad is attached. Only ever built when
- * `ControllerBridge.devKeyboardEnabled` is set, and never persisted to the MappingRepository.
+ * `ControllerBridge.devKeyboardEnabled` is set, and never written to the autoconfig database.
  *
  * This is the whole "keyboard keys arrive as button presses" step: a DeviceMapping is already a
  * keycode-to-CanonicalButton table, so binding keyboard keycodes here routes them through the

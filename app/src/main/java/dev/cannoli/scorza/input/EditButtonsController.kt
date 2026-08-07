@@ -1,7 +1,7 @@
 package dev.cannoli.scorza.input
 
 import dagger.hilt.android.scopes.ActivityScoped
-import dev.cannoli.scorza.input.repo.MappingRepository
+import dev.cannoli.scorza.input.autoconfig.AutoconfigRepository
 import dev.cannoli.scorza.input.runtime.ActiveMappingHolder
 import dev.cannoli.scorza.input.runtime.PortRouter
 import javax.inject.Inject
@@ -9,7 +9,7 @@ import kotlin.math.abs
 
 @ActivityScoped
 class EditButtonsController @Inject constructor(
-    private val repository: MappingRepository,
+    private val repository: AutoconfigRepository,
     private val portRouter: PortRouter,
     private val activeMappingHolder: ActiveMappingHolder,
 ) {

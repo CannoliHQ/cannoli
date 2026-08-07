@@ -4,7 +4,7 @@ import dagger.hilt.android.scopes.ActivityScoped
 import dev.cannoli.scorza.input.EditButtonsController
 import dev.cannoli.scorza.input.ScreenInputHandler
 import dev.cannoli.scorza.input.CanonicalButton
-import dev.cannoli.scorza.input.repo.MappingRepository
+import dev.cannoli.scorza.input.autoconfig.AutoconfigRepository
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.ui.viewmodel.ControllersViewModel
@@ -20,7 +20,7 @@ private val PROTECTED_CANONICALS = setOf(
 class EditButtonsInputHandler @Inject constructor(
     private val nav: NavigationController,
     private val editButtonsController: EditButtonsController,
-    private val mappingRepository: MappingRepository,
+    private val autoconfigRepository: AutoconfigRepository,
     private val controllersViewModel: ControllersViewModel,
     private val portRouter: dev.cannoli.scorza.input.runtime.PortRouter,
     private val activeMappingHolder: dev.cannoli.scorza.input.runtime.ActiveMappingHolder,
@@ -50,7 +50,7 @@ class EditButtonsInputHandler @Inject constructor(
         val state = controllersViewModel.state.value
         val mapping = state.connected.firstOrNull { it.mapping.id == screen.mappingId }?.mapping
             ?: state.savedMappings.firstOrNull { it.id == screen.mappingId }
-            ?: mappingRepository.findById(screen.mappingId)
+            ?: controllersViewModel.mappingById(screen.mappingId)
             ?: return
         editButtonsController.startListening(mapping, canonical)
         nav.replaceTop(screen.copy(listeningCanonical = canonical))
@@ -69,7 +69,7 @@ class EditButtonsInputHandler @Inject constructor(
         val state = controllersViewModel.state.value
         val mapping = state.connected.firstOrNull { it.mapping.id == screen.mappingId }?.mapping
             ?: state.savedMappings.firstOrNull { it.id == screen.mappingId }
-            ?: mappingRepository.findById(screen.mappingId)
+            ?: controllersViewModel.mappingById(screen.mappingId)
             ?: return
         if (mapping.bindings[canonical].isNullOrEmpty()) return
         val newBindings = mapping.bindings.toMutableMap().apply { this[canonical] = emptyList() }
@@ -78,7 +78,7 @@ class EditButtonsInputHandler @Inject constructor(
             userEdited = true,
             source = dev.cannoli.scorza.input.MappingSource.USER_WIZARD,
         )
-        mappingRepository.save(updated)
+        autoconfigRepository.save(updated)
         portRouter.updateMapping(updated, rebuildEvaluator = true)
         if (activeMappingHolder.active.value?.id == updated.id) {
             activeMappingHolder.set(updated)

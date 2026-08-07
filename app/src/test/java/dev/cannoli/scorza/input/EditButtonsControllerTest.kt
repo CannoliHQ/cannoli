@@ -1,6 +1,6 @@
 package dev.cannoli.scorza.input
 
-import dev.cannoli.scorza.input.repo.MappingRepository
+import dev.cannoli.scorza.input.autoconfig.AutoconfigRepository
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
@@ -10,12 +10,13 @@ import org.junit.rules.TemporaryFolder
 class EditButtonsControllerTest {
 
     @get:Rule val tmp = TemporaryFolder()
-    private lateinit var repo: MappingRepository
+    private lateinit var repo: AutoconfigRepository
     private lateinit var controller: EditButtonsController
     private var clockMs = 0L
 
     @Before fun setup() {
-        repo = MappingRepository(tmp.newFolder("templates"))
+        val dir = tmp.newFolder("autoconfig")
+        repo = AutoconfigRepository { dir }
         controller = EditButtonsController(
             repository = repo,
             portRouter = dev.cannoli.scorza.input.runtime.PortRouter(),
@@ -39,7 +40,9 @@ class EditButtonsControllerTest {
         val finalized = controller.tickAndMaybeFinalize() ?: error("expected finalized template")
         assertEquals(listOf(InputBinding.Button(96)), finalized.bindings[CanonicalButton.BTN_SOUTH])
         assertTrue(finalized.userEdited)
-        assertNotNull(repo.findById("test"))
+        val entry = repo.findById("test") ?: error("expected a cfg on disk")
+        assertTrue(entry.cannoliUser)
+        assertEquals(96, entry.buttonBindings["b_btn"])
     }
 
     @Test fun `multiple sources within window produce one binding per source`() {

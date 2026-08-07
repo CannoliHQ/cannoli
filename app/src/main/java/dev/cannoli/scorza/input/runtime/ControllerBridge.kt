@@ -17,7 +17,7 @@ class ControllerBridge(
     private val resolver: MappingResolver,
     private val portRouter: PortRouter,
     private val activeMappingHolder: ActiveMappingHolder,
-    private val mappingRepository: dev.cannoli.scorza.input.repo.MappingRepository? = null,
+    private val autoconfigRepository: dev.cannoli.scorza.input.autoconfig.AutoconfigRepository,
     private val blacklist: dev.cannoli.scorza.input.ControllerBlacklist? = null,
     private val bundledCfgs: dev.cannoli.scorza.input.autoconfig.BundledAutoconfigEntries? = null,
     private val hints: ControllerHintTable? = null,
@@ -45,7 +45,6 @@ class ControllerBridge(
     private var listener: InputManager.InputDeviceListener? = null
     private var initialEnumerationDone = false
     private var appContext: Context? = null
-    private val pendingSavesById = mutableMapOf<Int, dev.cannoli.scorza.input.DeviceMapping>()
 
     init {
         portRouter.onActivatedListener = { device -> handleActivation(device) }
@@ -101,48 +100,17 @@ class ControllerBridge(
         settleHandler.removeCallbacks(settleRunnable)
         val inputManager = context.getSystemService(Context.INPUT_SERVICE) as InputManager
         inputManager.unregisterInputDeviceListener(l)
-        pendingSavesById.clear()
         initialEnumerationDone = false
         listener = null
         appContext = null
     }
 
     private fun handleActivation(device: ConnectedDevice) {
-        val id = device.androidDeviceId
-        pendingSavesById.remove(id)?.let { persistDerived(it) }
-        portRouter.mappingFor(id)?.let { activeMappingHolder.set(it) }
+        portRouter.mappingFor(device.androidDeviceId)?.let { activeMappingHolder.set(it) }
         // Activation is always a deliberate user press, so fire onDeviceAdded regardless of
         // whether the device was present during the initial enumeration burst. Suppression for
         // built-in devices is handled by the OSD layer, not here.
         onDeviceAdded?.invoke(device)
-    }
-
-    /**
-     * Write a mapping the resolver derived, never one the user authored.
-     *
-     * Mapping ids come from device identity, so a mapping resolved while the mappings directory
-     * was unreadable (enumeration runs before storage permission is granted) targets the same
-     * file as the profile the user edited for that pad. The on-disk flag is what decides, not the
-     * flag on the mapping being written, which is false on everything freshly resolved.
-     *
-     * Failures are logged rather than raised: this runs inside the key event that activates a
-     * controller, and the mapping is re-derived on the next boot anyway.
-     */
-    private fun persistDerived(mapping: dev.cannoli.scorza.input.DeviceMapping) {
-        val repository = mappingRepository ?: return
-        runCatching {
-            if (repository.findById(mapping.id)?.userEdited == true) {
-                dev.cannoli.scorza.util.InputLog.write(
-                    "  save skipped for ${mapping.id}: user-edited mapping on disk"
-                )
-                return@runCatching
-            }
-            repository.save(mapping)
-        }.onFailure {
-            dev.cannoli.scorza.util.InputLog.write(
-                "  save failed for ${mapping.id}: ${it::class.java.simpleName} ${it.message}"
-            )
-        }
     }
 
     @VisibleForTesting
@@ -205,6 +173,10 @@ class ControllerBridge(
 
     private fun settle(forcedFacts: List<DeviceFacts>? = null) {
         dev.cannoli.scorza.util.InputLog.write("--- settle ---")
+        // The store caches its listing for the life of the process, and the first enumeration runs
+        // before MANAGE_EXTERNAL_STORAGE is granted, so that cache can be an empty directory that
+        // no later settle would ever look past.
+        autoconfigRepository.invalidate()
 
         val enumerated = forcedFacts ?: enumerateFacts()
         val devKeyboard = devKeyboardFacts(enumerated)
@@ -295,7 +267,6 @@ class ControllerBridge(
                 ?: "Controller"
             val port = snap?.port
             dev.cannoli.scorza.util.InputLog.write("  removed id=$id name='$displayName' port=${port?.let { "P${it + 1}" } ?: "-"}")
-            pendingSavesById.remove(id)
             portRouter.onDisconnect(id)
             if (initialEnumerationDone) {
                 onDeviceRemoved?.invoke(DepartedDevice(id, displayName, port))
@@ -305,8 +276,7 @@ class ControllerBridge(
         for (id in targetEntryIds - existingEntryIds) {
             val connected = targetEntries.getValue(id)
             // Bypass the resolver entirely: its fallback tier hands out AndroidDefaultMappingFactory
-            // gamepad keycodes, which a keyboard can never produce. No pendingSaves entry either,
-            // so this never reaches the MappingRepository.
+            // gamepad keycodes, which a keyboard can never produce.
             if (id == devKeyboardId) {
                 portRouter.onConnect(connected, DevKeyboardMapping.create(connected))
                 dev.cannoli.scorza.util.InputLog.write(
@@ -317,24 +287,19 @@ class ControllerBridge(
             val persistenceDescriptor = clusterDescriptors[id]
             val resolved = resolver.resolve(connected, persistenceDescriptor)
             val hintApplied = applyHintFromOriginalIdentity(resolved, connected)
-            // Park the save until the device actually proves itself by producing input. Never write
-            // back over a userEdited mapping. Phantom stubs that never fire never get persisted.
-            val hintChanged = hintApplied !== resolved
-            if (!hintApplied.userEdited && hintChanged) {
-                pendingSavesById[connected.androidDeviceId] = hintApplied
-            }
             portRouter.onConnect(connected, hintApplied)
             dev.cannoli.scorza.util.InputLog.write(
-                "  enrolled id=${connected.androidDeviceId} mapping=${hintApplied.id} glyph=${hintApplied.glyphStyle} desc='${persistenceDescriptor ?: "-"}' pending"
+                "  enrolled id=${connected.androidDeviceId} mapping=${hintApplied.id} glyph=${hintApplied.glyphStyle} desc='${persistenceDescriptor ?: "-"}'"
             )
         }
 
         // Devices that survived from the previous settle keep their entry, so re-resolve them here
         // rather than leaving whatever the first settle produced. The launcher enumerates before
-        // MANAGE_EXTERNAL_STORAGE is granted, so that first resolve reads an empty mappings
-        // directory and hands out a fallback; the re-settle after the grant is what swaps the
-        // user's saved profile in. Only a mapping that actually changed is applied, so ordinary
-        // settles (one per device add/remove) leave enrolled controllers alone.
+        // MANAGE_EXTERNAL_STORAGE is granted, so that first resolve reads an empty autoconfig
+        // directory and hands out a fallback; the re-settle after the grant reads the database
+        // again (the invalidate above) and swaps the user's cfg in. Only a mapping that actually
+        // changed is applied, so ordinary settles (one per device add/remove) leave enrolled
+        // controllers alone.
         for (id in targetEntryIds intersect existingEntryIds) {
             if (id == devKeyboardId) continue
             val connected = targetEntries.getValue(id)
@@ -343,13 +308,6 @@ class ControllerBridge(
             val resolved = resolver.resolve(connected, persistenceDescriptor)
             val hintApplied = applyHintFromOriginalIdentity(resolved, connected)
             if (hintApplied == current) continue
-            val hintChanged = hintApplied !== resolved
-            if (!hintApplied.userEdited && hintChanged) {
-                pendingSavesById[id] = hintApplied
-            } else {
-                // Any parked save described the mapping we are replacing.
-                pendingSavesById.remove(id)
-            }
             portRouter.replaceMapping(id, hintApplied)
             if (activeMappingHolder.active.value?.id == current.id) {
                 activeMappingHolder.set(hintApplied)

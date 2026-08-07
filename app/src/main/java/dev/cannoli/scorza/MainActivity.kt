@@ -105,7 +105,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var inputTesterViewModel: Provider<InputTesterViewModel>
     @Inject lateinit var controllersViewModel: Provider<dev.cannoli.scorza.ui.viewmodel.ControllersViewModel>
     @Inject lateinit var editButtonsController: dev.cannoli.scorza.input.EditButtonsController
-    @Inject lateinit var mappingRepository: Provider<dev.cannoli.scorza.input.repo.MappingRepository>
     @Inject lateinit var bootSequencer: BootSequencer
     @Inject lateinit var startStorageDependentHolder: StartStorageDependentHolder
     @Inject lateinit var appFonts: AppFonts
@@ -339,7 +338,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
             downloadError = dlError,
             osdController = osdController,
             activeMapping = activeMapping,
-            mappingRepository = mappingRepository.get(),
             editButtonsController = editButtonsController,
             nav = nav,
             inputRouter = router,

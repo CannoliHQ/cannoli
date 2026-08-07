@@ -1,13 +1,8 @@
 package dev.cannoli.scorza.input.runtime
 
-import dev.cannoli.scorza.input.CanonicalButton
-import dev.cannoli.scorza.input.DeviceMapping
-import dev.cannoli.scorza.input.DeviceMatchRule
-import dev.cannoli.scorza.input.InputBinding
 import dev.cannoli.scorza.input.MappingSource
 import dev.cannoli.scorza.input.autoconfig.AutoconfigRepository
 import dev.cannoli.scorza.input.autoconfig.RetroArchCfgEntry
-import dev.cannoli.scorza.input.repo.MappingRepository
 import dev.cannoli.scorza.input.resolver.DevKeyboardMapping
 import dev.cannoli.scorza.input.resolver.MappingResolver
 import org.junit.Assert.assertEquals
@@ -108,6 +103,7 @@ class ControllerBridgeTest {
         resolver = resolver,
         portRouter = portRouter,
         activeMappingHolder = activeMappingHolder,
+        autoconfigRepository = autoconfigRepo,
         clock = clock,
         buildModel = buildModel,
         devKeyboardEnabled = devKeyboardEnabled,
@@ -313,7 +309,8 @@ class ControllerBridgeTest {
     fun saved_mapping_that_appears_after_first_settle_is_picked_up_on_resettle() {
         // Boot order on a fresh install: the bridge enumerates before MANAGE_EXTERNAL_STORAGE is
         // granted, so the autoconfig directory reads empty and the pad falls back to the bundled
-        // cfg. The re-settle that runs once storage is available has to pick up the user's file.
+        // cfg. The re-settle that runs once storage is available has to pick up the user's file,
+        // which means the settle has to drop the empty listing the store cached before the grant.
         val portRouter = PortRouter()
         val active = ActiveMappingHolder()
         val bridge = makeBridge(portRouter = portRouter, activeMappingHolder = active)
@@ -332,8 +329,6 @@ class ControllerBridgeTest {
             cannoli_user = "true"
             """.trimIndent()
         )
-        // The store caches its listing, so a file that appears behind its back has to be announced.
-        autoconfigRepo.invalidate()
         bridge.settleSyncForTest(listOf(stadiaFacts))
 
         assertEquals("stadia_user", portRouter.mappingFor(7)?.id)
@@ -349,6 +344,7 @@ class ControllerBridgeTest {
             resolver = makeResolver(),
             portRouter = portRouter,
             activeMappingHolder = ActiveMappingHolder(),
+            autoconfigRepository = autoconfigRepo,
             clock = { ticks },
             buildModel = "Pixel",
         )
@@ -396,12 +392,10 @@ class ControllerBridgeTest {
     /**
      * A bridge whose bundled cfg and hint table disagree about the hint: the importer applies the
      * cfg's VID/PID hint, the bridge's hint pass prefers the device's reported VID/PID. That
-     * rebind is what parks a pending save at enrollment, which activation then flushes.
+     * rebind produces a mapping that differs from every cfg on disk, which is the case most likely
+     * to tempt the bridge into writing one back.
      */
-    private fun makePendingSaveBridge(
-        portRouter: PortRouter,
-        repo: MappingRepository,
-    ): ControllerBridge {
+    private fun makeHintRebindBridge(portRouter: PortRouter): ControllerBridge {
         val ra = listOf(
             RetroArchCfgEntry(
                 deviceName = "Stadia Controller",
@@ -426,7 +420,7 @@ class ControllerBridgeTest {
             resolver = MappingResolver(autoconfigRepo, bundled, hints),
             portRouter = portRouter,
             activeMappingHolder = ActiveMappingHolder(),
-            mappingRepository = repo,
+            autoconfigRepository = autoconfigRepo,
             bundledCfgs = bundled,
             hints = hints,
             clock = { 1_000L },
@@ -435,69 +429,53 @@ class ControllerBridgeTest {
     }
 
     @Test
-    fun activation_survives_a_failing_pending_save() {
-        // Activation runs on the key event that first drives a controller, so a write that cannot
-        // land (the mappings directory is unreachable before storage permission is granted) must
-        // not throw out of input dispatch.
-        val unwritable = java.io.File(tempFolder.newFile("not-a-directory"), "Mappings")
+    fun activation_writes_nothing_to_the_autoconfig_database() {
+        // Only a deliberate user edit authors a cfg. A mapping the bridge derived is cheap to
+        // derive again on the next boot, and writing it would leave a file the user never made.
         val portRouter = PortRouter()
-        val bridge = makePendingSaveBridge(portRouter, MappingRepository(unwritable))
+        val bridge = makeHintRebindBridge(portRouter)
 
         bridge.settleSyncForTest(listOf(stadiaFacts))
         portRouter.activate(stadiaFacts.androidDeviceId, 1_000L)
 
         assertTrue(portRouter.isActivated(stadiaFacts.androidDeviceId))
+        assertTrue(autoconfigRepo.listEntries().isEmpty())
     }
 
     @Test
-    fun pending_save_does_not_overwrite_a_user_edited_mapping_on_disk() {
-        // Mapping ids are derived from device identity, so the mapping resolved on a boot that
-        // could not read the mappings directory lands on the same filename as the profile the
-        // user edited. That file is the user's intent and outranks anything machine-derived.
-        val repo = MappingRepository(tempFolder.root)
+    fun activation_leaves_a_user_authored_cfg_byte_identical() {
+        // Mapping ids come from device identity, so anything the bridge wrote back would land on
+        // the very file the user authored for that pad.
         val portRouter = PortRouter()
-        val bridge = makePendingSaveBridge(portRouter, repo)
+        val bridge = makeHintRebindBridge(portRouter)
+        autoconfigDir.mkdirs()
+        val cfg = java.io.File(autoconfigDir, "stadia_user.cfg")
+        val original = """
+            input_device = "Stadia Controller"
+            input_vendor_id = "6353"
+            input_product_id = "37888"
+            input_b_btn = "190"
+            cannoli_user = "true"
+        """.trimIndent()
+        cfg.writeText(original)
 
         bridge.settleSyncForTest(listOf(stadiaFacts))
-        val id = portRouter.mappingFor(stadiaFacts.androidDeviceId)!!.id
-        repo.save(
-            DeviceMapping(
-                id = id,
-                displayName = "Stadia (mine)",
-                match = DeviceMatchRule(vendorId = 6353, productId = 37888),
-                bindings = mapOf(CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(190))),
-                source = MappingSource.USER_WIZARD,
-                userEdited = true,
-            )
-        )
-
+        assertEquals("stadia_user", portRouter.mappingFor(stadiaFacts.androidDeviceId)?.id)
         portRouter.activate(stadiaFacts.androidDeviceId, 1_000L)
 
-        val onDisk = repo.findById(id)
-        assertTrue(onDisk!!.userEdited)
-        assertEquals("Stadia (mine)", onDisk.displayName)
-        assertEquals(listOf(InputBinding.Button(190)), onDisk.bindings[CanonicalButton.BTN_SOUTH])
+        assertEquals(original, cfg.readText())
+        assertEquals(1, autoconfigRepo.listEntries().size)
     }
 
     @Test
-    fun pending_device_disconnect_does_not_persist_mapping() {
-        val resolver = makeResolver()
+    fun enrollment_then_disconnect_writes_nothing() {
         val portRouter = PortRouter()
-        val repo = MappingRepository(tempFolder.root)
-        val bridge = ControllerBridge(
-            resolver = resolver,
-            portRouter = portRouter,
-            activeMappingHolder = ActiveMappingHolder(),
-            mappingRepository = repo,
-            clock = { 1_000L },
-            buildModel = "Pixel",
-        )
+        val bridge = makeBridge(portRouter = portRouter)
 
         bridge.settleSyncForTest(listOf(stadiaFacts))
         bridge.settleSyncForTest(emptyList())
 
-        // Nothing was activated, so nothing should have been written.
-        assertTrue(repo.list().isEmpty())
+        assertTrue(autoconfigRepo.listEntries().isEmpty())
     }
 
     @Test
@@ -613,22 +591,13 @@ class ControllerBridgeTest {
 
     @Test
     fun dev_keyboard_mapping_is_never_persisted() {
-        val repo = MappingRepository(tempFolder.root)
         val portRouter = PortRouter()
-        val bridge = ControllerBridge(
-            resolver = makeResolver(),
-            portRouter = portRouter,
-            activeMappingHolder = ActiveMappingHolder(),
-            mappingRepository = repo,
-            clock = { 1_000L },
-            buildModel = "Pixel",
-            devKeyboardEnabled = true,
-        )
+        val bridge = makeBridge(portRouter = portRouter, devKeyboardEnabled = true)
 
         bridge.settleSyncForTest(listOf(keyboardFacts))
         portRouter.activate(keyboardFacts.androidDeviceId, 1_000L)
 
-        assertTrue(repo.list().none { it.id == DevKeyboardMapping.ID })
+        assertNull(autoconfigRepo.findById(DevKeyboardMapping.ID))
     }
 
     @Test

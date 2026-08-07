@@ -491,7 +491,6 @@ fun AppNavGraph(
     downloadError: String? = null,
     osdController: dev.cannoli.ui.components.OsdController,
     activeMapping: dev.cannoli.scorza.input.DeviceMapping? = null,
-    mappingRepository: dev.cannoli.scorza.input.repo.MappingRepository? = null,
     editButtonsController: dev.cannoli.scorza.input.EditButtonsController? = null,
     nav: dev.cannoli.scorza.navigation.NavigationController? = null,
     inputRouter: dev.cannoli.scorza.input.InputRouter? = null,
@@ -1380,7 +1379,7 @@ fun AppNavGraph(
                 val editState by controllersViewModel.state.collectAsState()
                 val mapping = editState.connected.firstOrNull { it.mapping.id == currentScreen.mappingId }?.mapping
                     ?: editState.savedMappings.firstOrNull { it.id == currentScreen.mappingId }
-                    ?: mappingRepository?.findById(currentScreen.mappingId)
+                    ?: controllersViewModel.mappingById(currentScreen.mappingId)
                 if (editButtonsController != null && nav != null) {
                     androidx.compose.runtime.LaunchedEffect(currentScreen.listeningCanonical) {
                         if (currentScreen.listeningCanonical != null) {

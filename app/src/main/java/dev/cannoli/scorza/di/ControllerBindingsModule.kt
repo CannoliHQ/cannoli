@@ -11,7 +11,6 @@ import dev.cannoli.scorza.input.autoconfig.AssetCfgSource
 import dev.cannoli.scorza.input.autoconfig.AutoconfigLoader
 import dev.cannoli.scorza.input.autoconfig.AutoconfigRepository
 import dev.cannoli.scorza.input.autoconfig.BundledAutoconfigEntries
-import dev.cannoli.scorza.input.repo.MappingRepository
 import dev.cannoli.scorza.input.resolver.MappingResolver
 import dev.cannoli.scorza.input.runtime.ActiveMappingHolder
 import dev.cannoli.scorza.input.runtime.ControllerBridge
@@ -26,11 +25,6 @@ annotation class BundledRetroArchAutoconfig
 @Module
 @InstallIn(SingletonComponent::class)
 object ControllerBindingsModule {
-
-    @Provides
-    @Singleton
-    fun provideMappingRepository(paths: CannoliPathsProvider): MappingRepository =
-        MappingRepository { CannoliPaths(paths.root).configInputMappings }
 
     @Provides
     @Singleton
@@ -77,7 +71,7 @@ object ControllerBindingsModule {
         resolver: MappingResolver,
         portRouter: PortRouter,
         activeMappingHolder: ActiveMappingHolder,
-        mappingRepository: MappingRepository,
+        autoconfigRepository: AutoconfigRepository,
         blacklist: dev.cannoli.scorza.input.ControllerBlacklist,
         bundled: BundledAutoconfigEntries,
         hints: dev.cannoli.scorza.input.hints.ControllerHintTable,
@@ -85,7 +79,7 @@ object ControllerBindingsModule {
         resolver = resolver,
         portRouter = portRouter,
         activeMappingHolder = activeMappingHolder,
-        mappingRepository = mappingRepository,
+        autoconfigRepository = autoconfigRepository,
         blacklist = blacklist,
         bundledCfgs = bundled,
         hints = hints,

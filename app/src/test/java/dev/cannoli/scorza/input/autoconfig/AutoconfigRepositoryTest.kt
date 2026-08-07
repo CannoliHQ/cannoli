@@ -50,6 +50,19 @@ class AutoconfigRepositoryTest {
     }
 
     @Test
+    fun `lists entries sorted by file name so equal matches tie-break the same everywhere`() {
+        // Directory listing order differs between ext4 and exFAT, so two cfgs that match a pad
+        // equally well would otherwise hand the same controller different layouts per device.
+        for (name in listOf("zeta.cfg", "delta.cfg", "alpha.cfg", "mu.cfg")) {
+            tmp.newFile(name).writeText("input_device = \"Same Pad\"\ninput_b_btn = \"96\"\n")
+        }
+        assertEquals(
+            listOf("alpha.cfg", "delta.cfg", "mu.cfg", "zeta.cfg"),
+            repo().listEntries().map { it.fileName },
+        )
+    }
+
+    @Test
     fun `save writes atomically and findById reads it back`() {
         val r = repo()
         r.save(cfgWriterSampleMapping(id = "PadA"))
