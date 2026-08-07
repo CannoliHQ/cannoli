@@ -22,7 +22,7 @@ class RaOfflinePreloader(
         token: String,
         hash: String? = null,
     ): Result = withContext(Dispatchers.IO) {
-        val login = client.login2(username, token)
+        val login = client.validateToken(username, token)
         if (!login.isOk() || !login.body.looksSuccessful()) {
             return@withContext Result.Failure("login")
         }

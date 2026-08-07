@@ -4,6 +4,7 @@ import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -58,7 +59,7 @@ class RaConnectClientTest {
         val url = server.url("/").toString().trimEnd('/')
         server.shutdown()
         val c = RaConnectClient(baseUrlProvider = { url }, clientProvider = { OkHttpClient() }, userAgent = "x")
-        val res = c.login2("bob", "tok")
+        val res = c.validateToken("bob", "tok")
         assertTrue(res.code < 200)
     }
 
@@ -94,5 +95,88 @@ class RaConnectClientTest {
         server.shutdown()
         val c = RaConnectClient(baseUrlProvider = { url }, clientProvider = { OkHttpClient() }, userAgent = "x")
         assertTrue(c.resolveGameId("bob", "tok", "abcd") < 0)
+    }
+
+    @Test
+    fun loginWithPassword_postsPasswordAndReturnsTheToken() {
+        val server = MockWebServer()
+        server.enqueue(MockResponse().setBody("""{"Success":true,"User":"Bob","Token":"abc123","Score":4200}"""))
+        server.start()
+
+        val result = client(server).loginWithPassword("bob", "hunter2")
+
+        val body = server.takeRequest().body.readUtf8()
+        assertTrue(body.contains("r=login"))
+        assertFalse(body.contains("r=login2"))
+        assertTrue(body.contains("u=bob"))
+        assertTrue(body.contains("p=hunter2"))
+        assertTrue(result is RaConnectClient.LoginResult.Success)
+        val success = result as RaConnectClient.LoginResult.Success
+        assertEquals("abc123", success.token)
+        assertEquals("Bob", success.username)
+        assertEquals(4200, success.score)
+        server.shutdown()
+    }
+
+    @Test
+    fun loginWithPassword_reportsInvalidCredentialsWithTheServerMessage() {
+        val server = MockWebServer()
+        server.enqueue(MockResponse().setBody("""{"Success":false,"Error":"Invalid User/Password combination."}"""))
+        server.start()
+
+        val result = client(server).loginWithPassword("bob", "wrong")
+
+        assertTrue(result is RaConnectClient.LoginResult.InvalidCredentials)
+        assertEquals(
+            "Invalid User/Password combination.",
+            (result as RaConnectClient.LoginResult.InvalidCredentials).message,
+        )
+        server.shutdown()
+    }
+
+    @Test
+    fun loginWithPassword_reportsNetworkFailureSeparatelyFromBadCredentials() {
+        val server = MockWebServer()
+        server.start()
+        val url = server.url("/").toString().trimEnd('/')
+        server.shutdown()
+        val c = RaConnectClient(baseUrlProvider = { url }, clientProvider = { OkHttpClient() }, userAgent = "x")
+        assertEquals(RaConnectClient.LoginResult.NetworkError, c.loginWithPassword("bob", "hunter2"))
+    }
+
+    @Test
+    fun loginWithPassword_treatsAServerErrorAsNetworkNotCredentials() {
+        val server = MockWebServer()
+        server.enqueue(MockResponse().setResponseCode(502).setBody("bad gateway"))
+        server.start()
+        assertEquals(
+            RaConnectClient.LoginResult.NetworkError,
+            client(server).loginWithPassword("bob", "hunter2"),
+        )
+        server.shutdown()
+    }
+
+    @Test
+    fun loginWithPassword_treatsMalformedJsonAsNetworkError() {
+        val server = MockWebServer()
+        server.enqueue(MockResponse().setBody("not json at all"))
+        server.start()
+        assertEquals(
+            RaConnectClient.LoginResult.NetworkError,
+            client(server).loginWithPassword("bob", "hunter2"),
+        )
+        server.shutdown()
+    }
+
+    @Test
+    fun validateToken_stillPostsTheLogin2Request() {
+        val server = MockWebServer()
+        server.enqueue(MockResponse().setBody("""{"Success":true}"""))
+        server.start()
+        client(server).validateToken("bob", "tok")
+        val body = server.takeRequest().body.readUtf8()
+        assertTrue(body.contains("r=login2"))
+        assertTrue(body.contains("t=tok"))
+        server.shutdown()
     }
 }

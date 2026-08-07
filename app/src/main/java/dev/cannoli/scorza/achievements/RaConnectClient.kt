@@ -13,8 +13,30 @@ class RaConnectClient(
 ) {
     data class RawResponse(val code: Int, val body: String)
 
-    fun login2(username: String, token: String): RawResponse =
+    sealed interface LoginResult {
+        data class Success(val token: String, val username: String, val score: Int) : LoginResult
+        data class InvalidCredentials(val message: String) : LoginResult
+        data object NetworkError : LoginResult
+    }
+
+    fun validateToken(username: String, token: String): RawResponse =
         post(FormBody.Builder().add("r", "login2").add("u", username).add("t", token).build())
+
+    /** Exchanges a password for an account token. The password never leaves this call. */
+    fun loginWithPassword(username: String, password: String): LoginResult {
+        val res = post(FormBody.Builder().add("r", "login").add("u", username).add("p", password).build())
+        if (res.code !in 200..299) return LoginResult.NetworkError
+        val json = try { JSONObject(res.body) } catch (_: Exception) { return LoginResult.NetworkError }
+        val token = json.optString("Token", "")
+        if (!json.optBoolean("Success", false) || token.isEmpty()) {
+            return LoginResult.InvalidCredentials(json.optString("Error", ""))
+        }
+        return LoginResult.Success(
+            token = token,
+            username = json.optString("User", username).ifEmpty { username },
+            score = json.optInt("Score", 0),
+        )
+    }
 
     fun achievementSets(username: String, token: String, gameId: Int): RawResponse =
         post(FormBody.Builder().add("r", "achievementsets").add("u", username).add("t", token)
