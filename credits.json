@@ -50,7 +50,7 @@
   "localization": [
     { "language": "zh-CN", "contributors": ["Bobby Chiang"] },
     { "language": "fr-FR", "contributors": ["Christophe Coquelet", "Dominic Drolet"] },
-    { "language": "de-DE", "contributors": ["frysee"] },
+    { "language": "de-DE", "contributors": ["frysee", "PowerHeinz"] },
     { "language": "pt-PT", "contributors": ["Christian Paolo Ramos"] },
     { "language": "es-ES", "contributors": ["Luke Nance", "Raadon", "ramsay nieve"] },
     { "language": "uk-UA", "contributors": ["MeEdytor"] }

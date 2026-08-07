@@ -62,7 +62,7 @@ val CREDITS_LIBRARIES: List<CreditEntry> = listOf(
 val CREDITS_LOCALIZATION: List<LocalizationCredit> = listOf(
     LocalizationCredit("zh-CN", listOf("Bobby Chiang")),
     LocalizationCredit("fr-FR", listOf("Christophe Coquelet", "Dominic Drolet")),
-    LocalizationCredit("de-DE", listOf("frysee")),
+    LocalizationCredit("de-DE", listOf("frysee", "PowerHeinz")),
     LocalizationCredit("pt-PT", listOf("Christian Paolo Ramos")),
     LocalizationCredit("es-ES", listOf("Luke Nance", "Raadon", "ramsay nieve")),
     LocalizationCredit("uk-UA", listOf("MeEdytor")),
