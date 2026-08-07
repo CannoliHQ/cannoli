@@ -9,6 +9,7 @@ import android.os.LocaleList
 import android.view.ContextThemeWrapper
 import android.view.KeyEvent
 import android.view.View
+import android.view.ViewTreeObserver
 import android.view.WindowManager
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -27,7 +28,6 @@ import dev.cannoli.igm.CannoliIGM
 import dev.cannoli.igm.GuideManager
 import dev.cannoli.igm.IGMController
 import dev.cannoli.igm.IGMHostConfig
-import dev.cannoli.igm.IgmGameInfo
 import dev.cannoli.igm.RaOptionStrings
 import dev.cannoli.ui.R
 import com.retroarch.R as AppR
@@ -40,7 +40,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.Typeface as ComposeTypeface
-import dev.cannoli.ricotta.RicottaArchBridge
+import dev.cannoli.core.SaveSlotStore
+import dev.cannoli.ricotta.EmbeddedRetroArchBridge
 import java.util.Locale
 
 private const val IGM_OVERLAY_THEME = android.R.style.Theme_Translucent_NoTitleBar_Fullscreen
@@ -102,7 +103,8 @@ internal class IGMLifecycleOwner : LifecycleOwner, SavedStateRegistryOwner {
  */
 class IGMOverlay(
     private val activity: Activity,
-    private val bridge: RicottaArchBridge,
+    private val bridge: EmbeddedRetroArchBridge,
+    stateBasePath: String,
     gameTitle: String,
     private val hostConfig: IGMHostConfig,
     private val cannoliRoot: String = "",
@@ -120,7 +122,7 @@ class IGMOverlay(
     // overlay window still resolves a token from it.
     private val uiContext: Context = localeContext(activity, localeTag)
 
-    val controller = IGMController(bridge, gameTitle)
+    val controller = IGMController(bridge, gameTitle, SaveSlotStore(stateBasePath))
     private var composeView: ComposeView? = null
     private val lifecycleOwner = IGMLifecycleOwner()
     private var showTimeMs = 0L
@@ -183,6 +185,10 @@ class IGMOverlay(
             controller.attachGuides(GuideManager(cannoliRoot, platformTag, controller.gameTitle))
         }
 
+        // Read the slots while the game is still loading so the first open of the menu has a
+        // thumbnail and its dots already, rather than filling them in once the user is looking.
+        controller.refreshSlotInfo()
+
         val view = ComposeView(uiContext).apply {
             setViewTreeLifecycleOwner(lifecycleOwner)
             setViewTreeSavedStateRegistryOwner(lifecycleOwner)
@@ -221,7 +227,7 @@ class IGMOverlay(
         return attached
     }
 
-    private fun panelParams(focusable: Boolean) = WindowManager.LayoutParams(
+    private fun panelParams(focusable: Boolean, alpha: Float = 1f) = WindowManager.LayoutParams(
         WindowManager.LayoutParams.MATCH_PARENT,
         WindowManager.LayoutParams.MATCH_PARENT,
         WindowManager.LayoutParams.TYPE_APPLICATION_PANEL,
@@ -232,6 +238,7 @@ class IGMOverlay(
                 WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
         PixelFormat.TRANSLUCENT,
     ).apply {
+        this.alpha = alpha
         token = activity.window.decorView.windowToken
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
             layoutInDisplayCutoutMode =
@@ -273,8 +280,15 @@ class IGMOverlay(
         bridge.setIGMVisible(true)
         composeView?.let { v ->
             if (!attachIfNeeded(v)) return@let
+            // The surface still holds the last frame drawn before the menu was hidden, and the
+            // compositor shows it the moment the window is up: without this the previous
+            // screenshot is on screen until Compose submits a replacement. Stay transparent until
+            // that frame is about to land.
             v.visibility = View.VISIBLE
-            runCatching { activity.windowManager.updateViewLayout(v, panelParams(focusable = true)) }
+            runCatching {
+                activity.windowManager.updateViewLayout(v, panelParams(focusable = true, alpha = 0f))
+            }
+            revealOnceDrawn(v)
             v.requestFocus()
             ViewCompat.getWindowInsetsController(v)?.apply {
                 hide(WindowInsetsCompat.Type.systemBars())
@@ -282,6 +296,27 @@ class IGMOverlay(
                     WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             }
         }
+    }
+
+    private var pendingReveal: ViewTreeObserver.OnPreDrawListener? = null
+
+    private fun revealOnceDrawn(view: ComposeView) {
+        pendingReveal?.let { view.viewTreeObserver.removeOnPreDrawListener(it) }
+        val listener = object : ViewTreeObserver.OnPreDrawListener {
+            override fun onPreDraw(): Boolean {
+                view.viewTreeObserver.removeOnPreDrawListener(this)
+                pendingReveal = null
+                // This frame draws the current menu, so the window can carry it.
+                if (showing) {
+                    runCatching {
+                        activity.windowManager.updateViewLayout(view, panelParams(focusable = true))
+                    }
+                }
+                return true
+            }
+        }
+        pendingReveal = listener
+        view.viewTreeObserver.addOnPreDrawListener(listener)
     }
 
     fun hide() {
@@ -320,15 +355,13 @@ class IGMOverlay(
                     config = hostConfig,
                     gameTitle = controller.gameTitle,
                     menuOptions = controller.buildMenuOptions(),
-                    selectedSlot = controller.currentSlot,
+                    selectedSlot = controller.selectedSlotIndex.intValue,
                     slotThumbnail = controller.slotThumbnail.value,
+                    slotThumbnailLoaded = controller.slotThumbnailLoaded.value,
                     slotExists = controller.slotExists.value,
                     slotOccupied = controller.slotOccupied.value,
                     undoLabel = controller.undoLabel.value,
                     settingsItems = controller.settingsItems.value,
-                    coreInfo = "",
-                    gameInfo = IgmGameInfo(),
-                    infoScrollDir = 0,
                     guideFiles = controller.guideFiles.value,
                     guidePageCount = controller.guidePageCount.intValue,
                     guideScrollDir = controller.guideScrollDir.intValue,

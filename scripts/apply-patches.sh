@@ -27,18 +27,20 @@ done
 rm -f "$RA_DIR/pkg/android/phoenix/src/com/retroarch/browser/retroactivity/RetroActivityFuture.java"
 echo "Removed upstream RetroActivityFuture.java (replaced by Kotlin)"
 
-# Copy bridge source into RetroArch's JNI directory
-BRIDGE_SRC="$RICOTTA_DIR/jni/ricotta_bridge.c"
-BRIDGE_DST="$RA_DIR/pkg/android/phoenix-common/jni/ricotta_bridge.c"
+# Copy bridge sources into RetroArch's JNI directory
 # Only copy when changed so the destination mtime is stable and ndk-build's
 # incremental compilation isn't invalidated on every build.
-[ -f "$BRIDGE_DST" ] && chmod u+w "$BRIDGE_DST"
-if ! cmp -s "$BRIDGE_SRC" "$BRIDGE_DST"; then
-    cp "$BRIDGE_SRC" "$BRIDGE_DST"
-    echo "Copied ricotta_bridge.c"
-else
-    echo "ricotta_bridge.c up to date"
-fi
+for bridge_file in ricotta_bridge.c ricotta_osd.h; do
+    BRIDGE_SRC="$RICOTTA_DIR/jni/$bridge_file"
+    BRIDGE_DST="$RA_DIR/pkg/android/phoenix-common/jni/$bridge_file"
+    [ -f "$BRIDGE_DST" ] && chmod u+w "$BRIDGE_DST"
+    if ! cmp -s "$BRIDGE_SRC" "$BRIDGE_DST"; then
+        cp "$BRIDGE_SRC" "$BRIDGE_DST"
+        echo "Copied $bridge_file"
+    else
+        echo "$bridge_file up to date"
+    fi
+done
 
 # Ensure Android.mk includes our bridge file and define
 ANDROID_MK="$RA_DIR/pkg/android/phoenix-common/jni/Android.mk"
@@ -57,6 +59,19 @@ DEFINES += -DHAVE_RICOTTA_IGM' "$ANDROID_MK"
     echo "Updated Android.mk"
 else
     echo "Android.mk already configured."
+fi
+
+# The patched RetroArch sources include ricotta_osd.h, which lives beside the bridge
+# rather than on any of RetroArch's own include paths. Separate from the block above
+# so a tree configured before this existed still picks it up.
+if ! grep -q 'LOCAL_C_INCLUDES += \$(LOCAL_PATH)$' "$ANDROID_MK"; then
+    if [[ "$OSTYPE" == darwin* ]]; then
+        sed -i '' '/^DEFINES += -DHAVE_RICOTTA_IGM/a\
+LOCAL_C_INCLUDES += $(LOCAL_PATH)' "$ANDROID_MK"
+    else
+        sed -i '/^DEFINES += -DHAVE_RICOTTA_IGM/a\LOCAL_C_INCLUDES += $(LOCAL_PATH)' "$ANDROID_MK"
+    fi
+    echo "Added ricotta include path to Android.mk"
 fi
 
 # Ensure HAVE_RICOTTA_OSD is defined (Cannoli OSD replaces RetroArch's native notifications)

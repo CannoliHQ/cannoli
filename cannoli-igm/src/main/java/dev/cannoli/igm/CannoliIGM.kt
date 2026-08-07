@@ -68,15 +68,13 @@ fun CannoliIGM(
     config: IGMHostConfig,
     gameTitle: String,
     menuOptions: InGameMenuOptions,
-    selectedSlot: SaveSlotManager.Slot,
+    selectedSlot: Int,
     slotThumbnail: Bitmap?,
+    slotThumbnailLoaded: Boolean,
     slotExists: Boolean,
     slotOccupied: List<Boolean>,
     undoLabel: String?,
     settingsItems: List<IGMSettingsItem>,
-    coreInfo: String,
-    gameInfo: IgmGameInfo,
-    infoScrollDir: Int,
     guideFiles: List<GuideFile>,
     guidePageCount: Int,
     guideScrollDir: Int,
@@ -86,10 +84,6 @@ fun CannoliIGM(
     guideInitialScroll: Int,
     guideInitialScrollX: Int,
     onGuideScrollChanged: (y: Int, x: Int) -> Unit = { _, _ -> },
-    players: List<PlayerSlotInfo> = emptyList(),
-    inputRemapHasChanges: Boolean = false,
-    cheatSections: List<dev.cannoli.ui.components.ListSection<CheatRowUi>> = emptyList(),
-    cheatHasRemembered: Boolean = false,
 ) {
     val showDescription = false
     val isGuideScreen = screen is IGMScreen.Guide
@@ -134,6 +128,7 @@ fun CannoliIGM(
                         selectedIndex = screen.selectedIndex,
                         selectedSlot = selectedSlot,
                         slotThumbnail = slotThumbnail,
+                        slotThumbnailLoaded = slotThumbnailLoaded,
                         slotExists = slotExists,
                         slotOccupied = slotOccupied,
                         undoLabel = undoLabel,
@@ -159,10 +154,10 @@ fun CannoliIGM(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 modifier = Modifier.padding(24.dp)
                             ) {
-                                val slotName = if (selectedSlot.index == 0) {
+                                val slotName = if (selectedSlot == 0) {
                                     stringResource(dev.cannoli.ui.R.string.igm_slot_auto)
                                 } else {
-                                    stringResource(dev.cannoli.ui.R.string.igm_slot_numbered, selectedSlot.index - 1)
+                                    stringResource(dev.cannoli.ui.R.string.igm_slot_numbered, selectedSlot - 1)
                                 }
                                 Text(
                                     text = stringResource(dev.cannoli.ui.R.string.igm_delete_slot, slotName),
@@ -173,9 +168,10 @@ fun CannoliIGM(
                                 Box(modifier = Modifier.widthIn(max = 280.dp).fillMaxWidth()) {
                                     PolaroidFrame(
                                         thumbnail = slotThumbnail,
-                                        selectedSlotIndex = selectedSlot.index,
+                                        selectedSlotIndex = selectedSlot,
                                         slotOccupied = slotOccupied,
-                                        showIndicators = false
+                                        showIndicators = false,
+                                        thumbnailLoaded = slotThumbnailLoaded
                                     )
                                 }
                             }
@@ -189,49 +185,23 @@ fun CannoliIGM(
                         }
                     }
                 }
-                is IGMScreen.ShaderSettings,
-                is IGMScreen.Shortcuts,
-                is IGMScreen.ProviderSettings, is IGMScreen.SettingsExitPrompt,
-                is IGMScreen.Buttons -> {
+                is IGMScreen.ProviderSettings, is IGMScreen.SettingsExitPrompt -> {
                     val description = if (showDescription) {
                         settingsItems.getOrNull(screen.selectedIndex)?.hint
                     } else null
-                    val changeLabel = stringResource(dev.cannoli.ui.R.string.label_change)
                     val selectLabel = stringResource(dev.cannoli.ui.R.string.label_select)
-                    val providerRowCycles = screen is IGMScreen.ProviderSettings &&
+                    val rowCycles = screen is IGMScreen.ProviderSettings &&
                         settingsItems.getOrNull(screen.selectedIndex)?.value != null
-                    val showsCycleHint = (screen is IGMScreen.Shortcuts && screen.selectedIndex == 0) ||
-                        screen is IGMScreen.ShaderSettings ||
-                        providerRowCycles
-                    val bottomBarRight = when {
-                        screen is IGMScreen.Shortcuts && screen.selectedIndex == 0 -> emptyList()
-                        screen is IGMScreen.Shortcuts -> listOf(labels.north to stringResource(dev.cannoli.ui.R.string.label_clear), labels.confirm to stringResource(dev.cannoli.ui.R.string.label_set))
-                        screen is IGMScreen.ShaderSettings -> emptyList()
-                        screen is IGMScreen.Buttons -> listOf(
-                            labels.north to stringResource(dev.cannoli.ui.R.string.label_clear),
-                            labels.confirm to stringResource(dev.cannoli.ui.R.string.label_press),
-                        )
-                        screen is IGMScreen.ProviderSettings &&
-                            settingsItems.getOrNull(screen.selectedIndex)?.value != null -> emptyList()
-                        screen is IGMScreen.ProviderSettings ->
-                            listOf(labels.confirm to selectLabel)
-                        else -> listOf(labels.confirm to selectLabel)
-                    }
+                    val bottomBarRight = if (rowCycles) emptyList() else listOf(labels.confirm to selectLabel)
                     val title = when (screen) {
-                        is IGMScreen.ShaderSettings -> stringResource(dev.cannoli.ui.R.string.igm_shader_settings)
-                        is IGMScreen.Shortcuts -> stringResource(dev.cannoli.ui.R.string.title_shortcuts)
-                        is IGMScreen.Buttons -> stringResource(dev.cannoli.ui.R.string.igm_button_mappings)
                         is IGMScreen.ProviderSettings -> screen.title
-                        is IGMScreen.SettingsExitPrompt ->
-                            stringResource(dev.cannoli.ui.R.string.igm_save_changes)
-                        else -> stringResource(dev.cannoli.ui.R.string.igm_settings)
+                        else -> stringResource(dev.cannoli.ui.R.string.igm_save_changes)
                     }
                     val bottomBarLeft = buildList {
                         add(labels.back to stringResource(dev.cannoli.ui.R.string.label_back))
-                        if (screen is IGMScreen.Buttons && inputRemapHasChanges) {
-                            add(labels.west to stringResource(dev.cannoli.ui.R.string.label_reset_all))
+                        if (rowCycles) {
+                            add(DPAD_HORIZONTAL to stringResource(dev.cannoli.ui.R.string.label_change))
                         }
-                        if (showsCycleHint) add(DPAD_HORIZONTAL to changeLabel)
                     }
                     IGMSettingsScreen(
                         title = title,
@@ -241,88 +211,11 @@ fun CannoliIGM(
                         bottomBarRight = bottomBarRight,
                         coreInfo = if (screen is IGMScreen.ProviderSettings && screen.path.isNotEmpty())
                             settingsItems.getOrNull(screen.selectedIndex)?.hint.orEmpty()
-                        else coreInfo,
+                        else "",
                         description = description,
                         fontSize = igmFontSize,
                         lineHeight = igmLineHeight
                     )
-                }
-                is IGMScreen.Info -> {
-                    fun stripRoot(path: String): String {
-                        if (gameInfo.rootPrefix.isNotEmpty() && path.startsWith(gameInfo.rootPrefix)) {
-                            return path.removePrefix(gameInfo.rootPrefix).removePrefix("/")
-                        }
-                        return path
-                    }
-                    ScreenBackground(backgroundImagePath = null, backgroundAlpha = 0.85f, backgroundColor = Color.Black) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(screenInsets())
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(bottom = footerReservation())
-                            ) {
-                                ScreenTitle(
-                                    text = gameTitle,
-                                    fontSize = igmFontSize,
-                                    lineHeight = igmLineHeight
-                                )
-                                val infoModifier = Modifier.padding(start = pillInternalPadding())
-                                val infoScrollState = remember { ScrollState(0) }
-                                LaunchedEffect(infoScrollDir) {
-                                    while (infoScrollDir != 0) {
-                                        infoScrollState.dispatchRawDelta(infoScrollDir * 14f)
-                                        delay(16L)
-                                    }
-                                }
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clipToBounds()
-                                        .verticalScroll(infoScrollState)
-                                ) {
-                                    Spacer(modifier = Modifier.height(Spacing.Md))
-                                    InfoRow(stringResource(dev.cannoli.ui.R.string.info_core), gameInfo.coreName, infoModifier)
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    if (gameInfo.extractedPath.isNotEmpty()) {
-                                        InfoRow(stringResource(dev.cannoli.ui.R.string.info_rom), stripRoot(gameInfo.romPath), infoModifier)
-                                        Spacer(modifier = Modifier.height(12.dp))
-                                        InfoRow(stringResource(dev.cannoli.ui.R.string.info_extracted), stripRoot(gameInfo.extractedPath), infoModifier)
-                                    } else {
-                                        InfoRow(stringResource(dev.cannoli.ui.R.string.info_rom), stripRoot(gameInfo.romPath), infoModifier)
-                                    }
-                                    if (gameInfo.savePath.isNotEmpty()) {
-                                        Spacer(modifier = Modifier.height(12.dp))
-                                        InfoRow(stringResource(dev.cannoli.ui.R.string.info_save), stripRoot(gameInfo.savePath), infoModifier)
-                                    }
-                                    if (gameInfo.rendererName.isNotEmpty()) {
-                                        Spacer(modifier = Modifier.height(12.dp))
-                                        InfoRow(stringResource(dev.cannoli.ui.R.string.info_renderer), gameInfo.rendererName, infoModifier)
-                                    }
-                                    if (gameInfo.raStatus.isNotEmpty()) {
-                                        Spacer(modifier = Modifier.height(12.dp))
-                                        InfoRow(stringResource(dev.cannoli.ui.R.string.ra_title), gameInfo.raStatus, infoModifier)
-                                    }
-                                    if (gameInfo.raGameId.isNotEmpty()) {
-                                        Spacer(modifier = Modifier.height(12.dp))
-                                        InfoRow(stringResource(dev.cannoli.ui.R.string.info_game_id), gameInfo.raGameId, infoModifier)
-                                    }
-                                    if (gameInfo.raDetection.isNotEmpty()) {
-                                        Spacer(modifier = Modifier.height(12.dp))
-                                        InfoRow(stringResource(dev.cannoli.ui.R.string.info_ra_detection), gameInfo.raDetection, infoModifier)
-                                    }
-                                }
-                            }
-                            BottomBar(
-                                modifier = Modifier.align(Alignment.BottomCenter),
-                                leftItems = listOf(labels.back to stringResource(dev.cannoli.ui.R.string.label_back)),
-                                rightItems = emptyList()
-                            )
-                        }
-                    }
                 }
                 is IGMScreen.GuidePicker -> {
                     IGMSettingsScreen(
@@ -351,24 +244,6 @@ fun CannoliIGM(
                         pageCount = guidePageCount,
                         textZoom = screen.textZoom,
                         onScrollPosChanged = onGuideScrollChanged
-                    )
-                }
-                is IGMScreen.Cheats -> {
-                    CheatsScreen(
-                        title = stringResource(dev.cannoli.ui.R.string.title_cheats),
-                        sections = cheatSections,
-                        selectedIndex = screen.selectedIndex,
-                        onLabel = stringResource(dev.cannoli.ui.R.string.value_on),
-                        offLabel = stringResource(dev.cannoli.ui.R.string.value_off),
-                        bottomBarLeft = listOf(labels.back to stringResource(dev.cannoli.ui.R.string.label_back)),
-                        bottomBarRight = buildList {
-                            add(labels.confirm to stringResource(dev.cannoli.ui.R.string.label_toggle))
-                            if (cheatHasRemembered) {
-                                add(labels.north to stringResource(dev.cannoli.ui.R.string.label_restore_session))
-                            }
-                        },
-                        fontSize = igmFontSize,
-                        lineHeight = igmLineHeight
                     )
                 }
                 is IGMScreen.Achievements -> {
@@ -477,84 +352,7 @@ fun CannoliIGM(
                         }
                     }
                 }
-                is IGMScreen.ReassignPlayers -> {
-                    val portToName = players.filter { it.port >= 0 }.associate { it.port to it.displayName }
-                    val items = (0 until 4).map { port ->
-                        val name = portToName[port] ?: "—"
-                        val display = if (port == screen.swapWithIndex) "→ $name" else name
-                        IGMSettingsItem(
-                            label = stringResource(dev.cannoli.ui.R.string.igm_player_port, port + 1),
-                            value = display,
-                        )
-                    }
-                    val confirmLabel = when {
-                        screen.swapWithIndex < 0 -> stringResource(dev.cannoli.ui.R.string.label_select)
-                        screen.swapWithIndex == screen.selectedIndex -> stringResource(dev.cannoli.ui.R.string.label_cancel)
-                        else -> stringResource(dev.cannoli.ui.R.string.label_swap)
-                    }
-                    IGMSettingsScreen(
-                        title = stringResource(dev.cannoli.ui.R.string.igm_reassign_players),
-                        items = items,
-                        selectedIndex = screen.selectedIndex,
-                        bottomBarLeft = listOf(labels.back to stringResource(dev.cannoli.ui.R.string.label_back)),
-                        bottomBarRight = listOf(labels.confirm to confirmLabel),
-                        fontSize = igmFontSize,
-                        lineHeight = igmLineHeight,
-                    )
-                }
                 null -> {}
-            }
-
-            if (screen is IGMScreen.Shortcuts && screen.listening) {
-                val colors = LocalCannoliColors.current
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.92f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth()
-                    ) {
-                        val actionName = settingsItems.getOrNull(screen.selectedIndex)?.label ?: ""
-                        Text(
-                            text = actionName,
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                fontSize = 24.sp,
-                                color = colors.text
-                            )
-                        )
-                        Spacer(modifier = Modifier.height(Spacing.Sm))
-                        Text(
-                            text = if (screen.heldKeys.isEmpty()) stringResource(dev.cannoli.ui.R.string.shortcut_hold_prompt)
-                            else screen.heldKeys.joinToString(" + ") { config.keyCodeName(it) },
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                fontSize = 16.sp,
-                                color = colors.text.copy(alpha = 0.6f)
-                            )
-                        )
-                        Spacer(modifier = Modifier.height(Spacing.Lg))
-                        if (screen.heldKeys.isNotEmpty()) {
-                            val progress = (screen.countdownMs / 1500f).coerceIn(0f, 1f)
-                            Box(
-                                modifier = Modifier
-                                    .widthIn(max = 280.dp).fillMaxWidth()
-                                    .height(8.dp)
-                                    .clip(RoundedCornerShape(Radius.Sm))
-                                    .background(colors.text.copy(alpha = 0.2f))
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth(progress)
-                                        .height(8.dp)
-                                        .clip(RoundedCornerShape(Radius.Sm))
-                                        .background(colors.highlight)
-                                )
-                            }
-                        }
-                    }
-                }
             }
 
             val overlayVisible = screen != null

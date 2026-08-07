@@ -1,11 +1,12 @@
 /*
  * ricotta_bridge.c - JNI bridge for RicottaArch IGM (In-Game Menu)
  *
- * Provides native methods for dev.cannoli.ricotta.RicottaArchBridge
+ * Provides native methods for dev.cannoli.ricotta.EmbeddedRetroArchBridge
  * that dispatch RetroArch command events and query emulator state.
  */
 
 #include <jni.h>
+#include "ricotta_osd.h"
 #include <pthread.h>
 #include <unistd.h>
 #include <time.h>
@@ -359,7 +360,7 @@ static jobjectArray ricotta_core_opt_describe(JNIEnv *env, const char *key)
 }
 
 JNIEXPORT jobjectArray JNICALL
-Java_dev_cannoli_ricotta_RicottaArchBridge_nativeCoreOptionKeys(
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeCoreOptionKeys(
       JNIEnv *env, jobject obj)
 {
    size_t i, n = 0;
@@ -613,7 +614,7 @@ int ricotta_bridge_intercept_key(int keycode, int action)
 }
 
 JNIEXPORT void JNICALL
-Java_dev_cannoli_ricotta_RicottaArchBridge_nativeSetIGMVisible(
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetIGMVisible(
       JNIEnv *env, jobject obj, jboolean visible)
 {
    (void)env;
@@ -622,7 +623,7 @@ Java_dev_cannoli_ricotta_RicottaArchBridge_nativeSetIGMVisible(
 }
 
 JNIEXPORT void JNICALL
-Java_dev_cannoli_ricotta_RicottaArchBridge_nativeSetIgmTriggerKeycodes(
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetIgmTriggerKeycodes(
       JNIEnv *env, jobject obj, jintArray keycodes)
 {
    jsize n;
@@ -651,7 +652,7 @@ Java_dev_cannoli_ricotta_RicottaArchBridge_nativeSetIgmTriggerKeycodes(
 }
 
 JNIEXPORT void JNICALL
-Java_dev_cannoli_ricotta_RicottaArchBridge_nativeInit(
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeInit(
       JNIEnv *env, jobject obj)
 {
    jclass cls;
@@ -678,7 +679,7 @@ Java_dev_cannoli_ricotta_RicottaArchBridge_nativeInit(
 }
 
 JNIEXPORT void JNICALL
-Java_dev_cannoli_ricotta_RicottaArchBridge_nativeDestroy(
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeDestroy(
       JNIEnv *env, jobject obj)
 {
    (void)obj;
@@ -695,7 +696,7 @@ Java_dev_cannoli_ricotta_RicottaArchBridge_nativeDestroy(
 }
 
 JNIEXPORT void JNICALL
-Java_dev_cannoli_ricotta_RicottaArchBridge_nativeSaveState(
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSaveState(
       JNIEnv *env, jobject obj, jint slot)
 {
    (void)env;
@@ -704,7 +705,7 @@ Java_dev_cannoli_ricotta_RicottaArchBridge_nativeSaveState(
 }
 
 JNIEXPORT void JNICALL
-Java_dev_cannoli_ricotta_RicottaArchBridge_nativeLoadState(
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeLoadState(
       JNIEnv *env, jobject obj, jint slot)
 {
    (void)env;
@@ -713,7 +714,7 @@ Java_dev_cannoli_ricotta_RicottaArchBridge_nativeLoadState(
 }
 
 JNIEXPORT void JNICALL
-Java_dev_cannoli_ricotta_RicottaArchBridge_nativeUndoSaveState(
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeUndoSaveState(
       JNIEnv *env, jobject obj)
 {
    (void)env;
@@ -722,7 +723,7 @@ Java_dev_cannoli_ricotta_RicottaArchBridge_nativeUndoSaveState(
 }
 
 JNIEXPORT void JNICALL
-Java_dev_cannoli_ricotta_RicottaArchBridge_nativeUndoLoadState(
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeUndoLoadState(
       JNIEnv *env, jobject obj)
 {
    (void)env;
@@ -731,7 +732,7 @@ Java_dev_cannoli_ricotta_RicottaArchBridge_nativeUndoLoadState(
 }
 
 JNIEXPORT void JNICALL
-Java_dev_cannoli_ricotta_RicottaArchBridge_nativeReset(
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeReset(
       JNIEnv *env, jobject obj)
 {
    (void)env;
@@ -740,7 +741,7 @@ Java_dev_cannoli_ricotta_RicottaArchBridge_nativeReset(
 }
 
 JNIEXPORT void JNICALL
-Java_dev_cannoli_ricotta_RicottaArchBridge_nativeQuit(
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeQuit(
       JNIEnv *env, jobject obj)
 {
    (void)env;
@@ -749,7 +750,7 @@ Java_dev_cannoli_ricotta_RicottaArchBridge_nativeQuit(
 }
 
 JNIEXPORT void JNICALL
-Java_dev_cannoli_ricotta_RicottaArchBridge_nativePause(
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativePause(
       JNIEnv *env, jobject obj)
 {
    (void)env;
@@ -758,7 +759,7 @@ Java_dev_cannoli_ricotta_RicottaArchBridge_nativePause(
 }
 
 JNIEXPORT void JNICALL
-Java_dev_cannoli_ricotta_RicottaArchBridge_nativeUnpause(
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeUnpause(
       JNIEnv *env, jobject obj)
 {
    (void)env;
@@ -767,7 +768,7 @@ Java_dev_cannoli_ricotta_RicottaArchBridge_nativeUnpause(
 }
 
 JNIEXPORT void JNICALL
-Java_dev_cannoli_ricotta_RicottaArchBridge_nativeMenuToggle(
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeMenuToggle(
       JNIEnv *env, jobject obj)
 {
    (void)env;
@@ -793,7 +794,7 @@ static disk_control_interface_t *ricotta_disk_control(void)
 }
 
 JNIEXPORT jint JNICALL
-Java_dev_cannoli_ricotta_RicottaArchBridge_nativeDiskCount(
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeDiskCount(
       JNIEnv *env, jobject obj)
 {
    disk_control_interface_t *dc = ricotta_disk_control();
@@ -805,7 +806,7 @@ Java_dev_cannoli_ricotta_RicottaArchBridge_nativeDiskCount(
 }
 
 JNIEXPORT jint JNICALL
-Java_dev_cannoli_ricotta_RicottaArchBridge_nativeDiskIndex(
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeDiskIndex(
       JNIEnv *env, jobject obj)
 {
    disk_control_interface_t *dc = ricotta_disk_control();
@@ -817,7 +818,7 @@ Java_dev_cannoli_ricotta_RicottaArchBridge_nativeDiskIndex(
 }
 
 JNIEXPORT jstring JNICALL
-Java_dev_cannoli_ricotta_RicottaArchBridge_nativeDiskLabel(
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeDiskLabel(
       JNIEnv *env, jobject obj, jint index)
 {
    char label[256];
@@ -834,7 +835,7 @@ Java_dev_cannoli_ricotta_RicottaArchBridge_nativeDiskLabel(
 }
 
 JNIEXPORT void JNICALL
-Java_dev_cannoli_ricotta_RicottaArchBridge_nativeSetDiskIndex(
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetDiskIndex(
       JNIEnv *env, jobject obj, jint index)
 {
    (void)env;
@@ -843,7 +844,7 @@ Java_dev_cannoli_ricotta_RicottaArchBridge_nativeSetDiskIndex(
 }
 
 JNIEXPORT jboolean JNICALL
-Java_dev_cannoli_ricotta_RicottaArchBridge_nativeIsPaused(
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeIsPaused(
       JNIEnv *env, jobject obj)
 {
    uint32_t flags;
@@ -855,7 +856,7 @@ Java_dev_cannoli_ricotta_RicottaArchBridge_nativeIsPaused(
 }
 
 JNIEXPORT jobjectArray JNICALL
-Java_dev_cannoli_ricotta_RicottaArchBridge_nativeRaGetSetting(
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaGetSetting(
       JNIEnv *env, jobject obj, jstring jkey)
 {
    const char *key;
@@ -971,7 +972,7 @@ Java_dev_cannoli_ricotta_RicottaArchBridge_nativeRaGetSetting(
 }
 
 JNIEXPORT void JNICALL
-Java_dev_cannoli_ricotta_RicottaArchBridge_nativeRaSetSetting(
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaSetSetting(
       JNIEnv *env, jobject obj, jstring jkey, jstring jvalue)
 {
    ricotta_cmd_entry entry = {0};
@@ -993,7 +994,7 @@ Java_dev_cannoli_ricotta_RicottaArchBridge_nativeRaSetSetting(
 }
 
 JNIEXPORT void JNICALL
-Java_dev_cannoli_ricotta_RicottaArchBridge_nativeRaSaveOverride(
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaSaveOverride(
       JNIEnv *env, jobject obj, jint scope)
 {
    ricotta_cmd_entry entry = {0};
@@ -1011,7 +1012,7 @@ Java_dev_cannoli_ricotta_RicottaArchBridge_nativeRaSaveOverride(
  * one line per achievement, "id|title|description|points|unlocked|state|unlock_time".
  * The IGM pauses emulation while shown, so reading the client here is safe. */
 JNIEXPORT jstring JNICALL
-Java_dev_cannoli_ricotta_RicottaArchBridge_nativeGetAchievementData(
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeGetAchievementData(
       JNIEnv *env, jobject obj)
 {
    rcheevos_locals_t *locals;
@@ -1090,27 +1091,28 @@ void ricotta_osd_event(int type, int slot)
     * runloop thread, so we must use THIS thread's JNIEnv, not the cached one. */
    if (!g_jvm || !g_bridge_obj || !g_on_osd_event_mid)
       return;
-   /* RA-key-backed OSD toggles gate here against the live setting the IGM writes.
-    * Reset (2) is a Cannoli pref, gated on the Kotlin side. */
+   /* RA-key-backed OSD toggles gate here against the live setting the IGM writes,
+    * so a muted event costs no JNI call. Reset and the save events gate on the
+    * Kotlin side instead. */
    {
       settings_t *settings = config_get_ptr();
       if (settings)
       {
          switch (type)
          {
-            case 0: case 1: case 4:
-               if (!settings->bools.notification_show_save_state)
-                  return;
-               break;
-            case 7:
+            /* Deliberately not gated here. The save events tell Cannoli the slot on
+             * disk changed, and the menu reads the new thumbnail when it hears; a
+             * notification preference must not decide whether that read happens.
+             * Kotlin gates the message instead. */
+            case RICOTTA_OSD_DISK_CHANGED:
                if (!settings->bools.notification_show_disk_control)
                   return;
                break;
-            case 8:
+            case RICOTTA_OSD_SCREENSHOT:
                if (!settings->bools.notification_show_screenshot)
                   return;
                break;
-            case 9:
+            case RICOTTA_OSD_CONTROLLER_PORT:
                if (!settings->bools.notification_show_autoconfig)
                   return;
                break;

@@ -22,7 +22,7 @@ private class IntProvider : IgmSettingsProvider {
     override fun setOnChanged(callback: () -> Unit) {}
 }
 
-private class ProviderBridge : FakeEmulatorBridge() {
+private class ProviderBridge : FakeRetroArchBridge() {
     override fun settingsProvider(): IgmSettingsProvider = IntProvider()
 }
 

@@ -60,8 +60,9 @@ fun InGameMenu(
     gameTitle: String,
     menuOptions: InGameMenuOptions,
     selectedIndex: Int,
-    selectedSlot: SaveSlotManager.Slot,
+    selectedSlot: Int,
     slotThumbnail: Bitmap?,
+    slotThumbnailLoaded: Boolean,
     slotExists: Boolean,
     slotOccupied: kotlin.collections.List<Boolean>,
     undoLabel: String?,
@@ -143,8 +144,9 @@ fun InGameMenu(
                         ) { Box(modifier = Modifier.widthIn(max = 280.dp)) {
                             PolaroidFrame(
                                 thumbnail = slotThumbnail,
-                                selectedSlotIndex = selectedSlot.index,
-                                slotOccupied = slotOccupied
+                                selectedSlotIndex = selectedSlot,
+                                slotOccupied = slotOccupied,
+                                thumbnailLoaded = slotThumbnailLoaded
                             )
                         } }
                     }
@@ -182,7 +184,8 @@ fun PolaroidFrame(
     thumbnail: Bitmap?,
     selectedSlotIndex: Int,
     slotOccupied: kotlin.collections.List<Boolean>,
-    showIndicators: Boolean = true
+    showIndicators: Boolean = true,
+    thumbnailLoaded: Boolean = true
 ) {
     val selectedColor = PolaroidSelect
 
@@ -209,7 +212,7 @@ fun PolaroidFrame(
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )
-            } else {
+            } else if (thumbnailLoaded) {
                 Text(
                     text = stringResource(dev.cannoli.ui.R.string.igm_slot_empty),
                     style = MaterialTheme.typography.bodyMedium,

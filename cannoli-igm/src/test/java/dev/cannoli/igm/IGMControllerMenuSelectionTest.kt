@@ -11,13 +11,13 @@ class IGMControllerMenuSelectionTest {
     private fun menu(c: IGMController) = c.currentScreen as IGMScreen.Menu
 
     @Test fun `a first open starts at the top`() {
-        val c = testController(FakeEmulatorBridge())
+        val c = testController(FakeRetroArchBridge())
         c.openMenu()
         assertEquals(0, menu(c).selectedIndex)
     }
 
     @Test fun `reopening the menu keeps the last selection`() {
-        val c = testController(FakeEmulatorBridge())
+        val c = testController(FakeRetroArchBridge())
         c.openMenu()
         c.handleKeyDown(DPAD_DOWN)
         c.handleKeyDown(DPAD_DOWN)
@@ -31,12 +31,12 @@ class IGMControllerMenuSelectionTest {
     }
 
     @Test fun `the selection is remembered from underneath a submenu`() {
-        val c = testController(FakeEmulatorBridge())
+        val c = testController(FakeRetroArchBridge())
         c.openMenu()
         c.handleKeyDown(DPAD_DOWN)
         val before = menu(c).selectedIndex
 
-        c.push(IGMScreen.Shortcuts())
+        c.push(IGMScreen.GuidePicker())
         c.closeMenu()
         c.openMenu()
 
@@ -44,7 +44,7 @@ class IGMControllerMenuSelectionTest {
     }
 
     @Test fun `the screen stack survives a trip through the native menu`() {
-        val bridge = FakeEmulatorBridge()
+        val bridge = FakeRetroArchBridge()
         val c = testController(bridge)
         c.openMenu()
         val settings = IGMScreen.ProviderSettings(selectedIndex = 3, title = "Settings")
@@ -57,7 +57,7 @@ class IGMControllerMenuSelectionTest {
     }
 
     @Test fun `closing the native menu brings the IGM back`() {
-        val bridge = FakeEmulatorBridge()
+        val bridge = FakeRetroArchBridge()
         val c = testController(bridge)
         var backUp = 0
         c.onNativeMenuClosed = { backUp++ }
@@ -71,7 +71,7 @@ class IGMControllerMenuSelectionTest {
     }
 
     @Test fun `the remembered row survives the native menu round trip`() {
-        val bridge = FakeEmulatorBridge()
+        val bridge = FakeRetroArchBridge()
         val c = testController(bridge)
         c.openMenu()
         c.handleKeyDown(DPAD_DOWN)

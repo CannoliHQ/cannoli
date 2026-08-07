@@ -10,7 +10,7 @@ private const val DPAD_RIGHT = 22
 
 class IGMControllerDiscTest {
 
-    private fun twoDiscBridge() = FakeEmulatorBridge().apply {
+    private fun twoDiscBridge() = FakeRetroArchBridge().apply {
         discs = 2
         disc = 0
     }
@@ -22,7 +22,7 @@ class IGMControllerDiscTest {
     }
 
     @Test fun `a single disc game has no disc row`() {
-        val c = testController(FakeEmulatorBridge().apply { discs = 1 })
+        val c = testController(FakeRetroArchBridge().apply { discs = 1 })
         c.openMenu()
         assertFalse(c.buildMenuOptions().actions.contains(IgmMenuAction.SWITCH_DISC))
     }

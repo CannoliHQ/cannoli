@@ -14,13 +14,13 @@ class IGMControllerGuideTest {
     private fun controllerWithGuides(vararg names: String): IGMController {
         val dir = File(tmp.root, "Guides/nes/Game").apply { mkdirs() }
         names.forEach { File(dir, it).writeText("body") }
-        val c = testController(FakeEmulatorBridge())
+        val c = testController(FakeRetroArchBridge())
         c.attachGuides(GuideManager(tmp.root.absolutePath, "nes", "Game"))
         return c
     }
 
     @Test fun noGuidesMeansHasGuidesFalse() {
-        val c = testController(FakeEmulatorBridge())
+        val c = testController(FakeRetroArchBridge())
         c.attachGuides(GuideManager(tmp.root.absolutePath, "nes", "Empty"))
         assertFalse(c.buildMenuOptions().hasGuides)
     }

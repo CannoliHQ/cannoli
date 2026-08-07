@@ -1,6 +1,7 @@
 package dev.cannoli.igm
 
 import android.graphics.Bitmap
+import dev.cannoli.core.SaveSlotStore
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -10,11 +11,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 
 class IGMController(
-    val bridge: EmulatorBridge,
+    val bridge: RetroArchBridge,
     val gameTitle: String,
+    private val slots: SaveSlotStore,
     private val scope: CoroutineScope = MainScope(),
     private val io: CoroutineDispatcher = Dispatchers.IO,
 ) {
@@ -24,6 +25,7 @@ class IGMController(
 
     var selectedSlotIndex = mutableIntStateOf(0)
     var slotThumbnail = mutableStateOf<Bitmap?>(null)
+    var slotThumbnailLoaded = mutableStateOf(false)
     var slotExists = mutableStateOf(false)
     var slotOccupied = mutableStateOf(emptyList<Boolean>())
     var undoLabel = mutableStateOf<String?>(null)
@@ -49,8 +51,6 @@ class IGMController(
     val guidePageJumpDir get() = guideController.guidePageJumpDir
     val guideInitialScroll get() = guideController.guideInitialScroll
     val guideInitialScrollX get() = guideController.guideInitialScrollX
-
-    private val saveSlotManager = SaveSlotManager()
 
     private var lastMenuIndex = 0
 
@@ -91,40 +91,76 @@ class IGMController(
         }
     }
 
-    private var occupancyCache: List<Boolean>? = null
+    // What has been read off disk, and whether it is still believed. The slots only change when
+    // this process writes them, so a read is needed on the first look and after a write, never
+    // just because the menu opened again.
+    private var loadedSlot = -1
+    private var slotsDirty = true
+    private var slotLoadToken = 0
 
-    fun invalidateSlotCache() { occupancyCache = null }
+    fun invalidateSlotCache() {
+        slotsDirty = true
+    }
 
     fun refreshSlotInfo() {
-        val slot = saveSlotManager.slots[selectedSlotIndex.intValue]
-        occupancyCache?.let { slotOccupied.value = it }
+        val slot = selectedSlotIndex.intValue
+        val slotChanged = loadedSlot != slot
+        if (!slotChanged && !slotsDirty) return
+
+        val token = ++slotLoadToken
+        // Another slot's thumbnail is wrong rather than merely old, so it goes at once. The same
+        // slot keeps its image until the new one lands, which reads as a swap rather than a blank.
+        if (slotChanged) {
+            slotThumbnail.value = null
+            slotThumbnailLoaded.value = false
+        }
         scope.launch {
-            val exists = withContext(io) { bridge.stateExists(slot.index) }
+            val exists = withContext(io) { slots.exists(slot) }
+            if (token != slotLoadToken) return@launch
             slotExists.value = exists
 
-            if (occupancyCache == null) {
-                val occupancy = withContext(io) {
-                    saveSlotManager.slots.map { bridge.stateExists(it.index) }
-                }
-                occupancyCache = occupancy
+            if (slotsDirty || slotOccupied.value.isEmpty()) {
+                val occupancy = withContext(io) { slots.occupancy() }
+                if (token != slotLoadToken) return@launch
                 slotOccupied.value = occupancy
             }
 
-            slotThumbnail.value = withContext(io) { bridge.getStateThumbnail(slot.index) }
+            val thumbnail = withContext(io) { slots.thumbnail(slot) }
+            if (token != slotLoadToken) return@launch
+            slotThumbnail.value = thumbnail
+            slotThumbnailLoaded.value = true
+            loadedSlot = slot
+            slotsDirty = false
         }
     }
 
     fun saveState() {
-        val slot = saveSlotManager.slots[selectedSlotIndex.intValue]
-        saveSlotManager.saveState(bridge, slot)
+        val slot = selectedSlotIndex.intValue
+        // The auto slot holds one state, so the one it is about to lose is archived first. This
+        // has to finish before the write is queued, or it would archive the new state instead.
+        if (slot == SaveSlotStore.AUTO_SLOT) slots.rotateAutoIntoHistory()
+        bridge.saveState(slot)
+        // Marked stale but deliberately not read here. Between the rotation above and the write
+        // the emulator has only queued, the slot is a hole on disk, so reading now reports an
+        // empty slot and then corrects itself. onStateWritten does the reading, once there is
+        // something to read; this flag is what makes the next open re-read if that never arrives.
+        invalidateSlotCache()
+    }
+
+    /**
+     * The emulator finished writing a slot, which the save request itself only queued.
+     *
+     * Saving closes the menu, so by the time this arrives the menu is usually shut. Reading anyway
+     * is the point: the window keeps the last frame it drew, so leaving the stale thumbnail in
+     * place until the next open would show the previous screenshot before swapping to this one.
+     */
+    fun onStateWritten() {
         invalidateSlotCache()
         refreshSlotInfo()
     }
 
     fun loadState() {
-        val slot = saveSlotManager.slots[selectedSlotIndex.intValue]
-        saveSlotManager.loadState(bridge, slot)
-        refreshSlotInfo()
+        bridge.loadState(selectedSlotIndex.intValue)
     }
 
     fun suspendForNativeMenu() {
@@ -220,8 +256,7 @@ class IGMController(
         }
     }
 
-    val slots get() = saveSlotManager.slots
-    val currentSlot get() = saveSlotManager.slots[selectedSlotIndex.intValue]
+    val slotCount get() = slots.slotCount
 
     /** Callback for when the IGM wants to close (hide the overlay) */
     var onClose: (() -> Unit)? = null
@@ -270,7 +305,7 @@ class IGMController(
                     cycleDisc(-1)
                 } else {
                     // Change save slot left
-                    val newSlot = if (selectedSlotIndex.intValue <= 0) saveSlotManager.slots.size - 1 else selectedSlotIndex.intValue - 1
+                    val newSlot = if (selectedSlotIndex.intValue <= 0) slots.slotCount - 1 else selectedSlotIndex.intValue - 1
                     selectedSlotIndex.intValue = newSlot
                     refreshSlotInfo()
                 }
@@ -280,7 +315,7 @@ class IGMController(
                     cycleDisc(1)
                 } else {
                     // Change save slot right
-                    val newSlot = if (selectedSlotIndex.intValue >= saveSlotManager.slots.size - 1) 0 else selectedSlotIndex.intValue + 1
+                    val newSlot = if (selectedSlotIndex.intValue >= slots.slotCount - 1) 0 else selectedSlotIndex.intValue + 1
                     selectedSlotIndex.intValue = newSlot
                     refreshSlotInfo()
                 }
@@ -390,7 +425,13 @@ class IGMController(
                 onOpenNativeMenu?.invoke()
             }
             IgmMenuAction.RESET -> { bridge.reset(); onClose?.invoke() }
-            IgmMenuAction.QUIT -> { onClose?.invoke(); bridge.quit() }
+            IgmMenuAction.QUIT -> {
+                // RetroArch writes the auto slot itself while shutting down, so the state it is
+                // about to replace has to be archived before the quit is queued.
+                if (bridge.savesOnQuit) slots.rotateAutoIntoHistory()
+                onClose?.invoke()
+                bridge.quit()
+            }
             IgmMenuAction.GUIDE -> {
                 if (guideFiles.value.size == 1) openGuide(guideFiles.value[0]) else openGuidePicker()
             }

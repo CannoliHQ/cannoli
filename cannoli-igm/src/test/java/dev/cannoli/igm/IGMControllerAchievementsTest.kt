@@ -5,7 +5,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class IGMControllerAchievementsTest {
-    private fun bridgeWith(achievements: List<AchievementInfo>) = object : FakeEmulatorBridge() {
+    private fun bridgeWith(achievements: List<AchievementInfo>) = object : FakeRetroArchBridge() {
         override val supportsAchievements = true
         override fun getAchievements() = achievements
     }

@@ -1,25 +1,20 @@
 package dev.cannoli.ricotta
 
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.os.Handler
 import android.os.Looper
 import dev.cannoli.core.StateSlotPaths
 import dev.cannoli.igm.AchievementInfo
-import dev.cannoli.igm.EmulatorBridge
+import dev.cannoli.igm.RetroArchBridge
 import dev.cannoli.igm.RaOverrideScope
 import dev.cannoli.igm.RaSetting
 import dev.cannoli.igm.RaSettingType
 import dev.cannoli.igm.RaSettingsHost
-import java.io.File
 
-class RicottaArchBridge(
+class EmbeddedRetroArchBridge(
     private val stateBasePath: String
-) : EmulatorBridge, RaSettingsHost {
+) : RetroArchBridge, RaSettingsHost {
 
-    override val supportsNativeMenu = true
     override val supportsAchievements = true
-    override val supportsUndo = true
 
     private var onMenuClosedCallback: (() -> Unit)? = null
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -91,39 +86,23 @@ class RicottaArchBridge(
     // EmulatorBridge implementation
 
     override fun reset() = nativeReset()
+
     override fun quit() = nativeQuit()
-    override fun pause() = nativePause()
-    override fun unpause() = nativeUnpause()
-    override fun isPaused() = nativeIsPaused()
+
+    fun pause() = nativePause()
+    fun unpause() = nativeUnpause()
+
+    override val savesOnQuit: Boolean
+        get() = raGetSetting("savestate_auto_save")?.value == "true"
 
     // IGM slot index (0 = auto, 1..10 = manual) maps to RetroArch's state_slot:
     // auto -> -1, "Slot 0" (index 1) -> 0, "Slot N" -> N-1. StateSlotPaths owns
-    // this convention so the bridge and the launcher's SaveSlotManager agree.
+    // this convention so the bridge and SaveSlotStore agree.
     override fun saveState(slot: Int) = nativeSaveState(StateSlotPaths.retroArchStateSlot(slot))
     override fun loadState(slot: Int) = nativeLoadState(StateSlotPaths.retroArchStateSlot(slot))
-    override fun undoSaveState() = nativeUndoSaveState()
-    override fun undoLoadState() = nativeUndoLoadState()
-    override fun getStateSlotCount() = 11
 
-    override fun getStateThumbnail(slot: Int): Bitmap? {
-        val file = File(StateSlotPaths.thumbnailPath(stateBasePath, slot))
-        if (!file.exists()) return null
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeFile(file.absolutePath, bounds)
-        var sample = 1
-        while (bounds.outWidth / sample > THUMBNAIL_MAX_PX ||
-            bounds.outHeight / sample > THUMBNAIL_MAX_PX
-        ) {
-            sample *= 2
-        }
-        return BitmapFactory.decodeFile(
-            file.absolutePath,
-            BitmapFactory.Options().apply { inSampleSize = sample },
-        )
-    }
-
-    override fun stateExists(slot: Int): Boolean =
-        File(StateSlotPaths.statePath(stateBasePath, slot)).exists()
+    fun undoSaveState() = nativeUndoSaveState()
+    fun undoLoadState() = nativeUndoLoadState()
 
     override fun getAchievements(): List<AchievementInfo> {
         val raw = nativeGetAchievementData()
@@ -147,7 +126,6 @@ class RicottaArchBridge(
     override fun getDiskCount() = nativeDiskCount()
     override fun getDiskIndex() = nativeDiskIndex()
     override fun setDiskIndex(index: Int) = nativeSetDiskIndex(index)
-    override fun getDiskLabel(index: Int): String? = nativeDiskLabel(index)
 
     var raStrings: dev.cannoli.igm.RaOptionStrings = dev.cannoli.igm.RaOptionStrings()
     var onOpenNativeMenu: (() -> Unit)? = null
@@ -224,7 +202,6 @@ class RicottaArchBridge(
     }
 
     override fun openNativeMenu() = nativeMenuToggle()
-    override fun openAchievementsMenu() = nativeMenuToggle()
 
     override fun setOnNativeMenuClosed(callback: () -> Unit) {
         onMenuClosedCallback = callback
@@ -258,7 +235,6 @@ class RicottaArchBridge(
     companion object {
         // Matches RICOTTA_CORE_OPT_PREFIX in ricotta_bridge.c.
         const val CORE_OPTION_PREFIX = "core::"
-        private const val THUMBNAIL_MAX_PX = 640
 
         init {
             // The native library is already loaded by RetroActivityCommon

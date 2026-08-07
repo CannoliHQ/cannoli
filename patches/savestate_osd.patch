@@ -1,24 +1,40 @@
 diff --git a/tasks/task_save.c b/tasks/task_save.c
-index 551193d353..99dee7187c 100644
+index 551193d353..30ebf5dfc8 100644
 --- a/tasks/task_save.c
 +++ b/tasks/task_save.c
-@@ -615,6 +615,15 @@ static void task_save_handler(retro_task_t *task)
+@@ -20,6 +20,9 @@
+ #include <time.h>
+ 
+ #include <compat/strl.h>
++#ifdef HAVE_RICOTTA_OSD
++#include "ricotta_osd.h"
++#endif
+ #include <lists/string_list.h>
+ #include <streams/interface_stream.h>
+ #include <streams/file_stream.h>
+@@ -615,6 +618,21 @@ static void task_save_handler(retro_task_t *task)
     }
     else if (state->written == state->size)
     {
 +#ifdef HAVE_RICOTTA_OSD
 +      /* Cannoli owns the save-state notification: emit a structured event
-+       * (type 0 = save, 4 = undo-save; slot < 0 = auto) and skip native text. */
-+      extern void ricotta_osd_event(int type, int slot);
++       * (type 0 = save, 4 = undo-save; slot < 0 = auto) and skip native text.
++       * A save that also writes a thumbnail reports from save_state_cb instead,
++       * once that file is on disk: Cannoli reads the screenshot the moment it
++       * hears, and the state finishing here says nothing about the image. */
 +      task_free_title(task);
-+      ricotta_osd_event((state->flags & SAVE_TASK_FLAG_UNDO_SAVE) ? 4 : 0,
-+            state->state_slot);
++      if (!(state->flags & SAVE_TASK_FLAG_THUMBNAIL_ENABLE))
++      {
++         ricotta_osd_event((state->flags & SAVE_TASK_FLAG_UNDO_SAVE)
++               ? RICOTTA_OSD_UNDO_SAVE_STATE : RICOTTA_OSD_SAVE_STATE,
++               state->state_slot);
++      }
 +      task_save_handler_finished(task, state);
 +#else
        char       *msg      = NULL;
  
        task_free_title(task);
-@@ -642,6 +651,7 @@ static void task_save_handler(retro_task_t *task)
+@@ -642,6 +660,7 @@ static void task_save_handler(retro_task_t *task)
  
        if (msg)
           free(msg);
@@ -26,21 +42,20 @@ index 551193d353..99dee7187c 100644
     }
  }
  
-@@ -849,6 +859,13 @@ static void task_load_handler(retro_task_t *task)
+@@ -849,6 +868,12 @@ static void task_load_handler(retro_task_t *task)
     {
        task_free_title(task);
  
 +#ifdef HAVE_RICOTTA_OSD
 +      /* Cannoli owns the load-state notification (type 1; slot < 0 = auto). */
 +      {
-+         extern void ricotta_osd_event(int type, int slot);
-+         ricotta_osd_event(1, state->state_slot);
++         ricotta_osd_event(RICOTTA_OSD_LOAD_STATE, state->state_slot);
 +      }
 +#else
        if (!((flg & RETRO_TASK_FLG_MUTE) > 0))
        {
           char msg[128];
-@@ -871,6 +888,7 @@ static void task_load_handler(retro_task_t *task)
+@@ -871,6 +896,7 @@ static void task_load_handler(retro_task_t *task)
  
           task_set_title(task, strdup(msg));
        }
@@ -48,3 +63,38 @@ index 551193d353..99dee7187c 100644
  
        task_load_handler_finished(task, state);
     }
+@@ -1208,13 +1234,33 @@ static void save_state_cb(retro_task_t *task,
+    {
+       char               *path   = strdup(state->path);
+       if (state->flags & SAVE_TASK_FLAG_THUMBNAIL_ENABLE)
++      {
++#ifdef HAVE_RICOTTA_OSD
++         /* Written on this thread rather than queued, so the notification below
++          * cannot beat the file it describes. */
++         bool threaded = false;
++#else
++         bool threaded = true;
++#endif
+          take_screenshot(config_get_ptr()->paths.directory_screenshot,
+                path, true,
+-               state->flags & SAVE_TASK_FLAG_HAS_VALID_FB, false, true);
++               state->flags & SAVE_TASK_FLAG_HAS_VALID_FB, false, threaded);
++      }
+       free(path);
+    }
+ #endif
+ 
++#ifdef HAVE_RICOTTA_OSD
++   /* The half of the save notification task_save_handler deferred: the thumbnail
++    * exists now, so Cannoli can read it as soon as this lands. */
++   if (!error && (state->flags & SAVE_TASK_FLAG_THUMBNAIL_ENABLE))
++   {
++      ricotta_osd_event((state->flags & SAVE_TASK_FLAG_UNDO_SAVE)
++            ? RICOTTA_OSD_UNDO_SAVE_STATE : RICOTTA_OSD_SAVE_STATE,
++            state->state_slot);
++   }
++#endif
++
+    free(state);
+ }
+ 

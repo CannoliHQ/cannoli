@@ -8,7 +8,6 @@ enum class BatteryDisplayMode { HIDE, PERCENT, ICON }
 enum class TimeFormatMode { TWELVE_HOUR, TWENTY_FOUR_HOUR }
 
 // port >= 0 is an assigned controller port; a negative port means unassigned.
-data class PlayerSlotInfo(val port: Int, val displayName: String)
 
 // Launcher-specific data the shared IGM needs, passed in by each host (the launcher's
 // built-in runner and ricotta) so cannoli-igm stays free of app/settings dependencies.

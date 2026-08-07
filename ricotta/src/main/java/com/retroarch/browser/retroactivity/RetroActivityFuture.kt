@@ -15,7 +15,8 @@ import android.view.WindowManager
 import android.widget.Toast
 import com.retroarch.browser.preferences.util.ConfigFile
 import com.retroarch.browser.preferences.util.UserPreferences
-import dev.cannoli.ricotta.RicottaArchBridge
+import dev.cannoli.ricotta.EmbeddedRetroArchBridge
+import dev.cannoli.ricotta.RicottaOsdEvent
 import java.io.File
 
 class RetroActivityFuture : RetroActivityCamera() {
@@ -87,9 +88,9 @@ class RetroActivityFuture : RetroActivityCamera() {
                 keyCodeName = { android.view.KeyEvent.keyCodeToString(it) },
             )
 
-            val bridge = RicottaArchBridge(stateBasePath)
+            val bridge = EmbeddedRetroArchBridge(stateBasePath)
             igmOverlay = IGMOverlay(
-                this, bridge, gameTitle, hostConfig, cannoliRoot, platformTag, platformName,
+                this, bridge, stateBasePath, gameTitle, hostConfig, cannoliRoot, platformTag, platformName,
                 colors?.highlight, colors?.text, colors?.highlightText,
                 colors?.accent, colors?.title, localeTag,
             )
@@ -109,7 +110,14 @@ class RetroActivityFuture : RetroActivityCamera() {
             osd.attach(savedInstanceState)
             osdOverlay = osd
             bridge.onOsdEvent = { type, slot ->
-                if (osdEventAllowed(type)) osd.showMessage(osdEventText(type, slot))
+                if (osdEventAllowed(type, bridge)) osd.showMessage(osdEventText(type, slot))
+                // A save is queued, not written, when the IGM asks for it. The slot on disk only
+                // changes once RetroArch reports back, so the polaroid is stale until then.
+                if (type == RicottaOsdEvent.SAVE_STATE ||
+                    type == RicottaOsdEvent.UNDO_SAVE_STATE
+                ) {
+                    igmOverlay?.controller?.onStateWritten()
+                }
             }
             bridge.onOsdAchievement = { title -> osd.showAchievement(title) }
             bridge.localToggleGet = { key, def -> osdPrefs().getBoolean(key, def) }
@@ -278,21 +286,26 @@ class RetroActivityFuture : RetroActivityCamera() {
     private fun osdEventText(type: Int, slot: Int): String {
         val where = if (slot < 0) "Auto" else "Slot $slot"
         return when (type) {
-            0 -> "Saved · $where"
-            1 -> "Loaded · $where"
-            2 -> "Reset"
-            4 -> "Save undone"
-            7 -> "Disc ${slot + 1}"
-            8 -> "Screenshot saved"
-            9 -> "Controller P$slot"
+            RicottaOsdEvent.SAVE_STATE -> "Saved · $where"
+            RicottaOsdEvent.LOAD_STATE -> "Loaded · $where"
+            RicottaOsdEvent.RESET -> "Reset"
+            RicottaOsdEvent.UNDO_SAVE_STATE -> "Save undone"
+            RicottaOsdEvent.DISK_CHANGED -> "Disc ${slot + 1}"
+            RicottaOsdEvent.SCREENSHOT -> "Screenshot saved"
+            RicottaOsdEvent.CONTROLLER_PORT -> "Controller P$slot"
             else -> "Saved · $where"
         }
     }
 
-    // RA-key-backed OSD toggles gate natively in ricotta_osd_event; reset has no
-    // RA key (Cannoli pref), so it gates here.
-    private fun osdEventAllowed(type: Int): Boolean = when (type) {
-        2 -> osdPrefs().getBoolean("cannoli_osd_reset", true)
+    // Most RA-key-backed toggles gate natively in ricotta_osd_event. Reset has no RA key
+    // (Cannoli pref), and the save events are never gated natively because they also drive the
+    // menu's thumbnail refresh, so both are decided here.
+    private fun osdEventAllowed(type: Int, bridge: EmbeddedRetroArchBridge): Boolean = when (type) {
+        RicottaOsdEvent.RESET -> osdPrefs().getBoolean("cannoli_osd_reset", true)
+        RicottaOsdEvent.SAVE_STATE,
+        RicottaOsdEvent.LOAD_STATE,
+        RicottaOsdEvent.UNDO_SAVE_STATE ->
+            bridge.raGetSetting("notification_show_save_state")?.value != "false"
         else -> true
     }
 
@@ -311,5 +324,6 @@ class RetroActivityFuture : RetroActivityCamera() {
         private const val HANDLER_ARG_TRUE = 1
         private const val HANDLER_ARG_FALSE = 0
         private const val HANDLER_MESSAGE_DELAY_DEFAULT_MS = 300
+
     }
 }
