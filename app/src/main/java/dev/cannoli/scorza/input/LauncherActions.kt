@@ -229,17 +229,6 @@ class LauncherActions @Inject constructor(
         return dialog
     }
 
-    /**
-     * Whether a launch counts as a play, decided here rather than at each caller.
-     *
-     * A launch that failed leaves its error dialog behind and is not a play. A save sync check has
-     * not launched anything yet, so the play waits for that to resolve. Everything else has handed
-     * the screen to an emulator, and that includes the black scrim a successful launch returns.
-     *
-     * The scrim is why this moved: callers used to treat any dialog as a failure, which was true
-     * until a successful launch started returning one, and Recently Played silently stopped
-     * updating. Four copies of that test were four chances to get it wrong again.
-     */
     private fun rememberPlay(item: ListItem, dialog: DialogState?, reorder: Boolean) {
         val key = recentKeyFor(item) ?: return
         when (playOutcomeFor(dialog, nav.dialogState.value is DialogState.SaveSyncChecking)) {
@@ -400,17 +389,7 @@ class LauncherActions @Inject constructor(
     internal enum class PlayOutcome { IGNORE, HOLD, RECORD }
 
     companion object {
-        /**
-         * Whether a launch counts as a play.
-         *
-         * [dialog] is what the launch returned. A failure returns the error to show and is not a
-         * play. A success returns the black scrim it wants held until the emulator takes the
-         * screen, which is still a play: reading any dialog as a failure is what stopped Recently
-         * Played updating, since before the scrim existed a success returned nothing at all.
-         *
-         * [saveSyncChecking] means the launch is waiting on a save sync round trip and has not
-         * started anything yet, so the play is held until that resolves.
-         */
+        // Launching is a success, not a failure.
         internal fun playOutcomeFor(dialog: DialogState?, saveSyncChecking: Boolean): PlayOutcome = when {
             dialog != null && dialog !is DialogState.Launching -> PlayOutcome.IGNORE
             saveSyncChecking -> PlayOutcome.HOLD

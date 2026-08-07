@@ -11,10 +11,7 @@ vars:
 
 tasks:
   cores:
-    # Keep in step with CORES in .github/workflows/release.yml. fbneo and mame2003_plus are
-    # deliberately absent: they were 172 MB across both ABIs, and bundling pays for a core three
-    # times over, once per ABI in the APK and once extracted on the device. Arcade downloads on
-    # demand through the emulator picker instead.
+    # CORES below is generated from credits.json by scripts/sync_credits.py.
     desc: Fetch bundled libretro cores for arm64-v8a and armeabi-v7a
     vars:
       CORES:
@@ -73,8 +70,7 @@ tasks:
     cmds:
       - ./gradlew :app:assembleProfiling
       - '{{.ADB}}install -r app/build/outputs/apk/profiling/app-profiling.apk'
-      # Installing always resets dexopt to `verify`. Starting once lets ProfileInstaller write the
-      # baseline profile, and the compile is what actually applies it.
+      # Installing resets dexopt; the run lets ProfileInstaller write, the compile applies it.
       - '{{.ADB}}logcat -c'
       - '{{.ADB}}shell am start -n {{.PKG}}/.MainActivity'
       - |
@@ -94,9 +90,7 @@ tasks:
   launch:timings:
     desc: Launch timings for recent game launches, read out of the events buffer
     cmds:
-      # The events buffer holds well over an hour, so play first and read after. wm_activity_launch_time
-      # is the system's own measure to first draw; MainActivity stopping long after RetroArch resumes
-      # means the transition stalled rather than the launch being slow.
+      # The events buffer holds over an hour, so play first and read after.
       - |
         {{.ADB}}shell logcat -b events -d -v time \
           | grep -E 'am_proc_bound.*retroarch|wm_on_create_called.*(Ricotta|RetroActivity)|wm_activity_launch_time|wm_on_stop_called.*MainActivity' \

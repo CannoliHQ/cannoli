@@ -19,8 +19,6 @@ class IGMControllerSlotRefreshTest {
         }
     }
 
-    // Opening the menu must not block on the filesystem. The state is filled once the
-    // dispatcher runs, not before openMenu returns.
     @Test fun `openMenu does not read slot state synchronously`() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val bridge = CountingBridge()
@@ -33,8 +31,6 @@ class IGMControllerSlotRefreshTest {
         assertEquals("12 checks once the refresh runs", 12, bridge.existsCalls)
     }
 
-    // Occupancy only changes when a state is written or deleted, both of which go through
-    // this controller, so reopening the menu must not stat all eleven slots again.
     @Test fun `reopening the menu does not re-read occupancy`() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val bridge = CountingBridge()

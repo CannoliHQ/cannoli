@@ -985,9 +985,6 @@ fun DialogOverlay(
             buttonStyle = buttonStyle,
         )
 
-        // Held across a network round trip to the server while input is already blocked. The same
-        // black ground as a launch with nothing to report, since that is what this is on its way
-        // to being: the line only surfaces if the server takes long enough to look like a hang.
         is DialogState.SaveSyncChecking ->
             dev.cannoli.ui.components.LaunchScrim(status = stringResource(R.string.save_sync_checking))
 

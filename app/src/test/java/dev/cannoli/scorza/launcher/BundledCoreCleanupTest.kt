@@ -9,9 +9,6 @@ class BundledCoreCleanupTest {
 
     private fun stamp(vararg cores: String) = listOf(VERSION) + cores.toList()
 
-    // The bug this replaced: cleanup deleted anything in the directory that was not bundled, and a
-    // downloaded core is by definition not bundled, so every one of them went on the first launch
-    // after an app update.
     @Test fun `a downloaded core is never removed`() {
         val stale = LaunchManager.staleBundledCores(
             stamp = stamp("mgba_libretro_android.so"),
@@ -28,8 +25,6 @@ class BundledCoreCleanupTest {
         assertEquals(listOf("flycast_libretro_android.so"), stale)
     }
 
-    // A stamp written before the manifest existed is a bare version line. Removing nothing is the
-    // safe reading: the manifest is written on the way out, so the next update prunes properly.
     @Test fun `a stamp with no manifest removes nothing`() {
         val stale = LaunchManager.staleBundledCores(
             stamp = listOf(VERSION),

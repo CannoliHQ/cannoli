@@ -8,9 +8,6 @@ import org.junit.Test
 
 class RecentlyPlayedRecordingTest {
 
-    // The regression. A successful launch used to return nothing; once it started returning the
-    // black scrim, every caller read that as a failure and no play was ever recorded, so Recently
-    // Played stopped updating entirely.
     @Test fun `the launch scrim is a play, not a failure`() {
         assertEquals(
             PlayOutcome.RECORD,
@@ -36,8 +33,6 @@ class RecentlyPlayedRecordingTest {
         )
     }
 
-    // Nothing has launched yet while the server is being asked about saves, so the play waits for
-    // the answer rather than being recorded for a launch that may never happen.
     @Test fun `a save sync check holds the play`() {
         assertEquals(PlayOutcome.HOLD, playOutcomeFor(null, saveSyncChecking = true))
     }

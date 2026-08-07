@@ -144,8 +144,6 @@ class IGMOverlay(
         // Wire up controller callbacks
         controller.onClose = { hide() }
         controller.onOpenNativeMenu = {
-            // Not a close: the overlay window steps aside for RetroArch's menu with its screen
-            // stack intact, and comes back on the same row when that menu closes.
             suspendedForNativeMenu = true
             hideWindow()
             bridge.unpause()
@@ -154,8 +152,6 @@ class IGMOverlay(
         controller.onNativeMenuClosed = {
             if (suspendedForNativeMenu) {
                 suspendedForNativeMenu = false
-                // RetroArch's menu can write and delete states of its own, so nothing the IGM
-                // cached about the slots survives the trip.
                 controller.invalidateSlotCache()
                 controller.refreshSlotInfo()
                 showWindow()
@@ -191,25 +187,19 @@ class IGMOverlay(
             setViewTreeSavedStateRegistryOwner(lifecycleOwner)
             isFocusable = true
             isFocusableInTouchMode = true
-            // The platform draws a focus highlight around a focused view that does not define its
-            // own, which showed up as a border around the whole menu once this view started taking
-            // focus. The menu draws its own selection, so suppress it.
             defaultFocusHighlightEnabled = false
 
             setContent {
                 IGMContent()
             }
 
-            // Same contract the Dialog's listener had: consume everything so nothing reaches the
-            // game, and ignore the menu key briefly after opening so the press that opened the
-            // menu does not immediately close it.
             setOnKeyListener { _, keyCode, event ->
                 if (event.action == KeyEvent.ACTION_DOWN) {
                     val isMenuKey = keyCode == KeyEvent.KEYCODE_BACK
                             || keyCode == KeyEvent.KEYCODE_BUTTON_MODE
                             || keyCode == KeyEvent.KEYCODE_MENU
                     if (isMenuKey && System.currentTimeMillis() - showTimeMs < 500) {
-                        // Ignore, this is the same press that opened the menu
+                        // Same press that opened the menu.
                     } else {
                         controller.handleKeyDown(keyCode)
                     }
@@ -218,25 +208,10 @@ class IGMOverlay(
             }
         }
         composeView = view
-
-        // The window itself is added on first open, by attachIfNeeded.
     }
 
     private var attached = false
 
-    /**
-     * A panel window rather than a Dialog, added once and kept for the session.
-     *
-     * A Dialog detaches its content view on dismiss, which disposes the composition, so every open
-     * rebuilt the whole menu tree. Retaining the composition instead is not a fix either: the
-     * recomposer belongs to the window, so a retained composition on a dismissed Dialog stops
-     * recomposing and the selection highlight freezes. One window kept for the session avoids both.
-     *
-     * Added here rather than at startup because a panel window whose root view is GONE never draws,
-     * and so never reports drawn. The transition into the game waited out its full five second
-     * timeout on it, with the emulator already running and audible behind a screen still showing
-     * the launcher. Attaching on first open keeps that off the launch path entirely.
-     */
     private fun attachIfNeeded(view: ComposeView): Boolean {
         if (attached) return true
         attached = runCatching {
@@ -245,12 +220,6 @@ class IGMOverlay(
         return attached
     }
 
-    /**
-     * Focusable only while the menu is up. RetroArch's native input hook consumes gamepad input
-     * whenever the IGM is visible and does not forward it, so the menu has to hold window focus to
-     * receive keys, exactly as the Dialog did. Hidden, the window is neither focusable nor
-     * touchable and the game is unaffected.
-     */
     private fun panelParams(focusable: Boolean) = WindowManager.LayoutParams(
         WindowManager.LayoutParams.MATCH_PARENT,
         WindowManager.LayoutParams.MATCH_PARENT,
@@ -306,10 +275,6 @@ class IGMOverlay(
             v.visibility = View.VISIBLE
             runCatching { activity.windowManager.updateViewLayout(v, panelParams(focusable = true)) }
             v.requestFocus()
-            // Immersive state belongs to whichever window holds focus, so taking focus brings the
-            // system bars back over the game: a strip along the bottom, and the menu shifting as
-            // the insets change. This window has to ask for immersive mode on its own behalf, the
-            // same thing the Dialog used to do through its Window.
             ViewCompat.getWindowInsetsController(v)?.apply {
                 hide(WindowInsetsCompat.Type.systemBars())
                 systemBarsBehavior =
@@ -331,8 +296,6 @@ class IGMOverlay(
         bridge.setIGMVisible(false)
         composeView?.let { v ->
             if (!attached) return@let
-            // Flags first, then hide: the window stops taking input before it stops drawing, so
-            // no key can land on a menu that is on its way out.
             runCatching { activity.windowManager.updateViewLayout(v, panelParams(focusable = false)) }
             v.visibility = View.GONE
         }

@@ -4,13 +4,7 @@ import android.graphics.Bitmap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 
-/**
- * An IGMController whose slot refresh runs inline.
- *
- * The production default is a MainScope, which a JVM unit test has no main dispatcher for. Tests
- * that are not about slot IO use this so opening a menu behaves exactly as it did before that work
- * moved off the main thread. Tests that are about it inject their own scheduler instead.
- */
+/** An IGMController whose slot refresh runs inline; a JVM test has no main dispatcher. */
 fun testController(bridge: EmulatorBridge, gameTitle: String = "Game"): IGMController =
     IGMController(bridge, gameTitle, CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined)
 
@@ -34,7 +28,6 @@ open class FakeEmulatorBridge : EmulatorBridge {
     var nativeMenuOpened = 0
     private var menuClosedCallback: (() -> Unit)? = null
 
-    /** Stands in for RetroArch's menu-close poller. */
     fun closeNativeMenu() = menuClosedCallback?.invoke()
 
     override fun openNativeMenu() { nativeMenuOpened++ }

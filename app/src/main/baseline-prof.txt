@@ -1,25 +1,7 @@
-# Baseline profile for the launch path.
-#
-# Measured on the onn 4K box: from the emulator process being bound to RicottaLaunchActivity's first
-# callback is over a second, and that whole window is class loading and JIT before any of our code
-# runs. Nothing here is a behaviour change; these rules only tell ART which classes are worth
-# compiling ahead of time instead of interpreting on the way into a game.
-#
-# AndroidX ships baseline profiles inside its own artifacts and AGP merges them, so Compose,
-# lifecycle and activity are already covered. What has no profile is our code, and our code is what
-# loads twice: once when the launcher starts, and again in the :retroarch process on every launch.
-
-# Everything Cannoli owns. This is the launcher's own startup, the emulator process's Application
-# init, and the Hilt component, which generates into these packages and is one very large class
-# that gets loaded in every process.
+# AndroidX ships its own profiles and AGP merges them; these cover the code that has none.
 HSPLdev/cannoli/**->**(**)**
 Ldev/cannoli/**
-
-# The RetroArch activity shell that hosts the emulator. Java only; the frontend itself is native
-# and none of this reaches it.
 HSPLcom/retroarch/**->**(**)**
 Lcom/retroarch/**
-
-# Dagger's runtime. Small, but it is on the critical path of every process start.
 HSPLdagger/**->**(**)**
 Ldagger/**

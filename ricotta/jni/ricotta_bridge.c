@@ -359,12 +359,8 @@ static void *menu_close_poll_func(void *arg)
       attached = 1;
    }
 
-   /* Poll until menu closes.
-    *
-    * The toggle that brought us here was enqueued, not run, so the menu is not alive yet when this
-    * thread starts. Watching for it to close straight away therefore reported a close on the first
-    * poll: wait for it to come up first. If it never does, give up quietly rather than report a
-    * close that did not happen, since the caller can always ask for the menu again. */
+   /* The toggle was enqueued, not run, so wait for the menu to come up before watching for it to
+    * close. */
    while (g_menu_poll_active)
    {
       struct menu_state *menu_st = menu_state_get_ptr();

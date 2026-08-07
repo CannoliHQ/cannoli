@@ -478,9 +478,6 @@ class GameListViewModel @Inject constructor(
                 done()
             }
         } else if (current.platformTag == "recently_played") {
-            // Left standing rather than blanked. loadRecentlyPlayed builds a whole State and swaps
-            // it in once the query returns, so emptying first only bought a frame of empty list on
-            // the way back from a game, which is exactly when this list reloads.
             loadRecentlyPlayed(done)
         } else if (current.platformTags.isNotEmpty()) {
             loadGames(current.platformTag, current.platformTags, current.subfolderPath, preserveIndex, preserveScroll, prevCount, preserveId, done)

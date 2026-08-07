@@ -436,9 +436,6 @@ class LaunchManager(
             launchState.launching = false
             return dialog
         }
-        // Success. The emulator has been asked to start but has not taken the screen yet, and on a
-        // cold process that gap is seconds. Cleared by MainActivity.onResume when the launcher
-        // comes back.
         return DialogState.Launching
     }
 
@@ -610,18 +607,8 @@ class LaunchManager(
             return null
         }
 
-        /**
-         * Cores this function extracted last time and the APK no longer carries.
-         *
-         * The stamp file records what was extracted, so a core the user downloaded is never a
-         * candidate: it was never in the manifest. The rule before this deleted anything in the
-         * directory that was not bundled, which wiped every downloaded core on the first launch
-         * after any app update.
-         *
-         * A stamp written before the manifest existed is a bare version line, which reads as an
-         * empty manifest and removes nothing. That is the safe direction; the manifest is written
-         * on the way out and the next update prunes precisely.
-         */
+        // Line 0 of the stamp is the version, the rest is what was extracted. A downloaded core is
+        // never in it, so it is never removed.
         internal fun staleBundledCores(stamp: List<String>, extractedNow: Set<String>): List<String> =
             stamp.drop(1).filter { it.isNotEmpty() && it !in extractedNow }
 

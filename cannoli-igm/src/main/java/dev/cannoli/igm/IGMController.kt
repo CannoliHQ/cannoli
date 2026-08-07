@@ -52,9 +52,6 @@ class IGMController(
 
     private val saveSlotManager = SaveSlotManager()
 
-    // The menu reopens where it was left rather than snapping back to the top. Clamped rather
-    // than trusted, because the option list is contextual: a disc row or a cheats row can appear
-    // or disappear between opens and would otherwise leave the index past the end.
     private var lastMenuIndex = 0
 
     fun openMenu() {
@@ -93,9 +90,6 @@ class IGMController(
         }
     }
 
-    // Occupancy is 11 stat calls against the SD card. It only changes when a state is written
-    // or deleted, and both go through this controller, so it is read once and invalidated
-    // rather than re-read on every open.
     private var occupancyCache: List<Boolean>? = null
 
     fun invalidateSlotCache() { occupancyCache = null }
@@ -115,13 +109,10 @@ class IGMController(
                 slotOccupied.value = occupancy
             }
 
-            // Last, and separately: this one decodes a bitmap and is the slowest of the three.
             slotThumbnail.value = withContext(io) { bridge.getStateThumbnail(slot.index) }
         }
     }
 
-    // Writing a state changes occupancy, so the cache cannot survive it. Loading does not.
-    // Anything added later that deletes a state, or undoes a save, must invalidate here too.
     fun saveState() {
         val slot = saveSlotManager.slots[selectedSlotIndex.intValue]
         saveSlotManager.saveState(bridge, slot)
@@ -135,11 +126,6 @@ class IGMController(
         refreshSlotInfo()
     }
 
-    // Handing off to RetroArch's own menu is a step further in, not a close, so the screen stack is
-    // left standing and the IGM comes back on the row it left when that menu closes. Clearing it
-    // here and reopening at the root was also visible: the overlay window keeps its last drawn
-    // frame while hidden and presents it again on the way back, so the return flashed the settings
-    // row before the root menu landed.
     fun suspendForNativeMenu() {
         rememberMenuIndex()
         bridge.setOnNativeMenuClosed { onNativeMenuClosed?.invoke() }
@@ -242,7 +228,6 @@ class IGMController(
     /** Callback for when the IGM wants to open the native menu */
     var onOpenNativeMenu: (() -> Unit)? = null
 
-    /** Callback for when RetroArch's own menu has closed and the IGM should come back up */
     var onNativeMenuClosed: (() -> Unit)? = null
 
     /**

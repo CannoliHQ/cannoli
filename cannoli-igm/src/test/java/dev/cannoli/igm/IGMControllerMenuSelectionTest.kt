@@ -16,8 +16,6 @@ class IGMControllerMenuSelectionTest {
         assertEquals(0, menu(c).selectedIndex)
     }
 
-    // Reopening returns to the row the player left. Before this, the menu snapped back to Resume,
-    // which also showed as a visible jump once the composition started surviving a close.
     @Test fun `reopening the menu keeps the last selection`() {
         val c = testController(FakeEmulatorBridge())
         c.openMenu()
@@ -45,8 +43,6 @@ class IGMControllerMenuSelectionTest {
         assertEquals(before, menu(c).selectedIndex)
     }
 
-    // Handing off to RetroArch's own menu used to clear the stack and come back at the root, which
-    // showed as the settings row flashing before the root menu landed. The stack stands instead.
     @Test fun `the screen stack survives a trip through the native menu`() {
         val bridge = FakeEmulatorBridge()
         val c = testController(bridge)
@@ -74,8 +70,6 @@ class IGMControllerMenuSelectionTest {
         assertEquals(1, backUp)
     }
 
-    // The row underneath is still what a later close rewinds to, so the next open from the game
-    // lands on Settings rather than the top of the list.
     @Test fun `the remembered row survives the native menu round trip`() {
         val bridge = FakeEmulatorBridge()
         val c = testController(bridge)

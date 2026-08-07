@@ -60,12 +60,6 @@ sealed interface DialogState {
     ) : DialogState
     data class MissingApp(val appName: String, val packageName: String, val platformTag: String? = null, val romId: Long? = null) : DialogState
     data class LaunchError(val message: String) : DialogState
-
-    /**
-     * Held from the moment a launch is committed until the emulator takes the screen. A cold
-     * RetroArch process takes seconds, and without this the launcher sits on a game list it has
-     * stopped responding on. Draws nothing but black. Cleared by MainActivity.onResume.
-     */
     data object Launching : DialogState
     data class ContextMenu(val gameName: String, val selectedOption: Int = 0, val options: List<String>) : DialogState
     data class BulkContextMenu(val gamePaths: List<String>, val selectedOption: Int = 0, val options: List<String>) : DialogState

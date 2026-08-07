@@ -79,16 +79,7 @@ android {
                 "proguard-rules.pro"
             )
         }
-        // Debug, minus the one flag that decides whether ART compiles the app ahead of time.
-        //
-        // A debuggable app is never AOT compiled, because the debugger needs code it can always
-        // deoptimize, so it runs straight from the APK. Startup pays that in full: launch code runs
-        // once per launch, which is too few times for the JIT to help, and a launch measured about
-        // three times slower on debug than on release. Nothing else here differs from debug, so a
-        // launch can be timed honestly without building a release.
-        //
-        // Not debuggable, so no debugger and no run-as. Libraries fall back to their debug variants
-        // because debuggability is an application flag and theirs does not matter.
+        // Debug, but not debuggable, so ART compiles it ahead of time and launch timings are real.
         create("profiling") {
             initWith(getByName("debug"))
             isDebuggable = false
@@ -126,8 +117,7 @@ dependencies {
     implementation(project(":ricotta"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)
-    // Installs baseline-prof.txt at runtime. Cannoli is sideloaded, so the profile never reaches
-    // the installer the way a Play install would, and without this the embedded profile is inert.
+    // Sideloaded APKs never get the profile handed to the installer, so it is applied at runtime.
     implementation(libs.androidx.profileinstaller)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -168,7 +158,6 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
 
-// AGP runs lint-vital for any non-debuggable variant, which is most of what assembleProfiling
-// costs. Release still gets it; this variant only exists to time launches.
+// Lint-vital runs for any non-debuggable variant and is most of this one's build time.
 tasks.matching { it.name.startsWith("lintVital") && it.name.endsWith("Profiling") }
     .configureEach { enabled = false }
