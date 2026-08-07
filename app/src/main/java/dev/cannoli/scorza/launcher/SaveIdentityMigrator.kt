@@ -1,7 +1,7 @@
 package dev.cannoli.scorza.launcher
 
 import dev.cannoli.scorza.config.CannoliPaths
-import dev.cannoli.scorza.libretro.SaveSlotManager
+import dev.cannoli.core.SaveSlotStore
 import dev.cannoli.scorza.util.ArchiveExtractor
 import dev.cannoli.scorza.util.AtomicRename
 import java.io.File
@@ -26,8 +26,8 @@ class SaveIdentityMigrator(cannoliRoot: File, private val atomicRename: AtomicRe
     }
 
     private fun libraryDataExists(tag: String, base: String): Boolean {
-        val slots = SaveSlotManager(paths.saveStateBase(tag, base).absolutePath)
-        if (slots.slots.any { slots.stateExists(it) }) return true
+        val slots = SaveSlotStore(paths.saveStateBase(tag, base).absolutePath)
+        if (slots.occupancy().any { it }) return true
         return paths.sramFile(tag, base).exists()
     }
 }

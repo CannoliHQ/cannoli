@@ -16,7 +16,7 @@ import dev.cannoli.scorza.input.runtime.confirmButton
 import dev.cannoli.scorza.input.runtime.labelSet
 import dev.cannoli.scorza.launcher.toIgmInputMapping
 import dev.cannoli.scorza.config.PlatformConfig
-import dev.cannoli.scorza.libretro.SaveSlotManager
+import dev.cannoli.core.SaveSlotStore
 import dev.cannoli.scorza.model.App
 import dev.cannoli.scorza.model.LaunchTarget
 import dev.cannoli.scorza.model.Rom
@@ -114,6 +114,9 @@ class LaunchManager(
             // the same setting. This lives here, not in the base config, because the base is
             // hash-gated and would not pick up a toggle until CONFIG_VERSION moved.
             put("savestate_auto_save", if (settings.alwaysSaveOnQuit) "true" else "false")
+            // Also in the base config, and repeated here for the same reason: an install made
+            // before this existed already has a base config and will never be handed a new one.
+            put("savestate_thumbnail_enable", "true")
             if (resume) {
                 put("savestate_auto_load", "true")
             }
@@ -124,37 +127,6 @@ class LaunchManager(
         return launchConfig.absolutePath
     }
 
-
-    private fun patchRetroArchConfig(source: String, rootPath: String): String {
-        val raUser = settings.raUsername
-        val raToken = settings.raToken
-        val overrides = buildMap {
-            put("savefile_directory", "$rootPath/Saves")
-            put("savestate_directory", "$rootPath/Save States")
-            put("screenshot_directory", "$rootPath/Media/Screenshots")
-            put("recording_output_directory", "$rootPath/Media/Recordings")
-            put("sort_savefiles_by_content_enable", "true")
-            // RetroArch defaults this to true and would nest the core name under the content
-            // directory, giving Saves/GBA/mGBA instead of the Saves/GBA the internal runner writes.
-            put("sort_savefiles_enable", "false")
-            put("savestate_file_compression", "false")
-            put("savestate_block_format", "false")
-            put("savestate_thumbnail_enable", "true")
-            put("config_save_on_exit", "false")
-            put("video_font_enable", "false")
-            put("auto_overrides_enable", "true")
-
-            // TODO come back to this at a later date
-//            put("assets_directory", "$rootPath/Config/Assets")
-
-            if (raUser.isNotEmpty() && raToken.isNotEmpty()) {
-                put("cheevos_enable", "true")
-                put("cheevos_username", raUser)
-                put("cheevos_token", raToken)
-            }
-        }
-        return applyOverrides(source, overrides)
-    }
 
     private fun applyOverrides(source: String, overrides: Map<String, String>): String {
         val applied = mutableSetOf<String>()
@@ -194,20 +166,14 @@ class LaunchManager(
         return CannoliPaths(settings.sdCardRoot).saveStateBase(rom.platformTag, romName).absolutePath
     }
 
-    fun slotOccupancy(rom: Rom): List<Boolean> {
-        val slotManager = SaveSlotManager(saveStateBasePath(rom))
-        return (0..10).map { i ->
-            slotManager.slots.firstOrNull { it.index == i }
-                ?.let { File(slotManager.statePath(it)).exists() } ?: false
-        }
-    }
+    fun slotOccupancy(rom: Rom): List<Boolean> =
+        SaveSlotStore(saveStateBasePath(rom)).occupancy()
 
     fun findMostRecentSlot(rom: Rom): Int? {
-        val slotManager = SaveSlotManager(saveStateBasePath(rom))
-        return slotManager.slots
-            .filter { File(slotManager.statePath(it)).exists() }
-            .maxByOrNull { File(slotManager.statePath(it)).lastModified() }
-            ?.index
+        val slots = SaveSlotStore(saveStateBasePath(rom))
+        return (0 until slots.slotCount)
+            .filter { slots.exists(it) }
+            .maxByOrNull { File(slots.statePath(it)).lastModified() }
     }
 
     private fun hasSaveState(rom: Rom): Boolean = findMostRecentSlot(rom) != null
@@ -590,6 +556,9 @@ class LaunchManager(
             appendLine("sort_savestates_by_content_enable = \"true\"")
             appendLine("sort_savestates_enable = \"false\"")
             appendLine("savestate_file_compression = \"false\"")
+            // RetroArch defaults this off everywhere but x86_64, and the slot thumbnails are the
+            // whole point of the save and load rows.
+            appendLine("savestate_thumbnail_enable = \"true\"")
             appendLine("config_save_on_exit = \"false\"")
             appendLine("video_font_enable = \"false\"")
             appendLine("assets_directory = \"$rootPath/Config/Assets\"")

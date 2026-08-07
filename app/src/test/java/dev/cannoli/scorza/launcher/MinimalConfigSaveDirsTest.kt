@@ -43,3 +43,19 @@ class MinimalConfigSaveDirsTest {
     @Test fun `RetroArch does not save its config on exit`() =
         assertEquals("false", valueOf("config_save_on_exit"))
 }
+
+/**
+ * RetroArch only defaults savestate_thumbnail_enable on for x86_64, so on every device Cannoli
+ * ships to it is off unless stated. Without it RetroArch writes the state and no screenshot, and
+ * the save and load rows show whatever stale image was left beside it.
+ */
+class MinimalConfigThumbnailTest {
+
+    @Test fun `state screenshots are enabled`() {
+        val value = LaunchManager.buildMinimalConfig("/sd/Cannoli")
+            .lineSequence()
+            .firstOrNull { it.startsWith("savestate_thumbnail_enable ") }
+            ?.substringAfter("=")?.trim()?.trim('"')
+        assertEquals("true", value)
+    }
+}

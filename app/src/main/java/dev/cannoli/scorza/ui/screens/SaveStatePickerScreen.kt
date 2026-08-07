@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import dev.cannoli.igm.PolaroidFrame
 import dev.cannoli.scorza.R
-import dev.cannoli.scorza.libretro.SaveSlotManager
+import dev.cannoli.core.SaveSlotStore
 import dev.cannoli.scorza.model.Rom
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.components.BottomBar
@@ -39,12 +39,9 @@ fun SaveStatePickerScreen(
     listLineHeight: TextUnit,
     buttonStyle: ButtonStyle,
 ) {
-    val slotManager = remember(stateBasePath) { SaveSlotManager(stateBasePath) }
+    val slots = remember(stateBasePath) { SaveSlotStore(stateBasePath) }
     val thumbnail by produceState<Bitmap?>(null, stateBasePath, selectedSlotIndex) {
-        value = withContext(Dispatchers.IO) {
-            slotManager.slots.firstOrNull { it.index == selectedSlotIndex }
-                ?.let { slotManager.loadThumbnail(it) }
-        }
+        value = withContext(Dispatchers.IO) { slots.thumbnail(selectedSlotIndex) }
     }
 
     ScreenBackground(backgroundImagePath = backgroundImagePath, backgroundTint = backgroundTint) {
