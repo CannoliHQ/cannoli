@@ -15,23 +15,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import dev.cannoli.ui.theme.GrayText
 import kotlinx.coroutines.delay
 
+// Work that resolves inside this shows nothing at all.
 private const val StatusDelayMs = 250L
 
-/**
- * The launcher's ground while a launch is in flight, from the moment a launch is committed until
- * the emulator takes the screen.
- *
- * Black and silent by default. A launch with nothing to report should look like nothing at all
- * rather than a title card, and the only reason this exists is so the launcher is not left sitting
- * on a game list it has stopped responding on.
- *
- * [status] is for work that is genuinely holding the launch up, currently only a save sync round
- * trip. It waits [StatusDelayMs] before appearing, so a check that answers quickly shows nothing
- * and only a wait long enough to look like a hang gets explained.
- */
+/** Black while a launch is in flight. [status] appears only for work holding the launch up. */
 @Composable
 fun LaunchScrim(status: String? = null) {
     Box(
@@ -49,9 +38,9 @@ fun LaunchScrim(status: String? = null) {
             if (visible) {
                 Text(
                     text = status,
-                    modifier = Modifier.align(Alignment.BottomStart),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = GrayText,
+                    modifier = Modifier.align(Alignment.Center),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.White,
                 )
             }
         }
