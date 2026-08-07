@@ -8,7 +8,7 @@ class AutoconfigLoader(private val source: CfgSource) {
         cached?.let { return it }
         val loaded = source.listCfgFiles().mapNotNull { name ->
             try {
-                source.open(name).use { RetroArchCfgParser.parse(it) }
+                source.open(name).use { RetroArchCfgParser.parse(it, fileName = name.substringAfterLast('/')) }
             } catch (_: Exception) {
                 null
             }

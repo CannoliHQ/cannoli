@@ -121,4 +121,46 @@ class RetroArchCfgParserTest {
         org.junit.Assert.assertNull(entry.buttonBindings["up_btn"])
         org.junit.Assert.assertNull(entry.buttonBindings["down_btn"])
     }
+
+    @Test
+    fun `parses cannoli metadata keys`() {
+        val entry = RetroArchCfgParser.parse(
+            """
+            input_device = "8BitDo Pro 2"
+            input_device_display_name = "Living Room Pad"
+            input_vendor_id = "11720"
+            input_product_id = "24582"
+            input_b_btn = "96"
+            cannoli_user = "true"
+            cannoli_confirm_button = "BTN_SOUTH"
+            cannoli_glyph_style = "PLUMBER"
+            cannoli_exclude_from_gameplay = "true"
+            cannoli_descriptor = "abc123"
+            cannoli_build_model = "Retroid Pocket 5"
+            cannoli_source_mask = "16778513"
+            cannoli_default_controller_type = "517"
+            """.trimIndent(),
+            fileName = "8BitDo_Pro_2.cfg",
+        )
+        assertEquals("Living Room Pad", entry.displayName)
+        org.junit.Assert.assertTrue(entry.cannoliUser)
+        assertEquals("BTN_SOUTH", entry.confirmButton)
+        assertEquals("PLUMBER", entry.glyphStyle)
+        org.junit.Assert.assertTrue(entry.excludeFromGameplay)
+        assertEquals("abc123", entry.descriptor)
+        assertEquals("Retroid Pocket 5", entry.buildModel)
+        assertEquals(16778513, entry.sourceMask)
+        assertEquals(517, entry.defaultControllerType)
+        assertEquals("8BitDo_Pro_2.cfg", entry.fileName)
+    }
+
+    @Test
+    fun `cannoli fields default to absent`() {
+        val entry = RetroArchCfgParser.parse("input_device = \"Pad\"\ninput_b_btn = \"96\"")
+        assertNull(entry.displayName)
+        org.junit.Assert.assertFalse(entry.cannoliUser)
+        assertNull(entry.confirmButton)
+        org.junit.Assert.assertFalse(entry.excludeFromGameplay)
+        assertNull(entry.fileName)
+    }
 }
