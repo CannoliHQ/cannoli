@@ -31,6 +31,7 @@ import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.screens.ColorEntry
 import dev.cannoli.scorza.ui.screens.EmulatorPickerOption
 import dev.cannoli.scorza.ui.screens.DialogState
+import dev.cannoli.scorza.ui.screens.ListDialog
 import dev.cannoli.scorza.ui.screens.KeyboardHost
 import dev.cannoli.scorza.ui.screens.withMenuDelta
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
@@ -248,30 +249,9 @@ class DialogInputHandler @Inject constructor(
                 val size = dev.cannoli.scorza.ui.components.RommSettingsRow.entries.size
                 nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(size))
             }
-            is DialogState.RommAdvancedMenu -> {
-                nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(dev.cannoli.scorza.ui.components.ROMM_ADVANCED_ROWS.size))
-            }
             is DialogState.RommSaveSyncMenu -> {
                 val size = dev.cannoli.scorza.ui.components.RommSaveSyncRow.visibleRows(ds.supported, ds.enabled, ds.pendingConflicts, ds.syncErrors, ds.hasBackups).size
                 nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(size))
-            }
-            is DialogState.SyncHistory -> {
-                if (ds.entries.isNotEmpty()) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(ds.entries.size))
-            }
-            is DialogState.SyncErrors -> {
-                if (ds.errors.isNotEmpty()) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(ds.errors.size))
-            }
-            is DialogState.RommSavesMenu -> {
-                if (ds.options.isNotEmpty()) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(ds.options.size))
-            }
-            is DialogState.SaveBackupGames -> {
-                if (ds.games.isNotEmpty()) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(ds.games.size))
-            }
-            is DialogState.SaveBackupList -> {
-                if (ds.backups.isNotEmpty()) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(ds.backups.size))
-            }
-            is DialogState.ConflictsMenu -> {
-                if (ds.rows.isNotEmpty()) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(ds.rows.size))
             }
             is KeyboardHost -> nav.dialogState.value = ds.withKeyboard(KeyboardController.moveSelection(ds.keyboard, Direction.UP))
             is DialogState.ColorPicker -> {
@@ -288,29 +268,35 @@ class DialogInputHandler @Inject constructor(
                 val newIdx = (newRow * rowSize + col).coerceAtMost(HEX_KEYS.lastIndex)
                 nav.dialogState.value = ds.copy(selectedIndex = newIdx)
             }
-            is DialogState.RommDownloads -> {
-                val size = rommDownloader.queue.state.value.size
-                if (size > 0) {
-                    val idx = (ds.selectedIndex - 1).mod(size)
-                    nav.dialogState.value = ds.copy(selectedIndex = idx)
-                }
-            }
             is DialogState.RommArtResults -> {
                 val size = artResultRowCount(ds)
                 if (size > 0) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(size))
             }
-            is DialogState.RommPlatformToggle -> {
-                if (ds.items.isNotEmpty()) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(ds.items.size))
-            }
-            is DialogState.RommCollectionToggle -> {
-                if (ds.items.isNotEmpty()) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(ds.items.size))
-            }
-            is DialogState.RommVersionPicker -> {
-                if (ds.members.isNotEmpty()) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex - 1).mod(ds.members.size))
-            }
+            is ListDialog -> moveSelection(ds, -1)
             else -> {}
         }
         return true
+    }
+
+    /** The one place that knows how many rows a [ListDialog] has; some counts are not its to own. */
+    private fun listSize(ds: ListDialog): Int = when (ds) {
+        is DialogState.RommVersionPicker -> ds.members.size
+        is DialogState.RommPlatformToggle -> ds.items.size
+        is DialogState.RommCollectionToggle -> ds.items.size
+        is DialogState.SyncHistory -> ds.entries.size
+        is DialogState.SyncErrors -> ds.errors.size
+        is DialogState.RommSavesMenu -> ds.options.size
+        is DialogState.SaveBackupGames -> ds.games.size
+        is DialogState.SaveBackupList -> ds.backups.size
+        is DialogState.ConflictsMenu -> ds.rows.size
+        is DialogState.RommAdvancedMenu -> dev.cannoli.scorza.ui.components.ROMM_ADVANCED_ROWS.size
+        is DialogState.RommDownloads -> rommDownloader.queue.state.value.size
+    }
+
+    private fun moveSelection(ds: ListDialog, delta: Int) {
+        val size = listSize(ds)
+        if (size <= 0) return
+        nav.dialogState.value = ds.withSelectedIndex((ds.selectedIndex + delta).mod(size))
     }
 
     override fun onDown(): Boolean {
@@ -335,30 +321,9 @@ class DialogInputHandler @Inject constructor(
                 val size = dev.cannoli.scorza.ui.components.RommSettingsRow.entries.size
                 nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(size))
             }
-            is DialogState.RommAdvancedMenu -> {
-                nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(dev.cannoli.scorza.ui.components.ROMM_ADVANCED_ROWS.size))
-            }
             is DialogState.RommSaveSyncMenu -> {
                 val size = dev.cannoli.scorza.ui.components.RommSaveSyncRow.visibleRows(ds.supported, ds.enabled, ds.pendingConflicts, ds.syncErrors, ds.hasBackups).size
                 nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(size))
-            }
-            is DialogState.SyncHistory -> {
-                if (ds.entries.isNotEmpty()) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(ds.entries.size))
-            }
-            is DialogState.SyncErrors -> {
-                if (ds.errors.isNotEmpty()) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(ds.errors.size))
-            }
-            is DialogState.RommSavesMenu -> {
-                if (ds.options.isNotEmpty()) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(ds.options.size))
-            }
-            is DialogState.SaveBackupGames -> {
-                if (ds.games.isNotEmpty()) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(ds.games.size))
-            }
-            is DialogState.SaveBackupList -> {
-                if (ds.backups.isNotEmpty()) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(ds.backups.size))
-            }
-            is DialogState.ConflictsMenu -> {
-                if (ds.rows.isNotEmpty()) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(ds.rows.size))
             }
             is KeyboardHost -> nav.dialogState.value = ds.withKeyboard(KeyboardController.moveSelection(ds.keyboard, Direction.DOWN))
             is DialogState.ColorPicker -> {
@@ -375,30 +340,11 @@ class DialogInputHandler @Inject constructor(
                 val newIdx = (newRow * rowSize + col).coerceAtMost(HEX_KEYS.lastIndex)
                 nav.dialogState.value = ds.copy(selectedIndex = newIdx)
             }
-            is DialogState.RommDownloads -> {
-                val size = rommDownloader.queue.state.value.size
-                if (size > 0) {
-                    val idx = (ds.selectedIndex + 1).mod(size)
-                    nav.dialogState.value = ds.copy(selectedIndex = idx)
-                }
-            }
             is DialogState.RommArtResults -> {
                 val size = artResultRowCount(ds)
                 if (size > 0) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(size))
             }
-            is DialogState.RommPlatformToggle -> {
-                if (ds.items.isNotEmpty()) {
-                    nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(ds.items.size))
-                }
-            }
-            is DialogState.RommCollectionToggle -> {
-                if (ds.items.isNotEmpty()) {
-                    nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(ds.items.size))
-                }
-            }
-            is DialogState.RommVersionPicker -> {
-                if (ds.members.isNotEmpty()) nav.dialogState.value = ds.copy(selectedIndex = (ds.selectedIndex + 1).mod(ds.members.size))
-            }
+            is ListDialog -> moveSelection(ds, 1)
             else -> {}
         }
         return true

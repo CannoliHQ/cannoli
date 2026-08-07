@@ -48,6 +48,18 @@ data class GameOverrideRow(val romId: Long, val gameName: String, val label: Str
 data class FirmwareStatus(val entry: dev.cannoli.scorza.config.FirmwareEntry, val present: Boolean)
 data class ColorEntry(val key: String, @androidx.annotation.StringRes val labelRes: Int, val hex: String, val color: Long)
 
+/**
+ * A dialog whose rows are navigated with up and down.
+ *
+ * Every such dialog wrapped the index modulo its own count, written once per dialog because only
+ * the count differed. The count still varies, and for some of them it is not the state's to know,
+ * so it stays with the handler; moving between rows does not.
+ */
+sealed interface ListDialog : DialogState {
+    val selectedIndex: Int
+    fun withSelectedIndex(index: Int): DialogState
+}
+
 sealed interface DialogState {
     data object None : DialogState
     // romId is set only when the emulator that failed came from a per-game override, so
@@ -134,7 +146,9 @@ sealed interface DialogState {
         val kitchenRunning: Boolean,
         val selectedIndex: Int = 0,
     ) : DialogState
-    data class RommDownloads(val selectedIndex: Int = 0, val fromQuickMenu: Boolean = false) : DialogState
+    data class RommDownloads(override val selectedIndex: Int = 0, val fromQuickMenu: Boolean = false) : ListDialog {
+        override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
+    }
     data class RommArtResults(
         val results: dev.cannoli.scorza.romm.art.ArtFetchResults,
         val selectedIndex: Int = 0,
@@ -149,7 +163,9 @@ sealed interface DialogState {
         val concurrent: Int = 2,
         val artType: dev.cannoli.scorza.romm.RommArtType = dev.cannoli.scorza.romm.RommArtType.NONE,
     ) : DialogState
-    data class RommAdvancedMenu(val selectedIndex: Int = 0) : DialogState
+    data class RommAdvancedMenu(override val selectedIndex: Int = 0) : ListDialog {
+        override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
+    }
     data class RommSaveSyncMenu(
         val selectedIndex: Int = 0,
         val supported: Boolean = true,
@@ -160,15 +176,31 @@ sealed interface DialogState {
         val hasBackups: Boolean = false,
     ) : DialogState
     data class RommConfirm(val action: RommConfirmAction, val downloadKey: String? = null, val fromQuickMenu: Boolean = false) : DialogState
-    data class RommPlatformToggle(val items: List<RommPlatformToggleItem>, val selectedIndex: Int = 0) : DialogState
-    data class RommCollectionToggle(val items: List<RommCollectionToggleItem>, val selectedIndex: Int = 0) : DialogState
-    data class SyncHistory(val entries: List<SyncHistoryRow>, val selectedIndex: Int = 0, val fromSaveSyncMenu: Boolean = false) : DialogState
-    data class SyncErrors(val errors: List<dev.cannoli.scorza.romm.sync.SyncFailure>, val selectedIndex: Int = 0, val fromSaveSyncMenu: Boolean = false) : DialogState
-    data class RommSavesMenu(val title: String, val options: List<String>, val selectedIndex: Int = 0) : DialogState
-    data class SaveBackupGames(val games: List<dev.cannoli.scorza.romm.sync.SaveBackupGame>, val selectedIndex: Int = 0) : DialogState
-    data class SaveBackupList(val tag: String, val base: String, val displayName: String, val backups: List<dev.cannoli.scorza.romm.sync.SaveBackup>, val selectedIndex: Int = 0, val fromContextMenu: Boolean = false) : DialogState
+    data class RommPlatformToggle(val items: List<RommPlatformToggleItem>, override val selectedIndex: Int = 0) : ListDialog {
+        override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
+    }
+    data class RommCollectionToggle(val items: List<RommCollectionToggleItem>, override val selectedIndex: Int = 0) : ListDialog {
+        override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
+    }
+    data class SyncHistory(val entries: List<SyncHistoryRow>, override val selectedIndex: Int = 0, val fromSaveSyncMenu: Boolean = false) : ListDialog {
+        override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
+    }
+    data class SyncErrors(val errors: List<dev.cannoli.scorza.romm.sync.SyncFailure>, override val selectedIndex: Int = 0, val fromSaveSyncMenu: Boolean = false) : ListDialog {
+        override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
+    }
+    data class RommSavesMenu(val title: String, val options: List<String>, override val selectedIndex: Int = 0) : ListDialog {
+        override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
+    }
+    data class SaveBackupGames(val games: List<dev.cannoli.scorza.romm.sync.SaveBackupGame>, override val selectedIndex: Int = 0) : ListDialog {
+        override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
+    }
+    data class SaveBackupList(val tag: String, val base: String, val displayName: String, val backups: List<dev.cannoli.scorza.romm.sync.SaveBackup>, override val selectedIndex: Int = 0, val fromContextMenu: Boolean = false) : ListDialog {
+        override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
+    }
     data class SaveBackupRestoreConfirm(val tag: String, val base: String, val displayName: String, val stamp: Long, val dateLabel: String, val fromContextMenu: Boolean = false) : DialogState
-    data class ConflictsMenu(val rows: List<ConflictRow>, val selectedIndex: Int = 0, val fromSaveSyncMenu: Boolean = false) : DialogState
+    data class ConflictsMenu(val rows: List<ConflictRow>, override val selectedIndex: Int = 0, val fromSaveSyncMenu: Boolean = false) : ListDialog {
+        override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
+    }
     data object SaveSyncChecking : DialogState
     data object ConflictsApplying : DialogState
     data class SaveSyncConflict(
@@ -185,8 +217,10 @@ sealed interface DialogState {
         val gameName: String,
         val tag: String,
         val members: List<RommVariantEntry>,
-        val selectedIndex: Int = 0,
-    ) : DialogState
+        override val selectedIndex: Int = 0,
+    ) : ListDialog {
+        override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
+    }
 }
 
 data class RommVariantEntry(val game: dev.cannoli.scorza.romm.RommGame, val label: String, val present: Boolean, val isPrimary: Boolean)
