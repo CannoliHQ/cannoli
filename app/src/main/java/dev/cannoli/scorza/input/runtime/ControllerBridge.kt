@@ -113,9 +113,6 @@ class ControllerBridge(
         onDeviceAdded?.invoke(device)
     }
 
-    @VisibleForTesting
-    fun handleActivationForTest(device: ConnectedDevice) = handleActivation(device)
-
     /**
      * True only for events from the keyboard actually enrolled as the dev controller (or its
      * `adb shell input` alias). Callers that special-case keyboard-sourced events must ask this

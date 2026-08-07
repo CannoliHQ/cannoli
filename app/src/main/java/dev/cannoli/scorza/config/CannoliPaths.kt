@@ -44,8 +44,6 @@ class CannoliPaths(val root: File) {
     val configInputAutoconfig: File get() = File(configInput, "Autoconfig")
     val configInputAutoconfigAndroid: File get() = File(configInputAutoconfig, "android")
 
-    fun inputMappingFile(id: String): File = File(configInputMappings, "$id.ini")
-
     // Specific config files
     val database: File get() = File(configDir, "cannoli.db")
     val rommDatabase: File get() = File(configDir, "romm.db")
