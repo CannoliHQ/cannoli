@@ -9,6 +9,7 @@ import dev.cannoli.scorza.input.CanonicalButton
 import dev.cannoli.scorza.input.ConnectedDevice
 import dev.cannoli.scorza.input.DeviceMatchRule
 import dev.cannoli.scorza.input.DeviceMapping
+import dev.cannoli.scorza.input.GlyphStyle
 import dev.cannoli.scorza.input.InputBinding
 import dev.cannoli.scorza.input.MappingSource
 import dev.cannoli.scorza.input.hints.ControllerHintTable
@@ -105,20 +106,30 @@ object RetroArchAutoconfigImporter {
             productId = device.productId,
             buildModel = device.androidBuildModel,
         )
+        val confirm = entry.confirmButton
+            ?.let { runCatching { CanonicalButton.valueOf(it) }.getOrNull() }
+            ?: hint.menuConfirm
+        val glyph = entry.glyphStyle
+            ?.let { runCatching { GlyphStyle.valueOf(it) }.getOrNull() }
+            ?: hint.glyphStyle
         return DeviceMapping(
-            id = safeId,
-            displayName = device.name.ifEmpty { entry.deviceName.ifEmpty { "Controller" } },
+            id = entry.fileName?.removeSuffix(".cfg") ?: safeId,
+            displayName = entry.displayName
+                ?: device.name.ifEmpty { entry.deviceName.ifEmpty { "Controller" } },
             match = DeviceMatchRule(
                 name = entry.deviceName.ifEmpty { device.name.ifEmpty { null } },
                 vendorId = entry.vendorId ?: device.vendorId.takeIf { it != 0 },
                 productId = entry.productId ?: device.productId.takeIf { it != 0 },
-                descriptor = effectiveDescriptor,
+                descriptor = entry.descriptor ?: effectiveDescriptor,
             ),
             bindings = bindings,
-            menuConfirm = hint.menuConfirm,
-            menuBack = oppositeOf(hint.menuConfirm),
-            glyphStyle = hint.glyphStyle,
-            source = MappingSource.RETROARCH_AUTOCONFIG,
+            menuConfirm = confirm,
+            menuBack = oppositeOf(confirm),
+            glyphStyle = glyph,
+            excludeFromGameplay = entry.excludeFromGameplay,
+            defaultControllerTypeId = entry.defaultControllerType,
+            source = if (entry.cannoliUser) MappingSource.USER_WIZARD else MappingSource.RETROARCH_AUTOCONFIG,
+            userEdited = entry.cannoliUser,
         )
     }
 

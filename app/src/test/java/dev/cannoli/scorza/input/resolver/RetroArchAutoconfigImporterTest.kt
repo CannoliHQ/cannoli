@@ -4,6 +4,7 @@ import dev.cannoli.scorza.input.autoconfig.AxisRef
 import dev.cannoli.scorza.input.autoconfig.CfgHatDirection
 import dev.cannoli.scorza.input.autoconfig.HatRef
 import dev.cannoli.scorza.input.autoconfig.RetroArchCfgEntry
+import dev.cannoli.scorza.input.autoconfig.RetroArchCfgParser
 import dev.cannoli.scorza.input.HatDirection
 import dev.cannoli.scorza.input.AnalogRole
 import dev.cannoli.scorza.input.CanonicalButton
@@ -14,6 +15,7 @@ import dev.cannoli.scorza.input.MappingSource
 import dev.cannoli.scorza.input.hints.ControllerHintTable
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RetroArchAutoconfigImporterTest {
@@ -149,5 +151,27 @@ class RetroArchAutoconfigImporterTest {
         assertEquals(CanonicalButton.BTN_SOUTH, tpl.menuConfirm)
         assertEquals(CanonicalButton.BTN_EAST, tpl.menuBack)
         assertEquals(GlyphStyle.SHAPES, tpl.glyphStyle)
+    }
+
+    @Test fun `cannoli keys override hints and mark user mappings`() {
+        val entry = RetroArchCfgParser.parse(
+            """
+            input_device = "Pad"
+            input_b_btn = "96"
+            input_device_display_name = "My Pad"
+            cannoli_user = "true"
+            cannoli_confirm_button = "BTN_SOUTH"
+            cannoli_exclude_from_gameplay = "true"
+            """.trimIndent(),
+            fileName = "Pad.cfg",
+        )
+        val imported = RetroArchAutoconfigImporter.import(entry, device, defaultHints)
+        assertEquals("Pad", imported.id)
+        assertEquals("My Pad", imported.displayName)
+        assertEquals(CanonicalButton.BTN_SOUTH, imported.menuConfirm)
+        assertEquals(CanonicalButton.BTN_EAST, imported.menuBack)
+        assertTrue(imported.excludeFromGameplay)
+        assertTrue(imported.userEdited)
+        assertEquals(MappingSource.USER_WIZARD, imported.source)
     }
 }
