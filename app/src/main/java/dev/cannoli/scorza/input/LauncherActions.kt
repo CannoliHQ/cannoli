@@ -214,12 +214,48 @@ class LauncherActions @Inject constructor(
     }
 
 
-    fun launchSelected(item: ListItem, resume: Boolean): DialogState? {
-        return when (item) {
+    fun launchSelected(
+        item: ListItem,
+        resume: Boolean,
+        trackRecent: Boolean = true,
+        reorderRecent: Boolean = false,
+    ): DialogState? {
+        val dialog = when (item) {
             is ListItem.RomItem -> launchSelectedRom(item.rom, resume)
             is ListItem.AppItem -> launchManager.launchApp(item.app)
-            else -> null
+            else -> return null
         }
+        if (trackRecent) rememberPlay(item, dialog, reorderRecent)
+        return dialog
+    }
+
+    /**
+     * Whether a launch counts as a play, decided here rather than at each caller.
+     *
+     * A launch that failed leaves its error dialog behind and is not a play. A save sync check has
+     * not launched anything yet, so the play waits for that to resolve. Everything else has handed
+     * the screen to an emulator, and that includes the black scrim a successful launch returns.
+     *
+     * The scrim is why this moved: callers used to treat any dialog as a failure, which was true
+     * until a successful launch started returning one, and Recently Played silently stopped
+     * updating. Four copies of that test were four chances to get it wrong again.
+     */
+    private fun rememberPlay(item: ListItem, dialog: DialogState?, reorder: Boolean) {
+        val key = recentKeyFor(item) ?: return
+        when (playOutcomeFor(dialog, nav.dialogState.value is DialogState.SaveSyncChecking)) {
+            PlayOutcome.IGNORE -> {}
+            PlayOutcome.HOLD -> recordPendingRecent(key, reorder)
+            PlayOutcome.RECORD -> {
+                recordRecentlyPlayedByPath(key)
+                if (reorder) nav.pendingRecentlyPlayedReorder = true
+            }
+        }
+    }
+
+    private fun recentKeyFor(item: ListItem): String? = when (item) {
+        is ListItem.RomItem -> item.rom.path.absolutePath
+        is ListItem.AppItem -> "/apps/${item.app.type.name}/${item.app.packageName}"
+        else -> null
     }
 
     private fun launchSelectedRom(rom: Rom, resume: Boolean): DialogState? {
@@ -359,5 +395,26 @@ class LauncherActions @Inject constructor(
             else -> return ""
         }
         return context.getString(labelRes)
+    }
+
+    internal enum class PlayOutcome { IGNORE, HOLD, RECORD }
+
+    companion object {
+        /**
+         * Whether a launch counts as a play.
+         *
+         * [dialog] is what the launch returned. A failure returns the error to show and is not a
+         * play. A success returns the black scrim it wants held until the emulator takes the
+         * screen, which is still a play: reading any dialog as a failure is what stopped Recently
+         * Played updating, since before the scrim existed a success returned nothing at all.
+         *
+         * [saveSyncChecking] means the launch is waiting on a save sync round trip and has not
+         * started anything yet, so the play is held until that resolves.
+         */
+        internal fun playOutcomeFor(dialog: DialogState?, saveSyncChecking: Boolean): PlayOutcome = when {
+            dialog != null && dialog !is DialogState.Launching -> PlayOutcome.IGNORE
+            saveSyncChecking -> PlayOutcome.HOLD
+            else -> PlayOutcome.RECORD
+        }
     }
 }

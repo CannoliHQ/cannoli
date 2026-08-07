@@ -311,15 +311,11 @@ class GameListInputHandler @Inject constructor(
         val recentKey = selectedRecentKey(item) ?: return
         val isResumable = nav.resumableGames.contains(recentKey)
         if (isResumable) {
-            val trackRecent = glState.platformTag != "tools"
-            val errorDialog = launcherActions.launchSelected(item, !settings.swapPlayResume)
-            if (errorDialog != null) {
-                nav.dialogState.value = errorDialog
-            } else if (nav.dialogState.value is DialogState.SaveSyncChecking) {
-                if (trackRecent) launcherActions.recordPendingRecent(recentKey, false)
-            } else if (trackRecent) {
-                launcherActions.recordRecentlyPlayedByPath(recentKey)
-            }
+            launcherActions.launchSelected(
+                item,
+                !settings.swapPlayResume,
+                trackRecent = glState.platformTag != "tools",
+            )?.let { nav.dialogState.value = it }
         }
     }
 
@@ -363,16 +359,12 @@ class GameListInputHandler @Inject constructor(
         val recentKey = selectedRecentKey(item) ?: return
         val isResumable = nav.resumableGames.contains(recentKey)
         val tag = gameListViewModel.state.value.platformTag
-        val trackRecent = tag != "tools"
-        val errorDialog = launcherActions.launchSelected(item, isResumable && settings.swapPlayResume)
-        if (errorDialog != null) {
-            nav.dialogState.value = errorDialog
-        } else if (nav.dialogState.value is DialogState.SaveSyncChecking) {
-            if (trackRecent) launcherActions.recordPendingRecent(recentKey, tag == "recently_played")
-        } else if (trackRecent) {
-            launcherActions.recordRecentlyPlayedByPath(recentKey)
-            if (tag == "recently_played") nav.pendingRecentlyPlayedReorder = true
-        }
+        launcherActions.launchSelected(
+            item,
+            isResumable && settings.swapPlayResume,
+            trackRecent = tag != "tools",
+            reorderRecent = tag == "recently_played",
+        )?.let { nav.dialogState.value = it }
     }
 
     private fun pageJump(direction: Int) {

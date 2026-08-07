@@ -115,14 +115,8 @@ class SystemListInputHandler @Inject constructor(
             val recentKey = item.recentKey
             val isResumable = nav.resumableGames.contains(recentKey)
             if (isResumable) {
-                val errorDialog = launcherActions.launchSelected(item.item, !settings.swapPlayResume)
-                if (errorDialog != null) {
-                    nav.dialogState.value = errorDialog
-                } else if (nav.dialogState.value is DialogState.SaveSyncChecking) {
-                    launcherActions.recordPendingRecent(recentKey, false)
-                } else {
-                    launcherActions.recordRecentlyPlayedByPath(recentKey)
-                }
+                launcherActions.launchSelected(item.item, !settings.swapPlayResume)
+                    ?.let { nav.dialogState.value = it }
             }
         } else if (!fgh) {
             systemListViewModel.savePosition()
@@ -199,17 +193,10 @@ class SystemListInputHandler @Inject constructor(
                 }
             }
             is SystemListViewModel.ListItem.GameItem -> {
-                val recentKey = item.recentKey
-                val isResumable = nav.resumableGames.contains(recentKey)
+                val isResumable = nav.resumableGames.contains(item.recentKey)
                 val resume = isResumable && settings.swapPlayResume
-                val errorDialog = launcherActions.launchSelected(item.item, resume)
-                if (errorDialog != null) {
-                    nav.dialogState.value = errorDialog
-                } else if (nav.dialogState.value is DialogState.SaveSyncChecking) {
-                    launcherActions.recordPendingRecent(recentKey, false)
-                } else {
-                    launcherActions.recordRecentlyPlayedByPath(recentKey)
-                }
+                launcherActions.launchSelected(item.item, resume)
+                    ?.let { nav.dialogState.value = it }
             }
             is SystemListViewModel.ListItem.ToolsFolder -> {
                 nav.navigating = true
