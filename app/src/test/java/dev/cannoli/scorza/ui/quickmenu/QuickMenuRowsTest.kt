@@ -12,18 +12,38 @@ class QuickMenuRowsTest {
         assertEquals(false, withoutRomm.contains(QuickMenuRow.ROMM))
     }
 
-    @Test fun `order is settings, romm, kitchen, rescan, info`() {
+    @Test fun `order is settings, romm, kitchen, rescan, info, about`() {
         assertEquals(
-            listOf(QuickMenuRow.SETTINGS, QuickMenuRow.ROMM, QuickMenuRow.KITCHEN, QuickMenuRow.RESCAN, QuickMenuRow.INFO),
+            listOf(
+                QuickMenuRow.SETTINGS, QuickMenuRow.ROMM, QuickMenuRow.KITCHEN,
+                QuickMenuRow.RESCAN, QuickMenuRow.INFO, QuickMenuRow.ABOUT,
+            ),
             QuickMenuRow.visibleRows(rommPaired = true, kitchenRunning = true)
         )
     }
 
     @Test fun `without romm the rest still present in order`() {
         assertEquals(
-            listOf(QuickMenuRow.SETTINGS, QuickMenuRow.KITCHEN, QuickMenuRow.RESCAN, QuickMenuRow.INFO),
+            listOf(
+                QuickMenuRow.SETTINGS, QuickMenuRow.KITCHEN, QuickMenuRow.RESCAN,
+                QuickMenuRow.INFO, QuickMenuRow.ABOUT,
+            ),
             QuickMenuRow.visibleRows(rommPaired = false, kitchenRunning = false)
         )
+    }
+
+    @Test fun `about follows info`() {
+        val rows = QuickMenuRow.visibleRows(rommPaired = true, kitchenRunning = false, debugBuild = true)
+        assertEquals(rows.indexOf(QuickMenuRow.INFO) + 1, rows.indexOf(QuickMenuRow.ABOUT))
+    }
+
+    @Test fun `debug row only on debug builds and always last`() {
+        val debug = QuickMenuRow.visibleRows(rommPaired = true, kitchenRunning = false, debugBuild = true)
+        val release = QuickMenuRow.visibleRows(rommPaired = true, kitchenRunning = false, debugBuild = false)
+        assertEquals(true, debug.contains(QuickMenuRow.DEBUG))
+        assertEquals(false, release.contains(QuickMenuRow.DEBUG))
+        assertEquals(QuickMenuRow.DEBUG, debug.last())
+        assertEquals(QuickMenuRow.ABOUT, release.last())
     }
 
     @Test fun `settings row is always first`() {

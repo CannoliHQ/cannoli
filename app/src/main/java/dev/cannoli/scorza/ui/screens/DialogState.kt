@@ -105,7 +105,7 @@ sealed interface DialogState {
     data class CollectionCreated(val collectionName: String) : DialogState
     data class ColorPicker(val settingKey: String, val title: String, val currentColor: Long, val selectedRow: Int = 0, val selectedCol: Int = 0) : DialogState
     data class HexColorInput(val settingKey: String, val title: String, val currentHex: String = "", val selectedIndex: Int = 0) : DialogState
-    data class About(val statusMessage: String? = null) : DialogState
+    data class About(val statusMessage: String? = null, val fromQuickMenu: Boolean = false) : DialogState
     data class Kitchen(val urls: List<String>, override val selectedIndex: Int = 0, val pin: String, val requirePin: Boolean = true, val fromQuickMenu: Boolean = false) : ListDialog {
         override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
     }
@@ -129,7 +129,7 @@ sealed interface DialogState {
     }
     data class KeyboardHelp(val restore: DialogState, val layout: KeyboardLayout) : DialogState
     data object QuitConfirm : DialogState
-    data class UpdateDownload(val versionName: String, val changelog: String) : DialogState
+    data class UpdateDownload(val versionName: String, val changelog: String, val fromQuickMenu: Boolean = false) : DialogState
     data object RestartRequired : DialogState
     /** [newRomDirectory] is empty when clearing the pick, which resolves back to the Cannoli root. */
     data class LibrarySwitchConfirm(val newRomDirectory: String) : DialogState

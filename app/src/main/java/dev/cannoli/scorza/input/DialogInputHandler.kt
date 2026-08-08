@@ -126,6 +126,7 @@ class DialogInputHandler @Inject constructor(
             pendingConflicts = conflicts,
             syncErrors = errors,
             downloadCount = rommDownloader.queue.state.value.size,
+            debugBuild = dev.cannoli.scorza.BuildConfig.DEBUG,
         )
         return DialogState.QuickMenu(
             rows = rows,
@@ -504,6 +505,10 @@ class DialogInputHandler @Inject constructor(
                         val urls = dev.cannoli.scorza.server.KitchenManager.getUrls(hasVpn = hasActiveVpn())
                         nav.dialogState.value = DialogState.QuickInfo(urls = urls, kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning)
                     }
+                    dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.ABOUT ->
+                        nav.dialogState.value = DialogState.About(fromQuickMenu = true)
+                    dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.DEBUG ->
+                        openSettings("debug", dev.cannoli.scorza.R.string.settings_debug)
                     null -> nav.dialogState.value = DialogState.None
                 }
             }
@@ -583,10 +588,11 @@ class DialogInputHandler @Inject constructor(
         return true
     }
 
-    private fun openSettings() {
+    private fun openSettings(category: String? = null, @androidx.annotation.StringRes categoryLabel: Int = 0) {
         nav.dialogState.value = DialogState.None
         if (nav.currentScreen is LauncherScreen.SystemList) systemListViewModel.savePosition()
         settingsViewModel.load()
+        if (category != null) settingsViewModel.enterSubCategory(category, categoryLabel)
         nav.screenStack.add(LauncherScreen.Settings)
         if (updateManager.isOnline()) {
             ioScope.launch { updateManager.checkForUpdate() }
@@ -1053,10 +1059,11 @@ class DialogInputHandler @Inject constructor(
             is DialogState.UpdateDownload -> {
                 updateManager.cancelDownload()
                 updateManager.clearError()
-                nav.dialogState.value = DialogState.About()
+                nav.dialogState.value = DialogState.About(fromQuickMenu = ds.fromQuickMenu)
             }
             is DialogState.About -> {
-                nav.dialogState.value = DialogState.None
+                if (ds.fromQuickMenu) openQuickMenu(dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.ABOUT)
+                else nav.dialogState.value = DialogState.None
                 launcherActions.rescanSystemList()
             }
             is DialogState.Kitchen -> {
@@ -1268,7 +1275,7 @@ class DialogInputHandler @Inject constructor(
             is DialogState.About -> {
                 val info = updateManager.updateAvailable.value
                 if (info != null) {
-                    nav.dialogState.value = DialogState.UpdateDownload(info.versionName, info.changelog)
+                    nav.dialogState.value = DialogState.UpdateDownload(info.versionName, info.changelog, ds.fromQuickMenu)
                     ioScope.launch { updateManager.downloadAndInstall(info) }
                 }
             }

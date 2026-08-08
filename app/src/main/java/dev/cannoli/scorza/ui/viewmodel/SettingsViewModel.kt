@@ -3,7 +3,6 @@ package dev.cannoli.scorza.ui.viewmodel
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import dev.cannoli.scorza.BuildConfig
 import androidx.annotation.StringRes
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
@@ -212,8 +211,7 @@ class SettingsViewModel @Inject constructor(
         Category("emulation", R.string.settings_emulation),
         Category("integrations", R.string.settings_integrations),
         Category("advanced", R.string.settings_advanced),
-        Category("about", R.string.settings_about),
-    ) + if (BuildConfig.DEBUG) listOf(Category("debug", R.string.settings_debug)) else emptyList()
+    )
 
     private fun detectInstalledRaPackages(): List<String> {
         val pm = packageManager ?: return emptyList()

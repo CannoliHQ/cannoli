@@ -1120,6 +1120,8 @@ private fun quickMenuLabel(row: dev.cannoli.scorza.ui.quickmenu.QuickMenuRow): S
     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.KITCHEN -> stringResource(R.string.quick_menu_kitchen)
     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.RESCAN -> stringResource(R.string.quick_menu_rescan)
     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.INFO -> stringResource(R.string.quick_menu_info)
+    dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.ABOUT -> stringResource(R.string.settings_about)
+    dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.DEBUG -> stringResource(R.string.settings_debug)
 }
 
 @Composable

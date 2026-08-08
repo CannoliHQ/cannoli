@@ -88,11 +88,7 @@ class SettingsInputHandler @Inject constructor(
 
     override fun onConfirm() {
         if (!settingsViewModel.state.value.inSubList) {
-            val cat = settingsViewModel.state.value.categories.getOrNull(settingsViewModel.state.value.categoryIndex)
-            when {
-                cat?.key == "about" -> nav.dialogState.value = DialogState.About()
-                else -> settingsViewModel.enterCategory()
-            }
+            settingsViewModel.enterCategory()
             return
         }
 
