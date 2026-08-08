@@ -56,28 +56,6 @@ class CheatManager(
             .map { it.name to it.lastModified() }
     }
 
-    private val keyPrefix = "$platformTag/$gameBaseName/"
-
-    fun loadRemembered(): Map<String, Set<Int>> =
-        IniParser.parse(stateFile).getSection("enabled")
-            .filterKeys { it.startsWith(keyPrefix) }
-            .entries.associate { (k, v) ->
-                k.removePrefix(keyPrefix) to
-                    v.split(',').mapNotNull { it.trim().toIntOrNull() }.toSet()
-            }
-
-    fun saveRemembered(sets: Map<String, Set<Int>>) {
-        val sections = IniParser.parse(stateFile).sections.toMutableMap()
-        val enabled = (sections["enabled"] ?: emptyMap()).toMutableMap()
-        enabled.keys.removeAll { it.startsWith(keyPrefix) }
-        for ((fileName, indexes) in sets) {
-            if (indexes.isEmpty()) continue
-            enabled[keyPrefix + fileName] = indexes.sorted().joinToString(",")
-        }
-        sections["enabled"] = enabled
-        IniWriter.write(stateFile, sections)
-    }
-
     private val gameKey = "$platformTag/$gameBaseName"
 
     fun loadLastUsed(): LastUsedCheats? {
