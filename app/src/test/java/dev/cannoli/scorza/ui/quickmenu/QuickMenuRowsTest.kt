@@ -12,18 +12,28 @@ class QuickMenuRowsTest {
         assertEquals(false, withoutRomm.contains(QuickMenuRow.ROMM))
     }
 
-    @Test fun `order is romm, kitchen, rescan, info`() {
+    @Test fun `order is settings, romm, kitchen, rescan, info`() {
         assertEquals(
-            listOf(QuickMenuRow.ROMM, QuickMenuRow.KITCHEN, QuickMenuRow.RESCAN, QuickMenuRow.INFO),
+            listOf(QuickMenuRow.SETTINGS, QuickMenuRow.ROMM, QuickMenuRow.KITCHEN, QuickMenuRow.RESCAN, QuickMenuRow.INFO),
             QuickMenuRow.visibleRows(rommPaired = true, kitchenRunning = true)
         )
     }
 
     @Test fun `without romm the rest still present in order`() {
         assertEquals(
-            listOf(QuickMenuRow.KITCHEN, QuickMenuRow.RESCAN, QuickMenuRow.INFO),
+            listOf(QuickMenuRow.SETTINGS, QuickMenuRow.KITCHEN, QuickMenuRow.RESCAN, QuickMenuRow.INFO),
             QuickMenuRow.visibleRows(rommPaired = false, kitchenRunning = false)
         )
+    }
+
+    @Test fun `settings row is always first`() {
+        val paired = QuickMenuRow.visibleRows(
+            rommPaired = true, kitchenRunning = true, saveSyncEnabled = true,
+            pendingConflicts = 2, syncErrors = 1, downloadCount = 4,
+        )
+        val bare = QuickMenuRow.visibleRows(rommPaired = false, kitchenRunning = false)
+        assertEquals(QuickMenuRow.SETTINGS, paired.first())
+        assertEquals(QuickMenuRow.SETTINGS, bare.first())
     }
 
     @Test fun `errors row only when sync enabled and errors present`() {
@@ -48,11 +58,11 @@ class QuickMenuRowsTest {
         assertEquals(rows.indexOf(QuickMenuRow.ROMM) + 1, rows.indexOf(QuickMenuRow.DOWNLOADS))
     }
 
-    @Test fun `downloads row present and first when not paired`() {
+    @Test fun `downloads row follows settings when not paired`() {
         val rows = QuickMenuRow.visibleRows(rommPaired = false, kitchenRunning = false, downloadCount = 3)
         assertEquals(true, rows.contains(QuickMenuRow.DOWNLOADS))
         assertEquals(false, rows.contains(QuickMenuRow.ROMM))
-        assertEquals(QuickMenuRow.DOWNLOADS, rows.first())
+        assertEquals(rows.indexOf(QuickMenuRow.SETTINGS) + 1, rows.indexOf(QuickMenuRow.DOWNLOADS))
     }
 
     @Test fun `downloads row absent when queue empty`() {

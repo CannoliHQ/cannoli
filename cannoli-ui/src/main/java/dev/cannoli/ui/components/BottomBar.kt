@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.platform.LocalDensity
@@ -25,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliFont
+import dev.cannoli.ui.theme.LocalCannoliIconFont
 import dev.cannoli.ui.theme.LocalScaleFactor
 import dev.cannoli.ui.theme.Radius
 
@@ -34,8 +36,8 @@ private const val LegendTextSp = 12f
 private const val LegendPadVDp = 6f
 
 @Composable
-private fun barTextStyle(sizeSp: Float, sf: Float): TextStyle = TextStyle(
-    fontFamily = LocalCannoliFont.current,
+private fun barTextStyle(sizeSp: Float, sf: Float, font: FontFamily = LocalCannoliFont.current): TextStyle = TextStyle(
+    fontFamily = font,
     fontWeight = FontWeight.Bold,
     fontSize = (sizeSp * sf).sp,
     lineHeight = (sizeSp * sf).sp,
@@ -45,6 +47,9 @@ private fun barTextStyle(sizeSp: Float, sf: Float): TextStyle = TextStyle(
         trim = LineHeightStyle.Trim.Both
     ),
 )
+
+@Composable
+private fun barGlyphStyle(sf: Float): TextStyle = barTextStyle(GlyphTextSp, sf, LocalCannoliIconFont.current)
 
 /**
  * What the bar actually measures, so the space reserved under a list matches it.
@@ -58,7 +63,7 @@ fun bottomBarHeight(): Dp {
     val sf = LocalScaleFactor.current
     val density = LocalDensity.current
     val measurer = rememberTextMeasurer()
-    val glyphStyle = barTextStyle(GlyphTextSp, sf)
+    val glyphStyle = barGlyphStyle(sf)
     val legendStyle = barTextStyle(LegendTextSp, sf)
     return remember(glyphStyle, legendStyle, density, sf) {
         val glyphText = measurer.measure("A", glyphStyle, constraints = Constraints()).size.height
@@ -92,7 +97,7 @@ fun GlyphPill(button: String) {
     GlyphPill {
         Text(
             text = button,
-            style = barTextStyle(GlyphTextSp, sf).copy(color = accent)
+            style = barGlyphStyle(sf).copy(color = accent)
         )
     }
 }

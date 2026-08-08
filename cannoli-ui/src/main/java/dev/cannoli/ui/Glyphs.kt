@@ -1,7 +1,7 @@
 package dev.cannoli.ui
 
 const val START_GLYPH = "START"
-const val MENU_GLYPH = "MENU"
+const val MENU_GLYPH = "☰"
 const val ELLIPSIS = "..."
 const val DPAD_HORIZONTAL = "L/R"
 const val KEY_SHIFT = "⇧"

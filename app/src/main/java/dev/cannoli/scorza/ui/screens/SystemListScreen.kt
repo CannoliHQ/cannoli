@@ -41,6 +41,7 @@ import dev.cannoli.scorza.settings.ArtScale
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel.ListItem
 import dev.cannoli.ui.ButtonStyle
+import dev.cannoli.ui.MENU_GLYPH
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.ConfirmOverlay
 import dev.cannoli.ui.components.List
@@ -284,11 +285,7 @@ fun SystemListScreen(
             }
             val leftItems = buildList {
                 if (mainMenuQuit) add(buttonStyle.back to stringResource(R.string.label_quit))
-                if (fiveGameHandheld) {
-                    add(buttonStyle.west to stringResource(R.string.label_settings))
-                } else {
-                    add(buttonStyle.north to stringResource(R.string.label_settings))
-                }
+                add(MENU_GLYPH to stringResource(R.string.label_menu))
             }
             BottomBar(
                 modifier = Modifier.align(Alignment.BottomCenter),

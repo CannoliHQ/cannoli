@@ -173,6 +173,7 @@ class DialogInputHandler @Inject constructor(
     }
 
     private fun isQuickMenuBlockedScreen(): Boolean = when (nav.currentScreen) {
+        is LauncherScreen.Settings,
         is LauncherScreen.InputTester,
         is LauncherScreen.EditButtons,
         is LauncherScreen.ShortcutBinding,
@@ -488,6 +489,7 @@ class DialogInputHandler @Inject constructor(
             is DialogState.PlatformResetConfirm -> onPlatformReset(ds)
             is DialogState.QuickMenu -> {
                 when (ds.rows.getOrNull(ds.selectedIndex)) {
+                    dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.SETTINGS -> openSettings()
                     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.ROMM -> {
                         nav.dialogState.value = DialogState.None
                         nav.push(dev.cannoli.scorza.navigation.LauncherScreen.RommPlatformList())
@@ -579,6 +581,16 @@ class DialogInputHandler @Inject constructor(
             else -> {}
         }
         return true
+    }
+
+    private fun openSettings() {
+        nav.dialogState.value = DialogState.None
+        if (nav.currentScreen is LauncherScreen.SystemList) systemListViewModel.savePosition()
+        settingsViewModel.load()
+        nav.screenStack.add(LauncherScreen.Settings)
+        if (updateManager.isOnline()) {
+            ioScope.launch { updateManager.checkForUpdate() }
+        }
     }
 
     private fun onSaveConflictConfirm(ds: DialogState.SaveSyncConflict) {

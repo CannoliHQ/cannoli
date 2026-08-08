@@ -60,6 +60,8 @@
     <string name="label_clear">CLEAR</string>
     <!-- Bottom-bar button; opens Nonna's Kitchen. -->
     <string name="label_kitchen">KITCHEN</string>
+    <!-- Bottom-bar button on the home screen; opens the Quick Menu. -->
+    <string name="label_menu">MENU</string>
     <string name="label_hold_buttons" tools:ignore="TypographyEllipsis">HOLD ONE OR MORE BUTTONS...</string>
     <!-- Bottom-bar button. RA = RetroAchievements. -->
     <string name="label_ra_settings">RA SETTINGS</string>

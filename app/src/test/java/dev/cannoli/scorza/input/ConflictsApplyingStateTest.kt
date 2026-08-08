@@ -5,7 +5,6 @@ import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.romm.sync.SaveSyncStatusHolder
 import dev.cannoli.scorza.ui.screens.ConflictRow
 import dev.cannoli.scorza.ui.screens.DialogState
-import io.mockk.mockk
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -30,45 +29,11 @@ class ConflictsApplyingStateTest {
 
     @Before fun setup() {
         nav = NavigationController()
-        handler = DialogInputHandler(
+        handler = testDialogInputHandler(
             nav = nav,
             ioScope = CoroutineScope(dispatcher),
             context = ApplicationProvider.getApplicationContext(),
-            settings = mockk(relaxed = true),
-            collectionManager = mockk(relaxed = true),
-            recentlyPlayedManager = mockk(relaxed = true),
-            platformResolver = mockk(relaxed = true),
-            installedCoreService = mockk(relaxed = true),
-            launchManager = mockk(relaxed = true),
-            updateManager = mockk(relaxed = true),
-            atomicRename = mockk(relaxed = true),
-            scanner = mockk(relaxed = true),
-            romDirectoryWalker = mockk(relaxed = true),
-            settingsViewModel = mockk(relaxed = true),
-            gameListViewModel = mockk(relaxed = true),
-            systemListViewModel = mockk(relaxed = true),
-            romsRepository = mockk(relaxed = true),
-            gameOverrideStore = mockk(relaxed = true),
-            appsRepository = mockk(relaxed = true),
-            artworkLookup = mockk(relaxed = true),
-            launcherActions = mockk(relaxed = true),
-            activityActions = mockk(relaxed = true),
-            controllersViewModel = mockk(relaxed = true),
-            emulatorMappingBuilder = mockk(relaxed = true),
-            rommStore = mockk(relaxed = true),
-            rommDownloader = mockk(relaxed = true),
-            rommBrowseViewModel = mockk(relaxed = true),
-            rommArtFetcher = mockk(relaxed = true),
-            raPreloadController = mockk(relaxed = true),
-            deviceRegistrar = mockk(relaxed = true),
-            saveSyncService = mockk(relaxed = true),
-            slotManager = mockk(relaxed = true),
-            saveSlotsHandler = mockk(relaxed = true),
-            syncHistoryStore = mockk(relaxed = true),
-            pendingConflictStore = mockk(relaxed = true),
             saveSyncStatusHolder = SaveSyncStatusHolder(),
-            osdController = mockk(relaxed = true),
-            rommDevicePairing = mockk(relaxed = true),
         )
     }
 

@@ -3,7 +3,6 @@ package dev.cannoli.scorza.input.screen
 import dagger.hilt.android.scopes.ActivityScoped
 import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.db.CollectionsRepository
-import dev.cannoli.scorza.di.IoScope
 import dev.cannoli.scorza.input.LauncherActions
 import dev.cannoli.scorza.input.MENU_ADD_FAVORITE
 import dev.cannoli.scorza.input.MENU_DELETE_GAME
@@ -21,24 +20,17 @@ import dev.cannoli.scorza.settings.ContentMode
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
-import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import dev.cannoli.scorza.ui.viewmodel.SystemListViewModel
-import dev.cannoli.scorza.updater.UpdateManager
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @ActivityScoped
 class SystemListInputHandler @Inject constructor(
     private val nav: NavigationController,
-    @IoScope private val ioScope: CoroutineScope,
     private val settings: SettingsRepository,
     private val collectionsRepository: CollectionsRepository,
     private val platformConfig: PlatformConfig,
-    private val updateManager: UpdateManager,
     private val systemListViewModel: SystemListViewModel,
     private val gameListViewModel: GameListViewModel,
-    private val settingsViewModel: SettingsViewModel,
     private val launcherActions: LauncherActions,
     private val rommConnectionStore: dev.cannoli.scorza.romm.RommConnectionStore,
 ) : ScreenInputHandler {
@@ -118,28 +110,14 @@ class SystemListInputHandler @Inject constructor(
                 launcherActions.launchSelected(item.item, !settings.swapPlayResume)
                     ?.let { nav.dialogState.value = it }
             }
-        } else if (!fgh) {
-            systemListViewModel.savePosition()
-            settingsViewModel.load()
-            nav.screenStack.add(LauncherScreen.Settings)
-            if (updateManager.isOnline()) {
-                ioScope.launch { updateManager.checkForUpdate() }
-            }
         }
     }
 
     override fun onWest() {
-        if (settings.contentMode == ContentMode.FIVE_GAME_HANDHELD) {
-            systemListViewModel.savePosition()
-            settingsViewModel.load()
-            nav.screenStack.add(LauncherScreen.Settings)
-            if (updateManager.isOnline()) {
-                ioScope.launch { updateManager.checkForUpdate() }
-            }
-        } else {
-            if (systemListViewModel.state.value.items.isEmpty()) {
-                launcherActions.openKitchen()
-            }
+        if (settings.contentMode != ContentMode.FIVE_GAME_HANDHELD &&
+            systemListViewModel.state.value.items.isEmpty()
+        ) {
+            launcherActions.openKitchen()
         }
     }
 

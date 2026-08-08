@@ -1111,6 +1111,7 @@ private fun DownloadRow(item: RommDownloadItem, isSelected: Boolean, fontSize: T
 
 @Composable
 private fun quickMenuLabel(row: dev.cannoli.scorza.ui.quickmenu.QuickMenuRow): String = when (row) {
+    dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.SETTINGS -> stringResource(R.string.settings_title)
     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.ROMM -> stringResource(R.string.quick_menu_romm)
     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.DOWNLOADS -> stringResource(R.string.quick_menu_download_queue)
     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.SYNC_HISTORY -> stringResource(R.string.quick_menu_sync_history)
