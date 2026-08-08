@@ -52,6 +52,180 @@ class IGMController(
     val guideInitialScroll get() = guideController.guideInitialScroll
     val guideInitialScrollX get() = guideController.guideInitialScrollX
 
+    data class CheatItem(val label: String, val enabled: Boolean, val supported: Boolean)
+
+    val cheatItems = mutableStateOf<List<CheatItem>>(emptyList())
+    val cheatFileName = mutableStateOf("")
+    val cheatHasRemembered = mutableStateOf(false)
+    val cheatFileCount: Int get() = cheatFiles.size
+
+    /** Fired with the number of cheats reapplied, for the host's OSD. */
+    var onCheatsRestored: ((Int) -> Unit)? = null
+
+    private var cheatManager: CheatManager? = null
+    private var cheatFiles: List<CheatFile> = emptyList()
+    private var selectedCheatFile = 0
+    private var cheatSession: CheatSession? = null
+    private var cheatsLoaded = false
+    private var cheatLoadPending = false
+    private var outstandingCheatLoads = 0
+    private var staleCheatSnapshots = 0
+    private var pendingCheatRestore: Set<String> = emptySet()
+
+    fun attachCheats(manager: CheatManager) {
+        cheatManager = manager
+        cheatFiles = manager.findCheatFiles()
+        val remembered = manager.loadLastUsed()?.fileName
+        selectedCheatFile = cheatFiles
+            .indexOfFirst { it.file.name == remembered }
+            .coerceAtLeast(0)
+        bridge.setOnCheatsLoaded(::onCheatsLoaded)
+    }
+
+    fun openCheats() {
+        if (cheatFiles.isEmpty()) return
+        // The session outlives the screen, so a reopen has to place the selection itself; the
+        // snapshot that would otherwise do it has already been and gone.
+        push(IGMScreen.Cheats(cheatSession?.let(::initialCheatSelection) ?: 0))
+        // A queued load can be dropped, and its snapshot is the only thing that would say so. Re-
+        // entering is the retry: until one arrives the screen shows the empty list it really has.
+        if (!cheatsLoaded) loadSelectedCheatFile()
+    }
+
+    private fun loadSelectedCheatFile() {
+        val file = cheatFiles.getOrNull(selectedCheatFile) ?: return
+        cheatSession = null
+        cheatItems.value = emptyList()
+        cheatHasRemembered.value = false
+        cheatFileName.value = file.file.name
+        cheatLoadPending = true
+        outstandingCheatLoads++
+        bridge.loadCheatFile(file.file.absolutePath)
+    }
+
+    private fun onCheatsLoaded(observed: List<RetroArchBridge.CheatRow>) {
+        if (outstandingCheatLoads > 0) outstandingCheatLoads--
+        // Requested back when another file was open. Its rows would be matched against this file
+        // and every one of them would come back unsupported, and the snapshot that really belongs
+        // here would then be turned away as a repeat.
+        if (staleCheatSnapshots > 0) {
+            staleCheatSnapshots--
+            return
+        }
+        // Only the snapshot this session is still waiting for. A repeat of one already taken would
+        // rebuild the rows from the emulator's post-load state and drop what the user has since
+        // turned on; one from before a disc switch describes content that is gone.
+        if (!cheatLoadPending) return
+        val manager = cheatManager ?: return
+        val file = cheatFiles.getOrNull(selectedCheatFile) ?: return
+        val session = CheatSession(manager, file, observed)
+        cheatSession = session
+        cheatsLoaded = true
+        cheatLoadPending = false
+        // A disc switch reinitializes content state, so the set the user had on is put back by
+        // identity rather than assumed to have survived.
+        if (pendingCheatRestore.isNotEmpty()) {
+            val restored = session.restore(pendingCheatRestore)
+            pendingCheatRestore = emptySet()
+            for (row in restored) bridge.toggleCheat(row.raIndex)
+            if (restored.isNotEmpty()) bridge.applyCheats()
+        }
+        renderCheats()
+        (currentScreen as? IGMScreen.Cheats)?.let {
+            replaceTop(it.copy(selectedIndex = initialCheatSelection(session)))
+        }
+    }
+
+    // A row RetroArch did not take cannot be toggled, so starting on one would offer an action that
+    // silently does nothing. The file selector is the honest place to land, and a file nothing came
+    // back from starts with no selection at all rather than a pill on a dead row.
+    private fun initialCheatSelection(session: CheatSession): Int = when {
+        cheatFiles.size > 1 -> 0
+        session.rows.any { it.supported } -> session.firstSupportedIndex()
+        else -> -1
+    }
+
+    private fun renderCheats() {
+        val session = cheatSession
+        if (session == null) {
+            cheatItems.value = emptyList()
+            cheatHasRemembered.value = false
+            return
+        }
+        cheatItems.value = session.rows.map {
+            CheatItem(it.label, session.isEnabled(it), it.supported)
+        }
+        val remembered = cheatManager?.loadLastUsed()
+        cheatHasRemembered.value = remembered != null &&
+            remembered.fileName == session.file.file.name &&
+            session.hasRemembered(remembered.hashes)
+    }
+
+    private fun cheatSelectorRows(): Int = if (cheatFiles.size > 1) 1 else 0
+
+    private fun cycleCheatFile(direction: Int) {
+        if (cheatFiles.size <= 1) return
+        selectedCheatFile = ((selectedCheatFile + direction) + cheatFiles.size) % cheatFiles.size
+        // Every load still unanswered was asked for on behalf of the file being left. Assigning
+        // rather than adding is what keeps a second cycle from counting the same ones twice: the
+        // ones already marked stale are part of what is outstanding now.
+        staleCheatSnapshots = outstandingCheatLoads
+        cheatsLoaded = false
+        pendingCheatRestore = emptySet()
+        loadSelectedCheatFile()
+    }
+
+    private fun toggleCheatRow(rowIndex: Int) {
+        val session = cheatSession ?: return
+        val row = session.toggle(rowIndex) ?: return
+        bridge.toggleCheat(row.raIndex)
+        renderCheats()
+    }
+
+    // Only one file is active at a time, so a set remembered from a different one describes rows
+    // that are not loaded. Matching it by identity against whatever is open would leak that file's
+    // choices into this one; the store's file name is what says whether it belongs here.
+    private fun reapplyLastUsedCheats() {
+        val session = cheatSession ?: return
+        val remembered = cheatManager?.loadLastUsed() ?: return
+        if (remembered.fileName != session.file.file.name) return
+        val restored = session.restore(remembered.hashes)
+        for (row in restored) bridge.toggleCheat(row.raIndex)
+        if (restored.isNotEmpty()) bridge.applyCheats()
+        renderCheats()
+        onCheatsRestored?.invoke(restored.size)
+    }
+
+    private fun handleCheatsKey(screen: IGMScreen.Cheats, keycode: Int) {
+        val selector = cheatSelectorRows()
+        val count = cheatItems.value.size + selector
+        val onSelector = selector == 1 && screen.selectedIndex == 0
+        val navigates = keycode == 19 || keycode == 20 || keycode == 97 || keycode == 4
+        // Between a queued load and its snapshot these rows are not the list the emulator holds. A
+        // toggle sent now targets the old list and the bridge drops it as out of range, which would
+        // leave a row reading enabled that is not. Moving and leaving stay live.
+        if (cheatLoadPending && !navigates) return
+        when (keycode) {
+            19 -> if (count > 0) replaceTop(
+                screen.copy(
+                    selectedIndex = if (screen.selectedIndex < 0) count - 1
+                    else ((screen.selectedIndex - 1) + count) % count
+                )
+            )
+            20 -> if (count > 0) replaceTop(
+                screen.copy(
+                    selectedIndex = if (screen.selectedIndex < 0) 0
+                    else (screen.selectedIndex + 1) % count
+                )
+            )
+            21 -> if (onSelector) cycleCheatFile(-1)
+            22 -> if (onSelector) cycleCheatFile(1)
+            96 -> if (!onSelector) toggleCheatRow(screen.selectedIndex - selector)
+            100 -> reapplyLastUsedCheats()
+            97, 4 -> { pop(); if (screenStack.isEmpty()) onClose?.invoke() }
+        }
+    }
+
     private var lastMenuIndex = 0
 
     fun openMenu() {
@@ -279,11 +453,11 @@ class IGMController(
             is IGMScreen.Menu -> handleMenuKey(screen, normalized)
             is IGMScreen.GuidePicker -> handleGuidePickerKey(screen, normalized)
             is IGMScreen.Guide -> handleGuideKey(screen, normalized)
+            is IGMScreen.Cheats -> handleCheatsKey(screen, normalized)
             is IGMScreen.Achievements -> handleAchievementsKey(screen, normalized)
             is IGMScreen.AchievementDetail -> handleAchievementDetailKey(screen, normalized)
             is IGMScreen.ProviderSettings -> handleProviderKey(normalized)
             is IGMScreen.SettingsExitPrompt -> handleProviderKey(normalized)
-            else -> {}
         }
     }
 
@@ -347,6 +521,19 @@ class IGMController(
         if (next == currentDiskIndex.intValue) return
         bridge.setDiskIndex(next)
         currentDiskIndex.intValue = next
+        invalidateCheatsForDisc()
+    }
+
+    // The new disc may reinitialize content state, so what RetroArch holds is no longer known to
+    // match. The next entry reloads and puts this session's set back by identity; a snapshot still
+    // in flight describes the disc that just left, so it is no longer wanted either.
+    private fun invalidateCheatsForDisc() {
+        // Only a live session has anything to say about what was on. The second switch in a row
+        // finds none, and must leave the first switch's capture alone rather than blank it.
+        cheatSession?.let { pendingCheatRestore = it.enabledHashes() }
+        cheatSession = null
+        cheatsLoaded = false
+        cheatLoadPending = false
     }
 
     fun buildMenuOptions(): InGameMenuOptions {
@@ -354,7 +541,8 @@ class IGMController(
             hasDiscs = diskCount > 1,
             discIndex = currentDiskIndex.intValue,
             hasAchievements = bridge.supportsAchievements,
-            hasGuides = guideFiles.value.isNotEmpty()
+            hasGuides = guideFiles.value.isNotEmpty(),
+            hasCheats = cheatFiles.isNotEmpty()
         )
         menuOptions = opts
         return opts
@@ -436,7 +624,8 @@ class IGMController(
                 if (guideFiles.value.size == 1) openGuide(guideFiles.value[0]) else openGuidePicker()
             }
             IgmMenuAction.ACHIEVEMENTS -> openAchievements()
-            IgmMenuAction.SWITCH_DISC, IgmMenuAction.REASSIGN, IgmMenuAction.CHEATS, null -> {}
+            IgmMenuAction.CHEATS -> openCheats()
+            IgmMenuAction.SWITCH_DISC, IgmMenuAction.REASSIGN, null -> {}
         }
     }
 }

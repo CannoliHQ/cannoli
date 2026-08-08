@@ -246,6 +246,7 @@ fun CannoliIGM(
                         onScrollPosChanged = onGuideScrollChanged
                     )
                 }
+                is IGMScreen.Cheats -> {}
                 is IGMScreen.Achievements -> {
                     val filterLabel = when (screen.filter) {
                         1 -> stringResource(dev.cannoli.ui.R.string.label_unlocked)

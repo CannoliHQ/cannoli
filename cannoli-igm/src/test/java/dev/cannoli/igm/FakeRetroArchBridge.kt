@@ -56,6 +56,10 @@ open class FakeRetroArchBridge : RetroArchBridge {
 
     private var cheatsLoadedCallback: ((List<RetroArchBridge.CheatRow>) -> Unit)? = null
 
+    /** Holds every snapshot back until [deliverCheats], reproducing the real load window. */
+    var deferCheatLoads = false
+    private val undeliveredCheatLoads = mutableListOf<String>()
+
     override fun setOnCheatsLoaded(callback: (List<RetroArchBridge.CheatRow>) -> Unit) {
         cheatsLoadedCallback = callback
     }
@@ -64,8 +68,17 @@ open class FakeRetroArchBridge : RetroArchBridge {
     // deterministic version, so the fake calls back inline.
     override fun loadCheatFile(path: String) {
         loadedCheatPaths += path
+        if (deferCheatLoads) undeliveredCheatLoads += path
+        else cheatsLoadedCallback?.invoke(cheatRowsByPath[path].orEmpty())
+    }
+
+    fun deliverCheats() {
+        val path = undeliveredCheatLoads.removeFirstOrNull() ?: return
         cheatsLoadedCallback?.invoke(cheatRowsByPath[path].orEmpty())
     }
+
+    /** A load the queue never ran: no snapshot will ever arrive for it. */
+    fun dropPendingCheatLoads() = undeliveredCheatLoads.clear()
 
     override fun toggleCheat(index: Int) { toggledCheatIndexes += index }
 
