@@ -9,9 +9,16 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
+import java.util.concurrent.Executor
 
 class CheatManagerTest {
     @get:Rule val tmp = TemporaryFolder()
+
+    /** Writes land before the call returns, so every assertion below stays synchronous. */
+    private val direct = Executor { it.run() }
+
+    private fun manager(tag: String, game: String) =
+        CheatManager(tmp.root.absolutePath, tag, game, writer = direct)
 
     private fun cheatsDir(tag: String, game: String): File =
         File(tmp.root, "Cheats/$tag/$game").apply { mkdirs() }
@@ -33,7 +40,7 @@ class CheatManagerTest {
         writeCht(dir, "A.CHT", 2)
         File(dir, "notes.txt").writeText("x")
 
-        val files = CheatManager(tmp.root.absolutePath, "snes", "Game").findCheatFiles()
+        val files = manager("snes", "Game").findCheatFiles()
 
         assertEquals(listOf("A.CHT", "b.cht"), files.map { it.file.name })
         assertEquals(2, files[0].cheats.size)
@@ -46,20 +53,20 @@ class CheatManagerTest {
         File(dir, "empty.cht").writeText("not a cht file at all")
         writeCht(dir, "good.cht", 1)
 
-        val files = CheatManager(tmp.root.absolutePath, "snes", "Game").findCheatFiles()
+        val files = manager("snes", "Game").findCheatFiles()
 
         assertEquals(listOf("good.cht"), files.map { it.file.name })
     }
 
     @Test
     fun emptyWhenDirMissing() {
-        val files = CheatManager(tmp.root.absolutePath, "snes", "Nope").findCheatFiles()
+        val files = manager("snes", "Nope").findCheatFiles()
         assertEquals(emptyList<CheatFile>(), files)
     }
 
     @Test
     fun lastUsedRoundTrips() {
-        val m = CheatManager(tmp.root.absolutePath, "snes", "Game")
+        val m = manager("snes", "Game")
         m.saveLastUsed("a.cht", setOf("aaaa1111", "bbbb2222"))
 
         val loaded = m.loadLastUsed()
@@ -71,8 +78,8 @@ class CheatManagerTest {
 
     @Test
     fun lastUsedIsScopedPerGame() {
-        val m1 = CheatManager(tmp.root.absolutePath, "snes", "GameOne")
-        val m2 = CheatManager(tmp.root.absolutePath, "snes", "GameTwo")
+        val m1 = manager("snes", "GameOne")
+        val m2 = manager("snes", "GameTwo")
         m1.saveLastUsed("a.cht", setOf("1111"))
         m2.saveLastUsed("b.cht", setOf("2222"))
 
@@ -83,9 +90,9 @@ class CheatManagerTest {
 
     @Test
     fun savingReplacesThisGamesEntryOnly() {
-        val other = CheatManager(tmp.root.absolutePath, "nes", "Other")
+        val other = manager("nes", "Other")
         other.saveLastUsed("x.cht", setOf("9999"))
-        val m = CheatManager(tmp.root.absolutePath, "snes", "Game")
+        val m = manager("snes", "Game")
         m.saveLastUsed("a.cht", setOf("1111"))
         m.saveLastUsed("b.cht", setOf("2222"))
 
@@ -99,7 +106,7 @@ class CheatManagerTest {
         val state = File(tmp.root, "Config/State/cheat_state.ini")
         state.parentFile!!.mkdirs()
         state.writeText("[enabled]\nsnes/Game/a.cht=0,2\nnes/Other/x.cht=1\n")
-        val m = CheatManager(tmp.root.absolutePath, "snes", "Game")
+        val m = manager("snes", "Game")
 
         assertNull(m.loadLastUsed())
 
@@ -107,6 +114,37 @@ class CheatManagerTest {
         val text = state.readText()
         assertFalse(text.contains("snes/Game/a.cht"))
         assertTrue(text.contains("nes/Other/x.cht"))
+    }
+
+    @Test
+    fun savingAnswersFromMemoryBeforeTheWriteRuns() {
+        val queued = mutableListOf<Runnable>()
+        val m = CheatManager(tmp.root.absolutePath, "snes", "Game", writer = { queued += it })
+        val state = File(tmp.root, "Config/State/cheat_state.ini")
+
+        m.saveLastUsed("a.cht", setOf("1111"))
+
+        assertEquals("a.cht", m.loadLastUsed()?.fileName)
+        assertFalse("the calling thread must not touch the disk", state.exists())
+
+        queued.forEach { it.run() }
+
+        assertEquals("a.cht", manager("snes", "Game").loadLastUsed()?.fileName)
+    }
+
+    @Test
+    fun aQueuedWriteCarriesTheContentItWasHanded() {
+        val queued = mutableListOf<Runnable>()
+        val m = CheatManager(tmp.root.absolutePath, "snes", "Game", writer = { queued += it })
+
+        m.saveLastUsed("a.cht", setOf("1111"))
+        m.saveLastUsed("b.cht", setOf("2222"))
+
+        queued[0].run()
+        assertEquals("a.cht", manager("snes", "Game").loadLastUsed()?.fileName)
+
+        queued[1].run()
+        assertEquals("b.cht", manager("snes", "Game").loadLastUsed()?.fileName)
     }
 
     @Test

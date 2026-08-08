@@ -12,7 +12,9 @@ import java.io.File
 class CheatSessionTest {
     @get:Rule val tmp = TemporaryFolder()
 
-    private fun manager() = CheatManager(tmp.root.absolutePath, "snes", "Game")
+    /** Writes land before the call returns, so every assertion below stays synchronous. */
+    private fun manager() =
+        CheatManager(tmp.root.absolutePath, "snes", "Game", writer = { it.run() })
 
     private fun cheatFile(name: String, vararg cheats: CheatEntry): CheatFile {
         val dir = File(tmp.root, "Cheats/snes/Game").apply { mkdirs() }

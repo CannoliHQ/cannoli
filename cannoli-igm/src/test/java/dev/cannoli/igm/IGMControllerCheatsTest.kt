@@ -29,7 +29,9 @@ class IGMControllerCheatsTest {
         File(dir, name).writeText(body.toString())
     }
 
-    private fun manager() = CheatManager(tmp.root.absolutePath, "nes", "Game")
+    /** Writes land before the call returns, so every assertion below stays synchronous. */
+    private fun manager() =
+        CheatManager(tmp.root.absolutePath, "nes", "Game", writer = { it.run() })
 
     private fun bridgeFor(vararg files: Pair<String, List<String>>) =
         FakeRetroArchBridge().apply {
