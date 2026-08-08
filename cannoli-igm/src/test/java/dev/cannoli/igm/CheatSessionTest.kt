@@ -95,7 +95,7 @@ class CheatSessionTest {
         val s = session(f, manager = m)
         assertFalse(s.isEnabled(s.rows[0]))
         assertFalse(s.anyEnabled())
-        assertTrue(s.hasRemembered(m.loadLastUsed()!!.hashes))
+        assertTrue(s.canRestore(m.loadLastUsed()!!.hashes))
     }
 
     @Test
@@ -156,11 +156,24 @@ class CheatSessionTest {
     }
 
     @Test
-    fun hasRememberedIsFalseWhenNothingMatches() {
+    fun canRestoreIsFalseWhenNothingMatches() {
         val f = cheatFile("a.cht", emu("E", "AAAA"))
         val s = session(f)
-        assertFalse(s.hasRemembered(setOf("deadbeef")))
+        assertFalse(s.canRestore(setOf("deadbeef")))
         assertEquals(0, s.restore(setOf("deadbeef")).size)
+    }
+
+    @Test
+    fun canRestoreAgreesWithWhatRestoreWouldDo() {
+        val f = cheatFile("a.cht", emu("E", "AAAA"), retro("R"))
+        val s = session(f, observed(f) { it != 1 })
+        val hashes = setOf(CheatIdentity.hash("E", "AAAA"), CheatIdentity.hash("R", ""))
+        assertTrue(s.canRestore(hashes))
+
+        assertEquals(1, s.restore(hashes).size)
+
+        assertFalse(s.canRestore(hashes))
+        assertEquals(0, s.restore(hashes).size)
     }
 
     @Test

@@ -53,18 +53,19 @@ class CheatSession(
         .map { identityHash(it) }
         .toSet()
 
-    fun hasRemembered(hashes: Set<String>): Boolean =
-        rows.any { it.supported && identityHash(it) in hashes }
+    /** Whether [restore] would turn anything on, which is what the offer to restore may promise. */
+    fun canRestore(hashes: Set<String>): Boolean = rows.any { isRestorable(it, hashes) }
 
     /** Enables every remembered identity that is present and supported. Returns what changed. */
     fun restore(hashes: Set<String>): List<Row> {
-        val changed = rows.filter {
-            it.supported && !enabled[it.cheatIndex] && identityHash(it) in hashes
-        }
+        val changed = rows.filter { isRestorable(it, hashes) }
         for (row in changed) enabled[row.cheatIndex] = true
         if (changed.isNotEmpty()) persist()
         return changed
     }
+
+    private fun isRestorable(row: Row, hashes: Set<String>): Boolean =
+        row.supported && !enabled[row.cheatIndex] && identityHash(row) in hashes
 
     // An all-off set is not written: the point of the store is the last set the user actually had,
     // and turning everything off is how you stop cheating, not how you forget.

@@ -705,4 +705,39 @@ class IGMControllerCheatsTest {
         assertEquals(listOf(0), bridge.toggledCheatIndexes)
         assertTrue(c.cheatItems.value[0].enabled)
     }
+
+    @Test fun `the restore offer goes away once the remembered set is already on`() {
+        writeCht("a.cht", "One", "Two")
+        val bridge = bridgeFor("a.cht" to listOf("One", "Two"))
+        manager().saveLastUsed("a.cht", setOf(CheatIdentity.hash("Two", "CODE1")))
+        val c = testController(bridge)
+        var restored = -1
+        c.onCheatsRestored = { restored = it }
+        c.attachCheats(manager())
+        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
+        assertTrue(c.cheatHasRemembered.value)
+
+        c.handleKeyDown(DPAD_DOWN)
+        c.handleKeyDown(CONFIRM)
+        assertTrue(c.cheatItems.value[1].enabled)
+
+        assertFalse(c.cheatHasRemembered.value)
+
+        c.handleKeyDown(NORTH)
+
+        assertEquals(listOf(1), bridge.toggledCheatIndexes)
+        assertEquals(0, bridge.cheatApplies)
+        assertEquals(-1, restored)
+    }
+
+    @Test fun `a remembered row RetroArch did not take is never offered`() {
+        writeCht("a.cht", "One", "Two")
+        val bridge = bridgeWithSupport("a.cht" to listOf("One" to true, "Two" to false))
+        manager().saveLastUsed("a.cht", setOf(CheatIdentity.hash("Two", "CODE1")))
+        val c = testController(bridge)
+        c.attachCheats(manager())
+        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
+
+        assertFalse(c.cheatHasRemembered.value)
+    }
 }

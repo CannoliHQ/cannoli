@@ -651,6 +651,10 @@
     <string name="igm_quit">Quit</string>
     <string name="igm_cheats">Cheats</string>
     <string name="title_cheats">Cheats</string>
+    <!-- Screen title. %1$d = cheats currently on, %2$d = cheats in the file. -->
+    <string name="title_cheats_count">Cheats (%1$d/%2$d)</string>
+    <!-- Label of the row that picks which cheat file is active. -->
+    <string name="cheats_file">File</string>
     <string name="cheats_hardcore_warning">Turning on a cheat pauses hardcore achievements for this session.</string>
     <string name="label_restore_session">RESTORE LAST SESSION</string>
     <!-- Scaling mode: use the size the emulator core reports. -->

@@ -25,6 +25,7 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import dev.cannoli.igm.CannoliIGM
+import dev.cannoli.igm.CheatManager
 import dev.cannoli.igm.GuideManager
 import dev.cannoli.igm.IGMController
 import dev.cannoli.igm.IGMHostConfig
@@ -124,6 +125,13 @@ class IGMOverlay(
     private val uiContext: Context = localeContext(activity, localeTag)
 
     val controller = IGMController(bridge, gameTitle, SaveSlotStore(stateBasePath))
+
+    /** Set by the host so the IGM can put a line on the shared OSD. */
+    var onOsdMessage: ((String) -> Unit)? = null
+
+    /** Fired once the menu's window is up, so the host can keep the OSD above it. */
+    var onWindowAttached: (() -> Unit)? = null
+
     private var composeView: ComposeView? = null
     private val lifecycleOwner = IGMLifecycleOwner()
     private var showTimeMs = 0L
@@ -181,9 +189,15 @@ class IGMOverlay(
             ),
         )
 
-        // Discover guides for this game so the IGM can show them.
+        // Discover guides and cheats for this game so the IGM can show them.
         if (cannoliRoot.isNotEmpty()) {
             controller.attachGuides(GuideManager(cannoliRoot, platformTag, controller.gameTitle))
+            controller.attachCheats(CheatManager(cannoliRoot, platformTag, romBaseName))
+        }
+        controller.onCheatsRestored = { count ->
+            onOsdMessage?.invoke(
+                uiContext.resources.getQuantityString(R.plurals.osd_cheats_restored, count, count)
+            )
         }
 
         // Read the slots while the game is still loading so the first open of the menu has a
@@ -225,6 +239,9 @@ class IGMOverlay(
         attached = runCatching {
             activity.windowManager.addView(view, panelParams(focusable = true))
         }.isSuccess
+        // Sibling panel windows stack in the order they were added, so the OSD, added first, is
+        // under this one until the host puts it back on top.
+        if (attached) onWindowAttached?.invoke()
         return attached
     }
 
@@ -363,6 +380,10 @@ class IGMOverlay(
                     slotOccupied = controller.slotOccupied.value,
                     undoLabel = controller.undoLabel.value,
                     settingsItems = controller.settingsItems.value,
+                    cheatItems = controller.cheatItems.value,
+                    cheatFileName = controller.cheatFileName.value,
+                    cheatFileCount = controller.cheatFileCount,
+                    cheatHasRemembered = controller.cheatHasRemembered.value,
                     guideFiles = controller.guideFiles.value,
                     guidePageCount = controller.guidePageCount.intValue,
                     guideScrollDir = controller.guideScrollDir.intValue,

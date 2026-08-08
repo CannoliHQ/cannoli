@@ -112,6 +112,8 @@ class RetroActivityFuture : RetroActivityCamera() {
             )
             osd.attach(savedInstanceState)
             osdOverlay = osd
+            igmOverlay?.onOsdMessage = { message -> osd.showMessage(message) }
+            igmOverlay?.onWindowAttached = { osd.raise() }
             bridge.onOsdEvent = { type, slot ->
                 if (osdEventAllowed(type, bridge)) osd.showMessage(osdEventText(type, slot))
                 // A save is queued, not written, when the IGM asks for it. The slot on disk only

@@ -75,6 +75,10 @@ fun CannoliIGM(
     slotOccupied: List<Boolean>,
     undoLabel: String?,
     settingsItems: List<IGMSettingsItem>,
+    cheatItems: List<IGMController.CheatItem>,
+    cheatFileName: String,
+    cheatFileCount: Int,
+    cheatHasRemembered: Boolean,
     guideFiles: List<GuideFile>,
     guidePageCount: Int,
     guideScrollDir: Int,
@@ -246,8 +250,81 @@ fun CannoliIGM(
                         onScrollPosChanged = onGuideScrollChanged
                     )
                 }
-                is IGMScreen.Cheats -> {}
-                is IGMScreen.CheatsHardcoreWarning -> {}
+                is IGMScreen.Cheats -> {
+                    val onValue = stringResource(dev.cannoli.ui.R.string.value_on)
+                    val offValue = stringResource(dev.cannoli.ui.R.string.value_off)
+                    val hasSelector = cheatFileCount > 1
+                    val items = buildList {
+                        if (hasSelector) {
+                            add(CheatListItem.FileSelector(
+                                label = stringResource(dev.cannoli.ui.R.string.cheats_file),
+                                value = cheatFileName,
+                            ))
+                        }
+                        cheatItems.forEach {
+                            add(CheatListItem.Cheat(
+                                label = it.label,
+                                value = if (it.enabled) onValue else offValue,
+                                supported = it.supported,
+                            ))
+                        }
+                    }
+                    val onSelector = hasSelector && screen.selectedIndex == 0
+                    val selectedCheat = items.getOrNull(screen.selectedIndex) as? CheatListItem.Cheat
+                    CheatsScreen(
+                        title = if (cheatItems.isEmpty()) {
+                            stringResource(dev.cannoli.ui.R.string.title_cheats)
+                        } else {
+                            stringResource(
+                                dev.cannoli.ui.R.string.title_cheats_count,
+                                cheatItems.count { it.enabled },
+                                cheatItems.size,
+                            )
+                        },
+                        items = items,
+                        selectedIndex = screen.selectedIndex,
+                        bottomBarLeft = buildList {
+                            add(labels.back to stringResource(dev.cannoli.ui.R.string.label_back))
+                            if (onSelector) {
+                                add(DPAD_HORIZONTAL to stringResource(dev.cannoli.ui.R.string.label_change))
+                            }
+                        },
+                        bottomBarRight = buildList {
+                            if (cheatHasRemembered) {
+                                add(labels.north to stringResource(dev.cannoli.ui.R.string.label_restore_session))
+                            }
+                            if (selectedCheat?.supported == true) {
+                                add(labels.confirm to stringResource(dev.cannoli.ui.R.string.label_toggle))
+                            }
+                        },
+                        fontSize = igmFontSize,
+                        lineHeight = igmLineHeight
+                    )
+                }
+                is IGMScreen.CheatsHardcoreWarning -> {
+                    ScreenBackground(backgroundImagePath = null, backgroundAlpha = 0.85f, backgroundColor = Color.Black) {
+                        Box(
+                            modifier = Modifier.fillMaxSize().padding(screenInsets()),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = stringResource(dev.cannoli.ui.R.string.cheats_hardcore_warning),
+                                style = TextStyle(
+                                    fontFamily = LocalCannoliFont.current,
+                                    fontSize = 18.sp,
+                                    color = Color.White,
+                                    textAlign = TextAlign.Center
+                                ),
+                                modifier = Modifier.widthIn(max = 560.dp).fillMaxWidth()
+                            )
+                            BottomBar(
+                                modifier = Modifier.align(Alignment.BottomCenter),
+                                leftItems = listOf(labels.back to stringResource(dev.cannoli.ui.R.string.label_cancel)),
+                                rightItems = listOf(labels.confirm to stringResource(dev.cannoli.ui.R.string.label_continue))
+                            )
+                        }
+                    }
+                }
                 is IGMScreen.Achievements -> {
                     val filterLabel = when (screen.filter) {
                         1 -> stringResource(dev.cannoli.ui.R.string.label_unlocked)

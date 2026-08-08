@@ -159,7 +159,7 @@ class IGMController(
         val remembered = cheatManager?.loadLastUsed()
         cheatHasRemembered.value = remembered != null &&
             remembered.fileName == session.file.file.name &&
-            session.hasRemembered(remembered.hashes)
+            session.canRestore(remembered.hashes)
     }
 
     private fun cheatSelectorRows(): Int = if (cheatFiles.size > 1) 1 else 0
@@ -191,8 +191,9 @@ class IGMController(
         val remembered = cheatManager?.loadLastUsed() ?: return
         if (remembered.fileName != session.file.file.name) return
         val restored = session.restore(remembered.hashes)
+        if (restored.isEmpty()) return
         for (row in restored) bridge.toggleCheat(row.raIndex)
-        if (restored.isNotEmpty()) bridge.applyCheats()
+        bridge.applyCheats()
         renderCheats()
         onCheatsRestored?.invoke(restored.size)
     }

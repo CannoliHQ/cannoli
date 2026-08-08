@@ -40,6 +40,7 @@ class OsdOverlay(
     val controller = OsdController()
     private val lifecycleOwner = IGMLifecycleOwner()
     private var view: ComposeView? = null
+    private var added = false
 
     fun attach(savedInstanceState: Bundle?) {
         lifecycleOwner.performCreate(savedInstanceState)
@@ -55,32 +56,47 @@ class OsdOverlay(
 
         // Defer until the activity window is attached so the token is available.
         activity.window.decorView.post {
-            val params = WindowManager.LayoutParams(
-                WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.TYPE_APPLICATION_PANEL,
-                // NO_LIMITS makes the overlay span the full screen (under the system
-                // bars) from the start, so the pill doesn't shift when the game's
-                // immersive mode settles.
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-                PixelFormat.TRANSLUCENT
-            ).apply {
-                token = activity.window.decorView.windowToken
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-                    layoutInDisplayCutoutMode =
-                        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-                }
-            }
-            runCatching { activity.windowManager.addView(composeView, params) }
+            added = runCatching { activity.windowManager.addView(composeView, params()) }.isSuccess
+        }
+    }
+
+    /**
+     * Puts this window back at the top of the panel stack. Sibling panels are ordered by when they
+     * were added, so a window added after this one covers the pill until it is added again.
+     */
+    fun raise() {
+        val composeView = view ?: return
+        if (!added) return
+        added = runCatching {
+            activity.windowManager.removeView(composeView)
+            activity.windowManager.addView(composeView, params())
+        }.isSuccess
+    }
+
+    private fun params() = WindowManager.LayoutParams(
+        WindowManager.LayoutParams.MATCH_PARENT,
+        WindowManager.LayoutParams.MATCH_PARENT,
+        WindowManager.LayoutParams.TYPE_APPLICATION_PANEL,
+        // NO_LIMITS makes the overlay span the full screen (under the system
+        // bars) from the start, so the pill doesn't shift when the game's
+        // immersive mode settles.
+        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+        PixelFormat.TRANSLUCENT
+    ).apply {
+        token = activity.window.decorView.windowToken
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
         }
     }
 
     fun detach() {
         view?.let { runCatching { activity.windowManager.removeView(it) } }
         view = null
+        added = false
         lifecycleOwner.performPause()
         lifecycleOwner.performStop()
         lifecycleOwner.performDestroy()
