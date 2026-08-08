@@ -126,9 +126,13 @@ class IGMController(
         val manager = cheatManager ?: return
         val file = cheatFiles.getOrNull(selectedCheatFile) ?: return
         // RetroArch emits a snapshot whether the load worked or not, and a failed one carries no
-        // rows. Taking it would hold an empty session for the rest of the game, and taking the
-        // pending token with it would turn away a good snapshot already queued behind this one.
-        if (observed.isEmpty()) return
+        // rows. Taking it would hold an empty session for the rest of the game, so it is not taken.
+        // The token goes back only when nothing is queued behind this answer, which is what keeps a
+        // refused file from latching the screen while still letting a better snapshot through.
+        if (observed.isEmpty()) {
+            if (outstandingCheatLoads == 0) cheatLoadPending = false
+            return
+        }
         cheatLoadPending = false
         val session = CheatSession(manager, file, observed)
         cheatSession = session
@@ -211,10 +215,13 @@ class IGMController(
         val count = cheatItems.value.size + selector
         val onSelector = selector == 1 && screen.selectedIndex == 0
         val navigates = keycode == 19 || keycode == 20 || keycode == 97 || keycode == 4
+        val cycles = onSelector && (keycode == 21 || keycode == 22)
         // Between a queued load and its snapshot these rows are not the list the emulator holds. A
         // toggle sent now targets the old list and the bridge drops it as out of range, which would
-        // leave a row reading enabled that is not. Moving and leaving stay live.
-        if (cheatLoadPending && !navigates) return
+        // leave a row reading enabled that is not. Moving and leaving stay live, and so does picking
+        // another file: the cycle marks everything in flight stale, and a file RetroArch refuses
+        // answers with nothing, which would otherwise leave no way off it.
+        if (cheatLoadPending && !navigates && !cycles) return
         when (keycode) {
             19 -> if (count > 0) replaceTop(
                 screen.copy(
