@@ -35,6 +35,9 @@ static long long get_time_ms(void)
 #include "../../../../cheevos/cheevos_locals.h"
 #include "../../../../deps/rcheevos/include/rc_client.h"
 #include "../../../../disk_control_interface.h"
+#include "../../../../cheat_manager.h"
+#include "../../../../cheevos/cheevos.h"
+#include "../../../../core.h"
 
 /* Cached JVM and bridge object refs for callbacks */
 static JavaVM *g_jvm           = NULL;
@@ -53,6 +56,7 @@ static jmethodID g_on_igm_trigger_mid = NULL;
 static jmethodID g_on_osd_event_mid = NULL;
 static jmethodID g_on_osd_achievement_mid = NULL;
 static jmethodID g_on_ra_applied_mid = NULL;
+static jmethodID g_on_cheats_loaded_mid = NULL;
 
 /* Cached JNIEnv for the native runloop thread (attached once, never detached) */
 static JNIEnv *g_native_env = NULL;
@@ -73,6 +77,9 @@ static volatile int g_menu_poll_active = 0;
 #define RICOTTA_QCMD_RA_SET           -1
 #define RICOTTA_QCMD_RA_SAVE_OVERRIDE -2
 #define RICOTTA_QCMD_DISK_SET         -3
+#define RICOTTA_QCMD_CHEAT_LOAD       -4
+#define RICOTTA_QCMD_CHEAT_TOGGLE     -5
+#define RICOTTA_QCMD_CHEAT_APPLY      -6
 typedef struct
 {
    int   cmd;
@@ -115,8 +122,124 @@ static void ricotta_enqueue_command(int cmd, int slot, int has_slot)
    ricotta_enqueue_entry(entry);
 }
 
+/* Cheat descriptions and codes have no fixed bound (CHEAT_CODE_SCRATCH_SIZE is 16 KB), so the
+ * snapshot is built into a growable buffer rather than the fixed line buffer the achievement
+ * snapshot uses. */
+typedef struct
+{
+   char  *buf;
+   size_t len;
+   size_t cap;
+} ricotta_strbuf;
+
+static int ricotta_sb_reserve(ricotta_strbuf *sb, size_t extra)
+{
+   size_t need = sb->len + extra + 1;
+   size_t cap;
+   char  *grown;
+   if (need <= sb->cap)
+      return 1;
+   cap = sb->cap ? sb->cap : 4096;
+   while (cap < need)
+      cap *= 2;
+   grown = (char *)realloc(sb->buf, cap);
+   if (!grown)
+      return 0;
+   sb->buf = grown;
+   sb->cap = cap;
+   return 1;
+}
+
+static void ricotta_sb_putc(ricotta_strbuf *sb, char c)
+{
+   if (!ricotta_sb_reserve(sb, 1))
+      return;
+   sb->buf[sb->len++] = c;
+   sb->buf[sb->len]   = '\0';
+}
+
+/* Backslash, pipe and newline are escaped so a desc or code containing them cannot forge a field
+ * or a row boundary. The Kotlin decoder reverses exactly these three. */
+static void ricotta_sb_escaped(ricotta_strbuf *sb, const char *s)
+{
+   if (!s)
+      return;
+   for (; *s; s++)
+   {
+      if (*s == '\\' || *s == '|' || *s == '\n')
+      {
+         ricotta_sb_putc(sb, '\\');
+         ricotta_sb_putc(sb, *s == '\n' ? 'n' : *s);
+      }
+      else
+         ricotta_sb_putc(sb, *s);
+   }
+}
+
 static void ricotta_ra_apply(const char *key, const char *value);
 static JNIEnv *ricotta_runloop_env(void);
+
+/* RETRO-handler cheats need a system RAM mapping. Same two checks
+ * cheat_manager_initialize_memory makes, without its allocations or its failure toast. */
+static int ricotta_cheat_has_system_ram(void)
+{
+   retro_ctx_memory_info_t meminfo;
+   rarch_system_info_t *sys_info = &runloop_state_get_ptr()->system;
+   unsigned i;
+
+   if (sys_info)
+   {
+      for (i = 0; i < sys_info->mmaps.num_descriptors; i++)
+      {
+         if ((sys_info->mmaps.descriptors[i].core.flags & RETRO_MEMDESC_SYSTEM_RAM)
+               && sys_info->mmaps.descriptors[i].core.ptr
+               && sys_info->mmaps.descriptors[i].core.len > 0)
+            return 1;
+      }
+   }
+
+   meminfo.id = RETRO_MEMORY_SYSTEM_RAM;
+   if (core_get_memory(&meminfo) && meminfo.data && meminfo.size > 0)
+      return 1;
+   return 0;
+}
+
+/* One line per loaded cheat, "desc|code|state|supported", the nativeGetAchievementData shape.
+ * Sent as an upcall rather than returned from a getter because the load that produces it is
+ * queued: a synchronous read from the JNI thread would race the runloop and see the old list. */
+static void ricotta_cheat_emit_snapshot(void)
+{
+   JNIEnv        *env = ricotta_runloop_env();
+   ricotta_strbuf sb  = {0};
+   unsigned       i;
+   unsigned       size    = cheat_manager_get_size();
+   int            has_ram = ricotta_cheat_has_system_ram();
+   jstring        payload;
+
+   if (!env || !g_bridge_obj || !g_on_cheats_loaded_mid)
+      return;
+
+   for (i = 0; i < size; i++)
+   {
+      int is_emu = cheat_manager_state.cheats
+         && cheat_manager_state.cheats[i].handler == CHEAT_HANDLER_TYPE_EMU;
+      ricotta_sb_escaped(&sb, cheat_manager_get_desc(i));
+      ricotta_sb_putc(&sb, '|');
+      ricotta_sb_escaped(&sb, cheat_manager_get_code(i));
+      ricotta_sb_putc(&sb, '|');
+      ricotta_sb_putc(&sb, cheat_manager_get_code_state(i) ? '1' : '0');
+      ricotta_sb_putc(&sb, '|');
+      ricotta_sb_putc(&sb, (is_emu || has_ram) ? '1' : '0');
+      ricotta_sb_putc(&sb, '\n');
+   }
+
+   payload = (*env)->NewStringUTF(env, sb.buf ? sb.buf : "");
+   free(sb.buf);
+   if (!payload)
+      return;
+   (*env)->CallVoidMethod(env, g_bridge_obj, g_on_cheats_loaded_mid, payload);
+   (*env)->DeleteLocalRef(env, payload);
+}
 
 /* Called from runloop.c on the runloop thread, once per iteration. */
 void ricotta_bridge_poll_commands(void)
@@ -157,6 +280,41 @@ void ricotta_bridge_poll_commands(void)
          config_save_overrides(
                entry.ra_scope == 1 ? OVERRIDE_GAME : OVERRIDE_CONTENT_DIR,
                &runloop_st->system, false, NULL);
+         continue;
+      }
+      if (entry.cmd == RICOTTA_QCMD_CHEAT_LOAD)
+      {
+         unsigned i, size;
+         cheat_manager_state_free();
+         if (entry.ra_key && cheat_manager_load(entry.ra_key, false))
+         {
+            /* A user's file may carry enable = "true"; the disabled-start rule wins. */
+            size = cheat_manager_get_size();
+            for (i = 0; i < size; i++)
+               cheat_manager_state.cheats[i].state = false;
+         }
+         /* Applies an empty set, which is what drops the previous file's cheats out of the core.
+          * A failed load leaves no list, and apply returns before core_reset_cheat when there is
+          * none, so allocate an empty one first or the old codes stay live. */
+         cheat_manager_alloc_if_empty();
+         cheat_manager_apply_cheats(false);
+         free(entry.ra_key);
+         ricotta_cheat_emit_snapshot();
+         continue;
+      }
+      if (entry.cmd == RICOTTA_QCMD_CHEAT_TOGGLE)
+      {
+         settings_t *settings = config_get_ptr();
+         cheat_manager_toggle_index(true,
+               settings ? settings->bools.notification_show_cheats_applied : false,
+               (unsigned)entry.slot);
+         continue;
+      }
+      if (entry.cmd == RICOTTA_QCMD_CHEAT_APPLY)
+      {
+         settings_t *settings = config_get_ptr();
+         cheat_manager_apply_cheats(
+               settings ? settings->bools.notification_show_cheats_applied : false);
          continue;
       }
       if (entry.has_slot)
@@ -676,6 +834,7 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeInit(
          "(Ljava/lang/String;Ljava/lang/String;)V");
    g_on_osd_event_mid = (*env)->GetMethodID(env, cls, "onOsdEvent", "(II)V");
    g_on_osd_achievement_mid = (*env)->GetMethodID(env, cls, "onOsdAchievement", "(Ljava/lang/String;)V");
+   g_on_cheats_loaded_mid = (*env)->GetMethodID(env, cls, "onCheatsLoaded", "(Ljava/lang/String;)V");
 }
 
 JNIEXPORT void JNICALL
@@ -1078,6 +1237,55 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeGetAchievementData(
    result = (*env)->NewStringUTF(env, out ? out : "");
    free(out);
    return result;
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeCheatLoadFile(
+      JNIEnv *env, jobject obj, jstring jpath)
+{
+   ricotta_cmd_entry entry = {0};
+   const char *path        = (*env)->GetStringUTFChars(env, jpath, NULL);
+
+   (void)obj;
+
+   entry.cmd    = RICOTTA_QCMD_CHEAT_LOAD;
+   entry.ra_key = path ? strdup(path) : NULL;
+
+   if (path)
+      (*env)->ReleaseStringUTFChars(env, jpath, path);
+
+   ricotta_enqueue_entry(entry);
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeCheatToggle(
+      JNIEnv *env, jobject obj, jint index)
+{
+   (void)env;
+   (void)obj;
+   ricotta_enqueue_command(RICOTTA_QCMD_CHEAT_TOGGLE, (int)index, 0);
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeCheatApply(
+      JNIEnv *env, jobject obj)
+{
+   (void)env;
+   (void)obj;
+   ricotta_enqueue_command(RICOTTA_QCMD_CHEAT_APPLY, 0, 0);
+}
+
+JNIEXPORT jboolean JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeCheatHardcoreActive(
+      JNIEnv *env, jobject obj)
+{
+   (void)env;
+   (void)obj;
+#ifdef HAVE_CHEEVOS
+   return rcheevos_hardcore_active() ? JNI_TRUE : JNI_FALSE;
+#else
+   return JNI_FALSE;
+#endif
 }
 
 /* Called from RetroArch source sites (HAVE_RICOTTA_OSD) when Cannoli owns an
