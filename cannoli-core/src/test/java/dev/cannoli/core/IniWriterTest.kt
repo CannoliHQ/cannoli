@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -101,6 +102,45 @@ class IniWriterTest {
 
         val tmp = File(file.parentFile, "${file.name}.tmp")
         assertFalse("temp file should not remain after successful write", tmp.exists())
+    }
+
+    @Test fun `a write over an existing file replaces it and leaves no temp behind`() {
+        val file = File(tempFolder.root, "replace.ini")
+        IniWriter.write(file, mapOf("s" to mapOf("k" to "old")))
+
+        IniWriter.write(file, mapOf("s" to mapOf("k" to "new")))
+
+        assertEquals("new", IniParser.parse(file).get("s", "k"))
+        assertFalse(File(file.parentFile, "${file.name}.tmp").exists())
+    }
+
+    @Test fun `a destination the rename cannot reach is written directly`() {
+        val dir = File(tempFolder.root, "norename").apply { mkdirs() }
+        val file = File(dir, "state.ini")
+        IniWriter.write(file, mapOf("s" to mapOf("k" to "old")))
+        // The tmp has to exist before the directory closes, since creating it is what a
+        // non-writable directory forbids. Writing to a file already in it is not.
+        File(dir, "${file.name}.tmp").writeText("")
+        dir.setWritable(false)
+        assumeTrue("this user can create files in a non-writable directory", !dir.canWrite())
+
+        try {
+            IniWriter.write(file, mapOf("s" to mapOf("k" to "new")))
+        } finally {
+            dir.setWritable(true)
+        }
+
+        assertEquals("new", IniParser.parse(file).get("s", "k"))
+    }
+
+    @Test fun `a write that can never land leaves the destination alone`() {
+        val dest = File(tempFolder.root, "blocked.ini").apply { mkdirs() }
+        File(dest, "child").writeText("keep me")
+
+        IniWriter.write(dest, mapOf("s" to mapOf("k" to "v")))
+
+        assertTrue(dest.isDirectory)
+        assertEquals("keep me", File(dest, "child").readText())
     }
 
     @Test fun `output is platform-line-ending agnostic when re-parsed`() {

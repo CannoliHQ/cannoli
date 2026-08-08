@@ -76,9 +76,23 @@ object IniWriter {
                 fos.write(content.toByteArray())
                 fos.fd.sync()
             }
-            tmp.renameTo(dest)
-        } catch (_: Exception) {
+            if (tmp.renameTo(dest)) return
+            // On the SD card MediaProvider keeps a database row per path, and renaming over a path
+            // it already knows fails the transaction on a unique constraint. Clearing the
+            // destination is what lets that rename through; nothing real is lost, because a rename
+            // through FUSE was never atomic to begin with. Only after the plain rename has failed,
+            // so the file is never taken away for a write that was going to land anyway.
+            dest.delete()
+            if (tmp.renameTo(dest)) return
+            java.io.FileOutputStream(dest).use { fos ->
+                fos.write(content.toByteArray())
+                fos.fd.sync()
+            }
             tmp.delete()
+        } catch (_: Exception) {
+            // The tmp is the only synced copy of this content, so it is kept when there is no
+            // destination left to keep instead.
+            if (dest.exists()) tmp.delete()
         }
     }
 }
