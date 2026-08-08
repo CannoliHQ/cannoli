@@ -560,4 +560,149 @@ class IGMControllerCheatsTest {
         assertEquals(listOf(0), bridge.toggledCheatIndexes)
         assertTrue(c.cheatItems.value[0].enabled)
     }
+
+    @Test fun `hardcore warns before the first enable and proceeds on confirm`() {
+        writeCht("a.cht", "One")
+        val bridge = bridgeFor("a.cht" to listOf("One")).apply { hardcoreActive = true }
+        val c = testController(bridge)
+        c.attachCheats(manager())
+        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
+
+        c.handleKeyDown(CONFIRM)
+
+        assertTrue(c.currentScreen is IGMScreen.CheatsHardcoreWarning)
+        assertEquals(0, bridge.toggledCheatIndexes.size)
+
+        c.handleKeyDown(CONFIRM)
+
+        assertTrue(c.currentScreen is IGMScreen.Cheats)
+        assertEquals(listOf(0), bridge.toggledCheatIndexes)
+        assertTrue(c.cheatItems.value[0].enabled)
+    }
+
+    @Test fun `backing out of the warning enables nothing`() {
+        writeCht("a.cht", "One")
+        val bridge = bridgeFor("a.cht" to listOf("One")).apply { hardcoreActive = true }
+        val c = testController(bridge)
+        c.attachCheats(manager())
+        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
+        c.handleKeyDown(CONFIRM)
+
+        c.handleKeyDown(BACK)
+
+        assertTrue(c.currentScreen is IGMScreen.Cheats)
+        assertEquals(0, bridge.toggledCheatIndexes.size)
+        assertFalse(c.cheatItems.value[0].enabled)
+    }
+
+    @Test fun `the warning shows once per session`() {
+        writeCht("a.cht", "One", "Two")
+        val bridge = bridgeFor("a.cht" to listOf("One", "Two")).apply { hardcoreActive = true }
+        val c = testController(bridge)
+        c.attachCheats(manager())
+        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
+        c.handleKeyDown(CONFIRM)
+        c.handleKeyDown(CONFIRM)
+
+        c.handleKeyDown(DPAD_DOWN)
+        c.handleKeyDown(CONFIRM)
+
+        assertTrue(c.currentScreen is IGMScreen.Cheats)
+        assertEquals(listOf(0, 1), bridge.toggledCheatIndexes)
+    }
+
+    @Test fun `turning a cheat off never warns`() {
+        writeCht("a.cht", "One")
+        val bridge = bridgeFor("a.cht" to listOf("One")).apply { hardcoreActive = true }
+        val c = testController(bridge)
+        c.attachCheats(manager())
+        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
+        c.handleKeyDown(CONFIRM)
+        c.handleKeyDown(CONFIRM)
+
+        c.handleKeyDown(CONFIRM)
+
+        assertTrue(c.currentScreen is IGMScreen.Cheats)
+        assertFalse(c.cheatItems.value[0].enabled)
+    }
+
+    @Test fun `no hardcore means no warning`() {
+        writeCht("a.cht", "One")
+        val bridge = bridgeFor("a.cht" to listOf("One"))
+        val c = testController(bridge)
+        c.attachCheats(manager())
+        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
+
+        c.handleKeyDown(CONFIRM)
+
+        assertTrue(c.currentScreen is IGMScreen.Cheats)
+        assertEquals(listOf(0), bridge.toggledCheatIndexes)
+    }
+
+    @Test fun `backing out preserves the once-per-session opportunity`() {
+        writeCht("a.cht", "One")
+        val bridge = bridgeFor("a.cht" to listOf("One")).apply { hardcoreActive = true }
+        val c = testController(bridge)
+        c.attachCheats(manager())
+        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
+
+        c.handleKeyDown(CONFIRM)
+        assertTrue(c.currentScreen is IGMScreen.CheatsHardcoreWarning)
+
+        c.handleKeyDown(BACK)
+        assertTrue(c.currentScreen is IGMScreen.Cheats)
+
+        c.handleKeyDown(CONFIRM)
+
+        assertTrue("the warning must show again after backing out", c.currentScreen is IGMScreen.CheatsHardcoreWarning)
+        assertTrue(bridge.toggledCheatIndexes.isEmpty())
+
+        c.handleKeyDown(CONFIRM)
+
+        assertTrue(c.currentScreen is IGMScreen.Cheats)
+        assertEquals(listOf(0), bridge.toggledCheatIndexes)
+        assertTrue(c.cheatItems.value[0].enabled)
+    }
+
+    @Test fun `backing out before a file cycle re-arms against the new file's live session`() {
+        writeCht("a.cht", "Alpha", "Beta")
+        writeCht("b.cht", "Three")
+        val bridge = bridgeFor("a.cht" to listOf("Alpha", "Beta"), "b.cht" to listOf("Three"))
+            .apply { hardcoreActive = true; deferCheatLoads = true }
+        val c = testController(bridge)
+        c.attachCheats(manager())
+        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
+        bridge.deliverCheats()
+
+        // Arm on a.cht's second row (rowIndex 1), then back out before confirming it.
+        c.handleKeyDown(DPAD_DOWN)
+        c.handleKeyDown(DPAD_DOWN)
+        c.handleKeyDown(CONFIRM)
+        assertTrue(c.currentScreen is IGMScreen.CheatsHardcoreWarning)
+
+        c.handleKeyDown(BACK)
+        assertTrue(c.currentScreen is IGMScreen.Cheats)
+
+        // Cycle to b.cht, which only has one row, so a leaked rowIndex 1 from a.cht would be
+        // out of range there and prove the two arms were never conflated.
+        c.handleKeyDown(DPAD_UP)
+        c.handleKeyDown(DPAD_UP)
+        c.handleKeyDown(DPAD_RIGHT)
+        bridge.deliverCheats()
+        assertEquals("b.cht", c.cheatFileName.value)
+        assertEquals(listOf("Three"), c.cheatItems.value.map { it.label })
+
+        c.handleKeyDown(DPAD_DOWN)
+        c.handleKeyDown(CONFIRM)
+
+        assertTrue("the warning must re-arm for the new file", c.currentScreen is IGMScreen.CheatsHardcoreWarning)
+        assertTrue(bridge.toggledCheatIndexes.isEmpty())
+
+        c.handleKeyDown(CONFIRM)
+
+        assertTrue(c.currentScreen is IGMScreen.Cheats)
+        assertEquals("b.cht", c.cheatFileName.value)
+        assertEquals(listOf(0), bridge.toggledCheatIndexes)
+        assertTrue(c.cheatItems.value[0].enabled)
+    }
 }

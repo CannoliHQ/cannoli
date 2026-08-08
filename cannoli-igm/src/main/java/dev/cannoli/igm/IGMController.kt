@@ -67,6 +67,7 @@ class IGMController(
     private var selectedCheatFile = 0
     private var cheatSession: CheatSession? = null
     private var cheatsLoaded = false
+    private var cheatHardcoreWarned = false
     private var cheatLoadPending = false
     private var outstandingCheatLoads = 0
     private var staleCheatSnapshots = 0
@@ -220,9 +221,39 @@ class IGMController(
             )
             21 -> if (onSelector) cycleCheatFile(-1)
             22 -> if (onSelector) cycleCheatFile(1)
-            96 -> if (!onSelector) toggleCheatRow(screen.selectedIndex - selector)
+            96 -> if (!onSelector) {
+                val rowIndex = screen.selectedIndex - selector
+                if (needsHardcoreWarning(rowIndex)) {
+                    push(IGMScreen.CheatsHardcoreWarning(
+                        pendingRowIndex = rowIndex,
+                        parentIndex = screen.selectedIndex,
+                    ))
+                } else {
+                    toggleCheatRow(rowIndex)
+                }
+            }
             100 -> reapplyLastUsedCheats()
             97, 4 -> { pop(); if (screenStack.isEmpty()) onClose?.invoke() }
+        }
+    }
+
+    // Enabling any cheat makes RetroArch pause hardcore achievements, so the first enable of the
+    // session asks first. Turning one off costs nothing and never asks.
+    private fun needsHardcoreWarning(rowIndex: Int): Boolean {
+        if (cheatHardcoreWarned || !bridge.hardcoreActive) return false
+        val session = cheatSession ?: return false
+        val row = session.rows.getOrNull(rowIndex) ?: return false
+        return row.supported && !session.isEnabled(row)
+    }
+
+    private fun handleCheatsHardcoreWarningKey(screen: IGMScreen.CheatsHardcoreWarning, keycode: Int) {
+        when (keycode) {
+            96 -> {
+                cheatHardcoreWarned = true
+                pop()
+                toggleCheatRow(screen.pendingRowIndex)
+            }
+            97, 4 -> pop()
         }
     }
 
@@ -454,6 +485,7 @@ class IGMController(
             is IGMScreen.GuidePicker -> handleGuidePickerKey(screen, normalized)
             is IGMScreen.Guide -> handleGuideKey(screen, normalized)
             is IGMScreen.Cheats -> handleCheatsKey(screen, normalized)
+            is IGMScreen.CheatsHardcoreWarning -> handleCheatsHardcoreWarningKey(screen, normalized)
             is IGMScreen.Achievements -> handleAchievementsKey(screen, normalized)
             is IGMScreen.AchievementDetail -> handleAchievementDetailKey(screen, normalized)
             is IGMScreen.ProviderSettings -> handleProviderKey(normalized)
