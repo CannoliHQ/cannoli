@@ -527,6 +527,37 @@ class IGMControllerCheatsTest {
         assertTrue(c.cheatItems.value[1].enabled)
     }
 
+    @Test fun `a snapshot from before a disc switch never becomes the new disc's session`() {
+        writeCht("a.cht", "One", "Two")
+        val path = File(tmp.root, "Cheats/nes/Game/a.cht").absolutePath
+        val bridge = bridgeWithSupport("a.cht" to listOf("One" to true, "Two" to true))
+            .apply { discs = 2; deferCheatLoads = true }
+        val c = testController(bridge)
+        c.attachCheats(manager())
+        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
+        c.handleKeyDown(BACK)
+
+        val discIndex = c.buildMenuOptions().switchDiscIndex
+        c.replaceTop((c.currentScreen as IGMScreen.Menu).copy(selectedIndex = discIndex))
+        c.handleKeyDown(DPAD_RIGHT)
+
+        onCheatsRow(c)
+        c.handleKeyDown(CONFIRM)
+        assertEquals(2, bridge.loadedCheatPaths.size)
+
+        // The load in flight when the disc changed describes the disc that left. The new disc
+        // reinitializes content state, so RetroArch takes a different set of rows from the file.
+        bridge.deliverCheats()
+        bridge.cheatRowsByPath[path] = listOf(
+            RetroArchBridge.CheatRow(0, "One", "CODE0", enabled = false, supported = false),
+            RetroArchBridge.CheatRow(1, "Two", "CODE1", enabled = false, supported = true),
+        )
+        bridge.deliverCheats()
+
+        assertEquals(listOf(false, true), c.cheatItems.value.map { it.supported })
+        assertEquals(1, selection(c))
+    }
+
     @Test fun `a snapshot for the previous file never becomes the new file's session`() {
         writeCht("a.cht", "One")
         writeCht("b.cht", "Three")

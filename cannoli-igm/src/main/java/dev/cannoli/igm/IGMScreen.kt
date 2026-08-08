@@ -19,6 +19,5 @@ sealed class IGMScreen {
     data class CheatsHardcoreWarning(
         override val selectedIndex: Int = 0,
         val pendingRowIndex: Int,
-        val parentIndex: Int = 0,
     ) : IGMScreen()
 }

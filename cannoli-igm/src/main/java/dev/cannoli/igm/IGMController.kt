@@ -225,10 +225,7 @@ class IGMController(
             96 -> if (!onSelector) {
                 val rowIndex = screen.selectedIndex - selector
                 if (needsHardcoreWarning(rowIndex)) {
-                    push(IGMScreen.CheatsHardcoreWarning(
-                        pendingRowIndex = rowIndex,
-                        parentIndex = screen.selectedIndex,
-                    ))
+                    push(IGMScreen.CheatsHardcoreWarning(pendingRowIndex = rowIndex))
                 } else {
                     toggleCheatRow(rowIndex)
                 }
@@ -567,6 +564,7 @@ class IGMController(
         cheatSession = null
         cheatsLoaded = false
         cheatLoadPending = false
+        staleCheatSnapshots = outstandingCheatLoads
     }
 
     fun buildMenuOptions(): InGameMenuOptions {
