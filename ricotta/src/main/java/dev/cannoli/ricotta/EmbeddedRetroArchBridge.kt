@@ -201,6 +201,25 @@ class EmbeddedRetroArchBridge(
         mainHandler.post { onRaAppliedCallback?.invoke(key, value) }
     }
 
+    private var onCheatsLoadedCallback: ((List<RetroArchBridge.CheatRow>) -> Unit)? = null
+
+    override fun setOnCheatsLoaded(callback: (List<RetroArchBridge.CheatRow>) -> Unit) {
+        onCheatsLoadedCallback = callback
+    }
+
+    @Suppress("unused")
+    fun onCheatsLoaded(payload: String) {
+        val rows = decodeCheatRows(payload)
+        mainHandler.post { onCheatsLoadedCallback?.invoke(rows) }
+    }
+
+    override fun loadCheatFile(path: String) = nativeCheatLoadFile(path)
+    override fun toggleCheat(index: Int) = nativeCheatToggle(index)
+    override fun applyCheats() = nativeCheatApply()
+
+    override val hardcoreActive: Boolean
+        get() = nativeCheatHardcoreActive()
+
     override fun openNativeMenu() = nativeMenuToggle()
 
     override fun setOnNativeMenuClosed(callback: () -> Unit) {
@@ -228,6 +247,10 @@ class EmbeddedRetroArchBridge(
     private external fun nativeSetIGMVisible(visible: Boolean)
     private external fun nativeSetIgmTriggerKeycodes(keycodes: IntArray)
     private external fun nativeGetAchievementData(): String
+    private external fun nativeCheatLoadFile(path: String)
+    private external fun nativeCheatToggle(index: Int)
+    private external fun nativeCheatApply()
+    private external fun nativeCheatHardcoreActive(): Boolean
     private external fun nativeRaGetSetting(key: String): Array<String>?
     private external fun nativeRaSetSetting(key: String, value: String)
     private external fun nativeRaSaveOverride(scope: Int)
@@ -235,6 +258,52 @@ class EmbeddedRetroArchBridge(
     companion object {
         // Matches RICOTTA_CORE_OPT_PREFIX in ricotta_bridge.c.
         const val CORE_OPTION_PREFIX = "core::"
+
+        // The row index is the line index, which is RetroArch's cheat index by construction: the
+        // native snapshot walks the list in order. A malformed line is dropped, never thrown on.
+        internal fun decodeCheatRows(payload: String): List<RetroArchBridge.CheatRow> {
+            if (payload.isEmpty()) return emptyList()
+            return payload.split('\n').mapIndexedNotNull { index, line ->
+                if (line.isBlank()) return@mapIndexedNotNull null
+                val parts = splitEscaped(line)
+                if (parts.size < 4) return@mapIndexedNotNull null
+                RetroArchBridge.CheatRow(
+                    index = index,
+                    desc = parts[0],
+                    code = parts[1],
+                    enabled = parts[2] == "1",
+                    supported = parts[3] == "1",
+                )
+            }
+        }
+
+        // Reverses ricotta_sb_escaped: backslash, pipe and newline are the only escapes.
+        private fun splitEscaped(line: String): List<String> {
+            val out = ArrayList<String>(4)
+            val field = StringBuilder()
+            var i = 0
+            while (i < line.length) {
+                val c = line[i]
+                when {
+                    c == '\\' && i + 1 < line.length -> {
+                        val next = line[i + 1]
+                        field.append(if (next == 'n') '\n' else next)
+                        i += 2
+                    }
+                    c == '|' -> {
+                        out.add(field.toString())
+                        field.setLength(0)
+                        i++
+                    }
+                    else -> {
+                        field.append(c)
+                        i++
+                    }
+                }
+            }
+            out.add(field.toString())
+            return out
+        }
 
         init {
             // The native library is already loaded by RetroActivityCommon

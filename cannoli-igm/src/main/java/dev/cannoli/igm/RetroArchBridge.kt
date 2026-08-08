@@ -50,7 +50,7 @@ interface RetroArchBridge {
 
     fun applyCheats() {}
 
-    /** Fires on the emulator thread once a queued [loadCheatFile] has run. */
+    /** Fires on the main thread once a queued [loadCheatFile] has run. */
     fun setOnCheatsLoaded(callback: (List<CheatRow>) -> Unit) {}
 
     /** Enabling a cheat pauses hardcore achievements, so the menu warns first when this is on. */
