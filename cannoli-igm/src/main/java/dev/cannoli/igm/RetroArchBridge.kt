@@ -30,4 +30,29 @@ interface RetroArchBridge {
     fun setOnNativeMenuClosed(callback: () -> Unit)
 
     fun settingsProvider(): IgmSettingsProvider? = null
+
+    /**
+     * One row of RetroArch's live cheat list. [index] is the index every toggle must use: it is
+     * observed by reading RetroArch back after a load, never inferred from the .cht file's order.
+     */
+    data class CheatRow(
+        val index: Int,
+        val desc: String,
+        val code: String,
+        val enabled: Boolean,
+        val supported: Boolean,
+    )
+
+    /** Queues: drop the current list, load this file alone, clear every state, apply. */
+    fun loadCheatFile(path: String) {}
+
+    fun toggleCheat(index: Int) {}
+
+    fun applyCheats() {}
+
+    /** Fires on the emulator thread once a queued [loadCheatFile] has run. */
+    fun setOnCheatsLoaded(callback: (List<CheatRow>) -> Unit) {}
+
+    /** Enabling a cheat pauses hardcore achievements, so the menu warns first when this is on. */
+    val hardcoreActive: Boolean get() = false
 }
