@@ -106,6 +106,9 @@ static void ricotta_enqueue_entry(ricotta_cmd_entry entry)
       }
       else
       {
+         /* A dropped cheat load emits no snapshot: the upcall only runs on the runloop thread, so
+          * nothing can report the drop from here. The screen keeps its old list and reloads on the
+          * next entry. */
          free(entry.ra_key);
          free(entry.ra_value);
       }
@@ -159,20 +162,65 @@ static void ricotta_sb_putc(ricotta_strbuf *sb, char c)
 }
 
 /* Backslash, pipe and newline are escaped so a desc or code containing them cannot forge a field
- * or a row boundary. The Kotlin decoder reverses exactly these three. */
+ * or a row boundary. The Kotlin decoder reverses exactly these three and splits rows on \n alone,
+ * so a lone \r is deliberately left as a literal byte inside its field.
+ *
+ * These bytes come from a user-supplied .cht and community packs are not always UTF-8, so anything
+ * that is not valid modified UTF-8 is replaced with '?' as it is copied: NewStringUTF aborts the
+ * process under CheckJNI on a bad sequence. Four-byte sequences are invalid here too, modified
+ * UTF-8 spells those as a surrogate pair of three-byte ones. */
 static void ricotta_sb_escaped(ricotta_strbuf *sb, const char *s)
 {
+   const unsigned char *p = (const unsigned char *)s;
+
    if (!s)
       return;
-   for (; *s; s++)
+   while (*p)
    {
-      if (*s == '\\' || *s == '|' || *s == '\n')
+      int seq = 0;
+      int k;
+
+      if (*p < 0x80)
+         seq = 1;
+      else if ((*p & 0xE0) == 0xC0)
+         seq = 2;
+      else if ((*p & 0xF0) == 0xE0)
+         seq = 3;
+
+      /* A terminator fails the continuation test and breaks here, so a string that ends
+       * mid-sequence is never read past. */
+      for (k = 1; k < seq; k++)
       {
-         ricotta_sb_putc(sb, '\\');
-         ricotta_sb_putc(sb, *s == '\n' ? 'n' : *s);
+         if ((p[k] & 0xC0) != 0x80)
+         {
+            seq = 0;
+            break;
+         }
+      }
+
+      if (seq == 0)
+      {
+         /* Resync one byte at a time so the ASCII after a bad sequence still survives. */
+         ricotta_sb_putc(sb, '?');
+         p++;
+      }
+      else if (seq == 1)
+      {
+         if (*p == '\\' || *p == '|' || *p == '\n')
+         {
+            ricotta_sb_putc(sb, '\\');
+            ricotta_sb_putc(sb, *p == '\n' ? 'n' : (char)*p);
+         }
+         else
+            ricotta_sb_putc(sb, (char)*p);
+         p++;
       }
       else
-         ricotta_sb_putc(sb, *s);
+      {
+         for (k = 0; k < seq; k++)
+            ricotta_sb_putc(sb, (char)p[k]);
+         p += seq;
+      }
    }
 }
 
@@ -305,9 +353,12 @@ void ricotta_bridge_poll_commands(void)
       if (entry.cmd == RICOTTA_QCMD_CHEAT_TOGGLE)
       {
          settings_t *settings = config_get_ptr();
-         cheat_manager_toggle_index(true,
-               settings ? settings->bools.notification_show_cheats_applied : false,
-               (unsigned)entry.slot);
+         /* A toggle queued against a longer list drains after the load that replaced it, and
+          * RetroArch range-checks nothing here: its own caller is the synchronous menu. */
+         if ((unsigned)entry.slot < cheat_manager_get_size())
+            cheat_manager_toggle_index(true,
+                  settings ? settings->bools.notification_show_cheats_applied : false,
+                  (unsigned)entry.slot);
          continue;
       }
       if (entry.cmd == RICOTTA_QCMD_CHEAT_APPLY)
@@ -1244,10 +1295,14 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeCheatLoadFile(
       JNIEnv *env, jobject obj, jstring jpath)
 {
    ricotta_cmd_entry entry = {0};
-   const char *path        = (*env)->GetStringUTFChars(env, jpath, NULL);
+   const char *path;
 
    (void)obj;
 
+   if (!jpath)
+      return;
+
+   path         = (*env)->GetStringUTFChars(env, jpath, NULL);
    entry.cmd    = RICOTTA_QCMD_CHEAT_LOAD;
    entry.ra_key = path ? strdup(path) : NULL;
 
