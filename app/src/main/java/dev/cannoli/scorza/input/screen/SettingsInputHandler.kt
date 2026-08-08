@@ -48,6 +48,7 @@ class SettingsInputHandler @Inject constructor(
     private val updateManager: UpdateManager,
     private val intentAuditor: IntentAuditor,
     private val settingsViewModel: SettingsViewModel,
+    private val dialogInputHandler: dev.cannoli.scorza.input.DialogInputHandler,
     private val launcherActions: LauncherActions,
     private val activityActions: ActivityActions,
     private val emulatorMappingBuilder: dev.cannoli.scorza.input.EmulatorMappingBuilder,
@@ -199,10 +200,20 @@ class SettingsInputHandler @Inject constructor(
     }
 
     override fun onBack() {
-        if (settingsViewModel.state.value.inSubList) {
+        val state = settingsViewModel.state.value
+        if (state.inSubList) {
+            // Only the category the quick menu pushed us into returns there; anything deeper
+            // still unwinds one level at a time.
+            val quickMenuRow = (nav.currentScreen as? LauncherScreen.Settings)
+                ?.quickMenuRow
+                ?.takeIf { state.parentCategory == null }
             settingsViewModel.save()
             settingsViewModel.exitSubList()
             launcherActions.rescanSystemList()
+            if (quickMenuRow != null) {
+                nav.pop()
+                dialogInputHandler.openQuickMenu(quickMenuRow)
+            }
         } else {
             settingsViewModel.cancel()
             nav.pop()

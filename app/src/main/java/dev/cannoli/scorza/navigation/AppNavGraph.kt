@@ -175,7 +175,8 @@ sealed class LauncherScreen {
 
     data object SystemList : LauncherScreen()
     data object GameList : LauncherScreen()
-    data object Settings : LauncherScreen()
+    /** [quickMenuRow] is set only when the quick menu pushed straight into a category, and names the row Back returns to. */
+    data class Settings(val quickMenuRow: dev.cannoli.scorza.ui.quickmenu.QuickMenuRow? = null) : LauncherScreen()
     data object InputTester : LauncherScreen()
     data class SaveStatePicker(
         val rom: dev.cannoli.scorza.model.Rom,
@@ -306,7 +307,7 @@ sealed class LauncherScreen {
         override val itemCount: Int get() = ShortcutAction.entries.size
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
     }
-    data class Credits(override val selectedIndex: Int = 0, override val scrollTarget: Int = 0) : LauncherScreen(), ScrollableScreen {
+    data class Credits(override val selectedIndex: Int = 0, override val scrollTarget: Int = 0, val fromQuickMenu: Boolean = false) : LauncherScreen(), ScrollableScreen {
         override val itemCount: Int get() = CREDITS_ROOT_ROWS.size
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
     }

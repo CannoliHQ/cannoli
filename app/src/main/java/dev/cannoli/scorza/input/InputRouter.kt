@@ -476,6 +476,7 @@ class InputRouter @Inject constructor(
     )
 
     private fun creditsHandler() = scrollable<LauncherScreen.Credits>(
+        onBack = { creditsBack(nav, this) },
         onConfirm = {
             val row = CREDITS_ROOT_ROWS.getOrNull(selectedIndex)
             if (row is CreditsRootRow.Category) {
@@ -747,4 +748,11 @@ class InputRouter @Inject constructor(
             selectedIndex = em.selectedIndex.coerceAtMost((filtered.size - 1).coerceAtLeast(0)),
         )
     }
+}
+
+// Credits is pushed from the About dialog, so backing out of it restores About rather than
+// dropping the whole chain, and About keeps knowing whether the quick menu opened it.
+internal fun creditsBack(nav: NavigationController, screen: LauncherScreen.Credits) {
+    nav.pop()
+    nav.dialogState.value = DialogState.About(fromQuickMenu = screen.fromQuickMenu)
 }

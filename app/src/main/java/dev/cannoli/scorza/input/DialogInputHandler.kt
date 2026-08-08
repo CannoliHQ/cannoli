@@ -140,7 +140,7 @@ class DialogInputHandler @Inject constructor(
     // Single-flight: held Back / Menu key-repeat re-enters these branches before the
     // coroutine below completes. Without this guard a second rebuild can win the race
     // and overwrite fresher badge counts with stale ones (or, for Kitchen, double-rescan).
-    private fun openQuickMenu(selected: dev.cannoli.scorza.ui.quickmenu.QuickMenuRow? = null) {
+    fun openQuickMenu(selected: dev.cannoli.scorza.ui.quickmenu.QuickMenuRow? = null) {
         if (!quickMenuRebuild.compareAndSet(false, true)) return
         ioScope.launch {
             try {
@@ -507,8 +507,13 @@ class DialogInputHandler @Inject constructor(
                     }
                     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.ABOUT ->
                         nav.dialogState.value = DialogState.About(fromQuickMenu = true)
-                    dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.DEBUG ->
-                        openSettings("debug", dev.cannoli.scorza.R.string.settings_debug)
+                    dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.DEBUG -> openSettings(
+                        QuickSettingsCategory(
+                            "debug",
+                            dev.cannoli.scorza.R.string.settings_debug,
+                            dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.DEBUG,
+                        )
+                    )
                     null -> nav.dialogState.value = DialogState.None
                 }
             }
@@ -588,12 +593,18 @@ class DialogInputHandler @Inject constructor(
         return true
     }
 
-    private fun openSettings(category: String? = null, @androidx.annotation.StringRes categoryLabel: Int = 0) {
+    private data class QuickSettingsCategory(
+        val key: String,
+        @androidx.annotation.StringRes val labelRes: Int,
+        val row: dev.cannoli.scorza.ui.quickmenu.QuickMenuRow,
+    )
+
+    private fun openSettings(category: QuickSettingsCategory? = null) {
         nav.dialogState.value = DialogState.None
         if (nav.currentScreen is LauncherScreen.SystemList) systemListViewModel.savePosition()
         settingsViewModel.load()
-        if (category != null) settingsViewModel.enterSubCategory(category, categoryLabel)
-        nav.screenStack.add(LauncherScreen.Settings)
+        if (category != null) settingsViewModel.enterSubCategory(category.key, category.labelRes)
+        nav.screenStack.add(LauncherScreen.Settings(category?.row))
         if (updateManager.isOnline()) {
             ioScope.launch { updateManager.checkForUpdate() }
         }
@@ -1227,7 +1238,7 @@ class DialogInputHandler @Inject constructor(
             }
             is DialogState.About -> {
                 nav.dialogState.value = DialogState.None
-                nav.screenStack.add(LauncherScreen.Credits())
+                nav.screenStack.add(LauncherScreen.Credits(fromQuickMenu = ds.fromQuickMenu))
             }
             is DialogState.Kitchen -> {
                 dev.cannoli.scorza.server.KitchenManager.stop(context)

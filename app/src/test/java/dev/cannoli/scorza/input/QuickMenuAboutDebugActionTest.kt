@@ -94,7 +94,7 @@ class QuickMenuAboutDebugActionTest {
     @Test fun debug_row_pushes_settings_already_inside_the_debug_category() {
         confirmRow(QuickMenuRow.DEBUG)
         assertEquals(DialogState.None, nav.dialogState.value)
-        assertEquals(LauncherScreen.Settings, nav.currentScreen)
+        assertEquals(LauncherScreen.Settings(QuickMenuRow.DEBUG), nav.currentScreen)
         assertEquals("debug", settingsViewModel.state.value.activeCategory)
         assertTrue(settingsViewModel.state.value.items.isNotEmpty())
     }
