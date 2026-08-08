@@ -20,6 +20,9 @@ class CheatManagerTest {
     private fun manager(tag: String, game: String) =
         CheatManager(tmp.root.absolutePath, tag, game, writer = direct)
 
+    private fun stateFile(tag: String, game: String): File =
+        File(tmp.root, "Config/State/Cheats/$tag/$game.ini")
+
     private fun cheatsDir(tag: String, game: String): File =
         File(tmp.root, "Cheats/$tag/$game").apply { mkdirs() }
 
@@ -73,11 +76,31 @@ class CheatManagerTest {
 
         assertEquals("a.cht", loaded?.fileName)
         assertEquals(setOf("aaaa1111", "bbbb2222"), loaded?.hashes)
-        assertTrue(File(tmp.root, "Config/State/cheat_state.ini").exists())
+        assertTrue(stateFile("snes", "Game").exists())
     }
 
     @Test
-    fun lastUsedIsScopedPerGame() {
+    fun theFileNameAndTheHashesAreSeparateKeys() {
+        manager("snes", "Game").saveLastUsed("Zelda: OoT.cht", setOf("1111", "2222"))
+
+        val text = stateFile("snes", "Game").readText()
+
+        assertTrue(text.contains("[last_used]"))
+        assertTrue(text.contains("file=Zelda: OoT.cht"))
+        assertTrue(text.contains("hashes=1111,2222"))
+        assertEquals("Zelda: OoT.cht", manager("snes", "Game").loadLastUsed()?.fileName)
+    }
+
+    @Test
+    fun aGameWithNoFileOfItsOwnHasNoLastUsed() {
+        manager("snes", "GameOne").saveLastUsed("a.cht", setOf("1111"))
+
+        assertNull(manager("snes", "GameTwo").loadLastUsed())
+        assertNull(manager("nes", "GameOne").loadLastUsed())
+    }
+
+    @Test
+    fun eachGameKeepsItsOwnFile() {
         val m1 = manager("snes", "GameOne")
         val m2 = manager("snes", "GameTwo")
         m1.saveLastUsed("a.cht", setOf("1111"))
@@ -86,41 +109,32 @@ class CheatManagerTest {
         assertEquals("a.cht", m1.loadLastUsed()?.fileName)
         assertEquals(setOf("1111"), m1.loadLastUsed()?.hashes)
         assertEquals("b.cht", m2.loadLastUsed()?.fileName)
+        assertEquals(setOf("2222"), m2.loadLastUsed()?.hashes)
+        assertTrue(stateFile("snes", "GameOne").exists())
+        assertTrue(stateFile("snes", "GameTwo").exists())
     }
 
     @Test
-    fun savingReplacesThisGamesEntryOnly() {
+    fun savingTouchesOnlyThisGamesFile() {
         val other = manager("nes", "Other")
         other.saveLastUsed("x.cht", setOf("9999"))
+        val before = stateFile("nes", "Other").readText()
         val m = manager("snes", "Game")
+
         m.saveLastUsed("a.cht", setOf("1111"))
         m.saveLastUsed("b.cht", setOf("2222"))
 
         assertEquals("b.cht", m.loadLastUsed()?.fileName)
         assertEquals(setOf("2222"), m.loadLastUsed()?.hashes)
-        assertEquals("x.cht", other.loadLastUsed()?.fileName)
-    }
-
-    @Test
-    fun v1EntriesAreIgnoredAndCleanedOnSave() {
-        val state = File(tmp.root, "Config/State/cheat_state.ini")
-        state.parentFile!!.mkdirs()
-        state.writeText("[enabled]\nsnes/Game/a.cht=0,2\nnes/Other/x.cht=1\n")
-        val m = manager("snes", "Game")
-
-        assertNull(m.loadLastUsed())
-
-        m.saveLastUsed("a.cht", setOf("1111"))
-        val text = state.readText()
-        assertFalse(text.contains("snes/Game/a.cht"))
-        assertTrue(text.contains("nes/Other/x.cht"))
+        assertEquals(before, stateFile("nes", "Other").readText())
+        assertEquals("x.cht", manager("nes", "Other").loadLastUsed()?.fileName)
     }
 
     @Test
     fun savingAnswersFromMemoryBeforeTheWriteRuns() {
         val queued = mutableListOf<Runnable>()
         val m = CheatManager(tmp.root.absolutePath, "snes", "Game", writer = { queued += it })
-        val state = File(tmp.root, "Config/State/cheat_state.ini")
+        val state = stateFile("snes", "Game")
 
         m.saveLastUsed("a.cht", setOf("1111"))
 

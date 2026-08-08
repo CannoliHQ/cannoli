@@ -26,7 +26,10 @@ class CheatManager(
 ) {
     private val root = File(cannoliRoot)
     private val cheatsDir = File(File(File(root, "Cheats"), platformTag), gameBaseName)
-    private val stateFile = File(File(File(root, "Config"), "State"), "cheat_state.ini")
+    private val stateFile = File(
+        File(File(File(File(root, "Config"), "State"), "Cheats"), platformTag),
+        "$gameBaseName.ini",
+    )
 
     fun findCheatFiles(): List<CheatFile> {
         if (!cheatsDir.isDirectory) return emptyList()
@@ -50,8 +53,6 @@ class CheatManager(
             }
     }
 
-    private val gameKey = "$platformTag/$gameBaseName"
-
     // The store is read once and then owned in memory. Every toggle persists, and re-reading the
     // file it just wrote costs a FUSE read on the thread the game is drawing from.
     private var cache: MutableMap<String, MutableMap<String, String>>? = null
@@ -62,10 +63,10 @@ class CheatManager(
             .also { cache = it }
 
     fun loadLastUsed(): LastUsedCheats? {
-        val raw = sections()[SECTION]?.get(gameKey) ?: return null
-        val fileName = raw.substringBefore(':', "")
+        val stored = sections()[SECTION] ?: return null
+        val fileName = stored[FILE_KEY].orEmpty()
         if (fileName.isEmpty()) return null
-        val hashes = raw.substringAfter(':', "")
+        val hashes = stored[HASHES_KEY].orEmpty()
             .split(',')
             .map { it.trim() }
             .filter { it.isNotEmpty() }
@@ -75,11 +76,9 @@ class CheatManager(
 
     fun saveLastUsed(fileName: String, hashes: Set<String>) {
         val sections = sections()
-        sections.getOrPut(SECTION) { mutableMapOf() }[gameKey] =
-            fileName + ":" + hashes.sorted().joinToString(",")
-        // v1 wrote one key per cheat file under [enabled], holding positional indexes. Nothing
-        // reads it any more, so this game's rows go on the next write and other games' rows stay.
-        sections[LEGACY_SECTION]?.keys?.removeAll { it.startsWith("$gameKey/") }
+        val stored = sections.getOrPut(SECTION) { mutableMapOf() }
+        stored[FILE_KEY] = fileName
+        stored[HASHES_KEY] = hashes.sorted().joinToString(",")
         // The writer thread only ever sees this copy, so it cannot read a map the next toggle is
         // editing, and the queue's order is what makes the last save the one that lands.
         val snapshot = sections.mapValues { it.value.toMap() }
@@ -88,7 +87,8 @@ class CheatManager(
 
     companion object {
         private const val SECTION = "last_used"
-        private const val LEGACY_SECTION = "enabled"
+        private const val FILE_KEY = "file"
+        private const val HASHES_KEY = "hashes"
 
         private val sharedWriter: Executor = Executors.newSingleThreadExecutor { r ->
             Thread(r, "cheat-state-writer").apply { isDaemon = true }
