@@ -66,7 +66,6 @@ class IGMController(
     private var cheatFiles: List<CheatFile> = emptyList()
     private var selectedCheatFile = 0
     private var cheatSession: CheatSession? = null
-    private var cheatsLoaded = false
     private var cheatHardcoreWarned = false
     private var cheatLoadPending = false
     private var outstandingCheatLoads = 0
@@ -81,16 +80,23 @@ class IGMController(
             .indexOfFirst { it.file.name == remembered }
             .coerceAtLeast(0)
         bridge.setOnCheatsLoaded(::onCheatsLoaded)
+        // RetroArch drains the queue on the runloop, which does not run while the menu is up, so a
+        // load asked for on the way into the screen is never answered. Asking here is what puts the
+        // data in hand during gameplay, before the first open.
+        loadSelectedCheatFile()
     }
 
     fun openCheats() {
-        if (cheatFiles.isEmpty()) return
-        // The session outlives the screen, so a reopen has to place the selection itself; the
-        // snapshot that would otherwise do it has already been and gone.
-        push(IGMScreen.Cheats(cheatSession?.let(::initialCheatSelection) ?: 0))
-        // A queued load can be dropped, and its snapshot is the only thing that would say so. Re-
-        // entering is the retry: until one arrives the screen shows the empty list it really has.
-        if (!cheatsLoaded) loadSelectedCheatFile()
+        // The menu only offers the row when a session is held, so the screen never opens empty.
+        val session = cheatSession ?: return
+        push(IGMScreen.Cheats(initialCheatSelection(session)))
+    }
+
+    // A load can be dropped, or answered with nothing, and its snapshot is the only thing that
+    // would say so. Opening the menu is the retry: it is the last moment the game is still running.
+    private fun requestCheatsIfMissing() {
+        if (cheatFiles.isEmpty() || cheatSession != null) return
+        loadSelectedCheatFile()
     }
 
     private fun loadSelectedCheatFile() {
@@ -119,10 +125,13 @@ class IGMController(
         if (!cheatLoadPending) return
         val manager = cheatManager ?: return
         val file = cheatFiles.getOrNull(selectedCheatFile) ?: return
+        // RetroArch emits a snapshot whether the load worked or not, and a failed one carries no
+        // rows. Taking it would hold an empty session for the rest of the game, and taking the
+        // pending token with it would turn away a good snapshot already queued behind this one.
+        if (observed.isEmpty()) return
+        cheatLoadPending = false
         val session = CheatSession(manager, file, observed)
         cheatSession = session
-        cheatsLoaded = true
-        cheatLoadPending = false
         // A disc switch reinitializes content state, so the set the user had on is put back by
         // identity rather than assumed to have survived.
         if (pendingCheatRestore.isNotEmpty()) {
@@ -171,7 +180,6 @@ class IGMController(
         // rather than adding is what keeps a second cycle from counting the same ones twice: the
         // ones already marked stale are part of what is outstanding now.
         staleCheatSnapshots = outstandingCheatLoads
-        cheatsLoaded = false
         pendingCheatRestore = emptySet()
         loadSelectedCheatFile()
     }
@@ -256,12 +264,22 @@ class IGMController(
     }
 
     private var lastMenuIndex = 0
+    private var lastMenuAction: IgmMenuAction? = null
 
     fun openMenu() {
         refreshDiskInfo()
-        val lastIndex = (buildMenuOptions().actions.size - 1).coerceAtLeast(0)
+        requestCheatsIfMissing()
+        val options = buildMenuOptions()
+        val lastIndex = (options.actions.size - 1).coerceAtLeast(0)
+        // Rows come and go between opens now that the cheats snapshot lands during gameplay, so a
+        // remembered index would point at whatever moved into its place. The row the user left on
+        // is what comes back; its index is only the fallback for a row that is no longer there.
+        val selected = lastMenuAction
+            ?.let { options.actions.indexOf(it) }
+            ?.takeIf { it >= 0 }
+            ?: lastMenuIndex.coerceIn(0, lastIndex)
         screenStack.clear()
-        screenStack.add(IGMScreen.Menu(selectedIndex = lastMenuIndex.coerceIn(0, lastIndex)))
+        screenStack.add(IGMScreen.Menu(selectedIndex = selected))
         refreshSlotInfo()
     }
 
@@ -273,6 +291,7 @@ class IGMController(
     private fun rememberMenuIndex() {
         (screenStack.firstOrNull { it is IGMScreen.Menu } as? IGMScreen.Menu)?.let {
             lastMenuIndex = it.selectedIndex
+            lastMenuAction = buildMenuOptions().actionAt(it.selectedIndex)
         }
     }
 
@@ -507,6 +526,7 @@ class IGMController(
             21 /* DPAD_LEFT */ -> {
                 if (menuOptions.actionAt(screen.selectedIndex) == IgmMenuAction.SWITCH_DISC) {
                     cycleDisc(-1)
+                    stayOnDiscRow(screen)
                 } else {
                     // Change save slot left
                     val newSlot = if (selectedSlotIndex.intValue <= 0) slots.slotCount - 1 else selectedSlotIndex.intValue - 1
@@ -517,6 +537,7 @@ class IGMController(
             22 /* DPAD_RIGHT */ -> {
                 if (menuOptions.actionAt(screen.selectedIndex) == IgmMenuAction.SWITCH_DISC) {
                     cycleDisc(1)
+                    stayOnDiscRow(screen)
                 } else {
                     // Change save slot right
                     val newSlot = if (selectedSlotIndex.intValue >= slots.slotCount - 1) 0 else selectedSlotIndex.intValue + 1
@@ -530,6 +551,16 @@ class IGMController(
             97, 4 /* BUTTON_B, BACK - back/close */ -> {
                 onClose?.invoke()
             }
+        }
+    }
+
+    // Switching disc drops the cheat session until the new disc's snapshot lands, which can take the
+    // Cheats row out of the menu from under the selection. The row being held is the disc row, not
+    // the index it happened to have.
+    private fun stayOnDiscRow(screen: IGMScreen.Menu) {
+        val index = buildMenuOptions().switchDiscIndex
+        if (index >= 0 && index != screen.selectedIndex) {
+            replaceTop(screen.copy(selectedIndex = index))
         }
     }
 
@@ -555,16 +586,16 @@ class IGMController(
     }
 
     // The new disc may reinitialize content state, so what RetroArch holds is no longer known to
-    // match. The next entry reloads and puts this session's set back by identity; a snapshot still
-    // in flight describes the disc that just left, so it is no longer wanted either.
+    // match. The reload puts this session's set back by identity; a snapshot still in flight
+    // describes the disc that just left, so it is no longer wanted either.
     private fun invalidateCheatsForDisc() {
         // Only a live session has anything to say about what was on. The second switch in a row
         // finds none, and must leave the first switch's capture alone rather than blank it.
         cheatSession?.let { pendingCheatRestore = it.enabledHashes() }
         cheatSession = null
-        cheatsLoaded = false
         cheatLoadPending = false
         staleCheatSnapshots = outstandingCheatLoads
+        loadSelectedCheatFile()
     }
 
     fun buildMenuOptions(): InGameMenuOptions {
@@ -573,7 +604,7 @@ class IGMController(
             discIndex = currentDiskIndex.intValue,
             hasAchievements = bridge.supportsAchievements,
             hasGuides = guideFiles.value.isNotEmpty(),
-            hasCheats = cheatFiles.isNotEmpty()
+            hasCheats = cheatSession?.rows?.isNotEmpty() == true
         )
         menuOptions = opts
         return opts

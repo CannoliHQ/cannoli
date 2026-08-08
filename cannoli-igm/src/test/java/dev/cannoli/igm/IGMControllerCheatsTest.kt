@@ -2,6 +2,7 @@ package dev.cannoli.igm
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -266,10 +267,15 @@ class IGMControllerCheatsTest {
 
     @Test fun `a toggle across a load in flight changes nothing`() {
         writeCht("a.cht", "One", "Two")
-        val bridge = bridgeFor("a.cht" to listOf("One", "Two")).apply { deferCheatLoads = true }
+        writeCht("b.cht", "Three")
+        val bridge = bridgeFor("a.cht" to listOf("One", "Two"), "b.cht" to listOf("Three"))
+            .apply { deferCheatLoads = true }
         val c = testController(bridge)
         c.attachCheats(manager())
+        bridge.deliverCheats()
         c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
+
+        c.handleKeyDown(DPAD_RIGHT)
         assertTrue(c.cheatItems.value.isEmpty())
 
         c.handleKeyDown(DPAD_DOWN)
@@ -280,7 +286,7 @@ class IGMControllerCheatsTest {
 
         bridge.deliverCheats()
 
-        assertEquals(listOf("One", "Two"), c.cheatItems.value.map { it.label })
+        assertEquals(listOf("Three"), c.cheatItems.value.map { it.label })
         assertTrue(c.cheatItems.value.none { it.enabled })
     }
 
@@ -291,30 +297,41 @@ class IGMControllerCheatsTest {
             .apply { deferCheatLoads = true }
         val c = testController(bridge)
         c.attachCheats(manager())
+        bridge.deliverCheats()
         c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
 
         c.handleKeyDown(DPAD_RIGHT)
 
-        assertEquals(1, bridge.loadedCheatPaths.size)
-        assertEquals("a.cht", c.cheatFileName.value)
+        assertEquals(2, bridge.loadedCheatPaths.size)
+        assertEquals("b.cht", c.cheatFileName.value)
 
-        bridge.deliverCheats()
         c.handleKeyDown(DPAD_RIGHT)
 
         assertEquals(2, bridge.loadedCheatPaths.size)
         assertEquals("b.cht", c.cheatFileName.value)
+
+        bridge.deliverCheats()
+        c.handleKeyDown(DPAD_RIGHT)
+
+        assertEquals(3, bridge.loadedCheatPaths.size)
+        assertEquals("a.cht", c.cheatFileName.value)
     }
 
     @Test fun `a reapply across a load in flight is ignored`() {
         writeCht("a.cht", "One", "Two")
-        val bridge = bridgeFor("a.cht" to listOf("One", "Two")).apply { deferCheatLoads = true }
+        writeCht("b.cht", "Three")
+        val bridge = bridgeFor("a.cht" to listOf("One", "Two"), "b.cht" to listOf("Three"))
+            .apply { deferCheatLoads = true }
         manager().saveLastUsed("a.cht", setOf(CheatIdentity.hash("Two", "CODE1")))
         val c = testController(bridge)
         var restored = -1
         c.onCheatsRestored = { restored = it }
         c.attachCheats(manager())
+        bridge.deliverCheats()
         c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
+        assertTrue(c.cheatHasRemembered.value)
 
+        c.handleKeyDown(DPAD_RIGHT)
         c.handleKeyDown(NORTH)
 
         assertEquals(-1, restored)
@@ -322,29 +339,32 @@ class IGMControllerCheatsTest {
         assertEquals(0, bridge.cheatApplies)
 
         bridge.deliverCheats()
+        c.handleKeyDown(DPAD_RIGHT)
+        bridge.deliverCheats()
         c.handleKeyDown(NORTH)
 
         assertEquals(1, restored)
         assertEquals(listOf(1), bridge.toggledCheatIndexes)
     }
 
-    @Test fun `a load whose snapshot never arrives is retried on the next entry`() {
+    @Test fun `a load whose snapshot never arrives is retried on the next menu open`() {
         writeCht("a.cht", "One")
         val bridge = bridgeFor("a.cht" to listOf("One")).apply { deferCheatLoads = true }
         val c = testController(bridge)
         c.attachCheats(manager())
-        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
         assertEquals(1, bridge.loadedCheatPaths.size)
-        assertTrue(c.cheatItems.value.isEmpty())
         bridge.dropPendingCheatLoads()
 
-        c.handleKeyDown(BACK)
-        c.handleKeyDown(CONFIRM)
+        c.openMenu()
 
+        assertFalse(c.buildMenuOptions().hasCheats)
         assertEquals(2, bridge.loadedCheatPaths.size)
 
         bridge.deliverCheats()
+        c.openMenu()
 
+        assertTrue(c.buildMenuOptions().hasCheats)
+        onCheatsRow(c); c.handleKeyDown(CONFIRM)
         assertEquals(listOf("One"), c.cheatItems.value.map { it.label })
     }
 
@@ -353,12 +373,11 @@ class IGMControllerCheatsTest {
         val bridge = bridgeFor("a.cht" to listOf("One")).apply { deferCheatLoads = true }
         val c = testController(bridge)
         c.attachCheats(manager())
-        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
-        c.handleKeyDown(BACK)
-        c.handleKeyDown(CONFIRM)
+        c.openMenu()
         assertEquals(2, bridge.loadedCheatPaths.size)
 
         bridge.deliverCheats()
+        onCheatsRow(c); c.handleKeyDown(CONFIRM)
         c.handleKeyDown(CONFIRM)
         assertTrue(c.cheatItems.value[0].enabled)
 
@@ -368,25 +387,29 @@ class IGMControllerCheatsTest {
         assertEquals(listOf(0), bridge.toggledCheatIndexes)
     }
 
-    @Test fun `a disc switch across a load in flight still reloads on the next entry`() {
+    @Test fun `a disc switch across a load in flight discards it and reloads`() {
         writeCht("a.cht", "One")
         val bridge = bridgeFor("a.cht" to listOf("One")).apply { discs = 2; deferCheatLoads = true }
         val c = testController(bridge)
         c.attachCheats(manager())
-        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
-        c.handleKeyDown(BACK)
+        c.openMenu()
+        assertEquals(2, bridge.loadedCheatPaths.size)
 
         val discIndex = c.buildMenuOptions().switchDiscIndex
         c.replaceTop((c.currentScreen as IGMScreen.Menu).copy(selectedIndex = discIndex))
         c.handleKeyDown(DPAD_RIGHT)
+
+        assertEquals(3, bridge.loadedCheatPaths.size)
+
+        bridge.deliverCheats()
         bridge.deliverCheats()
 
-        assertTrue(c.cheatItems.value.isEmpty())
+        assertFalse("both snapshots describe the disc that left", c.buildMenuOptions().hasCheats)
 
-        onCheatsRow(c)
-        c.handleKeyDown(CONFIRM)
+        bridge.deliverCheats()
 
-        assertEquals(2, bridge.loadedCheatPaths.size)
+        assertTrue(c.buildMenuOptions().hasCheats)
+        assertEquals(listOf("One"), c.cheatItems.value.map { it.label })
     }
 
     @Test fun `a file RetroArch supports nothing from starts with no selection`() {
@@ -488,20 +511,18 @@ class IGMControllerCheatsTest {
         assertEquals(1, selection(c))
     }
 
-    @Test fun `a snapshot that lands while the screen is closed still places the selection`() {
+    @Test fun `a snapshot that lands with no screen open still places the selection`() {
         writeCht("a.cht", "One", "Two")
         val bridge = bridgeWithSupport("a.cht" to listOf("One" to false, "Two" to true))
             .apply { deferCheatLoads = true }
         val c = testController(bridge)
         c.attachCheats(manager())
-        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
-        c.handleKeyDown(BACK)
 
         bridge.deliverCheats()
 
-        assertTrue(c.currentScreen is IGMScreen.Menu)
+        assertNull(c.currentScreen)
 
-        c.handleKeyDown(CONFIRM)
+        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
 
         assertEquals(1, bridge.loadedCheatPaths.size)
         assertEquals(1, selection(c))
@@ -525,7 +546,7 @@ class IGMControllerCheatsTest {
         onCheatsRow(c)
         c.handleKeyDown(CONFIRM)
 
-        assertEquals(2, bridge.loadedCheatPaths.size)
+        assertEquals(3, bridge.loadedCheatPaths.size)
         assertTrue(c.cheatItems.value[1].enabled)
     }
 
@@ -536,25 +557,25 @@ class IGMControllerCheatsTest {
             .apply { discs = 2; deferCheatLoads = true }
         val c = testController(bridge)
         c.attachCheats(manager())
-        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
-        c.handleKeyDown(BACK)
+        c.openMenu()
 
         val discIndex = c.buildMenuOptions().switchDiscIndex
         c.replaceTop((c.currentScreen as IGMScreen.Menu).copy(selectedIndex = discIndex))
         c.handleKeyDown(DPAD_RIGHT)
+        assertEquals(3, bridge.loadedCheatPaths.size)
 
-        onCheatsRow(c)
-        c.handleKeyDown(CONFIRM)
-        assertEquals(2, bridge.loadedCheatPaths.size)
-
-        // The load in flight when the disc changed describes the disc that left. The new disc
+        // The loads in flight when the disc changed describe the disc that left. The new disc
         // reinitializes content state, so RetroArch takes a different set of rows from the file.
+        bridge.deliverCheats()
         bridge.deliverCheats()
         bridge.cheatRowsByPath[path] = listOf(
             RetroArchBridge.CheatRow(0, "One", "CODE0", enabled = false, supported = false),
             RetroArchBridge.CheatRow(1, "Two", "CODE1", enabled = false, supported = true),
         )
         bridge.deliverCheats()
+
+        onCheatsRow(c)
+        c.handleKeyDown(CONFIRM)
 
         assertEquals(listOf(false, true), c.cheatItems.value.map { it.supported })
         assertEquals(1, selection(c))
@@ -567,12 +588,11 @@ class IGMControllerCheatsTest {
             .apply { deferCheatLoads = true }
         val c = testController(bridge)
         c.attachCheats(manager())
-        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
-        c.handleKeyDown(BACK)
-        c.handleKeyDown(CONFIRM)
+        c.openMenu()
         assertEquals(2, bridge.loadedCheatPaths.size)
 
         bridge.deliverCheats()
+        onCheatsRow(c); c.handleKeyDown(CONFIRM)
         assertEquals(listOf("One"), c.cheatItems.value.map { it.label })
 
         c.handleKeyDown(DPAD_RIGHT)
@@ -704,8 +724,8 @@ class IGMControllerCheatsTest {
             .apply { hardcoreActive = true; deferCheatLoads = true }
         val c = testController(bridge)
         c.attachCheats(manager())
-        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
         bridge.deliverCheats()
+        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
 
         // Arm on a.cht's second row (rowIndex 1), then back out before confirming it.
         c.handleKeyDown(DPAD_DOWN)
@@ -761,6 +781,213 @@ class IGMControllerCheatsTest {
         assertEquals(listOf(1), bridge.toggledCheatIndexes)
         assertEquals(0, bridge.cheatApplies)
         assertEquals(-1, restored)
+    }
+
+    @Test fun `attaching asks for the file before any menu opens`() {
+        writeCht("a.cht", "One")
+        val bridge = bridgeFor("a.cht" to listOf("One")).apply { deferCheatLoads = true }
+        val c = testController(bridge)
+
+        c.attachCheats(manager())
+
+        assertEquals(1, bridge.loadedCheatPaths.size)
+        assertTrue(bridge.loadedCheatPaths[0].endsWith("a.cht"))
+        assertNull(c.currentScreen)
+    }
+
+    @Test fun `the row stays away until a snapshot lands`() {
+        writeCht("a.cht", "One")
+        val bridge = bridgeFor("a.cht" to listOf("One")).apply { deferCheatLoads = true }
+        val c = testController(bridge)
+        c.attachCheats(manager())
+
+        c.openMenu()
+        assertFalse(c.buildMenuOptions().hasCheats)
+
+        bridge.deliverCheats()
+        c.openMenu()
+
+        assertTrue(c.buildMenuOptions().hasCheats)
+        onCheatsRow(c); c.handleKeyDown(CONFIRM)
+        assertEquals(listOf("One"), c.cheatItems.value.map { it.label })
+    }
+
+    @Test fun `a snapshot with no rows is not the file's data and is asked for again`() {
+        writeCht("a.cht", "One")
+        val path = File(tmp.root, "Cheats/nes/Game/a.cht").absolutePath
+        val bridge = FakeRetroArchBridge().apply {
+            cheatRowsByPath[path] = emptyList()
+            deferCheatLoads = true
+        }
+        val c = testController(bridge)
+        c.attachCheats(manager())
+
+        bridge.deliverCheats()
+
+        assertFalse(c.buildMenuOptions().hasCheats)
+
+        c.openMenu()
+
+        assertFalse(c.buildMenuOptions().hasCheats)
+        assertEquals(2, bridge.loadedCheatPaths.size)
+
+        bridge.cheatRowsByPath[path] =
+            listOf(RetroArchBridge.CheatRow(0, "One", "CODE0", enabled = false, supported = true))
+        bridge.deliverCheats()
+
+        assertTrue(c.buildMenuOptions().hasCheats)
+    }
+
+    @Test fun `an empty answer does not turn away the snapshot queued behind it`() {
+        writeCht("a.cht", "One")
+        val path = File(tmp.root, "Cheats/nes/Game/a.cht").absolutePath
+        val bridge = FakeRetroArchBridge().apply {
+            cheatRowsByPath[path] = emptyList()
+            deferCheatLoads = true
+        }
+        val c = testController(bridge)
+        c.attachCheats(manager())
+        c.openMenu()
+        assertEquals(2, bridge.loadedCheatPaths.size)
+
+        bridge.deliverCheats()
+        assertFalse(c.buildMenuOptions().hasCheats)
+
+        bridge.cheatRowsByPath[path] =
+            listOf(RetroArchBridge.CheatRow(0, "One", "CODE0", enabled = false, supported = true))
+        bridge.deliverCheats()
+
+        assertTrue(c.buildMenuOptions().hasCheats)
+    }
+
+    @Test fun `a file RetroArch takes but supports nothing from still shows the row`() {
+        writeCht("a.cht", "One")
+        val c = testController(bridgeWithSupport("a.cht" to listOf("One" to false)))
+        c.attachCheats(manager())
+
+        c.openMenu()
+
+        assertTrue(c.buildMenuOptions().hasCheats)
+    }
+
+    @Test fun `a disc switch reloads at once and the row follows the data`() {
+        writeCht("a.cht", "One")
+        val bridge = bridgeFor("a.cht" to listOf("One")).apply { discs = 2; deferCheatLoads = true }
+        val c = testController(bridge)
+        c.attachCheats(manager())
+        bridge.deliverCheats()
+        c.openMenu()
+        assertTrue(c.buildMenuOptions().hasCheats)
+
+        val discIndex = c.buildMenuOptions().switchDiscIndex
+        c.replaceTop((c.currentScreen as IGMScreen.Menu).copy(selectedIndex = discIndex))
+        c.handleKeyDown(DPAD_RIGHT)
+
+        assertEquals(2, bridge.loadedCheatPaths.size)
+        assertFalse("the new disc has no data yet", c.buildMenuOptions().hasCheats)
+
+        bridge.deliverCheats()
+
+        assertTrue(c.buildMenuOptions().hasCheats)
+    }
+
+    @Test fun `the remembered menu row survives the cheats row coming back`() {
+        writeCht("a.cht", "One")
+        val bridge = bridgeFor("a.cht" to listOf("One")).apply { discs = 2; deferCheatLoads = true }
+        val c = testController(bridge)
+        c.attachCheats(manager())
+        bridge.deliverCheats()
+        c.openMenu()
+
+        val discIndex = c.buildMenuOptions().switchDiscIndex
+        c.replaceTop((c.currentScreen as IGMScreen.Menu).copy(selectedIndex = discIndex))
+        c.handleKeyDown(DPAD_RIGHT)
+        assertFalse(c.buildMenuOptions().hasCheats)
+
+        val quitIndex = c.buildMenuOptions().quitIndex
+        c.replaceTop((c.currentScreen as IGMScreen.Menu).copy(selectedIndex = quitIndex))
+        c.closeMenu()
+
+        bridge.deliverCheats()
+        c.openMenu()
+
+        val opts = c.buildMenuOptions()
+        assertTrue(opts.hasCheats)
+        val selected = (c.currentScreen as IGMScreen.Menu).selectedIndex
+        assertEquals(IgmMenuAction.QUIT, opts.actionAt(selected))
+    }
+
+    @Test fun `a duplicate load answered after a file change is discarded, not adopted`() {
+        writeCht("a.cht", "One")
+        writeCht("b.cht", "Three")
+        val bridge = bridgeFor("a.cht" to listOf("One"), "b.cht" to listOf("Three"))
+            .apply { deferCheatLoads = true }
+        val c = testController(bridge)
+        c.attachCheats(manager())
+        c.openMenu()
+        assertEquals(2, bridge.loadedCheatPaths.size)
+
+        bridge.deliverCheats()
+        onCheatsRow(c); c.handleKeyDown(CONFIRM)
+        assertEquals(listOf("One"), c.cheatItems.value.map { it.label })
+
+        c.handleKeyDown(DPAD_RIGHT)
+        assertEquals("b.cht", c.cheatFileName.value)
+        assertEquals(3, bridge.loadedCheatPaths.size)
+
+        bridge.deliverCheats()
+
+        assertTrue("the a.cht duplicate is not b.cht's data", c.cheatItems.value.isEmpty())
+
+        bridge.deliverCheats()
+
+        assertEquals(listOf("Three"), c.cheatItems.value.map { it.label })
+        assertTrue(c.cheatItems.value.all { it.supported })
+    }
+
+    @Test fun `two disc switches while loads are in flight discard exactly what is in flight`() {
+        writeCht("a.cht", "One")
+        val bridge = bridgeFor("a.cht" to listOf("One")).apply { discs = 3; deferCheatLoads = true }
+        val c = testController(bridge)
+        c.attachCheats(manager())
+        c.openMenu()
+        assertEquals(2, bridge.loadedCheatPaths.size)
+
+        val discIndex = c.buildMenuOptions().switchDiscIndex
+        c.replaceTop((c.currentScreen as IGMScreen.Menu).copy(selectedIndex = discIndex))
+        c.handleKeyDown(DPAD_RIGHT)
+        c.handleKeyDown(DPAD_RIGHT)
+        assertEquals(4, bridge.loadedCheatPaths.size)
+
+        repeat(3) { bridge.deliverCheats() }
+
+        assertFalse(c.buildMenuOptions().hasCheats)
+
+        bridge.deliverCheats()
+
+        assertTrue("the last disc's own snapshot must still be taken", c.buildMenuOptions().hasCheats)
+    }
+
+    @Test fun `the selection stays on the disc row when the cheats row goes away`() {
+        writeCht("a.cht", "One")
+        val bridge = bridgeFor("a.cht" to listOf("One")).apply { discs = 2; deferCheatLoads = true }
+        val c = testController(bridge)
+        c.attachCheats(manager())
+        bridge.deliverCheats()
+        c.openMenu()
+        val discIndex = c.buildMenuOptions().switchDiscIndex
+        c.replaceTop((c.currentScreen as IGMScreen.Menu).copy(selectedIndex = discIndex))
+
+        c.handleKeyDown(DPAD_RIGHT)
+
+        val opts = c.buildMenuOptions()
+        assertFalse(opts.hasCheats)
+        val selected = (c.currentScreen as IGMScreen.Menu).selectedIndex
+        assertEquals(IgmMenuAction.SWITCH_DISC, opts.actionAt(selected))
+
+        c.handleKeyDown(DPAD_RIGHT)
+
+        assertEquals(0, bridge.disc)
     }
 
     @Test fun `a remembered row RetroArch did not take is never offered`() {
