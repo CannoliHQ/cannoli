@@ -545,14 +545,13 @@ class LaunchManager(
     companion object {
         private const val CONFIG_VERSION = 7
 
-        // Hardcore is always stated because RetroArch defaults it to true, so enabling cheevos
-        // without it would put every player into hardcore.
-        //
-        // Every key here is stated rather than left out, because the base config is not always one
-        // Cannoli wrote: an install upgraded from a build that seeded retroarch.cfg from an
-        // external RetroArch carries that file's cheevos block, and syncRetroArchConfig only
-        // writes a base when none exists. An unstated key leaves the inherited value live, which
-        // is how a logged out player could still be launching with someone's account, password and
+        // Both branches state all five session/account/mode keys outright rather than leaving any
+        // out, because the base config is not always one Cannoli wrote: an install upgraded from a
+        // build that seeded retroarch.cfg from an external RetroArch carries that file's cheevos
+        // block, and syncRetroArchConfig only writes a base when none exists. An unstated key
+        // leaves the inherited value live, which is how a logged out player could still be
+        // launching with someone's account, token and hardcore. Hardcore is stated because
+        // RetroArch defaults it to true, so enabling cheevos without it would put every player into
         // hardcore. Cannoli never launches with a password at all, so that one is always empty.
         fun cheevosOverrides(
             username: String,
@@ -562,6 +561,9 @@ class LaunchManager(
         ): Map<String, String> {
             if (username.isEmpty() || token.isEmpty()) return mapOf(
                 "cheevos_enable" to "false",
+                "cheevos_hardcore_mode_enable" to "false",
+                "cheevos_username" to "",
+                "cheevos_token" to "",
                 "cheevos_password" to "",
             )
             return mapOf(

@@ -35,9 +35,10 @@ class CheevosLaunchConfigTest : LaunchConfigHarness() {
         val root = tmp.newFolder()
         val cfg = launchedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA"))
         assertEquals("false", cfg["cheevos_enable"])
+        assertEquals("false", cfg["cheevos_hardcore_mode_enable"])
+        assertEquals("", cfg["cheevos_username"])
+        assertEquals("", cfg["cheevos_token"])
         assertEquals("", cfg["cheevos_password"])
-        assertFalse(cfg.containsKey("cheevos_username"))
-        assertFalse(cfg.containsKey("cheevos_token"))
     }
 
     /**
@@ -67,21 +68,24 @@ class CheevosLaunchConfigTest : LaunchConfigHarness() {
         seedInheritedCheevosBlock(root)
         val cfg = launchedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA"))
         assertEquals("false", cfg["cheevos_enable"])
+        assertEquals("false", cfg["cheevos_hardcore_mode_enable"])
+        assertEquals("", cfg["cheevos_username"])
+        assertEquals("", cfg["cheevos_token"])
         assertEquals("", cfg["cheevos_password"])
-        // The inherited hardcore line is left alone and is inert: RetroArch and the IGM both
-        // require cheevos_enable as well, so the save state rows and the auto slot stay.
+        // Not hardcore, so the save state rows and the auto slot stay.
         assertTrue(cfg.containsKey("savestate_auto_save"))
     }
 
-    @Test fun `a logged in launch clears an inherited password`() {
+    @Test fun `a logged in launch overrides every inherited session key`() {
         val root = tmp.newFolder()
         seedInheritedCheevosBlock(root)
         loggedIn()
         val cfg = launchedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA"))
-        assertEquals("", cfg["cheevos_password"])
+        assertEquals("true", cfg["cheevos_enable"])
         assertEquals("bob", cfg["cheevos_username"])
         assertEquals("abc123", cfg["cheevos_token"])
         assertEquals("false", cfg["cheevos_hardcore_mode_enable"])
+        assertEquals("", cfg["cheevos_password"])
     }
 
     @Test fun `a hardcore launch writes neither auto state key`() {

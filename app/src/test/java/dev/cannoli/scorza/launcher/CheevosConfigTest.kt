@@ -80,14 +80,31 @@ class CheevosConfigTest {
         assertNull(off["savestate_auto_load"])
     }
 
-    // No account means the keys are scrubbed, not skipped. Skipping them is what let an inherited
-    // base config keep a stranger's account live for a logged out player.
+    // No account means every session key is stated blank, not skipped. Skipping them is what let an
+    // inherited base config keep a stranger's account, token and hardcore live for a logged out
+    // player: an unstated key leaves the inherited value untouched in the launch config.
     @Test fun `no token scrubs cheevos rather than emitting nothing`() {
-        for (k in listOf(keys(token = ""), keys(username = ""))) {
+        for (k in listOf(keys(token = "", hardcore = true), keys(username = "", hardcore = true))) {
             assertEquals("false", k["cheevos_enable"])
+            assertEquals("false", k["cheevos_hardcore_mode_enable"])
+            assertEquals("", k["cheevos_username"])
+            assertEquals("", k["cheevos_token"])
             assertEquals("", k["cheevos_password"])
-            assertNull(k["cheevos_username"])
-            assertNull(k["cheevos_token"])
+        }
+    }
+
+    // The five session/account/mode keys are the whole denylist the security fix guards, so every
+    // emission has to state all five whatever the account state.
+    @Test fun `every session key is stated in both account states`() {
+        val sessionKeys = listOf(
+            "cheevos_enable",
+            "cheevos_hardcore_mode_enable",
+            "cheevos_username",
+            "cheevos_token",
+            "cheevos_password",
+        )
+        for (k in listOf(keys(), keys(token = ""), keys(username = ""))) {
+            for (sk in sessionKeys) assertTrue(sk, k.containsKey(sk))
         }
     }
 
