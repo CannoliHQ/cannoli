@@ -425,8 +425,8 @@ class MainActivity : ComponentActivity(), ActivityActions {
         settings.reload()
         settingsViewModel.get().load()
         val activeDialogState = nav.dialogState
-        if (activeDialogState.value is DialogState.RAAccount && settings.raToken.isEmpty()) {
-            activeDialogState.value = DialogState.None
+        if (nav.currentScreen is LauncherScreen.RetroAchievements && settings.raToken.isEmpty()) {
+            nav.pop()
         }
         if (activeDialogState.value is DialogState.RommConnected && rommStore.token.isNullOrEmpty()) {
             activeDialogState.value = DialogState.None

@@ -3,6 +3,7 @@ package dev.cannoli.scorza.achievements
 import android.content.Context
 import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
+import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.components.raTokenStatusRes
@@ -73,10 +74,11 @@ class RaLoginControllerTest {
         assertEquals("abc123", s.raToken)
         assertEquals("Bob", s.raUsername)
         assertEquals("", s.raPassword)
-        val ds = nav.dialogState.value
-        assertTrue(ds is DialogState.RAAccount)
-        assertEquals("Bob", (ds as DialogState.RAAccount).username)
-        assertEquals(RaTokenState.VALID, ds.tokenState)
+        assertEquals(DialogState.None, nav.dialogState.value)
+        val screen = nav.currentScreen
+        assertTrue(screen is LauncherScreen.RetroAchievements)
+        assertEquals("Bob", (screen as LauncherScreen.RetroAchievements).username)
+        assertEquals(RaTokenState.VALID, screen.tokenState)
         server.shutdown()
     }
 
@@ -86,10 +88,10 @@ class RaLoginControllerTest {
         controller(s, null).openAccountMenu()
         drainMain()
 
-        val ds = nav.dialogState.value as DialogState.RAAccount
-        assertEquals(RaTokenState.UNREACHABLE, ds.tokenState)
+        val screen = nav.currentScreen as LauncherScreen.RetroAchievements
+        assertEquals(RaTokenState.UNREACHABLE, screen.tokenState)
         val context = ApplicationProvider.getApplicationContext<Context>()
-        assertEquals("Offline, not verified", context.getString(raTokenStatusRes(ds.tokenState)))
+        assertEquals("Offline, not verified", context.getString(raTokenStatusRes(screen.tokenState)))
     }
 
     @Test fun `invalid only comes from a reachable server rejecting the token`() {
@@ -104,14 +106,14 @@ class RaLoginControllerTest {
         drainMain()
         assertEquals(
             RaTokenState.UNREACHABLE,
-            (nav.dialogState.value as DialogState.RAAccount).tokenState,
+            (nav.currentScreen as LauncherScreen.RetroAchievements).tokenState,
         )
 
         c.openAccountMenu()
         drainMain()
         assertEquals(
             RaTokenState.INVALID,
-            (nav.dialogState.value as DialogState.RAAccount).tokenState,
+            (nav.currentScreen as LauncherScreen.RetroAchievements).tokenState,
         )
 
         server.shutdown()
@@ -126,7 +128,7 @@ class RaLoginControllerTest {
         controller(s, server).openAccountMenu()
         drainMain()
 
-        assertEquals(RaTokenState.VALID, (nav.dialogState.value as DialogState.RAAccount).tokenState)
+        assertEquals(RaTokenState.VALID, (nav.currentScreen as LauncherScreen.RetroAchievements).tokenState)
         server.shutdown()
     }
 
@@ -170,7 +172,7 @@ class RaLoginControllerTest {
 
         assertEquals(
             RaTokenState.UNREACHABLE,
-            (nav.dialogState.value as DialogState.RAAccount).tokenState,
+            (nav.currentScreen as LauncherScreen.RetroAchievements).tokenState,
         )
         server.shutdown()
     }

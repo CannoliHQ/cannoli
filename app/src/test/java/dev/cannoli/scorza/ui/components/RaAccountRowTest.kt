@@ -1,6 +1,6 @@
 package dev.cannoli.scorza.ui.components
 
-import dev.cannoli.scorza.ui.screens.DialogState
+import dev.cannoli.scorza.navigation.LauncherScreen
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -13,7 +13,6 @@ class RaAccountRowTest {
                 RaAccountRow.ACCOUNT,
                 RaAccountRow.HARDCORE,
                 RaAccountRow.OFFLINE_SETS,
-                RaAccountRow.LOG_OUT,
             ),
             RaAccountRow.entries.toList(),
         )
@@ -24,9 +23,12 @@ class RaAccountRowTest {
         assertTrue(RaAccountRow.entries.filter { it.isCycle } == listOf(RaAccountRow.HARDCORE))
     }
 
-    @Test fun `the account dialog navigates as a list`() {
-        val ds: DialogState.RAAccount = DialogState.RAAccount(username = "bob")
-        assertEquals(0, ds.selectedIndex)
-        assertEquals(2, (ds.withSelectedIndex(2) as DialogState.RAAccount).selectedIndex)
+    @Test fun `the account screen navigates as a list`() {
+        val screen = LauncherScreen.RetroAchievements(username = "bob")
+        assertEquals(0, screen.selectedIndex)
+        assertEquals(
+            2,
+            (screen.withScroll(selectedIndex = 2, scrollTarget = 0) as LauncherScreen.RetroAchievements).selectedIndex,
+        )
     }
 }

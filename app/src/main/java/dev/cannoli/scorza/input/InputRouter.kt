@@ -64,6 +64,7 @@ class InputRouter @Inject constructor(
     private val screenInputRegistry: dev.cannoli.scorza.input.runtime.ScreenInputRegistry,
     @ApplicationContext private val context: Context,
     private val settings: SettingsRepository,
+    private val settingsViewModel: dev.cannoli.scorza.ui.viewmodel.SettingsViewModel,
     private val coreInstaller: CoreInstaller,
     private val rommBrowseViewModel: dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel,
     private val rommDownloader: dev.cannoli.scorza.romm.download.RommDownloader,
@@ -216,6 +217,7 @@ class InputRouter @Inject constructor(
         is LauncherScreen.RommVirtualTypes      -> rommVirtualTypesHandler()
         is LauncherScreen.RommCollectionList    -> rommCollectionListHandler()
         is LauncherScreen.RommCollectionGameList -> rommCollectionGameListHandler()
+        is LauncherScreen.RetroAchievements -> retroAchievementsHandler()
         is LauncherScreen.RetroAchievementsOfflinePlatforms -> raOfflinePlatformsHandler()
         is LauncherScreen.RetroAchievementsOfflineSets -> raOfflineSetsHandler()
         else -> object : ScreenInputHandler {}
@@ -224,6 +226,53 @@ class InputRouter @Inject constructor(
     private fun raOfflineStore() = dev.cannoli.scorza.achievements.RaOfflineStore(
         dev.cannoli.scorza.config.CannoliPaths(settings.sdCardRoot).configRaOffline
     )
+
+    // Both Back and Log Out drop the account screen and, when it was reached by logging in from the
+    // credential sub-list, step back out to Integrations so the user does not land on the login form.
+    private fun leaveRetroAchievements() {
+        nav.pop()
+        if (settingsViewModel.state.value.activeCategory == "retroachievements") settingsViewModel.exitSubList()
+    }
+
+    private fun retroAchievementsHandler(): dev.cannoli.scorza.input.screen.ScrollListInputHandler {
+        val toggleHardcore: LauncherScreen.RetroAchievements.() -> Unit = {
+            if (dev.cannoli.scorza.ui.components.RaAccountRow.entries.getOrNull(selectedIndex)
+                == dev.cannoli.scorza.ui.components.RaAccountRow.HARDCORE
+            ) {
+                settings.raHardcore = !settings.raHardcore
+                nav.replaceTop(copy(hardcore = settings.raHardcore))
+            }
+        }
+        return scrollable<LauncherScreen.RetroAchievements>(
+            onConfirm = {
+                when (dev.cannoli.scorza.ui.components.RaAccountRow.entries.getOrNull(selectedIndex)) {
+                    dev.cannoli.scorza.ui.components.RaAccountRow.HARDCORE -> toggleHardcore()
+                    dev.cannoli.scorza.ui.components.RaAccountRow.OFFLINE_SETS -> {
+                        val platforms = raOfflineStore().entries()
+                            .groupBy { it.platformTag }
+                            .map { (tag, list) -> LauncherScreen.RaOfflinePlatform(tag, platformConfig.getDisplayName(tag), list.size) }
+                            .sortedBy { it.name.lowercase() }
+                        nav.push(LauncherScreen.RetroAchievementsOfflinePlatforms(platforms = platforms))
+                    }
+                    else -> {}
+                }
+            },
+            onBack = { leaveRetroAchievements() },
+            onLeft = toggleHardcore,
+            onRight = toggleHardcore,
+            onWest = {
+                settings.raUsername = ""
+                settings.raToken = ""
+                settings.raPassword = ""
+                // load() rebuilds the rows from the repository but never touches this, so without it
+                // the previous user's password stays masked on the row and re-arms Log In as soon as
+                // a new username is typed.
+                settingsViewModel.raPassword = ""
+                settingsViewModel.load()
+                leaveRetroAchievements()
+            },
+        )
+    }
 
     private fun reloadOfflineSets() {
         val s = nav.currentScreen as? LauncherScreen.RetroAchievementsOfflineSets ?: return

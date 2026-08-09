@@ -223,49 +223,6 @@ fun DialogOverlay(
             )
         }
 
-        is DialogState.RAAccount -> {
-            val rows = RaAccountRow.entries.toList()
-            ListDialogScreen(
-                backgroundImagePath = backgroundImagePath,
-                backgroundTint = backgroundTint,
-                title = stringResource(R.string.ra_title),
-                listFontSize = listFontSize,
-                listLineHeight = listLineHeight,
-                leftBottomItems = if (rows[dialogState.selectedIndex].isCycle)
-                    listOf(DPAD_HORIZONTAL to stringResource(R.string.label_change)) else emptyList(),
-                rightBottomItems = listOf(buttonStyle.confirm to stringResource(R.string.label_select)),
-                buttonStyle = buttonStyle
-            ) {
-                List(items = rows, selectedIndex = dialogState.selectedIndex, itemHeight = itemHeight) { _, row, isSelected ->
-                    when (row) {
-                        RaAccountRow.ACCOUNT -> PillRowKeyValue(
-                            label = dialogState.username,
-                            value = stringResource(raTokenStatusRes(dialogState.tokenState)),
-                            isSelected = isSelected,
-                            fontSize = listFontSize,
-                            lineHeight = listLineHeight,
-                            verticalPadding = listVerticalPadding
-                        )
-                        RaAccountRow.HARDCORE -> PillRowKeyValue(
-                            label = stringResource(R.string.ra_account_row_hardcore),
-                            value = stringResource(if (dialogState.hardcore) R.string.value_on else R.string.value_off),
-                            isSelected = isSelected,
-                            fontSize = listFontSize,
-                            lineHeight = listLineHeight,
-                            verticalPadding = listVerticalPadding
-                        )
-                        else -> PillRowText(
-                            label = stringResource(row.labelRes),
-                            isSelected = isSelected,
-                            fontSize = listFontSize,
-                            lineHeight = listLineHeight,
-                            verticalPadding = listVerticalPadding
-                        )
-                    }
-                }
-            }
-        }
-
         is DialogState.RALoggingIn -> {
             RALoggingInOverlay(message = dialogState.message, failed = dialogState.failed, buttonStyle = buttonStyle)
         }
@@ -1259,7 +1216,6 @@ enum class RaAccountRow(@androidx.annotation.StringRes val labelRes: Int, val is
     ACCOUNT(R.string.ra_account_row_account),
     HARDCORE(R.string.ra_account_row_hardcore, isCycle = true),
     OFFLINE_SETS(R.string.ra_account_row_offline_sets),
-    LOG_OUT(R.string.ra_account_row_log_out),
 }
 
 enum class RommSettingsRow(@androidx.annotation.StringRes val labelRes: Int, val isCycle: Boolean = false) {

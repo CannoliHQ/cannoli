@@ -398,6 +398,17 @@ sealed class LauncherScreen {
     ) : LauncherScreen()
     data class RaOfflinePlatform(val tag: String, val name: String, val count: Int)
 
+    data class RetroAchievements(
+        val username: String,
+        val hardcore: Boolean = false,
+        val tokenState: dev.cannoli.scorza.ui.screens.RaTokenState = dev.cannoli.scorza.ui.screens.RaTokenState.CHECKING,
+        override val selectedIndex: Int = 0,
+        override val scrollTarget: Int = 0,
+    ) : LauncherScreen(), ScrollableScreen {
+        override val itemCount: Int get() = dev.cannoli.scorza.ui.components.RaAccountRow.entries.size
+        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
+    }
+
     data class RetroAchievementsOfflinePlatforms(
         val platforms: List<RaOfflinePlatform> = emptyList(),
         override val selectedIndex: Int = 0,
@@ -1430,6 +1441,62 @@ fun AppNavGraph(
                     listVerticalPadding = listVerticalPadding,
                     buttonStyle = labels,
                 )
+            }
+            is LauncherScreen.RetroAchievements -> {
+                if (inputRouter != null) {
+                    val handler = remember { inputRouter.currentHandler() }
+                    dev.cannoli.scorza.input.screen.compose.ScreenInput(handler)
+                }
+                val rows = dev.cannoli.scorza.ui.components.RaAccountRow.entries.toList()
+                val selIdx = currentScreen.selectedIndex.coerceIn(0, rows.size - 1)
+                ListDialogScreen(
+                    backgroundImagePath = appSettings.backgroundImagePath,
+                    backgroundTint = appSettings.backgroundTint,
+                    title = stringResource(R.string.ra_title),
+                    listFontSize = listFontSize,
+                    listLineHeight = listLineHeight,
+                    fullWidth = true,
+                    leftBottomItems = buildList {
+                        add(labels.west to stringResource(R.string.label_log_out))
+                        if (rows[selIdx].isCycle) add(dev.cannoli.ui.DPAD_HORIZONTAL to stringResource(R.string.label_change))
+                    },
+                    rightBottomItems = listOf(labels.confirm to stringResource(R.string.label_select)),
+                    buttonStyle = labels,
+                ) {
+                    List(
+                        items = rows,
+                        selectedIndex = selIdx,
+                        itemHeight = itemHeight,
+                        scrollTarget = currentScreen.scrollTarget,
+                        onListStateChanged = onListStateChanged,
+                    ) { _, row, isSelected ->
+                        when (row) {
+                            dev.cannoli.scorza.ui.components.RaAccountRow.ACCOUNT -> PillRowKeyValue(
+                                label = currentScreen.username,
+                                value = stringResource(dev.cannoli.scorza.ui.components.raTokenStatusRes(currentScreen.tokenState)),
+                                isSelected = isSelected,
+                                fontSize = listFontSize,
+                                lineHeight = listLineHeight,
+                                verticalPadding = listVerticalPadding,
+                            )
+                            dev.cannoli.scorza.ui.components.RaAccountRow.HARDCORE -> PillRowKeyValue(
+                                label = stringResource(R.string.ra_account_row_hardcore),
+                                value = stringResource(if (currentScreen.hardcore) R.string.value_on else R.string.value_off),
+                                isSelected = isSelected,
+                                fontSize = listFontSize,
+                                lineHeight = listLineHeight,
+                                verticalPadding = listVerticalPadding,
+                            )
+                            else -> PillRowText(
+                                label = stringResource(row.labelRes),
+                                isSelected = isSelected,
+                                fontSize = listFontSize,
+                                lineHeight = listLineHeight,
+                                verticalPadding = listVerticalPadding,
+                            )
+                        }
+                    }
+                }
             }
             is LauncherScreen.RetroAchievementsOfflinePlatforms -> {
                 if (inputRouter != null) {

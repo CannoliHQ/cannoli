@@ -9,6 +9,7 @@
     <string name="label_save">SAVE</string>
     <string name="label_load">LOAD</string>
     <string name="label_change">CHANGE</string>
+    <string name="label_log_out">LOG OUT</string>
     <string name="label_firmware">FIRMWARE</string>
     <string name="label_choose">CHOOSE</string>
     <string name="label_close">CLOSE</string>
@@ -613,7 +614,6 @@
     <string name="ra_account_row_account">Account</string>
     <string name="ra_account_row_hardcore">Hardcore Mode</string>
     <string name="ra_account_row_offline_sets">Offline Sets</string>
-    <string name="ra_account_row_log_out">Log Out</string>
     <string name="ra_token_checking">Checking...</string>
     <string name="ra_token_valid">Signed in</string>
     <string name="ra_token_invalid">Session expired, log in again</string>

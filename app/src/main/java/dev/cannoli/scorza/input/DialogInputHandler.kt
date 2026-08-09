@@ -195,14 +195,6 @@ class DialogInputHandler @Inject constructor(
         else -> false
     }
 
-    private fun cycleRaAccount(ds: DialogState.RAAccount) {
-        if (dev.cannoli.scorza.ui.components.RaAccountRow.entries.getOrNull(ds.selectedIndex)
-            != dev.cannoli.scorza.ui.components.RaAccountRow.HARDCORE
-        ) return
-        settings.raHardcore = !settings.raHardcore
-        nav.dialogState.value = ds.copy(hardcore = settings.raHardcore)
-    }
-
     private fun cycleRommSettings(ds: DialogState.RommSettingsMenu, delta: Int) {
         when (dev.cannoli.scorza.ui.components.RommSettingsRow.entries.getOrNull(ds.selectedIndex)) {
             dev.cannoli.scorza.ui.components.RommSettingsRow.CONCURRENT -> {
@@ -287,7 +279,6 @@ class DialogInputHandler @Inject constructor(
         is DialogState.RommArtResults -> artResultRowCount(ds)
         is DialogState.RommActionsMenu ->
             dev.cannoli.scorza.ui.components.RommActionRow.visibleRows(ds.hasDownloads).size
-        is DialogState.RAAccount -> dev.cannoli.scorza.ui.components.RaAccountRow.entries.size
         is DialogState.RommSettingsMenu ->
             dev.cannoli.scorza.ui.components.RommSettingsRow.entries.size
         is DialogState.RommSaveSyncMenu ->
@@ -337,7 +328,6 @@ class DialogInputHandler @Inject constructor(
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
         when (ds) {
-            is DialogState.RAAccount -> cycleRaAccount(ds)
             is DialogState.RommSettingsMenu -> cycleRommSettings(ds, -1)
             is DialogState.RommSaveSyncMenu -> cycleRommSaveSync(ds, -1)
             is DialogState.ConflictsMenu -> cycleConflictChoice(ds, -1)
@@ -362,7 +352,6 @@ class DialogInputHandler @Inject constructor(
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
         when (ds) {
-            is DialogState.RAAccount -> cycleRaAccount(ds)
             is DialogState.RommSettingsMenu -> cycleRommSettings(ds, 1)
             is DialogState.RommSaveSyncMenu -> cycleRommSaveSync(ds, 1)
             is DialogState.ConflictsMenu -> cycleConflictChoice(ds, 1)
@@ -545,7 +534,6 @@ class DialogInputHandler @Inject constructor(
                 rommArtFetcher.dismissResults()
                 nav.dialogState.value = DialogState.None
             }
-            is DialogState.RAAccount -> onRaAccountConfirm(ds)
             is DialogState.RommActionsMenu -> onRommActionsConfirm(ds)
             is DialogState.RommSettingsMenu -> onRommSettingsConfirm(ds)
             is DialogState.RommSaveSyncMenu -> onRommSaveSyncConfirm(ds)
@@ -662,35 +650,6 @@ class DialogInputHandler @Inject constructor(
             artType = rommStore.artType,
             selectedIndex = dev.cannoli.scorza.ui.components.RommSettingsRow.entries.indexOf(row),
         )
-    }
-
-    private fun onRaAccountConfirm(ds: DialogState.RAAccount) {
-        when (dev.cannoli.scorza.ui.components.RaAccountRow.entries.getOrNull(ds.selectedIndex)) {
-            dev.cannoli.scorza.ui.components.RaAccountRow.HARDCORE -> cycleRaAccount(ds)
-            dev.cannoli.scorza.ui.components.RaAccountRow.OFFLINE_SETS -> {
-                nav.dialogState.value = DialogState.None
-                val store = dev.cannoli.scorza.achievements.RaOfflineStore(
-                    dev.cannoli.scorza.config.CannoliPaths(settings.sdCardRoot).configRaOffline
-                )
-                val platforms = store.entries()
-                    .groupBy { it.platformTag }
-                    .map { (tag, list) -> LauncherScreen.RaOfflinePlatform(tag, platformResolver.getDisplayName(tag), list.size) }
-                    .sortedBy { it.name.lowercase() }
-                nav.screenStack.add(LauncherScreen.RetroAchievementsOfflinePlatforms(platforms = platforms))
-            }
-            dev.cannoli.scorza.ui.components.RaAccountRow.LOG_OUT -> {
-                settings.raUsername = ""
-                settings.raToken = ""
-                settings.raPassword = ""
-                // load() rebuilds the rows from the repository but never touches this, so without
-                // it the previous user's password stays masked on the row and re-arms Log In as
-                // soon as a new username is typed.
-                settingsViewModel.raPassword = ""
-                settingsViewModel.load()
-                nav.dialogState.value = DialogState.None
-            }
-            dev.cannoli.scorza.ui.components.RaAccountRow.ACCOUNT, null -> {}
-        }
     }
 
     private fun onRommActionsConfirm(ds: DialogState.RommActionsMenu) {
@@ -1128,12 +1087,6 @@ class DialogInputHandler @Inject constructor(
                     nav.dialogState.value = DialogState.None
                 }
                 launcherActions.rescanSystemList()
-            }
-            is DialogState.RAAccount -> {
-                nav.dialogState.value = DialogState.None
-                // Only pop when the RA credential sub-list is active (post-login); when opened
-                // directly from the Integrations list, dismissing must stay in Integrations.
-                if (settingsViewModel.state.value.activeCategory == "retroachievements") settingsViewModel.exitSubList()
             }
             is DialogState.RALoggingIn -> {
                 nav.dialogState.value = DialogState.None

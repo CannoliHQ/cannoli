@@ -5,6 +5,7 @@ import dagger.hilt.android.qualifiers.ActivityContext
 import dagger.hilt.android.scopes.ActivityScoped
 import dev.cannoli.scorza.BuildConfig
 import dev.cannoli.scorza.di.IoScope
+import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.screens.DialogState
@@ -55,11 +56,13 @@ class RaLoginController(
         }
     }
 
-    /** Opens the post-login account menu and confirms the stored token still works. */
+    /** Opens the post-login account screen and confirms the stored token still works. */
     fun openAccountMenu() {
-        nav.dialogState.value = DialogState.RAAccount(
-            username = settings.raUsername,
-            hardcore = settings.raHardcore,
+        nav.push(
+            LauncherScreen.RetroAchievements(
+                username = settings.raUsername,
+                hardcore = settings.raHardcore,
+            )
         )
         val user = settings.raUsername
         val token = settings.raToken
@@ -78,8 +81,13 @@ class RaLoginController(
                 }
             }
             withContext(Dispatchers.Main) {
-                val ds = nav.dialogState.value
-                if (ds is DialogState.RAAccount) nav.dialogState.value = ds.copy(tokenState = state)
+                // The token check can land after the user has moved deeper (into Offline Sets), so
+                // the screen is found wherever it sits on the stack rather than assuming it is on top.
+                val idx = nav.screenStack.indexOfLast { it is LauncherScreen.RetroAchievements }
+                if (idx >= 0) {
+                    val screen = nav.screenStack[idx] as LauncherScreen.RetroAchievements
+                    nav.screenStack[idx] = screen.copy(tokenState = state)
+                }
             }
         }
     }
@@ -95,11 +103,14 @@ class RaLoginController(
                 settings.raToken = result.token
                 settings.raPassword = ""
                 if (!stillWaiting) return
-                nav.dialogState.value = DialogState.RAAccount(
-                    username = result.username,
-                    score = result.score,
-                    tokenState = RaTokenState.VALID,
-                    hardcore = settings.raHardcore,
+                // The token is freshly minted, so it goes straight to VALID without a second check.
+                nav.dialogState.value = DialogState.None
+                nav.push(
+                    LauncherScreen.RetroAchievements(
+                        username = result.username,
+                        tokenState = RaTokenState.VALID,
+                        hardcore = settings.raHardcore,
+                    )
                 )
             }
             is RaConnectClient.LoginResult.InvalidCredentials ->
