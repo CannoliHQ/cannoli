@@ -19,6 +19,20 @@ interface RetroArchBridge {
     /** RetroArch writes the auto slot itself while shutting down when this is on. */
     val savesOnQuit: Boolean
 
+    /**
+     * False when this session launched into hardcore, where RetroArch refuses to load a state.
+     * Decided once at launch from the config, so pausing hardcore mid-session does not bring the
+     * rows back until the next launch.
+     *
+     * RetroArch blocks only loading and still allows saving; both rows go anyway, because a save
+     * that cannot be loaded in-mode is clutter. That is a deliberate divergence from RetroArch's
+     * own quick menu, which keeps both.
+     *
+     * Not [hardcoreActive]: this is the launch-time latch, that is the live rc_client state. They
+     * disagree after any pause, where the live flag goes false while this one holds.
+     */
+    val savestatesAllowed: Boolean get() = true
+
     val supportsAchievements: Boolean
     fun getAchievements(): List<AchievementInfo> = emptyList()
 
@@ -53,6 +67,12 @@ interface RetroArchBridge {
     /** Fires on the main thread once a queued [loadCheatFile] has run. */
     fun setOnCheatsLoaded(callback: (List<CheatRow>) -> Unit) {}
 
-    /** Enabling a cheat pauses hardcore achievements, so the menu warns first when this is on. */
+    /**
+     * Enabling a cheat pauses hardcore achievements, so the menu warns first when this is on.
+     *
+     * Not [savestatesAllowed]: this is the live rc_client state, that is the launch-time latch.
+     * They disagree after any pause, where this goes false while the latch holds, so a new gate
+     * has to say which of the two it means.
+     */
     val hardcoreActive: Boolean get() = false
 }

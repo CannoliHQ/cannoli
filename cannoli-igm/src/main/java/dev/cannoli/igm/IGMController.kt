@@ -662,7 +662,8 @@ class IGMController(
             discIndex = currentDiskIndex.intValue,
             hasAchievements = bridge.supportsAchievements,
             hasGuides = guideFiles.value.isNotEmpty(),
-            hasCheats = cheatSession?.rows?.isNotEmpty() == true
+            hasCheats = cheatSession?.rows?.isNotEmpty() == true,
+            hasSaveStates = bridge.savestatesAllowed,
         )
         menuOptions = opts
         return opts

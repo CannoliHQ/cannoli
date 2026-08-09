@@ -95,6 +95,17 @@ class EmbeddedRetroArchBridge(
     override val savesOnQuit: Boolean
         get() = raGetSetting("savestate_auto_save")?.value == "true"
 
+    // Resolved on first use rather than at construction, because RetroArch has not parsed the
+    // launch config yet when the bridge is built. Latched afterwards by design rather than because
+    // the settings hold still: the native menu the IGM can open does write them mid-session. It is
+    // the launch value that gates the rows, so they never come or go part-way through a game.
+    override val savestatesAllowed: Boolean by lazy {
+        !hardcoreFromConfig(
+            raGetSetting("cheevos_enable")?.value,
+            raGetSetting("cheevos_hardcore_mode_enable")?.value,
+        )
+    }
+
     // IGM slot index (0 = auto, 1..10 = manual) maps to RetroArch's state_slot:
     // auto -> -1, "Slot 0" (index 1) -> 0, "Slot N" -> N-1. StateSlotPaths owns
     // this convention so the bridge and SaveSlotStore agree.
@@ -258,6 +269,13 @@ class EmbeddedRetroArchBridge(
     companion object {
         // Matches RICOTTA_CORE_OPT_PREFIX in ricotta_bridge.c.
         const val CORE_OPTION_PREFIX = "core::"
+
+        // Both keys, because that is RetroArch's own rule in rcheevos_hardcore_enabled_changed.
+        // The hardcore key alone would be wrong in the one direction that costs a working feature:
+        // it defaults to true, and the launcher writes no cheevos key at all without a token, so
+        // every logged out player would read as hardcore and lose the save state rows.
+        internal fun hardcoreFromConfig(cheevosEnable: String?, hardcoreMode: String?): Boolean =
+            cheevosEnable == "true" && hardcoreMode == "true"
 
         // The row index is the line index, which is RetroArch's cheat index by construction: the
         // native snapshot walks the list in order. A malformed line is dropped, never thrown on.

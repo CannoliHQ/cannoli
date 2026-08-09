@@ -9,11 +9,14 @@ class InGameMenuOptions(
     val hasGuides: Boolean = false,
     val hasCheats: Boolean = false,
     hasReassign: Boolean = false,
+    hasSaveStates: Boolean = true,
 ) {
     val actions: List<IgmMenuAction> = buildList {
         add(IgmMenuAction.RESUME)
-        add(IgmMenuAction.SAVE_STATE)
-        add(IgmMenuAction.LOAD_STATE)
+        if (hasSaveStates) {
+            add(IgmMenuAction.SAVE_STATE)
+            add(IgmMenuAction.LOAD_STATE)
+        }
         if (hasGuides) add(IgmMenuAction.GUIDE)
         if (hasCheats) add(IgmMenuAction.CHEATS)
         if (hasAchievements) add(IgmMenuAction.ACHIEVEMENTS)
