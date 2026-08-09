@@ -1484,7 +1484,8 @@ class DialogInputHandler @Inject constructor(
                 }
             }
             selected == MENU_FORCE_SOFTCORE || selected.startsWith("$MENU_FORCE_SOFTCORE\t") -> {
-                if (rom != null) {
+                // A Game ID locks softcore on, so the toggle is inert until the ID is cleared.
+                if (rom != null && rom.raGameId == null) {
                     val next = !rom.forceSoftcore
                     ioScope.launch {
                         romsRepository.setForceSoftcore(rom.id, next)
@@ -1865,9 +1866,12 @@ class DialogInputHandler @Inject constructor(
                         }
                         menuItem == MENU_RA_GAME_ID -> "$MENU_RA_GAME_ID\t${rom?.raGameId?.toString() ?: "Autodetect"}"
                         menuItem == MENU_FORCE_SOFTCORE -> {
-                            val value = if (rom?.forceSoftcore == true) dev.cannoli.ui.R.string.value_on
-                            else dev.cannoli.ui.R.string.value_off
-                            "$MENU_FORCE_SOFTCORE\t${context.getString(value)}"
+                            val value = when {
+                                rom?.raGameId != null -> context.getString(dev.cannoli.ui.R.string.force_softcore_locked)
+                                rom?.forceSoftcore == true -> context.getString(dev.cannoli.ui.R.string.value_on)
+                                else -> context.getString(dev.cannoli.ui.R.string.value_off)
+                            }
+                            "$MENU_FORCE_SOFTCORE\t$value"
                         }
                         else -> menuItem
                     }

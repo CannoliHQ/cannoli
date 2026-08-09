@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
+import dev.cannoli.scorza.input.MENU_FORCE_SOFTCORE
 import dev.cannoli.scorza.romm.sync.PreLaunchOutcome
 import dev.cannoli.scorza.romm.sync.SyncDirection
 import dev.cannoli.scorza.ui.screens.SyncHistoryRow
@@ -94,6 +95,18 @@ fun DialogOverlay(
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
     when (dialogState) {
         is DialogState.ContextMenu -> {
+            val selected = dialogState.options.getOrNull(dialogState.selectedOption)
+            val selectedLabel = selected?.substringBefore('\t')
+            val forceSoftcoreLocked = stringResource(dev.cannoli.ui.R.string.force_softcore_locked)
+            val rightBottomItems = when {
+                // A Game ID locks the toggle, so its row offers no primary action.
+                selectedLabel == MENU_FORCE_SOFTCORE && selected.substringAfter('\t', "") == forceSoftcoreLocked ->
+                    emptyList()
+                selectedLabel == MENU_FORCE_SOFTCORE ->
+                    listOf(buttonStyle.confirm to stringResource(dev.cannoli.ui.R.string.label_toggle))
+                else ->
+                    listOf(buttonStyle.confirm to stringResource(dev.cannoli.ui.R.string.label_select))
+            }
             ListDialogScreen(
                 backgroundImagePath = backgroundImagePath,
                 backgroundTint = backgroundTint,
@@ -101,7 +114,7 @@ fun DialogOverlay(
                 listFontSize = listFontSize,
                 listLineHeight = listLineHeight,
                 fullWidth = dialogState.options.any { it.contains('\t') },
-                rightBottomItems = emptyList(),
+                rightBottomItems = rightBottomItems,
                 buttonStyle = buttonStyle
             ) {
                 List(

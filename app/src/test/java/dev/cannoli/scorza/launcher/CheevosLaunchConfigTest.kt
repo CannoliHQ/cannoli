@@ -102,6 +102,26 @@ class CheevosLaunchConfigTest : LaunchConfigHarness() {
         assertEquals("true", cfg["savestate_auto_load"])
     }
 
+    // A manual Game ID forces softcore even when the user never set the toggle: the association is
+    // unofficial, so hardcore would be invalid, and it must not depend on rom.forceSoftcore.
+    @Test fun `a game id forces softcore under global hardcore`() {
+        val root = tmp.newFolder()
+        loggedIn(hardcore = true)
+        val cfg = resumedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA", raGameId = 4321))
+        assertEquals("false", cfg["cheevos_hardcore_mode_enable"])
+        assertEquals("true", cfg["savestate_auto_save"])
+        assertEquals("true", cfg["savestate_auto_load"])
+    }
+
+    @Test fun `a game id launch carries a softcore flag to the igm`() {
+        val root = tmp.newFolder()
+        loggedIn(hardcore = true)
+        val igm = slot<RicottaIgm>()
+        every { retroArchLauncher.launchRicotta(any(), any(), any(), capture(igm)) } returns LaunchResult.Success
+        manager(root).launchRom(rom(root, "Roms/GBA/Game.gba", "GBA", raGameId = 4321))
+        assertFalse(igm.captured.hardcoreInEffect)
+    }
+
     @Test fun `a hardcore game is not resumable`() {
         val root = tmp.newFolder()
         loggedIn(hardcore = true)

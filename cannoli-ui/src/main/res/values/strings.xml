@@ -427,6 +427,8 @@
     <!-- Setting values -->
     <string name="value_on">On</string>
     <string name="value_off">Off</string>
+    <!-- Force Softcore row value when a manual RA Game ID pins it on. -->
+    <string name="force_softcore_locked">On, forced by Game ID</string>
     <string name="value_all">All</string>
     <string name="value_show">Show</string>
     <string name="value_hide">Hide</string>
