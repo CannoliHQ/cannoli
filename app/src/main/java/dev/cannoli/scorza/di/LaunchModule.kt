@@ -39,8 +39,7 @@ object LaunchModule {
     fun provideCheevosOverrideMigration(
         paths: CannoliPathsProvider,
     ): CheevosOverrideMigration = CheevosOverrideMigration(
-        configRetroArchDir = CannoliPaths(paths.root).configRetroArch,
-        versionCode = dev.cannoli.scorza.BuildConfig.VERSION_CODE,
+        configRetroArchDir = { CannoliPaths(paths.root).configRetroArch },
     )
 
     @Provides @Singleton

@@ -5,8 +5,7 @@ import dev.cannoli.scorza.util.StorageLog
 import java.io.File
 
 /**
- * Strips the RetroAchievements session keys from every persisted RetroArch config, once per app
- * version.
+ * Strips the RetroAchievements session keys from every persisted RetroArch config, every boot.
  *
  * Old builds wrote whole-config override dumps (Config/RetroArch/<core>/<contentdir>.cfg) and
  * seeded the base retroarch.cfg from an external RetroArch, so a stale account, token or hardcore
@@ -16,22 +15,26 @@ import java.io.File
  * every other config makes the launch config the only place they live, so nothing stale can layer
  * back over it. Whole files are kept and every other key and its formatting is preserved; only the
  * five session keys are removed.
+ *
+ * Runs unconditionally rather than once per app version: scrubFile only writes when a file still
+ * carries a session key, so a clean tree costs one cheap read-only walk, and an unconditional scrub
+ * closes re-pollution vectors a version stamp would miss at the same version (a restored backup, an
+ * older side-loaded build, a hand-edit) - including a re-polluted key re-persisting through the
+ * native override save, which merges over the existing file.
  */
 class CheevosOverrideMigration(
-    private val configRetroArchDir: File,
-    private val versionCode: Int,
+    // Resolved fresh on every call rather than captured at construction, so a root re-resolved
+    // after setup (e.g. a portable SD move) never leaves this scrubbing a stale directory.
+    private val configRetroArchDir: () -> File,
 ) {
     fun scrubIfNeeded() {
         runCatching {
-            val stamp = File(configRetroArchDir, STAMP_NAME)
-            if (stamp.takeIf { it.exists() }?.readText()?.trim() == versionCode.toString()) return@runCatching
-            if (configRetroArchDir.isDirectory) {
-                configRetroArchDir.walkTopDown()
+            val dir = configRetroArchDir()
+            if (dir.isDirectory) {
+                dir.walkTopDown()
                     .filter { it.isFile && it.extension == "cfg" }
                     .forEach(::scrubFile)
             }
-            configRetroArchDir.mkdirs()
-            stamp.writeText(versionCode.toString())
         }.onFailure {
             StorageLog.write("[cheevos-scrub] failed: ${it::class.java.simpleName} ${it.message}")
         }
@@ -46,9 +49,5 @@ class CheevosOverrideMigration(
         }
         if (kept.size == lines.size) return
         file.writeText(kept.joinToString("\n"))
-    }
-
-    private companion object {
-        const val STAMP_NAME = ".cheevos_scrub_version"
     }
 }

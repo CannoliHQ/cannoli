@@ -50,7 +50,7 @@ class CheevosOverrideMigrationTest {
             input_driver = "android"
             """.trimIndent()
         )
-        CheevosOverrideMigration(ra, 42).scrubIfNeeded()
+        CheevosOverrideMigration { ra }.scrubIfNeeded()
 
         for (k in sessionKeys) assertFalse(k, keysIn(base).contains(k))
         assertTrue(keysIn(base).contains("video_fullscreen"))
@@ -62,7 +62,7 @@ class CheevosOverrideMigrationTest {
         val override = File(File(ra, "mgba_libretro"), "GBA.cfg")
         override.parentFile!!.mkdirs()
         override.writeText(dirtyBlock)
-        CheevosOverrideMigration(ra, 42).scrubIfNeeded()
+        CheevosOverrideMigration { ra }.scrubIfNeeded()
 
         assertEquals(emptySet<String>(), keysIn(override))
     }
@@ -78,7 +78,7 @@ class CheevosOverrideMigrationTest {
             $dirtyBlock
             """.trimIndent()
         )
-        CheevosOverrideMigration(ra, 42).scrubIfNeeded()
+        CheevosOverrideMigration { ra }.scrubIfNeeded()
 
         val keys = keysIn(base)
         assertTrue(keys.contains("cheevos_challenge_indicators"))
@@ -87,28 +87,42 @@ class CheevosOverrideMigrationTest {
         for (k in sessionKeys) assertFalse(k, keys.contains(k))
     }
 
-    @Test fun `runs once per version then no-ops`() {
+    @Test fun `re-scrubs a config re-polluted after a previous run`() {
         val ra = dir()
         val base = File(ra, "retroarch.cfg")
         base.writeText(dirtyBlock)
-        CheevosOverrideMigration(ra, 42).scrubIfNeeded()
+        val migration = CheevosOverrideMigration { ra }
+        migration.scrubIfNeeded()
         assertEquals(emptySet<String>(), keysIn(base))
 
-        // A config re-polluted after the stamp is written is not re-scrubbed at the same version.
+        // Nothing gates a re-run on having already scrubbed this tree, so a config re-polluted by a
+        // restored backup, an older side-loaded build, or a hand-edit is scrubbed again rather than
+        // being permanently skipped.
         base.writeText(dirtyBlock)
-        CheevosOverrideMigration(ra, 42).scrubIfNeeded()
-        assertTrue(keysIn(base).contains("cheevos_token"))
-
-        // A version bump re-runs it.
-        CheevosOverrideMigration(ra, 43).scrubIfNeeded()
+        migration.scrubIfNeeded()
         assertEquals(emptySet<String>(), keysIn(base))
+    }
+
+    @Test fun `resolves the config directory fresh on every call, not once at construction`() {
+        val staleRoot = tmp.newFolder("RetroArch-stale")
+        val freshRoot = tmp.newFolder("RetroArch-fresh")
+        File(staleRoot, "retroarch.cfg").writeText(dirtyBlock)
+        File(freshRoot, "retroarch.cfg").writeText(dirtyBlock)
+
+        var current = staleRoot
+        val migration = CheevosOverrideMigration { current }
+        current = freshRoot
+        migration.scrubIfNeeded()
+
+        assertEquals(emptySet<String>(), keysIn(File(freshRoot, "retroarch.cfg")))
+        assertTrue(keysIn(File(staleRoot, "retroarch.cfg")).contains("cheevos_token"))
     }
 
     @Test fun `preserves a trailing newline`() {
         val ra = dir()
         val base = File(ra, "retroarch.cfg")
         base.writeText("cheevos_token = \"oldtoken\"\nvideo_fullscreen = \"true\"\n")
-        CheevosOverrideMigration(ra, 42).scrubIfNeeded()
+        CheevosOverrideMigration { ra }.scrubIfNeeded()
         assertEquals("video_fullscreen = \"true\"\n", base.readText())
     }
 }
