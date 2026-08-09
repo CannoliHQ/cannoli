@@ -1,6 +1,7 @@
 package dev.cannoli.igm
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -14,6 +15,46 @@ class IGMControllerAchievementsTest {
         AchievementInfo(1, "Alpha", "first", 5, unlocked = true),
         AchievementInfo(2, "Beta", "second", 10, unlocked = false),
     )
+
+    @Test fun optionsIncludeAchievementsOnlyWhenTheFlagIsSet() {
+        assertEquals(-1, InGameMenuOptions(hasDiscs = false, hasAchievements = false).achievementsIndex)
+        assertTrue(InGameMenuOptions(hasDiscs = false, hasAchievements = true).achievementsIndex >= 0)
+    }
+
+    @Test fun menuRowAbsentWithAnEmptySet() {
+        val c = testController(bridgeWith(emptyList()))
+        c.openMenu()
+        assertFalse(c.buildMenuOptions().actions.contains(IgmMenuAction.ACHIEVEMENTS))
+    }
+
+    @Test fun menuRowAbsentWhenCoreDoesNotSupportAchievements() {
+        val c = testController(FakeRetroArchBridge())
+        c.openMenu()
+        assertFalse(c.buildMenuOptions().actions.contains(IgmMenuAction.ACHIEVEMENTS))
+    }
+
+    @Test fun menuRowPresentWithANonEmptySet() {
+        val c = testController(bridgeWith(sample))
+        c.openMenu()
+        assertTrue(c.buildMenuOptions().actions.contains(IgmMenuAction.ACHIEVEMENTS))
+    }
+
+    @Test fun aSetThatArrivesAfterTheFirstOpenShowsOnTheNextOpen() {
+        var achievements = emptyList<AchievementInfo>()
+        val bridge = object : FakeRetroArchBridge() {
+            override val supportsAchievements = true
+            override fun getAchievements() = achievements
+        }
+        val c = testController(bridge)
+        c.openMenu()
+        assertFalse(c.buildMenuOptions().actions.contains(IgmMenuAction.ACHIEVEMENTS))
+
+        achievements = sample
+        c.closeMenu()
+        c.openMenu()
+
+        assertTrue(c.buildMenuOptions().actions.contains(IgmMenuAction.ACHIEVEMENTS))
+    }
 
     @Test fun openAchievementsPushesPopulatedScreen() {
         val c = testController(bridgeWith(sample))

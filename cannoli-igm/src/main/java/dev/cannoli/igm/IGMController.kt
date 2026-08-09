@@ -324,9 +324,22 @@ class IGMController(
     private var lastMenuIndex = 0
     private var lastMenuAction: IgmMenuAction? = null
 
+    // Cheevos load once per session and never drop back to empty, so a positive read is frozen;
+    // a still-zero read is retried on the next open in case the set was still loading (login,
+    // network fetch) the first time this was asked. bridge.getAchievements() builds the full list
+    // from a native snapshot, so this keeps that call bounded to once per menu open instead of once
+    // per keypress, since buildMenuOptions() runs on every D-pad move inside the menu.
+    private var achievementCount = 0
+
+    private fun refreshAchievementCount() {
+        if (achievementCount > 0 || !bridge.supportsAchievements) return
+        achievementCount = bridge.getAchievements().size
+    }
+
     fun openMenu() {
         refreshDiskInfo()
         requestCheatsIfMissing()
+        refreshAchievementCount()
         val options = buildMenuOptions()
         val lastIndex = (options.actions.size - 1).coerceAtLeast(0)
         // Rows come and go between opens now that the cheats snapshot lands during gameplay, so a
@@ -660,7 +673,7 @@ class IGMController(
         val opts = InGameMenuOptions(
             hasDiscs = diskCount > 1,
             discIndex = currentDiskIndex.intValue,
-            hasAchievements = bridge.supportsAchievements,
+            hasAchievements = bridge.supportsAchievements && achievementCount > 0,
             hasGuides = guideFiles.value.isNotEmpty(),
             hasCheats = cheatSession?.rows?.isNotEmpty() == true,
             hasSaveStates = bridge.savestatesAllowed,
