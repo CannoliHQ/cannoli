@@ -27,6 +27,7 @@ static long long get_time_ms(void)
 #include "../../../../retroarch.h"
 #include "../../../../command.h"
 #include "../../../../configuration.h"
+#include <file/file_path.h>
 #include "../../../../menu/menu_driver.h"
 #include "../../../../menu/menu_defines.h"
 #include "../../../../runloop.h"
@@ -225,6 +226,7 @@ static void ricotta_sb_escaped(ricotta_strbuf *sb, const char *s)
 }
 
 static void ricotta_ra_apply(const char *key, const char *value);
+static void ricotta_ra_save_override(int scope, const char *keys);
 static JNIEnv *ricotta_runloop_env(void);
 
 /* RETRO-handler cheats need a system RAM mapping. Same two checks
@@ -324,10 +326,8 @@ void ricotta_bridge_poll_commands(void)
       }
       if (entry.cmd == RICOTTA_QCMD_RA_SAVE_OVERRIDE)
       {
-         runloop_state_t *runloop_st = runloop_state_get_ptr();
-         config_save_overrides(
-               entry.ra_scope == 1 ? OVERRIDE_GAME : OVERRIDE_CONTENT_DIR,
-               &runloop_st->system, false, NULL);
+         ricotta_ra_save_override(entry.ra_scope, entry.ra_key);
+         free(entry.ra_key);
          continue;
       }
       if (entry.cmd == RICOTTA_QCMD_CHEAT_LOAD)
@@ -710,6 +710,89 @@ static void ricotta_ra_apply(const char *key, const char *value)
          }
       }
    }
+}
+
+/* Writes one live setting into conf with the same typed setters and raw values
+ * config_save_overrides uses, so a combobox saves its index rather than its label. */
+static void ricotta_ra_config_set(config_file_t *conf, const char *key, rarch_setting_t *s)
+{
+   switch (s->type)
+   {
+      case ST_BOOL:
+         config_set_string(conf, key, *s->value.target.boolean ? "true" : "false");
+         break;
+      case ST_INT:
+      case ST_UINT:
+      case ST_SIZE:
+         config_set_int(conf, key, (int)ricotta_ra_get_int(s));
+         break;
+      case ST_FLOAT:
+         config_set_float(conf, key, *s->value.target.fraction);
+         break;
+      case ST_STRING:
+      case ST_STRING_OPTIONS:
+         config_set_string(conf, key, s->value.target.string);
+         break;
+      case ST_PATH:
+      case ST_DIR:
+         config_set_path(conf, key, s->value.target.string);
+         break;
+      default:
+         break;
+   }
+}
+
+/* Saves an override .cfg holding only the newline-delimited keys the IGM changed this session,
+ * at their live values, merged over any existing override so untouched keys survive. Replaces
+ * config_save_overrides, which diffed the whole live config against Cannoli's minimal launch
+ * config and wrote hundreds of unrelated keys. Runs on the runloop thread. scope: 1 = game,
+ * else content-dir. Keys with no live RA setting (e.g. core options) are silently skipped. */
+static void ricotta_ra_save_override(int scope, const char *keys)
+{
+   enum override_type type = (scope == 1) ? OVERRIDE_GAME : OVERRIDE_CONTENT_DIR;
+   char override_path[PATH_MAX_LENGTH];
+   char base_dir[PATH_MAX_LENGTH];
+   config_file_t *conf;
+   const char *p;
+
+   if (!keys || !*keys)
+      return;
+   if (!config_get_override_path(type, override_path, sizeof(override_path)))
+      return;
+
+   /* config_save_overrides made this directory; config_file_write's fopen will not. */
+   fill_pathname_basedir(base_dir, override_path, sizeof(base_dir));
+   if (*base_dir && !path_is_directory(base_dir))
+      path_mkdir(base_dir);
+
+   conf = config_file_new_from_path_to_string(override_path);
+   if (!conf)
+      conf = config_file_new_alloc();
+   if (!conf)
+      return;
+
+   for (p = keys; *p; )
+   {
+      const char *nl = strchr(p, '\n');
+      size_t klen    = nl ? (size_t)(nl - p) : strlen(p);
+      char key[256];
+
+      if (klen > 0 && klen < sizeof(key))
+      {
+         rarch_setting_t *s;
+         memcpy(key, p, klen);
+         key[klen] = '\0';
+         if ((s = ricotta_ra_find(key)))
+            ricotta_ra_config_set(conf, key, s);
+      }
+
+      if (!nl)
+         break;
+      p = nl + 1;
+   }
+
+   config_file_write(conf, override_path, true);
+   config_file_free(conf);
 }
 
 static void *menu_close_poll_func(void *arg)
@@ -1205,15 +1288,19 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaSetSetting(
 
 JNIEXPORT void JNICALL
 Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaSaveOverride(
-      JNIEnv *env, jobject obj, jint scope)
+      JNIEnv *env, jobject obj, jint scope, jstring jkeys)
 {
    ricotta_cmd_entry entry = {0};
+   const char *keys        = jkeys ? (*env)->GetStringUTFChars(env, jkeys, NULL) : NULL;
 
-   (void)env;
    (void)obj;
 
    entry.cmd      = RICOTTA_QCMD_RA_SAVE_OVERRIDE;
    entry.ra_scope = (int)scope;
+   entry.ra_key   = keys ? strdup(keys) : NULL;
+
+   if (keys)
+      (*env)->ReleaseStringUTFChars(env, jkeys, keys);
 
    ricotta_enqueue_entry(entry);
 }

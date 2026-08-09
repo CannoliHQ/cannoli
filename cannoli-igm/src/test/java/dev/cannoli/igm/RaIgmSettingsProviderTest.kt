@@ -12,6 +12,7 @@ private class FakeRaHost : RaSettingsHost {
     val settings = mutableMapOf<String, RaSetting>()
     val setCalls = mutableListOf<Pair<String, String>>()
     val savedScopes = mutableListOf<RaOverrideScope>()
+    val savedKeys = mutableListOf<Set<String>>()
     val localToggles = mutableMapOf<String, Boolean>()
     private var appliedCb: ((String, String) -> Unit)? = null
 
@@ -20,7 +21,10 @@ private class FakeRaHost : RaSettingsHost {
         setCalls.add(key to value)
         return true
     }
-    override fun raSaveOverride(scope: RaOverrideScope) { savedScopes.add(scope) }
+    override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) {
+        savedScopes.add(scope)
+        savedKeys.add(keys)
+    }
     override fun setOnRaSettingApplied(callback: (String, String) -> Unit) { appliedCb = callback }
     override fun getLocalToggle(key: String, default: Boolean): Boolean = localToggles[key] ?: default
     override fun setLocalToggle(key: String, value: Boolean) { localToggles[key] = value }
@@ -148,6 +152,37 @@ class RaIgmSettingsProviderTest {
         (p.exitPrompt() as IgmSettingsExit.Prompt).onChoice(2)
         assertTrue(h.savedScopes.isEmpty())
         assertTrue(p.exitPrompt() is IgmSettingsExit.Close)
+    }
+
+    @Test
+    fun `saving writes exactly the changed RA keys, excludes local toggles, and clears after`() {
+        val h = host()
+        val p = provider(h)
+        p.screen(listOf(LATENCY))
+        p.cycle("run_ahead_enabled", 1)
+        p.cycle("run_ahead_frames", 1)
+        p.screen(listOf("osd"))
+        p.cycle("cannoli_osd_reset", 1)
+        (p.exitPrompt() as IgmSettingsExit.Prompt).onChoice(1)
+        assertEquals(listOf(setOf("run_ahead_enabled", "run_ahead_frames")), h.savedKeys)
+
+        // The set is cleared on save, so a later change saves only itself.
+        p.screen(listOf(LATENCY))
+        p.cycle("run_ahead_frames", 1)
+        (p.exitPrompt() as IgmSettingsExit.Prompt).onChoice(0)
+        assertEquals(setOf("run_ahead_frames"), h.savedKeys.last())
+    }
+
+    @Test
+    fun `discarding clears the changed set so a later save carries nothing stale`() {
+        val h = host()
+        val p = provider(h)
+        p.screen(listOf(LATENCY))
+        p.cycle("run_ahead_enabled", 1)
+        (p.exitPrompt() as IgmSettingsExit.Prompt).onChoice(2)
+        p.cycle("run_ahead_frames", 1)
+        (p.exitPrompt() as IgmSettingsExit.Prompt).onChoice(1)
+        assertEquals(listOf(setOf("run_ahead_frames")), h.savedKeys)
     }
 
     @Test

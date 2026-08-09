@@ -13,6 +13,11 @@ class RaIgmSettingsProvider(
     private var onChanged: (() -> Unit)? = null
     private var dirty = false
 
+    // RA setting keys the user changed this session, saved as the override. Local toggles never
+    // land here (they write straight to SharedPreferences); core-option keys may, and the native
+    // side drops any key that is not a live RA setting. Cleared whenever the dirty flag is.
+    private val changedKeys = mutableSetOf<String>()
+
     // The settings of the category currently being shown, cached so cycle() has the
     // rich RaSetting (type/min/max/options) the generic Choice row does not carry.
     private var currentCategory: String? = null
@@ -126,6 +131,7 @@ class RaIgmSettingsProvider(
             replaceSetting(i, s.copy(value = newValue))
         } else if (host.raSetSetting(s.key, newValue)) {
             dirty = true
+            changedKeys.add(s.key)
             pending[s.key] = (pending[s.key] ?: 0) + 1
             replaceSetting(i, s.copy(value = newValue))
         }
@@ -160,15 +166,15 @@ class RaIgmSettingsProvider(
             title = null,
             options = listOf(strings.savePlatform, strings.saveGame, strings.dontSave),
             onCancel = {
-                dirty = false
+                clearDirty()
                 onOpenNativeMenu()
             },
         ) { choice ->
             when (choice) {
-                0 -> host.raSaveOverride(RaOverrideScope.CONTENT_DIR)
-                1 -> host.raSaveOverride(RaOverrideScope.GAME)
+                0 -> host.raSaveOverride(RaOverrideScope.CONTENT_DIR, changedKeys.toSet())
+                1 -> host.raSaveOverride(RaOverrideScope.GAME, changedKeys.toSet())
             }
-            dirty = false
+            clearDirty()
             onOpenNativeMenu()
         }
     }
@@ -180,11 +186,16 @@ class RaIgmSettingsProvider(
             options = listOf(strings.savePlatform, strings.saveGame, strings.dontSave),
         ) { choice ->
             when (choice) {
-                0 -> host.raSaveOverride(RaOverrideScope.CONTENT_DIR)
-                1 -> host.raSaveOverride(RaOverrideScope.GAME)
+                0 -> host.raSaveOverride(RaOverrideScope.CONTENT_DIR, changedKeys.toSet())
+                1 -> host.raSaveOverride(RaOverrideScope.GAME, changedKeys.toSet())
             }
-            dirty = false
+            clearDirty()
         }
+
+    private fun clearDirty() {
+        dirty = false
+        changedKeys.clear()
+    }
 }
 
 // Cores put the restart notice in the option description themselves, which eats row width and

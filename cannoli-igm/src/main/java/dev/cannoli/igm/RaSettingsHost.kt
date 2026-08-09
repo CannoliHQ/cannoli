@@ -6,7 +6,7 @@ interface RaSettingsHost {
 
     fun raGetSetting(key: String): RaSetting?
     fun raSetSetting(key: String, value: String): Boolean
-    fun raSaveOverride(scope: RaOverrideScope)
+    fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>)
     fun setOnRaSettingApplied(callback: (key: String, value: String) -> Unit)
     fun getLocalToggle(key: String, default: Boolean): Boolean
     fun setLocalToggle(key: String, value: Boolean)

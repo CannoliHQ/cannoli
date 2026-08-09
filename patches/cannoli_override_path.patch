@@ -1,0 +1,93 @@
+diff --git a/configuration.c b/configuration.c
+index e264246b25..4839232f6c 100644
+--- a/configuration.c
++++ b/configuration.c
+@@ -6923,6 +6923,69 @@ int8_t config_save_overrides(enum override_type type,
+    return ret;
+ }
+ 
++/* Pure-query twin of config_save_overrides: reproduces its path derivation and the
++ * OVERRIDE_GAME / OVERRIDE_CONTENT_DIR arms of its switch, but writes nothing. Cannoli's
++ * IGM uses this to save only the keys the user changed instead of the whole live-vs-launch
++ * diff config_save_overrides emits. */
++bool config_get_override_path(enum override_type type, char *path, size_t len)
++{
++   runloop_state_t *runloop_st     = runloop_state_get_ptr();
++   rarch_system_info_t *sys_info   = runloop_st ? &runloop_st->system : NULL;
++   const char *core_name           = sys_info ? sys_info->info.library_name : NULL;
++   const char *rarch_path_basename = path_get(RARCH_PATH_BASENAME);
++   const char *game_name           = NULL;
++   bool has_content                = (rarch_path_basename && *rarch_path_basename);
++   char config_directory[DIR_MAX_LENGTH];
++   char override_path[PATH_MAX_LENGTH];
++
++   if (!path || len == 0)
++      return false;
++
++   path[0]          = '\0';
++   override_path[0] = '\0';
++
++   if (   (!core_name || !*core_name)
++       || (!has_content && (type != OVERRIDE_CORE)))
++      return false;
++
++   fill_pathname_application_special(config_directory,
++         sizeof(config_directory),
++         APPLICATION_SPECIAL_DIRECTORY_CONFIG);
++
++   switch (type)
++   {
++      case OVERRIDE_GAME:
++         game_name = path_basename_nocompression(rarch_path_basename);
++         fill_pathname_join_special_ext(override_path,
++               config_directory, core_name,
++               game_name,
++               FILE_PATH_CONFIG_EXTENSION,
++               sizeof(override_path));
++         break;
++      case OVERRIDE_CONTENT_DIR:
++         {
++            char content_dir_name[DIR_MAX_LENGTH];
++            content_dir_name[0]   = '\0';
++            fill_pathname_parent_dir_name(content_dir_name,
++                  rarch_path_basename, sizeof(content_dir_name));
++            fill_pathname_join_special_ext(override_path,
++                  config_directory, core_name,
++                  content_dir_name,
++                  FILE_PATH_CONFIG_EXTENSION,
++                  sizeof(override_path));
++         }
++         break;
++      default:
++         break;
++   }
++
++   if (!*override_path)
++      return false;
++
++   strlcpy(path, override_path, len);
++   return true;
++}
++
+ /* Replaces currently loaded configuration file with
+  * another one. Will load a dummy core to flush state
+  * properly. */
+diff --git a/configuration.h b/configuration.h
+index f33e9c712e..de2e14e73a 100644
+--- a/configuration.h
++++ b/configuration.h
+@@ -1396,6 +1396,14 @@ bool config_save_file(const char *path);
+ int8_t config_save_overrides(enum override_type type,
+       void *data, bool remove, const char *path);
+ 
++/* config_get_override_path:
++ *
++ * Fills @path with the override .cfg path config_save_overrides would write for
++ * @type, without touching the config or the filesystem. Handles OVERRIDE_GAME
++ * and OVERRIDE_CONTENT_DIR. Returns true on success, false when no core/content
++ * is loaded or @type is unsupported. */
++bool config_get_override_path(enum override_type type, char *path, size_t len);
++
+ /* Replaces currently loaded configuration file with
+  * another one. Will load a dummy core to flush state
+  * properly. */

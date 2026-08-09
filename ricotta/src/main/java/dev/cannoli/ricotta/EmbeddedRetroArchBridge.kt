@@ -186,8 +186,8 @@ class EmbeddedRetroArchBridge(
         return true
     }
 
-    override fun raSaveOverride(scope: RaOverrideScope) {
-        nativeRaSaveOverride(if (scope == RaOverrideScope.GAME) 1 else 0)
+    override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) {
+        nativeRaSaveOverride(if (scope == RaOverrideScope.GAME) 1 else 0, encodeOverrideKeys(keys))
     }
 
     // Host wires these to its SharedPreferences (needs a Context the bridge lacks).
@@ -264,7 +264,7 @@ class EmbeddedRetroArchBridge(
     private external fun nativeCheatHardcoreActive(): Boolean
     private external fun nativeRaGetSetting(key: String): Array<String>?
     private external fun nativeRaSetSetting(key: String, value: String)
-    private external fun nativeRaSaveOverride(scope: Int)
+    private external fun nativeRaSaveOverride(scope: Int, keys: String)
 
     companion object {
         // Matches RICOTTA_CORE_OPT_PREFIX in ricotta_bridge.c.
@@ -276,6 +276,11 @@ class EmbeddedRetroArchBridge(
         // every logged out player would read as hardcore and lose the save state rows.
         internal fun hardcoreFromConfig(cheevosEnable: String?, hardcoreMode: String?): Boolean =
             cheevosEnable == "true" && hardcoreMode == "true"
+
+        // RA setting names are safe ASCII with no newlines, so the changed-key set crosses JNI as
+        // a plain newline-delimited list that ricotta_ra_save_override splits on '\n'. An empty set
+        // encodes to "", which the native side treats as nothing to save.
+        internal fun encodeOverrideKeys(keys: Set<String>): String = keys.joinToString("\n")
 
         // The row index is the line index, which is RetroArch's cheat index by construction: the
         // native snapshot walks the list in order. A malformed line is dropped, never thrown on.

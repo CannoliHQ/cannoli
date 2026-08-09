@@ -28,7 +28,7 @@ private class CoreOptionHost(private val keys: List<String>) : RaSettingsHost {
         return true
     }
 
-    override fun raSaveOverride(scope: RaOverrideScope) {}
+    override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) {}
     override fun setOnRaSettingApplied(callback: (String, String) -> Unit) {}
     override fun getLocalToggle(key: String, default: Boolean) = default
     override fun setLocalToggle(key: String, value: Boolean) {}
@@ -81,7 +81,7 @@ private class CategorisedHost(private val refs: List<CoreOptionRef>) : RaSetting
         options = listOf("a", "b"),
     )
     override fun raSetSetting(key: String, value: String) = true
-    override fun raSaveOverride(scope: RaOverrideScope) {}
+    override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) {}
     override fun setOnRaSettingApplied(callback: (String, String) -> Unit) {}
     override fun getLocalToggle(key: String, default: Boolean) = default
     override fun setLocalToggle(key: String, value: Boolean) {}
