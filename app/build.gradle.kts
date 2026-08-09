@@ -1,6 +1,3 @@
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import java.util.Properties
 
 plugins {
@@ -11,12 +8,17 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
-fun gitCommitHash(): String = try {
-    val process = Runtime.getRuntime().exec(arrayOf("git", "rev-parse", "--short", "HEAD"))
-    process.inputStream.bufferedReader().readText().trim()
-} catch (_: Exception) { "unknown" }
+fun git(vararg args: String): String = try {
+    providers.exec { commandLine(listOf("git") + args) }.standardOutput.asText.get().trim()
+} catch (_: Exception) { "" }
 
-fun buildDate(): String = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+val gitCommitHash: String = git("rev-parse", "--short", "HEAD").ifEmpty { "unknown" }
+
+// Tracked modifications only, matching `git describe --dirty`, so untracked scratch files in a
+// dev tree do not permanently brand every build.
+val gitDirty: Boolean = git("status", "--porcelain", "--untracked-files=no").isNotEmpty()
+
+val buildTimeMillis: Long = System.currentTimeMillis()
 
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 val keystoreProperties = Properties().apply {
@@ -44,8 +46,9 @@ android {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")
         }
 
-        buildConfigField("String", "BUILD_DATE", "\"${buildDate()}\"")
-        buildConfigField("String", "GIT_HASH", "\"${gitCommitHash()}\"")
+        buildConfigField("long", "BUILD_TIME", "${buildTimeMillis}L")
+        buildConfigField("String", "GIT_HASH", "\"$gitCommitHash\"")
+        buildConfigField("boolean", "GIT_DIRTY", "$gitDirty")
     }
 
     buildFeatures {

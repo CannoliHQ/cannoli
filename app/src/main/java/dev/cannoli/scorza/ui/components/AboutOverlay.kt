@@ -59,10 +59,26 @@ fun AboutOverlay(statusMessage: String? = null, updateAvailable: Boolean = false
 
             Spacer(modifier = Modifier.height(Spacing.Lg))
 
+            val identity = buildIdentityLines(
+                debug = BuildConfig.DEBUG,
+                versionName = BuildConfig.VERSION_NAME,
+                hash = BuildConfig.GIT_HASH,
+                dirty = BuildConfig.GIT_DIRTY,
+                buildTimeMillis = BuildConfig.BUILD_TIME,
+                debugLabel = stringResource(R.string.about_version_debug),
+            )
+
             Text(
-                text = "v${BuildConfig.VERSION_NAME}  •  ${BuildConfig.BUILD_DATE}  •  ${BuildConfig.GIT_HASH}",
+                text = identity.version,
                 style = typo.bodyMedium.copy(color = Color.White)
             )
+
+            identity.detail?.let {
+                Text(
+                    text = it,
+                    style = typo.bodyMedium.copy(color = Color.White)
+                )
+            }
 
             Spacer(modifier = Modifier.height(Spacing.Lg))
 

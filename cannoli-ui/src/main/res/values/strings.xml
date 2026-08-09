@@ -557,6 +557,8 @@
     <!-- App tagline; playful, "filling" is a cannoli pun. Keep the light tone. -->
     <string name="about_description">A frontend with just the right amount of filling!</string>
     <string name="about_website" translatable="false">cannoli.dev</string>
+    <!-- Shown in place of the version number on debug builds. -->
+    <string name="about_version_debug" translatable="false">DEBUG</string>
 
     <!-- Kitchen -->
     <string name="kitchen_title" translatable="false">Nonna\'s Kitchen</string>
