@@ -9,13 +9,17 @@ import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.screens.RaTokenState
+import dev.cannoli.scorza.util.ErrorLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
-private fun defaultClient() = RaConnectClient(userAgent = "Cannoli/${BuildConfig.VERSION_NAME}")
+private fun defaultClient() = RaConnectClient(
+    userAgent = "Cannoli/${BuildConfig.VERSION_NAME}",
+    log = ErrorLog::write,
+)
 
 @ActivityScoped
 class RaLoginController(

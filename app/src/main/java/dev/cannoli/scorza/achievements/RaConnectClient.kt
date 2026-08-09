@@ -10,6 +10,7 @@ class RaConnectClient(
     private val baseUrlProvider: () -> String = { "https://retroachievements.org" },
     private val clientProvider: () -> OkHttpClient = { sharedClient },
     private val userAgent: String = "Cannoli",
+    private val log: (String) -> Unit = {},
 ) {
     data class RawResponse(val code: Int, val body: String)
 
@@ -25,8 +26,14 @@ class RaConnectClient(
     /** Exchanges a password for an account token. The password never leaves this call. */
     fun loginWithPassword(username: String, password: String): LoginResult {
         val res = post(FormBody.Builder().add("r", "login").add("u", username).add("p", password).build())
-        if (res.code !in 200..299) return LoginResult.NetworkError
-        val json = try { JSONObject(res.body) } catch (_: Exception) { return LoginResult.NetworkError }
+        if (res.code !in 200..299) {
+            log("ra login failed: code=${res.code} body=${res.body}")
+            return LoginResult.NetworkError
+        }
+        val json = try { JSONObject(res.body) } catch (_: Exception) {
+            log("ra login failed: unparseable response, code=${res.code} body=${res.body}")
+            return LoginResult.NetworkError
+        }
         val token = json.optString("Token", "")
         if (!json.optBoolean("Success", false) || token.isEmpty()) {
             return LoginResult.InvalidCredentials(json.optString("Error", ""))
@@ -61,7 +68,8 @@ class RaConnectClient(
             clientProvider().newCall(request).execute().use { resp ->
                 RawResponse(resp.code, resp.body?.string() ?: "")
             }
-        } catch (_: IOException) {
+        } catch (e: IOException) {
+            log("ra request failed: ${e.javaClass.simpleName}: ${e.message}")
             RawResponse(-1, "")
         }
     }

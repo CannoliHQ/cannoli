@@ -11,6 +11,7 @@ import dev.cannoli.scorza.model.Rom
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.screens.DialogState
+import dev.cannoli.scorza.util.ErrorLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -127,7 +128,10 @@ class RaPreloadController @Inject constructor(
         return act.isFinishing || act.isDestroyed
     }
 
-    private fun client() = RaConnectClient(userAgent = "Cannoli/${BuildConfig.VERSION_NAME}")
+    private fun client() = RaConnectClient(
+        userAgent = "Cannoli/${BuildConfig.VERSION_NAME}",
+        log = ErrorLog::write,
+    )
 
     private fun messageFor(result: RaOfflinePreloader.Result): String = when (result) {
         is RaOfflinePreloader.Result.Success -> context.resources.getQuantityString(
