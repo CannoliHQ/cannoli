@@ -17,6 +17,7 @@ import com.retroarch.browser.preferences.util.ConfigFile
 import com.retroarch.browser.preferences.util.UserPreferences
 import dev.cannoli.ricotta.EmbeddedRetroArchBridge
 import dev.cannoli.ricotta.RicottaOsdEvent
+import dev.cannoli.ui.R
 import java.io.File
 
 class RetroActivityFuture : RetroActivityCamera() {
@@ -25,6 +26,10 @@ class RetroActivityFuture : RetroActivityCamera() {
     private lateinit var mDecorView: View
     private var igmOverlay: IGMOverlay? = null
     private var osdOverlay: OsdOverlay? = null
+
+    // The OSD sits beside the IGM, so it must resolve strings in the launcher's chosen
+    // language rather than the system one, exactly as IGMOverlay's uiContext does.
+    private var osdContext: Context = this
 
     private val mHandler = object : Handler(Looper.getMainLooper()) {
         override fun handleMessage(msg: Message) {
@@ -90,6 +95,8 @@ class RetroActivityFuture : RetroActivityCamera() {
                 confirmButton = ds?.confirmButton ?: dev.cannoli.ui.ConfirmButton.SOUTH,
                 keyCodeName = { android.view.KeyEvent.keyCodeToString(it) },
             )
+
+            osdContext = localeContext(this, localeTag)
 
             val bridge = EmbeddedRetroArchBridge(stateBasePath)
             igmOverlay = IGMOverlay(
@@ -289,16 +296,28 @@ class RetroActivityFuture : RetroActivityCamera() {
     // type and slot come straight from the source site. RetroArch state_slot N
     // matches the IGM's "Slot N"; slot < 0 is the auto slot.
     private fun osdEventText(type: Int, slot: Int): String {
-        val where = if (slot < 0) "Auto" else "Slot $slot"
+        val where = if (slot < 0) {
+            osdContext.getString(R.string.igm_slot_auto)
+        } else {
+            osdContext.getString(R.string.igm_slot_numbered, slot)
+        }
         return when (type) {
-            RicottaOsdEvent.SAVE_STATE -> "Saved · $where"
-            RicottaOsdEvent.LOAD_STATE -> "Loaded · $where"
-            RicottaOsdEvent.RESET -> "Reset"
-            RicottaOsdEvent.UNDO_SAVE_STATE -> "Save undone"
-            RicottaOsdEvent.DISK_CHANGED -> "Disc ${slot + 1}"
-            RicottaOsdEvent.SCREENSHOT -> "Screenshot saved"
-            RicottaOsdEvent.CONTROLLER_PORT -> "Controller P$slot"
-            else -> "Saved · $where"
+            RicottaOsdEvent.SAVE_STATE -> osdContext.getString(R.string.osd_event_saved, where)
+            RicottaOsdEvent.LOAD_STATE -> osdContext.getString(R.string.osd_event_loaded, where)
+            RicottaOsdEvent.RESET -> osdContext.getString(R.string.osd_reset)
+            RicottaOsdEvent.UNDO_SAVE_STATE -> osdContext.getString(R.string.osd_event_save_undone)
+            RicottaOsdEvent.DISK_CHANGED -> osdContext.getString(R.string.igm_disc_number, slot + 1)
+            RicottaOsdEvent.SCREENSHOT -> osdContext.getString(R.string.osd_event_screenshot)
+            RicottaOsdEvent.CONTROLLER_PORT ->
+                osdContext.getString(R.string.osd_event_controller_port, slot)
+            RicottaOsdEvent.LOAD_REFUSED ->
+                osdContext.getString(R.string.osd_event_hardcore_load_blocked)
+            RicottaOsdEvent.HARDCORE_PAUSED ->
+                osdContext.getString(R.string.osd_event_hardcore_paused)
+            RicottaOsdEvent.CHEEVOS_LOGIN_FAILED -> osdContext.getString(
+                if (slot == 1) R.string.ra_session_expired else R.string.ra_login_failed
+            )
+            else -> osdContext.getString(R.string.osd_event_saved, where)
         }
     }
 

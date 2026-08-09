@@ -12,4 +12,7 @@ object RicottaOsdEvent {
     const val DISK_CHANGED = 7
     const val SCREENSHOT = 8
     const val CONTROLLER_PORT = 9
+    const val LOAD_REFUSED = 10
+    const val HARDCORE_PAUSED = 11
+    const val CHEEVOS_LOGIN_FAILED = 12
 }

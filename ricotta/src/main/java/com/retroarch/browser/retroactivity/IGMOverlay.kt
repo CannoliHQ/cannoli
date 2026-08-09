@@ -49,7 +49,7 @@ private const val IGM_OVERLAY_THEME = android.R.style.Theme_Translucent_NoTitleB
 
 // applyOverrideConfiguration has to land before anything reads resources off the wrapper, so the
 // context is built once up front rather than adjusted later.
-private fun localeContext(activity: Activity, tag: String): Context {
+internal fun localeContext(activity: Activity, tag: String): Context {
     if (tag.isEmpty()) return activity
     val locale = Locale.forLanguageTag(tag)
     if (locale.language.isEmpty()) return activity

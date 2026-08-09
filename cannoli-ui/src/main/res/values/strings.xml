@@ -664,6 +664,20 @@
     <string name="osd_controller_connected_named">%1$s connected to %2$s</string>
     <!-- %1$d = disc number (multi-disc games). -->
     <string name="osd_disc_fallback">Disc %1$d</string>
+    <!-- OSD pill shown when RetroArch itself writes a save state. %1$s = save slot name ("Auto" or "Slot 3"). -->
+    <string name="osd_event_saved">Saved · %1$s</string>
+    <!-- OSD pill shown when RetroArch itself loads a save state. %1$s = save slot name ("Auto" or "Slot 3"). -->
+    <string name="osd_event_loaded">Loaded · %1$s</string>
+    <!-- OSD pill: the last save state write was rolled back. -->
+    <string name="osd_event_save_undone">Save undone</string>
+    <!-- OSD pill confirming a screenshot was written to disk. -->
+    <string name="osd_event_screenshot">Screenshot saved</string>
+    <!-- OSD pill naming which player port a controller took. %1$d = player number, counting from 1. -->
+    <string name="osd_event_controller_port">Controller P%1$d</string>
+    <!-- OSD pill: hardcore achievements refused a save state load. Hardcore is the RetroAchievements mode that bans save states. -->
+    <string name="osd_event_hardcore_load_blocked">Hardcore: load blocked</string>
+    <!-- OSD pill: hardcore achievements switched off for the rest of this session. -->
+    <string name="osd_event_hardcore_paused">Hardcore paused</string>
     <string name="igm_quit">Quit</string>
     <string name="igm_cheats">Cheats</string>
     <string name="title_cheats">Cheats</string>
@@ -694,6 +708,8 @@
     <string name="ra_load_not_recognized">RA: Game not recognized</string>
     <string name="ra_load_no_achievements">RA: No achievements for this game</string>
     <string name="ra_load_offline_pending">RA: Offline (game data unavailable)</string>
+    <!-- RA = RetroAchievements. The stored login is no longer good; the player must sign in again. -->
+    <string name="ra_session_expired">RA: Session expired</string>
 
     <!-- Credits -->
     <string name="credits_title">Credits and Licenses</string>
