@@ -1,6 +1,7 @@
 package dev.cannoli.scorza.launcher
 
 import io.mockk.every
+import io.mockk.slot
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -115,6 +116,26 @@ class CheevosLaunchConfigTest : LaunchConfigHarness() {
         val mgr = manager(root)
         val rom = rom(root, "Roms/GBA/Game.gba", "GBA", forceSoftcore = true).withSaveState(mgr)
         assertEquals(setOf(rom.path.absolutePath), mgr.findResumableRoms(listOf(rom)))
+    }
+
+    // The IGM gates its save state rows on this parcel flag, so a force-softcore game under global
+    // hardcore must launch with the flag off (rows shown) even though global hardcore is on.
+    @Test fun `a force softcore launch carries a softcore flag to the igm`() {
+        val root = tmp.newFolder()
+        loggedIn(hardcore = true)
+        val igm = slot<RicottaIgm>()
+        every { retroArchLauncher.launchRicotta(any(), any(), any(), capture(igm)) } returns LaunchResult.Success
+        manager(root).launchRom(rom(root, "Roms/GBA/Game.gba", "GBA", forceSoftcore = true))
+        assertFalse(igm.captured.hardcoreInEffect)
+    }
+
+    @Test fun `a hardcore launch carries a hardcore flag to the igm`() {
+        val root = tmp.newFolder()
+        loggedIn(hardcore = true)
+        val igm = slot<RicottaIgm>()
+        every { retroArchLauncher.launchRicotta(any(), any(), any(), capture(igm)) } returns LaunchResult.Success
+        manager(root).launchRom(rom(root, "Roms/GBA/Game.gba", "GBA"))
+        assertTrue(igm.captured.hardcoreInEffect)
     }
 
     private fun dev.cannoli.scorza.model.Rom.withSaveState(mgr: LaunchManager) = also {

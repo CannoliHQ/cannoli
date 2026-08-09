@@ -98,7 +98,7 @@ class RetroActivityFuture : RetroActivityCamera() {
 
             osdContext = localeContext(this, localeTag)
 
-            val bridge = EmbeddedRetroArchBridge(stateBasePath)
+            val bridge = EmbeddedRetroArchBridge(stateBasePath, params?.hardcoreInEffect ?: false)
             igmOverlay = IGMOverlay(
                 this, bridge, stateBasePath, gameTitle, hostConfig, cannoliRoot, platformTag, platformName,
                 colors?.highlight, colors?.text, colors?.highlightText,

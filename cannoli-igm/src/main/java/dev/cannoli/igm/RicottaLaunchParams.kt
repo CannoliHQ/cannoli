@@ -53,9 +53,14 @@ data class RicottaLaunchParams(
     val localeTag: String = "",
     // The ROM file's base name, NFC-normalized: the key every Cannoli side directory uses
     // (Cheats/<tag>/<romBaseName>/). Not gameTitle, which has (region) and [dump] tags stripped.
-    // Must stay the last parcel field: a sender that predates it reads back as empty here instead
-    // of shifting every field after it.
     val romBaseName: String = "",
+    // The launcher's authoritative effective-hardcore decision for this launch, with global
+    // hardcore and per-game force-softcore already folded in (LaunchManager.hardcoreInEffect). The
+    // IGM gates its Save/Load State rows on this rather than on the live RetroArch cheevos setting,
+    // which a stale per-game override file can clobber back to hardcore after launch.
+    // Trailing field: a sender that predates it reads back false (rows shown) rather than shifting
+    // every field before it.
+    val hardcoreInEffect: Boolean = false,
 ) : Parcelable {
     override fun describeContents() = 0
 
@@ -81,6 +86,7 @@ data class RicottaLaunchParams(
         dest.writeParcelable(inputMapping, flags)
         dest.writeString(localeTag)
         dest.writeString(romBaseName)
+        dest.writeInt(if (hardcoreInEffect) 1 else 0)
     }
 
     companion object {
@@ -115,11 +121,12 @@ data class RicottaLaunchParams(
                 val inputMapping = p.readParcelable<IgmInputMapping>(IgmInputMapping::class.java.classLoader)
                 val localeTag = p.readString().orEmpty()
                 val romBaseName = p.readString().orEmpty()
+                val hardcoreInEffect = p.readInt() != 0
                 return RicottaLaunchParams(
                     coreId, romPath, configFilePath, gameTitle, stateBasePath,
                     cannoliRoot, platformTag, platformName, igmTriggerKeycodes, quitOnFocusLoss,
                     preferredRefreshRate, colors, displaySettings, inputMapping, localeTag,
-                    romBaseName,
+                    romBaseName, hardcoreInEffect,
                 )
             }
 

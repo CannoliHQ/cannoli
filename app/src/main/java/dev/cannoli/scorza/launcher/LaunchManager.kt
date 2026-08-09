@@ -521,6 +521,7 @@ class LaunchManager(
             ),
             inputMapping = activeMappingHolder.active.value.toIgmInputMapping(),
             romBaseName = romName,
+            hardcoreInEffect = hardcoreInEffect(cheevosFor(rom)),
         )
     }
 

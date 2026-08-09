@@ -21,7 +21,7 @@ abstract class LaunchConfigHarness {
     val settings = mockk<SettingsRepository>(relaxed = true)
     val platformConfig = mockk<PlatformConfig>(relaxed = true)
     val gameOverrides = mockk<dev.cannoli.scorza.db.GameOverrideStore>(relaxed = true)
-    private val retroArchLauncher = mockk<RetroArchLauncher>(relaxed = true)
+    val retroArchLauncher = mockk<RetroArchLauncher>(relaxed = true)
 
     fun manager(root: File): LaunchManager {
         every { settings.sdCardRoot } returns root.absolutePath

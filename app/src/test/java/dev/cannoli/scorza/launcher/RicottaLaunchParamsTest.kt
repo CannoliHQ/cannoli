@@ -63,6 +63,7 @@ class RicottaLaunchParamsTest {
         ),
         localeTag = "pt-BR",
         romBaseName = "Zelda (USA)",
+        hardcoreInEffect = true,
     )
 
     private fun roundTrip(params: RicottaLaunchParams): RicottaLaunchParams {
@@ -117,14 +118,15 @@ class RicottaLaunchParamsTest {
             parcel.writeParcelable(params.inputMapping, 0)
             parcel.setDataPosition(0)
 
-            assertEquals(params.copy(localeTag = "", romBaseName = ""), RicottaLaunchParams.CREATOR.createFromParcel(parcel))
+            assertEquals(
+                params.copy(localeTag = "", romBaseName = "", hardcoreInEffect = false),
+                RicottaLaunchParams.CREATOR.createFromParcel(parcel),
+            )
         } finally {
             parcel.recycle()
         }
     }
 
-    // romBaseName is now the last field, for the same reason localeTag was: a stale sender's
-    // parcel must degrade to empty here rather than shift every field before it.
     @Test fun `an older parcel that omits the trailing rom base name reads as empty`() {
         val params = sample()
         val parcel = Parcel.obtain()
@@ -147,7 +149,45 @@ class RicottaLaunchParamsTest {
             parcel.writeString(params.localeTag)
             parcel.setDataPosition(0)
 
-            assertEquals(params.copy(romBaseName = ""), RicottaLaunchParams.CREATOR.createFromParcel(parcel))
+            assertEquals(
+                params.copy(romBaseName = "", hardcoreInEffect = false),
+                RicottaLaunchParams.CREATOR.createFromParcel(parcel),
+            )
+        } finally {
+            parcel.recycle()
+        }
+    }
+
+    // hardcoreInEffect is now the last field, for the same reason localeTag and romBaseName were: a
+    // stale sender's parcel must degrade to false (save state rows shown, the safe default) here
+    // rather than shift every field before it.
+    @Test fun `an older parcel that omits the trailing hardcore flag reads as softcore`() {
+        val params = sample()
+        val parcel = Parcel.obtain()
+        try {
+            parcel.writeString(params.coreId)
+            parcel.writeString(params.romPath)
+            parcel.writeString(params.configFilePath)
+            parcel.writeString(params.gameTitle)
+            parcel.writeString(params.stateBasePath)
+            parcel.writeString(params.cannoliRoot)
+            parcel.writeString(params.platformTag)
+            parcel.writeString(params.platformName)
+            parcel.writeIntArray(params.igmTriggerKeycodes.toIntArray())
+            parcel.writeInt(1)
+            parcel.writeInt(1)
+            parcel.writeInt(params.preferredRefreshRate!!)
+            parcel.writeParcelable(params.colors, 0)
+            parcel.writeParcelable(params.displaySettings, 0)
+            parcel.writeParcelable(params.inputMapping, 0)
+            parcel.writeString(params.localeTag)
+            parcel.writeString(params.romBaseName)
+            parcel.setDataPosition(0)
+
+            assertEquals(
+                params.copy(hardcoreInEffect = false),
+                RicottaLaunchParams.CREATOR.createFromParcel(parcel),
+            )
         } finally {
             parcel.recycle()
         }
