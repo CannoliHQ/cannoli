@@ -110,14 +110,19 @@ class QuickMenuBackNavigationTest {
     }
 
     @Test fun back_from_credits_rebuilds_the_about_dialog_it_came_from() {
-        creditsBack(nav, LauncherScreen.Credits(fromQuickMenu = true))
+        val credits = LauncherScreen.Credits(fromQuickMenu = true)
+        nav.screenStack.add(credits)
+        creditsBack(nav, credits)
         assertEquals(DialogState.About(fromQuickMenu = true), nav.dialogState.value)
-        assertEquals(LauncherScreen.SystemList, nav.currentScreen)
+        assertEquals(listOf(LauncherScreen.SystemList), nav.screenStack.toList())
     }
 
     @Test fun back_from_credits_keeps_a_settings_era_about_unflagged() {
-        creditsBack(nav, LauncherScreen.Credits())
+        val credits = LauncherScreen.Credits()
+        nav.screenStack.add(credits)
+        creditsBack(nav, credits)
         assertEquals(DialogState.About(fromQuickMenu = false), nav.dialogState.value)
+        assertEquals(listOf(LauncherScreen.SystemList), nav.screenStack.toList())
     }
 
     @Test fun credits_carries_the_flag_from_the_about_dialog_that_pushed_it() {
