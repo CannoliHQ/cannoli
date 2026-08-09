@@ -19,6 +19,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
@@ -118,9 +119,13 @@ fun LegendPill(label: String, glyphs: @Composable () -> Unit) {
     ) {
         glyphs()
 
+        // One line, always: a legend that wraps both breaks mid-word on a narrow screen and renders
+        // taller than bottomBarHeight measured, which is what the list reserves under itself.
         Text(
             text = label,
-            style = barTextStyle(LegendTextSp, sf).copy(color = accent)
+            style = barTextStyle(LegendTextSp, sf).copy(color = accent),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }

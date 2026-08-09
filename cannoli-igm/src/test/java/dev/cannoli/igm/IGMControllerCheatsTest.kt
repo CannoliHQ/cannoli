@@ -177,7 +177,7 @@ class IGMControllerCheatsTest {
         assertTrue(c.cheatItems.value.none { it.enabled })
     }
 
-    @Test fun `north reapplies the last used set and reports the count`() {
+    @Test fun `the restore row reapplies the last used set and reports the count`() {
         writeCht("a.cht", "One", "Two")
         val bridge = bridgeFor("a.cht" to listOf("One", "Two"))
         manager().saveLastUsed("a.cht", setOf(CheatIdentity.hash("Two", "CODE1")))
@@ -187,13 +187,15 @@ class IGMControllerCheatsTest {
         c.attachCheats(manager())
         c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
         assertTrue(c.cheatHasRemembered.value)
+        assertEquals(0, selection(c))
 
-        c.handleKeyDown(NORTH)
+        c.handleKeyDown(CONFIRM)
 
         assertEquals(1, restored)
         assertTrue(c.cheatItems.value[1].enabled)
         assertEquals(listOf(1), bridge.toggledCheatIndexes)
         assertEquals(1, bridge.cheatApplies)
+        assertFalse("the row goes once its work is done", c.cheatHasRemembered.value)
     }
 
     @Test fun `the remembered file is selected first when it still exists`() {
@@ -256,12 +258,13 @@ class IGMControllerCheatsTest {
         assertEquals("b.cht", c.cheatFileName.value)
         assertTrue(c.cheatHasRemembered.value)
 
+        c.handleKeyDown(DPAD_DOWN)
         c.handleKeyDown(DPAD_RIGHT)
         assertEquals("a.cht", c.cheatFileName.value)
 
         assertFalse(c.cheatHasRemembered.value)
 
-        c.handleKeyDown(NORTH)
+        c.handleKeyDown(CONFIRM)
 
         assertEquals(-1, restored)
         assertTrue(bridge.toggledCheatIndexes.isEmpty())
@@ -363,8 +366,9 @@ class IGMControllerCheatsTest {
         c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
         assertTrue(c.cheatHasRemembered.value)
 
+        c.handleKeyDown(DPAD_DOWN)
         c.handleKeyDown(DPAD_RIGHT)
-        c.handleKeyDown(NORTH)
+        c.handleKeyDown(CONFIRM)
 
         assertEquals(-1, restored)
         assertTrue(bridge.toggledCheatIndexes.isEmpty())
@@ -373,7 +377,8 @@ class IGMControllerCheatsTest {
         bridge.deliverCheats()
         c.handleKeyDown(DPAD_RIGHT)
         bridge.deliverCheats()
-        c.handleKeyDown(NORTH)
+        assertEquals(0, selection(c))
+        c.handleKeyDown(CONFIRM)
 
         assertEquals(1, restored)
         assertEquals(listOf(1), bridge.toggledCheatIndexes)
@@ -803,12 +808,15 @@ class IGMControllerCheatsTest {
         assertTrue(c.cheatHasRemembered.value)
 
         c.handleKeyDown(DPAD_DOWN)
+        c.handleKeyDown(DPAD_DOWN)
+        c.handleKeyDown(DPAD_DOWN)
         c.handleKeyDown(CONFIRM)
         assertTrue(c.cheatItems.value[1].enabled)
 
         assertFalse(c.cheatHasRemembered.value)
 
-        c.handleKeyDown(NORTH)
+        c.replaceTop((c.currentScreen as IGMScreen.Cheats).copy(selectedIndex = 0))
+        c.handleKeyDown(CONFIRM)
 
         assertEquals(listOf(1), bridge.toggledCheatIndexes)
         assertEquals(0, bridge.cheatApplies)
@@ -1087,7 +1095,7 @@ class IGMControllerCheatsTest {
         assertEquals(listOf("Three"), c.cheatVisibleItems.value.map { it.label })
     }
 
-    @Test fun `a restore under the off filter leaves the selection somewhere real`() {
+    @Test fun `a restore under the off filter leaves the list usable`() {
         writeCht("a.cht", "One", "Two")
         val bridge = bridgeFor("a.cht" to listOf("One", "Two"))
         manager().saveLastUsed("a.cht", setOf(CheatIdentity.hash("One", "CODE0")))
@@ -1098,19 +1106,118 @@ class IGMControllerCheatsTest {
         c.handleKeyDown(WEST)
         c.handleKeyDown(WEST)
         assertEquals(listOf("One", "Two"), c.cheatVisibleItems.value.map { it.label })
-
-        c.handleKeyDown(DPAD_DOWN)
-        c.handleKeyDown(DPAD_DOWN)
-        assertEquals(2, selection(c))
-
-        c.handleKeyDown(NORTH)
-
-        assertEquals(listOf("Two"), c.cheatVisibleItems.value.map { it.label })
-        assertEquals(1, selection(c))
+        assertEquals(0, selection(c))
 
         c.handleKeyDown(CONFIRM)
 
+        assertEquals(listOf("Two"), c.cheatVisibleItems.value.map { it.label })
+        assertFalse(c.cheatHasRemembered.value)
+        assertEquals(0, selection(c))
+
+        c.handleKeyDown(DPAD_DOWN)
+        c.handleKeyDown(CONFIRM)
+
         assertEquals(listOf(0, 1), bridge.toggledCheatIndexes)
+    }
+
+    @Test fun `the restore row is absent when there is nothing to put back`() {
+        writeCht("a.cht", "One", "Two")
+        val bridge = bridgeFor("a.cht" to listOf("One", "Two"))
+        val c = testController(bridge)
+        c.attachCheats(manager())
+        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
+
+        assertFalse(c.cheatHasRemembered.value)
+        assertEquals(1, selection(c))
+
+        c.replaceTop((c.currentScreen as IGMScreen.Cheats).copy(selectedIndex = 0))
+        c.handleKeyDown(CONFIRM)
+
+        assertTrue(bridge.toggledCheatIndexes.isEmpty())
+    }
+
+    @Test fun `the walk runs restore, then the file, then the cheats`() {
+        writeCht("a.cht", "One", "Two")
+        val bridge = bridgeFor("a.cht" to listOf("One", "Two"))
+        manager().saveLastUsed("a.cht", setOf(CheatIdentity.hash("Two", "CODE1")))
+        val c = testController(bridge)
+        c.attachCheats(manager())
+        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
+
+        assertEquals(0, selection(c))
+
+        c.handleKeyDown(DPAD_DOWN)
+        assertEquals(1, selection(c))
+
+        c.handleKeyDown(DPAD_DOWN)
+        c.handleKeyDown(DPAD_DOWN)
+        assertEquals(3, selection(c))
+
+        c.handleKeyDown(DPAD_DOWN)
+        assertEquals("the walk wraps at the last cheat", 0, selection(c))
+
+        c.handleKeyDown(DPAD_UP)
+        assertEquals(3, selection(c))
+    }
+
+    @Test fun `the restore row cannot cycle the file`() {
+        writeCht("a.cht", "One")
+        writeCht("b.cht", "Three")
+        val bridge = bridgeFor("a.cht" to listOf("One"), "b.cht" to listOf("Three"))
+        manager().saveLastUsed("a.cht", setOf(CheatIdentity.hash("One", "CODE0")))
+        val c = testController(bridge)
+        c.attachCheats(manager())
+        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
+        assertEquals(0, selection(c))
+
+        c.handleKeyDown(DPAD_RIGHT)
+
+        assertEquals("a.cht", c.cheatFileName.value)
+        assertEquals(1, bridge.loadedCheatPaths.size)
+
+        c.handleKeyDown(DPAD_DOWN)
+        c.handleKeyDown(DPAD_RIGHT)
+
+        assertEquals("b.cht", c.cheatFileName.value)
+    }
+
+    @Test fun `restoring in hardcore does not warn, and leaves the warning unspent`() {
+        writeCht("a.cht", "One", "Two")
+        val bridge = bridgeFor("a.cht" to listOf("One", "Two")).apply { hardcoreActive = true }
+        manager().saveLastUsed("a.cht", setOf(CheatIdentity.hash("One", "CODE0")))
+        val c = testController(bridge)
+        c.attachCheats(manager())
+        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
+
+        c.handleKeyDown(CONFIRM)
+
+        assertTrue("restore never warned before, and must not start", c.currentScreen is IGMScreen.Cheats)
+        assertEquals(listOf(0), bridge.toggledCheatIndexes)
+        assertTrue(c.cheatItems.value[0].enabled)
+
+        c.handleKeyDown(DPAD_DOWN)
+        c.handleKeyDown(DPAD_DOWN)
+        c.handleKeyDown(CONFIRM)
+
+        assertTrue("the once-per-session warning is still unspent", c.currentScreen is IGMScreen.CheatsHardcoreWarning)
+    }
+
+    @Test fun `the north button no longer restores`() {
+        writeCht("a.cht", "One", "Two")
+        val bridge = bridgeFor("a.cht" to listOf("One", "Two"))
+        manager().saveLastUsed("a.cht", setOf(CheatIdentity.hash("Two", "CODE1")))
+        val c = testController(bridge)
+        var restored = -1
+        c.onCheatsRestored = { restored = it }
+        c.attachCheats(manager())
+        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
+
+        c.handleKeyDown(NORTH)
+
+        assertEquals(-1, restored)
+        assertTrue(bridge.toggledCheatIndexes.isEmpty())
+        assertTrue(c.cheatHasRemembered.value)
+        assertEquals(0, selection(c))
     }
 
     @Test fun `the filter cycles through all, on and off`() {
@@ -1270,8 +1377,9 @@ class IGMControllerCheatsTest {
 
         assertTrue(c.cheatVisibleItems.value.isEmpty())
         assertTrue(c.cheatHasRemembered.value)
+        assertEquals(0, selection(c))
 
-        c.handleKeyDown(NORTH)
+        c.handleKeyDown(CONFIRM)
 
         assertEquals(listOf(1), bridge.toggledCheatIndexes)
         assertEquals(listOf("Two"), c.cheatVisibleItems.value.map { it.label })

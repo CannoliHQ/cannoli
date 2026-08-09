@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.sp
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.ListSection
 import dev.cannoli.ui.components.PillRowKeyValue
+import dev.cannoli.ui.components.PillRowText
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.SectionHeader
@@ -28,6 +29,7 @@ import dev.cannoli.ui.components.screenInsets
 import dev.cannoli.ui.theme.Spacing
 
 sealed interface CheatListItem {
+    data class Restore(val label: String) : CheatListItem
     data class ActiveFile(val name: String) : CheatListItem
     data class Cheat(val label: String, val value: String, val supported: Boolean) : CheatListItem
     /** Stands in for a section whose rows the filter hid, so its header still draws. */
@@ -37,6 +39,7 @@ sealed interface CheatListItem {
 @Composable
 fun CheatsScreen(
     title: String,
+    restoreLabel: String?,
     fileHeader: String,
     fileName: String,
     cheatsHeader: String,
@@ -49,14 +52,19 @@ fun CheatsScreen(
 ) {
     val verticalPadding = pillVerticalPadding()
     val itemHeight = pillItemHeight(lineHeight, verticalPadding)
-    val sections: kotlin.collections.List<ListSection<CheatListItem>> = listOf(
-        ListSection(fileHeader, listOf(CheatListItem.ActiveFile(fileName))),
-        if (cheats.isEmpty()) {
-            ListSection(null, listOf(CheatListItem.EmptySection(cheatsHeader)))
-        } else {
-            ListSection(cheatsHeader, cheats)
+    val sections: kotlin.collections.List<ListSection<CheatListItem>> = buildList {
+        if (restoreLabel != null) {
+            add(ListSection(null, listOf(CheatListItem.Restore(restoreLabel))))
         }
-    )
+        add(ListSection(fileHeader, listOf(CheatListItem.ActiveFile(fileName))))
+        add(
+            if (cheats.isEmpty()) {
+                ListSection(null, listOf(CheatListItem.EmptySection(cheatsHeader)))
+            } else {
+                ListSection(cheatsHeader, cheats)
+            }
+        )
+    }
 
     ScreenBackground(backgroundImagePath = null, backgroundAlpha = 0.85f, backgroundColor = Color.Black) {
         Box(
@@ -80,6 +88,13 @@ fun CheatsScreen(
                     itemHeight = itemHeight
                 ) { _, item, isSelected ->
                     when (item) {
+                        is CheatListItem.Restore -> PillRowText(
+                            label = item.label,
+                            isSelected = isSelected,
+                            fontSize = fontSize,
+                            lineHeight = lineHeight,
+                            verticalPadding = verticalPadding
+                        )
                         is CheatListItem.ActiveFile -> PillRowKeyValue(
                             label = item.name,
                             value = "",

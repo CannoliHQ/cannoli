@@ -262,8 +262,10 @@ fun CannoliIGM(
                             supported = it.supported,
                         )
                     }
-                    val onSelector = screen.selectedIndex == 0
-                    val selectedCheat = cheats.getOrNull(screen.selectedIndex - 1)
+                    val restoreRows = if (cheatHasRemembered) 1 else 0
+                    val onRestore = restoreRows == 1 && screen.selectedIndex == 0
+                    val onSelector = screen.selectedIndex == restoreRows
+                    val selectedCheat = cheats.getOrNull(screen.selectedIndex - restoreRows - 1)
                     val filterName = when (cheatFilter) {
                         CheatFilter.ALL -> stringResource(dev.cannoli.ui.R.string.value_all)
                         CheatFilter.ON -> onValue
@@ -279,6 +281,9 @@ fun CannoliIGM(
                                 cheatItems.size,
                             )
                         },
+                        restoreLabel = if (cheatHasRemembered) {
+                            stringResource(dev.cannoli.ui.R.string.cheats_restore)
+                        } else null,
                         fileHeader = stringResource(dev.cannoli.ui.R.string.cheats_file),
                         fileName = if (cheatFileName.endsWith(".cht", ignoreCase = true)) {
                             cheatFileName.dropLast(4)
@@ -296,8 +301,8 @@ fun CannoliIGM(
                             }
                         },
                         bottomBarRight = buildList {
-                            if (cheatHasRemembered) {
-                                add(labels.north to stringResource(dev.cannoli.ui.R.string.label_restore_session))
+                            if (onRestore) {
+                                add(labels.confirm to stringResource(dev.cannoli.ui.R.string.label_select))
                             }
                             if (selectedCheat?.supported == true) {
                                 add(labels.confirm to stringResource(dev.cannoli.ui.R.string.label_toggle))

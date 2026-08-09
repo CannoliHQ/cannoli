@@ -663,6 +663,8 @@
     <string name="cheats_file">Cheat File</string>
     <!-- Section header above the cheat list. %1$s = which cheats are shown (All, On, Off). -->
     <string name="cheats_available">Available Cheats (%1$s)</string>
+    <!-- List row that turns the last set of cheats back on. -->
+    <string name="cheats_restore">Restore Last Session</string>
     <string name="cheats_hardcore_warning">Turning on a cheat pauses hardcore achievements for this session.</string>
     <string name="label_restore_session">RESTORE LAST SESSION</string>
     <!-- Scaling mode: use the size the emulator core reports. -->
