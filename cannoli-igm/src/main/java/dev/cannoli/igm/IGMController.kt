@@ -113,6 +113,9 @@ class IGMController(
         // With no session there is nothing to draw, and rendering that is the same reset every
         // other path uses. Clearing by hand here is what let the rows outlive the file.
         renderCheats()
+        // Losing the restore offer moves the file row up under the selection, which would take the
+        // cycle keys with it.
+        (currentScreen as? IGMScreen.Cheats)?.let { placeCheatSelection(it, CheatAnchor.File) }
         cheatFileName.value = file.file.name
         cheatLoadPending = true
         outstandingCheatLoads++
@@ -143,6 +146,11 @@ class IGMController(
             return
         }
         cheatLoadPending = false
+        // Where the selection is now, read before the new rows land. A snapshot arriving mid-visit
+        // is not an entry: the screen keeps the row the user is holding, and only opening it fresh
+        // gets to choose where to start.
+        val open = currentScreen as? IGMScreen.Cheats
+        val anchor = open?.let(::cheatAnchorOf)
         val session = CheatSession(manager, file, observed)
         cheatSession = session
         // A disc switch reinitializes content state, so the set the user had on is put back by
@@ -154,9 +162,7 @@ class IGMController(
             if (restored.isNotEmpty()) bridge.applyCheats()
         }
         renderCheats()
-        (currentScreen as? IGMScreen.Cheats)?.let {
-            replaceTop(it.copy(selectedIndex = initialCheatSelection(session)))
-        }
+        if (open != null && anchor != null) placeCheatSelection(open, anchor)
     }
 
     // A row RetroArch did not take cannot be toggled, so starting on one would offer an action that
@@ -197,14 +203,14 @@ class IGMController(
     }
 
     private fun cycleCheatFilter(screen: IGMScreen.Cheats) {
-        val row = selectedCheatRow(screen)
+        val anchor = cheatAnchorOf(screen)
         cheatFilter.value = when (cheatFilter.value) {
             CheatFilter.ALL -> CheatFilter.ON
             CheatFilter.ON -> CheatFilter.OFF
             CheatFilter.OFF -> CheatFilter.ALL
         }
         renderCheats()
-        placeCheatSelection(screen, row)
+        placeCheatSelection(screen, anchor)
     }
 
     // The screen draws the restore offer when it has work, then the file row, then the filtered
@@ -215,14 +221,33 @@ class IGMController(
     private fun selectedCheatRow(screen: IGMScreen.Cheats): Int? =
         visibleCheatRows.getOrNull(screen.selectedIndex - cheatRestoreRows() - 1)
 
-    // Filtering is presentation only, so the selection follows the cheat it was on. A cheat the new
-    // view hides leaves the position behind instead, and a view with nothing in it leaves the file
-    // row, which is the only thing left to be on.
-    private fun placeCheatSelection(screen: IGMScreen.Cheats, rowIndex: Int?) {
+    /** What the selection is on, which is what it goes back to once the rows have moved. */
+    private sealed interface CheatAnchor {
+        data object Restore : CheatAnchor
+        data object File : CheatAnchor
+        data class Row(val index: Int) : CheatAnchor
+    }
+
+    private fun cheatAnchorOf(screen: IGMScreen.Cheats): CheatAnchor = when {
+        cheatRestoreRows() == 1 && screen.selectedIndex == 0 -> CheatAnchor.Restore
+        else -> selectedCheatRow(screen)?.let(CheatAnchor::Row) ?: CheatAnchor.File
+    }
+
+    // The rows above the cheats come and go, so a remembered index is not a remembered row: the
+    // restore offer appearing pushes the file row down, and it leaving pulls everything up. A cheat
+    // the new view hides leaves the position behind instead, which keeps a walk down the list going.
+    private fun placeCheatSelection(screen: IGMScreen.Cheats, anchor: CheatAnchor) {
         val head = cheatRestoreRows() + 1
-        val last = (head + visibleCheatRows.size - 1).coerceAtLeast(0)
-        val visible = rowIndex?.let { visibleCheatRows.indexOf(it) } ?: -1
-        val index = if (visible >= 0) visible + head else screen.selectedIndex.coerceIn(0, last)
+        val fileRow = head - 1
+        val index = when (anchor) {
+            CheatAnchor.Restore -> if (cheatRestoreRows() == 1) 0 else fileRow
+            CheatAnchor.File -> fileRow
+            is CheatAnchor.Row -> {
+                val visible = visibleCheatRows.indexOf(anchor.index)
+                if (visible >= 0) visible + head
+                else screen.selectedIndex.coerceIn(0, head + visibleCheatRows.size - 1)
+            }
+        }
         replaceTop(screen.copy(selectedIndex = index))
     }
 
@@ -244,7 +269,7 @@ class IGMController(
         renderCheats()
         // Turning a cheat on or off can take it out of the view that is filtering on that very
         // state, so the selection is placed again rather than left on a row that moved.
-        (currentScreen as? IGMScreen.Cheats)?.let { placeCheatSelection(it, rowIndex) }
+        (currentScreen as? IGMScreen.Cheats)?.let { placeCheatSelection(it, CheatAnchor.Row(rowIndex)) }
     }
 
     // Only one file is active at a time, so a set remembered from a different one describes rows
@@ -255,7 +280,7 @@ class IGMController(
         val remembered = cheatManager?.loadLastUsed() ?: return
         if (remembered.fileName != session.file.file.name) return
         val screen = currentScreen as? IGMScreen.Cheats
-        val selected = screen?.let { selectedCheatRow(it) }
+        val anchor = screen?.let(::cheatAnchorOf)
         val restored = session.restore(remembered.hashes)
         if (restored.isEmpty()) return
         for (row in restored) bridge.toggleCheat(row.raIndex)
@@ -263,7 +288,7 @@ class IGMController(
         renderCheats()
         // Everything just turned on, which under a filter on that state can empty the view out from
         // under the selection.
-        if (screen != null) placeCheatSelection(screen, selected)
+        if (screen != null && anchor != null) placeCheatSelection(screen, anchor)
         onCheatsRestored?.invoke(restored.size)
     }
 

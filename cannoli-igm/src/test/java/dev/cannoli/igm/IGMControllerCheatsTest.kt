@@ -377,7 +377,12 @@ class IGMControllerCheatsTest {
         bridge.deliverCheats()
         c.handleKeyDown(DPAD_RIGHT)
         bridge.deliverCheats()
-        assertEquals(0, selection(c))
+
+        // The offer comes back with the file, but the selection stays where the user left it.
+        assertTrue(c.cheatHasRemembered.value)
+        assertEquals(1, selection(c))
+
+        c.handleKeyDown(DPAD_UP)
         c.handleKeyDown(CONFIRM)
 
         assertEquals(1, restored)
@@ -1118,6 +1123,55 @@ class IGMControllerCheatsTest {
         c.handleKeyDown(CONFIRM)
 
         assertEquals(listOf(0, 1), bridge.toggledCheatIndexes)
+    }
+
+    @Test fun `cycling away from the remembered file keeps the file row under the selection`() {
+        writeCht("a.cht", "One")
+        writeCht("b.cht", "Three")
+        val bridge = bridgeFor("a.cht" to listOf("One"), "b.cht" to listOf("Three"))
+            .apply { deferCheatLoads = true }
+        manager().saveLastUsed("a.cht", setOf(CheatIdentity.hash("One", "CODE0")))
+        val c = testController(bridge)
+        c.attachCheats(manager())
+        bridge.deliverCheats()
+        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
+        c.handleKeyDown(DPAD_DOWN)
+        assertEquals(1, selection(c))
+
+        c.handleKeyDown(DPAD_RIGHT)
+
+        assertEquals("b.cht", c.cheatFileName.value)
+        assertEquals("the file row moved up with the offer", 0, selection(c))
+
+        c.handleKeyDown(DPAD_RIGHT)
+        c.handleKeyDown(DPAD_RIGHT)
+
+        assertEquals(4, bridge.loadedCheatPaths.size)
+    }
+
+    @Test fun `cycling back onto the remembered file does not hijack the selection`() {
+        writeCht("a.cht", "One")
+        writeCht("b.cht", "Three")
+        val bridge = bridgeFor("a.cht" to listOf("One"), "b.cht" to listOf("Three"))
+        manager().saveLastUsed("a.cht", setOf(CheatIdentity.hash("One", "CODE0")))
+        val c = testController(bridge)
+        c.attachCheats(manager())
+        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
+        c.handleKeyDown(DPAD_DOWN)
+
+        c.handleKeyDown(DPAD_RIGHT)
+        assertEquals("b.cht", c.cheatFileName.value)
+        assertEquals(0, selection(c))
+
+        c.handleKeyDown(DPAD_RIGHT)
+
+        assertEquals("a.cht", c.cheatFileName.value)
+        assertTrue(c.cheatHasRemembered.value)
+        assertEquals("the restore row came back above, not under, the selection", 1, selection(c))
+
+        c.handleKeyDown(DPAD_RIGHT)
+
+        assertEquals("b.cht", c.cheatFileName.value)
     }
 
     @Test fun `the restore row is absent when there is nothing to put back`() {
