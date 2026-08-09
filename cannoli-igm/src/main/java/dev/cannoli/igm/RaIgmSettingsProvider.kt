@@ -1,5 +1,7 @@
 package dev.cannoli.igm
 
+import dev.cannoli.core.CheevosSessionKeys
+
 private const val LOCAL_TOGGLE_PREFIX = "cannoli_"
 private const val RA_MENU_KEY = "__ra_menu__"
 private const val EMULATOR_CATEGORY = "emulator"
@@ -171,8 +173,8 @@ class RaIgmSettingsProvider(
             },
         ) { choice ->
             when (choice) {
-                0 -> host.raSaveOverride(RaOverrideScope.CONTENT_DIR, changedKeys.toSet())
-                1 -> host.raSaveOverride(RaOverrideScope.GAME, changedKeys.toSet())
+                0 -> host.raSaveOverride(RaOverrideScope.CONTENT_DIR, overrideKeys())
+                1 -> host.raSaveOverride(RaOverrideScope.GAME, overrideKeys())
             }
             clearDirty()
             onOpenNativeMenu()
@@ -186,11 +188,17 @@ class RaIgmSettingsProvider(
             options = listOf(strings.savePlatform, strings.saveGame, strings.dontSave),
         ) { choice ->
             when (choice) {
-                0 -> host.raSaveOverride(RaOverrideScope.CONTENT_DIR, changedKeys.toSet())
-                1 -> host.raSaveOverride(RaOverrideScope.GAME, changedKeys.toSet())
+                0 -> host.raSaveOverride(RaOverrideScope.CONTENT_DIR, overrideKeys())
+                1 -> host.raSaveOverride(RaOverrideScope.GAME, overrideKeys())
             }
             clearDirty()
         }
+
+    // The RetroAchievements session keys are injected fresh into the per-launch config every launch
+    // and must never be persisted in an override, where a stale copy could re-enable hardcore
+    // against a forced softcore. RaOptionCatalog exposes none of them today, so this is defence in
+    // depth, dropping any that reached the changed set before it crosses to the native writer.
+    private fun overrideKeys(): Set<String> = changedKeys - CheevosSessionKeys.ALL
 
     private fun clearDirty() {
         dirty = false
