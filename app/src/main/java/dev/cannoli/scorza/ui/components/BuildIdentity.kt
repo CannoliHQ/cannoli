@@ -9,6 +9,10 @@ data class BuildIdentityLines(val version: String, val detail: String?)
 
 private const val RELEASE_SEPARATOR = "  •  "
 
+// The release date names when the build was cut, so it has to read the same everywhere. Deriving
+// it in the viewer's zone would slide a near-midnight build onto a different day per device.
+private val BUILD_ZONE: TimeZone = TimeZone.getTimeZone("UTC")
+
 private fun format(pattern: String, millis: Long, zone: TimeZone): String =
     SimpleDateFormat(pattern, Locale.US).apply { timeZone = zone }.format(Date(millis))
 
@@ -19,10 +23,10 @@ fun buildIdentityLines(
     dirty: Boolean,
     buildTimeMillis: Long,
     debugLabel: String,
-    zone: TimeZone = TimeZone.getDefault(),
+    deviceZone: TimeZone = TimeZone.getDefault(),
 ): BuildIdentityLines {
     if (!debug) {
-        val date = format("yyyy-MM-dd", buildTimeMillis, zone)
+        val date = format("yyyy-MM-dd", buildTimeMillis, BUILD_ZONE)
         return BuildIdentityLines(
             version = listOf("v$versionName", date, hash).joinToString(RELEASE_SEPARATOR),
             detail = null,
@@ -31,6 +35,6 @@ fun buildIdentityLines(
     val sha = if (dirty) "$hash-dirty" else hash
     return BuildIdentityLines(
         version = debugLabel,
-        detail = "$sha${RELEASE_SEPARATOR}${format("yyyy-MM-dd HH:mm", buildTimeMillis, zone)}",
+        detail = "$sha${RELEASE_SEPARATOR}${format("yyyy-MM-dd HH:mm", buildTimeMillis, deviceZone)}",
     )
 }
