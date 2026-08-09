@@ -550,7 +550,6 @@
     <string name="igm_quit">Έξοδος</string>
     <string name="igm_cheats">Cheat</string>
     <string name="title_cheats">Cheat</string>
-    <string name="label_restore_session">ΕΠΑΝΑΦΟΡΑ ΤΗΣ ΑΝΑΖΗΤΗΣΗΣ</string>
     <!-- Scaling mode: use the size the emulator core reports. -->
     <!-- Scaling mode: integer scaling pushed beyond 1x to fill more of the screen. -->
     <!-- Scaling mode: fit the screen while keeping the aspect ratio. -->

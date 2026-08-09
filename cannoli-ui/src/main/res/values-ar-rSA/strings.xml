@@ -467,7 +467,6 @@
     <string name="igm_quit">Quit</string>
     <string name="igm_cheats">Cheats</string>
     <string name="title_cheats">Cheats</string>
-    <string name="label_restore_session">RESTORE LAST SESSION</string>
     <string name="override_source_global">Global</string>
     <string name="override_source_game">This Game</string>
     <string name="device_controller">Controller</string>
