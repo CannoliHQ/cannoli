@@ -63,11 +63,15 @@ class RaLoginController(
         ioScope.launch {
             val res = runCatching { clientProvider().validateToken(user, token) }.getOrNull()
             // A network failure is not evidence the token is bad, so only a reachable server
-            // that rejects it flips the row to invalid.
+            // that rejects it flips the row to invalid. A 200 that is not the API's JSON is the
+            // same kind of non-answer: a proxy or portal reply, not a rejection.
             val state = when {
                 res == null || res.code !in 200..299 -> RaTokenState.UNREACHABLE
-                res.body.contains("\"Success\":true") -> RaTokenState.VALID
-                else -> RaTokenState.INVALID
+                else -> when (RaConnectClient.successFlag(res.body)) {
+                    true -> RaTokenState.VALID
+                    false -> RaTokenState.INVALID
+                    null -> RaTokenState.UNREACHABLE
+                }
             }
             withContext(Dispatchers.Main) {
                 val ds = nav.dialogState.value
@@ -77,11 +81,16 @@ class RaLoginController(
     }
 
     private fun apply(result: RaConnectClient.LoginResult) {
+        // Backing out of the progress dialog abandons the wait, not the request, which cannot be
+        // recalled anyway. A login that already succeeded is still kept, so a correct password is
+        // never typed for nothing, but no dialog is written over whatever the user opened instead.
+        val stillWaiting = nav.dialogState.value is DialogState.RALoggingIn
         when (result) {
             is RaConnectClient.LoginResult.Success -> {
                 settings.raUsername = result.username
                 settings.raToken = result.token
                 settings.raPassword = ""
+                if (!stillWaiting) return
                 nav.dialogState.value = DialogState.RAAccount(
                     username = result.username,
                     score = result.score,
@@ -90,9 +99,9 @@ class RaLoginController(
                 )
             }
             is RaConnectClient.LoginResult.InvalidCredentials ->
-                fail(dev.cannoli.scorza.R.string.ra_login_invalid)
+                if (stillWaiting) fail(dev.cannoli.scorza.R.string.ra_login_invalid)
             RaConnectClient.LoginResult.NetworkError ->
-                fail(dev.cannoli.scorza.R.string.ra_login_network)
+                if (stillWaiting) fail(dev.cannoli.scorza.R.string.ra_login_network)
         }
     }
 

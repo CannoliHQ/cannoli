@@ -27,13 +27,60 @@ class CheevosLaunchConfigTest : LaunchConfigHarness() {
         assertEquals("bob", cfg["cheevos_username"])
         assertEquals("abc123", cfg["cheevos_token"])
         assertEquals("false", cfg["cheevos_hardcore_mode_enable"])
-        assertFalse(cfg.containsKey("cheevos_password"))
+        assertEquals("", cfg["cheevos_password"])
     }
 
-    @Test fun `a logged out launch writes no cheevos keys`() {
+    @Test fun `a logged out launch turns cheevos off rather than staying silent`() {
         val root = tmp.newFolder()
         val cfg = launchedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA"))
-        assertTrue(cfg.keys.none { it.startsWith("cheevos_") })
+        assertEquals("false", cfg["cheevos_enable"])
+        assertEquals("", cfg["cheevos_password"])
+        assertFalse(cfg.containsKey("cheevos_username"))
+        assertFalse(cfg.containsKey("cheevos_token"))
+    }
+
+    /**
+     * A build before this one seeded the base config from an external RetroArch, so an upgraded
+     * install carries that file's cheevos block. syncRetroArchConfig only writes a base when none
+     * exists, so it survives forever, and applyOverrides leaves any key the launch does not state.
+     */
+    private fun seedInheritedCheevosBlock(root: java.io.File) {
+        val cfg = java.io.File(
+            dev.cannoli.scorza.config.CannoliPaths(root.absolutePath).configRetroArch,
+            "retroarch.cfg",
+        )
+        cfg.parentFile!!.mkdirs()
+        cfg.writeText(
+            """
+            cheevos_enable = "true"
+            cheevos_username = "olduser"
+            cheevos_token = "oldtoken"
+            cheevos_password = "hunter2"
+            cheevos_hardcore_mode_enable = "true"
+            """.trimIndent()
+        )
+    }
+
+    @Test fun `a logged out launch scrubs an inherited cheevos block`() {
+        val root = tmp.newFolder()
+        seedInheritedCheevosBlock(root)
+        val cfg = launchedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA"))
+        assertEquals("false", cfg["cheevos_enable"])
+        assertEquals("", cfg["cheevos_password"])
+        // The inherited hardcore line is left alone and is inert: RetroArch and the IGM both
+        // require cheevos_enable as well, so the save state rows and the auto slot stay.
+        assertTrue(cfg.containsKey("savestate_auto_save"))
+    }
+
+    @Test fun `a logged in launch clears an inherited password`() {
+        val root = tmp.newFolder()
+        seedInheritedCheevosBlock(root)
+        loggedIn()
+        val cfg = launchedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA"))
+        assertEquals("", cfg["cheevos_password"])
+        assertEquals("bob", cfg["cheevos_username"])
+        assertEquals("abc123", cfg["cheevos_token"])
+        assertEquals("false", cfg["cheevos_hardcore_mode_enable"])
     }
 
     @Test fun `a hardcore launch writes neither auto state key`() {

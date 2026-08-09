@@ -2,7 +2,6 @@ package dev.cannoli.scorza.achievements
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
 
 class RaOfflinePreloader(
     private val client: RaConnectClient,
@@ -43,6 +42,6 @@ class RaOfflinePreloader(
     }
 
     private fun RaConnectClient.RawResponse.isOk() = code in 200..299
-    private fun String.looksSuccessful(): Boolean =
-        try { JSONObject(this).optBoolean("Success", false) } catch (_: Exception) { false }
+    // Preload has one outcome for "not a yes", so an unreadable body folds into false here.
+    private fun String.looksSuccessful(): Boolean = RaConnectClient.successFlag(this) == true
 }

@@ -682,6 +682,10 @@ class DialogInputHandler @Inject constructor(
                 settings.raUsername = ""
                 settings.raToken = ""
                 settings.raPassword = ""
+                // load() rebuilds the rows from the repository but never touches this, so without
+                // it the previous user's password stays masked on the row and re-arms Log In as
+                // soon as a new username is typed.
+                settingsViewModel.raPassword = ""
                 settingsViewModel.load()
                 nav.dialogState.value = DialogState.None
             }

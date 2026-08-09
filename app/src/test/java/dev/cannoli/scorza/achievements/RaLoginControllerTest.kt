@@ -159,6 +159,53 @@ class RaLoginControllerTest {
         assertEquals("Could not reach RetroAchievements. Check your connection.", ds.message)
     }
 
+    @Test fun `a 200 that is not the api's json is unreachable, not invalid`() {
+        val server = MockWebServer()
+        server.enqueue(MockResponse().setBody("<html>captive portal</html>"))
+        server.start()
+        val s = settings().apply { raToken = "abc123" }
+
+        controller(s, server).openAccountMenu()
+        drainMain()
+
+        assertEquals(
+            RaTokenState.UNREACHABLE,
+            (nav.dialogState.value as DialogState.RAAccount).tokenState,
+        )
+        server.shutdown()
+    }
+
+    @Test fun `backing out of the progress dialog keeps the login but shows no dialog`() {
+        val server = MockWebServer()
+        server.enqueue(MockResponse().setBody("""{"Success":true,"User":"Bob","Token":"abc123"}"""))
+        server.start()
+        val s = settings()
+
+        controller(s, server).login("bob", "hunter2")
+        // The answer lands on the main looper, which Robolectric holds until drainMain. Backing
+        // out before then is the race: the user is somewhere else when the result arrives.
+        nav.dialogState.value = DialogState.None
+        drainMain()
+
+        assertEquals(DialogState.None, nav.dialogState.value)
+        assertEquals("abc123", s.raToken)
+        server.shutdown()
+    }
+
+    @Test fun `a failure that lands after backing out shows no dialog either`() {
+        val server = MockWebServer()
+        server.enqueue(MockResponse().setBody("""{"Success":false,"Error":"nope"}"""))
+        server.start()
+        val s = settings()
+
+        controller(s, server).login("bob", "wrong")
+        nav.dialogState.value = DialogState.None
+        drainMain()
+
+        assertEquals(DialogState.None, nav.dialogState.value)
+        server.shutdown()
+    }
+
     @Test fun `an empty username never hits the network`() {
         val s = settings().apply { raUsername = "" }
 

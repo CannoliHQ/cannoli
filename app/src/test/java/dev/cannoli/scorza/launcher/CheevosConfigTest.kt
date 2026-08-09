@@ -28,8 +28,11 @@ class CheevosConfigTest {
         assertEquals("false", k["cheevos_badges_enable"])
     }
 
-    @Test fun `the password is never emitted`() {
-        assertNull(keys()["cheevos_password"])
+    // Stated empty rather than omitted: Cannoli never launches with a password, and an inherited
+    // base config can carry one, so the launch has to say so instead of leaving it alone.
+    @Test fun `the password is always emitted empty`() {
+        assertEquals("", keys()["cheevos_password"])
+        assertEquals("", keys(token = "")["cheevos_password"])
     }
 
     @Test fun `hardcore is always stated`() {
@@ -77,13 +80,19 @@ class CheevosConfigTest {
         assertNull(off["savestate_auto_load"])
     }
 
-    @Test fun `no token means no cheevos keys at all`() {
-        assertTrue(keys(token = "").isEmpty())
-        assertTrue(keys(username = "").isEmpty())
+    // No account means the keys are scrubbed, not skipped. Skipping them is what let an inherited
+    // base config keep a stranger's account live for a logged out player.
+    @Test fun `no token scrubs cheevos rather than emitting nothing`() {
+        for (k in listOf(keys(token = ""), keys(username = ""))) {
+            assertEquals("false", k["cheevos_enable"])
+            assertEquals("", k["cheevos_password"])
+            assertNull(k["cheevos_username"])
+            assertNull(k["cheevos_token"])
+        }
     }
 
     @Test fun `force softcore alone does not enable cheevos`() {
-        assertTrue(keys(token = "", forceSoftcore = true).isEmpty())
+        assertEquals("false", keys(token = "", forceSoftcore = true)["cheevos_enable"])
     }
 
     @Test fun `hardcore is off unless the emission says otherwise`() {

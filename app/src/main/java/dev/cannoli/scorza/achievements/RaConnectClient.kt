@@ -69,6 +69,19 @@ class RaConnectClient(
     companion object {
         private const val RA_CLIENT_VERSION = "12.3.0"
 
+        /**
+         * The API's Success flag, or null when the body is not the JSON it promises.
+         *
+         * Null is not false. A 200 carrying a captive portal's HTML says nothing about the
+         * credentials, so the callers that can tell the difference report it as unreachable
+         * rather than accusing the user of a bad token.
+         */
+        fun successFlag(body: String): Boolean? = try {
+            JSONObject(body).takeIf { it.has("Success") }?.optBoolean("Success", false)
+        } catch (_: Exception) {
+            null
+        }
+
         /** OkHttp is designed to be shared; one instance reuses the connection pool and dispatcher
          *  across every request instead of spinning up a new pool per call during bulk preload. */
         private val sharedClient: OkHttpClient by lazy { OkHttpClient() }
