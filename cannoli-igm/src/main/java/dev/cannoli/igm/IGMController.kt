@@ -110,8 +110,9 @@ class IGMController(
     private fun loadSelectedCheatFile() {
         val file = cheatFiles.getOrNull(selectedCheatFile) ?: return
         cheatSession = null
-        cheatItems.value = emptyList()
-        cheatHasRemembered.value = false
+        // With no session there is nothing to draw, and rendering that is the same reset every
+        // other path uses. Clearing by hand here is what let the rows outlive the file.
+        renderCheats()
         cheatFileName.value = file.file.name
         cheatLoadPending = true
         outstandingCheatLoads++
@@ -248,11 +249,16 @@ class IGMController(
         val session = cheatSession ?: return
         val remembered = cheatManager?.loadLastUsed() ?: return
         if (remembered.fileName != session.file.file.name) return
+        val screen = currentScreen as? IGMScreen.Cheats
+        val selected = screen?.let { selectedCheatRow(it) }
         val restored = session.restore(remembered.hashes)
         if (restored.isEmpty()) return
         for (row in restored) bridge.toggleCheat(row.raIndex)
         bridge.applyCheats()
         renderCheats()
+        // Everything just turned on, which under a filter on that state can empty the view out from
+        // under the selection.
+        if (screen != null) placeCheatSelection(screen, selected)
         onCheatsRestored?.invoke(restored.size)
     }
 
@@ -269,13 +275,13 @@ class IGMController(
         // answers with nothing, which would otherwise leave no way off it.
         if (cheatLoadPending && !navigates && !cycles) return
         when (keycode) {
-            19 -> if (count > 0) replaceTop(
+            19 -> replaceTop(
                 screen.copy(
                     selectedIndex = if (screen.selectedIndex < 0) count - 1
                     else ((screen.selectedIndex - 1) + count) % count
                 )
             )
-            20 -> if (count > 0) replaceTop(
+            20 -> replaceTop(
                 screen.copy(
                     selectedIndex = if (screen.selectedIndex < 0) 0
                     else (screen.selectedIndex + 1) % count

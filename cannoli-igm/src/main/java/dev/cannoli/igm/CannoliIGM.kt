@@ -280,7 +280,9 @@ fun CannoliIGM(
                             )
                         },
                         fileHeader = stringResource(dev.cannoli.ui.R.string.cheats_file),
-                        fileName = cheatFileName.removeSuffix(".cht"),
+                        fileName = if (cheatFileName.endsWith(".cht", ignoreCase = true)) {
+                            cheatFileName.dropLast(4)
+                        } else cheatFileName,
                         cheatsHeader = stringResource(dev.cannoli.ui.R.string.cheats_available, filterName),
                         cheats = cheats,
                         selectedIndex = screen.selectedIndex,

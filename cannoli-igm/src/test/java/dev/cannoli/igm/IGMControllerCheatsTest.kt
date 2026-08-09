@@ -906,6 +906,7 @@ class IGMControllerCheatsTest {
 
         assertEquals("b.cht", c.cheatFileName.value)
         assertTrue(c.cheatItems.value.isEmpty())
+        assertTrue("the refused file draws no rows at all", c.cheatVisibleItems.value.isEmpty())
 
         c.handleKeyDown(DPAD_RIGHT)
 
@@ -1063,6 +1064,53 @@ class IGMControllerCheatsTest {
         c.handleKeyDown(DPAD_RIGHT)
 
         assertEquals(0, bridge.disc)
+    }
+
+    @Test fun `a cycle stops drawing the old file's rows while the new one loads`() {
+        writeCht("a.cht", "One", "Two")
+        writeCht("b.cht", "Three")
+        val bridge = bridgeFor("a.cht" to listOf("One", "Two"), "b.cht" to listOf("Three"))
+            .apply { deferCheatLoads = true }
+        val c = testController(bridge)
+        c.attachCheats(manager())
+        bridge.deliverCheats()
+        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
+        assertEquals(listOf("One", "Two"), c.cheatVisibleItems.value.map { it.label })
+
+        c.handleKeyDown(DPAD_RIGHT)
+
+        assertTrue(c.cheatItems.value.isEmpty())
+        assertTrue(c.cheatVisibleItems.value.isEmpty())
+
+        bridge.deliverCheats()
+
+        assertEquals(listOf("Three"), c.cheatVisibleItems.value.map { it.label })
+    }
+
+    @Test fun `a restore under the off filter leaves the selection somewhere real`() {
+        writeCht("a.cht", "One", "Two")
+        val bridge = bridgeFor("a.cht" to listOf("One", "Two"))
+        manager().saveLastUsed("a.cht", setOf(CheatIdentity.hash("One", "CODE0")))
+        val c = testController(bridge)
+        c.attachCheats(manager())
+        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
+
+        c.handleKeyDown(WEST)
+        c.handleKeyDown(WEST)
+        assertEquals(listOf("One", "Two"), c.cheatVisibleItems.value.map { it.label })
+
+        c.handleKeyDown(DPAD_DOWN)
+        c.handleKeyDown(DPAD_DOWN)
+        assertEquals(2, selection(c))
+
+        c.handleKeyDown(NORTH)
+
+        assertEquals(listOf("Two"), c.cheatVisibleItems.value.map { it.label })
+        assertEquals(1, selection(c))
+
+        c.handleKeyDown(CONFIRM)
+
+        assertEquals(listOf(0, 1), bridge.toggledCheatIndexes)
     }
 
     @Test fun `the filter cycles through all, on and off`() {
