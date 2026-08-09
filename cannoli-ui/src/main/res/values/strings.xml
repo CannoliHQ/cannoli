@@ -67,6 +67,7 @@
     <string name="label_ra_settings">RA SETTINGS</string>
     <string name="label_details">DETAILS</string>
     <string name="label_all">ALL</string>
+    <string name="label_filter">FILTER</string>
     <string name="label_unlocked">UNLOCKED</string>
     <string name="label_locked">LOCKED</string>
     <string name="label_remap">REMAP</string>
@@ -425,6 +426,7 @@
     <!-- Setting values -->
     <string name="value_on">On</string>
     <string name="value_off">Off</string>
+    <string name="value_all">All</string>
     <string name="value_show">Show</string>
     <string name="value_hide">Hide</string>
     <string name="value_none">None</string>
@@ -655,8 +657,10 @@
     <string name="title_cheats">Cheats</string>
     <!-- Screen title. %1$d = cheats currently on, %2$d = cheats in the file. -->
     <string name="title_cheats_count">Cheats (%1$d/%2$d)</string>
-    <!-- Label of the row that picks which cheat file is active. -->
-    <string name="cheats_file">File</string>
+    <!-- Section header above the row naming the active cheat file. -->
+    <string name="cheats_file">Cheat File</string>
+    <!-- Section header above the cheat list. %1$s = which cheats are shown (All, On, Off). -->
+    <string name="cheats_available">Available Cheats (%1$s)</string>
     <string name="cheats_hardcore_warning">Turning on a cheat pauses hardcore achievements for this session.</string>
     <string name="label_restore_session">RESTORE LAST SESSION</string>
     <!-- Scaling mode: use the size the emulator core reports. -->

@@ -381,6 +381,8 @@ class IGMOverlay(
                     undoLabel = controller.undoLabel.value,
                     settingsItems = controller.settingsItems.value,
                     cheatItems = controller.cheatItems.value,
+                    cheatVisibleItems = controller.cheatVisibleItems.value,
+                    cheatFilter = controller.cheatFilter.value,
                     cheatFileName = controller.cheatFileName.value,
                     cheatFileCount = controller.cheatFileCount,
                     cheatHasRemembered = controller.cheatHasRemembered.value,

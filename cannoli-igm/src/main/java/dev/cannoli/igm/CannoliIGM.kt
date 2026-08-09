@@ -76,6 +76,8 @@ fun CannoliIGM(
     undoLabel: String?,
     settingsItems: List<IGMSettingsItem>,
     cheatItems: List<IGMController.CheatItem>,
+    cheatVisibleItems: List<IGMController.CheatItem>,
+    cheatFilter: CheatFilter,
     cheatFileName: String,
     cheatFileCount: Int,
     cheatHasRemembered: Boolean,
@@ -253,24 +255,20 @@ fun CannoliIGM(
                 is IGMScreen.Cheats -> {
                     val onValue = stringResource(dev.cannoli.ui.R.string.value_on)
                     val offValue = stringResource(dev.cannoli.ui.R.string.value_off)
-                    val hasSelector = cheatFileCount > 1
-                    val items = buildList {
-                        if (hasSelector) {
-                            add(CheatListItem.FileSelector(
-                                label = stringResource(dev.cannoli.ui.R.string.cheats_file),
-                                value = cheatFileName,
-                            ))
-                        }
-                        cheatItems.forEach {
-                            add(CheatListItem.Cheat(
-                                label = it.label,
-                                value = if (it.enabled) onValue else offValue,
-                                supported = it.supported,
-                            ))
-                        }
+                    val cheats = cheatVisibleItems.map {
+                        CheatListItem.Cheat(
+                            label = it.label,
+                            value = if (it.enabled) onValue else offValue,
+                            supported = it.supported,
+                        )
                     }
-                    val onSelector = hasSelector && screen.selectedIndex == 0
-                    val selectedCheat = items.getOrNull(screen.selectedIndex) as? CheatListItem.Cheat
+                    val onSelector = screen.selectedIndex == 0
+                    val selectedCheat = cheats.getOrNull(screen.selectedIndex - 1)
+                    val filterName = when (cheatFilter) {
+                        CheatFilter.ALL -> stringResource(dev.cannoli.ui.R.string.value_all)
+                        CheatFilter.ON -> onValue
+                        CheatFilter.OFF -> offValue
+                    }
                     CheatsScreen(
                         title = if (cheatItems.isEmpty()) {
                             stringResource(dev.cannoli.ui.R.string.title_cheats)
@@ -281,11 +279,17 @@ fun CannoliIGM(
                                 cheatItems.size,
                             )
                         },
-                        items = items,
+                        fileHeader = stringResource(dev.cannoli.ui.R.string.cheats_file),
+                        fileName = cheatFileName.removeSuffix(".cht"),
+                        cheatsHeader = stringResource(dev.cannoli.ui.R.string.cheats_available, filterName),
+                        cheats = cheats,
                         selectedIndex = screen.selectedIndex,
                         bottomBarLeft = buildList {
                             add(labels.back to stringResource(dev.cannoli.ui.R.string.label_back))
-                            if (onSelector) {
+                            if (cheatItems.isNotEmpty()) {
+                                add(labels.west to stringResource(dev.cannoli.ui.R.string.label_filter))
+                            }
+                            if (onSelector && cheatFileCount > 1) {
                                 add(DPAD_HORIZONTAL to stringResource(dev.cannoli.ui.R.string.label_change))
                             }
                         },

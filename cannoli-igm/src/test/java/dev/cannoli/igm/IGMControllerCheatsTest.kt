@@ -15,6 +15,7 @@ private const val DPAD_LEFT = 21
 private const val DPAD_RIGHT = 22
 private const val CONFIRM = 96
 private const val BACK = 97
+private const val WEST = 99
 private const val NORTH = 100
 
 class IGMControllerCheatsTest {
@@ -142,16 +143,20 @@ class IGMControllerCheatsTest {
         assertEquals(3, bridge.loadedCheatPaths.size)
     }
 
-    @Test fun `a single file has no selector row so left and right do nothing`() {
+    @Test fun `a single file still shows its file row but cannot cycle it`() {
         writeCht("a.cht", "One")
         val bridge = bridgeFor("a.cht" to listOf("One"))
         val c = testController(bridge)
         c.attachCheats(manager())
         c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
 
+        c.handleKeyDown(DPAD_UP)
+        assertEquals(0, selection(c))
+
         c.handleKeyDown(DPAD_RIGHT)
 
         assertEquals(1, bridge.loadedCheatPaths.size)
+        assertEquals("a.cht", c.cheatFileName.value)
         assertEquals(0, selection(c))
     }
 
@@ -483,7 +488,7 @@ class IGMControllerCheatsTest {
         c.attachCheats(manager())
         c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
 
-        assertEquals(1, selection(c))
+        assertEquals(2, selection(c))
 
         c.handleKeyDown(CONFIRM)
 
@@ -499,7 +504,7 @@ class IGMControllerCheatsTest {
         c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
 
         c.handleKeyDown(DPAD_UP)
-        assertEquals(0, selection(c))
+        assertEquals(1, selection(c))
 
         c.handleKeyDown(CONFIRM)
 
@@ -529,13 +534,13 @@ class IGMControllerCheatsTest {
         val c = testController(bridge)
         c.attachCheats(manager())
         c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
-        assertEquals(1, selection(c))
+        assertEquals(2, selection(c))
 
         c.handleKeyDown(BACK)
         c.handleKeyDown(CONFIRM)
 
         assertEquals(1, bridge.loadedCheatPaths.size)
-        assertEquals(1, selection(c))
+        assertEquals(2, selection(c))
     }
 
     @Test fun `a snapshot that lands with no screen open still places the selection`() {
@@ -552,7 +557,7 @@ class IGMControllerCheatsTest {
         c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
 
         assertEquals(1, bridge.loadedCheatPaths.size)
-        assertEquals(1, selection(c))
+        assertEquals(2, selection(c))
     }
 
     @Test fun `two disc switches in a row keep the set to restore`() {
@@ -605,7 +610,7 @@ class IGMControllerCheatsTest {
         c.handleKeyDown(CONFIRM)
 
         assertEquals(listOf(false, true), c.cheatItems.value.map { it.supported })
-        assertEquals(1, selection(c))
+        assertEquals(2, selection(c))
     }
 
     @Test fun `a snapshot for the previous file never becomes the new file's session`() {
@@ -909,7 +914,9 @@ class IGMControllerCheatsTest {
         assertEquals(listOf("One", "Two"), c.cheatItems.value.map { it.label })
     }
 
-    @Test fun `an empty answer releases the token when nothing else is in flight`() {
+    // The release itself is unobservable while the selector is exempt from the input gate, so what
+    // this holds is the outcome: a refused file does not swallow the work done after it.
+    @Test fun `a refused file does not swallow the toggle after it`() {
         writeCht("a.cht", "One", "Two")
         writeCht("b.cht", "Three")
         val bridge = bridgeFor("a.cht" to listOf("One", "Two")).apply {
@@ -1056,6 +1063,170 @@ class IGMControllerCheatsTest {
         c.handleKeyDown(DPAD_RIGHT)
 
         assertEquals(0, bridge.disc)
+    }
+
+    @Test fun `the filter cycles through all, on and off`() {
+        writeCht("a.cht", "One", "Two")
+        val bridge = bridgeFor("a.cht" to listOf("One", "Two"))
+        val c = testController(bridge)
+        c.attachCheats(manager())
+        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
+        c.handleKeyDown(CONFIRM)
+        assertTrue(c.cheatItems.value[0].enabled)
+
+        c.handleKeyDown(WEST)
+
+        assertEquals(CheatFilter.ON, c.cheatFilter.value)
+        assertEquals(listOf("One"), c.cheatVisibleItems.value.map { it.label })
+
+        c.handleKeyDown(WEST)
+
+        assertEquals(CheatFilter.OFF, c.cheatFilter.value)
+        assertEquals(listOf("Two"), c.cheatVisibleItems.value.map { it.label })
+
+        c.handleKeyDown(WEST)
+
+        assertEquals(CheatFilter.ALL, c.cheatFilter.value)
+        assertEquals(listOf("One", "Two"), c.cheatVisibleItems.value.map { it.label })
+        assertEquals(listOf("One", "Two"), c.cheatItems.value.map { it.label })
+    }
+
+    @Test fun `a toggle under a filter hits the selected cheat, not its position`() {
+        writeCht("a.cht", "One", "Two", "Three")
+        val bridge = bridgeFor("a.cht" to listOf("One", "Two", "Three"))
+        val c = testController(bridge)
+        c.attachCheats(manager())
+        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
+        c.handleKeyDown(CONFIRM)
+
+        c.handleKeyDown(WEST)
+        c.handleKeyDown(WEST)
+
+        assertEquals(listOf("Two", "Three"), c.cheatVisibleItems.value.map { it.label })
+
+        c.handleKeyDown(DPAD_DOWN)
+        c.handleKeyDown(CONFIRM)
+
+        assertEquals(listOf(0, 2), bridge.toggledCheatIndexes)
+        assertTrue(c.cheatItems.value[2].enabled)
+        assertFalse(c.cheatItems.value[1].enabled)
+    }
+
+    @Test fun `the selection follows its cheat across a filter flip`() {
+        writeCht("a.cht", "One", "Two", "Three")
+        val bridge = bridgeFor("a.cht" to listOf("One", "Two", "Three"))
+        val c = testController(bridge)
+        c.attachCheats(manager())
+        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
+        c.handleKeyDown(DPAD_DOWN)
+        c.handleKeyDown(DPAD_DOWN)
+        c.handleKeyDown(CONFIRM)
+        assertTrue(c.cheatItems.value[2].enabled)
+        assertEquals(3, selection(c))
+
+        c.handleKeyDown(WEST)
+
+        assertEquals(listOf("Three"), c.cheatVisibleItems.value.map { it.label })
+        assertEquals(1, selection(c))
+
+        c.handleKeyDown(CONFIRM)
+
+        assertEquals(listOf(2, 2), bridge.toggledCheatIndexes)
+    }
+
+    @Test fun `a filter that hides everything leaves the selection on the file row`() {
+        writeCht("a.cht", "One", "Two")
+        val bridge = bridgeFor("a.cht" to listOf("One", "Two"))
+        val c = testController(bridge)
+        c.attachCheats(manager())
+        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
+
+        c.handleKeyDown(WEST)
+
+        assertTrue(c.cheatVisibleItems.value.isEmpty())
+        assertEquals(0, selection(c))
+
+        c.handleKeyDown(CONFIRM)
+
+        assertTrue(bridge.toggledCheatIndexes.isEmpty())
+
+        c.handleKeyDown(WEST)
+
+        assertEquals(listOf("One", "Two"), c.cheatVisibleItems.value.map { it.label })
+    }
+
+    @Test fun `a toggle that hides its own row keeps the list usable`() {
+        writeCht("a.cht", "One", "Two")
+        val bridge = bridgeFor("a.cht" to listOf("One", "Two"))
+        val c = testController(bridge)
+        c.attachCheats(manager())
+        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
+
+        c.handleKeyDown(WEST)
+        c.handleKeyDown(WEST)
+        assertEquals(listOf("One", "Two"), c.cheatVisibleItems.value.map { it.label })
+
+        c.handleKeyDown(DPAD_DOWN)
+        c.handleKeyDown(DPAD_DOWN)
+        c.handleKeyDown(CONFIRM)
+
+        assertEquals(listOf("One"), c.cheatVisibleItems.value.map { it.label })
+        assertEquals(1, selection(c))
+
+        c.handleKeyDown(CONFIRM)
+
+        assertEquals(listOf(1, 0), bridge.toggledCheatIndexes)
+    }
+
+    @Test fun `the hardcore warning arms the cheat under the selection, not its position`() {
+        writeCht("a.cht", "One", "Two", "Three")
+        val path = File(tmp.root, "Cheats/nes/Game/a.cht").absolutePath
+        val bridge = FakeRetroArchBridge().apply {
+            hardcoreActive = true
+            cheatRowsByPath[path] = listOf(
+                RetroArchBridge.CheatRow(0, "One", "CODE0", enabled = true, supported = true),
+                RetroArchBridge.CheatRow(1, "Two", "CODE1", enabled = false, supported = true),
+                RetroArchBridge.CheatRow(2, "Three", "CODE2", enabled = false, supported = true),
+            )
+        }
+        val c = testController(bridge)
+        c.attachCheats(manager())
+        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
+
+        c.handleKeyDown(WEST)
+        c.handleKeyDown(WEST)
+        assertEquals(listOf("Two", "Three"), c.cheatVisibleItems.value.map { it.label })
+
+        c.handleKeyDown(DPAD_DOWN)
+        c.handleKeyDown(CONFIRM)
+
+        assertTrue(c.currentScreen is IGMScreen.CheatsHardcoreWarning)
+        assertEquals(2, (c.currentScreen as IGMScreen.CheatsHardcoreWarning).pendingRowIndex)
+
+        c.handleKeyDown(CONFIRM)
+
+        assertEquals(listOf(2), bridge.toggledCheatIndexes)
+        assertTrue(c.cheatItems.value[2].enabled)
+    }
+
+    @Test fun `the restore offer survives a filter that hides the remembered row`() {
+        writeCht("a.cht", "One", "Two")
+        val bridge = bridgeFor("a.cht" to listOf("One", "Two"))
+        manager().saveLastUsed("a.cht", setOf(CheatIdentity.hash("Two", "CODE1")))
+        val c = testController(bridge)
+        c.attachCheats(manager())
+        c.openMenu(); onCheatsRow(c); c.handleKeyDown(CONFIRM)
+        assertTrue(c.cheatHasRemembered.value)
+
+        c.handleKeyDown(WEST)
+
+        assertTrue(c.cheatVisibleItems.value.isEmpty())
+        assertTrue(c.cheatHasRemembered.value)
+
+        c.handleKeyDown(NORTH)
+
+        assertEquals(listOf(1), bridge.toggledCheatIndexes)
+        assertEquals(listOf("Two"), c.cheatVisibleItems.value.map { it.label })
     }
 
     @Test fun `a remembered row RetroArch did not take is never offered`() {

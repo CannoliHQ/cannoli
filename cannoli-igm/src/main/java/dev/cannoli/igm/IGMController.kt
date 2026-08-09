@@ -54,7 +54,12 @@ class IGMController(
 
     data class CheatItem(val label: String, val enabled: Boolean, val supported: Boolean)
 
+    /** Every row in the loaded file, whatever the filter shows. */
     val cheatItems = mutableStateOf<List<CheatItem>>(emptyList())
+
+    /** The rows the filter lets through, in the order the screen draws them. */
+    val cheatVisibleItems = mutableStateOf<List<CheatItem>>(emptyList())
+    val cheatFilter = mutableStateOf(CheatFilter.ALL)
     val cheatFileName = mutableStateOf("")
     val cheatHasRemembered = mutableStateOf(false)
     val cheatFileCount: Int get() = cheatFiles.size
@@ -66,6 +71,9 @@ class IGMController(
     private var cheatFiles: List<CheatFile> = emptyList()
     private var selectedCheatFile = 0
     private var cheatSession: CheatSession? = null
+    // Session row indexes in display order, the map between what the screen shows and what
+    // RetroArch was told about. A filtered position is never a cheat index.
+    private var visibleCheatRows: List<Int> = emptyList()
     private var cheatHardcoreWarned = false
     private var cheatLoadPending = false
     private var outstandingCheatLoads = 0
@@ -151,31 +159,66 @@ class IGMController(
     }
 
     // A row RetroArch did not take cannot be toggled, so starting on one would offer an action that
-    // silently does nothing. The file selector is the honest place to land, and a file nothing came
-    // back from starts with no selection at all rather than a pill on a dead row.
-    private fun initialCheatSelection(session: CheatSession): Int = when {
-        cheatFiles.size > 1 -> 0
-        session.rows.any { it.supported } -> session.firstSupportedIndex()
-        else -> -1
+    // silently does nothing. The file row is the honest place to land when it is the only thing
+    // that acts, and a file nothing came back from starts with no selection at all.
+    private fun initialCheatSelection(session: CheatSession): Int {
+        if (cheatFiles.size > 1) return 0
+        val supported = visibleCheatRows.indexOfFirst { session.rows[it].supported }
+        return when {
+            supported >= 0 -> supported + 1
+            visibleCheatRows.isEmpty() -> 0
+            else -> -1
+        }
     }
 
     private fun renderCheats() {
         val session = cheatSession
         if (session == null) {
             cheatItems.value = emptyList()
+            cheatVisibleItems.value = emptyList()
+            visibleCheatRows = emptyList()
             cheatHasRemembered.value = false
             return
         }
-        cheatItems.value = session.rows.map {
+        val items = session.rows.map {
             CheatItem(it.label, session.isEnabled(it), it.supported)
         }
+        cheatItems.value = items
+        visibleCheatRows = items.indices.filter { cheatFilter.value.shows(items[it].enabled) }
+        cheatVisibleItems.value = visibleCheatRows.map { items[it] }
         val remembered = cheatManager?.loadLastUsed()
         cheatHasRemembered.value = remembered != null &&
             remembered.fileName == session.file.file.name &&
             session.canRestore(remembered.hashes)
     }
 
-    private fun cheatSelectorRows(): Int = if (cheatFiles.size > 1) 1 else 0
+    private fun cycleCheatFilter(screen: IGMScreen.Cheats) {
+        val row = selectedCheatRow(screen)
+        cheatFilter.value = when (cheatFilter.value) {
+            CheatFilter.ALL -> CheatFilter.ON
+            CheatFilter.ON -> CheatFilter.OFF
+            CheatFilter.OFF -> CheatFilter.ALL
+        }
+        renderCheats()
+        placeCheatSelection(screen, row)
+    }
+
+    /** The session row the selection sits on, or null when it is on the file row or nowhere. */
+    private fun selectedCheatRow(screen: IGMScreen.Cheats): Int? =
+        visibleCheatRows.getOrNull(screen.selectedIndex - 1)
+
+    // Filtering is presentation only, so the selection follows the cheat it was on. A cheat the new
+    // view hides leaves the position behind instead, and a view with nothing in it leaves the file
+    // row, which is the only thing left to be on.
+    private fun placeCheatSelection(screen: IGMScreen.Cheats, rowIndex: Int?) {
+        val visible = rowIndex?.let { visibleCheatRows.indexOf(it) } ?: -1
+        val index = when {
+            visible >= 0 -> visible + 1
+            visibleCheatRows.isEmpty() -> 0
+            else -> screen.selectedIndex.coerceIn(0, visibleCheatRows.size)
+        }
+        replaceTop(screen.copy(selectedIndex = index))
+    }
 
     private fun cycleCheatFile(direction: Int) {
         if (cheatFiles.size <= 1) return
@@ -193,6 +236,9 @@ class IGMController(
         val row = session.toggle(rowIndex) ?: return
         bridge.toggleCheat(row.raIndex)
         renderCheats()
+        // Turning a cheat on or off can take it out of the view that is filtering on that very
+        // state, so the selection is placed again rather than left on a row that moved.
+        (currentScreen as? IGMScreen.Cheats)?.let { placeCheatSelection(it, rowIndex) }
     }
 
     // Only one file is active at a time, so a set remembered from a different one describes rows
@@ -211,9 +257,9 @@ class IGMController(
     }
 
     private fun handleCheatsKey(screen: IGMScreen.Cheats, keycode: Int) {
-        val selector = cheatSelectorRows()
-        val count = cheatItems.value.size + selector
-        val onSelector = selector == 1 && screen.selectedIndex == 0
+        // The file row is row 0 whatever the game has, so every cheat sits one below its own index.
+        val count = cheatVisibleItems.value.size + 1
+        val onSelector = screen.selectedIndex == 0
         val navigates = keycode == 19 || keycode == 20 || keycode == 97 || keycode == 4
         val cycles = onSelector && (keycode == 21 || keycode == 22)
         // Between a queued load and its snapshot these rows are not the list the emulator holds. A
@@ -237,14 +283,17 @@ class IGMController(
             )
             21 -> if (onSelector) cycleCheatFile(-1)
             22 -> if (onSelector) cycleCheatFile(1)
-            96 -> if (!onSelector) {
-                val rowIndex = screen.selectedIndex - selector
-                if (needsHardcoreWarning(rowIndex)) {
-                    push(IGMScreen.CheatsHardcoreWarning(pendingRowIndex = rowIndex))
-                } else {
-                    toggleCheatRow(rowIndex)
+            96 -> {
+                val rowIndex = selectedCheatRow(screen)
+                if (rowIndex != null) {
+                    if (needsHardcoreWarning(rowIndex)) {
+                        push(IGMScreen.CheatsHardcoreWarning(pendingRowIndex = rowIndex))
+                    } else {
+                        toggleCheatRow(rowIndex)
+                    }
                 }
             }
+            99 -> if (cheatItems.value.isNotEmpty()) cycleCheatFilter(screen)
             100 -> reapplyLastUsedCheats()
             97, 4 -> { pop(); if (screenStack.isEmpty()) onClose?.invoke() }
         }
