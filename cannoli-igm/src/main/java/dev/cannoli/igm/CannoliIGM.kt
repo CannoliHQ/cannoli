@@ -78,8 +78,6 @@ fun CannoliIGM(
     cheatItems: List<IGMController.CheatItem>,
     cheatVisibleItems: List<IGMController.CheatItem>,
     cheatFilter: CheatFilter,
-    cheatFileName: String,
-    cheatFileCount: Int,
     cheatHasRemembered: Boolean,
     guideFiles: List<GuideFile>,
     guidePageCount: Int,
@@ -264,8 +262,7 @@ fun CannoliIGM(
                     }
                     val restoreRows = if (cheatHasRemembered) 1 else 0
                     val onRestore = restoreRows == 1 && screen.selectedIndex == 0
-                    val onSelector = screen.selectedIndex == restoreRows
-                    val selectedCheat = cheats.getOrNull(screen.selectedIndex - restoreRows - 1)
+                    val selectedCheat = cheats.getOrNull(screen.selectedIndex - restoreRows)
                     val filterName = when (cheatFilter) {
                         CheatFilter.ALL -> stringResource(dev.cannoli.ui.R.string.value_all)
                         CheatFilter.ON -> onValue
@@ -284,10 +281,6 @@ fun CannoliIGM(
                         restoreLabel = if (cheatHasRemembered) {
                             stringResource(dev.cannoli.ui.R.string.cheats_restore)
                         } else null,
-                        fileHeader = stringResource(dev.cannoli.ui.R.string.cheats_file),
-                        fileName = if (cheatFileName.endsWith(".cht", ignoreCase = true)) {
-                            cheatFileName.dropLast(4)
-                        } else cheatFileName,
                         cheatsHeader = stringResource(dev.cannoli.ui.R.string.cheats_available, filterName),
                         cheats = cheats,
                         selectedIndex = screen.selectedIndex,
@@ -297,14 +290,9 @@ fun CannoliIGM(
                                 add(labels.west to stringResource(dev.cannoli.ui.R.string.label_filter))
                             }
                         },
-                        // Each row puts its own action on the right: picking the file is what the
-                        // file row is for, the same way a settings row that cycles owns the side.
                         bottomBarRight = buildList {
                             if (onRestore) {
                                 add(labels.confirm to stringResource(dev.cannoli.ui.R.string.label_select))
-                            }
-                            if (onSelector && cheatFileCount > 1) {
-                                add(DPAD_HORIZONTAL to stringResource(dev.cannoli.ui.R.string.label_change))
                             }
                             if (selectedCheat?.supported == true) {
                                 add(labels.confirm to stringResource(dev.cannoli.ui.R.string.label_toggle))

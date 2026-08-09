@@ -30,7 +30,6 @@ import dev.cannoli.ui.theme.Spacing
 
 sealed interface CheatListItem {
     data class Restore(val label: String) : CheatListItem
-    data class ActiveFile(val name: String) : CheatListItem
     data class Cheat(val label: String, val value: String, val supported: Boolean) : CheatListItem
     /** Stands in for a section whose rows the filter hid, so its header still draws. */
     data class EmptySection(val header: String) : CheatListItem
@@ -40,8 +39,6 @@ sealed interface CheatListItem {
 fun CheatsScreen(
     title: String,
     restoreLabel: String?,
-    fileHeader: String,
-    fileName: String,
     cheatsHeader: String,
     cheats: kotlin.collections.List<CheatListItem.Cheat>,
     selectedIndex: Int,
@@ -56,7 +53,6 @@ fun CheatsScreen(
         if (restoreLabel != null) {
             add(ListSection(null, listOf(CheatListItem.Restore(restoreLabel))))
         }
-        add(ListSection(fileHeader, listOf(CheatListItem.ActiveFile(fileName))))
         add(
             if (cheats.isEmpty()) {
                 ListSection(null, listOf(CheatListItem.EmptySection(cheatsHeader)))
@@ -90,14 +86,6 @@ fun CheatsScreen(
                     when (item) {
                         is CheatListItem.Restore -> PillRowText(
                             label = item.label,
-                            isSelected = isSelected,
-                            fontSize = fontSize,
-                            lineHeight = lineHeight,
-                            verticalPadding = verticalPadding
-                        )
-                        is CheatListItem.ActiveFile -> PillRowKeyValue(
-                            label = item.name,
-                            value = "",
                             isSelected = isSelected,
                             fontSize = fontSize,
                             lineHeight = lineHeight,

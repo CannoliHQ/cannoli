@@ -37,34 +37,32 @@ class CheatManagerTest {
         }
 
     @Test
-    fun findsAndSortsChtFilesCaseInsensitive() {
+    fun takesTheAlphabeticallyFirstChtCaseInsensitive() {
         val dir = cheatsDir("snes", "Game")
         writeCht(dir, "b.cht", 1)
         writeCht(dir, "A.CHT", 2)
         File(dir, "notes.txt").writeText("x")
 
-        val files = manager("snes", "Game").findCheatFiles()
+        val file = manager("snes", "Game").findCheatFile()
 
-        assertEquals(listOf("A.CHT", "b.cht"), files.map { it.file.name })
-        assertEquals(2, files[0].cheats.size)
-        assertEquals(1, files[1].cheats.size)
+        assertEquals("A.CHT", file?.file?.name)
+        assertEquals(2, file?.cheats?.size)
     }
 
     @Test
-    fun ignoresFilesWithNoParsedCheats() {
+    fun skipsPastAFileWithNoParsedCheats() {
         val dir = cheatsDir("snes", "Game")
         File(dir, "empty.cht").writeText("not a cht file at all")
         writeCht(dir, "good.cht", 1)
 
-        val files = manager("snes", "Game").findCheatFiles()
+        val file = manager("snes", "Game").findCheatFile()
 
-        assertEquals(listOf("good.cht"), files.map { it.file.name })
+        assertEquals("good.cht", file?.file?.name)
     }
 
     @Test
-    fun emptyWhenDirMissing() {
-        val files = manager("snes", "Nope").findCheatFiles()
-        assertEquals(emptyList<CheatFile>(), files)
+    fun nothingWhenDirMissing() {
+        assertNull(manager("snes", "Nope").findCheatFile())
     }
 
     @Test

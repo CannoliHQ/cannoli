@@ -31,13 +31,14 @@ class CheatManager(
         "$gameBaseName.ini",
     )
 
-    fun findCheatFiles(): List<CheatFile> {
-        if (!cheatsDir.isDirectory) return emptyList()
-        val files = cheatsDir.listFiles() ?: return emptyList()
+    /** A game has one cheat file. A folder holding several is a mistake; the first one wins. */
+    fun findCheatFile(): CheatFile? {
+        if (!cheatsDir.isDirectory) return null
+        val files = cheatsDir.listFiles() ?: return null
         return files
             .filter { it.isFile && it.extension.equals("cht", ignoreCase = true) }
             .sortedBy { it.name.lowercase() }
-            .mapNotNull { f ->
+            .firstNotNullOfOrNull { f ->
                 val cheats = try {
                     ChtParser.parse(f.readText())
                 } catch (e: Exception) {
