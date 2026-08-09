@@ -62,6 +62,7 @@ class BootInitializer @Inject constructor(
     private val bindingController: BindingController,
     private val nav: NavigationController,
     private val launchManager: LaunchManager,
+    private val cheevosOverrideMigration: dev.cannoli.scorza.launcher.CheevosOverrideMigration,
     private val launcherActions: LauncherActions,
     private val setupCoordinator: SetupCoordinator,
     private val autoconfigSeeder: AutoconfigSeeder,
@@ -92,6 +93,9 @@ class BootInitializer @Inject constructor(
             autoconfigRepository.invalidate()
             launchManager.syncRetroArchAssets(root)
             launchManager.syncRetroArchConfig(root)
+            // Strip any RetroAchievements session key left in a persisted config by an old build, so
+            // the fresh per-launch injection is the only copy on disk and nothing stale layers back.
+            cheevosOverrideMigration.scrubIfNeeded()
         }
         ioScope.launch { dev.cannoli.scorza.util.DirectoryLayout.ensure(root, romDir, context.assets, platformConfig) }
 
