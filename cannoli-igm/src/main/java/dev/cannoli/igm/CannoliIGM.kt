@@ -296,13 +296,15 @@ fun CannoliIGM(
                             if (cheatItems.isNotEmpty()) {
                                 add(labels.west to stringResource(dev.cannoli.ui.R.string.label_filter))
                             }
-                            if (onSelector && cheatFileCount > 1) {
-                                add(DPAD_HORIZONTAL to stringResource(dev.cannoli.ui.R.string.label_change))
-                            }
                         },
+                        // Each row puts its own action on the right: picking the file is what the
+                        // file row is for, the same way a settings row that cycles owns the side.
                         bottomBarRight = buildList {
                             if (onRestore) {
                                 add(labels.confirm to stringResource(dev.cannoli.ui.R.string.label_select))
+                            }
+                            if (onSelector && cheatFileCount > 1) {
+                                add(DPAD_HORIZONTAL to stringResource(dev.cannoli.ui.R.string.label_change))
                             }
                             if (selectedCheat?.supported == true) {
                                 add(labels.confirm to stringResource(dev.cannoli.ui.R.string.label_toggle))
