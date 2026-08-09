@@ -226,6 +226,9 @@ class DialogInputHandler @Inject constructor(
     }
     private var pendingContextReturn: ContextReturn? = null
     var openGuides: ((dev.cannoli.scorza.model.Rom) -> Unit)? = null
+    // The RetroAchievements screen owns the credential-clearing and its own pop, so the confirm
+    // dialog delegates back to it rather than duplicating that navigation here.
+    var onRetroAchievementsLogout: (() -> Unit)? = null
 
     private val gameContextOptions = listOf(MENU_MANAGE_COLLECTIONS, MENU_EMULATOR_OVERRIDE, MENU_RA_GAME_ID, MENU_FORCE_SOFTCORE, MENU_RENAME, MENU_DELETE_GAME)
 
@@ -584,6 +587,10 @@ class DialogInputHandler @Inject constructor(
             }
             is DialogState.RAPreloadProgress -> {
                 nav.dialogState.value = DialogState.None
+            }
+            is DialogState.RetroAchievementsLogoutConfirm -> {
+                nav.dialogState.value = DialogState.None
+                onRetroAchievementsLogout?.invoke()
             }
             is DialogState.ConflictsMenu -> {}
             is DialogState.SaveSyncConflict -> onSaveConflictConfirm(ds)
@@ -1185,6 +1192,9 @@ class DialogInputHandler @Inject constructor(
                 nav.dialogState.value = DialogState.None
             }
             is DialogState.RAPreloadProgress -> {
+                nav.dialogState.value = DialogState.None
+            }
+            is DialogState.RetroAchievementsLogoutConfirm -> {
                 nav.dialogState.value = DialogState.None
             }
             is DialogState.SaveSyncConflict -> {

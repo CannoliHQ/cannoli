@@ -974,6 +974,12 @@ fun DialogOverlay(
             confirmLabel = stringResource(R.string.label_quit),
         )
 
+        is DialogState.RetroAchievementsLogoutConfirm -> ConfirmOverlay(
+            message = stringResource(R.string.ra_logout_confirm),
+            buttonStyle = buttonStyle,
+            confirmLabel = stringResource(R.string.label_log_out),
+        )
+
         is DialogState.PlatformResetConfirm -> ConfirmOverlay(
             message = stringResource(R.string.dialog_reset_platform_confirm, dialogState.platformName),
             buttonStyle = buttonStyle,

@@ -1457,10 +1457,17 @@ fun AppNavGraph(
                     listLineHeight = listLineHeight,
                     fullWidth = true,
                     leftBottomItems = buildList {
-                        add(labels.west to stringResource(R.string.label_log_out))
                         if (rows[selIdx].isCycle) add(dev.cannoli.ui.DPAD_HORIZONTAL to stringResource(R.string.label_change))
                     },
-                    rightBottomItems = listOf(labels.confirm to stringResource(R.string.label_select)),
+                    rightBottomItems = buildList {
+                        when (rows[selIdx]) {
+                            dev.cannoli.scorza.ui.components.RaAccountRow.ACCOUNT ->
+                                add(labels.confirm to stringResource(R.string.label_log_out))
+                            dev.cannoli.scorza.ui.components.RaAccountRow.OFFLINE_SETS ->
+                                add(labels.confirm to stringResource(R.string.label_select))
+                            dev.cannoli.scorza.ui.components.RaAccountRow.HARDCORE -> {}
+                        }
+                    },
                     buttonStyle = labels,
                 ) {
                     List(

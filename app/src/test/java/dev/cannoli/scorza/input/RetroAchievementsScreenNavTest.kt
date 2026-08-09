@@ -6,6 +6,7 @@ import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.components.RaAccountRow
+import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
 import io.mockk.every
 import io.mockk.mockk
@@ -31,6 +32,7 @@ class RetroAchievementsScreenNavTest {
 
     private val nav = NavigationController()
     private val settingsViewModel: SettingsViewModel = mockk(relaxed = true)
+    private lateinit var dialogHandler: DialogInputHandler
 
     private fun settings(): SettingsRepository {
         File(tmp.root, "Config").mkdirs()
@@ -63,9 +65,16 @@ class RetroAchievementsScreenNavTest {
         )
     }
 
-    private fun router(settings: SettingsRepository): InputRouter = InputRouter(
+    private fun router(settings: SettingsRepository): InputRouter {
+        dialogHandler = testDialogInputHandler(
+            nav = nav,
+            ioScope = CoroutineScope(Dispatchers.Unconfined),
+            context = ApplicationProvider.getApplicationContext(),
+            settingsViewModel = settingsViewModel,
+        )
+        return InputRouter(
         nav = nav,
-        dialogHandler = mockk(relaxed = true),
+        dialogHandler = dialogHandler,
         systemListHandler = mockk(relaxed = true),
         gameListHandler = mockk(relaxed = true),
         settingsHandler = mockk(relaxed = true),
@@ -96,30 +105,73 @@ class RetroAchievementsScreenNavTest {
         osdController = mockk(relaxed = true),
         raPreloadController = mockk(relaxed = true),
         ioScope = CoroutineScope(Dispatchers.Unconfined),
-    )
+        )
+    }
 
     private fun onIntegrations() {
         every { settingsViewModel.state } returns
             MutableStateFlow(SettingsViewModel.State(activeCategory = "integrations"))
     }
 
-    // Opened directly from the Integrations list, so Log Out clears the credentials and drops the
-    // account screen back to Settings without stepping out of a credential sub-list it never entered.
-    @Test fun `logging out clears creds and pops the account screen`() {
+    private fun onAccountScreen(s: SettingsRepository): InputRouter {
         onIntegrations()
-        val s = settings()
         val r = router(s)
+        r.wire(mockk(relaxed = true))
         nav.push(LauncherScreen.Settings())
         nav.push(LauncherScreen.RetroAchievements(username = "bob"))
+        return r
+    }
 
-        r.currentHandler().onWest()
+    @Test fun `confirming on the account row opens the logout confirmation`() {
+        val s = settings()
+        val r = onAccountScreen(s)
+
+        r.currentHandler().onConfirm()
+
+        assertTrue(nav.dialogState.value is DialogState.RetroAchievementsLogoutConfirm)
+        assertEquals("bob", s.raUsername)
+    }
+
+    // Opened directly from the Integrations list, so Log Out clears the credentials and drops the
+    // account screen back to Settings without stepping out of a credential sub-list it never entered.
+    @Test fun `confirming the logout clears creds and pops the account screen`() {
+        val s = settings()
+        val r = onAccountScreen(s)
+
+        r.currentHandler().onConfirm()
+        dialogHandler.onConfirm()
 
         assertEquals("", s.raUsername)
         assertEquals("", s.raToken)
         assertEquals("", s.raPassword)
         verify { settingsViewModel.raPassword = "" }
         verify { settingsViewModel.load() }
+        assertEquals(DialogState.None, nav.dialogState.value)
         assertTrue(nav.currentScreen is LauncherScreen.Settings)
+    }
+
+    @Test fun `cancelling the logout keeps the account screen and creds`() {
+        val s = settings()
+        val r = onAccountScreen(s)
+
+        r.currentHandler().onConfirm()
+        dialogHandler.onBack()
+
+        assertEquals(DialogState.None, nav.dialogState.value)
+        assertEquals("bob", s.raUsername)
+        assertEquals("abc123", s.raToken)
+        assertTrue(nav.currentScreen is LauncherScreen.RetroAchievements)
+    }
+
+    @Test fun `the west button no longer logs out`() {
+        val s = settings()
+        val r = onAccountScreen(s)
+
+        r.currentHandler().onWest()
+
+        assertEquals("bob", s.raUsername)
+        assertEquals("abc123", s.raToken)
+        assertTrue(nav.currentScreen is LauncherScreen.RetroAchievements)
     }
 
     // Bug fix: opening Offline Sets must not destroy the account screen. It stays on the stack under

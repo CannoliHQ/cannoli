@@ -616,6 +616,7 @@
     <string name="ra_account_row_account">Account</string>
     <string name="ra_account_row_hardcore">Hardcore Mode</string>
     <string name="ra_account_row_offline_sets">Offline Sets</string>
+    <string name="ra_logout_confirm">Log out of RetroAchievements?</string>
     <string name="ra_token_checking">Checking...</string>
     <string name="ra_token_valid">Signed in</string>
     <string name="ra_token_invalid">Session expired, log in again</string>
