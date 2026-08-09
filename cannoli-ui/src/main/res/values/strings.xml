@@ -659,8 +659,6 @@
     <string name="title_cheats">Cheats</string>
     <!-- Screen title. %1$d = cheats currently on, %2$d = cheats in the file. -->
     <string name="title_cheats_count">Cheats (%1$d/%2$d)</string>
-    <!-- Section header above the row naming the active cheat file. -->
-    <string name="cheats_file">Cheat File</string>
     <!-- Section header above the cheat list. %1$s = which cheats are shown (All, On, Off). -->
     <string name="cheats_available">Available Cheats (%1$s)</string>
     <!-- List row that turns the last set of cheats back on. -->
