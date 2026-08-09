@@ -333,7 +333,7 @@ fun CannoliIGM(
                         else -> stringResource(dev.cannoli.ui.R.string.label_all)
                     }
                     val filtered = when (screen.filter) {
-                        1 -> screen.achievements.filter { it.unlocked }
+                        1 -> screen.achievements.filter { it.unlocked }.sortedByUnlockedNewestFirst()
                         2 -> screen.achievements.filter { !it.unlocked }
                         else -> screen.achievements
                     }
