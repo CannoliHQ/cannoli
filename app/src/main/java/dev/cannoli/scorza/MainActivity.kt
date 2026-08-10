@@ -24,6 +24,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -155,9 +156,10 @@ class MainActivity : ComponentActivity(), ActivityActions {
         val splash = installSplashScreen()
         splash.setKeepOnScreenCondition {
             if (!::bootSequencer.isInitialized) return@setKeepOnScreenCondition true
-            val state = bootSequencer.state.value
-            when (state) {
-                BootState.Resolving -> true
+            // Hold the OS splash only until Compose can draw its first frame. From Resolving on, our
+            // own themed logo screen renders under it and covers the mount and DI wait, so we hand
+            // straight to that instead of freezing on the masked OS icon for the whole resolve.
+            when (bootSequencer.state.value) {
                 is BootState.Initializing -> !settings.scanLibraryAutomatically
                 else -> false
             }
@@ -226,7 +228,13 @@ class MainActivity : ComponentActivity(), ActivityActions {
                         dev.cannoli.scorza.input.screen.compose.LocalScreenInputRegistry provides screenInputRegistry,
                     ) {
                     when (val s = boot) {
-                        is BootState.Resolving -> Box(modifier = Modifier.fillMaxSize()) {}
+                        is BootState.Resolving -> Box(modifier = Modifier.fillMaxSize().padding(dev.cannoli.scorza.ui.effectiveViewportPadding())) {
+                            dev.cannoli.scorza.ui.screens.HousekeepingScreen(
+                                kind = dev.cannoli.scorza.ui.screens.HousekeepingKind.STARTING,
+                                progress = null,
+                                statusLabel = stringResource(R.string.boot_preparing),
+                            )
+                        }
                         is BootState.NeedsPermission, is BootState.NeedsSetup -> {
                             val storageGranted = (s as? BootState.NeedsPermission)?.storageGranted ?: true
                             LaunchedEffect(storageGranted) {

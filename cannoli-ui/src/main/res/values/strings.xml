@@ -491,6 +491,7 @@
     <string name="housekeeping_db_subtitle">Migrating legacy data</string>
     <string name="housekeeping_initial_title">Setting up your library</string>
     <string name="housekeeping_refresh_title">Refreshing library</string>
+    <string name="housekeeping_starting_title">Starting up</string>
     <string name="update_download_error_server">Download failed. Server returned an error. Try again later.</string>
     <string name="update_download_error_network">Download failed. Check your connection and try again.</string>
     <string name="update_download_error_space">Not enough storage. Updating needs about %1$s free, and %2$s is available.</string>

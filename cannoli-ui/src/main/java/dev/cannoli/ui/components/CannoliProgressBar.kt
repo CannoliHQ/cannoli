@@ -14,18 +14,28 @@ import dev.cannoli.ui.theme.Radius
 
 @Composable
 fun CannoliProgressBar(
-    progress: Float,
+    progress: Float?,
     modifier: Modifier = Modifier
 ) {
-    LinearProgressIndicator(
-        progress = { progress.coerceIn(0f, 1f) },
-        modifier = modifier
-            .fillMaxWidth()
-            .height(6.dp)
-            .clip(RoundedCornerShape(Radius.Sm)),
-        color = Color.White,
-        trackColor = ProgressTrack,
-        gapSize = 0.dp,
-        drawStopIndicator = {}
-    )
+    val barModifier = modifier
+        .fillMaxWidth()
+        .height(6.dp)
+        .clip(RoundedCornerShape(Radius.Sm))
+    if (progress == null) {
+        LinearProgressIndicator(
+            modifier = barModifier,
+            color = Color.White,
+            trackColor = ProgressTrack,
+            gapSize = 0.dp,
+        )
+    } else {
+        LinearProgressIndicator(
+            progress = { progress.coerceIn(0f, 1f) },
+            modifier = barModifier,
+            color = Color.White,
+            trackColor = ProgressTrack,
+            gapSize = 0.dp,
+            drawStopIndicator = {}
+        )
+    }
 }

@@ -10,11 +10,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.annotation.StringRes
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -27,15 +27,18 @@ import dev.cannoli.ui.theme.LocalCannoliTypography
 import dev.cannoli.ui.theme.Spacing
 
 enum class HousekeepingKind(@StringRes val titleRes: Int, @StringRes val subtitleRes: Int? = null) {
+    STARTING(R.string.housekeeping_starting_title),
     DATABASE_MIGRATION(R.string.housekeeping_db_title, R.string.housekeeping_db_subtitle),
     INITIAL_SCAN(R.string.housekeeping_initial_title),
     LIBRARY_REFRESH(R.string.housekeeping_refresh_title),
 }
 
+// progress is null for phases with no determinate measure (the pre-mount resolve), which draws an
+// indeterminate bar in place of the determinate one.
 @Composable
 fun HousekeepingScreen(
     kind: HousekeepingKind,
-    progress: Float,
+    progress: Float?,
     statusLabel: String,
 ) {
     val typo = LocalCannoliTypography.current
@@ -43,7 +46,7 @@ fun HousekeepingScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(MaterialTheme.colorScheme.background)
             .padding(screenInsets()),
         contentAlignment = Alignment.Center
     ) {
