@@ -1499,7 +1499,10 @@ class DialogInputHandler @Inject constructor(
                     val next = !rom.forceSoftcore
                     ioScope.launch {
                         romsRepository.setForceSoftcore(rom.id, next)
-                        gameListViewModel.reload { restoreContextMenu() }
+                        gameListViewModel.reload {
+                            launcherActions.scanResumableGames()
+                            restoreContextMenu()
+                        }
                     }
                 }
             }
