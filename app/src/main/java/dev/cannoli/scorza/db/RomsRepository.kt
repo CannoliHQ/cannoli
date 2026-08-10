@@ -129,6 +129,8 @@ class RomsRepository(
 
     fun allRomsForPlatform(platformTag: String): List<Rom> = romsForPlatform(platformTag.uppercase())
 
+    fun allRoms(): List<Rom> = db.queryAll(BASE_SELECT, mapper = ::rowToRom)
+
     private fun romsForPlatform(platformTag: String): List<Rom> = db.queryAll(
         "$BASE_SELECT WHERE platform_tag = ? ORDER BY sort_key",
         platformTag, mapper = ::rowToRom,

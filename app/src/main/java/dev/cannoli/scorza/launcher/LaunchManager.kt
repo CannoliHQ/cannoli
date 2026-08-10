@@ -27,7 +27,6 @@ import dev.cannoli.scorza.util.parseM3uDiscPaths
 import java.io.File
 import java.io.IOException
 import java.security.MessageDigest
-import java.text.Normalizer
 
 class LaunchManager(
     private val context: Context,
@@ -447,8 +446,7 @@ class LaunchManager(
         } catch (_: Exception) {}
     }
 
-    private fun normalizedRomName(rom: Rom): String =
-        Normalizer.normalize(rom.path.nameWithoutExtension, Normalizer.Form.NFC)
+    private fun normalizedRomName(rom: Rom): String = dev.cannoli.core.RomKey.baseName(rom.path)
 
     private fun launchStandalone(rom: Rom, launchFile: File, cfg: AppConfig): LaunchResult =
         if (cfg.launchMethod == LaunchMethod.DELFINO) {

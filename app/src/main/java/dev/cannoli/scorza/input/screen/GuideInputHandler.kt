@@ -1,6 +1,7 @@
 package dev.cannoli.scorza.input.screen
 
 import dagger.hilt.android.scopes.ActivityScoped
+import dev.cannoli.core.RomKey
 import dev.cannoli.igm.GuideController
 import dev.cannoli.igm.GuideFile
 import dev.cannoli.igm.GuideManager
@@ -23,7 +24,7 @@ class GuideInputHandler @Inject constructor(
     val controller = GuideController()
 
     fun startGuides(rom: Rom) {
-        controller.attach(GuideManager(settings.sdCardRoot, rom.platformTag, rom.path.nameWithoutExtension))
+        controller.attach(GuideManager(settings.sdCardRoot, rom.platformTag, RomKey.baseName(rom.path)))
         val files = controller.guideFiles.value
         nav.dialogState.value = DialogState.None
         when {

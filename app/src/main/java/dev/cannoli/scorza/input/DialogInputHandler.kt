@@ -1913,7 +1913,7 @@ class DialogInputHandler @Inject constructor(
                 }
                 if (item is ListItem.RomItem &&
                     dev.cannoli.igm.GuideManager(
-                        settings.sdCardRoot, item.rom.platformTag, item.rom.path.nameWithoutExtension
+                        settings.sdCardRoot, item.rom.platformTag, dev.cannoli.core.RomKey.baseName(item.rom.path)
                     ).findGuides().isNotEmpty()
                 ) {
                     val idx = indexOfFirst { it == MENU_EMULATOR_OVERRIDE || it.startsWith("$MENU_EMULATOR_OVERRIDE\t") }

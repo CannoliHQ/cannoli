@@ -8,10 +8,12 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.config.CannoliPaths
+import dev.cannoli.scorza.db.RomsRepository
 import dev.cannoli.scorza.launcher.ApkLauncher
 import dev.cannoli.scorza.launcher.CheevosOverrideMigration
 import dev.cannoli.scorza.launcher.DelfinoLauncher
 import dev.cannoli.scorza.launcher.EmuLauncher
+import dev.cannoli.scorza.launcher.GuidesKeyMigration
 import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.LaunchManager
 import dev.cannoli.scorza.launcher.LaunchState
@@ -40,6 +42,16 @@ object LaunchModule {
         paths: CannoliPathsProvider,
     ): CheevosOverrideMigration = CheevosOverrideMigration(
         configRetroArchDir = { CannoliPaths(paths.root).configRetroArch },
+    )
+
+    @Provides @Singleton
+    fun provideGuidesKeyMigration(
+        paths: CannoliPathsProvider,
+        romsRepository: RomsRepository,
+    ): GuidesKeyMigration = GuidesKeyMigration(
+        guidesDir = { CannoliPaths(paths.root).guidesDir },
+        positionsFile = { CannoliPaths(paths.root).guidePositionsFile },
+        roms = { romsRepository.allRoms() },
     )
 
     @Provides @Singleton

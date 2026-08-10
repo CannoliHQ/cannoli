@@ -63,6 +63,7 @@ class BootInitializer @Inject constructor(
     private val nav: NavigationController,
     private val launchManager: LaunchManager,
     private val cheevosOverrideMigration: dev.cannoli.scorza.launcher.CheevosOverrideMigration,
+    private val guidesKeyMigration: dev.cannoli.scorza.launcher.GuidesKeyMigration,
     private val launcherActions: LauncherActions,
     private val setupCoordinator: SetupCoordinator,
     private val autoconfigSeeder: AutoconfigSeeder,
@@ -121,6 +122,10 @@ class BootInitializer @Inject constructor(
 
         ioScope.launch {
             installedCoreService.queryAllPackages()
+        }
+        // Runs after import so the rom list it disambiguates against reflects the current library.
+        ioScope.launch {
+            guidesKeyMigration.migrateIfNeeded()
         }
 
         withContext(Dispatchers.Main) {
