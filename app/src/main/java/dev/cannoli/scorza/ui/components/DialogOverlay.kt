@@ -986,6 +986,12 @@ fun DialogOverlay(
             confirmLabel = stringResource(R.string.label_reset),
         )
 
+        is DialogState.ResetCustomConfigConfirm -> ConfirmOverlay(
+            message = stringResource(R.string.dialog_reset_custom_config_confirm),
+            buttonStyle = buttonStyle,
+            confirmLabel = stringResource(R.string.label_reset),
+        )
+
         is DialogState.RenameResult -> MessageOverlay(
             message = if (dialogState.success) {
                 stringResource(R.string.dialog_rename_success)

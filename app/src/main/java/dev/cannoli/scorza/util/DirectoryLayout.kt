@@ -7,6 +7,8 @@ import dev.cannoli.scorza.model.AppType
 import dev.cannoli.scorza.model.artTag
 import java.io.File
 
+private const val CUSTOM_CFG_BANNER = "# This file is yours. Cannoli never overwrites it. Keys here win.\n"
+
 object DirectoryLayout {
     fun ensure(cannoliRoot: File, romDirectory: File, assets: AssetManager, platformConfig: PlatformConfig) {
         val paths = CannoliPaths(cannoliRoot)
@@ -42,7 +44,7 @@ object DirectoryLayout {
         val customCfg = paths.customCfg
         if (!customCfg.exists()) {
             try {
-                customCfg.writeText("# This file is yours. Cannoli never overwrites it. Keys here win.\n")
+                customCfg.writeText(CUSTOM_CFG_BANNER)
             } catch (_: Exception) {}
         }
 
@@ -87,5 +89,9 @@ object DirectoryLayout {
             if (File(romDirectory, tag).mkdirs()) created++
         }
         return created
+    }
+
+    fun resetCustomCfg(customCfg: File) {
+        customCfg.writeText(CUSTOM_CFG_BANNER)
     }
 }

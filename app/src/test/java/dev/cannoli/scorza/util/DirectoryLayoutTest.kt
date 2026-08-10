@@ -145,6 +145,26 @@ class DirectoryLayoutTest {
         assertEquals("input_player1_a_btn = 0\n", customCfg.readText())
     }
 
+    @Test fun resetCustomCfg_writes_only_the_banner() {
+        val customCfg = File(tmp.newFolder("RetroArch"), "custom.cfg")
+        customCfg.writeText("input_player1_a_btn = 0\n")
+
+        DirectoryLayout.resetCustomCfg(customCfg)
+
+        assertEquals(
+            "# This file is yours. Cannoli never overwrites it. Keys here win.",
+            customCfg.readText().trim(),
+        )
+    }
+
+    @Test fun resetCustomCfg_creates_the_file_when_it_does_not_exist() {
+        val customCfg = File(tmp.newFolder("RetroArch"), "custom.cfg")
+
+        DirectoryLayout.resetCustomCfg(customCfg)
+
+        assertTrue(customCfg.isFile)
+    }
+
     @Test fun ensure_creates_the_overrides_systems_and_games_dirs_and_not_cores() {
         val root = tmp.newFolder("cannoli")
         val rom = tmp.newFolder("Roms")

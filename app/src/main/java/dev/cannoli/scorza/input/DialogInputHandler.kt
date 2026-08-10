@@ -491,6 +491,12 @@ class DialogInputHandler @Inject constructor(
                 nav.dialogState.value = DialogState.None
             }
             is DialogState.PlatformResetConfirm -> onPlatformReset(ds)
+            is DialogState.ResetCustomConfigConfirm -> {
+                dev.cannoli.scorza.util.DirectoryLayout.resetCustomCfg(
+                    dev.cannoli.scorza.config.CannoliPaths(settings.sdCardRoot).customCfg
+                )
+                nav.dialogState.value = DialogState.None
+            }
             is DialogState.QuickMenu -> {
                 when (ds.rows.getOrNull(ds.selectedIndex)) {
                     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.SETTINGS -> openSettings()
@@ -1123,6 +1129,9 @@ class DialogInputHandler @Inject constructor(
                 nav.dialogState.value = DialogState.None
             }
             is DialogState.PlatformResetConfirm -> {
+                nav.dialogState.value = DialogState.None
+            }
+            is DialogState.ResetCustomConfigConfirm -> {
                 nav.dialogState.value = DialogState.None
             }
             is DialogState.RommDownloads -> {

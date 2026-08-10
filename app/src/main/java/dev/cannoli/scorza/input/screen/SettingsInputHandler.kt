@@ -133,6 +133,9 @@ class SettingsInputHandler @Inject constructor(
             "installed_cores" -> queryInstalledCores()
             "manage_tools" -> openAppPicker("tools")
             "manage_ports" -> openAppPicker("ports")
+            "reset_custom_config" -> {
+                nav.dialogState.value = DialogState.ResetCustomConfigConfirm
+            }
             "regenerate_system_folders" -> {
                 val romDir = cannoliPaths.romDir
                 val tags = platformConfig.getAllTags()

@@ -144,6 +144,7 @@ sealed interface DialogState {
     data class IntentAuditResult(val message: String) : DialogState
     data class SystemFoldersRegenerated(val message: String) : DialogState
     data class PlatformResetConfirm(val tag: String, val platformName: String) : DialogState
+    data object ResetCustomConfigConfirm : DialogState
     data class QuickMenu(
         val rows: List<dev.cannoli.scorza.ui.quickmenu.QuickMenuRow>,
         val kitchenRunning: Boolean,

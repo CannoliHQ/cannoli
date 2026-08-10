@@ -223,6 +223,8 @@
     <string name="setting_change_default_launcher">Use a Different Launcher</string>
     <!-- Advanced action: recreate the standard platform/system folders. -->
     <string name="setting_regenerate_system_folders">Regenerate System Folders</string>
+    <!-- Advanced action: empty custom.cfg back to its seed banner, discarding the user's hand-edited keys. -->
+    <string name="setting_reset_custom_config">Reset Custom Config</string>
     <!-- Library setting: which content layout to show (platforms, collections only, or Five Game Handheld). -->
     <string name="setting_content_mode">Content Mode</string>
     <!-- Library setting for the Five Game Handheld collection. Keep "5GH" as-is. -->
@@ -854,6 +856,7 @@
     <string name="label_clear_override">CLEAR</string>
     <!-- %1$s = platform name. -->
     <string name="dialog_reset_platform_confirm">Reset %1$s? Your pick is replaced by Cannoli\'s default, or cleared if there is none.</string>
+    <string name="dialog_reset_custom_config_confirm">Reset custom.cfg? Your hand-edited keys are discarded.</string>
     <!-- RA achievement preload. %1$s = game name. -->
     <string name="ra_preload_progress">Preloading %1$s</string>
     <string name="ra_preload_none">No achievements found for this game</string>
