@@ -1,51 +1,73 @@
 package dev.cannoli.scorza.launcher
 
+import androidx.test.core.app.ApplicationProvider
+import java.io.File
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
-private const val VERSION = "1754500000000"
-
+// extractBundledCores re-extracts on every build update (the APK's lastModified stamp changes),
+// which used to delete any previously-recorded core name the new APK no longer bundles. That
+// wiped cores users relied on the moment a build shipped fewer bundled cores than the last one,
+// bundled-originally or re-downloaded under the same name made no difference. These drive the
+// real function against the test APK (which bundles no libretro cores itself) rather than a pure
+// helper, since the bug was in extractBundledCores's own cleanup step, not in a decision function.
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
 class BundledCoreCleanupTest {
 
-    private fun stamp(vararg cores: String) = listOf(VERSION) + cores.toList()
+    private fun context() = ApplicationProvider.getApplicationContext<android.content.Context>()
 
-    @Test fun `a downloaded core is never removed`() {
-        val stale = LaunchManager.staleBundledCores(
-            stamp = stamp("mgba_libretro_android.so"),
-            extractedNow = setOf("mgba_libretro_android.so"),
-        )
-        assertEquals(emptyList<String>(), stale)
+    private fun coresDir(context: android.content.Context) = File(context.filesDir, "cores")
+
+    private fun currentVersion(context: android.content.Context) =
+        File(context.applicationInfo.sourceDir).lastModified().toString()
+
+    @Test fun `a core dropped from the current APK and a downloaded-only core both survive a version bump`() {
+        val context = context()
+        val coresDir = coresDir(context).apply { mkdirs() }
+        File(coresDir, "flycast_libretro_android.so").writeText("PRESERVE ME")
+        File(coresDir, "mgba_libretro_android.so").writeText("DOWNLOADED, NEVER BUNDLED")
+        File(coresDir, ".version").writeText("0")
+
+        LaunchManager.extractBundledCores(context)
+
+        assertEquals("PRESERVE ME", File(coresDir, "flycast_libretro_android.so").readText())
+        assertEquals("DOWNLOADED, NEVER BUNDLED", File(coresDir, "mgba_libretro_android.so").readText())
     }
 
-    @Test fun `a core dropped from the APK is removed`() {
-        val stale = LaunchManager.staleBundledCores(
-            stamp = stamp("mgba_libretro_android.so", "flycast_libretro_android.so"),
-            extractedNow = setOf("mgba_libretro_android.so"),
-        )
-        assertEquals(listOf("flycast_libretro_android.so"), stale)
+    @Test fun `a version bump updates the stamp to the current APK`() {
+        val context = context()
+        val coresDir = coresDir(context).apply { mkdirs() }
+        File(coresDir, ".version").writeText("0")
+
+        LaunchManager.extractBundledCores(context)
+
+        assertEquals(currentVersion(context), File(coresDir, ".version").readText())
     }
 
-    @Test fun `a stamp with no manifest removes nothing`() {
-        val stale = LaunchManager.staleBundledCores(
-            stamp = listOf(VERSION),
-            extractedNow = setOf("mgba_libretro_android.so"),
-        )
-        assertEquals(emptyList<String>(), stale)
+    @Test fun `a matching version skips re-extraction`() {
+        val context = context()
+        val coresDir = coresDir(context).apply { mkdirs() }
+        File(coresDir, "flycast_libretro_android.so").writeText("UNTOUCHED")
+        File(coresDir, ".version").writeText(currentVersion(context))
+
+        val result = LaunchManager.extractBundledCores(context)
+
+        assertEquals(coresDir.absolutePath, result)
+        assertEquals("UNTOUCHED", File(coresDir, "flycast_libretro_android.so").readText())
     }
 
-    @Test fun `no stamp at all removes nothing`() {
-        val stale = LaunchManager.staleBundledCores(
-            stamp = emptyList(),
-            extractedNow = setOf("mgba_libretro_android.so"),
-        )
-        assertEquals(emptyList<String>(), stale)
-    }
+    @Test fun `first run creates the cores directory and a version stamp`() {
+        val context = context()
+        val coresDir = coresDir(context)
+        assertTrue(!coresDir.exists())
 
-    @Test fun `a newly bundled core is not treated as stale`() {
-        val stale = LaunchManager.staleBundledCores(
-            stamp = stamp("mgba_libretro_android.so"),
-            extractedNow = setOf("mgba_libretro_android.so", "snes9x_libretro_android.so"),
-        )
-        assertEquals(emptyList<String>(), stale)
+        LaunchManager.extractBundledCores(context)
+
+        assertEquals(currentVersion(context), File(coresDir, ".version").readText())
     }
 }

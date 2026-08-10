@@ -656,19 +656,16 @@ class LaunchManager(
             return null
         }
 
-        // Line 0 of the stamp is the version, the rest is what was extracted. A downloaded core is
-        // never in it, so it is never removed.
-        internal fun staleBundledCores(stamp: List<String>, extractedNow: Set<String>): List<String> =
-            stamp.drop(1).filter { it.isNotEmpty() && it !in extractedNow }
-
         fun extractBundledCores(context: Context): String {
             val coresDir = File(context.filesDir, "cores")
             coresDir.mkdirs()
             val versionFile = File(coresDir, ".version")
             val currentVersion = File(context.applicationInfo.sourceDir).lastModified().toString()
-            val stamp = if (versionFile.exists()) versionFile.readLines() else emptyList()
-            if (stamp.firstOrNull() == currentVersion) return coresDir.absolutePath
-            val extracted = mutableSetOf<String>()
+            if (versionFile.exists() && versionFile.readText() == currentVersion) return coresDir.absolutePath
+            // Extraction only ever overwrites what the current APK bundles; it must never delete
+            // a core, since a name dropped from the bundle (v2 is moving to download-on-first-run)
+            // is not obsolete. The user may still be relying on it, whether it got there from an
+            // older bundle or a manual download, and this has no way to tell those apart.
             java.util.zip.ZipFile(context.applicationInfo.sourceDir).use { apkZip ->
                 val abi = android.os.Build.SUPPORTED_ABIS.firstOrNull() ?: "arm64-v8a"
                 val prefix = "lib/$abi/"
@@ -677,11 +674,9 @@ class LaunchManager(
                     val name = entry.name.removePrefix(prefix)
                     val dst = File(coresDir, name)
                     apkZip.getInputStream(entry).use { inp -> dst.outputStream().use { inp.copyTo(it) } }
-                    extracted.add(name)
                 }
             }
-            staleBundledCores(stamp, extracted).forEach { File(coresDir, it).delete() }
-            versionFile.writeText((listOf(currentVersion) + extracted.sorted()).joinToString("\n"))
+            versionFile.writeText(currentVersion)
             return coresDir.absolutePath
         }
     }
