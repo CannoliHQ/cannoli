@@ -136,11 +136,14 @@ class EmbeddedRetroArchBridge(
     override fun setDiskIndex(index: Int) = nativeSetDiskIndex(index)
 
     var raStrings: dev.cannoli.igm.RaOptionStrings = dev.cannoli.igm.RaOptionStrings()
+    var onOpenNativeMenu: (() -> Unit)? = null
 
     override fun settingsProvider(): dev.cannoli.igm.IgmSettingsProvider =
         dev.cannoli.igm.RaIgmSettingsProvider(
             host = this,
             strings = raStrings,
+            debugBuild = com.retroarch.BuildConfig.DEBUG,
+            onOpenNativeMenu = { onOpenNativeMenu?.invoke() },
         )
 
     override fun coreOptions(): List<dev.cannoli.igm.CoreOptionRef> =

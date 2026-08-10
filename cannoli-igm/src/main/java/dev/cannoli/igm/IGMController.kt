@@ -456,6 +456,12 @@ class IGMController(
         bridge.loadState(selectedSlotIndex.intValue)
     }
 
+    fun suspendForNativeMenu() {
+        rememberMenuIndex()
+        bridge.setOnNativeMenuClosed { onNativeMenuClosed?.invoke() }
+        bridge.openNativeMenu()
+    }
+
     fun openAchievements() {
         push(IGMScreen.Achievements(achievements = bridge.getAchievements()))
     }
@@ -547,6 +553,11 @@ class IGMController(
 
     /** Callback for when the IGM wants to close (hide the overlay) */
     var onClose: (() -> Unit)? = null
+
+    /** Callback for when the IGM wants to open the native menu */
+    var onOpenNativeMenu: (() -> Unit)? = null
+
+    var onNativeMenuClosed: (() -> Unit)? = null
 
     /**
      * Handle a key event from the gamepad.

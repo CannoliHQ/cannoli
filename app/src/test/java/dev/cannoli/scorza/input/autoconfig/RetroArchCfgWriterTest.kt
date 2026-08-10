@@ -63,7 +63,7 @@ class RetroArchCfgWriterTest {
 
     @Test
     fun `writes standard ra keys`() {
-        val cfg = RetroArchCfgWriter.write(sampleMapping())
+        val cfg = RetroArchCfgWriter.write(sampleMapping(), debugBuild = true)
         assertTrue(cfg.contains("input_driver = \"android\""))
         assertTrue(cfg.contains("input_device = \"8BitDo Pro 2\""))
         assertTrue(cfg.contains("input_device_display_name = \"Living Room Pad\""))
@@ -88,7 +88,17 @@ class RetroArchCfgWriterTest {
         val onlyDefaults = mapping.copy(
             bindings = mapping.bindings + (CanonicalButton.BTN_MENU to listOf(InputBinding.Button(4), InputBinding.Button(110)))
         )
-        val cfg = RetroArchCfgWriter.write(onlyDefaults)
+        val cfg = RetroArchCfgWriter.write(onlyDefaults, debugBuild = true)
+        assertTrue(!cfg.contains("input_menu_toggle_btn"))
+    }
+
+    @Test
+    fun `menu key skips injected platform defaults in a release build too`() {
+        val mapping = sampleMapping()
+        val onlyDefaults = mapping.copy(
+            bindings = mapping.bindings + (CanonicalButton.BTN_MENU to listOf(InputBinding.Button(4), InputBinding.Button(110)))
+        )
+        val cfg = RetroArchCfgWriter.write(onlyDefaults, debugBuild = false)
         assertTrue(!cfg.contains("input_menu_toggle_btn"))
     }
 
@@ -99,9 +109,22 @@ class RetroArchCfgWriterTest {
             mapping.copy(
                 bindings = mapping.bindings +
                     (CanonicalButton.BTN_MENU to listOf(InputBinding.Hat(16, HatDirection.UP)))
-            )
+            ),
+            debugBuild = true,
         )
         assertTrue(!cfg.contains("input_menu_toggle_btn"))
+    }
+
+    @Test
+    fun `a release build nulls a real user-bound menu button`() {
+        val cfg = RetroArchCfgWriter.write(sampleMapping(), debugBuild = false)
+        assertTrue(cfg.contains("input_menu_toggle_btn = \"nul\""))
+    }
+
+    @Test
+    fun `a debug build emits the real menu button`() {
+        val cfg = RetroArchCfgWriter.write(sampleMapping(), debugBuild = true)
+        assertTrue(cfg.contains("input_menu_toggle_btn = \"318\""))
     }
 
     @Test
@@ -160,7 +183,10 @@ class RetroArchCfgWriterTest {
         val edited = mapping.copy(
             bindings = mapping.bindings + (CanonicalButton.BTN_MENU to listOf(InputBinding.Button(318)))
         )
-        val entry = RetroArchCfgParser.parse(RetroArchCfgWriter.write(edited), fileName = "8BitDo_Pro_2.cfg")
+        val entry = RetroArchCfgParser.parse(
+            RetroArchCfgWriter.write(edited, debugBuild = true),
+            fileName = "8BitDo_Pro_2.cfg",
+        )
         val device = ConnectedDevice(
             androidDeviceId = 1, descriptor = "abc123", name = "8BitDo Pro 2",
             vendorId = 11720, productId = 24582, androidBuildModel = "",

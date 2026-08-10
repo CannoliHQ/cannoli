@@ -2,8 +2,11 @@ package dev.cannoli.igm
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+
+private const val RA_MENU_KEY = "__ra_menu__"
 
 private class FakeRaHost : RaSettingsHost {
     val settings = mutableMapOf<String, RaSetting>()
@@ -35,15 +38,31 @@ private fun host(): FakeRaHost = FakeRaHost().apply {
         RaSetting("run_ahead_enabled", "Run-Ahead", RaSettingType.BOOL, "false")
 }
 
-private fun provider(h: FakeRaHost): RaIgmSettingsProvider = RaIgmSettingsProvider(host = h)
+private fun provider(
+    h: FakeRaHost,
+    opened: MutableList<Unit> = mutableListOf(),
+    debugBuild: Boolean = true,
+): RaIgmSettingsProvider =
+    RaIgmSettingsProvider(host = h, debugBuild = debugBuild, onOpenNativeMenu = { opened.add(Unit) })
 
 private val LATENCY = "latency"
 
 class RaIgmSettingsProviderTest {
 
     @Test
-    fun `root lists every catalog category and no native menu action`() {
-        val p = provider(host())
+    fun `root lists every catalog category plus a RetroArch Menu action in a debug build`() {
+        val p = provider(host(), debugBuild = true)
+        val items = p.screen(emptyList())
+        val labels = items.items.map { it.label }
+        val catTitles = RaOptionCatalog.categories.map { RaOptionStrings().categoryTitles[it.key] ?: it.key }
+        assertEquals(catTitles + RaOptionStrings().nativeMenu, labels)
+        assertTrue(items.items.dropLast(1).all { it is GenericIgmSettingsItem.Category })
+        assertTrue(items.items.last() is GenericIgmSettingsItem.Action)
+    }
+
+    @Test
+    fun `root lists every catalog category and no native menu action in a release build`() {
+        val p = provider(host(), debugBuild = false)
         val items = p.screen(emptyList())
         val labels = items.items.map { it.label }
         val catTitles = RaOptionCatalog.categories.map { RaOptionStrings().categoryTitles[it.key] ?: it.key }
@@ -191,10 +210,64 @@ class RaIgmSettingsProviderTest {
     }
 
     @Test
-    fun `activate never returns a prompt since the provider produces no action rows`() {
-        val p = provider(host())
+    fun `activating the RetroArch Menu action opens the native menu when clean`() {
+        val opened = mutableListOf<Unit>()
+        val p = provider(host(), opened)
         p.screen(emptyList())
-        assertEquals(null, p.activate("anything"))
+        assertNull(p.activate(RA_MENU_KEY))
+        assertEquals(1, opened.size)
+    }
+
+    @Test
+    fun `RetroArch Menu when dirty prompts to save first then opens the native menu`() {
+        val h = host()
+        val opened = mutableListOf<Unit>()
+        val p = provider(h, opened)
+        p.screen(listOf(LATENCY))
+        p.cycle("run_ahead_enabled", 1)
+        val prompt = p.activate(RA_MENU_KEY)!!
+        assertEquals(
+            listOf(RaOptionStrings().savePlatform, RaOptionStrings().saveGame, RaOptionStrings().dontSave),
+            prompt.options,
+        )
+        assertTrue(opened.isEmpty())
+        prompt.onChoice(1)
+        assertEquals(listOf(RaOverrideScope.GAME), h.savedScopes)
+        assertEquals(1, opened.size)
+    }
+
+    @Test
+    fun `RetroArch Menu when dirty and discarded still opens the native menu without saving`() {
+        val h = host()
+        val opened = mutableListOf<Unit>()
+        val p = provider(h, opened)
+        p.screen(listOf(LATENCY))
+        p.cycle("run_ahead_enabled", 1)
+        p.activate(RA_MENU_KEY)!!.onChoice(2)
+        assertTrue(h.savedScopes.isEmpty())
+        assertEquals(1, opened.size)
+    }
+
+    @Test
+    fun `RetroArch Menu when dirty and cancelled opens the native menu without saving`() {
+        val h = host()
+        val opened = mutableListOf<Unit>()
+        val p = provider(h, opened)
+        p.screen(listOf(LATENCY))
+        p.cycle("run_ahead_enabled", 1)
+        val prompt = p.activate(RA_MENU_KEY)!!
+        prompt.onCancel!!.invoke()
+        assertTrue(h.savedScopes.isEmpty())
+        assertEquals(1, opened.size)
+    }
+
+    @Test
+    fun `activate never opens the native menu in a release build even with the raw key`() {
+        val opened = mutableListOf<Unit>()
+        val p = provider(host(), opened, debugBuild = false)
+        p.screen(emptyList())
+        assertNull(p.activate(RA_MENU_KEY))
+        assertTrue(opened.isEmpty())
     }
 
     @Test

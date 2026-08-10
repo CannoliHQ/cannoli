@@ -31,7 +31,7 @@ object RetroArchCfgWriter {
     // BTN_MENU; they describe the platform, not this pad, so they never serialize.
     private val INJECTED_MENU_DEFAULTS = setOf(4, 110)
 
-    fun write(mapping: DeviceMapping): String = buildString {
+    fun write(mapping: DeviceMapping, debugBuild: Boolean = false): String = buildString {
         line("input_driver", "android")
         line("input_device", mapping.match.name ?: mapping.displayName)
         line("input_device_display_name", mapping.displayName)
@@ -58,7 +58,15 @@ object RetroArchCfgWriter {
             for (binding in effective) {
                 when (binding) {
                     is InputBinding.Button -> if (!digitalWritten) {
-                        line("input_$btnKey", binding.keyCode.toString())
+                        // Release builds close RA's own menu off entirely: a real bound key still
+                        // exists (the Cannoli IGM trigger reads it independently, see
+                        // resolveMenuKeycodes), but RA itself is told the key is unbound.
+                        val value = if (canonical == CanonicalButton.BTN_MENU && !debugBuild) {
+                            "nul"
+                        } else {
+                            binding.keyCode.toString()
+                        }
+                        line("input_$btnKey", value)
                         digitalWritten = true
                     }
                     is InputBinding.Hat -> if (!digitalWritten) {

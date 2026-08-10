@@ -5,7 +5,10 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 
-class AutoconfigRepository(private val dirProvider: () -> File) {
+class AutoconfigRepository(
+    private val debugBuild: Boolean = false,
+    private val dirProvider: () -> File,
+) {
 
     private val dir: File get() = dirProvider()
 
@@ -34,7 +37,7 @@ class AutoconfigRepository(private val dirProvider: () -> File) {
         val file = File(dir, "${mapping.id}.cfg")
         val tmp = File(dir, "${mapping.id}.cfg.tmp")
         FileOutputStream(tmp).use { fos ->
-            fos.write(RetroArchCfgWriter.write(mapping).toByteArray())
+            fos.write(RetroArchCfgWriter.write(mapping, debugBuild).toByteArray())
             fos.fd.sync()
         }
         if (!tmp.renameTo(file)) {

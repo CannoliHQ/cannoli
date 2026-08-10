@@ -3,11 +3,14 @@ package dev.cannoli.igm
 import dev.cannoli.core.CheevosSessionKeys
 
 private const val LOCAL_TOGGLE_PREFIX = "cannoli_"
+private const val RA_MENU_KEY = "__ra_menu__"
 private const val EMULATOR_CATEGORY = "emulator"
 
 class RaIgmSettingsProvider(
     private val host: RaSettingsHost,
     private val strings: RaOptionStrings = RaOptionStrings(),
+    private val debugBuild: Boolean = false,
+    private val onOpenNativeMenu: () -> Unit,
 ) : IgmSettingsProvider {
 
     private var onChanged: (() -> Unit)? = null
@@ -80,6 +83,7 @@ class RaIgmSettingsProvider(
             for (cat in RaOptionCatalog.categories) {
                 add(GenericIgmSettingsItem.Category(cat.key, strings.categoryTitles[cat.key] ?: cat.key))
             }
+            if (debugBuild) add(GenericIgmSettingsItem.Action(RA_MENU_KEY, strings.nativeMenu))
         }
         return GenericIgmSettingsScreen(strings.rootTitle, items)
     }
@@ -153,8 +157,30 @@ class RaIgmSettingsProvider(
         replaceSetting(i, currentSettings[i].copy(value = value))
     }
 
-    // No Action row is ever produced by this provider, so there is nothing to activate.
-    override fun activate(itemKey: String): IgmSettingsExit.Prompt? = null
+    override fun activate(itemKey: String): IgmSettingsExit.Prompt? {
+        if (!debugBuild || itemKey != RA_MENU_KEY) return null
+        if (!dirty) {
+            onOpenNativeMenu()
+            return null
+        }
+        // Unsaved RA changes: prompt to save first, then open the native menu, matching
+        // the old north-button shortcut (IGMController handleRaOptionsKey keycode 100).
+        return IgmSettingsExit.Prompt(
+            title = null,
+            options = listOf(strings.savePlatform, strings.saveGame, strings.dontSave),
+            onCancel = {
+                clearDirty()
+                onOpenNativeMenu()
+            },
+        ) { choice ->
+            when (choice) {
+                0 -> host.raSaveOverride(RaOverrideScope.CONTENT_DIR, overrideKeys())
+                1 -> host.raSaveOverride(RaOverrideScope.GAME, overrideKeys())
+            }
+            clearDirty()
+            onOpenNativeMenu()
+        }
+    }
 
     override fun exitPrompt(): IgmSettingsExit =
         if (!dirty) IgmSettingsExit.Close
