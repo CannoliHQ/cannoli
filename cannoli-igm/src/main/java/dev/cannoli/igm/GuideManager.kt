@@ -7,10 +7,10 @@ import java.io.File
 class GuideManager(
     cannoliRoot: String,
     private val platformTag: String,
-    private val gameTitle: String
+    private val romBaseName: String
 ) {
     private val root = File(cannoliRoot)
-    private val guidesDir = File(File(File(root, "Guides"), platformTag), gameTitle)
+    private val guidesDir = File(File(File(root, "Guides"), platformTag), romBaseName)
     private val positionsFile = File(File(File(root, "Config"), "State"), "guide_positions.ini")
 
     private val supportedExtensions = mapOf(
@@ -31,7 +31,7 @@ class GuideManager(
     }
 
     private fun positionKey(file: File): String =
-        "$platformTag/$gameTitle/${file.name}"
+        "$platformTag/$romBaseName/${file.name}"
 
     data class SavedPosition(
         val position: Int = 0,

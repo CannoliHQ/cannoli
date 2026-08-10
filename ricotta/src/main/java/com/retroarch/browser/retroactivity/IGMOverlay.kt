@@ -191,7 +191,7 @@ class IGMOverlay(
 
         // Discover guides and cheats for this game so the IGM can show them.
         if (cannoliRoot.isNotEmpty()) {
-            controller.attachGuides(GuideManager(cannoliRoot, platformTag, controller.gameTitle))
+            controller.attachGuides(GuideManager(cannoliRoot, platformTag, romBaseName))
             controller.attachCheats(CheatManager(cannoliRoot, platformTag, romBaseName))
         }
         controller.onCheatsRestored = { count ->

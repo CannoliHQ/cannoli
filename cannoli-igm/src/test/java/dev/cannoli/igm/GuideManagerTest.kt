@@ -30,6 +30,23 @@ class GuideManagerTest {
     }
 
     @Test
+    fun findGuidesResolvesUnderRawBaseNameNotStrippedTitle() {
+        val root = tmp.root
+        val dir = guidesDir(root, "nes", "Zelda II - The Adventure of Link (USA)")
+        File(dir, "manual.pdf").writeText("x")
+
+        val guides = GuideManager(
+            root.absolutePath, "nes", "Zelda II - The Adventure of Link (USA)"
+        ).findGuides()
+        assertEquals(listOf("manual.pdf"), guides.map { it.name })
+
+        val byStrippedTitle = GuideManager(
+            root.absolutePath, "nes", "Zelda II - The Adventure of Link"
+        ).findGuides()
+        assertEquals(emptyList<GuideFile>(), byStrippedTitle)
+    }
+
+    @Test
     fun findGuidesReturnsEmptyWhenDirMissing() {
         val guides = GuideManager(tmp.root.absolutePath, "nes", "Nothing").findGuides()
         assertEquals(emptyList<GuideFile>(), guides)
