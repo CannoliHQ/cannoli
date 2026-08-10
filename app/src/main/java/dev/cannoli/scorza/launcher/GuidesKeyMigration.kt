@@ -16,7 +16,8 @@ import java.io.File
  * For each Guides/<tag>/<dir>:
  * - the dir already equals a rom's base name: left alone.
  * - the dir equals exactly one rom's display name and differs from its base name: renamed to the
- *   base name, merging into an existing base-name dir and skipping any duplicate filename.
+ *   base name, merging into an existing base-name dir; a duplicate filename is never overwritten
+ *   or deleted, only renamed aside to "<name>.superseded" in the old dir.
  * - the dir matches multiple roms' display names, or none at all: skipped and logged, since
  *   guessing with user content is worse than leaving a dir the launcher no longer resolves.
  *
@@ -99,10 +100,15 @@ class GuidesKeyMigration(
         return mergeInto(tag, sourceDir, targetDir, baseName)
     }
 
-    // A duplicate filename means the target already holds this guide, so the source's copy is
-    // discarded rather than left behind as a dir the app can never resolve again. A file that
-    // fails to move is neither moved nor discarded: it stays physically at the old location, so
-    // its position key is left alone too (see rewritePositionKeys), and the dir isn't removed.
+    // A duplicate filename means the target already holds this guide, so the target's copy (with
+    // its own existing position key) is the surviving canonical one. The source's copy is never
+    // deleted: it's renamed aside to "<name>.superseded" in the same source dir, an inert file
+    // GuideManager ignores (not a supported extension), so nothing is ever lost from live user
+    // data even though the position key for that filename is dropped (see rewritePositionKeys) -
+    // the target's own key is what stays authoritative, not a transferred one. A file that fails
+    // to move, or fails to rename aside, is neither moved nor discarded: it stays physically at
+    // the old location under its original name, so its position key is left alone too, and the
+    // dir isn't removed.
     private fun mergeInto(tag: String, sourceDir: File, targetDir: File, baseName: String): Boolean {
         val oldName = sourceDir.name
         val moved = mutableSetOf<String>()
@@ -112,7 +118,10 @@ class GuidesKeyMigration(
         files.filter { it.isFile }.forEach { file ->
             val dest = File(targetDir, file.name)
             when {
-                dest.exists() -> if (file.delete()) discarded.add(file.name) else allHandled = false
+                dest.exists() -> {
+                    if (file.renameTo(File(sourceDir, "${file.name}.superseded"))) discarded.add(file.name)
+                    else allHandled = false
+                }
                 file.renameTo(dest) -> moved.add(file.name)
                 else -> {
                     allHandled = false
@@ -136,9 +145,11 @@ class GuidesKeyMigration(
 
     // moved == null rewrites every key under the old dir (plain rename, every file came along).
     // Otherwise this is the merge case: a filename in moved is rewritten to the new dir, a
-    // filename in discarded (a confirmed, deleted duplicate) has its key dropped, and any other
-    // filename - one that failed to move - keeps its original key untouched, since the file it
-    // points at is still sitting at the old location.
+    // filename in discarded (a duplicate renamed aside to "<name>.superseded") has its key
+    // dropped - the target's own existing key for that filename is what stays authoritative, not
+    // a transferred one - and any other filename - one that failed to move or rename aside -
+    // keeps its original key untouched, since the file it points at is still sitting at the old
+    // location under its original name.
     private fun rewritePositionKeys(
         tag: String,
         oldDirName: String,

@@ -87,21 +87,43 @@ class GuidesKeyMigrationTest {
         assertTrue(File(dir, "manual.pdf").exists())
     }
 
-    @Test fun `merges into an existing base-name dir and skips a duplicate filename`() {
+    @Test fun `merges into an existing base-name dir and renames a duplicate filename aside instead of deleting it`() {
         val displayDir = File(guidesRoot(), "NES/Zelda II - The Adventure of Link").apply { mkdirs() }
         File(displayDir, "manual.pdf").writeText("from display-name dir")
         File(displayDir, "map.png").writeText("map")
         val baseDir = File(guidesRoot(), "NES/Zelda II - The Adventure of Link (USA)").apply { mkdirs() }
         File(baseDir, "manual.pdf").writeText("from kitchen upload")
+        val pf = positionsFile()
+        IniWriter.write(
+            pf,
+            mapOf(
+                "positions" to mapOf(
+                    "NES/Zelda II - The Adventure of Link/manual.pdf" to "9",
+                    "NES/Zelda II - The Adventure of Link (USA)/manual.pdf" to "2",
+                ),
+            ),
+        )
         val roms = listOf(
             rom(1, "NES", "Zelda II - The Adventure of Link (USA).nes", "Zelda II - The Adventure of Link"),
         )
 
         migration(roms).migrateIfNeeded()
 
-        assertFalse("the display-name dir must be gone after a merge", displayDir.exists())
+        // (a) the target/new-dir copy survives, untouched, with its own existing position key.
         assertEquals("from kitchen upload", File(baseDir, "manual.pdf").readText())
+        val ini = IniParser.parse(pf)
+        assertEquals("2", ini.get("positions", "NES/Zelda II - The Adventure of Link (USA)/manual.pdf"))
+        // (b) the old-dir source copy is not deleted - it survives, renamed aside.
+        assertFalse("the source copy must not be deleted", File(displayDir, "manual.pdf").exists())
+        assertEquals("from display-name dir", File(displayDir, "manual.pdf.superseded").readText())
+        // The non-duplicate file still moved normally.
         assertTrue(File(baseDir, "map.png").exists())
+        // (c) the old dir itself is not removed - it holds the superseded backup.
+        assertTrue("the old dir must survive holding the superseded backup", displayDir.exists())
+        assertNull(
+            "the dropped key must not point at a directory that no longer holds that filename",
+            ini.get("positions", "NES/Zelda II - The Adventure of Link/manual.pdf"),
+        )
     }
 
     @Test fun `rewrites position keys embedding the old dir name for a plain rename`() {
@@ -127,7 +149,7 @@ class GuidesKeyMigrationTest {
         assertNull(ini.get("positions", "NES/Zelda II - The Adventure of Link/manual.pdf"))
     }
 
-    @Test fun `drops the position key for a filename skipped as a duplicate during merge`() {
+    @Test fun `drops the position key for a filename renamed aside as a duplicate during merge`() {
         val displayDir = File(guidesRoot(), "NES/Zelda II - The Adventure of Link").apply { mkdirs() }
         File(displayDir, "manual.pdf").writeText("from display-name dir")
         val baseDir = File(guidesRoot(), "NES/Zelda II - The Adventure of Link (USA)").apply { mkdirs() }
@@ -151,6 +173,31 @@ class GuidesKeyMigrationTest {
         val ini = IniParser.parse(pf)
         assertEquals("2", ini.get("positions", "NES/Zelda II - The Adventure of Link (USA)/manual.pdf"))
         assertNull(ini.get("positions", "NES/Zelda II - The Adventure of Link/manual.pdf"))
+        assertTrue(File(displayDir, "manual.pdf.superseded").exists())
+    }
+
+    @Test fun `a duplicate that fails to rename aside blocks the stamp and leaves both copies in place`() {
+        val tagDir = File(guidesRoot(), "NES").apply { mkdirs() }
+        val displayDir = File(tagDir, "Zelda II - The Adventure of Link").apply { mkdirs() }
+        File(displayDir, "manual.pdf").writeText("from display-name dir")
+        val baseDir = File(tagDir, "Zelda II - The Adventure of Link (USA)").apply { mkdirs() }
+        File(baseDir, "manual.pdf").writeText("from kitchen upload")
+        val roms = listOf(
+            rom(1, "NES", "Zelda II - The Adventure of Link (USA).nes", "Zelda II - The Adventure of Link"),
+        )
+
+        // Renaming a file aside within the same dir needs write access to that dir.
+        displayDir.setWritable(false)
+        assumeTrue("this user can create entries in a non-writable directory", !displayDir.canWrite())
+        try {
+            migration(roms).migrateIfNeeded()
+        } finally {
+            displayDir.setWritable(true)
+        }
+
+        assertTrue("the source copy must survive under its original name", File(displayDir, "manual.pdf").exists())
+        assertEquals("from kitchen upload", File(baseDir, "manual.pdf").readText())
+        assertFalse("a failed rename-aside must not stamp", File(guidesRoot(), ".guides_key_version").exists())
     }
 
     @Test fun `stamps the version and never re-runs on a later call`() {
