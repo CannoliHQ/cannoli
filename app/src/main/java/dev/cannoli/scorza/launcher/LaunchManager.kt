@@ -79,24 +79,44 @@ class LaunchManager(
      *
      * This used to seed itself from whichever external RetroArch the global setting named, and
      * re-sync whenever that file changed. With the source split there is no single external
-     * RetroArch to copy from, and Cannoli owns the embedded runner's config outright, so the
-     * config is simply generated when absent.
+     * RetroArch to copy from, and Cannoli owns the embedded runner's config outright, so it is
+     * regenerated on every launch: an install upgraded from an older build gets today's default
+     * keys immediately instead of carrying whatever it happened to have on disk forever.
      */
     fun syncRetroArchConfig(root: File) {
         val raDir = CannoliPaths(root).configRetroArch
         raDir.mkdirs()
         val localConfig = File(raDir, "retroarch.cfg")
-        if (!localConfig.exists()) {
-            localConfig.writeText(buildMinimalConfig(root.absolutePath))
-        }
+        localConfig.writeText(
+            "# DO NOT EDIT - Cannoli regenerates this. Your own keys go in custom.cfg\n" +
+                buildMinimalConfig(root.absolutePath)
+        )
         raConfigPath = localConfig.absolutePath
     }
+
+    // Optional: a tier the user or Kitchen never wrote contributes nothing rather than failing
+    // the launch. Parse is already lenient about malformed lines within a file that does exist.
+    private fun readOverrideLayer(file: File): Map<String, String> =
+        if (!file.exists()) emptyMap()
+        else try { RetroArchConfigComposer.parse(file.readText()) } catch (_: IOException) { emptyMap() }
 
     private fun buildGameConfig(rom: Rom, resume: Boolean = false, slot: Int = 0): String? {
         val base = raConfigPath ?: return null
         val baseConfig = try { File(base).readText() } catch (_: IOException) { return null }
         val paths = CannoliPaths(settings.sdCardRoot)
         val romName = normalizedRomName(rom)
+        // The preference stack, weakest to strongest: global, then system, then this one game,
+        // then the user's own custom.cfg. The plumbing band applied below always wins over all
+        // four - see applyOverrides below and #36 in the launch config design.
+        val preferenceBase = RetroArchConfigComposer.compose(
+            baseConfig,
+            listOf(
+                readOverrideLayer(paths.globalOverrideCfg),
+                readOverrideLayer(paths.systemOverrideCfg(rom.platformTag)),
+                readOverrideLayer(paths.gameOverrideCfg(rom.platformTag, romName)),
+                readOverrideLayer(paths.customCfg),
+            ),
+        )
         val stateDir = paths.saveStateDir(rom.platformTag, romName)
         stateDir.mkdirs()
         val saveDir = paths.savesFor(rom.platformTag)
@@ -127,7 +147,7 @@ class LaunchManager(
             putAll(cheevos)
             putAll(autoStateOverrides(hardcore, resume, settings.alwaysSaveOnQuit))
         }
-        val patched = applyOverrides(baseConfig, gameOverrides)
+        val patched = applyOverrides(preferenceBase, gameOverrides)
         val launchConfig = paths.raLaunchCfg
         launchConfig.writeText(patched)
         return launchConfig.absolutePath
@@ -532,13 +552,13 @@ class LaunchManager(
         private const val CONFIG_VERSION = 7
 
         // Both branches state all five session/account/mode keys outright rather than leaving any
-        // out, because the base config is not always one Cannoli wrote: an install upgraded from a
-        // build that seeded retroarch.cfg from an external RetroArch carries that file's cheevos
-        // block, and syncRetroArchConfig only writes a base when none exists. An unstated key
-        // leaves the inherited value live, which is how a logged out player could still be
-        // launching with someone's account, token and hardcore. Hardcore is stated because
-        // RetroArch defaults it to true, so enabling cheevos without it would put every player into
-        // hardcore. Cannoli never launches with a password at all, so that one is always empty.
+        // out, because the base config is not the only thing buildGameConfig composes over: a
+        // system, game or custom override cfg is user- or Kitchen-writable and can carry a cheevos
+        // block of its own. An unstated key leaves that value live, which is how a logged out
+        // player could still be launching with someone's account, token and hardcore. Hardcore is
+        // stated because RetroArch defaults it to true, so enabling cheevos without it would put
+        // every player into hardcore. Cannoli never launches with a password at all, so that one
+        // is always empty.
         fun cheevosOverrides(
             username: String,
             token: String,
@@ -593,7 +613,7 @@ class LaunchManager(
         // The availability probes are lazy because a stored choice decides the answer on its
         // own, and probing the filesystem to reach a conclusion already known is wasted work.
         /**
-         * The base config the embedded RetroArch loads when nothing else has written one.
+         * The Cannoli-owned default config, regenerated on every launch as the base the override tiers compose over.
          *
          * RetroArch derives its save and state directories by appending to the configured ones,
          * and both sort flags default to on. Cannoli's layout is one directory per system, so the
@@ -616,6 +636,9 @@ class LaunchManager(
             // whole point of the save and load rows.
             appendLine("savestate_thumbnail_enable = \"true\"")
             appendLine("config_save_on_exit = \"false\"")
+            // Cannoli composes the override tiers itself; RetroArch's own auto-override loading
+            // would layer a second, uncontrolled copy on top of what was just composed.
+            appendLine("auto_overrides_enable = \"false\"")
             appendLine("video_font_enable = \"false\"")
             appendLine("assets_directory = \"$rootPath/Config/Assets\"")
             // RetroArch appends the joypad driver name to this, so it scans Autoconfig/android,
