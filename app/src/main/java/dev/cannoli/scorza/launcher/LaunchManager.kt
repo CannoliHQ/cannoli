@@ -17,6 +17,7 @@ import dev.cannoli.scorza.input.runtime.labelSet
 import dev.cannoli.scorza.launcher.toIgmInputMapping
 import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.core.SaveSlotStore
+import dev.cannoli.core.config.RetroArchConfigComposer
 import dev.cannoli.scorza.model.App
 import dev.cannoli.scorza.model.LaunchTarget
 import dev.cannoli.scorza.model.Rom
@@ -133,21 +134,8 @@ class LaunchManager(
     }
 
 
-    private fun applyOverrides(source: String, overrides: Map<String, String>): String {
-        val applied = mutableSetOf<String>()
-        val lines = source.lines().map { line ->
-            val trimmed = line.trimStart()
-            val key = trimmed.substringBefore('=').trim().removePrefix("# ")
-            if (key in overrides) {
-                applied.add(key)
-                "$key = \"${overrides[key]}\""
-            } else line
-        }.toMutableList()
-        for ((key, value) in overrides) {
-            if (key !in applied) lines.add("$key = \"$value\"")
-        }
-        return lines.joinToString("\n")
-    }
+    private fun applyOverrides(source: String, overrides: Map<String, String>): String =
+        RetroArchConfigComposer.compose(source, listOf(overrides))
 
     private fun sha256(vararg parts: ByteArray): String {
         val digest = MessageDigest.getInstance("SHA-256")
