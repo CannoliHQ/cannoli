@@ -7,6 +7,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -169,6 +170,84 @@ class GuidesKeyMigrationTest {
         migration.migrateIfNeeded()
 
         assertTrue(staleDir.exists())
+    }
+
+    @Test fun `a failed rename does not stamp, so the pass retries and succeeds on a later call`() {
+        val tagDir = File(guidesRoot(), "NES").apply { mkdirs() }
+        val dir = File(tagDir, "Zelda II - The Adventure of Link").apply { mkdirs() }
+        File(dir, "manual.pdf").writeText("x")
+        val roms = listOf(
+            rom(1, "NES", "Zelda II - The Adventure of Link (USA).nes", "Zelda II - The Adventure of Link"),
+        )
+        val migration = migration(roms)
+
+        // Renaming a dir needs write access to its parent, not the dir itself, so blocking the
+        // tag dir is what makes sourceDir.renameTo(targetDir) fail.
+        tagDir.setWritable(false)
+        assumeTrue("this user can create entries in a non-writable directory", !tagDir.canWrite())
+        try {
+            migration.migrateIfNeeded()
+        } finally {
+            tagDir.setWritable(true)
+        }
+
+        assertTrue("a failed rename must leave the source dir in place", dir.exists())
+        assertFalse("a partial failure must not stamp", File(guidesRoot(), ".guides_key_version").exists())
+
+        migration.migrateIfNeeded()
+
+        assertFalse(dir.exists())
+        assertTrue(File(tagDir, "Zelda II - The Adventure of Link (USA)").exists())
+        assertTrue(File(guidesRoot(), ".guides_key_version").exists())
+    }
+
+    @Test fun `a file that fails to move during a merge keeps its position key and blocks the stamp`() {
+        val tagDir = File(guidesRoot(), "NES").apply { mkdirs() }
+        val displayDir = File(tagDir, "Zelda II - The Adventure of Link").apply { mkdirs() }
+        File(displayDir, "manual.pdf").writeText("from display-name dir")
+        val baseDir = File(tagDir, "Zelda II - The Adventure of Link (USA)").apply { mkdirs() }
+        val pf = positionsFile()
+        IniWriter.write(
+            pf,
+            mapOf("positions" to mapOf("NES/Zelda II - The Adventure of Link/manual.pdf" to "5")),
+        )
+        val roms = listOf(
+            rom(1, "NES", "Zelda II - The Adventure of Link (USA).nes", "Zelda II - The Adventure of Link"),
+        )
+
+        // Moving a file into the target dir needs write access to the target, not the source.
+        baseDir.setWritable(false)
+        assumeTrue("this user can create entries in a non-writable directory", !baseDir.canWrite())
+        try {
+            migration(roms).migrateIfNeeded()
+        } finally {
+            baseDir.setWritable(true)
+        }
+
+        assertTrue("the file that failed to move must remain at the old location", File(displayDir, "manual.pdf").exists())
+        val ini = IniParser.parse(pf)
+        assertEquals("still at the old location, its key must be untouched", "5", ini.get("positions", "NES/Zelda II - The Adventure of Link/manual.pdf"))
+        assertNull(ini.get("positions", "NES/Zelda II - The Adventure of Link (USA)/manual.pdf"))
+        assertFalse("a partial merge failure must not stamp", File(guidesRoot(), ".guides_key_version").exists())
+    }
+
+    @Test fun `a merge that cannot remove the emptied source dir still stamps, since no guide content was stranded`() {
+        val tagDir = File(guidesRoot(), "NES").apply { mkdirs() }
+        val displayDir = File(tagDir, "Zelda II - The Adventure of Link").apply { mkdirs() }
+        File(displayDir, "manual.pdf").writeText("x")
+        // A stray subdirectory is not a guide file; mergeInto never touches it, so it blocks
+        // sourceDir.delete() even after every real file was successfully moved out.
+        File(File(displayDir, "stray").apply { mkdirs() }, "leftover.txt").writeText("x")
+        val baseDir = File(tagDir, "Zelda II - The Adventure of Link (USA)").apply { mkdirs() }
+        val roms = listOf(
+            rom(1, "NES", "Zelda II - The Adventure of Link (USA).nes", "Zelda II - The Adventure of Link"),
+        )
+
+        migration(roms).migrateIfNeeded()
+
+        assertTrue(File(baseDir, "manual.pdf").exists())
+        assertTrue("the source dir survives because a stray subdir blocks delete", displayDir.exists())
+        assertTrue(File(guidesRoot(), ".guides_key_version").exists())
     }
 
     @Test fun `resolves the guides directory fresh on every call, not once at construction`() {
