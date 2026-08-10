@@ -29,8 +29,7 @@ class CannoliPaths(val root: File) {
     val configState: File get() = File(configDir, "State")
     val configRetroArch: File get() = File(configDir, "RetroArch")
     val configOverrides: File get() = File(configDir, "Overrides")
-    val configOverridesCores: File get() = File(configOverrides, "Cores")
-    val configOverridesSystems: File get() = File(configOverrides, "systems")
+    val configOverridesSystems: File get() = File(configOverrides, "Systems")
     val configOverridesGames: File get() = File(configOverrides, "Games")
     val configCache: File get() = File(configDir, "Cache")
     val configProfiles: File get() = File(configDir, "Profiles")
@@ -60,6 +59,9 @@ class CannoliPaths(val root: File) {
     val configRaOffline: File get() = File(configRetroAchievements, "Offline")
     val raGameIdsLegacyFile: File get() = File(configRetroArch, "ra_game_ids.txt")
     val raLaunchCfg: File get() = File(configRetroArch, "retroarch_launch.cfg")
+    val retroArchCfg: File get() = File(configRetroArch, "retroarch.cfg")
+    val customCfg: File get() = File(configRetroArch, "custom.cfg")
+    val globalOverrideCfg: File get() = File(configOverrides, "global.cfg")
     val cannoliFont: File get() = File(configAssets, "cannoli/font.ttf")
     val toolsDir: File get() = File(configLaunchScripts, "Tools")
     val portsDir: File get() = File(configLaunchScripts, "Ports")
@@ -95,9 +97,9 @@ class CannoliPaths(val root: File) {
 
     // Profiles & overrides
     fun profileFile(name: String): File = File(configProfiles, "$name.ini")
-    fun systemOverrideFile(tag: String): File = File(configOverridesSystems, "$tag.ini")
-    fun gameOverrideFile(tag: String, gameBaseName: String): File =
-        File(File(configOverridesGames, tag), "$gameBaseName.ini")
+    fun systemOverrideCfg(tag: String): File = File(configOverridesSystems, "$tag.cfg")
+    fun gameOverrideCfg(tag: String, base: String): File =
+        File(File(configOverridesGames, tag), "$base.cfg")
 
     // Logs
     fun coreLogDir(coreName: String): File = File(logsDir, coreName)

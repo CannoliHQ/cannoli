@@ -22,7 +22,6 @@ object DirectoryLayout {
             paths.configState,
             paths.configRetroArch,
             paths.configOverrides,
-            paths.configOverridesCores,
             paths.configOverridesSystems,
             paths.configOverridesGames,
             paths.backupDir,
@@ -37,6 +36,13 @@ object DirectoryLayout {
                 assets.open("arcade_map.txt").use { input ->
                     arcadeMap.outputStream().use { input.copyTo(it) }
                 }
+            } catch (_: Exception) {}
+        }
+
+        val customCfg = paths.customCfg
+        if (!customCfg.exists()) {
+            try {
+                customCfg.writeText("# This file is yours. Cannoli never overwrites it. Keys here win.\n")
             } catch (_: Exception) {}
         }
 

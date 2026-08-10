@@ -113,4 +113,48 @@ class DirectoryLayoutTest {
         assertTrue(File(root, "Art/TOOLS").isDirectory)
         assertTrue(File(root, "Art/PORTS").isDirectory)
     }
+
+    @Test fun ensure_seeds_a_blank_custom_cfg_with_only_the_banner() {
+        val root = tmp.newFolder("cannoli")
+        val rom = tmp.newFolder("Roms")
+        val assets = androidx.test.core.app.ApplicationProvider
+            .getApplicationContext<android.content.Context>().assets
+        val config = dev.cannoli.scorza.config.PlatformConfig({ root }, assets)
+        DirectoryLayout.ensure(root, rom, assets, config)
+
+        val customCfg = File(root, "Config/RetroArch/custom.cfg")
+        assertTrue(customCfg.isFile)
+        assertEquals(
+            "# This file is yours. Cannoli never overwrites it. Keys here win.",
+            customCfg.readText().trim(),
+        )
+    }
+
+    @Test fun ensure_does_not_overwrite_an_existing_custom_cfg() {
+        val root = tmp.newFolder("cannoli")
+        val rom = tmp.newFolder("Roms")
+        val assets = androidx.test.core.app.ApplicationProvider
+            .getApplicationContext<android.content.Context>().assets
+        val config = dev.cannoli.scorza.config.PlatformConfig({ root }, assets)
+        val customCfg = File(root, "Config/RetroArch/custom.cfg")
+        customCfg.parentFile?.mkdirs()
+        customCfg.writeText("input_player1_a_btn = 0\n")
+
+        DirectoryLayout.ensure(root, rom, assets, config)
+
+        assertEquals("input_player1_a_btn = 0\n", customCfg.readText())
+    }
+
+    @Test fun ensure_creates_the_overrides_systems_and_games_dirs_and_not_cores() {
+        val root = tmp.newFolder("cannoli")
+        val rom = tmp.newFolder("Roms")
+        val assets = androidx.test.core.app.ApplicationProvider
+            .getApplicationContext<android.content.Context>().assets
+        val config = dev.cannoli.scorza.config.PlatformConfig({ root }, assets)
+        DirectoryLayout.ensure(root, rom, assets, config)
+
+        assertTrue(File(root, "Config/Overrides/Systems").isDirectory)
+        assertTrue(File(root, "Config/Overrides/Games").isDirectory)
+        assertFalse(File(root, "Config/Overrides/Cores").exists())
+    }
 }
