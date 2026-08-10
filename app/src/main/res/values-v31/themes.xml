@@ -3,7 +3,7 @@
     <style name="Theme.Cannoli" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowFullscreen">true</item>
         <item name="android:windowNoTitle">true</item>
-        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:windowBackground">@color/boot_background</item>
         <item name="android:windowAnimationStyle">@style/Animation.Cannoli.None</item>
     </style>
 </resources>

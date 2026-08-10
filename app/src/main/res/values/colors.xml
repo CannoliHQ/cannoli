@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The pre-Compose window and OS splash background. Must match the Compose boot screen's
+         MaterialTheme.colorScheme.background so the handoff from the OS splash to our logo screen
+         shows no flash. The launcher renders a single dark theme, so this is black in every mode. -->
+    <color name="boot_background">#FF000000</color>
+</resources>

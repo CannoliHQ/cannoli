@@ -3,7 +3,7 @@
     <style name="Theme.Cannoli" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowFullscreen">true</item>
         <item name="android:windowNoTitle">true</item>
-        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:windowBackground">@color/boot_background</item>
         <!-- The launcher side of the pair. Which window's animation style applies depends on
              which one is closing, so suppressing it only on the emulator leaves the return
              animated. -->
@@ -11,7 +11,11 @@
     </style>
 
     <style name="Theme.Cannoli.Splash" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">@android:color/black</item>
+        <item name="windowSplashScreenBackground">@color/boot_background</item>
+        <!-- Kept rather than dropped: with no animated icon the platform substitutes the masked
+             launcher icon, which is no cleaner. Our Compose boot screen owns the full uncropped
+             logo and takes over as soon as it can draw, so this shows only for the brief
+             pre-Compose window over a matching background. -->
         <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_splash</item>
         <item name="postSplashScreenTheme">@style/Theme.Cannoli</item>
         <item name="android:windowAnimationStyle">@style/Animation.Cannoli.None</item>
