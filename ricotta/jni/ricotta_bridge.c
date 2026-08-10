@@ -62,6 +62,12 @@ static jmethodID g_on_cheats_loaded_mid = NULL;
 /* Cached JNIEnv for the native runloop thread (attached once, never detached) */
 static JNIEnv *g_native_env = NULL;
 
+/* Cannoli launch context, set from Kotlin via nativeSetCannoliContext before any override save.
+ * The IGM save-scope rows target Cannoli's own override tiers, which are keyed by these. */
+static char g_cannoli_root[PATH_MAX_LENGTH];
+static char g_platform_tag[PATH_MAX_LENGTH];
+static char g_rom_base_name[PATH_MAX_LENGTH];
+
 /* Timestamp of when the IGM was opened, to debounce the menu button */
 static volatile long long g_igm_open_time = 0;
 
@@ -746,10 +752,14 @@ static void ricotta_ra_config_set(config_file_t *conf, const char *key, rarch_se
  * at their live values, merged over any existing override so untouched keys survive. Replaces
  * config_save_overrides, which diffed the whole live config against Cannoli's minimal launch
  * config and wrote hundreds of unrelated keys. Runs on the runloop thread. scope: 1 = game,
- * else content-dir. Keys with no live RA setting (e.g. core options) are silently skipped. */
+ * else content-dir. Keys with no live RA setting (e.g. core options) are silently skipped.
+ *
+ * The target is Cannoli's own override tier, not RetroArch's library-keyed
+ * Config/RetroArch/<library>/ location, so the launch composer reads these back:
+ *   game   -> <root>/Config/Overrides/Games/<tag>/<base>.cfg
+ *   system -> <root>/Config/Overrides/Systems/<tag>.cfg */
 static void ricotta_ra_save_override(int scope, const char *keys)
 {
-   enum override_type type = (scope == 1) ? OVERRIDE_GAME : OVERRIDE_CONTENT_DIR;
    char override_path[PATH_MAX_LENGTH];
    char base_dir[PATH_MAX_LENGTH];
    config_file_t *conf;
@@ -757,8 +767,19 @@ static void ricotta_ra_save_override(int scope, const char *keys)
 
    if (!keys || !*keys)
       return;
-   if (!config_get_override_path(type, override_path, sizeof(override_path)))
+   if (!*g_cannoli_root || !*g_platform_tag)
       return;
+   if (scope == 1 && !*g_rom_base_name)
+      return;
+
+   if (scope == 1)
+      snprintf(override_path, sizeof(override_path),
+            "%s/Config/Overrides/Games/%s/%s.cfg",
+            g_cannoli_root, g_platform_tag, g_rom_base_name);
+   else
+      snprintf(override_path, sizeof(override_path),
+            "%s/Config/Overrides/Systems/%s.cfg",
+            g_cannoli_root, g_platform_tag);
 
    /* config_save_overrides made this directory; config_file_write's fopen will not. */
    fill_pathname_basedir(base_dir, override_path, sizeof(base_dir));
@@ -941,6 +962,28 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetIgmTriggerKeycodes(
 
    (*env)->ReleaseIntArrayElements(env, keycodes, elems, JNI_ABORT);
    g_igm_trigger_keycount = (int)n; /* set count last so the reader never sees partial state */
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetCannoliContext(
+      JNIEnv *env, jobject obj, jstring root, jstring tag, jstring base)
+{
+   const char *c_root = root ? (*env)->GetStringUTFChars(env, root, NULL) : NULL;
+   const char *c_tag  = tag  ? (*env)->GetStringUTFChars(env, tag,  NULL) : NULL;
+   const char *c_base = base ? (*env)->GetStringUTFChars(env, base, NULL) : NULL;
+
+   (void)obj;
+
+   strlcpy(g_cannoli_root,  c_root ? c_root : "", sizeof(g_cannoli_root));
+   strlcpy(g_platform_tag,  c_tag  ? c_tag  : "", sizeof(g_platform_tag));
+   strlcpy(g_rom_base_name, c_base ? c_base : "", sizeof(g_rom_base_name));
+
+   if (c_root)
+      (*env)->ReleaseStringUTFChars(env, root, c_root);
+   if (c_tag)
+      (*env)->ReleaseStringUTFChars(env, tag, c_tag);
+   if (c_base)
+      (*env)->ReleaseStringUTFChars(env, base, c_base);
 }
 
 JNIEXPORT void JNICALL

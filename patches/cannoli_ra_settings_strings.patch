@@ -12,7 +12,7 @@ index 0000000000..271b594975
 +    <string name="igm_ra_save_platform">Save for %1$s</string>
 +    <string name="igm_ra_save_game">Save for this game</string>
 +    <string name="igm_ra_dont_save">Discard</string>
-+    <string name="igm_ra_native_menu">RetroArch Menu</string>
++    <string name="igm_ra_native_menu" translatable="false">RetroArch Menu</string>
 +    <string name="igm_ra_audio">Audio</string>
 +    <string name="igm_ra_latency">Latency</string>
 +    <string name="igm_ra_speed">Speed &amp; Rewind</string>

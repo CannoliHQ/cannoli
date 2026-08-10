@@ -13,6 +13,9 @@ import dev.cannoli.igm.RaSettingsHost
 class EmbeddedRetroArchBridge(
     private val stateBasePath: String,
     private val hardcoreInEffect: Boolean,
+    cannoliRoot: String,
+    platformTag: String,
+    romBaseName: String,
 ) : RetroArchBridge, RaSettingsHost {
 
     override val supportsAchievements = true
@@ -22,6 +25,9 @@ class EmbeddedRetroArchBridge(
 
     init {
         nativeInit()
+        // The IGM's "Save for game/platform" rows write to Cannoli's own override tiers, which are
+        // keyed by these. Set before the IGM is interactive so no save can precede it.
+        nativeSetCannoliContext(cannoliRoot, platformTag, romBaseName)
     }
 
     fun destroy() {
@@ -237,6 +243,7 @@ class EmbeddedRetroArchBridge(
 
     // Native methods
     private external fun nativeInit()
+    private external fun nativeSetCannoliContext(root: String, tag: String, base: String)
     private external fun nativeDestroy()
     private external fun nativeSaveState(slot: Int)
     private external fun nativeLoadState(slot: Int)
