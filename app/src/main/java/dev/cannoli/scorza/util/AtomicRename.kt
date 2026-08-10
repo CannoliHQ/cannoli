@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.util
 
+import dev.cannoli.core.RomKey
 import dev.cannoli.scorza.config.CannoliPaths
 import java.io.File
 import java.text.SimpleDateFormat
@@ -60,6 +61,13 @@ class AtomicRename(private val cannoliRoot: File, private val walker: RomDirecto
                 if (artFile.renameTo(newArtFile)) artMoved = artFile to newArtFile
             }
             moveSaveData(platformTag, oldBaseName, newBaseName)
+            // Cheats/guides/config are keyed by RomKey.baseName, not the raw file base name used
+            // above for saves - that's where the content actually lives.
+            val oldContentKey = RomKey.baseName(romFile)
+            val newContentKey = RomKey.baseName(newPrimary)
+            if (oldContentKey != newContentKey) {
+                relocatePerGameContent(backupTagDir, platformTag, oldContentKey, newContentKey)
+            }
             // Arcade map.txt applies to loose files; folder games already moved with their parent dir.
             if (gameDirBefore == null) {
                 updateMapFile(romDir, romFile.name, newPrimary.name)
@@ -214,6 +222,85 @@ class AtomicRename(private val cannoliRoot: File, private val walker: RomDirecto
             if (!oldArt.exists()) newArt.renameTo(oldArt)
         }
         restoreSaveData(backupTagDir, tag)
+        restorePerGameContent(backupTagDir, tag)
+    }
+
+    // Moves the cheats dir, guides dir, and per-game override cfg from oldKey to newKey. Checks
+    // for a newKey collision first and refuses to clobber it, without touching or backing up
+    // anything - the caller's catch block rolls the whole rename back in that case, and since
+    // nothing here was ever moved there is nothing for that rollback to restore. Only once the
+    // collision check passes does it back up the old-key content (so a failed move can be
+    // restored) and perform the move.
+    private fun relocatePerGameContent(backupTagDir: File, tag: String, oldKey: String, newKey: String) {
+        val targetCheats = paths.cheatDir(tag, newKey)
+        val targetGuides = paths.guideDir(tag, newKey)
+        val targetCfg = paths.gameOverrideCfg(tag, newKey)
+        if (targetCheats.isDirectory || targetGuides.isDirectory || targetCfg.isFile) {
+            throw RenameFailure(RenameError.ALREADY_EXISTS)
+        }
+
+        backupPerGameContent(backupTagDir, tag, oldKey)
+
+        val moved = mutableListOf<Pair<File, File>>()
+        try {
+            val cheatsSrc = paths.cheatDir(tag, oldKey)
+            if (cheatsSrc.isDirectory) {
+                targetCheats.parentFile?.mkdirs()
+                if (!cheatsSrc.renameTo(targetCheats)) throw Exception("Failed to move cheats dir")
+                moved.add(cheatsSrc to targetCheats)
+            }
+            val guidesSrc = paths.guideDir(tag, oldKey)
+            if (guidesSrc.isDirectory) {
+                targetGuides.parentFile?.mkdirs()
+                if (!guidesSrc.renameTo(targetGuides)) throw Exception("Failed to move guides dir")
+                moved.add(guidesSrc to targetGuides)
+            }
+            val cfgSrc = paths.gameOverrideCfg(tag, oldKey)
+            if (cfgSrc.isFile) {
+                targetCfg.parentFile?.mkdirs()
+                if (!cfgSrc.renameTo(targetCfg)) throw Exception("Failed to move game override cfg")
+                moved.add(cfgSrc to targetCfg)
+            }
+        } catch (e: Exception) {
+            // Undo whatever already moved in this call before the outer catch rolls the rest
+            // of the rename back too.
+            moved.asReversed().forEach { (from, to) -> to.renameTo(from) }
+            throw e
+        }
+    }
+
+    private fun backupPerGameContent(backupTagDir: File, tag: String, key: String) {
+        val cheats = paths.cheatDir(tag, key)
+        val guides = paths.guideDir(tag, key)
+        val cfg = paths.gameOverrideCfg(tag, key)
+        if (!cheats.isDirectory && !guides.isDirectory && !cfg.isFile) return
+
+        backupTagDir.mkdirs()
+        if (cheats.isDirectory) cheats.copyRecursively(File(backupTagDir, "cheatsdir_$key"), overwrite = true)
+        if (guides.isDirectory) guides.copyRecursively(File(backupTagDir, "guidesdir_$key"), overwrite = true)
+        if (cfg.isFile) cfg.copyTo(File(backupTagDir, "cfg_$key.cfg"), overwrite = true)
+    }
+
+    private fun restorePerGameContent(backupTagDir: File, tag: String) {
+        backupTagDir.listFiles()?.forEach { b ->
+            when {
+                b.name.startsWith("cheatsdir_") -> {
+                    val dest = paths.cheatDir(tag, b.name.removePrefix("cheatsdir_"))
+                    dest.deleteRecursively()
+                    b.copyRecursively(dest, overwrite = true)
+                }
+                b.name.startsWith("guidesdir_") -> {
+                    val dest = paths.guideDir(tag, b.name.removePrefix("guidesdir_"))
+                    dest.deleteRecursively()
+                    b.copyRecursively(dest, overwrite = true)
+                }
+                b.name.startsWith("cfg_") -> {
+                    val dest = paths.gameOverrideCfg(tag, b.name.removePrefix("cfg_").removeSuffix(".cfg"))
+                    dest.parentFile?.mkdirs()
+                    b.copyTo(dest, overwrite = true)
+                }
+            }
+        }
     }
 
     private fun findArtFile(tag: String, baseName: String): File? {
