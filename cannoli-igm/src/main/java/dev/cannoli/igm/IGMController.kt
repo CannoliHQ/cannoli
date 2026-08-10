@@ -456,12 +456,6 @@ class IGMController(
         bridge.loadState(selectedSlotIndex.intValue)
     }
 
-    fun suspendForNativeMenu() {
-        rememberMenuIndex()
-        bridge.setOnNativeMenuClosed { onNativeMenuClosed?.invoke() }
-        bridge.openNativeMenu()
-    }
-
     fun openAchievements() {
         push(IGMScreen.Achievements(achievements = bridge.getAchievements()))
     }
@@ -553,11 +547,6 @@ class IGMController(
 
     /** Callback for when the IGM wants to close (hide the overlay) */
     var onClose: (() -> Unit)? = null
-
-    /** Callback for when the IGM wants to open the native menu */
-    var onOpenNativeMenu: (() -> Unit)? = null
-
-    var onNativeMenuClosed: (() -> Unit)? = null
 
     /**
      * Handle a key event from the gamepad.
@@ -741,11 +730,7 @@ class IGMController(
             IgmMenuAction.RESUME -> onClose?.invoke()
             IgmMenuAction.SAVE_STATE -> { saveState(); onClose?.invoke() }
             IgmMenuAction.LOAD_STATE -> { loadState(); onClose?.invoke() }
-            IgmMenuAction.SETTINGS -> if (bridge.settingsProvider() != null) {
-                openProviderSettings()
-            } else {
-                onOpenNativeMenu?.invoke()
-            }
+            IgmMenuAction.SETTINGS -> openProviderSettings()
             IgmMenuAction.RESET -> { bridge.reset(); onClose?.invoke() }
             IgmMenuAction.QUIT -> {
                 // RetroArch writes the auto slot itself while shutting down, so the state it is

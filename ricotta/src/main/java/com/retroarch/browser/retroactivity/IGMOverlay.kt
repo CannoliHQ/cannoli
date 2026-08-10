@@ -154,21 +154,6 @@ class IGMOverlay(
 
         // Wire up controller callbacks
         controller.onClose = { hide() }
-        controller.onOpenNativeMenu = {
-            suspendedForNativeMenu = true
-            hideWindow()
-            bridge.unpause()
-            controller.suspendForNativeMenu()
-        }
-        controller.onNativeMenuClosed = {
-            if (suspendedForNativeMenu) {
-                suspendedForNativeMenu = false
-                controller.invalidateSlotCache()
-                controller.refreshSlotInfo()
-                showWindow()
-            }
-        }
-        bridge.onOpenNativeMenu = controller.onOpenNativeMenu
 
         bridge.raStrings = RaOptionStrings(
             rootTitle = uiContext.getString(R.string.igm_settings),
@@ -178,7 +163,6 @@ class IGMOverlay(
             savePlatform = uiContext.getString(AppR.string.igm_ra_save_platform, platformName),
             saveGame = uiContext.getString(AppR.string.igm_ra_save_game),
             dontSave = uiContext.getString(AppR.string.igm_ra_dont_save),
-            nativeMenu = uiContext.getString(AppR.string.igm_ra_native_menu),
             categoryTitles = mapOf(
                 "emulator" to uiContext.getString(R.string.igm_emulator),
                 "video" to uiContext.getString(R.string.igm_video),
@@ -282,11 +266,9 @@ class IGMOverlay(
     }
 
     private var showing = false
-    private var suspendedForNativeMenu = false
 
     fun show() {
         if (showing) return
-        suspendedForNativeMenu = false
         controller.openMenu()
         showWindow()
     }
@@ -339,7 +321,6 @@ class IGMOverlay(
 
     fun hide() {
         if (!showing) return
-        suspendedForNativeMenu = false
         hideWindow()
         controller.closeMenu()
         bridge.unpause()

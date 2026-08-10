@@ -44,50 +44,6 @@ class IGMControllerMenuSelectionTest {
         assertEquals(before, menu(c).selectedIndex)
     }
 
-    @Test fun `the screen stack survives a trip through the native menu`() {
-        val bridge = FakeRetroArchBridge()
-        val c = testController(bridge)
-        c.openMenu()
-        val settings = IGMScreen.ProviderSettings(selectedIndex = 3, title = "Settings")
-        c.push(settings)
-
-        c.suspendForNativeMenu()
-
-        assertEquals(1, bridge.nativeMenuOpened)
-        assertEquals(settings, c.currentScreen)
-    }
-
-    @Test fun `closing the native menu brings the IGM back`() {
-        val bridge = FakeRetroArchBridge()
-        val c = testController(bridge)
-        var backUp = 0
-        c.onNativeMenuClosed = { backUp++ }
-        c.openMenu()
-        c.push(IGMScreen.ProviderSettings(selectedIndex = 3, title = "Settings"))
-        c.suspendForNativeMenu()
-
-        bridge.closeNativeMenu()
-
-        assertEquals(1, backUp)
-    }
-
-    @Test fun `the remembered row survives the native menu round trip`() {
-        val bridge = FakeRetroArchBridge()
-        val c = testController(bridge)
-        c.openMenu()
-        c.handleKeyDown(DPAD_DOWN)
-        val before = menu(c).selectedIndex
-        assertTrue("the fixture must have enough rows to move", before > 0)
-
-        c.push(IGMScreen.ProviderSettings(title = "Settings"))
-        c.suspendForNativeMenu()
-        bridge.closeNativeMenu()
-        c.closeMenu()
-        c.openMenu()
-
-        assertEquals(before, menu(c).selectedIndex)
-    }
-
     private class HardcoreBridge : FakeRetroArchBridge() {
         override val savestatesAllowed = false
     }

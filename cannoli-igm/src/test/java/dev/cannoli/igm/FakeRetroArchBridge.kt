@@ -39,13 +39,8 @@ open class FakeRetroArchBridge : RetroArchBridge {
     override fun getDiskIndex() = disc
     override fun setDiskIndex(index: Int) { disc = index }
 
-    var nativeMenuOpened = 0
-    private var menuClosedCallback: (() -> Unit)? = null
-
-    fun closeNativeMenu() = menuClosedCallback?.invoke()
-
-    override fun openNativeMenu() { nativeMenuOpened++ }
-    override fun setOnNativeMenuClosed(callback: () -> Unit) { menuClosedCallback = callback }
+    override fun openNativeMenu() {}
+    override fun setOnNativeMenuClosed(callback: () -> Unit) {}
     override val supportsAchievements = false
 
     val cheatRowsByPath = mutableMapOf<String, List<RetroArchBridge.CheatRow>>()
