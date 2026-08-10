@@ -140,8 +140,8 @@ class LaunchManager(
             put("sort_savefiles_enable", "false")
             put("sort_savefiles_by_content_enable", "false")
             put("state_slot", raSlot.toString())
-            // Also in the base config, and repeated here for the same reason: an install made
-            // before this existed already has a base config and will never be handed a new one.
+            // Also in the base config; emitted in the plumbing band too so a tier or custom.cfg
+            // cannot turn it off.
             put("savestate_thumbnail_enable", "true")
             put("joypad_autoconfig_dir", paths.configInputAutoconfig.absolutePath)
             putAll(cheevos)
@@ -549,8 +549,6 @@ class LaunchManager(
             )
 
     companion object {
-        private const val CONFIG_VERSION = 7
-
         // Both branches state all five session/account/mode keys outright rather than leaving any
         // out, because the base config is not the only thing buildGameConfig composes over: a
         // system, game or custom override cfg is user- or Kitchen-writable and can carry a cheevos
@@ -589,8 +587,8 @@ class LaunchManager(
             cheevos["cheevos_hardcore_mode_enable"] == "true"
 
         /**
-         * The auto-slot keys for one launch. They live here rather than in the base config,
-         * which is hash-gated and would not pick up a toggle until CONFIG_VERSION moved.
+         * The auto-slot keys for one launch. They are computed per launch from the resume and
+         * slot state, so they belong in the plumbing band, not the regenerated base config.
          *
          * Hardcore writes neither: the auto slot's only consumer is resume, which is hidden
          * under hardcore. config.def.h defaults both to false, so an absent key is off and

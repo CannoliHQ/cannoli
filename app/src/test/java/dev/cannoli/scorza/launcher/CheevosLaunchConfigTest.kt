@@ -42,9 +42,9 @@ class CheevosLaunchConfigTest : LaunchConfigHarness() {
     }
 
     /**
-     * A build before this one seeded the base config from an external RetroArch, so an upgraded
-     * install carries that file's cheevos block. syncRetroArchConfig only writes a base when none
-     * exists, so it survives forever, and applyOverrides leaves any key the launch does not state.
+     * Seeds a stale cheevos block into the base config. syncRetroArchConfig now regenerates the
+     * base every launch, so the seed is overwritten before buildGameConfig reads it; these cases
+     * therefore duplicate the plain logged-in/out cases and simply reconfirm the plumbing wins.
      */
     private fun seedInheritedCheevosBlock(root: java.io.File) {
         val cfg = java.io.File(
