@@ -118,6 +118,26 @@ class CheevosOverrideMigrationTest {
         assertTrue(keysIn(File(staleRoot, "retroarch.cfg")).contains("cheevos_token"))
     }
 
+    @Test fun `deletes the stale scrub version stamp left by an older build`() {
+        val ra = dir()
+        val stamp = File(ra, ".cheevos_scrub_version")
+        stamp.writeText("123")
+        File(ra, "retroarch.cfg").writeText(dirtyBlock)
+
+        CheevosOverrideMigration { ra }.scrubIfNeeded()
+
+        assertFalse("the stale stamp must be deleted", stamp.exists())
+    }
+
+    @Test fun `never writes a scrub version stamp`() {
+        val ra = dir()
+        File(ra, "retroarch.cfg").writeText(dirtyBlock)
+
+        CheevosOverrideMigration { ra }.scrubIfNeeded()
+
+        assertFalse(File(ra, ".cheevos_scrub_version").exists())
+    }
+
     @Test fun `preserves a trailing newline`() {
         val ra = dir()
         val base = File(ra, "retroarch.cfg")

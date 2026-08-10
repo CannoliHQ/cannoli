@@ -31,6 +31,9 @@ class CheevosOverrideMigration(
         runCatching {
             val dir = configRetroArchDir()
             if (dir.isDirectory) {
+                // Litter from the removed once-per-version gate. Deleted, never rewritten: the
+                // scrub is unconditional now, so no stamp is reintroduced.
+                File(dir, STALE_STAMP_NAME).delete()
                 dir.walkTopDown()
                     .filter { it.isFile && it.extension == "cfg" }
                     .forEach(::scrubFile)
@@ -49,5 +52,9 @@ class CheevosOverrideMigration(
         }
         if (kept.size == lines.size) return
         file.writeText(kept.joinToString("\n"))
+    }
+
+    private companion object {
+        const val STALE_STAMP_NAME = ".cheevos_scrub_version"
     }
 }
