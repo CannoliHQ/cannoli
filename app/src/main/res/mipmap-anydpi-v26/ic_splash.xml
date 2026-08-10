@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@android:color/black" />
-    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+    <!-- Transparent foreground: Android 12's splash masks the icon to a circle and cannot show the
+         wide wordmark, so we render nothing here (pure black background) and let the Compose logo
+         screen own the boot logo the instant it can draw. A bare/absent icon makes the platform
+         substitute the masked launcher icon, so it must be an explicitly transparent one. -->
+    <foreground android:drawable="@android:color/transparent" />
 </adaptive-icon>
