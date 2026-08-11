@@ -1,7 +1,11 @@
 package dev.cannoli.scorza.input.legend
 
 import dev.cannoli.igm.CanonicalButton
+import dev.cannoli.scorza.input.DeviceMapping
 import dev.cannoli.scorza.input.GlyphStyle
+import dev.cannoli.scorza.input.InputBinding
+import dev.cannoli.scorza.input.MappingSource
+import dev.cannoli.scorza.input.resolver.RetroArchAutoconfigImporter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -40,6 +44,23 @@ class LegendWizardController {
     }
 
     fun profile(): LegendProfile? = result
+
+    // Replaces only the four face slots on top of the base mapping so dpad/shoulders/triggers/etc
+    // carry over unchanged.
+    fun buildMapping(base: DeviceMapping): DeviceMapping {
+        val p = result ?: return base
+        val faceSlots = faceBindings().mapValues { (_, kc) -> listOf(InputBinding.Button(kc)) }
+        val merged = base.bindings.toMutableMap()
+        faceSlots.forEach { (canon, binds) -> merged[canon] = binds }
+        return base.copy(
+            bindings = merged,
+            menuConfirm = p.menuConfirm,
+            menuBack = RetroArchAutoconfigImporter.oppositeOf(p.menuConfirm),
+            glyphStyle = p.glyphStyle,
+            userEdited = true,
+            source = MappingSource.USER_WIZARD,
+        )
+    }
 
     // south <- the captured bottom; on nintendo the captured A is east; the remaining standard
     // face codes fill the remaining positions by their standard position.
