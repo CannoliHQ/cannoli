@@ -196,12 +196,12 @@ class RetroArchAutoconfigImporterTest {
 
     @Test fun `absent cannoli glyph and confirm keys are resolved from LegendResolver`() {
         val entry = RetroArchCfgEntry(
-            deviceName = "Pad", vendorId = 9999, productId = 8888,
+            deviceName = "Pad", vendorId = 8224, productId = 273,
             buttonBindings = mapOf("b_btn" to 96, "a_btn" to 97),
         )
         val thorDevice = ConnectedDevice(
             androidDeviceId = 2, descriptor = "thor", name = "Pad",
-            vendorId = 9999, productId = 8888, androidBuildModel = "AYN_Thor",
+            vendorId = 8224, productId = 273, androidBuildModel = "AYN_Thor",
             sourceMask = 0, connectedAtMillis = 0,
         )
         val t = RetroArchAutoconfigImporter.import(entry, thorDevice, divergentHints)
@@ -211,13 +211,13 @@ class RetroArchAutoconfigImporterTest {
 
     @Test fun `explicit cfg glyph style wins over LegendResolver`() {
         val entry = RetroArchCfgEntry(
-            deviceName = "Pad", vendorId = 9999, productId = 8888,
+            deviceName = "Pad", vendorId = 8224, productId = 273,
             buttonBindings = mapOf("b_btn" to 96, "a_btn" to 97),
             glyphStyle = "SHAPES",
         )
         val thorDevice = ConnectedDevice(
             androidDeviceId = 2, descriptor = "thor", name = "Pad",
-            vendorId = 9999, productId = 8888, androidBuildModel = "AYN_Thor",
+            vendorId = 8224, productId = 273, androidBuildModel = "AYN_Thor",
             sourceMask = 0, connectedAtMillis = 0,
         )
         val t = RetroArchAutoconfigImporter.import(entry, thorDevice, divergentHints)
