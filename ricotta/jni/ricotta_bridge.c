@@ -752,7 +752,7 @@ static void ricotta_ra_config_set(config_file_t *conf, const char *key, rarch_se
  * at their live values, merged over any existing override so untouched keys survive. Replaces
  * config_save_overrides, which diffed the whole live config against Cannoli's minimal launch
  * config and wrote hundreds of unrelated keys. Runs on the runloop thread. scope: 1 = game,
- * else content-dir. Keys with no live RA setting (e.g. core options) are silently skipped.
+ * else system. Keys with no live RA setting (e.g. core options) are silently skipped.
  *
  * The target is Cannoli's own override tier, not RetroArch's library-keyed
  * Config/RetroArch/<library>/ location, so the launch composer reads these back:
@@ -812,7 +812,15 @@ static void ricotta_ra_save_override(int scope, const char *keys)
       p = nl + 1;
    }
 
-   config_file_write(conf, override_path, true);
+   {
+      FILE *fp = fopen(override_path, "w");
+      if (fp)
+      {
+         fputs("# DO NOT EDIT - Cannoli writes this from your menu choices. Your own keys go in custom.cfg\n", fp);
+         config_file_dump(conf, fp, true);
+         fclose(fp);
+      }
+   }
    config_file_free(conf);
 }
 
