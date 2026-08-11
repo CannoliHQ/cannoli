@@ -7,14 +7,13 @@ import dev.cannoli.scorza.input.DeviceMapping
 import dev.cannoli.scorza.input.InputBinding
 import dev.cannoli.scorza.input.MappingSource
 import dev.cannoli.scorza.input.hints.ControllerHintTable
+import dev.cannoli.scorza.input.legend.LegendResolver
 
-object AndroidDefaultMappingFactory {
+class AndroidDefaultMappingFactory(
+    private val legendResolver: LegendResolver = LegendResolver(),
+) {
 
     private val DEFAULT_BINDINGS: Map<CanonicalButton, List<Int>> = mapOf(
-        CanonicalButton.BTN_SOUTH to listOf(96),
-        CanonicalButton.BTN_EAST to listOf(97),
-        CanonicalButton.BTN_WEST to listOf(99),
-        CanonicalButton.BTN_NORTH to listOf(100),
         CanonicalButton.BTN_L to listOf(102),
         CanonicalButton.BTN_R to listOf(103),
         CanonicalButton.BTN_L2 to listOf(104),
@@ -36,7 +35,7 @@ object AndroidDefaultMappingFactory {
         hints: ControllerHintTable,
         persistenceDescriptor: String? = null,
     ): DeviceMapping {
-        val hint = hints.lookup(
+        val profile = legendResolver.resolve(
             vendorId = device.vendorId,
             productId = device.productId,
             buildModel = device.androidBuildModel,
@@ -49,6 +48,9 @@ object AndroidDefaultMappingFactory {
         val suffix = effectiveDescriptor
             ?.let { Integer.toHexString(it.hashCode()).takeLast(6).lowercase() }
         val safeId = if (suffix != null) "${baseId}_$suffix" else baseId
+        val faceBindings = profile.faceLayout.standardFaceBindings().mapValues { (_, keyCode) ->
+            listOf(InputBinding.Button(keyCode))
+        }
         return DeviceMapping(
             id = safeId,
             displayName = device.name.ifEmpty { "Generic Controller" },
@@ -58,12 +60,12 @@ object AndroidDefaultMappingFactory {
                 productId = device.productId.takeIf { it != 0 },
                 descriptor = effectiveDescriptor,
             ),
-            bindings = DEFAULT_BINDINGS.mapValues { (_, keyCodes) ->
+            bindings = (DEFAULT_BINDINGS.mapValues { (_, keyCodes) ->
                 keyCodes.map { InputBinding.Button(it) }
-            },
-            menuConfirm = hint.menuConfirm,
-            menuBack = if (hint.menuConfirm == CanonicalButton.BTN_EAST) CanonicalButton.BTN_SOUTH else CanonicalButton.BTN_EAST,
-            glyphStyle = hint.glyphStyle,
+            }) + faceBindings,
+            menuConfirm = profile.menuConfirm,
+            menuBack = RetroArchAutoconfigImporter.oppositeOf(profile.menuConfirm),
+            glyphStyle = profile.glyphStyle,
             source = MappingSource.ANDROID_DEFAULT,
         )
     }

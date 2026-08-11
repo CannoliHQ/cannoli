@@ -38,7 +38,7 @@ class MappingResolver(
         val assetMatch = bestRetroArchEntry(bundledRetroArchEntries.entries(), device)
         if (assetMatch != null) return RetroArchAutoconfigImporter.import(assetMatch, device, hints, persistenceDescriptor)
 
-        return AndroidDefaultMappingFactory.create(device, hints, persistenceDescriptor)
+        return AndroidDefaultMappingFactory().create(device, hints, persistenceDescriptor)
     }
 
     // A user file names the exact pad it was written for, so descriptor equality outranks the

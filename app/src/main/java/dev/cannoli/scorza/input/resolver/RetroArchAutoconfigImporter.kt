@@ -141,7 +141,7 @@ object RetroArchAutoconfigImporter {
         )
     }
 
-    private fun oppositeOf(button: CanonicalButton): CanonicalButton = when (button) {
+    internal fun oppositeOf(button: CanonicalButton): CanonicalButton = when (button) {
         CanonicalButton.BTN_EAST -> CanonicalButton.BTN_SOUTH
         CanonicalButton.BTN_SOUTH -> CanonicalButton.BTN_EAST
         else -> CanonicalButton.BTN_SOUTH
