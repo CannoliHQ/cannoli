@@ -1,5 +1,6 @@
 package dev.cannoli.scorza.romm.download
 
+import dev.cannoli.core.RomKey
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -28,6 +29,40 @@ class RommNamesTest {
 
     @Test fun `unlinked game keys guides on the name the rom will have once downloaded`() {
         assertEquals("Chrono Trigger (USA)", guideBaseName(null, "Chrono Trigger (USA).sfc"))
+    }
+
+    @Test fun `linked game with an NFD-decomposed name resolves to the same key RomKey baseName gives the installed rom`() {
+        // "e" (U+0065) followed by a combining acute accent (U+0301) is NFD, as RomM may report
+        // for a game whose filename came from an NFD-normalizing filesystem; the single "e with
+        // acute" codepoint (U+00E9) is NFC. The launcher and IGM resolve guides by
+        // RomKey.baseName(rom.path), so a RomM-downloaded guide dir must land on the same key.
+        val decomposed = "Pokémon Red (USA)"
+        val precomposed = "Pokémon Red (USA)"
+        val installedPath = "GB/$decomposed.gb"
+
+        val guideKey = guideBaseName(installedPath, "$decomposed.gb")
+
+        assertEquals(RomKey.baseName(File(installedPath)), guideKey)
+        assertEquals(precomposed, guideKey)
+    }
+
+    @Test fun `unlinked NFD-decomposed name still normalizes to NFC in the pre-download placeholder`() {
+        val decomposed = "Pokémon Red (USA)"
+        val precomposed = "Pokémon Red (USA)"
+
+        assertEquals(precomposed, guideBaseName(null, "$decomposed.gb"))
+    }
+
+    @Test fun `linked game keys off the installed path even when it contains a colon, not the sanitized form`() {
+        // sanitizeFsName would turn this into "Zelda - A Link to the Past", but the installer
+        // writes the rom to disk with the colon intact (only path separators are stripped), so
+        // the guide key must follow the real on-disk name or the launcher/IGM won't find it.
+        val installedPath = "SNES/Zelda: A Link to the Past.sfc"
+
+        val guideKey = guideBaseName(installedPath, "Zelda: A Link to the Past.sfc")
+
+        assertEquals(RomKey.baseName(File(installedPath)), guideKey)
+        assertEquals("Zelda: A Link to the Past", guideKey)
     }
 
     @Test fun `base name strips characters exfat rejects`() {

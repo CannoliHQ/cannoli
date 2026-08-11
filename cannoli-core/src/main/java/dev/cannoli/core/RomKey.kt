@@ -11,6 +11,7 @@ import java.text.Normalizer
  * directory for the same game.
  */
 object RomKey {
-    fun baseName(path: File): String =
-        Normalizer.normalize(path.nameWithoutExtension, Normalizer.Form.NFC)
+    fun baseName(path: File): String = normalize(path.nameWithoutExtension)
+
+    fun normalize(name: String): String = Normalizer.normalize(name, Normalizer.Form.NFC)
 }
