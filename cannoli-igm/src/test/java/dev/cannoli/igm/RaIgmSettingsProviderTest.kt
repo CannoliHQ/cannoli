@@ -145,7 +145,7 @@ class RaIgmSettingsProviderTest {
             prompt.options,
         )
         prompt.onChoice(0)
-        assertEquals(listOf(RaOverrideScope.CONTENT_DIR), h.savedScopes)
+        assertEquals(listOf(RaOverrideScope.SYSTEM), h.savedScopes)
     }
 
     @Test

@@ -174,7 +174,7 @@ class RaIgmSettingsProvider(
             },
         ) { choice ->
             when (choice) {
-                0 -> host.raSaveOverride(RaOverrideScope.CONTENT_DIR, overrideKeys())
+                0 -> host.raSaveOverride(RaOverrideScope.SYSTEM, overrideKeys())
                 1 -> host.raSaveOverride(RaOverrideScope.GAME, overrideKeys())
             }
             clearDirty()
@@ -189,7 +189,7 @@ class RaIgmSettingsProvider(
             options = listOf(strings.savePlatform, strings.saveGame, strings.dontSave),
         ) { choice ->
             when (choice) {
-                0 -> host.raSaveOverride(RaOverrideScope.CONTENT_DIR, overrideKeys())
+                0 -> host.raSaveOverride(RaOverrideScope.SYSTEM, overrideKeys())
                 1 -> host.raSaveOverride(RaOverrideScope.GAME, overrideKeys())
             }
             clearDirty()

@@ -2,7 +2,7 @@ package dev.cannoli.igm
 
 enum class RaSettingType { BOOL, INT, FLOAT, ENUM, STRING_RO }
 
-enum class RaOverrideScope { CONTENT_DIR, GAME }
+enum class RaOverrideScope { SYSTEM, GAME }
 
 data class RaSetting(
     val key: String,
