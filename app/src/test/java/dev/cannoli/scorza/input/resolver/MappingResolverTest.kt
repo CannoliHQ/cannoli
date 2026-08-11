@@ -9,7 +9,6 @@ import dev.cannoli.scorza.input.ConnectedDevice
 import dev.cannoli.scorza.input.GlyphStyle
 import dev.cannoli.scorza.input.InputBinding
 import dev.cannoli.scorza.input.MappingSource
-import dev.cannoli.scorza.input.hints.ControllerHintTable
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -38,19 +37,13 @@ class MappingResolverTest {
         connectedAtMillis = 0L,
     )
 
-    private fun hints(
-        json: String = """{"default":{"menuConfirm":"BTN_EAST","glyphStyle":"PLUMBER"}}""",
-    ) = ControllerHintTable.fromJson(json)
-
     private fun diskRepo() = AutoconfigRepository { tmp.root }
 
     private fun resolver(
         bundled: List<RetroArchCfgEntry> = emptyList(),
-        hintTable: ControllerHintTable = hints(),
     ) = MappingResolver(
         diskRepository = diskRepo(),
         bundledRetroArchEntries = BundledAutoconfigEntries.forTest(bundled),
-        hints = hintTable,
     )
 
     private fun writeCfg(name: String, contents: String) =
@@ -318,19 +311,6 @@ class MappingResolverTest {
         // name, but its header carries the pad's true VID. Hint lookup must prefer the cfg's
         // VID/PID over the device's reported (phantom) VID/PID so a DualSense connected via
         // such a host doesn't inherit the host's hint (e.g. Nintendo BTN_EAST/PLUMBER).
-        val sonyAwareHints = hints(
-            """
-            {
-              "vid_pid": [
-                {"vendor_id": 1356, "menuConfirm": "BTN_SOUTH", "glyphStyle": "SHAPES"}
-              ],
-              "build_model": [
-                {"model_prefix": "Retroid", "menuConfirm": "BTN_EAST", "glyphStyle": "PLUMBER"}
-              ],
-              "default": {"menuConfirm": "BTN_SOUTH", "glyphStyle": "REDMOND"}
-            }
-            """.trimIndent()
-        )
         val raEntry = RetroArchCfgEntry(
             deviceName = "DualSense Wireless Controller",
             vendorId = 1356,
@@ -347,7 +327,7 @@ class MappingResolverTest {
             androidBuildModel = "Retroid Pocket Classic",
         )
 
-        val resolved = resolver(bundled = listOf(raEntry), hintTable = sonyAwareHints)
+        val resolved = resolver(bundled = listOf(raEntry))
             .resolve(phantomDualsense)
 
         assertEquals(CanonicalButton.BTN_SOUTH, resolved.menuConfirm)

@@ -49,13 +49,9 @@ class ControllerBridgeTest {
                 buttonBindings = mapOf("b_btn" to 96),
             ),
         )
-        val hints = dev.cannoli.scorza.input.hints.ControllerHintTable.fromJson(
-            """{"default":{"menuConfirm":"BTN_EAST","glyphStyle":"PLUMBER"}}"""
-        )
         return MappingResolver(
             autoconfigRepo,
             dev.cannoli.scorza.input.autoconfig.BundledAutoconfigEntries.forTest(ra),
-            hints,
         )
     }
 
@@ -389,51 +385,12 @@ class ControllerBridgeTest {
         assertEquals(listOf(12), removed)
     }
 
-    /**
-     * A bridge whose bundled cfg and hint table disagree about the hint: the importer applies the
-     * cfg's VID/PID hint, the bridge's hint pass prefers the device's reported VID/PID. That
-     * rebind produces a mapping that differs from every cfg on disk, which is the case most likely
-     * to tempt the bridge into writing one back.
-     */
-    private fun makeHintRebindBridge(portRouter: PortRouter): ControllerBridge {
-        val ra = listOf(
-            RetroArchCfgEntry(
-                deviceName = "Stadia Controller",
-                vendorId = 1111,
-                productId = 2222,
-                buttonBindings = mapOf("b_btn" to 96),
-            ),
-        )
-        val hints = dev.cannoli.scorza.input.hints.ControllerHintTable.fromJson(
-            """
-            {
-              "default": {"menuConfirm": "BTN_EAST", "glyphStyle": "PLUMBER"},
-              "vid_pid": [
-                {"vendor_id": 1111, "product_id": 2222, "menuConfirm": "BTN_EAST", "glyphStyle": "PLUMBER"},
-                {"vendor_id": 6353, "product_id": 37888, "menuConfirm": "BTN_SOUTH", "glyphStyle": "REDMOND"}
-              ]
-            }
-            """
-        )
-        val bundled = dev.cannoli.scorza.input.autoconfig.BundledAutoconfigEntries.forTest(ra)
-        return ControllerBridge(
-            resolver = MappingResolver(autoconfigRepo, bundled, hints),
-            portRouter = portRouter,
-            activeMappingHolder = ActiveMappingHolder(),
-            autoconfigRepository = autoconfigRepo,
-            bundledCfgs = bundled,
-            hints = hints,
-            clock = { 1_000L },
-            buildModel = "Pixel",
-        )
-    }
-
     @Test
     fun activation_writes_nothing_to_the_autoconfig_database() {
         // Only a deliberate user edit authors a cfg. A mapping the bridge derived is cheap to
         // derive again on the next boot, and writing it would leave a file the user never made.
         val portRouter = PortRouter()
-        val bridge = makeHintRebindBridge(portRouter)
+        val bridge = makeBridge(portRouter = portRouter)
 
         bridge.settleSyncForTest(listOf(stadiaFacts))
         portRouter.activate(stadiaFacts.androidDeviceId, 1_000L)
@@ -447,7 +404,7 @@ class ControllerBridgeTest {
         // Mapping ids come from device identity, so anything the bridge wrote back would land on
         // the very file the user authored for that pad.
         val portRouter = PortRouter()
-        val bridge = makeHintRebindBridge(portRouter)
+        val bridge = makeBridge(portRouter = portRouter)
         autoconfigDir.mkdirs()
         val cfg = java.io.File(autoconfigDir, "stadia_user.cfg")
         val original = """
@@ -465,6 +422,83 @@ class ControllerBridgeTest {
 
         assertEquals(original, cfg.readText())
         assertEquals(1, autoconfigRepo.listEntries().size)
+    }
+
+    @Test
+    fun phantom_rewrite_pad_keeps_the_cfg_derived_glyph_not_the_device_reported_vid() {
+        // Retroid-family hosts rewrite a paired BT pad's gamepad endpoint to report the built-in's
+        // VID/PID while keeping the pad's real name. The bundled cfg still matches by name and
+        // carries the pad's true (Sony) VID, so the resolver correctly yields SHAPES. The bridge
+        // must enroll that verbatim -- re-deriving a glyph from the device's rewritten VID would
+        // silently clobber it back to REDMOND, undoing what the resolver got right.
+        val portRouter = PortRouter()
+        val ra = listOf(
+            RetroArchCfgEntry(
+                deviceName = "DualSense Wireless Controller",
+                vendorId = 1356,
+                productId = 3302,
+                buttonBindings = mapOf("a_btn" to 96, "b_btn" to 97),
+            ),
+        )
+        val bundled = dev.cannoli.scorza.input.autoconfig.BundledAutoconfigEntries.forTest(ra)
+        val bridge = ControllerBridge(
+            resolver = MappingResolver(autoconfigRepo, bundled),
+            portRouter = portRouter,
+            activeMappingHolder = ActiveMappingHolder(),
+            autoconfigRepository = autoconfigRepo,
+            clock = { 1_000L },
+            buildModel = "Retroid Pocket Classic",
+        )
+        val phantomDualsense = ControllerBridge.DeviceFacts(
+            androidDeviceId = 30,
+            descriptor = "phantom-bt",
+            name = "DualSense Wireless Controller",
+            // Phantom-rewritten to the Retroid built-in's VID/PID instead of Sony's.
+            vendorId = 8226,
+            productId = 12289,
+            sourceMask = ControllerBridge.SOURCE_GAMEPAD,
+        )
+
+        bridge.settleSyncForTest(listOf(phantomDualsense))
+
+        val mapping = portRouter.mappingFor(30)
+        assertEquals(dev.cannoli.scorza.input.GlyphStyle.SHAPES, mapping?.glyphStyle)
+        assertEquals(dev.cannoli.scorza.input.CanonicalButton.BTN_SOUTH, mapping?.menuConfirm)
+    }
+
+    @Test
+    fun user_edited_mapping_is_enrolled_verbatim() {
+        val portRouter = PortRouter()
+        val bridge = makeBridge(portRouter = portRouter, buildModel = "AYN_Thor")
+        val thorPad = ControllerBridge.DeviceFacts(
+            androidDeviceId = 21,
+            descriptor = "thor-user",
+            name = "Odin Controller",
+            vendorId = 0x2020,
+            productId = 0x0111,
+            sourceMask = ControllerBridge.SOURCE_GAMEPAD,
+            isExternal = false,
+        )
+        autoconfigDir.mkdirs()
+        java.io.File(autoconfigDir, "thor_user.cfg").writeText(
+            """
+            input_device = "Odin Controller"
+            input_vendor_id = "8224"
+            input_product_id = "273"
+            input_b_btn = "96"
+            cannoli_confirm_button = "BTN_SOUTH"
+            cannoli_glyph_style = "REDMOND"
+            cannoli_descriptor = "thor-user"
+            cannoli_user = "true"
+            """.trimIndent()
+        )
+
+        bridge.settleSyncForTest(listOf(thorPad))
+
+        val mapping = portRouter.mappingFor(21)
+        assertTrue(mapping?.userEdited == true)
+        assertEquals(dev.cannoli.scorza.input.CanonicalButton.BTN_SOUTH, mapping?.menuConfirm)
+        assertEquals(dev.cannoli.scorza.input.GlyphStyle.REDMOND, mapping?.glyphStyle)
     }
 
     @Test

@@ -6,7 +6,6 @@ import dev.cannoli.scorza.input.DeviceMatchRule
 import dev.cannoli.scorza.input.DeviceMapping
 import dev.cannoli.scorza.input.InputBinding
 import dev.cannoli.scorza.input.MappingSource
-import dev.cannoli.scorza.input.hints.ControllerHintTable
 import dev.cannoli.scorza.input.legend.LegendResolver
 
 class AndroidDefaultMappingFactory(
@@ -32,7 +31,6 @@ class AndroidDefaultMappingFactory(
 
     fun create(
         device: ConnectedDevice,
-        hints: ControllerHintTable,
         persistenceDescriptor: String? = null,
     ): DeviceMapping {
         val profile = legendResolver.resolve(

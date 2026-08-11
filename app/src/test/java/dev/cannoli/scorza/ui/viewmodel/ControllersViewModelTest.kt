@@ -6,7 +6,6 @@ import dev.cannoli.scorza.input.autoconfig.AutoconfigRepository
 import dev.cannoli.scorza.input.autoconfig.AutoconfigSeeder
 import dev.cannoli.scorza.input.autoconfig.BundledAutoconfigEntries
 import dev.cannoli.scorza.input.autoconfig.MapCfgSource
-import dev.cannoli.scorza.input.hints.ControllerHintTable
 import dev.cannoli.scorza.input.resolver.MappingResolver
 import dev.cannoli.scorza.input.runtime.ActiveMappingHolder
 import dev.cannoli.scorza.input.runtime.PortRouter
@@ -34,15 +33,11 @@ class ControllersViewModelTest {
 
     @After fun tearDown() = Dispatchers.resetMain()
 
-    private val hints = ControllerHintTable.fromJson(
-        """{"default":{"menuConfirm":"BTN_EAST","glyphStyle":"PLUMBER"}}"""
-    )
-
     private val repository by lazy { AutoconfigRepository { tmp.root } }
     private val portRouter = PortRouter()
     private val activeMappingHolder = ActiveMappingHolder()
     private val resolver by lazy {
-        MappingResolver(repository, BundledAutoconfigEntries.forTest(emptyList()), hints)
+        MappingResolver(repository, BundledAutoconfigEntries.forTest(emptyList()))
     }
 
     private val bundledAssets = MapCfgSource(
@@ -61,7 +56,7 @@ class ControllersViewModelTest {
     }
 
     private fun vm() =
-        ControllersViewModel(repository, portRouter, activeMappingHolder, resolver, hints, seeder)
+        ControllersViewModel(repository, portRouter, activeMappingHolder, resolver, seeder)
 
     private val stadia = ConnectedDevice(
         androidDeviceId = 7,

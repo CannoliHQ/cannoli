@@ -12,17 +12,12 @@ import dev.cannoli.scorza.input.ConnectedDevice
 import dev.cannoli.scorza.input.GlyphStyle
 import dev.cannoli.scorza.input.InputBinding
 import dev.cannoli.scorza.input.MappingSource
-import dev.cannoli.scorza.input.hints.ControllerHintTable
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RetroArchAutoconfigImporterTest {
-
-    private val defaultHints = ControllerHintTable.fromJson(
-        """{"default":{"menuConfirm":"BTN_EAST","glyphStyle":"PLUMBER"}}"""
-    )
 
     private val device = ConnectedDevice(
         androidDeviceId = 7,
@@ -45,7 +40,7 @@ class RetroArchAutoconfigImporterTest {
                 "start_btn" to 108, "select_btn" to 109,
             ),
         )
-        val t = RetroArchAutoconfigImporter.import(entry, device, defaultHints)
+        val t = RetroArchAutoconfigImporter.import(entry, device)
         assertEquals(MappingSource.RETROARCH_AUTOCONFIG, t.source)
         assertEquals(InputBinding.Button(96), t.bindings[CanonicalButton.BTN_SOUTH]!![0])
         assertEquals(InputBinding.Button(97), t.bindings[CanonicalButton.BTN_EAST]!![0])
@@ -60,7 +55,7 @@ class RetroArchAutoconfigImporterTest {
             buttonBindings = emptyMap(),
             axisBindings = mapOf("l2_axis" to AxisRef(axis = 17, direction = +1)),
         )
-        val t = RetroArchAutoconfigImporter.import(entry, device, defaultHints)
+        val t = RetroArchAutoconfigImporter.import(entry, device)
         val l2 = t.bindings[CanonicalButton.BTN_L2]!![0] as InputBinding.Axis
         assertEquals(17, l2.axis)
         // Trigger axes are unipolar: rest at 0, full press at +1 for direction=+1. A bipolar
@@ -84,7 +79,7 @@ class RetroArchAutoconfigImporterTest {
                 "l_y_minus_axis" to AxisRef(1, -1),
             ),
         )
-        val t = RetroArchAutoconfigImporter.import(entry, device, defaultHints)
+        val t = RetroArchAutoconfigImporter.import(entry, device)
         // Stick X is bound under BTN_L3 with role LEFT_STICK_X.
         val lxBinding = t.bindings[CanonicalButton.BTN_L3]?.firstOrNull { it is InputBinding.Axis }
         assertNotNull(lxBinding)
@@ -96,7 +91,7 @@ class RetroArchAutoconfigImporterTest {
             deviceName = "Stadia Controller", vendorId = 6353, productId = 37888,
             buttonBindings = mapOf("b_btn" to 96),
         )
-        val t = RetroArchAutoconfigImporter.import(entry, device, defaultHints)
+        val t = RetroArchAutoconfigImporter.import(entry, device)
         assertEquals("Stadia Controller", t.match.name)
         assertEquals(6353, t.match.vendorId)
         assertEquals(37888, t.match.productId)
@@ -116,7 +111,7 @@ class RetroArchAutoconfigImporterTest {
                 "right_btn" to HatRef(0, CfgHatDirection.RIGHT),
             ),
         )
-        val t = RetroArchAutoconfigImporter.import(entry, device, defaultHints)
+        val t = RetroArchAutoconfigImporter.import(entry, device)
 
         val up = t.bindings[CanonicalButton.BTN_UP]?.firstOrNull()
         val down = t.bindings[CanonicalButton.BTN_DOWN]?.firstOrNull()
@@ -129,11 +124,7 @@ class RetroArchAutoconfigImporterTest {
         org.junit.Assert.assertTrue(right is InputBinding.Hat && right.axis == 15 && right.direction == HatDirection.RIGHT)
     }
 
-    @Test fun `importer applies hint for matching VID`() {
-        val table = ControllerHintTable.fromJson(
-            """{"vid_pid":[{"vendor_id":1356,"menuConfirm":"BTN_SOUTH","glyphStyle":"SHAPES"}],
-                "default":{"menuConfirm":"BTN_EAST","glyphStyle":"PLUMBER"}}"""
-        )
+    @Test fun `importer applies LegendResolver profile for matching VID`() {
         val entry = RetroArchCfgEntry(
             deviceName = "Sony Pad",
             vendorId = 1356,
@@ -147,7 +138,7 @@ class RetroArchAutoconfigImporterTest {
             vendorId = 1356, productId = 2508, androidBuildModel = "Pixel",
             sourceMask = 0, connectedAtMillis = 0,
         )
-        val tpl = RetroArchAutoconfigImporter.import(entry, device, table)
+        val tpl = RetroArchAutoconfigImporter.import(entry, device)
         assertEquals(CanonicalButton.BTN_SOUTH, tpl.menuConfirm)
         assertEquals(CanonicalButton.BTN_EAST, tpl.menuBack)
         assertEquals(GlyphStyle.SHAPES, tpl.glyphStyle)
@@ -160,7 +151,7 @@ class RetroArchAutoconfigImporterTest {
             cannoliUser = true,
             cannoliMenuKeycodes = listOf(318),
         )
-        val t = RetroArchAutoconfigImporter.import(entry, device, defaultHints)
+        val t = RetroArchAutoconfigImporter.import(entry, device)
         assertEquals(listOf(InputBinding.Button(318)), t.bindings[CanonicalButton.BTN_MENU])
     }
 
@@ -171,7 +162,7 @@ class RetroArchAutoconfigImporterTest {
             cannoliUser = true,
             cannoliMenuKeycodes = emptyList(),
         )
-        val t = RetroArchAutoconfigImporter.import(entry, device, defaultHints)
+        val t = RetroArchAutoconfigImporter.import(entry, device)
         assertEquals(emptyList<InputBinding>(), t.bindings[CanonicalButton.BTN_MENU].orEmpty())
     }
 
@@ -180,19 +171,12 @@ class RetroArchAutoconfigImporterTest {
             deviceName = "Stadia Controller", vendorId = 6353, productId = 37888,
             buttonBindings = mapOf("b_btn" to 96),
         )
-        val t = RetroArchAutoconfigImporter.import(entry, device, defaultHints)
+        val t = RetroArchAutoconfigImporter.import(entry, device)
         assertEquals(
             listOf(InputBinding.Button(4), InputBinding.Button(110)),
             t.bindings[CanonicalButton.BTN_MENU],
         )
     }
-
-    // A default that deliberately diverges from LegendResolver's AYN_Thor profile
-    // (BTN_EAST/PLUMBER), so a test passing only proves the resolver was consulted
-    // rather than these hints happening to agree with it.
-    private val divergentHints = ControllerHintTable.fromJson(
-        """{"default":{"menuConfirm":"BTN_SOUTH","glyphStyle":"REDMOND"}}"""
-    )
 
     @Test fun `absent cannoli glyph and confirm keys are resolved from LegendResolver`() {
         val entry = RetroArchCfgEntry(
@@ -204,7 +188,7 @@ class RetroArchAutoconfigImporterTest {
             vendorId = 8224, productId = 273, androidBuildModel = "AYN_Thor",
             sourceMask = 0, connectedAtMillis = 0,
         )
-        val t = RetroArchAutoconfigImporter.import(entry, thorDevice, divergentHints)
+        val t = RetroArchAutoconfigImporter.import(entry, thorDevice)
         assertEquals(GlyphStyle.PLUMBER, t.glyphStyle)
         assertEquals(CanonicalButton.BTN_EAST, t.menuConfirm)
     }
@@ -220,7 +204,7 @@ class RetroArchAutoconfigImporterTest {
             vendorId = 8224, productId = 273, androidBuildModel = "AYN_Thor",
             sourceMask = 0, connectedAtMillis = 0,
         )
-        val t = RetroArchAutoconfigImporter.import(entry, thorDevice, divergentHints)
+        val t = RetroArchAutoconfigImporter.import(entry, thorDevice)
         assertEquals(GlyphStyle.SHAPES, t.glyphStyle)
     }
 
@@ -236,7 +220,7 @@ class RetroArchAutoconfigImporterTest {
             """.trimIndent(),
             fileName = "Pad.cfg",
         )
-        val imported = RetroArchAutoconfigImporter.import(entry, device, defaultHints)
+        val imported = RetroArchAutoconfigImporter.import(entry, device)
         assertEquals("Pad", imported.id)
         assertEquals("My Pad", imported.displayName)
         assertEquals(CanonicalButton.BTN_SOUTH, imported.menuConfirm)

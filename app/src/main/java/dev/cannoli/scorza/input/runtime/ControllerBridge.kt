@@ -7,9 +7,7 @@ import android.os.Handler
 import android.os.Looper
 import android.view.InputDevice
 import androidx.annotation.VisibleForTesting
-import dev.cannoli.scorza.input.CanonicalButton
 import dev.cannoli.scorza.input.ConnectedDevice
-import dev.cannoli.scorza.input.hints.ControllerHintTable
 import dev.cannoli.scorza.input.resolver.DevKeyboardMapping
 import dev.cannoli.scorza.input.resolver.MappingResolver
 
@@ -19,8 +17,6 @@ class ControllerBridge(
     private val activeMappingHolder: ActiveMappingHolder,
     private val autoconfigRepository: dev.cannoli.scorza.input.autoconfig.AutoconfigRepository,
     private val blacklist: dev.cannoli.scorza.input.ControllerBlacklist? = null,
-    private val bundledCfgs: dev.cannoli.scorza.input.autoconfig.BundledAutoconfigEntries? = null,
-    private val hints: ControllerHintTable? = null,
     private val clock: () -> Long = { System.currentTimeMillis() },
     private val buildModel: String = Build.MODEL ?: "",
     /**
@@ -283,10 +279,9 @@ class ControllerBridge(
             }
             val persistenceDescriptor = clusterDescriptors[id]
             val resolved = resolver.resolve(connected, persistenceDescriptor)
-            val hintApplied = applyHintFromOriginalIdentity(resolved, connected)
-            portRouter.onConnect(connected, hintApplied)
+            portRouter.onConnect(connected, resolved)
             dev.cannoli.scorza.util.InputLog.write(
-                "  enrolled id=${connected.androidDeviceId} mapping=${hintApplied.id} glyph=${hintApplied.glyphStyle} desc='${persistenceDescriptor ?: "-"}'"
+                "  enrolled id=${connected.androidDeviceId} mapping=${resolved.id} glyph=${resolved.glyphStyle} desc='${persistenceDescriptor ?: "-"}'"
             )
         }
 
@@ -303,14 +298,13 @@ class ControllerBridge(
             val current = portRouter.mappingFor(id) ?: continue
             val persistenceDescriptor = clusterDescriptors[id]
             val resolved = resolver.resolve(connected, persistenceDescriptor)
-            val hintApplied = applyHintFromOriginalIdentity(resolved, connected)
-            if (hintApplied == current) continue
-            portRouter.replaceMapping(id, hintApplied)
+            if (resolved == current) continue
+            portRouter.replaceMapping(id, resolved)
             if (activeMappingHolder.active.value?.id == current.id) {
-                activeMappingHolder.set(hintApplied)
+                activeMappingHolder.set(resolved)
             }
             dev.cannoli.scorza.util.InputLog.write(
-                "  re-resolved id=$id mapping=${current.id} -> ${hintApplied.id} glyph=${hintApplied.glyphStyle} desc='${persistenceDescriptor ?: "-"}'"
+                "  re-resolved id=$id mapping=${current.id} -> ${resolved.id} glyph=${resolved.glyphStyle} desc='${persistenceDescriptor ?: "-"}'"
             )
         }
 
@@ -325,67 +319,6 @@ class ControllerBridge(
                 portRouter.addAlias(primaryId, aliasId)
             }
         }
-    }
-
-    private fun applyHintFromOriginalIdentity(
-        mapping: dev.cannoli.scorza.input.DeviceMapping,
-        connected: ConnectedDevice,
-    ): dev.cannoli.scorza.input.DeviceMapping {
-        if (mapping.userEdited) return mapping
-        val table = hints ?: return mapping
-        // Try the device's reported VID/PID first (real brand identity for controllers like
-        // Xbox where the kernel reports the manufacturer VID). If that doesn't match, walk
-        // through every bundled cfg whose deviceName equals this device's name and try each
-        // one's VID/PID against the hint table. This catches the lying-clone case where the
-        // kernel reports an AMICON-fallback VID and our cfg picker happens to grab a cfg with
-        // the same fallback VID, missing a separate cfg with the controller's real manufacturer
-        // VID. Finally fall through to Build.MODEL / default.
-        val hintBySource = table.lookupVidPid(connected.vendorId, connected.productId)
-        val nameCfgHint = if (hintBySource == null) {
-            cfgHintForName(table, connected.name, connected.vendorId, connected.productId)
-        } else null
-        val hint = hintBySource ?: nameCfgHint?.first
-            ?: table.lookup(connected.vendorId, connected.productId, connected.androidBuildModel)
-        if (mapping.menuConfirm == hint.menuConfirm && mapping.glyphStyle == hint.glyphStyle) {
-            return mapping
-        }
-        val source = when {
-            hintBySource != null -> "reported vid=${connected.vendorId} pid=${connected.productId}"
-            nameCfgHint != null -> "cfg vid=${nameCfgHint.second.first} pid=${nameCfgHint.second.second}"
-            else -> "Build.MODEL"
-        }
-        dev.cannoli.scorza.util.InputLog.write(
-            "  hint-rebind: id=${connected.androidDeviceId} via $source -> confirm=${hint.menuConfirm} glyph=${hint.glyphStyle}"
-        )
-        val menuBack = if (hint.menuConfirm == CanonicalButton.BTN_EAST) CanonicalButton.BTN_SOUTH else CanonicalButton.BTN_EAST
-        return mapping.copy(
-            menuConfirm = hint.menuConfirm,
-            menuBack = menuBack,
-            glyphStyle = hint.glyphStyle,
-        )
-    }
-
-    /**
-     * Walk every bundled cfg whose deviceName equals [name] (skipping the reported VID/PID we
-     * already tried) and return the first cfg's hint that matches the hint table.
-     */
-    private fun cfgHintForName(
-        table: ControllerHintTable,
-        name: String,
-        skipVendorId: Int,
-        skipProductId: Int,
-    ): Pair<dev.cannoli.scorza.input.hints.ControllerHint, Pair<Int, Int>>? {
-        if (name.isEmpty()) return null
-        val entries = bundledCfgs?.entries() ?: return null
-        for (entry in entries) {
-            if (entry.deviceName != name) continue
-            val vid = entry.vendorId ?: continue
-            val pid = entry.productId ?: continue
-            if (vid == skipVendorId && pid == skipProductId) continue
-            val hint = table.lookupVidPid(vid, pid) ?: continue
-            return hint to (vid to pid)
-        }
-        return null
     }
 
     private fun nameMatchesBuildModelBrand(deviceName: String?, buildModel: String): Boolean {

@@ -23,6 +23,8 @@ object BuiltInLegendTable {
 
     val byVidPid: Map<Pair<Int, Int>, LegendProfile> = mapOf(
         (0x045E to 0x0B12) to LegendProfile(FaceLayout.STANDARD, GlyphStyle.REDMOND),
+        // Google Stadia Controller (0x18D1:0x9400), ported from controller_hints.json.
+        (0x18D1 to 0x9400) to LegendProfile(FaceLayout.STANDARD, GlyphStyle.REDMOND),
     )
 
     val default = LegendProfile(FaceLayout.STANDARD, GlyphStyle.REDMOND)

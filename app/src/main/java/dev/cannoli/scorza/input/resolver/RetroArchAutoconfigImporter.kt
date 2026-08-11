@@ -12,7 +12,6 @@ import dev.cannoli.scorza.input.DeviceMapping
 import dev.cannoli.scorza.input.GlyphStyle
 import dev.cannoli.scorza.input.InputBinding
 import dev.cannoli.scorza.input.MappingSource
-import dev.cannoli.scorza.input.hints.ControllerHintTable
 import dev.cannoli.scorza.input.legend.LegendResolver
 
 object RetroArchAutoconfigImporter {
@@ -42,7 +41,6 @@ object RetroArchAutoconfigImporter {
     fun import(
         entry: RetroArchCfgEntry,
         device: ConnectedDevice,
-        hints: ControllerHintTable,
         persistenceDescriptor: String? = null,
     ): DeviceMapping {
         val bindings = mutableMapOf<CanonicalButton, MutableList<InputBinding>>()

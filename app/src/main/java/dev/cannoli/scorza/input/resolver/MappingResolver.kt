@@ -5,12 +5,10 @@ import dev.cannoli.scorza.input.autoconfig.BundledAutoconfigEntries
 import dev.cannoli.scorza.input.autoconfig.RetroArchCfgEntry
 import dev.cannoli.scorza.input.ConnectedDevice
 import dev.cannoli.scorza.input.DeviceMapping
-import dev.cannoli.scorza.input.hints.ControllerHintTable
 
 class MappingResolver(
     private val diskRepository: AutoconfigRepository,
     private val bundledRetroArchEntries: BundledAutoconfigEntries,
-    private val hints: ControllerHintTable,
 ) {
 
     /**
@@ -28,17 +26,17 @@ class MappingResolver(
         val disk = diskRepository.listEntries()
 
         val user = bestUserEntry(disk.filter { it.cannoliUser }, device, effectiveDescriptor)
-        if (user != null) return RetroArchAutoconfigImporter.import(user, device, hints, persistenceDescriptor)
+        if (user != null) return RetroArchAutoconfigImporter.import(user, device, persistenceDescriptor)
 
         val diskMatch = bestRetroArchEntry(disk, device)
-        if (diskMatch != null) return RetroArchAutoconfigImporter.import(diskMatch, device, hints, persistenceDescriptor)
+        if (diskMatch != null) return RetroArchAutoconfigImporter.import(diskMatch, device, persistenceDescriptor)
 
         // Same content as the database, for the window before seeding lands or while storage is
         // unreadable.
         val assetMatch = bestRetroArchEntry(bundledRetroArchEntries.entries(), device)
-        if (assetMatch != null) return RetroArchAutoconfigImporter.import(assetMatch, device, hints, persistenceDescriptor)
+        if (assetMatch != null) return RetroArchAutoconfigImporter.import(assetMatch, device, persistenceDescriptor)
 
-        return AndroidDefaultMappingFactory().create(device, hints, persistenceDescriptor)
+        return AndroidDefaultMappingFactory().create(device, persistenceDescriptor)
     }
 
     // A user file names the exact pad it was written for, so descriptor equality outranks the

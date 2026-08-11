@@ -8,7 +8,6 @@ import dev.cannoli.scorza.input.GlyphStyle
 import dev.cannoli.scorza.input.autoconfig.AutoconfigRepository
 import dev.cannoli.scorza.input.autoconfig.AutoconfigSeeder
 import dev.cannoli.scorza.input.autoconfig.RetroArchCfgEntry
-import dev.cannoli.scorza.input.hints.ControllerHintTable
 import dev.cannoli.scorza.input.resolver.MappingResolver
 import dev.cannoli.scorza.input.resolver.RetroArchAutoconfigImporter
 import dev.cannoli.scorza.input.runtime.ActiveMappingHolder
@@ -40,7 +39,6 @@ class ControllersViewModel @Inject constructor(
     private val portRouter: PortRouter,
     private val activeMappingHolder: ActiveMappingHolder,
     private val resolver: MappingResolver,
-    private val hints: ControllerHintTable,
     private val seeder: AutoconfigSeeder,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -69,7 +67,7 @@ class ControllersViewModel @Inject constructor(
         )
         val saved = repository.listEntries()
             .filter { it.cannoliUser }
-            .map { RetroArchAutoconfigImporter.import(it, syntheticDevice(it), hints) }
+            .map { RetroArchAutoconfigImporter.import(it, syntheticDevice(it)) }
             .filter { it.id !in connectedIds }
             .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.displayName })
         _state.value = ControllersUiState(connected = sortedConnected, savedMappings = saved)
@@ -89,7 +87,7 @@ class ControllersViewModel @Inject constructor(
     )
 
     fun mappingById(id: String): DeviceMapping? =
-        repository.findById(id)?.let { RetroArchAutoconfigImporter.import(it, syntheticDevice(it), hints) }
+        repository.findById(id)?.let { RetroArchAutoconfigImporter.import(it, syntheticDevice(it)) }
 
     private fun refreshFromCurrentSnapshots() {
         recompute(portRouter.entrySnapshots.value)

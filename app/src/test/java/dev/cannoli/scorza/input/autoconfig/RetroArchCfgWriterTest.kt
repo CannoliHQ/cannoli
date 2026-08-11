@@ -9,7 +9,6 @@ import dev.cannoli.scorza.input.GlyphStyle
 import dev.cannoli.scorza.input.HatDirection
 import dev.cannoli.scorza.input.InputBinding
 import dev.cannoli.scorza.input.MappingSource
-import dev.cannoli.scorza.input.hints.ControllerHintTable
 import dev.cannoli.scorza.input.resolver.RetroArchAutoconfigImporter
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -55,10 +54,6 @@ class RetroArchCfgWriterTest {
         excludeFromGameplay = true,
         source = MappingSource.USER_WIZARD,
         userEdited = true,
-    )
-
-    private val defaultHints = ControllerHintTable.fromJson(
-        """{"default":{"menuConfirm":"BTN_EAST","glyphStyle":"PLUMBER"}}"""
     )
 
     @Test
@@ -173,7 +168,7 @@ class RetroArchCfgWriterTest {
             vendorId = 11720, productId = 24582, androidBuildModel = "",
             sourceMask = 0, connectedAtMillis = 0L,
         )
-        val imported = RetroArchAutoconfigImporter.import(entry, device, defaultHints)
+        val imported = RetroArchAutoconfigImporter.import(entry, device)
         assertEquals(emptyList<InputBinding>(), imported.bindings[CanonicalButton.BTN_MENU].orEmpty())
     }
 
@@ -192,7 +187,7 @@ class RetroArchCfgWriterTest {
             vendorId = 11720, productId = 24582, androidBuildModel = "",
             sourceMask = 0, connectedAtMillis = 0L,
         )
-        val imported = RetroArchAutoconfigImporter.import(entry, device, defaultHints)
+        val imported = RetroArchAutoconfigImporter.import(entry, device)
         assertEquals(listOf(InputBinding.Button(318)), imported.bindings[CanonicalButton.BTN_MENU])
     }
 
@@ -236,7 +231,7 @@ class RetroArchCfgWriterTest {
             vendorId = 11720, productId = 24582, androidBuildModel = "",
             sourceMask = 0, connectedAtMillis = 0L,
         )
-        val imported = RetroArchAutoconfigImporter.import(entry, device, defaultHints)
+        val imported = RetroArchAutoconfigImporter.import(entry, device)
         assertEquals(original.bindings[CanonicalButton.BTN_SOUTH], imported.bindings[CanonicalButton.BTN_SOUTH])
         assertEquals(original.bindings[CanonicalButton.BTN_UP], imported.bindings[CanonicalButton.BTN_UP])
         assertEquals(original.bindings[CanonicalButton.BTN_L2], imported.bindings[CanonicalButton.BTN_L2])

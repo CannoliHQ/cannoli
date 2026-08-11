@@ -59,19 +59,10 @@ object ControllerBindingsModule {
     fun provideMappingResolver(
         diskRepository: AutoconfigRepository,
         bundled: BundledAutoconfigEntries,
-        hints: dev.cannoli.scorza.input.hints.ControllerHintTable,
     ): MappingResolver = MappingResolver(
         diskRepository = diskRepository,
         bundledRetroArchEntries = bundled,
-        hints = hints,
     )
-
-    @Provides
-    @Singleton
-    fun provideControllerHintTable(
-        @ApplicationContext context: Context,
-    ): dev.cannoli.scorza.input.hints.ControllerHintTable =
-        dev.cannoli.scorza.input.hints.ControllerHintTable.fromAssets(context)
 
     @Provides
     @Singleton
@@ -89,16 +80,12 @@ object ControllerBindingsModule {
         activeMappingHolder: ActiveMappingHolder,
         autoconfigRepository: AutoconfigRepository,
         blacklist: dev.cannoli.scorza.input.ControllerBlacklist,
-        bundled: BundledAutoconfigEntries,
-        hints: dev.cannoli.scorza.input.hints.ControllerHintTable,
     ): ControllerBridge = ControllerBridge(
         resolver = resolver,
         portRouter = portRouter,
         activeMappingHolder = activeMappingHolder,
         autoconfigRepository = autoconfigRepository,
         blacklist = blacklist,
-        bundledCfgs = bundled,
-        hints = hints,
         devKeyboardEnabled = dev.cannoli.scorza.BuildConfig.DEBUG &&
             dev.cannoli.scorza.util.DeviceType.isAvd(),
     )

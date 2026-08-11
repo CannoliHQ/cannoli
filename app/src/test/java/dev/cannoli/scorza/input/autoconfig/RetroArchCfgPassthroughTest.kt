@@ -3,7 +3,6 @@ package dev.cannoli.scorza.input.autoconfig
 import dev.cannoli.scorza.input.CanonicalButton
 import dev.cannoli.scorza.input.ConnectedDevice
 import dev.cannoli.scorza.input.DeviceMapping
-import dev.cannoli.scorza.input.hints.ControllerHintTable
 import dev.cannoli.scorza.input.resolver.RetroArchAutoconfigImporter
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -175,10 +174,6 @@ class RetroArchCfgPassthroughTest {
         input_menu_toggle_btn_label = "Rewind"
     """.trimIndent()
 
-    private val hints = ControllerHintTable.fromJson(
-        """{"default":{"menuConfirm":"BTN_EAST","glyphStyle":"PLUMBER"}}"""
-    )
-
     private fun device(name: String, vendorId: Int, productId: Int) = ConnectedDevice(
         androidDeviceId = 1,
         descriptor = "desc-1",
@@ -194,7 +189,6 @@ class RetroArchCfgPassthroughTest {
         RetroArchAutoconfigImporter.import(
             RetroArchCfgParser.parse(cfg, fileName = fileName),
             device,
-            hints,
         )
 
     // A cosmetic edit: the user flipped the confirm button and nothing else.
