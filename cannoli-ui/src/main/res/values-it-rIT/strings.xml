@@ -760,6 +760,7 @@
     <string name="conflicts_title">Sincronizza I Conflitti</string>
     <string name="conflicts_applying">Applicazione dei conflitti...</string>
     <!-- Shown while saves are checked against the server before a game launches. -->
+    <string name="save_sync_checking">Controllando i salvataggi...</string>
     <!-- %1$d = number of saves that could not be applied. -->
     <!-- %1$d = number of sync conflicts. -->
     <plurals name="quick_menu_conflicts">
