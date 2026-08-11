@@ -167,6 +167,7 @@
     <string name="setting_experimental_features">Funzioni Sperimentali</string>
     <string name="setting_set_default_launcher">Imposta come Launcher predefinito</string>
     <!-- Same row as setting_set_default_launcher, shown when Cannoli is already the default launcher and the user wants to pick another one. -->
+    <string name="setting_change_default_launcher">Usa un diverso Launcher</string>
     <!-- Advanced action: recreate the standard platform/system folders. -->
     <string name="setting_regenerate_system_folders">Rigenera Cartelle Di Sistema</string>
     <!-- Library setting: which content layout to show (platforms, collections only, or Five Game Handheld). -->
@@ -597,6 +598,7 @@
     <string name="ra_load_offline_pending">RA: Offline (dati di gioco non disponibili)</string>
     <!-- Credits -->
     <string name="credits_title">Riconoscimenti e licenze</string>
+    <string name="credits_shaders">Shaders</string>
     <!-- Core picker / nav -->
     <string name="no_compatible_cores">Nessun core compatibile trovato</string>
     <string name="no_collections">Nessuna collezione</string>
@@ -676,7 +678,9 @@
     <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
     <!-- Shown above the RetroArch core list when the installed build predates the receiver that answers core queries. -->
     <!-- Shown when RetroArch has the receiver but did not answer the query. -->
+    <string name="mapping_notice_no_response">RetroArch non risponde</string>
     <!-- Shown above the core list when the configured RetroArch package is not installed at all. -->
+    <string name="mapping_notice_not_installed">RetroArch non è installato</string>
     <!-- Debug builds only: a gallery of every Nerd Font glyph the launcher draws. Never shipped to users, so not sent to translators. -->
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">Mappatura %s</string>
