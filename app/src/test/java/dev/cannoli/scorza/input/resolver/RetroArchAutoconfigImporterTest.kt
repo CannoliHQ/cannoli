@@ -187,6 +187,43 @@ class RetroArchAutoconfigImporterTest {
         )
     }
 
+    // A default that deliberately diverges from LegendResolver's AYN_Thor profile
+    // (BTN_EAST/PLUMBER), so a test passing only proves the resolver was consulted
+    // rather than these hints happening to agree with it.
+    private val divergentHints = ControllerHintTable.fromJson(
+        """{"default":{"menuConfirm":"BTN_SOUTH","glyphStyle":"REDMOND"}}"""
+    )
+
+    @Test fun `absent cannoli glyph and confirm keys are resolved from LegendResolver`() {
+        val entry = RetroArchCfgEntry(
+            deviceName = "Pad", vendorId = 9999, productId = 8888,
+            buttonBindings = mapOf("b_btn" to 96, "a_btn" to 97),
+        )
+        val thorDevice = ConnectedDevice(
+            androidDeviceId = 2, descriptor = "thor", name = "Pad",
+            vendorId = 9999, productId = 8888, androidBuildModel = "AYN_Thor",
+            sourceMask = 0, connectedAtMillis = 0,
+        )
+        val t = RetroArchAutoconfigImporter.import(entry, thorDevice, divergentHints)
+        assertEquals(GlyphStyle.PLUMBER, t.glyphStyle)
+        assertEquals(CanonicalButton.BTN_EAST, t.menuConfirm)
+    }
+
+    @Test fun `explicit cfg glyph style wins over LegendResolver`() {
+        val entry = RetroArchCfgEntry(
+            deviceName = "Pad", vendorId = 9999, productId = 8888,
+            buttonBindings = mapOf("b_btn" to 96, "a_btn" to 97),
+            glyphStyle = "SHAPES",
+        )
+        val thorDevice = ConnectedDevice(
+            androidDeviceId = 2, descriptor = "thor", name = "Pad",
+            vendorId = 9999, productId = 8888, androidBuildModel = "AYN_Thor",
+            sourceMask = 0, connectedAtMillis = 0,
+        )
+        val t = RetroArchAutoconfigImporter.import(entry, thorDevice, divergentHints)
+        assertEquals(GlyphStyle.SHAPES, t.glyphStyle)
+    }
+
     @Test fun `cannoli keys override hints and mark user mappings`() {
         val entry = RetroArchCfgParser.parse(
             """

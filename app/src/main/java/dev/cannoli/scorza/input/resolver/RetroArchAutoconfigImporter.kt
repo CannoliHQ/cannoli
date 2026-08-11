@@ -13,8 +13,11 @@ import dev.cannoli.scorza.input.GlyphStyle
 import dev.cannoli.scorza.input.InputBinding
 import dev.cannoli.scorza.input.MappingSource
 import dev.cannoli.scorza.input.hints.ControllerHintTable
+import dev.cannoli.scorza.input.legend.LegendResolver
 
 object RetroArchAutoconfigImporter {
+
+    private val legendResolver = LegendResolver()
 
     private val BTN_TO_CANONICAL: Map<String, CanonicalButton> = mapOf(
         "b_btn" to CanonicalButton.BTN_SOUTH,
@@ -101,24 +104,19 @@ object RetroArchAutoconfigImporter {
         // Phantom-rewrite handling: on hosts that rewrite a paired BT pad's VID/PID to the
         // built-in's values (Retroid family), the device's reported vid/pid don't match the
         // pad's real brand. The matched cfg has the right brand vid/pid in its header, so try
-        // the cfg's vid/pid against the hint table first; only fall through to the device's
-        // reported vid/pid + Build.MODEL when the cfg's vid/pid isn't known to the hint table.
-        val cfgHint = entry.vendorId?.let { cfgVid ->
-            entry.productId?.let { cfgPid ->
-                hints.lookupVidPid(cfgVid, cfgPid)
-            }
-        }
-        val hint = cfgHint ?: hints.lookup(
-            vendorId = device.vendorId,
-            productId = device.productId,
+        // the cfg's vid/pid first; only fall through to the device's reported vid/pid when the
+        // cfg doesn't carry one.
+        val profile = legendResolver.resolve(
+            vendorId = entry.vendorId ?: device.vendorId,
+            productId = entry.productId ?: device.productId,
             buildModel = device.androidBuildModel,
         )
         val confirm = entry.confirmButton
             ?.let { runCatching { CanonicalButton.valueOf(it) }.getOrNull() }
-            ?: hint.menuConfirm
+            ?: profile.menuConfirm
         val glyph = entry.glyphStyle
             ?.let { runCatching { GlyphStyle.valueOf(it) }.getOrNull() }
-            ?: hint.glyphStyle
+            ?: profile.glyphStyle
         return DeviceMapping(
             id = entry.fileName?.removeSuffix(".cfg") ?: safeId,
             displayName = entry.displayName
