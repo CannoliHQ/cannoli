@@ -39,6 +39,9 @@ class MappingResolver(
 
         // Same content as the database, for the window before seeding lands or while storage is
         // unreadable.
+        val assetBuildModelMatch = bundledRetroArchEntries.entries().firstOrNull { matchesBuildModel(it, device) }
+        if (assetBuildModelMatch != null) return RetroArchAutoconfigImporter.import(assetBuildModelMatch, device, persistenceDescriptor)
+
         val assetMatch = bestRetroArchEntry(
             bundledRetroArchEntries.entries().filterNot { hasBuildModel(it) },
             device,

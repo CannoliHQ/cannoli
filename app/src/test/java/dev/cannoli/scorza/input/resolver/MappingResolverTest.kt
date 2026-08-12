@@ -442,4 +442,30 @@ class MappingResolverTest {
 
         assertEquals(MappingSource.ANDROID_DEFAULT, resolved.source)
     }
+
+    // The build-model tier applies to bundled entries too, so a shared-identity pad (AYN Thor)
+    // resolves correctly even before disk seeding lands.
+    @Test
+    fun `bundled build model cfg resolves when nothing is on disk`() {
+        val ra = listOf(
+            RetroArchCfgEntry(
+                deviceName = "Odin Controller",
+                vendorId = 8224, productId = 273,
+                buttonBindings = mapOf("b_btn" to 96),
+            ),
+            RetroArchCfgEntry(
+                deviceName = "Odin Controller",
+                vendorId = 8224, productId = 273,
+                buttonBindings = mapOf("b_btn" to 97),
+                buildModel = "AYN Thor",
+            ),
+        )
+
+        val resolved = resolver(bundled = ra).resolve(
+            device(name = "Odin Controller", vendorId = 8224, productId = 273, androidBuildModel = "AYN Thor")
+        )
+
+        assertEquals(MappingSource.RETROARCH_AUTOCONFIG, resolved.source)
+        assertEquals(listOf(InputBinding.Button(97)), resolved.bindings[CanonicalButton.BTN_SOUTH])
+    }
 }
