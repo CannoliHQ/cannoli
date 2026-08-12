@@ -26,7 +26,11 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import dev.cannoli.igm.CannoliIGM
 import dev.cannoli.igm.CheatManager
+import dev.cannoli.igm.GuideController
+import dev.cannoli.igm.GuideDisplays
+import dev.cannoli.igm.GuideFile
 import dev.cannoli.igm.GuideManager
+import dev.cannoli.igm.GuideOverlayContract
 import dev.cannoli.igm.IGMController
 import dev.cannoli.igm.IGMHostConfig
 import dev.cannoli.igm.RaOptionStrings
@@ -194,6 +198,7 @@ class IGMOverlay(
             controller.attachGuides(GuideManager(cannoliRoot, platformTag, romBaseName))
             controller.attachCheats(CheatManager(cannoliRoot, platformTag, romBaseName))
         }
+        controller.openGuideExternally = ::showGuideOnSecondDisplay
         controller.onCheatsRestored = { count ->
             onOsdMessage?.invoke(
                 uiContext.resources.getQuantityString(R.plurals.osd_cheats_restored, count, count)
@@ -230,6 +235,27 @@ class IGMOverlay(
             }
         }
         composeView = view
+    }
+
+    // The overlay is a started service in the launcher's process, so the guide stays on the panel
+    // once the menu closes and play resumes. Any reason it cannot reach the panel returns false and
+    // the IGM shows the guide itself rather than leaving the user with nothing.
+    private fun showGuideOnSecondDisplay(guide: GuideFile, open: GuideController.GuideOpenState): Boolean {
+        val displayId = GuideDisplays.secondDisplayId(activity) ?: return false
+        if (!GuideOverlayContract.canShow(activity)) return false
+        return GuideOverlayContract.start(
+            context = activity,
+            displayId = displayId,
+            filePath = open.filePath,
+            guideType = guide.type,
+            platformTag = platformTag,
+            romBaseName = romBaseName,
+            page = open.initialPage,
+            scrollY = controller.guideInitialScroll.intValue,
+            scrollX = controller.guideInitialScrollX.intValue,
+            textZoom = open.textZoom,
+            pageCount = controller.guidePageCount.intValue,
+        )
     }
 
     private var attached = false

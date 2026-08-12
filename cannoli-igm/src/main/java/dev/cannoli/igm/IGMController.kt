@@ -505,8 +505,15 @@ class IGMController(
         push(IGMScreen.GuidePicker())
     }
 
+    /**
+     * Set by the host to show the guide somewhere the menu does not own, such as a second display.
+     * Returning true suppresses the in-IGM viewer; false or unset keeps it.
+     */
+    var openGuideExternally: ((GuideFile, GuideController.GuideOpenState) -> Boolean)? = null
+
     private fun openGuide(guide: GuideFile) {
         val open = guideController.prepareGuide(guide) ?: return
+        if (openGuideExternally?.invoke(guide, open) == true) return
         push(IGMScreen.Guide(filePath = open.filePath, page = open.initialPage, textZoom = open.textZoom))
     }
 

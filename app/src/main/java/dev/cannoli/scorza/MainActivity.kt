@@ -51,6 +51,7 @@ import dev.cannoli.scorza.input.InputRouter
 import dev.cannoli.scorza.input.InputTesterController
 import dev.cannoli.scorza.input.LauncherActions
 import dev.cannoli.scorza.input.runtime.ControllerBridge
+import dev.cannoli.scorza.launcher.GuideOverlayService
 import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.LaunchManager
 import dev.cannoli.scorza.navigation.AppNavGraph
@@ -454,6 +455,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
         val justExited = launchState.lastLaunched
         if (justExited != null) {
             launchState.lastLaunched = null
+            GuideOverlayService.hide(this)
         }
         syncScheduler.start()
         // The just-played save is uploaded by the sweep itself; force one so it runs now.
@@ -490,6 +492,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     }
 
     override fun onDestroy() {
+        GuideOverlayService.hide(this)
         controllerBridge.onDeviceAdded = null
         controllerBridge.onDeviceRemoved = null
         controllerBridge.stop(this)
