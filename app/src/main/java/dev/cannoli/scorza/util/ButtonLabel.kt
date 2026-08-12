@@ -53,6 +53,10 @@ fun canonicalLabel(context: Context, button: CanonicalButton, style: GlyphStyle)
         CanonicalButton.BTN_START -> R.string.canonical_start
         CanonicalButton.BTN_SELECT -> R.string.canonical_select
         CanonicalButton.BTN_MENU -> R.string.canonical_menu
+        CanonicalButton.BTN_LSTICK_X -> R.string.canonical_lstick_x
+        CanonicalButton.BTN_LSTICK_Y -> R.string.canonical_lstick_y
+        CanonicalButton.BTN_RSTICK_X -> R.string.canonical_rstick_x
+        CanonicalButton.BTN_RSTICK_Y -> R.string.canonical_rstick_y
         else -> return button.name
     }
     return context.getString(res)

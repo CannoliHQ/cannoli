@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name" translatable="false">Cannoli</string>
+    <string name="canonical_lstick_x">Left Stick X</string>
+    <string name="canonical_lstick_y">Left Stick Y</string>
+    <string name="canonical_rstick_x">Right Stick X</string>
+    <string name="canonical_rstick_y">Right Stick Y</string>
 </resources>

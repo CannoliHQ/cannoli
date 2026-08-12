@@ -23,7 +23,16 @@ class DevKeyboardMappingTest {
 
     @Test
     fun every_canonical_button_is_reachable_from_the_keyboard() {
-        val missing = CanonicalButton.entries.filter { it !in DevKeyboardMapping.BINDINGS }
+        // Analog sticks have no physical keyboard equivalent, so they are excluded here.
+        val stickCanonicals = setOf(
+            CanonicalButton.BTN_LSTICK_X,
+            CanonicalButton.BTN_LSTICK_Y,
+            CanonicalButton.BTN_RSTICK_X,
+            CanonicalButton.BTN_RSTICK_Y,
+        )
+        val missing = CanonicalButton.entries
+            .filter { it !in stickCanonicals }
+            .filter { it !in DevKeyboardMapping.BINDINGS }
         assertTrue("unbound canonicals: $missing", missing.isEmpty())
     }
 

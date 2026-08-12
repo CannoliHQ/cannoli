@@ -22,6 +22,8 @@ object CanonicalRetroMap {
         CanonicalButton.BTN_LEFT -> RetroJoypad.RETRO_LEFT
         CanonicalButton.BTN_RIGHT -> RetroJoypad.RETRO_RIGHT
         CanonicalButton.BTN_MENU -> 0
+        CanonicalButton.BTN_LSTICK_X, CanonicalButton.BTN_LSTICK_Y,
+        CanonicalButton.BTN_RSTICK_X, CanonicalButton.BTN_RSTICK_Y -> 0
     }
 
     fun effectiveTarget(button: CanonicalButton, remap: Map<CanonicalButton, Int>): Int =

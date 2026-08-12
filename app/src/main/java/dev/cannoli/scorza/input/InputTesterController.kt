@@ -196,6 +196,10 @@ class InputTesterController(
             CanonicalButton.BTN_DOWN -> "btn_down"
             CanonicalButton.BTN_LEFT -> "btn_left"
             CanonicalButton.BTN_RIGHT -> "btn_right"
+            CanonicalButton.BTN_LSTICK_X -> "lstick_x"
+            CanonicalButton.BTN_LSTICK_Y -> "lstick_y"
+            CanonicalButton.BTN_RSTICK_X -> "rstick_x"
+            CanonicalButton.BTN_RSTICK_Y -> "rstick_y"
         }
     }
 

@@ -218,6 +218,8 @@ class InputDispatcher @Inject constructor(
             CanonicalButton.BTN_START -> onStart()
             CanonicalButton.BTN_SELECT -> onSelect()
             CanonicalButton.BTN_MENU -> onMenu()
+            CanonicalButton.BTN_LSTICK_X, CanonicalButton.BTN_LSTICK_Y,
+            CanonicalButton.BTN_RSTICK_X, CanonicalButton.BTN_RSTICK_Y -> {}
         }
         return true
     }
