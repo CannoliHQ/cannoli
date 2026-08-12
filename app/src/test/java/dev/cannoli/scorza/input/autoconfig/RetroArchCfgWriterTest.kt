@@ -35,8 +35,8 @@ class RetroArchCfgWriterTest {
                     digitalThreshold = 0.5f, analogRole = AnalogRole.DIGITAL_BUTTON,
                 )
             ),
-            CanonicalButton.BTN_L3 to listOf(
-                InputBinding.Button(106),
+            CanonicalButton.BTN_L3 to listOf(InputBinding.Button(106)),
+            CanonicalButton.BTN_LSTICK_X to listOf(
                 InputBinding.Axis(
                     axis = 0, restingValue = -1f, activeMin = 0f, activeMax = 1f,
                     digitalThreshold = 0.5f, analogRole = AnalogRole.LEFT_STICK_X,
@@ -236,10 +236,43 @@ class RetroArchCfgWriterTest {
         assertEquals(original.bindings[CanonicalButton.BTN_UP], imported.bindings[CanonicalButton.BTN_UP])
         assertEquals(original.bindings[CanonicalButton.BTN_L2], imported.bindings[CanonicalButton.BTN_L2])
         assertEquals(original.bindings[CanonicalButton.BTN_L3], imported.bindings[CanonicalButton.BTN_L3])
+        assertEquals(original.bindings[CanonicalButton.BTN_LSTICK_X], imported.bindings[CanonicalButton.BTN_LSTICK_X])
         assertEquals(original.menuConfirm, imported.menuConfirm)
         assertEquals(original.glyphStyle, imported.glyphStyle)
         assertEquals(original.excludeFromGameplay, imported.excludeFromGameplay)
         assertEquals(original.userEdited, imported.userEdited)
         assertEquals("8BitDo_Pro_2", imported.id)
+    }
+
+    @Test
+    fun `all four stick axis key pairs round trip exactly through import and write`() {
+        val cfg = """
+            input_driver = "android"
+            input_l_x_plus_axis = "+0"
+            input_l_x_minus_axis = "-0"
+            input_l_y_plus_axis = "+1"
+            input_l_y_minus_axis = "-1"
+            input_r_x_plus_axis = "+2"
+            input_r_x_minus_axis = "-2"
+            input_r_y_plus_axis = "+3"
+            input_r_y_minus_axis = "-3"
+        """.trimIndent()
+        val entry = RetroArchCfgParser.parse(cfg, fileName = "Pad.cfg")
+        val device = ConnectedDevice(
+            androidDeviceId = 1, descriptor = "d", name = "Pad",
+            vendorId = 0, productId = 0, androidBuildModel = "",
+            sourceMask = 0, connectedAtMillis = 0L,
+        )
+        val imported = RetroArchAutoconfigImporter.import(entry, device)
+        val written = RetroArchCfgWriter.write(imported)
+
+        assertTrue(written.contains("input_l_x_plus_axis = \"+0\""))
+        assertTrue(written.contains("input_l_x_minus_axis = \"-0\""))
+        assertTrue(written.contains("input_l_y_plus_axis = \"+1\""))
+        assertTrue(written.contains("input_l_y_minus_axis = \"-1\""))
+        assertTrue(written.contains("input_r_x_plus_axis = \"+2\""))
+        assertTrue(written.contains("input_r_x_minus_axis = \"-2\""))
+        assertTrue(written.contains("input_r_y_plus_axis = \"+3\""))
+        assertTrue(written.contains("input_r_y_minus_axis = \"-3\""))
     }
 }

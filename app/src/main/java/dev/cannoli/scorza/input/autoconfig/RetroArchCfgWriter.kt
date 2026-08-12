@@ -39,7 +39,10 @@ object RetroArchCfgWriter {
         mapping.match.productId?.let { line("input_product_id", it.toString()) }
 
         for ((canonical, bindings) in mapping.bindings) {
-            val btnKey = CANONICAL_TO_BTN[canonical] ?: continue
+            // The stick canonicals (BTN_LSTICK_X etc.) carry only axis bindings and have no RA
+            // digital button key of their own -- l3_btn/r3_btn cover the stick click separately
+            // -- so btnKey stays null for them and only the Axis branch below applies.
+            val btnKey = CANONICAL_TO_BTN[canonical]
             // RetroArch reads this file too, and it opens its own menu on whatever
             // input_menu_toggle_btn names. A hat or axis there would fire in-game because motion
             // events never reach the launcher's keycode intercept, so the menu takes buttons only.
@@ -57,7 +60,7 @@ object RetroArchCfgWriter {
             val axisKeysWritten = mutableSetOf<String>()
             for (binding in effective) {
                 when (binding) {
-                    is InputBinding.Button -> if (!digitalWritten) {
+                    is InputBinding.Button -> if (btnKey != null && !digitalWritten) {
                         // Release builds close RA's own menu off entirely: a real bound key still
                         // exists (the Cannoli IGM trigger reads it independently, see
                         // resolveMenuKeycodes), but RA itself is told the key is unbound.
@@ -69,7 +72,7 @@ object RetroArchCfgWriter {
                         line("input_$btnKey", value)
                         digitalWritten = true
                     }
-                    is InputBinding.Hat -> if (!digitalWritten) {
+                    is InputBinding.Hat -> if (btnKey != null && !digitalWritten) {
                         line("input_$btnKey", "h0" + binding.direction.name.lowercase())
                         digitalWritten = true
                     }
@@ -125,11 +128,11 @@ object RetroArchCfgWriter {
                 else -> null
             }
         }
-        val prefix = when (axis.analogRole) {
-            AnalogRole.LEFT_STICK_X -> "l_x"
-            AnalogRole.LEFT_STICK_Y -> "l_y"
-            AnalogRole.RIGHT_STICK_X -> "r_x"
-            AnalogRole.RIGHT_STICK_Y -> "r_y"
+        val prefix = when (canonical) {
+            CanonicalButton.BTN_LSTICK_X -> "l_x"
+            CanonicalButton.BTN_LSTICK_Y -> "l_y"
+            CanonicalButton.BTN_RSTICK_X -> "r_x"
+            CanonicalButton.BTN_RSTICK_Y -> "r_y"
             else -> return null
         }
         val direction = if (axis.activeMax >= 0f) "plus" else "minus"

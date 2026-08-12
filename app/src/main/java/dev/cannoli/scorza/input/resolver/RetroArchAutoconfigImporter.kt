@@ -159,10 +159,10 @@ object RetroArchAutoconfigImporter {
     private fun mapAxisKeyToCanonicalAndRole(key: String): Pair<CanonicalButton, AnalogRole>? = when (key) {
         "l2_axis" -> CanonicalButton.BTN_L2 to AnalogRole.DIGITAL_BUTTON
         "r2_axis" -> CanonicalButton.BTN_R2 to AnalogRole.DIGITAL_BUTTON
-        "l_x_plus_axis", "l_x_minus_axis" -> CanonicalButton.BTN_L3 to AnalogRole.LEFT_STICK_X
-        "l_y_plus_axis", "l_y_minus_axis" -> CanonicalButton.BTN_L3 to AnalogRole.LEFT_STICK_Y
-        "r_x_plus_axis", "r_x_minus_axis" -> CanonicalButton.BTN_R3 to AnalogRole.RIGHT_STICK_X
-        "r_y_plus_axis", "r_y_minus_axis" -> CanonicalButton.BTN_R3 to AnalogRole.RIGHT_STICK_Y
+        "l_x_plus_axis", "l_x_minus_axis" -> CanonicalButton.BTN_LSTICK_X to AnalogRole.LEFT_STICK_X
+        "l_y_plus_axis", "l_y_minus_axis" -> CanonicalButton.BTN_LSTICK_Y to AnalogRole.LEFT_STICK_Y
+        "r_x_plus_axis", "r_x_minus_axis" -> CanonicalButton.BTN_RSTICK_X to AnalogRole.RIGHT_STICK_X
+        "r_y_plus_axis", "r_y_minus_axis" -> CanonicalButton.BTN_RSTICK_Y to AnalogRole.RIGHT_STICK_Y
         else -> null
     }
 

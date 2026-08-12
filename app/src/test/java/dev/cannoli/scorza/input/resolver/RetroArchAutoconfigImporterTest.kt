@@ -13,7 +13,6 @@ import dev.cannoli.scorza.input.GlyphStyle
 import dev.cannoli.scorza.input.InputBinding
 import dev.cannoli.scorza.input.MappingSource
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -68,21 +67,57 @@ class RetroArchAutoconfigImporterTest {
     }
 
     @Test
-    fun stick_axes_collapse_to_analog_roles_per_canonical_button() {
+    fun stick_axes_key_under_stick_canonicals_and_l3_r3_hold_only_click_buttons() {
         val entry = RetroArchCfgEntry(
             deviceName = "Stadia Controller", vendorId = 6353, productId = 37888,
-            buttonBindings = emptyMap(),
+            buttonBindings = mapOf("l3_btn" to 106, "r3_btn" to 107),
             axisBindings = mapOf(
                 "l_x_plus_axis" to AxisRef(0, +1),
                 "l_x_minus_axis" to AxisRef(0, -1),
                 "l_y_plus_axis" to AxisRef(1, +1),
                 "l_y_minus_axis" to AxisRef(1, -1),
+                "r_x_plus_axis" to AxisRef(2, +1),
+                "r_x_minus_axis" to AxisRef(2, -1),
+                "r_y_plus_axis" to AxisRef(3, +1),
+                "r_y_minus_axis" to AxisRef(3, -1),
             ),
         )
         val t = RetroArchAutoconfigImporter.import(entry, device)
-        // Stick X is bound under BTN_L3 with role LEFT_STICK_X.
-        val lxBinding = t.bindings[CanonicalButton.BTN_L3]?.firstOrNull { it is InputBinding.Axis }
-        assertNotNull(lxBinding)
+
+        // Sticks key under the stick canonicals now, still bipolar per axisRange: rest at the
+        // opposite extreme, active span crossing 0 to the pressed extreme.
+        assertEquals(
+            listOf(
+                InputBinding.Axis(0, restingValue = -1f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f, analogRole = AnalogRole.LEFT_STICK_X),
+                InputBinding.Axis(0, restingValue = 1f, activeMin = 0f, activeMax = -1f, digitalThreshold = 0.5f, analogRole = AnalogRole.LEFT_STICK_X),
+            ),
+            t.bindings[CanonicalButton.BTN_LSTICK_X],
+        )
+        assertEquals(
+            listOf(
+                InputBinding.Axis(1, restingValue = -1f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f, analogRole = AnalogRole.LEFT_STICK_Y),
+                InputBinding.Axis(1, restingValue = 1f, activeMin = 0f, activeMax = -1f, digitalThreshold = 0.5f, analogRole = AnalogRole.LEFT_STICK_Y),
+            ),
+            t.bindings[CanonicalButton.BTN_LSTICK_Y],
+        )
+        assertEquals(
+            listOf(
+                InputBinding.Axis(2, restingValue = -1f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f, analogRole = AnalogRole.RIGHT_STICK_X),
+                InputBinding.Axis(2, restingValue = 1f, activeMin = 0f, activeMax = -1f, digitalThreshold = 0.5f, analogRole = AnalogRole.RIGHT_STICK_X),
+            ),
+            t.bindings[CanonicalButton.BTN_RSTICK_X],
+        )
+        assertEquals(
+            listOf(
+                InputBinding.Axis(3, restingValue = -1f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f, analogRole = AnalogRole.RIGHT_STICK_Y),
+                InputBinding.Axis(3, restingValue = 1f, activeMin = 0f, activeMax = -1f, digitalThreshold = 0.5f, analogRole = AnalogRole.RIGHT_STICK_Y),
+            ),
+            t.bindings[CanonicalButton.BTN_RSTICK_Y],
+        )
+
+        // The click buttons stay on BTN_L3/BTN_R3 -- only their axes moved off.
+        assertEquals(listOf(InputBinding.Button(106)), t.bindings[CanonicalButton.BTN_L3])
+        assertEquals(listOf(InputBinding.Button(107)), t.bindings[CanonicalButton.BTN_R3])
     }
 
     @Test
