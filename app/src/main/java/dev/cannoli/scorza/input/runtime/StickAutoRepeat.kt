@@ -12,8 +12,8 @@ import javax.inject.Inject
  * (`onUp`/`onDown`/`onLeft`/`onRight`) and posts a runnable to re-fire at [REPEAT_INTERVAL_MS]
  * after an [INITIAL_DELAY_MS] hold.
  *
- * Lives outside the dispatcher because default mappings bind sticks to the ANALOG_STICK role,
- * not to canonical directional buttons -- so the dispatcher's evaluator never produces a
+ * Lives outside the dispatcher because a mapping that carries sticks binds them to the
+ * ANALOG_STICK role, not to canonical directional buttons -- so the dispatcher's evaluator never produces a
  * Pressed(BTN_DOWN) delta for raw stick motion, and the held-state poller never sees the
  * canonical held. This helper provides the missing stick-to-navigation path.
  *
