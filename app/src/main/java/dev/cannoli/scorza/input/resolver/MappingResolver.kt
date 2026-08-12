@@ -95,6 +95,12 @@ class MappingResolver(
 
     private fun matchesBuildModel(entry: RetroArchCfgEntry, device: ConnectedDevice): Boolean {
         val pinned = entry.buildModel?.trim()
-        return !pinned.isNullOrEmpty() && pinned.equals(device.androidBuildModel.trim(), ignoreCase = true)
+        if (pinned.isNullOrEmpty() || !pinned.equals(device.androidBuildModel.trim(), ignoreCase = true)) return false
+        // Build.MODEL alone matches every pad on that handheld, including external controllers that
+        // report the host's model, so also require the built-in pad's own vid/pid. A DualSense
+        // plugged into an AYN Thor must not inherit the Thor's cfg. The shared-identity handhelds
+        // (Thor / Portal / Odin 3) all report 8224:273, so they still disambiguate by Build.MODEL.
+        return device.vendorId != 0 && device.productId != 0 &&
+            entry.vendorId == device.vendorId && entry.productId == device.productId
     }
 }

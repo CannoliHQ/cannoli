@@ -468,4 +468,27 @@ class MappingResolverTest {
         assertEquals(MappingSource.RETROARCH_AUTOCONFIG, resolved.source)
         assertEquals(listOf(InputBinding.Button(97)), resolved.bindings[CanonicalButton.BTN_SOUTH])
     }
+
+    // A build-model cfg is the built-in pad's, not the handheld's: an external controller plugged
+    // into that handheld reports the host Build.MODEL but its own vid/pid, and must not inherit
+    // the built-in cfg.
+    @Test
+    fun `build model cfg does not match an external pad that only shares the host model`() {
+        writeCfg(
+            "odin_thor.cfg",
+            """
+            input_device = "Odin Controller"
+            input_vendor_id = "8224"
+            input_product_id = "273"
+            input_b_btn = "97"
+            cannoli_build_model = "AYN Thor"
+            """.trimIndent()
+        )
+
+        val resolved = resolver().resolve(
+            device(name = "DualSense Wireless Controller", vendorId = 0x054C, productId = 0x0CE6, androidBuildModel = "AYN Thor")
+        )
+
+        assertEquals(MappingSource.ANDROID_DEFAULT, resolved.source)
+    }
 }
