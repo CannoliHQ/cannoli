@@ -108,6 +108,10 @@ class InputRouter @Inject constructor(
         is LauncherScreen.Controllers -> controllersHandler
         is LauncherScreen.ControllerDetail -> controllerDetailHandler
         is LauncherScreen.EditButtons -> editButtonsHandler
+        // Raw key-down capture happens ahead of the normal pipeline in MainActivity.dispatchKeyEvent;
+        // this empty handler only guards stray up/motion events from falling through to whatever
+        // screen's handler was last left on the registry.
+        is LauncherScreen.LegendWizard -> object : ScreenInputHandler {}
         is LauncherScreen.LoggingSettings -> loggingSettingsHandler
         is LauncherScreen.OnboardingPermissions -> onboardingHandler
         is LauncherScreen.DirectoryBrowser -> onboardingHandler

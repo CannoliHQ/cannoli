@@ -66,6 +66,7 @@ import dev.cannoli.scorza.ui.screens.GameListScreen
 import dev.cannoli.scorza.ui.screens.GuidePickerScreen
 import dev.cannoli.scorza.ui.screens.GuideViewerScreen
 import dev.cannoli.scorza.ui.screens.InputTesterScreen
+import dev.cannoli.scorza.ui.screens.LegendWizardScreen
 import dev.cannoli.scorza.ui.screens.LoggingSettingsScreen
 import dev.cannoli.scorza.ui.screens.KeyboardHost
 import dev.cannoli.scorza.ui.screens.PortraitMarginOverlay
@@ -296,6 +297,9 @@ sealed class LauncherScreen {
         override val itemCount: Int get() = dev.cannoli.scorza.input.CanonicalButton.entries.size
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
     }
+    // Shown full-screen, unskippable, when a pad connects that Cannoli cannot identify. No
+    // selectedIndex/scrollTarget: there is nothing to navigate, only raw key capture.
+    data class LegendWizard(val deviceId: Int) : LauncherScreen()
     data class LoggingSettings(
         override val selectedIndex: Int = 0,
         override val scrollTarget: Int = 0,
@@ -504,6 +508,7 @@ fun AppNavGraph(
     osdController: dev.cannoli.ui.components.OsdController,
     activeMapping: dev.cannoli.scorza.input.DeviceMapping? = null,
     editButtonsController: dev.cannoli.scorza.input.EditButtonsController? = null,
+    legendWizardStep: dev.cannoli.scorza.input.legend.WizardStep = dev.cannoli.scorza.input.legend.WizardStep.PressSouth,
     nav: dev.cannoli.scorza.navigation.NavigationController? = null,
     inputRouter: dev.cannoli.scorza.input.InputRouter? = null,
     rommBrowseViewModel: dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel? = null,
@@ -1427,6 +1432,14 @@ fun AppNavGraph(
                     listLineHeight = listLineHeight,
                     listVerticalPadding = listVerticalPadding,
                     buttonStyle = labels,
+                )
+            }
+            is LauncherScreen.LegendWizard -> {
+                LegendWizardScreen(
+                    step = legendWizardStep,
+                    modifier = Modifier.fillMaxSize(),
+                    backgroundImagePath = appSettings.backgroundImagePath,
+                    backgroundTint = appSettings.backgroundTint,
                 )
             }
             is LauncherScreen.LoggingSettings -> {

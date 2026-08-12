@@ -106,6 +106,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var inputTesterViewModel: Provider<InputTesterViewModel>
     @Inject lateinit var controllersViewModel: Provider<dev.cannoli.scorza.ui.viewmodel.ControllersViewModel>
     @Inject lateinit var editButtonsController: dev.cannoli.scorza.input.EditButtonsController
+    @Inject lateinit var autoconfigRepository: dev.cannoli.scorza.input.autoconfig.AutoconfigRepository
     @Inject lateinit var bootSequencer: BootSequencer
     @Inject lateinit var startStorageDependentHolder: StartStorageDependentHolder
     @Inject lateinit var appFonts: AppFonts
@@ -124,6 +125,10 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var raLoginController: dev.cannoli.scorza.achievements.RaLoginController
 
     private val isTv: Boolean by lazy { dev.cannoli.scorza.util.DeviceType.isTv(this) }
+
+    // Not Hilt-injected: it holds only in-memory wizard progress for the Activity's lifetime,
+    // the same shape as EditButtonsController but without that class's repository dependencies.
+    private val legendWizardController = dev.cannoli.scorza.input.legend.LegendWizardController()
 
     private val isReady: Boolean get() = bootSequencer.state.value is BootState.Ready
 
@@ -316,8 +321,19 @@ class MainActivity : ComponentActivity(), ActivityActions {
         val navResumableGames = nav.resumableGames
         val activeMapping by activeMappingHolder.active.collectAsState()
         val syncStatus by saveSyncStatusHolder.state.collectAsState()
+        val legendWizardStep by legendWizardController.step.collectAsState()
         LaunchedEffect(updateInfo) { svm.updateInfo = updateInfo }
         LaunchedEffect(navScreen) {
+        }
+        LaunchedEffect(legendWizardStep) {
+            if (legendWizardStep != dev.cannoli.scorza.input.legend.WizardStep.Done) return@LaunchedEffect
+            val screen = nav.currentScreen as? LauncherScreen.LegendWizard ?: return@LaunchedEffect
+            val base = portRouter.mappingFor(screen.deviceId) ?: return@LaunchedEffect
+            val saved = legendWizardController.buildMapping(base)
+            autoconfigRepository.save(saved)
+            portRouter.updateMapping(saved, rebuildEvaluator = true)
+            if (activeMappingHolder.active.value?.id == saved.id) activeMappingHolder.set(saved)
+            nav.pop()
         }
         val currentDialog by navDialogState.collectAsState()
         val kitchenVisible = currentDialog is DialogState.Kitchen
@@ -348,6 +364,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
             osdController = osdController,
             activeMapping = activeMapping,
             editButtonsController = editButtonsController,
+            legendWizardStep = legendWizardStep,
             nav = nav,
             inputRouter = router,
             rommBrowseViewModel = rommBrowseViewModel,
@@ -390,11 +407,26 @@ class MainActivity : ComponentActivity(), ActivityActions {
     private fun registerControllerOsd() {
         controllerBridge.onDeviceAdded = { device ->
             if (!device.isBuiltIn) {
-                val port = portRouter.portFor(device.androidDeviceId)
-                if (port != null) {
-                    val name = portRouter.mappingForPort(port)?.displayName?.takeIf { it.isNotEmpty() }
-                        ?: device.name.ifEmpty { getString(R.string.device_controller) }
-                    osdController.show(getString(R.string.osd_controller_connected, port + 1, name))
+                val mapping = portRouter.mappingFor(device.androidDeviceId)
+                val hasStandardFaceCodes = android.view.InputDevice.getDevice(device.androidDeviceId)
+                    ?.hasKeys(96, 97, 99, 100)?.all { it } == true
+                if (mapping != null &&
+                    dev.cannoli.scorza.input.legend.shouldRunLegendWizard(mapping, hasStandardFaceCodes)
+                ) {
+                    val sonyGlyphHint = if (device.vendorId == dev.cannoli.scorza.input.legend.BuiltInLegendTable.SONY_VID) {
+                        dev.cannoli.scorza.input.GlyphStyle.SHAPES
+                    } else {
+                        null
+                    }
+                    legendWizardController.start(sonyGlyphHint)
+                    nav.push(LauncherScreen.LegendWizard(device.androidDeviceId))
+                } else {
+                    val port = portRouter.portFor(device.androidDeviceId)
+                    if (port != null) {
+                        val name = portRouter.mappingForPort(port)?.displayName?.takeIf { it.isNotEmpty() }
+                            ?: device.name.ifEmpty { getString(R.string.device_controller) }
+                        osdController.show(getString(R.string.osd_controller_connected, port + 1, name))
+                    }
                 }
             }
         }
@@ -495,6 +527,12 @@ class MainActivity : ComponentActivity(), ActivityActions {
         if (cs is LauncherScreen.EditButtons && editButtonsController.isListening
             && event.action == KeyEvent.ACTION_DOWN) {
             editButtonsController.captureRawKeyEvent(event.keyCode)
+            return true
+        }
+        // No button meaning is known yet during the wizard, so every raw key down is consumed
+        // as a capture attempt rather than falling through to menu/back semantics.
+        if (cs is LauncherScreen.LegendWizard && event.action == KeyEvent.ACTION_DOWN) {
+            legendWizardController.onKeyCaptured(event.keyCode)
             return true
         }
         // The dev keyboard binds BACK to its own back button and needs it to reach the normal
