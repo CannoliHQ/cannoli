@@ -12,6 +12,8 @@ import dev.cannoli.scorza.input.autoconfig.AutoconfigLoader
 import dev.cannoli.scorza.input.autoconfig.AutoconfigRepository
 import dev.cannoli.scorza.input.autoconfig.AutoconfigSeeder
 import dev.cannoli.scorza.input.autoconfig.BundledAutoconfigEntries
+import dev.cannoli.scorza.input.autoconfig.CfgSource
+import dev.cannoli.scorza.input.autoconfig.CompositeCfgSource
 import dev.cannoli.scorza.input.resolver.MappingResolver
 import dev.cannoli.scorza.input.runtime.ActiveMappingHolder
 import dev.cannoli.scorza.input.runtime.ControllerBridge
@@ -27,12 +29,21 @@ annotation class BundledRetroArchAutoconfig
 @InstallIn(SingletonComponent::class)
 object ControllerBindingsModule {
 
+    // Community set first, curated set last: a curated cfg's cannoli_build_model wins on the
+    // matching device regardless of order, so this only sets tie-break order for everything else.
+    private fun bundledCfgSource(context: Context): CfgSource = CompositeCfgSource(
+        listOf(
+            AssetCfgSource(context, "autoconfig/android"),
+            AssetCfgSource(context, "autoconfig/cannoli"),
+        )
+    )
+
     @Provides
     @Singleton
     fun provideBundledAutoconfigEntries(
         @ApplicationContext context: Context,
     ): BundledAutoconfigEntries =
-        BundledAutoconfigEntries(AutoconfigLoader(AssetCfgSource(context)).entries())
+        BundledAutoconfigEntries(AutoconfigLoader(bundledCfgSource(context)).entries())
 
     @Provides
     @Singleton
@@ -48,7 +59,7 @@ object ControllerBindingsModule {
         @ApplicationContext context: Context,
         paths: CannoliPathsProvider,
     ): AutoconfigSeeder = AutoconfigSeeder(
-        source = AssetCfgSource(context),
+        source = bundledCfgSource(context),
         targetDirProvider = { CannoliPaths(paths.root).configInputAutoconfigAndroid },
         legacyMappingsDirProvider = { CannoliPaths(paths.root).configInputMappings },
         versionCode = dev.cannoli.scorza.BuildConfig.VERSION_CODE,
