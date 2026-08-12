@@ -178,7 +178,7 @@ class RetroArchAutoconfigImporterTest {
         )
     }
 
-    @Test fun `absent cannoli glyph and confirm keys are resolved from LegendResolver`() {
+    @Test fun `absent cannoli glyph and confirm keys fall to default not build model`() {
         val entry = RetroArchCfgEntry(
             deviceName = "Pad", vendorId = 8224, productId = 273,
             buttonBindings = mapOf("b_btn" to 96, "a_btn" to 97),
@@ -189,8 +189,8 @@ class RetroArchAutoconfigImporterTest {
             sourceMask = 0, connectedAtMillis = 0,
         )
         val t = RetroArchAutoconfigImporter.import(entry, thorDevice)
-        assertEquals(GlyphStyle.PLUMBER, t.glyphStyle)
-        assertEquals(CanonicalButton.BTN_EAST, t.menuConfirm)
+        assertEquals(GlyphStyle.REDMOND, t.glyphStyle)
+        assertEquals(CanonicalButton.BTN_SOUTH, t.menuConfirm)
     }
 
     @Test fun `explicit cfg glyph style wins over LegendResolver`() {

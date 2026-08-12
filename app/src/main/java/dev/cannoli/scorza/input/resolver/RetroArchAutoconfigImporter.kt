@@ -107,7 +107,6 @@ object RetroArchAutoconfigImporter {
         val profile = legendResolver.resolve(
             vendorId = entry.vendorId ?: device.vendorId,
             productId = entry.productId ?: device.productId,
-            buildModel = device.androidBuildModel,
         )
         val confirm = entry.confirmButton
             ?.let { runCatching { CanonicalButton.valueOf(it) }.getOrNull() }

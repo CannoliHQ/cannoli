@@ -39,7 +39,7 @@ class AndroidDefaultMappingFactoryTest {
         assertEquals(InputBinding.Button(100), t.bindings[CanonicalButton.BTN_NORTH]!![0])
     }
 
-    @Test fun `default mapping for AYN Thor uses nintendo face bindings and plumber`() {
+    @Test fun `default mapping ignores build model and stays standard redmond`() {
         val device = ConnectedDevice(
             androidDeviceId = 7,
             descriptor = "abc",
@@ -51,10 +51,10 @@ class AndroidDefaultMappingFactoryTest {
             connectedAtMillis = 0L,
         )
         val m = AndroidDefaultMappingFactory().create(device)
-        assertTrue(m.bindings[CanonicalButton.BTN_SOUTH]!!.any { it is InputBinding.Button && it.keyCode == 97 })
-        assertTrue(m.bindings[CanonicalButton.BTN_EAST]!!.any { it is InputBinding.Button && it.keyCode == 96 })
-        assertEquals(GlyphStyle.PLUMBER, m.glyphStyle)
-        assertEquals(CanonicalButton.BTN_EAST, m.menuConfirm)
+        assertTrue(m.bindings[CanonicalButton.BTN_SOUTH]!!.any { it is InputBinding.Button && it.keyCode == 96 })
+        assertTrue(m.bindings[CanonicalButton.BTN_EAST]!!.any { it is InputBinding.Button && it.keyCode == 97 })
+        assertEquals(GlyphStyle.REDMOND, m.glyphStyle)
+        assertEquals(CanonicalButton.BTN_SOUTH, m.menuConfirm)
     }
 
     @Test fun `default mapping for unknown pad stays standard redmond`() {

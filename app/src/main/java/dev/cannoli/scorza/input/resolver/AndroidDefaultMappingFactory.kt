@@ -36,7 +36,6 @@ class AndroidDefaultMappingFactory(
         val profile = legendResolver.resolve(
             vendorId = device.vendorId,
             productId = device.productId,
-            buildModel = device.androidBuildModel,
         )
         val effectiveDescriptor = persistenceDescriptor?.takeIf { it.isNotEmpty() }
             ?: device.descriptor.takeIf { it.isNotEmpty() }
