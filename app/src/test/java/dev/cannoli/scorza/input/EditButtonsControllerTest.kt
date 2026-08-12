@@ -198,6 +198,63 @@ class EditButtonsControllerTest {
         assertEquals(listOf(InputBinding.Button(318)), finalized.bindings[CanonicalButton.BTN_MENU])
     }
 
+    @Test fun `stick capture produces the importer's bipolar Axis shape`() {
+        val template = emptyTemplate()
+        controller.startListening(template, CanonicalButton.BTN_LSTICK_X)
+        clockMs = 0
+        controller.captureRawAxisEvent(mapOf(0 to 1f))
+        clockMs = 500
+        val finalized = controller.tickAndMaybeFinalize() ?: error("expected finalized")
+        assertEquals(
+            listOf(
+                InputBinding.Axis(0, restingValue = -1f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f, analogRole = AnalogRole.LEFT_STICK_X),
+                InputBinding.Axis(0, restingValue = 1f, activeMin = 0f, activeMax = -1f, digitalThreshold = 0.5f, analogRole = AnalogRole.LEFT_STICK_X),
+            ),
+            finalized.bindings[CanonicalButton.BTN_LSTICK_X],
+        )
+    }
+
+    @Test fun `stick capture uses only the dominant axis on a diagonal push`() {
+        val template = emptyTemplate()
+        controller.startListening(template, CanonicalButton.BTN_RSTICK_Y)
+        clockMs = 0
+        controller.captureRawAxisEvent(mapOf(2 to 0.7f, 3 to -1f))
+        clockMs = 500
+        val finalized = controller.tickAndMaybeFinalize() ?: error("expected finalized")
+        assertEquals(
+            listOf(
+                InputBinding.Axis(3, restingValue = -1f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f, analogRole = AnalogRole.RIGHT_STICK_Y),
+                InputBinding.Axis(3, restingValue = 1f, activeMin = 0f, activeMax = -1f, digitalThreshold = 0.5f, analogRole = AnalogRole.RIGHT_STICK_Y),
+            ),
+            finalized.bindings[CanonicalButton.BTN_RSTICK_Y],
+        )
+    }
+
+    @Test fun `rebinding an L3 click leaves its stick canonical untouched`() {
+        val template = emptyTemplate().copy(
+            bindings = mapOf(
+                CanonicalButton.BTN_L3 to listOf(InputBinding.Button(106)),
+                CanonicalButton.BTN_LSTICK_X to listOf(
+                    InputBinding.Axis(0, restingValue = -1f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f, analogRole = AnalogRole.LEFT_STICK_X),
+                    InputBinding.Axis(0, restingValue = 1f, activeMin = 0f, activeMax = -1f, digitalThreshold = 0.5f, analogRole = AnalogRole.LEFT_STICK_X),
+                ),
+            ),
+        )
+        controller.startListening(template, CanonicalButton.BTN_L3)
+        clockMs = 0
+        controller.captureRawKeyEvent(200)
+        clockMs = 500
+        val finalized = controller.tickAndMaybeFinalize() ?: error("expected finalized")
+        assertEquals(listOf(InputBinding.Button(200)), finalized.bindings[CanonicalButton.BTN_L3])
+        assertEquals(
+            listOf(
+                InputBinding.Axis(0, restingValue = -1f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f, analogRole = AnalogRole.LEFT_STICK_X),
+                InputBinding.Axis(0, restingValue = 1f, activeMin = 0f, activeMax = -1f, digitalThreshold = 0.5f, analogRole = AnalogRole.LEFT_STICK_X),
+            ),
+            finalized.bindings[CanonicalButton.BTN_LSTICK_X],
+        )
+    }
+
     @Test fun `binding edit promotes source from ANDROID_DEFAULT to USER_WIZARD`() {
         // ANDROID_DEFAULT-sourced mappings are bumped to tier 3 in MappingResolver so a
         // bundled RA cfg can win for the device. When the user actually customizes a button

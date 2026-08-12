@@ -51,6 +51,11 @@ private val PROTECTED_CANONICALS = setOf(
     CanonicalButton.BTN_SOUTH, CanonicalButton.BTN_EAST,
 )
 
+private val STICK_CANONICALS = setOf(
+    CanonicalButton.BTN_LSTICK_X, CanonicalButton.BTN_LSTICK_Y,
+    CanonicalButton.BTN_RSTICK_X, CanonicalButton.BTN_RSTICK_Y,
+)
+
 @Composable
 fun EditButtonsScreen(
     screen: LauncherScreen.EditButtons,
@@ -192,8 +197,13 @@ fun EditButtonsScreen(
                         ),
                     )
                     Spacer(modifier = Modifier.height(Spacing.Sm))
+                    val promptRes = if (listening in STICK_CANONICALS) {
+                        R.string.move_stick_prompt
+                    } else {
+                        R.string.press_button_prompt
+                    }
                     Text(
-                        text = stringResource(R.string.press_button_prompt),
+                        text = stringResource(promptRes),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontSize = 16.sp,
                             color = colors.text.copy(alpha = 0.6f),

@@ -4,4 +4,5 @@
     <string name="canonical_lstick_y">Left Stick Y</string>
     <string name="canonical_rstick_x">Right Stick X</string>
     <string name="canonical_rstick_y">Right Stick Y</string>
+    <string name="move_stick_prompt">Move the stick</string>
 </resources>

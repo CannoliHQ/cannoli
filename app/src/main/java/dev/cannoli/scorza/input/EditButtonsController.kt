@@ -18,6 +18,15 @@ class EditButtonsController @Inject constructor(
         const val CAPTURE_WINDOW_MS = 150L
         const val CAPTURE_TIMEOUT_MS = 5000L
         private const val AXIS_DETECT_THRESHOLD = 0.6f
+
+        // Matches RetroArchAutoconfigImporter.mapAxisKeyToCanonicalAndRole's canonical-to-role
+        // pairing, so a captured stick and an imported one agree on which role owns which axis.
+        private val STICK_ROLES: Map<CanonicalButton, AnalogRole> = mapOf(
+            CanonicalButton.BTN_LSTICK_X to AnalogRole.LEFT_STICK_X,
+            CanonicalButton.BTN_LSTICK_Y to AnalogRole.LEFT_STICK_Y,
+            CanonicalButton.BTN_RSTICK_X to AnalogRole.RIGHT_STICK_X,
+            CanonicalButton.BTN_RSTICK_Y to AnalogRole.RIGHT_STICK_Y,
+        )
     }
 
     private var pendingMapping: DeviceMapping? = null
@@ -87,33 +96,7 @@ class EditButtonsController @Inject constructor(
     }
 
     private fun finalize(mapping: DeviceMapping, canonical: CanonicalButton): DeviceMapping {
-        val bindings = mutableListOf<InputBinding>()
-        for (key in capturedKeys) bindings.add(InputBinding.Button(key))
-        for ((axis, peak) in capturedAxes) {
-            val isHatLike = (axis == 15 || axis == 16) && (peak == -1f || peak == 1f)
-            if (isHatLike) {
-                val direction = when {
-                    axis == 15 && peak < 0 -> HatDirection.LEFT
-                    axis == 15 && peak > 0 -> HatDirection.RIGHT
-                    axis == 16 && peak < 0 -> HatDirection.UP
-                    else -> HatDirection.DOWN
-                }
-                bindings.add(InputBinding.Hat(axis = axis, direction = direction))
-            } else {
-                val activeMax = if (peak >= 0) 1f else -1f
-                bindings.add(
-                    InputBinding.Axis(
-                        axis = axis,
-                        restingValue = 0f,
-                        activeMin = 0f,
-                        activeMax = activeMax,
-                        digitalThreshold = 0.5f,
-                        invert = false,
-                        analogRole = AnalogRole.DIGITAL_BUTTON,
-                    )
-                )
-            }
-        }
+        val bindings = capturedBindingsFor(canonical)
 
         val oldBindings = mapping.bindings[canonical].orEmpty()
         val newBindings = mapping.bindings.toMutableMap()
@@ -157,6 +140,65 @@ class EditButtonsController @Inject constructor(
         }
         cancelListening()
         return saved
+    }
+
+    private fun capturedBindingsFor(canonical: CanonicalButton): List<InputBinding> {
+        val stickRole = STICK_ROLES[canonical]
+        if (stickRole != null) return stickAxisBindings(stickRole)
+
+        val bindings = mutableListOf<InputBinding>()
+        for (key in capturedKeys) bindings.add(InputBinding.Button(key))
+        for ((axis, peak) in capturedAxes) {
+            val isHatLike = (axis == 15 || axis == 16) && (peak == -1f || peak == 1f)
+            if (isHatLike) {
+                val direction = when {
+                    axis == 15 && peak < 0 -> HatDirection.LEFT
+                    axis == 15 && peak > 0 -> HatDirection.RIGHT
+                    axis == 16 && peak < 0 -> HatDirection.UP
+                    else -> HatDirection.DOWN
+                }
+                bindings.add(InputBinding.Hat(axis = axis, direction = direction))
+            } else {
+                val activeMax = if (peak >= 0) 1f else -1f
+                bindings.add(
+                    InputBinding.Axis(
+                        axis = axis,
+                        restingValue = 0f,
+                        activeMin = 0f,
+                        activeMax = activeMax,
+                        digitalThreshold = 0.5f,
+                        invert = false,
+                        analogRole = AnalogRole.DIGITAL_BUTTON,
+                    )
+                )
+            }
+        }
+        return bindings
+    }
+
+    // A stick row captures the dominant axis only (a diagonal push must not bind two axes),
+    // then reproduces RetroArchAutoconfigImporter's bipolar shape for that axis exactly: one
+    // Axis resting at -1 with active span 0..1, and its mirror resting at 1 with span 0..-1.
+    private fun stickAxisBindings(role: AnalogRole): List<InputBinding> {
+        val axis = capturedAxes.maxByOrNull { (_, peak) -> abs(peak) }?.key ?: return emptyList()
+        return listOf(
+            InputBinding.Axis(
+                axis = axis,
+                restingValue = -1f,
+                activeMin = 0f,
+                activeMax = 1f,
+                digitalThreshold = 0.5f,
+                analogRole = role,
+            ),
+            InputBinding.Axis(
+                axis = axis,
+                restingValue = 1f,
+                activeMin = 0f,
+                activeMax = -1f,
+                digitalThreshold = 0.5f,
+                analogRole = role,
+            ),
+        )
     }
 
     private fun sameInput(a: InputBinding, b: InputBinding): Boolean = when {
