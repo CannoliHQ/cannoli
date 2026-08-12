@@ -193,6 +193,16 @@ class RetroArchAutoconfigImporterTest {
         assertEquals(CanonicalButton.BTN_SOUTH, t.menuConfirm)
     }
 
+    @Test fun `import carries buildModel into match rule`() {
+        val entry = RetroArchCfgEntry(
+            deviceName = "Pad", vendorId = 8224, productId = 273,
+            buttonBindings = mapOf("b_btn" to 96),
+            buildModel = "AYN Thor",
+        )
+        val t = RetroArchAutoconfigImporter.import(entry, device)
+        assertEquals("AYN Thor", t.match.androidBuildModel)
+    }
+
     @Test fun `explicit cfg glyph style wins over LegendResolver`() {
         val entry = RetroArchCfgEntry(
             deviceName = "Pad", vendorId = 8224, productId = 273,
