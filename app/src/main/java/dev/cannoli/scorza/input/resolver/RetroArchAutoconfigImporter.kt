@@ -2,6 +2,7 @@ package dev.cannoli.scorza.input.resolver
 
 import dev.cannoli.scorza.input.autoconfig.CfgHatDirection
 import dev.cannoli.scorza.input.autoconfig.HatRef
+import dev.cannoli.scorza.input.autoconfig.RaAxisSlots
 import dev.cannoli.scorza.input.autoconfig.RetroArchCfgEntry
 import dev.cannoli.scorza.input.HatDirection
 import dev.cannoli.scorza.input.AnalogRole
@@ -57,7 +58,7 @@ object RetroArchAutoconfigImporter {
             bindings.getOrPut(canonical) { mutableListOf() }
                 .add(
                     InputBinding.Axis(
-                        axis = ref.axis,
+                        axis = RaAxisSlots.toAndroidAxis(ref.axis),
                         restingValue = resting,
                         activeMin = activeMin,
                         activeMax = activeMax,

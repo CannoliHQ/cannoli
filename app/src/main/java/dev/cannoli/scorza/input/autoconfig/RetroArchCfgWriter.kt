@@ -85,7 +85,7 @@ object RetroArchCfgWriter {
                         // still write.
                         if (key != null && axisKeysWritten.add(key)) {
                             val sign = if (binding.activeMax >= 0f) "+" else "-"
-                            line("input_$key", "$sign${binding.axis}")
+                            line("input_$key", "$sign${RaAxisSlots.toRaSlot(binding.axis)}")
                         }
                     }
                 }

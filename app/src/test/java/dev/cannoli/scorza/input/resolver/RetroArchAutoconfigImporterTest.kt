@@ -49,10 +49,12 @@ class RetroArchAutoconfigImporterTest {
 
     @Test
     fun l2_axis_with_positive_direction_becomes_digital_axis_binding() {
+        // RA slot 6 is AXIS_LTRIGGER (android id 17); the cfg number is a slot index, not the
+        // android axis id itself.
         val entry = RetroArchCfgEntry(
             deviceName = "Stadia Controller", vendorId = 6353, productId = 37888,
             buttonBindings = emptyMap(),
-            axisBindings = mapOf("l2_axis" to AxisRef(axis = 17, direction = +1)),
+            axisBindings = mapOf("l2_axis" to AxisRef(axis = 6, direction = +1)),
         )
         val t = RetroArchAutoconfigImporter.import(entry, device)
         val l2 = t.bindings[CanonicalButton.BTN_L2]!![0] as InputBinding.Axis
@@ -85,7 +87,9 @@ class RetroArchAutoconfigImporterTest {
         val t = RetroArchAutoconfigImporter.import(entry, device)
 
         // Sticks key under the stick canonicals now, still bipolar per axisRange: rest at the
-        // opposite extreme, active span crossing 0 to the pressed extreme.
+        // opposite extreme, active span crossing 0 to the pressed extreme. RA slots 0/1 (left
+        // stick) coincide with their android axis ids; slots 2/3 (right stick) translate to
+        // android AXIS_Z (11) and AXIS_RZ (14).
         assertEquals(
             listOf(
                 InputBinding.Axis(0, restingValue = -1f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f, analogRole = AnalogRole.ANALOG_STICK),
@@ -102,15 +106,15 @@ class RetroArchAutoconfigImporterTest {
         )
         assertEquals(
             listOf(
-                InputBinding.Axis(2, restingValue = -1f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f, analogRole = AnalogRole.ANALOG_STICK),
-                InputBinding.Axis(2, restingValue = 1f, activeMin = 0f, activeMax = -1f, digitalThreshold = 0.5f, analogRole = AnalogRole.ANALOG_STICK),
+                InputBinding.Axis(11, restingValue = -1f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f, analogRole = AnalogRole.ANALOG_STICK),
+                InputBinding.Axis(11, restingValue = 1f, activeMin = 0f, activeMax = -1f, digitalThreshold = 0.5f, analogRole = AnalogRole.ANALOG_STICK),
             ),
             t.bindings[CanonicalButton.BTN_RSTICK_X],
         )
         assertEquals(
             listOf(
-                InputBinding.Axis(3, restingValue = -1f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f, analogRole = AnalogRole.ANALOG_STICK),
-                InputBinding.Axis(3, restingValue = 1f, activeMin = 0f, activeMax = -1f, digitalThreshold = 0.5f, analogRole = AnalogRole.ANALOG_STICK),
+                InputBinding.Axis(14, restingValue = -1f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f, analogRole = AnalogRole.ANALOG_STICK),
+                InputBinding.Axis(14, restingValue = 1f, activeMin = 0f, activeMax = -1f, digitalThreshold = 0.5f, analogRole = AnalogRole.ANALOG_STICK),
             ),
             t.bindings[CanonicalButton.BTN_RSTICK_Y],
         )
@@ -118,6 +122,25 @@ class RetroArchAutoconfigImporterTest {
         // The click buttons stay on BTN_L3/BTN_R3 -- only their axes moved off.
         assertEquals(listOf(InputBinding.Button(106)), t.bindings[CanonicalButton.BTN_L3])
         assertEquals(listOf(InputBinding.Button(107)), t.bindings[CanonicalButton.BTN_R3])
+    }
+
+    @Test
+    fun `cfg axis slot numbers translate to android axis ids on import`() {
+        val entry = RetroArchCfgParser.parse(
+            """
+            input_driver = "android"
+            input_l_x_plus_axis = "+0"
+            input_r_x_plus_axis = "+2"
+            input_l2_axis = "+8"
+            """.trimIndent(),
+        )
+        val t = RetroArchAutoconfigImporter.import(entry, device)
+        val lx = t.bindings[CanonicalButton.BTN_LSTICK_X]!![0] as InputBinding.Axis
+        val rx = t.bindings[CanonicalButton.BTN_RSTICK_X]!![0] as InputBinding.Axis
+        val l2 = t.bindings[CanonicalButton.BTN_L2]!![0] as InputBinding.Axis
+        assertEquals(0, lx.axis)
+        assertEquals(11, rx.axis)
+        assertEquals(23, l2.axis)
     }
 
     @Test

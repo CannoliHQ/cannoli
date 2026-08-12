@@ -67,7 +67,8 @@ class RetroArchCfgWriterTest {
         assertTrue(cfg.contains("input_b_btn = \"96\""))
         assertTrue(cfg.contains("input_a_btn = \"97\""))
         assertTrue(cfg.contains("input_up_btn = \"h0up\""))
-        assertTrue(cfg.contains("input_l2_axis = \"+23\""))
+        // BTN_L2 carries android axis 23 (AXIS_BRAKE), which is RA slot 8.
+        assertTrue(cfg.contains("input_l2_axis = \"+8\""))
         assertTrue(cfg.contains("input_l3_btn = \"106\""))
         assertTrue(cfg.contains("input_l_x_plus_axis = \"+0\""))
         assertTrue(cfg.contains("input_l_x_minus_axis = \"-0\""))
@@ -210,8 +211,9 @@ class RetroArchCfgWriterTest {
                 )
             )
         )
+        // The first binding wins: android axis 17 (AXIS_LTRIGGER) is RA slot 6.
         val lines = cfg.lineSequence().filter { it.startsWith("input_l2_axis") }.toList()
-        assertEquals(listOf("input_l2_axis = \"+17\""), lines)
+        assertEquals(listOf("input_l2_axis = \"+6\""), lines)
     }
 
     @Test
@@ -256,6 +258,8 @@ class RetroArchCfgWriterTest {
             input_r_x_minus_axis = "-2"
             input_r_y_plus_axis = "+3"
             input_r_y_minus_axis = "-3"
+            input_l2_axis = "+8"
+            input_r2_axis = "+9"
         """.trimIndent()
         val entry = RetroArchCfgParser.parse(cfg, fileName = "Pad.cfg")
         val device = ConnectedDevice(
@@ -266,6 +270,7 @@ class RetroArchCfgWriterTest {
         val imported = RetroArchAutoconfigImporter.import(entry, device)
         val written = RetroArchCfgWriter.write(imported)
 
+        // Proves slot -> android -> slot is a clean identity for every stick and trigger key.
         assertTrue(written.contains("input_l_x_plus_axis = \"+0\""))
         assertTrue(written.contains("input_l_x_minus_axis = \"-0\""))
         assertTrue(written.contains("input_l_y_plus_axis = \"+1\""))
@@ -274,5 +279,37 @@ class RetroArchCfgWriterTest {
         assertTrue(written.contains("input_r_x_minus_axis = \"-2\""))
         assertTrue(written.contains("input_r_y_plus_axis = \"+3\""))
         assertTrue(written.contains("input_r_y_minus_axis = \"-3\""))
+        assertTrue(written.contains("input_l2_axis = \"+8\""))
+        assertTrue(written.contains("input_r2_axis = \"+9\""))
+    }
+
+    @Test
+    fun `android axis ids translate to ra slot numbers on write`() {
+        val mapping = sampleMapping().copy(
+            bindings = mapOf(
+                CanonicalButton.BTN_LSTICK_X to listOf(
+                    InputBinding.Axis(
+                        axis = 0, restingValue = -1f, activeMin = 0f, activeMax = 1f,
+                        digitalThreshold = 0.5f, analogRole = AnalogRole.ANALOG_STICK,
+                    )
+                ),
+                CanonicalButton.BTN_RSTICK_X to listOf(
+                    InputBinding.Axis(
+                        axis = 11, restingValue = -1f, activeMin = 0f, activeMax = 1f,
+                        digitalThreshold = 0.5f, analogRole = AnalogRole.ANALOG_STICK,
+                    )
+                ),
+                CanonicalButton.BTN_L2 to listOf(
+                    InputBinding.Axis(
+                        axis = 23, restingValue = 0f, activeMin = 0f, activeMax = 1f,
+                        digitalThreshold = 0.5f, analogRole = AnalogRole.DIGITAL_BUTTON,
+                    )
+                ),
+            ),
+        )
+        val cfg = RetroArchCfgWriter.write(mapping)
+        assertTrue(cfg.contains("input_l_x_plus_axis = \"+0\""))
+        assertTrue(cfg.contains("input_r_x_plus_axis = \"+2\""))
+        assertTrue(cfg.contains("input_l2_axis = \"+8\""))
     }
 }
