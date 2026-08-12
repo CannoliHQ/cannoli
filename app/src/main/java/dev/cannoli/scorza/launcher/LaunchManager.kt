@@ -418,6 +418,7 @@ class LaunchManager(
         val dialog = toLaunchDialog(result, platformTag, romId)
         if (dialog != null) {
             launchState.launching = false
+            launchState.lastLaunched = null
             return dialog
         }
         return DialogState.Launching
