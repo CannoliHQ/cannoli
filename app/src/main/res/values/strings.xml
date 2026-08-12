@@ -1,8 +1,8 @@
 <resources>
     <string name="app_name" translatable="false">Cannoli</string>
-    <string name="canonical_lstick_x">Left Stick X</string>
-    <string name="canonical_lstick_y">Left Stick Y</string>
-    <string name="canonical_rstick_x">Right Stick X</string>
-    <string name="canonical_rstick_y">Right Stick Y</string>
+    <string name="canonical_lstick_x">Left Stick (Left/Right)</string>
+    <string name="canonical_lstick_y">Left Stick (Up/Down)</string>
+    <string name="canonical_rstick_x">Right Stick (Left/Right)</string>
+    <string name="canonical_rstick_y">Right Stick (Up/Down)</string>
     <string name="move_stick_prompt">Move the stick</string>
 </resources>
