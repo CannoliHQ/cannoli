@@ -1,6 +1,5 @@
 package dev.cannoli.scorza.input.runtime
 
-import dev.cannoli.scorza.input.AnalogRole
 import dev.cannoli.scorza.input.CanonicalButton
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -16,8 +15,8 @@ class MotionDeltasTest {
     @Test
     fun analog_changed_only_is_not_a_digital_change() {
         val deltas = listOf<CanonicalEvent>(
-            CanonicalEvent.AnalogChanged(AnalogRole.LEFT_STICK_X, 0.5f),
-            CanonicalEvent.AnalogChanged(AnalogRole.LEFT_STICK_Y, -0.5f),
+            CanonicalEvent.AnalogChanged(CanonicalButton.BTN_LSTICK_X, 0.5f),
+            CanonicalEvent.AnalogChanged(CanonicalButton.BTN_LSTICK_Y, -0.5f),
         )
         // Bound-stick + unbound-HAT corner case: AnalogChanged from a bound stick must not
         // block ViewRootImpl's HAT-to-keycode synthesis.
@@ -39,7 +38,7 @@ class MotionDeltasTest {
     @Test
     fun mixed_analog_and_pressed_is_a_digital_change() {
         val deltas = listOf<CanonicalEvent>(
-            CanonicalEvent.AnalogChanged(AnalogRole.LEFT_STICK_X, 0.5f),
+            CanonicalEvent.AnalogChanged(CanonicalButton.BTN_LSTICK_X, 0.5f),
             CanonicalEvent.Pressed(CanonicalButton.BTN_UP),
         )
         assertTrue(MotionDeltas.anyDigitalChange(deltas))

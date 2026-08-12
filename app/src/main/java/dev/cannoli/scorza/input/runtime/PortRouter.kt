@@ -1,6 +1,5 @@
 package dev.cannoli.scorza.input.runtime
 
-import dev.cannoli.scorza.input.AnalogRole
 import dev.cannoli.scorza.input.CanonicalButton
 import dev.cannoli.scorza.input.ConnectedDevice
 import dev.cannoli.scorza.input.DeviceMapping
@@ -223,9 +222,9 @@ class PortRouter(private val maxPorts: Int = 4) {
         return entry.evaluator.currentlyPressed().contains(button)
     }
 
-    fun analogValueAt(port: Int, role: AnalogRole): Float {
+    fun analogValueAt(port: Int, canonical: CanonicalButton): Float {
         val entry = entries.values.firstOrNull { it.port == port } ?: return 0f
-        return entry.evaluator.analogValue(role)
+        return entry.evaluator.analogValue(canonical)
     }
 
     fun resetAllEvaluators() {

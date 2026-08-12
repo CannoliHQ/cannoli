@@ -94,10 +94,10 @@ class InputTesterController(
         val name = mapping?.displayName?.takeIf { it.isNotEmpty() }
             ?: event.device?.name?.takeIf { it.isNotEmpty() }
             ?: unknownDeviceName
-        val leftX = mostActive(mappingStickValue(mapping, AnalogRole.LEFT_STICK_X, event), event.getAxisValue(MotionEvent.AXIS_X))
-        val leftY = mostActive(mappingStickValue(mapping, AnalogRole.LEFT_STICK_Y, event), event.getAxisValue(MotionEvent.AXIS_Y))
-        val rightX = mostActive(mappingStickValue(mapping, AnalogRole.RIGHT_STICK_X, event), event.getAxisValue(MotionEvent.AXIS_Z))
-        val rightY = mostActive(mappingStickValue(mapping, AnalogRole.RIGHT_STICK_Y, event), event.getAxisValue(MotionEvent.AXIS_RZ))
+        val leftX = mostActive(mappingStickValue(mapping, CanonicalButton.BTN_LSTICK_X, event), event.getAxisValue(MotionEvent.AXIS_X))
+        val leftY = mostActive(mappingStickValue(mapping, CanonicalButton.BTN_LSTICK_Y, event), event.getAxisValue(MotionEvent.AXIS_Y))
+        val rightX = mostActive(mappingStickValue(mapping, CanonicalButton.BTN_RSTICK_X, event), event.getAxisValue(MotionEvent.AXIS_Z))
+        val rightY = mostActive(mappingStickValue(mapping, CanonicalButton.BTN_RSTICK_Y, event), event.getAxisValue(MotionEvent.AXIS_RZ))
         val leftTrigger = maxOf(
             mappingTriggerDisplayValue(mapping, CanonicalButton.BTN_L2, event) ?: 0f,
             event.getAxisValue(MotionEvent.AXIS_LTRIGGER).coerceIn(0f, 1f),
@@ -217,14 +217,11 @@ class InputTesterController(
 
     private fun mappingStickValue(
         mapping: DeviceMapping?,
-        role: AnalogRole,
+        stickCanonical: CanonicalButton,
         event: MotionEvent,
     ): Float? {
-        val axisBinding = mapping?.bindings?.values
-            ?.flatten()
-            ?.firstNotNullOfOrNull {
-                (it as? InputBinding.Axis)?.takeIf { axis -> axis.analogRole == role }
-            }
+        val axisBinding = mapping?.bindings?.get(stickCanonical)
+            ?.firstNotNullOfOrNull { it as? InputBinding.Axis }
             ?: return null
         val raw = event.getAxisValue(axisBinding.axis)
         val span = axisBinding.activeMax - axisBinding.restingValue

@@ -39,11 +39,11 @@ class RetroArchCfgWriterTest {
             CanonicalButton.BTN_LSTICK_X to listOf(
                 InputBinding.Axis(
                     axis = 0, restingValue = -1f, activeMin = 0f, activeMax = 1f,
-                    digitalThreshold = 0.5f, analogRole = AnalogRole.LEFT_STICK_X,
+                    digitalThreshold = 0.5f, analogRole = AnalogRole.ANALOG_STICK,
                 ),
                 InputBinding.Axis(
                     axis = 0, restingValue = 1f, activeMin = 0f, activeMax = -1f,
-                    digitalThreshold = 0.5f, analogRole = AnalogRole.LEFT_STICK_X,
+                    digitalThreshold = 0.5f, analogRole = AnalogRole.ANALOG_STICK,
                 ),
             ),
             CanonicalButton.BTN_MENU to listOf(InputBinding.Button(318), InputBinding.Button(4), InputBinding.Button(110)),

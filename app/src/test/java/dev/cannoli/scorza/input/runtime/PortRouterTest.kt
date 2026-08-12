@@ -281,7 +281,7 @@ class PortRouterTest {
                 CanonicalButton.BTN_L3 to listOf(InputBinding.Axis(
                     axis = 0, restingValue = 0f, activeMin = -1f, activeMax = 1f,
                     digitalThreshold = 0.5f,
-                    analogRole = AnalogRole.LEFT_STICK_X,
+                    analogRole = AnalogRole.ANALOG_STICK,
                 )),
             ),
             source = MappingSource.RETROARCH_AUTOCONFIG,
@@ -289,6 +289,6 @@ class PortRouterTest {
         r.connectAndActivate(device(1, 0), analogTemplate)
         r.markLaunchTrigger(1)
         r.evaluatorFor(1)!!.evaluateAxis(mapOf(0 to 0.7f))
-        assertEquals(0.7f, r.analogValueAt(0, AnalogRole.LEFT_STICK_X), 0.001f)
+        assertEquals(0.7f, r.analogValueAt(0, CanonicalButton.BTN_L3), 0.001f)
     }
 }

@@ -185,7 +185,7 @@ class PortEvaluatorTest {
                 CanonicalButton.BTN_L3 to listOf(InputBinding.Axis(
                     axis = 0, restingValue = 0f, activeMin = -1f, activeMax = 1f,
                     digitalThreshold = 0.5f,
-                    analogRole = AnalogRole.LEFT_STICK_X,
+                    analogRole = AnalogRole.ANALOG_STICK,
                 )),
             )),
             analogNoiseThreshold = 0.05f,
@@ -206,13 +206,13 @@ class PortEvaluatorTest {
                 CanonicalButton.BTN_L3 to listOf(InputBinding.Axis(
                     axis = 0, restingValue = 0f, activeMin = -1f, activeMax = 1f,
                     digitalThreshold = 0.5f,
-                    analogRole = AnalogRole.LEFT_STICK_X,
+                    analogRole = AnalogRole.ANALOG_STICK,
                 )),
             ))
         )
         e.evaluateAxis(mapOf(0 to 0.7f))
         // normalize: (0.7 - 0) / (1 - 0) = 0.7, clamped to [0,1]
-        assertEquals(0.7f, e.analogValue(AnalogRole.LEFT_STICK_X), 0.001f)
+        assertEquals(0.7f, e.analogValue(CanonicalButton.BTN_L3), 0.001f)
     }
 
     @Test
@@ -250,7 +250,7 @@ class PortEvaluatorTest {
                 CanonicalButton.BTN_L3 to listOf(InputBinding.Axis(
                     axis = 0, restingValue = 0f, activeMin = -1f, activeMax = 1f,
                     digitalThreshold = 0.5f,
-                    analogRole = AnalogRole.LEFT_STICK_X,
+                    analogRole = AnalogRole.ANALOG_STICK,
                 )),
             ))
         )
@@ -258,7 +258,7 @@ class PortEvaluatorTest {
         e.evaluateAxis(mapOf(0 to 0.6f))
         val snap = e.snapshot()
         assertEquals(setOf(CanonicalButton.BTN_SOUTH), snap.pressed)
-        assertEquals(0.6f, snap.analog[AnalogRole.LEFT_STICK_X]!!, 0.001f)
+        assertEquals(0.6f, snap.analog[CanonicalButton.BTN_L3]!!, 0.001f)
     }
 
     @Test

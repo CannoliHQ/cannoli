@@ -20,7 +20,7 @@ class PortEvaluator(
     }
 
     private val pressed = mutableSetOf<CanonicalButton>()
-    private val analog = mutableMapOf<AnalogRole, Float>()
+    private val analog = mutableMapOf<CanonicalButton, Float>()
     private val asserters = mutableMapOf<CanonicalButton, MutableSet<BindingKey>>()
 
     fun evaluateKeyDown(keyCode: Int, isAndroidRepeat: Boolean): List<CanonicalEvent> {
@@ -68,10 +68,10 @@ class PortEvaluator(
                         }
                     } else {
                         val normalized = binding.normalize(raw)
-                        val previous = analog[binding.analogRole] ?: 0f
+                        val previous = analog[canonical] ?: 0f
                         if (abs(normalized - previous) >= analogNoiseThreshold) {
-                            analog[binding.analogRole] = normalized
-                            deltas += CanonicalEvent.AnalogChanged(binding.analogRole, normalized)
+                            analog[canonical] = normalized
+                            deltas += CanonicalEvent.AnalogChanged(canonical, normalized)
                         }
                     }
                 }
@@ -96,7 +96,7 @@ class PortEvaluator(
 
     fun currentlyPressed(): Set<CanonicalButton> = pressed.toSet()
 
-    fun analogValue(role: AnalogRole): Float = analog[role] ?: 0f
+    fun analogValue(canonical: CanonicalButton): Float = analog[canonical] ?: 0f
 
     fun keyCodeIsBound(keyCode: Int): Boolean {
         for ((_, bindings) in mapping.bindings) {

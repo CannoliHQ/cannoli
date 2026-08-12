@@ -19,13 +19,13 @@ class EditButtonsController @Inject constructor(
         const val CAPTURE_TIMEOUT_MS = 5000L
         private const val AXIS_DETECT_THRESHOLD = 0.6f
 
-        // Matches RetroArchAutoconfigImporter.mapAxisKeyToCanonicalAndRole's canonical-to-role
-        // pairing, so a captured stick and an imported one agree on which role owns which axis.
-        private val STICK_ROLES: Map<CanonicalButton, AnalogRole> = mapOf(
-            CanonicalButton.BTN_LSTICK_X to AnalogRole.LEFT_STICK_X,
-            CanonicalButton.BTN_LSTICK_Y to AnalogRole.LEFT_STICK_Y,
-            CanonicalButton.BTN_RSTICK_X to AnalogRole.RIGHT_STICK_X,
-            CanonicalButton.BTN_RSTICK_Y to AnalogRole.RIGHT_STICK_Y,
+        // Matches RetroArchAutoconfigImporter.mapAxisKeyToCanonicalAndRole's set of canonicals
+        // that carry stick axes, so a captured stick and an imported one agree on shape.
+        private val STICK_CANONICALS: Set<CanonicalButton> = setOf(
+            CanonicalButton.BTN_LSTICK_X,
+            CanonicalButton.BTN_LSTICK_Y,
+            CanonicalButton.BTN_RSTICK_X,
+            CanonicalButton.BTN_RSTICK_Y,
         )
     }
 
@@ -143,8 +143,7 @@ class EditButtonsController @Inject constructor(
     }
 
     private fun capturedBindingsFor(canonical: CanonicalButton): List<InputBinding> {
-        val stickRole = STICK_ROLES[canonical]
-        if (stickRole != null) return stickAxisBindings(stickRole)
+        if (canonical in STICK_CANONICALS) return stickAxisBindings()
 
         val bindings = mutableListOf<InputBinding>()
         for (key in capturedKeys) bindings.add(InputBinding.Button(key))
@@ -179,7 +178,7 @@ class EditButtonsController @Inject constructor(
     // A stick row captures the dominant axis only (a diagonal push must not bind two axes),
     // then reproduces RetroArchAutoconfigImporter's bipolar shape for that axis exactly: one
     // Axis resting at -1 with active span 0..1, and its mirror resting at 1 with span 0..-1.
-    private fun stickAxisBindings(role: AnalogRole): List<InputBinding> {
+    private fun stickAxisBindings(): List<InputBinding> {
         val axis = capturedAxes.maxByOrNull { (_, peak) -> abs(peak) }?.key ?: return emptyList()
         return listOf(
             InputBinding.Axis(
@@ -188,7 +187,7 @@ class EditButtonsController @Inject constructor(
                 activeMin = 0f,
                 activeMax = 1f,
                 digitalThreshold = 0.5f,
-                analogRole = role,
+                analogRole = AnalogRole.ANALOG_STICK,
             ),
             InputBinding.Axis(
                 axis = axis,
@@ -196,7 +195,7 @@ class EditButtonsController @Inject constructor(
                 activeMin = 0f,
                 activeMax = -1f,
                 digitalThreshold = 0.5f,
-                analogRole = role,
+                analogRole = AnalogRole.ANALOG_STICK,
             ),
         )
     }

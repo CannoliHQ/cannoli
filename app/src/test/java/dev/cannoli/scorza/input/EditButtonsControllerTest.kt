@@ -150,7 +150,7 @@ class EditButtonsControllerTest {
                         activeMin = -1f,
                         activeMax = 1f,
                         digitalThreshold = 0.5f,
-                        analogRole = AnalogRole.LEFT_STICK_X,
+                        analogRole = AnalogRole.ANALOG_STICK,
                     ),
                 ),
             ),
@@ -170,7 +170,7 @@ class EditButtonsControllerTest {
         val l3 = finalized.bindings[CanonicalButton.BTN_L3] ?: emptyList()
         assertEquals(1, l3.size)
         val l3Axis = l3.first() as InputBinding.Axis
-        assertEquals(AnalogRole.LEFT_STICK_X, l3Axis.analogRole)
+        assertEquals(AnalogRole.ANALOG_STICK, l3Axis.analogRole)
     }
 
     @Test fun `a hat capture on the menu button leaves the mapping unchanged`() {
@@ -207,8 +207,8 @@ class EditButtonsControllerTest {
         val finalized = controller.tickAndMaybeFinalize() ?: error("expected finalized")
         assertEquals(
             listOf(
-                InputBinding.Axis(0, restingValue = -1f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f, analogRole = AnalogRole.LEFT_STICK_X),
-                InputBinding.Axis(0, restingValue = 1f, activeMin = 0f, activeMax = -1f, digitalThreshold = 0.5f, analogRole = AnalogRole.LEFT_STICK_X),
+                InputBinding.Axis(0, restingValue = -1f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f, analogRole = AnalogRole.ANALOG_STICK),
+                InputBinding.Axis(0, restingValue = 1f, activeMin = 0f, activeMax = -1f, digitalThreshold = 0.5f, analogRole = AnalogRole.ANALOG_STICK),
             ),
             finalized.bindings[CanonicalButton.BTN_LSTICK_X],
         )
@@ -223,8 +223,8 @@ class EditButtonsControllerTest {
         val finalized = controller.tickAndMaybeFinalize() ?: error("expected finalized")
         assertEquals(
             listOf(
-                InputBinding.Axis(3, restingValue = -1f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f, analogRole = AnalogRole.RIGHT_STICK_Y),
-                InputBinding.Axis(3, restingValue = 1f, activeMin = 0f, activeMax = -1f, digitalThreshold = 0.5f, analogRole = AnalogRole.RIGHT_STICK_Y),
+                InputBinding.Axis(3, restingValue = -1f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f, analogRole = AnalogRole.ANALOG_STICK),
+                InputBinding.Axis(3, restingValue = 1f, activeMin = 0f, activeMax = -1f, digitalThreshold = 0.5f, analogRole = AnalogRole.ANALOG_STICK),
             ),
             finalized.bindings[CanonicalButton.BTN_RSTICK_Y],
         )
@@ -235,8 +235,8 @@ class EditButtonsControllerTest {
             bindings = mapOf(
                 CanonicalButton.BTN_L3 to listOf(InputBinding.Button(106)),
                 CanonicalButton.BTN_LSTICK_X to listOf(
-                    InputBinding.Axis(0, restingValue = -1f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f, analogRole = AnalogRole.LEFT_STICK_X),
-                    InputBinding.Axis(0, restingValue = 1f, activeMin = 0f, activeMax = -1f, digitalThreshold = 0.5f, analogRole = AnalogRole.LEFT_STICK_X),
+                    InputBinding.Axis(0, restingValue = -1f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f, analogRole = AnalogRole.ANALOG_STICK),
+                    InputBinding.Axis(0, restingValue = 1f, activeMin = 0f, activeMax = -1f, digitalThreshold = 0.5f, analogRole = AnalogRole.ANALOG_STICK),
                 ),
             ),
         )
@@ -248,8 +248,8 @@ class EditButtonsControllerTest {
         assertEquals(listOf(InputBinding.Button(200)), finalized.bindings[CanonicalButton.BTN_L3])
         assertEquals(
             listOf(
-                InputBinding.Axis(0, restingValue = -1f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f, analogRole = AnalogRole.LEFT_STICK_X),
-                InputBinding.Axis(0, restingValue = 1f, activeMin = 0f, activeMax = -1f, digitalThreshold = 0.5f, analogRole = AnalogRole.LEFT_STICK_X),
+                InputBinding.Axis(0, restingValue = -1f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f, analogRole = AnalogRole.ANALOG_STICK),
+                InputBinding.Axis(0, restingValue = 1f, activeMin = 0f, activeMax = -1f, digitalThreshold = 0.5f, analogRole = AnalogRole.ANALOG_STICK),
             ),
             finalized.bindings[CanonicalButton.BTN_LSTICK_X],
         )

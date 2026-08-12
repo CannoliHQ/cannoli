@@ -88,29 +88,29 @@ class RetroArchAutoconfigImporterTest {
         // opposite extreme, active span crossing 0 to the pressed extreme.
         assertEquals(
             listOf(
-                InputBinding.Axis(0, restingValue = -1f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f, analogRole = AnalogRole.LEFT_STICK_X),
-                InputBinding.Axis(0, restingValue = 1f, activeMin = 0f, activeMax = -1f, digitalThreshold = 0.5f, analogRole = AnalogRole.LEFT_STICK_X),
+                InputBinding.Axis(0, restingValue = -1f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f, analogRole = AnalogRole.ANALOG_STICK),
+                InputBinding.Axis(0, restingValue = 1f, activeMin = 0f, activeMax = -1f, digitalThreshold = 0.5f, analogRole = AnalogRole.ANALOG_STICK),
             ),
             t.bindings[CanonicalButton.BTN_LSTICK_X],
         )
         assertEquals(
             listOf(
-                InputBinding.Axis(1, restingValue = -1f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f, analogRole = AnalogRole.LEFT_STICK_Y),
-                InputBinding.Axis(1, restingValue = 1f, activeMin = 0f, activeMax = -1f, digitalThreshold = 0.5f, analogRole = AnalogRole.LEFT_STICK_Y),
+                InputBinding.Axis(1, restingValue = -1f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f, analogRole = AnalogRole.ANALOG_STICK),
+                InputBinding.Axis(1, restingValue = 1f, activeMin = 0f, activeMax = -1f, digitalThreshold = 0.5f, analogRole = AnalogRole.ANALOG_STICK),
             ),
             t.bindings[CanonicalButton.BTN_LSTICK_Y],
         )
         assertEquals(
             listOf(
-                InputBinding.Axis(2, restingValue = -1f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f, analogRole = AnalogRole.RIGHT_STICK_X),
-                InputBinding.Axis(2, restingValue = 1f, activeMin = 0f, activeMax = -1f, digitalThreshold = 0.5f, analogRole = AnalogRole.RIGHT_STICK_X),
+                InputBinding.Axis(2, restingValue = -1f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f, analogRole = AnalogRole.ANALOG_STICK),
+                InputBinding.Axis(2, restingValue = 1f, activeMin = 0f, activeMax = -1f, digitalThreshold = 0.5f, analogRole = AnalogRole.ANALOG_STICK),
             ),
             t.bindings[CanonicalButton.BTN_RSTICK_X],
         )
         assertEquals(
             listOf(
-                InputBinding.Axis(3, restingValue = -1f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f, analogRole = AnalogRole.RIGHT_STICK_Y),
-                InputBinding.Axis(3, restingValue = 1f, activeMin = 0f, activeMax = -1f, digitalThreshold = 0.5f, analogRole = AnalogRole.RIGHT_STICK_Y),
+                InputBinding.Axis(3, restingValue = -1f, activeMin = 0f, activeMax = 1f, digitalThreshold = 0.5f, analogRole = AnalogRole.ANALOG_STICK),
+                InputBinding.Axis(3, restingValue = 1f, activeMin = 0f, activeMax = -1f, digitalThreshold = 0.5f, analogRole = AnalogRole.ANALOG_STICK),
             ),
             t.bindings[CanonicalButton.BTN_RSTICK_Y],
         )

@@ -12,10 +12,10 @@ import javax.inject.Inject
  * (`onUp`/`onDown`/`onLeft`/`onRight`) and posts a runnable to re-fire at [REPEAT_INTERVAL_MS]
  * after an [INITIAL_DELAY_MS] hold.
  *
- * Lives outside the dispatcher because default mappings bind sticks to analog roles
- * (LEFT_STICK_X/Y), not to canonical directional buttons -- so the dispatcher's evaluator
- * never produces a Pressed(BTN_DOWN) delta for raw stick motion, and the held-state poller
- * never sees the canonical held. This helper provides the missing stick-to-navigation path.
+ * Lives outside the dispatcher because default mappings bind sticks to the ANALOG_STICK role,
+ * not to canonical directional buttons -- so the dispatcher's evaluator never produces a
+ * Pressed(BTN_DOWN) delta for raw stick motion, and the held-state poller never sees the
+ * canonical held. This helper provides the missing stick-to-navigation path.
  *
  * Activities call [handleMotion] from their motion event hook and [stop] from `onPause` so a
  * runnable doesn't keep firing into the other activity's wired callbacks after a transition.
