@@ -9,7 +9,7 @@ import dev.cannoli.scorza.input.resolver.RetroArchAutoconfigImporter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
-enum class WizardStep { PressSouth, PressPrimary, Done }
+enum class WizardStep { PressSouth, PressPrimary, PressMenu, Done }
 
 class LegendWizardController {
     private val _step = MutableStateFlow(WizardStep.PressSouth)
@@ -18,12 +18,14 @@ class LegendWizardController {
     private var sonyHint: GlyphStyle? = null
     private var k1: Int? = null
     private var k2: Int? = null
+    private var menuKeyCode: Int? = null
     private var result: LegendProfile? = null
 
     fun start(sonyGlyphHint: GlyphStyle?) {
         sonyHint = sonyGlyphHint
         k1 = null
         k2 = null
+        menuKeyCode = null
         result = null
         _step.value = WizardStep.PressSouth
     }
@@ -37,6 +39,10 @@ class LegendWizardController {
             WizardStep.PressPrimary -> {
                 k2 = keyCode
                 result = classify(k1!!, keyCode, sonyHint)
+                _step.value = WizardStep.PressMenu
+            }
+            WizardStep.PressMenu -> {
+                menuKeyCode = keyCode
                 _step.value = WizardStep.Done
             }
             WizardStep.Done -> {}
@@ -52,6 +58,7 @@ class LegendWizardController {
         val faceSlots = faceBindings().mapValues { (_, kc) -> listOf(InputBinding.Button(kc)) }
         val merged = base.bindings.toMutableMap()
         faceSlots.forEach { (canon, binds) -> merged[canon] = binds }
+        menuKeyCode?.let { merged[CanonicalButton.BTN_MENU] = listOf(InputBinding.Button(it)) }
         return base.copy(
             bindings = merged,
             menuConfirm = p.menuConfirm,

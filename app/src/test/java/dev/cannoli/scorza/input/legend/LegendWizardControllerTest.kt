@@ -25,6 +25,8 @@ class LegendWizardControllerTest {
         c.onKeyCaptured(96)
         assertEquals(WizardStep.PressPrimary, c.step.value)
         c.onKeyCaptured(96)
+        assertEquals(WizardStep.PressMenu, c.step.value)
+        c.onKeyCaptured(316)
         assertEquals(WizardStep.Done, c.step.value)
         assertEquals(FaceLayout.STANDARD, c.profile()!!.faceLayout)
         assertEquals(GlyphStyle.REDMOND, c.profile()!!.glyphStyle)
@@ -92,6 +94,7 @@ class LegendWizardControllerTest {
         c.start(sonyGlyphHint = null)
         c.onKeyCaptured(96)
         c.onKeyCaptured(97)
+        c.onKeyCaptured(316)
         val base = baseMapping()
 
         val mapping = c.buildMapping(base)
@@ -112,6 +115,10 @@ class LegendWizardControllerTest {
         assertEquals(
             listOf(InputBinding.Button(102)),
             mapping.bindings[CanonicalButton.BTN_L],
+        )
+        assertEquals(
+            listOf(InputBinding.Button(316)),
+            mapping.bindings[CanonicalButton.BTN_MENU],
         )
     }
 
