@@ -185,7 +185,7 @@ class RetroArchAutoconfigImporterTest {
         )
         val thorDevice = ConnectedDevice(
             androidDeviceId = 2, descriptor = "thor", name = "Pad",
-            vendorId = 8224, productId = 273, androidBuildModel = "AYN_Thor",
+            vendorId = 8224, productId = 273, androidBuildModel = "AYN Thor",
             sourceMask = 0, connectedAtMillis = 0,
         )
         val t = RetroArchAutoconfigImporter.import(entry, thorDevice)
@@ -201,7 +201,7 @@ class RetroArchAutoconfigImporterTest {
         )
         val thorDevice = ConnectedDevice(
             androidDeviceId = 2, descriptor = "thor", name = "Pad",
-            vendorId = 8224, productId = 273, androidBuildModel = "AYN_Thor",
+            vendorId = 8224, productId = 273, androidBuildModel = "AYN Thor",
             sourceMask = 0, connectedAtMillis = 0,
         )
         val t = RetroArchAutoconfigImporter.import(entry, thorDevice)

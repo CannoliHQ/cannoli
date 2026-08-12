@@ -469,7 +469,7 @@ class ControllerBridgeTest {
     @Test
     fun user_edited_mapping_is_enrolled_verbatim() {
         val portRouter = PortRouter()
-        val bridge = makeBridge(portRouter = portRouter, buildModel = "AYN_Thor")
+        val bridge = makeBridge(portRouter = portRouter, buildModel = "AYN Thor")
         val thorPad = ControllerBridge.DeviceFacts(
             androidDeviceId = 21,
             descriptor = "thor-user",

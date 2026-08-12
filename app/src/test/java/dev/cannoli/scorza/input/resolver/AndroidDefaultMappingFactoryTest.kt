@@ -46,7 +46,7 @@ class AndroidDefaultMappingFactoryTest {
             name = "AYN Thor",
             vendorId = 0x2020,
             productId = 0x0111,
-            androidBuildModel = "AYN_Thor",
+            androidBuildModel = "AYN Thor",
             sourceMask = 0,
             connectedAtMillis = 0L,
         )

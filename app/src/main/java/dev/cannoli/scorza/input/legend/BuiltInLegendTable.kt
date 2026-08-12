@@ -14,11 +14,14 @@ object BuiltInLegendTable {
 
     // A supported handheld's built-in pad. Matched by Build.MODEL prefix AND the built-in pad's
     // own vid/pid, so an external pad plugged into the same device does not inherit this legend.
-    // Most specific model prefix first.
+    // modelPrefix is the literal ro.product.model (Build.MODEL) including its spaces; do NOT use
+    // the underscore-sanitized value that `adb devices -l` prints. Most specific prefix first.
     val builtIns: List<BuiltInEntry> = listOf(
-        BuiltInEntry("AYN_Odin_Portal", 0x2020, 0x0111, LegendProfile(FaceLayout.STANDARD, GlyphStyle.REDMOND)),
-        BuiltInEntry("AYN_Thor", 0x2020, 0x0111, LegendProfile(FaceLayout.NINTENDO, GlyphStyle.PLUMBER)),
-        BuiltInEntry("AYN_Odin3", 0x2020, 0x0111, LegendProfile(FaceLayout.NINTENDO, GlyphStyle.PLUMBER)),
+        // Verified on-device: ro.product.model = "AYN Thor".
+        BuiltInEntry("AYN Thor", 0x2020, 0x0111, LegendProfile(FaceLayout.NINTENDO, GlyphStyle.PLUMBER)),
+        // Unverified model strings; confirm ro.product.model on each device before trusting.
+        BuiltInEntry("AYN Odin Portal", 0x2020, 0x0111, LegendProfile(FaceLayout.STANDARD, GlyphStyle.REDMOND)),
+        BuiltInEntry("AYN Odin 3", 0x2020, 0x0111, LegendProfile(FaceLayout.NINTENDO, GlyphStyle.PLUMBER)),
     )
 
     val byVidPid: Map<Pair<Int, Int>, LegendProfile> = mapOf(
