@@ -28,12 +28,21 @@ class MappingResolver(
         val user = bestUserEntry(disk.filter { it.cannoliUser }, device, effectiveDescriptor)
         if (user != null) return RetroArchAutoconfigImporter.import(user, device, persistenceDescriptor)
 
-        val diskMatch = bestRetroArchEntry(disk, device)
+        // A cfg pinned to a specific Build.MODEL is exclusive to that device: it disambiguates
+        // shared name+vid/pid identities (e.g. the AYN Thor / Portal / Odin 3 all reporting the
+        // same "Odin Controller" 0x2020:0x0111) that no name/vid/pid score can tell apart.
+        val buildModelMatch = disk.firstOrNull { matchesBuildModel(it, device) }
+        if (buildModelMatch != null) return RetroArchAutoconfigImporter.import(buildModelMatch, device, persistenceDescriptor)
+
+        val diskMatch = bestRetroArchEntry(disk.filterNot { hasBuildModel(it) }, device)
         if (diskMatch != null) return RetroArchAutoconfigImporter.import(diskMatch, device, persistenceDescriptor)
 
         // Same content as the database, for the window before seeding lands or while storage is
         // unreadable.
-        val assetMatch = bestRetroArchEntry(bundledRetroArchEntries.entries(), device)
+        val assetMatch = bestRetroArchEntry(
+            bundledRetroArchEntries.entries().filterNot { hasBuildModel(it) },
+            device,
+        )
         if (assetMatch != null) return RetroArchAutoconfigImporter.import(assetMatch, device, persistenceDescriptor)
 
         return AndroidDefaultMappingFactory().create(device, persistenceDescriptor)
@@ -77,5 +86,12 @@ class MappingResolver(
             }
         }
         return nameAndVidPid ?: nameOnly ?: vidPidOnly
+    }
+
+    private fun hasBuildModel(entry: RetroArchCfgEntry): Boolean = !entry.buildModel.isNullOrBlank()
+
+    private fun matchesBuildModel(entry: RetroArchCfgEntry, device: ConnectedDevice): Boolean {
+        val pinned = entry.buildModel?.trim()
+        return !pinned.isNullOrEmpty() && pinned.equals(device.androidBuildModel.trim(), ignoreCase = true)
     }
 }

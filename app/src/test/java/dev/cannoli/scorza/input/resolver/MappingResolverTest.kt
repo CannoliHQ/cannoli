@@ -359,4 +359,87 @@ class MappingResolverTest {
         assertEquals("Stadia", resolved.displayName)
         assertEquals(GlyphStyle.REDMOND, resolved.glyphStyle)
     }
+
+    // Some shared-identity pads (e.g. the AYN Thor / Portal / Odin 3 all reporting "Odin
+    // Controller" 0x2020:0x0111) cannot be told apart by name+vid/pid at all. A cfg pinned to
+    // Build.MODEL disambiguates them: it is exclusive to that one device.
+    @Test
+    fun `build model cfg wins over a same name vid pid cfg when device model matches`() {
+        writeCfg(
+            "odin_portal.cfg",
+            """
+            input_device = "Odin Controller"
+            input_vendor_id = "8224"
+            input_product_id = "273"
+            input_b_btn = "96"
+            """.trimIndent()
+        )
+        writeCfg(
+            "odin_thor.cfg",
+            """
+            input_device = "Odin Controller"
+            input_vendor_id = "8224"
+            input_product_id = "273"
+            input_b_btn = "97"
+            cannoli_build_model = "AYN Thor"
+            """.trimIndent()
+        )
+
+        val resolved = resolver().resolve(
+            device(name = "Odin Controller", vendorId = 8224, productId = 273, androidBuildModel = "AYN Thor")
+        )
+
+        assertEquals("odin_thor", resolved.id)
+        assertEquals(listOf(InputBinding.Button(97)), resolved.bindings[CanonicalButton.BTN_SOUTH])
+    }
+
+    @Test
+    fun `build model cfg is skipped for a different device model, which resolves to the other cfg`() {
+        writeCfg(
+            "odin_portal.cfg",
+            """
+            input_device = "Odin Controller"
+            input_vendor_id = "8224"
+            input_product_id = "273"
+            input_b_btn = "96"
+            """.trimIndent()
+        )
+        writeCfg(
+            "odin_thor.cfg",
+            """
+            input_device = "Odin Controller"
+            input_vendor_id = "8224"
+            input_product_id = "273"
+            input_b_btn = "97"
+            cannoli_build_model = "AYN Thor"
+            """.trimIndent()
+        )
+
+        val resolved = resolver().resolve(
+            device(name = "Odin Controller", vendorId = 8224, productId = 273, androidBuildModel = "AYN Odin Portal")
+        )
+
+        assertEquals("odin_portal", resolved.id)
+        assertEquals(listOf(InputBinding.Button(96)), resolved.bindings[CanonicalButton.BTN_SOUTH])
+    }
+
+    @Test
+    fun `build model cfg never matches a different device even as the sole name vid pid match`() {
+        writeCfg(
+            "odin_thor.cfg",
+            """
+            input_device = "Odin Controller"
+            input_vendor_id = "8224"
+            input_product_id = "273"
+            input_b_btn = "97"
+            cannoli_build_model = "AYN Thor"
+            """.trimIndent()
+        )
+
+        val resolved = resolver().resolve(
+            device(name = "Odin Controller", vendorId = 8224, productId = 273, androidBuildModel = "AYN Odin Portal")
+        )
+
+        assertEquals(MappingSource.ANDROID_DEFAULT, resolved.source)
+    }
 }
