@@ -335,7 +335,7 @@
     <string name="romm_collection_group_virtual">Virtual</string>
     <!-- RomM "Smart" collections (rule-based, auto-updating). -->
     <string name="romm_collection_group_smart">Inteligente</string>
-    <string name="romm_collections_my">Meus recebimentos</string>
+    <string name="romm_collections_my">Minhas Coleções</string>
     <string name="romm_collections_smart">Coleções inteligentes</string>
     <string name="romm_collections_virtual">Coleções virtuais</string>
     <string name="romm_vtype_franchise">franquias</string>
@@ -347,7 +347,7 @@
     <!-- Advanced toggle: log the intents used to launch external emulators. -->
     <string name="logging_title">Registro</string>
     <string name="logging_rom_scan">Escaneamento de ROM</string>
-    <string name="logging_input">Input</string>
+    <string name="logging_input">Entrada</string>
     <string name="logging_session">Sessão do Jogo</string>
     <string name="logging_storage">Armazenamento</string>
     <string name="setting_input_tester">Input Tester</string>
@@ -391,6 +391,7 @@
     <!-- Shown in place of an emulator name when a platform has no emulator mapped yet. -->
     <string name="value_needs_setup">Precisa de configuração</string>
     <string name="emulator_platform_setting">Configurações de plataforma</string>
+    <string name="emulator_platform_default">Plataforma Padrão</string>
     <!-- %1$s = the emulator name the platform is mapped to. -->
     <string name="emulator_platform_setting_named">Configuração da Plataforma (%1$s)</string>
     <string name="rename_error_directory">Falha ao renomear diretório</string>
@@ -421,10 +422,12 @@
     <string name="housekeeping_refresh_title">Atualizando biblioteca</string>
     <string name="update_download_error_server">O download falhou. O servidor retornou um erro. Tente novamente mais tarde.</string>
     <string name="update_download_error_network">Download falhou. Verifique sua conexão e tente novamente.</string>
+    <string name="update_download_error_space">Espaço de armazenamento insuficiente. A atualização requer aproximadamente %1$s de espaço livre, e há %2$s disponível.</string>
     <string name="launch_error_resolve_file">Falha ao resolver o arquivo de inicialização</string>
     <string name="launch_error_extract">Falha ao extrair arquivo</string>
     <string name="launch_error_generic">Falha ao iniciar o jogo</string>
     <!-- %1$s = file name. -->
+    <string name="launch_error_bad_game_file">Não foi possível ler a ID do jogo de %1$s</string>
     <string name="launch_error_update_ricotta">Atualize a RicottaArch para continuar</string>
     <string name="launch_error_update_cannoli">Atualize o Cannoli para continuar</string>
     <!-- %1$s = core name, %2$s = emulator app. -->
@@ -452,6 +455,7 @@
     <string name="onboarding_header">CONFIGURAR CANAL</string>
     <string name="onboarding_permissions_title">Permissões e Armazenamento</string>
     <string name="onboarding_storage_label">Acesso ao armazenamento</string>
+    <string name="onboarding_storage_rationale">O Cannoli precisa de acesso às suas ROMs, arquivos salvos, artes e muito mais.\nSem isso, o Cannoli não consegue fazer nada.</string>
     <string name="onboarding_status_granted">Concedido</string>
     <string name="onboarding_status_not_granted">Não concedido</string>
     <string name="onboarding_press_a_to_select_folder">Pressione A para selecionar a pasta</string>
@@ -466,7 +470,7 @@
     <string name="empty_content">Nenhum conteúdo encontrado. Vá adicionar alguns!</string>
     <!-- 5GH = Five Game Handheld; keep "5GH" as-is. -->
     <string name="empty_fgh_collection">Sua coleção 5GH está vazia. Vá preenchê-la.</string>
-    <string name="label_recently_played">Reproduzidas recentemente</string>
+    <string name="label_recently_played">Jogados Recentemente</string>
     <string name="label_favorites">Atalhos</string>
     <string name="label_collections">Coleções</string>
     <!-- Screen title. %1$s = the search query. -->
@@ -598,6 +602,11 @@
     <string name="ra_load_offline_pending">RA: Offline (dados do jogo indisponíveis)</string>
     <!-- Credits -->
     <string name="credits_title">Créditos e Licenças</string>
+    <string name="credits_cores">Núcleos de Emulador</string>
+    <string name="credits_shaders">Sombreadores</string>
+    <string name="credits_fonts">Fontes</string>
+    <string name="credits_libraries">Bibliotecas</string>
+    <string name="credits_localization">Colaboradores da Localização</string>
     <!-- Core picker / nav -->
     <string name="no_compatible_cores">Núcleos compatíveis não encontrados</string>
     <string name="no_collections">Sem coleções</string>
@@ -605,19 +614,20 @@
     <string name="title_shortcuts">Atalhos</string>
     <string name="shortcut_hold_prompt" tools:ignore="TypographyEllipsis">Segure um ou mais botões...</string>
     <!-- Update download -->
-    <string name="update_retry">RETENTAR</string>
+    <string name="update_retry">TENTAR NOVAMENTE</string>
     <string name="restart_required">Reinicie necessário para aplicar as alterações.</string>
     <!-- Shown before the ROM directory is changed or cleared, since the rescan that follows prunes
          database entries for every ROM that is not at the same relative path under the new
          directory. Cannoli and RetroAchievements are product names; leave them untranslated. -->
+    <string name="library_switch_confirm">Alterar o diretório de ROMs é uma ação destrutiva. \n\nAo realizar uma nova varredura, o Cannoli remove de seu banco de dados as ROMs que não consegue mais localizar. Favoritos, coleções, substituições de configuração por jogo, histórico de jogos recentes e substituições de ID de jogo do RetroAchievements são todos descartados para as ROMs que não aparecem com o mesmo caminho relativo no novo diretório de ROMs.\n\nOs arquivos de ROM, arquivos salvos e estados de salvamento armazenados no disco permanecem inalterados.</string>
     <!-- IGM screen titles -->
-    <string name="igm_settings">Confirgurações</string>
+    <string name="igm_settings">Configurações</string>
     <string name="igm_video">Vídeo</string>
     <string name="igm_advanced">Avançado</string>
     <string name="igm_shader_settings">Configurações de Shader</string>
     <string name="igm_emulator">Emulador</string>
     <string name="igm_save_changes">Salvar as alterações</string>
-    <string name="igm_input">Input</string>
+    <string name="igm_input">Entrada</string>
     <string name="igm_button_mappings">Mapeamentos de botões</string>
     <string name="igm_left_stick_dpad">Analógico Esquerdo como Direcional</string>
     <string name="igm_dpad_mode">Modo direcional (BETA)</string>
@@ -625,7 +635,7 @@
     <string name="value_dpad_8way">8-Via</string>
     <!-- D-Pad Mode value: 4 directions. -->
     <string name="value_dpad_4way">4-Caminho</string>
-    <string name="igm_save_and_quit">Salvar e sair</string>
+    <string name="igm_save_and_quit">Salvar e Sair</string>
     <string name="title_guide">Guia</string>
     <string name="guide_zoom">ZOOM</string>
     <!-- IGM info labels -->
@@ -672,16 +682,22 @@
     <string name="value_no_firmware">Nenhum firmware necessário para este núcleo.</string>
     <string name="mapping_action_bios">Arquivos BIOS</string>
     <string name="mapping_action_overrides">Substituições por jogo</string>
+    <string name="mapping_action_reset">Redefinir para o Padrão</string>
     <!-- %d = number of required BIOS files missing. -->
     <string name="mapping_required_missing">%d necessário faltando</string>
     <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
+    <string name="mapping_platform_name_with_tag">%1$s (%2$s)</string>
     <!-- Shown above the RetroArch core list when the installed build predates the receiver that answers core queries. -->
+    <string name="mapping_notice_cannot_report_cores">Esta versão do RetroArch não consegue relatar os núcleos instalados</string>
     <!-- Shown when RetroArch has the receiver but did not answer the query. -->
+    <string name="mapping_notice_no_response">RetroArch não respondeu</string>
     <!-- Shown above the core list when the configured RetroArch package is not installed at all. -->
+    <string name="mapping_notice_not_installed">RetroArch não foi instalado</string>
     <!-- Debug builds only: a gallery of every Nerd Font glyph the launcher draws. Never shipped to users, so not sent to translators. -->
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_mapping">Mapeamento %s</string>
     <!-- Screen title for the per-game emulator picker. %s = game name. -->
+    <string name="title_game_mapping">Emulador %s</string>
     <!-- Screen title. %s = platform name. -->
     <string name="title_platform_bios">%s BIOS</string>
     <string name="filter_all">TODOS</string>
@@ -725,8 +741,9 @@
         <item quantity="other">Pastas de sistema %d criadas</item>
     </plurals>
     <string name="value_no_cores_found">Núcleos não encontrados</string>
-    <string name="label_clear_override">Terminado</string>
+    <string name="label_clear_override">LIMPAR</string>
     <!-- %1$s = platform name. -->
+    <string name="dialog_reset_platform_confirm">Redefinir %1$s? Sua escolha será substituída pelo padrão do Cannoli ou removida, caso não haja um padrão.</string>
     <!-- RA achievement preload. %1$s = game name. -->
     <string name="ra_preload_progress">Pré-carregando %1$s</string>
     <string name="ra_preload_none">Nenhuma conquista encontrada para este jogo</string>
@@ -737,6 +754,7 @@
         <item quantity="other">Conquistas %1$d em cache (%2$d pts) para a jogada offline</item>
     </plurals>
     <!-- %1$d = games cached, %2$d = total games. -->
+    <string name="ra_preload_bulk_done">%1$d de %2$d jogos armazenados em cache para jogar offline</string>
     <string name="ra_offline_sets_title">Conjuntos de Conquistas Offline</string>
     <string name="ra_offline_sets_empty">Nenhum conjunto de conquistas armazenadas em cache</string>
     <!-- %1$d = achievement count, %2$s = set name. -->
@@ -745,7 +763,7 @@
     <!-- Save Slots screen -->
     <!-- Screen title. %1$s = game name. -->
     <string name="save_slots_screen_title">%1$s Slots</string>
-    <string name="save_slots_active">ativo</string>
+    <string name="save_slots_active">Ativo</string>
     <string name="save_slots_create">NOVO SLOT</string>
     <string name="save_slots_rename">RENOMEAR</string>
     <string name="save_slots_delete">EXCLUIR</string>
@@ -756,6 +774,7 @@
     <string name="conflicts_title">Sincronizar Conflitos</string>
     <string name="conflicts_applying">Aplicando conflitos...</string>
     <!-- Shown while saves are checked against the server before a game launches. -->
+    <string name="save_sync_checking">Verificando salvamentos...</string>
     <!-- %1$d = number of saves that could not be applied. -->
     <plurals name="conflicts_apply_failed">
         <item quantity="one">Não foi possível aplicar o save %1$d</item>
@@ -789,7 +808,7 @@
         <item quantity="other">Backups %1$d</item>
     </plurals>
     <string name="conflict_keep_local">Manter local</string>
-    <string name="conflict_use_server">Usar servidor</string>
+    <string name="conflict_use_server">Usar Servidor</string>
     <string name="conflict_skip">Ignorar</string>
     <string name="conflict_yours">Sua</string>
     <string name="conflict_server">Servidor</string>
@@ -809,5 +828,5 @@
     <string name="kbd_help_cursor_move">MOVER ESQUERDA / DIREITA</string>
     <string name="kbd_help_cursor_jump">BOMBA PARA INICIAR / FIM</string>
     <string name="kbd_help_submit">ENVIAR</string>
-    <string name="kbd_help_cancel">CANCEL</string>
+    <string name="kbd_help_cancel">CANCELAR</string>
 </resources>
