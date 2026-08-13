@@ -18,6 +18,7 @@
     <string name="label_change_emulator">ALTERAR EMULADOR</string>
     <string name="label_delete">EXCLUIR</string>
     <string name="label_confirm">CONFIRMAR</string>
+    <string name="label_proceed">PROSSEGUIR</string>
     <string name="label_toggle">ALTERNAR</string>
     <string name="label_new">NOVO</string>
     <string name="label_settings">DEFINIÇÕES</string>
@@ -167,6 +168,7 @@
     <string name="setting_experimental_features">Funcionalidades Experimentais</string>
     <string name="setting_set_default_launcher">Definir como Launcher padrão</string>
     <!-- Same row as setting_set_default_launcher, shown when Cannoli is already the default launcher and the user wants to pick another one. -->
+    <string name="setting_change_default_launcher">Usar um Iniciador Diferente</string>
     <!-- Advanced action: recreate the standard platform/system folders. -->
     <string name="setting_regenerate_system_folders">Regerar Pastas do Sistema</string>
     <!-- Library setting: which content layout to show (platforms, collections only, or Five Game Handheld). -->
@@ -175,7 +177,7 @@
     <string name="setting_fgh_collection">Coleção 5GH</string>
     <string name="setting_show_recently_played">Reproduzidas recentemente</string>
     <!-- Library setting: show or hide the Favorites entry on the main list. -->
-    <string name="setting_show_favorites">Atalhos</string>
+    <string name="setting_show_favorites">Favoritos</string>
     <!-- Opens the Tools manager (sideloaded utility apps). -->
     <string name="setting_manage_tools">Gerenciar Ferramentas</string>
     <!-- Opens the Ports manager. "Ports" means standalone native game ports. -->
@@ -189,11 +191,11 @@
     <string name="setting_color_highlight_text">Destacar Texto</string>
     <string name="setting_color_accent">Sotaque</string>
     <string name="setting_color_background">Fundo</string>
-    <string name="setting_color_status_bar">Barra de status</string>
+    <string name="setting_color_status_bar">Barra de Status</string>
     <!-- Settings row. %s is the emulator app name (e.g. RetroArch). -->
     <string name="setting_installed_cores">Núcleos instalados %s</string>
     <!-- Screen title. %s is the emulator app name (e.g. RetroArch). -->
-    <string name="title_installed_cores">Núcleos instalados %s</string>
+    <string name="title_installed_cores">%s Núcleos Instalados</string>
     <string name="installed_cores_none">Núcleos não encontrados</string>
     <!-- Setting: the app's root storage folder on the SD card. -->
     <string name="setting_sd_root">Raiz Cannoli</string>
@@ -255,7 +257,7 @@
     <!-- Bottom-bar button opening the game's instruction manual (a document), not "manual/by hand". -->
     <string name="label_manual">MANUAL</string>
     <!-- The game's instruction manual (document), not "manual/by hand". -->
-    <string name="romm_download_manual">Manualmente</string>
+    <string name="romm_download_manual">Manual</string>
     <string name="romm_syncing" tools:ignore="TypographyEllipsis">Construindo cache...</string>
     <!-- Cache-building status. %1$s is the platform name. -->
     <string name="romm_syncing_platform" tools:ignore="TypographyEllipsis">Construindo cache...\n%1$s</string>
