@@ -2,6 +2,7 @@ package dev.cannoli.scorza.ui.screens
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -10,6 +11,7 @@ import dev.cannoli.igm.GuideScreen
 import dev.cannoli.igm.GuideType
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.components.BottomBar
+import dev.cannoli.ui.components.screenInsets
 
 @Composable
 fun GuideViewerScreen(
@@ -43,7 +45,7 @@ fun GuideViewerScreen(
             onScrollPosChanged = onScrollPosChanged,
         )
         BottomBar(
-            modifier = Modifier.align(Alignment.BottomCenter),
+            modifier = Modifier.align(Alignment.BottomCenter).padding(screenInsets()),
             leftItems = listOf(buttonStyle.back to stringResource(dev.cannoli.ui.R.string.label_back)),
             rightItems = listOf(buttonStyle.north to stringResource(dev.cannoli.ui.R.string.guide_zoom)),
         )

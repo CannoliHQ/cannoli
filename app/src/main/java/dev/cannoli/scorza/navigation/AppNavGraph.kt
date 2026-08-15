@@ -2023,6 +2023,7 @@ fun AppNavGraph(
         val hideForScreen = currentScreen is LauncherScreen.Credits
                 || currentScreen is LauncherScreen.CreditsSection
                 || currentScreen is LauncherScreen.DirectoryBrowser
+                || currentScreen is LauncherScreen.Guide
                 || currentScreen is LauncherScreen.InputTester
                 || currentScreen is LauncherScreen.OnboardingPermissions
                 || (currentScreen is LauncherScreen.SystemList && systemListState?.isLoading == true)
