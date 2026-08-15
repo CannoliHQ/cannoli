@@ -13,7 +13,6 @@ import dev.cannoli.scorza.input.autoconfig.AutoconfigRepository
 import dev.cannoli.scorza.input.autoconfig.AutoconfigSeeder
 import dev.cannoli.scorza.input.autoconfig.BundledAutoconfigEntries
 import dev.cannoli.scorza.input.autoconfig.CfgSource
-import dev.cannoli.scorza.input.autoconfig.CompositeCfgSource
 import dev.cannoli.scorza.input.resolver.MappingResolver
 import dev.cannoli.scorza.input.runtime.ActiveMappingHolder
 import dev.cannoli.scorza.input.runtime.ControllerBridge
@@ -29,14 +28,10 @@ annotation class BundledRetroArchAutoconfig
 @InstallIn(SingletonComponent::class)
 object ControllerBindingsModule {
 
-    // Community set first, curated set last: a curated cfg's cannoli_build_model wins on the
-    // matching device regardless of order, so this only sets tie-break order for everything else.
-    private fun bundledCfgSource(context: Context): CfgSource = CompositeCfgSource(
-        listOf(
-            AssetCfgSource(context, "autoconfig/android"),
-            AssetCfgSource(context, "autoconfig/cannoli"),
-        )
-    )
+    // Only Cannoli's curated database is bundled (fetched from CannoliHQ/input-db into cannoli/).
+    // Pads without a curated entry fall to the setup wizard and the Android default at resolve time.
+    private fun bundledCfgSource(context: Context): CfgSource =
+        AssetCfgSource(context, "autoconfig/cannoli")
 
     @Provides
     @Singleton
