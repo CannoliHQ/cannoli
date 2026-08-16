@@ -7,10 +7,12 @@ import java.io.IOException
 
 class AutoconfigRepository(
     private val debugBuild: Boolean = false,
-    private val dirProvider: () -> File,
+    private val dirProvider: () -> File?,
 ) {
 
-    private val dir: File get() = dirProvider()
+    // Null before first run's storage step. A pad connecting during the controller step recomputes
+    // the controller list, which lands here well before anyone has said where Cannoli lives.
+    private val dir: File? get() = dirProvider()
 
     @Volatile private var cache: List<RetroArchCfgEntry>? = null
 
@@ -19,6 +21,8 @@ class AutoconfigRepository(
     // equally good matches would otherwise decide a pad's layout by which card it booted from.
     fun listEntries(): List<RetroArchCfgEntry> {
         cache?.let { return it }
+        // Deliberately not cached: the root resolves later, and an empty listing must not stick.
+        val dir = dir ?: return emptyList()
         val loaded = dir.listFiles { f -> f.isFile && f.extension.equals("cfg", ignoreCase = true) }
             ?.mapNotNull { file ->
                 runCatching { RetroArchCfgParser.parse(file.readText(), fileName = file.name) }.getOrNull()
@@ -33,6 +37,9 @@ class AutoconfigRepository(
         listEntries().firstOrNull { it.fileName == "$id.cfg" }
 
     fun save(mapping: DeviceMapping) {
+        // Callers defer the write until storage resolves; MainActivity parks a first-run wizard
+        // mapping in memory and saves it once the root is real.
+        val dir = dir ?: error("autoconfig save before first run's storage step chose a root")
         dir.mkdirs()
         val file = File(dir, "${mapping.id}.cfg")
         val tmp = File(dir, "${mapping.id}.cfg.tmp")
@@ -48,6 +55,7 @@ class AutoconfigRepository(
     }
 
     fun delete(id: String) {
+        val dir = dir ?: return
         File(dir, "$id.cfg").delete()
         invalidate()
     }

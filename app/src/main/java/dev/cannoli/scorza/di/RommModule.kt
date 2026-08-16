@@ -205,7 +205,9 @@ object RommModule {
         http: RommHttp,
         paths: CannoliPathsProvider,
     ): ImageLoader =
-        RommImageLoader.build(context, http, java.io.File(dev.cannoli.scorza.config.CannoliPaths(paths.root).configCache, "RommArt"))
+        RommImageLoader.build(context, http, cacheDir = {
+            java.io.File(dev.cannoli.scorza.config.CannoliPaths(paths.root).configCache, "RommArt")
+        })
 
     @Provides @Singleton
     fun provideRommArtDownloader(

@@ -9,17 +9,19 @@ object RommImageLoader {
     fun build(
         context: Context,
         http: RommHttp,
-        cacheDir: File,
+        cacheDir: () -> File,
         maxSizeBytes: Long = 128L * 1024 * 1024,
     ): ImageLoader =
         ImageLoader.Builder(context)
             .okHttpClient { http.client() }
             .respectCacheHeaders(false)
-            .diskCache(
+            // Lazy: the loader is built while first run is still on screen, before the storage step
+            // has said where the cache belongs. Coil resolves this when it first loads an image.
+            .diskCache {
                 DiskCache.Builder()
-                    .directory(cacheDir)
+                    .directory(cacheDir())
                     .maxSizeBytes(maxSizeBytes)
                     .build()
-            )
+            }
             .build()
 }

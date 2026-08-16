@@ -44,7 +44,7 @@ object ControllerBindingsModule {
     @Singleton
     fun provideAutoconfigRepository(paths: CannoliPathsProvider): AutoconfigRepository =
         AutoconfigRepository(
-            dirProvider = { CannoliPaths(paths.root).configInputAutoconfigAndroid },
+            dirProvider = { paths.rootOrNull?.let { CannoliPaths(it).configInputAutoconfigAndroid } },
             debugBuild = dev.cannoli.scorza.BuildConfig.DEBUG,
         )
 

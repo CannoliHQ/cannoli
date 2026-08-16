@@ -17,6 +17,9 @@ class CannoliPathsProvider @Inject constructor(
 ) {
     val root: File get() = File(settings.sdCardRoot)
 
+    /** Null until first run's storage step resolves. See [SettingsRepository.sdCardRootOrNull]. */
+    val rootOrNull: File? get() = settings.sdCardRootOrNull?.let { File(it) }
+
     val romDir: File
         get() = settings.romDirectory.takeIf { it.isNotEmpty() }?.let { File(it) } ?: File(root, "Roms")
 }

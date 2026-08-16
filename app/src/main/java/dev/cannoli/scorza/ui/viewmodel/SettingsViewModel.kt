@@ -55,12 +55,12 @@ class SettingsViewModel @Inject constructor(
     private var cachedFontOptions: List<FontOption>? = null
     private var cachedFontsRoot: String? = null
 
-    // Scanning Config/Fonts at construction would run during Hilt injection, before setup resolves
-    // the storage root, and cache a listing of the fallback path for the session. Built on first
-    // read instead, and again whenever the root moves or a caller asks for a rescan.
+    // Built on first read, not at construction: the view model is injected during onCreate, before
+    // first run has chosen where Cannoli lives. Keyed on the root so the custom fonts appear once
+    // storage resolves, and rebuilt when a caller asks for a rescan.
     private val fontOptions: List<FontOption>
         get() {
-            val root = pathsProvider.root.absolutePath
+            val root = settings.sdCardRootOrNull
             cachedFontOptions?.let { if (cachedFontsRoot == root) return it }
             return buildFontOptions().also {
                 cachedFontOptions = it
@@ -75,7 +75,9 @@ class SettingsViewModel @Inject constructor(
     private fun buildFontOptions(): List<FontOption> = buildList {
         add(FontOption("default", "Default", appFonts.mplus1Code, appFonts.mplus1CodeTypeface))
         add(FontOption("the_og", "The OG", appFonts.bpReplay, appFonts.bpReplayTypeface))
-        val fontsDir = java.io.File(pathsProvider.root, "Config/Fonts")
+        // Custom fonts live under the chosen root, so before the storage step there are none to find.
+        val root = settings.sdCardRootOrNull ?: return@buildList
+        val fontsDir = java.io.File(root, "Config/Fonts")
         val exts = setOf("ttf", "otf")
         val customFiles = fontsDir.listFiles()
             ?.filter { it.isFile && it.extension.lowercase(java.util.Locale.ROOT) in exts }
