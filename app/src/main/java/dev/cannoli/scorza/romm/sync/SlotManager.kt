@@ -22,7 +22,7 @@ class SlotManager(
     private val pathsProvider: CannoliPathsProvider,
     private val service: SaveSyncService,
 ) {
-    private val paths: CannoliPaths = CannoliPaths(pathsProvider.root)
+    private val paths: CannoliPaths get() = CannoliPaths(pathsProvider.root)
 
     suspend fun listSlots(gameKey: String, romId: Int): List<SlotInfo> = withContext(Dispatchers.IO) {
         val active = store.activeSlot(gameKey)

@@ -14,9 +14,11 @@ data class LocalSave(
     val uploadFileName: String,
 )
 
-class LocalSaveResolver(private val cannoliRoot: File) {
+class LocalSaveResolver(private val cannoliRoot: () -> File) {
 
-    private fun savesDir(tag: String) = File(File(cannoliRoot, "Saves"), tag)
+    constructor(cannoliRoot: File) : this({ cannoliRoot })
+
+    private fun savesDir(tag: String) = File(File(cannoliRoot(), "Saves"), tag)
 
     private fun matchingFiles(tag: String, base: String): List<File> {
         val dir = savesDir(tag)

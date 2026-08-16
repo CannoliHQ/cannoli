@@ -9,7 +9,6 @@ import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.util.ArtworkLookup
 import dev.cannoli.scorza.util.AtomicRename
 import dev.cannoli.scorza.util.RomDirectoryWalker
-import java.io.File
 import javax.inject.Singleton
 
 @Module
@@ -21,6 +20,6 @@ object AppModule {
         GlobalOverridesManager { settings.sdCardRoot }
 
     @Provides @Singleton
-    fun provideAtomicRename(settings: SettingsRepository, walker: RomDirectoryWalker, artwork: ArtworkLookup): AtomicRename =
-        AtomicRename(File(settings.sdCardRoot), walker, artwork)
+    fun provideAtomicRename(paths: CannoliPathsProvider, walker: RomDirectoryWalker, artwork: ArtworkLookup): AtomicRename =
+        AtomicRename({ paths.root }, walker, artwork)
 }

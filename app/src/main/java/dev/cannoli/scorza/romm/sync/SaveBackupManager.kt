@@ -6,10 +6,12 @@ data class SaveBackup(val stamp: Long, val file: File, val sizeBytes: Long)
 data class SaveBackupGame(val tag: String, val base: String, val displayName: String, val count: Int, val latestStamp: Long)
 
 class SaveBackupManager(
-    private val cannoliRoot: File,
+    private val cannoliRoot: () -> File,
     private val resolver: LocalSaveResolver,
 ) {
-    private fun rootDir() = File(cannoliRoot, "Backup/SaveSync")
+    constructor(cannoliRoot: File, resolver: LocalSaveResolver) : this({ cannoliRoot }, resolver)
+
+    private fun rootDir() = File(cannoliRoot(), "Backup/SaveSync")
     private fun gameDir(tag: String, base: String) = File(rootDir(), "$tag/$base")
 
     fun backup(tag: String, base: String, keepCount: Int, stamp: Long) {
@@ -47,7 +49,7 @@ class SaveBackupManager(
     fun restore(tag: String, base: String, stamp: Long, keepCount: Int): Boolean {
         val zip = File(gameDir(tag, base), "$stamp.zip")
         if (!zip.isFile) return false
-        val temp = File.createTempFile("restore", ".zip", File(cannoliRoot, "Backup").apply { mkdirs() })
+        val temp = File.createTempFile("restore", ".zip", File(cannoliRoot(), "Backup").apply { mkdirs() })
         return try {
             zip.copyTo(temp, overwrite = true)
             backup(tag, base, keepCount, System.currentTimeMillis())

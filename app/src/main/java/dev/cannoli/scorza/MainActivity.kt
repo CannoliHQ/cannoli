@@ -114,7 +114,9 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var rommClient: dev.cannoli.scorza.romm.RommClient
     @Inject lateinit var rommDevicePairing: dev.cannoli.scorza.romm.RommDevicePairing
     @Inject lateinit var rommBrowseViewModel: dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel
-    @Inject lateinit var rommImageLoader: coil.ImageLoader
+    // Provider because the loader bakes its disk cache dir in at build time, so it must not be
+    // built until the setup flow has settled where Cannoli lives.
+    @Inject lateinit var rommImageLoader: Provider<coil.ImageLoader>
     @Inject lateinit var rommDownloader: dev.cannoli.scorza.romm.download.RommDownloader
     @Inject lateinit var rommArtFetcher: dev.cannoli.scorza.romm.art.RommArtFetcher
     @Inject lateinit var syncScheduler: dev.cannoli.scorza.romm.sync.SyncScheduler
@@ -378,7 +380,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
             nav = nav,
             inputRouter = router,
             rommBrowseViewModel = rommBrowseViewModel,
-            rommImageLoader = rommImageLoader,
+            rommImageLoader = rommImageLoader.get(),
             rommHost = rommStore.host,
             rommArtType = rommStore.artTypeFlow.collectAsState().value,
             rommDownloader = rommDownloader,

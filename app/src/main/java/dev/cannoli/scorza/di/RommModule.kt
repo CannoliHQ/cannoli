@@ -118,11 +118,11 @@ object RommModule {
 
     @Provides @Singleton
     fun provideLocalSaveResolver(paths: CannoliPathsProvider): LocalSaveResolver =
-        LocalSaveResolver(paths.root)
+        LocalSaveResolver({ paths.root })
 
     @Provides @Singleton
     fun provideSaveBackupManager(paths: CannoliPathsProvider, resolver: LocalSaveResolver): SaveBackupManager =
-        SaveBackupManager(paths.root, resolver)
+        SaveBackupManager({ paths.root }, resolver)
 
     @Provides @Singleton
     fun provideSyncHistoryStore(db: CannoliDatabase): SyncHistoryStore = SyncHistoryStore(db)

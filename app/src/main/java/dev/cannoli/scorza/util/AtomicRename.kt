@@ -7,9 +7,12 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class AtomicRename(private val cannoliRoot: File, private val walker: RomDirectoryWalker, private val artwork: ArtworkLookup) {
+class AtomicRename(private val cannoliRoot: () -> File, private val walker: RomDirectoryWalker, private val artwork: ArtworkLookup) {
 
-    private val paths = CannoliPaths(cannoliRoot)
+    constructor(cannoliRoot: File, walker: RomDirectoryWalker, artwork: ArtworkLookup) :
+        this({ cannoliRoot }, walker, artwork)
+
+    private val paths get() = CannoliPaths(cannoliRoot())
     private val backupDir get() = paths.backupDir
     private val savesDir get() = paths.savesDir
     private val statesDir get() = paths.saveStatesDir
