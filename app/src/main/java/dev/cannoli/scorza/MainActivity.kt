@@ -133,6 +133,10 @@ class MainActivity : ComponentActivity(), ActivityActions {
 
     // First run's press run, held for the Activity's lifetime for the same reason.
     private val confirmPressCounter = dev.cannoli.scorza.input.legend.ConfirmPressCounter()
+
+    // Set while a completed run is being held on screen, so presses landing in that window are
+    // swallowed rather than starting a second run or advancing twice.
+    private var welcomeAdvancePending = false
     private val welcomeHatSync = dev.cannoli.scorza.input.HatKeySync()
 
     private val isReady: Boolean get() = bootSequencer.state.value is BootState.Ready
@@ -436,15 +440,27 @@ class MainActivity : ComponentActivity(), ActivityActions {
      * true when it completed a run and the step acted on it.
      */
     private fun onWelcomeControllerPress(androidDeviceId: Int, keyCode: Int): Boolean {
+        if (welcomeAdvancePending) return true
         if (!confirmPressCounter.press(androidDeviceId, keyCode)) return false
-        confirmPressCounter.reset()
         // A device with no mapping has nothing to verify against.
-        val mapping = portRouter.mappingFor(androidDeviceId) ?: return false
-        if (dev.cannoli.scorza.input.legend.verifyConfirmPress(mapping, keyCode)) {
-            activeMappingHolder.set(mapping)
-            onboardingCoordinator.onWelcomePress(androidDeviceId, keyCode)
-        } else {
-            startLegendWizard(androidDeviceId, vendorIdFor(androidDeviceId))
+        val mapping = portRouter.mappingFor(androidDeviceId)
+        if (mapping == null) {
+            confirmPressCounter.reset()
+            return false
+        }
+        welcomeAdvancePending = true
+        lifecycleScope.launch {
+            // Let the last pip be seen filled. Acting on this press immediately would clear the run
+            // and change the screen in the same frame that completed it.
+            kotlinx.coroutines.delay(dev.cannoli.scorza.input.legend.CONFIRM_RUN_COMPLETE_HOLD_MS)
+            if (dev.cannoli.scorza.input.legend.verifyConfirmPress(mapping, keyCode)) {
+                activeMappingHolder.set(mapping)
+                onboardingCoordinator.onWelcomePress(androidDeviceId, keyCode)
+            } else {
+                startLegendWizard(androidDeviceId, vendorIdFor(androidDeviceId))
+            }
+            confirmPressCounter.reset()
+            welcomeAdvancePending = false
         }
         return true
     }

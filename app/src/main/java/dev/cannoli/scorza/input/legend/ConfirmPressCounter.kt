@@ -16,6 +16,12 @@ const val CONFIRM_RUN_TIMEOUT_MS = 1500L
 const val CONFIRM_RUN_FADE_MS = 300
 
 /**
+ * How long a completed run stays on screen before the step leaves. Without it the press that fills
+ * the last pip is the same press that navigates, so the run reads as two pips and a page change.
+ */
+const val CONFIRM_RUN_COMPLETE_HOLD_MS = 220L
+
+/**
  * First run asks for a run of presses of one button on one pad before it judges the mapping. A
  * press of anything else empties the run rather than failing it, and does not start one of its own:
  * the pips all clear, and the press after that begins a fresh run. So three presses of a button
