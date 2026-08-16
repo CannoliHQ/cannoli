@@ -7,6 +7,7 @@ import dev.cannoli.igm.ShortcutAction
 import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.input.screen.ControllerDetailInputHandler
 import dev.cannoli.scorza.input.screen.ControllersInputHandler
+import dev.cannoli.scorza.input.screen.DirectoryBrowserInputHandler
 import dev.cannoli.scorza.input.screen.EditButtonsInputHandler
 import dev.cannoli.scorza.input.screen.GameListInputHandler
 import dev.cannoli.scorza.input.screen.GuideInputHandler
@@ -14,7 +15,9 @@ import dev.cannoli.scorza.input.screen.LoggingSettingsInputHandler
 import dev.cannoli.scorza.input.screen.InputTesterInputHandler
 import dev.cannoli.scorza.input.screen.ScrollListInputHandler
 import dev.cannoli.scorza.input.screen.SettingsInputHandler
-import dev.cannoli.scorza.input.screen.OnboardingInputHandler
+import dev.cannoli.scorza.input.screen.OnboardingPermissionsInputHandler
+import dev.cannoli.scorza.input.screen.OnboardingStorageInputHandler
+import dev.cannoli.scorza.input.screen.PermissionsInputHandler
 import dev.cannoli.scorza.input.screen.SaveSlotsInputHandler
 import dev.cannoli.scorza.input.screen.SaveStatePickerInputHandler
 import dev.cannoli.scorza.input.screen.SystemListInputHandler
@@ -44,7 +47,9 @@ class InputRouter @Inject constructor(
     val systemListHandler: SystemListInputHandler,
     val gameListHandler: GameListInputHandler,
     val settingsHandler: SettingsInputHandler,
-    val onboardingHandler: OnboardingInputHandler,
+    val onboardingPermissionsHandler: OnboardingPermissionsInputHandler,
+    val onboardingStorageHandler: OnboardingStorageInputHandler,
+    val directoryBrowserHandler: DirectoryBrowserInputHandler,
     val inputTesterHandler: InputTesterInputHandler,
     val saveStatePickerHandler: SaveStatePickerInputHandler,
     val saveSlotsHandler: SaveSlotsInputHandler,
@@ -53,6 +58,7 @@ class InputRouter @Inject constructor(
     val controllersHandler: ControllersInputHandler,
     val editButtonsHandler: EditButtonsInputHandler,
     val loggingSettingsHandler: LoggingSettingsInputHandler,
+    val permissionsHandler: PermissionsInputHandler,
     private val scrollListFactory: ScrollListInputHandler.Factory,
     private val platformConfig: PlatformConfig,
     private val gameOverrideStore: dev.cannoli.scorza.db.GameOverrideStore,
@@ -113,8 +119,14 @@ class InputRouter @Inject constructor(
         // screen's handler was last left on the registry.
         is LauncherScreen.LegendWizard -> object : ScreenInputHandler {}
         is LauncherScreen.LoggingSettings -> loggingSettingsHandler
-        is LauncherScreen.OnboardingPermissions -> onboardingHandler
-        is LauncherScreen.DirectoryBrowser -> onboardingHandler
+        is LauncherScreen.Permissions -> permissionsHandler
+        // Every press is captured ahead of the pipeline in MainActivity.dispatchKeyEvent, because
+        // the welcome step accepts any button and no mapping exists yet. This empty handler only
+        // stops stray up/motion events reaching whatever screen's handler the registry last held.
+        is LauncherScreen.OnboardingWelcome -> object : ScreenInputHandler {}
+        is LauncherScreen.OnboardingPermissions -> onboardingPermissionsHandler
+        is LauncherScreen.OnboardingStorage -> onboardingStorageHandler
+        is LauncherScreen.DirectoryBrowser -> directoryBrowserHandler
         is LauncherScreen.RommGameDetail -> object : ScreenInputHandler {
             override fun onWest() {
                 val s = nav.currentScreen as? LauncherScreen.RommGameDetail ?: return

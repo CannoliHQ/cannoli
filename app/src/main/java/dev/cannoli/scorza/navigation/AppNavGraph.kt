@@ -43,6 +43,9 @@ import dev.cannoli.igm.ShortcutAction
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.input.runtime.confirmButton
 import dev.cannoli.scorza.input.runtime.labelSet
+import dev.cannoli.scorza.onboarding.OnboardingPermission
+import dev.cannoli.scorza.onboarding.OnboardingPermissionsAction
+import dev.cannoli.scorza.onboarding.OnboardingStorageAction
 import dev.cannoli.scorza.ui.LocalViewportInsets
 import dev.cannoli.scorza.util.buttonLabel
 import dev.cannoli.scorza.ui.ViewportInsetsPx
@@ -69,6 +72,7 @@ import dev.cannoli.scorza.ui.screens.InputTesterScreen
 import dev.cannoli.scorza.ui.screens.LegendWizardScreen
 import dev.cannoli.scorza.ui.screens.LoggingSettingsScreen
 import dev.cannoli.scorza.ui.screens.KeyboardHost
+import dev.cannoli.scorza.ui.screens.PermissionsScreen
 import dev.cannoli.scorza.ui.screens.PortraitMarginOverlay
 import dev.cannoli.scorza.ui.screens.SaveSlotsScreen
 import dev.cannoli.scorza.ui.screens.SaveStatePickerScreen
@@ -117,8 +121,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 
 enum class BrowsePurpose { SD_ROOT, ROM_DIRECTORY, SETUP }
-
-enum class OnboardingPermission { STORAGE }
 
 // RomM brand purple; the screen-edge border shown while browsing RomM.
 private val ROMM_BORDER_COLOR = Color(0xFF553E98)
@@ -173,6 +175,9 @@ sealed class LauncherScreen {
         val itemCount: Int
         fun withScroll(selectedIndex: Int, scrollTarget: Int): LauncherScreen
     }
+
+    /** Every step of the first-run wizard, so callers can gate on the wizard as a whole. */
+    interface OnboardingScreen
 
     data object SystemList : LauncherScreen()
     data object GameList : LauncherScreen()
@@ -305,6 +310,14 @@ sealed class LauncherScreen {
         override val scrollTarget: Int = 0,
     ) : LauncherScreen(), ScrollableScreen {
         override val itemCount: Int get() = dev.cannoli.scorza.util.LoggingPrefs.Category.entries.size
+        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
+    }
+    data class Permissions(
+        val states: Map<dev.cannoli.scorza.permissions.AppPermission, dev.cannoli.scorza.permissions.PermissionState>,
+        override val selectedIndex: Int = 0,
+        override val scrollTarget: Int = 0,
+    ) : LauncherScreen(), ScrollableScreen {
+        override val itemCount: Int get() = dev.cannoli.scorza.permissions.AppPermission.entries.size
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
     }
     data class ShortcutBinding(override val selectedIndex: Int = 0, override val scrollTarget: Int = 0, val shortcuts: Map<ShortcutAction, Set<Int>> = emptyMap(), val listening: Boolean = false, val heldKeys: Set<Int> = emptySet(), val countdownMs: Int = 0) : LauncherScreen(), ScrollableScreen {
@@ -451,38 +464,59 @@ sealed class LauncherScreen {
         override val itemCount: Int get() = entries.size + if (currentPath != "/storage/") 1 else 0
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
     }
+    data object OnboardingWelcome : LauncherScreen(), OnboardingScreen
+
     data class OnboardingPermissions(
-        val permissions: List<OnboardingPermission>,
-        val granted: Set<OnboardingPermission>,
+        val permissions: List<OnboardingPermission> = emptyList(),
+        val granted: Set<OnboardingPermission> = emptySet(),
+        val selectedIndex: Int = 0,
+    ) : LauncherScreen(), OnboardingScreen {
+        // Every row is a permission and continue lives in the footer, so focus is a plain lookup
+        // into the list. Adding a permission shifts nothing.
+        val focusedPermission: OnboardingPermission? get() = permissions.getOrNull(selectedIndex)
+        val isFocusedGranted: Boolean get() = focusedPermission?.let { it in granted } == true
+        val canContinue: Boolean get() = permissions.none { it.required && it !in granted }
+        val action: OnboardingPermissionsAction
+            get() = when {
+                focusedPermission == null -> OnboardingPermissionsAction.NONE
+                !isFocusedGranted -> OnboardingPermissionsAction.GRANT
+                canContinue -> OnboardingPermissionsAction.CONTINUE
+                else -> OnboardingPermissionsAction.NONE
+            }
+        fun moved(delta: Int) = copy(
+            selectedIndex = (selectedIndex + delta).coerceIn(0, (permissions.size - 1).coerceAtLeast(0))
+        )
+    }
+
+    data class OnboardingStorage(
         val volumes: List<Pair<String, String>> = emptyList(),
         val volumeIndex: Int = 0,
         val customPath: String? = null,
-        val selectedIndex: Int = 0,
         val existingInstallVolumeIndex: Int? = null,
-    ) : LauncherScreen() {
-        val allGranted: Boolean get() = granted.containsAll(permissions)
-        val storageRowIndex: Int get() = permissions.size
-        val continueRowIndex: Int get() = storageRowIndex + 1
-        val focusableCount: Int
-            get() = permissions.size + (if (allGranted) 1 else 0) + (if (continueEnabled) 1 else 0)
-        val isStorageRowFocused: Boolean get() = allGranted && selectedIndex == storageRowIndex
-        val isContinueRowFocused: Boolean get() = continueEnabled && selectedIndex == continueRowIndex
-        val focusedPermission: OnboardingPermission?
-            get() = if (selectedIndex in permissions.indices) permissions[selectedIndex] else null
-        val isFocusedGranted: Boolean get() = focusedPermission?.let { it in granted } ?: false
+    ) : LauncherScreen(), OnboardingScreen {
         val selectedVolume: Pair<String, String>? get() = volumes.getOrNull(volumeIndex)
-        val isCustomVolume: Boolean get() = selectedVolume?.first == "Custom"
-        val continueEnabled: Boolean
-            get() = allGranted && volumes.isNotEmpty() && (!isCustomVolume || customPath != null)
+        // The custom entry is the one with no path of its own, which is what makes it custom.
+        val isCustomVolume: Boolean get() = selectedVolume?.second?.isEmpty() == true
+        val canContinue: Boolean
+            get() = volumes.isNotEmpty() && (!isCustomVolume || customPath != null)
         val targetPath: String?
             get() {
-                if (!continueEnabled) return null
+                if (!canContinue) return null
                 return if (isCustomVolume) customPath else selectedVolume!!.second + "Cannoli/"
             }
-        fun moved(delta: Int) = copy(
-            selectedIndex = (selectedIndex + delta).coerceIn(0, (focusableCount - 1).coerceAtLeast(0))
-        )
-        fun cycledVolume(delta: Int): OnboardingPermissions {
+        val existingFolderPath: String?
+            get() = if (existingInstallVolumeIndex == volumeIndex) {
+                selectedVolume?.second?.plus("Cannoli/")
+            } else {
+                null
+            }
+        val action: OnboardingStorageAction
+            get() = when {
+                isCustomVolume && customPath == null -> OnboardingStorageAction.SELECT_FOLDER
+                canContinue -> OnboardingStorageAction.CONTINUE
+                else -> OnboardingStorageAction.NONE
+            }
+        fun cycledVolume(delta: Int): OnboardingStorage {
             if (volumes.size <= 1) return this
             val next = ((volumeIndex + delta) % volumes.size + volumes.size) % volumes.size
             return copy(volumeIndex = next, customPath = null)
@@ -1307,7 +1341,7 @@ fun AppNavGraph(
                 }
             }
             is LauncherScreen.DirectoryBrowser -> {
-                inputRouter?.let { dev.cannoli.scorza.input.screen.compose.ScreenInput(it.onboardingHandler) }
+                inputRouter?.let { dev.cannoli.scorza.input.screen.compose.ScreenInput(it.directoryBrowserHandler) }
                 DirectoryBrowserScreen(
                     currentPath = currentScreen.currentPath,
                     entries = currentScreen.entries,
@@ -1455,6 +1489,19 @@ fun AppNavGraph(
                     buttonStyle = labels,
                 )
             }
+            is LauncherScreen.Permissions -> {
+                inputRouter?.let { dev.cannoli.scorza.input.screen.compose.ScreenInput(it.permissionsHandler) }
+                PermissionsScreen(
+                    screen = currentScreen,
+                    modifier = Modifier.fillMaxSize(),
+                    backgroundImagePath = appSettings.backgroundImagePath,
+                    backgroundTint = appSettings.backgroundTint,
+                    listFontSize = listFontSize,
+                    listLineHeight = listLineHeight,
+                    listVerticalPadding = listVerticalPadding,
+                    buttonStyle = labels,
+                )
+            }
             is LauncherScreen.RetroAchievements -> {
                 if (inputRouter != null) {
                     val handler = remember { inputRouter.currentHandler() }
@@ -1552,16 +1599,29 @@ fun AppNavGraph(
                     onListStateChanged = onListStateChanged,
                 )
             }
+            is LauncherScreen.OnboardingWelcome -> {
+                dev.cannoli.scorza.ui.screens.OnboardingWelcomeScreen(
+                    listFontSize = listFontSize,
+                    listLineHeight = listLineHeight,
+                )
+            }
             is LauncherScreen.OnboardingPermissions -> {
-                inputRouter?.let { dev.cannoli.scorza.input.screen.compose.ScreenInput(it.onboardingHandler) }
+                inputRouter?.let { dev.cannoli.scorza.input.screen.compose.ScreenInput(it.onboardingPermissionsHandler) }
                 dev.cannoli.scorza.ui.screens.OnboardingPermissionsScreen(
-                    permissions = currentScreen.permissions,
-                    granted = currentScreen.granted,
-                    volumes = currentScreen.volumes,
-                    volumeIndex = currentScreen.volumeIndex,
-                    customPath = currentScreen.customPath,
-                    selectedIndex = currentScreen.selectedIndex,
-                    existingInstallVolumeIndex = currentScreen.existingInstallVolumeIndex,
+                    screen = currentScreen,
+                    listFontSize = listFontSize,
+                    listLineHeight = listLineHeight,
+                    listVerticalPadding = listVerticalPadding,
+                    buttonStyle = labels,
+                )
+            }
+            is LauncherScreen.OnboardingStorage -> {
+                inputRouter?.let { dev.cannoli.scorza.input.screen.compose.ScreenInput(it.onboardingStorageHandler) }
+                dev.cannoli.scorza.ui.screens.OnboardingStorageScreen(
+                    screen = currentScreen,
+                    listFontSize = listFontSize,
+                    listLineHeight = listLineHeight,
+                    listVerticalPadding = listVerticalPadding,
                     buttonStyle = labels,
                 )
             }
@@ -2025,7 +2085,7 @@ fun AppNavGraph(
                 || currentScreen is LauncherScreen.DirectoryBrowser
                 || currentScreen is LauncherScreen.Guide
                 || currentScreen is LauncherScreen.InputTester
-                || currentScreen is LauncherScreen.OnboardingPermissions
+                || currentScreen is LauncherScreen.OnboardingScreen
                 || (currentScreen is LauncherScreen.SystemList && systemListState?.isLoading == true)
         val showKitchenIcon = dev.cannoli.scorza.server.KitchenManager.running.collectAsState().value
                 && appSettings.showKitchen

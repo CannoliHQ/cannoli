@@ -58,7 +58,6 @@ import dev.cannoli.scorza.navigation.AppNavGraph
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.settings.SettingsRepository
-import dev.cannoli.scorza.setup.SetupCoordinator
 import dev.cannoli.scorza.ui.LocalViewportInsets
 import dev.cannoli.scorza.ui.ViewportInsetsPx
 import dev.cannoli.scorza.ui.screens.BootErrorScreen
@@ -80,7 +79,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var platformConfig: Provider<PlatformConfig>
     @Inject lateinit var nav: NavigationController
     @Inject lateinit var router: InputRouter
-    @Inject lateinit var onboardingHandler: dev.cannoli.scorza.input.screen.OnboardingInputHandler
+    @Inject lateinit var onboardingCoordinator: dev.cannoli.scorza.onboarding.OnboardingCoordinator
     @Inject lateinit var inputDispatcher: InputDispatcher
     @Inject lateinit var screenInputRegistry: dev.cannoli.scorza.input.runtime.ScreenInputRegistry
     @Inject lateinit var menuNavigationPoller: dev.cannoli.scorza.input.runtime.MenuNavigationPoller
@@ -92,7 +91,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var osdController: dev.cannoli.ui.components.OsdController
     @Inject lateinit var inputTesterController: InputTesterController
     @Inject lateinit var updateManager: UpdateManager
-    @Inject lateinit var setupCoordinator: SetupCoordinator
     @Inject lateinit var launchManager: Provider<LaunchManager>
     @Inject lateinit var launchState: dev.cannoli.scorza.launcher.LaunchState
     @Inject lateinit var installedCoreService: Provider<InstalledCoreService>
@@ -136,6 +134,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     private var coreQueryReceiver: android.content.BroadcastReceiver? = null
     private var pairingUiJob: kotlinx.coroutines.Job? = null
     private var coldStart = true
+    private var welcomeAdvanceKey: dev.cannoli.scorza.onboarding.WelcomePress? = null
 
     private val storagePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -147,6 +146,14 @@ class MainActivity : ComponentActivity(), ActivityActions {
         ActivityResultContracts.RequestMultiplePermissions()
     ) {
         bootSequencer.onStoragePermissionResult()
+    }
+
+    // Optional, so it never touches boot state: only the onboarding step it was granted from
+    // needs to notice.
+    private val overlayPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        onboardingCoordinator.refresh()
     }
 
     private fun loadLoggingPrefs() {
@@ -199,10 +206,11 @@ class MainActivity : ComponentActivity(), ActivityActions {
         loadLoggingPrefs()
 
         startStorageDependentHolder.register { startStorageDependent() }
-        onboardingHandler.onFolderChosen = { target -> bootSequencer.onFolderChosen(target) }
-        onboardingHandler.onRequestPermission = { perm ->
+        onboardingCoordinator.onFinished = { target -> bootSequencer.onFolderChosen(target) }
+        onboardingCoordinator.onRequestPermission = { perm ->
             when (perm) {
-                dev.cannoli.scorza.navigation.OnboardingPermission.STORAGE -> requestStoragePermission()
+                dev.cannoli.scorza.onboarding.OnboardingPermission.STORAGE -> requestStoragePermission()
+                dev.cannoli.scorza.onboarding.OnboardingPermission.OVERLAY -> requestOverlayPermission()
             }
         }
         router.unregisterCoreQueryReceiver = { unregisterCoreQueryReceiver() }
@@ -243,37 +251,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
                         }
                         is BootState.NeedsPermission, is BootState.NeedsSetup -> {
                             val storageGranted = (s as? BootState.NeedsPermission)?.storageGranted ?: true
-                            LaunchedEffect(storageGranted) {
-                                val perms = listOf(dev.cannoli.scorza.navigation.OnboardingPermission.STORAGE)
-                                val granted = buildSet {
-                                    if (storageGranted) add(dev.cannoli.scorza.navigation.OnboardingPermission.STORAGE)
-                                }
-                                val volumes = setupCoordinator.detectStorageVolumes() + ("Custom" to "")
-                                val existingIndex = setupCoordinator.existingCannoliVolumeIndex(volumes)
-                                val preselectIndex = existingIndex ?: 0
-                                val top = nav.currentScreen
-                                if (top is LauncherScreen.OnboardingPermissions) {
-                                    val nowAllGranted = granted.containsAll(perms)
-                                    val newSelected = if (nowAllGranted && !top.allGranted) perms.size else top.selectedIndex
-                                    nav.replaceTop(top.copy(
-                                        permissions = perms,
-                                        granted = granted,
-                                        volumes = volumes,
-                                        volumeIndex = preselectIndex,
-                                        selectedIndex = newSelected,
-                                        existingInstallVolumeIndex = existingIndex,
-                                    ))
-                                } else if (top !is LauncherScreen.DirectoryBrowser) {
-                                    nav.screenStack.clear()
-                                    nav.screenStack.add(LauncherScreen.OnboardingPermissions(
-                                        permissions = perms,
-                                        granted = granted,
-                                        volumes = volumes,
-                                        volumeIndex = preselectIndex,
-                                        existingInstallVolumeIndex = existingIndex,
-                                    ))
-                                }
-                            }
+                            LaunchedEffect(storageGranted) { onboardingCoordinator.start() }
                             ReadyNavGraph()
                         }
                         is BootState.Initializing -> {
@@ -448,6 +426,8 @@ class MainActivity : ComponentActivity(), ActivityActions {
         registerControllerOsd()
         menuNavigationPoller.start()
         bootSequencer.advance()
+        // Optional grants leave boot state untouched, so the wizard step has to reread for itself.
+        onboardingCoordinator.refresh()
         launchState.launching = false
         if (nav.dialogState.value is DialogState.Launching) {
             nav.dialogState.value = DialogState.None
@@ -473,11 +453,15 @@ class MainActivity : ComponentActivity(), ActivityActions {
         if (activeDialogState.value is DialogState.RommConnected && rommStore.token.isNullOrEmpty()) {
             activeDialogState.value = DialogState.None
         }
+        router.permissionsHandler.refresh()
         launcherActions.get().refreshLauncherLists()
     }
 
     override fun onPause() {
         super.onPause()
+        // The key up may be delivered elsewhere while backgrounded, which would latch that button
+        // out of the launcher for good.
+        welcomeAdvanceKey = null
         syncScheduler.stop()
         menuNavigationPoller.stop()
         // Cancel any in-flight stick auto-repeat so it does not keep firing dispatcher callbacks
@@ -536,6 +520,22 @@ class MainActivity : ComponentActivity(), ActivityActions {
         // as a capture attempt rather than falling through to menu/back semantics.
         if (cs is LauncherScreen.LegendWizard && event.action == KeyEvent.ACTION_DOWN) {
             legendWizardController.onKeyCaptured(event.keyCode)
+            return true
+        }
+        // Hold the key that advanced the welcome step until it is released, so its repeats and its
+        // key up cannot land on the permissions step the press just opened.
+        welcomeAdvanceKey?.let { held ->
+            if (held.deviceId == event.deviceId && held.keyCode == event.keyCode) {
+                if (event.action == KeyEvent.ACTION_UP) welcomeAdvanceKey = null
+                return true
+            }
+        }
+        // The welcome step takes any button, and the device that sends it is the controller the
+        // player is holding, so the raw event is captured here: no mapping exists yet to route it.
+        if (cs is LauncherScreen.OnboardingWelcome && event.action == KeyEvent.ACTION_DOWN
+            && dev.cannoli.scorza.onboarding.isWelcomeAdvanceKey(event.keyCode)) {
+            welcomeAdvanceKey = dev.cannoli.scorza.onboarding.WelcomePress(event.deviceId, event.keyCode)
+            onboardingCoordinator.onWelcomePress(event.deviceId, event.keyCode)
             return true
         }
         // The dev keyboard binds BACK to its own back button and needs it to reach the normal
@@ -598,9 +598,9 @@ class MainActivity : ComponentActivity(), ActivityActions {
         }
         // Onboarding wizard fallback: route raw D-pad / button keycodes when no device has been
         // routed by the v2 bridge yet (e.g. TV remotes that aren't classified as gamepads, or
-        // the brief pre-settle window). Scoped to OnboardingPermissions so other screens keep
-        // using v2 routing as-is.
-        if (currentScreenForKey is LauncherScreen.OnboardingPermissions) {
+        // the brief pre-settle window). Scoped to the wizard so other screens keep using v2
+        // routing as-is.
+        if (currentScreenForKey is LauncherScreen.OnboardingScreen) {
             when (keyCode) {
                 KeyEvent.KEYCODE_DPAD_UP -> { inputDispatcher.onUp(); return true }
                 KeyEvent.KEYCODE_DPAD_DOWN -> { inputDispatcher.onDown(); return true }
@@ -703,6 +703,12 @@ class MainActivity : ComponentActivity(), ActivityActions {
         }
 
         return super.dispatchGenericMotionEvent(event)
+    }
+
+    private fun requestOverlayPermission() {
+        overlayPermissionLauncher.launch(
+            Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
+        )
     }
 
     private fun requestStoragePermission() {

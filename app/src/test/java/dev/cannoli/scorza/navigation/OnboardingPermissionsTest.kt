@@ -1,108 +1,101 @@
 package dev.cannoli.scorza.navigation
 
+import dev.cannoli.scorza.onboarding.OnboardingPermission
+import dev.cannoli.scorza.onboarding.OnboardingPermissionsAction
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class OnboardingPermissionsTest {
 
-    private val storagePerm = listOf(OnboardingPermission.STORAGE)
-    private val allGranted = storagePerm.toSet()
-    private val sampleVolumes = listOf(
-        "Internal Storage" to "/storage/emulated/0/",
-        "SD card" to "/storage/9C33-6BBD/",
-        "Custom" to "",
-    )
+    private val storage = OnboardingPermission.STORAGE
+    private val overlay = OnboardingPermission.OVERLAY
+    private val singleScreen = listOf(storage)
+    private val dualScreen = listOf(storage, overlay)
 
     private fun screen(
-        permissions: List<OnboardingPermission> = storagePerm,
+        permissions: List<OnboardingPermission> = singleScreen,
         granted: Set<OnboardingPermission> = emptySet(),
-        volumes: List<Pair<String, String>> = emptyList(),
-        volumeIndex: Int = 0,
-        customPath: String? = null,
         selectedIndex: Int = 0,
     ) = LauncherScreen.OnboardingPermissions(
         permissions = permissions,
         granted = granted,
-        volumes = volumes,
-        volumeIndex = volumeIndex,
-        customPath = customPath,
         selectedIndex = selectedIndex,
     )
 
-    @Test fun movedUpClampsAtZero() {
-        assertEquals(0, screen(selectedIndex = 0).moved(-1).selectedIndex)
+    @Test fun focusIsAPlainLookupIntoThePermissionList() {
+        val s = screen(permissions = dualScreen)
+        assertEquals(storage, s.copy(selectedIndex = 0).focusedPermission)
+        assertEquals(overlay, s.copy(selectedIndex = 1).focusedPermission)
+        assertNull(s.copy(selectedIndex = 2).focusedPermission)
     }
 
-    @Test fun movedNeverLeavesRangeWithSingleCard() {
-        val single = screen()
-        assertEquals(0, single.moved(1).selectedIndex)
-        assertEquals(0, single.moved(-1).selectedIndex)
+    @Test fun movementClampsToThePermissionList() {
+        val s = screen(permissions = dualScreen)
+        assertEquals(0, s.moved(-1).selectedIndex)
+        assertEquals(1, s.moved(1).selectedIndex)
+        assertEquals(1, s.copy(selectedIndex = 1).moved(1).selectedIndex)
     }
 
-    @Test fun focusedPermissionFollowsSelectedIndex() {
-        assertEquals(OnboardingPermission.STORAGE, screen(selectedIndex = 0).focusedPermission)
-        assertEquals(null, screen(granted = allGranted, selectedIndex = 1).focusedPermission)
+    @Test fun movementIsSafeWithNoPermissionsAtAll() {
+        val s = screen(permissions = emptyList())
+        assertEquals(0, s.moved(1).selectedIndex)
+        assertEquals(0, s.moved(-1).selectedIndex)
     }
 
-    @Test fun isFocusedGrantedReflectsGrantedSet() {
-        assertFalse(screen(selectedIndex = 0, granted = emptySet()).isFocusedGranted)
-        assertTrue(screen(selectedIndex = 0, granted = setOf(OnboardingPermission.STORAGE)).isFocusedGranted)
+    @Test fun onlyRequiredPermissionsGateContinue() {
+        assertFalse(screen(permissions = dualScreen).canContinue)
+        assertTrue(screen(permissions = dualScreen, granted = setOf(storage)).canContinue)
+        assertFalse(screen(permissions = dualScreen, granted = setOf(overlay)).canContinue)
+        assertTrue(screen(permissions = emptyList()).canContinue)
     }
 
-    @Test fun allGrantedRequiresEveryListedPermission() {
-        assertFalse(screen(granted = emptySet()).allGranted)
-        assertTrue(screen(granted = setOf(OnboardingPermission.STORAGE)).allGranted)
+    // The three-way footer rule, one case per line.
+
+    @Test fun ungrantedRequiredRowOffersGrant() {
+        assertEquals(
+            OnboardingPermissionsAction.GRANT,
+            screen(permissions = dualScreen, granted = emptySet(), selectedIndex = 0).action,
+        )
     }
 
-    @Test fun storageRowIsReachableOnlyWhenAllGranted() {
-        val locked = screen(volumes = sampleVolumes, selectedIndex = 0)
-        assertEquals(1, locked.focusableCount)
-        assertEquals(0, locked.moved(1).selectedIndex)
-
-        val unlocked = screen(granted = allGranted, volumes = sampleVolumes, selectedIndex = 0)
-        assertEquals(3, unlocked.focusableCount)
-        assertEquals(1, unlocked.moved(1).selectedIndex)
-        assertTrue(unlocked.moved(1).isStorageRowFocused)
-        assertEquals(null, unlocked.moved(1).focusedPermission)
+    @Test fun ungrantedOptionalRowOffersGrant() {
+        assertEquals(
+            OnboardingPermissionsAction.GRANT,
+            screen(permissions = dualScreen, granted = setOf(storage), selectedIndex = 1).action,
+        )
     }
 
-    @Test fun continueRowReachableOnlyWhenContinueEnabled() {
-        val ready = screen(granted = allGranted, volumes = sampleVolumes, volumeIndex = 0)
-        assertEquals(3, ready.focusableCount)
-        assertEquals(ready.continueRowIndex, ready.moved(1).moved(1).selectedIndex)
-        assertTrue(ready.moved(1).moved(1).isContinueRowFocused)
-
-        val customNoPath = screen(granted = allGranted, volumes = sampleVolumes, volumeIndex = 2)
-        assertEquals(2, customNoPath.focusableCount)
-        assertFalse(customNoPath.copy(selectedIndex = customNoPath.continueRowIndex).isContinueRowFocused)
+    @Test fun grantedRowOffersContinueOnceEveryRequiredPermissionIsGranted() {
+        assertEquals(
+            OnboardingPermissionsAction.CONTINUE,
+            screen(permissions = dualScreen, granted = setOf(storage), selectedIndex = 0).action,
+        )
+        assertEquals(
+            OnboardingPermissionsAction.CONTINUE,
+            screen(permissions = singleScreen, granted = setOf(storage), selectedIndex = 0).action,
+        )
     }
 
-    @Test fun cycledVolumeWrapsAndResetsCustomPath() {
-        val s = screen(granted = allGranted, volumes = sampleVolumes, volumeIndex = 0, customPath = "/storage/x/Cannoli/")
-        assertEquals(1, s.cycledVolume(1).volumeIndex)
-        assertEquals(null, s.cycledVolume(1).customPath)
-        assertEquals(2, s.cycledVolume(-1).volumeIndex)
-        val single = screen(granted = allGranted, volumes = listOf("Internal Storage" to "/x/"))
-        assertEquals(0, single.cycledVolume(1).volumeIndex)
+    @Test fun grantedRowOffersNothingWhileARequiredPermissionIsMissing() {
+        assertEquals(
+            OnboardingPermissionsAction.NONE,
+            screen(permissions = dualScreen, granted = setOf(overlay), selectedIndex = 1).action,
+        )
     }
 
-    @Test fun continueEnabledRequiresGrantsAndValidPath() {
-        assertFalse(screen(granted = allGranted, volumes = emptyList()).continueEnabled)
-        assertTrue(screen(granted = allGranted, volumes = sampleVolumes, volumeIndex = 0).continueEnabled)
-        assertFalse(screen(granted = allGranted, volumes = sampleVolumes, volumeIndex = 2).continueEnabled)
-        assertTrue(screen(granted = allGranted, volumes = sampleVolumes, volumeIndex = 2, customPath = "/x/").continueEnabled)
-        assertFalse(screen(granted = emptySet(), volumes = sampleVolumes).continueEnabled)
+    // Deliberate: the highlight sitting on an ungranted optional row reads GRANT even though
+    // continue is available. Moving off that row is how the user advances.
+    @Test fun anUngrantedOptionalRowHidesContinueRatherThanShowingBoth() {
+        val ready = screen(permissions = dualScreen, granted = setOf(storage), selectedIndex = 1)
+        assertTrue(ready.canContinue)
+        assertEquals(OnboardingPermissionsAction.GRANT, ready.action)
+        assertEquals(OnboardingPermissionsAction.CONTINUE, ready.moved(-1).action)
     }
 
-    @Test fun targetPathPicksCustomOrAppendsCannoliFolder() {
-        assertEquals("/storage/emulated/0/Cannoli/",
-            screen(granted = allGranted, volumes = sampleVolumes, volumeIndex = 0).targetPath)
-        assertEquals("/storage/9C33-6BBD/Cannoli/",
-            screen(granted = allGranted, volumes = sampleVolumes, volumeIndex = 1).targetPath)
-        assertEquals("/storage/picked/",
-            screen(granted = allGranted, volumes = sampleVolumes, volumeIndex = 2, customPath = "/storage/picked/").targetPath)
-        assertEquals(null, screen(granted = allGranted, volumes = sampleVolumes, volumeIndex = 2).targetPath)
+    @Test fun anEmptyPermissionListOffersNothing() {
+        assertEquals(OnboardingPermissionsAction.NONE, screen(permissions = emptyList()).action)
     }
 }

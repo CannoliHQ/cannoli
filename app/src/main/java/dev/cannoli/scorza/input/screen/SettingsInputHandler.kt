@@ -56,6 +56,7 @@ class SettingsInputHandler @Inject constructor(
     private val rommStore: dev.cannoli.scorza.romm.RommConnectionStore,
     private val cannoliPaths: CannoliPathsProvider,
     private val raLoginController: dev.cannoli.scorza.achievements.RaLoginController,
+    private val permissionsInputHandler: PermissionsInputHandler,
 ) : ScreenInputHandler {
 
     override fun onUp() {
@@ -119,6 +120,7 @@ class SettingsInputHandler @Inject constructor(
             "controllers" -> nav.push(LauncherScreen.Controllers())
             "screen_geometry" -> settingsViewModel.enterSubCategory("screen_geometry", dev.cannoli.scorza.R.string.setting_screen_geometry)
             "logging" -> nav.push(LauncherScreen.LoggingSettings())
+            "permissions" -> permissionsInputHandler.open()
             "audit_emulator_intents" -> runIntentAudit()
             "icon_gallery" -> nav.push(LauncherScreen.IconGallery())
             "shortcuts" -> nav.push(LauncherScreen.ShortcutBinding(shortcuts = globalOverrides.readShortcuts()))

@@ -34,4 +34,5 @@ internal fun testSettingsInputHandler(
     rommStore = mockk(relaxed = true),
     cannoliPaths = mockk(relaxed = true),
     raLoginController = mockk(relaxed = true),
+    permissionsInputHandler = mockk(relaxed = true),
 )

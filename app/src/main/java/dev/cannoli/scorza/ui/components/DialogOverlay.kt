@@ -992,6 +992,13 @@ fun DialogOverlay(
             confirmLabel = stringResource(R.string.label_reset),
         )
 
+        is DialogState.PermissionDetail -> PermissionDetailOverlay(
+            title = stringResource(dialogState.permission.labelRes),
+            explanation = stringResource(dialogState.permission.explanationRes),
+            actionable = dialogState.permission.settingsAction != null,
+            buttonStyle = buttonStyle,
+        )
+
         is DialogState.RenameResult -> MessageOverlay(
             message = if (dialogState.success) {
                 stringResource(R.string.dialog_rename_success)
@@ -1289,6 +1296,52 @@ fun rommArtLabelRes(artType: RommArtType): Int = when (artType) {
     RommArtType.TITLE -> R.string.romm_art_title
     RommArtType.SCREENSHOT -> R.string.romm_art_screenshot
     RommArtType.MARQUEE -> R.string.romm_art_marquee
+}
+
+@Composable
+private fun PermissionDetailOverlay(
+    title: String,
+    explanation: String,
+    actionable: Boolean,
+    buttonStyle: ButtonStyle,
+) {
+    val colors = LocalCannoliColors.current
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(androidx.compose.ui.graphics.Color.Black),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = title,
+                color = colors.title,
+                fontFamily = LocalCannoliFont.current,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = explanation,
+                color = colors.text,
+                fontFamily = LocalCannoliFont.current,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+        }
+        BottomBar(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(screenPadding),
+            leftItems = listOf(buttonStyle.back to stringResource(R.string.label_back)),
+            rightItems = if (actionable) {
+                listOf(buttonStyle.confirm to stringResource(R.string.label_open_settings))
+            } else {
+                emptyList()
+            }
+        )
+    }
 }
 
 @Composable

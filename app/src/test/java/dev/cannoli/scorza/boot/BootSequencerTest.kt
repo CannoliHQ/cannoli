@@ -28,8 +28,9 @@ class BootSequencerTest {
         Dispatchers.resetMain()
     }
 
-    private class FakePerms(var storage: Boolean = true) : PermissionStatus {
+    private class FakePerms(var storage: Boolean = true, var overlay: Boolean = true) : PermissionStatus {
         override fun hasStorage() = storage
+        override fun hasOverlay() = overlay
     }
 
     private fun sequencer(

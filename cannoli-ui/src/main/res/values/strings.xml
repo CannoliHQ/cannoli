@@ -527,14 +527,16 @@
     <string name="battery_level" translatable="false">%1$d%%</string>
 
     <!-- Onboarding wizard -->
-    <string name="onboarding_header">SET UP CANNOLI</string>
-    <string name="onboarding_permissions_title">Permissions and Storage</string>
-    <string name="onboarding_storage_label">Storage access</string>
-    <string name="onboarding_storage_rationale">Cannoli needs access to your ROMs, saves, art, and more.\nWithout this, Cannoli cannot do anything.</string>
-    <string name="onboarding_status_granted">Granted</string>
-    <string name="onboarding_status_not_granted">Not granted</string>
-    <string name="onboarding_press_a_to_select_folder">Press A to select folder</string>
-    <string name="onboarding_storage_locked_hint">Configurable once permissions are granted.</string>
+    <!-- Label above the title of each first-run step. %1$d = this step, %2$d = how many there are. -->
+    <string name="onboarding_step_of">Step %1$d of %2$d</string>
+    <string name="onboarding_welcome_title">Welcome to Cannoli</string>
+    <string name="onboarding_welcome_body">Press any button on the controller you want to play with.</string>
+    <string name="onboarding_permissions_title">Permissions</string>
+    <!-- Prefixes a permission explanation. %1$s = the explanation. -->
+    <string name="onboarding_permission_required">Required. %1$s</string>
+    <!-- Prefixes a permission explanation Cannoli works without. %1$s = the explanation. -->
+    <string name="onboarding_permission_optional">Optional. %1$s</string>
+    <string name="onboarding_storage_title">Storage Location</string>
     <string name="onboarding_select_folder">SELECT FOLDER</string>
     <string name="onboarding_location_label">Location</string>
 
@@ -945,4 +947,52 @@
     <string name="kbd_help_cursor_jump">JUMP TO START / END</string>
     <string name="kbd_help_submit">SUBMIT</string>
     <string name="kbd_help_cancel">CANCEL</string>
+
+    <!-- Permissions review page -->
+    <!-- Advanced settings row opening the permissions review page. -->
+    <string name="setting_permissions">Permissions</string>
+    <string name="permissions_title">Permissions</string>
+    <!-- Bottom-bar button opening the Android settings page for a permission. -->
+    <string name="label_open_settings">OPEN SETTINGS</string>
+    <!-- Section header: permissions the user can turn on or off in Android settings. -->
+    <string name="permissions_section_actionable">You Can Change These</string>
+    <!-- Section header: permissions that only apply on certain Android versions. -->
+    <string name="permissions_section_version">Version Dependent</string>
+    <!-- Section header: permissions Android grants when the app is installed. -->
+    <string name="permissions_section_always_on">Granted at Install</string>
+    <string name="permission_state_granted">Granted</string>
+    <string name="permission_state_not_granted">Not granted</string>
+    <!-- Row value: the manifest does not ask for this permission on the Android version in use. -->
+    <string name="permission_state_not_required">Not required on this version</string>
+
+    <!-- Permission names. Each is the Android capability, worded the way the system settings do. -->
+    <string name="permission_all_files">All Files Access</string>
+    <string name="permission_draw_over_apps">Draw Over Other Apps</string>
+    <string name="permission_install_unknown_apps">Install Unknown Apps</string>
+    <string name="permission_read_storage">Read Storage</string>
+    <string name="permission_write_storage">Write Storage</string>
+    <string name="permission_internet">Internet</string>
+    <string name="permission_wifi_state">Wi-Fi State</string>
+    <!-- Permission that keeps the device from sleeping. -->
+    <string name="permission_wake_lock">Keep Awake</string>
+    <string name="permission_foreground_service">Foreground Service</string>
+    <string name="permission_foreground_service_data_sync">Background Sync Service</string>
+    <string name="permission_network_state">Network State</string>
+    <string name="permission_query_all_packages">See Installed Apps</string>
+
+    <!-- Permission explanations, one sentence each, shown when a permission row is selected. -->
+    <string name="permission_why_all_files">Reads your ROM library, saves, box art and configuration from the SD card.</string>
+    <string name="permission_why_draw_over_apps">Puts a guide on the second screen while a game is running.</string>
+    <string name="permission_why_install_unknown_apps">Installs Cannoli updates and the APKs you open from the file manager.</string>
+    <string name="permission_why_read_storage">Reads the ROM library on Android 12 and older, before all files access existed.</string>
+    <string name="permission_why_write_storage">Writes saves and configuration on Android 10 and older.</string>
+    <!-- RomM and RetroAchievements are product names; leave them untranslated. -->
+    <string name="permission_why_internet">Reaches RomM, RetroAchievements and the update server.</string>
+    <!-- Keep "Nonna\'s Kitchen" verbatim. -->
+    <string name="permission_why_wifi_state">Shows the Wi-Fi indicator and works out the Nonna\'s Kitchen address.</string>
+    <string name="permission_why_wake_lock">Keeps the device awake while a download or a file transfer is running.</string>
+    <string name="permission_why_foreground_service">Keeps downloads and the file server running while Cannoli is in the background.</string>
+    <string name="permission_why_foreground_service_data_sync">Labels that background work as data sync, which Android 14 and newer require.</string>
+    <string name="permission_why_network_state">Checks whether you are online before syncing saves or downloading.</string>
+    <string name="permission_why_query_all_packages">Finds the emulators installed on your device so platforms can be mapped to them.</string>
 </resources>

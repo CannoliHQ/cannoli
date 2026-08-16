@@ -1,6 +1,10 @@
 package dev.cannoli.ui
 
 const val START_GLYPH = "START"
+
+// Stands in for a specific button where the screen accepts every button, which is how the welcome
+// step identifies the pad the player is actually holding.
+const val ANY_BUTTON_GLYPH = "ANY"
 const val MENU_GLYPH = "☰"
 const val ELLIPSIS = "..."
 const val DPAD_HORIZONTAL = "L/R"

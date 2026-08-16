@@ -178,7 +178,7 @@ class DialogInputHandler @Inject constructor(
         is LauncherScreen.InputTester,
         is LauncherScreen.EditButtons,
         is LauncherScreen.ShortcutBinding,
-        is LauncherScreen.OnboardingPermissions -> true
+        is LauncherScreen.OnboardingScreen -> true
         else -> false
     }
 
@@ -497,6 +497,10 @@ class DialogInputHandler @Inject constructor(
                 )
                 nav.dialogState.value = DialogState.None
             }
+            is DialogState.PermissionDetail -> {
+                ds.permission.settingsAction?.let { openPermissionSettings(it) }
+                nav.dialogState.value = DialogState.None
+            }
             is DialogState.QuickMenu -> {
                 when (ds.rows.getOrNull(ds.selectedIndex)) {
                     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.SETTINGS -> openSettings()
@@ -604,6 +608,12 @@ class DialogInputHandler @Inject constructor(
             else -> {}
         }
         return true
+    }
+
+    private fun openPermissionSettings(action: String) {
+        context.startActivity(
+            dev.cannoli.scorza.permissions.permissionSettingsIntent(action, context)
+        )
     }
 
     private data class QuickSettingsCategory(
@@ -1132,6 +1142,9 @@ class DialogInputHandler @Inject constructor(
                 nav.dialogState.value = DialogState.None
             }
             is DialogState.ResetCustomConfigConfirm -> {
+                nav.dialogState.value = DialogState.None
+            }
+            is DialogState.PermissionDetail -> {
                 nav.dialogState.value = DialogState.None
             }
             is DialogState.RommDownloads -> {

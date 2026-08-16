@@ -5,12 +5,14 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Environment
+import android.provider.Settings
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
 interface PermissionStatus {
     fun hasStorage(): Boolean
+    fun hasOverlay(): Boolean
 }
 
 class AndroidPermissionStatus @Inject constructor(
@@ -24,4 +26,6 @@ class AndroidPermissionStatus @Inject constructor(
                 context, Manifest.permission.READ_EXTERNAL_STORAGE
             ) == PackageManager.PERMISSION_GRANTED
         }
+
+    override fun hasOverlay(): Boolean = Settings.canDrawOverlays(context)
 }
