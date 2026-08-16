@@ -11,7 +11,6 @@ import dagger.hilt.android.components.ActivityComponent
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.scopes.ActivityScoped
 import dev.cannoli.scorza.R
-import dev.cannoli.scorza.config.CannoliPaths
 import dev.cannoli.scorza.di.IoScope
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.setup.SetupCoordinator
@@ -36,13 +35,13 @@ object BootProviders {
         preparingLabel = context.getString(R.string.boot_preparing),
         permissionStatus = permissionStatus,
         isSetupResolved = {
-            when {
-                settings.setupCompleted -> true
-                CannoliPaths(settings.sdCardRoot).settingsJson.exists() -> {
-                    settings.setupCompleted = true; true
-                }
-                else -> false
+            // Answered from app storage alone. This used to probe settings.json at the root, which
+            // meant resolving a path before the storage step had chosen one. A stored root is the
+            // same evidence and needs no filesystem: reaching the storage step is what writes it.
+            if (!settings.setupCompleted && settings.sdCardRootOrNull != null) {
+                settings.setupCompleted = true
             }
+            settings.setupCompleted
         },
         detectVolumes = { setupCoordinator.detectStorageVolumes() + ("Custom" to "") },
         onSetupResolved = { root ->

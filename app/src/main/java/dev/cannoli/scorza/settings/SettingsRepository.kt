@@ -67,7 +67,11 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     }
 
     private fun loadFromDisk() {
-        val file = dev.cannoli.scorza.config.CannoliPaths(sdCardRoot).settingsJson
+        // Before the storage step there is no chosen root and nothing on disk to read. Resolving a
+        // path anyway would point settingsFile at internal storage and save there on the first
+        // write; the sdCardRoot setter re-runs this once the real location is known.
+        val root = sdCardRootOrNull ?: return
+        val file = dev.cannoli.scorza.config.CannoliPaths(root).settingsJson
         settingsFile = file
         if (file.exists()) {
             try { synchronized(jsonLock) { json = JSONObject(file.readText()) } } catch (_: java.io.IOException) {} catch (_: org.json.JSONException) {}
@@ -150,10 +154,20 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         get() = prefs.getBoolean(KEY_SETUP_COMPLETED, false)
         set(value) { prefs.edit().putBoolean(KEY_SETUP_COMPLETED, value).apply() }
 
+    /**
+     * The chosen root, or null before first run's storage step resolves. Everything that runs after
+     * boot reads [sdCardRoot] instead; this exists for the boot-path code that has to cope with the
+     * question being unanswered, so it does not silently work against the internal-storage default.
+     */
+    val sdCardRootOrNull: String?
+        get() = prefs.getString(KEY_SD_ROOT, null)?.takeIf { it.isNotEmpty() }
+
     var sdCardRoot: String
-        get() = prefs.getString(KEY_SD_ROOT, DEFAULT_ROOT) ?: DEFAULT_ROOT
+        get() = sdCardRootOrNull ?: DEFAULT_ROOT
         set(value) {
-            if (value == sdCardRoot) return
+            // Against the stored value, not the getter: comparing to the fallback would silently
+            // skip the write for a user who picks internal storage, leaving no root on record.
+            if (value == sdCardRootOrNull) return
             prefs.edit().putString(KEY_SD_ROOT, value).apply()
             settingsFile = dev.cannoli.scorza.config.CannoliPaths(value).settingsJson
             loadFromDisk()

@@ -397,9 +397,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
      */
     private fun startStorageDependent() {
         settings.reload()
-        if (settings.sdCardRoot.isNotEmpty()) {
-            dev.cannoli.scorza.util.InputLog.init(settings.sdCardRoot)
-        }
+        settings.sdCardRootOrNull?.let { dev.cannoli.scorza.util.InputLog.init(it) }
         // The chosen path is real from here, so a mapping the wizard built during first run can
         // finally be written, and it has to be written before the settle below re-resolves.
         pendingWizardMapping?.let {
