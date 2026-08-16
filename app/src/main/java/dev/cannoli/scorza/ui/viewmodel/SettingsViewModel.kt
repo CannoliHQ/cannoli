@@ -34,8 +34,8 @@ class SettingsViewModel @Inject constructor(
     private val appFonts: AppFonts,
     @ApplicationContext private val context: Context,
     private val rommStore: dev.cannoli.scorza.romm.RommConnectionStore,
+    private val pathsProvider: dev.cannoli.scorza.di.CannoliPathsProvider,
 ) {
-    private var cannoliRoot: java.io.File? = null
     private var packageManager: PackageManager? = null
     private var appPackageName: String? = null
     private var collectionsRepository: CollectionsRepository? = null
@@ -57,9 +57,9 @@ class SettingsViewModel @Inject constructor(
     private fun buildFontOptions(): List<FontOption> = buildList {
         add(FontOption("default", "Default", appFonts.mplus1Code, appFonts.mplus1CodeTypeface))
         add(FontOption("the_og", "The OG", appFonts.bpReplay, appFonts.bpReplayTypeface))
-        val fontsDir = cannoliRoot?.let { java.io.File(it, "Config/Fonts") }
+        val fontsDir = java.io.File(pathsProvider.root, "Config/Fonts")
         val exts = setOf("ttf", "otf")
-        val customFiles = fontsDir?.listFiles()
+        val customFiles = fontsDir.listFiles()
             ?.filter { it.isFile && it.extension.lowercase(java.util.Locale.ROOT) in exts }
             ?: emptyList()
         for (file in customFiles.sortedNatural { it.name }) {
@@ -278,8 +278,7 @@ class SettingsViewModel @Inject constructor(
         _appSettings.value = readAppSettings()
     }
 
-    fun reinitialize(root: java.io.File, pm: PackageManager, pkgName: String, cr: CollectionsRepository? = null) {
-        cannoliRoot = root
+    fun reinitialize(pm: PackageManager, pkgName: String, cr: CollectionsRepository? = null) {
         packageManager = pm
         appPackageName = pkgName
         if (cr != null) collectionsRepository = cr
@@ -590,8 +589,7 @@ class SettingsViewModel @Inject constructor(
     }
 
     private fun cycleBackgroundImage(direction: Int = 1) {
-        val root = cannoliRoot ?: return
-        val wallpapersDir = java.io.File(root, "Wallpapers")
+        val wallpapersDir = java.io.File(pathsProvider.root, "Wallpapers")
         val imageExtensions = setOf("png", "jpg", "jpeg")
         val images = wallpapersDir.listFiles()
             ?.filter { it.isFile && it.extension.lowercase(java.util.Locale.ROOT) in imageExtensions }

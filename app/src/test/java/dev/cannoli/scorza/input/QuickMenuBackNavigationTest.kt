@@ -1,8 +1,10 @@
 package dev.cannoli.scorza.input
 
 import androidx.test.core.app.ApplicationProvider
+import dev.cannoli.scorza.di.CannoliPathsProvider
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
+import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.quickmenu.QuickMenuRow
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
@@ -40,11 +42,13 @@ class QuickMenuBackNavigationTest {
     @Before fun setup() {
         Dispatchers.setMain(dispatcher)
         nav = NavigationController()
+        val settings = mockk<SettingsRepository>(relaxed = true)
         settingsViewModel = SettingsViewModel(
-            settings = mockk(relaxed = true),
+            settings = settings,
             appFonts = mockk(relaxed = true),
             context = ApplicationProvider.getApplicationContext(),
             rommStore = mockk(relaxed = true),
+            pathsProvider = CannoliPathsProvider(settings),
         )
         dialogHandler = testDialogInputHandler(
             nav = nav,
