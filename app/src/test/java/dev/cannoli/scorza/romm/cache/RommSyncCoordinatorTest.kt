@@ -26,7 +26,8 @@ class RommSyncCoordinatorTest {
 
     @Before fun setUp() {
         server = MockWebServer().apply { start() }
-        db = RommDatabase { File(tmp.newFolder("Config"), "romm.db") }
+        val dbFile = File(tmp.newFolder("Config"), "romm.db")
+        db = RommDatabase { dbFile }
     }
 
     @After fun tearDown() { server.shutdown(); db.close() }

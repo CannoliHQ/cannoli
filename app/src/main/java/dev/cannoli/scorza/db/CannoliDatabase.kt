@@ -11,18 +11,31 @@ import java.io.File
 class CannoliDatabase(private val pathsProvider: CannoliPathsProvider) {
     private val databaseFile: File get() = CannoliPaths(pathsProvider.root).database
 
+    private var openConn: SQLiteConnection? = null
+    private var openPath: String? = null
+
     // Open on first access. Hilt eagerly resolves @Singleton injects at MainActivity onCreate,
     // which is before the user clears the permission gate, so deferring the SQLite open keeps
     // construction free of file I/O (and lets the SD-card root resolved by setup win).
-    val conn: SQLiteConnection by lazy {
+    val conn: SQLiteConnection get() = synchronized(this) {
         val dbFile = databaseFile
+        val path = dbFile.absolutePath
+        val existing = openConn
+        // An early touch can open the database at the fallback root before setup resolves the real
+        // one, so follow the current path instead of staying pinned to the first one opened.
+        if (existing != null && openPath == path) return@synchronized existing
+        existing?.close()
+        openConn = null
+        openPath = null
         dbFile.parentFile?.mkdirs()
-        val c = BundledSQLiteDriver().open(dbFile.absolutePath)
+        val c = BundledSQLiteDriver().open(path)
         c.execSQL("PRAGMA foreign_keys = ON")
         c.execSQL("PRAGMA journal_mode = WAL")
         runMigrations(c)
         runIntegrityCheck(c)
         c.execSQL("PRAGMA wal_checkpoint(TRUNCATE)")
+        openConn = c
+        openPath = path
         c
     }
 
@@ -35,7 +48,11 @@ class CannoliDatabase(private val pathsProvider: CannoliPathsProvider) {
      */
     inline fun <T> withConn(block: (SQLiteConnection) -> T): T = synchronized(this) { block(conn) }
 
-    fun close() = synchronized(this) { conn.close() }
+    fun close() = synchronized(this) {
+        openConn?.close()
+        openConn = null
+        openPath = null
+    }
 
     private fun runMigrations(conn: SQLiteConnection) {
         val current = readUserVersion(conn)

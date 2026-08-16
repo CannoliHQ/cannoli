@@ -21,7 +21,8 @@ class CachedRommLibraryTest {
     private lateinit var library: RommLibrary
 
     @Before fun setUp() {
-        db = RommDatabase { File(tmp.newFolder("Config"), "romm.db") }
+        val dbFile = File(tmp.newFolder("Config"), "romm.db")
+        db = RommDatabase { dbFile }
         library = CachedRommLibrary(db)
     }
 
