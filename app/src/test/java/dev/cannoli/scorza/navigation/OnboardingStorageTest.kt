@@ -1,6 +1,5 @@
 package dev.cannoli.scorza.navigation
 
-import dev.cannoli.scorza.onboarding.OnboardingStorageAction
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -32,12 +31,17 @@ class OnboardingStorageTest {
         assertTrue(screen(volumeIndex = 2).isCustomVolume)
     }
 
-    @Test fun cycledVolumeWrapsAndResetsCustomPath() {
-        val s = screen(volumeIndex = 0, customPath = "/storage/x/Cannoli/")
-        assertEquals(1, s.cycledVolume(1).volumeIndex)
-        assertNull(s.cycledVolume(1).customPath)
-        assertEquals(2, s.cycledVolume(-1).volumeIndex)
-        assertEquals(0, screen(volumes = listOf("Internal Storage" to "/x/")).cycledVolume(1).volumeIndex)
+    @Test fun movedSelectionClampsAtBothEnds() {
+        assertEquals(1, screen(volumeIndex = 0).moved(1).volumeIndex)
+        assertEquals(0, screen(volumeIndex = 0).moved(-1).volumeIndex)
+        assertEquals(2, screen(volumeIndex = 2).moved(1).volumeIndex)
+        assertEquals(0, screen(volumes = emptyList()).moved(1).volumeIndex)
+    }
+
+    @Test fun movedSelectionKeepsTheBrowsedCustomPath() {
+        val s = screen(volumeIndex = 2, customPath = "/storage/picked/")
+        assertEquals("/storage/picked/", s.moved(-1).moved(1).customPath)
+        assertEquals("/storage/picked/", s.moved(-1).moved(1).targetPath)
     }
 
     @Test fun continueNeedsAResolvedPath() {
@@ -63,13 +67,13 @@ class OnboardingStorageTest {
         assertNull(screen(volumeIndex = 0).existingFolderPath)
     }
 
-    @Test fun theFooterOffersOneActionForTheCurrentVolume() {
-        assertEquals(OnboardingStorageAction.CONTINUE, screen(volumeIndex = 0).action)
-        assertEquals(OnboardingStorageAction.SELECT_FOLDER, screen(volumeIndex = 2).action)
-        assertEquals(
-            OnboardingStorageAction.CONTINUE,
-            screen(volumeIndex = 2, customPath = "/storage/picked/").action,
-        )
-        assertEquals(OnboardingStorageAction.NONE, screen(volumes = emptyList()).action)
+    @Test fun theFooterOffersBrowsingOnCustomAndFinishOnlyWithAPath() {
+        // The footer reads these two directly: confirm browses on the custom row, START finishes.
+        assertFalse(screen(volumeIndex = 0).isCustomVolume)
+        assertTrue(screen(volumeIndex = 0).canContinue)
+        assertTrue(screen(volumeIndex = 2).isCustomVolume)
+        assertFalse(screen(volumeIndex = 2).canContinue)
+        assertTrue(screen(volumeIndex = 2, customPath = "/storage/picked/").canContinue)
+        assertFalse(screen(volumes = emptyList()).canContinue)
     }
 }

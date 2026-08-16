@@ -1,6 +1,9 @@
 package dev.cannoli.scorza.ui.screens
 
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
@@ -9,10 +12,10 @@ import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.onboarding.OnboardingStep
-import dev.cannoli.scorza.onboarding.OnboardingStorageAction
 import dev.cannoli.ui.ButtonStyle
-import dev.cannoli.ui.DPAD_HORIZONTAL
+import dev.cannoli.ui.START_GLYPH
 import dev.cannoli.ui.components.PillRowKeyValue
+import dev.cannoli.ui.theme.Spacing
 import dev.cannoli.ui.theme.Success
 
 @Composable
@@ -23,14 +26,13 @@ fun OnboardingStorageScreen(
     listVerticalPadding: Dp = 8.dp,
     buttonStyle: ButtonStyle = ButtonStyle(),
 ) {
-    val leftItems = mutableListOf(buttonStyle.back to stringResource(R.string.label_back))
-    if (screen.volumes.size > 1) {
-        leftItems.add(DPAD_HORIZONTAL to stringResource(R.string.label_change))
-    }
-    val actionLabel = when (screen.action) {
-        OnboardingStorageAction.SELECT_FOLDER -> stringResource(R.string.onboarding_select_folder)
-        OnboardingStorageAction.CONTINUE -> stringResource(R.string.label_continue)
-        OnboardingStorageAction.NONE -> null
+    // Ending setup is a deliberate act, so it sits on START; confirm belongs to the custom row,
+    // which is the only one with somewhere to go.
+    val rightItems = buildList {
+        if (screen.isCustomVolume) {
+            add(buttonStyle.confirm to stringResource(R.string.onboarding_select_folder))
+        }
+        if (screen.canContinue) add(START_GLYPH to stringResource(R.string.label_finish))
     }
 
     OnboardingScaffold(
@@ -38,20 +40,30 @@ fun OnboardingStorageScreen(
         title = stringResource(R.string.onboarding_storage_title),
         listFontSize = listFontSize,
         listLineHeight = listLineHeight,
-        leftItems = leftItems,
-        rightItems = actionLabel?.let { listOf(buttonStyle.confirm to it) } ?: emptyList(),
+        leftItems = listOf(buttonStyle.back to stringResource(R.string.label_back)),
+        rightItems = rightItems,
     ) {
-        PillRowKeyValue(
-            label = stringResource(R.string.onboarding_location_label),
-            value = when {
-                screen.isCustomVolume -> screen.customPath ?: stringResource(R.string.setup_folder_unset)
-                else -> screen.selectedVolume?.first ?: stringResource(R.string.setup_folder_unset)
-            },
-            isSelected = true,
-            fontSize = listFontSize,
-            lineHeight = listLineHeight,
-            verticalPadding = listVerticalPadding,
-        )
-        screen.existingFolderPath?.let { OnboardingBodyText(it, color = Success) }
+        screen.volumes.forEachIndexed { index, volume ->
+            PillRowKeyValue(
+                label = volume.first,
+                value = volumeTarget(volume.second, screen.customPath),
+                isSelected = index == screen.volumeIndex,
+                fontSize = listFontSize,
+                lineHeight = listLineHeight,
+                verticalPadding = listVerticalPadding,
+            )
+        }
+        screen.existingFolderPath?.let {
+            Spacer(modifier = Modifier.height(Spacing.Md))
+            OnboardingBodyText(it, color = Success)
+        }
     }
+}
+
+// The custom row has no volume path of its own, so it shows whatever the browser picked.
+@Composable
+private fun volumeTarget(volumePath: String, customPath: String?): String = when {
+    volumePath.isNotEmpty() -> volumePath + "Cannoli/"
+    customPath != null -> customPath
+    else -> stringResource(R.string.setup_folder_unset)
 }

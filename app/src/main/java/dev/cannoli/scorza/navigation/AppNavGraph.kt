@@ -45,7 +45,6 @@ import dev.cannoli.scorza.input.runtime.confirmButton
 import dev.cannoli.scorza.input.runtime.labelSet
 import dev.cannoli.scorza.onboarding.OnboardingPermission
 import dev.cannoli.scorza.onboarding.OnboardingPermissionsAction
-import dev.cannoli.scorza.onboarding.OnboardingStorageAction
 import dev.cannoli.scorza.ui.LocalViewportInsets
 import dev.cannoli.scorza.util.buttonLabel
 import dev.cannoli.scorza.ui.ViewportInsetsPx
@@ -304,7 +303,8 @@ sealed class LauncherScreen {
     }
     // Shown full-screen, unskippable, when a pad connects that Cannoli cannot identify. No
     // selectedIndex/scrollTarget: there is nothing to navigate, only raw key capture.
-    data class LegendWizard(val deviceId: Int) : LauncherScreen()
+    // The step counter belongs to first run, so the wizard has to know which way it was entered.
+    data class LegendWizard(val deviceId: Int, val duringFirstRun: Boolean = false) : LauncherScreen()
     data class LoggingSettings(
         override val selectedIndex: Int = 0,
         override val scrollTarget: Int = 0,
@@ -510,17 +510,9 @@ sealed class LauncherScreen {
             } else {
                 null
             }
-        val action: OnboardingStorageAction
-            get() = when {
-                isCustomVolume && customPath == null -> OnboardingStorageAction.SELECT_FOLDER
-                canContinue -> OnboardingStorageAction.CONTINUE
-                else -> OnboardingStorageAction.NONE
-            }
-        fun cycledVolume(delta: Int): OnboardingStorage {
-            if (volumes.size <= 1) return this
-            val next = ((volumeIndex + delta) % volumes.size + volumes.size) % volumes.size
-            return copy(volumeIndex = next, customPath = null)
-        }
+        fun moved(delta: Int) = copy(
+            volumeIndex = (volumeIndex + delta).coerceIn(0, (volumes.size - 1).coerceAtLeast(0))
+        )
     }
 }
 
@@ -542,7 +534,10 @@ fun AppNavGraph(
     osdController: dev.cannoli.ui.components.OsdController,
     activeMapping: dev.cannoli.scorza.input.DeviceMapping? = null,
     editButtonsController: dev.cannoli.scorza.input.EditButtonsController? = null,
-    legendWizardStep: dev.cannoli.scorza.input.legend.WizardStep = dev.cannoli.scorza.input.legend.WizardStep.PressSouth,
+    legendWizardState: dev.cannoli.scorza.input.legend.LegendWizardState = dev.cannoli.scorza.input.legend.LegendWizardState(),
+    onboardingMapping: dev.cannoli.scorza.input.DeviceMapping? = null,
+    onboardingConfirmPresses: Int = 0,
+    onOnboardingRunExpired: () -> Unit = {},
     nav: dev.cannoli.scorza.navigation.NavigationController? = null,
     inputRouter: dev.cannoli.scorza.input.InputRouter? = null,
     rommBrowseViewModel: dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel? = null,
@@ -1470,8 +1465,9 @@ fun AppNavGraph(
             }
             is LauncherScreen.LegendWizard -> {
                 LegendWizardScreen(
-                    step = legendWizardStep,
+                    state = legendWizardState,
                     modifier = Modifier.fillMaxSize(),
+                    duringFirstRun = currentScreen.duringFirstRun,
                     backgroundImagePath = appSettings.backgroundImagePath,
                     backgroundTint = appSettings.backgroundTint,
                 )
@@ -1601,8 +1597,9 @@ fun AppNavGraph(
             }
             is LauncherScreen.OnboardingWelcome -> {
                 dev.cannoli.scorza.ui.screens.OnboardingWelcomeScreen(
-                    listFontSize = listFontSize,
-                    listLineHeight = listLineHeight,
+                    mapping = onboardingMapping,
+                    confirmPresses = onboardingConfirmPresses,
+                    onRunExpired = onOnboardingRunExpired,
                 )
             }
             is LauncherScreen.OnboardingPermissions -> {

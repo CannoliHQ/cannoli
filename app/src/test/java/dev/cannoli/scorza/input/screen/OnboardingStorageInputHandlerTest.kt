@@ -41,31 +41,60 @@ class OnboardingStorageInputHandlerTest {
         )
     )
 
-    @Test fun confirmFinishesWithTheResolvedPath() {
+    @Test fun startFinishesWithTheResolvedPath() {
         show()
-        handler.onConfirm()
+        handler.onStart()
         verify { onboarding.finish("/storage/emulated/0/Cannoli/") }
     }
 
-    @Test fun confirmOpensTheBrowserForCustomWithoutAPath() {
+    @Test fun confirmDoesNothingOnAVolumeRow() {
+        show()
+        handler.onConfirm()
+        verify(exactly = 0) { onboarding.finish(any()) }
+        assertTrue(nav.currentScreen is LauncherScreen.OnboardingStorage)
+    }
+
+    @Test fun confirmOpensTheBrowserOnTheCustomRow() {
         show(volumeIndex = 1)
         handler.onConfirm()
         assertTrue(nav.currentScreen is LauncherScreen.DirectoryBrowser)
         verify(exactly = 0) { onboarding.finish(any()) }
     }
 
-    @Test fun confirmFinishesWithTheBrowsedPath() {
+    @Test fun confirmReopensTheBrowserOnACustomRowThatAlreadyHasAPath() {
         show(volumeIndex = 1, customPath = "/storage/picked/")
         handler.onConfirm()
+        assertTrue(nav.currentScreen is LauncherScreen.DirectoryBrowser)
+    }
+
+    @Test fun startFinishesWithTheBrowsedPath() {
+        show(volumeIndex = 1, customPath = "/storage/picked/")
+        handler.onStart()
         verify { onboarding.finish("/storage/picked/") }
     }
 
-    @Test fun leftAndRightCycleTheVolume() {
+    @Test fun startDoesNothingWhileAFolderIsStillNeeded() {
+        show(volumeIndex = 1)
+        handler.onStart()
+        verify(exactly = 0) { onboarding.finish(any()) }
+        assertTrue(nav.currentScreen is LauncherScreen.OnboardingStorage)
+    }
+
+    @Test fun upAndDownMoveTheSelection() {
         show()
-        handler.onRight()
+        handler.onDown()
         assertEquals(1, (nav.currentScreen as LauncherScreen.OnboardingStorage).volumeIndex)
-        handler.onLeft()
+        handler.onUp()
         assertEquals(0, (nav.currentScreen as LauncherScreen.OnboardingStorage).volumeIndex)
+    }
+
+    @Test fun theSelectionStopsAtTheEndsRatherThanWrapping() {
+        show()
+        handler.onUp()
+        assertEquals(0, (nav.currentScreen as LauncherScreen.OnboardingStorage).volumeIndex)
+        handler.onDown()
+        handler.onDown()
+        assertEquals(1, (nav.currentScreen as LauncherScreen.OnboardingStorage).volumeIndex)
     }
 
     @Test fun backReturnsToThePermissionsStep() {

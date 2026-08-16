@@ -41,7 +41,12 @@ class OnboardingCoordinator @Inject constructor(
 
     fun start() {
         val top = nav.currentScreen
-        if (top is LauncherScreen.OnboardingScreen || top is LauncherScreen.DirectoryBrowser) {
+        // The legend wizard is step one's recovery path, so a boot-state change while it is up must
+        // not wipe the stack out from under it.
+        if (top is LauncherScreen.OnboardingScreen ||
+            top is LauncherScreen.DirectoryBrowser ||
+            top is LauncherScreen.LegendWizard
+        ) {
             refresh()
             return
         }

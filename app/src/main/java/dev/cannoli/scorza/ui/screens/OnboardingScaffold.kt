@@ -27,10 +27,8 @@ import dev.cannoli.scorza.onboarding.OnboardingStep
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.footerReservation
-import dev.cannoli.ui.components.listTitleSpacing
 import dev.cannoli.ui.components.pillInternalPadding
 import dev.cannoli.ui.components.screenInsets
-import dev.cannoli.ui.theme.GrayText
 import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliTypography
 import dev.cannoli.ui.theme.Spacing
@@ -46,9 +44,6 @@ fun OnboardingScaffold(
     rightItems: List<Pair<String, String>>,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val typo = LocalCannoliTypography.current
-    val colors = LocalCannoliColors.current
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -61,14 +56,12 @@ fun OnboardingScaffold(
                 .padding(bottom = footerReservation())
                 .verticalScroll(rememberScrollState())
         ) {
-            Text(
-                text = stringResource(R.string.onboarding_step_of, step.number, OnboardingStep.COUNT),
-                style = typo.labelSmall,
-                color = colors.text.copy(alpha = 0.6f),
-            )
-            Spacer(modifier = Modifier.height(Spacing.Sm))
+            OnboardingStepCounter(step)
+            Spacer(modifier = Modifier.height(Spacing.Xs))
             ScreenTitle(text = title, fontSize = listFontSize, lineHeight = listLineHeight)
-            Spacer(modifier = Modifier.height(listTitleSpacing()))
+            // Not listTitleSpacing(): the list rhythm spreads a whole screen of rows into that gap,
+            // and these steps carry one or two, so it opens up as dead space above the content.
+            Spacer(modifier = Modifier.height(Spacing.Md))
             content()
         }
         BottomBar(
@@ -79,9 +72,26 @@ fun OnboardingScaffold(
     }
 }
 
+/**
+ * The step counter every first-run step carries, inset to the same edge as the title and the rows
+ * below it. The welcome step lays itself out but keeps this, so all three read as one flow.
+ */
+@Composable
+fun OnboardingStepCounter(step: OnboardingStep) {
+    Text(
+        text = stringResource(R.string.onboarding_step_of, step.number, OnboardingStep.COUNT),
+        style = LocalCannoliTypography.current.labelSmall,
+        color = LocalCannoliColors.current.text.copy(alpha = 0.6f),
+        modifier = Modifier.padding(start = pillInternalPadding()),
+    )
+}
+
 /** Supporting copy under a row: rationales, hints, resolved paths. */
 @Composable
-fun OnboardingBodyText(text: String, color: Color = GrayText) {
+fun OnboardingBodyText(
+    text: String,
+    color: Color = LocalCannoliColors.current.text.copy(alpha = 0.8f),
+) {
     Text(
         text = text,
         style = LocalCannoliTypography.current.bodyMedium,

@@ -8,20 +8,32 @@ import android.view.KeyEvent
  */
 data class WelcomePress(val deviceId: Int, val keyCode: Int)
 
-// Face buttons and shoulders occupy one contiguous keycode block; the rest are the d-pad and the
-// keyboard-sourced keys handhelds wire their GPIO buttons to. Same set the wizard's unmapped-device
-// fallback in MainActivity already understands, so no new notion of "a button" is introduced.
-private val WELCOME_KEYS = setOf(
-    KeyEvent.KEYCODE_DPAD_UP,
-    KeyEvent.KEYCODE_DPAD_DOWN,
-    KeyEvent.KEYCODE_DPAD_LEFT,
-    KeyEvent.KEYCODE_DPAD_RIGHT,
-    KeyEvent.KEYCODE_DPAD_CENTER,
-    KeyEvent.KEYCODE_ENTER,
-    KeyEvent.KEYCODE_BACK,
-    KeyEvent.KEYCODE_ESCAPE,
-    KeyEvent.KEYCODE_MENU,
+// Not controller input, so the welcome step's run of presses neither counts them nor is broken by
+// them: someone turning the volume down three times must not be judged as answering the question.
+// Everything else participates, because a press of a different button is exactly what breaks a run,
+// and a key the step never sees can never break one.
+private val SYSTEM_KEYS = setOf(
+    KeyEvent.KEYCODE_VOLUME_UP,
+    KeyEvent.KEYCODE_VOLUME_DOWN,
+    KeyEvent.KEYCODE_VOLUME_MUTE,
+    KeyEvent.KEYCODE_MUTE,
+    KeyEvent.KEYCODE_POWER,
+    KeyEvent.KEYCODE_SLEEP,
+    KeyEvent.KEYCODE_WAKEUP,
+    KeyEvent.KEYCODE_HOME,
+    KeyEvent.KEYCODE_HEADSETHOOK,
+    KeyEvent.KEYCODE_MEDIA_PLAY,
+    KeyEvent.KEYCODE_MEDIA_PAUSE,
+    KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
+    KeyEvent.KEYCODE_MEDIA_STOP,
+    KeyEvent.KEYCODE_MEDIA_NEXT,
+    KeyEvent.KEYCODE_MEDIA_PREVIOUS,
+    KeyEvent.KEYCODE_MEDIA_REWIND,
+    KeyEvent.KEYCODE_MEDIA_FAST_FORWARD,
+    KeyEvent.KEYCODE_MEDIA_RECORD,
+    KeyEvent.KEYCODE_MEDIA_EJECT,
+    KeyEvent.KEYCODE_MEDIA_CLOSE,
+    KeyEvent.KEYCODE_MEDIA_AUDIO_TRACK,
 )
 
-fun isWelcomeAdvanceKey(keyCode: Int): Boolean =
-    keyCode in KeyEvent.KEYCODE_BUTTON_A..KeyEvent.KEYCODE_BUTTON_MODE || keyCode in WELCOME_KEYS
+fun isSystemKey(keyCode: Int): Boolean = keyCode in SYSTEM_KEYS

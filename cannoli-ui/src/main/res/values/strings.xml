@@ -47,6 +47,8 @@
     <!-- %1$d = disc number, counting from 1. -->
     <string name="igm_disc_number">Disc %1$d</string>
     <string name="label_use_location">USE THIS LOCATION</string>
+    <!-- Bottom-bar button ending first-run setup. -->
+    <string name="label_finish">FINISH</string>
     <string name="label_quit">QUIT</string>
     <string name="label_stop">STOP</string>
     <string name="label_interface">INTERFACE</string>
@@ -529,8 +531,12 @@
     <!-- Onboarding wizard -->
     <!-- Label above the title of each first-run step. %1$d = this step, %2$d = how many there are. -->
     <string name="onboarding_step_of">Step %1$d of %2$d</string>
-    <string name="onboarding_welcome_title">Welcome to Cannoli</string>
-    <string name="onboarding_welcome_body">Press any button on the controller you want to play with.</string>
+    <string name="onboarding_welcome_greeting">Welcome to Cannoli!</string>
+    <!-- First-run prompt, on the line under the greeting. Names no button: the same label sits at a
+         different position on each controller family, so the user is asked for the one they use,
+         not for a letter. -->
+    <string name="onboarding_welcome_press_thrice">Press the button you use for confirm three times.</string>
+    <string name="onboarding_welcome_no_controller">Connect a controller to continue.</string>
     <string name="onboarding_permissions_title">Permissions</string>
     <!-- Prefixes a permission explanation. %1$s = the explanation. -->
     <string name="onboarding_permission_required">Required. %1$s</string>
@@ -539,6 +545,22 @@
     <string name="onboarding_storage_title">Storage Location</string>
     <string name="onboarding_select_folder">SELECT FOLDER</string>
     <string name="onboarding_location_label">Location</string>
+
+    <!-- Controller setup wizard. Each question asks what a button does, never where it sits. -->
+    <!-- Why the wizard appeared. Shown on its first question only. -->
+    <string name="controller_wizard_no_profile">We do not have a profile for your controller yet.</string>
+    <string name="controller_wizard_press_confirm">Press the button you use to confirm</string>
+    <string name="controller_wizard_press_back">Press the button you use to go back</string>
+    <!-- The second press of confirm and of back. It guards a mis-press: the user's chance to catch
+         a wrong button before it becomes their confirm button for good. -->
+    <string name="controller_wizard_press_again">Press that same button again</string>
+    <string name="controller_wizard_again_detail">So we know it is the one you meant.</string>
+    <!-- Shown when the two presses were different buttons, so the question is being asked again. -->
+    <string name="controller_wizard_mismatch">Those were two different buttons</string>
+    <!-- Shown when the button pressed for back is the one already taken by confirm. -->
+    <string name="controller_wizard_back_must_differ">Back needs a different button from confirm</string>
+    <string name="controller_wizard_press_menu">Press the button that should open the Cannoli menu</string>
+    <string name="controller_wizard_press_start">Press the button you use as Start</string>
 
     <!-- Boot error screen -->
     <string name="boot_error_title">Something went wrong</string>

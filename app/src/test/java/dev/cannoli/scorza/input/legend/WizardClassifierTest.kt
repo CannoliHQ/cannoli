@@ -5,22 +5,38 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class WizardClassifierTest {
-    @Test fun `same button, no sony hint means standard redmond`() {
+    @Test fun `confirm on the bottom face code means standard redmond`() {
         assertEquals(
             LegendProfile(FaceLayout.STANDARD, GlyphStyle.REDMOND),
-            classify(bottomKeyCode = 96, primaryKeyCode = 96, sonyGlyphHint = null),
+            classify(confirmKeyCode = 96, sonyGlyphHint = null),
         )
     }
-    @Test fun `same button with sony hint means playstation shapes`() {
+
+    @Test fun `confirm on the bottom face code with the sony hint means shapes`() {
         assertEquals(
             LegendProfile(FaceLayout.STANDARD, GlyphStyle.SHAPES),
-            classify(96, 96, sonyGlyphHint = GlyphStyle.SHAPES),
+            classify(confirmKeyCode = 96, sonyGlyphHint = GlyphStyle.SHAPES),
         )
     }
-    @Test fun `different buttons means nintendo plumber, sony hint ignored`() {
+
+    @Test fun `confirm on the east face code means nintendo plumber, sony hint ignored`() {
         assertEquals(
             LegendProfile(FaceLayout.NINTENDO, GlyphStyle.PLUMBER),
-            classify(bottomKeyCode = 97, primaryKeyCode = 96, sonyGlyphHint = GlyphStyle.SHAPES),
+            classify(confirmKeyCode = 97, sonyGlyphHint = GlyphStyle.SHAPES),
+        )
+    }
+
+    @Test fun `confirm on another face code stays standard`() {
+        assertEquals(
+            LegendProfile(FaceLayout.STANDARD, GlyphStyle.REDMOND),
+            classify(confirmKeyCode = 99, sonyGlyphHint = null),
+        )
+    }
+
+    @Test fun `a non-standard keycode classifies as standard rather than throwing`() {
+        assertEquals(
+            LegendProfile(FaceLayout.STANDARD, GlyphStyle.REDMOND),
+            classify(confirmKeyCode = 200, sonyGlyphHint = null),
         )
     }
 }

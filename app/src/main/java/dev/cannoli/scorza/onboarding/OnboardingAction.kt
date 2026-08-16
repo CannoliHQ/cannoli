@@ -7,6 +7,3 @@ package dev.cannoli.scorza.onboarding
  * move onto the ungranted row, so the footer stays empty rather than showing a dead label.
  */
 enum class OnboardingPermissionsAction { GRANT, CONTINUE, NONE }
-
-/** The same contract for the storage step, where the only row is the location. */
-enum class OnboardingStorageAction { SELECT_FOLDER, CONTINUE, NONE }

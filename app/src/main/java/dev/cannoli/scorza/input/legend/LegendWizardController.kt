@@ -5,45 +5,99 @@ import dev.cannoli.scorza.input.DeviceMapping
 import dev.cannoli.scorza.input.GlyphStyle
 import dev.cannoli.scorza.input.InputBinding
 import dev.cannoli.scorza.input.MappingSource
-import dev.cannoli.scorza.input.resolver.RetroArchAutoconfigImporter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
-enum class WizardStep { PressSouth, PressPrimary, PressMenu, Done }
+enum class WizardStep { PressConfirm, ConfirmAgain, PressBack, BackAgain, PressMenu, PressStart, Done }
+
+/** Confirm, back, menu and start. The second press of confirm and of back is not a capture of its own. */
+const val WIZARD_CAPTURES = 4
+
+// Why a question is being asked again, so the user reads a rejection rather than a press that
+// looks like it went missing. Cleared by the next capture.
+enum class WizardNotice { PressesDidNotMatch, BackMustDifferFromConfirm }
+
+data class LegendWizardState(
+    val step: WizardStep = WizardStep.PressConfirm,
+    val notice: WizardNotice? = null,
+) {
+    // A capture counts once the question it answers is settled, so the confirming second press of
+    // confirm and of back does not advance it on its own.
+    val capturesDone: Int get() = when (step) {
+        WizardStep.PressConfirm, WizardStep.ConfirmAgain -> 0
+        WizardStep.PressBack, WizardStep.BackAgain -> 1
+        WizardStep.PressMenu -> 2
+        WizardStep.PressStart -> 3
+        WizardStep.Done -> WIZARD_CAPTURES
+    }
+}
 
 class LegendWizardController {
-    private val _step = MutableStateFlow(WizardStep.PressSouth)
-    val step: StateFlow<WizardStep> = _step
+    private val _state = MutableStateFlow(LegendWizardState())
+    val state: StateFlow<LegendWizardState> = _state
 
     private var sonyHint: GlyphStyle? = null
-    private var k1: Int? = null
-    private var k2: Int? = null
+    private var confirmKeyCode: Int? = null
+    private var backKeyCode: Int? = null
     private var menuKeyCode: Int? = null
+    private var startKeyCode: Int? = null
     private var result: LegendProfile? = null
 
     fun start(sonyGlyphHint: GlyphStyle?) {
         sonyHint = sonyGlyphHint
-        k1 = null
-        k2 = null
+        confirmKeyCode = null
+        backKeyCode = null
         menuKeyCode = null
+        startKeyCode = null
         result = null
-        _step.value = WizardStep.PressSouth
+        publish(WizardStep.PressConfirm)
     }
 
     fun onKeyCaptured(keyCode: Int) {
-        when (_step.value) {
-            WizardStep.PressSouth -> {
-                k1 = keyCode
-                _step.value = WizardStep.PressPrimary
+        when (_state.value.step) {
+            WizardStep.PressConfirm -> {
+                confirmKeyCode = keyCode
+                publish(WizardStep.ConfirmAgain)
             }
-            WizardStep.PressPrimary -> {
-                k2 = keyCode
-                result = classify(k1!!, keyCode, sonyHint)
-                _step.value = WizardStep.PressMenu
+            WizardStep.ConfirmAgain -> {
+                if (keyCode == confirmKeyCode) {
+                    result = classify(keyCode, sonyHint)
+                    publish(WizardStep.PressBack)
+                } else {
+                    confirmKeyCode = null
+                    publish(WizardStep.PressConfirm, WizardNotice.PressesDidNotMatch)
+                }
             }
+            // One button doing both leaves the pad able to confirm but never to go back, which
+            // strands the user in the flow meant to fix their controller.
+            WizardStep.PressBack -> {
+                if (keyCode == confirmKeyCode) {
+                    publish(WizardStep.PressBack, WizardNotice.BackMustDifferFromConfirm)
+                } else {
+                    backKeyCode = keyCode
+                    publish(WizardStep.BackAgain)
+                }
+            }
+            WizardStep.BackAgain -> {
+                if (keyCode == confirmKeyCode) {
+                    backKeyCode = null
+                    publish(WizardStep.PressBack, WizardNotice.BackMustDifferFromConfirm)
+                } else if (keyCode == backKeyCode) {
+                    publish(WizardStep.PressMenu)
+                } else {
+                    backKeyCode = null
+                    publish(WizardStep.PressBack, WizardNotice.PressesDidNotMatch)
+                }
+            }
+            // Menu and start are mandatory like the rest: a pad with neither cannot work the games
+            // Cannoli launches, so there is no trapped-pad case to offer a way out of.
             WizardStep.PressMenu -> {
                 menuKeyCode = keyCode
-                _step.value = WizardStep.Done
+                publish(WizardStep.PressStart)
+            }
+            WizardStep.PressStart -> {
+                startKeyCode = keyCode
+                publish(WizardStep.Done)
             }
             WizardStep.Done -> {}
         }
@@ -51,45 +105,55 @@ class LegendWizardController {
 
     fun profile(): LegendProfile? = result
 
-    // Replaces only the four face slots on top of the base mapping so dpad/shoulders/triggers/etc
-    // carry over unchanged.
+    fun confirmKeyCode(): Int? = confirmKeyCode
+
+    // Replaces the captured slots on top of the base mapping so dpad/shoulders/triggers/etc carry
+    // over unchanged. All four captures are mandatory, so a mapping is only ever built from a
+    // complete set.
     fun buildMapping(base: DeviceMapping): DeviceMapping {
         val p = result ?: return base
-        val faceSlots = faceBindings().mapValues { (_, kc) -> listOf(InputBinding.Button(kc)) }
+        val confirmKey = confirmKeyCode ?: return base
+        val backKey = backKeyCode ?: return base
+        val menuKey = menuKeyCode ?: return base
+        val startKey = startKeyCode ?: return base
+        val confirmCanonical = confirmFace(confirmKey)
+        val backCanonical = backFace(confirmKey, backKey)
         val merged = base.bindings.toMutableMap()
-        faceSlots.forEach { (canon, binds) -> merged[canon] = binds }
-        menuKeyCode?.let { merged[CanonicalButton.BTN_MENU] = listOf(InputBinding.Button(it)) }
+        merged[confirmCanonical] = listOf(InputBinding.Button(confirmKey))
+        merged[backCanonical] = listOf(InputBinding.Button(backKey))
+        merged[CanonicalButton.BTN_MENU] = listOf(InputBinding.Button(menuKey))
+        merged[CanonicalButton.BTN_START] = listOf(InputBinding.Button(startKey))
         return base.copy(
             bindings = merged,
-            menuConfirm = p.menuConfirm,
-            menuBack = RetroArchAutoconfigImporter.oppositeOf(p.menuConfirm),
+            menuConfirm = confirmCanonical,
+            menuBack = backCanonical,
             glyphStyle = p.glyphStyle,
             userEdited = true,
             source = MappingSource.USER_WIZARD,
         )
     }
 
-    // south <- the captured bottom; on nintendo the captured A is east; the remaining standard
-    // face codes fill the remaining positions by their standard position.
-    fun faceBindings(): Map<CanonicalButton, Int> {
-        val p = result ?: return emptyMap()
-        val bottom = k1 ?: return emptyMap()
-        val b = LinkedHashMap<CanonicalButton, Int>()
-        b[CanonicalButton.BTN_SOUTH] = bottom
-        if (p.faceLayout == FaceLayout.NINTENDO) k2?.let { b[CanonicalButton.BTN_EAST] = it }
-        val used = b.values.toSet()
-        for ((code, pos) in STANDARD_POSITION) {
-            if (code !in used && pos !in b.keys) b[pos] = code
-        }
-        return b
+    private fun publish(step: WizardStep, notice: WizardNotice? = null) {
+        _state.value = LegendWizardState(step = step, notice = notice)
     }
 
     companion object {
-        private val STANDARD_POSITION = linkedMapOf(
-            96 to CanonicalButton.BTN_SOUTH,
-            97 to CanonicalButton.BTN_EAST,
-            99 to CanonicalButton.BTN_WEST,
-            100 to CanonicalButton.BTN_NORTH,
-        )
+        // STANDARD is the canonical face-code table: each keycode sits at the position it is named
+        // after, whatever the shell in front of it prints.
+        private val FACE_POSITIONS = FaceLayout.STANDARD.standardFaceBindings()
+            .entries.associate { (canonical, keyCode) -> keyCode to canonical }
+
+        // A button reporting something outside the four face codes has no position of its own, so
+        // confirm takes the bottom slot and back takes the one confirm left: the pad navigates
+        // correctly and only the printed glyph is a guess.
+        private fun confirmFace(confirmKeyCode: Int): CanonicalButton =
+            FACE_POSITIONS[confirmKeyCode] ?: CanonicalButton.BTN_SOUTH
+
+        private fun backFace(confirmKeyCode: Int, backKeyCode: Int): CanonicalButton =
+            FACE_POSITIONS[backKeyCode] ?: if (confirmFace(confirmKeyCode) == CanonicalButton.BTN_SOUTH) {
+                CanonicalButton.BTN_EAST
+            } else {
+                CanonicalButton.BTN_SOUTH
+            }
     }
 }

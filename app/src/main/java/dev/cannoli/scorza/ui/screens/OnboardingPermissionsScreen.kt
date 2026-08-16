@@ -80,6 +80,7 @@ private fun PermissionRow(
             lineHeight = listLineHeight,
             verticalPadding = listVerticalPadding,
         )
+        Spacer(modifier = Modifier.height(Spacing.Xs))
         OnboardingBodyText(
             if (permission.required) {
                 stringResource(R.string.onboarding_permission_required, explanation)

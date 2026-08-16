@@ -120,9 +120,10 @@ class InputRouter @Inject constructor(
         is LauncherScreen.LegendWizard -> object : ScreenInputHandler {}
         is LauncherScreen.LoggingSettings -> loggingSettingsHandler
         is LauncherScreen.Permissions -> permissionsHandler
-        // Every press is captured ahead of the pipeline in MainActivity.dispatchKeyEvent, because
-        // the welcome step accepts any button and no mapping exists yet. This empty handler only
-        // stops stray up/motion events reaching whatever screen's handler the registry last held.
+        // Every press is read ahead of the pipeline in MainActivity.dispatchKeyEvent, because the
+        // welcome step verifies the raw keycode against the pressing device's own mapping rather
+        // than acting on whatever the mapping resolved it to. This empty handler only stops stray
+        // up/motion events reaching whatever screen's handler the registry last held.
         is LauncherScreen.OnboardingWelcome -> object : ScreenInputHandler {}
         is LauncherScreen.OnboardingPermissions -> onboardingPermissionsHandler
         is LauncherScreen.OnboardingStorage -> onboardingStorageHandler

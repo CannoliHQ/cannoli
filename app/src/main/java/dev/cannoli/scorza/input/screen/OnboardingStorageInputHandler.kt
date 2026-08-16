@@ -7,7 +7,6 @@ import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
 import dev.cannoli.scorza.onboarding.OnboardingCoordinator
 import dev.cannoli.scorza.onboarding.OnboardingStep
-import dev.cannoli.scorza.onboarding.OnboardingStorageAction
 import dev.cannoli.scorza.setup.SetupCoordinator
 import javax.inject.Inject
 
@@ -21,31 +20,35 @@ class OnboardingStorageInputHandler @Inject constructor(
     private fun current(): LauncherScreen.OnboardingStorage? =
         nav.currentScreen as? LauncherScreen.OnboardingStorage
 
-    override fun onLeft() = cycleVolume(-1)
+    override fun onUp() {
+        current()?.let { nav.replaceTop(it.moved(-1)) }
+    }
 
-    override fun onRight() = cycleVolume(1)
+    override fun onDown() {
+        current()?.let { nav.replaceTop(it.moved(1)) }
+    }
 
+    // The custom row is the only one confirm has anywhere to take: every other row already names
+    // the volume the highlight sits on.
     override fun onConfirm() {
         val screen = current() ?: return
-        when (screen.action) {
-            OnboardingStorageAction.SELECT_FOLDER -> nav.push(
-                LauncherScreen.DirectoryBrowser(
-                    purpose = BrowsePurpose.SETUP,
-                    currentPath = "/storage/",
-                    entries = setupCoordinator.listDirectories("/storage/"),
-                )
+        if (!screen.isCustomVolume) return
+        nav.push(
+            LauncherScreen.DirectoryBrowser(
+                purpose = BrowsePurpose.SETUP,
+                currentPath = "/storage/",
+                entries = setupCoordinator.listDirectories("/storage/"),
             )
-            OnboardingStorageAction.CONTINUE -> screen.targetPath?.let { onboarding.finish(it) }
-            OnboardingStorageAction.NONE -> {}
-        }
+        )
+    }
+
+    // Finishing setup is deliberate, so it sits on START rather than on the confirm button every
+    // other step advances with.
+    override fun onStart() {
+        current()?.targetPath?.let { onboarding.finish(it) }
     }
 
     override fun onBack() {
         OnboardingStep.STORAGE.previous?.let { onboarding.show(it) }
-    }
-
-    private fun cycleVolume(delta: Int) {
-        val screen = current() ?: return
-        nav.replaceTop(screen.cycledVolume(delta))
     }
 }
