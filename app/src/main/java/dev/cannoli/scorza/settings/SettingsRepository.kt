@@ -155,18 +155,22 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         set(value) { prefs.edit().putBoolean(KEY_SETUP_COMPLETED, value).apply() }
 
     /**
-     * The chosen root, or null before first run's storage step resolves. Everything that runs after
-     * boot reads [sdCardRoot] instead; this exists for the boot-path code that has to cope with the
-     * question being unanswered, so it does not silently work against the internal-storage default.
+     * The chosen root, or null before first run's storage step resolves. Boot-path code that can run
+     * either side of that step reads this; everything after boot reads [sdCardRoot].
      */
     val sdCardRootOrNull: String?
         get() = prefs.getString(KEY_SD_ROOT, null)?.takeIf { it.isNotEmpty() }
 
+    /**
+     * Where Cannoli lives. There is deliberately no default: a placeholder here is a real, writable
+     * path, so anything reading before the storage step used to quietly work against internal
+     * storage and orphan whatever it wrote the moment the user picked a card. Reading this too early
+     * is a bug in the caller, and it says so rather than papering over it.
+     */
     var sdCardRoot: String
-        get() = sdCardRootOrNull ?: DEFAULT_ROOT
+        get() = sdCardRootOrNull
+            ?: error("Cannoli root read before first run's storage step chose one")
         set(value) {
-            // Against the stored value, not the getter: comparing to the fallback would silently
-            // skip the write for a user who picks internal storage, leaving no root on record.
             if (value == sdCardRootOrNull) return
             prefs.edit().putString(KEY_SD_ROOT, value).apply()
             settingsFile = dev.cannoli.scorza.config.CannoliPaths(value).settingsJson
@@ -471,7 +475,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         set(value) = jsonWrite { put(KEY_ROMM_SAVE_BACKUP_COUNT, value.coerceAtLeast(0)) }
 
     companion object {
-        const val DEFAULT_ROOT = "/storage/emulated/0/Cannoli/"
         const val DEFAULT_RA_PACKAGE = "dev.cannoli.ricotta.aarch64"
         private const val KEY_SETUP_COMPLETED = "setup_completed"
         private const val KEY_SD_ROOT = "sd_root"

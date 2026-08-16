@@ -3,6 +3,9 @@ package dev.cannoli.scorza.settings
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -75,5 +78,22 @@ class SettingsRepositoryTest {
 
         settings.language = ""
         assertEquals("en", settings.language)
+    }
+
+    @Test fun `a repository with no chosen root reports it rather than defaulting`() {
+        val settings = newRepo()
+        assertNull(settings.sdCardRootOrNull)
+        assertFalse(settings.setupCompleted)
+    }
+
+    @Test fun `reading the root before the storage step fails loudly`() {
+        val settings = newRepo()
+        assertThrows(IllegalStateException::class.java) { settings.sdCardRoot }
+    }
+
+    @Test fun `choosing a root records it even when settings are never saved`() {
+        val settings = newRepo()
+        settings.sdCardRoot = tmp.root.absolutePath
+        assertEquals(tmp.root.absolutePath, settings.sdCardRootOrNull)
     }
 }
