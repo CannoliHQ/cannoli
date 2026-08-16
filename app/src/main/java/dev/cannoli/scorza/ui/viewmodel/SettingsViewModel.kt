@@ -52,7 +52,25 @@ class SettingsViewModel @Inject constructor(
 
     data class FontOption(val key: String, val label: String, val fontFamily: FontFamily, val typeface: android.graphics.Typeface?)
 
-    private var fontOptions: List<FontOption> = buildFontOptions()
+    private var cachedFontOptions: List<FontOption>? = null
+    private var cachedFontsRoot: String? = null
+
+    // Scanning Config/Fonts at construction would run during Hilt injection, before setup resolves
+    // the storage root, and cache a listing of the fallback path for the session. Built on first
+    // read instead, and again whenever the root moves or a caller asks for a rescan.
+    private val fontOptions: List<FontOption>
+        get() {
+            val root = pathsProvider.root.absolutePath
+            cachedFontOptions?.let { if (cachedFontsRoot == root) return it }
+            return buildFontOptions().also {
+                cachedFontOptions = it
+                cachedFontsRoot = root
+            }
+        }
+
+    private fun invalidateFontOptions() {
+        cachedFontOptions = null
+    }
 
     private fun buildFontOptions(): List<FontOption> = buildList {
         add(FontOption("default", "Default", appFonts.mplus1Code, appFonts.mplus1CodeTypeface))
@@ -282,7 +300,7 @@ class SettingsViewModel @Inject constructor(
         packageManager = pm
         appPackageName = pkgName
         if (cr != null) collectionsRepository = cr
-        fontOptions = buildFontOptions()
+        invalidateFontOptions()
         if (isTelevision && !settings.batteryDisplaySet) settings.batteryDisplay = BatteryDisplay.HIDE
         load()
     }
@@ -332,7 +350,7 @@ class SettingsViewModel @Inject constructor(
         val current = _state.value
         if (current.inSubList) return false
         val cat = current.categories.getOrNull(current.categoryIndex) ?: return false
-        if (cat.key == "display") fontOptions = buildFontOptions()
+        if (cat.key == "display") invalidateFontOptions()
         val items = buildItemsForCategory(cat.key)
         _state.update {
             it.copy(activeCategory = cat.key, activeCategoryLabel = cat.labelRes, items = items, selectedIndex = 0)
