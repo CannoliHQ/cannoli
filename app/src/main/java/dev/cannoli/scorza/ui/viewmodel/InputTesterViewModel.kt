@@ -135,18 +135,12 @@ class InputTesterViewModel @Inject constructor() {
         leftX: Float, leftY: Float,
         rightX: Float, rightY: Float,
         leftTrigger: Float, rightTrigger: Float,
-        hatX: Float, hatY: Float,
+        hatButtons: Set<String>,
     ) {
         val ts = now()
         _state.update { current ->
             val prev = current.portStates[port] ?: InputTesterState()
 
-            val hatButtons = buildSet {
-                if (hatX < -0.5f) add("btn_left")
-                if (hatX > 0.5f) add("btn_right")
-                if (hatY < -0.5f) add("btn_up")
-                if (hatY > 0.5f) add("btn_down")
-            }
             val axisPressed = hatButtons
 
             val nonAxis = prev.pressedButtons - HAT_BUTTONS

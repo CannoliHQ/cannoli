@@ -110,7 +110,7 @@ class InputTesterViewModelTest {
             rightX = 0f, rightY = 0f,
             leftTrigger = 0.75f,
             rightTrigger = 0f,
-            hatX = 0f, hatY = 0f,
+            hatButtons = emptySet(),
         )
         val s = vm.state.value.portStates[0]!!
         assertEquals(0.5f, s.leftStick.x, 0.0001f)
@@ -121,7 +121,7 @@ class InputTesterViewModelTest {
     @Test
     fun hatAxis_addsDpadButtonWithoutKeycode() {
         val vm = vm()
-        vm.onMotion(0, 10, "Test Pad", 0f, 0f, 0f, 0f, 0f, 0f, hatX = -1f, hatY = 0f)
+        vm.onMotion(0, 10, "Test Pad", 0f, 0f, 0f, 0f, 0f, 0f, hatButtons = setOf("btn_left"))
         val pressed = vm.state.value.portStates[0]?.pressedButtons ?: emptySet()
         assertTrue("btn_left" in pressed)
     }
@@ -132,7 +132,7 @@ class InputTesterViewModelTest {
         // motion events. The motion event still records the analog leftTrigger value but does not
         // toggle btn_l2 / btn_r2 in pressedButtons.
         val vm = vm()
-        vm.onMotion(0, 10, "Test Pad", 0f, 0f, 0f, 0f, leftTrigger = 0.9f, rightTrigger = 0f, 0f, 0f)
+        vm.onMotion(0, 10, "Test Pad", 0f, 0f, 0f, 0f, leftTrigger = 0.9f, rightTrigger = 0f, hatButtons = emptySet())
         val pressed = vm.state.value.portStates[0]?.pressedButtons ?: emptySet()
         assertTrue("btn_l2" !in pressed)
     }
@@ -164,9 +164,9 @@ class InputTesterViewModelTest {
     @Test
     fun hatAxisReleased_clearsDpadButton() {
         val vm = vm()
-        vm.onMotion(0, 10, "Test Pad", 0f, 0f, 0f, 0f, 0f, 0f, hatX = -1f, hatY = 0f)
+        vm.onMotion(0, 10, "Test Pad", 0f, 0f, 0f, 0f, 0f, 0f, hatButtons = setOf("btn_left"))
         assertTrue("btn_left" in (vm.state.value.portStates[0]?.pressedButtons ?: emptySet()))
-        vm.onMotion(0, 10, "Test Pad", 0f, 0f, 0f, 0f, 0f, 0f, hatX = 0f, hatY = 0f)
+        vm.onMotion(0, 10, "Test Pad", 0f, 0f, 0f, 0f, 0f, 0f, hatButtons = emptySet())
         assertFalse("btn_left" in (vm.state.value.portStates[0]?.pressedButtons ?: emptySet()))
     }
 

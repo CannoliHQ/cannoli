@@ -114,7 +114,7 @@ class InputTesterController(
             port = port, deviceId = deviceId, deviceName = name,
             leftX = leftX, leftY = leftY, rightX = rightX, rightY = rightY,
             leftTrigger = leftTrigger, rightTrigger = rightTrigger,
-            hatX = hatX, hatY = hatY,
+            hatButtons = mappingHatButtons(mapping) { event.getAxisValue(it) } ?: rawHatButtons(hatX, hatY),
         )
 
         val activatesPort = leftTrigger > 0.1f || rightTrigger > 0.1f ||
@@ -249,4 +249,40 @@ class InputTesterController(
             }
         viewModel.setConnectedPorts(ports)
     }
+
+}
+
+private val HAT_CANONICALS = listOf(
+    CanonicalButton.BTN_UP to "btn_up",
+    CanonicalButton.BTN_DOWN to "btn_down",
+    CanonicalButton.BTN_LEFT to "btn_left",
+    CanonicalButton.BTN_RIGHT to "btn_right",
+)
+
+/**
+ * The d-pad reads through the mapping like the sticks and triggers do, so the tester reports the
+ * binding rather than the hardware. Reading the hat sign directly agrees with the physical pad no
+ * matter which direction the mapping names it, which hides a swapped binding.
+ *
+ * Returns null when the mapping carries no hat bindings at all, so the caller can fall back to the
+ * raw hat and still show something for an unmapped pad.
+ */
+internal fun mappingHatButtons(mapping: DeviceMapping?, axisValue: (Int) -> Float): Set<String>? {
+    var bound = false
+    val pressed = buildSet {
+        for ((canonical, name) in HAT_CANONICALS) {
+            val hats = mapping?.bindings?.get(canonical)?.filterIsInstance<InputBinding.Hat>().orEmpty()
+            if (hats.isEmpty()) continue
+            bound = true
+            if (hats.any { it.isPressed(axisValue(it.axis)) }) add(name)
+        }
+    }
+    return pressed.takeIf { bound }
+}
+
+internal fun rawHatButtons(hatX: Float, hatY: Float): Set<String> = buildSet {
+    if (hatX < -0.5f) add("btn_left")
+    if (hatX > 0.5f) add("btn_right")
+    if (hatY < -0.5f) add("btn_up")
+    if (hatY > 0.5f) add("btn_down")
 }
