@@ -48,10 +48,11 @@ class SyncScheduler(
             override fun onLost(network: Network) {
                 wasValidated = false
                 dev.cannoli.scorza.util.RommLog.write("scheduler: network lost -> OFFLINE")
+                val enabled = service.syncEnabled()
                 statusHolder.settle(
-                    enabled = service.syncEnabled(),
+                    enabled = enabled,
                     online = false,
-                    pendingConflicts = service.pendingConflictCount(),
+                    pendingConflicts = conflictsToReport(enabled) { service.pendingConflictCount() },
                     hadError = false,
                 )
             }
@@ -154,10 +155,11 @@ class SyncScheduler(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (_: Exception) {
+                val enabled = service.syncEnabled()
                 statusHolder.settle(
-                    enabled = service.syncEnabled(),
+                    enabled = enabled,
                     online = true,
-                    pendingConflicts = service.pendingConflictCount(),
+                    pendingConflicts = conflictsToReport(enabled) { service.pendingConflictCount() },
                     hadError = true,
                 )
             } finally {
@@ -168,6 +170,13 @@ class SyncScheduler(
     }
 
     companion object {
+        /**
+         * Counting pending conflicts opens the save database, so it is only ever asked for when
+         * sync is on. A user who never configured RomM would otherwise have `cannoli.db` created
+         * and opened every time the network drops.
+         */
+        fun conflictsToReport(enabled: Boolean, count: () -> Int): Int = if (enabled) count() else 0
+
         fun shouldSweep(now: Long, lastSweepAt: Long, intervalMs: Long): Boolean = now - lastSweepAt >= intervalMs
 
         fun pastForceCooldown(now: Long, lastSweepAt: Long, cooldownMs: Long): Boolean =
