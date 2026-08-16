@@ -129,11 +129,11 @@ class InputTesterController(
 
         syncAxisTrigger(
             port, deviceId, name, KeyEvent.KEYCODE_BUTTON_L2, leftTrigger, axisTriggerL2Held, "btn_l2",
-            unbound = mappingNavButtonFor(mapping, KeyEvent.KEYCODE_BUTTON_L2) == null,
+            unbound = triggerUnbound(mapping, CanonicalButton.BTN_L2),
         )
         syncAxisTrigger(
             port, deviceId, name, KeyEvent.KEYCODE_BUTTON_R2, rightTrigger, axisTriggerR2Held, "btn_r2",
-            unbound = mappingNavButtonFor(mapping, KeyEvent.KEYCODE_BUTTON_R2) == null,
+            unbound = triggerUnbound(mapping, CanonicalButton.BTN_R2),
         )
 
         return true
@@ -202,6 +202,11 @@ class InputTesterController(
             CanonicalButton.BTN_RSTICK_Y -> "rstick_y"
         }
     }
+
+    // A trigger is bound if its canonical carries any binding, keycode or axis. Pads that report L2/R2
+    // purely as analog axes have no keycode Button, so a keycode-only check wrongly flags them unbound.
+    private fun triggerUnbound(mapping: DeviceMapping?, canonical: CanonicalButton): Boolean =
+        mapping?.bindings?.get(canonical).isNullOrEmpty()
 
     private fun mappingTriggerDisplayValue(
         mapping: DeviceMapping?,
