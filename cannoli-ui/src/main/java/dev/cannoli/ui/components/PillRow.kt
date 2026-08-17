@@ -234,7 +234,8 @@ fun PillRowKeyValue(
     swatchColor: Color? = null,
     valueIcon: String? = null,
     dotIndicator: Boolean? = null,
-    checkState: Boolean? = null
+    checkState: Boolean? = null,
+    leadingIcon: String? = null
 ) {
     val colors = LocalCannoliColors.current
     val baseStyle = MaterialTheme.typography.bodyLarge
@@ -260,6 +261,17 @@ fun PillRowKeyValue(
         ) {
             if (checkState != null) {
                 PillCheckGlyph(checked = checkState, style = textStyle, color = labelColor)
+            }
+            if (leadingIcon != null) {
+                // Styled off the label the way valueIcon is styled off the value, so the glyph
+                // resolves the theme's line metrics rather than the icon font's own.
+                Text(
+                    text = leadingIcon,
+                    style = textStyle.copy(fontFamily = LocalCannoliIconFont.current),
+                    color = labelColor,
+                    maxLines = 1
+                )
+                Spacer(modifier = Modifier.width(8.dp))
             }
             Row(
                 modifier = Modifier
