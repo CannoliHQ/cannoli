@@ -6,12 +6,12 @@ enum class QuickMenuRow {
     companion object {
         fun visibleRows(rommPaired: Boolean, kitchenRunning: Boolean, saveSyncEnabled: Boolean = false, pendingConflicts: Int = 0, syncErrors: Int = 0, downloadCount: Int = 0, debugBuild: Boolean = false): List<QuickMenuRow> =
             buildList {
+                if (rommPaired && pendingConflicts > 0) add(CONFLICTS)
+                if (rommPaired && saveSyncEnabled && syncErrors > 0) add(ERRORS)
                 add(SETTINGS)
                 if (rommPaired) add(ROMM)
                 if (downloadCount > 0) add(DOWNLOADS)
                 if (rommPaired && saveSyncEnabled) add(SYNC_HISTORY)
-                if (rommPaired && pendingConflicts > 0) add(CONFLICTS)
-                if (rommPaired && saveSyncEnabled && syncErrors > 0) add(ERRORS)
                 add(KITCHEN)
                 add(RESCAN)
                 add(INFO)

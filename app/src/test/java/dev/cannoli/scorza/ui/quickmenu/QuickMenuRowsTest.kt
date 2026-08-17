@@ -46,14 +46,34 @@ class QuickMenuRowsTest {
         assertEquals(QuickMenuRow.ABOUT, release.last())
     }
 
-    @Test fun `settings row is always first`() {
+    @Test fun `settings row is first when there is nothing to attend to`() {
         val paired = QuickMenuRow.visibleRows(
             rommPaired = true, kitchenRunning = true, saveSyncEnabled = true,
-            pendingConflicts = 2, syncErrors = 1, downloadCount = 4,
+            pendingConflicts = 0, syncErrors = 0, downloadCount = 4,
         )
         val bare = QuickMenuRow.visibleRows(rommPaired = false, kitchenRunning = false)
         assertEquals(QuickMenuRow.SETTINGS, paired.first())
         assertEquals(QuickMenuRow.SETTINGS, bare.first())
+    }
+
+    @Test fun `conflicts then errors lead the menu`() {
+        val rows = QuickMenuRow.visibleRows(
+            rommPaired = true, kitchenRunning = true, saveSyncEnabled = true,
+            pendingConflicts = 2, syncErrors = 1, downloadCount = 4,
+        )
+        assertEquals(
+            listOf(QuickMenuRow.CONFLICTS, QuickMenuRow.ERRORS, QuickMenuRow.SETTINGS),
+            rows.take(3),
+        )
+    }
+
+    @Test fun `errors row is first when only errors are present`() {
+        val rows = QuickMenuRow.visibleRows(
+            rommPaired = true, kitchenRunning = true, saveSyncEnabled = true,
+            pendingConflicts = 0, syncErrors = 1, downloadCount = 4,
+        )
+        assertEquals(QuickMenuRow.ERRORS, rows.first())
+        assertEquals(QuickMenuRow.SETTINGS, rows[1])
     }
 
     @Test fun `errors row only when sync enabled and errors present`() {
