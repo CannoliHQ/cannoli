@@ -1073,34 +1073,14 @@ private fun SyncHistoryRowItem(row: SyncHistoryRow, isSelected: Boolean, fontSiz
 
 @Composable
 private fun SyncErrorRowItem(err: dev.cannoli.scorza.romm.sync.SyncFailure, isSelected: Boolean, fontSize: TextUnit, lineHeight: TextUnit, verticalPadding: Dp) {
-    val colors = LocalCannoliColors.current
-    val textColor = if (isSelected) colors.highlightText else colors.text
-    val muted = textColor.copy(alpha = 0.55f)
-    dev.cannoli.ui.components.PillRow(
+    PillRowKeyValue(
+        label = err.displayName,
+        value = err.reason,
         isSelected = isSelected,
-        verticalPadding = verticalPadding,
+        fontSize = fontSize,
         lineHeight = lineHeight,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = err.displayName,
-                color = textColor,
-                fontFamily = LocalCannoliFont.current,
-                fontSize = fontSize,
-                maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-            )
-            Text(
-                text = err.reason,
-                color = muted,
-                fontFamily = LocalCannoliFont.current,
-                fontSize = (fontSize.value * SYNC_TIME_SCALE).sp,
-                maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-            )
-        }
-    }
+        verticalPadding = verticalPadding,
+    )
 }
 
 @Composable
