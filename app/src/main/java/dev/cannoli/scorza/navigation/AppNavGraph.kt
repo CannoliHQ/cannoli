@@ -1518,7 +1518,7 @@ fun AppNavGraph(
                     rightBottomItems = buildList {
                         when (rows[selIdx]) {
                             dev.cannoli.scorza.ui.components.RaAccountRow.ACCOUNT ->
-                                add(labels.confirm to stringResource(R.string.label_log_out))
+                                add(labels.confirm to stringResource(R.string.label_logout))
                             dev.cannoli.scorza.ui.components.RaAccountRow.OFFLINE_SETS ->
                                 add(labels.confirm to stringResource(R.string.label_select))
                             dev.cannoli.scorza.ui.components.RaAccountRow.HARDCORE -> {}

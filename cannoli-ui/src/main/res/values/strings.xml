@@ -9,7 +9,6 @@
     <string name="label_save">SAVE</string>
     <string name="label_load">LOAD</string>
     <string name="label_change">CHANGE</string>
-    <string name="label_log_out">LOGOUT</string>
     <string name="label_firmware">FIRMWARE</string>
     <string name="label_choose">CHOOSE</string>
     <string name="label_close">CLOSE</string>
