@@ -43,11 +43,11 @@ class RaLoginController(
     fun login(username: String, password: String) {
         val user = username.trim()
         if (user.isEmpty() || password.isEmpty()) {
-            fail(dev.cannoli.scorza.R.string.ra_login_missing_credentials)
+            fail(dev.cannoli.scorza.R.string.achievos_login_missing_credentials)
             return
         }
         nav.dialogState.value = DialogState.RALoggingIn(
-            message = context.getString(dev.cannoli.scorza.R.string.ra_login_progress),
+            message = context.getString(dev.cannoli.scorza.R.string.achievos_login_progress),
         )
         ioScope.launch {
             val result = runCatching { clientProvider().loginWithPassword(user, password) }
@@ -114,9 +114,9 @@ class RaLoginController(
                 )
             }
             is RaConnectClient.LoginResult.InvalidCredentials ->
-                if (stillWaiting) fail(dev.cannoli.scorza.R.string.ra_login_invalid)
+                if (stillWaiting) fail(dev.cannoli.scorza.R.string.achievos_login_invalid)
             RaConnectClient.LoginResult.NetworkError ->
-                if (stillWaiting) fail(dev.cannoli.scorza.R.string.ra_login_network)
+                if (stillWaiting) fail(dev.cannoli.scorza.R.string.achievos_login_network)
         }
     }
 

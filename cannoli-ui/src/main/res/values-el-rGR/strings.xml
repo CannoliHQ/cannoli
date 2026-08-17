@@ -35,7 +35,7 @@
     <string name="label_update">ΕΝΗΜΕΡΩΣΗ</string>
     <string name="label_logout">LOGOUT</string>
     <!-- Bottom-bar button opening cached RetroAchievements sets for offline play. RA = RetroAchievements. -->
-    <string name="label_offline_sets">ΠΡΟΓΡΑΜΜΜΑΤΑ ΣΤΟΙΧΕΙΩΝ</string>
+    <string name="achievos_offline_sets">ΠΡΟΓΡΑΜΜΜΑΤΑ ΣΤΟΙΧΕΙΩΝ</string>
     <string name="label_hex">HEX</string>
     <string name="label_rename">ΕΠΙΣΤΡΟΦΗ</string>
     <string name="label_set">ΕΝΑΡΞΗ</string>
@@ -44,7 +44,7 @@
     <string name="label_kitchen">KITCHEN</string>
     <string name="label_hold_buttons" tools:ignore="TypographyEllipsis">ΧΑΡΑΚΤΗΡΙΣΤΙΚΑ Ή ΠΕΡΙΣΣΟΤΕΡΑ ΒΟΥΤΥΝ...</string>
     <!-- Bottom-bar button. RA = RetroAchievements. -->
-    <string name="label_ra_settings">ΡΥΘΜΙΣΕΙΣ RA</string>
+    <string name="achievos_settings">ΡΥΘΜΙΣΕΙΣ RA</string>
     <string name="label_details">ΛΕΠΤΟΜΕΡΕΙΣ</string>
     <string name="label_all">ΟΛΑ</string>
     <string name="label_unlocked">ΞΕΚΛΕΙΔΩΜΕΝΟ</string>
@@ -508,27 +508,27 @@
     <string name="quick_info_kitchen_off">Η κουζίνα δεν τρέχει</string>
     <string name="quick_info_offline">Χωρίς δίκτυο</string>
     <!-- RetroAchievements -->
-    <string name="ra_logged_in_as">Συνδεδεμένος ως</string>
+    <string name="achievos_logged_in_as">Συνδεδεμένος ως</string>
     <!-- RA = RetroAchievements. -->
-    <string name="ra_login_failed">RA: Η σύνδεση απέτυχε</string>
-    <string name="ra_login_invalid">Μη έγκυρο όνομα χρήστη ή κωδικός πρόσβασης</string>
-    <string name="ra_status_online">Συνδεδεμένος</string>
-    <string name="ra_status_offline">Αποσυνδεδεμένος</string>
+    <string name="achievos_login_failed">RA: Η σύνδεση απέτυχε</string>
+    <string name="achievos_login_invalid">Μη έγκυρο όνομα χρήστη ή κωδικός πρόσβασης</string>
+    <string name="achievos_status_online">Συνδεδεμένος</string>
+    <string name="achievos_status_offline">Αποσυνδεδεμένος</string>
     <!-- %1$d = achievements awaiting sync. -->
-    <string name="ra_status_offline_pending">Εκτός Σύνδεσης • Αναμονή Συγχρονισμού %1$d</string>
-    <string name="ra_detect_not_logged_in">Δεν έχετε συνδεθεί</string>
-    <string name="ra_detect_not_recognized">Το παιχνίδι δεν αναγνωρίζεται</string>
-    <string name="ra_detect_no_achievements">Δεν δημοσιεύθηκαν επιτεύγματα</string>
-    <string name="ra_detect_initializing">Αρχικοποίηση…</string>
-    <string name="ra_detect_mem_failed">Η μνήμη init απέτυχε</string>
+    <string name="achievos_status_offline_pending">Εκτός Σύνδεσης • Αναμονή Συγχρονισμού %1$d</string>
+    <string name="achievos_detect_not_logged_in">Δεν έχετε συνδεθεί</string>
+    <string name="achievos_detect_not_recognized">Το παιχνίδι δεν αναγνωρίζεται</string>
+    <string name="achievos_detect_no_achievements">Δεν δημοσιεύθηκαν επιτεύγματα</string>
+    <string name="achievos_detect_initializing">Αρχικοποίηση…</string>
+    <string name="achievos_detect_mem_failed">Η μνήμη init απέτυχε</string>
     <!-- %d = achievement count. -->
-    <plurals name="ra_detect_active">
+    <plurals name="achievos_detect_active">
         <item quantity="one">Ενεργό • %d επίτευγμα</item>
         <item quantity="other">Ενεργό • %d επιτεύγματα</item>
     </plurals>
     <!-- %d = number of achievements synced. -->
     <!-- Counts of synced and failed achievements. -->
-    <string name="ra_sync_partial">%1$d Συγχρονισμένο, %2$d Απέτυχε</string>
+    <string name="achievos_sync_partial">%1$d Συγχρονισμένο, %2$d Απέτυχε</string>
     <!-- OSD toast. %1$s = save slot name. -->
     <string name="osd_state_saved">Αποθηκεύτηκε στο %1$s</string>
     <!-- OSD toast. %1$s = save slot name. -->
@@ -563,11 +563,11 @@
     <!-- OSD toast. %1$d = player number, %2$s = controller name. -->
     <!-- OSD toast. %1$s = controller name. -->
     <!-- RA login OSD. %1$s = username, %2$s = display name, %3$d/%4$d = unlocked/total achievements. -->
-    <string name="ra_login_success">RA: %1$s (%2$s) · %3$d/%4$d ξεκλείδωτο</string>
-    <string name="ra_init_failed">RA: Η αρχικοποίηση απέτυχε</string>
-    <string name="ra_load_not_recognized">RA: Το παιχνίδι δεν αναγνωρίζεται</string>
-    <string name="ra_load_no_achievements">RA: Δεν υπάρχουν επιτεύγματα για αυτό το παιχνίδι</string>
-    <string name="ra_load_offline_pending">RA: Χωρίς σύνδεση (μη διαθέσιμα δεδομένα παιχνιδιού)</string>
+    <string name="achievos_login_success">RA: %1$s (%2$s) · %3$d/%4$d ξεκλείδωτο</string>
+    <string name="achievos_init_failed">RA: Η αρχικοποίηση απέτυχε</string>
+    <string name="achievos_load_not_recognized">RA: Το παιχνίδι δεν αναγνωρίζεται</string>
+    <string name="achievos_load_no_achievements">RA: Δεν υπάρχουν επιτεύγματα για αυτό το παιχνίδι</string>
+    <string name="achievos_load_offline_pending">RA: Χωρίς σύνδεση (μη διαθέσιμα δεδομένα παιχνιδιού)</string>
     <!-- Credits -->
     <string name="credits_title">Πιστώσεις και άδειες</string>
     <!-- Core picker / nav -->
@@ -677,20 +677,20 @@
     <!-- %1$s = platform name. -->
     <string name="dialog_reset_platform_confirm">Επαναφορά %1$s? Αυτό καθαρίζει την επιλογή εξομοιωτή σας για αυτήν την πλατφόρμα και επαναφέρει την προκαθορισμένη ομαδοποίηση.</string>
     <!-- RA achievement preload. %1$s = game name. -->
-    <string name="ra_preload_progress">Προφόρτωση %1$s</string>
-    <string name="ra_preload_none">Δεν βρέθηκαν επιτεύγματα για αυτό το παιχνίδι</string>
-    <string name="ra_preload_failed">Η προφόρτωση απέτυχε. Ελέγξτε τη σύνδεσή σας.</string>
+    <string name="achievos_preload_progress">Προφόρτωση %1$s</string>
+    <string name="achievos_preload_none">Δεν βρέθηκαν επιτεύγματα για αυτό το παιχνίδι</string>
+    <string name="achievos_preload_failed">Η προφόρτωση απέτυχε. Ελέγξτε τη σύνδεσή σας.</string>
     <!-- %1$d = achievements cached, %2$d = points. -->
-    <plurals name="ra_preload_success">
+    <plurals name="achievos_preload_success">
         <item quantity="one">Cached %1$d επίτευγμα (%2$d pts) για offline παιχνίδι</item>
         <item quantity="other">Cached %1$d επιτεύγματα (%2$d pts) για παιχνίδι χωρίς σύνδεση</item>
     </plurals>
     <!-- %1$d = games cached, %2$d = total games. -->
-    <string name="ra_preload_bulk_done">Cached %1$d %2$d παιχνίδια για παιχνίδι εκτός σύνδεσης</string>
-    <string name="ra_offline_sets_title">Σύνολα Επιτευγμάτων Εκτός Σύνδεσης</string>
-    <string name="ra_offline_sets_empty">Κανένα επίτευγμα δεν θέτει προσωρινά αποθηκευμένα</string>
+    <string name="achievos_preload_bulk_done">Cached %1$d %2$d παιχνίδια για παιχνίδι εκτός σύνδεσης</string>
+    <string name="achievos_offline_sets_title">Σύνολα Επιτευγμάτων Εκτός Σύνδεσης</string>
+    <string name="achievos_offline_sets_empty">Κανένα επίτευγμα δεν θέτει προσωρινά αποθηκευμένα</string>
     <!-- %1$d = achievement count, %2$s = set name. -->
-    <string name="ra_offline_set_value">%1$d Επιτεύγματα - %2$s</string>
+    <string name="achievos_offline_set_value">%1$d Επιτεύγματα - %2$s</string>
     <string name="label_refresh">REFRESH</string>
     <!-- Save Slots screen -->
     <!-- Screen title. %1$s = game name. -->

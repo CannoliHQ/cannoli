@@ -35,7 +35,7 @@
     <string name="label_update">更新</string>
     <string name="label_logout">LOGOUT</string>
     <!-- Bottom-bar button opening cached RetroAchievements sets for offline play. RA = RetroAchievements. -->
-    <string name="label_offline_sets">オフラインセット</string>
+    <string name="achievos_offline_sets">オフラインセット</string>
     <string name="label_hex">HEX</string>
     <string name="label_rename">名前の変更</string>
     <string name="label_set">設定</string>
@@ -44,7 +44,7 @@
     <string name="label_kitchen">シチリア</string>
     <string name="label_hold_buttons" tools:ignore="TypographyEllipsis">1つまたは複数のボタンを長押ししてください...</string>
     <!-- Bottom-bar button. RA = RetroAchievements. -->
-    <string name="label_ra_settings">RAの設定</string>
+    <string name="achievos_settings">RAの設定</string>
     <string name="label_details">詳細</string>
     <string name="label_all">すべて</string>
     <string name="label_unlocked">アンロックしました</string>
@@ -514,28 +514,28 @@
     <string name="quick_info_kitchen_off">キッチンが稼働していません</string>
     <string name="quick_info_offline">ネットワークがありません</string>
     <!-- RetroAchievements -->
-    <string name="ra_logged_in_as">としてログイン</string>
+    <string name="achievos_logged_in_as">としてログイン</string>
     <!-- RA = RetroAchievements. -->
-    <string name="ra_login_failed">RA: ログインに失敗しました</string>
-    <string name="ra_login_invalid">ユーザー名またはパスワードが正しくありません</string>
-    <string name="ra_status_online">オンライン</string>
-    <string name="ra_status_offline">オフライン</string>
+    <string name="achievos_login_failed">RA: ログインに失敗しました</string>
+    <string name="achievos_login_invalid">ユーザー名またはパスワードが正しくありません</string>
+    <string name="achievos_status_online">オンライン</string>
+    <string name="achievos_status_offline">オフライン</string>
     <!-- %1$d = achievements awaiting sync. -->
-    <string name="ra_status_offline_pending">オフライン • %1$d 保留中の同期</string>
-    <string name="ra_detect_not_logged_in">ログインしていません</string>
-    <string name="ra_detect_not_recognized">ゲームが認識されていません</string>
-    <string name="ra_detect_no_achievements">成果は公開されていません</string>
-    <string name="ra_detect_mem_failed">メモリ初期化に失敗しました</string>
+    <string name="achievos_status_offline_pending">オフライン • %1$d 保留中の同期</string>
+    <string name="achievos_detect_not_logged_in">ログインしていません</string>
+    <string name="achievos_detect_not_recognized">ゲームが認識されていません</string>
+    <string name="achievos_detect_no_achievements">成果は公開されていません</string>
+    <string name="achievos_detect_mem_failed">メモリ初期化に失敗しました</string>
     <!-- %d = achievement count. -->
-    <plurals name="ra_detect_active">
+    <plurals name="achievos_detect_active">
         <item quantity="other">アクティブ • %d アチーブメント数</item>
     </plurals>
     <!-- %d = number of achievements synced. -->
-    <plurals name="ra_sync_done">
+    <plurals name="achievos_sync_done">
         <item quantity="other">%d 達成を同期しました</item>
     </plurals>
     <!-- Counts of synced and failed achievements. -->
-    <string name="ra_sync_partial">%1$d 同期、 %2$d 失敗</string>
+    <string name="achievos_sync_partial">%1$d 同期、 %2$d 失敗</string>
     <!-- OSD toast. %1$s = save slot name. -->
     <string name="osd_state_saved">%1$s に保存しました</string>
     <!-- OSD toast. %1$s = save slot name. -->
@@ -572,11 +572,11 @@
     <!-- OSD toast. %1$s = controller name. -->
     <string name="osd_controller_disconnected">%1$s が切断されました</string>
     <!-- RA login OSD. %1$s = username, %2$s = display name, %3$d/%4$d = unlocked/total achievements. -->
-    <string name="ra_login_success">RA: %1$s (%2$s) · %3$d/%4$d ロック解除</string>
-    <string name="ra_init_failed">RA: 初期化に失敗しました</string>
-    <string name="ra_load_not_recognized">RA: ゲームが認識されていません</string>
-    <string name="ra_load_no_achievements">RA: このゲームの実績はありません</string>
-    <string name="ra_load_offline_pending">RA: オフライン (ゲームデータ利用不可)</string>
+    <string name="achievos_login_success">RA: %1$s (%2$s) · %3$d/%4$d ロック解除</string>
+    <string name="achievos_init_failed">RA: 初期化に失敗しました</string>
+    <string name="achievos_load_not_recognized">RA: ゲームが認識されていません</string>
+    <string name="achievos_load_no_achievements">RA: このゲームの実績はありません</string>
+    <string name="achievos_load_offline_pending">RA: オフライン (ゲームデータ利用不可)</string>
     <!-- Credits -->
     <string name="credits_title">クレジットとライセンス</string>
     <!-- Core picker / nav -->
@@ -682,19 +682,19 @@
     <!-- %1$s = platform name. -->
     <string name="dialog_reset_platform_confirm">%1$sをリセットしますか? このプラットフォームのエミュレータの選択を解除し、バンドルされたデフォルトを復元します。</string>
     <!-- RA achievement preload. %1$s = game name. -->
-    <string name="ra_preload_progress">%1$s のプリロード中</string>
-    <string name="ra_preload_none">このゲームの実績は見つかりませんでした</string>
-    <string name="ra_preload_failed">プリロードに失敗しました。接続を確認してください。</string>
+    <string name="achievos_preload_progress">%1$s のプリロード中</string>
+    <string name="achievos_preload_none">このゲームの実績は見つかりませんでした</string>
+    <string name="achievos_preload_failed">プリロードに失敗しました。接続を確認してください。</string>
     <!-- %1$d = achievements cached, %2$d = points. -->
-    <plurals name="ra_preload_success">
+    <plurals name="achievos_preload_success">
         <item quantity="other">オフライン再生のために、 %1$d 実績をキャッシュしました (%2$d pts)</item>
     </plurals>
     <!-- %1$d = games cached, %2$d = total games. -->
-    <string name="ra_preload_bulk_done">オフラインでプレイするための %1$d %2$d ゲームの Anumber@@2 をキャッシュしました</string>
-    <string name="ra_offline_sets_title">オフライン実績セット</string>
-    <string name="ra_offline_sets_empty">キャッシュされた実績セットはありません</string>
+    <string name="achievos_preload_bulk_done">オフラインでプレイするための %1$d %2$d ゲームの Anumber@@2 をキャッシュしました</string>
+    <string name="achievos_offline_sets_title">オフライン実績セット</string>
+    <string name="achievos_offline_sets_empty">キャッシュされた実績セットはありません</string>
     <!-- %1$d = achievement count, %2$s = set name. -->
-    <string name="ra_offline_set_value">%1$d 実績 - %2$s</string>
+    <string name="achievos_offline_set_value">%1$d 実績 - %2$s</string>
     <string name="label_refresh">更新</string>
     <!-- Save Slots screen -->
     <!-- Screen title. %1$s = game name. -->

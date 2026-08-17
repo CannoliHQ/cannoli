@@ -32,7 +32,7 @@ fun RALoggingInOverlay(message: String, failed: Boolean = false, buttonStyle: Bu
         ) {
             val typo = LocalCannoliTypography.current
             Text(
-                text = stringResource(R.string.ra_title),
+                text = stringResource(R.string.achievos_title),
                 style = typo.titleLarge.copy(color = Color.White)
             )
             Text(

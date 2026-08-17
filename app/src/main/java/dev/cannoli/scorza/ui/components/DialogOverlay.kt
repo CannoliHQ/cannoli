@@ -242,7 +242,7 @@ fun DialogOverlay(
 
         is DialogState.RAPreloadProgress -> {
             RALoggingInOverlay(
-                message = stringResource(R.string.ra_preload_progress, dialogState.gameName),
+                message = stringResource(R.string.achievos_preload_progress, dialogState.gameName),
                 buttonStyle = buttonStyle,
             )
         }
@@ -975,7 +975,7 @@ fun DialogOverlay(
         )
 
         is DialogState.RetroAchievementsLogoutConfirm -> ConfirmOverlay(
-            message = stringResource(R.string.ra_logout_confirm),
+            message = stringResource(R.string.achievos_logout_confirm),
             buttonStyle = buttonStyle,
             confirmLabel = stringResource(R.string.label_log_out),
         )
@@ -1192,9 +1192,9 @@ enum class RommActionRow(@androidx.annotation.StringRes val labelRes: Int) {
 }
 
 enum class RaAccountRow(@androidx.annotation.StringRes val labelRes: Int, val isCycle: Boolean = false) {
-    ACCOUNT(R.string.ra_account_row_account),
-    HARDCORE(R.string.ra_account_row_hardcore, isCycle = true),
-    OFFLINE_SETS(R.string.ra_account_row_offline_sets),
+    ACCOUNT(R.string.achievos_account_row_account),
+    HARDCORE(R.string.achievos_account_row_hardcore, isCycle = true),
+    OFFLINE_SETS(R.string.achievos_account_row_offline_sets),
 }
 
 enum class RommSettingsRow(@androidx.annotation.StringRes val labelRes: Int, val isCycle: Boolean = false) {
@@ -1227,10 +1227,10 @@ enum class RommSaveSyncRow {
 
 @androidx.annotation.StringRes
 fun raTokenStatusRes(state: RaTokenState): Int = when (state) {
-    RaTokenState.CHECKING -> R.string.ra_token_checking
-    RaTokenState.VALID -> R.string.ra_token_valid
-    RaTokenState.INVALID -> R.string.ra_token_invalid
-    RaTokenState.UNREACHABLE -> R.string.ra_token_offline
+    RaTokenState.CHECKING -> R.string.achievos_token_checking
+    RaTokenState.VALID -> R.string.achievos_token_valid
+    RaTokenState.INVALID -> R.string.achievos_token_invalid
+    RaTokenState.UNREACHABLE -> R.string.achievos_token_offline
 }
 
 @androidx.annotation.StringRes

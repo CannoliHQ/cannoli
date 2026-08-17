@@ -28,7 +28,7 @@ class RaPreloadController @Inject constructor(
 ) {
     fun preloadRom(rom: Rom, onComplete: () -> Unit = {}) {
         if (!isOnline()) {
-            showResult(false, rom.displayName, context.getString(dev.cannoli.scorza.R.string.ra_preload_failed))
+            showResult(false, rom.displayName, context.getString(dev.cannoli.scorza.R.string.achievos_preload_failed))
             return
         }
         nav.dialogState.value = DialogState.RAPreloadProgress(rom.displayName)
@@ -47,7 +47,7 @@ class RaPreloadController @Inject constructor(
         onComplete: () -> Unit = {},
     ) {
         if (!isOnline()) {
-            showResult(false, displayName, context.getString(dev.cannoli.scorza.R.string.ra_preload_failed))
+            showResult(false, displayName, context.getString(dev.cannoli.scorza.R.string.achievos_preload_failed))
             return
         }
         nav.dialogState.value = DialogState.RAPreloadProgress(displayName)
@@ -66,7 +66,7 @@ class RaPreloadController @Inject constructor(
         if (!isOnline()) {
             nav.dialogState.value = DialogState.RAPreloadResult(
                 success = false,
-                message = context.getString(dev.cannoli.scorza.R.string.ra_preload_failed),
+                message = context.getString(dev.cannoli.scorza.R.string.achievos_preload_failed),
             )
             return
         }
@@ -86,7 +86,7 @@ class RaPreloadController @Inject constructor(
                 if (!activityGone()) {
                     nav.dialogState.value = DialogState.RAPreloadResult(
                         success = cached > 0,
-                        message = context.getString(dev.cannoli.scorza.R.string.ra_preload_bulk_done, cached, roms.size),
+                        message = context.getString(dev.cannoli.scorza.R.string.achievos_preload_bulk_done, cached, roms.size),
                     )
                 }
             }
@@ -135,12 +135,12 @@ class RaPreloadController @Inject constructor(
 
     private fun messageFor(result: RaOfflinePreloader.Result): String = when (result) {
         is RaOfflinePreloader.Result.Success -> context.resources.getQuantityString(
-            dev.cannoli.scorza.R.plurals.ra_preload_success,
+            dev.cannoli.scorza.R.plurals.achievos_preload_success,
             result.achievementCount, result.achievementCount, result.totalPoints,
         )
         is RaOfflinePreloader.Result.NoAchievements ->
-            context.getString(dev.cannoli.scorza.R.string.ra_preload_none)
+            context.getString(dev.cannoli.scorza.R.string.achievos_preload_none)
         is RaOfflinePreloader.Result.Failure ->
-            context.getString(dev.cannoli.scorza.R.string.ra_preload_failed)
+            context.getString(dev.cannoli.scorza.R.string.achievos_preload_failed)
     }
 }

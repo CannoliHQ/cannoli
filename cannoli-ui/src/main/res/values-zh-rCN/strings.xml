@@ -35,7 +35,7 @@
     <string name="label_update">更新</string>
     <string name="label_logout">登出</string>
     <!-- Bottom-bar button opening cached RetroAchievements sets for offline play. RA = RetroAchievements. -->
-    <string name="label_offline_sets">离线成就</string>
+    <string name="achievos_offline_sets">离线成就</string>
     <string name="label_hex">HEX</string>
     <string name="label_rename">重命名</string>
     <string name="label_set">设置</string>
@@ -44,7 +44,7 @@
     <string name="label_kitchen">厨房</string>
     <string name="label_hold_buttons" tools:ignore="TypographyEllipsis">按住一个或多个按键…</string>
     <!-- Bottom-bar button. RA = RetroAchievements. -->
-    <string name="label_ra_settings">复古成就设定</string>
+    <string name="achievos_settings">复古成就设定</string>
     <string name="label_details">详情</string>
     <string name="label_all">全部</string>
     <string name="label_unlocked">已解锁</string>
@@ -516,30 +516,30 @@
     <string name="quick_info_kitchen_off">厨房未运行</string>
     <string name="quick_info_offline">无网络</string>
     <!-- RetroAchievements -->
-    <string name="ra_logged_in_as">登录为</string>
+    <string name="achievos_logged_in_as">登录为</string>
     <!-- RA = RetroAchievements. -->
-    <string name="ra_login_failed">RA: 登录失败</string>
-    <string name="ra_login_invalid">无效的用户名或密码</string>
-    <string name="ra_status_online">在线</string>
-    <string name="ra_status_offline">离线</string>
+    <string name="achievos_login_failed">RA: 登录失败</string>
+    <string name="achievos_login_invalid">无效的用户名或密码</string>
+    <string name="achievos_status_online">在线</string>
+    <string name="achievos_status_offline">离线</string>
     <!-- %1$d = achievements awaiting sync. -->
-    <string name="ra_status_offline_pending">离线• %1$d 等待同步</string>
-    <string name="ra_detect_not_logged_in">未登录</string>
-    <string name="ra_detect_identifying">识别游戏…</string>
-    <string name="ra_detect_not_recognized">游戏未识别</string>
-    <string name="ra_detect_no_achievements">没有发布的成就</string>
-    <string name="ra_detect_initializing">正在初始化…</string>
-    <string name="ra_detect_mem_failed">内存初始化失败</string>
+    <string name="achievos_status_offline_pending">离线• %1$d 等待同步</string>
+    <string name="achievos_detect_not_logged_in">未登录</string>
+    <string name="achievos_detect_identifying">识别游戏…</string>
+    <string name="achievos_detect_not_recognized">游戏未识别</string>
+    <string name="achievos_detect_no_achievements">没有发布的成就</string>
+    <string name="achievos_detect_initializing">正在初始化…</string>
+    <string name="achievos_detect_mem_failed">内存初始化失败</string>
     <!-- %d = achievement count. -->
-    <plurals name="ra_detect_active">
+    <plurals name="achievos_detect_active">
         <item quantity="other">活动的 %d 成就</item>
     </plurals>
     <!-- %d = number of achievements synced. -->
-    <plurals name="ra_sync_done">
+    <plurals name="achievos_sync_done">
         <item quantity="other">%d 成就已同步</item>
     </plurals>
     <!-- Counts of synced and failed achievements. -->
-    <string name="ra_sync_partial">%1$d 已同步， %2$d 失败</string>
+    <string name="achievos_sync_partial">%1$d 已同步， %2$d 失败</string>
     <!-- OSD toast. %1$s = save slot name. -->
     <string name="osd_state_saved">已保存到 %1$s</string>
     <!-- OSD toast. %1$s = save slot name. -->
@@ -576,11 +576,11 @@
     <!-- OSD toast. %1$s = controller name. -->
     <string name="osd_controller_disconnected">%1$s 已断开连接</string>
     <!-- RA login OSD. %1$s = username, %2$s = display name, %3$d/%4$d = unlocked/total achievements. -->
-    <string name="ra_login_success">RA: %1$s (%2$s) · %3$d/%4$d 已解锁</string>
-    <string name="ra_init_failed">RA: 初始化失败</string>
-    <string name="ra_load_not_recognized">RA：游戏未识别</string>
-    <string name="ra_load_no_achievements">RA：此游戏没有成就</string>
-    <string name="ra_load_offline_pending">RA：离线(游戏数据不可用)</string>
+    <string name="achievos_login_success">RA: %1$s (%2$s) · %3$d/%4$d 已解锁</string>
+    <string name="achievos_init_failed">RA: 初始化失败</string>
+    <string name="achievos_load_not_recognized">RA：游戏未识别</string>
+    <string name="achievos_load_no_achievements">RA：此游戏没有成就</string>
+    <string name="achievos_load_offline_pending">RA：离线(游戏数据不可用)</string>
     <!-- Credits -->
     <string name="credits_title">鸣谢与授权</string>
     <!-- Core picker / nav -->
@@ -688,19 +688,19 @@
     <!-- %1$s = platform name. -->
     <string name="dialog_reset_platform_confirm">重置 %1$s吗？这将清除您对此平台的模拟器选择，并还原捆绑的默认值。</string>
     <!-- RA achievement preload. %1$s = game name. -->
-    <string name="ra_preload_progress">预加载 %1$s</string>
-    <string name="ra_preload_none">没有找到这个游戏的成就</string>
-    <string name="ra_preload_failed">预加载失败。请检查您的连接。</string>
+    <string name="achievos_preload_progress">预加载 %1$s</string>
+    <string name="achievos_preload_none">没有找到这个游戏的成就</string>
+    <string name="achievos_preload_failed">预加载失败。请检查您的连接。</string>
     <!-- %1$d = achievements cached, %2$d = points. -->
-    <plurals name="ra_preload_success">
+    <plurals name="achievos_preload_success">
         <item quantity="other">为离线游玩缓存 %1$d 成就 (%2$d ps)</item>
     </plurals>
     <!-- %1$d = games cached, %2$d = total games. -->
-    <string name="ra_preload_bulk_done">在 %2$d 游戏中缓存了 %1$d 以便离线游玩</string>
-    <string name="ra_offline_sets_title">离线成就集</string>
-    <string name="ra_offline_sets_empty">没有缓存成就集</string>
+    <string name="achievos_preload_bulk_done">在 %2$d 游戏中缓存了 %1$d 以便离线游玩</string>
+    <string name="achievos_offline_sets_title">离线成就集</string>
+    <string name="achievos_offline_sets_empty">没有缓存成就集</string>
     <!-- %1$d = achievement count, %2$s = set name. -->
-    <string name="ra_offline_set_value">%1$d 成就 - %2$s</string>
+    <string name="achievos_offline_set_value">%1$d 成就 - %2$s</string>
     <string name="label_refresh">刷新</string>
     <!-- Save Slots screen -->
     <!-- Screen title. %1$s = game name. -->

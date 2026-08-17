@@ -1508,7 +1508,7 @@ fun AppNavGraph(
                 ListDialogScreen(
                     backgroundImagePath = appSettings.backgroundImagePath,
                     backgroundTint = appSettings.backgroundTint,
-                    title = stringResource(R.string.ra_title),
+                    title = stringResource(R.string.achievos_title),
                     listFontSize = listFontSize,
                     listLineHeight = listLineHeight,
                     fullWidth = true,
@@ -1543,7 +1543,7 @@ fun AppNavGraph(
                                 verticalPadding = listVerticalPadding,
                             )
                             dev.cannoli.scorza.ui.components.RaAccountRow.HARDCORE -> PillRowKeyValue(
-                                label = stringResource(R.string.ra_account_row_hardcore),
+                                label = stringResource(R.string.achievos_account_row_hardcore),
                                 value = stringResource(if (currentScreen.hardcore) R.string.value_on else R.string.value_off),
                                 isSelected = isSelected,
                                 fontSize = listFontSize,

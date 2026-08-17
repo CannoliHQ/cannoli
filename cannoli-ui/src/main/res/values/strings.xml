@@ -56,7 +56,7 @@
     <string name="label_update">UPDATE</string>
     <string name="label_logout">LOGOUT</string>
     <!-- Bottom-bar button opening cached RetroAchievements sets for offline play. RA = RetroAchievements. -->
-    <string name="label_offline_sets">OFFLINE SETS</string>
+    <string name="achievos_offline_sets">OFFLINE SETS</string>
     <string name="label_hex">HEX</string>
     <string name="label_rename">RENAME</string>
     <string name="label_set">SET</string>
@@ -67,7 +67,7 @@
     <string name="label_menu">MENU</string>
     <string name="label_hold_buttons" tools:ignore="TypographyEllipsis">HOLD ONE OR MORE BUTTONS...</string>
     <!-- Bottom-bar button. RA = RetroAchievements. -->
-    <string name="label_ra_settings">RA SETTINGS</string>
+    <string name="achievos_settings">RA SETTINGS</string>
     <string name="label_details">DETAILS</string>
     <string name="label_all">ALL</string>
     <string name="label_filter">FILTER</string>
@@ -248,8 +248,6 @@
     <string name="setting_color_accent">Accent</string>
     <string name="setting_color_background">Background</string>
     <string name="setting_color_status_bar">Status Bar</string>
-    <!-- Settings row. %s is the emulator app name (e.g. RetroArch). -->
-    <string name="setting_installed_cores">%s Installed Cores</string>
     <string name="setting_installed_cores_all">Installed Cores</string>
     <!-- Screen title. %s is the emulator app name (e.g. RetroArch). -->
     <string name="title_installed_cores">%s Installed Cores</string>
@@ -258,8 +256,6 @@
     <!-- Setting: the app's root storage folder on the SD card. -->
     <string name="setting_sd_root">Cannoli Root</string>
     <string name="setting_rom_directory">ROM Directory</string>
-    <!-- Setting: which installed RetroArch app/package to launch games with. -->
-    <string name="setting_ra_package">RetroArch Package</string>
     <string name="setting_scan_library">Scan Mode</string>
     <!-- Scan Mode value: scan the library automatically. -->
     <string name="value_automatically">Automatic</string>
@@ -638,44 +634,44 @@
     <string name="quick_info_offline">No network</string>
 
     <!-- RetroAchievements -->
-    <string name="ra_title" translatable="false">RetroAchievements</string>
-    <string name="ra_logged_in_as">Logged in as</string>
-    <string name="ra_account_row_account">Account</string>
-    <string name="ra_account_row_hardcore">Hardcore Mode</string>
-    <string name="ra_account_row_offline_sets">Offline Sets</string>
-    <string name="ra_logout_confirm">Log out of RetroAchievements?</string>
-    <string name="ra_token_checking">Checking...</string>
-    <string name="ra_token_valid">Signed in</string>
-    <string name="ra_token_invalid">Session expired, log in again</string>
-    <string name="ra_token_offline">Offline, not verified</string>
+    <string name="achievos_title" translatable="false">RetroAchievements</string>
+    <string name="achievos_logged_in_as">Logged in as</string>
+    <string name="achievos_account_row_account">Account</string>
+    <string name="achievos_account_row_hardcore">Hardcore Mode</string>
+    <string name="achievos_account_row_offline_sets">Offline Sets</string>
+    <string name="achievos_logout_confirm">Log out of RetroAchievements?</string>
+    <string name="achievos_token_checking">Checking...</string>
+    <string name="achievos_token_valid">Signed in</string>
+    <string name="achievos_token_invalid">Session expired, log in again</string>
+    <string name="achievos_token_offline">Offline, not verified</string>
     <!-- RA = RetroAchievements. -->
-    <string name="ra_login_failed">RA: Login failed</string>
-    <string name="ra_login_invalid">Invalid username or password</string>
-    <string name="ra_login_progress">Logging in...</string>
-    <string name="ra_login_network">Could not reach RetroAchievements. Check your connection.</string>
-    <string name="ra_login_missing_credentials">Enter a username and password first</string>
-    <string name="ra_status_online">Online</string>
-    <string name="ra_status_offline">Offline</string>
+    <string name="achievos_login_failed">RA: Login failed</string>
+    <string name="achievos_login_invalid">Invalid username or password</string>
+    <string name="achievos_login_progress">Logging in...</string>
+    <string name="achievos_login_network">Could not reach RetroAchievements. Check your connection.</string>
+    <string name="achievos_login_missing_credentials">Enter a username and password first</string>
+    <string name="achievos_status_online">Online</string>
+    <string name="achievos_status_offline">Offline</string>
     <!-- %1$d = achievements awaiting sync. -->
-    <string name="ra_status_offline_pending">Offline • %1$d Pending Sync</string>
-    <string name="ra_detect_not_logged_in">Not logged in</string>
-    <string name="ra_detect_identifying">Identifying game...</string>
-    <string name="ra_detect_not_recognized">Game not recognized</string>
-    <string name="ra_detect_no_achievements">No achievements published</string>
-    <string name="ra_detect_initializing">Initializing...</string>
-    <string name="ra_detect_mem_failed">Memory init failed</string>
+    <string name="achievos_status_offline_pending">Offline • %1$d Pending Sync</string>
+    <string name="achievos_detect_not_logged_in">Not logged in</string>
+    <string name="achievos_detect_identifying">Identifying game...</string>
+    <string name="achievos_detect_not_recognized">Game not recognized</string>
+    <string name="achievos_detect_no_achievements">No achievements published</string>
+    <string name="achievos_detect_initializing">Initializing...</string>
+    <string name="achievos_detect_mem_failed">Memory init failed</string>
     <!-- %d = achievement count. -->
-    <plurals name="ra_detect_active">
+    <plurals name="achievos_detect_active">
         <item quantity="one">Active • %d achievement</item>
         <item quantity="other">Active • %d achievements</item>
     </plurals>
     <!-- %d = number of achievements synced. -->
-    <plurals name="ra_sync_done">
+    <plurals name="achievos_sync_done">
         <item quantity="one">%d Achievement Synced</item>
         <item quantity="other">%d Achievements Synced</item>
     </plurals>
     <!-- Counts of synced and failed achievements. -->
-    <string name="ra_sync_partial">%1$d Synced, %2$d Failed</string>
+    <string name="achievos_sync_partial">%1$d Synced, %2$d Failed</string>
     <!-- OSD toast. %1$s = save slot name. -->
     <string name="osd_state_saved">Saved to %1$s</string>
     <!-- OSD toast. %1$s = save slot name. -->
@@ -733,13 +729,13 @@
     <!-- OSD toast. %1$s = controller name. -->
     <string name="osd_controller_disconnected">%1$s disconnected</string>
     <!-- RA login OSD. %1$s = username, %2$s = display name, %3$d/%4$d = unlocked/total achievements. -->
-    <string name="ra_login_success">RA: %1$s (%2$s) · %3$d/%4$d unlocked</string>
-    <string name="ra_init_failed">RA: Initialization failed</string>
-    <string name="ra_load_not_recognized">RA: Game not recognized</string>
-    <string name="ra_load_no_achievements">RA: No achievements for this game</string>
-    <string name="ra_load_offline_pending">RA: Offline (game data unavailable)</string>
+    <string name="achievos_login_success">RA: %1$s (%2$s) · %3$d/%4$d unlocked</string>
+    <string name="achievos_init_failed">RA: Initialization failed</string>
+    <string name="achievos_load_not_recognized">RA: Game not recognized</string>
+    <string name="achievos_load_no_achievements">RA: No achievements for this game</string>
+    <string name="achievos_load_offline_pending">RA: Offline (game data unavailable)</string>
     <!-- RA = RetroAchievements. The stored login is no longer good; the player must sign in again. -->
-    <string name="ra_session_expired">RA: Session expired</string>
+    <string name="achievos_session_expired">RA: Session expired</string>
 
     <!-- Credits -->
     <string name="credits_title">Credits and Licenses</string>
@@ -882,20 +878,20 @@
     <string name="dialog_reset_platform_confirm">Reset %1$s? Your pick is replaced by Cannoli\'s default, or cleared if there is none.</string>
     <string name="dialog_reset_custom_config_confirm">Reset custom.cfg? Your hand-edited keys are discarded.</string>
     <!-- RA achievement preload. %1$s = game name. -->
-    <string name="ra_preload_progress">Preloading %1$s</string>
-    <string name="ra_preload_none">No achievements found for this game</string>
-    <string name="ra_preload_failed">Preload failed. Check your connection.</string>
+    <string name="achievos_preload_progress">Preloading %1$s</string>
+    <string name="achievos_preload_none">No achievements found for this game</string>
+    <string name="achievos_preload_failed">Preload failed. Check your connection.</string>
     <!-- %1$d = achievements cached, %2$d = points. -->
-    <plurals name="ra_preload_success">
+    <plurals name="achievos_preload_success">
         <item quantity="one">Cached %1$d achievement (%2$d pts) for offline play</item>
         <item quantity="other">Cached %1$d achievements (%2$d pts) for offline play</item>
     </plurals>
     <!-- %1$d = games cached, %2$d = total games. -->
-    <string name="ra_preload_bulk_done">Cached %1$d of %2$d games for offline play</string>
-    <string name="ra_offline_sets_title">Offline Achievement Sets</string>
-    <string name="ra_offline_sets_empty">No achievement sets cached</string>
+    <string name="achievos_preload_bulk_done">Cached %1$d of %2$d games for offline play</string>
+    <string name="achievos_offline_sets_title">Offline Achievement Sets</string>
+    <string name="achievos_offline_sets_empty">No achievement sets cached</string>
     <!-- %1$d = achievement count, %2$s = set name. -->
-    <string name="ra_offline_set_value">%1$d Achievements - %2$s</string>
+    <string name="achievos_offline_set_value">%1$d Achievements - %2$s</string>
     <string name="label_refresh">REFRESH</string>
 
     <!-- Save Slots screen -->

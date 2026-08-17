@@ -46,7 +46,7 @@ fun RetroAchievementsOfflineSetsScreen(
         Box(modifier = modifier.fillMaxSize().padding(screenInsets())) {
             Column(modifier = Modifier.fillMaxSize().padding(bottom = footerReservation())) {
                 ScreenTitle(
-                    text = screen.platformName.ifEmpty { stringResource(dev.cannoli.ui.R.string.ra_offline_sets_title) },
+                    text = screen.platformName.ifEmpty { stringResource(dev.cannoli.ui.R.string.achievos_offline_sets_title) },
                     fontSize = listFontSize,
                     lineHeight = listLineHeight,
                 )
@@ -62,7 +62,7 @@ fun RetroAchievementsOfflineSetsScreen(
                         .replaceFirstChar { it.uppercaseChar() }
                     PillRowKeyValue(
                         label = entry.gameName,
-                        value = stringResource(dev.cannoli.ui.R.string.ra_offline_set_value, entry.achievementCount, rel),
+                        value = stringResource(dev.cannoli.ui.R.string.achievos_offline_set_value, entry.achievementCount, rel),
                         isSelected = isSelected,
                         fontSize = listFontSize,
                         lineHeight = listLineHeight,

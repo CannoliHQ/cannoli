@@ -35,7 +35,7 @@
     <string name="label_update">AKTUALISIEREN</string>
     <string name="label_logout">ABMELDEN</string>
     <!-- Bottom-bar button opening cached RetroAchievements sets for offline play. RA = RetroAchievements. -->
-    <string name="label_offline_sets">OFFLINE SETZEN</string>
+    <string name="achievos_offline_sets">OFFLINE SETZEN</string>
     <string name="label_hex">HEX</string>
     <string name="label_rename">UMBENENNEN</string>
     <string name="label_set">SETZEN</string>
@@ -44,7 +44,7 @@
     <string name="label_kitchen">KÜCHE</string>
     <string name="label_hold_buttons" tools:ignore="TypographyEllipsis">EINEN ODER MEHRERE KNÖPFE DRÜCKEN...</string>
     <!-- Bottom-bar button. RA = RetroAchievements. -->
-    <string name="label_ra_settings">RA EINSTELLUNGEN</string>
+    <string name="achievos_settings">RA EINSTELLUNGEN</string>
     <string name="label_details">EINZELHEITEN</string>
     <string name="label_all">ALLE</string>
     <string name="label_unlocked">FREIGESCHALTET</string>
@@ -515,27 +515,27 @@
     <string name="quick_info_kitchen_off">Küche läuft nicht</string>
     <string name="quick_info_offline">Kein Netzwerk</string>
     <!-- RetroAchievements -->
-    <string name="ra_logged_in_as">Eingeloggt als</string>
+    <string name="achievos_logged_in_as">Eingeloggt als</string>
     <!-- RA = RetroAchievements. -->
-    <string name="ra_login_failed">RA: Login fehlgeschlagen</string>
-    <string name="ra_login_invalid">Ungültiger Benutzername oder Passwort</string>
-    <string name="ra_status_online">Online</string>
-    <string name="ra_status_offline">Offline</string>
+    <string name="achievos_login_failed">RA: Login fehlgeschlagen</string>
+    <string name="achievos_login_invalid">Ungültiger Benutzername oder Passwort</string>
+    <string name="achievos_status_online">Online</string>
+    <string name="achievos_status_offline">Offline</string>
     <!-- %1$d = achievements awaiting sync. -->
-    <string name="ra_detect_not_logged_in">Nicht angemeldet</string>
-    <string name="ra_detect_identifying">Spiel… wird identifiziert</string>
-    <string name="ra_detect_not_recognized">Spiel nicht erkannt</string>
-    <string name="ra_detect_no_achievements">Keine Leistungen veröffentlicht</string>
-    <string name="ra_detect_initializing">Initialisiere…</string>
-    <string name="ra_detect_mem_failed">Speicherinit fehlgeschlagen</string>
+    <string name="achievos_detect_not_logged_in">Nicht angemeldet</string>
+    <string name="achievos_detect_identifying">Spiel… wird identifiziert</string>
+    <string name="achievos_detect_not_recognized">Spiel nicht erkannt</string>
+    <string name="achievos_detect_no_achievements">Keine Leistungen veröffentlicht</string>
+    <string name="achievos_detect_initializing">Initialisiere…</string>
+    <string name="achievos_detect_mem_failed">Speicherinit fehlgeschlagen</string>
     <!-- %d = achievement count. -->
     <!-- %d = number of achievements synced. -->
-    <plurals name="ra_sync_done">
+    <plurals name="achievos_sync_done">
         <item quantity="one">%d Erfolge synchronisiert</item>
         <item quantity="other">%d Erfolge synchronisiert</item>
     </plurals>
     <!-- Counts of synced and failed achievements. -->
-    <string name="ra_sync_partial">%1$d synchronisiert, %2$d fehlgeschlagen</string>
+    <string name="achievos_sync_partial">%1$d synchronisiert, %2$d fehlgeschlagen</string>
     <!-- OSD toast. %1$s = save slot name. -->
     <string name="osd_state_saved">In %1$s gespeichert</string>
     <!-- OSD toast. %1$s = save slot name. -->
@@ -572,11 +572,11 @@
     <!-- OSD toast. %1$s = controller name. -->
     <string name="osd_controller_disconnected">%1$s getrennt</string>
     <!-- RA login OSD. %1$s = username, %2$s = display name, %3$d/%4$d = unlocked/total achievements. -->
-    <string name="ra_login_success">RA: %1$s (%2$s) · %3$d/%4$d freigeschaltet</string>
-    <string name="ra_init_failed">RA: Initialisierung fehlgeschlagen</string>
-    <string name="ra_load_not_recognized">RA: Spiel nicht erkannt</string>
-    <string name="ra_load_no_achievements">RA: Keine Erfolge für dieses Spiel</string>
-    <string name="ra_load_offline_pending">RA: Offline (Spieldaten nicht verfügbar)</string>
+    <string name="achievos_login_success">RA: %1$s (%2$s) · %3$d/%4$d freigeschaltet</string>
+    <string name="achievos_init_failed">RA: Initialisierung fehlgeschlagen</string>
+    <string name="achievos_load_not_recognized">RA: Spiel nicht erkannt</string>
+    <string name="achievos_load_no_achievements">RA: Keine Erfolge für dieses Spiel</string>
+    <string name="achievos_load_offline_pending">RA: Offline (Spieldaten nicht verfügbar)</string>
     <!-- Credits -->
     <string name="credits_title">Credits und Lizenzen</string>
     <!-- Core picker / nav -->
@@ -687,20 +687,20 @@
     <!-- %1$s = platform name. -->
     <string name="dialog_reset_platform_confirm">%1$szurücksetzen? Dies löscht Ihre Emulator-Auswahl für diese Plattform und stellt den gebündelten Standard wieder her.</string>
     <!-- RA achievement preload. %1$s = game name. -->
-    <string name="ra_preload_progress">Vorladen %1$s</string>
-    <string name="ra_preload_none">Keine Erfolge für dieses Spiel gefunden</string>
-    <string name="ra_preload_failed">Vorladen fehlgeschlagen. Überprüfen Sie Ihre Verbindung.</string>
+    <string name="achievos_preload_progress">Vorladen %1$s</string>
+    <string name="achievos_preload_none">Keine Erfolge für dieses Spiel gefunden</string>
+    <string name="achievos_preload_failed">Vorladen fehlgeschlagen. Überprüfen Sie Ihre Verbindung.</string>
     <!-- %1$d = achievements cached, %2$d = points. -->
-    <plurals name="ra_preload_success">
+    <plurals name="achievos_preload_success">
         <item quantity="one">Cached %1$d Errungenschaft (%2$d pts) für Offline-Spiel</item>
         <item quantity="other">Cached %1$d Errungenschaften (%2$d pts) für Offline-Spiel</item>
     </plurals>
     <!-- %1$d = games cached, %2$d = total games. -->
-    <string name="ra_preload_bulk_done">%1$d von %2$d Spiele für Offline-Spiel</string>
-    <string name="ra_offline_sets_title">Offline-Errungenschaften Sets</string>
-    <string name="ra_offline_sets_empty">Keine Errungenschaftssets zwischengespeichert</string>
+    <string name="achievos_preload_bulk_done">%1$d von %2$d Spiele für Offline-Spiel</string>
+    <string name="achievos_offline_sets_title">Offline-Errungenschaften Sets</string>
+    <string name="achievos_offline_sets_empty">Keine Errungenschaftssets zwischengespeichert</string>
     <!-- %1$d = achievement count, %2$s = set name. -->
-    <string name="ra_offline_set_value">%1$d Erfolge - %2$s</string>
+    <string name="achievos_offline_set_value">%1$d Erfolge - %2$s</string>
     <string name="label_refresh">REFRIEREN</string>
     <!-- Save Slots screen -->
     <!-- Screen title. %1$s = game name. -->

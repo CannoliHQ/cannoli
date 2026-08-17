@@ -35,7 +35,7 @@
     <string name="label_update">ОНОВИТИ</string>
     <string name="label_logout">ВИЙТИ З АКАУНТУ</string>
     <!-- Bottom-bar button opening cached RetroAchievements sets for offline play. RA = RetroAchievements. -->
-    <string name="label_offline_sets">ОФЛАЙН-НАБОРИ</string>
+    <string name="achievos_offline_sets">ОФЛАЙН-НАБОРИ</string>
     <string name="label_hex">HEX</string>
     <string name="label_rename">ПЕРЕЙМЕНУВАТИ</string>
     <string name="label_set">ВСТАНОВИТИ</string>
@@ -44,7 +44,7 @@
     <string name="label_kitchen">КУХНЯ</string>
     <string name="label_hold_buttons" tools:ignore="TypographyEllipsis">УТРИМУЙТЕ ОДНУ АБО ДЕКІЛЬКА КНОПОК...</string>
     <!-- Bottom-bar button. RA = RetroAchievements. -->
-    <string name="label_ra_settings">НАЛАШТУВАННЯ RA</string>
+    <string name="achievos_settings">НАЛАШТУВАННЯ RA</string>
     <string name="label_details">ДЕТАЛІ</string>
     <string name="label_all">УСІ</string>
     <string name="label_unlocked">ВІДКРИТО</string>
@@ -517,36 +517,36 @@
     <string name="quick_info_kitchen_off">«Кухня» не запущена</string>
     <string name="quick_info_offline">Немає мережі</string>
     <!-- RetroAchievements -->
-    <string name="ra_logged_in_as">Увійшли як</string>
+    <string name="achievos_logged_in_as">Увійшли як</string>
     <!-- RA = RetroAchievements. -->
-    <string name="ra_login_failed">RA: не вдалося увійти</string>
-    <string name="ra_login_invalid">Неправильне ім\'я користувача або пароль</string>
-    <string name="ra_status_online">У мережі</string>
-    <string name="ra_status_offline">Не в мережі</string>
+    <string name="achievos_login_failed">RA: не вдалося увійти</string>
+    <string name="achievos_login_invalid">Неправильне ім\'я користувача або пароль</string>
+    <string name="achievos_status_online">У мережі</string>
+    <string name="achievos_status_offline">Не в мережі</string>
     <!-- %1$d = achievements awaiting sync. -->
-    <string name="ra_status_offline_pending">Не в мережі • Очікує синхр.: %1$d</string>
-    <string name="ra_detect_not_logged_in">Не увійшли</string>
-    <string name="ra_detect_identifying">Розпізнавання гри…</string>
-    <string name="ra_detect_not_recognized">Гру не розпізнано</string>
-    <string name="ra_detect_no_achievements">Досягнення не опубліковано</string>
-    <string name="ra_detect_initializing">Ініціалізація…</string>
-    <string name="ra_detect_mem_failed">Не вдалося ініціалізувати пам\'ять</string>
+    <string name="achievos_status_offline_pending">Не в мережі • Очікує синхр.: %1$d</string>
+    <string name="achievos_detect_not_logged_in">Не увійшли</string>
+    <string name="achievos_detect_identifying">Розпізнавання гри…</string>
+    <string name="achievos_detect_not_recognized">Гру не розпізнано</string>
+    <string name="achievos_detect_no_achievements">Досягнення не опубліковано</string>
+    <string name="achievos_detect_initializing">Ініціалізація…</string>
+    <string name="achievos_detect_mem_failed">Не вдалося ініціалізувати пам\'ять</string>
     <!-- %d = achievement count. -->
-    <plurals name="ra_detect_active">
+    <plurals name="achievos_detect_active">
         <item quantity="one">Активно • %d досягнення</item>
         <item quantity="few">Активно • %d досягнення</item>
         <item quantity="many">Активно • %d досягнень</item>
         <item quantity="other">Активно • %d досягнення</item>
     </plurals>
     <!-- %d = number of achievements synced. -->
-    <plurals name="ra_sync_done">
+    <plurals name="achievos_sync_done">
         <item quantity="one">Синхронізовано %d досягнення</item>
         <item quantity="few">Синхронізовано %d досягнення</item>
         <item quantity="many">Синхронізовано %d досягнень</item>
         <item quantity="other">Синхронізовано %d досягнення</item>
     </plurals>
     <!-- Counts of synced and failed achievements. -->
-    <string name="ra_sync_partial">Синхронізовано: %1$d, помилок: %2$d</string>
+    <string name="achievos_sync_partial">Синхронізовано: %1$d, помилок: %2$d</string>
     <!-- OSD toast. %1$s = save slot name. -->
     <string name="osd_state_saved">Збережено в %1$s</string>
     <!-- OSD toast. %1$s = save slot name. -->
@@ -583,11 +583,11 @@
     <!-- OSD toast. %1$s = controller name. -->
     <string name="osd_controller_disconnected">%1$s від\'єднано</string>
     <!-- RA login OSD. %1$s = username, %2$s = display name, %3$d/%4$d = unlocked/total achievements. -->
-    <string name="ra_login_success">RA: %1$s (%2$s) · %3$d/%4$d відкрито</string>
-    <string name="ra_init_failed">RA: помилка ініціалізації</string>
-    <string name="ra_load_not_recognized">RA: гру не розпізнано</string>
-    <string name="ra_load_no_achievements">RA: немає досягнень для цієї гри</string>
-    <string name="ra_load_offline_pending">RA: офлайн (дані гри недоступні)</string>
+    <string name="achievos_login_success">RA: %1$s (%2$s) · %3$d/%4$d відкрито</string>
+    <string name="achievos_init_failed">RA: помилка ініціалізації</string>
+    <string name="achievos_load_not_recognized">RA: гру не розпізнано</string>
+    <string name="achievos_load_no_achievements">RA: немає досягнень для цієї гри</string>
+    <string name="achievos_load_offline_pending">RA: офлайн (дані гри недоступні)</string>
     <!-- Credits -->
     <string name="credits_title">Автори та ліцензії</string>
     <!-- Core picker / nav -->
@@ -706,22 +706,22 @@
     <!-- %1$s = platform name. -->
     <string name="dialog_reset_platform_confirm">Скинути %1$s? Це очистить вибір емулятора для цієї платформи та відновить типовий вбудований варіант.</string>
     <!-- RA achievement preload. %1$s = game name. -->
-    <string name="ra_preload_progress">Попереднє завантаження %1$s</string>
-    <string name="ra_preload_none">Для цієї гри не знайдено досягнень</string>
-    <string name="ra_preload_failed">Не вдалося завантажити. Перевірте з\'єднання.</string>
+    <string name="achievos_preload_progress">Попереднє завантаження %1$s</string>
+    <string name="achievos_preload_none">Для цієї гри не знайдено досягнень</string>
+    <string name="achievos_preload_failed">Не вдалося завантажити. Перевірте з\'єднання.</string>
     <!-- %1$d = achievements cached, %2$d = points. -->
-    <plurals name="ra_preload_success">
+    <plurals name="achievos_preload_success">
         <item quantity="one">Кешовано %1$d досягнення (%2$d оч.) для гри офлайн</item>
         <item quantity="few">Кешовано %1$d досягнення (%2$d оч.) для гри офлайн</item>
         <item quantity="many">Кешовано %1$d досягнень (%2$d оч.) для гри офлайн</item>
         <item quantity="other">Кешовано %1$d досягнення (%2$d оч.) для гри офлайн</item>
     </plurals>
     <!-- %1$d = games cached, %2$d = total games. -->
-    <string name="ra_preload_bulk_done">Кешовано %1$d з %2$d ігор для гри офлайн</string>
-    <string name="ra_offline_sets_title">Офлайн-набори досягнень</string>
-    <string name="ra_offline_sets_empty">Немає кешованих наборів досягнень</string>
+    <string name="achievos_preload_bulk_done">Кешовано %1$d з %2$d ігор для гри офлайн</string>
+    <string name="achievos_offline_sets_title">Офлайн-набори досягнень</string>
+    <string name="achievos_offline_sets_empty">Немає кешованих наборів досягнень</string>
     <!-- %1$d = achievement count, %2$s = set name. -->
-    <string name="ra_offline_set_value">%1$d досягнень - %2$s</string>
+    <string name="achievos_offline_set_value">%1$d досягнень - %2$s</string>
     <string name="label_refresh">ОНОВИТИ</string>
     <!-- Save Slots screen -->
     <!-- Screen title. %1$s = game name. -->

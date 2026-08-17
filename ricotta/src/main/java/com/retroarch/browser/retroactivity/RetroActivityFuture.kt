@@ -317,7 +317,7 @@ class RetroActivityFuture : RetroActivityCamera() {
             RicottaOsdEvent.HARDCORE_PAUSED ->
                 osdContext.getString(R.string.osd_event_hardcore_paused)
             RicottaOsdEvent.CHEEVOS_LOGIN_FAILED -> osdContext.getString(
-                if (slot == 1) R.string.ra_session_expired else R.string.ra_login_failed
+                if (slot == 1) R.string.achievos_session_expired else R.string.achievos_login_failed
             )
             else -> osdContext.getString(R.string.osd_event_saved, where)
         }

@@ -46,7 +46,7 @@ fun RetroAchievementsOfflinePlatformsScreen(
         Box(modifier = modifier.fillMaxSize().padding(screenInsets())) {
             Column(modifier = Modifier.fillMaxSize().padding(bottom = footerReservation())) {
                 ScreenTitle(
-                    text = stringResource(dev.cannoli.ui.R.string.ra_offline_sets_title),
+                    text = stringResource(dev.cannoli.ui.R.string.achievos_offline_sets_title),
                     fontSize = listFontSize,
                     lineHeight = listLineHeight,
                 )
@@ -56,7 +56,7 @@ fun RetroAchievementsOfflinePlatformsScreen(
                         modifier = Modifier.weight(1f).fillMaxWidth(),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(text = stringResource(dev.cannoli.ui.R.string.ra_offline_sets_empty))
+                        Text(text = stringResource(dev.cannoli.ui.R.string.achievos_offline_sets_empty))
                     }
                 } else {
                     List(
