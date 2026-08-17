@@ -167,14 +167,15 @@ fun PillRowText(
     verticalPadding: Dp,
     showReorderIcon: Boolean = false,
     checkState: Boolean? = null,
-    tagSuffix: String? = null
+    tagSuffix: String? = null,
+    labelColor: Color? = null
 ) {
     val colors = LocalCannoliColors.current
     val baseStyle = MaterialTheme.typography.bodyLarge
     val textStyle = remember(baseStyle, fontSize, lineHeight) {
         baseStyle.copy(fontSize = fontSize, lineHeight = lineHeight)
     }
-    val textColor = if (isSelected) colors.highlightText else colors.text
+    val textColor = labelColor ?: if (isSelected) colors.highlightText else colors.text
 
     val scrollState = rememberScrollState()
     MarqueeEffect(scrollState, isSelected, key = label to isSelected)
