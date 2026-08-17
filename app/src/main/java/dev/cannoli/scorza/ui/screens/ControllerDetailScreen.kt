@@ -24,8 +24,8 @@ import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.DPAD_HORIZONTAL
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.List
-import dev.cannoli.ui.components.PillRow
 import dev.cannoli.ui.components.PillRowKeyValue
+import dev.cannoli.ui.components.PillRowText
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle
 import dev.cannoli.ui.components.footerReservation
@@ -168,12 +168,13 @@ fun ControllerDetailScreen(
                             lineHeight = listLineHeight,
                             verticalPadding = listVerticalPadding,
                         )
-                        is ControllerDetailEntry.Destructive -> DestructiveRow(
+                        is ControllerDetailEntry.Destructive -> PillRowText(
                             label = entry.label,
                             isSelected = isSelected,
                             fontSize = listFontSize,
                             lineHeight = listLineHeight,
                             verticalPadding = listVerticalPadding,
+                            labelColor = ErrorText,
                         )
                     }
                 }
@@ -196,27 +197,6 @@ fun ControllerDetailScreen(
                 rightItems = rightItems
             )
         }
-    }
-}
-
-@Composable
-private fun DestructiveRow(
-    label: String,
-    isSelected: Boolean,
-    fontSize: TextUnit,
-    lineHeight: TextUnit,
-    verticalPadding: Dp,
-) {
-    val baseStyle = MaterialTheme.typography.bodyLarge.copy(
-        fontSize = fontSize,
-        lineHeight = lineHeight,
-    )
-    PillRow(isSelected = isSelected, verticalPadding = verticalPadding, lineHeight = lineHeight) {
-        Text(
-            text = label,
-            style = baseStyle,
-            color = ErrorText,
-        )
     }
 }
 
