@@ -332,10 +332,12 @@ fun DialogOverlay(
         }
         is DialogState.QuickInfo -> {
             QuickInfoOverlay(
-                urls = dialogState.urls,
+                endpoints = dialogState.endpoints,
                 kitchenRunning = dialogState.kitchenRunning,
+                pin = dialogState.pin,
+                romm = dialogState.romm,
                 selectedIndex = dialogState.selectedIndex,
-                buttonStyle = buttonStyle
+                buttonStyle = buttonStyle,
             )
         }
 

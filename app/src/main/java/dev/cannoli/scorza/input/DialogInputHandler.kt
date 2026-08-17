@@ -277,7 +277,7 @@ class DialogInputHandler @Inject constructor(
         is DialogState.RommAdvancedMenu -> dev.cannoli.scorza.ui.components.ROMM_ADVANCED_ROWS.size
         is DialogState.RommDownloads -> rommDownloader.queue.state.value.size
         is DialogState.QuickMenu -> ds.rows.size
-        is DialogState.QuickInfo -> ds.urls.size
+        is DialogState.QuickInfo -> ds.endpoints.size
         is DialogState.Kitchen -> ds.urls.size
         is DialogState.RommArtResults -> artResultRowCount(ds)
         is DialogState.RommActionsMenu ->
@@ -515,8 +515,12 @@ class DialogInputHandler @Inject constructor(
                     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.KITCHEN -> launcherActions.openKitchen(fromQuickMenu = true)
                     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.RESCAN -> launcherActions.rescanWithProgress()
                     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.INFO -> {
-                        val urls = dev.cannoli.scorza.server.KitchenManager.getUrls(hasVpn = hasActiveVpn())
-                        nav.dialogState.value = DialogState.QuickInfo(urls = urls, kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning)
+                        nav.dialogState.value = DialogState.QuickInfo(
+                            endpoints = dev.cannoli.scorza.server.KitchenManager.endpoints(hasVpn = hasActiveVpn()),
+                            kitchenRunning = dev.cannoli.scorza.server.KitchenManager.isRunning,
+                            pin = dev.cannoli.scorza.server.KitchenManager.pinForDisplay(),
+                            romm = rommStatusFrom(rommStore.isConfigured, rommStore.host, rommStore.serverVersion),
+                        )
                     }
                     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.ABOUT ->
                         nav.dialogState.value = DialogState.About(fromQuickMenu = true)

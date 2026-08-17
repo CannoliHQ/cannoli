@@ -627,6 +627,18 @@
     <string name="sync_relative_now">just now</string>
     <string name="quick_info_title">Network Info</string>
     <string name="quick_info_ip">IP Address</string>
+    <string name="quick_info_interface">Interface</string>
+    <string name="quick_info_kitchen">Kitchen</string>
+    <string name="quick_info_pin">PIN</string>
+    <string name="quick_info_romm">RomM</string>
+    <string name="quick_info_iface_wifi">Wi-Fi</string>
+    <string name="quick_info_iface_ethernet">Ethernet</string>
+    <string name="quick_info_iface_vpn">VPN</string>
+    <string name="quick_info_iface_other">Other</string>
+    <string name="quick_info_not_connected">Not connected</string>
+    <string name="quick_info_not_running">Not running</string>
+    <string name="quick_info_unreachable">Unreachable</string>
+    <string name="quick_info_value_none">-</string>
     <!-- URL to reach the Nonna's Kitchen file server. -->
     <string name="quick_info_kitchen_url">Kitchen URL</string>
     <string name="quick_info_kitchen_off">Kitchen not running</string>
