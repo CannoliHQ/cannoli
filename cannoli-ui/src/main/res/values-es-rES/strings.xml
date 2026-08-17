@@ -360,7 +360,7 @@
     <string name="input_tester_unbound">Eventos emitidos sin mapeos</string>
     <!-- Setting values -->
     <string name="value_on">En</string>
-    <string name="value_off">Apagado</string>
+    <string name="value_off">Desactivado</string>
     <string name="value_show">Mostrar</string>
     <string name="value_hide">Ocultar</string>
     <string name="value_none">Ninguna</string>
@@ -422,6 +422,7 @@
     <string name="housekeeping_refresh_title">Actualizando biblioteca</string>
     <string name="update_download_error_server">Descarga fallida. El servidor devolvió un error. Inténtalo de nuevo más tarde.</string>
     <string name="update_download_error_network">Descarga fallida. Compruebe su conexión y vuelva a intentarlo.</string>
+    <string name="update_download_error_space">No hay suficiente almacenamiento. La actualización necesita aproximadamente %1$s y hay %2$s disponibles.</string>
     <string name="launch_error_resolve_file">Error al resolver el archivo de inicio</string>
     <string name="launch_error_extract">Error al extraer el archivo</string>
     <string name="launch_error_generic">Error al iniciar el juego</string>
