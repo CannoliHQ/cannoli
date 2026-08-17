@@ -156,8 +156,10 @@ sealed interface DialogState {
         override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
     }
     data class QuickInfo(
-        val urls: List<String>,
+        val endpoints: List<dev.cannoli.ui.components.NetworkEndpoint>,
         val kitchenRunning: Boolean,
+        val pin: String?,
+        val romm: dev.cannoli.ui.components.RommStatus?,
         override val selectedIndex: Int = 0,
     ) : ListDialog {
         override fun withSelectedIndex(index: Int) = copy(selectedIndex = index)
