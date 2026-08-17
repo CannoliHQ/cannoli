@@ -1020,55 +1020,22 @@ fun DialogOverlay(
     }
 }
 
-private const val SYNC_GLYPH_SCALE = 0.9f
-private const val SYNC_TIME_SCALE = 0.8f
-
 @Composable
 private fun SyncHistoryRowItem(row: SyncHistoryRow, isSelected: Boolean, fontSize: TextUnit, lineHeight: TextUnit, verticalPadding: Dp) {
-    val colors = LocalCannoliColors.current
-    val textColor = if (isSelected) colors.highlightText else colors.text
-    val muted = textColor.copy(alpha = 0.55f)
     val glyph = when (row.direction) {
         SyncDirection.UPLOAD -> CannoliIcons.SyncUpload.glyph
         SyncDirection.DOWNLOAD -> CannoliIcons.SyncDownload.glyph
         SyncDirection.CONFLICT, SyncDirection.ERROR -> CannoliIcons.SyncAlert.glyph
     }
-    dev.cannoli.ui.components.PillRow(
+    PillRowKeyValue(
+        label = row.name,
+        value = if (row.detail != null) "${row.detail}  ${row.relativeTime}" else row.relativeTime,
         isSelected = isSelected,
-        verticalPadding = verticalPadding,
+        fontSize = fontSize,
         lineHeight = lineHeight,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(glyph, color = textColor, fontFamily = LocalCannoliIconFont.current, fontSize = (fontSize.value * SYNC_GLYPH_SCALE).sp)
-            Spacer(modifier = Modifier.width(8.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = row.name,
-                    color = textColor,
-                    fontFamily = LocalCannoliFont.current,
-                    fontSize = fontSize,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                )
-                if (row.detail != null) {
-                    Text(
-                        text = row.detail,
-                        color = muted,
-                        fontFamily = LocalCannoliFont.current,
-                        fontSize = (fontSize.value * SYNC_TIME_SCALE).sp,
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(row.relativeTime, color = muted, fontFamily = LocalCannoliFont.current, fontSize = (fontSize.value * SYNC_TIME_SCALE).sp)
-        }
-    }
+        verticalPadding = verticalPadding,
+        leadingIcon = glyph,
+    )
 }
 
 @Composable
