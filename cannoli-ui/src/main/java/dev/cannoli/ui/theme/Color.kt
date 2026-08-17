@@ -18,6 +18,7 @@ val PolaroidInactive = Color(0xFFCCCCCC)
 val Success = Color(0xFF90EE90)
 val ErrorText = Color(0xFFFF6B6B)
 val ErrorHighlight = Color(0xFFFF5555)
+val Warning = Color(0xFFF5C400)
 
 data class CannoliColors(
     val highlight: Color = Color.White,
