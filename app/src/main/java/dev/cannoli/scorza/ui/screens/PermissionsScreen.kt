@@ -16,9 +16,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.navigation.LauncherScreen
-import dev.cannoli.scorza.permissions.AppPermission
 import dev.cannoli.scorza.permissions.PermissionGroup
 import dev.cannoli.scorza.permissions.PermissionState
+import dev.cannoli.scorza.permissions.visiblePermissions
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.ListSection
@@ -43,20 +43,15 @@ fun PermissionsScreen(
     buttonStyle: ButtonStyle = ButtonStyle(),
 ) {
     val itemHeight = pillItemHeight(listLineHeight, listVerticalPadding)
+    val visible = visiblePermissions(screen.states)
     val sections = listOf(
-        ListSection(
-            header = stringResource(R.string.permissions_section_actionable),
-            items = AppPermission.entries.filter { it.group == PermissionGroup.ACTIONABLE },
-        ),
-        ListSection(
-            header = stringResource(R.string.permissions_section_version),
-            items = AppPermission.entries.filter { it.group == PermissionGroup.VERSION_GATED },
-        ),
-        ListSection(
-            header = stringResource(R.string.permissions_section_always_on),
-            items = AppPermission.entries.filter { it.group == PermissionGroup.ALWAYS_ON },
-        ),
-    )
+        PermissionGroup.ACTIONABLE to R.string.permissions_section_actionable,
+        PermissionGroup.VERSION_GATED to R.string.permissions_section_version,
+        PermissionGroup.ALWAYS_ON to R.string.permissions_section_always_on,
+    ).mapNotNull { (group, headerRes) ->
+        val items = visible.filter { it.group == group }
+        if (items.isEmpty()) null else ListSection(header = stringResource(headerRes), items = items)
+    }
 
     ScreenBackground(backgroundImagePath = backgroundImagePath, backgroundTint = backgroundTint) {
         Box(modifier = modifier.fillMaxSize().padding(screenInsets())) {
@@ -69,7 +64,7 @@ fun PermissionsScreen(
                 Spacer(modifier = Modifier.height(listTitleSpacing()))
                 SectionedList(
                     sections = sections,
-                    selectedIndex = screen.selectedIndex.coerceIn(0, AppPermission.entries.size - 1),
+                    selectedIndex = screen.selectedIndex.coerceIn(0, (visible.size - 1).coerceAtLeast(0)),
                     fontSize = listFontSize,
                     lineHeight = listLineHeight,
                     verticalPadding = listVerticalPadding,

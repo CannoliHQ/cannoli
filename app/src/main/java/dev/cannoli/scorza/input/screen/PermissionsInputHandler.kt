@@ -6,8 +6,8 @@ import dagger.hilt.android.scopes.ActivityScoped
 import dev.cannoli.scorza.input.ScreenInputHandler
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
-import dev.cannoli.scorza.permissions.AppPermission
 import dev.cannoli.scorza.permissions.permissionStates
+import dev.cannoli.scorza.permissions.visiblePermissions
 import dev.cannoli.scorza.ui.screens.DialogState
 import javax.inject.Inject
 
@@ -32,19 +32,21 @@ class PermissionsInputHandler @Inject constructor(
 
     override fun onUp() {
         val screen = current() ?: return
-        val count = AppPermission.entries.size
+        val count = visiblePermissions(screen.states).size
+        if (count == 0) return
         nav.replaceTop(screen.copy(selectedIndex = (screen.selectedIndex - 1).mod(count)))
     }
 
     override fun onDown() {
         val screen = current() ?: return
-        val count = AppPermission.entries.size
+        val count = visiblePermissions(screen.states).size
+        if (count == 0) return
         nav.replaceTop(screen.copy(selectedIndex = (screen.selectedIndex + 1).mod(count)))
     }
 
     override fun onConfirm() {
         val screen = current() ?: return
-        val permission = AppPermission.entries.getOrNull(screen.selectedIndex) ?: return
+        val permission = visiblePermissions(screen.states).getOrNull(screen.selectedIndex) ?: return
         nav.dialogState.value = DialogState.PermissionDetail(permission)
     }
 

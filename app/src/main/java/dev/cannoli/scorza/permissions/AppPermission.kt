@@ -10,6 +10,7 @@ import android.os.Environment
 import android.provider.Settings
 import androidx.annotation.StringRes
 import androidx.core.content.ContextCompat
+import dev.cannoli.igm.GuideDisplays
 import dev.cannoli.scorza.R
 
 enum class PermissionState { GRANTED, NOT_GRANTED, NOT_REQUIRED }
@@ -54,15 +55,15 @@ enum class AppPermission(
         R.string.permission_internet,
         R.string.permission_why_internet,
     ),
+    NETWORK_STATE(
+        PermissionGroup.ALWAYS_ON,
+        R.string.permission_network_state,
+        R.string.permission_why_network_state,
+    ),
     WIFI_STATE(
         PermissionGroup.ALWAYS_ON,
         R.string.permission_wifi_state,
         R.string.permission_why_wifi_state,
-    ),
-    WAKE_LOCK(
-        PermissionGroup.ALWAYS_ON,
-        R.string.permission_wake_lock,
-        R.string.permission_why_wake_lock,
     ),
     FOREGROUND_SERVICE(
         PermissionGroup.ALWAYS_ON,
@@ -74,10 +75,10 @@ enum class AppPermission(
         R.string.permission_foreground_service_data_sync,
         R.string.permission_why_foreground_service_data_sync,
     ),
-    NETWORK_STATE(
+    WAKE_LOCK(
         PermissionGroup.ALWAYS_ON,
-        R.string.permission_network_state,
-        R.string.permission_why_network_state,
+        R.string.permission_wake_lock,
+        R.string.permission_why_wake_lock,
     ),
     QUERY_ALL_PACKAGES(
         PermissionGroup.ALWAYS_ON,
@@ -111,14 +112,23 @@ fun AppPermission.state(context: Context): PermissionState = when (this) {
         } else {
             PermissionState.NOT_REQUIRED
         }
-    AppPermission.DRAW_OVER_APPS -> grantedIf(Settings.canDrawOverlays(context))
-    AppPermission.INSTALL_UNKNOWN_APPS -> grantedIf(context.packageManager.canRequestPackageInstalls())
-    AppPermission.READ_STORAGE ->
-        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2) {
-            heldBy(context, Manifest.permission.READ_EXTERNAL_STORAGE)
-        } else {
+    // Cannoli only draws an overlay to put a guide on a second screen, so on a single-screen device
+    // there is nothing to grant it for. First run hides the row for the same reason.
+    AppPermission.DRAW_OVER_APPS ->
+        if (GuideDisplays.secondDisplayId(context) == null) {
             PermissionState.NOT_REQUIRED
+        } else {
+            grantedIf(Settings.canDrawOverlays(context))
         }
+    AppPermission.INSTALL_UNKNOWN_APPS -> grantedIf(context.packageManager.canRequestPackageInstalls())
+    AppPermission.READ_STORAGE -> when {
+        Build.VERSION.SDK_INT > Build.VERSION_CODES.S_V2 -> PermissionState.NOT_REQUIRED
+        // Where both exist, all files access covers everything this would, so it is only worth
+        // reporting as the fallback for a device whose owner has not granted that.
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager() ->
+            PermissionState.NOT_REQUIRED
+        else -> heldBy(context, Manifest.permission.READ_EXTERNAL_STORAGE)
+    }
     AppPermission.WRITE_STORAGE ->
         if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
             heldBy(context, Manifest.permission.WRITE_EXTERNAL_STORAGE)
@@ -146,6 +156,14 @@ fun AppPermission.state(context: Context): PermissionState = when (this) {
 
 fun permissionStates(context: Context): Map<AppPermission, PermissionState> =
     AppPermission.entries.associateWith { it.state(context) }
+
+/**
+ * What the permissions page lists on this device. One this Android version has no use for would
+ * otherwise spend a row saying so, and the page is long enough without rows that report nothing.
+ * The screen and its input handler both count through this, so selection cannot drift off the end.
+ */
+fun visiblePermissions(states: Map<AppPermission, PermissionState>): List<AppPermission> =
+    AppPermission.entries.filter { states[it] != PermissionState.NOT_REQUIRED }
 
 fun permissionSettingsIntent(action: String, context: Context): Intent =
     Intent(action, Uri.parse("package:${context.packageName}"))
