@@ -8,17 +8,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.sp
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.DPAD_HORIZONTAL
 import dev.cannoli.ui.R
-import dev.cannoli.ui.theme.LocalCannoliColors
-import dev.cannoli.ui.theme.LocalCannoliTypography
 import dev.cannoli.ui.theme.Spacing
 
 @Composable
@@ -30,7 +28,6 @@ fun QuickInfoOverlay(
     selectedIndex: Int,
     buttonStyle: ButtonStyle = ButtonStyle(),
 ) {
-    val colors = LocalCannoliColors.current
     val labels = NetworkInfoLabels(
         interfaceLabel = stringResource(R.string.quick_info_interface),
         ip = stringResource(R.string.quick_info_ip),
@@ -51,16 +48,16 @@ fun QuickInfoOverlay(
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         Column(
             modifier = Modifier.fillMaxSize().padding(screenInsets()),
-            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(
+            ScreenTitle(
                 text = stringResource(R.string.quick_info_title),
-                style = LocalCannoliTypography.current.titleLarge.copy(color = colors.text),
+                fontSize = 22.sp,
+                lineHeight = 32.sp,
             )
-            Spacer(modifier = Modifier.height(Spacing.Lg))
+            Spacer(modifier = Modifier.height(Spacing.Sm))
             InfoCard(
                 items = rows,
-                modifier = Modifier.weight(1f, fill = false).fillMaxWidth(0.82f),
+                modifier = Modifier.weight(1f, fill = false).fillMaxWidth(),
             )
             Spacer(modifier = Modifier.height(footerReservation()))
         }
