@@ -683,17 +683,7 @@
     </plurals>
     <!-- Counts of synced and failed achievements. -->
     <string name="achievos_sync_partial">%1$d Synced, %2$d Failed</string>
-    <!-- OSD toast. %1$s = save slot name. -->
-    <string name="osd_state_saved">Saved to %1$s</string>
-    <!-- OSD toast. %1$s = save slot name. -->
-    <string name="osd_state_loaded">Loaded %1$s</string>
-    <!-- OSD toast. %1$s = save slot name. -->
-    <string name="osd_state_deleted">Deleted %1$s</string>
     <string name="osd_reset">Reset</string>
-    <!-- OSD toast. %1$s = scaling mode name. -->
-    <!-- OSD toast. %1$s = shader preset name. -->
-    <!-- OSD toast. %1$s = mode/item name. -->
-    <string name="osd_switched_to">Switched to %1$s</string>
     <!-- OSD toast. %1$s = game name (setting saved per-game). -->
     <string name="osd_saved_for">Saved for %1$s</string>
     <string name="osd_saved_for_game">Saved for this game</string>
