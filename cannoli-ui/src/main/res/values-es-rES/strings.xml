@@ -345,7 +345,7 @@
     <string name="romm_vtype_mode">Modos de juego</string>
     <string name="setting_logging">Loggando</string>
     <!-- Advanced toggle: log the intents used to launch external emulators. -->
-    <string name="logging_title">Loggando</string>
+    <string name="logging_title">Registro</string>
     <string name="logging_rom_scan">Escanear ROM</string>
     <string name="logging_input">ENTRADA</string>
     <string name="logging_session">Sesión de juego</string>
@@ -365,7 +365,7 @@
     <string name="value_hide">Ocultar</string>
     <string name="value_none">Ninguna</string>
     <string name="value_selected">Seleccionado</string>
-    <string name="value_cannoli_root">Raíz del cannoli</string>
+    <string name="value_cannoli_root">Raíz de cannoli</string>
     <!-- Content Mode value: the default platform view. -->
     <string name="value_platforms">Por defecto</string>
     <string name="value_collections">Sólo colecciones</string>
@@ -427,6 +427,7 @@
     <string name="launch_error_extract">Error al extraer el archivo</string>
     <string name="launch_error_generic">Error al iniciar el juego</string>
     <!-- %1$s = file name. -->
+    <string name="launch_error_bad_game_file">No se pudo leer un ID de juego desde %1$s</string>
     <string name="launch_error_update_ricotta">Actualizar RicottaArch para continuar</string>
     <string name="launch_error_update_cannoli">Actualizar Cannoli para continuar</string>
     <!-- %1$s = core name, %2$s = emulator app. -->
@@ -602,10 +603,10 @@
     <!-- Credits -->
     <string name="credits_title">Créditos y licencias</string>
     <string name="credits_cores">Núcleos de emulador</string>
-    <string name="credits_shaders">Sombreador</string>
+    <string name="credits_shaders">Filtro visual</string>
     <string name="credits_fonts">Fuentes</string>
     <string name="credits_libraries">Bibliotecas</string>
-    <string name="credits_localization">Ubicacion de los colaboradores</string>
+    <string name="credits_localization">Ubicación de los colaboradores</string>
     <!-- Core picker / nav -->
     <string name="no_compatible_cores">Núcleos compatibles no encontrados</string>
     <string name="no_collections">No hay colecciones</string>
@@ -618,6 +619,7 @@
     <!-- Shown before the ROM directory is changed or cleared, since the rescan that follows prunes
          database entries for every ROM that is not at the same relative path under the new
          directory. Cannoli and RetroAchievements are product names; leave them untranslated. -->
+    <string name="library_switch_confirm">Cambiar el directorio de ROMs es una acción destructiva.\n\nAl volver a escanear, Cannoli elimina de su base de datos las ROMs que ya no encuentra. Se pierden los favoritos, colecciones, overrides de juego, historial de jugados recientemente y overrides de ID de RetroAchievements correspondientes a las ROMs que no aparecen en la misma ruta relativa dentro del nuevo directorio.\n\nLos archivos de ROM, las partidas guardadas y los estados guardados en el disco no se ven afectados.</string>
     <!-- IGM screen titles -->
     <string name="igm_settings">AJUSTES</string>
     <string name="igm_video">Vídeo</string>
@@ -686,6 +688,7 @@
     <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
     <string name="mapping_platform_name_with_tag">%1$s (%2$s)</string>
     <!-- Shown above the RetroArch core list when the installed build predates the receiver that answers core queries. -->
+    <string name="mapping_notice_cannot_report_cores">Esta versión de RetroArch no puede encontrar los cores instalados</string>
     <!-- Shown when RetroArch has the receiver but did not answer the query. -->
     <string name="mapping_notice_no_response">RetroArch no respondió</string>
     <!-- Shown above the core list when the configured RetroArch package is not installed at all. -->
@@ -702,7 +705,7 @@
     <string name="filter_unmapped">DESMAPADO</string>
     <string name="filter_mapped">MAPADO</string>
     <string name="value_unmapped">Sin mapear</string>
-    <string name="label_download">DESARROLLO</string>
+    <string name="label_download">DESCARGA</string>
     <!-- OSD toast. %1$s = core name. -->
     <string name="osd_downloading_core">Descargando %1$s</string>
     <!-- OSD toast. %1$s = core name. -->
@@ -740,6 +743,7 @@
     <string name="value_no_cores_found">Núcleo no encontrado</string>
     <string name="label_clear_override">LIMPIAR</string>
     <!-- %1$s = platform name. -->
+    <string name="dialog_reset_platform_confirm">¿Restablecer %1$s? Tu selección será reemplazada por la predeterminada de Cannoli, o se borrará si no hay ninguna.</string>
     <!-- RA achievement preload. %1$s = game name. -->
     <string name="ra_preload_progress">Precarga %1$s</string>
     <string name="ra_preload_none">No se han encontrado logros para este juego</string>
@@ -750,6 +754,7 @@
         <item quantity="other">Logro %1$d en caché (%2$d pts) para jugar sin conexión</item>
     </plurals>
     <!-- %1$d = games cached, %2$d = total games. -->
+    <string name="ra_preload_bulk_done">Almacenados en cache %1$d de %2$d juegos para jugar sin conexión</string>
     <string name="ra_offline_sets_title">Conjuntos de Logros Desconectados</string>
     <string name="ra_offline_sets_empty">Ningún logro se almacena</string>
     <!-- %1$d = achievement count, %2$s = set name. -->
