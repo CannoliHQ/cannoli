@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -27,6 +28,8 @@ import dev.cannoli.scorza.R
 import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.DPAD_HORIZONTAL
 import dev.cannoli.ui.components.BottomBar
+import dev.cannoli.ui.components.footerReservation
+import dev.cannoli.ui.components.screenInsets
 import dev.cannoli.ui.components.screenPadding
 import dev.cannoli.ui.theme.LocalCannoliTypography
 import dev.cannoli.ui.theme.Radius
@@ -47,15 +50,20 @@ fun KitchenOverlay(
     val qrUrl = remember(url, pin, requirePin) {
         if (requirePin) "$url?host=${java.net.URLEncoder.encode(pin, "UTF-8")}" else url
     }
-    val qrBitmap = remember(qrUrl) { dev.cannoli.scorza.util.QrCode.generate(qrUrl, 256) }
+    val qrBitmap = remember(qrUrl) { dev.cannoli.scorza.util.QrCode.generate(qrUrl, 512) }
+    val config = LocalConfiguration.current
+    val qrSize = (minOf(config.screenWidthDp, config.screenHeightDp) * 0.4f).dp.coerceIn(96.dp, 256.dp)
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black),
-        contentAlignment = Alignment.Center
+            .background(Color.Black)
     ) {
         Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(screenInsets())
+                .padding(bottom = footerReservation()),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -71,7 +79,7 @@ fun KitchenOverlay(
                     bitmap = qrBitmap.asImageBitmap(),
                     contentDescription = null,
                     modifier = Modifier
-                        .size(200.dp)
+                        .size(qrSize)
                         .clip(RoundedCornerShape(Radius.Lg))
                 )
             }
