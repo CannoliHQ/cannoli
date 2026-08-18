@@ -257,7 +257,7 @@ class DialogInputHandler @Inject constructor(
                 val newIdx = (newRow * rowSize + col).coerceAtMost(HEX_KEYS.lastIndex)
                 nav.dialogState.value = ds.copy(selectedIndex = newIdx)
             }
-            is DialogState.QuickInfo -> {}
+            is DialogState.QuickInfo, is DialogState.Kitchen -> {}
             is ListDialog -> moveSelection(ds, -1)
             else -> {}
         }
@@ -322,7 +322,7 @@ class DialogInputHandler @Inject constructor(
                 val newIdx = (newRow * rowSize + col).coerceAtMost(HEX_KEYS.lastIndex)
                 nav.dialogState.value = ds.copy(selectedIndex = newIdx)
             }
-            is DialogState.QuickInfo -> {}
+            is DialogState.QuickInfo, is DialogState.Kitchen -> {}
             is ListDialog -> moveSelection(ds, 1)
             else -> {}
         }
@@ -336,7 +336,7 @@ class DialogInputHandler @Inject constructor(
             is DialogState.RommSettingsMenu -> cycleRommSettings(ds, -1)
             is DialogState.RommSaveSyncMenu -> cycleRommSaveSync(ds, -1)
             is DialogState.ConflictsMenu -> cycleConflictChoice(ds, -1)
-            is DialogState.QuickInfo -> moveSelection(ds, -1)
+            is DialogState.QuickInfo, is DialogState.Kitchen -> moveSelection(ds, -1)
             is KeyboardHost -> nav.dialogState.value = ds.withKeyboard(KeyboardController.moveSelection(ds.keyboard, Direction.LEFT))
             is DialogState.ColorPicker -> {
                 val newCol = if (ds.selectedCol <= 0) COLOR_GRID_COLS - 1 else ds.selectedCol - 1
@@ -361,7 +361,7 @@ class DialogInputHandler @Inject constructor(
             is DialogState.RommSettingsMenu -> cycleRommSettings(ds, 1)
             is DialogState.RommSaveSyncMenu -> cycleRommSaveSync(ds, 1)
             is DialogState.ConflictsMenu -> cycleConflictChoice(ds, 1)
-            is DialogState.QuickInfo -> moveSelection(ds, 1)
+            is DialogState.QuickInfo, is DialogState.Kitchen -> moveSelection(ds, 1)
             is KeyboardHost -> nav.dialogState.value = ds.withKeyboard(KeyboardController.moveSelection(ds.keyboard, Direction.RIGHT))
             is DialogState.ColorPicker -> {
                 val newCol = if (ds.selectedCol >= COLOR_GRID_COLS - 1) 0 else ds.selectedCol + 1
