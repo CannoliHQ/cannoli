@@ -984,9 +984,9 @@
     <!-- Bottom-bar button opening the Android settings page for a permission. -->
     <string name="label_open_settings">OPEN SETTINGS</string>
     <!-- Section header: permissions the user can turn on or off in Android settings. -->
-    <string name="permissions_section_actionable">You Can Change These</string>
+    <string name="permissions_section_actionable">Granted by You</string>
     <!-- Section header: permissions that only apply on certain Android versions. -->
-    <string name="permissions_section_version">Version Dependent</string>
+    <string name="permissions_section_version">Older Android Only</string>
     <!-- Section header: permissions Android grants when the app is installed. -->
     <string name="permissions_section_always_on">Granted at Install</string>
     <string name="permission_state_granted">Granted</string>
@@ -994,29 +994,32 @@
     <!-- Row value: the manifest does not ask for this permission on the Android version in use. -->
     <string name="permission_state_not_required">Not required on this version</string>
 
-    <!-- Permission names. Each is the Android capability, worded the way the system settings do. -->
+    <!-- Names of permissions the user grants in Android settings. Keep these matching the wording
+         Android itself uses, so the row names what the user has to look for over there. -->
     <string name="permission_all_files">All Files Access</string>
-    <string name="permission_draw_over_apps">Draw Over Other Apps</string>
+    <string name="permission_draw_over_apps">Display Over Other Apps</string>
     <string name="permission_install_unknown_apps">Install Unknown Apps</string>
     <string name="permission_read_storage">Read Storage</string>
     <string name="permission_write_storage">Write Storage</string>
-    <string name="permission_internet">Internet</string>
-    <string name="permission_wifi_state">Wi-Fi State</string>
-    <!-- Permission that keeps the device from sleeping. -->
-    <string name="permission_wake_lock">Keep Awake</string>
-    <string name="permission_foreground_service">Foreground Service</string>
-    <string name="permission_foreground_service_data_sync">Background Sync Service</string>
-    <string name="permission_network_state">Network State</string>
+
+    <!-- Names of permissions Android grants at install. Nobody goes looking for these in settings,
+         so they say what the capability does rather than repeating the platform's API name. -->
+    <string name="permission_internet">Internet Access</string>
+    <string name="permission_wifi_state">Wi-Fi Status</string>
+    <string name="permission_wake_lock">Keep Device Awake</string>
+    <string name="permission_foreground_service">Background Tasks</string>
+    <string name="permission_foreground_service_data_sync">Background Sync</string>
+    <string name="permission_network_state">Network Status</string>
     <string name="permission_query_all_packages">See Installed Apps</string>
 
     <!-- Permission explanations, one sentence each, shown when a permission row is selected. -->
     <string name="permission_why_all_files">Reads your ROM library, saves, box art and configuration from the SD card.</string>
     <string name="permission_why_draw_over_apps">Puts a guide on the second screen while a game is running.</string>
-    <string name="permission_why_install_unknown_apps">Installs Cannoli updates and the APKs you open from the file manager.</string>
-    <string name="permission_why_read_storage">Reads the ROM library on Android 12 and older, before all files access existed.</string>
+    <string name="permission_why_install_unknown_apps">Installs Cannoli updates and the APKs you upload via Nonna\'s Kitchen.</string>
+    <string name="permission_why_read_storage">Reads the ROM library on Android 12 and older, when all files access is not granted.</string>
     <string name="permission_why_write_storage">Writes saves and configuration on Android 10 and older.</string>
     <!-- RomM and RetroAchievements are product names; leave them untranslated. -->
-    <string name="permission_why_internet">Reaches RomM, RetroAchievements and the update server.</string>
+    <string name="permission_why_internet">To connect to the internet silly!</string>
     <!-- Keep "Nonna\'s Kitchen" verbatim. -->
     <string name="permission_why_wifi_state">Shows the Wi-Fi indicator and works out the Nonna\'s Kitchen address.</string>
     <string name="permission_why_wake_lock">Keeps the device awake while a download or a file transfer is running.</string>
