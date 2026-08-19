@@ -2,7 +2,6 @@ package dev.cannoli.scorza.input.resolver
 
 import dev.cannoli.scorza.input.autoconfig.AutoconfigRepository
 import dev.cannoli.scorza.input.autoconfig.BundledAutoconfigEntries
-import dev.cannoli.scorza.input.autoconfig.CfgProvenance
 import dev.cannoli.scorza.input.autoconfig.RetroArchCfgEntry
 import dev.cannoli.scorza.input.ConnectedDevice
 import dev.cannoli.scorza.input.DeviceMapping
@@ -30,7 +29,7 @@ class MappingResolver(
             .mapNotNull { entry -> IdentityMatcher.rank(entry, device)?.let { entry to it } }
             .minWithOrNull(
                 compareBy<Pair<RetroArchCfgEntry, MatchRank>> {
-                    if (it.first.provenance == CfgProvenance.USER) 0 else 1
+                    if (it.first.isUserOwned) 0 else 1
                 }
                     .thenBy { it.second.ordinal }
                     .thenBy { if (IdentityMatcher.builtinAgrees(it.first, device)) 0 else 1 }
