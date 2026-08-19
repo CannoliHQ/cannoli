@@ -7,4 +7,5 @@ data class DeviceMatchRule(
     val androidBuildModel: String? = null,
     val sourceMask: Int? = null,
     val descriptor: String? = null,
+    val builtin: Boolean? = null,
 )

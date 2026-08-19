@@ -92,12 +92,12 @@ object RetroArchCfgWriter {
             }
         }
 
-        line("cannoli_user", mapping.userEdited.toString())
+        line("cannoli_source", if (mapping.userEdited) "USER" else "INPUT_DB")
+        mapping.match.builtin?.let { line("cannoli_builtin", it.toString()) }
         line("cannoli_confirm_button", mapping.menuConfirm.name)
         line("cannoli_glyph_style", mapping.glyphStyle.name)
         line("cannoli_exclude_from_gameplay", mapping.excludeFromGameplay.toString())
         mapping.defaultControllerTypeId?.let { line("cannoli_default_controller_type", it.toString()) }
-        mapping.match.descriptor?.let { line("cannoli_descriptor", it) }
         mapping.match.androidBuildModel?.let { line("cannoli_build_model", it) }
         mapping.match.sourceMask?.let { line("cannoli_source_mask", it.toString()) }
         // input_menu_toggle_btn is lossy by design (one keycode, defaults stripped), so a user's

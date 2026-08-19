@@ -1,6 +1,7 @@
 package dev.cannoli.scorza.input.resolver
 
 import dev.cannoli.scorza.input.autoconfig.CfgHatDirection
+import dev.cannoli.scorza.input.autoconfig.CfgProvenance
 import dev.cannoli.scorza.input.autoconfig.HatRef
 import dev.cannoli.scorza.input.autoconfig.RaAxisSlots
 import dev.cannoli.scorza.input.autoconfig.RetroArchCfgEntry
@@ -109,6 +110,9 @@ object RetroArchAutoconfigImporter {
             vendorId = entry.vendorId ?: device.vendorId,
             productId = entry.productId ?: device.productId,
         )
+        // Provenance wins where present; cannoliUser is the fallback for files that predate the key
+        // and have not been through AutoconfigMigration yet.
+        val owned = entry.provenance?.let { it == CfgProvenance.USER } ?: entry.cannoliUser
         val confirm = entry.confirmButton
             ?.let { runCatching { CanonicalButton.valueOf(it) }.getOrNull() }
             ?: profile.menuConfirm
@@ -124,7 +128,7 @@ object RetroArchAutoconfigImporter {
                 vendorId = entry.vendorId ?: device.vendorId.takeIf { it != 0 },
                 productId = entry.productId ?: device.productId.takeIf { it != 0 },
                 androidBuildModel = entry.buildModel,
-                descriptor = entry.descriptor ?: effectiveDescriptor,
+                builtin = entry.builtin,
             ),
             bindings = bindings,
             menuConfirm = confirm,
@@ -132,8 +136,8 @@ object RetroArchAutoconfigImporter {
             glyphStyle = glyph,
             excludeFromGameplay = entry.excludeFromGameplay,
             defaultControllerTypeId = entry.defaultControllerType,
-            source = if (entry.cannoliUser) MappingSource.USER_WIZARD else MappingSource.RETROARCH_AUTOCONFIG,
-            userEdited = entry.cannoliUser,
+            source = if (owned) MappingSource.USER_WIZARD else MappingSource.RETROARCH_AUTOCONFIG,
+            userEdited = owned,
             unmodeledLines = entry.unmodeledLines,
         )
     }

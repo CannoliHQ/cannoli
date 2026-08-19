@@ -68,7 +68,7 @@ class AutoconfigRepositoryTest {
         r.save(cfgWriterSampleMapping(id = "PadA"))
         val entry = r.findById("PadA")
         assertEquals("PadA.cfg", entry?.fileName)
-        assertTrue(entry!!.cannoliUser)
+        assertEquals(CfgProvenance.USER, entry!!.provenance)
         assertEquals(0, tmp.root.listFiles { f -> f.name.endsWith(".tmp") }!!.size)
     }
 

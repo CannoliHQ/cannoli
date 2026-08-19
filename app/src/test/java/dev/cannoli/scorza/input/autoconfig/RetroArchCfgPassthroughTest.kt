@@ -233,7 +233,7 @@ class RetroArchCfgPassthroughTest {
         assertTrue(output.contains("""input_device_display_name = "8BitDo SN30 GP""""))
         assertTrue(output.contains("""input_vendor_id = "11720""""))
         assertTrue(output.contains("""input_b_btn = "97""""))
-        assertTrue(output.contains("""cannoli_user = "true""""))
+        assertTrue(output.contains("""cannoli_source = "USER""""))
         assertTrue(output.contains("""cannoli_confirm_button = "BTN_SOUTH""""))
     }
 

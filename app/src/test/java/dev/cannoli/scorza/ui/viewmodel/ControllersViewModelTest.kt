@@ -5,6 +5,7 @@ import dev.cannoli.scorza.input.DeviceMapping
 import dev.cannoli.scorza.input.autoconfig.AutoconfigRepository
 import dev.cannoli.scorza.input.autoconfig.AutoconfigSeeder
 import dev.cannoli.scorza.input.autoconfig.BundledAutoconfigEntries
+import dev.cannoli.scorza.input.autoconfig.CfgProvenance
 import dev.cannoli.scorza.input.autoconfig.MapCfgSource
 import dev.cannoli.scorza.input.resolver.MappingResolver
 import dev.cannoli.scorza.input.runtime.ActiveMappingHolder
@@ -134,7 +135,7 @@ class ControllersViewModelTest {
         model.renameMapping(mapping, "Couch Pad")
 
         val entry = repository.findById(mapping.id) ?: error("expected a cfg on disk")
-        assertTrue(entry.cannoliUser)
+        assertEquals(CfgProvenance.USER, entry.provenance)
         assertEquals("Couch Pad", entry.displayName)
         assertEquals("Couch Pad", model.state.value.connected.single().mapping.displayName)
     }
@@ -165,7 +166,7 @@ class ControllersViewModelTest {
         val mapping = connectStadia()
         val model = vm()
         val renamed = model.renameMapping(mapping, "Couch Pad")
-        assertTrue(repository.findById("stadia")?.cannoliUser == true)
+        assertEquals(CfgProvenance.USER, repository.findById("stadia")?.provenance)
 
         model.resetMapping(renamed)
 

@@ -1,6 +1,7 @@
 package dev.cannoli.scorza.input
 
 import dev.cannoli.scorza.input.autoconfig.AutoconfigRepository
+import dev.cannoli.scorza.input.autoconfig.CfgProvenance
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
@@ -41,7 +42,7 @@ class EditButtonsControllerTest {
         assertEquals(listOf(InputBinding.Button(96)), finalized.bindings[CanonicalButton.BTN_SOUTH])
         assertTrue(finalized.userEdited)
         val entry = repo.findById("test") ?: error("expected a cfg on disk")
-        assertTrue(entry.cannoliUser)
+        assertEquals(CfgProvenance.USER, entry.provenance)
         assertEquals(96, entry.buttonBindings["b_btn"])
     }
 
