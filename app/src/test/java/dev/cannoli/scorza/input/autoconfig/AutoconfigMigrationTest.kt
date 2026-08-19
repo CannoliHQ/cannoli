@@ -148,6 +148,21 @@ class AutoconfigMigrationTest {
         assertEquals(before, snapshot(tmp.root))
     }
 
+    // The gate this proves: the seeder writes fresh curated cfgs into this same directory right
+    // after migrate() runs, and those cfgs carry no cannoli_source yet. Without the one-shot stamp,
+    // a second migrate() call on a later boot would see this file as an unkeyed pre-v2 leftover
+    // whose name happens to be bundled, and delete it with nothing to restore it.
+    @Test fun `migrating again after the seeder seeds a fresh curated cfg does not delete it`() {
+        val bundledNames = setOf("retroid_nova.cfg")
+        migrate(bundledNames)
+        val seeded = java.io.File(tmp.root, "retroid_nova.cfg")
+        val content = "input_device = \"Retroid Pocket Controller\"\n"
+        seeded.writeText(content)
+        migrate(bundledNames)
+        assertEquals(true, seeded.exists())
+        assertEquals(content, seeded.readText())
+    }
+
     @Test fun `an unreadable file survives migration`() {
         val f = java.io.File(tmp.root, "locked.cfg")
         f.writeText("input_device = \"Pad\"\n")

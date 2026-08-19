@@ -1,8 +1,6 @@
 package dev.cannoli.scorza.input.autoconfig
 
 import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
 
 class AutoconfigSeeder(
     private val source: CfgSource,
@@ -31,7 +29,7 @@ class AutoconfigSeeder(
             seeded += fileName
             val out = File(targetDir, fileName)
             if (out.exists() && isUserOwned(out)) continue
-            writeAtomic(out, text)
+            writeCfgAtomic(out, text)
         }
 
         prune(seeded, bundledNames)
@@ -64,30 +62,13 @@ class AutoconfigSeeder(
     private fun isUserOwned(file: File): Boolean =
         runCatching { RetroArchCfgParser.parse(file.readText()).isUserOwned }.getOrDefault(true)
 
-    private fun writeAtomic(out: File, text: String) {
-        val tmp = File(out.parentFile, "${out.name}.tmp")
-        try {
-            FileOutputStream(tmp).use { fos ->
-                fos.write(text.toByteArray())
-                fos.fd.sync()
-            }
-        } catch (e: IOException) {
-            tmp.delete()
-            throw e
-        }
-        if (!tmp.renameTo(out)) {
-            tmp.delete()
-            throw IOException("Failed to rename seeded cfg ${out.name}")
-        }
-    }
-
     // Reset restores the bundled cfg instead of only dropping the user's, because an edit is saved
     // over the file it was resolved from and RetroArch reads the same directory.
     fun reseedSingle(fileName: String): Boolean = runCatching {
         val asset = source.listCfgFiles().firstOrNull { it.substringAfterLast('/') == fileName }
             ?: return false
         targetDir.mkdirs()
-        writeAtomic(File(targetDir, fileName), source.open(asset).use { it.readBytes().toString(Charsets.UTF_8) })
+        writeCfgAtomic(File(targetDir, fileName), source.open(asset).use { it.readBytes().toString(Charsets.UTF_8) })
         true
     }.getOrElse { false }
 

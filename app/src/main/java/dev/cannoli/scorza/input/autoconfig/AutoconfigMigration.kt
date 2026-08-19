@@ -1,7 +1,6 @@
 package dev.cannoli.scorza.input.autoconfig
 
 import java.io.File
-import java.io.FileOutputStream
 import java.io.IOException
 
 // v2 is a breaking upgrade, so this rewrites rather than tolerating the old shape. Pre-v2 files
@@ -51,10 +50,12 @@ class AutoconfigMigration(
             }
             claimed[target.name] = file
             claimedMtime[target.name] = mtime
-            writeAtomic(file, rewrite(file.readText()))
+            writeCfgAtomic(file, rewrite(file.readText()))
             if (file.name != target.name) {
                 clearTargetSlot(dir, target, bundledNames)
-                file.renameTo(target)
+                if (!file.renameTo(target)) {
+                    throw IOException("Failed to rename migrated cfg ${file.name} to ${target.name}")
+                }
                 claimed[target.name] = target
             }
         }
@@ -90,23 +91,6 @@ class AutoconfigMigration(
         }
         if (!file.renameTo(dest)) {
             throw IOException("Failed to park ${file.name}")
-        }
-    }
-
-    private fun writeAtomic(file: File, text: String) {
-        val tmp = File(file.parentFile, "${file.name}.tmp")
-        try {
-            FileOutputStream(tmp).use { fos ->
-                fos.write(text.toByteArray())
-                fos.fd.sync()
-            }
-        } catch (e: IOException) {
-            tmp.delete()
-            throw e
-        }
-        if (!tmp.renameTo(file)) {
-            tmp.delete()
-            throw IOException("Failed to rename migrated cfg ${file.name}")
         }
     }
 
