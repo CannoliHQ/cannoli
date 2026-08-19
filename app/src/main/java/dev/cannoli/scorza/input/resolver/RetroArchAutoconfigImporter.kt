@@ -42,7 +42,6 @@ object RetroArchAutoconfigImporter {
     fun import(
         entry: RetroArchCfgEntry,
         device: ConnectedDevice,
-        persistenceDescriptor: String? = null,
     ): DeviceMapping {
         val bindings = mutableMapOf<CanonicalButton, MutableList<InputBinding>>()
 
@@ -189,6 +188,6 @@ object RetroArchAutoconfigImporter {
         return if (model != null) "${slug}_${slugify(model)}" else slug
     }
 
-    private fun slugify(value: String): String =
+    internal fun slugify(value: String): String =
         value.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_')
 }

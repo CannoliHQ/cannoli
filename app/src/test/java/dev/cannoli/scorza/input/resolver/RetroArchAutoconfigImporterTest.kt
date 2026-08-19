@@ -49,7 +49,6 @@ class RetroArchAutoconfigImporterTest {
         val resolved = RetroArchAutoconfigImporter.import(
             RetroArchCfgEntry(deviceName = "Wireless Controller", vendorId = 1356, productId = 2508, buttonBindings = emptyMap()),
             deviceNamed("Wireless Controller", 1356, 2508),
-            "c575e892a6bb353df4b1327e81beedf84b540eb4",
         )
         assertEquals("ra_wireless_controller", resolved.id)
     }
@@ -63,7 +62,6 @@ class RetroArchAutoconfigImporterTest {
                 buttonBindings = emptyMap(),
             ),
             deviceNamed("Retroid Pocket Controller", 8226, 12289, "Retroid Pocket Nova"),
-            null,
         )
         assertEquals("ra_retroid_pocket_controller_retroid_pocket_nova", resolved.id)
     }

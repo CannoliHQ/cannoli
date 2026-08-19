@@ -39,7 +39,7 @@ class MappingResolver(
             )
             ?.first
 
-        return best?.let { RetroArchAutoconfigImporter.import(it, device, persistenceDescriptor) }
-            ?: AndroidDefaultMappingFactory().create(device, persistenceDescriptor)
+        return best?.let { RetroArchAutoconfigImporter.import(it, device) }
+            ?: AndroidDefaultMappingFactory().create(device)
     }
 }

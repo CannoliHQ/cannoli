@@ -31,20 +31,14 @@ class AndroidDefaultMappingFactory(
 
     fun create(
         device: ConnectedDevice,
-        persistenceDescriptor: String? = null,
     ): DeviceMapping {
         val profile = legendResolver.resolve(
             vendorId = device.vendorId,
             productId = device.productId,
         )
-        val effectiveDescriptor = persistenceDescriptor?.takeIf { it.isNotEmpty() }
-            ?: device.descriptor.takeIf { it.isNotEmpty() }
-        val baseId = "android_default_" + (effectiveDescriptor
+        val safeId = "android_default_" + (device.name.takeIf { it.isNotEmpty() }
+            ?.let { RetroArchAutoconfigImporter.slugify(it) }
             ?: "${device.vendorId}_${device.productId}_${device.name.hashCode()}")
-        // Distinguish identical-name controllers via descriptor (matches RetroArch importer).
-        val suffix = effectiveDescriptor
-            ?.let { Integer.toHexString(it.hashCode()).takeLast(6).lowercase() }
-        val safeId = if (suffix != null) "${baseId}_$suffix" else baseId
         val faceBindings = profile.faceLayout.standardFaceBindings().mapValues { (_, keyCode) ->
             listOf(InputBinding.Button(keyCode))
         }
