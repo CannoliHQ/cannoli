@@ -554,12 +554,12 @@ class ControllerBridgeTest {
         assertEquals(0, portRouter.portFor(12))
         assertEquals(0, portRouter.portFor(11))
         assertEquals(0, portRouter.portFor(10))
-        // The persisted mapping carries the sibling's descriptor so the file is unique per pad.
+        // The persisted mapping id carries the sibling's descriptor so the file is unique per pad.
         val saved = active.active.value
         assertNotNull(saved)
-        val savedDescriptor = saved?.match?.descriptor
-        assertTrue("expected sibling descriptor, got '$savedDescriptor'",
-            savedDescriptor == "ds-motion-mac-A" || savedDescriptor == "ds-touch-mac-A")
+        val savedId = saved?.id.orEmpty()
+        assertTrue("expected sibling descriptor in id, got '$savedId'",
+            savedId.contains("ds-motion-mac-A") || savedId.contains("ds-touch-mac-A"))
     }
 
     @Test

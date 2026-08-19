@@ -97,9 +97,7 @@ object RetroArchAutoconfigImporter {
             }
         }
 
-        val effectiveDescriptor = persistenceDescriptor?.takeIf { it.isNotEmpty() }
-            ?: device.descriptor.takeIf { it.isNotEmpty() }
-        val safeId = stableIdFor(device, entry, effectiveDescriptor)
+        val safeId = stableIdFor(device, entry)
         // Phantom-rewrite handling: on hosts that rewrite a paired BT pad's VID/PID to the
         // built-in's values (Retroid family), the device's reported vid/pid don't match the
         // pad's real brand. The matched cfg has the right brand vid/pid in its header, so try
@@ -181,17 +179,16 @@ object RetroArchAutoconfigImporter {
     private fun stableIdFor(
         device: ConnectedDevice,
         entry: RetroArchCfgEntry,
-        descriptor: String?,
     ): String {
         val base = device.name.ifEmpty { entry.deviceName.ifEmpty { "controller" } }
-        val slug = "ra_" + base.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_')
-        // Append a descriptor-derived suffix so two physically distinct controllers with the same
-        // name+VID/PID (e.g. a pair of 8BitDo Lites) end up in separate INI files. The descriptor
-        // hash already incorporates the kernel-level uniqueId (BT MAC for direct BT pads, or the
-        // sibling's MAC for Retroid-style phantom-rewrite gamepads — caller supplies the right one).
-        val suffix = descriptor
-            ?.takeIf { it.isNotEmpty() }
-            ?.let { Integer.toHexString(it.hashCode()).takeLast(6).lowercase() }
-        return if (suffix != null) "${slug}_$suffix" else slug
+        val slug = "ra_" + slugify(base)
+        // Mappings are scoped per pad model, so no per-unit suffix. Pinned entries append the model
+        // to keep two handhelds' built-in profiles distinct in input-db, even though model-aware
+        // seeding means only one of them is ever on a given device.
+        val model = entry.buildModel?.trim()?.takeIf { it.isNotEmpty() }
+        return if (model != null) "${slug}_${slugify(model)}" else slug
     }
+
+    private fun slugify(value: String): String =
+        value.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_')
 }

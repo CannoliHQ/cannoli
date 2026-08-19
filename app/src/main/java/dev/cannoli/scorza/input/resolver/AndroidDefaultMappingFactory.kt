@@ -55,7 +55,6 @@ class AndroidDefaultMappingFactory(
                 name = device.name.ifEmpty { null },
                 vendorId = device.vendorId.takeIf { it != 0 },
                 productId = device.productId.takeIf { it != 0 },
-                descriptor = effectiveDescriptor,
             ),
             bindings = (DEFAULT_BINDINGS.mapValues { (_, keyCodes) ->
                 keyCodes.map { InputBinding.Button(it) }

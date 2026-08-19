@@ -23,7 +23,6 @@ class RetroArchCfgWriterTest {
             name = "8BitDo Pro 2",
             vendorId = 11720,
             productId = 24582,
-            descriptor = "abc123",
         ),
         bindings = mapOf(
             CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96)),
