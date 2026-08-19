@@ -1,3 +1,4 @@
+import java.security.MessageDigest
 import java.util.Properties
 
 plugins {
@@ -19,6 +20,21 @@ val gitCommitHash: String = git("rev-parse", "--short", "HEAD").ifEmpty { "unkno
 val gitDirty: Boolean = git("status", "--porcelain", "--untracked-files=no").isNotEmpty()
 
 val buildTimeMillis: Long = System.currentTimeMillis()
+
+// Version code cannot invalidate the autoconfig seed: it is 1 for every debug build, so a rebuild
+// with changed cfgs would keep serving the previously seeded set. Digest the content instead.
+val autoconfigDigest: String = run {
+    val dir = file("src/main/assets/autoconfig/cannoli")
+    val cfgs = dir.listFiles { f: java.io.File -> f.isFile && f.extension == "cfg" }
+        ?.sortedBy { it.name }
+        .orEmpty()
+    val md = MessageDigest.getInstance("SHA-256")
+    for (f in cfgs) {
+        md.update(f.name.toByteArray())
+        md.update(f.readBytes())
+    }
+    md.digest().joinToString("") { "%02x".format(it) }.take(16)
+}
 
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 val keystoreProperties = Properties().apply {
@@ -49,6 +65,7 @@ android {
         buildConfigField("long", "BUILD_TIME", "${buildTimeMillis}L")
         buildConfigField("String", "GIT_HASH", "\"$gitCommitHash\"")
         buildConfigField("boolean", "GIT_DIRTY", "$gitDirty")
+        buildConfigField("String", "AUTOCONFIG_DIGEST", "\"$autoconfigDigest\"")
     }
 
     buildFeatures {

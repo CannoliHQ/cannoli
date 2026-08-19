@@ -53,7 +53,7 @@ class ControllersViewModelTest {
     )
 
     private val seeder by lazy {
-        AutoconfigSeeder(bundledAssets, { tmp.root }, { File(tmp.root, "Mappings") }, versionCode = 1)
+        AutoconfigSeeder(bundledAssets, { tmp.root }, { File(tmp.root, "Mappings") }, assetsDigest = "d", buildModel = "Pixel")
     }
 
     private fun vm() =
