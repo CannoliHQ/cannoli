@@ -36,8 +36,9 @@ data class RetroArchCfgEntry(
     val fileName: String? = null,
     val unmodeledLines: List<String> = emptyList(),
 ) {
-    // Provenance wins where present; cannoliUser is the fallback for files that predate the key
-    // and have not been through AutoconfigMigration yet.
+    // Provenance wins where present; cannoliUser is the permanent fallback for cfgs written before
+    // the key existed. Nothing rewrites those files, so deleting this fallback would silently make
+    // every one of them unowned, and the seeder would then overwrite the user's mapping.
     val isUserOwned: Boolean get() = provenance?.let { it == CfgProvenance.USER } ?: cannoliUser
 
     companion object {

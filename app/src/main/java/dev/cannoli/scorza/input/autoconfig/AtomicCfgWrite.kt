@@ -5,7 +5,7 @@ import java.io.FileOutputStream
 import java.io.IOException
 
 // Shared by every writer of a cfg into the autoconfig directory (AutoconfigRepository.save,
-// AutoconfigSeeder, AutoconfigMigration): write to a tmp sibling, fsync, then rename over the
+// AutoconfigSeeder): write to a tmp sibling, fsync, then rename over the
 // target so a reader never observes a partially written file. Any failure, during the write or
 // the rename, deletes the tmp file rather than leaving a stray .tmp behind.
 internal fun writeCfgAtomic(file: File, text: String) {
