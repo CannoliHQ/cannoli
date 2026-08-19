@@ -571,6 +571,35 @@ class MappingResolverTest {
         assertEquals(MappingSource.USER_WIZARD, resolved.source)
     }
 
+    @Test fun `user provenance outranks input db even at a worse match rank`() {
+        // The realistic case on the affected handhelds: a wizard-made USER cfg carries no model
+        // pin (NAME_AND_VID_PID), while the curated INPUT_DB cfg is pinned to this device's model
+        // (NAME_AND_MODEL, the better rank). Provenance must still decide it, not rank.
+        writeCfg(
+            "sony_ds4.cfg",
+            """
+            input_device = "Wireless Controller"
+            input_vendor_id = "1356"
+            input_product_id = "2508"
+            input_b_btn = "96"
+            cannoli_build_model = "Pixel"
+            cannoli_source = "INPUT_DB"
+            """.trimIndent()
+        )
+        writeCfg(
+            "sony_ds4_mine.cfg",
+            """
+            input_device = "Wireless Controller"
+            input_vendor_id = "1356"
+            input_product_id = "2508"
+            input_b_btn = "97"
+            cannoli_source = "USER"
+            """.trimIndent()
+        )
+        val resolved = resolver().resolve(device(name = "Wireless Controller", vendorId = 1356, productId = 2508))
+        assertEquals(MappingSource.USER_WIZARD, resolved.source)
+    }
+
     @Test fun `builtin agreement wins the tiebreak over an unfavorable filename`() {
         // Same provenance (neither is user-owned) and same rank (both NAME_AND_VID_PID), so only
         // builtin agreement can decide it. The agreeing entry's filename sorts after the
