@@ -112,6 +112,17 @@ class AutoconfigSeederTest {
         assertFalse(File(target, "PadZ.cfg").exists())
     }
 
+    // Distinct from the "no bundled counterpart" case above: here the asset exists but the write
+    // itself fails, mirroring a flaky SD card mid-restore.
+    @Test
+    fun `reseeding a file whose write fails returns false`() {
+        val target = tmp.newFolder("android")
+        val seeder = seeder(target, tmp.newFolder("Mappings"))
+        File(target, "PadA.cfg.tmp").mkdirs()
+
+        assertFalse(seeder.reseedSingle("PadA.cfg"))
+    }
+
     @Test
     fun `deletes the legacy ini store`() {
         val target = tmp.newFolder("android")
@@ -177,6 +188,22 @@ class AutoconfigSeederTest {
         java.io.File(tmp.root, "corrupt.cfg").mkdirs()
         seeder(fakeSource("sony_ds4.cfg" to "input_device = \"Wireless Controller\"\n"), buildModel = "RG Rotate").seedIfNeeded()
         assertEquals(true, java.io.File(tmp.root, "corrupt.cfg").exists())
+    }
+
+    // isUserOwned defaults an unreadable file to user-owned so seeding skips the overwrite. Flip
+    // that default and this test starts failing: a regular file the process merely can't read
+    // right now (a flaky SD card, a transient permission glitch) would otherwise get clobbered.
+    @Test fun `an unreadable regular file at a seed target is never overwritten`() {
+        val target = tmp.newFolder("android")
+        val existing = File(target, "PadA.cfg")
+        existing.writeText("input_device = \"Pad A\"\ninput_b_btn = \"55\"\n")
+        assertTrue(existing.setReadable(false))
+        try {
+            seeder(target, tmp.newFolder("Mappings")).seedIfNeeded()
+        } finally {
+            existing.setReadable(true)
+        }
+        assertTrue(existing.readText().contains("55"))
     }
 
     @Test fun `an unkeyed foreign cfg survives pruning`() {

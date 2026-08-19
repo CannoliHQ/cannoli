@@ -20,7 +20,6 @@ data class RetroArchCfgEntry(
     val axisBindings: Map<String, AxisRef> = emptyMap(),
     val hatBindings: Map<String, HatRef> = emptyMap(),
     val displayName: String? = null,
-    val descriptor: String? = null,
     val buildModel: String? = null,
     val sourceMask: Int? = null,
     val confirmButton: String? = null,

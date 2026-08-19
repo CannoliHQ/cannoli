@@ -2,7 +2,7 @@ package dev.cannoli.scorza.input.runtime
 
 /**
  * Folds the kernel's multi-endpoint InputDevices for a single physical controller into one logical
- * cluster.
+ * cluster, so the auxiliary endpoints merge onto the gamepad's logical port (port routing).
  *
  * Background: a physical pad can produce 1-N InputDevices. On a typical host the gamepad is a
  * single endpoint (one InputDevice). On Retroid handhelds the kernel rewrites a paired BT pad's
@@ -11,16 +11,10 @@ package dev.cannoli.scorza.input.runtime
  * vid/pid and a populated uniqueId. Three InputDevices appear for one DualSense. The One35
  * handheld similarly emits "One35 Virtual Gamepad" / "Keyboard" / "Mouse" for one physical pad.
  *
- * To both:
- *   (a) merge the auxiliary endpoints onto the gamepad's logical port (port routing), and
- *   (b) recover a stable per-physical-pad persistence key (filename, match descriptor),
- * we cluster InputDevices using two signals together:
+ * We cluster InputDevices using two signals together:
  *   - Shared name prefix at a word boundary (>= [MIN_PREFIX_LEN] characters).
  *   - InputDevice.id contiguity (gap <= [MAX_ID_GAP] between adjacent members).
- * The gamepad-source endpoint in each cluster is the primary; the others are aliases. The
- * cluster's persistence descriptor is taken from a sibling InputDevice with a non-degenerate
- * descriptor when the gamepad's own is degenerate (Retroid phantom case), otherwise the
- * gamepad's own descriptor.
+ * The gamepad-source endpoint in each cluster is the primary; the others are aliases.
  *
  * A gamepad-source endpoint is treated as a cluster terminator: once a group contains a gamepad,
  * no more devices are appended to it. This is what keeps two same-model pads with consecutive
@@ -45,7 +39,6 @@ object SiblingFolder {
     data class Cluster(
         val gamepad: Candidate,
         val aliases: List<Candidate>,
-        val persistenceDescriptor: String,
     )
 
     fun fold(candidates: List<Candidate>): List<Cluster> {
@@ -84,10 +77,7 @@ object SiblingFolder {
         for (group in groups) {
             val gamepad = group.firstOrNull { it.isGamepad } ?: continue
             val aliases = group.filter { it.androidDeviceId != gamepad.androidDeviceId }
-            val gamepadDescriptor = gamepad.descriptor.takeIf { it.isNotEmpty() }
-            val siblingDescriptor = aliases.map { it.descriptor }.firstOrNull { it.isNotEmpty() }
-            val persistenceDescriptor = gamepadDescriptor ?: siblingDescriptor ?: ""
-            out.add(Cluster(gamepad = gamepad, aliases = aliases, persistenceDescriptor = persistenceDescriptor))
+            out.add(Cluster(gamepad = gamepad, aliases = aliases))
         }
         return out
     }

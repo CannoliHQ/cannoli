@@ -12,6 +12,7 @@ import dev.cannoli.scorza.input.resolver.MappingResolver
 import dev.cannoli.scorza.input.resolver.RetroArchAutoconfigImporter
 import dev.cannoli.scorza.input.runtime.ActiveMappingHolder
 import dev.cannoli.scorza.input.runtime.PortRouter
+import dev.cannoli.scorza.util.ErrorLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -77,7 +78,7 @@ class ControllersViewModel @Inject constructor(
     // is listed precisely when its pad is absent, so the cfg has to stand in for its own device.
     private fun syntheticDevice(entry: RetroArchCfgEntry): ConnectedDevice = ConnectedDevice(
         androidDeviceId = -1,
-        descriptor = entry.descriptor.orEmpty(),
+        descriptor = "",
         name = entry.deviceName,
         vendorId = entry.vendorId ?: 0,
         productId = entry.productId ?: 0,
@@ -124,7 +125,13 @@ class ControllersViewModel @Inject constructor(
     fun resetMapping(mapping: DeviceMapping) {
         repository.delete(mapping.id)
         // The seeder writes outside the repository, so the cache has to be dropped again.
-        if (seeder.reseedSingle("${mapping.id}.cfg")) repository.invalidate()
+        if (seeder.reseedSingle("${mapping.id}.cfg")) {
+            repository.invalidate()
+        } else {
+            // The user's edit is gone either way; a failed restore here means the curated cfg is
+            // gone from disk too, with nothing left to fall back on but the runtime default.
+            ErrorLog.write("controller reset: failed to restore ${mapping.id}.cfg after deleting the user cfg")
+        }
         val connected = portRouter.snapshotEntries().firstOrNull { it.mapping.id == mapping.id }
         if (connected != null) {
             val fresh = resolver.resolve(connected.device)

@@ -209,7 +209,6 @@ class ControllerBridge(
 
         val targetEntries = mutableMapOf<Int, ConnectedDevice>()
         val targetAliases = mutableMapOf<Int, Int>()
-        val clusterDescriptors = mutableMapOf<Int, String>()
         for (cluster in clusters) {
             val gamepadFacts = factsById[cluster.gamepad.androidDeviceId] ?: continue
             // Retroid (and likely other handhelds) lie via InputDevice.isExternal and report
@@ -230,9 +229,8 @@ class ControllerBridge(
                 isExternal = gamepadFacts.isExternal,
             )
             targetEntries[connected.androidDeviceId] = connected
-            clusterDescriptors[connected.androidDeviceId] = cluster.persistenceDescriptor
             dev.cannoli.scorza.util.InputLog.write(
-                "  identify id=${connected.androidDeviceId} name='${connected.name}' vid=${connected.vendorId} pid=${connected.productId} desc='${cluster.persistenceDescriptor}'"
+                "  identify id=${connected.androidDeviceId} name='${connected.name}' vid=${connected.vendorId} pid=${connected.productId}"
             )
             for (alias in cluster.aliases) {
                 targetAliases[alias.androidDeviceId] = connected.androidDeviceId
@@ -277,11 +275,10 @@ class ControllerBridge(
                 )
                 continue
             }
-            val persistenceDescriptor = clusterDescriptors[id]
-            val resolved = resolver.resolve(connected, persistenceDescriptor)
+            val resolved = resolver.resolve(connected)
             portRouter.onConnect(connected, resolved)
             dev.cannoli.scorza.util.InputLog.write(
-                "  enrolled id=${connected.androidDeviceId} mapping=${resolved.id} glyph=${resolved.glyphStyle} desc='${persistenceDescriptor ?: "-"}'"
+                "  enrolled id=${connected.androidDeviceId} mapping=${resolved.id} glyph=${resolved.glyphStyle}"
             )
         }
 
@@ -296,15 +293,14 @@ class ControllerBridge(
             if (id == devKeyboardId) continue
             val connected = targetEntries.getValue(id)
             val current = portRouter.mappingFor(id) ?: continue
-            val persistenceDescriptor = clusterDescriptors[id]
-            val resolved = resolver.resolve(connected, persistenceDescriptor)
+            val resolved = resolver.resolve(connected)
             if (resolved == current) continue
             portRouter.replaceMapping(id, resolved)
             if (activeMappingHolder.active.value?.id == current.id) {
                 activeMappingHolder.set(resolved)
             }
             dev.cannoli.scorza.util.InputLog.write(
-                "  re-resolved id=$id mapping=${current.id} -> ${resolved.id} glyph=${resolved.glyphStyle} desc='${persistenceDescriptor ?: "-"}'"
+                "  re-resolved id=$id mapping=${current.id} -> ${resolved.id} glyph=${resolved.glyphStyle}"
             )
         }
 

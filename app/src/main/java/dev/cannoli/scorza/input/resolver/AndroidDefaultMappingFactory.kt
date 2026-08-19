@@ -36,9 +36,11 @@ class AndroidDefaultMappingFactory(
             vendorId = device.vendorId,
             productId = device.productId,
         )
-        val safeId = "android_default_" + (device.name.takeIf { it.isNotEmpty() }
+        val fallbackId = "${device.vendorId}_${device.productId}_${device.name.hashCode()}"
+        val nameSlug = device.name.takeIf { it.isNotEmpty() }
             ?.let { RetroArchAutoconfigImporter.slugify(it) }
-            ?: "${device.vendorId}_${device.productId}_${device.name.hashCode()}")
+            ?.takeIf { it.isNotEmpty() }
+        val safeId = "android_default_" + (nameSlug ?: fallbackId)
         val faceBindings = profile.faceLayout.standardFaceBindings().mapValues { (_, keyCode) ->
             listOf(InputBinding.Button(keyCode))
         }
@@ -49,6 +51,7 @@ class AndroidDefaultMappingFactory(
                 name = device.name.ifEmpty { null },
                 vendorId = device.vendorId.takeIf { it != 0 },
                 productId = device.productId.takeIf { it != 0 },
+                builtin = device.isBuiltIn,
             ),
             bindings = (DEFAULT_BINDINGS.mapValues { (_, keyCodes) ->
                 keyCodes.map { InputBinding.Button(it) }

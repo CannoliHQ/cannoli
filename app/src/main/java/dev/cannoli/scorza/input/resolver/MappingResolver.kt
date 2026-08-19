@@ -13,14 +13,8 @@ class MappingResolver(
 
     /**
      * Resolve a connected device to its mapping.
-     *
-     * [persistenceDescriptor] is the identifier the caller wants the resulting mapping to be
-     * persisted under. Callers (the bridge) compute this from sibling-folded InputDevices — the
-     * gamepad's own descriptor when it's unique, or a sibling's descriptor on Retroid-style
-     * phantom-rewrite hosts where the gamepad endpoint has a degenerate (empty-uniqueId) hash.
-     * Null means "use the device's own descriptor (or none)".
      */
-    fun resolve(device: ConnectedDevice, persistenceDescriptor: String? = null): DeviceMapping {
+    fun resolve(device: ConnectedDevice): DeviceMapping {
         val disk = diskRepository.listEntries()
         // Assets cover the window before seeding lands or while storage is unreadable.
         val candidates = disk.ifEmpty { bundledRetroArchEntries.entries() }

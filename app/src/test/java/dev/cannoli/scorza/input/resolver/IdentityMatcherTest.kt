@@ -83,6 +83,12 @@ class IdentityMatcherTest {
         assertEquals(MatchRank.VID_PID_UNNAMED, IdentityMatcher.rank(unnamed, phantomDs4))
     }
 
+    @Test fun `model pin still matches on name even when the entry vid pid contradicts the device`() {
+        val pad = device("Retroid Pocket Controller", 8226, 12289, "Retroid Pocket Nova", isBuiltIn = true)
+        val wrongVidPid = entry("Retroid Pocket Controller", vendorId = 1, productId = 2, buildModel = "Retroid Pocket Nova")
+        assertEquals(MatchRank.NAME_AND_MODEL, IdentityMatcher.rank(wrongVidPid, pad))
+    }
+
     @Test fun `builtin agreement is advisory not disqualifying`() {
         val builtInEntry = entry("Wireless Controller", 1356, 2508, builtin = true)
         assertEquals(MatchRank.NAME_AND_VID_PID, IdentityMatcher.rank(builtInEntry, phantomDs4.copy(vendorId = 1356, productId = 2508)))

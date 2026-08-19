@@ -13,7 +13,6 @@ object RetroArchCfgParser {
         var vendorId: Int? = null
         var productId: Int? = null
         var displayName: String? = null
-        var descriptor: String? = null
         var buildModel: String? = null
         var sourceMask: Int? = null
         var confirmButton: String? = null
@@ -83,7 +82,6 @@ object RetroArchCfgParser {
                 prefix == "cannoli" && key == "confirm_button" -> confirmButton = value
                 prefix == "cannoli" && key == "glyph_style" -> glyphStyle = value
                 prefix == "cannoli" && key == "exclude_from_gameplay" -> excludeFromGameplay = value.toBoolean()
-                prefix == "cannoli" && key == "descriptor" -> descriptor = value
                 prefix == "cannoli" && key == "build_model" -> buildModel = value
                 prefix == "cannoli" && key == "source_mask" -> sourceMask = value.toIntOrNull()
                 prefix == "cannoli" && key == "default_controller_type" -> defaultControllerType = value.toIntOrNull()
@@ -93,7 +91,7 @@ object RetroArchCfgParser {
         }
         return RetroArchCfgEntry(
             deviceName, vendorId, productId, bindings, axes, hats,
-            displayName, descriptor, buildModel, sourceMask, confirmButton, glyphStyle,
+            displayName, buildModel, sourceMask, confirmButton, glyphStyle,
             excludeFromGameplay, cannoliUser, provenance, builtin, defaultControllerType, cannoliMenuKeycodes, fileName,
             unmodeledLines
         )

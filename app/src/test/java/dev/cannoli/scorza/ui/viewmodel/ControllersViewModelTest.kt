@@ -1,7 +1,9 @@
 package dev.cannoli.scorza.ui.viewmodel
 
+import dev.cannoli.scorza.config.CannoliPaths
 import dev.cannoli.scorza.input.ConnectedDevice
 import dev.cannoli.scorza.input.DeviceMapping
+import dev.cannoli.scorza.input.MappingSource
 import dev.cannoli.scorza.input.autoconfig.AutoconfigRepository
 import dev.cannoli.scorza.input.autoconfig.AutoconfigSeeder
 import dev.cannoli.scorza.input.autoconfig.BundledAutoconfigEntries
@@ -10,6 +12,8 @@ import dev.cannoli.scorza.input.autoconfig.MapCfgSource
 import dev.cannoli.scorza.input.resolver.MappingResolver
 import dev.cannoli.scorza.input.runtime.ActiveMappingHolder
 import dev.cannoli.scorza.input.runtime.PortRouter
+import dev.cannoli.scorza.util.ErrorLog
+import dev.cannoli.scorza.util.LogWriter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.resetMain
@@ -173,6 +177,29 @@ class ControllersViewModelTest {
         val restored = repository.findById("stadia") ?: error("expected the bundled cfg back on disk")
         assertFalse(restored.cannoliUser)
         assertEquals("Stadia Controller", portRouter.mappingFor(7)?.displayName)
+    }
+
+    // Mirrors the scenario in the failure branch: the delete succeeds but the restore write fails
+    // (a flaky SD card). The pad must not silently keep looking reset -- it falls to the runtime
+    // default instead of the curated cfg, and the failure is recorded in the error log.
+    @Test
+    fun `reset does not present success when the restore write fails`() {
+        writeStadiaBundled()
+        val mapping = connectStadia()
+        val model = vm()
+        val renamed = model.renameMapping(mapping, "Couch Pad")
+        File(tmp.root, "stadia.cfg.tmp").mkdirs()
+        val logRoot = tmp.newFolder("logroot")
+        ErrorLog.init(logRoot.absolutePath)
+
+        model.resetMapping(renamed)
+        LogWriter.flush(2000)
+
+        assertFalse(File(tmp.root, "stadia.cfg").exists())
+        assertEquals(MappingSource.ANDROID_DEFAULT, portRouter.mappingFor(7)?.source)
+        val logFile = File(CannoliPaths(logRoot).logsDir, "error.log")
+        assertTrue(logFile.exists())
+        assertTrue(logFile.readText().contains("stadia"))
     }
 
     @Test

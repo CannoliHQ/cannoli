@@ -147,7 +147,6 @@ class RetroArchCfgParserTest {
         assertEquals("BTN_SOUTH", entry.confirmButton)
         assertEquals("PLUMBER", entry.glyphStyle)
         org.junit.Assert.assertTrue(entry.excludeFromGameplay)
-        assertEquals("abc123", entry.descriptor)
         assertEquals("Retroid Pocket 5", entry.buildModel)
         assertEquals(16778513, entry.sourceMask)
         assertEquals(517, entry.defaultControllerType)
