@@ -16,6 +16,7 @@ import dev.cannoli.scorza.di.CannoliPathsProvider
 import dev.cannoli.scorza.di.IoScope
 import dev.cannoli.scorza.input.BindingController
 import dev.cannoli.scorza.input.LauncherActions
+import dev.cannoli.scorza.input.autoconfig.AutoconfigMigration
 import dev.cannoli.scorza.input.autoconfig.AutoconfigRepository
 import dev.cannoli.scorza.input.autoconfig.AutoconfigSeeder
 import dev.cannoli.scorza.launcher.InstalledCoreService
@@ -66,6 +67,7 @@ class BootInitializer @Inject constructor(
     private val guidesKeyMigration: dev.cannoli.scorza.launcher.GuidesKeyMigration,
     private val launcherActions: LauncherActions,
     private val setupCoordinator: SetupCoordinator,
+    private val autoconfigMigration: AutoconfigMigration,
     private val autoconfigSeeder: AutoconfigSeeder,
     private val autoconfigRepository: AutoconfigRepository,
 ) {
@@ -92,6 +94,7 @@ class BootInitializer @Inject constructor(
             // which no-ops until its sink opens. A silent seed failure leaves the device with no
             // controller profiles and no explanation.
             try {
+                autoconfigMigration.migrate()
                 autoconfigSeeder.seedIfNeeded()
             } catch (e: Exception) {
                 dev.cannoli.scorza.util.ErrorLog.write("autoconfig seed failed: ${e::class.java.simpleName} ${e.message}")

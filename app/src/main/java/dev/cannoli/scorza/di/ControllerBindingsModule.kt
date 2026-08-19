@@ -9,6 +9,7 @@ import dagger.hilt.components.SingletonComponent
 import dev.cannoli.scorza.config.CannoliPaths
 import dev.cannoli.scorza.input.autoconfig.AssetCfgSource
 import dev.cannoli.scorza.input.autoconfig.AutoconfigLoader
+import dev.cannoli.scorza.input.autoconfig.AutoconfigMigration
 import dev.cannoli.scorza.input.autoconfig.AutoconfigRepository
 import dev.cannoli.scorza.input.autoconfig.AutoconfigSeeder
 import dev.cannoli.scorza.input.autoconfig.BundledAutoconfigEntries
@@ -47,6 +48,18 @@ object ControllerBindingsModule {
             dirProvider = { paths.rootOrNull?.let { CannoliPaths(it).configInputAutoconfigAndroid } },
             debugBuild = dev.cannoli.scorza.BuildConfig.DEBUG,
         )
+
+    @Provides
+    @Singleton
+    fun provideAutoconfigMigration(
+        @ApplicationContext context: Context,
+        paths: CannoliPathsProvider,
+    ): AutoconfigMigration = AutoconfigMigration(
+        dirProvider = { paths.rootOrNull?.let { CannoliPaths(it).configInputAutoconfigAndroid } },
+        bundledNamesProvider = {
+            bundledCfgSource(context).listCfgFiles().mapTo(mutableSetOf()) { it.substringAfterLast('/') }
+        },
+    )
 
     @Provides
     @Singleton
