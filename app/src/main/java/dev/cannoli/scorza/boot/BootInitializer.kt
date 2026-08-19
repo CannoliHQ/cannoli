@@ -88,7 +88,14 @@ class BootInitializer @Inject constructor(
         // user made, so it is safe to run on every boot rather than only on first run.
         platformConfig.seedUnsetPlatforms(context.packageManager)
         ioScope.launch {
-            autoconfigSeeder.seedIfNeeded()
+            // ErrorLog is initialised above and is not gated behind a logging pref, unlike InputLog,
+            // which no-ops until its sink opens. A silent seed failure leaves the device with no
+            // controller profiles and no explanation.
+            try {
+                autoconfigSeeder.seedIfNeeded()
+            } catch (e: Exception) {
+                dev.cannoli.scorza.util.ErrorLog.write("autoconfig seed failed: ${e::class.java.simpleName} ${e.message}")
+            }
             // A resolve that lands between the seed and the next controller settle would otherwise
             // be served the listing taken before any cfg was on disk.
             autoconfigRepository.invalidate()

@@ -208,4 +208,19 @@ class AutoconfigSeederTest {
         seeder(source, buildModel = "Retroid Pocket Nova").seedIfNeeded()
         assertEquals(true, java.io.File(tmp.root, "retroid_nova.cfg").exists())
     }
+
+    @Test fun `a source that throws propagates rather than failing silently`() {
+        val exploding = object : CfgSource {
+            override fun listCfgFiles(): List<String> = listOf("boom.cfg")
+            override fun open(name: String): java.io.InputStream = throw java.io.IOException("no asset")
+        }
+        var thrown: Exception? = null
+        try {
+            AutoconfigSeeder(exploding, { tmp.root }, { java.io.File(tmp.root, "legacy") }, "d", "RG Rotate").seedIfNeeded()
+        } catch (e: Exception) {
+            thrown = e
+        }
+        assertEquals(true, thrown is java.io.IOException)
+        assertEquals(false, java.io.File(tmp.root, AutoconfigSeeder.STAMP_FILE).exists())
+    }
 }
