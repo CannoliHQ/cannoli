@@ -25,9 +25,12 @@ val buildTimeMillis: Long = System.currentTimeMillis()
 // with changed cfgs would keep serving the previously seeded set. Digest the content instead.
 val autoconfigDigest: String = run {
     val dir = file("src/main/assets/autoconfig/cannoli")
-    val cfgs = dir.listFiles { f: java.io.File -> f.isFile && f.extension == "cfg" }
+    val cfgs = dir.listFiles { f: java.io.File -> f.isFile && f.extension.equals("cfg", ignoreCase = true) }
         ?.sortedBy { it.name }
         .orEmpty()
+    require(cfgs.isNotEmpty()) {
+        "No bundled autoconfig cfgs found in $dir. Run scripts/fetch-autoconfig.sh first."
+    }
     val md = MessageDigest.getInstance("SHA-256")
     for (f in cfgs) {
         md.update(f.name.toByteArray())

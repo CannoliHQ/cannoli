@@ -172,4 +172,40 @@ class AutoconfigSeederTest {
         assertEquals(true, java.io.File(tmp.root, "retroid_classic.cfg").exists())
         assertEquals(false, java.io.File(tmp.root, "retroid_nova.cfg").exists())
     }
+
+    @Test fun `an unreadable file survives pruning`() {
+        java.io.File(tmp.root, "corrupt.cfg").mkdirs()
+        seeder(fakeSource("sony_ds4.cfg" to "input_device = \"Wireless Controller\"\n"), buildModel = "RG Rotate").seedIfNeeded()
+        assertEquals(true, java.io.File(tmp.root, "corrupt.cfg").exists())
+    }
+
+    @Test fun `an unkeyed foreign cfg survives pruning`() {
+        java.io.File(tmp.root, "my_pad.cfg").writeText("input_device = \"My Pad\"\n")
+        seeder(fakeSource("sony_ds4.cfg" to "input_device = \"Wireless Controller\"\n"), buildModel = "RG Rotate").seedIfNeeded()
+        assertEquals(true, java.io.File(tmp.root, "my_pad.cfg").exists())
+    }
+
+    @Test fun `an unkeyed stale shipped cfg is pruned even when it no longer applies to this model`() {
+        java.io.File(tmp.root, "ayn_thor.cfg").writeText("input_device = \"Odin Controller\"\n")
+        val source = fakeSource(
+            "ayn_thor.cfg" to "input_device = \"Odin Controller\"\ncannoli_build_model = \"AYN Thor\"\n",
+            "sony_ds4.cfg" to "input_device = \"Wireless Controller\"\n",
+        )
+        seeder(source, buildModel = "RG Rotate").seedIfNeeded()
+        assertEquals(false, java.io.File(tmp.root, "ayn_thor.cfg").exists())
+    }
+
+    @Test fun `a legacy user file absent from the source set survives pruning`() {
+        java.io.File(tmp.root, "mine.cfg").writeText("input_device = \"My Pad\"\ncannoli_user = \"true\"\n")
+        seeder(fakeSource("sony_ds4.cfg" to "input_device = \"Wireless Controller\"\n"), buildModel = "RG Rotate").seedIfNeeded()
+        assertEquals(true, java.io.File(tmp.root, "mine.cfg").exists())
+    }
+
+    @Test fun `a pin matches regardless of surrounding whitespace or case`() {
+        val source = fakeSource(
+            "retroid_nova.cfg" to "input_device = \"Retroid Pocket Controller\"\ncannoli_build_model = \" retroid pocket nova \"\n",
+        )
+        seeder(source, buildModel = "Retroid Pocket Nova").seedIfNeeded()
+        assertEquals(true, java.io.File(tmp.root, "retroid_nova.cfg").exists())
+    }
 }

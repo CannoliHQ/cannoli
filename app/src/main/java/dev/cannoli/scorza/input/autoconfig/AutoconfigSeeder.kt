@@ -21,8 +21,10 @@ class AutoconfigSeeder(
         if (stamp.takeIf { it.exists() }?.readText()?.trim() == want) return
         targetDir.mkdirs()
 
+        val allNames = source.listCfgFiles()
+        val bundledNames = allNames.mapTo(mutableSetOf()) { it.substringAfterLast('/') }
         val seeded = mutableSetOf<String>()
-        for (name in source.listCfgFiles()) {
+        for (name in allNames) {
             val fileName = name.substringAfterLast('/')
             val text = source.open(name).use { it.readBytes().toString(Charsets.UTF_8) }
             if (!appliesHere(text, fileName)) continue
@@ -32,7 +34,7 @@ class AutoconfigSeeder(
             writeAtomic(out, text)
         }
 
-        prune(seeded)
+        prune(seeded, bundledNames)
         legacyMappingsDir.deleteRecursively()
         stamp.writeText(want)
     }
@@ -42,23 +44,36 @@ class AutoconfigSeeder(
         return pin.isNullOrEmpty() || pin.equals(buildModel.trim(), ignoreCase = true)
     }
 
-    private fun prune(seeded: Set<String>) {
+    // Prunable only if explicitly INPUT_DB, or unkeyed under a name we currently ship: an unkeyed
+    // cfg under any other name may be one RetroArch itself wrote into this directory, or one the
+    // user hand-dropped in, and neither carries a cannoli_ key to tell it apart.
+    private fun prune(seeded: Set<String>, bundledNames: Set<String>) {
         val files = targetDir.listFiles { f: File -> f.isFile && f.extension.equals("cfg", true) } ?: return
         for (file in files) {
             if (file.name in seeded) continue
-            if (isUserOwned(file)) continue
-            file.delete()
+            val entry = runCatching { RetroArchCfgParser.parse(file.readText()) }.getOrNull() ?: continue
+            if (entry.isUserOwned) continue
+            val prunable = entry.provenance == CfgProvenance.INPUT_DB ||
+                (entry.provenance == null && file.name in bundledNames)
+            if (prunable) file.delete()
         }
     }
 
+    // A file that cannot be read or parsed must be treated as user owned, so a transient read
+    // failure skips the overwrite instead of silently clobbering a hand-tuned cfg.
     private fun isUserOwned(file: File): Boolean =
-        runCatching { RetroArchCfgParser.parse(file.readText()).isUserOwned }.getOrDefault(false)
+        runCatching { RetroArchCfgParser.parse(file.readText()).isUserOwned }.getOrDefault(true)
 
     private fun writeAtomic(out: File, text: String) {
         val tmp = File(out.parentFile, "${out.name}.tmp")
-        FileOutputStream(tmp).use { fos ->
-            fos.write(text.toByteArray())
-            fos.fd.sync()
+        try {
+            FileOutputStream(tmp).use { fos ->
+                fos.write(text.toByteArray())
+                fos.fd.sync()
+            }
+        } catch (e: IOException) {
+            tmp.delete()
+            throw e
         }
         if (!tmp.renameTo(out)) {
             tmp.delete()
@@ -66,6 +81,8 @@ class AutoconfigSeeder(
         }
     }
 
+    // Reset restores the bundled cfg instead of only dropping the user's, because an edit is saved
+    // over the file it was resolved from and RetroArch reads the same directory.
     fun reseedSingle(fileName: String): Boolean = runCatching {
         val asset = source.listCfgFiles().firstOrNull { it.substringAfterLast('/') == fileName }
             ?: return false
