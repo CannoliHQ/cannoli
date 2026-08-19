@@ -55,7 +55,7 @@ class MappingResolverTest {
             "input_device = \"Pad A\"\ninput_vendor_id = \"1\"\ninput_product_id = \"2\"\ninput_b_btn = \"96\"\n"
         )
         java.io.File(tmp.root, "PadA_user.cfg").writeText(
-            "input_device = \"Pad A\"\ninput_vendor_id = \"1\"\ninput_product_id = \"2\"\ninput_b_btn = \"97\"\ncannoli_user = \"true\"\n"
+            "input_device = \"Pad A\"\ninput_vendor_id = \"1\"\ninput_product_id = \"2\"\ninput_b_btn = \"97\"\ncannoli_source = \"USER\"\n"
         )
         val resolved = resolver().resolve(device(name = "Pad A", vendorId = 1, productId = 2))
         assertTrue(resolved.userEdited)
@@ -91,9 +91,10 @@ class MappingResolverTest {
     }
 
     @Test
-    fun user_cfg_carrying_the_device_descriptor_wins_over_another_user_cfg() {
-        // Two user files describe the same make and model; only the descriptor tells the two
-        // physical pads apart, so it is what picks the file.
+    fun two_colliding_user_cfgs_resolve_deterministically_by_filename() {
+        // Per-model scoping means two user files describing the same make and model are no
+        // longer told apart by physical unit, so the tie is broken by filename, giving a
+        // deterministic pick rather than one that depends on filesystem listing order.
         writeCfg(
             "other_pad_user.cfg",
             """
@@ -101,8 +102,7 @@ class MappingResolverTest {
             input_vendor_id = "6353"
             input_product_id = "37888"
             input_b_btn = "96"
-            cannoli_descriptor = "other-pad"
-            cannoli_user = "true"
+            cannoli_source = "USER"
             """.trimIndent()
         )
         writeCfg(
@@ -112,14 +112,13 @@ class MappingResolverTest {
             input_vendor_id = "6353"
             input_product_id = "37888"
             input_b_btn = "97"
-            cannoli_descriptor = "abc"
-            cannoli_user = "true"
+            cannoli_source = "USER"
             """.trimIndent()
         )
 
         val resolved = resolver().resolve(device())
 
-        assertEquals("this_pad_user", resolved.id)
+        assertEquals("other_pad_user", resolved.id)
     }
 
     @Test
@@ -490,5 +489,57 @@ class MappingResolverTest {
         )
 
         assertEquals(MappingSource.ANDROID_DEFAULT, resolved.source)
+    }
+
+    @Test fun `phantom ds4 does not inherit the built-in cfg when it carries a model pin`() {
+        val ds4OnClassic = device(
+            name = "Wireless Controller",
+            vendorId = 8226,
+            productId = 12289,
+            androidBuildModel = "Retroid Pocket Classic",
+        )
+        val bundled = listOf(
+            RetroArchCfgEntry(
+                deviceName = "Retroid Pocket Controller",
+                vendorId = 8226, productId = 12289,
+                buildModel = "Retroid Pocket Classic",
+                builtin = true,
+                buttonBindings = mapOf("a_btn" to 96),
+                fileName = "retroid_classic.cfg",
+            ),
+            RetroArchCfgEntry(
+                deviceName = "Wireless Controller",
+                vendorId = 1356, productId = 2508,
+                buttonBindings = mapOf("b_btn" to 96, "a_btn" to 97),
+                fileName = "sony_ds4.cfg",
+            ),
+        )
+        val resolved = resolver(bundled = bundled).resolve(ds4OnClassic)
+        assertEquals("Wireless Controller", resolved.match.name)
+    }
+
+    @Test fun `user provenance outranks input db for the same pad`() {
+        writeCfg(
+            "sony_ds4.cfg",
+            """
+            input_device = "Wireless Controller"
+            input_vendor_id = "1356"
+            input_product_id = "2508"
+            input_b_btn = "96"
+            cannoli_source = "INPUT_DB"
+            """.trimIndent()
+        )
+        writeCfg(
+            "sony_ds4_mine.cfg",
+            """
+            input_device = "Wireless Controller"
+            input_vendor_id = "1356"
+            input_product_id = "2508"
+            input_b_btn = "97"
+            cannoli_source = "USER"
+            """.trimIndent()
+        )
+        val resolved = resolver().resolve(device(name = "Wireless Controller", vendorId = 1356, productId = 2508))
+        assertEquals(MappingSource.USER_WIZARD, resolved.source)
     }
 }

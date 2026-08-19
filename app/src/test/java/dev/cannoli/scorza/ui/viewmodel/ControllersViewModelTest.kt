@@ -93,7 +93,7 @@ class ControllersViewModelTest {
         input_vendor_id = "6353"
         input_product_id = "37888"
         input_b_btn = "190"
-        cannoli_user = "true"
+        cannoli_source = "USER"
         cannoli_descriptor = "stadia-1"
         """
     )
