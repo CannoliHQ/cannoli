@@ -224,6 +224,16 @@ class RetroArchCfgParserTest {
         assertEquals(null, entry.provenance)
     }
 
+    @Test fun `isUserOwned is true from cannoli_source alone`() {
+        val entry = RetroArchCfgParser.parse("input_device = \"Pad\"\ncannoli_source = \"USER\"\n")
+        assertEquals(true, entry.isUserOwned)
+    }
+
+    @Test fun `isUserOwned falls back to cannoli_user when cannoli_source is absent`() {
+        val entry = RetroArchCfgParser.parse("input_device = \"Pad\"\ncannoli_user = \"true\"\n")
+        assertEquals(true, entry.isUserOwned)
+    }
+
     companion object {
         private val AYN_THOR_CFG = """
             input_driver = "android"

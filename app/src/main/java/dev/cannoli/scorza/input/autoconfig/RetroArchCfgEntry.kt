@@ -36,6 +36,10 @@ data class RetroArchCfgEntry(
     val fileName: String? = null,
     val unmodeledLines: List<String> = emptyList(),
 ) {
+    // Provenance wins where present; cannoliUser is the fallback for files that predate the key
+    // and have not been through AutoconfigMigration yet.
+    val isUserOwned: Boolean get() = provenance?.let { it == CfgProvenance.USER } ?: cannoliUser
+
     companion object {
         val SUPPORTED_BUTTON_KEYS = setOf(
             "a_btn", "b_btn", "x_btn", "y_btn",

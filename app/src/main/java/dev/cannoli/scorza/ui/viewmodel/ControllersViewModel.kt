@@ -66,7 +66,7 @@ class ControllersViewModel @Inject constructor(
                 .thenBy(String.CASE_INSENSITIVE_ORDER) { it.mapping.displayName }
         )
         val saved = repository.listEntries()
-            .filter { it.cannoliUser }
+            .filter { it.isUserOwned }
             .map { RetroArchAutoconfigImporter.import(it, syntheticDevice(it)) }
             .filter { it.id !in connectedIds }
             .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.displayName })
