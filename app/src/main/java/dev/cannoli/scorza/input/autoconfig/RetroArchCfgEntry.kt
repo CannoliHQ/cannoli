@@ -27,6 +27,8 @@ data class RetroArchCfgEntry(
     val glyphStyle: String? = null,
     val excludeFromGameplay: Boolean = false,
     val cannoliUser: Boolean = false,
+    val provenance: CfgProvenance? = null,
+    val builtin: Boolean? = null,
     val defaultControllerType: Int? = null,
     // Null means the key is absent, so the importer injects the platform menu defaults; an empty
     // list means the user cleared the menu. RA's menu_toggle_btn can express neither.
@@ -67,6 +69,8 @@ data class RetroArchCfgEntry(
             addAll(
                 listOf(
                     "cannoli_user",
+                    "cannoli_source",
+                    "cannoli_builtin",
                     "cannoli_confirm_button",
                     "cannoli_glyph_style",
                     "cannoli_exclude_from_gameplay",

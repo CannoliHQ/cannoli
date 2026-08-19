@@ -201,6 +201,29 @@ class RetroArchCfgParserTest {
         assertEquals(97, entry.buttonBindings["b_btn"])
     }
 
+    @Test fun `parses cannoli_source and cannoli_builtin`() {
+        val entry = RetroArchCfgParser.parse(
+            """
+            input_device = "Retroid Pocket Controller"
+            cannoli_source = "INPUT_DB"
+            cannoli_builtin = "true"
+            """.trimIndent()
+        )
+        assertEquals(CfgProvenance.INPUT_DB, entry.provenance)
+        assertEquals(true, entry.builtin)
+    }
+
+    @Test fun `absent provenance and builtin parse as null`() {
+        val entry = RetroArchCfgParser.parse("input_device = \"Pad\"\n")
+        assertEquals(null, entry.provenance)
+        assertEquals(null, entry.builtin)
+    }
+
+    @Test fun `unknown provenance value parses as null`() {
+        val entry = RetroArchCfgParser.parse("cannoli_source = \"NONSENSE\"\n")
+        assertEquals(null, entry.provenance)
+    }
+
     companion object {
         private val AYN_THOR_CFG = """
             input_driver = "android"
