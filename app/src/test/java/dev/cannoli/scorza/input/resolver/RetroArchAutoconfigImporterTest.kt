@@ -106,6 +106,20 @@ class RetroArchAutoconfigImporterTest {
     }
 
     @Test
+    fun signed_axis_notation_on_a_dpad_button_key_becomes_a_digital_axis_binding() {
+        val entry = RetroArchCfgEntry(
+            deviceName = "M30", vendorId = 1, productId = 2,
+            buttonBindings = emptyMap(),
+            axisBindings = mapOf("up_btn" to AxisRef(axis = 1, direction = -1)),
+        )
+        val t = RetroArchAutoconfigImporter.import(entry, device)
+        val up = t.bindings[CanonicalButton.BTN_UP]!!.single() as InputBinding.Axis
+        assertEquals(1, up.axis)
+        assertEquals(AnalogRole.DIGITAL_BUTTON, up.analogRole)
+        assertEquals(-1f, up.activeMax, 0.001f)
+    }
+
+    @Test
     fun stick_axes_key_under_stick_canonicals_and_l3_r3_hold_only_click_buttons() {
         val entry = RetroArchCfgEntry(
             deviceName = "Stadia Controller", vendorId = 6353, productId = 37888,

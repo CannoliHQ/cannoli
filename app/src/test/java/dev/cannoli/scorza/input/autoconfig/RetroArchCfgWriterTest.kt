@@ -294,6 +294,67 @@ class RetroArchCfgWriterTest {
     }
 
     @Test
+    fun `axis-reported dpad direction writes a signed axis btn value`() {
+        val mapping = sampleMapping().copy(
+            bindings = sampleMapping().bindings + (
+                CanonicalButton.BTN_UP to listOf(
+                    InputBinding.Axis(
+                        axis = 1, restingValue = 0f, activeMin = 0f, activeMax = -1f,
+                        digitalThreshold = 0.5f, analogRole = AnalogRole.DIGITAL_BUTTON,
+                    )
+                )
+            )
+        )
+        val cfg = RetroArchCfgWriter.write(mapping)
+        assertTrue(cfg.contains("input_up_btn = \"-1\""))
+    }
+
+    @Test
+    fun `a canonical carrying both a digital and an axis binding writes the btn key once`() {
+        val mapping = sampleMapping().copy(
+            bindings = sampleMapping().bindings + (
+                // Axis listed before the Hat, to prove the digital binding wins regardless of order.
+                CanonicalButton.BTN_UP to listOf(
+                    InputBinding.Axis(
+                        axis = 1, restingValue = 0f, activeMin = 0f, activeMax = -1f,
+                        digitalThreshold = 0.5f, analogRole = AnalogRole.DIGITAL_BUTTON,
+                    ),
+                    InputBinding.Hat(16, HatDirection.UP),
+                )
+            )
+        )
+        val cfg = RetroArchCfgWriter.write(mapping)
+        val lines = cfg.lineSequence().filter { it.startsWith("input_up_btn") }.toList()
+        assertEquals(listOf("input_up_btn = \"h0up\""), lines)
+    }
+
+    @Test
+    fun `axis-reported dpad binding round trips through write parse and import`() {
+        val original = sampleMapping().copy(
+            bindings = sampleMapping().bindings + (
+                CanonicalButton.BTN_UP to listOf(
+                    InputBinding.Axis(
+                        axis = 1, restingValue = 0f, activeMin = 0f, activeMax = -1f,
+                        digitalThreshold = 0.5f, analogRole = AnalogRole.DIGITAL_BUTTON,
+                    )
+                )
+            )
+        )
+        val cfg = RetroArchCfgWriter.write(original)
+        assertTrue(cfg.contains("input_up_btn = \"-1\""))
+        val entry = RetroArchCfgParser.parse(cfg, fileName = "8BitDo_Pro_2.cfg")
+        val device = ConnectedDevice(
+            androidDeviceId = 1, descriptor = "abc123", name = "8BitDo Pro 2",
+            vendorId = 11720, productId = 24582, androidBuildModel = "",
+            sourceMask = 0, connectedAtMillis = 0L,
+        )
+        val imported = RetroArchAutoconfigImporter.import(entry, device)
+        val upBinding = imported.bindings[CanonicalButton.BTN_UP]?.single() as InputBinding.Axis
+        assertEquals(1, upBinding.axis)
+        assertEquals(-1f, upBinding.activeMax, 0.001f)
+    }
+
+    @Test
     fun `android axis ids translate to ra slot numbers on write`() {
         val mapping = sampleMapping().copy(
             bindings = mapOf(

@@ -99,6 +99,20 @@ class RetroArchCfgParserTest {
     }
 
     @Test
+    fun parsesSignedAxisNotationForDpadButtonKeys() {
+        val cfg = """
+            input_device = "M30"
+            input_up_btn = "-1"
+            input_down_btn = "+1"
+        """.trimIndent()
+        val entry = RetroArchCfgParser.parse(cfg)
+        assertEquals(AxisRef(1, -1), entry.axisBindings["up_btn"])
+        assertEquals(AxisRef(1, 1), entry.axisBindings["down_btn"])
+        assertNull(entry.buttonBindings["up_btn"])
+        assertNull(entry.buttonBindings["down_btn"])
+    }
+
+    @Test
     fun parsesHatNotationForDpadButtons() {
         val cfg = """
             input_device = "Test"

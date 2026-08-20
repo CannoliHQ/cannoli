@@ -54,21 +54,31 @@ object RetroArchCfgParser {
                 prefix == "input" && key == "vendor_id" -> vendorId = value.toIntOrNull()
                 prefix == "input" && key == "product_id" -> productId = value.toIntOrNull()
                 prefix == "input" && key in RetroArchCfgEntry.SUPPORTED_BUTTON_KEYS -> {
-                    val asInt = value.toIntOrNull()
-                    if (asInt != null) {
-                        bindings[key] = asInt
+                    // Hat and axis notation are checked before the plain keycode parse: a
+                    // signed axis value like "-1" is also a valid (negative) Int, so parsing it
+                    // as a keycode first would swallow it before the axis branch ever runs.
+                    val hatMatch = HAT_VALUE_REGEX.matchEntire(value)
+                    if (hatMatch != null) {
+                        val hat = hatMatch.groupValues[1].toIntOrNull() ?: continue
+                        val direction = when (hatMatch.groupValues[2]) {
+                            "up" -> CfgHatDirection.UP
+                            "down" -> CfgHatDirection.DOWN
+                            "left" -> CfgHatDirection.LEFT
+                            "right" -> CfgHatDirection.RIGHT
+                            else -> continue
+                        }
+                        hats[key] = HatRef(hat, direction)
                         continue
                     }
-                    val hatMatch = HAT_VALUE_REGEX.matchEntire(value) ?: continue
-                    val hat = hatMatch.groupValues[1].toIntOrNull() ?: continue
-                    val direction = when (hatMatch.groupValues[2]) {
-                        "up" -> CfgHatDirection.UP
-                        "down" -> CfgHatDirection.DOWN
-                        "left" -> CfgHatDirection.LEFT
-                        "right" -> CfgHatDirection.RIGHT
-                        else -> continue
+                    val axisMatch = AXIS_VALUE_REGEX.matchEntire(value)
+                    if (axisMatch != null) {
+                        val sign = if (axisMatch.groupValues[1] == "+") 1 else -1
+                        val axis = axisMatch.groupValues[2].toIntOrNull() ?: continue
+                        axes[key] = AxisRef(axis, sign)
+                        continue
                     }
-                    hats[key] = HatRef(hat, direction)
+                    val asInt = value.toIntOrNull() ?: continue
+                    bindings[key] = asInt
                 }
                 prefix == "input" && key in RetroArchCfgEntry.SUPPORTED_AXIS_KEYS -> {
                     val m = AXIS_VALUE_REGEX.matchEntire(value) ?: continue

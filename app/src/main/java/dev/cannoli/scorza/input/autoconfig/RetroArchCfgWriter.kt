@@ -76,18 +76,25 @@ object RetroArchCfgWriter {
                         line("input_$btnKey", "h0" + binding.direction.name.lowercase())
                         digitalWritten = true
                     }
-                    is InputBinding.Axis -> {
-                        val key = axisKeyFor(canonical, binding)
-                        // A pad reporting the same logical trigger on two axes (LTRIGGER and
-                        // BRAKE, say) captures two bindings on one canonical. RA holds one value
-                        // per key, so only the first binding that resolves to a given key claims
-                        // it; a stick's plus and minus bindings resolve to distinct keys and both
-                        // still write.
-                        if (key != null && axisKeysWritten.add(key)) {
-                            val sign = if (binding.activeMax >= 0f) "+" else "-"
-                            line("input_$key", "$sign${RaAxisSlots.toRaSlot(binding.axis)}")
-                        }
-                    }
+                    is InputBinding.Axis -> {}
+                }
+            }
+            for (binding in effective) {
+                if (binding !is InputBinding.Axis) continue
+                val key = axisKeyFor(canonical, binding) ?: continue
+                // The d-pad canonicals now resolve their axis key to the same up_btn/down_btn/
+                // left_btn/right_btn key the digital path writes; skip the axis line there so the
+                // digital binding wins instead of double-writing the key, regardless of which
+                // binding came first in the list.
+                if (key == btnKey && digitalWritten) continue
+                // A pad reporting the same logical trigger on two axes (LTRIGGER and
+                // BRAKE, say) captures two bindings on one canonical. RA holds one value
+                // per key, so only the first binding that resolves to a given key claims
+                // it; a stick's plus and minus bindings resolve to distinct keys and both
+                // still write.
+                if (axisKeysWritten.add(key)) {
+                    val sign = if (binding.activeMax >= 0f) "+" else "-"
+                    line("input_$key", "$sign${RaAxisSlots.toRaSlot(binding.axis)}")
                 }
             }
         }
@@ -125,6 +132,10 @@ object RetroArchCfgWriter {
             return when (canonical) {
                 CanonicalButton.BTN_L2 -> "l2_axis"
                 CanonicalButton.BTN_R2 -> "r2_axis"
+                CanonicalButton.BTN_UP -> "up_btn"
+                CanonicalButton.BTN_DOWN -> "down_btn"
+                CanonicalButton.BTN_LEFT -> "left_btn"
+                CanonicalButton.BTN_RIGHT -> "right_btn"
                 else -> null
             }
         }
