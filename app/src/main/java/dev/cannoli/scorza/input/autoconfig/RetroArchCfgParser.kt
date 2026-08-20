@@ -70,11 +70,17 @@ object RetroArchCfgParser {
                         hats[key] = HatRef(hat, direction)
                         continue
                     }
+                    // A signed value on a _btn key (e.g. input_up_btn = "-1") is accepted for
+                    // reading only. RetroArch's own parser cannot read it -- input_up_btn only
+                    // ever accepts "nul", a hat, or an unsigned keycode -- Cannoli briefly wrote
+                    // this form for an axis-reported d-pad and the writer now emits the _axis key
+                    // instead. Normalize the key here so this legacy form imports to the same
+                    // canonical binding a native _axis key produces.
                     val axisMatch = AXIS_VALUE_REGEX.matchEntire(value)
                     if (axisMatch != null) {
                         val sign = if (axisMatch.groupValues[1] == "+") 1 else -1
                         val axis = axisMatch.groupValues[2].toIntOrNull() ?: continue
-                        axes[key] = AxisRef(axis, sign)
+                        axes[key.removeSuffix("_btn") + "_axis"] = AxisRef(axis, sign)
                         continue
                     }
                     val asInt = value.toIntOrNull() ?: continue

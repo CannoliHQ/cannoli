@@ -53,6 +53,7 @@ data class RetroArchCfgEntry(
 
         val SUPPORTED_AXIS_KEYS = setOf(
             "l2_axis", "r2_axis",
+            "up_axis", "down_axis", "left_axis", "right_axis",
             "l_x_plus_axis", "l_x_minus_axis",
             "l_y_plus_axis", "l_y_minus_axis",
             "r_x_plus_axis", "r_x_minus_axis",

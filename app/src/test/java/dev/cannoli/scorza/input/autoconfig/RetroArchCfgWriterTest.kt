@@ -11,6 +11,7 @@ import dev.cannoli.scorza.input.InputBinding
 import dev.cannoli.scorza.input.MappingSource
 import dev.cannoli.scorza.input.resolver.RetroArchAutoconfigImporter
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -294,7 +295,7 @@ class RetroArchCfgWriterTest {
     }
 
     @Test
-    fun `axis-reported dpad direction writes a signed axis btn value`() {
+    fun `axis-reported dpad direction writes a signed axis value`() {
         val mapping = sampleMapping().copy(
             bindings = sampleMapping().bindings + (
                 CanonicalButton.BTN_UP to listOf(
@@ -306,14 +307,16 @@ class RetroArchCfgWriterTest {
             )
         )
         val cfg = RetroArchCfgWriter.write(mapping)
-        assertTrue(cfg.contains("input_up_btn = \"-1\""))
+        assertTrue(cfg.contains("input_up_axis = \"-1\""))
+        assertFalse(cfg.contains("input_up_btn = \"-1\""))
     }
 
     @Test
-    fun `a canonical carrying both a digital and an axis binding writes the btn key once`() {
+    fun `a canonical carrying both a digital and an axis binding writes each key once`() {
         val mapping = sampleMapping().copy(
             bindings = sampleMapping().bindings + (
-                // Axis listed before the Hat, to prove the digital binding wins regardless of order.
+                // Axis listed before the Hat, to prove the digital binding wins the btn key
+                // regardless of order, while the axis key still writes alongside it.
                 CanonicalButton.BTN_UP to listOf(
                     InputBinding.Axis(
                         axis = 1, restingValue = 0f, activeMin = 0f, activeMax = -1f,
@@ -324,8 +327,10 @@ class RetroArchCfgWriterTest {
             )
         )
         val cfg = RetroArchCfgWriter.write(mapping)
-        val lines = cfg.lineSequence().filter { it.startsWith("input_up_btn") }.toList()
-        assertEquals(listOf("input_up_btn = \"h0up\""), lines)
+        val btnLines = cfg.lineSequence().filter { it.startsWith("input_up_btn") }.toList()
+        val axisLines = cfg.lineSequence().filter { it.startsWith("input_up_axis") }.toList()
+        assertEquals(listOf("input_up_btn = \"h0up\""), btnLines)
+        assertEquals(listOf("input_up_axis = \"-1\""), axisLines)
     }
 
     @Test
@@ -341,7 +346,8 @@ class RetroArchCfgWriterTest {
             )
         )
         val cfg = RetroArchCfgWriter.write(original)
-        assertTrue(cfg.contains("input_up_btn = \"-1\""))
+        assertTrue(cfg.contains("input_up_axis = \"-1\""))
+        assertFalse(cfg.contains("input_up_btn = \"-1\""))
         val entry = RetroArchCfgParser.parse(cfg, fileName = "8BitDo_Pro_2.cfg")
         val device = ConnectedDevice(
             androidDeviceId = 1, descriptor = "abc123", name = "8BitDo Pro 2",

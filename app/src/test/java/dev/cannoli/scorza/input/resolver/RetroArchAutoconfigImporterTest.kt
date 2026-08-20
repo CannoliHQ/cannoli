@@ -106,11 +106,30 @@ class RetroArchAutoconfigImporterTest {
     }
 
     @Test
-    fun signed_axis_notation_on_a_dpad_button_key_becomes_a_digital_axis_binding() {
+    fun axis_notation_on_a_dpad_key_becomes_a_digital_axis_binding() {
         val entry = RetroArchCfgEntry(
             deviceName = "M30", vendorId = 1, productId = 2,
             buttonBindings = emptyMap(),
-            axisBindings = mapOf("up_btn" to AxisRef(axis = 1, direction = -1)),
+            axisBindings = mapOf("up_axis" to AxisRef(axis = 1, direction = -1)),
+        )
+        val t = RetroArchAutoconfigImporter.import(entry, device)
+        val up = t.bindings[CanonicalButton.BTN_UP]!!.single() as InputBinding.Axis
+        assertEquals(1, up.axis)
+        assertEquals(AnalogRole.DIGITAL_BUTTON, up.analogRole)
+        assertEquals(-1f, up.activeMax, 0.001f)
+    }
+
+    @Test
+    fun legacy_signed_axis_value_on_a_dpad_btn_key_still_imports_to_a_digital_axis_binding() {
+        // Cannoli briefly wrote input_up_btn = "-1" for an axis-reported d-pad before the writer
+        // was fixed to emit input_up_axis. RetroArch never accepted this form, but a user's cfg
+        // may still carry it, so this proves the parser's read-only tolerance imports it to the
+        // same binding a native input_up_axis line produces.
+        val entry = RetroArchCfgParser.parse(
+            """
+            input_device = "M30"
+            input_up_btn = "-1"
+            """.trimIndent(),
         )
         val t = RetroArchAutoconfigImporter.import(entry, device)
         val up = t.bindings[CanonicalButton.BTN_UP]!!.single() as InputBinding.Axis
