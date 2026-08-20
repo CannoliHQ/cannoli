@@ -107,4 +107,21 @@ class AndroidDefaultMappingFactoryTest {
         assertEquals(1, t.match.vendorId)
         assertEquals(2, t.match.productId)
     }
+
+    @Test fun `match rule records a built-in device as built in`() {
+        val builtIn = device.copy(isBuiltIn = true)
+        val t = AndroidDefaultMappingFactory().create(builtIn)
+        assertEquals(true, t.match.builtin)
+    }
+
+    @Test fun `match rule records an external device as not built in`() {
+        val t = AndroidDefaultMappingFactory().create(device)
+        assertEquals(false, t.match.builtin)
+    }
+
+    @Test fun `a name that slugifies to empty falls back to the vendor product id`() {
+        val punctuationOnly = device.copy(name = "!!!")
+        val t = AndroidDefaultMappingFactory().create(punctuationOnly)
+        assertEquals("android_default_1_2_${punctuationOnly.name.hashCode()}", t.id)
+    }
 }

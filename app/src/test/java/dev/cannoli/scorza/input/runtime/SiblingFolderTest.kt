@@ -17,7 +17,6 @@ class SiblingFolderTest {
         assertEquals(1, out.size)
         assertEquals(5, out[0].gamepad.androidDeviceId)
         assertTrue(out[0].aliases.isEmpty())
-        assertEquals("desc-5", out[0].persistenceDescriptor)
     }
 
     @Test fun retroid_pattern_gamepad_name_is_prefix_of_siblings() {
@@ -29,8 +28,6 @@ class SiblingFolderTest {
         assertEquals(1, out.size)
         assertEquals(12, out[0].gamepad.androidDeviceId)
         assertEquals(setOf(10, 11), out[0].aliases.map { it.androidDeviceId }.toSet())
-        // Falls back to a sibling's descriptor because the gamepad's own is empty.
-        assertTrue(out[0].persistenceDescriptor in setOf("ds-motion-A", "ds-touch-A"))
     }
 
     @Test fun one35_pattern_gamepad_is_one_of_several_siblings() {
@@ -59,8 +56,6 @@ class SiblingFolderTest {
         val byGamepad = out.associateBy { it.gamepad.androidDeviceId }
         assertEquals(setOf(10, 11), byGamepad.getValue(12).aliases.map { it.androidDeviceId }.toSet())
         assertEquals(setOf(13, 14), byGamepad.getValue(15).aliases.map { it.androidDeviceId }.toSet())
-        // Each cluster picks a sibling descriptor, and the two clusters' descriptors differ.
-        assertTrue(byGamepad.getValue(12).persistenceDescriptor != byGamepad.getValue(15).persistenceDescriptor)
     }
 
     @Test fun non_adjacent_devices_with_same_prefix_are_not_merged() {

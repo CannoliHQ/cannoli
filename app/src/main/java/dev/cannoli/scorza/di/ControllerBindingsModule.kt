@@ -57,7 +57,8 @@ object ControllerBindingsModule {
         source = bundledCfgSource(context),
         targetDirProvider = { CannoliPaths(paths.root).configInputAutoconfigAndroid },
         legacyMappingsDirProvider = { CannoliPaths(paths.root).configInputMappings },
-        versionCode = dev.cannoli.scorza.BuildConfig.VERSION_CODE,
+        assetsDigest = dev.cannoli.scorza.BuildConfig.AUTOCONFIG_DIGEST,
+        buildModel = android.os.Build.MODEL ?: "",
     )
 
     @Provides

@@ -147,7 +147,6 @@ class RetroArchCfgParserTest {
         assertEquals("BTN_SOUTH", entry.confirmButton)
         assertEquals("PLUMBER", entry.glyphStyle)
         org.junit.Assert.assertTrue(entry.excludeFromGameplay)
-        assertEquals("abc123", entry.descriptor)
         assertEquals("Retroid Pocket 5", entry.buildModel)
         assertEquals(16778513, entry.sourceMask)
         assertEquals(517, entry.defaultControllerType)
@@ -199,6 +198,39 @@ class RetroArchCfgParserTest {
         )
         assertEquals(96, entry.buttonBindings["a_btn"])
         assertEquals(97, entry.buttonBindings["b_btn"])
+    }
+
+    @Test fun `parses cannoli_source and cannoli_builtin`() {
+        val entry = RetroArchCfgParser.parse(
+            """
+            input_device = "Retroid Pocket Controller"
+            cannoli_source = "INPUT_DB"
+            cannoli_builtin = "true"
+            """.trimIndent()
+        )
+        assertEquals(CfgProvenance.INPUT_DB, entry.provenance)
+        assertEquals(true, entry.builtin)
+    }
+
+    @Test fun `absent provenance and builtin parse as null`() {
+        val entry = RetroArchCfgParser.parse("input_device = \"Pad\"\n")
+        assertEquals(null, entry.provenance)
+        assertEquals(null, entry.builtin)
+    }
+
+    @Test fun `unknown provenance value parses as null`() {
+        val entry = RetroArchCfgParser.parse("cannoli_source = \"NONSENSE\"\n")
+        assertEquals(null, entry.provenance)
+    }
+
+    @Test fun `isUserOwned is true from cannoli_source alone`() {
+        val entry = RetroArchCfgParser.parse("input_device = \"Pad\"\ncannoli_source = \"USER\"\n")
+        assertEquals(true, entry.isUserOwned)
+    }
+
+    @Test fun `isUserOwned falls back to cannoli_user when cannoli_source is absent`() {
+        val entry = RetroArchCfgParser.parse("input_device = \"Pad\"\ncannoli_user = \"true\"\n")
+        assertEquals(true, entry.isUserOwned)
     }
 
     companion object {

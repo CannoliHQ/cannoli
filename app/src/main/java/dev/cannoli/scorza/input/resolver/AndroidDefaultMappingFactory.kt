@@ -31,20 +31,16 @@ class AndroidDefaultMappingFactory(
 
     fun create(
         device: ConnectedDevice,
-        persistenceDescriptor: String? = null,
     ): DeviceMapping {
         val profile = legendResolver.resolve(
             vendorId = device.vendorId,
             productId = device.productId,
         )
-        val effectiveDescriptor = persistenceDescriptor?.takeIf { it.isNotEmpty() }
-            ?: device.descriptor.takeIf { it.isNotEmpty() }
-        val baseId = "android_default_" + (effectiveDescriptor
-            ?: "${device.vendorId}_${device.productId}_${device.name.hashCode()}")
-        // Distinguish identical-name controllers via descriptor (matches RetroArch importer).
-        val suffix = effectiveDescriptor
-            ?.let { Integer.toHexString(it.hashCode()).takeLast(6).lowercase() }
-        val safeId = if (suffix != null) "${baseId}_$suffix" else baseId
+        val fallbackId = "${device.vendorId}_${device.productId}_${device.name.hashCode()}"
+        val nameSlug = device.name.takeIf { it.isNotEmpty() }
+            ?.let { RetroArchAutoconfigImporter.slugify(it) }
+            ?.takeIf { it.isNotEmpty() }
+        val safeId = "android_default_" + (nameSlug ?: fallbackId)
         val faceBindings = profile.faceLayout.standardFaceBindings().mapValues { (_, keyCode) ->
             listOf(InputBinding.Button(keyCode))
         }
@@ -55,7 +51,7 @@ class AndroidDefaultMappingFactory(
                 name = device.name.ifEmpty { null },
                 vendorId = device.vendorId.takeIf { it != 0 },
                 productId = device.productId.takeIf { it != 0 },
-                descriptor = effectiveDescriptor,
+                builtin = device.isBuiltIn,
             ),
             bindings = (DEFAULT_BINDINGS.mapValues { (_, keyCodes) ->
                 keyCodes.map { InputBinding.Button(it) }

@@ -91,9 +91,10 @@ class MappingResolverTest {
     }
 
     @Test
-    fun user_cfg_carrying_the_device_descriptor_wins_over_another_user_cfg() {
-        // Two user files describe the same make and model; only the descriptor tells the two
-        // physical pads apart, so it is what picks the file.
+    fun two_colliding_user_cfgs_resolve_deterministically_by_filename() {
+        // Per-model scoping means two user files describing the same make and model are no
+        // longer told apart by physical unit, so the tie is broken by filename, giving a
+        // deterministic pick rather than one that depends on filesystem listing order.
         writeCfg(
             "other_pad_user.cfg",
             """
@@ -101,8 +102,7 @@ class MappingResolverTest {
             input_vendor_id = "6353"
             input_product_id = "37888"
             input_b_btn = "96"
-            cannoli_descriptor = "other-pad"
-            cannoli_user = "true"
+            cannoli_source = "USER"
             """.trimIndent()
         )
         writeCfg(
@@ -112,14 +112,13 @@ class MappingResolverTest {
             input_vendor_id = "6353"
             input_product_id = "37888"
             input_b_btn = "97"
-            cannoli_descriptor = "abc"
-            cannoli_user = "true"
+            cannoli_source = "USER"
             """.trimIndent()
         )
 
         val resolved = resolver().resolve(device())
 
-        assertEquals("this_pad_user", resolved.id)
+        assertEquals("other_pad_user", resolved.id)
     }
 
     @Test
@@ -145,7 +144,10 @@ class MappingResolverTest {
     }
 
     @Test
-    fun resolver_priority_is_disk_then_ra_then_default() {
+    fun disk_entry_resolves_without_ever_considering_a_matching_bundled_entry() {
+        // Disk being non-empty excludes bundled entries from the candidate set entirely (see
+        // non_empty_disk_set_with_no_match_does_not_fall_back_to_bundled_assets), so this only
+        // proves a disk match resolves -- there is no priority contest against the bundled entry.
         writeCfg(
             "disk_wins.cfg",
             """
@@ -163,6 +165,31 @@ class MappingResolverTest {
         )
         val resolved = resolver(bundled = ra).resolve(device())
         assertEquals("disk_wins", resolved.id)
+    }
+
+    @Test
+    fun non_empty_disk_set_with_no_match_does_not_fall_back_to_bundled_assets() {
+        // Ruling: falling back to assets when disk is non-empty would resurrect profiles the
+        // seeder deliberately did not materialise for this handheld. The disk set here has an
+        // entry, just not one for this device, and a bundled entry that would match is never
+        // consulted.
+        writeCfg(
+            "other_pad.cfg",
+            """
+            input_device = "Some Other Pad"
+            input_vendor_id = "1"
+            input_product_id = "2"
+            input_b_btn = "96"
+            """.trimIndent()
+        )
+        val ra = listOf(
+            RetroArchCfgEntry(
+                deviceName = "Stadia Controller", vendorId = 6353, productId = 37888,
+                buttonBindings = mapOf("b_btn" to 96),
+            )
+        )
+        val resolved = resolver(bundled = ra).resolve(device())
+        assertEquals(MappingSource.ANDROID_DEFAULT, resolved.source)
     }
 
     // Retroid handhelds rewrite a paired BT pad's gamepad endpoint to report the built-in's
@@ -277,10 +304,10 @@ class MappingResolverTest {
     }
 
     @Test
-    fun user_cfg_outranks_bundled_ra_cfg() {
-        // User customization must always beat the bundled cfg, even when both match. Without this
-        // guarantee, a user's edits would be silently reverted by an update that ships a new
-        // bundled cfg.
+    fun user_cfg_on_disk_resolves_even_though_a_bundled_entry_also_matches() {
+        // The user's edits survive a bundled cfg update, but not because the user entry outranks
+        // it in a comparison -- disk being non-empty excludes the bundled entry from the
+        // candidate set before any ranking happens.
         writeCfg(
             "stadia_user_custom.cfg",
             """
@@ -490,5 +517,128 @@ class MappingResolverTest {
         )
 
         assertEquals(MappingSource.ANDROID_DEFAULT, resolved.source)
+    }
+
+    @Test fun `phantom ds4 does not inherit the built-in cfg when it carries a model pin`() {
+        val ds4OnClassic = device(
+            name = "Wireless Controller",
+            vendorId = 8226,
+            productId = 12289,
+            androidBuildModel = "Retroid Pocket Classic",
+        )
+        val bundled = listOf(
+            RetroArchCfgEntry(
+                deviceName = "Retroid Pocket Controller",
+                vendorId = 8226, productId = 12289,
+                buildModel = "Retroid Pocket Classic",
+                builtin = true,
+                buttonBindings = mapOf("a_btn" to 96),
+                fileName = "retroid_classic.cfg",
+            ),
+            RetroArchCfgEntry(
+                deviceName = "Wireless Controller",
+                vendorId = 1356, productId = 2508,
+                buttonBindings = mapOf("b_btn" to 96, "a_btn" to 97),
+                fileName = "sony_ds4.cfg",
+            ),
+        )
+        val resolved = resolver(bundled = bundled).resolve(ds4OnClassic)
+        assertEquals("Wireless Controller", resolved.match.name)
+    }
+
+    @Test fun `user provenance outranks input db for the same pad`() {
+        writeCfg(
+            "sony_ds4.cfg",
+            """
+            input_device = "Wireless Controller"
+            input_vendor_id = "1356"
+            input_product_id = "2508"
+            input_b_btn = "96"
+            cannoli_source = "INPUT_DB"
+            """.trimIndent()
+        )
+        writeCfg(
+            "sony_ds4_mine.cfg",
+            """
+            input_device = "Wireless Controller"
+            input_vendor_id = "1356"
+            input_product_id = "2508"
+            input_b_btn = "97"
+            cannoli_source = "USER"
+            """.trimIndent()
+        )
+        val resolved = resolver().resolve(device(name = "Wireless Controller", vendorId = 1356, productId = 2508))
+        assertEquals(MappingSource.USER_WIZARD, resolved.source)
+    }
+
+    @Test fun `user provenance outranks input db even at a worse match rank`() {
+        // The realistic case on the affected handhelds: a wizard-made USER cfg carries no model
+        // pin (NAME_AND_VID_PID), while the curated INPUT_DB cfg is pinned to this device's model
+        // (NAME_AND_MODEL, the better rank). Provenance must still decide it, not rank.
+        writeCfg(
+            "sony_ds4.cfg",
+            """
+            input_device = "Wireless Controller"
+            input_vendor_id = "1356"
+            input_product_id = "2508"
+            input_b_btn = "96"
+            cannoli_build_model = "Pixel"
+            cannoli_source = "INPUT_DB"
+            """.trimIndent()
+        )
+        writeCfg(
+            "sony_ds4_mine.cfg",
+            """
+            input_device = "Wireless Controller"
+            input_vendor_id = "1356"
+            input_product_id = "2508"
+            input_b_btn = "97"
+            cannoli_source = "USER"
+            """.trimIndent()
+        )
+        val resolved = resolver().resolve(device(name = "Wireless Controller", vendorId = 1356, productId = 2508))
+        assertEquals(MappingSource.USER_WIZARD, resolved.source)
+    }
+
+    @Test fun `builtin agreement wins the tiebreak over an unfavorable filename`() {
+        // Same provenance (neither is user-owned) and same rank (both NAME_AND_VID_PID), so only
+        // builtin agreement can decide it. The agreeing entry's filename sorts after the
+        // disagreeing one's, so a filename-only tiebreak would pick the wrong entry.
+        val ra = listOf(
+            RetroArchCfgEntry(
+                deviceName = "Stadia Controller", vendorId = 6353, productId = 37888,
+                builtin = true,
+                buttonBindings = mapOf("b_btn" to 96),
+                fileName = "a_disagrees.cfg",
+            ),
+            RetroArchCfgEntry(
+                deviceName = "Stadia Controller", vendorId = 6353, productId = 37888,
+                builtin = false,
+                buttonBindings = mapOf("b_btn" to 97),
+                fileName = "z_agrees.cfg",
+            ),
+        )
+        val resolved = resolver(bundled = ra).resolve(device())
+        assertEquals("z_agrees", resolved.id)
+    }
+
+    @Test fun `filename tiebreak picks the alphabetically first bundled entry regardless of list order`() {
+        // Both entries are bundled, not on disk, so AutoconfigRepository's own filename sort
+        // cannot be doing this work. The list itself is in the wrong order, so only the
+        // resolver's own tiebreak can produce the alphabetically first result.
+        val ra = listOf(
+            RetroArchCfgEntry(
+                deviceName = "Stadia Controller", vendorId = 6353, productId = 37888,
+                buttonBindings = mapOf("b_btn" to 97),
+                fileName = "z_pad.cfg",
+            ),
+            RetroArchCfgEntry(
+                deviceName = "Stadia Controller", vendorId = 6353, productId = 37888,
+                buttonBindings = mapOf("b_btn" to 96),
+                fileName = "a_pad.cfg",
+            ),
+        )
+        val resolved = resolver(bundled = ra).resolve(device())
+        assertEquals("a_pad", resolved.id)
     }
 }

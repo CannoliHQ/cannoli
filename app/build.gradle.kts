@@ -1,3 +1,4 @@
+import java.security.MessageDigest
 import java.util.Properties
 
 plugins {
@@ -19,6 +20,37 @@ val gitCommitHash: String = git("rev-parse", "--short", "HEAD").ifEmpty { "unkno
 val gitDirty: Boolean = git("status", "--porcelain", "--untracked-files=no").isNotEmpty()
 
 val buildTimeMillis: Long = System.currentTimeMillis()
+
+// Reads the cfg directory inside obtain() rather than at plain configuration time, so the
+// configuration cache tracks these files as an input instead of freezing the digest -- mirrors
+// how git() above wraps process output for the same reason.
+abstract class AutoconfigDigestValueSource : ValueSource<String, AutoconfigDigestValueSource.Parameters> {
+    interface Parameters : ValueSourceParameters {
+        val cfgDir: DirectoryProperty
+    }
+
+    override fun obtain(): String {
+        val dir = parameters.cfgDir.get().asFile
+        val cfgs = dir.listFiles { f: java.io.File -> f.isFile && f.extension.equals("cfg", ignoreCase = true) }
+            ?.sortedBy { it.name }
+            .orEmpty()
+        require(cfgs.isNotEmpty()) {
+            "No bundled autoconfig cfgs found in $dir. Run scripts/fetch-autoconfig.sh first."
+        }
+        val md = MessageDigest.getInstance("SHA-256")
+        for (f in cfgs) {
+            md.update(f.name.toByteArray())
+            md.update(f.readBytes())
+        }
+        return md.digest().joinToString("") { "%02x".format(it) }.take(16)
+    }
+}
+
+// Version code cannot invalidate the autoconfig seed: it is 1 for every debug build, so a rebuild
+// with changed cfgs would keep serving the previously seeded set. Digest the content instead.
+val autoconfigDigest: String = providers.of(AutoconfigDigestValueSource::class) {
+    parameters.cfgDir.set(layout.projectDirectory.dir("src/main/assets/autoconfig/cannoli"))
+}.get()
 
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 val keystoreProperties = Properties().apply {
@@ -49,6 +81,7 @@ android {
         buildConfigField("long", "BUILD_TIME", "${buildTimeMillis}L")
         buildConfigField("String", "GIT_HASH", "\"$gitCommitHash\"")
         buildConfigField("boolean", "GIT_DIRTY", "$gitDirty")
+        buildConfigField("String", "AUTOCONFIG_DIGEST", "\"$autoconfigDigest\"")
     }
 
     buildFeatures {

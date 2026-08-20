@@ -26,7 +26,6 @@ class AutoconfigRepositoryTest {
             name = "8BitDo Pro 2",
             vendorId = 11720,
             productId = 24582,
-            descriptor = "abc123",
         ),
         bindings = mapOf(
             CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96)),
@@ -68,7 +67,7 @@ class AutoconfigRepositoryTest {
         r.save(cfgWriterSampleMapping(id = "PadA"))
         val entry = r.findById("PadA")
         assertEquals("PadA.cfg", entry?.fileName)
-        assertTrue(entry!!.cannoliUser)
+        assertEquals(CfgProvenance.USER, entry!!.provenance)
         assertEquals(0, tmp.root.listFiles { f -> f.name.endsWith(".tmp") }!!.size)
     }
 

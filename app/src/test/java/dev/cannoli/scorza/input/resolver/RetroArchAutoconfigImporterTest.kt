@@ -29,6 +29,43 @@ class RetroArchAutoconfigImporterTest {
         connectedAtMillis = 0L,
     )
 
+    private fun deviceNamed(
+        name: String,
+        vendorId: Int,
+        productId: Int,
+        androidBuildModel: String = "Pixel",
+    ) = ConnectedDevice(
+        androidDeviceId = 7,
+        descriptor = "abc",
+        name = name,
+        vendorId = vendorId,
+        productId = productId,
+        androidBuildModel = androidBuildModel,
+        sourceMask = 0,
+        connectedAtMillis = 0L,
+    )
+
+    @Test fun `id is the name slug with no descriptor suffix`() {
+        val resolved = RetroArchAutoconfigImporter.import(
+            RetroArchCfgEntry(deviceName = "Wireless Controller", vendorId = 1356, productId = 2508, buttonBindings = emptyMap()),
+            deviceNamed("Wireless Controller", 1356, 2508),
+        )
+        assertEquals("ra_wireless_controller", resolved.id)
+    }
+
+    @Test fun `pinned entries carry the model in the id`() {
+        val resolved = RetroArchAutoconfigImporter.import(
+            RetroArchCfgEntry(
+                deviceName = "Retroid Pocket Controller",
+                vendorId = null, productId = null,
+                buildModel = "Retroid Pocket Nova",
+                buttonBindings = emptyMap(),
+            ),
+            deviceNamed("Retroid Pocket Controller", 8226, 12289, "Retroid Pocket Nova"),
+        )
+        assertEquals("ra_retroid_pocket_controller_retroid_pocket_nova", resolved.id)
+    }
+
     @Test
     fun translates_face_and_dpad_buttons() {
         val entry = RetroArchCfgEntry(

@@ -2,8 +2,6 @@ package dev.cannoli.scorza.input.autoconfig
 
 import dev.cannoli.scorza.input.DeviceMapping
 import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
 
 class AutoconfigRepository(
     private val debugBuild: Boolean = false,
@@ -42,15 +40,7 @@ class AutoconfigRepository(
         val dir = dir ?: error("autoconfig save before first run's storage step chose a root")
         dir.mkdirs()
         val file = File(dir, "${mapping.id}.cfg")
-        val tmp = File(dir, "${mapping.id}.cfg.tmp")
-        FileOutputStream(tmp).use { fos ->
-            fos.write(RetroArchCfgWriter.write(mapping, debugBuild).toByteArray())
-            fos.fd.sync()
-        }
-        if (!tmp.renameTo(file)) {
-            tmp.delete()
-            throw IOException("Failed to rename autoconfig tmp file for ${mapping.id}")
-        }
+        writeCfgAtomic(file, RetroArchCfgWriter.write(mapping, debugBuild))
         invalidate()
     }
 

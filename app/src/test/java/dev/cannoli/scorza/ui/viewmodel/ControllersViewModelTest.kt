@@ -2,9 +2,11 @@ package dev.cannoli.scorza.ui.viewmodel
 
 import dev.cannoli.scorza.input.ConnectedDevice
 import dev.cannoli.scorza.input.DeviceMapping
+import dev.cannoli.scorza.input.MappingSource
 import dev.cannoli.scorza.input.autoconfig.AutoconfigRepository
 import dev.cannoli.scorza.input.autoconfig.AutoconfigSeeder
 import dev.cannoli.scorza.input.autoconfig.BundledAutoconfigEntries
+import dev.cannoli.scorza.input.autoconfig.CfgProvenance
 import dev.cannoli.scorza.input.autoconfig.MapCfgSource
 import dev.cannoli.scorza.input.resolver.MappingResolver
 import dev.cannoli.scorza.input.runtime.ActiveMappingHolder
@@ -52,7 +54,7 @@ class ControllersViewModelTest {
     )
 
     private val seeder by lazy {
-        AutoconfigSeeder(bundledAssets, { tmp.root }, { File(tmp.root, "Mappings") }, versionCode = 1)
+        AutoconfigSeeder(bundledAssets, { tmp.root }, { File(tmp.root, "Mappings") }, assetsDigest = "d", buildModel = "Pixel")
     }
 
     private fun vm() =
@@ -92,7 +94,7 @@ class ControllersViewModelTest {
         input_vendor_id = "6353"
         input_product_id = "37888"
         input_b_btn = "190"
-        cannoli_user = "true"
+        cannoli_source = "USER"
         cannoli_descriptor = "stadia-1"
         """
     )
@@ -134,7 +136,7 @@ class ControllersViewModelTest {
         model.renameMapping(mapping, "Couch Pad")
 
         val entry = repository.findById(mapping.id) ?: error("expected a cfg on disk")
-        assertTrue(entry.cannoliUser)
+        assertEquals(CfgProvenance.USER, entry.provenance)
         assertEquals("Couch Pad", entry.displayName)
         assertEquals("Couch Pad", model.state.value.connected.single().mapping.displayName)
     }
@@ -165,13 +167,35 @@ class ControllersViewModelTest {
         val mapping = connectStadia()
         val model = vm()
         val renamed = model.renameMapping(mapping, "Couch Pad")
-        assertTrue(repository.findById("stadia")?.cannoliUser == true)
+        assertEquals(CfgProvenance.USER, repository.findById("stadia")?.provenance)
 
         model.resetMapping(renamed)
 
         val restored = repository.findById("stadia") ?: error("expected the bundled cfg back on disk")
         assertFalse(restored.cannoliUser)
         assertEquals("Stadia Controller", portRouter.mappingFor(7)?.displayName)
+    }
+
+    // Mirrors the scenario in the failure branch: the delete succeeds but the restore write fails
+    // (a flaky SD card). The pad must not silently keep looking reset, it falls to the runtime
+    // default instead of the curated cfg.
+    //
+    // The ErrorLog.write side effect is deliberately not asserted. ErrorLog is a process-global
+    // async singleton with no seam for tests, so pinning it would mean waiting on a flush and
+    // trading a real flake for coverage the ANDROID_DEFAULT assertion already provides: that
+    // assertion only holds if the failure branch ran.
+    @Test
+    fun `reset does not present success when the restore write fails`() {
+        writeStadiaBundled()
+        val mapping = connectStadia()
+        val model = vm()
+        val renamed = model.renameMapping(mapping, "Couch Pad")
+        File(tmp.root, "stadia.cfg.tmp").mkdirs()
+
+        model.resetMapping(renamed)
+
+        assertFalse(File(tmp.root, "stadia.cfg").exists())
+        assertEquals(MappingSource.ANDROID_DEFAULT, portRouter.mappingFor(7)?.source)
     }
 
     @Test

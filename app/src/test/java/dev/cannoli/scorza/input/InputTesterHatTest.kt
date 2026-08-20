@@ -17,7 +17,6 @@ class InputTesterHatTest {
             name = "Test Pad",
             vendorId = 1234,
             productId = 5678,
-            descriptor = "abc123",
         ),
         bindings = bindings,
         source = MappingSource.BUNDLED,

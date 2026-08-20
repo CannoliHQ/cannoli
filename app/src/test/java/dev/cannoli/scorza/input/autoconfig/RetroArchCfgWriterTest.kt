@@ -23,7 +23,6 @@ class RetroArchCfgWriterTest {
             name = "8BitDo Pro 2",
             vendorId = 11720,
             productId = 24582,
-            descriptor = "abc123",
         ),
         bindings = mapOf(
             CanonicalButton.BTN_SOUTH to listOf(InputBinding.Button(96)),
@@ -73,9 +72,8 @@ class RetroArchCfgWriterTest {
         assertTrue(cfg.contains("input_l_x_plus_axis = \"+0\""))
         assertTrue(cfg.contains("input_l_x_minus_axis = \"-0\""))
         assertTrue(cfg.contains("input_menu_toggle_btn = \"318\""))
-        assertTrue(cfg.contains("cannoli_user = \"true\""))
+        assertTrue(cfg.contains("cannoli_source = \"USER\""))
         assertTrue(cfg.contains("cannoli_exclude_from_gameplay = \"true\""))
-        assertTrue(cfg.contains("cannoli_descriptor = \"abc123\""))
     }
 
     @Test
@@ -281,6 +279,18 @@ class RetroArchCfgWriterTest {
         assertTrue(written.contains("input_r_y_minus_axis = \"-3\""))
         assertTrue(written.contains("input_l2_axis = \"+8\""))
         assertTrue(written.contains("input_r2_axis = \"+9\""))
+    }
+
+    @Test fun `writes source USER for an edited mapping and omits legacy keys`() {
+        val text = RetroArchCfgWriter.write(sampleMapping().copy(userEdited = true), false)
+        assertEquals(true, text.contains("cannoli_source = \"USER\""))
+        assertEquals(false, text.contains("cannoli_user"))
+        assertEquals(false, text.contains("cannoli_descriptor"))
+    }
+
+    @Test fun `writes source INPUT_DB for an unedited mapping`() {
+        val text = RetroArchCfgWriter.write(sampleMapping().copy(userEdited = false), false)
+        assertEquals(true, text.contains("cannoli_source = \"INPUT_DB\""))
     }
 
     @Test

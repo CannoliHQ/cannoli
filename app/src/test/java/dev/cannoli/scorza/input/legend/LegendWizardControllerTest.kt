@@ -48,7 +48,6 @@ class LegendWizardControllerTest {
             name = "Test Pad",
             vendorId = 1234,
             productId = 5678,
-            descriptor = "abc123",
         ),
         bindings = mapOf(
             CanonicalButton.BTN_L to listOf(InputBinding.Button(102)),

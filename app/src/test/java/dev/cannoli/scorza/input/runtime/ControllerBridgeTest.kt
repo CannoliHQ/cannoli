@@ -513,10 +513,9 @@ class ControllerBridgeTest {
     }
 
     @Test
-    fun retroid_phantom_endpoints_fold_to_single_port_with_sibling_descriptor() {
+    fun retroid_phantom_endpoints_fold_to_single_port() {
         // Mirrors the DualSense-on-Retroid case: gamepad endpoint has Retroid vid/pid and empty
-        // descriptor (post-folding it should carry the sibling's stable descriptor); siblings have
-        // real Sony vid/pid + populated descriptor (MAC-derived hash).
+        // descriptor; siblings have real Sony vid/pid and populated descriptors (MAC-derived hashes).
         val portRouter = PortRouter()
         val active = ActiveMappingHolder()
         val bridge = makeBridge(portRouter = portRouter, activeMappingHolder = active)
@@ -554,12 +553,10 @@ class ControllerBridgeTest {
         assertEquals(0, portRouter.portFor(12))
         assertEquals(0, portRouter.portFor(11))
         assertEquals(0, portRouter.portFor(10))
-        // The persisted mapping carries the sibling's descriptor so the file is unique per pad.
+        // The persisted mapping id is scoped to the pad's model (its name), not to any one unit.
         val saved = active.active.value
         assertNotNull(saved)
-        val savedDescriptor = saved?.match?.descriptor
-        assertTrue("expected sibling descriptor, got '$savedDescriptor'",
-            savedDescriptor == "ds-motion-mac-A" || savedDescriptor == "ds-touch-mac-A")
+        assertEquals("android_default_dualsense_wireless_controller", saved?.id)
     }
 
     @Test
