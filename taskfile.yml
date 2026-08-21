@@ -96,6 +96,13 @@ tasks:
           | grep -E 'am_proc_bound.*retroarch|wm_on_create_called.*(Ricotta|RetroActivity)|wm_activity_launch_time|wm_on_stop_called.*MainActivity' \
           | tail -24
 
+  controllers:
+    desc: Controller table for an attached device, showing pads whose real evdev node the vendor layer has hidden
+    # Prompts for a device when several are attached, so it needs a tty.
+    interactive: true
+    cmds:
+      - scripts/controller-table.sh {{.DEVICE}}
+
   credits:sync:
     desc: Sync credits.json to CreditsData.kt, taskfile.yml, and release.yml
     cmds:
