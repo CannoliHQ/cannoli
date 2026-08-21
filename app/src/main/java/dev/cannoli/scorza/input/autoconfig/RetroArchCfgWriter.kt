@@ -82,6 +82,10 @@ object RetroArchCfgWriter {
             for (binding in effective) {
                 if (binding !is InputBinding.Axis) continue
                 val key = axisKeyFor(canonical, binding) ?: continue
+                // An axis RA's Android driver never reads has no slot to name, and any number
+                // written here would bind something else or nothing. Skipped before the key is
+                // claimed, so a mappable binding on the same key still gets to write.
+                val slot = RaAxisSlots.toRaSlot(binding.axis) ?: continue
                 // A pad reporting the same logical trigger on two axes (LTRIGGER and
                 // BRAKE, say) captures two bindings on one canonical. RA holds one value
                 // per key, so only the first binding that resolves to a given key claims
@@ -89,7 +93,7 @@ object RetroArchCfgWriter {
                 // still write.
                 if (axisKeysWritten.add(key)) {
                     val sign = if (binding.activeMax >= 0f) "+" else "-"
-                    line("input_$key", "$sign${RaAxisSlots.toRaSlot(binding.axis)}")
+                    line("input_$key", "$sign$slot")
                 }
             }
         }

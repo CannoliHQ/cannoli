@@ -9,8 +9,14 @@ package dev.cannoli.scorza.input.autoconfig
 // AXIS_X/Y/Z/RZ/LTRIGGER/RTRIGGER/BRAKE/GAS. Slots 4 and 5 are never filled (RA reads no axis into
 // them), and RA's Android driver never reads AXIS_RX(12)/AXIS_RY(13) at all, so a stick on RX/RY has
 // no RA slot. android_joypad_axis_state bounds-checks the slot against MAX_AXIS(10), so any raw Android
-// id >= 10 written into a cfg (11,14,17,18,22,23...) is a dead binding in native RA. Unknown ids pass
-// through unchanged: for the unsupported RX/RY case that yields a slot RA reads as 0 either way.
+// id >= 10 written into a cfg (11,14,17,18,22,23...) is a dead binding in native RA, and an id in 2..9
+// is worse than dead: those are non-joystick Android axes, so passing one through yields an in-range
+// slot belonging to a different control. toRaSlot therefore reports "no slot" rather than guessing, and
+// the writer omits the key.
+//
+// toAndroidAxis keeps its identity fallback on purpose. Cfgs written by older Cannoli builds carry raw
+// Android ids in axis keys, and passing an unknown value through unchanged is what still reads them
+// correctly.
 object RaAxisSlots {
     private val slotToAndroid = mapOf(
         0 to 0,   // AXIS_X       left stick X
@@ -25,5 +31,5 @@ object RaAxisSlots {
     private val androidToSlot = slotToAndroid.entries.associate { (slot, android) -> android to slot }
 
     fun toAndroidAxis(slot: Int): Int = slotToAndroid[slot] ?: slot
-    fun toRaSlot(androidAxis: Int): Int = androidToSlot[androidAxis] ?: androidAxis
+    fun toRaSlot(androidAxis: Int): Int? = androidToSlot[androidAxis]
 }
