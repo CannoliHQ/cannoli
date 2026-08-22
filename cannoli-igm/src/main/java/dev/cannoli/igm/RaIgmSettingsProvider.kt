@@ -5,6 +5,7 @@ import dev.cannoli.core.CheevosSessionKeys
 private const val LOCAL_TOGGLE_PREFIX = "cannoli_"
 private const val RA_MENU_KEY = "__ra_menu__"
 private const val EMULATOR_CATEGORY = "emulator"
+private const val INFO_ROW_PREFIX = "info_"
 
 class RaIgmSettingsProvider(
     private val host: RaSettingsHost,
@@ -38,9 +39,128 @@ class RaIgmSettingsProvider(
     override fun setOnChanged(callback: () -> Unit) { onChanged = callback }
 
     override fun screen(path: List<String>): GenericIgmSettingsScreen = when {
-        path.isEmpty() -> root()
+        path.isEmpty() -> if (curated) curatedRoot() else root()
         path.first() == EMULATOR_CATEGORY -> emulatorScreen(path.getOrNull(1))
+        curated -> curatedCategoryScreen(path.first())
         else -> categoryScreen(path.first())
+    }
+
+    // A curated row is reachable only when every RetroArch key it writes exists on this build, and
+    // a category with no reachable row is left out rather than shown empty, the same way the
+    // Emulator row is omitted for a core that exposes no options.
+    private fun reachableRows(category: CuratedCatalog.Category): List<CuratedCatalog.Row> =
+        category.rows.filter { row -> row.discriminatingKeys.all { host.raGetSetting(it) != null } }
+
+    // raSetSetting enqueues onto RetroArch's run loop, so a read straight after a write still
+    // returns the old value. The Everything path solves this by updating its cached row optimistically
+    // and swallowing the async echo through `pending`; curated rows cache the same way rather than
+    // re-reading the host on every render, which is what left a row showing its previous value until
+    // you navigated away and back.
+    private var curatedValues: MutableMap<String, String> = mutableMapOf()
+    private var curatedCategory: String? = null
+
+    private fun loadCurated(category: CuratedCatalog.Category) {
+        if (curatedCategory == category.key) return
+        curatedCategory = category.key
+        pending.clear()
+        val rows = reachableRows(category)
+        curatedValues = rows
+            .flatMap { it.settingKeys }
+            .distinct()
+            .mapNotNull { key -> host.raGetSetting(key)?.rawValue?.let { key to it } }
+            .toMap(mutableMapOf())
+        for (row in rows) adoptFirstPresetIfUnmatched(row)
+    }
+
+    // Curated mode drives RetroArch rather than reporting on it, so a row whose live values match no
+    // preset takes the first one instead of showing a state the menu cannot express. Deliberately
+    // does NOT mark the session dirty: adopting is normalization, and making it look like an edit
+    // would raise a save prompt on the way out of a menu the user only looked at. The adoption
+    // therefore lasts the session unless the user actually changes something.
+    private fun adoptFirstPresetIfUnmatched(row: CuratedCatalog.Row) {
+        if (CuratedCatalog.resolve(row, valuesFor(row)) != null) return
+        for ((key, value) in row.presets.first().values) {
+            if (!curatedValues.containsKey(key)) continue
+            if (!host.raSetSetting(key, value)) continue
+            curatedValues[key] = value
+            pending[key] = (pending[key] ?: 0) + 1
+        }
+    }
+
+    private fun curatedRoot(): GenericIgmSettingsScreen {
+        // Re-entering a category re-reads it. The cache is optimistic, so without this a write
+        // RetroArch rejected would keep showing the value it never applied.
+        curatedCategory = null
+        val items = buildList {
+            for (cat in CuratedCatalog.categories) {
+                if (reachableRows(cat).isEmpty()) continue
+                add(GenericIgmSettingsItem.Category(cat.key, curatedTitle(cat.key)))
+            }
+            if (host.coreOptions().isNotEmpty()) {
+                add(GenericIgmSettingsItem.Category(
+                    CuratedCatalog.CATEGORY_EMULATOR,
+                    curatedTitle(CuratedCatalog.CATEGORY_EMULATOR),
+                ))
+            }
+            if (host.systemInfo().isNotEmpty()) {
+                add(GenericIgmSettingsItem.Category(
+                    CuratedCatalog.CATEGORY_INFO,
+                    curatedTitle(CuratedCatalog.CATEGORY_INFO),
+                ))
+            }
+        }
+        return GenericIgmSettingsScreen(strings.rootTitle, items)
+    }
+
+    // Read-only rows: nothing here is a setting, so the keys are positional and cycle() ignores them.
+    private fun infoScreen(): GenericIgmSettingsScreen = GenericIgmSettingsScreen(
+        curatedTitle(CuratedCatalog.CATEGORY_INFO),
+        host.systemInfo().mapIndexed { i, (label, value) ->
+            GenericIgmSettingsItem.Choice(key = "$INFO_ROW_PREFIX$i", label = label, value = value)
+        },
+    )
+
+    private fun curatedCategoryScreen(categoryKey: String): GenericIgmSettingsScreen {
+        if (categoryKey == CuratedCatalog.CATEGORY_INFO) return infoScreen()
+        val cat = CuratedCatalog.categories.firstOrNull { it.key == categoryKey }
+            ?: return GenericIgmSettingsScreen(curatedTitle(categoryKey), emptyList())
+        loadCurated(cat)
+        return GenericIgmSettingsScreen(
+            curatedTitle(categoryKey),
+            reachableRows(cat).map { row ->
+                GenericIgmSettingsItem.Choice(
+                    key = row.key,
+                    label = strings.curatedRowLabels[row.key] ?: row.key,
+                    value = CuratedCatalog.resolve(row, valuesFor(row))
+                        ?.let { strings.curatedPresetLabels[it.labelKey] ?: it.labelKey }
+                        ?: strings.custom,
+                )
+            },
+        )
+    }
+
+    private fun curatedTitle(key: String) = strings.curatedCategoryTitles[key] ?: key
+
+    private fun valuesFor(row: CuratedCatalog.Row): Map<String, String> =
+        curatedValues.filterKeys { it in row.settingKeys }
+
+    private fun cycleCurated(row: CuratedCatalog.Row, direction: Int) {
+        val preset = CuratedCatalog.nextPreset(row, valuesFor(row), direction)
+        var wrote = false
+        // A key RetroArch does not expose is skipped rather than written blind, matching the
+        // reachability rule that let this row exist without it.
+        for ((key, value) in preset.values) {
+            if (!curatedValues.containsKey(key)) continue
+            if (!host.raSetSetting(key, value)) continue
+            curatedValues[key] = value
+            changedKeys.add(key)
+            pending[key] = (pending[key] ?: 0) + 1
+            wrote = true
+        }
+        if (wrote) {
+            dirty = true
+            onChanged?.invoke()
+        }
     }
 
     // A core that declares categories gets a screen of them; one that does not gets its options
@@ -125,6 +245,8 @@ class RaIgmSettingsProvider(
     )
 
     override fun cycle(itemKey: String, direction: Int) {
+        if (itemKey.startsWith(INFO_ROW_PREFIX)) return
+        CuratedCatalog.rowFor(itemKey)?.let { return cycleCurated(it, direction) }
         val i = currentSettings.indexOfFirst { it.key == itemKey }
         if (i < 0) return
         val s = currentSettings[i]
@@ -153,6 +275,19 @@ class RaIgmSettingsProvider(
             return
         }
         pending.remove(key)
+        // A curated row caches raw values, so an echo has to land there too or the row keeps showing
+        // what it last wrote. The echo's payload is the DISPLAY value though, which for a combobox
+        // is translated label text, so it is treated as a signal that something changed and the raw
+        // value is read back rather than trusted. Storing the payload here poisoned the cache and
+        // made every keypress resolve to Custom.
+        if (curated && curatedValues.containsKey(key)) {
+            val raw = host.raGetSetting(key)?.rawValue ?: return
+            if (curatedValues[key] != raw) {
+                curatedValues[key] = raw
+                onChanged?.invoke()
+            }
+            return
+        }
         val i = currentSettings.indexOfFirst { it.key == key }
         if (i < 0 || currentSettings[i].value == value) return
         replaceSetting(i, currentSettings[i].copy(value = value))
