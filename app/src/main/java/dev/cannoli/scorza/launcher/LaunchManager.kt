@@ -21,6 +21,7 @@ import dev.cannoli.core.config.RetroArchConfigComposer
 import dev.cannoli.scorza.model.App
 import dev.cannoli.scorza.model.LaunchTarget
 import dev.cannoli.scorza.model.Rom
+import dev.cannoli.scorza.settings.IgmSettingsMode
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.util.ArchiveExtractor
@@ -531,6 +532,7 @@ class LaunchManager(
             inputMapping = activeMappingHolder.active.value.toIgmInputMapping(),
             romBaseName = romName,
             hardcoreInEffect = hardcoreInEffect(cheevosFor(rom)),
+            curatedSettings = settings.igmSettingsMode == IgmSettingsMode.CURATED,
         )
     }
 

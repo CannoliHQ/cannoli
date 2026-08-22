@@ -28,6 +28,7 @@ data class RicottaIgm(
     val inputMapping: IgmInputMapping? = null,
     val romBaseName: String = "",
     val hardcoreInEffect: Boolean = false,
+    val curatedSettings: Boolean = true,
 )
 
 class RetroArchLauncher(
@@ -60,6 +61,7 @@ class RetroArchLauncher(
             localeTag = LocaleOverride.currentTag(context),
             romBaseName = igm.romBaseName,
             hardcoreInEffect = igm.hardcoreInEffect,
+            curatedSettings = igm.curatedSettings,
         )
 
         val intent = Intent().apply {

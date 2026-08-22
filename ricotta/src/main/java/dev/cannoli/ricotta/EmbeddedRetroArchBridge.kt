@@ -143,12 +143,14 @@ class EmbeddedRetroArchBridge(
 
     var raStrings: dev.cannoli.igm.RaOptionStrings = dev.cannoli.igm.RaOptionStrings()
     var onOpenNativeMenu: (() -> Unit)? = null
+    var curatedSettings: Boolean = true
 
     override fun settingsProvider(): dev.cannoli.igm.IgmSettingsProvider =
         dev.cannoli.igm.RaIgmSettingsProvider(
             host = this,
             strings = raStrings,
             debugBuild = com.retroarch.BuildConfig.DEBUG,
+            curated = curatedSettings,
             onOpenNativeMenu = { onOpenNativeMenu?.invoke() },
         )
 

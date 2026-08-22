@@ -108,6 +108,7 @@ class RetroActivityFuture : RetroActivityCamera() {
             )
             igmOverlay?.onCreate(savedInstanceState)
             params?.let { bridge.setIgmTriggerKeycodes(it.igmTriggerKeycodes.toIntArray()) }
+            bridge.curatedSettings = params?.curatedSettings ?: true
             igmOverlay?.controller?.setInputMapping(params?.inputMapping)
 
             val osdFont = runCatching {

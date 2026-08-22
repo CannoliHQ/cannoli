@@ -10,6 +10,7 @@ class RaIgmSettingsProvider(
     private val host: RaSettingsHost,
     private val strings: RaOptionStrings = RaOptionStrings(),
     private val debugBuild: Boolean = false,
+    private val curated: Boolean = false,
     private val onOpenNativeMenu: () -> Unit,
 ) : IgmSettingsProvider {
 

@@ -61,6 +61,11 @@ data class RicottaLaunchParams(
     // Trailing field: a sender that predates it reads back false (rows shown) rather than shifting
     // every field before it.
     val hardcoreInEffect: Boolean = false,
+    // Which in-game settings list to show: the curated one, or every RetroArch setting Cannoli
+    // exposes. A launcher preference rather than part of the config the game launches with, so it
+    // never reaches an override and no two games can disagree about it.
+    // Trailing field: a sender that predates it reads back true, the launcher's own default.
+    val curatedSettings: Boolean = true,
 ) : Parcelable {
     override fun describeContents() = 0
 
@@ -87,6 +92,7 @@ data class RicottaLaunchParams(
         dest.writeString(localeTag)
         dest.writeString(romBaseName)
         dest.writeInt(if (hardcoreInEffect) 1 else 0)
+        dest.writeInt(if (curatedSettings) 1 else 0)
     }
 
     companion object {
@@ -122,11 +128,15 @@ data class RicottaLaunchParams(
                 val localeTag = p.readString().orEmpty()
                 val romBaseName = p.readString().orEmpty()
                 val hardcoreInEffect = p.readInt() != 0
+                // The fields above default to false, so reading past a stale sender's parcel end
+                // returns 0 and degrades correctly on its own. This one defaults to true, so it has
+                // to ask whether the sender wrote it at all.
+                val curatedSettings = if (p.dataAvail() > 0) p.readInt() != 0 else true
                 return RicottaLaunchParams(
                     coreId, romPath, configFilePath, gameTitle, stateBasePath,
                     cannoliRoot, platformTag, platformName, igmTriggerKeycodes, quitOnFocusLoss,
                     preferredRefreshRate, colors, displaySettings, inputMapping, localeTag,
-                    romBaseName, hardcoreInEffect,
+                    romBaseName, hardcoreInEffect, curatedSettings,
                 )
             }
 

@@ -199,4 +199,51 @@ class RicottaLaunchParamsTest {
         params.writeToIntent(intent)
         assertEquals(params, RicottaLaunchParams.readFromIntent(intent))
     }
+
+    @Test fun `the settings mode survives a parcel round trip`() {
+        val params = sample().copy(curatedSettings = false)
+        val parcel = Parcel.obtain()
+        try {
+            params.writeToParcel(parcel, 0)
+            parcel.setDataPosition(0)
+            assertEquals(false, RicottaLaunchParams.CREATOR.createFromParcel(parcel).curatedSettings)
+        } finally {
+            parcel.recycle()
+        }
+    }
+
+    // curatedSettings is now the trailing field. A stale sender's parcel must degrade to the
+    // launcher default, Curated, rather than shift every field before it.
+    @Test fun `an older parcel that omits the trailing settings mode reads as curated`() {
+        val params = sample().copy(curatedSettings = false)
+        val parcel = Parcel.obtain()
+        try {
+            parcel.writeString(params.coreId)
+            parcel.writeString(params.romPath)
+            parcel.writeString(params.configFilePath)
+            parcel.writeString(params.gameTitle)
+            parcel.writeString(params.stateBasePath)
+            parcel.writeString(params.cannoliRoot)
+            parcel.writeString(params.platformTag)
+            parcel.writeString(params.platformName)
+            parcel.writeIntArray(params.igmTriggerKeycodes.toIntArray())
+            parcel.writeInt(1)
+            parcel.writeInt(1)
+            parcel.writeInt(params.preferredRefreshRate!!)
+            parcel.writeParcelable(params.colors, 0)
+            parcel.writeParcelable(params.displaySettings, 0)
+            parcel.writeParcelable(params.inputMapping, 0)
+            parcel.writeString(params.localeTag)
+            parcel.writeString(params.romBaseName)
+            parcel.writeInt(if (params.hardcoreInEffect) 1 else 0)
+            parcel.setDataPosition(0)
+
+            assertEquals(
+                params.copy(curatedSettings = true),
+                RicottaLaunchParams.CREATOR.createFromParcel(parcel),
+            )
+        } finally {
+            parcel.recycle()
+        }
+    }
 }
