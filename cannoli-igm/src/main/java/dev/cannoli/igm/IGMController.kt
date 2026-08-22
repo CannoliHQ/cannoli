@@ -702,7 +702,7 @@ class IGMController(
     private fun renderProviderState(state: ProviderSettingsController.State) {
         when (state) {
             is ProviderSettingsController.State.Menu -> {
-                val screen = IGMScreen.ProviderSettings(state.selectedIndex, state.path, state.title, state.description)
+                val screen = IGMScreen.ProviderSettings(state.selectedIndex, state.path, state.title, state.description, state.descriptionScroll)
                 if (currentScreen is IGMScreen.ProviderSettings || currentScreen is IGMScreen.SettingsExitPrompt) {
                     replaceTop(screen)
                 } else {

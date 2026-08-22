@@ -34,8 +34,10 @@ private class FakeRaHost : RaSettingsHost {
 private fun host(): FakeRaHost = FakeRaHost().apply {
     settings["run_ahead_frames"] =
         RaSetting("run_ahead_frames", "Run-Ahead Frames", RaSettingType.INT, "1", min = 0f, max = 4f, step = 1f)
-    settings["run_ahead_enabled"] =
-        RaSetting("run_ahead_enabled", "Run-Ahead", RaSettingType.BOOL, "false")
+    // A boolean that is still menu-registered. run_ahead_enabled was the fixture until RetroArch
+    // stopped registering it in favour of the runahead_mode enum.
+    settings["run_ahead_hide_warnings"] =
+        RaSetting("run_ahead_hide_warnings", "Hide Run-Ahead Warnings", RaSettingType.BOOL, "false")
 }
 
 private fun provider(
@@ -75,8 +77,8 @@ class RaIgmSettingsProviderTest {
     fun `a category screen lists its settings as rows`() {
         val p = provider(host())
         val rows = p.screen(listOf(LATENCY)).items
-        val bool = rows.filterIsInstance<GenericIgmSettingsItem.Choice>().first { it.key == "run_ahead_enabled" }
-        assertEquals("Run-Ahead", bool.label)
+        val bool = rows.filterIsInstance<GenericIgmSettingsItem.Choice>().first { it.key == "run_ahead_hide_warnings" }
+        assertEquals("Hide Run-Ahead Warnings", bool.label)
         assertEquals(RaOptionStrings().off, bool.value)
     }
 
@@ -85,11 +87,11 @@ class RaIgmSettingsProviderTest {
         val h = host()
         val p = provider(h)
         p.screen(listOf(LATENCY))
-        p.cycle("run_ahead_enabled", 1)
-        assertEquals(listOf("run_ahead_enabled" to "true"), h.setCalls)
+        p.cycle("run_ahead_hide_warnings", 1)
+        assertEquals(listOf("run_ahead_hide_warnings" to "true"), h.setCalls)
         assertEquals(RaOptionStrings().on,
             p.screen(listOf(LATENCY)).items.filterIsInstance<GenericIgmSettingsItem.Choice>()
-                .first { it.key == "run_ahead_enabled" }.value)
+                .first { it.key == "run_ahead_hide_warnings" }.value)
     }
 
     @Test
@@ -138,7 +140,7 @@ class RaIgmSettingsProviderTest {
         val h = host()
         val p = provider(h)
         p.screen(listOf(LATENCY))
-        p.cycle("run_ahead_enabled", 1)
+        p.cycle("run_ahead_hide_warnings", 1)
         val prompt = p.exitPrompt() as IgmSettingsExit.Prompt
         assertEquals(
             listOf(RaOptionStrings().savePlatform, RaOptionStrings().saveGame, RaOptionStrings().dontSave),
@@ -153,7 +155,7 @@ class RaIgmSettingsProviderTest {
         val h = host()
         val p = provider(h)
         p.screen(listOf(LATENCY))
-        p.cycle("run_ahead_enabled", 1)
+        p.cycle("run_ahead_hide_warnings", 1)
         (p.exitPrompt() as IgmSettingsExit.Prompt).onChoice(1)
         assertEquals(listOf(RaOverrideScope.GAME), h.savedScopes)
     }
@@ -163,7 +165,7 @@ class RaIgmSettingsProviderTest {
         val h = host()
         val p = provider(h)
         p.screen(listOf(LATENCY))
-        p.cycle("run_ahead_enabled", 1)
+        p.cycle("run_ahead_hide_warnings", 1)
         (p.exitPrompt() as IgmSettingsExit.Prompt).onChoice(2)
         assertTrue(h.savedScopes.isEmpty())
         assertTrue(p.exitPrompt() is IgmSettingsExit.Close)
@@ -174,12 +176,12 @@ class RaIgmSettingsProviderTest {
         val h = host()
         val p = provider(h)
         p.screen(listOf(LATENCY))
-        p.cycle("run_ahead_enabled", 1)
+        p.cycle("run_ahead_hide_warnings", 1)
         p.cycle("run_ahead_frames", 1)
         p.screen(listOf("osd"))
         p.cycle("cannoli_osd_reset", 1)
         (p.exitPrompt() as IgmSettingsExit.Prompt).onChoice(1)
-        assertEquals(listOf(setOf("run_ahead_enabled", "run_ahead_frames")), h.savedKeys)
+        assertEquals(listOf(setOf("run_ahead_hide_warnings", "run_ahead_frames")), h.savedKeys)
 
         // The set is cleared on save, so a later change saves only itself.
         p.screen(listOf(LATENCY))
@@ -193,7 +195,7 @@ class RaIgmSettingsProviderTest {
         val h = host()
         val p = provider(h)
         p.screen(listOf(LATENCY))
-        p.cycle("run_ahead_enabled", 1)
+        p.cycle("run_ahead_hide_warnings", 1)
         (p.exitPrompt() as IgmSettingsExit.Prompt).onChoice(2)
         p.cycle("run_ahead_frames", 1)
         (p.exitPrompt() as IgmSettingsExit.Prompt).onChoice(1)
@@ -224,7 +226,7 @@ class RaIgmSettingsProviderTest {
         val opened = mutableListOf<Unit>()
         val p = provider(h, opened)
         p.screen(listOf(LATENCY))
-        p.cycle("run_ahead_enabled", 1)
+        p.cycle("run_ahead_hide_warnings", 1)
         val prompt = p.activate(RA_MENU_KEY)!!
         assertEquals(
             listOf(RaOptionStrings().savePlatform, RaOptionStrings().saveGame, RaOptionStrings().dontSave),
@@ -242,7 +244,7 @@ class RaIgmSettingsProviderTest {
         val opened = mutableListOf<Unit>()
         val p = provider(h, opened)
         p.screen(listOf(LATENCY))
-        p.cycle("run_ahead_enabled", 1)
+        p.cycle("run_ahead_hide_warnings", 1)
         p.activate(RA_MENU_KEY)!!.onChoice(2)
         assertTrue(h.savedScopes.isEmpty())
         assertEquals(1, opened.size)
@@ -254,7 +256,7 @@ class RaIgmSettingsProviderTest {
         val opened = mutableListOf<Unit>()
         val p = provider(h, opened)
         p.screen(listOf(LATENCY))
-        p.cycle("run_ahead_enabled", 1)
+        p.cycle("run_ahead_hide_warnings", 1)
         val prompt = p.activate(RA_MENU_KEY)!!
         prompt.onCancel!!.invoke()
         assertTrue(h.savedScopes.isEmpty())

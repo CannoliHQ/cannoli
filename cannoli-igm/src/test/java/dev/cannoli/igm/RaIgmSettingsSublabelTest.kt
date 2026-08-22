@@ -121,8 +121,6 @@ class DescriptionToggleTest {
         c.enter()
         c.onNav(ProviderSettingsController.Nav.NORTH)
         for (nav in listOf(
-            ProviderSettingsController.Nav.UP,
-            ProviderSettingsController.Nav.DOWN,
             ProviderSettingsController.Nav.LEFT,
             ProviderSettingsController.Nav.RIGHT,
             ProviderSettingsController.Nav.CONFIRM,
@@ -133,6 +131,31 @@ class DescriptionToggleTest {
             assertEquals("$nav must not close the description", "Softens hard pixel edges.", s.description)
         }
         assertNull(menu(c.onNav(ProviderSettingsController.Nav.BACK)).description)
+    }
+
+    // Up and Down scroll the text rather than moving the hidden selection.
+    @Test
+    fun `up and down scroll the description without moving the selection`() {
+        val c = ProviderSettingsController(OneRowProvider("Softens hard pixel edges."))
+        c.enter()
+        c.onNav(ProviderSettingsController.Nav.NORTH)
+        val down = menu(c.onNav(ProviderSettingsController.Nav.DOWN))
+        assertEquals(1, down.descriptionScroll)
+        assertEquals(0, down.selectedIndex)
+        assertEquals("Softens hard pixel edges.", down.description)
+        assertEquals(0, menu(c.onNav(ProviderSettingsController.Nav.UP)).descriptionScroll)
+    }
+
+    // Reopening starts at the top rather than wherever the last one was left.
+    @Test
+    fun `the scroll position resets each time the description opens`() {
+        val c = ProviderSettingsController(OneRowProvider("Softens hard pixel edges."))
+        c.enter()
+        c.onNav(ProviderSettingsController.Nav.NORTH)
+        c.onNav(ProviderSettingsController.Nav.DOWN)
+        c.onNav(ProviderSettingsController.Nav.DOWN)
+        c.onNav(ProviderSettingsController.Nav.BACK)
+        assertEquals(0, menu(c.onNav(ProviderSettingsController.Nav.NORTH)).descriptionScroll)
     }
 
     @Test

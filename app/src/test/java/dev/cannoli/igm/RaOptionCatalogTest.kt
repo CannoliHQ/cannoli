@@ -29,6 +29,17 @@ class RaOptionCatalogTest {
     // through mapNotNull, so a wrong or unregistered key produces a row that silently never appears
     // rather than an error. This set is the record of keys confirmed on device not to resolve.
     // Adding to it is a decision to be made after checking the device, not a way to quiet a test.
+    // runahead_mode is deliberately absent: it targets menu UI state rather than a settings field
+    // and is never persisted, so it would save into an override RetroArch does not read.
+    @Test
+    fun runaheadModeIsNotExposed() {
+        val all = RaOptionCatalog.categories
+            .flatMap { it.settingKeys + it.subcategories.flatMap { s -> s.settingKeys } }.toSet()
+        assertFalse(all.contains("runahead_mode"))
+        assertFalse(all.contains("run_ahead_enabled"))
+        assertFalse(all.contains("run_ahead_secondary_instance"))
+    }
+
     private val knownUnresolved = setOf(
         // Absent on an AYN Thor, 2026-08-22, checked by walking every Video screen in game. These
         // three are kept because the reason is not settled: RetroArch guards video_filter_enable on
@@ -80,7 +91,7 @@ class RaOptionCatalogTest {
         assertEquals(7, size("audio"))
         assertEquals(4, subSize("audio", "output"))
         assertEquals(3, subSize("audio", "synchronization"))
-        assertEquals(10, size("latency"))
+        assertEquals(8, size("latency"))
         assertEquals(7, size("speed"))
         assertEquals(14, size("osd"))
     }

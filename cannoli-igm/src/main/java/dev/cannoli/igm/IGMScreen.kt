@@ -10,6 +10,7 @@ sealed class IGMScreen {
         val title: String = "",
         // RetroArch's explanation of the highlighted row, shown instead of the list while set.
         val description: String? = null,
+        val descriptionScroll: Int = 0,
     ) : IGMScreen()
     data class SettingsExitPrompt(override val selectedIndex: Int = 0) : IGMScreen()
     data class Achievements(override val selectedIndex: Int = 0, val achievements: List<AchievementInfo> = emptyList(), val filter: Int = 0, val status: String = "") : IGMScreen()

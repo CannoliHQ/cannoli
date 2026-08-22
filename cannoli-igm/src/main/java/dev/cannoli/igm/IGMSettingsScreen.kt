@@ -2,12 +2,20 @@ package dev.cannoli.igm
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,6 +40,9 @@ import dev.cannoli.ui.theme.LocalCannoliColors
 import dev.cannoli.ui.theme.LocalCannoliTypography
 import dev.cannoli.ui.theme.Spacing
 
+// A long RetroArch sublabel does not fit on one screen, so Up and Down page through it.
+private const val DESCRIPTION_SCROLL_STEP_PX = 220f
+
 @Composable
 fun IGMSettingsScreen(
     title: String,
@@ -41,6 +52,7 @@ fun IGMSettingsScreen(
     bottomBarRight: kotlin.collections.List<Pair<String, String>>,
     coreInfo: String = "",
     description: String? = null,
+    descriptionScroll: Int = 0,
     fontSize: TextUnit = 22.sp,
     lineHeight: TextUnit = 32.sp
 ) {
@@ -56,10 +68,22 @@ fun IGMSettingsScreen(
                 .padding(screenInsets())
         ) {
             if (description != null) {
+                val descriptionScrollState = rememberScrollState()
+                // Scroll by the change since the last look, so holding a direction keeps moving and
+                // reopening the description starts at the top.
+                var lastScrollStep by remember(description) { mutableIntStateOf(0) }
+                LaunchedEffect(descriptionScroll, description) {
+                    val delta = descriptionScroll - lastScrollStep
+                    lastScrollStep = descriptionScroll
+                    if (delta != 0) {
+                        descriptionScrollState.animateScrollBy(delta * DESCRIPTION_SCROLL_STEP_PX)
+                    }
+                }
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(bottom = footerReservation())
+                        .verticalScroll(descriptionScrollState)
                 ) {
                     ScreenTitle(
                         text = items.getOrNull(selectedIndex)?.label ?: "",

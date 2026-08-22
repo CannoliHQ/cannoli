@@ -43,6 +43,7 @@ import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.BULLET
 import dev.cannoli.ui.CIRCLE_EMPTY
 import dev.cannoli.ui.DPAD_HORIZONTAL
+import dev.cannoli.ui.DPAD_VERTICAL
 import dev.cannoli.ui.HALF_CIRCLE
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.LocalStatusBarLeftEdge
@@ -190,6 +191,7 @@ fun CannoliIGM(
                 }
                 is IGMScreen.ProviderSettings, is IGMScreen.SettingsExitPrompt -> {
                     val description = (screen as? IGMScreen.ProviderSettings)?.description
+                    val descriptionScroll = (screen as? IGMScreen.ProviderSettings)?.descriptionScroll ?: 0
                     val selectLabel = stringResource(dev.cannoli.ui.R.string.label_select)
                     val rowCycles = screen is IGMScreen.ProviderSettings &&
                         settingsItems.getOrNull(screen.selectedIndex)?.value != null
@@ -209,9 +211,13 @@ fun CannoliIGM(
                     }
                     val bottomBarLeft = buildList {
                         add(labels.back to stringResource(dev.cannoli.ui.R.string.label_back))
-                        // The description freezes the list, so nothing below it can be cycled.
-                        if (rowCycles && description == null) {
-                            add(DPAD_HORIZONTAL to stringResource(dev.cannoli.ui.R.string.label_change))
+                        // The description covers the list, so nothing below it can be cycled. Up
+                        // and Down scroll the text instead.
+                        when {
+                            description != null ->
+                                add(DPAD_VERTICAL to stringResource(dev.cannoli.ui.R.string.label_scroll))
+                            rowCycles ->
+                                add(DPAD_HORIZONTAL to stringResource(dev.cannoli.ui.R.string.label_change))
                         }
                     }
                     IGMSettingsScreen(
@@ -224,6 +230,7 @@ fun CannoliIGM(
                             settingsItems.getOrNull(screen.selectedIndex)?.hint.orEmpty()
                         else "",
                         description = description,
+                        descriptionScroll = descriptionScroll,
                         fontSize = igmFontSize,
                         lineHeight = igmLineHeight
                     )

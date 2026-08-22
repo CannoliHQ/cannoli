@@ -145,10 +145,18 @@ object RaOptionCatalog {
                 "audio_rate_control_delta",
             )),
         )),
+        // run_ahead_enabled and run_ahead_secondary_instance were rows that did nothing. Both are
+        // still config keys, but RetroArch stopped registering them as menu settings when it
+        // replaced them with the runahead_mode enum, so ricotta_ra_find returned null and the rows
+        // were dropped.
+        //
+        // runahead_mode is NOT the substitute. It targets menu_state_get_ptr()->runahead_mode, menu
+        // UI state rather than a settings field, and appears nowhere in configuration.c. It would
+        // work for the session and then be written into an override RetroArch never reads back,
+        // which is worse than the rows being absent. Reaching run-ahead again means expanding the
+        // mode into its three booleans at override-write time.
         Category("latency", listOf(
-            "run_ahead_enabled",
             "run_ahead_frames",
-            "run_ahead_secondary_instance",
             "run_ahead_hide_warnings",
             "video_frame_delay",
             "video_frame_delay_auto",

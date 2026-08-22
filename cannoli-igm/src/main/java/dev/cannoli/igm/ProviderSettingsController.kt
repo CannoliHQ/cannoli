@@ -12,6 +12,7 @@ class ProviderSettingsController(private val provider: IgmSettingsProvider) {
             val items: List<GenericIgmSettingsItem>,
             // RetroArch's explanation of the highlighted row, shown instead of the list while set.
             val description: String? = null,
+            val descriptionScroll: Int = 0,
         ) : State
         data class Prompt(
             val title: String?,
@@ -36,6 +37,9 @@ class ProviderSettingsController(private val provider: IgmSettingsProvider) {
     private var prompt: IgmSettingsExit.Prompt? = null
     private var promptCursor = 0
     private var showingDescription = false
+    // Cumulative scroll steps for the description, signed. The screen scrolls by the delta since it
+    // last looked, so repeated presses in one direction keep moving.
+    private var descriptionScroll = 0
 
     fun setOnChanged(callback: () -> Unit) = provider.setOnChanged(callback)
 
@@ -57,7 +61,7 @@ class ProviderSettingsController(private val provider: IgmSettingsProvider) {
         // points past the end.
         level.cursor = level.cursor.coerceIn(0, (screen.items.size - 1).coerceAtLeast(0))
         val description = if (showingDescription) descriptionOf(screen.items, level.cursor) else null
-        return State.Menu(level.path, screen.title, level.cursor, screen.items, description)
+        return State.Menu(level.path, screen.title, level.cursor, screen.items, description, descriptionScroll)
     }
 
     fun onNav(button: Nav): State {
@@ -68,7 +72,14 @@ class ProviderSettingsController(private val provider: IgmSettingsProvider) {
         // The description covers the list, so the list stops taking input. Anything but BACK would
         // move a selection the user cannot see, and BACK is the only way out.
         if (showingDescription) {
-            if (button == Nav.BACK) showingDescription = false
+            when (button) {
+                Nav.BACK -> showingDescription = false
+                // A long sublabel does not fit, so Up and Down scroll it. Everything else is
+                // ignored: the list underneath is covered and must not take input.
+                Nav.UP -> descriptionScroll--
+                Nav.DOWN -> descriptionScroll++
+                else -> {}
+            }
             return state()
         }
         when (button) {
@@ -91,7 +102,10 @@ class ProviderSettingsController(private val provider: IgmSettingsProvider) {
                 }
                 else -> {}
             }
-            Nav.NORTH -> showingDescription = descriptionOf(items, level.cursor) != null
+            Nav.NORTH -> if (descriptionOf(items, level.cursor) != null) {
+                showingDescription = true
+                descriptionScroll = 0
+            }
             Nav.BACK -> if (levels.size > 1) levels.removeLast() else return exit()
         }
         return state()
