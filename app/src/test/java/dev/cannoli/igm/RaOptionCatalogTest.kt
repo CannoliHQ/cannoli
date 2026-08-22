@@ -30,10 +30,14 @@ class RaOptionCatalogTest {
     // rather than an error. This set is the record of keys confirmed on device not to resolve.
     // Adding to it is a decision to be made after checking the device, not a way to quiet a test.
     private val knownUnresolved = setOf(
-        // In the catalog since before the curated work and confirmed absent on an AYN Thor:
-        // requiring it deleted the whole curated Screen Scaling row until the rule changed to
-        // discriminating keys only.
-        "video_scale_integer_overscale",
+        // Absent on an AYN Thor, 2026-08-22, checked by walking every Video screen in game. These
+        // three are kept because the reason is not settled: RetroArch guards video_filter_enable on
+        // HAVE_VIDEO_FILTER and the portrait bias pair on RARCH_MOBILE, which Android is, so they
+        // ought to register and did not. Keys that RetroArch can NEVER register on Android were
+        // deleted from the catalog instead of recorded here.
+        "video_filter_enable",
+        "video_viewport_bias_portrait_x",
+        "video_viewport_bias_portrait_y",
     )
 
     @Test
@@ -59,14 +63,41 @@ class RaOptionCatalogTest {
         )
     }
 
+    // Sizes are asserted per screen rather than per category, so a key silently moving between a
+    // category and one of its subcategories fails rather than cancelling out.
     @Test
     fun categorySizesMatchDesign() {
-        fun size(key: String) = RaOptionCatalog.categories.first { it.key == key }.settingKeys.size
-        assertEquals(12, size("video"))
+        fun cat(key: String) = RaOptionCatalog.categories.first { it.key == key }
+        fun size(key: String) = cat(key).settingKeys.size
+        fun subSize(key: String, sub: String) =
+            cat(key).subcategories.first { it.key == sub }.settingKeys.size
+
+        assertEquals(3, size("video"))
+        assertEquals(7, subSize("video", "output"))
+        assertEquals(11, subSize("video", "scaling"))
+        assertEquals(9, subSize("video", "synchronization"))
+        assertEquals(5, subSize("video", "hdr"))
+
         assertEquals(10, size("audio"))
         assertEquals(10, size("latency"))
         assertEquals(7, size("speed"))
         assertEquals(18, size("osd"))
+    }
+
+    // RetroArch itself lists several synchronization keys under both Video and Latency. Cannoli
+    // gives a key one home, and these keep the one they already had, so expanding Video must not
+    // quietly move them.
+    @Test
+    fun theSharedSynchronisationKeysStayUnderLatency() {
+        val latency = RaOptionCatalog.categories.first { it.key == "latency" }.settingKeys
+        for (key in listOf(
+            "video_frame_delay", "video_frame_delay_auto",
+            "video_hard_sync", "video_hard_sync_frames", "video_swap_interval",
+        )) {
+            assertTrue("$key belongs to Latency in Cannoli", latency.contains(key))
+        }
+        val speed = RaOptionCatalog.categories.first { it.key == "speed" }.settingKeys
+        assertTrue(speed.contains("vrr_runloop_enable"))
     }
 
     // RetroArch's Drivers menu is a mixed bag, so it is not exposed as a category. The two worth

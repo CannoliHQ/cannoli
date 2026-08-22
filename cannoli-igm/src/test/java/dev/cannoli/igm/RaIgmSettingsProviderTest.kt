@@ -270,13 +270,15 @@ class RaIgmSettingsProviderTest {
         assertTrue(opened.isEmpty())
     }
 
+    // video_threaded lives under Video > Output, so this also covers a subcategory row carrying the
+    // hint rather than only a top-level one.
     @Test
     fun `a restart-required setting carries the restart hint`() {
         val h = host()
         h.settings["video_threaded"] =
             RaSetting("video_threaded", "Threaded Video", RaSettingType.BOOL, "false", requiresRestart = true)
         val p = provider(h)
-        val row = p.screen(listOf("video")).items
+        val row = p.screen(listOf("video", "output")).items
             .filterIsInstance<GenericIgmSettingsItem.Choice>().firstOrNull { it.key == "video_threaded" }
         assertEquals(RaOptionStrings().restartHint, row?.hint)
     }
