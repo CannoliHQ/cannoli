@@ -15,6 +15,7 @@ import dev.cannoli.scorza.model.CollectionType
 import dev.cannoli.scorza.settings.ArtScale
 import dev.cannoli.scorza.settings.BatteryDisplay
 import dev.cannoli.scorza.settings.ContentMode
+import dev.cannoli.scorza.settings.IgmSettingsMode
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.settings.TextSize
 import dev.cannoli.scorza.settings.TimeFormat
@@ -263,6 +264,7 @@ class SettingsViewModel @Inject constructor(
         val showRecentlyPlayed: Boolean,
         val showFavorites: Boolean,
         val contentMode: ContentMode,
+        val igmSettingsMode: IgmSettingsMode,
         val fghCollectionId: Long?,
         val sdRoot: String,
         val romDirectory: String,
@@ -512,6 +514,11 @@ class SettingsViewModel @Inject constructor(
                 val cur = entries.indexOf(settings.contentMode).coerceAtLeast(0)
                 settings.contentMode = entries[((cur + direction) % entries.size + entries.size) % entries.size]
             }
+            "igm_settings_mode" -> {
+                val entries = IgmSettingsMode.entries
+                val cur = entries.indexOf(settings.igmSettingsMode).coerceAtLeast(0)
+                settings.igmSettingsMode = entries[((cur + direction) % entries.size + entries.size) % entries.size]
+            }
             "fgh_collection" -> {
                 val ids = fghCollections().map { it.id }
                 if (ids.isNotEmpty()) {
@@ -710,6 +717,7 @@ class SettingsViewModel @Inject constructor(
         showRecentlyPlayed = settings.showRecentlyPlayed,
         showFavorites = settings.showFavorites,
         contentMode = settings.contentMode,
+        igmSettingsMode = settings.igmSettingsMode,
         fghCollectionId = settings.fghCollectionId,
         sdRoot = settings.sdCardRoot,
         romDirectory = settings.romDirectory,
@@ -749,6 +757,7 @@ class SettingsViewModel @Inject constructor(
         settings.showRecentlyPlayed = snap.showRecentlyPlayed
         settings.showFavorites = snap.showFavorites
         settings.contentMode = snap.contentMode
+        settings.igmSettingsMode = snap.igmSettingsMode
         settings.fghCollectionId = snap.fghCollectionId
         settings.sdCardRoot = snap.sdRoot
         settings.romDirectory = snap.romDirectory
@@ -910,6 +919,10 @@ class SettingsViewModel @Inject constructor(
                 add(SettingsItem("installed_cores", R.string.setting_installed_cores_all, isEditable = true))
             }
             add(SettingsItem("always_save_on_quit", R.string.setting_always_save_on_quit, valueRes = onOff(settings.alwaysSaveOnQuit)))
+            add(SettingsItem("igm_settings_mode", R.string.setting_igm_settings_mode, valueRes = when (settings.igmSettingsMode) {
+                IgmSettingsMode.CURATED -> R.string.value_igm_mode_curated
+                IgmSettingsMode.EVERYTHING -> R.string.value_igm_mode_everything
+            }))
         }
         "integrations" -> buildList {
             add(SettingsItem("integrations_ra", R.string.settings_retroachievements, isEditable = true))

@@ -310,6 +310,10 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         get() = ContentMode.fromString(jsonRead { if (has(KEY_CONTENT_MODE)) optString(KEY_CONTENT_MODE) else null })
         set(value) = jsonWrite { put(KEY_CONTENT_MODE, value.name) }
 
+    var igmSettingsMode: IgmSettingsMode
+        get() = IgmSettingsMode.fromString(jsonRead { if (has(KEY_IGM_SETTINGS_MODE)) optString(KEY_IGM_SETTINGS_MODE) else null })
+        set(value) = jsonWrite { put(KEY_IGM_SETTINGS_MODE, value.name) }
+
     var fghCollectionId: Long?
         get() = jsonRead { if (has(KEY_FGH_COLLECTION)) optLong(KEY_FGH_COLLECTION).takeIf { it > 0 } else null }
         set(value) = jsonWrite { if (value == null) remove(KEY_FGH_COLLECTION) else put(KEY_FGH_COLLECTION, value) }
@@ -528,6 +532,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         private const val KEY_CACHED_UPDATE_APK = "cached_update_apk"
         private const val KEY_CACHED_UPDATE_CHANGELOG = "cached_update_changelog"
         private const val KEY_CONTENT_MODE = "content_mode"
+        private const val KEY_IGM_SETTINGS_MODE = "igm_settings_mode"
         private const val KEY_LOGGING_ROM_SCAN = "logging_rom_scan"
         private const val KEY_LOGGING_INPUT = "logging_input"
         private const val KEY_LOGGING_SESSION = "logging_session"
@@ -596,5 +601,13 @@ enum class ContentMode {
     companion object {
         fun fromString(value: String?): ContentMode =
             entries.firstOrNull { it.name == value } ?: PLATFORMS
+    }
+}
+
+enum class IgmSettingsMode {
+    CURATED, EVERYTHING;
+    companion object {
+        fun fromString(value: String?): IgmSettingsMode =
+            entries.firstOrNull { it.name == value } ?: CURATED
     }
 }

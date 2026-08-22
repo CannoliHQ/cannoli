@@ -96,4 +96,26 @@ class SettingsRepositoryTest {
         settings.sdCardRoot = tmp.root.absolutePath
         assertEquals(tmp.root.absolutePath, settings.sdCardRootOrNull)
     }
+
+    @Test fun `the in-game settings mode defaults to curated`() {
+        val settings = newRepo()
+        settings.sdCardRoot = tmp.root.absolutePath
+        assertEquals(IgmSettingsMode.CURATED, settings.igmSettingsMode)
+    }
+
+    @Test fun `the in-game settings mode round-trips`() {
+        val settings = newRepo()
+        settings.sdCardRoot = tmp.root.absolutePath
+        settings.igmSettingsMode = IgmSettingsMode.EVERYTHING
+        assertEquals(IgmSettingsMode.EVERYTHING, settings.igmSettingsMode)
+    }
+
+    // A value written by a newer build, or a hand-edited settings.json, must not leave the IGM
+    // with no menu at all.
+    @Test fun `an unrecognised in-game settings mode falls back to curated`() {
+        writeSettingsJson(tmp.root, """{"igm_settings_mode":"NONSENSE"}""")
+        val settings = newRepo()
+        settings.sdCardRoot = tmp.root.absolutePath
+        assertEquals(IgmSettingsMode.CURATED, settings.igmSettingsMode)
+    }
 }
