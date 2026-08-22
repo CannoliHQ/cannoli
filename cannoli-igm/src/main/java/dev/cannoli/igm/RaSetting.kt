@@ -20,4 +20,7 @@ data class RaSetting(
     // options, and deriving a number from it means enumerating labels, which writes the live
     // setting once per option. Null for core options, which do not carry one.
     val rawValue: String? = null,
+    // RetroArch's own explanation of the setting, from its sublabel. Translated by RetroArch, so it
+    // never enters Crowdin. Null when the setting has none.
+    val description: String? = null,
 )

@@ -289,6 +289,7 @@ class RaIgmSettingsProvider(
             else -> s.value
         },
         hint = if (s.requiresRestart) strings.restartHint else null,
+        description = s.description,
     )
 
     override fun cycle(itemKey: String, direction: Int) {

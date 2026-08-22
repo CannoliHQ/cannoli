@@ -89,7 +89,6 @@ fun CannoliIGM(
     guideInitialScrollX: Int,
     onGuideScrollChanged: (y: Int, x: Int) -> Unit = { _, _ -> },
 ) {
-    val showDescription = false
     val isGuideScreen = screen is IGMScreen.Guide
     val igmFontSize = config.fontSizeSp.sp
     val igmLineHeight = config.lineHeightSp.sp
@@ -97,7 +96,7 @@ fun CannoliIGM(
     val igmScaleFactor = config.scaleFactor
     val igmTypography = buildCannoliTypography(baseSizeSp = config.fontSizeSp, fontFamily = LocalCannoliFont.current)
     val labels = ButtonStyle(config.buttonLabelSet, config.confirmButton)
-    val statusBarEnabled = (config.showWifi || config.showBluetooth || config.showClock || config.batteryDisplay != BatteryDisplayMode.HIDE || config.showVpn) && !showDescription && !isGuideScreen
+    val statusBarEnabled = (config.showWifi || config.showBluetooth || config.showClock || config.batteryDisplay != BatteryDisplayMode.HIDE || config.showVpn) && !isGuideScreen
     val statusBarLeftEdge = remember { mutableIntStateOf(Int.MAX_VALUE) }
 
     val configuration = LocalConfiguration.current
@@ -190,20 +189,28 @@ fun CannoliIGM(
                     }
                 }
                 is IGMScreen.ProviderSettings, is IGMScreen.SettingsExitPrompt -> {
-                    val description = if (showDescription) {
-                        settingsItems.getOrNull(screen.selectedIndex)?.hint
-                    } else null
+                    val description = (screen as? IGMScreen.ProviderSettings)?.description
                     val selectLabel = stringResource(dev.cannoli.ui.R.string.label_select)
                     val rowCycles = screen is IGMScreen.ProviderSettings &&
                         settingsItems.getOrNull(screen.selectedIndex)?.value != null
-                    val bottomBarRight = if (rowCycles) emptyList() else listOf(labels.confirm to selectLabel)
+                    val hasDescription =
+                        settingsItems.getOrNull(screen.selectedIndex)?.description != null
+                    val bottomBarRight = when {
+                        description != null -> emptyList()
+                        hasDescription -> listOf(
+                            labels.north to stringResource(dev.cannoli.ui.R.string.igm_help)
+                        )
+                        rowCycles -> emptyList()
+                        else -> listOf(labels.confirm to selectLabel)
+                    }
                     val title = when (screen) {
                         is IGMScreen.ProviderSettings -> screen.title
                         else -> stringResource(dev.cannoli.ui.R.string.igm_save_changes)
                     }
                     val bottomBarLeft = buildList {
                         add(labels.back to stringResource(dev.cannoli.ui.R.string.label_back))
-                        if (rowCycles) {
+                        // The description freezes the list, so nothing below it can be cycled.
+                        if (rowCycles && description == null) {
                             add(DPAD_HORIZONTAL to stringResource(dev.cannoli.ui.R.string.label_change))
                         }
                     }

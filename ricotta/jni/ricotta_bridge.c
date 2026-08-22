@@ -1345,7 +1345,7 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaGetSetting(
       snprintf(step_buf, sizeof(step_buf), "%g", s->step);
 
    str_cls = (*env)->FindClass(env, "java/lang/String");
-   out     = (*env)->NewObjectArray(env, 9, str_cls, NULL);
+   out     = (*env)->NewObjectArray(env, 10, str_cls, NULL);
    if (!out)
       return NULL;
 
@@ -1365,6 +1365,21 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaGetSetting(
    if (!ricotta_ra_format_raw_value(s, raw_buf, sizeof(raw_buf)))
       raw_buf[0] = '\0';
    (*env)->SetObjectArrayElement(env, out, 8, (*env)->NewStringUTF(env, raw_buf));
+
+   /* RetroArch's own description. MENU_LABEL() declares LABEL, SUBLABEL and LABEL_VALUE
+    * consecutively and enum_idx is the LABEL, so the sublabel sits at enum_idx + 1. Two guards:
+    * a setting added with dont_use_enum_idx has MSG_UNKNOWN and reading past it would return an
+    * unrelated string, and msg_hash_to_str yields the literal "null" for an enum with no entry in
+    * any language, including the English fallback. */
+   {
+      const char *sub = NULL;
+      if (s->enum_idx != MSG_UNKNOWN)
+         sub = msg_hash_to_str((enum msg_hash_enums)(s->enum_idx + 1));
+      if (sub && !strcmp(sub, "null"))
+         sub = NULL;
+      (*env)->SetObjectArrayElement(env, out, 9,
+            (*env)->NewStringUTF(env, sub ? sub : ""));
+   }
    return out;
 }
 

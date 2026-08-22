@@ -10,6 +10,7 @@ sealed interface GenericIgmSettingsItem {
         override val label: String,
         val value: String,
         val hint: String? = null,
+        val description: String? = null,
     ) : GenericIgmSettingsItem
     data class Action(override val key: String, override val label: String) : GenericIgmSettingsItem
 }

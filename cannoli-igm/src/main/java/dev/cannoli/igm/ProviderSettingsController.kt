@@ -2,7 +2,7 @@ package dev.cannoli.igm
 
 class ProviderSettingsController(private val provider: IgmSettingsProvider) {
 
-    enum class Nav { UP, DOWN, LEFT, RIGHT, CONFIRM, BACK }
+    enum class Nav { UP, DOWN, LEFT, RIGHT, CONFIRM, BACK, NORTH }
 
     sealed interface State {
         data class Menu(
@@ -10,6 +10,8 @@ class ProviderSettingsController(private val provider: IgmSettingsProvider) {
             val title: String,
             val selectedIndex: Int,
             val items: List<GenericIgmSettingsItem>,
+            // RetroArch's explanation of the highlighted row, shown instead of the list while set.
+            val description: String? = null,
         ) : State
         data class Prompt(
             val title: String?,
@@ -22,9 +24,18 @@ class ProviderSettingsController(private val provider: IgmSettingsProvider) {
 
     private class Level(val path: List<String>, var cursor: Int)
 
+    fun descriptionAt(index: Int): String? {
+        val level = levels.lastOrNull() ?: return null
+        return descriptionOf(provider.screen(level.path).items, index)
+    }
+
+    private fun descriptionOf(items: List<GenericIgmSettingsItem>, index: Int): String? =
+        (items.getOrNull(index) as? GenericIgmSettingsItem.Choice)?.description
+
     private val levels = ArrayDeque<Level>()
     private var prompt: IgmSettingsExit.Prompt? = null
     private var promptCursor = 0
+    private var showingDescription = false
 
     fun setOnChanged(callback: () -> Unit) = provider.setOnChanged(callback)
 
@@ -33,6 +44,7 @@ class ProviderSettingsController(private val provider: IgmSettingsProvider) {
         prompt = null
         promptCursor = 0
         levels.addLast(Level(emptyList(), 0))
+        showingDescription = false
         return state()
     }
 
@@ -44,7 +56,8 @@ class ProviderSettingsController(private val provider: IgmSettingsProvider) {
         // gated options, a controller disconnect). Clamp so selectedIndex never
         // points past the end.
         level.cursor = level.cursor.coerceIn(0, (screen.items.size - 1).coerceAtLeast(0))
-        return State.Menu(level.path, screen.title, level.cursor, screen.items)
+        val description = if (showingDescription) descriptionOf(screen.items, level.cursor) else null
+        return State.Menu(level.path, screen.title, level.cursor, screen.items, description)
     }
 
     fun onNav(button: Nav): State {
@@ -52,6 +65,12 @@ class ProviderSettingsController(private val provider: IgmSettingsProvider) {
         val level = levels.lastOrNull() ?: return State.Closed
         val items = provider.screen(level.path).items
         val count = items.size
+        // The description covers the list, so the list stops taking input. Anything but BACK would
+        // move a selection the user cannot see, and BACK is the only way out.
+        if (showingDescription) {
+            if (button == Nav.BACK) showingDescription = false
+            return state()
+        }
         when (button) {
             Nav.UP -> if (count > 0) level.cursor = (level.cursor - 1 + count) % count
             Nav.DOWN -> if (count > 0) level.cursor = (level.cursor + 1) % count
@@ -72,6 +91,7 @@ class ProviderSettingsController(private val provider: IgmSettingsProvider) {
                 }
                 else -> {}
             }
+            Nav.NORTH -> showingDescription = descriptionOf(items, level.cursor) != null
             Nav.BACK -> if (levels.size > 1) levels.removeLast() else return exit()
         }
         return state()

@@ -702,7 +702,7 @@ class IGMController(
     private fun renderProviderState(state: ProviderSettingsController.State) {
         when (state) {
             is ProviderSettingsController.State.Menu -> {
-                val screen = IGMScreen.ProviderSettings(state.selectedIndex, state.path, state.title)
+                val screen = IGMScreen.ProviderSettings(state.selectedIndex, state.path, state.title, state.description)
                 if (currentScreen is IGMScreen.ProviderSettings || currentScreen is IGMScreen.SettingsExitPrompt) {
                     replaceTop(screen)
                 } else {
@@ -725,7 +725,7 @@ class IGMController(
     private fun toProviderRenderItem(item: GenericIgmSettingsItem): IGMSettingsItem = when (item) {
         is GenericIgmSettingsItem.Category -> IGMSettingsItem(item.label)
         is GenericIgmSettingsItem.Action -> IGMSettingsItem(item.label)
-        is GenericIgmSettingsItem.Choice -> IGMSettingsItem(item.label, item.value, item.hint)
+        is GenericIgmSettingsItem.Choice -> IGMSettingsItem(item.label, item.value, item.hint, item.description)
     }
 
     private fun handleProviderKey(keycode: Int) {
@@ -737,6 +737,7 @@ class IGMController(
             22 -> ProviderSettingsController.Nav.RIGHT
             96 -> ProviderSettingsController.Nav.CONFIRM
             97, 4 -> ProviderSettingsController.Nav.BACK
+            100 -> ProviderSettingsController.Nav.NORTH
             else -> return
         }
         renderProviderState(nav.onNav(button))

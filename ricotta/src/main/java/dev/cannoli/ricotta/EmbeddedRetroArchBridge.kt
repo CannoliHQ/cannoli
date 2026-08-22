@@ -194,6 +194,7 @@ class EmbeddedRetroArchBridge(
             requiresRestart = arr[7] == "1",
             // Core options come back from the same call with eight elements and no raw value.
             rawValue = arr.getOrNull(8)?.takeIf { it.isNotEmpty() },
+            description = arr.getOrNull(9)?.takeIf { it.isNotEmpty() },
         )
     }
 

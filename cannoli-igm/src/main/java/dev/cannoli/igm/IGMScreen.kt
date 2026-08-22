@@ -8,6 +8,8 @@ sealed class IGMScreen {
         override val selectedIndex: Int = 0,
         val path: List<String> = emptyList(),
         val title: String = "",
+        // RetroArch's explanation of the highlighted row, shown instead of the list while set.
+        val description: String? = null,
     ) : IGMScreen()
     data class SettingsExitPrompt(override val selectedIndex: Int = 0) : IGMScreen()
     data class Achievements(override val selectedIndex: Int = 0, val achievements: List<AchievementInfo> = emptyList(), val filter: Int = 0, val status: String = "") : IGMScreen()
