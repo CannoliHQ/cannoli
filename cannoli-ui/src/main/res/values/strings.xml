@@ -771,6 +771,40 @@
     <!-- IGM screen titles -->
     <string name="igm_settings">Settings</string>
     <string name="igm_video">Video</string>
+    <!-- In-game settings category holding the less common options. -->
+    <string name="igm_advanced">Advanced</string>
+    <!-- In-game settings category showing read-only facts about the running emulator core. -->
+    <string name="igm_info">Info</string>
+    <!-- Info row label. The value is the emulator core's name, for example "Nestopia". -->
+    <string name="igm_info_core">Core</string>
+    <!-- Info row label. The value is the emulator core's version number. -->
+    <string name="igm_info_core_version">Core Version</string>
+    <!-- Shown when the emulator's current settings match none of the offered presets. -->
+    <string name="igm_curated_custom">Custom</string>
+    <!-- In-game setting: how the picture is sized to fit the screen. -->
+    <string name="igm_curated_screen_scaling">Screen Scaling</string>
+    <!-- Screen Scaling value: use the size the emulator core asks for. -->
+    <string name="igm_scaling_core_reported">Core Reported</string>
+    <!-- Screen Scaling value: enlarge by a whole number of pixels only, which keeps pixels even. -->
+    <string name="igm_scaling_integer">Integer</string>
+    <!-- Screen Scaling value: fill the whole screen, ignoring the original proportions. -->
+    <string name="igm_scaling_fullscreen">Fullscreen</string>
+    <!-- In-game setting: whether the picture is filtered. -->
+    <string name="igm_curated_screen_sharpness">Screen Sharpness</string>
+    <!-- Screen Sharpness value: crisp, unfiltered pixels. -->
+    <string name="igm_sharpness_sharp">Sharp</string>
+    <!-- Screen Sharpness value: smoothed, filtered pixels. -->
+    <string name="igm_sharpness_soft">Soft</string>
+    <!-- In-game setting: how much faster than normal the fast-forward button runs. -->
+    <string name="igm_curated_max_ff_speed">Max Fast-Forward Speed</string>
+    <!-- Fast-forward speed value: a multiple of normal speed. %1$d is the multiplier, for example 2 giving "2x". -->
+    <string name="igm_ff_multiplier">%1$dx</string>
+    <!-- Fast-forward speed value: as fast as the device can manage, with no limit. -->
+    <string name="igm_ff_unlimited">Unlimited</string>
+    <!-- In-game setting: show the frames-per-second counter over the game. -->
+    <string name="igm_curated_show_fps">Show FPS</string>
+    <!-- In-game setting: show detailed performance and memory readouts over the game. -->
+    <string name="igm_curated_debug_hud">Debug HUD</string>
     <string name="igm_emulator">Emulator</string>
     <string name="igm_save_changes">Save Changes</string>
     <!-- D-Pad Mode value: 8 directions. -->

@@ -33,6 +33,7 @@ import dev.cannoli.igm.GuideManager
 import dev.cannoli.igm.GuideOverlayContract
 import dev.cannoli.igm.IGMController
 import dev.cannoli.igm.IGMHostConfig
+import dev.cannoli.igm.CuratedCatalog
 import dev.cannoli.igm.RaOptionStrings
 import dev.cannoli.ui.R
 import com.retroarch.R as AppR
@@ -190,6 +191,35 @@ class IGMOverlay(
                 "latency" to uiContext.getString(AppR.string.igm_ra_latency),
                 "speed" to uiContext.getString(AppR.string.igm_ra_speed),
                 "osd" to uiContext.getString(AppR.string.igm_ra_osd),
+            ),
+            custom = uiContext.getString(R.string.igm_curated_custom),
+            infoCore = uiContext.getString(R.string.igm_info_core),
+            infoCoreVersion = uiContext.getString(R.string.igm_info_core_version),
+            curatedCategoryTitles = mapOf(
+                CuratedCatalog.CATEGORY_VIDEO to uiContext.getString(R.string.igm_video),
+                CuratedCatalog.CATEGORY_EMULATOR to uiContext.getString(R.string.igm_emulator),
+                CuratedCatalog.CATEGORY_ADVANCED to uiContext.getString(R.string.igm_advanced),
+                CuratedCatalog.CATEGORY_INFO to uiContext.getString(R.string.igm_info),
+            ),
+            curatedRowLabels = mapOf(
+                "curated_screen_scaling" to uiContext.getString(R.string.igm_curated_screen_scaling),
+                "curated_screen_sharpness" to uiContext.getString(R.string.igm_curated_screen_sharpness),
+                "curated_max_ff_speed" to uiContext.getString(R.string.igm_curated_max_ff_speed),
+                "curated_show_fps" to uiContext.getString(R.string.igm_curated_show_fps),
+                "curated_debug_hud" to uiContext.getString(R.string.igm_curated_debug_hud),
+            ),
+            curatedPresetLabels = mapOf(
+                "scaling_core_reported" to uiContext.getString(R.string.igm_scaling_core_reported),
+                "scaling_integer" to uiContext.getString(R.string.igm_scaling_integer),
+                "scaling_fullscreen" to uiContext.getString(R.string.igm_scaling_fullscreen),
+                "sharpness_sharp" to uiContext.getString(R.string.igm_sharpness_sharp),
+                "sharpness_soft" to uiContext.getString(R.string.igm_sharpness_soft),
+                "ff_2x" to uiContext.getString(R.string.igm_ff_multiplier, 2),
+                "ff_4x" to uiContext.getString(R.string.igm_ff_multiplier, 4),
+                "ff_8x" to uiContext.getString(R.string.igm_ff_multiplier, 8),
+                "ff_unlimited" to uiContext.getString(R.string.igm_ff_unlimited),
+                "on" to uiContext.getString(AppR.string.igm_ra_on),
+                "off" to uiContext.getString(AppR.string.igm_ra_off),
             ),
         )
 
