@@ -35,7 +35,6 @@ class RaOptionCatalogTest {
         // HAVE_VIDEO_FILTER and the portrait bias pair on RARCH_MOBILE, which Android is, so they
         // ought to register and did not. Keys that RetroArch can NEVER register on Android were
         // deleted from the catalog instead of recorded here.
-        "video_filter_enable",
         "video_viewport_bias_portrait_x",
         "video_viewport_bias_portrait_y",
     )
@@ -72,13 +71,13 @@ class RaOptionCatalogTest {
         fun subSize(key: String, sub: String) =
             cat(key).subcategories.first { it.key == sub }.settingKeys.size
 
-        assertEquals(3, size("video"))
+        assertEquals(1, size("video"))
         assertEquals(7, subSize("video", "output"))
         assertEquals(11, subSize("video", "scaling"))
         assertEquals(9, subSize("video", "synchronization"))
         assertEquals(5, subSize("video", "hdr"))
 
-        assertEquals(8, size("audio"))
+        assertEquals(7, size("audio"))
         assertEquals(4, subSize("audio", "output"))
         assertEquals(3, subSize("audio", "synchronization"))
         assertEquals(10, size("latency"))

@@ -24,6 +24,11 @@ object RaOptionCatalog {
     //
     // microphone, record, midi, bluetooth, wifi, camera and location are meaningless on this
     // platform.
+    // A setting RetroArch stores as a path, directory or free string arrives as STRING_RO, and
+    // RaValueCycler returns null for that type, so the row displays a value and Left/Right does
+    // nothing. Those need a file picker Cannoli does not have, so they are excluded rather than
+    // shipped as rows that look interactive and are not. video_filter and audio_dsp_plugin were
+    // both caught this way on device.
     val categories = listOf(
         // Mirrors RetroArch's own Video screen: its direct entries, then its submenus. Three of its
         // seven submenus are dropped whole: CRT_SWITCHRES is CRT modeswitching, and
@@ -32,12 +37,11 @@ object RaOptionCatalog {
         // Excluded from the direct list: brightness_control, video_filter_remove and
         // video_notch_write_over are menu actions with no config key; video_dingux_* is another
         // platform; video_use_metal_arg_buffers is Metal; video_shader_delay belongs with the
-        // shader work that has no bridge yet.
+        // shader work that has no bridge yet; video_filter is a path with no picker, and
+        // video_filter_enable only gates it.
         Category("video", listOf(
             // From the Drivers menu. gl / glcore / vulkan, and the right answer varies by device.
             "video_driver",
-            "video_filter_enable",
-            "video_filter",
         ), subcategories = listOf(
             // Excluded: video_gpu_index, screen_resolution, pal60_enable, video_gamma,
             // video_soft_filter, video_filter_flicker and video_refresh_rate_polled/auto are menu
@@ -112,7 +116,7 @@ object RaOptionCatalog {
         //
         // Excluded from the direct list: menu_sounds is a submenu, audio_dsp_plugin_remove is an
         // action, system_bgm_enable has no config key, audio_respect_silent_mode is TARGET_OS_IOS,
-        // and audio_rewind_mute has no menu registration.
+        // audio_rewind_mute has no menu registration, and audio_dsp_plugin is a path with no picker.
         //
         // audio_driver sits here rather than under Output, where RetroArch puts it, because its
         // label is "Audio" and so is audio_enable's. On one screen that reads as two identical
@@ -125,7 +129,6 @@ object RaOptionCatalog {
             "audio_mixer_mute_enable",
             "audio_fastforward_mute",
             "audio_fastforward_speedup",
-            "audio_dsp_plugin",
         ), subcategories = listOf(
             // Excluded: audio_output_rate and audio_resampler_driver have no config key, the
             // wasapi trio and audio_asio_control_panel are Windows, and audio_device is a free-text
