@@ -166,12 +166,15 @@ object RaOptionCatalog {
             "rewind_granularity",
             "rewind_buffer_size",
         )),
+        // Not RetroArch's on-screen display: Cannoli draws its own OsdPill toasts and reuses
+        // RetroArch's notification_show_* keys as their storage, gating them natively in
+        // ricotta_osd_event. So these rows are the only switches for Cannoli's own OSDs.
+        //
+        // Excluded: video_font_enable, video_font_size, video_msg_bgcolor_enable and
+        // menu_widgets_enable style RetroArch's own message renderer and widgets, which nothing
+        // draws any more.
         Category("osd", listOf(
-            // Performance HUD
-            "video_font_enable",
-            "video_font_size",
-            "video_msg_bgcolor_enable",
-            "menu_widgets_enable",
+            // Performance HUD. Curated's Show FPS and Debug HUD drive these same keys.
             "fps_show",
             "fps_update_interval",
             "framecount_show",

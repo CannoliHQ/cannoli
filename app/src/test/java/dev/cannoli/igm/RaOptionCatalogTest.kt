@@ -82,7 +82,7 @@ class RaOptionCatalogTest {
         assertEquals(3, subSize("audio", "synchronization"))
         assertEquals(10, size("latency"))
         assertEquals(7, size("speed"))
-        assertEquals(18, size("osd"))
+        assertEquals(14, size("osd"))
     }
 
     // RetroArch itself lists several synchronization keys under both Video and Latency. Cannoli
