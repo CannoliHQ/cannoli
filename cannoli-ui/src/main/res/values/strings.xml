@@ -773,6 +773,28 @@
     <string name="igm_video">Video</string>
     <!-- In-game settings category holding the less common options. -->
     <string name="igm_advanced">Advanced</string>
+    <!-- In-game settings category for sound options. -->
+    <string name="igm_audio">Audio</string>
+    <!-- In-game settings category for options that trade responsiveness against smoothness. -->
+    <string name="igm_latency">Latency</string>
+    <!-- In-game settings category for fast-forward, slow motion and rewind. -->
+    <string name="igm_speed">Speed &amp; Rewind</string>
+    <!-- In-game settings category for readouts drawn on top of the game, such as the FPS counter. -->
+    <string name="igm_osd">On-Screen Display</string>
+    <!-- Generic value: a setting is turned on. -->
+    <string name="igm_on">On</string>
+    <!-- Generic value: a setting is turned off. -->
+    <string name="igm_off">Off</string>
+    <!-- Prompt on leaving in-game settings: keep the changes for every game on this system. %1$s is the platform name, for example "Game Boy". -->
+    <string name="igm_save_platform">Save for %1$s</string>
+    <!-- Prompt on leaving in-game settings: keep the changes for this one game only. -->
+    <string name="igm_save_game">Save for this game</string>
+    <!-- Prompt on leaving in-game settings: throw the changes away. -->
+    <string name="igm_dont_save">Discard</string>
+    <!-- Opens RetroArch's own menu. Debug builds only. Keep "RetroArch" as the product name. -->
+    <string name="igm_native_menu">RetroArch Menu</string>
+    <!-- On-Screen Display setting: show a brief message over the game when it is reset. -->
+    <string name="igm_osd_reset_notification">Reset OSD</string>
     <!-- In-game settings category showing read-only facts about the running emulator core. -->
     <string name="igm_info">Info</string>
     <!-- Info row label. The value is the emulator core's name, for example "Nestopia". -->

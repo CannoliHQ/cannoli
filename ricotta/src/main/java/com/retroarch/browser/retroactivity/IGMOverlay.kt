@@ -36,7 +36,6 @@ import dev.cannoli.igm.IGMHostConfig
 import dev.cannoli.igm.CuratedCatalog
 import dev.cannoli.igm.RaOptionStrings
 import dev.cannoli.ui.R
-import com.retroarch.R as AppR
 import dev.cannoli.ui.theme.CannoliColors
 import dev.cannoli.ui.theme.CannoliTheme
 import dev.cannoli.ui.theme.LocalCannoliColors
@@ -177,20 +176,23 @@ class IGMOverlay(
 
         bridge.raStrings = RaOptionStrings(
             rootTitle = uiContext.getString(R.string.igm_settings),
-            on = uiContext.getString(AppR.string.igm_ra_on),
-            off = uiContext.getString(AppR.string.igm_ra_off),
+            on = uiContext.getString(R.string.igm_on),
+            off = uiContext.getString(R.string.igm_off),
             restartHint = uiContext.getString(R.string.igm_restart_hint),
-            savePlatform = uiContext.getString(AppR.string.igm_ra_save_platform, platformName),
-            saveGame = uiContext.getString(AppR.string.igm_ra_save_game),
-            dontSave = uiContext.getString(AppR.string.igm_ra_dont_save),
-            nativeMenu = uiContext.getString(AppR.string.igm_ra_native_menu),
+            savePlatform = uiContext.getString(R.string.igm_save_platform, platformName),
+            saveGame = uiContext.getString(R.string.igm_save_game),
+            dontSave = uiContext.getString(R.string.igm_dont_save),
+            nativeMenu = uiContext.getString(R.string.igm_native_menu),
             categoryTitles = mapOf(
                 "emulator" to uiContext.getString(R.string.igm_emulator),
                 "video" to uiContext.getString(R.string.igm_video),
-                "audio" to uiContext.getString(AppR.string.igm_ra_audio),
-                "latency" to uiContext.getString(AppR.string.igm_ra_latency),
-                "speed" to uiContext.getString(AppR.string.igm_ra_speed),
-                "osd" to uiContext.getString(AppR.string.igm_ra_osd),
+                "audio" to uiContext.getString(R.string.igm_audio),
+                "latency" to uiContext.getString(R.string.igm_latency),
+                "speed" to uiContext.getString(R.string.igm_speed),
+                "osd" to uiContext.getString(R.string.igm_osd),
+            ),
+            localToggleLabels = mapOf(
+                "cannoli_osd_reset" to uiContext.getString(R.string.igm_osd_reset_notification),
             ),
             custom = uiContext.getString(R.string.igm_curated_custom),
             infoCore = uiContext.getString(R.string.igm_info_core),
@@ -218,8 +220,8 @@ class IGMOverlay(
                 "ff_4x" to uiContext.getString(R.string.igm_ff_multiplier, 4),
                 "ff_8x" to uiContext.getString(R.string.igm_ff_multiplier, 8),
                 "ff_unlimited" to uiContext.getString(R.string.igm_ff_unlimited),
-                "on" to uiContext.getString(AppR.string.igm_ra_on),
-                "off" to uiContext.getString(AppR.string.igm_ra_off),
+                "on" to uiContext.getString(R.string.igm_on),
+                "off" to uiContext.getString(R.string.igm_off),
             ),
         )
 
