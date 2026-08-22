@@ -41,6 +41,8 @@ class RaIgmSettingsProvider(
     override fun screen(path: List<String>): GenericIgmSettingsScreen = when {
         path.isEmpty() -> if (curated) curatedRoot() else root()
         path.first() == EMULATOR_CATEGORY -> emulatorScreen(path.getOrNull(1))
+        // Info describes the running core rather than any setting, so it belongs in both menus.
+        path.first() == CuratedCatalog.CATEGORY_INFO -> infoScreen()
         curated -> curatedCategoryScreen(path.first())
         else -> categoryScreen(path.first())
     }
@@ -203,6 +205,12 @@ class RaIgmSettingsProvider(
             }
             for (cat in RaOptionCatalog.categories) {
                 add(GenericIgmSettingsItem.Category(cat.key, strings.categoryTitles[cat.key] ?: cat.key))
+            }
+            if (host.systemInfo().isNotEmpty()) {
+                add(GenericIgmSettingsItem.Category(
+                    CuratedCatalog.CATEGORY_INFO,
+                    curatedTitle(CuratedCatalog.CATEGORY_INFO),
+                ))
             }
             if (debugBuild) add(GenericIgmSettingsItem.Action(RA_MENU_KEY, strings.nativeMenu))
         }

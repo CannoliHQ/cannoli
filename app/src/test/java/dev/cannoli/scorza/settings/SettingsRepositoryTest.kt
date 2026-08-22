@@ -123,8 +123,17 @@ class SettingsRepositoryTest {
     @Test fun `the in-game settings mode round-trips`() {
         val settings = newRepo()
         settings.sdCardRoot = tmp.root.absolutePath
-        settings.igmSettingsMode = IgmSettingsMode.EVERYTHING
-        assertEquals(IgmSettingsMode.EVERYTHING, settings.igmSettingsMode)
+        settings.igmSettingsMode = IgmSettingsMode.ALL_SETTINGS
+        assertEquals(IgmSettingsMode.ALL_SETTINGS, settings.igmSettingsMode)
+    }
+
+    // The mode was called EVERYTHING before it had a name in the UI. Anyone who set it then must
+    // not be quietly moved back to the short menu.
+    @Test fun `the old spelling of the all-settings mode is still honoured`() {
+        writeSettingsJson(tmp.root, """{"igm_settings_mode":"EVERYTHING"}""")
+        val settings = newRepo()
+        settings.sdCardRoot = tmp.root.absolutePath
+        assertEquals(IgmSettingsMode.ALL_SETTINGS, settings.igmSettingsMode)
     }
 
     // A value written by a newer build, or a hand-edited settings.json, must not leave the IGM

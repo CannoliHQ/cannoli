@@ -921,7 +921,7 @@ class SettingsViewModel @Inject constructor(
             add(SettingsItem("always_save_on_quit", R.string.setting_always_save_on_quit, valueRes = onOff(settings.alwaysSaveOnQuit)))
             add(SettingsItem("igm_settings_mode", R.string.setting_igm_settings_mode, valueRes = when (settings.igmSettingsMode) {
                 IgmSettingsMode.CURATED -> R.string.value_igm_mode_curated
-                IgmSettingsMode.EVERYTHING -> R.string.value_igm_mode_everything
+                IgmSettingsMode.ALL_SETTINGS -> R.string.value_igm_mode_all_settings
             }))
         }
         "integrations" -> buildList {

@@ -439,7 +439,7 @@
     <!-- In-Game Settings value: a short, hand-picked list of settings. -->
     <string name="value_igm_mode_curated">Curated</string>
     <!-- In-Game Settings value: the complete list of emulator settings. -->
-    <string name="value_igm_mode_everything">Everything</string>
+    <string name="value_igm_mode_all_settings">All Settings</string>
     <!-- Content Mode value: the default platform view. -->
     <string name="value_platforms">Default</string>
     <string name="value_collections">Collections Only</string>

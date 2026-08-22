@@ -611,9 +611,16 @@ enum class ContentMode {
 }
 
 enum class IgmSettingsMode {
-    CURATED, EVERYTHING;
+    CURATED, ALL_SETTINGS;
     companion object {
-        fun fromString(value: String?): IgmSettingsMode =
-            entries.firstOrNull { it.name == value } ?: CURATED
+        // ALL_SETTINGS was called EVERYTHING before it had a name in the UI. Anyone who set it on a
+        // v2 build has that spelling on disk, and falling through to CURATED would silently move
+        // them back to the short menu.
+        private const val LEGACY_ALL_SETTINGS = "EVERYTHING"
+
+        fun fromString(value: String?): IgmSettingsMode = when (value) {
+            LEGACY_ALL_SETTINGS -> ALL_SETTINGS
+            else -> entries.firstOrNull { it.name == value } ?: CURATED
+        }
     }
 }

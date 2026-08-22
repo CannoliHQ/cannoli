@@ -314,6 +314,30 @@ class RaIgmSettingsProviderCuratedTest {
         assertTrue(h.setCalls.isEmpty())
     }
 
+    // Info describes the running core, which is worth having in either menu.
+    @Test
+    fun `the all-settings menu also offers info`() {
+        val h = CuratedFakeHost()
+        h.systemInfo = listOf("Core" to "Nestopia", "Version" to "1.52")
+        val all = RaIgmSettingsProvider(
+            host = h, strings = RaOptionStrings(), debugBuild = false, curated = false, onOpenNativeMenu = {},
+        )
+        assertTrue(all.screen(emptyList()).items.any { it.key == CuratedCatalog.CATEGORY_INFO })
+        val rows = all.screen(listOf(CuratedCatalog.CATEGORY_INFO)).items
+            .filterIsInstance<GenericIgmSettingsItem.Choice>()
+        assertEquals(listOf("Core", "Version"), rows.map { it.label })
+        assertEquals(listOf("Nestopia", "1.52"), rows.map { it.value })
+    }
+
+    @Test
+    fun `the all-settings menu omits info when the host reports nothing`() {
+        val h = CuratedFakeHost()
+        val all = RaIgmSettingsProvider(
+            host = h, strings = RaOptionStrings(), debugBuild = false, curated = false, onOpenNativeMenu = {},
+        )
+        assertTrue(all.screen(emptyList()).items.none { it.key == CuratedCatalog.CATEGORY_INFO })
+    }
+
     @Test
     fun `the everything menu is unaffected by the curated catalog`() {
         val h = CuratedFakeHost()
