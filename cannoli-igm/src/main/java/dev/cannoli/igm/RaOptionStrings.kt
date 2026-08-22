@@ -22,6 +22,8 @@ data class RaOptionStrings(
     ),
     // Shown when the live values match no preset of a curated row, which happens after editing the
     // same settings individually in the Everything menu.
+    // Keyed "<category>/<subcategory>", so Video and Audio can both have an Output screen.
+    val subcategoryTitles: Map<String, String> = emptyMap(),
     val custom: String = "Custom",
     val infoCore: String = "Core",
     val infoCoreVersion: String = "Core Version",

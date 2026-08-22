@@ -44,6 +44,7 @@ class RaIgmSettingsProvider(
         // Info describes the running core rather than any setting, so it belongs in both menus.
         path.first() == CuratedCatalog.CATEGORY_INFO -> infoScreen()
         curated -> curatedCategoryScreen(path.first())
+        path.size >= 2 -> subcategoryScreen(path[0], path[1])
         else -> categoryScreen(path.first())
     }
 
@@ -217,16 +218,54 @@ class RaIgmSettingsProvider(
         return GenericIgmSettingsScreen(strings.rootTitle, items)
     }
 
-    private fun categoryScreen(categoryKey: String): GenericIgmSettingsScreen {
-        if (categoryKey != currentCategory) loadCategory(categoryKey)
-        val title = strings.categoryTitles[categoryKey] ?: categoryKey
-        return GenericIgmSettingsScreen(title, currentSettings.map(::rowFor))
+    private fun categoryScreen(categoryKey: String): GenericIgmSettingsScreen =
+        RaOptionCatalog.categories.firstOrNull { it.key == categoryKey }
+            ?.let(::categoryScreenFor)
+            ?: GenericIgmSettingsScreen(strings.categoryTitles[categoryKey] ?: categoryKey, emptyList())
+
+    private fun subcategoryScreen(categoryKey: String, subKey: String): GenericIgmSettingsScreen =
+        RaOptionCatalog.categories.firstOrNull { it.key == categoryKey }
+            ?.let { subcategoryScreenFor(it, subKey) }
+            ?: GenericIgmSettingsScreen(subKey, emptyList())
+
+    // A category's own settings come first, then a row per subcategory that has something to show.
+    internal fun categoryScreenFor(cat: RaOptionCatalog.Category): GenericIgmSettingsScreen {
+        loadKeys(cat.settingKeys, cat.key)
+        val subs = cat.subcategories
+            .filter { sub -> sub.settingKeys.any(::resolves) }
+            .map { GenericIgmSettingsItem.Category(it.key, subcategoryTitle(cat.key, it.key)) }
+        return GenericIgmSettingsScreen(
+            strings.categoryTitles[cat.key] ?: cat.key,
+            currentSettings.map(::rowFor) + subs,
+        )
     }
 
-    private fun loadCategory(categoryKey: String) {
+    internal fun subcategoryScreenFor(
+        cat: RaOptionCatalog.Category,
+        subKey: String,
+    ): GenericIgmSettingsScreen {
+        val sub = cat.subcategories.firstOrNull { it.key == subKey }
+            ?: return GenericIgmSettingsScreen(subcategoryTitle(cat.key, subKey), emptyList())
+        loadKeys(sub.settingKeys, "${cat.key}/${sub.key}")
+        return GenericIgmSettingsScreen(
+            subcategoryTitle(cat.key, sub.key),
+            currentSettings.map(::rowFor),
+        )
+    }
+
+    private fun subcategoryTitle(categoryKey: String, subKey: String) =
+        strings.subcategoryTitles["$categoryKey/$subKey"] ?: subKey
+
+    // A local toggle is host-backed rather than a RetroArch setting, so it always resolves.
+    private fun resolves(key: String) =
+        key.startsWith(LOCAL_TOGGLE_PREFIX) || host.raGetSetting(key) != null
+
+    // Cache key is the category or "<category>/<subcategory>", so a parent and a child never share
+    // a slot and moving between them reloads rather than showing the other's rows.
+    private fun loadKeys(keys: List<String>, cacheKey: String) {
+        if (cacheKey == currentCategory) return
         pending.clear()
-        currentCategory = categoryKey
-        val keys = RaOptionCatalog.categories.first { it.key == categoryKey }.settingKeys
+        currentCategory = cacheKey
         currentSettings = keys.mapNotNull { key ->
             if (key.startsWith(LOCAL_TOGGLE_PREFIX)) {
                 RaSetting(

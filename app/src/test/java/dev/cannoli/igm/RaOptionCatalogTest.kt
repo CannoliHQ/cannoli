@@ -20,8 +20,34 @@ class RaOptionCatalogTest {
 
     @Test
     fun noSettingKeyAppearsInTwoCategories() {
-        val all = RaOptionCatalog.categories.flatMap { it.settingKeys }
+        val all = RaOptionCatalog.categories
+            .flatMap { it.settingKeys + it.subcategories.flatMap { s -> s.settingKeys } }
         assertEquals(all.size, all.distinct().size)
+    }
+
+    // ricotta_ra_find returns null for a setting RetroArch never registered, and loadKeys drops it
+    // through mapNotNull, so a wrong or unregistered key produces a row that silently never appears
+    // rather than an error. This set is the record of keys confirmed on device not to resolve.
+    // Adding to it is a decision to be made after checking the device, not a way to quiet a test.
+    private val knownUnresolved = setOf(
+        // In the catalog since before the curated work and confirmed absent on an AYN Thor:
+        // requiring it deleted the whole curated Screen Scaling row until the rule changed to
+        // discriminating keys only.
+        "video_scale_integer_overscale",
+    )
+
+    @Test
+    fun everyKnownUnresolvedKeyIsStillInTheCatalog() {
+        val all = RaOptionCatalog.categories
+            .flatMap { it.settingKeys + it.subcategories.flatMap { s -> s.settingKeys } }
+            .toSet()
+        for (key in knownUnresolved) {
+            assertTrue(
+                "$key is recorded as not resolving but is no longer in the catalog, so the record " +
+                    "is stale and should be removed with it",
+                all.contains(key),
+            )
+        }
     }
 
     @Test

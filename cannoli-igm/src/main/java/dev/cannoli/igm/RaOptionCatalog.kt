@@ -2,7 +2,14 @@ package dev.cannoli.igm
 
 object RaOptionCatalog {
 
-    data class Category(val key: String, val settingKeys: List<String>)
+    // Nesting is one level deep. RetroArch groups Video and Audio into submenus and All Settings
+    // mirrors that, so an instruction from RetroArch's own documentation finds the setting where it
+    // says it is. A subcategory's own subcategories are never rendered, so do not create any.
+    data class Category(
+        val key: String,
+        val settingKeys: List<String>,
+        val subcategories: List<Category> = emptyList(),
+    )
 
     // RetroArch's Drivers menu (menu_displaylist.c, DISPLAYLIST_DRIVER_SETTINGS_LIST) holds twelve
     // keys and is not a category here. video_driver and audio_driver are promoted into Video and
