@@ -146,11 +146,12 @@ class LaunchManager(
             // cannot turn it off.
             put("savestate_thumbnail_enable", "true")
             put("joypad_autoconfig_dir", paths.configInputAutoconfig.absolutePath)
-            // Left unset when Cannoli has no language of its own, so RetroArch keeps detecting it
-            // from the device the way it already does.
-            settings.languageOrNull?.let { tag ->
-                RetroArchLanguage.forTag(tag)?.let { put("user_language", it.toString()) }
-            }
+            // settings.language is what Cannoli actually renders in: it defaults to en, and
+            // ProvideLocalizedResources applies it whether or not the user ever chose. RetroArch
+            // follows the same value so the two never disagree, rather than falling back to its own
+            // device detection and putting the settings menu in a different language from the
+            // launcher around it.
+            RetroArchLanguage.forTag(settings.language)?.let { put("user_language", it.toString()) }
             putAll(cheevos)
             putAll(autoStateOverrides(hardcore, resume, settings.alwaysSaveOnQuit))
         }

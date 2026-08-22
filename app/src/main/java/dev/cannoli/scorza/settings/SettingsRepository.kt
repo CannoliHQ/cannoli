@@ -193,12 +193,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         get() = jsonRead { optString(KEY_FONT, "default") }
         set(value) = jsonWrite { put(KEY_FONT, value) }
 
-    // Null when the user never chose one, which `language` cannot express because it defaults to
-    // "en". Anything propagating the choice to another program has to tell those apart: an absent
-    // setting means "follow the device", not "English".
-    val languageOrNull: String?
-        get() = jsonRead { if (has(KEY_LANGUAGE)) optString(KEY_LANGUAGE).takeIf { it.isNotEmpty() } else null }
-
     var language: String
         get() = jsonRead { optString(KEY_LANGUAGE, "en") }
         set(value) {

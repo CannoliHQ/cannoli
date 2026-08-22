@@ -48,10 +48,10 @@ class RetroArchLanguageTest {
         assertEquals(11, RetroArchLanguage.forTag("zh-TW"))
     }
 
-    // An empty tag means the user never overrode the language, so RetroArch should keep detecting
-    // it from the device rather than being pinned to English.
+    // The repository never returns an empty tag, but a blank one carries no information, so it is
+    // left to RetroArch rather than guessed at.
     @Test
-    fun `no override means no opinion`() {
+    fun `a blank tag is left to RetroArch`() {
         assertNull(RetroArchLanguage.forTag(""))
         assertNull(RetroArchLanguage.forTag("   "))
     }
