@@ -164,6 +164,14 @@ class EmbeddedRetroArchBridge(
             )
         } ?: emptyList()
 
+    override fun systemInfo(): List<Pair<String, String>> {
+        val arr = nativeSystemInfo() ?: return emptyList()
+        return buildList {
+            arr.getOrNull(0)?.takeIf { it.isNotEmpty() }?.let { add(raStrings.infoCore to it) }
+            arr.getOrNull(1)?.takeIf { it.isNotEmpty() }?.let { add(raStrings.infoCoreVersion to it) }
+        }
+    }
+
     override fun raGetSetting(key: String): RaSetting? {
         val arr = nativeRaGetSetting(key) ?: return null
         if (arr.size < 8) return null
@@ -184,6 +192,8 @@ class EmbeddedRetroArchBridge(
             step = arr[5].toFloatOrNull(),
             options = arr[6].takeIf { it.isNotEmpty() }?.split("|"),
             requiresRestart = arr[7] == "1",
+            // Core options come back from the same call with eight elements and no raw value.
+            rawValue = arr.getOrNull(8)?.takeIf { it.isNotEmpty() },
         )
     }
 
@@ -258,6 +268,7 @@ class EmbeddedRetroArchBridge(
     private external fun nativeIsPaused(): Boolean
     private external fun nativeMenuToggle()
     private external fun nativeCoreOptionKeys(): Array<String>?
+    private external fun nativeSystemInfo(): Array<String>?
     private external fun nativeDiskCount(): Int
     private external fun nativeDiskIndex(): Int
     private external fun nativeDiskLabel(index: Int): String?

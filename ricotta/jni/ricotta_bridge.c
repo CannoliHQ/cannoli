@@ -448,6 +448,42 @@ static void ricotta_ra_set_int(rarch_setting_t *s, long v)
    }
 }
 
+/* The machine value, never the display text. A combobox renders through
+ * get_string_representation, which for aspect_ratio_index returns a translated label out of
+ * aspectratio_lut, so anything comparing values has to read this instead: labels differ by
+ * locale, can repeat, and enumerating them writes the live setting once per option. */
+static int ricotta_ra_format_raw_value(rarch_setting_t *s, char *buf, size_t len)
+{
+   buf[0] = '\0';
+   switch (s->type)
+   {
+      case ST_BOOL:
+         strlcpy(buf, *s->value.target.boolean ? "true" : "false", len);
+         return 1;
+      case ST_INT:
+         snprintf(buf, len, "%d", *s->value.target.integer);
+         return 1;
+      case ST_UINT:
+         snprintf(buf, len, "%u", *s->value.target.unsigned_integer);
+         return 1;
+      case ST_SIZE:
+         snprintf(buf, len, "%zu", *s->value.target.sizet);
+         return 1;
+      case ST_FLOAT:
+         snprintf(buf, len, "%g", *s->value.target.fraction);
+         return 1;
+      case ST_STRING:
+      case ST_STRING_OPTIONS:
+      case ST_PATH:
+      case ST_DIR:
+         if (s->value.target.string)
+            strlcpy(buf, s->value.target.string, len);
+         return 1;
+      default:
+         return 0;
+   }
+}
+
 static int ricotta_ra_format_value(rarch_setting_t *s, char *buf, size_t len)
 {
    buf[0] = '\0';
@@ -659,9 +695,22 @@ static void ricotta_ra_apply(const char *key, const char *value)
       }
       if (!matched)
       {
+         /* The Everything menu cycles by label, which the loop above handles. Curated rows write
+          * the raw index instead, because a label is translated and can repeat. Accept both, or a
+          * curated write is silently dropped and the override then persists the unchanged value. */
+         char *end = NULL;
+         long  n;
          ricotta_ra_set_int(s, orig);
-         return;
+         n = strtol(value, &end, 10);
+         if (end && end != value && *end == '\0'
+               && n >= (long)s->min && n <= (long)s->max)
+         {
+            ricotta_ra_set_int(s, n);
+            matched = 1;
+         }
       }
+      if (!matched)
+         return;
    }
    else
    {
@@ -1207,6 +1256,7 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaGetSetting(
    rarch_setting_t *s;
    const char *type_str;
    char value_buf[512];
+   char raw_buf[512];
    char min_buf[32], max_buf[32], step_buf[32];
    char opts_buf[1024];
    jobjectArray out;
@@ -1295,7 +1345,7 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaGetSetting(
       snprintf(step_buf, sizeof(step_buf), "%g", s->step);
 
    str_cls = (*env)->FindClass(env, "java/lang/String");
-   out     = (*env)->NewObjectArray(env, 8, str_cls, NULL);
+   out     = (*env)->NewObjectArray(env, 9, str_cls, NULL);
    if (!out)
       return NULL;
 
@@ -1312,6 +1362,36 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaGetSetting(
                ((s->flags & SD_FLAG_IS_DRIVER)
                 || s->cmd_trigger_idx == CMD_EVENT_REINIT
                 || s->cmd_trigger_idx == CMD_EVENT_REINIT_FROM_TOGGLE) ? "1" : "0"));
+   if (!ricotta_ra_format_raw_value(s, raw_buf, sizeof(raw_buf)))
+      raw_buf[0] = '\0';
+   (*env)->SetObjectArrayElement(env, out, 8, (*env)->NewStringUTF(env, raw_buf));
+   return out;
+}
+
+/* Values only, in a fixed order: core name then core version. The labels are localized on the
+ * Kotlin side, so nothing user-visible is spelled out here. */
+JNIEXPORT jobjectArray JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSystemInfo(
+      JNIEnv *env, jobject obj)
+{
+   runloop_state_t *runloop_st = runloop_state_get_ptr();
+   jobjectArray out;
+   jclass str_cls;
+
+   (void)obj;
+
+   if (!runloop_st)
+      return NULL;
+
+   str_cls = (*env)->FindClass(env, "java/lang/String");
+   out     = (*env)->NewObjectArray(env, 2, str_cls, NULL);
+   if (!out)
+      return NULL;
+
+   (*env)->SetObjectArrayElement(env, out, 0,
+         (*env)->NewStringUTF(env, runloop_st->current_library_name));
+   (*env)->SetObjectArrayElement(env, out, 1,
+         (*env)->NewStringUTF(env, runloop_st->current_library_version));
    return out;
 }
 
