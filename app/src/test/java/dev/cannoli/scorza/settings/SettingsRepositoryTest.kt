@@ -97,6 +97,23 @@ class SettingsRepositoryTest {
         assertEquals(tmp.root.absolutePath, settings.sdCardRootOrNull)
     }
 
+    // `language` defaults to "en", so it cannot say whether the user chose English or never chose.
+    // Propagating the choice to RetroArch depends on the difference: unset must mean "follow the
+    // device", or a Spanish handheld would be pinned to English.
+    @Test fun `an unset language reads as null rather than english`() {
+        val settings = newRepo()
+        settings.sdCardRoot = tmp.root.absolutePath
+        assertNull(settings.languageOrNull)
+        assertEquals("en", settings.language)
+    }
+
+    @Test fun `choosing english is distinguishable from choosing nothing`() {
+        val settings = newRepo()
+        settings.sdCardRoot = tmp.root.absolutePath
+        settings.language = "en"
+        assertEquals("en", settings.languageOrNull)
+    }
+
     @Test fun `the in-game settings mode defaults to curated`() {
         val settings = newRepo()
         settings.sdCardRoot = tmp.root.absolutePath

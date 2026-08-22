@@ -21,6 +21,7 @@ import dev.cannoli.core.config.RetroArchConfigComposer
 import dev.cannoli.scorza.model.App
 import dev.cannoli.scorza.model.LaunchTarget
 import dev.cannoli.scorza.model.Rom
+import dev.cannoli.scorza.i18n.RetroArchLanguage
 import dev.cannoli.scorza.settings.IgmSettingsMode
 import dev.cannoli.scorza.settings.SettingsRepository
 import dev.cannoli.scorza.ui.screens.DialogState
@@ -145,6 +146,11 @@ class LaunchManager(
             // cannot turn it off.
             put("savestate_thumbnail_enable", "true")
             put("joypad_autoconfig_dir", paths.configInputAutoconfig.absolutePath)
+            // Left unset when Cannoli has no language of its own, so RetroArch keeps detecting it
+            // from the device the way it already does.
+            settings.languageOrNull?.let { tag ->
+                RetroArchLanguage.forTag(tag)?.let { put("user_language", it.toString()) }
+            }
             putAll(cheevos)
             putAll(autoStateOverrides(hardcore, resume, settings.alwaysSaveOnQuit))
         }
