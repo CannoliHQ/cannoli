@@ -1282,7 +1282,8 @@ class DialogInputHandler @Inject constructor(
             }
             is DialogState.Kitchen -> {
                 dev.cannoli.scorza.server.KitchenManager.stop(context)
-                nav.dialogState.value = DialogState.None
+                if (ds.fromQuickMenu) openQuickMenu(dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.KITCHEN)
+                else nav.dialogState.value = DialogState.None
                 launcherActions.rescanSystemList()
             }
             is DialogState.ColorPicker -> {

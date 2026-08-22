@@ -19,6 +19,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -133,5 +134,30 @@ class QuickMenuBackNavigationTest {
         nav.dialogState.value = DialogState.About(fromQuickMenu = true)
         dialogHandler.onNorth()
         assertEquals(LauncherScreen.Credits(fromQuickMenu = true), nav.currentScreen)
+    }
+
+    @Test fun stopping_the_kitchen_returns_to_the_quick_menu_it_was_opened_from() = runTest(dispatcher) {
+        nav.dialogState.value = DialogState.Kitchen(
+            urls = listOf("http://10.0.0.2:1091"),
+            pin = "1234",
+            fromQuickMenu = true,
+        )
+        dialogHandler.onNorth()
+        advanceUntilIdle()
+        val ds = nav.dialogState.value
+        assertTrue(ds is DialogState.QuickMenu)
+        ds as DialogState.QuickMenu
+        assertEquals(QuickMenuRow.KITCHEN, ds.rows.getOrNull(ds.selectedIndex))
+        assertFalse(ds.kitchenRunning)
+    }
+
+    @Test fun stopping_the_kitchen_opened_off_the_system_list_closes_the_dialog() = runTest(dispatcher) {
+        nav.dialogState.value = DialogState.Kitchen(
+            urls = listOf("http://10.0.0.2:1091"),
+            pin = "1234",
+        )
+        dialogHandler.onNorth()
+        advanceUntilIdle()
+        assertEquals(DialogState.None, nav.dialogState.value)
     }
 }
