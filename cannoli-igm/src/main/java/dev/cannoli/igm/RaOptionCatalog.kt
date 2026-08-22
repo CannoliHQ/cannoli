@@ -4,8 +4,23 @@ object RaOptionCatalog {
 
     data class Category(val key: String, val settingKeys: List<String>)
 
+    // RetroArch's Drivers menu (menu_displaylist.c, DISPLAYLIST_DRIVER_SETTINGS_LIST) holds twelve
+    // keys and is not a category here. video_driver and audio_driver are promoted into Video and
+    // Audio; the rest are excluded.
+    //
+    // menu_driver is pointless: Cannoli replaces RetroArch's menu, so switching it achieves nothing
+    // and can strand a user in an interface Cannoli does not drive.
+    //
+    // input_driver and joypad_driver are NEVER exposed. Cannoli writes input_driver = "android"
+    // into every controller cfg it generates, so changing either means no cfg matches any pad and
+    // every controller silently loses its mapping in game. Do not add them back as an oversight.
+    //
+    // microphone, record, midi, bluetooth, wifi, camera and location are meaningless on this
+    // platform.
     val categories = listOf(
         Category("video", listOf(
+            // From the Drivers menu. gl / glcore / vulkan, and the right answer varies by device.
+            "video_driver",
             "aspect_ratio_index",
             "video_scale_integer",
             "video_scale_integer_overscale",
@@ -19,6 +34,8 @@ object RaOptionCatalog {
             "video_shader_subframes",
         )),
         Category("audio", listOf(
+            // From the Drivers menu. Affects audio latency, which is a real tuning axis on Android.
+            "audio_driver",
             "audio_enable",
             "audio_mute_enable",
             "audio_volume",
