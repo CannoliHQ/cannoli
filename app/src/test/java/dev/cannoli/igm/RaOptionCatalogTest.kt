@@ -78,7 +78,9 @@ class RaOptionCatalogTest {
         assertEquals(9, subSize("video", "synchronization"))
         assertEquals(5, subSize("video", "hdr"))
 
-        assertEquals(10, size("audio"))
+        assertEquals(8, size("audio"))
+        assertEquals(4, subSize("audio", "output"))
+        assertEquals(3, subSize("audio", "synchronization"))
         assertEquals(10, size("latency"))
         assertEquals(7, size("speed"))
         assertEquals(18, size("osd"))
@@ -104,8 +106,11 @@ class RaOptionCatalogTest {
     // having are promoted into the categories they belong to.
     @Test
     fun videoAndAudioDriversArePromoted() {
-        fun keys(key: String) = RaOptionCatalog.categories.first { it.key == key }.settingKeys
+        fun keys(key: String) = RaOptionCatalog.categories.first { it.key == key }
+            .let { it.settingKeys + it.subcategories.flatMap { s -> s.settingKeys } }
         assertTrue(keys("video").contains("video_driver"))
+        // RetroArch lists the audio driver under Audio > Output, so it sits there rather than at
+        // the top level like the video one.
         assertTrue(keys("audio").contains("audio_driver"))
     }
 
@@ -114,7 +119,8 @@ class RaOptionCatalogTest {
     // game. menu_driver is pointless because Cannoli replaces RetroArch's menu.
     @Test
     fun theDangerousAndPointlessDriversAreNeverExposed() {
-        val all = RaOptionCatalog.categories.flatMap { it.settingKeys }.toSet()
+        val all = RaOptionCatalog.categories
+            .flatMap { it.settingKeys + it.subcategories.flatMap { s -> s.settingKeys } }.toSet()
         for (key in listOf("input_driver", "joypad_driver", "menu_driver")) {
             assertFalse("$key must never be exposed", all.contains(key))
         }
@@ -122,7 +128,8 @@ class RaOptionCatalogTest {
 
     @Test
     fun driversIrrelevantOnAndroidAreNotExposed() {
-        val all = RaOptionCatalog.categories.flatMap { it.settingKeys }.toSet()
+        val all = RaOptionCatalog.categories
+            .flatMap { it.settingKeys + it.subcategories.flatMap { s -> s.settingKeys } }.toSet()
         for (key in listOf(
             "microphone_driver", "record_driver", "midi_driver",
             "bluetooth_driver", "wifi_driver", "camera_driver", "location_driver",

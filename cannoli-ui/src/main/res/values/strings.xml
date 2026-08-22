@@ -775,6 +775,10 @@
     <string name="igm_advanced">Advanced</string>
     <!-- In-game settings category for sound options. -->
     <string name="igm_audio">Audio</string>
+    <!-- Audio settings subcategory: the sound backend and its buffering. -->
+    <string name="igm_audio_output">Output</string>
+    <!-- Audio settings subcategory: how audio timing is kept in step with the picture. -->
+    <string name="igm_audio_synchronization">Synchronization</string>
     <!-- Video settings subcategory: how the picture reaches the screen, such as refresh rate. -->
     <string name="igm_video_output">Output</string>
     <!-- Video settings subcategory: how the picture is sized, stretched and cropped. -->

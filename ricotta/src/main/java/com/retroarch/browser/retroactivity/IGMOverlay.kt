@@ -192,6 +192,8 @@ class IGMOverlay(
                 "osd" to uiContext.getString(R.string.igm_osd),
             ),
             subcategoryTitles = mapOf(
+                "audio/output" to uiContext.getString(R.string.igm_audio_output),
+                "audio/synchronization" to uiContext.getString(R.string.igm_audio_synchronization),
                 "video/output" to uiContext.getString(R.string.igm_video_output),
                 "video/scaling" to uiContext.getString(R.string.igm_video_scaling),
                 "video/synchronization" to uiContext.getString(R.string.igm_video_synchronization),

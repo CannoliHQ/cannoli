@@ -98,18 +98,49 @@ object RaOptionCatalog {
                 "video_hdr_subpixel_layout",
             )),
         )),
+        // Mirrors RetroArch's Audio screen. Two of its five submenus are dropped whole:
+        // MICROPHONE and MIDI, whose driver families are already excluded and which have no
+        // hardware path here. AUDIO_MIXER is dropped for a different reason: its list is built from
+        // live mixer streams rather than settings, so there is nothing to expose.
+        //
+        // Excluded from the direct list: menu_sounds is a submenu, audio_dsp_plugin_remove is an
+        // action, and system_bgm_enable has no config key.
+        // Mirrors RetroArch's Audio screen. Two of its five submenus are dropped whole:
+        // MICROPHONE and MIDI, whose driver families are already excluded and which have no
+        // hardware path here. AUDIO_MIXER is dropped for a different reason: its list is built from
+        // live mixer streams rather than settings, so there is nothing to expose.
+        //
+        // Excluded from the direct list: menu_sounds is a submenu, audio_dsp_plugin_remove is an
+        // action, system_bgm_enable has no config key, audio_respect_silent_mode is TARGET_OS_IOS,
+        // and audio_rewind_mute has no menu registration.
+        //
+        // audio_driver sits here rather than under Output, where RetroArch puts it, because its
+        // label is "Audio" and so is audio_enable's. On one screen that reads as two identical
+        // rows; RetroArch never shows them together because its driver list is a separate screen.
         Category("audio", listOf(
-            // From the Drivers menu. Affects audio latency, which is a real tuning axis on Android.
             "audio_driver",
-            "audio_enable",
-            "audio_mute_enable",
             "audio_volume",
+            "audio_mute_enable",
             "audio_mixer_volume",
-            "audio_latency",
-            "audio_resampler_quality",
-            "audio_rate_control_delta",
-            "audio_max_timing_skew",
-            "audio_sync",
+            "audio_mixer_mute_enable",
+            "audio_fastforward_mute",
+            "audio_fastforward_speedup",
+            "audio_dsp_plugin",
+        ), subcategories = listOf(
+            // Excluded: audio_output_rate and audio_resampler_driver have no config key, the
+            // wasapi trio and audio_asio_control_panel are Windows, and audio_device is a free-text
+            // backend string with no picker on Android.
+            Category("output", listOf(
+                "audio_enable",
+                "audio_latency",
+                "audio_resampler_quality",
+                "audio_block_frames",
+            )),
+            Category("synchronization", listOf(
+                "audio_sync",
+                "audio_max_timing_skew",
+                "audio_rate_control_delta",
+            )),
         )),
         Category("latency", listOf(
             "run_ahead_enabled",
