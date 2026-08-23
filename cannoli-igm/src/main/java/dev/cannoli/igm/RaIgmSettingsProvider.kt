@@ -31,6 +31,13 @@ internal val HIDDEN_SCREENS = setOf(
     "lakka_services",
 )
 
+// The one place All Settings adds a row RetroArch did not put there. Both live on RetroArch's Core
+// screen, which Cannoli hides, and both are about video rather than core management, so Video is
+// where they belong. Keyed by screen so a promoted row lands somewhere a player would look for it.
+internal val PROMOTED_KEYS = mapOf(
+    "video_settings" to listOf("video_shared_context", "video_allow_rotate"),
+)
+
 internal val HIDDEN_KEYS = setOf(
     "input_driver",
     "input_joypad_driver",
@@ -271,13 +278,14 @@ class RaIgmSettingsProvider(
         val rows = host.raScreenRows(label)
             .filterNot { it.key in HIDDEN_SCREENS || it.key in HIDDEN_KEYS }
         rows.filter { it.isMenu }.forEach { screenTitles[it.key] = it.label }
-        loadKeys(rows.filterNot { it.isMenu }.map { it.key }, "ra/$label")
+        val promoted = PROMOTED_KEYS[label].orEmpty()
+        loadKeys(rows.filterNot { it.isMenu }.map { it.key } + promoted, "ra/$label")
         // Walked in RetroArch's order rather than settings-then-submenus, because the order is part
         // of what we are deferring to it.
         return rows.mapNotNull { row ->
             if (row.isMenu) GenericIgmSettingsItem.Category(row.key, row.label)
             else currentSettings.firstOrNull { it.key == row.key }?.let(::rowFor)
-        }
+        } + promoted.mapNotNull { key -> currentSettings.firstOrNull { it.key == key }?.let(::rowFor) }
     }
 
     // Cache key is the RetroArch screen, so a parent and a child never share a slot and moving

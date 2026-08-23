@@ -199,6 +199,11 @@ class LaunchManager(
         "settings_show_logging" to "false",
         "settings_show_recording" to "false",
         "settings_show_input" to "false",
+        // Frontend behaviour around cores, most of which fights what the launcher owns:
+        // systemfiles_in_content_dir_enable, core_info_cache_enable, dummy_on_core_shutdown. The
+        // two worth keeping are promoted onto Video. Cutting it also ends the name collision with
+        // Cannoli's own Emulator row, which is core options and a different thing entirely.
+        "settings_show_core" to "false",
     )
 
     // Weakest to strongest: platform on this core, then this game on this core. Written out whole

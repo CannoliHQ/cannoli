@@ -38,6 +38,19 @@ class HiddenScreensExistTest {
         )
     }
 
+    // A promoted key that no longer exists is worse than a refusal that no longer matches: the row
+    // simply never renders, and the setting we cut its screen to keep is gone with no trace.
+    @Test
+    fun `every promoted key is still a setting RetroArch registers`() {
+        val gone = PROMOTED_KEYS.values.flatten().filterNot { it in censusKeys }
+        assertTrue(
+            "these are promoted onto a screen to survive their own screen being cut, but " +
+                "RetroArch no longer registers them, so they are simply lost:\n" +
+                gone.joinToString("\n") { "  $it" },
+            gone.isEmpty(),
+        )
+    }
+
     @Test
     fun `every hidden key is still a setting RetroArch registers`() {
         val gone = HIDDEN_KEYS.filterNot { it in censusKeys }
