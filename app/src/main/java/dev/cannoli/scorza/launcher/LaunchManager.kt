@@ -31,6 +31,11 @@ import java.io.File
 import java.io.IOException
 import java.security.MessageDigest
 
+// Matches the line ricotta_ra_save_override writes on the tiers it owns, so every generated
+// override file says the same thing about who wrote it and where a user's own keys belong.
+private const val TIER_BANNER =
+    "# DO NOT EDIT - Cannoli writes this from your menu choices. Your own keys go in custom.cfg\n"
+
 class LaunchManager(
     private val context: Context,
     private val settings: SettingsRepository,
