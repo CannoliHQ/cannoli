@@ -33,23 +33,21 @@ object CuratedCatalog {
         Category(CATEGORY_VIDEO, listOf(
             // v1's vocabulary and order, from LibretroActivity.scalingLabel() at 13ea3287^. v1 also
             // had Integer Overscale and Aspect Screen; the former needs
-            // video_scale_integer_overscale, which RetroArch does not register on this build, and
-            // the latter was a viewport mode of Cannoli's own renderer with no RetroArch equivalent.
+            // video_scale_integer_overscale, which RetroArch does not register on this build (it
+            // sat in every preset here doing nothing until the census guard caught it), and the
+            // latter was a viewport mode of Cannoli's own renderer with no RetroArch equivalent.
             Row("curated_screen_scaling", listOf(
                 Preset("scaling_core_reported", mapOf(
                     "aspect_ratio_index" to "22",
                     "video_scale_integer" to "false",
-                    "video_scale_integer_overscale" to "false",
                 )),
                 Preset("scaling_integer", mapOf(
                     "aspect_ratio_index" to "22",
                     "video_scale_integer" to "true",
-                    "video_scale_integer_overscale" to "false",
                 )),
                 Preset("scaling_fullscreen", mapOf(
                     "aspect_ratio_index" to "24",
                     "video_scale_integer" to "false",
-                    "video_scale_integer_overscale" to "false",
                 )),
             )),
             Row("curated_screen_sharpness", listOf(

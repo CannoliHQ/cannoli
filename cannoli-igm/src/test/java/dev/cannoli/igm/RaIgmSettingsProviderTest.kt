@@ -6,32 +6,39 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-private const val RA_MENU_KEY = "__ra_menu__"
-
 private class FakeRaHost : RaSettingsHost {
     val settings = mutableMapOf<String, RaSetting>()
     val setCalls = mutableListOf<Pair<String, String>>()
     val savedScopes = mutableListOf<RaOverrideScope>()
     val savedKeys = mutableListOf<Set<String>>()
-    val localToggles = mutableMapOf<String, Boolean>()
     private var appliedCb: ((String, String) -> Unit)? = null
+    val screens = mutableMapOf<String, List<RaScreenRow>>()
 
     override fun raGetSetting(key: String): RaSetting? = settings[key]
+    override fun raScreenRows(label: String): List<RaScreenRow> = screens[label].orEmpty()
+    // Mirrors the native contract: false means the key resolves to nothing, so nothing was queued.
+    var setSucceeds = true
     override fun raSetSetting(key: String, value: String): Boolean {
         setCalls.add(key to value)
-        return true
+        return setSucceeds
     }
     override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) {
         savedScopes.add(scope)
         savedKeys.add(keys)
     }
     override fun setOnRaSettingApplied(callback: (String, String) -> Unit) { appliedCb = callback }
-    override fun getLocalToggle(key: String, default: Boolean): Boolean = localToggles[key] ?: default
-    override fun setLocalToggle(key: String, value: Boolean) { localToggles[key] = value }
     fun fireApplied(key: String, value: String) { appliedCb?.invoke(key, value) }
 }
 
 private fun host(): FakeRaHost = FakeRaHost().apply {
+    screens[""] = listOf(
+        RaScreenRow("latency_settings", "Latency", isMenu = true),
+        RaScreenRow("midi_settings", "MIDI", isMenu = true),
+    )
+    screens["latency_settings"] = listOf(
+        RaScreenRow("run_ahead_frames", "Run-Ahead Frames", isMenu = false),
+        RaScreenRow("run_ahead_hide_warnings", "Hide Run-Ahead Warnings", isMenu = false),
+    )
     settings["run_ahead_frames"] =
         RaSetting("run_ahead_frames", "Run-Ahead Frames", RaSettingType.INT, "1", min = 0f, max = 4f, step = 1f)
     // A boolean that is still menu-registered. run_ahead_enabled was the fixture until RetroArch
@@ -42,35 +49,22 @@ private fun host(): FakeRaHost = FakeRaHost().apply {
 
 private fun provider(
     h: FakeRaHost,
-    opened: MutableList<Unit> = mutableListOf(),
-    debugBuild: Boolean = true,
 ): RaIgmSettingsProvider =
-    RaIgmSettingsProvider(host = h, debugBuild = debugBuild, onOpenNativeMenu = { opened.add(Unit) })
+    RaIgmSettingsProvider(host = h)
 
-private val LATENCY = "latency"
+private val LATENCY = "latency_settings"
 
 class RaIgmSettingsProviderTest {
 
     @Test
-    fun `root lists every catalog category plus a RetroArch Menu action in a debug build`() {
-        val p = provider(host(), debugBuild = true)
+    fun `root mirrors RetroArch's own settings list, minus what Cannoli refuses`() {
+        val p = provider(host())
         val items = p.screen(emptyList())
         val labels = items.items.map { it.label }
-        val catTitles = RaOptionCatalog.categories.map { RaOptionStrings().categoryTitles[it.key] ?: it.key }
-        assertEquals(catTitles + RaOptionStrings().nativeMenu, labels)
-        assertTrue(items.items.dropLast(1).all { it is GenericIgmSettingsItem.Category })
-        assertTrue(items.items.last() is GenericIgmSettingsItem.Action)
-    }
-
-    @Test
-    fun `root lists every catalog category and no native menu action in a release build`() {
-        val p = provider(host(), debugBuild = false)
-        val items = p.screen(emptyList())
-        val labels = items.items.map { it.label }
-        val catTitles = RaOptionCatalog.categories.map { RaOptionStrings().categoryTitles[it.key] ?: it.key }
-        assertEquals(catTitles, labels)
+        // midi_settings is refused here because RetroArch has no settings_show_ flag for it;
+        // the screens that do are turned off in the launch config and never reach this list.
+        assertEquals(listOf("Latency"), labels)
         assertTrue(items.items.all { it is GenericIgmSettingsItem.Category })
-        assertTrue(items.items.none { it is GenericIgmSettingsItem.Action })
     }
 
     @Test
@@ -95,16 +89,6 @@ class RaIgmSettingsProviderTest {
     }
 
     @Test
-    fun `a local toggle writes immediately and is never sent to RA`() {
-        val h = host()
-        val p = provider(h)
-        p.screen(listOf("osd"))
-        p.cycle("cannoli_osd_reset", 1)
-        assertTrue(h.setCalls.isEmpty())
-        assertEquals(false, h.localToggles["cannoli_osd_reset"])
-    }
-
-    @Test
     fun `an external apply echo updates the displayed value`() {
         val h = host()
         val p = provider(h)
@@ -126,6 +110,20 @@ class RaIgmSettingsProviderTest {
         val afterCycle = changes
         h.fireApplied("run_ahead_frames", "2")
         assertEquals(afterCycle, changes)
+    }
+
+    // A write the native side could not queue must not be recorded as a change, or exiting prompts
+    // to save something that never happened and the override comes out without it.
+    @Test
+    fun `a write that never queued leaves the menu clean`() {
+        val h = host()
+        h.setSucceeds = false
+        val p = provider(h)
+        p.screen(listOf(LATENCY))
+        p.cycle("run_ahead_hide_warnings", 1)
+
+        assertEquals(listOf("run_ahead_hide_warnings" to "true"), h.setCalls)
+        assertTrue(p.exitPrompt() is IgmSettingsExit.Close)
     }
 
     @Test
@@ -172,14 +170,13 @@ class RaIgmSettingsProviderTest {
     }
 
     @Test
-    fun `saving writes exactly the changed RA keys, excludes local toggles, and clears after`() {
+    fun `saving writes exactly the changed RA keys and clears after`() {
         val h = host()
         val p = provider(h)
         p.screen(listOf(LATENCY))
         p.cycle("run_ahead_hide_warnings", 1)
         p.cycle("run_ahead_frames", 1)
-        p.screen(listOf("osd"))
-        p.cycle("cannoli_osd_reset", 1)
+        p.screen(emptyList())
         (p.exitPrompt() as IgmSettingsExit.Prompt).onChoice(1)
         assertEquals(listOf(setOf("run_ahead_hide_warnings", "run_ahead_frames")), h.savedKeys)
 
@@ -202,76 +199,6 @@ class RaIgmSettingsProviderTest {
         assertEquals(listOf(setOf("run_ahead_frames")), h.savedKeys)
     }
 
-    @Test
-    fun `a local toggle change does not make the menu dirty`() {
-        val h = host()
-        val p = provider(h)
-        p.screen(listOf("osd"))
-        p.cycle("cannoli_osd_reset", 1)
-        assertTrue(p.exitPrompt() is IgmSettingsExit.Close)
-    }
-
-    @Test
-    fun `activating the RetroArch Menu action opens the native menu when clean`() {
-        val opened = mutableListOf<Unit>()
-        val p = provider(host(), opened)
-        p.screen(emptyList())
-        assertNull(p.activate(RA_MENU_KEY))
-        assertEquals(1, opened.size)
-    }
-
-    @Test
-    fun `RetroArch Menu when dirty prompts to save first then opens the native menu`() {
-        val h = host()
-        val opened = mutableListOf<Unit>()
-        val p = provider(h, opened)
-        p.screen(listOf(LATENCY))
-        p.cycle("run_ahead_hide_warnings", 1)
-        val prompt = p.activate(RA_MENU_KEY)!!
-        assertEquals(
-            listOf(RaOptionStrings().savePlatform, RaOptionStrings().saveGame, RaOptionStrings().dontSave),
-            prompt.options,
-        )
-        assertTrue(opened.isEmpty())
-        prompt.onChoice(1)
-        assertEquals(listOf(RaOverrideScope.GAME), h.savedScopes)
-        assertEquals(1, opened.size)
-    }
-
-    @Test
-    fun `RetroArch Menu when dirty and discarded still opens the native menu without saving`() {
-        val h = host()
-        val opened = mutableListOf<Unit>()
-        val p = provider(h, opened)
-        p.screen(listOf(LATENCY))
-        p.cycle("run_ahead_hide_warnings", 1)
-        p.activate(RA_MENU_KEY)!!.onChoice(2)
-        assertTrue(h.savedScopes.isEmpty())
-        assertEquals(1, opened.size)
-    }
-
-    @Test
-    fun `RetroArch Menu when dirty and cancelled opens the native menu without saving`() {
-        val h = host()
-        val opened = mutableListOf<Unit>()
-        val p = provider(h, opened)
-        p.screen(listOf(LATENCY))
-        p.cycle("run_ahead_hide_warnings", 1)
-        val prompt = p.activate(RA_MENU_KEY)!!
-        prompt.onCancel!!.invoke()
-        assertTrue(h.savedScopes.isEmpty())
-        assertEquals(1, opened.size)
-    }
-
-    @Test
-    fun `activate never opens the native menu in a release build even with the raw key`() {
-        val opened = mutableListOf<Unit>()
-        val p = provider(host(), opened, debugBuild = false)
-        p.screen(emptyList())
-        assertNull(p.activate(RA_MENU_KEY))
-        assertTrue(opened.isEmpty())
-    }
-
     // video_threaded lives under Video > Output, so this also covers a subcategory row carrying the
     // hint rather than only a top-level one.
     @Test
@@ -280,7 +207,9 @@ class RaIgmSettingsProviderTest {
         h.settings["video_threaded"] =
             RaSetting("video_threaded", "Threaded Video", RaSettingType.BOOL, "false", requiresRestart = true)
         val p = provider(h)
-        val row = p.screen(listOf("video", "output")).items
+        h.screens["video_output_settings"] =
+            listOf(RaScreenRow("video_threaded", "Threaded Video", isMenu = false))
+        val row = p.screen(listOf("video_output_settings")).items
             .filterIsInstance<GenericIgmSettingsItem.Choice>().firstOrNull { it.key == "video_threaded" }
         assertEquals(RaOptionStrings().restartHint, row?.hint)
     }

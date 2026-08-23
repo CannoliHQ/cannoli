@@ -16,6 +16,8 @@ private class CuratedFakeHost : RaSettingsHost {
 
     override fun coreOptions(): List<CoreOptionRef> = coreOptions
     override fun systemInfo(): List<Pair<String, String>> = systemInfo
+    val screens = mutableMapOf<String, List<RaScreenRow>>()
+    override fun raScreenRows(label: String): List<RaScreenRow> = screens[label].orEmpty()
     override fun raGetSetting(key: String): RaSetting? = settings[key]
     override fun raSetSetting(key: String, value: String): Boolean {
         setCalls.add(key to value)
@@ -31,8 +33,6 @@ private class CuratedFakeHost : RaSettingsHost {
 
     /** RetroArch echoes the DISPLAY value, which for a combobox is translated label text. */
     fun echoApplied(key: String, displayValue: String) { appliedCb?.invoke(key, displayValue) }
-    override fun getLocalToggle(key: String, default: Boolean): Boolean = default
-    override fun setLocalToggle(key: String, value: Boolean) {}
 }
 
 class RaIgmSettingsProviderCuratedTest {
@@ -40,9 +40,7 @@ class RaIgmSettingsProviderCuratedTest {
     private fun provider(h: CuratedFakeHost) = RaIgmSettingsProvider(
         host = h,
         strings = RaOptionStrings(),
-        debugBuild = false,
         curated = true,
-        onOpenNativeMenu = {},
     )
 
     /** Seeds every key of [row] with the values of one of its presets. */
@@ -320,7 +318,7 @@ class RaIgmSettingsProviderCuratedTest {
         val h = CuratedFakeHost()
         h.systemInfo = listOf("Core" to "Nestopia", "Version" to "1.52")
         val all = RaIgmSettingsProvider(
-            host = h, strings = RaOptionStrings(), debugBuild = false, curated = false, onOpenNativeMenu = {},
+            host = h, strings = RaOptionStrings(), curated = false,
         )
         assertTrue(all.screen(emptyList()).items.any { it.key == CuratedCatalog.CATEGORY_INFO })
         val rows = all.screen(listOf(CuratedCatalog.CATEGORY_INFO)).items
@@ -333,7 +331,7 @@ class RaIgmSettingsProviderCuratedTest {
     fun `the all-settings menu omits info when the host reports nothing`() {
         val h = CuratedFakeHost()
         val all = RaIgmSettingsProvider(
-            host = h, strings = RaOptionStrings(), debugBuild = false, curated = false, onOpenNativeMenu = {},
+            host = h, strings = RaOptionStrings(), curated = false,
         )
         assertTrue(all.screen(emptyList()).items.none { it.key == CuratedCatalog.CATEGORY_INFO })
     }
@@ -342,10 +340,11 @@ class RaIgmSettingsProviderCuratedTest {
     fun `the everything menu is unaffected by the curated catalog`() {
         val h = CuratedFakeHost()
         val everything = RaIgmSettingsProvider(
-            host = h, strings = RaOptionStrings(), debugBuild = false, curated = false, onOpenNativeMenu = {},
+            host = h, strings = RaOptionStrings(), curated = false,
         )
+        h.screens[""] = listOf(RaScreenRow("latency_settings", "Latency", isMenu = true))
         val keys = everything.screen(emptyList()).items.map { it.key }
-        assertTrue(keys.contains("latency"))
+        assertTrue(keys.contains("latency_settings"))
         assertTrue(keys.none { it.startsWith("curated_") })
     }
 }

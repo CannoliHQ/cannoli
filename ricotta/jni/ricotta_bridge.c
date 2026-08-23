@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <android/log.h>
+#include <streams/file_stream.h>
 
 static long long get_time_ms(void)
 {
@@ -33,6 +34,10 @@ static long long get_time_ms(void)
 #include "../../../../runloop.h"
 #include "../../../../setting_list.h"
 #include "../../../../menu/menu_setting.h"
+#include "../../../../menu/menu_displaylist.h"
+#include "../../../../menu/menu_entries.h"
+#include "ricotta_menu_screens.h"
+#include "ricotta_key_aliases.h"
 #include "../../../../cheevos/cheevos_locals.h"
 #include "../../../../deps/rcheevos/include/rc_client.h"
 #include "../../../../disk_control_interface.h"
@@ -67,6 +72,7 @@ static JNIEnv *g_native_env = NULL;
 static char g_cannoli_root[PATH_MAX_LENGTH];
 static char g_platform_tag[PATH_MAX_LENGTH];
 static char g_rom_base_name[PATH_MAX_LENGTH];
+static char g_core_id[PATH_MAX_LENGTH];
 
 /* Timestamp of when the IGM was opened, to debounce the menu button */
 static volatile long long g_igm_open_time = 0;
@@ -384,29 +390,98 @@ void ricotta_bridge_poll_commands(void)
    }
 }
 
-/* The menu driver creates menu_st->entries.list_settings lazily; with the
- * Cannoli IGM the RA menu may never open, so keep a private fallback list. */
-static rarch_setting_t *g_ra_fallback_list = NULL;
+/* RetroArch no longer keeps the settings list resident: menu_setting_new() builds one, learns a
+ * lazy name index from it, frees it, and hands back a terminator-only token, so menu_setting_find
+ * is the only lookup and there is no list left to walk. The menu driver builds the index when it
+ * initialises; with the Cannoli IGM the RA menu may never open, so build it once here if a lookup
+ * finds no index. The token is kept because freeing it tears the index down, and priming is
+ * one-shot because learning starts by freeing the cache, which invalidates every setting pointer
+ * handed out so far. */
+static rarch_setting_t *g_ra_index_token = NULL;
+
+/* menu_setting_find reaches settings_lazy_get, which is check-then-act on a static cache with no
+ * locking of its own: two threads that both miss build the same list twice, one pointer is
+ * orphaned, and a later settings_lazy_free can free a list the other thread still holds a setting
+ * from. The IGM reads on the JNI thread while applies and override saves run on the runloop, so
+ * both reach it. Every other caller in RetroArch is menu code, which is dormant here, so
+ * serialising our own entry points covers it. Recursive because the screen builder reaches the
+ * same lookup through RetroArch's displaylist code rather than through ricotta_ra_find. */
+static pthread_mutex_t g_ra_settings_lock;
+
+static void ricotta_ra_settings_lock_init(void)
+{
+   pthread_mutexattr_t attr;
+   pthread_mutexattr_init(&attr);
+   pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+   pthread_mutex_init(&g_ra_settings_lock, &attr);
+   pthread_mutexattr_destroy(&attr);
+}
 
 static rarch_setting_t *ricotta_ra_find(const char *key)
 {
-   rarch_setting_t *s = menu_setting_find(key);
-   if (s)
-      return s;
-   if (!g_ra_fallback_list)
-      g_ra_fallback_list = menu_setting_new();
-   for (s = g_ra_fallback_list; s && s->type != ST_NONE; s++)
+   rarch_setting_t *s;
+   pthread_mutex_lock(&g_ra_settings_lock);
+   s = menu_setting_find(key);
+   if (!s && !g_ra_index_token)
    {
-      if (s->type <= ST_GROUP && s->name && !strcmp(s->name, key))
+      g_ra_index_token = menu_setting_new();
+      s = menu_setting_find(key);
+   }
+   pthread_mutex_unlock(&g_ra_settings_lock);
+   return s;
+}
+
+/* All Settings defers to RetroArch for structure: which rows exist right now, in what order, under
+ * what name, and what a row leads to. RetroArch decides all of that in its displaylist builders,
+ * including the conditions that hide a row (video_aspect_ratio only appears when the aspect index
+ * is Config, the integer-scaling rows only when integer scaling is on). Rebuilding one here and
+ * reading it back means those conditions are RetroArch's rather than a copy of them that rots.
+ *
+ * Values are deliberately NOT read through this. Both menu modes read and write through
+ * ricotta_ra_find, so there is one write path, one changed-key set, and one save tier. */
+static int ricotta_screen_dl(const char *label)
+{
+   size_t i;
+   if (!label || !*label)
+      return (int)DISPLAYLIST_SETTINGS_ALL;
+   for (i = 0; i < sizeof(ricotta_menu_screens) / sizeof(ricotta_menu_screens[0]); i++)
+      if (!strcmp(ricotta_menu_screens[i].label, label))
+         return ricotta_menu_screens[i].dl;
+   return -1;
+}
+
+/* Builds `label`'s screen into a throwaway list. Caller frees with file_list_free. */
+static file_list_t *ricotta_build_screen(const char *label)
+{
+   menu_displaylist_info_t info;
+   file_list_t *list;
+   int dl = ricotta_screen_dl(label);
+
+   if (dl < 0)
+      return NULL;
+   if (!(list = (file_list_t*)calloc(1, sizeof(*list))))
+      return NULL;
+   /* Entries carry a menu_file_list_cbs_t that owns further allocations, so the list needs the
+    * same destructor the menu's own lists use or freeing it leaks every row. */
+   list->actiondata_free = menu_entries_cbs_free;
+
+   menu_displaylist_info_init(&info);
+   info.list  = list;
+   info.label = strdup(label ? label : "");
+
+   pthread_mutex_lock(&g_ra_settings_lock);
+   {
+      bool ok = menu_displaylist_ctl((enum menu_displaylist_ctl_state)dl, &info, config_get_ptr());
+      pthread_mutex_unlock(&g_ra_settings_lock);
+      if (!ok)
       {
-         if (!s->short_description || !*s->short_description)
-            return NULL;
-         if (s->read_handler)
-            s->read_handler(s);
-         return s;
+         menu_displaylist_info_free(&info);
+         file_list_free(list);
+         return NULL;
       }
    }
-   return NULL;
+   menu_displaylist_info_free(&info);
+   return list;
 }
 
 /* A small-range numeric setting that carries a label representation (aspect
@@ -415,7 +490,7 @@ static rarch_setting_t *ricotta_ra_find(const char *key)
 static int ricotta_ra_is_combobox(rarch_setting_t *s)
 {
    float step, span;
-   if (!s->get_string_representation)
+   if (!s->actions->repr)
       return 0;
    if (!(s->type == ST_UINT || s->type == ST_INT || s->type == ST_SIZE))
       return 0;
@@ -449,7 +524,7 @@ static void ricotta_ra_set_int(rarch_setting_t *s, long v)
 }
 
 /* The machine value, never the display text. A combobox renders through
- * get_string_representation, which for aspect_ratio_index returns a translated label out of
+ * actions->repr, which for aspect_ratio_index returns a translated label out of
  * aspectratio_lut, so anything comparing values has to read this instead: labels differ by
  * locale, can repeat, and enumerating them writes the live setting once per option. */
 static int ricotta_ra_format_raw_value(rarch_setting_t *s, char *buf, size_t len)
@@ -489,7 +564,7 @@ static int ricotta_ra_format_value(rarch_setting_t *s, char *buf, size_t len)
    buf[0] = '\0';
    if (ricotta_ra_is_combobox(s))
    {
-      s->get_string_representation(s, buf, len);
+      s->actions->repr(s, buf, len);
       return 1;
    }
    switch (s->type)
@@ -541,6 +616,22 @@ static long ricotta_core_opt_index(const char *key)
       if (opt->opts[i].key && !strcmp(opt->opts[i].key, key))
          return (long)i;
    return -1;
+}
+
+/* The machine value of a core option, which is what an .opt file stores. val_labels carries the
+ * translated display text and must never reach disk. */
+static const char *ricotta_core_opt_value(const char *key)
+{
+   core_option_manager_t *opt = ricotta_core_options();
+   long idx = ricotta_core_opt_index(key);
+   if (!opt || idx < 0)
+      return NULL;
+   {
+      struct core_option *o = &opt->opts[idx];
+      if (!o->vals || o->index >= o->vals->size)
+         return NULL;
+      return o->vals->elems[o->index].data;
+   }
 }
 
 static void ricotta_core_opt_apply(const char *key, const char *value)
@@ -686,7 +777,7 @@ static void ricotta_ra_apply(const char *key, const char *value)
       for (i = s->min; i <= s->max; i += step)
       {
          ricotta_ra_set_int(s, (long)i);
-         s->get_string_representation(s, lbl, sizeof(lbl));
+         s->actions->repr(s, lbl, sizeof(lbl));
          if (!strcmp(lbl, value))
          {
             matched = 1;
@@ -741,8 +832,8 @@ static void ricotta_ra_apply(const char *key, const char *value)
    }
    settings         = config_get_ptr();
    settings->flags |= SETTINGS_FLG_MODIFIED;
-   if (s->change_handler)
-      s->change_handler(s);
+   if (s->actions->change)
+      s->actions->change(s);
    if (s->cmd_trigger_idx
          && !(s->flags & SD_FLAG_CMD_TRIGGER_EVENT_TRIGGERED))
       command_event(s->cmd_trigger_idx, NULL);
@@ -750,8 +841,8 @@ static void ricotta_ra_apply(const char *key, const char *value)
    /* Confirm with the authoritative value; handlers may clamp or rewrite it. */
    {
       char buf[512];
-      if (s->read_handler)
-         s->read_handler(s);
+      if (s->actions->read)
+         s->actions->read(s);
       if (ricotta_ra_format_value(s, buf, sizeof(buf)))
       {
          JNIEnv *env = ricotta_runloop_env();
@@ -765,6 +856,20 @@ static void ricotta_ra_apply(const char *key, const char *value)
          }
       }
    }
+}
+
+/* A setting is looked up by its menu name, but config_file reads and writes its config key, and for
+ * 68 settings the two differ. Writing an override under the menu name produces a key RetroArch
+ * never reads back, so the setting silently reverts on the next launch: audio_output_rate is stored
+ * as audio_out_rate, gpu_index as vulkan_gpu_index. Only the file write needs this; a live change
+ * still goes through menu_setting_find, which matches the menu name. */
+static const char *ricotta_config_key(const char *menu_key)
+{
+   size_t i;
+   for (i = 0; i < sizeof(ricotta_key_aliases) / sizeof(ricotta_key_aliases[0]); i++)
+      if (!strcmp(ricotta_key_aliases[i].menu, menu_key))
+         return ricotta_key_aliases[i].config;
+   return menu_key;
 }
 
 /* Writes one live setting into conf with the same typed setters and raw values
@@ -797,6 +902,24 @@ static void ricotta_ra_config_set(config_file_t *conf, const char *key, rarch_se
    }
 }
 
+/* An empty tier file is worse than none: the launch composer would read it, and a stale one left
+ * behind after the last key was cleared would keep applying. */
+static void ricotta_ra_write_tier(const char *path, config_file_t *conf)
+{
+   FILE *fp;
+   if (!conf->entries)
+   {
+      filestream_delete(path);
+      return;
+   }
+   if ((fp = fopen(path, "w")))
+   {
+      fputs("# DO NOT EDIT - Cannoli writes this from your menu choices. Your own keys go in custom.cfg\n", fp);
+      config_file_dump(conf, fp, true);
+      fclose(fp);
+   }
+}
+
 /* Saves an override .cfg holding only the newline-delimited keys the IGM changed this session,
  * at their live values, merged over any existing override so untouched keys survive. Replaces
  * config_save_overrides, which diffed the whole live config against Cannoli's minimal launch
@@ -804,42 +927,58 @@ static void ricotta_ra_config_set(config_file_t *conf, const char *key, rarch_se
  * else system. Keys with no live RA setting (e.g. core options) are silently skipped.
  *
  * The target is Cannoli's own override tier, not RetroArch's library-keyed
- * Config/RetroArch/<library>/ location, so the launch composer reads these back:
- *   game   -> <root>/Config/Overrides/Games/<tag>/<base>.cfg
- *   system -> <root>/Config/Overrides/Systems/<tag>.cfg */
+ * Config/RetroArch/<library>/ location, so the launch composer reads these back. Both tiers are
+ * keyed by core, because what is worth overriding is mostly what differs between cores:
+ *   game   -> <root>/Config/Overrides/Games/<tag>/<base>/<core>.cfg
+ *   system -> <root>/Config/Overrides/Systems/<tag>/<core>.cfg */
 static void ricotta_ra_save_override(int scope, const char *keys)
 {
    char override_path[PATH_MAX_LENGTH];
+   char opt_path[PATH_MAX_LENGTH];
    char base_dir[PATH_MAX_LENGTH];
    config_file_t *conf;
+   config_file_t *opt_conf;
    const char *p;
 
    if (!keys || !*keys)
       return;
-   if (!*g_cannoli_root || !*g_platform_tag)
+   if (!*g_cannoli_root || !*g_platform_tag || !*g_core_id)
       return;
    if (scope == 1 && !*g_rom_base_name)
       return;
 
    if (scope == 1)
       snprintf(override_path, sizeof(override_path),
-            "%s/Config/Overrides/Games/%s/%s.cfg",
-            g_cannoli_root, g_platform_tag, g_rom_base_name);
+            "%s/Config/Overrides/Games/%s/%s/%s.cfg",
+            g_cannoli_root, g_platform_tag, g_rom_base_name, g_core_id);
    else
       snprintf(override_path, sizeof(override_path),
-            "%s/Config/Overrides/Systems/%s.cfg",
-            g_cannoli_root, g_platform_tag);
+            "%s/Config/Overrides/Systems/%s/%s.cfg",
+            g_cannoli_root, g_platform_tag, g_core_id);
 
    /* config_save_overrides made this directory; config_file_write's fopen will not. */
    fill_pathname_basedir(base_dir, override_path, sizeof(base_dir));
    if (*base_dir && !path_is_directory(base_dir))
       path_mkdir(base_dir);
 
+   /* Core options are not RetroArch settings and never resolve through menu_setting_find, so they
+    * go to a sibling .opt that the launch composer feeds to RetroArch through core_options_path.
+    * Same directory, same core key, same two scopes as the .cfg beside it. */
+   strlcpy(opt_path, override_path, sizeof(opt_path));
+   {
+      char *ext = strrchr(opt_path, '.');
+      if (ext)
+         strlcpy(ext, ".opt", sizeof(opt_path) - (size_t)(ext - opt_path));
+   }
+
    conf = config_file_new_from_path_to_string(override_path);
    if (!conf)
       conf = config_file_new_alloc();
    if (!conf)
       return;
+   opt_conf = config_file_new_from_path_to_string(opt_path);
+   if (!opt_conf)
+      opt_conf = config_file_new_alloc();
 
    for (p = keys; *p; )
    {
@@ -852,8 +991,27 @@ static void ricotta_ra_save_override(int scope, const char *keys)
          rarch_setting_t *s;
          memcpy(key, p, klen);
          key[klen] = '\0';
-         if ((s = ricotta_ra_find(key)))
-            ricotta_ra_config_set(conf, key, s);
+         if (!strncmp(key, RICOTTA_CORE_OPT_PREFIX, strlen(RICOTTA_CORE_OPT_PREFIX)))
+         {
+            const char *bare = key + strlen(RICOTTA_CORE_OPT_PREFIX);
+            const char *val  = ricotta_core_opt_value(bare);
+            if (opt_conf && val)
+               config_set_string(opt_conf, bare, val);
+            if (!nl)
+               break;
+            p = nl + 1;
+            continue;
+         }
+         s = ricotta_ra_find(key);
+         if (s)
+         {
+            const char *ck = ricotta_config_key(key);
+            /* An override written before the alias fix holds the menu name, which RetroArch
+             * ignores. Merging would keep it forever, so it goes when the right key is written. */
+            if (ck != key)
+               config_unset(conf, key);
+            ricotta_ra_config_set(conf, ck, s);
+         }
       }
 
       if (!nl)
@@ -861,16 +1019,13 @@ static void ricotta_ra_save_override(int scope, const char *keys)
       p = nl + 1;
    }
 
-   {
-      FILE *fp = fopen(override_path, "w");
-      if (fp)
-      {
-         fputs("# DO NOT EDIT - Cannoli writes this from your menu choices. Your own keys go in custom.cfg\n", fp);
-         config_file_dump(conf, fp, true);
-         fclose(fp);
-      }
-   }
+   ricotta_ra_write_tier(override_path, conf);
    config_file_free(conf);
+   if (opt_conf)
+   {
+      ricotta_ra_write_tier(opt_path, opt_conf);
+      config_file_free(opt_conf);
+   }
 }
 
 static void *menu_close_poll_func(void *arg)
@@ -1021,19 +1176,58 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetIgmTriggerKeycodes(
    g_igm_trigger_keycount = (int)n; /* set count last so the reader never sees partial state */
 }
 
+/* One RetroArch settings screen, as "key\x1fname\x1fisMenu" per row. An empty label is the root.
+ * A row is a submenu when its key names another screen in the generated table. */
+JNIEXPORT jobjectArray JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaScreenRows(
+      JNIEnv *env, jobject obj, jstring jlabel)
+{
+   const char *label  = jlabel ? (*env)->GetStringUTFChars(env, jlabel, NULL) : NULL;
+   file_list_t *list  = ricotta_build_screen(label ? label : "");
+   jobjectArray out   = NULL;
+   size_t i;
+
+   (void)obj;
+
+   if (list)
+   {
+      jclass str_cls = (*env)->FindClass(env, "java/lang/String");
+      out = (*env)->NewObjectArray(env, (jsize)list->size, str_cls, NULL);
+      for (i = 0; out && i < list->size; i++)
+      {
+         char buf[768];
+         const char *key  = list->list[i].label ? list->list[i].label : "";
+         const char *name = list->list[i].path  ? list->list[i].path  : "";
+         jstring js;
+         snprintf(buf, sizeof(buf), "%s\x1f%s\x1f%d",
+               key, name, ricotta_screen_dl(key) >= 0 ? 1 : 0);
+         js = (*env)->NewStringUTF(env, buf);
+         (*env)->SetObjectArrayElement(env, out, (jsize)i, js);
+         (*env)->DeleteLocalRef(env, js);
+      }
+      file_list_free(list);
+   }
+
+   if (label)
+      (*env)->ReleaseStringUTFChars(env, jlabel, label);
+   return out;
+}
+
 JNIEXPORT void JNICALL
 Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetCannoliContext(
-      JNIEnv *env, jobject obj, jstring root, jstring tag, jstring base)
+      JNIEnv *env, jobject obj, jstring root, jstring tag, jstring base, jstring core)
 {
    const char *c_root = root ? (*env)->GetStringUTFChars(env, root, NULL) : NULL;
    const char *c_tag  = tag  ? (*env)->GetStringUTFChars(env, tag,  NULL) : NULL;
    const char *c_base = base ? (*env)->GetStringUTFChars(env, base, NULL) : NULL;
+   const char *c_core = core ? (*env)->GetStringUTFChars(env, core, NULL) : NULL;
 
    (void)obj;
 
    strlcpy(g_cannoli_root,  c_root ? c_root : "", sizeof(g_cannoli_root));
    strlcpy(g_platform_tag,  c_tag  ? c_tag  : "", sizeof(g_platform_tag));
    strlcpy(g_rom_base_name, c_base ? c_base : "", sizeof(g_rom_base_name));
+   strlcpy(g_core_id,       c_core ? c_core : "", sizeof(g_core_id));
 
    if (c_root)
       (*env)->ReleaseStringUTFChars(env, root, c_root);
@@ -1041,6 +1235,8 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetCannoliContext(
       (*env)->ReleaseStringUTFChars(env, tag, c_tag);
    if (c_base)
       (*env)->ReleaseStringUTFChars(env, base, c_base);
+   if (c_core)
+      (*env)->ReleaseStringUTFChars(env, core, c_core);
 }
 
 JNIEXPORT void JNICALL
@@ -1050,6 +1246,8 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeInit(
    jclass cls;
 
    (*env)->GetJavaVM(env, &g_jvm);
+
+   ricotta_ra_settings_lock_init();
 
    /* Clean up any previous global ref */
    if (g_bridge_obj)
@@ -1321,7 +1519,7 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaGetSetting(
       for (i = s->min; i <= s->max; i += step)
       {
          ricotta_ra_set_int(s, (long)i);
-         s->get_string_representation(s, lbl, sizeof(lbl));
+         s->actions->repr(s, lbl, sizeof(lbl));
          if (!first)
             strlcat(opts_buf, "|", sizeof(opts_buf));
          strlcat(opts_buf, lbl, sizeof(opts_buf));
@@ -1410,15 +1608,35 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSystemInfo(
    return out;
 }
 
-JNIEXPORT void JNICALL
+JNIEXPORT jboolean JNICALL
 Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaSetSetting(
       JNIEnv *env, jobject obj, jstring jkey, jstring jvalue)
 {
    ricotta_cmd_entry entry = {0};
    const char *key   = (*env)->GetStringUTFChars(env, jkey, NULL);
    const char *value = (*env)->GetStringUTFChars(env, jvalue, NULL);
+   size_t plen       = strlen(RICOTTA_CORE_OPT_PREFIX);
+   int known         = 0;
 
    (void)obj;
+
+   /* The apply runs on the runloop, so whether it succeeds is not knowable here. Whether the key
+    * exists at all is, and that is the half worth reporting: a key that resolves to nothing was
+    * still recorded as a change and then silently dropped at save time, which is how a write that
+    * never landed stayed invisible until an override came out empty. */
+   if (key)
+      known = !strncmp(key, RICOTTA_CORE_OPT_PREFIX, plen)
+            ? ricotta_core_opt_index(key + plen) >= 0
+            : ricotta_ra_find(key) != NULL;
+
+   if (!known)
+   {
+      if (key)
+         (*env)->ReleaseStringUTFChars(env, jkey, key);
+      if (value)
+         (*env)->ReleaseStringUTFChars(env, jvalue, value);
+      return JNI_FALSE;
+   }
 
    entry.cmd      = RICOTTA_QCMD_RA_SET;
    entry.ra_key   = key ? strdup(key) : NULL;
@@ -1430,6 +1648,7 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaSetSetting(
       (*env)->ReleaseStringUTFChars(env, jvalue, value);
 
    ricotta_enqueue_entry(entry);
+   return JNI_TRUE;
 }
 
 JNIEXPORT void JNICALL

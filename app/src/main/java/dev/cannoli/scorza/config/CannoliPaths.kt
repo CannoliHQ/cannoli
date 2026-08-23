@@ -24,34 +24,42 @@ class CannoliPaths(val root: File) {
     val mediaScreenshotsDir: File get() = File(mediaDir, "Screenshots")
     val mediaRecordingsDir: File get() = File(mediaDir, "Recordings")
 
-    // Config tree
+    // Config tree. The top level is the hand-editable surface; Internal holds what Cannoli owns,
+    // which is everything derived, regenerated, or written by a menu rather than by a person.
     val configDir: File get() = File(root, "Config")
-    val configState: File get() = File(configDir, "State")
-    val configRetroArch: File get() = File(configDir, "RetroArch")
+    val configInternal: File get() = File(configDir, "Internal")
+
+    val configState: File get() = File(configInternal, "State")
+    val configRetroArch: File get() = File(configInternal, "RetroArch")
+    val configCache: File get() = File(configInternal, "Cache")
+    val configRetroAchievements: File get() = File(configInternal, "RetroAchievements")
+    val configAssets: File get() = File(configInternal, "Assets")
+
     val configOverrides: File get() = File(configDir, "Overrides")
     val configOverridesSystems: File get() = File(configOverrides, "Systems")
     val configOverridesGames: File get() = File(configOverrides, "Games")
-    val configCache: File get() = File(configDir, "Cache")
-    val configProfiles: File get() = File(configDir, "Profiles")
+    val configScanner: File get() = File(configDir, "Scanner")
     val configFonts: File get() = File(configDir, "Fonts")
-    val configOrdering: File get() = File(configDir, "Ordering")
     val configLaunchScripts: File get() = File(configDir, "Launch Scripts")
-    val configRetroAchievements: File get() = File(configDir, "RetroAchievements")
-    val configAssets: File get() = File(configDir, "Assets")
     val configInput: File get() = File(configDir, "Input")
+
+    // Superseded by the database and archived on import; kept only so the importer can find them.
+    val configProfiles: File get() = File(configDir, "Profiles")
+    val configOrdering: File get() = File(configDir, "Ordering")
     val configInputMappings: File get() = File(configInput, "Mappings")
     val configInputAutoconfig: File get() = File(configInput, "Autoconfig")
     val configInputAutoconfigAndroid: File get() = File(configInputAutoconfig, "android")
 
     // Specific config files
-    val database: File get() = File(configDir, "cannoli.db")
-    val rommDatabase: File get() = File(configDir, "romm.db")
+    val database: File get() = File(configInternal, "cannoli.db")
+    val rommDatabase: File get() = File(configInternal, "romm.db")
     val settingsJson: File get() = File(configDir, "settings.json")
     val platformsIni: File get() = File(configDir, "platforms.ini")
     val coresJson: File get() = File(configDir, "cores.json")
-    val arcadeMapFile: File get() = File(configDir, "arcade_map.txt")
-    val ignoreExtensionsRoms: File get() = File(configDir, "ignore_extensions_roms.txt")
-    val ignoreFilesRoms: File get() = File(configDir, "ignore_files_roms.txt")
+    // The directory says roms, so the names do not have to.
+    val arcadeMapFile: File get() = File(configScanner, "arcade_map.txt")
+    val ignoreExtensionsRoms: File get() = File(configScanner, "ignore_extensions.txt")
+    val ignoreFilesRoms: File get() = File(configScanner, "ignore_files.txt")
     val recentlyPlayedFile: File get() = File(configState, "recently_played.txt")
     val guidePositionsFile: File get() = File(configState, "guide_positions.ini")
     val cheatStateFile: File get() = File(configState, "cheat_state.ini")
@@ -60,7 +68,13 @@ class CannoliPaths(val root: File) {
     val raGameIdsLegacyFile: File get() = File(configRetroArch, "ra_game_ids.txt")
     val raLaunchCfg: File get() = File(configRetroArch, "retroarch_launch.cfg")
     val retroArchCfg: File get() = File(configRetroArch, "retroarch.cfg")
-    val customCfg: File get() = File(configRetroArch, "custom.cfg")
+    // Every override file we write points the user here, so it sits at the top rather than beside
+    // the directories RetroArch writes for itself.
+    val customCfg: File get() = File(configDir, "custom.cfg")
+
+    // Shortcut chords. Named for what it holds: it was Overrides/global.ini, one letter from the
+    // unrelated global.cfg override layer next to it.
+    val shortcutsIni: File get() = File(configDir, "shortcuts.ini")
     val globalOverrideCfg: File get() = File(configOverrides, "global.cfg")
     val cannoliFont: File get() = File(configAssets, "cannoli/font.ttf")
     val toolsDir: File get() = File(configLaunchScripts, "Tools")
@@ -97,9 +111,28 @@ class CannoliPaths(val root: File) {
 
     // Profiles & overrides
     fun profileFile(name: String): File = File(configProfiles, "$name.ini")
-    fun systemOverrideCfg(tag: String): File = File(configOverridesSystems, "$tag.cfg")
-    fun gameOverrideCfg(tag: String, base: String): File =
-        File(File(configOverridesGames, tag), "$base.cfg")
+    fun systemOverrideCfg(tag: String, core: String): File =
+        File(File(configOverridesSystems, tag), "$core.cfg")
+
+    // A game's overrides are a directory holding one cfg per core, the same shape its cheats and
+    // guides already have, so a rename moves one directory instead of hunting a file under every
+    // core the game has been played on.
+    fun gameOverrideDir(tag: String, base: String): File =
+        File(File(configOverridesGames, tag), base)
+
+    fun gameOverrideCfg(tag: String, base: String, core: String): File =
+        File(gameOverrideDir(tag, base), "$core.cfg")
+
+    // Core options are a separate RetroArch subsystem with its own file, so they get a sibling of
+    // the .cfg rather than keys inside it, tiered the same way.
+    fun systemOverrideOpt(tag: String, core: String): File =
+        File(File(configOverridesSystems, tag), "$core.opt")
+
+    fun gameOverrideOpt(tag: String, base: String, core: String): File =
+        File(gameOverrideDir(tag, base), "$core.opt")
+
+    // Regenerated every launch from the tiers above; RetroArch reads and flushes to this one.
+    val coreOptionsLaunchOpt: File get() = File(configRetroArch, "core_options_launch.opt")
 
     // Logs
     fun coreLogDir(coreName: String): File = File(logsDir, coreName)

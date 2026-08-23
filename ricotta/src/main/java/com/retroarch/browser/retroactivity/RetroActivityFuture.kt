@@ -13,8 +13,6 @@ import android.view.PointerIcon
 import android.view.View
 import android.view.WindowManager
 import android.widget.Toast
-import com.retroarch.browser.preferences.util.ConfigFile
-import com.retroarch.browser.preferences.util.UserPreferences
 import dev.cannoli.ricotta.EmbeddedRetroArchBridge
 import dev.cannoli.ricotta.RicottaOsdEvent
 import dev.cannoli.ui.R
@@ -100,6 +98,7 @@ class RetroActivityFuture : RetroActivityCamera() {
 
             val bridge = EmbeddedRetroArchBridge(
                 stateBasePath, params?.hardcoreInEffect ?: false, cannoliRoot, platformTag, romBaseName,
+                params?.coreId ?: "",
             )
             igmOverlay = IGMOverlay(
                 this, bridge, stateBasePath, gameTitle, hostConfig, cannoliRoot, platformTag, platformName,
@@ -125,7 +124,7 @@ class RetroActivityFuture : RetroActivityCamera() {
             igmOverlay?.onOsdMessage = { message -> osd.showMessage(message) }
             igmOverlay?.onWindowAttached = { osd.raise() }
             bridge.onOsdEvent = { type, slot ->
-                if (osdEventAllowed(type, bridge)) osd.showMessage(osdEventText(type, slot))
+                osd.showMessage(osdEventText(type, slot))
                 // A save is queued, not written, when the IGM asks for it. The slot on disk only
                 // changes once RetroArch reports back, so the polaroid is stale until then.
                 if (type == RicottaOsdEvent.SAVE_STATE ||
@@ -135,8 +134,6 @@ class RetroActivityFuture : RetroActivityCamera() {
                 }
             }
             bridge.onOsdAchievement = { title -> osd.showAchievement(title) }
-            bridge.localToggleGet = { key, def -> osdPrefs().getBoolean(key, def) }
-            bridge.localToggleSet = { key, value -> osdPrefs().edit().putBoolean(key, value).apply() }
         } catch (e: Exception) {
             Log.e("RicottaArch", "Failed to initialize IGM overlay", e)
         }
@@ -183,16 +180,9 @@ class RetroActivityFuture : RetroActivityCamera() {
             }
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            try {
-                val configFile = ConfigFile(UserPreferences.getDefaultConfigPath(this))
-                if (configFile.getBoolean("video_notch_write_over_enable")) {
-                    window.attributes.layoutInDisplayCutoutMode =
-                        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-                }
-            } catch (e: Exception) {
-                Log.w("RetroActivityFuture", "Key doesn't exist yet: ${e.message}")
-            }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && notchWriteOver) {
+            window.attributes.layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
         }
     }
 
@@ -220,14 +210,7 @@ class RetroActivityFuture : RetroActivityCamera() {
         super.onWindowFocusChanged(hasFocus)
         sendUiMessage(HANDLER_WHAT_TOGGLE_IMMERSIVE, hasFocus)
 
-        try {
-            val configFile = ConfigFile(UserPreferences.getDefaultConfigPath(this))
-            if (configFile.getBoolean("input_auto_mouse_grab")) {
-                inputGrabMouse(hasFocus)
-            }
-        } catch (e: Exception) {
-            Log.w("RetroActivityFuture", "[onWindowFocusChanged] exception thrown: ${e.message}")
-        }
+        if (autoMouseGrab) inputGrabMouse(hasFocus)
     }
 
     private fun sendUiMessage(what: Int, state: Boolean) {
@@ -323,21 +306,6 @@ class RetroActivityFuture : RetroActivityCamera() {
             else -> osdContext.getString(R.string.osd_event_saved, where)
         }
     }
-
-    // Most RA-key-backed toggles gate natively in ricotta_osd_event. Reset has no RA key
-    // (Cannoli pref), and the save events are never gated natively because they also drive the
-    // menu's thumbnail refresh, so both are decided here.
-    private fun osdEventAllowed(type: Int, bridge: EmbeddedRetroArchBridge): Boolean = when (type) {
-        RicottaOsdEvent.RESET -> osdPrefs().getBoolean("cannoli_osd_reset", true)
-        RicottaOsdEvent.SAVE_STATE,
-        RicottaOsdEvent.LOAD_STATE,
-        RicottaOsdEvent.UNDO_SAVE_STATE ->
-            bridge.raGetSetting("notification_show_save_state")?.value != "false"
-        else -> true
-    }
-
-    private fun osdPrefs() =
-        android.preference.PreferenceManager.getDefaultSharedPreferences(this)
 
     companion object {
         @JvmField

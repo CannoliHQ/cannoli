@@ -72,18 +72,31 @@ class ConfigTierWriterTest {
         assertFalse(paths.globalOverrideCfg.exists())
     }
 
-    @Test fun `set on a system scope writes to that platform's override file`() {
+    @Test fun `set on a system scope writes to that platform and core's override file`() {
         val (writer, paths) = writer()
-        writer.set(ConfigScope.System("NES"), "rewind_enable", "true")
+        writer.set(ConfigScope.System("NES", "nestopia"), "rewind_enable", "true")
 
-        assertTrue(paths.systemOverrideCfg("NES").isFile)
+        assertTrue(paths.systemOverrideCfg("NES", "nestopia").isFile)
+        assertFalse(paths.systemOverrideCfg("NES", "fceumm").exists())
         assertFalse(paths.globalOverrideCfg.exists())
     }
 
-    @Test fun `set on a game scope writes to that game's override file`() {
+    @Test fun `set on a game scope writes to that game and core's override file`() {
         val (writer, paths) = writer()
-        writer.set(ConfigScope.Game("NES", "Super Mario Bros"), "rewind_enable", "true")
+        writer.set(ConfigScope.Game("NES", "Super Mario Bros", "nestopia"), "rewind_enable", "true")
 
-        assertTrue(paths.gameOverrideCfg("NES", "Super Mario Bros").isFile)
+        assertTrue(paths.gameOverrideCfg("NES", "Super Mario Bros", "nestopia").isFile)
+        assertFalse(paths.gameOverrideCfg("NES", "Super Mario Bros", "fceumm").exists())
+    }
+
+    @Test fun `two cores of one game keep separate values`() {
+        val (writer, paths) = writer()
+        writer.set(ConfigScope.Game("NES", "Super Mario Bros", "nestopia"), "run_ahead_frames", "2")
+        writer.set(ConfigScope.Game("NES", "Super Mario Bros", "fceumm"), "run_ahead_frames", "1")
+
+        assertTrue(paths.gameOverrideCfg("NES", "Super Mario Bros", "nestopia")
+            .readText().contains("run_ahead_frames = \"2\""))
+        assertTrue(paths.gameOverrideCfg("NES", "Super Mario Bros", "fceumm")
+            .readText().contains("run_ahead_frames = \"1\""))
     }
 }

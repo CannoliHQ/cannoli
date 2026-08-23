@@ -6,8 +6,8 @@ import java.io.File
 
 sealed interface ConfigScope {
     data object Global : ConfigScope
-    data class System(val tag: String) : ConfigScope
-    data class Game(val tag: String, val base: String) : ConfigScope
+    data class System(val tag: String, val core: String) : ConfigScope
+    data class Game(val tag: String, val base: String, val core: String) : ConfigScope
 }
 
 private const val TIER_BANNER =
@@ -37,8 +37,8 @@ class ConfigTierWriter(private val paths: CannoliPaths) {
 
     private fun fileFor(scope: ConfigScope): File = when (scope) {
         is ConfigScope.Global -> paths.globalOverrideCfg
-        is ConfigScope.System -> paths.systemOverrideCfg(scope.tag)
-        is ConfigScope.Game -> paths.gameOverrideCfg(scope.tag, scope.base)
+        is ConfigScope.System -> paths.systemOverrideCfg(scope.tag, scope.core)
+        is ConfigScope.Game -> paths.gameOverrideCfg(scope.tag, scope.base, scope.core)
     }
 
     private fun readKeys(file: File): LinkedHashMap<String, String> =

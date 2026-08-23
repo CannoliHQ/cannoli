@@ -1,5 +1,5 @@
 diff --git a/command.c b/command.c
-index cbd875a146..7f8f5c4b38 100644
+index e97ebe8e3b..1c097e613f 100644
 --- a/command.c
 +++ b/command.c
 @@ -78,8 +78,15 @@ static void command_post_state_loaded(void)

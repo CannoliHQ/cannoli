@@ -10,6 +10,13 @@ easy to get wrong by hand, and both have shipped:
   - A key with no menu registration is dropped silently by mapNotNull, so a wrong entry looks like
     a setting that merely does not appear.
 
+Most settings are declared once in retroarch/settings/settings_def_*.h and included twice: by
+configuration.c to bind the config key, and by menu_setting.c to register the menu entry. Those rows
+carry the config key as a literal, so they are read directly rather than mapped through
+msg_hash_lbl_str.h. A def file configuration.c includes but menu_setting.c does not is a config key
+with no menu registration, which Cannoli cannot reach at all. The rest stay imperative CONFIG_
+macros in menu_setting.c and are parsed there.
+
 Output is a TSV so a RetroArch bump produces a readable diff of what appeared, vanished, or moved.
 """
 import pathlib
@@ -44,6 +51,12 @@ def guards_by_line(text):
         # A runtime guard only holds inside its own braces. Tracking depth stops one function's
         # `if` leaking onto settings registered further down the file, which it did.
         m = re.match(r'if\s*\((.+)\)\s*$', s)
+        # `if (DEFAULT_SHOW_HIDDEN_FILES)` and friends decide an entry's default-value flag, not
+        # whether it is registered, and sit one line above the next entry in the same table. Read as
+        # a guard they attach to whichever setting follows, which is how game_specific_options came
+        # to claim one.
+        if m and m.group(1).startswith("DEFAULT_"):
+            m = None
         if m and len(m.group(1)) < 90:
             # entered=False until the brace actually opens: RetroArch puts it on the next line, so
             # checking depth immediately would clear the guard before its block began.
@@ -98,6 +111,73 @@ def registered():
         found[name] = ("STRING_OPTIONS", cpp, rt)
     return found
 
+# The cpp guards open at each line of a def file. These rows carry no code, so unlike
+# guards_by_line there is no runtime condition to track.
+def cpp_by_line(text):
+    stack, out = [], []
+    for line in text.split("\n"):
+        t = line.strip()
+        if re.match(r'#\s*if(n?def)?\b', t):
+            stack.append(re.sub(r'^#\s*', '', t)[:70])
+        elif re.match(r'#\s*endif\b', t) and stack:
+            stack.pop()
+        elif re.match(r'#\s*el(se|if)\b', t) and stack:
+            stack[-1] = "else of " + stack[-1]
+        out.append(stack[-1] if stack else "")
+    return out
+
+S_ROW = re.compile(r'^S_(BOOL|UINT|INT|FLOAT|STRING|PATH|DIR|ACTION|SIZE|HEX)[A-Z0-9_]*\s*\(')
+
+# Rows look like S_UINT_EX(video_aspect_ratio_idx, VIDEO_ASPECT_RATIO_INDEX, "aspect_ratio_index",
+# ...). The config key is the row's first string literal and the menu enum the last bare uppercase
+# identifier before it, which holds across every S_ variant: the argument lists differ in length and
+# in what precedes the enum (a field name, or an offsetof with a comma of its own), never in that
+# order.
+def def_file_rows(text):
+    lines = text.split("\n")
+    cpp = cpp_by_line(text)
+    for i, line in enumerate(lines):
+        m = S_ROW.match(line)
+        if not m:
+            continue
+        chunk, depth = [], 0
+        for j in range(i, len(lines)):
+            chunk.append(lines[j])
+            depth += lines[j].count("(") - lines[j].count(")")
+            if depth <= 0:
+                break
+        body = "\n".join(chunk)
+        km = re.search(r'"([^"]*)"', body)
+        if not km:
+            continue
+        pre = body[:km.start()]
+        ids = re.findall(r'\b([A-Z][A-Z0-9_]*)\b', pre)
+        if not ids:
+            continue
+        yield km.group(1), ids[-1], m.group(1), cpp[i]
+
+# Def files reach the menu only where menu_setting.c includes them, and that include can sit under
+# its own guard, so a row's real condition is the include site's plus its own.
+def from_def_files(text, guards):
+    found = {}
+    for m in re.finditer(r'#\s*include\s+"\.\./settings/(settings_def_\w+\.h)"', text):
+        name = m.group(1)
+        path = RA / "settings" / name
+        if not path.exists():
+            continue
+        i = text.count("\n", 0, m.start())
+        outer_cpp = guards[i][0]
+        # No runtime guard: the descriptor tables are static const at file scope, so there is no
+        # enclosing conditional for a row to sit under. Taking one from guards[i] only picked up
+        # whatever unrelated `if` happened to be within the proximity window.
+        for key, enum, kind, inner_cpp in def_file_rows(path.read_text(errors="replace")):
+            if enum in found:
+                continue
+            parts = [g for g in (outer_cpp, inner_cpp) if g]
+            cpp = " && ".join(dict.fromkeys(parts))
+            found[enum] = (key, kind, cpp, "")
+    return found
+
 # Which settings screen a label is listed on, from the displaylist that mentions it.
 def screens():
     text = (RA / "menu" / "menu_displaylist.c").read_text(errors="replace")
@@ -111,8 +191,14 @@ def screens():
 
 def main():
     keys, reg, scr = enum_to_key(), registered(), screens()
+    ms = (RA / "menu" / "menu_setting.c").read_text(errors="replace")
+    defs = from_def_files(ms, guards_by_line(ms))
     rows = []
+    for enum, (key, kind, cpp, rt) in defs.items():
+        rows.append((key, enum, kind, scr.get(enum, ""), cpp, rt))
     for enum, (kind, cpp, rt) in reg.items():
+        if enum in defs:
+            continue
         key = keys.get(enum)
         if not key:
             continue

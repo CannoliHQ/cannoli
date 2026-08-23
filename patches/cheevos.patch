@@ -1,8 +1,8 @@
 diff --git a/cheevos/cheevos.c b/cheevos/cheevos.c
-index ffb5e128a1..eb46f8a1fb 100644
+index a32bc65d00..dbae9a9f8b 100644
 --- a/cheevos/cheevos.c
 +++ b/cheevos/cheevos.c
-@@ -388,6 +388,12 @@ static void rcheevos_award_achievement(const rc_client_achievement_t* cheevo)
+@@ -390,6 +390,12 @@ static void rcheevos_award_achievement(const rc_client_achievement_t* cheevo)
     /* Show the on screen message. */
     if (settings->bools.cheevos_visibility_unlock)
     {
@@ -15,7 +15,7 @@ index ffb5e128a1..eb46f8a1fb 100644
  #if defined(HAVE_GFX_WIDGETS)
        if (gfx_widgets_ready())
        {
-@@ -450,6 +456,7 @@ static void rcheevos_award_achievement(const rc_client_achievement_t* cheevo)
+@@ -452,6 +458,7 @@ static void rcheevos_award_achievement(const rc_client_achievement_t* cheevo)
           runloop_msg_queue_push(cheevo->description, strlen(cheevo->description), 0, 3 * 60, false, NULL,
              MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_INFO);
        }
@@ -23,7 +23,7 @@ index ffb5e128a1..eb46f8a1fb 100644
     }
  
  #ifdef HAVE_AUDIOMIXER
-@@ -801,7 +808,14 @@ void rcheevos_pause_hardcore(void)
+@@ -802,7 +809,14 @@ void rcheevos_pause_hardcore(void)
     rcheevos_locals.hardcore_allowed = false;
  
     if (rcheevos_hardcore_active())
@@ -38,7 +38,7 @@ index ffb5e128a1..eb46f8a1fb 100644
  }
  
  bool rcheevos_unload(void)
-@@ -1035,8 +1049,15 @@ void rcheevos_validate_config_settings(void)
+@@ -1036,8 +1050,15 @@ void rcheevos_validate_config_settings(void)
              msg_hash_to_str_us(MSG_CHEEVOS_HARDCORE_PAUSED_MANUAL_FRAME_DELAY));
        rcheevos_pause_hardcore();
  
@@ -54,7 +54,7 @@ index ffb5e128a1..eb46f8a1fb 100644
        return;
     }
  
-@@ -1056,8 +1077,15 @@ void rcheevos_validate_config_settings(void)
+@@ -1057,8 +1078,15 @@ void rcheevos_validate_config_settings(void)
              msg_hash_to_str_us(MSG_CHEEVOS_HARDCORE_PAUSED_VSYNC_SWAP_INTERVAL));
        rcheevos_pause_hardcore();
  
@@ -70,7 +70,7 @@ index ffb5e128a1..eb46f8a1fb 100644
        return;
     }
  
-@@ -1071,8 +1099,15 @@ void rcheevos_validate_config_settings(void)
+@@ -1072,8 +1100,15 @@ void rcheevos_validate_config_settings(void)
              msg_hash_to_str_us(MSG_CHEEVOS_HARDCORE_PAUSED_BLACK_FRAME_INSERTION));
        rcheevos_pause_hardcore();
  
@@ -86,7 +86,7 @@ index ffb5e128a1..eb46f8a1fb 100644
        return;
     }
  
-@@ -1099,8 +1134,15 @@ void rcheevos_validate_config_settings(void)
+@@ -1100,8 +1135,15 @@ void rcheevos_validate_config_settings(void)
              rcheevos_locals.hardcore_requires_reload = true;
              rcheevos_pause_hardcore();
  
@@ -102,7 +102,7 @@ index ffb5e128a1..eb46f8a1fb 100644
              return;
           }
        }
-@@ -1121,8 +1163,15 @@ void rcheevos_validate_config_settings(void)
+@@ -1122,8 +1164,15 @@ void rcheevos_validate_config_settings(void)
        CHEEVOS_LOG(RCHEEVOS_TAG "%s\n", buffer);
        rcheevos_pause_hardcore();
  
@@ -118,7 +118,7 @@ index ffb5e128a1..eb46f8a1fb 100644
        return;
     }
  }
-@@ -1491,6 +1540,12 @@ static void rcheevos_client_login_callback(int result,
+@@ -1503,6 +1552,12 @@ static void rcheevos_client_login_callback(int result,
     if (result != RC_OK)
     {
        settings_t* settings = config_get_ptr();
@@ -131,7 +131,7 @@ index ffb5e128a1..eb46f8a1fb 100644
        char msg[256];
        size_t _len = strlcpy(msg, "RetroAchievements login failed: ",
              sizeof(msg));
-@@ -1510,8 +1565,13 @@ static void rcheevos_client_login_callback(int result,
+@@ -1522,8 +1577,13 @@ static void rcheevos_client_login_callback(int result,
                 sizeof(msg));
        }
  

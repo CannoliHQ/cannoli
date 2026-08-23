@@ -1,8 +1,8 @@
 diff --git a/input/drivers/android_input.c b/input/drivers/android_input.c
-index df37d1a051..2f2db2c6f2 100644
+index e555e11b8e..414b60f0df 100644
 --- a/input/drivers/android_input.c
 +++ b/input/drivers/android_input.c
-@@ -1024,6 +1024,13 @@ static INLINE void android_input_poll_event_type_key(
+@@ -1588,6 +1588,13 @@ static INLINE void android_input_poll_event_type_key(
        AInputEvent *event, int port, int keycode, int source,
        int type_event, int *handled)
  {
@@ -13,10 +13,10 @@ index df37d1a051..2f2db2c6f2 100644
 +      return;
 +   }
 +#endif
-    uint8_t *buf = android_key_state[port];
-    int action   = AKeyEvent_getAction(event);
-    int keysym   = keycode;
-@@ -1827,6 +1834,9 @@ static void android_input_reinit(void)
+    uint8_t *buf;
+    int action           = AKeyEvent_getAction(event);
+    int keysym           = keycode;
+@@ -2520,6 +2527,9 @@ static void android_input_reinit(void)
   */
  static void android_input_poll(void *data)
  {

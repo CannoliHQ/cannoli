@@ -45,17 +45,19 @@ class AtomicRenameContentTest {
         val rom = File(root, "Roms/$tag/$oldBase.bin").apply { parentFile?.mkdirs(); writeText("rom") }
         write(File(paths.cheatDir(tag, oldBase), "cheats.cht"), "C")
         write(File(paths.guideDir(tag, oldBase), "guide.txt"), "G")
-        write(paths.gameOverrideCfg(tag, oldBase), "K = V")
+        write(paths.gameOverrideCfg(tag, oldBase, "nestopia"), "K = V")
+        write(paths.gameOverrideCfg(tag, oldBase, "fceumm"), "K = V2")
 
         val result = renamer(root).rename(rom, newBase, tag)
 
         assertTrue(result.success)
         assertFalse("old cheats dir must be gone", paths.cheatDir(tag, oldBase).exists())
         assertFalse("old guides dir must be gone", paths.guideDir(tag, oldBase).exists())
-        assertFalse("old override cfg must be gone", paths.gameOverrideCfg(tag, oldBase).exists())
+        assertFalse("old override dir must be gone", paths.gameOverrideDir(tag, oldBase).exists())
         assertEquals("C", File(paths.cheatDir(tag, newBase), "cheats.cht").readText())
         assertEquals("G", File(paths.guideDir(tag, newBase), "guide.txt").readText())
-        assertEquals("K = V", paths.gameOverrideCfg(tag, newBase).readText())
+        assertEquals("K = V", paths.gameOverrideCfg(tag, newBase, "nestopia").readText())
+        assertEquals("K = V2", paths.gameOverrideCfg(tag, newBase, "fceumm").readText())
     }
 
     @Test fun `cheats dir collision at the target rolls back the whole rename without backing anything up`() {
@@ -116,8 +118,8 @@ class AtomicRenameContentTest {
         val newBase = "New Game"
         val paths = CannoliPaths(root)
         val rom = File(root, "Roms/$tag/$oldBase.bin").apply { parentFile?.mkdirs(); writeText("rom") }
-        write(paths.gameOverrideCfg(tag, oldBase), "old-cfg")
-        write(paths.gameOverrideCfg(tag, newBase), "target-cfg")
+        write(paths.gameOverrideCfg(tag, oldBase, "nestopia"), "old-cfg")
+        write(paths.gameOverrideCfg(tag, newBase, "nestopia"), "target-cfg")
 
         val result = renamer(root).rename(rom, newBase, tag)
 
@@ -125,8 +127,8 @@ class AtomicRenameContentTest {
         assertEquals(AtomicRename.RenameError.ALREADY_EXISTS, result.error)
         assertTrue(rom.exists())
         assertFalse(File(root, "Roms/$tag/$newBase.bin").exists())
-        assertEquals("old-cfg", paths.gameOverrideCfg(tag, oldBase).readText())
-        assertEquals("target-cfg", paths.gameOverrideCfg(tag, newBase).readText())
+        assertEquals("old-cfg", paths.gameOverrideCfg(tag, oldBase, "nestopia").readText())
+        assertEquals("target-cfg", paths.gameOverrideCfg(tag, newBase, "nestopia").readText())
         assertTrue(
             "collision must be detected before anything is backed up",
             File(root, "Backup/$tag").listFiles()?.isEmpty() ?: true
@@ -138,14 +140,14 @@ class AtomicRenameContentTest {
         val tag = "PS"
         val paths = CannoliPaths(root)
         val rom = File(root, "Roms/$tag/Old.bin").apply { parentFile?.mkdirs(); writeText("rom") }
-        write(paths.systemOverrideCfg(tag), "system-scoped")
+        write(paths.systemOverrideCfg(tag, "nestopia"), "system-scoped")
         write(paths.globalOverrideCfg, "global-scoped")
         write(paths.customCfg, "custom-scoped")
 
         val result = renamer(root).rename(rom, "New", tag)
 
         assertTrue(result.success)
-        assertEquals("system-scoped", paths.systemOverrideCfg(tag).readText())
+        assertEquals("system-scoped", paths.systemOverrideCfg(tag, "nestopia").readText())
         assertEquals("global-scoped", paths.globalOverrideCfg.readText())
         assertEquals("custom-scoped", paths.customCfg.readText())
     }

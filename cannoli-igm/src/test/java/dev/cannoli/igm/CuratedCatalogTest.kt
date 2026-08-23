@@ -16,7 +16,7 @@ class CuratedCatalogTest {
     @Test
     fun `a row reports every key its presets touch`() {
         assertEquals(
-            setOf("aspect_ratio_index", "video_scale_integer", "video_scale_integer_overscale"),
+            setOf("aspect_ratio_index", "video_scale_integer"),
             scaling.settingKeys,
         )
     }

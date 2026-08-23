@@ -1,8 +1,8 @@
 diff --git a/gfx/gfx_widgets.c b/gfx/gfx_widgets.c
-index 638b9ed71f..7ce1736be1 100644
+index e9675aad70..7dc395dd35 100644
 --- a/gfx/gfx_widgets.c
 +++ b/gfx/gfx_widgets.c
-@@ -1902,6 +1902,8 @@ void gfx_widgets_frame(void *data)
+@@ -2077,6 +2077,8 @@ void gfx_widgets_frame(void *data)
     }
  
     /* Indicators */
@@ -11,7 +11,7 @@ index 638b9ed71f..7ce1736be1 100644
     if (widgets_is_paused)
        top_right_x_advance -= gfx_widgets_draw_indicator(
              p_dispwidget,
-@@ -1915,6 +1917,7 @@ void gfx_widgets_frame(void *data)
+@@ -2090,6 +2092,7 @@ void gfx_widgets_frame(void *data)
              (onscreen_panels ? p_dispwidget->simple_widget_height : 0),
              top_right_x_advance,
              MSG_PAUSED);

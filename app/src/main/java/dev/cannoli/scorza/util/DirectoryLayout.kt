@@ -21,6 +21,8 @@ object DirectoryLayout {
             paths.mediaScreenshotsDir,
             paths.mediaRecordingsDir,
             paths.configDir,
+            paths.configInternal,
+            paths.configScanner,
             paths.configState,
             paths.configRetroArch,
             paths.configOverrides,

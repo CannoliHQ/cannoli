@@ -6,23 +6,27 @@ import org.junit.Test
 
 private class SublabelHost : RaSettingsHost {
     val settings = mutableMapOf<String, RaSetting>()
+    val screens = mutableMapOf<String, List<RaScreenRow>>()
+    override fun raScreenRows(label: String): List<RaScreenRow> = screens[label].orEmpty()
     override fun raGetSetting(key: String): RaSetting? = settings[key]
     override fun raSetSetting(key: String, value: String) = true
     override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) {}
     override fun setOnRaSettingApplied(callback: (String, String) -> Unit) {}
-    override fun getLocalToggle(key: String, default: Boolean) = default
-    override fun setLocalToggle(key: String, value: Boolean) {}
 }
 
 class RaIgmSettingsSublabelTest {
 
     private fun provider(h: SublabelHost) = RaIgmSettingsProvider(
-        host = h, strings = RaOptionStrings(), debugBuild = false, curated = false, onOpenNativeMenu = {},
+        host = h, strings = RaOptionStrings(), curated = false,
     )
 
-    private fun scalingRow(h: SublabelHost, key: String) =
-        provider(h).screen(listOf("video", "scaling")).items
+    // RetroArch supplies the screen; the row it names is looked up through the host like any other.
+    private fun scalingRow(h: SublabelHost, key: String): GenericIgmSettingsItem.Choice {
+        h.screens["video_scaling_settings"] =
+            h.settings.keys.map { RaScreenRow(it, it, isMenu = false) }
+        return provider(h).screen(listOf("video_scaling_settings")).items
             .filterIsInstance<GenericIgmSettingsItem.Choice>().first { it.key == key }
+    }
 
     @Test
     fun `a row carries the description the host reports`() {
@@ -46,25 +50,14 @@ class RaIgmSettingsSublabelTest {
         assertNull(scalingRow(h, "video_smooth").description)
     }
 
-    // A local toggle is built by hand rather than read from RetroArch, so it has no sublabel to
-    // carry and must not inherit one from whatever RaSetting was constructed last.
     @Test
-    fun `a local toggle has no description`() {
-        val h = SublabelHost()
-        val row = provider(h).screen(listOf("osd")).items
-            .filterIsInstance<GenericIgmSettingsItem.Choice>().firstOrNull { it.key == "cannoli_osd_reset" }
-        assertNull(row?.description)
-    }
-
-    @Test
-    fun `a description survives into a subcategory screen as well as a category one`() {
+    fun `a description survives on a nested screen as well as a top-level one`() {
         val h = SublabelHost()
         h.settings["fps_show"] = RaSetting(
             "fps_show", "Display Framerate", RaSettingType.BOOL, "false",
             description = "Shows the current frames per second.",
         )
-        val row = provider(h).screen(listOf("osd")).items
-            .filterIsInstance<GenericIgmSettingsItem.Choice>().first { it.key == "fps_show" }
+        val row = scalingRow(h, "fps_show")
         assertEquals("Shows the current frames per second.", row.description)
     }
 }

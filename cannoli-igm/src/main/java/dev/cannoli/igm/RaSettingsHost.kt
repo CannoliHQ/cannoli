@@ -10,7 +10,8 @@ interface RaSettingsHost {
     fun raGetSetting(key: String): RaSetting?
     fun raSetSetting(key: String, value: String): Boolean
     fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>)
+
+    /** One RetroArch settings screen. An empty label is the root. */
+    fun raScreenRows(label: String): List<RaScreenRow> = emptyList()
     fun setOnRaSettingApplied(callback: (key: String, value: String) -> Unit)
-    fun getLocalToggle(key: String, default: Boolean): Boolean
-    fun setLocalToggle(key: String, value: Boolean)
 }

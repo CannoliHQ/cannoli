@@ -3,11 +3,11 @@ package dev.cannoli.scorza.settings
 import dev.cannoli.igm.ShortcutAction
 import dev.cannoli.core.IniParser
 import dev.cannoli.core.IniWriter
-import java.io.File
+import dev.cannoli.scorza.config.CannoliPaths
 
 class GlobalOverridesManager(private val sdCardRoot: () -> String) {
 
-    private fun iniFile() = File(sdCardRoot(), "Config/Overrides/global.ini")
+    private fun iniFile() = CannoliPaths(sdCardRoot()).shortcutsIni
 
     fun readShortcuts(): Map<ShortcutAction, Set<Int>> {
         val ini = IniParser.parse(iniFile())

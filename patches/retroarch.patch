@@ -1,8 +1,8 @@
 diff --git a/retroarch.c b/retroarch.c
-index b4b8a1da0d..d0ba4680ac 100644
+index 370d58ecf8..7bc9b6f187 100644
 --- a/retroarch.c
 +++ b/retroarch.c
-@@ -3519,9 +3519,17 @@ bool command_event(enum event_command cmd, void *data)
+@@ -3735,9 +3735,17 @@ bool command_event(enum event_command cmd, void *data)
  #ifdef HAVE_CHEEVOS
              if (rcheevos_hardcore_active())
              {
@@ -20,7 +20,7 @@ index b4b8a1da0d..d0ba4680ac 100644
                 return false;
              }
  #endif
-@@ -3590,8 +3598,15 @@ bool command_event(enum event_command cmd, void *data)
+@@ -3806,8 +3814,15 @@ bool command_event(enum event_command cmd, void *data)
           {
              const char *_msg = msg_hash_to_str(MSG_RESET);
              RARCH_LOG("[Core] %s.\n", _msg);

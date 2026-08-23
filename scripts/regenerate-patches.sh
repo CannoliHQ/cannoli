@@ -11,6 +11,8 @@
 #   - Android.mk is edited in place by apply-patches.sh, not patched.
 #   - RetroActivityFuture.java is deleted by apply-patches.sh, not patched.
 #   - ricotta_bridge.c and ricotta_osd.h are copied from ricotta/jni by apply-patches.sh.
+# Diffs against HEAD rather than the index: git apply -3 stages what it merges, so an
+# index-versus-worktree diff comes back empty after a conflicted bump.
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -22,6 +24,9 @@ cd "$RA_DIR"
 
 # name:paths. configuration.c and .h are one patch because the struct and its accessor move
 # together; nothing else shares a file with anything else.
+#
+# retroactivity_common was retired at the 9770234364 bump: it guarded registerReceiver behind an
+# SDK check because upstream did not, which crashed on Android 14. Upstream now does it itself.
 ROSTER="
 android_input:input/drivers/android_input.c
 cheat_manager:cheat_manager.c
@@ -31,7 +36,6 @@ configuration:configuration.c configuration.h
 disk_control_interface:disk_control_interface.c
 gfx_widgets:gfx/gfx_widgets.c
 netplay_frontend:network/netplay/netplay_frontend.c
-retroactivity_common:pkg/android/phoenix-common/src/com/retroarch/browser/retroactivity/RetroActivityCommon.java
 retroarch:retroarch.c
 task_autodetect:tasks/task_autodetect.c
 task_save:tasks/task_save.c
@@ -50,12 +54,12 @@ while IFS= read -r entry; do
     paths="${entry#*:}"
     out="$PATCH_DIR/$name.patch"
     # shellcheck disable=SC2086
-    if git diff --quiet -- $paths; then
+    if git diff --quiet HEAD -- $paths; then
         echo "  skip $name (no changes)"
         continue
     fi
     # shellcheck disable=SC2086
-    git diff -- $paths > "$out"
+    git diff HEAD -- $paths > "$out"
     echo "  wrote $name.patch"
     written=$((written + 1))
 done <<< "$ROSTER"
@@ -63,7 +67,7 @@ done <<< "$ROSTER"
 if [ -f "$NEW_FILE" ]; then
     chmod u+w "$NEW_FILE"
     git add -N "$NEW_FILE"
-    git diff -- "$NEW_FILE" > "$PATCH_DIR/ra_settings_strings.patch"
+    git diff HEAD -- "$NEW_FILE" > "$PATCH_DIR/ra_settings_strings.patch"
     git reset -q -- "$NEW_FILE"
     echo "  wrote ra_settings_strings.patch"
     written=$((written + 1))

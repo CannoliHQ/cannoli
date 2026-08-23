@@ -1,8 +1,8 @@
 diff --git a/configuration.c b/configuration.c
-index e264246b25..4839232f6c 100644
+index 7991ba80ae..c100e82723 100644
 --- a/configuration.c
 +++ b/configuration.c
-@@ -6923,6 +6923,69 @@ int8_t config_save_overrides(enum override_type type,
+@@ -9540,6 +9540,69 @@ int8_t config_save_overrides(enum override_type type,
     return ret;
  }
  
@@ -73,10 +73,10 @@ index e264246b25..4839232f6c 100644
   * another one. Will load a dummy core to flush state
   * properly. */
 diff --git a/configuration.h b/configuration.h
-index f33e9c712e..de2e14e73a 100644
+index c71d60991b..50c81e35eb 100644
 --- a/configuration.h
 +++ b/configuration.h
-@@ -1396,6 +1396,14 @@ bool config_save_file(const char *path);
+@@ -1440,6 +1440,14 @@ bool config_save_file(const char *path);
  int8_t config_save_overrides(enum override_type type,
        void *data, bool remove, const char *path);
  

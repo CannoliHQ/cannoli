@@ -1,5 +1,5 @@
 diff --git a/disk_control_interface.c b/disk_control_interface.c
-index f0a281a793..fdac1e3559 100644
+index 7cf1293e9a..1a3d15cd4f 100644
 --- a/disk_control_interface.c
 +++ b/disk_control_interface.c
 @@ -447,6 +447,16 @@ bool disk_control_set_index(

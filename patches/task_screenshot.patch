@@ -1,8 +1,8 @@
 diff --git a/tasks/task_screenshot.c b/tasks/task_screenshot.c
-index e32fad61db..c3104699e6 100644
+index f583d84c50..3adbab2604 100644
 --- a/tasks/task_screenshot.c
 +++ b/tasks/task_screenshot.c
-@@ -282,10 +282,18 @@ static void task_screenshot_callback(retro_task_t *task,
+@@ -399,10 +399,18 @@ static void task_screenshot_callback(retro_task_t *task,
     if (!(state = (screenshot_task_state_t*)task->state))
        return;
  

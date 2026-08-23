@@ -1,8 +1,8 @@
 diff --git a/tasks/task_save.c b/tasks/task_save.c
-index 551193d353..4d3dc65efb 100644
+index 161fce6462..9cc0a6e412 100644
 --- a/tasks/task_save.c
 +++ b/tasks/task_save.c
-@@ -615,6 +615,21 @@ static void task_save_handler(retro_task_t *task)
+@@ -794,6 +794,21 @@ static void task_save_handler(retro_task_t *task)
     }
     else if (state->written == state->size)
     {
@@ -23,8 +23,8 @@ index 551193d353..4d3dc65efb 100644
 +#else
        char       *msg      = NULL;
  
-       task_free_title(task);
-@@ -642,6 +657,7 @@ static void task_save_handler(retro_task_t *task)
+       RARCH_LOG("[State] save task COMPLETED for slot %d, path \"%s\" "
+@@ -825,6 +840,7 @@ static void task_save_handler(retro_task_t *task)
  
        if (msg)
           free(msg);
@@ -32,7 +32,7 @@ index 551193d353..4d3dc65efb 100644
     }
  }
  
-@@ -849,6 +865,12 @@ static void task_load_handler(retro_task_t *task)
+@@ -1060,6 +1076,12 @@ static void task_load_handler(retro_task_t *task)
     {
        task_free_title(task);
  
@@ -45,7 +45,7 @@ index 551193d353..4d3dc65efb 100644
        if (!((flg & RETRO_TASK_FLG_MUTE) > 0))
        {
           char msg[128];
-@@ -871,6 +893,7 @@ static void task_load_handler(retro_task_t *task)
+@@ -1082,6 +1104,7 @@ static void task_load_handler(retro_task_t *task)
  
           task_set_title(task, strdup(msg));
        }
@@ -53,7 +53,7 @@ index 551193d353..4d3dc65efb 100644
  
        task_load_handler_finished(task, state);
     }
-@@ -1208,13 +1231,33 @@ static void save_state_cb(retro_task_t *task,
+@@ -1481,13 +1504,33 @@ static void save_state_cb(retro_task_t *task,
     {
        char               *path   = strdup(state->path);
        if (state->flags & SAVE_TASK_FLAG_THUMBNAIL_ENABLE)

@@ -7,6 +7,6 @@ class CannoliPathsOfflineTest {
     @Test
     fun offlineDir_isUnderConfigRetroAchievements() {
         val paths = CannoliPaths("/sd")
-        assertTrue(paths.configRaOffline.path.endsWith("/Config/RetroAchievements/Offline"))
+        assertTrue(paths.configRaOffline.path.endsWith("/Config/Internal/RetroAchievements/Offline"))
     }
 }

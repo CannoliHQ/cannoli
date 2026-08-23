@@ -1,8 +1,8 @@
 diff --git a/network/netplay/netplay_frontend.c b/network/netplay/netplay_frontend.c
-index cab71f95a3..e27d43f868 100644
+index d616aabf33..bdd95e90d4 100644
 --- a/network/netplay/netplay_frontend.c
 +++ b/network/netplay/netplay_frontend.c
-@@ -6153,8 +6153,14 @@ static bool netplay_get_cmd(netplay_t *netplay,
+@@ -6356,8 +6356,14 @@ static bool netplay_get_cmd(netplay_t *netplay,
                       && !netplay_is_spectating())
                 {
                    const char* msg = msg_hash_to_str(MSG_CHEEVOS_HARDCORE_MODE_REQUIRES_NEWER_HOST);
@@ -17,7 +17,7 @@ index cab71f95a3..e27d43f868 100644
                    RARCH_WARN("[Netplay] Server did not send achievement information.\n", msg);
  
                    rcheevos_pause_hardcore();
-@@ -7717,8 +7723,10 @@ static bool netplay_process_savestate1(retro_ctx_serialize_info_t* serial_info)
+@@ -7920,8 +7926,10 @@ static bool netplay_process_savestate1(retro_ctx_serialize_info_t* serial_info)
           if (hardcore_state != rcheevos_hardcore_active() && !netplay_is_spectating())
           {
              const char *msg = msg_hash_to_str(MSG_CHEEVOS_HARDCORE_MODE_CHANGED_BY_HOST);
@@ -28,7 +28,7 @@ index cab71f95a3..e27d43f868 100644
  
              if (!hardcore_state)
              {
-@@ -7731,6 +7739,16 @@ static bool netplay_process_savestate1(retro_ctx_serialize_info_t* serial_info)
+@@ -7934,6 +7942,16 @@ static bool netplay_process_savestate1(retro_ctx_serialize_info_t* serial_info)
                  * stay off, even if the server is playing with hardcore restrictions now. we
                  * don't want to force hardcore unlocks for a player that doesn't want them. */
                 rcheevos_hardcore_enabled_changed();

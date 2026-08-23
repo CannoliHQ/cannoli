@@ -1,8 +1,8 @@
 diff --git a/tasks/task_autodetect.c b/tasks/task_autodetect.c
-index f52e0f1b6b..2423234776 100644
+index 89d88a6f76..b8bebd1d89 100644
 --- a/tasks/task_autodetect.c
 +++ b/tasks/task_autodetect.c
-@@ -806,10 +806,19 @@ static void input_autoconfigure_connect_handler(retro_task_t *task)
+@@ -1408,10 +1408,19 @@ static void input_autoconfigure_connect_handler(retro_task_t *task)
        {
           /* A valid autoconfig was applied */
           if (!(autoconfig_handle->flags & AUTOCONF_FLAG_SUPPRESS_NOTIFICATIONS))

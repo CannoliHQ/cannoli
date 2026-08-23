@@ -8,22 +8,8 @@ data class RaOptionStrings(
     val savePlatform: String = "Save for Platform",
     val saveGame: String = "Save for this game",
     val dontSave: String = "Discard",
-    val nativeMenu: String = "RetroArch Menu",
-    val categoryTitles: Map<String, String> = mapOf(
-        "video" to "Video",
-        "audio" to "Audio",
-        "latency" to "Latency",
-        "speed" to "Speed & Rewind",
-        "osd" to "On-Screen Display",
-    ),
-    // Labels for host-local toggles (keys prefixed "cannoli_") shown in a category.
-    val localToggleLabels: Map<String, String> = mapOf(
-        "cannoli_osd_reset" to "Reset OSD",
-    ),
-    // Shown when the live values match no preset of a curated row, which happens after editing the
-    // same settings individually in the Everything menu.
-    // Keyed "<category>/<subcategory>", so Video and Audio can both have an Output screen.
-    val subcategoryTitles: Map<String, String> = emptyMap(),
+    // The core options row. Every other All Settings title comes from RetroArch itself.
+    val emulator: String = "Emulator",
     val custom: String = "Custom",
     val infoCore: String = "Core",
     val infoCoreVersion: String = "Core Version",

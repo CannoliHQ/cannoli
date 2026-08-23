@@ -237,8 +237,8 @@ class AtomicRename(private val cannoliRoot: () -> File, private val walker: RomD
     private fun relocatePerGameContent(backupTagDir: File, tag: String, oldKey: String, newKey: String) {
         val targetCheats = paths.cheatDir(tag, newKey)
         val targetGuides = paths.guideDir(tag, newKey)
-        val targetCfg = paths.gameOverrideCfg(tag, newKey)
-        if (targetCheats.isDirectory || targetGuides.isDirectory || targetCfg.isFile) {
+        val targetCfg = paths.gameOverrideDir(tag, newKey)
+        if (targetCheats.isDirectory || targetGuides.isDirectory || targetCfg.isDirectory) {
             throw RenameFailure(RenameError.ALREADY_EXISTS)
         }
 
@@ -258,10 +258,10 @@ class AtomicRename(private val cannoliRoot: () -> File, private val walker: RomD
                 if (!guidesSrc.renameTo(targetGuides)) throw Exception("Failed to move guides dir")
                 moved.add(guidesSrc to targetGuides)
             }
-            val cfgSrc = paths.gameOverrideCfg(tag, oldKey)
-            if (cfgSrc.isFile) {
+            val cfgSrc = paths.gameOverrideDir(tag, oldKey)
+            if (cfgSrc.isDirectory) {
                 targetCfg.parentFile?.mkdirs()
-                if (!cfgSrc.renameTo(targetCfg)) throw Exception("Failed to move game override cfg")
+                if (!cfgSrc.renameTo(targetCfg)) throw Exception("Failed to move game override dir")
                 moved.add(cfgSrc to targetCfg)
             }
         } catch (e: Exception) {
@@ -275,13 +275,13 @@ class AtomicRename(private val cannoliRoot: () -> File, private val walker: RomD
     private fun backupPerGameContent(backupTagDir: File, tag: String, key: String) {
         val cheats = paths.cheatDir(tag, key)
         val guides = paths.guideDir(tag, key)
-        val cfg = paths.gameOverrideCfg(tag, key)
-        if (!cheats.isDirectory && !guides.isDirectory && !cfg.isFile) return
+        val cfg = paths.gameOverrideDir(tag, key)
+        if (!cheats.isDirectory && !guides.isDirectory && !cfg.isDirectory) return
 
         backupTagDir.mkdirs()
         if (cheats.isDirectory) cheats.copyRecursively(File(backupTagDir, "cheatsdir_$key"), overwrite = true)
         if (guides.isDirectory) guides.copyRecursively(File(backupTagDir, "guidesdir_$key"), overwrite = true)
-        if (cfg.isFile) cfg.copyTo(File(backupTagDir, "cfg_$key.cfg"), overwrite = true)
+        if (cfg.isDirectory) cfg.copyRecursively(File(backupTagDir, "cfgdir_$key"), overwrite = true)
     }
 
     private fun restorePerGameContent(backupTagDir: File, tag: String) {
@@ -297,10 +297,10 @@ class AtomicRename(private val cannoliRoot: () -> File, private val walker: RomD
                     dest.deleteRecursively()
                     b.copyRecursively(dest, overwrite = true)
                 }
-                b.name.startsWith("cfg_") -> {
-                    val dest = paths.gameOverrideCfg(tag, b.name.removePrefix("cfg_").removeSuffix(".cfg"))
-                    dest.parentFile?.mkdirs()
-                    b.copyTo(dest, overwrite = true)
+                b.name.startsWith("cfgdir_") -> {
+                    val dest = paths.gameOverrideDir(tag, b.name.removePrefix("cfgdir_"))
+                    dest.deleteRecursively()
+                    b.copyRecursively(dest, overwrite = true)
                 }
             }
         }

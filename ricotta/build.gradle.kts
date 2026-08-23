@@ -16,7 +16,7 @@ val phoenixCommonDir = file("$retroarchDir/pkg/android/phoenix-common")
 android {
     namespace = "com.retroarch"
     compileSdk = 36
-    ndkVersion = "26.1.10909125"
+    ndkVersion = "27.2.12479018"
 
     defaultConfig {
         minSdk = 28

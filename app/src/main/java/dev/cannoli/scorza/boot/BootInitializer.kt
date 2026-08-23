@@ -5,6 +5,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.scopes.ActivityScoped
 import dev.cannoli.scorza.R
 import dev.cannoli.scorza.config.CannoliPaths
+import dev.cannoli.scorza.config.ConfigLayoutMigration
 import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.db.CannoliDatabase
 import dev.cannoli.scorza.db.CollectionsRepository
@@ -73,6 +74,10 @@ class BootInitializer @Inject constructor(
     suspend fun run(onPhase: (BootPhase, Float, String) -> Unit): BootResult {
         val root = cannoliPaths.root
         val romDir = cannoliPaths.romDir
+        // Ahead of every other line here: an older tree keeps cannoli.db and the rest at the top of
+        // Config/, and the current layout expects them under Config/Internal. hasLegacyData and the
+        // database both read paths that this moves, and SQLite must not have the file open yet.
+        withContext(Dispatchers.IO) { ConfigLayoutMigration.run(root) }
         val importPhase = if (hasLegacyData(root)) BootPhase.IMPORT else BootPhase.INITIAL_SCAN
         onPhase(BootPhase.LIBRARY_REFRESH, 0f, context.getString(R.string.boot_preparing))
 

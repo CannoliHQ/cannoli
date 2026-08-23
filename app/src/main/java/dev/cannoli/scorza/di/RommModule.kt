@@ -72,7 +72,10 @@ object RommModule {
 
     @Provides @Singleton
     fun provideRommDatabase(paths: CannoliPathsProvider): RommDatabase =
-        RommDatabase { CannoliPaths(paths.root).rommDatabase }
+        RommDatabase {
+            dev.cannoli.scorza.config.ConfigLayoutMigration.runOnce(paths.root)
+            CannoliPaths(paths.root).rommDatabase
+        }
 
     @Provides @Singleton
     fun provideRommSyncCoordinator(

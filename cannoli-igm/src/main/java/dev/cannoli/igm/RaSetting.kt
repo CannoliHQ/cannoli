@@ -24,3 +24,10 @@ data class RaSetting(
     // never enters Crowdin. Null when the setting has none.
     val description: String? = null,
 )
+
+// A row on a RetroArch settings screen: a setting to cycle, or a submenu to descend into.
+data class RaScreenRow(
+    val key: String,
+    val label: String,
+    val isMenu: Boolean,
+)

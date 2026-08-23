@@ -102,20 +102,24 @@ class LaunchManager(
         if (!file.exists()) emptyMap()
         else try { RetroArchConfigComposer.parse(file.readText()) } catch (_: IOException) { emptyMap() }
 
-    private fun buildGameConfig(rom: Rom, resume: Boolean = false, slot: Int = 0): String? {
+    private fun buildGameConfig(rom: Rom, core: String, resume: Boolean = false, slot: Int = 0): String? {
         val base = raConfigPath ?: return null
         val baseConfig = try { File(base).readText() } catch (_: IOException) { return null }
         val paths = CannoliPaths(settings.sdCardRoot)
         val romName = normalizedRomName(rom)
-        // The preference stack, weakest to strongest: global, then system, then this one game,
-        // then the user's own custom.cfg. The plumbing band applied below always wins over all
-        // four - see applyOverrides below and #36 in the launch config design.
+        // The preference stack, weakest to strongest: global, then this platform on this core,
+        // then this one game on this core, then the user's own custom.cfg. The plumbing band
+        // applied below always wins over all four - see applyOverrides below and #36 in the launch
+        // config design. Both middle tiers are keyed by core because the values that differ
+        // between cores are exactly the ones worth overriding: run-ahead compensates a specific
+        // core's internal latency, and a core-agnostic tier sitting above a core-specific one
+        // would let the wrong value win.
         val preferenceBase = RetroArchConfigComposer.compose(
             baseConfig,
             listOf(
                 readOverrideLayer(paths.globalOverrideCfg),
-                readOverrideLayer(paths.systemOverrideCfg(rom.platformTag)),
-                readOverrideLayer(paths.gameOverrideCfg(rom.platformTag, romName)),
+                readOverrideLayer(paths.systemOverrideCfg(rom.platformTag, core)),
+                readOverrideLayer(paths.gameOverrideCfg(rom.platformTag, romName, core)),
                 readOverrideLayer(paths.customCfg),
             ),
         )
@@ -146,6 +150,13 @@ class LaunchManager(
             // cannot turn it off.
             put("savestate_thumbnail_enable", "true")
             put("joypad_autoconfig_dir", paths.configInputAutoconfig.absolutePath)
+            // Core options are not RetroArch settings and cannot live in this config, so they are
+            // composed into their own file from the same platform and game tiers. global_core_options
+            // is what makes RetroArch use core_options_path verbatim instead of deriving a per-core
+            // path of its own, which has no platform or game dimension at all.
+            put("core_options_path", composeCoreOptions(paths, rom.platformTag, romName, core))
+            put("global_core_options", "true")
+            putAll(hiddenRaSettingsScreens)
             // settings.language is what Cannoli actually renders in: it defaults to en, and
             // ProvideLocalizedResources applies it whether or not the user ever chose. RetroArch
             // follows the same value so the two never disagree, rather than falling back to its own
@@ -161,6 +172,55 @@ class LaunchManager(
         return launchConfig.absolutePath
     }
 
+
+    /**
+     * Screens the in-game menu does not show, expressed the way RetroArch expresses them.
+     *
+     * DISPLAYLIST_SETTINGS_ALL gates each top-level screen on its own settings_show_ flag, so
+     * setting these false means RetroArch never emits the row and the IGM has nothing to
+     * refuse. Doing it here rather than filtering by label in the menu keeps the decision on
+     * config keys, which are stable, instead of menu label strings, which are not ours and
+     * change without notice. Every one of these is something Cannoli owns outright: it writes
+     * the config, owns input and achievements, and manages saves, playlists and directories.
+     */
+    private val hiddenRaSettingsScreens = mapOf(
+        "settings_show_saving" to "false",
+        "settings_show_configuration" to "false",
+        "settings_show_network" to "false",
+        "settings_show_playlists" to "false",
+        "settings_show_directory" to "false",
+        "settings_show_onscreen_display" to "false",
+        "settings_show_drivers" to "false",
+        "settings_show_user_interface" to "false",
+        "settings_show_achievements" to "false",
+        "settings_show_accessibility" to "false",
+        "settings_show_power_management" to "false",
+        "settings_show_user" to "false",
+        "settings_show_logging" to "false",
+        "settings_show_recording" to "false",
+        "settings_show_input" to "false",
+    )
+
+    // Weakest to strongest: platform on this core, then this game on this core. Written out whole
+    // every launch, so a key removed from a tier stops applying instead of lingering in the file
+    // RetroArch flushed last time.
+    private fun composeCoreOptions(
+        paths: CannoliPaths,
+        tag: String,
+        romName: String,
+        core: String,
+    ): String {
+        val merged = LinkedHashMap<String, String>()
+        merged.putAll(readOverrideLayer(paths.systemOverrideOpt(tag, core)))
+        merged.putAll(readOverrideLayer(paths.gameOverrideOpt(tag, romName, core)))
+        val target = paths.coreOptionsLaunchOpt
+        try {
+            target.parentFile?.mkdirs()
+            target.writeText(merged.entries.joinToString("\n") { "${it.key} = \"${it.value}\"" } + "\n")
+        } catch (_: IOException) {
+        }
+        return target.absolutePath
+    }
 
     private fun applyOverrides(source: String, overrides: Map<String, String>): String =
         RetroArchConfigComposer.compose(source, listOf(overrides))
@@ -312,7 +372,7 @@ class LaunchManager(
                             retroArchLauncher.launchRetroArchIntent(launchFile, core, raConfig, raPackage)
                         } else {
                             syncRetroArchConfig(File(settings.sdCardRoot))
-                            val launchConfig = buildGameConfig(rom) ?: raConfigPath
+                            val launchConfig = buildGameConfig(rom, core) ?: raConfigPath
                             retroArchLauncher.launchRicotta(launchFile, core, launchConfig, buildRicottaIgm(rom))
                         }
                     } else {
@@ -407,7 +467,7 @@ class LaunchManager(
         }
         val result = if (raPackage == null) {
             syncRetroArchConfig(File(settings.sdCardRoot))
-            val launchConfig = buildGameConfig(rom, resume = true, slot = resumeSlot) ?: raConfigPath
+            val launchConfig = buildGameConfig(rom, core, resume = true, slot = resumeSlot) ?: raConfigPath
             retroArchLauncher.launchRicotta(launchFile, core, launchConfig, buildRicottaIgm(rom))
         } else {
             val raConfig = "/storage/emulated/0/Android/data/$raPackage/files/retroarch.cfg"
@@ -599,7 +659,7 @@ class LaunchManager(
         /**
          * The auto-slot keys for one launch. They are computed per launch from the resume and
          * slot state, so they belong in the plumbing band, not the regenerated base config.
-         *
+     *
          * Hardcore writes neither: the auto slot's only consumer is resume, which is hidden
          * under hardcore. config.def.h defaults both to false, so an absent key is off and
          * bridge.savesOnQuit reads back false, skipping the IGM's auto-slot rotation too.
@@ -622,7 +682,7 @@ class LaunchManager(
         // own, and probing the filesystem to reach a conclusion already known is wasted work.
         /**
          * The Cannoli-owned default config, regenerated on every launch as the base the override tiers compose over.
-         *
+     *
          * RetroArch derives its save and state directories by appending to the configured ones,
          * and both sort flags default to on. Cannoli's layout is one directory per system, so the
          * content-directory level is wanted and the core level never is: leaving

@@ -8,6 +8,7 @@ import dev.cannoli.igm.RetroArchBridge
 import dev.cannoli.igm.RaOverrideScope
 import dev.cannoli.igm.RaSetting
 import dev.cannoli.igm.RaSettingType
+import dev.cannoli.igm.RaScreenRow
 import dev.cannoli.igm.RaSettingsHost
 
 class EmbeddedRetroArchBridge(
@@ -16,6 +17,7 @@ class EmbeddedRetroArchBridge(
     cannoliRoot: String,
     platformTag: String,
     romBaseName: String,
+    coreId: String,
 ) : RetroArchBridge, RaSettingsHost {
 
     override val supportsAchievements = true
@@ -27,7 +29,7 @@ class EmbeddedRetroArchBridge(
         nativeInit()
         // The IGM's "Save for game/platform" rows write to Cannoli's own override tiers, which are
         // keyed by these. Set before the IGM is interactive so no save can precede it.
-        nativeSetCannoliContext(cannoliRoot, platformTag, romBaseName)
+        nativeSetCannoliContext(cannoliRoot, platformTag, romBaseName, coreId)
     }
 
     fun destroy() {
@@ -149,9 +151,7 @@ class EmbeddedRetroArchBridge(
         dev.cannoli.igm.RaIgmSettingsProvider(
             host = this,
             strings = raStrings,
-            debugBuild = com.retroarch.BuildConfig.DEBUG,
             curated = curatedSettings,
-            onOpenNativeMenu = { onOpenNativeMenu?.invoke() },
         )
 
     override fun coreOptions(): List<dev.cannoli.igm.CoreOptionRef> =
@@ -198,24 +198,22 @@ class EmbeddedRetroArchBridge(
         )
     }
 
-    override fun raSetSetting(key: String, value: String): Boolean {
-        nativeRaSetSetting(key, value)
-        return true
-    }
+    // False means the key resolves to nothing, so the write was never queued. The apply itself is
+    // asynchronous and its outcome arrives later through the applied echo.
+    override fun raSetSetting(key: String, value: String): Boolean = nativeRaSetSetting(key, value)
+
+    // RetroArch decides which rows a settings screen has right now, in what order, under what name,
+    // and which of them lead somewhere. Values are not read here: both menu modes go through
+    // raGetSetting so there stays one read path, one write path and one changed-key set.
+    override fun raScreenRows(label: String): List<RaScreenRow> =
+        nativeRaScreenRows(label).orEmpty().mapNotNull { encoded ->
+            val f = encoded.split('\u001f')
+            if (f.size < 3 || f[0].isEmpty()) null
+            else RaScreenRow(key = f[0], label = f[1], isMenu = f[2] == "1")
+        }
 
     override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) {
         nativeRaSaveOverride(if (scope == RaOverrideScope.GAME) 1 else 0, encodeOverrideKeys(keys))
-    }
-
-    // Host wires these to its SharedPreferences (needs a Context the bridge lacks).
-    var localToggleGet: ((String, Boolean) -> Boolean)? = null
-    var localToggleSet: ((String, Boolean) -> Unit)? = null
-
-    override fun getLocalToggle(key: String, default: Boolean): Boolean =
-        localToggleGet?.invoke(key, default) ?: default
-
-    override fun setLocalToggle(key: String, value: Boolean) {
-        localToggleSet?.invoke(key, value)
     }
 
     private var onRaAppliedCallback: ((String, String) -> Unit)? = null
@@ -256,7 +254,8 @@ class EmbeddedRetroArchBridge(
 
     // Native methods
     private external fun nativeInit()
-    private external fun nativeSetCannoliContext(root: String, tag: String, base: String)
+    private external fun nativeSetCannoliContext(root: String, tag: String, base: String, core: String)
+    private external fun nativeRaScreenRows(label: String): Array<String>?
     private external fun nativeDestroy()
     private external fun nativeSaveState(slot: Int)
     private external fun nativeLoadState(slot: Int)
@@ -282,7 +281,7 @@ class EmbeddedRetroArchBridge(
     private external fun nativeCheatApply()
     private external fun nativeCheatHardcoreActive(): Boolean
     private external fun nativeRaGetSetting(key: String): Array<String>?
-    private external fun nativeRaSetSetting(key: String, value: String)
+    private external fun nativeRaSetSetting(key: String, value: String): Boolean
     private external fun nativeRaSaveOverride(scope: Int, keys: String)
 
     companion object {

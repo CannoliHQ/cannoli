@@ -30,7 +30,7 @@ echo "Removed upstream RetroActivityFuture.java (replaced by Kotlin)"
 # Copy bridge sources into RetroArch's JNI directory
 # Only copy when changed so the destination mtime is stable and ndk-build's
 # incremental compilation isn't invalidated on every build.
-for bridge_file in ricotta_bridge.c ricotta_osd.h; do
+for bridge_file in ricotta_bridge.c ricotta_osd.h ricotta_menu_screens.h ricotta_key_aliases.h; do
     BRIDGE_SRC="$RICOTTA_DIR/jni/$bridge_file"
     BRIDGE_DST="$RA_DIR/pkg/android/phoenix-common/jni/$bridge_file"
     [ -f "$BRIDGE_DST" ] && chmod u+w "$BRIDGE_DST"

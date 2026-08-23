@@ -26,10 +26,12 @@ class RaSettingsCensusTest {
             .associate { it[0] to Census(it[0], it[2], it[3], it.getOrElse(4) { "" }) }
     }
 
+    // All Settings names no keys any more: RetroArch supplies its rows, so a key that stops existing
+    // simply stops appearing. Curated still names them, and a curated row whose keys RetroArch does
+    // not register is a row that silently never shows, which is what this guards.
     private fun catalogKeys(): List<Pair<String, String>> =
-        RaOptionCatalog.categories.flatMap { cat ->
-            cat.settingKeys.map { cat.key to it } +
-                cat.subcategories.flatMap { sub -> sub.settingKeys.map { "${cat.key}/${sub.key}" to it } }
+        CuratedCatalog.categories.flatMap { cat ->
+            cat.rows.flatMap { row -> row.settingKeys.map { "${cat.key}/${row.key}" to it } }
         }
 
     @Test

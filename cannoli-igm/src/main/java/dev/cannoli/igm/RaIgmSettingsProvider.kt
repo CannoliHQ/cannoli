@@ -2,17 +2,53 @@ package dev.cannoli.igm
 
 import dev.cannoli.core.CheevosSessionKeys
 
-private const val LOCAL_TOGGLE_PREFIX = "cannoli_"
-private const val RA_MENU_KEY = "__ra_menu__"
 private const val EMULATOR_CATEGORY = "emulator"
 private const val INFO_ROW_PREFIX = "info_"
+
+// What RetroArch has a settings_show_ flag for is turned off in the launch config instead, where
+// the decision rides stable config keys rather than menu label strings. What is left is sub-screens
+// with no flag of their own, which is the only place Cannoli still refuses anything by name.
+//
+// The cost of a wrong entry here is small and visible: a screen we meant to hide simply appears.
+internal val HIDDEN_SCREENS = setOf(
+    // No mixer and nothing to make menu sounds for.
+    "audio_mixer_settings",
+    "menu_sounds",
+    // No MIDI path on these devices.
+    "midi_settings",
+    // Desktop concepts. Android is always fullscreen, and video_fullscreen off mid-game would
+    // leave the player with nothing to look at.
+    "video_fullscreen_mode_settings",
+    "video_windowed_mode_settings",
+    // Inert: the HDR enable key has no _STR define, so menu_setting_find can never resolve it.
+    "video_hdr_settings",
+    // Cannoli owns core delivery; this is buildbot URLs and updater backups.
+    "updater_settings",
+    // Android owns the radios, and disconnect_wifi from a game menu could drop the session.
+    "wifi_settings",
+    "wifi_network_scan",
+    "bluetooth_settings",
+    "lakka_services",
+)
+
+internal val HIDDEN_KEYS = setOf(
+    "input_driver",
+    "input_joypad_driver",
+    "menu_driver",
+    "audio_mixer_mute_enable",
+    // Both are PATH rows, which RaValueCycler cannot cycle, so they render as a value that does
+    // nothing. filter_enable only matters when video_filter names a filter, which it cannot here.
+    "audio_dsp_plugin",
+    "video_filter",
+    "filter_enable",
+    // Cannoli decides cutout handling from the launch config.
+    "video_notch_write_over",
+)
 
 class RaIgmSettingsProvider(
     private val host: RaSettingsHost,
     private val strings: RaOptionStrings = RaOptionStrings(),
-    private val debugBuild: Boolean = false,
     private val curated: Boolean = false,
-    private val onOpenNativeMenu: () -> Unit,
 ) : IgmSettingsProvider {
 
     private var onChanged: (() -> Unit)? = null
@@ -44,8 +80,8 @@ class RaIgmSettingsProvider(
         // Info describes the running core rather than any setting, so it belongs in both menus.
         path.first() == CuratedCatalog.CATEGORY_INFO -> infoScreen()
         curated -> curatedCategoryScreen(path.first())
-        path.size >= 2 -> subcategoryScreen(path[0], path[1])
-        else -> categoryScreen(path.first())
+        // RetroArch's tree is arbitrarily deep, so the screen is whatever the path last entered.
+        else -> raScreen(path.last())
     }
 
     // A curated row is reachable only when every RetroArch key it writes exists on this build, and
@@ -174,7 +210,7 @@ class RaIgmSettingsProvider(
             .distinctBy { it.categoryKey }
         if (categoryKey == null && cats.size > 1) {
             return GenericIgmSettingsScreen(
-                strings.categoryTitles[EMULATOR_CATEGORY] ?: EMULATOR_CATEGORY,
+                strings.emulator,
                 cats.map { GenericIgmSettingsItem.Category(it.categoryKey, it.categoryLabel.ifEmpty { it.categoryKey }) },
             )
         }
@@ -185,7 +221,7 @@ class RaIgmSettingsProvider(
         val cacheKey = if (categoryKey == null) EMULATOR_CATEGORY else "$EMULATOR_CATEGORY/$categoryKey"
         if (cacheKey != currentCategory) loadCoreOptions(wanted, cacheKey)
         val title = cats.firstOrNull { it.categoryKey == categoryKey }?.categoryLabel
-            ?: strings.categoryTitles[EMULATOR_CATEGORY] ?: EMULATOR_CATEGORY
+            ?: strings.emulator
         return GenericIgmSettingsScreen(title, currentSettings.map(::rowFor))
     }
 
@@ -201,83 +237,56 @@ class RaIgmSettingsProvider(
             if (host.coreOptions().isNotEmpty()) {
                 add(GenericIgmSettingsItem.Category(
                     EMULATOR_CATEGORY,
-                    strings.categoryTitles[EMULATOR_CATEGORY] ?: EMULATOR_CATEGORY,
+                    strings.emulator,
                 ))
             }
-            for (cat in RaOptionCatalog.categories) {
-                add(GenericIgmSettingsItem.Category(cat.key, strings.categoryTitles[cat.key] ?: cat.key))
-            }
+            addAll(raRows(""))
             if (host.systemInfo().isNotEmpty()) {
                 add(GenericIgmSettingsItem.Category(
                     CuratedCatalog.CATEGORY_INFO,
                     curatedTitle(CuratedCatalog.CATEGORY_INFO),
                 ))
             }
-            if (debugBuild) add(GenericIgmSettingsItem.Action(RA_MENU_KEY, strings.nativeMenu))
         }
         return GenericIgmSettingsScreen(strings.rootTitle, items)
     }
 
-    private fun categoryScreen(categoryKey: String): GenericIgmSettingsScreen =
-        RaOptionCatalog.categories.firstOrNull { it.key == categoryKey }
-            ?.let(::categoryScreenFor)
-            ?: GenericIgmSettingsScreen(strings.categoryTitles[categoryKey] ?: categoryKey, emptyList())
+    // Titles come from the parent row that led here, which is the only place RetroArch names a
+    // screen. A screen is only reachable through its parent, so this is always populated first.
+    private val screenTitles = mutableMapOf<String, String>()
 
-    private fun subcategoryScreen(categoryKey: String, subKey: String): GenericIgmSettingsScreen =
-        RaOptionCatalog.categories.firstOrNull { it.key == categoryKey }
-            ?.let { subcategoryScreenFor(it, subKey) }
-            ?: GenericIgmSettingsScreen(subKey, emptyList())
+    private fun raScreen(label: String): GenericIgmSettingsScreen =
+        GenericIgmSettingsScreen(screenTitles[label] ?: label, raRows(label))
 
-    // A category's own settings come first, then a row per subcategory that has something to show.
-    internal fun categoryScreenFor(cat: RaOptionCatalog.Category): GenericIgmSettingsScreen {
-        loadKeys(cat.settingKeys, cat.key)
-        val subs = cat.subcategories
-            .filter { sub -> sub.settingKeys.any(::resolves) }
-            .map { GenericIgmSettingsItem.Category(it.key, subcategoryTitle(cat.key, it.key)) }
-        return GenericIgmSettingsScreen(
-            strings.categoryTitles[cat.key] ?: cat.key,
-            currentSettings.map(::rowFor) + subs,
-        )
+    /**
+     * One RetroArch settings screen, rendered in RetroArch's own order. RetroArch decides which
+     * rows exist right now, so the conditional ones it hides (video_aspect_ratio unless the aspect
+     * index is Config, the integer-scaling rows unless integer scaling is on) are hidden here too,
+     * without Cannoli modelling any of those conditions.
+     *
+     * Values are still read through the host, not from the row: both menu modes share one read
+     * path, one write path and one changed-key set.
+     */
+    private fun raRows(label: String): List<GenericIgmSettingsItem> {
+        val rows = host.raScreenRows(label)
+            .filterNot { it.key in HIDDEN_SCREENS || it.key in HIDDEN_KEYS }
+        rows.filter { it.isMenu }.forEach { screenTitles[it.key] = it.label }
+        loadKeys(rows.filterNot { it.isMenu }.map { it.key }, "ra/$label")
+        // Walked in RetroArch's order rather than settings-then-submenus, because the order is part
+        // of what we are deferring to it.
+        return rows.mapNotNull { row ->
+            if (row.isMenu) GenericIgmSettingsItem.Category(row.key, row.label)
+            else currentSettings.firstOrNull { it.key == row.key }?.let(::rowFor)
+        }
     }
 
-    internal fun subcategoryScreenFor(
-        cat: RaOptionCatalog.Category,
-        subKey: String,
-    ): GenericIgmSettingsScreen {
-        val sub = cat.subcategories.firstOrNull { it.key == subKey }
-            ?: return GenericIgmSettingsScreen(subcategoryTitle(cat.key, subKey), emptyList())
-        loadKeys(sub.settingKeys, "${cat.key}/${sub.key}")
-        return GenericIgmSettingsScreen(
-            subcategoryTitle(cat.key, sub.key),
-            currentSettings.map(::rowFor),
-        )
-    }
-
-    private fun subcategoryTitle(categoryKey: String, subKey: String) =
-        strings.subcategoryTitles["$categoryKey/$subKey"] ?: subKey
-
-    // A local toggle is host-backed rather than a RetroArch setting, so it always resolves.
-    private fun resolves(key: String) =
-        key.startsWith(LOCAL_TOGGLE_PREFIX) || host.raGetSetting(key) != null
-
-    // Cache key is the category or "<category>/<subcategory>", so a parent and a child never share
-    // a slot and moving between them reloads rather than showing the other's rows.
+    // Cache key is the RetroArch screen, so a parent and a child never share a slot and moving
+    // between them reloads rather than showing the other's rows.
     private fun loadKeys(keys: List<String>, cacheKey: String) {
         if (cacheKey == currentCategory) return
         pending.clear()
         currentCategory = cacheKey
-        currentSettings = keys.mapNotNull { key ->
-            if (key.startsWith(LOCAL_TOGGLE_PREFIX)) {
-                RaSetting(
-                    key = key,
-                    label = strings.localToggleLabels[key] ?: key,
-                    type = RaSettingType.BOOL,
-                    value = if (host.getLocalToggle(key, true)) "true" else "false",
-                )
-            } else {
-                host.raGetSetting(key)?.let(::withRestartHint)
-            }
-        }
+        currentSettings = keys.mapNotNull { key -> host.raGetSetting(key)?.let(::withRestartHint) }
     }
 
     private fun rowFor(s: RaSetting) = GenericIgmSettingsItem.Choice(
@@ -300,10 +309,7 @@ class RaIgmSettingsProvider(
         val s = currentSettings[i]
         val newValue = RaValueCycler.next(s, direction) ?: return
         if (newValue == s.value) return
-        if (s.key.startsWith(LOCAL_TOGGLE_PREFIX)) {
-            host.setLocalToggle(s.key, newValue == "true")
-            replaceSetting(i, s.copy(value = newValue))
-        } else if (host.raSetSetting(s.key, newValue)) {
+        if (host.raSetSetting(s.key, newValue)) {
             dirty = true
             changedKeys.add(s.key)
             pending[s.key] = (pending[s.key] ?: 0) + 1
@@ -341,30 +347,7 @@ class RaIgmSettingsProvider(
         replaceSetting(i, currentSettings[i].copy(value = value))
     }
 
-    override fun activate(itemKey: String): IgmSettingsExit.Prompt? {
-        if (!debugBuild || itemKey != RA_MENU_KEY) return null
-        if (!dirty) {
-            onOpenNativeMenu()
-            return null
-        }
-        // Unsaved RA changes: prompt to save first, then open the native menu, matching
-        // the old north-button shortcut (IGMController handleRaOptionsKey keycode 100).
-        return IgmSettingsExit.Prompt(
-            title = null,
-            options = listOf(strings.savePlatform, strings.saveGame, strings.dontSave),
-            onCancel = {
-                clearDirty()
-                onOpenNativeMenu()
-            },
-        ) { choice ->
-            when (choice) {
-                0 -> host.raSaveOverride(RaOverrideScope.SYSTEM, overrideKeys())
-                1 -> host.raSaveOverride(RaOverrideScope.GAME, overrideKeys())
-            }
-            clearDirty()
-            onOpenNativeMenu()
-        }
-    }
+    override fun activate(itemKey: String): IgmSettingsExit.Prompt? = null
 
     override fun exitPrompt(): IgmSettingsExit =
         if (!dirty) IgmSettingsExit.Close

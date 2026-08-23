@@ -23,10 +23,13 @@ abstract class LaunchConfigHarness {
     val gameOverrides = mockk<dev.cannoli.scorza.db.GameOverrideStore>(relaxed = true)
     val retroArchLauncher = mockk<RetroArchLauncher>(relaxed = true)
 
+    /** The core every harness launch resolves to; the override tiers are keyed by it. */
+    val launchCore = "mgba_libretro"
+
     fun manager(root: File): LaunchManager {
         every { settings.sdCardRoot } returns root.absolutePath
         every { gameOverrides.get(any()) } returns null
-        every { platformConfig.getCoreName(any()) } returns "mgba_libretro"
+        every { platformConfig.getCoreName(any()) } returns launchCore
         // Explicitly on the embedded runner, which is the path that writes a Cannoli-authored
         // config. An external RetroArch is launched by intent and never gets one.
         every { platformConfig.getPlatformChoice(any()) } returns

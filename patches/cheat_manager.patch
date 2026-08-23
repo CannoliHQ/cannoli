@@ -1,5 +1,5 @@
 diff --git a/cheat_manager.c b/cheat_manager.c
-index 303d29683a..e7abb8147a 100644
+index 044911f645..48d2501b31 100644
 --- a/cheat_manager.c
 +++ b/cheat_manager.c
 @@ -71,8 +71,15 @@ static void cheat_manager_pause_cheevos(void)

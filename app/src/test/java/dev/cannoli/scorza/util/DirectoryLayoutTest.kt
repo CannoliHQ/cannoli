@@ -122,7 +122,7 @@ class DirectoryLayoutTest {
         val config = dev.cannoli.scorza.config.PlatformConfig({ root }, assets)
         DirectoryLayout.ensure(root, rom, assets, config)
 
-        val customCfg = File(root, "Config/RetroArch/custom.cfg")
+        val customCfg = File(root, "Config/custom.cfg")
         assertTrue(customCfg.isFile)
         assertEquals(
             "# This file is yours. Cannoli never overwrites it. Keys here win.",

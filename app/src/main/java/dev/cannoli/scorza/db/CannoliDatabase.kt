@@ -4,6 +4,7 @@ import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL
 import dev.cannoli.scorza.config.CannoliPaths
+import dev.cannoli.scorza.config.ConfigLayoutMigration
 import dev.cannoli.scorza.di.CannoliPathsProvider
 import dev.cannoli.scorza.util.ScanLog
 import java.io.File
@@ -18,6 +19,9 @@ class CannoliDatabase(private val pathsProvider: CannoliPathsProvider) {
     // which is before the user clears the permission gate, so deferring the SQLite open keeps
     // construction free of file I/O (and lets the SD-card root resolved by setup win).
     val conn: SQLiteConnection get() = synchronized(this) {
+        // Before the path is resolved, not after: the layout migration moves this file and its
+        // -wal, and startStorageDependent() can reach a database before boot's own call runs.
+        ConfigLayoutMigration.runOnce(pathsProvider.root)
         val dbFile = databaseFile
         val path = dbFile.absolutePath
         val existing = openConn

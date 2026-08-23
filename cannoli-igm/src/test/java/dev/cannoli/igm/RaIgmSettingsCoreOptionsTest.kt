@@ -30,14 +30,12 @@ private class CoreOptionHost(private val keys: List<String>) : RaSettingsHost {
 
     override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) {}
     override fun setOnRaSettingApplied(callback: (String, String) -> Unit) {}
-    override fun getLocalToggle(key: String, default: Boolean) = default
-    override fun setLocalToggle(key: String, value: Boolean) {}
 }
 
 class RaIgmSettingsCoreOptionsTest {
 
     private fun provider(keys: List<String>) =
-        CoreOptionHost(keys).let { it to RaIgmSettingsProvider(host = it, onOpenNativeMenu = {}) }
+        CoreOptionHost(keys).let { it to RaIgmSettingsProvider(host = it) }
 
     @Test fun `a core with options gets an emulator row`() {
         val (_, p) = provider(listOf("gambatte_gb_colorization"))
@@ -83,14 +81,12 @@ private class CategorisedHost(private val refs: List<CoreOptionRef>) : RaSetting
     override fun raSetSetting(key: String, value: String) = true
     override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) {}
     override fun setOnRaSettingApplied(callback: (String, String) -> Unit) {}
-    override fun getLocalToggle(key: String, default: Boolean) = default
-    override fun setLocalToggle(key: String, value: Boolean) {}
 }
 
 class RaIgmSettingsCoreCategoriesTest {
 
     private fun provider(refs: List<CoreOptionRef>) =
-        RaIgmSettingsProvider(host = CategorisedHost(refs), onOpenNativeMenu = {})
+        RaIgmSettingsProvider(host = CategorisedHost(refs))
 
     @Test fun `a core with categories shows them instead of a flat list`() {
         val p = provider(listOf(

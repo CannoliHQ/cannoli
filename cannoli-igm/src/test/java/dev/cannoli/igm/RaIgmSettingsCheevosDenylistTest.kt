@@ -22,15 +22,13 @@ private class DenylistHost(private val keys: List<String>) : RaSettingsHost {
     override fun raSetSetting(key: String, value: String) = true
     override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) { savedKeys.add(keys) }
     override fun setOnRaSettingApplied(callback: (String, String) -> Unit) {}
-    override fun getLocalToggle(key: String, default: Boolean) = default
-    override fun setLocalToggle(key: String, value: Boolean) {}
 }
 
 class RaIgmSettingsCheevosDenylistTest {
 
     @Test fun `saving drops every cheevos session key and keeps the rest`() {
         val host = DenylistHost(CheevosSessionKeys.ALL.toList() + "run_ahead_frames")
-        val p = RaIgmSettingsProvider(host = host, onOpenNativeMenu = {})
+        val p = RaIgmSettingsProvider(host = host)
         p.screen(listOf("emulator"))
         for (k in CheevosSessionKeys.ALL) p.cycle(k, 1)
         p.cycle("run_ahead_frames", 1)
@@ -42,7 +40,7 @@ class RaIgmSettingsCheevosDenylistTest {
 
     @Test fun `a save of only cheevos keys writes an empty set`() {
         val host = DenylistHost(CheevosSessionKeys.ALL.toList())
-        val p = RaIgmSettingsProvider(host = host, onOpenNativeMenu = {})
+        val p = RaIgmSettingsProvider(host = host)
         p.screen(listOf("emulator"))
         for (k in CheevosSessionKeys.ALL) p.cycle(k, 1)
 
