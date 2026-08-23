@@ -34,6 +34,12 @@ enum ricotta_osd_type
  * (0 otherwise) on RICOTTA_OSD_CHEEVOS_LOGIN_FAILED. It is unused elsewhere. */
 void ricotta_osd_event(int type, int slot);
 
+/* The input hooks RetroArch's android_input.c calls. Declared here because this header is
+ * force-included everywhere, which keeps the patch down to the two call sites: an extern in the
+ * patch itself would be a third hunk to rebase, anchored on whatever happened to sit above it. */
+int  ricotta_bridge_intercept_key(int keycode, int action);
+void ricotta_bridge_poll_commands(void);
+
 #ifdef __cplusplus
 }
 #endif

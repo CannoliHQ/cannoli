@@ -1,44 +1,28 @@
 diff --git a/input/drivers/android_input.c b/input/drivers/android_input.c
-index df37d1a051..1ce48c9bc3 100644
+index df37d1a051..2f2db2c6f2 100644
 --- a/input/drivers/android_input.c
 +++ b/input/drivers/android_input.c
-@@ -1019,6 +1019,10 @@ static INLINE void android_input_poll_event_type_keyboard(
-       *handled = 0;
- }
- 
-+#ifdef HAVE_RICOTTA_IGM
-+extern int ricotta_bridge_intercept_key(int keycode, int action);
-+#endif
-+
- static INLINE void android_input_poll_event_type_key(
-       struct android_app *android_app,
+@@ -1024,6 +1024,13 @@ static INLINE void android_input_poll_event_type_key(
        AInputEvent *event, int port, int keycode, int source,
-@@ -1026,6 +1030,14 @@ static INLINE void android_input_poll_event_type_key(
+       int type_event, int *handled)
  {
-    uint8_t *buf = android_key_state[port];
-    int action   = AKeyEvent_getAction(event);
-+
 +#ifdef HAVE_RICOTTA_IGM
-+   if (ricotta_bridge_intercept_key(keycode, action))
++   if (ricotta_bridge_intercept_key(keycode, AKeyEvent_getAction(event)))
 +   {
 +      *handled = 1;
 +      return;
 +   }
 +#endif
+    uint8_t *buf = android_key_state[port];
+    int action   = AKeyEvent_getAction(event);
     int keysym   = keycode;
- 
-    /* Handle 'duplicate' inputs that correspond
-@@ -1832,6 +1844,13 @@ static void android_input_poll(void *data)
-    android_input_t *android        = (android_input_t*)data;
-    settings_t            *settings = config_get_ptr();
- 
+@@ -1827,6 +1834,9 @@ static void android_input_reinit(void)
+  */
+ static void android_input_poll(void *data)
+ {
 +#ifdef HAVE_RICOTTA_IGM
-+   {
-+      extern void ricotta_bridge_poll_commands(void);
-+      ricotta_bridge_poll_commands();
-+   }
++   ricotta_bridge_poll_commands();
 +#endif
-+
-    while ((ident =
-             ALooper_pollAll(settings->uints.input_block_timeout,
-                NULL, NULL, NULL)) >= 0)
+    int ident;
+    struct android_app *android_app = (struct android_app*)g_android;
+    android_input_t *android        = (android_input_t*)data;
