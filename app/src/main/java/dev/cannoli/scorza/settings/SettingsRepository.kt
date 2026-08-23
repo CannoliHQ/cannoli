@@ -193,6 +193,17 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         get() = jsonRead { optString(KEY_FONT, "default") }
         set(value) = jsonWrite { put(KEY_FONT, value) }
 
+    /**
+     * The video driver every game starts with unless something more specific says otherwise. Empty
+     * is Auto: nothing is written and RetroArch keeps its own choice. Only gl and vulkan are
+     * compiled on Android, so this is not a general driver picker.
+     */
+    var defaultVideoDriver: String
+        get() = jsonRead { optString(KEY_DEFAULT_VIDEO_DRIVER, "") }
+        set(value) {
+            jsonWrite { if (value.isEmpty()) remove(KEY_DEFAULT_VIDEO_DRIVER) else put(KEY_DEFAULT_VIDEO_DRIVER, value) }
+        }
+
     var language: String
         get() = jsonRead { optString(KEY_LANGUAGE, "en") }
         set(value) {
@@ -533,6 +544,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         private const val KEY_CACHED_UPDATE_CHANGELOG = "cached_update_changelog"
         private const val KEY_CONTENT_MODE = "content_mode"
         private const val KEY_IGM_SETTINGS_MODE = "igm_settings_mode"
+        private const val KEY_DEFAULT_VIDEO_DRIVER = "default_video_driver"
         private const val KEY_LOGGING_ROM_SCAN = "logging_rom_scan"
         private const val KEY_LOGGING_INPUT = "logging_input"
         private const val KEY_LOGGING_SESSION = "logging_session"

@@ -514,6 +514,12 @@ class SettingsViewModel @Inject constructor(
                 val cur = entries.indexOf(settings.contentMode).coerceAtLeast(0)
                 settings.contentMode = entries[((cur + direction) % entries.size + entries.size) % entries.size]
             }
+            "default_video_driver" -> {
+                // Auto first, so cycling from a clean install reaches a real driver in one press.
+                val entries = listOf("", "gl", "vulkan")
+                val cur = entries.indexOf(settings.defaultVideoDriver).coerceAtLeast(0)
+                settings.defaultVideoDriver = entries[((cur + direction) % entries.size + entries.size) % entries.size]
+            }
             "igm_settings_mode" -> {
                 val entries = IgmSettingsMode.entries
                 val cur = entries.indexOf(settings.igmSettingsMode).coerceAtLeast(0)
@@ -922,6 +928,11 @@ class SettingsViewModel @Inject constructor(
             add(SettingsItem("igm_settings_mode", R.string.setting_igm_settings_mode, valueRes = when (settings.igmSettingsMode) {
                 IgmSettingsMode.CURATED -> R.string.value_igm_mode_curated
                 IgmSettingsMode.ALL_SETTINGS -> R.string.value_igm_mode_all_settings
+            }))
+            add(SettingsItem("default_video_driver", R.string.setting_default_video_driver, valueRes = when (settings.defaultVideoDriver) {
+                "gl" -> R.string.value_video_driver_gl
+                "vulkan" -> R.string.value_video_driver_vulkan
+                else -> R.string.value_automatically
             }))
         }
         "integrations" -> buildList {

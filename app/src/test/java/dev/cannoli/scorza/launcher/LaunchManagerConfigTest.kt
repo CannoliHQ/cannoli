@@ -1,6 +1,7 @@
 package dev.cannoli.scorza.launcher
 
 import dev.cannoli.scorza.config.CannoliPaths
+import io.mockk.every
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -113,6 +114,42 @@ class LaunchManagerConfigTest : LaunchConfigHarness() {
                 "screen is not actually hidden:\n" + unknown.joinToString("\n") { "  $it" },
             unknown.isEmpty(),
         )
+    }
+
+    // The launcher default is the weakest tier, so anything chosen for a platform beats it. That is
+    // what makes it a default rather than a setting.
+    @Test fun `a platform override beats the launcher default driver`() {
+        val root = tmp.newFolder()
+        val paths = CannoliPaths(root.absolutePath)
+        every { settings.defaultVideoDriver } returns "vulkan"
+        write(paths.systemOverrideCfg("GBA", launchCore), "video_driver = \"gl\"")
+
+        val cfg = launchedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA"))
+
+        assertEquals("gl", cfg["video_driver"])
+    }
+
+    @Test fun `the launcher default applies when nothing more specific says otherwise`() {
+        val root = tmp.newFolder()
+        every { settings.defaultVideoDriver } returns "vulkan"
+
+        val cfg = launchedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA"))
+
+        assertEquals("vulkan", cfg["video_driver"])
+        assertTrue(CannoliPaths(root.absolutePath).globalOverrideCfg.isFile)
+    }
+
+    // Auto writes nothing at all, and a file left by a previous choice has to go with it.
+    @Test fun `auto removes the generated global tier`() {
+        val root = tmp.newFolder()
+        val paths = CannoliPaths(root.absolutePath)
+        write(paths.globalOverrideCfg, "video_driver = \"vulkan\"")
+        every { settings.defaultVideoDriver } returns ""
+
+        val cfg = launchedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA"))
+
+        assertFalse(paths.globalOverrideCfg.exists())
+        assertNotEquals("vulkan", cfg["video_driver"])
     }
 
     @Test fun `a custom cfg key overrides the same key set in a system override`() {

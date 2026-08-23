@@ -114,6 +114,7 @@ class LaunchManager(
         // between cores are exactly the ones worth overriding: run-ahead compensates a specific
         // core's internal latency, and a core-agnostic tier sitting above a core-specific one
         // would let the wrong value win.
+        writeGlobalDefaults(paths)
         val preferenceBase = RetroArchConfigComposer.compose(
             baseConfig,
             listOf(
@@ -205,6 +206,33 @@ class LaunchManager(
         // Cannoli's own Emulator row, which is core options and a different thing entirely.
         "settings_show_core" to "false",
     )
+
+    /**
+     * Regenerates the weakest override tier from the launcher's own defaults.
+     *
+     * Generated rather than hand-written, the same way retroarch_launch.cfg and the composed core
+     * options file are, so settings.json stays the single source of truth and a stale or
+     * hand-edited global.cfg heals on the next launch. It sits below every tier the in-game menu
+     * writes, so anything chosen for a platform or a game silently wins, which is what makes these
+     * defaults rather than settings.
+     */
+    private fun writeGlobalDefaults(paths: CannoliPaths) {
+        val defaults = buildMap {
+            settings.defaultVideoDriver.takeIf { it.isNotEmpty() }?.let { put("video_driver", it) }
+        }
+        val target = paths.globalOverrideCfg
+        try {
+            if (defaults.isEmpty()) {
+                target.delete()
+                return
+            }
+            target.parentFile?.mkdirs()
+            target.writeText(
+                TIER_BANNER + defaults.entries.joinToString("\n") { "${it.key} = \"${it.value}\"" } + "\n"
+            )
+        } catch (_: IOException) {
+        }
+    }
 
     // Weakest to strongest: platform on this core, then this game on this core. Written out whole
     // every launch, so a key removed from a tier stops applying instead of lingering in the file

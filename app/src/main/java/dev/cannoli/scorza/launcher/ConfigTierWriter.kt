@@ -10,7 +10,7 @@ sealed interface ConfigScope {
     data class Game(val tag: String, val base: String, val core: String) : ConfigScope
 }
 
-private const val TIER_BANNER =
+internal const val TIER_BANNER =
     "# DO NOT EDIT - Cannoli writes this from your menu choices. Your own keys go in custom.cfg\n"
 
 /**
