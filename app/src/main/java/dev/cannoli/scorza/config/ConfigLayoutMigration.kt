@@ -12,6 +12,10 @@ import java.io.File
  */
 object ConfigLayoutMigration {
 
+    private val DATABASES = listOf("cannoli.db", "romm.db")
+    private val SIDECARS = listOf("", "-wal", "-shm")
+    private const val BACKUP_DIR_NAME = "config-pre-layout-migration"
+
     private var migratedRoot: String? = null
 
     /**
@@ -31,7 +35,34 @@ object ConfigLayoutMigration {
     fun run(root: File): Int {
         val paths = CannoliPaths(root)
         if (!paths.configDir.isDirectory) return 0
-        return moves(paths).count { (from, to) -> move(from, to) }
+        val pending = moves(paths).filter { (from, to) -> from.exists() && !to.exists() }
+        if (pending.isEmpty()) return 0
+        backupDatabases(paths)
+        return pending.count { (from, to) -> move(from, to) }
+    }
+
+    /**
+     * Copies the databases aside before the first move.
+     *
+     * Only the databases, because they are the only thing here that cannot be rebuilt: the rest is
+     * config text or regenerable cache, and a rename inside one filesystem is atomic anyway. The
+     * database is different in kind, since a previous process can leave a hot -wal behind, so the
+     * three files travel together and a copy taken after an unclean shutdown stays recoverable.
+     *
+     * Never overwritten. A second run must not replace a good pre-migration copy with a
+     * half-migrated one, which is exactly the state a run that died partway leaves behind.
+     */
+    private fun backupDatabases(paths: CannoliPaths) {
+        val dest = File(paths.backupDir, BACKUP_DIR_NAME)
+        if (dest.exists()) return
+        val sources = DATABASES
+            .flatMap { name -> SIDECARS.map { File(paths.configDir, "$name$it") } }
+            .filter { it.isFile }
+        if (sources.isEmpty()) return
+        dest.mkdirs()
+        for (file in sources) {
+            runCatching { file.copyTo(File(dest, file.name), overwrite = false) }
+        }
     }
 
     // Old path to new. Anything absent is skipped, so this doubles as the list of what a fresh
@@ -41,8 +72,8 @@ object ConfigLayoutMigration {
         return buildList {
             // SQLite keeps its -wal and -shm beside the database. Moving one without the others
             // strands committed transactions still sitting in the log, so the set travels together.
-            for (name in listOf("cannoli.db", "romm.db")) {
-                for (suffix in listOf("", "-wal", "-shm")) {
+            for (name in DATABASES) {
+                for (suffix in SIDECARS) {
                     add(File(config, "$name$suffix") to File(paths.configInternal, "$name$suffix"))
                 }
             }

@@ -163,6 +163,72 @@ class ConfigLayoutMigrationTest {
         assertTrue(File(root, "Config/arcade_map.txt").isFile)
     }
 
+    private fun backupDir(root: File) = File(root, "Backup/config-pre-layout-migration")
+
+    // The database is the only thing here that cannot be rebuilt, and the only one whose move can
+    // meet a hot -wal left by an unclean shutdown.
+    @Test
+    fun `the databases are copied aside before anything moves`() {
+        val root = tmp.newFolder()
+        legacyTree(root)
+
+        ConfigLayoutMigration.run(root)
+
+        val backup = backupDir(root)
+        assertEquals("db", File(backup, "cannoli.db").readText())
+        assertEquals("wal", File(backup, "cannoli.db-wal").readText())
+        assertEquals("shm", File(backup, "cannoli.db-shm").readText())
+        assertEquals("romm", File(backup, "romm.db").readText())
+    }
+
+    // The case that matters: a run died partway, so the tree is half-migrated. The next run must
+    // not replace a good pre-migration copy with that.
+    @Test
+    fun `a second run never overwrites the backup`() {
+        val root = tmp.newFolder()
+        legacyTree(root)
+        val paths = CannoliPaths(root)
+
+        ConfigLayoutMigration.run(root)
+
+        // A half-migrated tree: the destination is gone and a different database sits at the old
+        // path, so the next run has real work and would take a backup if nothing stopped it.
+        paths.database.delete()
+        write(File(root, "Config/cannoli.db"), "later and wrong")
+        ConfigLayoutMigration.run(root)
+
+        assertEquals("later and wrong", paths.database.readText())
+        assertEquals("db", File(backupDir(root), "cannoli.db").readText())
+    }
+
+    // A backup is a snapshot of one moment. If a partial one exists, topping it up from a tree that
+    // has since half-migrated would produce a mix of two states that never existed together.
+    @Test
+    fun `an existing backup is never topped up from a later state`() {
+        val root = tmp.newFolder()
+        legacyTree(root)
+        write(File(backupDir(root), "cannoli.db"), "from an earlier run")
+
+        ConfigLayoutMigration.run(root)
+
+        assertEquals("from an earlier run", File(backupDir(root), "cannoli.db").readText())
+        assertFalse(
+            "romm.db was added to a backup taken at a different moment",
+            File(backupDir(root), "romm.db").exists(),
+        )
+    }
+
+    @Test
+    fun `nothing to migrate means no backup is taken`() {
+        val root = tmp.newFolder()
+        val paths = CannoliPaths(root)
+        write(paths.database, "db")
+        write(paths.customCfg, "mine")
+
+        assertEquals(0, ConfigLayoutMigration.run(root))
+        assertFalse(backupDir(root).exists())
+    }
+
     @Test
     fun `a fresh install with no config tree is a no-op`() {
         val root = tmp.newFolder()
