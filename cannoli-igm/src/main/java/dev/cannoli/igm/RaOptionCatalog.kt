@@ -88,19 +88,12 @@ object RaOptionCatalog {
                 "video_waitable_swapchains",
                 "video_max_frame_latency",
                 "video_max_swapchain_images",
-                "video_scanline_sync",
             )),
-            // The menu calls the toggle video_hdr_enable; the config key is video_hdr_mode.
-            // Registered only when the active video driver reports VIDEO_FLAG_HDR_SUPPORT, so this
-            // whole screen is absent on a display that does not do HDR. That is the point of
-            // omitting an empty subcategory: keep it, and hardware that supports it gets it.
-            Category("hdr", listOf(
-                "video_hdr_mode",
-                "video_hdr_paper_white_nits",
-                "video_hdr_expand_gamut",
-                "video_hdr_scanlines",
-                "video_hdr_subpixel_layout",
-            )),
+            // No HDR subcategory, and video_scanline_sync is absent from the list above, for the
+            // same reason rather than the display flag: their MENU_ENUM_LABELs have no entry in
+            // msg_hash_lbl_str.h, so msg_hash_to_str returns the literal "null" and the setting's
+            // NAME is "null". menu_setting_find can never match them on any device. Thirty-five of
+            // RetroArch's registered settings are unnameable this way; the census test catches them.
         )),
         // Mirrors RetroArch's Audio screen. Two of its five submenus are dropped whole:
         // MICROPHONE and MIDI, whose driver families are already excluded and which have no

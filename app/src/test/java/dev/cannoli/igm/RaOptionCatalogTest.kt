@@ -85,8 +85,7 @@ class RaOptionCatalogTest {
         assertEquals(1, size("video"))
         assertEquals(7, subSize("video", "output"))
         assertEquals(11, subSize("video", "scaling"))
-        assertEquals(9, subSize("video", "synchronization"))
-        assertEquals(5, subSize("video", "hdr"))
+        assertEquals(8, subSize("video", "synchronization"))
 
         assertEquals(7, size("audio"))
         assertEquals(4, subSize("audio", "output"))

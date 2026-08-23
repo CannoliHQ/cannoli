@@ -785,8 +785,6 @@
     <string name="igm_video_scaling">Scaling</string>
     <!-- Video settings subcategory: how drawing is timed against the display refresh. -->
     <string name="igm_video_synchronization">Synchronization</string>
-    <!-- Video settings subcategory: high dynamic range output. Keep "HDR" as the technical term. -->
-    <string name="igm_video_hdr">HDR</string>
     <!-- In-game settings category for options that trade responsiveness against smoothness. -->
     <string name="igm_latency">Latency</string>
     <!-- In-game settings category for fast-forward, slow motion and rewind. -->

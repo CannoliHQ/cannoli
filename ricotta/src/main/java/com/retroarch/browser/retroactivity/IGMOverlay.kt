@@ -197,7 +197,6 @@ class IGMOverlay(
                 "video/output" to uiContext.getString(R.string.igm_video_output),
                 "video/scaling" to uiContext.getString(R.string.igm_video_scaling),
                 "video/synchronization" to uiContext.getString(R.string.igm_video_synchronization),
-                "video/hdr" to uiContext.getString(R.string.igm_video_hdr),
             ),
             localToggleLabels = mapOf(
                 "cannoli_osd_reset" to uiContext.getString(R.string.igm_osd_reset_notification),
