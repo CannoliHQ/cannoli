@@ -1,0 +1,38 @@
+diff --git a/retroarch.c b/retroarch.c
+index b4b8a1da0d..d0ba4680ac 100644
+--- a/retroarch.c
++++ b/retroarch.c
+@@ -3519,9 +3519,17 @@ bool command_event(enum event_command cmd, void *data)
+ #ifdef HAVE_CHEEVOS
+             if (rcheevos_hardcore_active())
+             {
++#ifdef HAVE_RICOTTA_OSD
++               /* Cannoli owns the refusal notification (type 10). This is the only
++                * interactive load path; the SRAM and auto-state loads are launch-time
++                * with no press behind them, so they stay silent and the launcher omits
++                * savestate_auto_load under hardcore instead. */
++               ricotta_osd_event(RICOTTA_OSD_LOAD_REFUSED, 0);
++#else
+                const char *_msg = msg_hash_to_str(MSG_CHEEVOS_LOAD_STATE_PREVENTED_BY_HARDCORE_MODE);
+                runloop_msg_queue_push(_msg, strlen(_msg), 0, 180, true, NULL,
+                      MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_WARNING);
++#endif
+                return false;
+             }
+ #endif
+@@ -3590,8 +3598,15 @@ bool command_event(enum event_command cmd, void *data)
+          {
+             const char *_msg = msg_hash_to_str(MSG_RESET);
+             RARCH_LOG("[Core] %s.\n", _msg);
++#ifdef HAVE_RICOTTA_OSD
++            {
++               /* Cannoli owns the reset notification (type 2). */
++               ricotta_osd_event(RICOTTA_OSD_RESET, 0);
++            }
++#else
+             runloop_msg_queue_push(_msg, strlen(_msg), 1, 120, true, NULL,
+                   MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_INFO);
++#endif
+ 
+             core_reset();
+ #ifdef HAVE_CHEEVOS

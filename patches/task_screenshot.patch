@@ -1,0 +1,23 @@
+diff --git a/tasks/task_screenshot.c b/tasks/task_screenshot.c
+index e32fad61db..c3104699e6 100644
+--- a/tasks/task_screenshot.c
++++ b/tasks/task_screenshot.c
+@@ -282,10 +282,18 @@ static void task_screenshot_callback(retro_task_t *task,
+    if (!(state = (screenshot_task_state_t*)task->state))
+       return;
+ 
++#ifdef HAVE_RICOTTA_OSD
++   /* Cannoli owns the screenshot notification (type 8). */
++   if (!(state->flags & SS_TASK_FLAG_SILENCE))
++   {
++      ricotta_osd_event(RICOTTA_OSD_SCREENSHOT, 0);
++   }
++#else
+    if (    !(state->flags & SS_TASK_FLAG_SILENCE)
+          && (state->flags & SS_TASK_FLAG_WIDGETS_READY))
+       gfx_widget_screenshot_taken(dispwidget_get_ptr(),
+             state->shotname, state->filename);
++#endif
+ 
+    free(state);
+    /* Must explicitly set task->state to NULL here,

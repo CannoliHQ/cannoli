@@ -1,6 +1,13 @@
 #ifndef RICOTTA_OSD_H
 #define RICOTTA_OSD_H
 
+/* Force-included into every RetroArch translation unit by Android.mk, which includes the C++ ones
+ * such as griffin_cpp.cpp. Without this the declaration would get C++ linkage there and fail to
+ * link against the C definition in ricotta_bridge.c. */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * Cannoli owns the on-screen notifications RetroArch would otherwise draw itself.
  * The patched RetroArch sites report what happened through ricotta_osd_event and
@@ -26,5 +33,9 @@ enum ricotta_osd_type
  * RICOTTA_OSD_CONTROLLER_PORT, and 1 when the stored login must be re-entered
  * (0 otherwise) on RICOTTA_OSD_CHEEVOS_LOGIN_FAILED. It is unused elsewhere. */
 void ricotta_osd_event(int type, int slot);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

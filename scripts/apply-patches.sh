@@ -74,6 +74,20 @@ LOCAL_C_INCLUDES += $(LOCAL_PATH)' "$ANDROID_MK"
     echo "Added ricotta include path to Android.mk"
 fi
 
+# Force-include ricotta_osd.h into every translation unit rather than patching an include into each
+# file that needs it. Twelve of the patch set's forty-two hunks existed only to add that include,
+# every one a context-anchored diff into a file upstream churns, rebased by hand at each bump for no
+# behaviour. The header is guarded and carries extern "C" so this is safe in the C++ units too.
+if ! grep -q 'include ricotta_osd.h' "$ANDROID_MK"; then
+    if [[ "$OSTYPE" == darwin* ]]; then
+        sed -i '' '/^DEFINES += -DHAVE_RICOTTA_IGM/a\
+DEFINES += -include ricotta_osd.h' "$ANDROID_MK"
+    else
+        sed -i '/^DEFINES += -DHAVE_RICOTTA_IGM/a\DEFINES += -include ricotta_osd.h' "$ANDROID_MK"
+    fi
+    echo "Added ricotta_osd.h force-include to Android.mk"
+fi
+
 # Ensure HAVE_RICOTTA_OSD is defined (Cannoli OSD replaces RetroArch's native notifications)
 if ! grep -q "HAVE_RICOTTA_OSD" "$ANDROID_MK"; then
     if [[ "$OSTYPE" == darwin* ]]; then

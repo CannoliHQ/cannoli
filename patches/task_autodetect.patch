@@ -1,0 +1,24 @@
+diff --git a/tasks/task_autodetect.c b/tasks/task_autodetect.c
+index f52e0f1b6b..2423234776 100644
+--- a/tasks/task_autodetect.c
++++ b/tasks/task_autodetect.c
+@@ -806,10 +806,19 @@ static void input_autoconfigure_connect_handler(retro_task_t *task)
+       {
+          /* A valid autoconfig was applied */
+          if (!(autoconfig_handle->flags & AUTOCONF_FLAG_SUPPRESS_NOTIFICATIONS))
++#ifdef HAVE_RICOTTA_OSD
++            /* Cannoli owns the controller-connected notification (type 9;
++             * slot = 1-based port). Leave task_title empty so the task
++             * framework does not also show the native message. */
++            {
++               ricotta_osd_event(RICOTTA_OSD_CONTROLLER_PORT, (int)autoconfig_handle->port + 1);
++            }
++#else
+             snprintf(task_title, sizeof(task_title),
+                   msg_hash_to_str(MSG_DEVICE_CONFIGURED_IN_PORT_NR),
+                   device_display_name,
+                   autoconfig_handle->port + 1);
++#endif
+       }
+       /* Device is autoconfigured, but a (most likely
+        * incorrect) fallback definition was used... */

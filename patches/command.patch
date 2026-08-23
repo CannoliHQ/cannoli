@@ -1,0 +1,20 @@
+diff --git a/command.c b/command.c
+index cbd875a146..7f8f5c4b38 100644
+--- a/command.c
++++ b/command.c
+@@ -78,8 +78,15 @@ static void command_post_state_loaded(void)
+    {
+       const char *_msg = msg_hash_to_str(MSG_CHEEVOS_HARDCORE_MODE_DISABLED);
+       rcheevos_pause_hardcore();
++#ifdef HAVE_RICOTTA_OSD
++      /* Cannoli already draws this as the hardcore-paused pill (type 11), fired by
++       * rcheevos_pause_hardcore above. Suppress RetroArch's own message for the same
++       * cause so it does not render twice. */
++      (void)_msg;
++#else
+       runloop_msg_queue_push(_msg, strlen(_msg), 0, 180, true, NULL,
+             MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_INFO);
++#endif
+    }
+ #endif
+ #ifdef HAVE_NETWORKING

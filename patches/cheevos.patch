@@ -1,0 +1,147 @@
+diff --git a/cheevos/cheevos.c b/cheevos/cheevos.c
+index ffb5e128a1..eb46f8a1fb 100644
+--- a/cheevos/cheevos.c
++++ b/cheevos/cheevos.c
+@@ -388,6 +388,12 @@ static void rcheevos_award_achievement(const rc_client_achievement_t* cheevo)
+    /* Show the on screen message. */
+    if (settings->bools.cheevos_visibility_unlock)
+    {
++#ifdef HAVE_RICOTTA_OSD
++      {
++         extern void ricotta_osd_achievement(const char *title);
++         ricotta_osd_achievement(cheevo->title);
++      }
++#else
+ #if defined(HAVE_GFX_WIDGETS)
+       if (gfx_widgets_ready())
+       {
+@@ -450,6 +456,7 @@ static void rcheevos_award_achievement(const rc_client_achievement_t* cheevo)
+          runloop_msg_queue_push(cheevo->description, strlen(cheevo->description), 0, 3 * 60, false, NULL,
+             MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_INFO);
+       }
++#endif /* HAVE_RICOTTA_OSD */
+    }
+ 
+ #ifdef HAVE_AUDIOMIXER
+@@ -801,7 +808,14 @@ void rcheevos_pause_hardcore(void)
+    rcheevos_locals.hardcore_allowed = false;
+ 
+    if (rcheevos_hardcore_active())
++   {
+       rcheevos_toggle_hardcore_paused();
++#ifdef HAVE_RICOTTA_OSD
++      /* Cannoli owns the hardcore-paused notification (type 11). Every cause funnels
++       * here: state load, cheat applied, disallowed setting, SRAM load. */
++      ricotta_osd_event(RICOTTA_OSD_HARDCORE_PAUSED, 0);
++#endif
++   }
+ }
+ 
+ bool rcheevos_unload(void)
+@@ -1035,8 +1049,15 @@ void rcheevos_validate_config_settings(void)
+             msg_hash_to_str_us(MSG_CHEEVOS_HARDCORE_PAUSED_MANUAL_FRAME_DELAY));
+       rcheevos_pause_hardcore();
+ 
++#ifdef HAVE_RICOTTA_OSD
++      /* Cannoli already draws this as the hardcore-paused pill (type 11), fired by
++       * rcheevos_pause_hardcore above. Suppress RetroArch's own message for the same
++       * cause so it does not render twice. */
++      (void)error;
++#else
+       runloop_msg_queue_push(error, strlen(error), 0, 4 * 60, false, NULL,
+          MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_WARNING);
++#endif
+       return;
+    }
+ 
+@@ -1056,8 +1077,15 @@ void rcheevos_validate_config_settings(void)
+             msg_hash_to_str_us(MSG_CHEEVOS_HARDCORE_PAUSED_VSYNC_SWAP_INTERVAL));
+       rcheevos_pause_hardcore();
+ 
++#ifdef HAVE_RICOTTA_OSD
++      /* Cannoli already draws this as the hardcore-paused pill (type 11), fired by
++       * rcheevos_pause_hardcore above. Suppress RetroArch's own message for the same
++       * cause so it does not render twice. */
++      (void)error;
++#else
+       runloop_msg_queue_push(error, strlen(error), 0, 4 * 60, false, NULL,
+          MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_WARNING);
++#endif
+       return;
+    }
+ 
+@@ -1071,8 +1099,15 @@ void rcheevos_validate_config_settings(void)
+             msg_hash_to_str_us(MSG_CHEEVOS_HARDCORE_PAUSED_BLACK_FRAME_INSERTION));
+       rcheevos_pause_hardcore();
+ 
++#ifdef HAVE_RICOTTA_OSD
++      /* Cannoli already draws this as the hardcore-paused pill (type 11), fired by
++       * rcheevos_pause_hardcore above. Suppress RetroArch's own message for the same
++       * cause so it does not render twice. */
++      (void)error;
++#else
+       runloop_msg_queue_push(error, strlen(error), 0, 4 * 60, false, NULL,
+          MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_WARNING);
++#endif
+       return;
+    }
+ 
+@@ -1099,8 +1134,15 @@ void rcheevos_validate_config_settings(void)
+             rcheevos_locals.hardcore_requires_reload = true;
+             rcheevos_pause_hardcore();
+ 
++#ifdef HAVE_RICOTTA_OSD
++            /* Cannoli already draws this as the hardcore-paused pill (type 11), fired by
++             * rcheevos_pause_hardcore above. Suppress RetroArch's own message for the same
++             * cause so it does not render twice. */
++            (void)_len;
++#else
+             runloop_msg_queue_push(buffer, _len, 0, 4 * 60, false, NULL,
+                MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_WARNING);
++#endif
+             return;
+          }
+       }
+@@ -1121,8 +1163,15 @@ void rcheevos_validate_config_settings(void)
+       CHEEVOS_LOG(RCHEEVOS_TAG "%s\n", buffer);
+       rcheevos_pause_hardcore();
+ 
++#ifdef HAVE_RICOTTA_OSD
++      /* Cannoli already draws this as the hardcore-paused pill (type 11), fired by
++       * rcheevos_pause_hardcore above. Suppress RetroArch's own message for the same
++       * cause so it does not render twice. */
++      (void)_len;
++#else
+       runloop_msg_queue_push(buffer, _len, 0, 4 * 60, false, NULL,
+             MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_WARNING);
++#endif
+       return;
+    }
+ }
+@@ -1491,6 +1540,12 @@ static void rcheevos_client_login_callback(int result,
+    if (result != RC_OK)
+    {
+       settings_t* settings = config_get_ptr();
++#ifdef HAVE_RICOTTA_OSD
++      /* Captured before the branch below clears the token. Upstream treats an expired
++       * token and an invalid stored one identically: both mean "log in again". */
++      const bool ricotta_reauth = (result == RC_EXPIRED_TOKEN ||
++            (result == RC_INVALID_CREDENTIALS && settings->arrays.cheevos_token[0]));
++#endif
+       char msg[256];
+       size_t _len = strlcpy(msg, "RetroAchievements login failed: ",
+             sizeof(msg));
+@@ -1510,8 +1565,13 @@ static void rcheevos_client_login_callback(int result,
+                sizeof(msg));
+       }
+ 
++#ifdef HAVE_RICOTTA_OSD
++      /* Cannoli owns the login-failure notification (type 12; slot 1 = must sign in again). */
++      ricotta_osd_event(RICOTTA_OSD_CHEEVOS_LOGIN_FAILED, ricotta_reauth ? 1 : 0);
++#else
+       runloop_msg_queue_push(msg, _len, 0, 2 * 60, false, NULL,
+             MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_ERROR);
++#endif
+       return;
+    }
+ 
