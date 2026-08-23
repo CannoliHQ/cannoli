@@ -23,7 +23,7 @@ class RaSettingsCensusTest {
         stream.bufferedReader().readLines().drop(1)
             .filter { it.isNotBlank() }
             .map { it.split("\t") }
-            .associate { it[0] to Census(it[0], it[2], it[3], it.getOrElse(4) { "" }) }
+            .associate { it[0] to Census(it[0], it[1], it[2], it.getOrElse(3) { "" }) }
     }
 
     // All Settings names no keys any more: RetroArch supplies its rows, so a key that stops existing
