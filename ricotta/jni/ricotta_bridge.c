@@ -1003,6 +1003,15 @@ static void ricotta_ra_save_override(int scope, const char *keys)
             continue;
          }
          s = ricotta_ra_find(key);
+         /* A setting whose enum has no _STR define falls back to its US display label, so its name
+          * arrives here as something like "HDR Mode". No RetroArch config key contains whitespace,
+          * so writing one produces a line RetroArch cannot read and that merging then preserves
+          * forever. Drop it, and clear any an older build already wrote. */
+         if (strpbrk(key, " \t"))
+         {
+            config_unset(conf, key);
+            s = NULL;
+         }
          if (s)
          {
             const char *ck = ricotta_config_key(key);
