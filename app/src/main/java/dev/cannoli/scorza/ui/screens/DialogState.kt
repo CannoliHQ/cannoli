@@ -5,7 +5,33 @@ import dev.cannoli.ui.components.KeyboardLayout
 import dev.cannoli.ui.components.KeyboardState
 
 enum class EmulatorMappingStatus { READY, NOT_INSTALLED, NEEDS_SETUP, UNKNOWN }
-data class EmulatorMappingEntry(val tag: String, val platformName: String, val coreDisplayName: String, val runnerLabel: String, val status: EmulatorMappingStatus = EmulatorMappingStatus.READY)
+data class EmulatorMappingEntry(val tag: String, val platformName: String, val coreDisplayName: String, val runnerLabel: String, val status: EmulatorMappingStatus = EmulatorMappingStatus.READY, val group: String? = null)
+
+/**
+ * A row of the emulator mapping list. Headers are separate rows rather than decoration on the
+ * first platform of a group, because the list draws every row at one height and selection counts
+ * only the selectable ones, which is how the platform picker beside it already works.
+ */
+sealed interface MappingListRow {
+    val isSelectable: Boolean
+    data class Group(val label: String) : MappingListRow { override val isSelectable = false }
+    data class Platform(val entry: EmulatorMappingEntry) : MappingListRow { override val isSelectable = true }
+}
+
+/** Groups entries under manufacturer headers, preserving the order the entries arrive in. */
+fun groupMappingRows(entries: List<EmulatorMappingEntry>): List<MappingListRow> {
+    val rows = mutableListOf<MappingListRow>()
+    var current: String? = null
+    for (entry in entries) {
+        val group = entry.group
+        if (group != null && group != current) {
+            rows.add(MappingListRow.Group(group))
+            current = group
+        }
+        rows.add(MappingListRow.Platform(entry))
+    }
+    return rows
+}
 // Three-valued because a boolean forced "not reported" and "confirmed absent" to share a
 // value, which is how the picker came to label unknowable cores Not Installed.
 enum class CoreAvailability { AVAILABLE, UNAVAILABLE, UNKNOWN }

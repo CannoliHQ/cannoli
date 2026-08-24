@@ -36,7 +36,9 @@ class KitchenApkTest {
     private lateinit var root: File
     private lateinit var fake: FakeInstalls
     private var server: KitchenHttpServer? = null
-    private val port = 17193
+    // Ephemeral: a fixed port collides with whatever else on the machine happens to
+    // take it, which fails the whole file with a socket error that reads like a bug.
+    private var port = 0
 
     @Before fun setUp() {
         root = File.createTempFile("cannoli", "").also { it.delete(); it.mkdirs() }
@@ -44,6 +46,7 @@ class KitchenApkTest {
         val assets = ApplicationProvider.getApplicationContext<android.content.Context>().assets
         val s = KitchenHttpServer(root, assets, port = port, pin = "TESTPIN", apkInstalls = fake)
         s.startServer()
+        port = s.listeningPort
         waitUntilReady()
         server = s
     }
@@ -132,10 +135,10 @@ class KitchenApkTest {
 
     @Test fun apkRouteUnavailableWithoutInstaller() {
         val assets = ApplicationProvider.getApplicationContext<android.content.Context>().assets
-        val bare = KitchenHttpServer(root, assets, port = 17194, pin = "TESTPIN")
+        val bare = KitchenHttpServer(root, assets, port = 0, pin = "TESTPIN")
         bare.startServer()
         try {
-            val conn = URL("http://127.0.0.1:17194/api/apk/1").openConnection() as HttpURLConnection
+            val conn = URL("http://127.0.0.1:${bare.listeningPort}/api/apk/1").openConnection() as HttpURLConnection
             val token = Base64.getEncoder().encodeToString("nonna:TESTPIN".toByteArray())
             conn.setRequestProperty("Authorization", "Basic $token")
             assertEquals(503, conn.responseCode)
@@ -149,18 +152,19 @@ class KitchenApkTest {
         val throwingStaging = File(root, "staging-throw").also { it.mkdirs() }
         val throwing = ThrowingInstalls(throwingStaging)
         val assets = ApplicationProvider.getApplicationContext<android.content.Context>().assets
-        val s = KitchenHttpServer(root, assets, port = 17195, pin = "TESTPIN", apkInstalls = throwing)
+        val s = KitchenHttpServer(root, assets, port = 0, pin = "TESTPIN", apkInstalls = throwing)
         s.startServer()
+        port = s.listeningPort
         try {
             repeat(50) {
                 try {
-                    URL("http://127.0.0.1:17195/api/auth").openConnection()
+                    URL("http://127.0.0.1:$port/api/auth").openConnection()
                         .also { (it as HttpURLConnection).connect(); it.disconnect() }
                     return@repeat
                 } catch (_: Exception) { Thread.sleep(40) }
             }
             val (bytes, contentType) = multipartBody("tool.apk", "APKDATA".toByteArray())
-            val conn = URL("http://127.0.0.1:17195/api/apk").openConnection() as HttpURLConnection
+            val conn = URL("http://127.0.0.1:$port/api/apk").openConnection() as HttpURLConnection
             conn.requestMethod = "POST"
             val token = Base64.getEncoder().encodeToString("nonna:TESTPIN".toByteArray())
             conn.setRequestProperty("Authorization", "Basic $token")

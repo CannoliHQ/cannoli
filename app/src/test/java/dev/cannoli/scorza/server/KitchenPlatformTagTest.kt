@@ -28,7 +28,9 @@ class KitchenPlatformTagTest {
 
     private var server: KitchenHttpServer? = null
     private var root: File? = null
-    private val port = 17197
+    // Ephemeral: a fixed port collides with whatever else on the machine happens to
+    // take it, which fails the whole file with a socket error that reads like a bug.
+    private var port = 0
 
     @After fun tearDown() {
         server?.stopServer()
@@ -67,6 +69,7 @@ class KitchenPlatformTagTest {
             platformTagsProvider = { configuredTags },
         )
         s.startServer()
+        port = s.listeningPort
         repeat(50) {
             try {
                 URL("http://127.0.0.1:$port/api/auth").openConnection()

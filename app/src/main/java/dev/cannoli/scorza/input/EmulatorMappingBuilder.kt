@@ -50,7 +50,8 @@ class EmulatorMappingBuilder @Inject constructor(
         )
         // MAME and FBN are both named Arcade; tag the name so the two rows are tellable apart.
         val shared = entries.groupingBy { it.platformName }.eachCount().filterValues { it > 1 }.keys
-        if (shared.isEmpty()) return entries
+        if (shared.isEmpty()) return entries.sortedNatural { it.platformName }
+            .sortedBy { platformConfig.groupRank(it.group) }
         return entries.map { entry ->
             if (entry.platformName in shared) {
                 entry.copy(platformName = context.getString(
@@ -61,6 +62,7 @@ class EmulatorMappingBuilder @Inject constructor(
                 entry
             }
         }.sortedNatural { it.platformName }
+            .sortedBy { platformConfig.groupRank(it.group) }
     }
 
     fun filter(all: List<EmulatorMappingEntry>, filter: Int): List<EmulatorMappingEntry> = when (filter) {

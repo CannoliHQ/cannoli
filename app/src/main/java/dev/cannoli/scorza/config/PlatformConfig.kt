@@ -15,6 +15,8 @@ import dev.cannoli.scorza.util.sortedNatural
 import org.json.JSONObject
 import java.io.File
 
+private const val UNGROUPED = "Other"
+
 class PlatformConfig(
     private val cannoliRootProvider: () -> File,
     private val assets: AssetManager,
@@ -50,6 +52,13 @@ class PlatformConfig(
      * added on one side only.
      */
     private var platformGroups = mapOf<String, String>()
+
+    /**
+     * Group order, taken from where each group first appears in platforms.json rather than a second
+     * list to keep in step. "Other" is forced last: it is a catch-all, and the asset's order puts
+     * it wherever its first member happens to sit.
+     */
+    private var platformGroupOrder = listOf<String>()
     private var defaultApps = mapOf<String, List<AppConfig>>()
     private var arcadePlatforms = setOf<String>()
 
@@ -94,6 +103,8 @@ class PlatformConfig(
         defaultCores = cores
         defaultPlatformNames = names
         platformGroups = groups
+        platformGroupOrder = groups.values.distinct()
+            .sortedBy { if (it == UNGROUPED) 1 else 0 }
         defaultApps = apps
         arcadePlatforms = arcade
     }
@@ -409,6 +420,10 @@ class PlatformConfig(
 
     fun getAllTags(): Set<String> = defaultPlatformNames.keys + ini.getSection("platforms").keys
 
+    /** Sort key for a group, so a list reads in the asset's order with the catch-all last. */
+    fun groupRank(group: String?): Int =
+        if (group == null) Int.MAX_VALUE else platformGroupOrder.indexOf(group).takeIf { it >= 0 } ?: Int.MAX_VALUE
+
     /** Null for a tag the bundled definitions do not group, which callers show as ungrouped. */
     fun getGroup(tag: String): String? = platformGroups[tag.uppercase(java.util.Locale.ROOT)]
 
@@ -498,20 +513,20 @@ class PlatformConfig(
                 val appName = pm?.let { resolveAppLabel(it, resolved) } ?: (knownAppLabels[resolved] ?: resolved)
                 val installed = pm == null || pm.isPackageInstalled(resolved)
                 dev.cannoli.scorza.ui.screens.EmulatorMappingEntry(
-                    tag = tag, platformName = getDisplayName(tag),
+                    tag = tag, platformName = getDisplayName(tag), group = getGroup(tag),
                     coreDisplayName = appName, runnerLabel = "Standalone",
                     status = if (installed) EmulatorMappingStatus.READY else EmulatorMappingStatus.NOT_INSTALLED
                 )
             } else {
                 dev.cannoli.scorza.ui.screens.EmulatorMappingEntry(
-                    tag = tag, platformName = getDisplayName(tag),
+                    tag = tag, platformName = getDisplayName(tag), group = getGroup(tag),
                     coreDisplayName = needsSetupLabel, runnerLabel = "",
                     status = EmulatorMappingStatus.NEEDS_SETUP
                 )
             }
         } else if (coreId.isBlank()) {
             dev.cannoli.scorza.ui.screens.EmulatorMappingEntry(
-                tag = tag, platformName = getDisplayName(tag),
+                tag = tag, platformName = getDisplayName(tag), group = getGroup(tag),
                 coreDisplayName = needsSetupLabel, runnerLabel = "",
                 status = EmulatorMappingStatus.NEEDS_SETUP
             )
@@ -527,7 +542,7 @@ class PlatformConfig(
                 else -> EmulatorMappingStatus.READY
             }
             dev.cannoli.scorza.ui.screens.EmulatorMappingEntry(
-                tag = tag, platformName = getDisplayName(tag),
+                tag = tag, platformName = getDisplayName(tag), group = getGroup(tag),
                 coreDisplayName = getCoreDisplayName(coreId),
                 runnerLabel = resolvedRunner,
                 status = mappingStatus

@@ -719,13 +719,34 @@ fun AppNavGraph(
                     },
                     buttonStyle = labels
                 ) {
+                    // Headers are rows, so the highlight is translated from the selectable-only
+                    // index the screen state carries, the same way PlatformMapping does it. Nothing
+                    // in the input path has to know grouping exists.
+                    val mappingRows = remember(currentScreen.mappings) {
+                        dev.cannoli.scorza.ui.screens.groupMappingRows(currentScreen.mappings)
+                    }
+                    val mappingHighlight = remember(mappingRows, currentScreen.selectedIndex) {
+                        mappingRows.withIndex()
+                            .filter { it.value.isSelectable }
+                            .getOrNull(currentScreen.selectedIndex)?.index ?: -1
+                    }
                     List(
-                        items = currentScreen.mappings,
-                        selectedIndex = currentScreen.selectedIndex,
+                        items = mappingRows,
+                        selectedIndex = mappingHighlight,
                         itemHeight = itemHeight,
                         scrollTarget = currentScreen.scrollTarget,
                         onListStateChanged = onListStateChanged
-                    ) { _, entry, isSelected ->
+                    ) { _, row, isSelected ->
+                        if (row is dev.cannoli.scorza.ui.screens.MappingListRow.Group) {
+                            SectionHeader(
+                                text = row.label,
+                                fontSize = listFontSize,
+                                lineHeight = listLineHeight,
+                                verticalPadding = listVerticalPadding,
+                            )
+                            return@List
+                        }
+                        val entry = (row as dev.cannoli.scorza.ui.screens.MappingListRow.Platform).entry
                         val value = when {
                             entry.status == dev.cannoli.scorza.ui.screens.EmulatorMappingStatus.NEEDS_SETUP -> stringResource(R.string.value_unmapped)
                             entry.runnerLabel.isEmpty() -> entry.coreDisplayName

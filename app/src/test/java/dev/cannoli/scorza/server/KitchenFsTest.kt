@@ -27,7 +27,9 @@ class KitchenFsTest {
     private lateinit var internalVol: File
     private lateinit var sdVol: File
     private var server: KitchenHttpServer? = null
-    private val port = 17192
+    // Ephemeral: a fixed port collides with whatever else on the machine happens to
+    // take it, which fails the whole file with a socket error that reads like a bug.
+    private var port = 0
 
     @Before fun setUp() {
         root = File.createTempFile("cannoli", "").also { it.delete(); it.mkdirs() }
@@ -60,6 +62,7 @@ class KitchenFsTest {
             },
         )
         s.startServer()
+        port = s.listeningPort
         waitUntilReady()
         server = s
     }

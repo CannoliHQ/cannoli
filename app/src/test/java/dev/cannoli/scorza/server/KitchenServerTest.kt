@@ -20,7 +20,9 @@ class KitchenServerTest {
 
     private lateinit var root: File
     private var server: KitchenHttpServer? = null
-    private val port = 17191
+    // Ephemeral: a fixed port collides with whatever else on the machine happens to
+    // take it, which fails the whole file with a socket error that reads like a bug.
+    private var port = 0
 
     @Before fun setUp() {
         root = File.createTempFile("cannoli", "").also { it.delete(); it.mkdirs() }
@@ -38,6 +40,7 @@ class KitchenServerTest {
         val assets = ApplicationProvider.getApplicationContext<android.content.Context>().assets
         val s = KitchenHttpServer(root, assets, port = port, pin = "TESTPIN")
         s.startServer()
+        port = s.listeningPort
         waitUntilReady()
         server = s
     }
