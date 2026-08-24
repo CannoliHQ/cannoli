@@ -132,9 +132,6 @@ class BootInitializer @Inject constructor(
             return BootResult.Failure(result.cause.message ?: context.getString(R.string.boot_import_failed))
         }
 
-        ioScope.launch {
-            installedCoreService.queryAllPackages()
-        }
         // Runs after import so the rom list it disambiguates against reflects the current library.
         ioScope.launch {
             guidesKeyMigration.migrateIfNeeded()

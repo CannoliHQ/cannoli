@@ -4,7 +4,7 @@ import dev.cannoli.ui.ELLIPSIS
 import dev.cannoli.ui.components.KeyboardLayout
 import dev.cannoli.ui.components.KeyboardState
 
-enum class EmulatorMappingStatus { READY, NOT_INSTALLED, NEEDS_SETUP, UNKNOWN }
+enum class EmulatorMappingStatus { READY, NOT_INSTALLED, NEEDS_SETUP }
 data class EmulatorMappingEntry(val tag: String, val platformName: String, val coreDisplayName: String, val runnerLabel: String, val status: EmulatorMappingStatus = EmulatorMappingStatus.READY, val group: String? = null)
 
 /**
@@ -32,11 +32,9 @@ fun groupMappingRows(entries: List<EmulatorMappingEntry>): List<MappingListRow> 
     }
     return rows
 }
-// Three-valued because a boolean forced "not reported" and "confirmed absent" to share a
-// value, which is how the picker came to label unknowable cores Not Installed.
-enum class CoreAvailability { AVAILABLE, UNAVAILABLE, UNKNOWN }
+enum class CoreAvailability { AVAILABLE, UNAVAILABLE }
 // source is the identity; runnerLabel is display only. Matching on the caption is what made a
-// selection vanish whenever the configured RetroArch package changed its label.
+// selection vanish whenever the runner's label changed.
 data class EmulatorPickerOption(
     val coreId: String,
     val displayName: String,
@@ -51,7 +49,6 @@ enum class MappingActionKind { BIOS, OVERRIDES, RESET }
 sealed interface MappingItem {
     val isSelectable: Boolean
     data class SectionHeader(val label: String) : MappingItem { override val isSelectable = false }
-    data class Notice(val text: String) : MappingItem { override val isSelectable = false }
     data class Divider(val id: Int = 0) : MappingItem { override val isSelectable = false }
     data class EmulatorOption(val option: EmulatorPickerOption, val isCurrent: Boolean, val downloadable: Boolean = false) : MappingItem {
         override val isSelectable = true
@@ -100,7 +97,6 @@ sealed interface DialogState {
     // recovery edits the mapping that actually failed instead of the platform-wide one.
     data class MissingCore(
         val coreName: String,
-        val packageLabel: String? = null,
         val platformTag: String? = null,
         val romId: Long? = null,
         // coreName is a display name, which cannot be looked up or downloaded. The id is carried

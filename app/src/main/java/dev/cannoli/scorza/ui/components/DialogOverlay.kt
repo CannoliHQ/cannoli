@@ -940,11 +940,7 @@ fun DialogOverlay(
         }
 
         is DialogState.MissingCore -> MissingEmulatorDialog(
-            problem = if (dialogState.packageLabel != null) {
-                stringResource(R.string.dialog_missing_core_pkg, dialogState.coreName, dialogState.packageLabel!!)
-            } else {
-                stringResource(R.string.dialog_missing_core_plain, dialogState.coreName)
-            },
+            problem = stringResource(R.string.dialog_missing_core_plain, dialogState.coreName),
             showChangeEmulator = dialogState.platformTag != null,
             buttonStyle = buttonStyle,
         )

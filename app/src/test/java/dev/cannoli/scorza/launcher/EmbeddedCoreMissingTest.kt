@@ -44,7 +44,6 @@ class EmbeddedCoreMissingTest {
         val settings = mockk<SettingsRepository>(relaxed = true)
         every { settings.sdCardRoot } returns root.absolutePath
         every { gameOverrides.get(any()) } returns null
-        every { installedCoreService.cacheReady } returns true
         every { platformConfig.getPlatformChoice("SNES") } returns
             EmulatorChoice(EmulatorSource.Embedded, "snes9x_libretro")
         every { platformConfig.getCoreName("SNES") } returns "snes9x_libretro"

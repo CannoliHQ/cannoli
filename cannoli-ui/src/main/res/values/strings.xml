@@ -220,7 +220,6 @@
     <string name="setting_igm_settings_mode">In-Game Settings</string>
     <string name="setting_default_video_driver">Default Video Driver</string>
     <string name="value_emulator_source_internal">Internal</string>
-    <string name="value_emulator_source_retroarch">RetroArch</string>
     <string name="value_emulator_source_standalone">Standalone</string>
     <string name="value_video_driver_gl">OpenGL</string>
     <string name="value_video_driver_vulkan">Vulkan</string>
@@ -511,8 +510,6 @@
     <string name="launch_error_generic">Failed to launch game</string>
     <!-- %1$s = file name. -->
     <string name="launch_error_bad_game_file">Could not read a game ID from %1$s</string>
-    <!-- %1$s = core name, %2$s = emulator app. -->
-    <string name="dialog_missing_core_pkg">%1$s is not installed in %2$s.</string>
     <!-- %1$s = core name. -->
     <string name="dialog_missing_core_plain">%1$s is not installed.</string>
     <!-- %1$s = app name. -->
@@ -890,12 +887,6 @@
     <string name="mapping_required_missing">%d required missing</string>
     <!-- Distinguishes platforms sharing a display name. %1$s = platform name, %2$s = platform tag. -->
     <string name="mapping_platform_name_with_tag">%1$s (%2$s)</string>
-    <!-- Shown above the RetroArch core list when the installed build predates the receiver that answers core queries. -->
-    <string name="mapping_notice_cannot_report_cores">This RetroArch version cannot report installed cores</string>
-    <!-- Shown when RetroArch has the receiver but did not answer the query. -->
-    <string name="mapping_notice_no_response">RetroArch did not respond</string>
-    <!-- Shown above the core list when the configured RetroArch package is not installed at all. -->
-    <string name="mapping_notice_not_installed">RetroArch is not installed</string>
     <!-- Debug builds only: a gallery of every Nerd Font glyph the launcher draws. Never shipped to users, so not sent to translators. -->
     <string name="setting_icon_gallery" translatable="false">Icon Gallery</string>
     <string name="title_icon_gallery" translatable="false">Icon Gallery</string>

@@ -22,9 +22,4 @@ class EmulatorMappingDownloadableTest {
         assertFalse(EmulatorMappingBuilder.isDownloadable(EmulatorSource.Standalone, CoreAvailability.UNAVAILABLE))
     }
 
-    // The embedded runner reads a directory, so an unknown core still means "not there yet" and
-    // must stay downloadable. Withholding the download is what stranded a fresh install.
-    @Test fun `an unknown core on the embedded RetroArch is downloadable`() {
-        assertTrue(EmulatorMappingBuilder.isDownloadable(EmulatorSource.Embedded, CoreAvailability.UNKNOWN))
-    }
 }

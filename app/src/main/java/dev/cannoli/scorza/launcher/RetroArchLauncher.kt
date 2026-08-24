@@ -73,27 +73,6 @@ class RetroArchLauncher(
         return context.startActivityNoAnim(intent, "Failed to launch RicottaArch")
     }
 
-    // Stock RetroArch (DIY): the classic RetroActivityFuture intent. The user owns RetroArch,
-    // so there is no Cannoli in-game menu and no protocol negotiation.
-    fun launchRetroArchIntent(
-        romFile: File,
-        coreId: String,
-        configPath: String? = null,
-        targetPackage: String? = null,
-    ): LaunchResult {
-        val pkg = targetPackage ?: getRetroArchPackage()
-        if (!context.isPackageInstalled(pkg)) return LaunchResult.AppNotInstalled(pkg)
-
-        val intent = Intent().apply {
-            component = ComponentName(pkg, "com.retroarch.browser.retroactivity.RetroActivityFuture")
-            putExtra("LIBRETRO", "/data/data/$pkg/cores/${coreId}_android.so")
-            putExtra("ROM", romFile.absolutePath)
-            if (configPath != null) putExtra("CONFIGFILE", configPath)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-
-        return context.startActivityNoAnim(intent, "Failed to launch RetroArch")
-    }
 }
 
 fun Context.isPackageInstalled(packageName: String): Boolean =

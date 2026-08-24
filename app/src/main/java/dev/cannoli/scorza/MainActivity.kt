@@ -141,7 +141,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
 
     private val isReady: Boolean get() = bootSequencer.state.value is BootState.Ready
 
-    private var coreQueryReceiver: android.content.BroadcastReceiver? = null
     private var pairingUiJob: kotlinx.coroutines.Job? = null
     private var coldStart = true
     // The press that left the welcome step or finished the wizard, held until its key up.
@@ -225,7 +224,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
                 dev.cannoli.scorza.onboarding.OnboardingPermission.OVERLAY -> requestOverlayPermission()
             }
         }
-        router.unregisterCoreQueryReceiver = { unregisterCoreQueryReceiver() }
 
         controllerBlacklist.load(this)
         controllerBridge.start(this)
@@ -576,7 +574,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
         controllerBridge.onDeviceRemoved = null
         controllerBridge.stop(this)
         super.onDestroy()
-        unregisterCoreQueryReceiver()
         settings.shutdown()
         if (isReady) {
             systemListViewModel.get().close()
@@ -856,13 +853,6 @@ class MainActivity : ComponentActivity(), ActivityActions {
         controller.hide(WindowInsetsCompat.Type.systemBars())
         controller.systemBarsBehavior =
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-    }
-
-    private fun unregisterCoreQueryReceiver() {
-        coreQueryReceiver?.let {
-            try { unregisterReceiver(it) } catch (_: IllegalArgumentException) {}
-            coreQueryReceiver = null
-        }
     }
 
     override fun finishAffinity() = super.finishAffinity()

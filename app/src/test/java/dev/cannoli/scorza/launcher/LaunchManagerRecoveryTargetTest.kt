@@ -40,11 +40,7 @@ class LaunchManagerRecoveryTargetTest {
     private fun manager(root: File): LaunchManager {
         val settings = mockk<SettingsRepository>(relaxed = true)
         every { settings.sdCardRoot } returns root.absolutePath
-        every { settings.retroArchPackage } returns RA
         every { gameOverrides.get(any()) } returns null
-        every { installedCoreService.cacheReady } returns true
-        every { installedCoreService.canReport(any()) } returns true
-        every { installedCoreService.hasCoreInPackage(any(), any()) } returns false
         val activeMappingHolder = mockk<ActiveMappingHolder>(relaxed = true)
         every { activeMappingHolder.active } returns MutableStateFlow<DeviceMapping?>(null)
         return LaunchManager(
@@ -161,6 +157,5 @@ class LaunchManagerRecoveryTargetTest {
 
     companion object {
         private const val MISSING = "org.dolphinemu.mmjr"
-        private const val RA = "com.retroarch"
     }
 }

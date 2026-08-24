@@ -42,7 +42,6 @@ class CoreInstaller @Inject constructor(
             val result = coreDownloadService.downloadCore(coreId)
             withContext(Dispatchers.Main) {
                 if (result.ok) {
-                    installedCoreService.markInstalled(pkg, coreId)
                     osdController.show(context.getString(R.string.osd_core_downloaded, coreName))
                     onInstalled()
                 } else {

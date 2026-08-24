@@ -21,10 +21,7 @@ class PlatformConfigStandaloneDisplayTest {
     @Test fun `standalone selection renders app name not bundled core`() {
         val pc = config()
         pc.setPlatformChoice("NES", EmulatorChoice(EmulatorSource.Standalone, appPackage = "com.explusalpha.NesEmu"))
-        // Simulate RetroArch installed with nestopia_libretro so coreStatus returns "Present",
-        // which is the scenario where the bug manifests (core branch fires instead of standalone).
-        val installedRaCores = mapOf("org.libretro.retroarch" to setOf("nestopia_libretro"))
-        val entry = pc.getDetailedMappings(installedRaCores = installedRaCores).first { it.tag == "NES" }
+        val entry = pc.getDetailedMappings().first { it.tag == "NES" }
         assertEquals("Standalone", entry.runnerLabel)
         assertTrue(entry.coreDisplayName != pc.getCoreDisplayName("nestopia_libretro"))
     }

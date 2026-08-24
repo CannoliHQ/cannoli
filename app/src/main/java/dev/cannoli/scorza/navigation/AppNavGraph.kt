@@ -761,7 +761,6 @@ fun AppNavGraph(
                         }
                         val valueIcon = when (entry.status) {
                             dev.cannoli.scorza.ui.screens.EmulatorMappingStatus.NOT_INSTALLED -> CannoliIcons.NotInstalled.glyph
-                            dev.cannoli.scorza.ui.screens.EmulatorMappingStatus.UNKNOWN -> CannoliIcons.Unknown.glyph
                             else -> null
                         }
                         PillRowKeyValue(
@@ -817,13 +816,6 @@ fun AppNavGraph(
                         when (item) {
                             is dev.cannoli.scorza.ui.screens.MappingItem.SectionHeader -> SectionHeader(
                                 text = item.label,
-                                fontSize = listFontSize,
-                                lineHeight = listLineHeight,
-                                verticalPadding = listVerticalPadding,
-                            )
-                            is dev.cannoli.scorza.ui.screens.MappingItem.Notice -> SectionNotice(
-                                icon = CannoliIcons.NotInstalled.glyph,
-                                text = item.text,
                                 fontSize = listFontSize,
                                 lineHeight = listLineHeight,
                                 verticalPadding = listVerticalPadding,

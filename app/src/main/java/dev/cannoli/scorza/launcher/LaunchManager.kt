@@ -344,15 +344,12 @@ class LaunchManager(
                 val source = pickSource(
                     gameSource = gameOverride?.source,
                     platformSource = platformConfig.getPlatformChoice(rom.platformTag)?.source,
-                    // Any runner that can load the core counts, embedded or external. This only
-                    // decides whether to fall back to a standalone app when nothing is stored.
+                    // Only decides whether to fall back to a standalone app when nothing is
+                    // stored, so it asks the one runner that can load a core.
                     raAvailable = {
                         val core = resolvedCore
                         val svc = installedCoreService
-                        core != null && svc != null && (
-                            core in svc.embeddedCores() ||
-                                svc.externalRaCores().any { core in it.value }
-                            )
+                        core != null && svc != null && core in svc.embeddedCores()
                     },
                     standaloneAvailable = {
                         platformConfig.getFirstInstalledApp(rom.platformTag, context.packageManager) != null
@@ -490,7 +487,6 @@ class LaunchManager(
 
     private fun toLaunchDialog(result: LaunchResult, platformTag: String? = null, romId: Long? = null): DialogState? {
         return when (result) {
-            is LaunchResult.CoreNotInstalled -> DialogState.MissingCore(result.coreName, platformTag = platformTag, romId = romId)
             is LaunchResult.AppNotInstalled -> {
                 // getApplicationLabel cannot resolve a package that is not installed, and this
                 // branch only fires when it is not, so use the curated label like MissingCore does.

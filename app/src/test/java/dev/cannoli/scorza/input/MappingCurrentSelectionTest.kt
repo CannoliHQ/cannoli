@@ -57,7 +57,7 @@ class MappingCurrentSelectionTest {
 
         val config = PlatformConfig(root, ctx.assets, nativeLibDir = libs.absolutePath).also { it.load() }
         val settings = dev.cannoli.scorza.settings.SettingsRepository(ctx).also { it.sdCardRoot = root.absolutePath }
-        val cores = dev.cannoli.scorza.launcher.InstalledCoreService(ctx, settings)
+        val cores = dev.cannoli.scorza.launcher.InstalledCoreService(ctx)
         val store = GameOverrideStore(db)
         return Fixture(EmulatorMappingBuilder(config, cores, settings, store, ctx), config, store, romId)
     }
@@ -84,9 +84,6 @@ class MappingCurrentSelectionTest {
     @Test fun `platform internal core is current`() =
         assertExactlyOneCurrent("cur-p-int", EmulatorChoice(EmulatorSource.Embedded, "mgba_libretro"), false)
 
-    @Test fun `platform retroarch core is current`() =
-        assertExactlyOneCurrent("cur-p-ra", EmulatorChoice(EmulatorSource.Embedded, "mgba_libretro"), false)
-
     @Test fun `platform standalone app is current`() =
         assertExactlyOneCurrent(
             "cur-p-app", EmulatorChoice(EmulatorSource.Standalone, appPackage = "com.fastemulator.gba"), false,
@@ -94,9 +91,6 @@ class MappingCurrentSelectionTest {
 
     @Test fun `game internal core is current`() =
         assertExactlyOneCurrent("cur-g-int", EmulatorChoice(EmulatorSource.Embedded, "mgba_libretro"), true)
-
-    @Test fun `game retroarch core is current`() =
-        assertExactlyOneCurrent("cur-g-ra", EmulatorChoice(EmulatorSource.Embedded, "mgba_libretro"), true)
 
     @Test fun `game standalone app is current`() =
         assertExactlyOneCurrent(

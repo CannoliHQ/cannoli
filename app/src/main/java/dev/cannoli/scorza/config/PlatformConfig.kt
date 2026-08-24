@@ -474,22 +474,18 @@ class PlatformConfig(
 
     fun getDetailedMappings(
         pm: PackageManager? = null,
-        installedRaCores: Map<String, Set<String>> = emptyMap(),
         embeddedCoresDir: String? = null,
-        unreportablePackages: Set<String> = emptySet(),
     ): List<dev.cannoli.scorza.ui.screens.EmulatorMappingEntry> {
         val tags = (defaultCores.keys + defaultApps.keys + userChoices.keys)
         return tags.map { tag ->
-            detailedMappingFor(tag, pm, installedRaCores, embeddedCoresDir, unreportablePackages)
+            detailedMappingFor(tag, pm, embeddedCoresDir)
         }.sortedNatural { it.platformName }
     }
 
     fun detailedMappingFor(
         tag: String,
         pm: PackageManager? = null,
-        installedRaCores: Map<String, Set<String>> = emptyMap(),
         embeddedCoresDir: String? = null,
-        unreportablePackages: Set<String> = emptySet(),
     ): dev.cannoli.scorza.ui.screens.EmulatorMappingEntry {
         val choice = userChoices[tag]
         val app = getAppPackage(tag)
@@ -526,15 +522,12 @@ class PlatformConfig(
             )
         } else {
             val resolvedRunner = getRunnerLabel(tag, coreId)
-            val status = coreStatus(tag, coreId, resolvedRunner, installedRaCores, embeddedCoresDir, unreportablePackages)
-            // "Missing" is a confirmed absence: an internal .so that is not on disk, or a
-            // RetroArch that reported its cores and did not name this one. "Unknown" means no
-            // report is possible, so the row must not claim either way.
-            val mappingStatus = when (status) {
-                "Missing" -> EmulatorMappingStatus.NOT_INSTALLED
-                "Unknown" -> EmulatorMappingStatus.UNKNOWN
-                else -> EmulatorMappingStatus.READY
-            }
+            val status = coreStatus(tag, coreId, resolvedRunner, embeddedCoresDir)
+            // "Missing" is a confirmed absence: a core .so that is not on disk. There is no
+            // longer an unknown case, since presence is a file check rather than a query.
+            val mappingStatus =
+                if (status == "Missing") EmulatorMappingStatus.NOT_INSTALLED
+                else EmulatorMappingStatus.READY
             dev.cannoli.scorza.ui.screens.EmulatorMappingEntry(
                 tag = tag, platformName = getDisplayName(tag), group = getGroup(tag),
                 coreDisplayName = getCoreDisplayName(coreId),
@@ -544,20 +537,15 @@ class PlatformConfig(
         }
     }
 
+    // The embedded runner reads a directory, so presence is a file check and never unknown. The
+    // query that could fail belonged to the external RetroArch, which is gone.
     private fun coreStatus(
         tag: String, coreId: String, runner: String,
-        installedRaCores: Map<String, Set<String>>,
         embeddedCoresDir: String?,
-        unreportablePackages: Set<String>
     ): String {
-        if (runner == internalLabel) {
-            val dir = embeddedCoresDir ?: nativeLibDir ?: return "Missing"
-            return if (File(dir, "${coreId}_android.so").exists()) "Present" else "Missing"
-        }
         if (runner == "External") return "Present"
-        if (installedRaCores.any { it.value.contains(coreId) }) return "Present"
-        if (unreportablePackages.isNotEmpty()) return "Unknown"
-        return "Missing"
+        val dir = embeddedCoresDir ?: nativeLibDir ?: return "Missing"
+        return if (File(dir, "${coreId}_android.so").exists()) "Present" else "Missing"
     }
 
     fun availableSources(tag: String, embeddedCoresDir: String? = null): List<EmulatorSource> {
@@ -581,11 +569,8 @@ class PlatformConfig(
         tag: String,
         source: EmulatorSource,
         includeAll: Boolean,
-        installedRaCores: Map<String, Set<String>> = emptyMap(),
         embeddedCoresDir: String? = null,
         pm: PackageManager? = null,
-        externalRaPackages: List<String> = emptyList(),
-        unreportableRaPackages: Set<String> = emptySet(),
     ): List<dev.cannoli.scorza.ui.screens.EmulatorPickerOption> {
         val upper = tag.uppercase()
         val candidateCoreIds = buildSet {

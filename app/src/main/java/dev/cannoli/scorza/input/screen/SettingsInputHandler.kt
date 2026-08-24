@@ -253,19 +253,9 @@ class SettingsInputHandler @Inject constructor(
     }
 
     private fun openEmulatorMapping() {
+        // Built once: the rows come from a directory read, so there is no scan to wait for.
         val initial = emulatorMappingBuilder.detailedMappings()
         nav.push(LauncherScreen.EmulatorMapping(mappings = initial, allMappings = initial))
-        ioScope.launch {
-            installedCoreService.queryAllPackages()
-            withContext(Dispatchers.Main) {
-                val cm = nav.screenStack.lastOrNull() as? LauncherScreen.EmulatorMapping ?: return@withContext
-                val all = emulatorMappingBuilder.detailedMappings()
-                nav.screenStack[nav.screenStack.lastIndex] = cm.copy(
-                    mappings = emulatorMappingBuilder.filter(all, cm.filter),
-                    allMappings = all
-                )
-            }
-        }
     }
 
     private fun runIntentAudit() {
@@ -287,14 +277,9 @@ class SettingsInputHandler @Inject constructor(
             title = context.getString(dev.cannoli.scorza.R.string.title_installed_cores_all)
         ))
         ioScope.launch {
-            installedCoreService.queryAllPackages()
-            // Every install's cores, each labelled with the install it came from, since no single
-            // RetroArch is "the" one any more.
-            val cores = installedCoreService.externalRaCores()
-                .flatMap { (pkg, ids) ->
-                    val label = InstalledCoreService.getPackageLabel(pkg)
-                    ids.map { "${platformConfig.getCoreDisplayName(it)} ($label)" }
-                }
+            // The cores this runner holds, which is a directory listing rather than a scan.
+            val cores = installedCoreService.embeddedCores()
+                .map { platformConfig.getCoreDisplayName(it) }
                 .sorted()
             withContext(Dispatchers.Main) {
                 val screen = nav.screenStack.lastOrNull() as? LauncherScreen.InstalledCores ?: return@withContext

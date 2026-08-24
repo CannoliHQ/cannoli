@@ -166,7 +166,6 @@ class LaunchManagerStandalonePickTest {
         mgr.resumeRom(rom(root), 0)
 
         verify(exactly = 0) { retroArchLauncher.launchRicotta(any(), any(), any(), any()) }
-        verify(exactly = 0) { retroArchLauncher.launchRetroArchIntent(any(), any(), any(), any()) }
     }
 
     @Test fun `a per game delfino override routes to the delfino launcher`() {

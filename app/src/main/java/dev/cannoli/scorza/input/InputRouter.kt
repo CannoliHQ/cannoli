@@ -78,7 +78,6 @@ class InputRouter @Inject constructor(
     private val raPreloadController: dev.cannoli.scorza.achievements.RaPreloadController,
     @IoScope private val ioScope: CoroutineScope,
 ) {
-    var unregisterCoreQueryReceiver: () -> Unit = {}
 
     fun wire(dispatcher: InputDispatcher) {
         gameListHandler.buildContextOptions = dialogHandler::buildGameContextOptions
@@ -559,12 +558,7 @@ class InputRouter @Inject constructor(
 
     private fun creditsSectionHandler() = scrollable<LauncherScreen.CreditsSection>()
 
-    private fun installedCoresHandler() = scrollable<LauncherScreen.InstalledCores>(
-        onBack = {
-            unregisterCoreQueryReceiver()
-            nav.pop()
-        },
-    )
+    private fun installedCoresHandler() = scrollable<LauncherScreen.InstalledCores>()
 
     private fun rommPlatformListHandler() = scrollable<LauncherScreen.RommPlatformList>(
         onConfirm = {
