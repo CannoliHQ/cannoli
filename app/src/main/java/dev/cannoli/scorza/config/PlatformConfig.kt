@@ -27,13 +27,6 @@ class PlatformConfig(
     private val needsSetupLabel: String = "Needs setup",
     private val internalLabel: String = "Internal",
     private val standaloneLabel: String = "Standalone",
-    /**
-     * Migration only. Before the source split, which RetroArch ran a mapping was a single global
-     * setting rather than part of the mapping. Null means that setting named the in-APK RetroArch,
-     * so stored RetroArch mappings migrate to [EmulatorSource.Embedded]; a package name means they
-     * were running that external install and migrate to [EmulatorSource.RetroArch] carrying it.
-     */
-    private val legacyExternalRaPackage: () -> String? = { null },
 ) {
 
     constructor(
@@ -175,9 +168,13 @@ class PlatformConfig(
     }
 
     private fun readChoice(obj: JSONObject): EmulatorChoice? {
-        val source = readSource(obj.optString("source", "")) ?: return null
+        val rawSource = obj.optString("source", "")
+        val source = readSource(rawSource) ?: return null
         val coreId = obj.optString("core", "")
+        // A retired external RetroArch choice names a package that no longer runs anything, and an
+        // Embedded choice carrying one would not match itself in the picker's identity comparison.
         val app = obj.optString("app", "").ifEmpty { null }
+            ?.takeUnless { rawSource == EmulatorSource.RETIRED_EXTERNAL_RA_SOURCE }
         // A core source with no core names nothing, so it cannot render or launch. Dropping it
         // leaves the platform unset, which the boot seed then refills with the built-in default.
         if (source != EmulatorSource.Standalone && coreId.isEmpty()) {
@@ -185,29 +182,21 @@ class PlatformConfig(
             return null
         }
         if (source == EmulatorSource.Standalone && app == null) return null
-        return resolveLegacyRetroArch(EmulatorChoice(source = source, coreId = coreId, appPackage = app))
+        return EmulatorChoice(source = source, coreId = coreId, appPackage = app)
     }
 
     /**
-     * v2 files written before the built-in libretro runner was removed still name "Internal" as
-     * their source. valueOf would fail on it and the whole platform mapping would be dropped, so
-     * the retired name is folded onto the embedded RetroArch that replaced that runner.
+     * Two source names have been retired: "Internal", the built-in libretro runner, and "RetroArch",
+     * a separately installed one. valueOf would fail on either and the whole platform mapping would
+     * be dropped, so both fold onto the embedded RetroArch that is the only runner left. This is a
+     * retired name rather than a format change, which is why it needs no version gate: nothing
+     * writes either name any more, so every occurrence is old data with one meaning.
      */
     private fun readSource(name: String): EmulatorSource? =
-        if (name == EmulatorSource.RETIRED_INTERNAL_SOURCE) EmulatorSource.Embedded
+        if (name == EmulatorSource.RETIRED_INTERNAL_SOURCE ||
+            name == EmulatorSource.RETIRED_EXTERNAL_RA_SOURCE
+        ) EmulatorSource.Embedded
         else runCatching { EmulatorSource.valueOf(name) }.getOrNull()
-
-    /**
-     * Resolves a stored [EmulatorSource.RetroArch] choice, which predates the source split and so
-     * does not say which RetroArch it meant. Everything else passes through untouched.
-     */
-    private fun resolveLegacyRetroArch(choice: EmulatorChoice): EmulatorChoice {
-        if (!legacyFile) return choice
-        if (choice.source != EmulatorSource.RetroArch || choice.appPackage != null) return choice
-        val external = legacyExternalRaPackage()
-            ?: return choice.copy(source = EmulatorSource.Embedded)
-        return choice.copy(appPackage = external)
-    }
 
     // v1 stored the picker's display caption as the runner, so the source has to be recovered
     // from it. An absent runner means v1 was re-deriving the source from the bundled .so on
@@ -273,16 +262,17 @@ class PlatformConfig(
         val source = EmulatorSource.fromRunnerLabel(runner) ?: when {
             app != null -> EmulatorSource.Standalone
             coreId.isEmpty() && fallbackCoreId.isNullOrEmpty() -> return null
-            else -> EmulatorSource.RetroArch
+            else -> EmulatorSource.Embedded
         }
         if (source == EmulatorSource.Standalone) return EmulatorChoice(source, coreId, app)
         // v1's setCoreMapping dropped the core when the pick equalled the platform default but
-        // still wrote the runner, so an Internal/RetroArch entry can arrive with no core at all.
-        // That is v1 saying "the default core", not "no core". Standalone is excluded above: its
-        // identity is the package, and stamping a core on it would misreport the mapping.
+        // still wrote the runner, so a core entry can arrive with no core at all. That is v1 saying
+        // "the default core", not "no core". Standalone is excluded above: its identity is the
+        // package, and stamping a core on it would misreport the mapping.
         val resolved = coreId.ifEmpty { fallbackCoreId.orEmpty() }
         if (resolved.isEmpty()) return null
-        return resolveLegacyRetroArch(EmulatorChoice(source, resolved, app))
+        // Only Standalone identifies by package, and it returned above.
+        return EmulatorChoice(source, resolved, appPackage = null)
     }
 
     fun reloadCoreMappings() {

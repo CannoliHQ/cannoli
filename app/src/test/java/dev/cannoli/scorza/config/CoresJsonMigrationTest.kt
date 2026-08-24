@@ -27,15 +27,6 @@ class CoresJsonMigrationTest {
         return PlatformConfig(root, ctx.assets, nativeLibDir = bundledDir).also { it.load() }
     }
 
-    private fun loadWithLegacyRa(name: String, json: String, legacyExternal: String?): PlatformConfig {
-        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
-        val root = File(tmp.root, name).apply { mkdirs() }
-        File(root, "Config").apply { mkdirs() }.also { File(it, "cores.json").writeText(json) }
-        return PlatformConfig(
-            { root }, ctx.assets, legacyExternalRaPackage = { legacyExternal },
-        ).also { it.load() }
-    }
-
     // The built-in libretro runner is gone. A v1 platform mapped to it has to land on the embedded
     // RetroArch, keeping its core, rather than on a source that no longer exists.
     @Test fun `explicit Internal migrates to Embedded and keeps the core`() = assertEquals(
@@ -104,19 +95,30 @@ class CoresJsonMigrationTest {
             .getPlatformChoice("NES"),
     )
 
-    // Before the source split, a stored RetroArch choice did not say which RetroArch it meant,
-    // because a single global setting answered that. These two cover both readings of it.
-    @Test fun `a packageless RetroArch choice migrates to Embedded when no external was configured`() =
+    // The external RetroArch source is retired. Which install a choice named no longer matters,
+    // because none of them run anything now, so both readings of a packageless choice land on the
+    // one runner that is left. The core is the part the user picked and it survives.
+    @Test fun `a packageless RetroArch choice migrates to Embedded`() = assertEquals(
+        EmulatorChoice(EmulatorSource.Embedded, "nestopia_libretro"),
+        load("m-v2-ra-emb", RA_JSON).getPlatformChoice("NES"),
+    )
+
+    @Test fun `a RetroArch choice naming a package becomes Embedded and drops the package`() =
         assertEquals(
             EmulatorChoice(EmulatorSource.Embedded, "nestopia_libretro"),
-            loadWithLegacyRa("m-v2-ra-emb", RA_JSON, legacyExternal = null).getPlatformChoice("NES"),
+            load(
+                "m-v2-ra-ext",
+                """{"v":2,"platforms":{"NES":{"source":"RetroArch","core":"nestopia_libretro","app":"com.retroarch.aarch64"}}}""",
+            ).getPlatformChoice("NES"),
         )
 
-    @Test fun `a packageless RetroArch choice keeps the configured external install`() = assertEquals(
-        EmulatorChoice(EmulatorSource.RetroArch, "nestopia_libretro", "com.retroarch.aarch64"),
-        loadWithLegacyRa("m-v2-ra-ext", RA_JSON, legacyExternal = "com.retroarch.aarch64")
-            .getPlatformChoice("NES"),
-    )
+    // The retired name must not survive a save, or the fold runs again on every load forever.
+    @Test fun `a folded choice is written back as Embedded`() {
+        val config = load("m-v2-ra-save", RA_JSON)
+        config.setPlatformChoice("MD", EmulatorChoice(EmulatorSource.Embedded, "genesis_plus_gx_libretro"))
+        val written = File(tmp.root, "m-v2-ra-save/Config/cores.json").readText()
+        assertEquals(false, written.contains("RetroArch"))
+    }
 
     @Test fun `a v2 standalone entry round trips`() = assertEquals(
         EmulatorChoice(EmulatorSource.Standalone, appPackage = "com.armsx2"),

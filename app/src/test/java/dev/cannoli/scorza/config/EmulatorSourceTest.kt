@@ -12,9 +12,12 @@ class EmulatorSourceTest {
         assertNull(EmulatorSource.fromRunnerLabel(""))
     }
 
-    @Test fun `fromRunnerLabel treats any other label as RetroArch`() {
-        assertEquals(EmulatorSource.RetroArch, EmulatorSource.fromRunnerLabel("RetroArch"))
-        assertEquals(EmulatorSource.RetroArch, EmulatorSource.fromRunnerLabel("RetroArch Plus"))
+    // Any label that is not Internal or an app named a separately installed RetroArch, a tier that
+    // no longer exists. The core it chose is still runnable, so the label resolves to the runner
+    // that is left rather than dropping the mapping.
+    @Test fun `fromRunnerLabel treats any other label as Embedded`() {
+        assertEquals(EmulatorSource.Embedded, EmulatorSource.fromRunnerLabel("RetroArch"))
+        assertEquals(EmulatorSource.Embedded, EmulatorSource.fromRunnerLabel("RetroArch Plus"))
     }
 
     // v1 mapped "Internal" to the built-in libretro runner. That runner is gone, so the label has

@@ -41,11 +41,6 @@ object ScanModule {
             context.getString(dev.cannoli.scorza.R.string.value_needs_setup),
             context.getString(dev.cannoli.scorza.R.string.value_emulator_source_internal),
             context.getString(dev.cannoli.scorza.R.string.value_emulator_source_standalone),
-            // Read lazily: settings are not loaded at construction, and this is only consulted
-            // while migrating a mapping written before the source split.
-            legacyExternalRaPackage = {
-                settings.retroArchPackage.takeIf { it.isNotEmpty() && it != context.packageName }
-            },
         )
     }
 }

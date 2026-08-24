@@ -67,11 +67,11 @@ class PlatformConfigStandaloneDisplayTest {
     @Test fun `a pick persists immediately and survives a reload`() {
         val pc = config()
         assertFalse(pc.hasUserMapping("NES"))
-        pc.setPlatformChoice("NES", EmulatorChoice(EmulatorSource.RetroArch, "nestopia_libretro"))
+        pc.setPlatformChoice("NES", EmulatorChoice(EmulatorSource.Embedded, "nestopia_libretro"))
         pc.reloadCoreMappings()
         assertTrue(pc.hasUserMapping("NES"))
         assertEquals(
-            EmulatorChoice(EmulatorSource.RetroArch, "nestopia_libretro"),
+            EmulatorChoice(EmulatorSource.Embedded, "nestopia_libretro"),
             pc.getPlatformChoice("NES"),
         )
     }
