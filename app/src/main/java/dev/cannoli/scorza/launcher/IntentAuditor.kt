@@ -69,8 +69,16 @@ class IntentAuditor @Inject constructor(
                 sb.appendLine("    extras:   ${if (cfg.extras.isEmpty()) "<none>" else cfg.extras.joinToString { "${it.key} (${it.kind})" }}")
                 sb.appendLine("    method:   ${cfg.launchMethod}")
 
-                val resolvedIntent = EmulatorIntentBuilder.resolve(context, cfg, sample)
-                val intent = EmulatorIntentBuilder.toAndroidIntent(context, resolvedIntent, cfg)
+                // An entry whose extras will not resolve is a finding, not a reason to abandon
+                // the run: without this the first bad entry aborts every platform after it.
+                val intent = try {
+                    val resolvedIntent = EmulatorIntentBuilder.resolve(context, cfg, sample)
+                    EmulatorIntentBuilder.toAndroidIntent(context, resolvedIntent, cfg)
+                } catch (e: Exception) {
+                    totalFailed++
+                    sb.appendLine("    resolved: NO (${e.message ?: e.javaClass.simpleName})")
+                    continue
+                }
                 val resolved = pm.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
                 if (resolved != null) {
                     sb.appendLine("    resolved: ${resolved.activityInfo.packageName}/${resolved.activityInfo.name}")
@@ -83,14 +91,6 @@ class IntentAuditor @Inject constructor(
                         sb.appendLine("      <none discovered>")
                     } else {
                         for (line in exposed) sb.appendLine("      - $line")
-                    }
-                }
-
-                if (cfg.launchMethod == LaunchMethod.SHELL && hasContentUri(resolvedIntent)) {
-                    val mes = pm.getPackageInfo(cfg.packageName, PackageManager.GET_PERMISSIONS)
-                        .requestedPermissions?.contains(android.Manifest.permission.MANAGE_EXTERNAL_STORAGE) == true
-                    if (!mes) {
-                        sb.appendLine("    warning:  shell launch with content URI but target does not declare MANAGE_EXTERNAL_STORAGE")
                     }
                 }
             }
@@ -111,24 +111,14 @@ class IntentAuditor @Inject constructor(
     private fun reportFile(): File =
         File(CannoliPaths(File(settings.sdCardRoot)).logsDir, "intent_audit.txt")
 
+    // Named and filled like a Steam shortcut so the PC entries, the only ones whose extras read
+    // the file's name and contents, resolve against something they recognise. Every other entry
+    // binds the path or a URI and does not care.
     private fun sampleRom(): File {
         val dir = File(context.cacheDir, "intent_audit").apply { mkdirs() }
-        val f = File(dir, "sample.rom")
-        if (!f.exists()) f.writeBytes(byteArrayOf(0))
+        val f = File(dir, "sample.steamappid")
+        if (!f.exists()) f.writeText("570\n")
         return f
-    }
-
-    private fun hasContentUri(resolved: ResolvedIntent): Boolean {
-        if (resolved.dataUri?.scheme == "content") return true
-        return resolved.extras.any { e ->
-            when (e) {
-                is ResolvedExtra.UriExtra -> e.value.scheme == "content"
-                is ResolvedExtra.StringExtra -> e.value.startsWith("content://")
-                is ResolvedExtra.IntExtra -> false
-                is ResolvedExtra.BoolExtra -> false
-                is ResolvedExtra.StringArrayExtra -> e.values.any { it.startsWith("content://") }
-            }
-        }
     }
 
     private fun exposedActivities(packageName: String): List<String> {
