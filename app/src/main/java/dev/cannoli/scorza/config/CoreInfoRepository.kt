@@ -47,7 +47,7 @@ class CoreInfoRepository(private val assets: AssetManager, private val cacheDir:
         "PCE" to listOf("NEC - PC Engine - TurboGrafx 16", "NEC - PC Engine CD - TurboGrafx-CD"),
         "SUPERGRAFX" to listOf("NEC - PC Engine SuperGrafx"),
         "PCFX" to listOf("NEC - PC-FX"),
-        "NEOGEO" to listOf("SNK - Neo Geo"),
+        "NEOGEO" to listOf("SNK - Neo Geo", "FBNeo - Arcade Games"),
         "NGP" to listOf("SNK - Neo Geo Pocket"),
         "NGPC" to listOf("SNK - Neo Geo Pocket Color"),
         "WS" to listOf("Bandai - WonderSwan"),
@@ -85,9 +85,12 @@ class CoreInfoRepository(private val assets: AssetManager, private val cacheDir:
                 assets.open("core_info/$filename").bufferedReader().useLines { lines ->
                     for (line in lines) {
                         val trimmed = line.trim()
-                        if (displayName == null && trimmed.startsWith("corename")) {
+                        // Match the whole key, not a prefix: fbneo declares database_match_archive_member
+                        // on the line above its real database, and a prefix match reads that instead.
+                        val key = trimmed.substringBefore('=').trim()
+                        if (displayName == null && key == "corename") {
                             displayName = trimmed.substringAfter('=').trim().removeSurrounding("\"")
-                        } else if (databases.isEmpty() && trimmed.startsWith("database")) {
+                        } else if (databases.isEmpty() && key == "database") {
                             val value = trimmed.substringAfter('=').trim().removeSurrounding("\"")
                             databases.addAll(value.split('|').map { it.trim() })
                         }
