@@ -22,7 +22,18 @@ class CoreInstaller @Inject constructor(
     private val installedCoreService: InstalledCoreService,
     private val osdController: OsdController,
 ) {
-    fun downloadCore(pkg: String, coreId: String, coreName: String, onInstalled: () -> Unit) {
+    /**
+     * [onFailed] runs when the download does not land. A caller that was mid-launch needs to say so
+     * in something that persists: the failure OSD is transient, so a user who looks away sees a
+     * game that simply never started.
+     */
+    fun downloadCore(
+        pkg: String,
+        coreId: String,
+        coreName: String,
+        onFailed: () -> Unit = {},
+        onInstalled: () -> Unit,
+    ) {
         osdController.show(
             context.getString(R.string.osd_downloading_core, coreName),
             durationMs = 120_000L,
@@ -37,6 +48,7 @@ class CoreInstaller @Inject constructor(
                 } else {
                     val err = result.error ?: context.getString(R.string.osd_core_download_unknown_error)
                     osdController.show(context.getString(R.string.osd_core_download_failed, err))
+                    onFailed()
                 }
             }
         }

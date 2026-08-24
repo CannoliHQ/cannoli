@@ -34,8 +34,10 @@ class LaunchCoreDownloadTest {
         displayName = "Mario",
     )
 
-    /** Relaxed except the four the assertions touch: naming all twenty would test wiring. */
-    private fun actions() = LauncherActions(
+    /** Relaxed except the ones the assertions touch: naming all twenty would test wiring. */
+    private fun actions(
+        nav: dev.cannoli.scorza.navigation.NavigationController = mockk(relaxed = true),
+    ) = LauncherActions(
         context = context,
         ioScope = CoroutineScope(Dispatchers.Unconfined),
         settings = mockk(relaxed = true),
@@ -48,7 +50,7 @@ class LaunchCoreDownloadTest {
         gameOverrideStore = mockk(relaxed = true),
         artworkLookup = mockk(relaxed = true),
         arcadeTitleLookup = mockk(relaxed = true),
-        nav = mockk(relaxed = true),
+        nav = nav,
         systemListViewModel = mockk(relaxed = true),
         gameListViewModel = mockk(relaxed = true),
         settingsViewModel = mockk(relaxed = true),
@@ -78,7 +80,7 @@ class LaunchCoreDownloadTest {
         val result = launch()
 
         assertTrue("expected Launching, got $result", result is DialogState.Launching)
-        verify { installer.downloadCore(any(), "snes9x_libretro", "Snes9x", any()) }
+        verify { installer.downloadCore(any(), "snes9x_libretro", "Snes9x", any(), any()) }
     }
 
     @Test fun `the launch is retried once the core lands`() {
@@ -86,7 +88,7 @@ class LaunchCoreDownloadTest {
         every { coreInfo.runsOnThisDevice("snes9x_libretro") } returns true
         every { launchManager.launchRom(rom) } returns missing("snes9x_libretro", "Snes9x")
         val onInstalled = slot<() -> Unit>()
-        every { installer.downloadCore(any(), any(), any(), capture(onInstalled)) } answers {}
+        every { installer.downloadCore(any(), any(), any(), any(), capture(onInstalled)) } answers {}
 
         launch()
         every { launchManager.launchRom(rom) } returns null
@@ -105,7 +107,30 @@ class LaunchCoreDownloadTest {
         val result = launch()
 
         assertTrue("expected MissingCore, got $result", result is DialogState.MissingCore)
-        verify(exactly = 0) { installer.downloadCore(any(), any(), any(), any()) }
+        verify(exactly = 0) { installer.downloadCore(any(), any(), any(), any(), any()) }
+    }
+
+    // A failed fetch has to end somewhere the user can see. The OSD it shows is transient, so the
+    // launch would otherwise just stop with nothing left on screen explaining why.
+    @Test fun `a failed download lands on the missing core screen`() {
+        setUpCommon()
+        val nav = mockk<dev.cannoli.scorza.navigation.NavigationController>(relaxed = true)
+        val dialogState = kotlinx.coroutines.flow.MutableStateFlow<DialogState>(DialogState.None)
+        every { nav.dialogState } returns dialogState
+        every { coreInfo.runsOnThisDevice("snes9x_libretro") } returns true
+        every { launchManager.launchRom(rom) } returns missing("snes9x_libretro", "Snes9x")
+        val onFailed = slot<() -> Unit>()
+        every {
+            installer.downloadCore(any(), any(), any(), capture(onFailed), any())
+        } answers {}
+
+        actions(nav).launchSelected(ListItem.RomItem(rom), resume = false)
+        onFailed.captured.invoke()
+
+        assertTrue(
+            "expected the missing core screen, got ${dialogState.value}",
+            dialogState.value is DialogState.MissingCore,
+        )
     }
 
     // Guards the default: a MissingCore raised without an id must not be treated as downloadable,
@@ -118,6 +143,6 @@ class LaunchCoreDownloadTest {
         val result = launch()
 
         assertTrue(result is DialogState.MissingCore)
-        verify(exactly = 0) { installer.downloadCore(any(), any(), any(), any()) }
+        verify(exactly = 0) { installer.downloadCore(any(), any(), any(), any(), any()) }
     }
 }
