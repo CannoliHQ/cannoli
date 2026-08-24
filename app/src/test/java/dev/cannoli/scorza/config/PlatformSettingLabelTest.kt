@@ -34,8 +34,8 @@ class PlatformSettingLabelTest {
 
     @Test fun `standalone pick on a platform with a default core names the app not the core`() {
         val pc = config()
-        pc.setPlatformChoice("NES", EmulatorChoice(EmulatorSource.Standalone, appPackage = "com.androidemu.nes"))
-        assertEquals("Nesoid", label(pc, "NES"))
+        pc.setPlatformChoice("NDS", EmulatorChoice(EmulatorSource.Standalone, appPackage = "me.magnum.melonds"))
+        assertEquals("melonDS", label(pc, "NDS"))
     }
 
     @Test fun `a core pick still names the core`() {

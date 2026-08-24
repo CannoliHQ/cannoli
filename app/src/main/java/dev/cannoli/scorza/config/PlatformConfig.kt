@@ -626,8 +626,6 @@ class PlatformConfig(
     }
 
     private val knownAppLabels = mapOf(
-        "com.fms.ines.free" to "iNES",
-        "com.androidemu.nes" to "Nesoid",
         "org.mupen64plusae.v3.fzurita" to "M64Plus FZ",
         "org.mupen64plusae.v3.alpha" to "Mupen64Plus AE",
         "me.magnum.melonds" to "melonDS",
@@ -636,7 +634,6 @@ class PlatformConfig(
         "com.flycast.emulator" to "Flycast",
         "io.recompiled.redream" to "Redream",
         "com.github.stenzek.duckstation" to "DuckStation",
-        "com.emulator.fpse" to "FPse",
         "org.ppsspp.ppsspp" to "PPSSPP",
         "org.ppsspp.ppssppgold" to "PPSSPP Gold",
         "xyz.aethersx2.android" to "NetherSX2",
@@ -648,16 +645,11 @@ class PlatformConfig(
         "info.cemu.cemu" to "Cemu",
         "org.vita3k.emulator" to "Vita3K",
         "aenu.aps3e" to "aPS3e",
-        "ru.vastness.altmer.iratajaguar" to "IrataJaguar",
-        "com.fms.colem" to "ColEm",
-        "it.dbtecno.pizzaboyscbasic" to "Pizza Boy SC Basic",
         "me.magnum.melondualds" to "WatermelonDS",
         "com.armsx2" to "ARMSX2",
         "dev.eden.eden_emulator" to "Eden",
         "dev.eden.eden_emulator.nightly" to "Eden Nightly",
         "dev.legacy.eden_emulator" to "Eden (Legacy)",
-        "org.mupen64plusae.v3.fzurita.amazon" to "M64Plus FZ (Amazon)",
-        "org.vita3k.emulator.ikhoeyZX" to "Vita3K ikhoeyZX",
     )
 
     fun getDisplayName(tag: String): String {

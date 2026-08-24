@@ -2,20 +2,12 @@
   "NES": {
     "name": "Nintendo Entertainment System",
     "group": "Nintendo",
-    "core": "nestopia_libretro",
-    "app": [
-      { "package": "com.fms.ines.free", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } },
-      { "package": "com.androidemu.nes", "action": "android.intent.action.VIEW", "data": { "kind": "absolute_path" } }
-    ]
+    "core": "nestopia_libretro"
   },
   "FDS": {
     "name": "Famicom Disk System",
     "group": "Nintendo",
-    "core": "nestopia_libretro",
-    "app": [
-      { "package": "com.fms.ines.free", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } },
-      { "package": "com.androidemu.nes", "action": "android.intent.action.VIEW", "data": { "kind": "absolute_path" } }
-    ]
+    "core": "nestopia_libretro"
   },
   "GB": {
     "name": "Game Boy",
@@ -30,18 +22,13 @@
   "VIRTUALBOY": {
     "name": "Virtual Boy",
     "group": "Nintendo",
-    "core": "mednafen_vb_libretro",
-    "app": [
-      { "package": "com.simongellis.vvb", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } }
-    ]
+    "core": "mednafen_vb_libretro"
   },
   "N64": {
     "name": "Nintendo 64",
     "group": "Nintendo",
     "app": [
       { "package": "org.mupen64plusae.v3.fzurita", "activity": "paulscode.android.mupen64plusae.SplashActivity", "action": "android.intent.action.VIEW", "data": { "kind": "absolute_path" } },
-      { "package": "org.mupen64plusae.v3.fzurita.amazon", "activity": "paulscode.android.mupen64plusae.SplashActivity", "action": "android.intent.action.VIEW", "data": { "kind": "absolute_path" } },
-      { "package": "com.m64.fx.plus.emulate", "activity": "paulscode.android.mupen64plusae.SplashActivity", "action": "android.intent.action.VIEW", "data": { "kind": "absolute_path" } },
       { "package": "org.mupen64plusae.v3.alpha", "activity": "paulscode.android.mupen64plusae.SplashActivity", "action": "android.intent.action.VIEW", "data": { "kind": "absolute_path" } }
     ]
   },
@@ -122,34 +109,22 @@
   "SMS": {
     "name": "Master System",
     "group": "Sega",
-    "core": "genesis_plus_gx_libretro",
-    "app": [
-      { "package": "it.dbtecno.pizzaboyscbasic", "extras": [{ "key": "rom_uri", "kind": "uri_string" }] }
-    ]
+    "core": "genesis_plus_gx_libretro"
   },
   "MD": {
     "name": "Sega Genesis",
     "group": "Sega",
-    "core": "genesis_plus_gx_libretro",
-    "app": [
-      { "package": "it.dbtecno.pizzaboyscbasic", "extras": [{ "key": "rom_uri", "kind": "uri_string" }] }
-    ]
+    "core": "genesis_plus_gx_libretro"
   },
   "GG": {
     "name": "Game Gear",
     "group": "Sega",
-    "core": "genesis_plus_gx_libretro",
-    "app": [
-      { "package": "it.dbtecno.pizzaboyscbasic", "extras": [{ "key": "rom_uri", "kind": "uri_string" }] }
-    ]
+    "core": "genesis_plus_gx_libretro"
   },
   "SEGACD": {
     "name": "Sega CD",
     "group": "Sega",
-    "core": "genesis_plus_gx_libretro",
-    "app": [
-      { "package": "it.dbtecno.pizzaboyscbasic", "extras": [{ "key": "rom_uri", "kind": "uri_string" }] }
-    ]
+    "core": "genesis_plus_gx_libretro"
   },
   "32X": {
     "name": "Sega 32X",
@@ -179,8 +154,7 @@
     "group": "Sony",
     "core": "pcsx_rearmed_libretro",
     "app": [
-      { "package": "com.github.stenzek.duckstation", "activity": "com.github.stenzek.duckstation.EmulationActivity", "action": "android.intent.action.MAIN", "extras": [{ "key": "bootPath", "kind": "uri_string" }] },
-      { "package": "com.emulator.fpse", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } }
+      { "package": "com.github.stenzek.duckstation", "activity": "com.github.stenzek.duckstation.EmulationActivity", "action": "android.intent.action.MAIN", "extras": [{ "key": "bootPath", "kind": "uri_string" }] }
     ]
   },
   "PS2": {
@@ -216,12 +190,6 @@
         "activity": "org.vita3k.emulator.Emulator",
         "action": "android.intent.action.MAIN",
         "extras": [{ "key": "AppStartParameters", "kind": "string_array", "values": ["-r", "{rom_contents}"] }]
-      },
-      {
-        "package": "org.vita3k.emulator.ikhoeyZX",
-        "activity": "org.vita3k.emulator.Emulator",
-        "action": "android.intent.action.MAIN",
-        "extras": [{ "key": "AppStartParameters", "kind": "string_array", "values": ["-r", "{rom_contents}"] }]
       }
     ]
   },
@@ -249,10 +217,7 @@
   "JAGUAR": {
     "name": "Atari Jaguar",
     "group": "Atari",
-    "core": "virtualjaguar_libretro",
-    "app": [
-      { "package": "ru.vastness.altmer.iratajaguar", "data": { "kind": "file_provider" } }
-    ]
+    "core": "virtualjaguar_libretro"
   },
 
   "PCE": {
@@ -274,7 +239,7 @@
   "NEOGEO": {
     "name": "Neo Geo",
     "group": "SNK",
-    "core": "fbneo_libretro",
+    "core": "geolith_libretro",
     "arcade": true
   },
   "NGP": {
@@ -315,11 +280,7 @@
   "DOS": {
     "name": "DOS",
     "group": "Computer",
-    "core": "dosbox_pure_libretro",
-    "app": [
-      "com.fishstix.dosbox",
-      "bruenor.magicbox"
-    ]
+    "core": "dosbox_pure_libretro"
   },
   "AMIGA": {
     "name": "Amiga",
@@ -329,10 +290,7 @@
   "SCUMMVM": {
     "name": "ScummVM",
     "group": "Computer",
-    "core": "scummvm_libretro",
-    "app": [
-      "org.scummvm.scummvm"
-    ]
+    "core": "scummvm_libretro"
   },
   "PC": {
     "name": "PC",
@@ -381,10 +339,7 @@
   "COLECOVISION": {
     "name": "ColecoVision",
     "group": "Other",
-    "core": "bluemsx_libretro",
-    "app": [
-      { "package": "com.fms.colem", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } }
-    ]
+    "core": "bluemsx_libretro"
   },
   "VECTREX": {
     "name": "Vectrex",
