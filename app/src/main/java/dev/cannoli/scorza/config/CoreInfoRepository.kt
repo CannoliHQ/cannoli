@@ -20,6 +20,35 @@ class CoreInfoRepository(private val assets: AssetManager, private val cacheDir:
     @Volatile private var cores = listOf<CoreInfo>()
     @Volatile private var coreById = mapOf<String, CoreInfo>()
 
+    /** Core id to the ABI flags it is built for, from the generated android_cores.txt asset. */
+    private val androidCores: Map<String, Set<String>> by lazy {
+        val parsed = mutableMapOf<String, Set<String>>()
+        try {
+            assets.open("android_cores.txt").bufferedReader().useLines { lines ->
+                for (line in lines) {
+                    if (line.isBlank() || line.startsWith("#")) continue
+                    val id = line.substringBefore(' ')
+                    val abis = line.substringAfter(' ', "").split(',')
+                        .map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+                    if (id.isNotEmpty() && abis.isNotEmpty()) parsed[id] = abis
+                }
+            }
+        } catch (e: Exception) {
+            dev.cannoli.scorza.util.ErrorLog.write("android_cores.txt unreadable: ${e.message}")
+        }
+        parsed
+    }
+
+    private val deviceAbiFlags: Set<String> by lazy {
+        android.os.Build.SUPPORTED_ABIS.orEmpty().mapNotNull {
+            when (it) {
+                "arm64-v8a" -> "64"
+                "armeabi-v7a" -> "32"
+                else -> null
+            }
+        }.toSet()
+    }
+
     private val tagToDatabases = mapOf(
         "GB" to listOf("Nintendo - Game Boy"),
         "GBC" to listOf("Nintendo - Game Boy Color"),
@@ -133,10 +162,26 @@ class CoreInfoRepository(private val assets: AssetManager, private val cacheDir:
         return coreById[coreId]?.displayName ?: coreId
     }
 
+    /**
+     * The bundled core_info set is upstream's whole catalogue, most of which has no Android build,
+     * so it is filtered to what can actually run on this device. A core the user already chose is
+     * re-synthesised by the picker rather than read from here, so filtering cannot strand anyone on
+     * a choice they already made.
+     */
     fun getCoresForTag(tag: String): List<CoreInfo> {
         val dbs = tagToDatabases[tag.uppercase()] ?: return emptyList()
-        return cores.filter { core -> core.databases.any { it in dbs } }
+        return cores.filter { core -> core.databases.any { it in dbs } && runsOnThisDevice(core.id) }
             .sortedBy { it.displayName }
+    }
+
+    /**
+     * Both fallbacks open the filter rather than closing it. A missing asset or an ABI we do not
+     * ship for should cost curation, never the ability to pick an emulator at all.
+     */
+    fun runsOnThisDevice(coreId: String): Boolean {
+        if (androidCores.isEmpty()) return true
+        val abis = androidCores[coreId] ?: return false
+        return deviceAbiFlags.isEmpty() || deviceAbiFlags.any { it in abis }
     }
 
     fun getFirmwareFor(coreId: String): List<FirmwareEntry> {
