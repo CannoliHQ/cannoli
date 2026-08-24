@@ -64,7 +64,7 @@ class KitchenPlatformTagTest {
     private fun start(dir: File, repo: RomsRepository?, configuredTags: Collection<String> = emptyList()) {
         val assets = ApplicationProvider.getApplicationContext<Context>().assets
         val s = KitchenHttpServer(
-            dir, assets, port = port, pin = PIN,
+            dir, assets, port = 0, pin = PIN,
             romsRepository = repo,
             platformTagsProvider = { configuredTags },
         )

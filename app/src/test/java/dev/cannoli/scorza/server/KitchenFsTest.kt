@@ -52,7 +52,7 @@ class KitchenFsTest {
         val s = KitchenHttpServer(
             cannoliRoot = cannoliRoot,
             assets = assets,
-            port = port,
+            port = 0,
             pin = "TESTPIN",
             volumesProvider = {
                 listOf(

@@ -44,7 +44,7 @@ class KitchenApkTest {
         root = File.createTempFile("cannoli", "").also { it.delete(); it.mkdirs() }
         fake = FakeInstalls(File(root, "staging").also { it.mkdirs() })
         val assets = ApplicationProvider.getApplicationContext<android.content.Context>().assets
-        val s = KitchenHttpServer(root, assets, port = port, pin = "TESTPIN", apkInstalls = fake)
+        val s = KitchenHttpServer(root, assets, port = 0, pin = "TESTPIN", apkInstalls = fake)
         s.startServer()
         port = s.listeningPort
         waitUntilReady()

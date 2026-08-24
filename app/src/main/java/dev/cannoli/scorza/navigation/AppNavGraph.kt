@@ -211,7 +211,7 @@ sealed class LauncherScreen {
         val page: Int = 0,
         val textZoom: Int = 1,
     ) : LauncherScreen()
-    data class EmulatorMapping(val mappings: List<EmulatorMappingEntry>, val allMappings: List<EmulatorMappingEntry> = mappings, override val selectedIndex: Int = 0, override val scrollTarget: Int = 0, val filter: Int = 0) : LauncherScreen(), ScrollableScreen {
+    data class EmulatorMapping(val mappings: List<EmulatorMappingEntry>, val allMappings: List<EmulatorMappingEntry> = mappings, override val selectedIndex: Int = 0, override val scrollTarget: Int = 0, val filter: Int = 0, val alphabetical: Boolean = false) : LauncherScreen(), ScrollableScreen {
         override val itemCount: Int get() = mappings.size
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
     }
@@ -713,7 +713,13 @@ fun AppNavGraph(
                     listFontSize = listFontSize,
                     listLineHeight = listLineHeight,
                     fullWidth = true,
-                    leftBottomItems = listOf(labels.west to filterLabel),
+                    leftBottomItems = listOf(
+                        labels.west to if (currentScreen.alphabetical)
+                            stringResource(R.string.label_group_alphabetical)
+                        else
+                            stringResource(R.string.label_group_manufacturer),
+                        labels.north to filterLabel,
+                    ),
                     rightBottomItems = buildList {
                         if (canSelect) add(labels.confirm to stringResource(R.string.label_select))
                     },
@@ -722,8 +728,11 @@ fun AppNavGraph(
                     // Headers are rows, so the highlight is translated from the selectable-only
                     // index the screen state carries, the same way PlatformMapping does it. Nothing
                     // in the input path has to know grouping exists.
-                    val mappingRows = remember(currentScreen.mappings) {
-                        dev.cannoli.scorza.ui.screens.groupMappingRows(currentScreen.mappings)
+                    val mappingRows = remember(currentScreen.mappings, currentScreen.alphabetical) {
+                        if (currentScreen.alphabetical)
+                            currentScreen.mappings.map { dev.cannoli.scorza.ui.screens.MappingListRow.Platform(it) }
+                        else
+                            dev.cannoli.scorza.ui.screens.groupMappingRows(currentScreen.mappings)
                     }
                     val mappingHighlight = remember(mappingRows, currentScreen.selectedIndex) {
                         mappingRows.withIndex()

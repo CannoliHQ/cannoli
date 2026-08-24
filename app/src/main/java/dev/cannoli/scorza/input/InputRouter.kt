@@ -383,6 +383,15 @@ class InputRouter @Inject constructor(
         },
         onBack = { nav.pop() },
         onWest = {
+            val next = !alphabetical
+            val all = emulatorMappingBuilder.detailedMappings(alphabetical = next)
+            nav.replaceTop(copy(
+                mappings = emulatorMappingBuilder.filter(all, filter),
+                allMappings = all,
+                alphabetical = next, selectedIndex = 0, scrollTarget = 0,
+            ))
+        },
+        onNorth = {
             // Skip filter buckets that are currently empty; All (0) is the always-available fallback.
             var newFilter = (filter + 1) % 4
             while (newFilter != 0 && emulatorMappingBuilder.filter(allMappings, newFilter).isEmpty()) {
@@ -810,7 +819,7 @@ class InputRouter @Inject constructor(
         val idx = nav.screenStack.indexOfLast { it is LauncherScreen.EmulatorMapping }
         if (idx < 0) return
         val em = nav.screenStack[idx] as LauncherScreen.EmulatorMapping
-        val all = emulatorMappingBuilder.detailedMappings()
+        val all = emulatorMappingBuilder.detailedMappings(alphabetical = em.alphabetical)
         val filtered = emulatorMappingBuilder.filter(all, em.filter)
         nav.screenStack[idx] = em.copy(
             mappings = filtered,

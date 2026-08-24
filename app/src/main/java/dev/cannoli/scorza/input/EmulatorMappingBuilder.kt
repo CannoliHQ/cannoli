@@ -41,7 +41,7 @@ class EmulatorMappingBuilder @Inject constructor(
             )
         }
 
-    fun detailedMappings(): List<EmulatorMappingEntry> {
+    fun detailedMappings(alphabetical: Boolean = false): List<EmulatorMappingEntry> {
         val entries = platformConfig.getDetailedMappings(
             context.packageManager,
             installedCoreService.externalRaCores(),
@@ -50,8 +50,7 @@ class EmulatorMappingBuilder @Inject constructor(
         )
         // MAME and FBN are both named Arcade; tag the name so the two rows are tellable apart.
         val shared = entries.groupingBy { it.platformName }.eachCount().filterValues { it > 1 }.keys
-        if (shared.isEmpty()) return entries.sortedNatural { it.platformName }
-            .sortedBy { platformConfig.groupRank(it.group) }
+        if (shared.isEmpty()) return order(entries, alphabetical)
         return entries.map { entry ->
             if (entry.platformName in shared) {
                 entry.copy(platformName = context.getString(
@@ -61,9 +60,14 @@ class EmulatorMappingBuilder @Inject constructor(
             } else {
                 entry
             }
-        }.sortedNatural { it.platformName }
-            .sortedBy { platformConfig.groupRank(it.group) }
+        }.let { order(it, alphabetical) }
     }
+
+    // Manufacturer order comes from platforms.json; alphabetical is a flat A-Z with no grouping,
+    // which is what the list falls back to when the user turns headers off.
+    private fun order(entries: List<EmulatorMappingEntry>, alphabetical: Boolean): List<EmulatorMappingEntry> =
+        if (alphabetical) entries.sortedNatural { it.platformName }
+        else entries.sortedNatural { it.platformName }.sortedBy { platformConfig.groupRank(it.group) }
 
     fun filter(all: List<EmulatorMappingEntry>, filter: Int): List<EmulatorMappingEntry> = when (filter) {
         1 -> all.filter { it.status == dev.cannoli.scorza.ui.screens.EmulatorMappingStatus.NOT_INSTALLED }

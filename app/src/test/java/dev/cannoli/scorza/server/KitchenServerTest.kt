@@ -38,7 +38,7 @@ class KitchenServerTest {
 
     private fun startServer() {
         val assets = ApplicationProvider.getApplicationContext<android.content.Context>().assets
-        val s = KitchenHttpServer(root, assets, port = port, pin = "TESTPIN")
+        val s = KitchenHttpServer(root, assets, port = 0, pin = "TESTPIN")
         s.startServer()
         port = s.listeningPort
         waitUntilReady()

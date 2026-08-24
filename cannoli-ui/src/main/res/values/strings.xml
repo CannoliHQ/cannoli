@@ -877,6 +877,8 @@
     <string name="setting_emulator_mapping">Emulator Mapping</string>
     <string name="label_reset">RESET</string>
     <string name="label_show_all">SHOW ALL</string>
+    <string name="label_group_manufacturer">BY MAKER</string>
+    <string name="label_group_alphabetical">A-Z</string>
     <string name="label_show_installed">SHOW INSTALLED</string>
     <!-- The core is not bundled with the app. -->
     <string name="value_not_bundled">NOT BUNDLED</string>

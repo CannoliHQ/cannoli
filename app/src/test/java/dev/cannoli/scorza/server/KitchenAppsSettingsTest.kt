@@ -58,9 +58,9 @@ class KitchenAppsSettingsTest {
     ) {
         val assets = ApplicationProvider.getApplicationContext<Context>().assets
         val s = if (settingsProvider != null) {
-            KitchenHttpServer(dir, assets, port = port, pin = PIN, appsRepository = apps, settingsProvider = settingsProvider)
+            KitchenHttpServer(dir, assets, port = 0, pin = PIN, appsRepository = apps, settingsProvider = settingsProvider)
         } else {
-            KitchenHttpServer(dir, assets, port = port, pin = PIN, appsRepository = apps)
+            KitchenHttpServer(dir, assets, port = 0, pin = PIN, appsRepository = apps)
         }
         s.startServer()
         port = s.listeningPort
