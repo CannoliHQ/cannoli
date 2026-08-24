@@ -140,12 +140,25 @@ class DialogInputHandler @Inject constructor(
     // Single-flight: held Back / Menu key-repeat re-enters these branches before the
     // coroutine below completes. Without this guard a second rebuild can win the race
     // and overwrite fresher badge counts with stale ones (or, for Kitchen, double-rescan).
-    fun openQuickMenu(selected: dev.cannoli.scorza.ui.quickmenu.QuickMenuRow? = null) {
-        if (!quickMenuRebuild.compareAndSet(false, true)) return
+    // [beforeShow] runs in the same main-thread step that shows the menu, so a caller that has to
+    // leave a screen first never draws the frame in between with neither the screen nor the menu.
+    fun openQuickMenu(
+        selected: dev.cannoli.scorza.ui.quickmenu.QuickMenuRow? = null,
+        beforeShow: (() -> Unit)? = null,
+    ) {
+        if (!quickMenuRebuild.compareAndSet(false, true)) {
+            // A rebuild already in flight will show the menu, but only this call knows how to leave
+            // the screen behind it, so Back never strands the user on it.
+            beforeShow?.invoke()
+            return
+        }
         ioScope.launch {
             try {
                 val st = quickMenuState(selected)
-                withContext(Dispatchers.Main) { nav.dialogState.value = st }
+                withContext(Dispatchers.Main) {
+                    beforeShow?.invoke()
+                    nav.dialogState.value = st
+                }
             } finally {
                 quickMenuRebuild.set(false)
             }
@@ -508,7 +521,8 @@ class DialogInputHandler @Inject constructor(
             }
             is DialogState.QuickMenu -> {
                 when (ds.rows.getOrNull(ds.selectedIndex)) {
-                    dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.SETTINGS -> openSettings()
+                    dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.SETTINGS ->
+                        openSettings(dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.SETTINGS)
                     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.ROMM -> {
                         nav.dialogState.value = DialogState.None
                         nav.push(dev.cannoli.scorza.navigation.LauncherScreen.RommPlatformList())
@@ -530,11 +544,8 @@ class DialogInputHandler @Inject constructor(
                     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.ABOUT ->
                         nav.dialogState.value = DialogState.About(fromQuickMenu = true)
                     dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.DEBUG -> openSettings(
-                        QuickSettingsCategory(
-                            "debug",
-                            dev.cannoli.scorza.R.string.settings_debug,
-                            dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.DEBUG,
-                        )
+                        dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.DEBUG,
+                        QuickSettingsCategory("debug", dev.cannoli.scorza.R.string.settings_debug),
                     )
                     null -> nav.dialogState.value = DialogState.None
                 }
@@ -628,15 +639,17 @@ class DialogInputHandler @Inject constructor(
     private data class QuickSettingsCategory(
         val key: String,
         @androidx.annotation.StringRes val labelRes: Int,
-        val row: dev.cannoli.scorza.ui.quickmenu.QuickMenuRow,
     )
 
-    private fun openSettings(category: QuickSettingsCategory? = null) {
+    private fun openSettings(
+        row: dev.cannoli.scorza.ui.quickmenu.QuickMenuRow,
+        category: QuickSettingsCategory? = null,
+    ) {
         nav.dialogState.value = DialogState.None
         if (nav.currentScreen is LauncherScreen.SystemList) systemListViewModel.savePosition()
         settingsViewModel.load()
         if (category != null) settingsViewModel.enterSubCategory(category.key, category.labelRes)
-        nav.screenStack.add(LauncherScreen.Settings(category?.row))
+        nav.screenStack.add(LauncherScreen.Settings(row, category?.key))
         if (updateManager.isOnline()) {
             ioScope.launch { updateManager.checkForUpdate() }
         }

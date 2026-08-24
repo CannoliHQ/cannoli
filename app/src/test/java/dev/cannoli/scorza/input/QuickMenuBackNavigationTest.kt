@@ -80,14 +80,25 @@ class QuickMenuBackNavigationTest {
         dialogHandler.onConfirm()
     }
 
-    @Test fun the_debug_row_marks_the_settings_screen_with_the_row_to_return_to() {
+    @Test fun the_debug_row_marks_the_settings_screen_with_the_row_and_category_to_return_from() {
         confirmQuickRow(QuickMenuRow.DEBUG)
-        assertEquals(LauncherScreen.Settings(QuickMenuRow.DEBUG), nav.currentScreen)
+        assertEquals(LauncherScreen.Settings(QuickMenuRow.DEBUG, "debug"), nav.currentScreen)
     }
 
-    @Test fun the_settings_row_leaves_the_screen_unmarked() {
+    @Test fun the_settings_row_marks_the_screen_with_no_category() {
         confirmQuickRow(QuickMenuRow.SETTINGS)
-        assertEquals(LauncherScreen.Settings(), nav.currentScreen)
+        assertEquals(LauncherScreen.Settings(QuickMenuRow.SETTINGS), nav.currentScreen)
+    }
+
+    @Test fun back_from_the_settings_list_returns_to_the_quick_menu_on_the_settings_row() = runTest(dispatcher) {
+        confirmQuickRow(QuickMenuRow.SETTINGS)
+        settingsHandler.onBack()
+        advanceUntilIdle()
+        val ds = nav.dialogState.value
+        assertTrue(ds is DialogState.QuickMenu)
+        ds as DialogState.QuickMenu
+        assertEquals(QuickMenuRow.SETTINGS, ds.rows.getOrNull(ds.selectedIndex))
+        assertEquals(LauncherScreen.SystemList, nav.currentScreen)
     }
 
     @Test fun back_from_the_debug_rows_returns_to_the_quick_menu_on_the_debug_row() = runTest(dispatcher) {
@@ -102,6 +113,29 @@ class QuickMenuBackNavigationTest {
         assertNull(settingsViewModel.state.value.activeCategory)
     }
 
+    // Unwinding before the menu is built flashes the screen underneath for the frames in between.
+    @Test fun the_settings_screen_stays_up_until_the_quick_menu_is_ready() = runTest(dispatcher) {
+        confirmQuickRow(QuickMenuRow.SETTINGS)
+        settingsHandler.onBack()
+        assertEquals(LauncherScreen.Settings(QuickMenuRow.SETTINGS), nav.currentScreen)
+        assertEquals(DialogState.None, nav.dialogState.value)
+
+        advanceUntilIdle()
+        assertTrue(nav.dialogState.value is DialogState.QuickMenu)
+        assertEquals(LauncherScreen.SystemList, nav.currentScreen)
+    }
+
+    @Test fun the_debug_category_stays_up_until_the_quick_menu_is_ready() = runTest(dispatcher) {
+        confirmQuickRow(QuickMenuRow.DEBUG)
+        settingsHandler.onBack()
+        assertEquals("debug", settingsViewModel.state.value.activeCategory)
+        assertEquals(DialogState.None, nav.dialogState.value)
+
+        advanceUntilIdle()
+        assertTrue(nav.dialogState.value is DialogState.QuickMenu)
+        assertNull(settingsViewModel.state.value.activeCategory)
+    }
+
     @Test fun back_from_a_normally_entered_category_still_goes_to_the_top_level_list() = runTest(dispatcher) {
         confirmQuickRow(QuickMenuRow.SETTINGS)
         settingsViewModel.enterCategory()
@@ -110,7 +144,7 @@ class QuickMenuBackNavigationTest {
         settingsHandler.onBack()
         advanceUntilIdle()
         assertEquals(DialogState.None, nav.dialogState.value)
-        assertEquals(LauncherScreen.Settings(), nav.currentScreen)
+        assertEquals(LauncherScreen.Settings(QuickMenuRow.SETTINGS), nav.currentScreen)
         assertNull(settingsViewModel.state.value.activeCategory)
     }
 

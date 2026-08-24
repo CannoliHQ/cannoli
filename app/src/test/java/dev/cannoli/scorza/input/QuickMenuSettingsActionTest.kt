@@ -57,7 +57,7 @@ class QuickMenuSettingsActionTest {
     @Test fun settings_row_closes_the_dialog_and_pushes_settings() {
         openSettingsRow()
         assertEquals(DialogState.None, nav.dialogState.value)
-        assertEquals(LauncherScreen.Settings(), nav.currentScreen)
+        assertEquals(LauncherScreen.Settings(QuickMenuRow.SETTINGS), nav.currentScreen)
         verify { settingsViewModel.load() }
     }
 
@@ -70,7 +70,7 @@ class QuickMenuSettingsActionTest {
         nav.screenStack.add(LauncherScreen.GameList)
         openSettingsRow()
         verify(exactly = 0) { systemListViewModel.savePosition() }
-        assertEquals(LauncherScreen.Settings(), nav.currentScreen)
+        assertEquals(LauncherScreen.Settings(QuickMenuRow.SETTINGS), nav.currentScreen)
     }
 
     // Otherwise the row would push a second Settings screen on top of the one already open.

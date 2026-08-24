@@ -207,21 +207,29 @@ class SettingsInputHandler @Inject constructor(
 
     override fun onBack() {
         val state = settingsViewModel.state.value
+        val screen = nav.currentScreen as? LauncherScreen.Settings
+        // The quick menu is only returned to from the level it dropped us at; anything deeper
+        // still unwinds one level at a time.
+        val quickMenuRow = screen?.quickMenuRow?.takeIf {
+            state.parentCategory == null && state.activeCategory == screen.quickMenuCategory
+        }
         if (state.inSubList) {
-            // Only the category the quick menu pushed us into returns there; anything deeper
-            // still unwinds one level at a time.
-            val quickMenuRow = (nav.currentScreen as? LauncherScreen.Settings)
-                ?.quickMenuRow
-                ?.takeIf { state.parentCategory == null }
             settingsViewModel.save()
-            settingsViewModel.exitSubList()
             launcherActions.rescanSystemList()
-            if (quickMenuRow != null) {
+        }
+        if (quickMenuRow == null) {
+            if (state.inSubList) {
+                settingsViewModel.exitSubList()
+            } else {
+                settingsViewModel.cancel()
                 nav.pop()
-                dialogInputHandler.openQuickMenu(quickMenuRow)
             }
-        } else {
-            settingsViewModel.cancel()
+            return
+        }
+        // Held until the rebuilt menu can replace the screen in one frame; unwinding first would
+        // flash whatever is underneath while the menu is still being built.
+        dialogInputHandler.openQuickMenu(quickMenuRow) {
+            if (state.inSubList) settingsViewModel.exitSubList() else settingsViewModel.cancel()
             nav.pop()
         }
     }

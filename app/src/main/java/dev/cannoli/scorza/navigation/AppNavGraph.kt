@@ -180,8 +180,12 @@ sealed class LauncherScreen {
 
     data object SystemList : LauncherScreen()
     data object GameList : LauncherScreen()
-    /** [quickMenuRow] is set only when the quick menu pushed straight into a category, and names the row Back returns to. */
-    data class Settings(val quickMenuRow: dev.cannoli.scorza.ui.quickmenu.QuickMenuRow? = null) : LauncherScreen()
+    /** [quickMenuRow] names the row Back returns to, [quickMenuCategory] the category the quick menu
+     *  landed on (null being the category list), so Back only leaves at the level it arrived at. */
+    data class Settings(
+        val quickMenuRow: dev.cannoli.scorza.ui.quickmenu.QuickMenuRow? = null,
+        val quickMenuCategory: String? = null,
+    ) : LauncherScreen()
     data object InputTester : LauncherScreen()
     data class SaveStatePicker(
         val rom: dev.cannoli.scorza.model.Rom,
