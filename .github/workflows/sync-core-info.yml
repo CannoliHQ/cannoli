@@ -22,7 +22,21 @@ jobs:
           git clone --depth=1 https://github.com/libretro/libretro-super /tmp/libretro-super
           rm -rf app/src/main/assets/core_info
           mkdir -p app/src/main/assets/core_info
-          cp /tmp/libretro-super/dist/info/*.info app/src/main/assets/core_info/
+          missing=0
+          while read -r core; do
+            case "$core" in ''|\#*) continue ;; esac
+            src="/tmp/libretro-super/dist/info/$core.info"
+            if [ -f "$src" ]; then
+              cp "$src" app/src/main/assets/core_info/
+            else
+              echo "::error::curated core '$core' has no info file upstream, it may have been renamed"
+              missing=$((missing + 1))
+            fi
+          done < scripts/curated-cores.txt
+          if [ "$missing" -gt 0 ]; then
+            echo "$missing curated cores are missing upstream, refusing to sync a catalogue with holes"
+            exit 1
+          fi
 
       - name: Check for changes
         id: diff
@@ -54,5 +68,7 @@ jobs:
             - Removed: ${{ steps.diff.outputs.removed }}
             - Modified: ${{ steps.diff.outputs.modified }}
 
-            Review the diff to confirm no cores we rely on have changed their `database` field in a way that breaks `CoreInfoRepository.tagToDatabases` mapping.
+            Review the diff to confirm no core we rely on changed its `database` field in a way that
+            breaks `CoreInfoRepository.tagToDatabases`. Only cores listed in `scripts/curated-cores.txt`
+            are copied, so an added or removed file here means that list changed, not upstream.
           delete-branch: true
