@@ -290,12 +290,27 @@ class RaIgmSettingsProvider(
 
     // Cache key is the RetroArch screen, so a parent and a child never share a slot and moving
     // between them reloads rather than showing the other's rows.
+    //
+    // The key list is part of the cache identity, not just the screen: RetroArch's rows are
+    // conditional, so setting aspect_ratio_index to Config reveals video_aspect_ratio on a screen
+    // we are already standing on. Keying only on the screen left those rows out of currentSettings
+    // and mapNotNull then dropped them, so a row RetroArch had just revealed never appeared.
+    //
+    // Rows already loaded keep their cached RaSetting rather than being re-read. raSetSetting is
+    // asynchronous, so a re-read right after a cycle returns the old value and the row would flick
+    // back to what the user just changed it from.
     private fun loadKeys(keys: List<String>, cacheKey: String) {
-        if (cacheKey == currentCategory) return
-        pending.clear()
+        if (cacheKey == currentCategory && keys == currentKeys) return
+        if (cacheKey != currentCategory) pending.clear()
         currentCategory = cacheKey
-        currentSettings = keys.mapNotNull { key -> host.raGetSetting(key)?.let(::withRestartHint) }
+        currentKeys = keys
+        val cached = currentSettings.associateBy { it.key }
+        currentSettings = keys.mapNotNull { key ->
+            cached[key] ?: host.raGetSetting(key)?.let(::withRestartHint)
+        }
     }
+
+    private var currentKeys: List<String> = emptyList()
 
     private fun rowFor(s: RaSetting) = GenericIgmSettingsItem.Choice(
         key = s.key,

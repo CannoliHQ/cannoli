@@ -88,6 +88,12 @@ class ProviderSettingsController(private val provider: IgmSettingsProvider) {
             Nav.LEFT, Nav.RIGHT -> {
                 val item = items.getOrNull(level.cursor) as? GenericIgmSettingsItem.Choice ?: return state()
                 provider.cycle(item.key, if (button == Nav.LEFT) -1 else 1)
+                // RetroArch's rows are conditional, so this cycle can add or remove rows above the
+                // one being edited: Aspect Ratio reveals Config Aspect Ratio, Custom reveals the
+                // viewport rows. The cursor is an index, so without following the key the highlight
+                // slides onto a different setting mid-edit and the next press changes that one.
+                val moved = provider.screen(level.path).items.indexOfFirst { it.key == item.key }
+                if (moved >= 0) level.cursor = moved
             }
             Nav.CONFIRM -> when (val item = items.getOrNull(level.cursor)) {
                 is GenericIgmSettingsItem.Category -> levels.addLast(Level(level.path + item.key, 0))

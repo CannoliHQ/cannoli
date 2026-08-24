@@ -88,6 +88,58 @@ class RaIgmSettingsProviderTest {
                 .first { it.key == "run_ahead_hide_warnings" }.value)
     }
 
+    // The reported bug: RetroArch's rows are conditional, so cycling one setting reveals another on
+    // a screen already open. Keying the cache on the screen alone left the new key out of
+    // currentSettings and the row was dropped, so it never appeared.
+    @Test
+    fun `a row RetroArch reveals mid-screen appears`() {
+        val h = host()
+        h.settings["aspect_ratio_index"] =
+            RaSetting("aspect_ratio_index", "Aspect Ratio", RaSettingType.INT, "0", min = 0f, max = 24f, step = 1f)
+        h.settings["video_aspect_ratio"] =
+            RaSetting("video_aspect_ratio", "Config Aspect Ratio", RaSettingType.FLOAT, "1.33")
+        h.screens["video_scaling_settings"] = listOf(
+            RaScreenRow("aspect_ratio_index", "Aspect Ratio", isMenu = false),
+        )
+        val p = provider(h)
+        assertEquals(
+            listOf("aspect_ratio_index"),
+            p.screen(listOf("video_scaling_settings")).items.map { it.key },
+        )
+
+        // RetroArch now lists the dependent row, as it does once the index reaches Config.
+        h.screens["video_scaling_settings"] = listOf(
+            RaScreenRow("aspect_ratio_index", "Aspect Ratio", isMenu = false),
+            RaScreenRow("video_aspect_ratio", "Config Aspect Ratio", isMenu = false),
+        )
+        assertEquals(
+            listOf("aspect_ratio_index", "video_aspect_ratio"),
+            p.screen(listOf("video_scaling_settings")).items.map { it.key },
+        )
+    }
+
+    // A reload must not re-read a key that was just cycled: raSetSetting is asynchronous, so the
+    // host still reports the old value and the row would flick back.
+    @Test
+    fun `revealing a row keeps the value just set on its neighbour`() {
+        val h = host()
+        h.screens["latency_settings"] = listOf(
+            RaScreenRow("run_ahead_hide_warnings", "Hide Run-Ahead Warnings", isMenu = false),
+        )
+        val p = provider(h)
+        p.screen(listOf(LATENCY))
+        p.cycle("run_ahead_hide_warnings", 1)
+
+        h.screens[LATENCY] = listOf(
+            RaScreenRow("run_ahead_hide_warnings", "Hide Run-Ahead Warnings", isMenu = false),
+            RaScreenRow("run_ahead_frames", "Run-Ahead Frames", isMenu = false),
+        )
+        val rows = p.screen(listOf(LATENCY)).items.filterIsInstance<GenericIgmSettingsItem.Choice>()
+
+        assertEquals(RaOptionStrings().on, rows.first { it.key == "run_ahead_hide_warnings" }.value)
+        assertEquals(listOf("run_ahead_hide_warnings", "run_ahead_frames"), rows.map { it.key })
+    }
+
     @Test
     fun `an external apply echo updates the displayed value`() {
         val h = host()
