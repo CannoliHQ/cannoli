@@ -69,7 +69,7 @@ class MappingCurrentSelectionTest {
         val f = fixture(name)
         if (gameScoped) f.store.put(f.romId, choice) else f.config.setPlatformChoice("GBA", choice)
         val screen = f.builder.buildPlatformMapping(
-            "GBA", "GBA", showAll = true, romId = if (gameScoped) f.romId else null,
+            "GBA", "GBA", romId = if (gameScoped) f.romId else null,
         )
         val current = currentRows(screen)
         assertEquals("$name: expected exactly one selected row", 1, current.size)
@@ -115,7 +115,7 @@ class MappingCurrentSelectionTest {
 
     @Test fun `with no game override the platform default row is the current one`() {
         val f = fixture("cur-g-none")
-        val screen = f.builder.buildPlatformMapping("GBA", "GBA", showAll = true, romId = f.romId)
+        val screen = f.builder.buildPlatformMapping("GBA", "GBA", romId = f.romId)
         val default = screen.items.filterIsInstance<MappingItem.PlatformDefault>().single()
         assertTrue(default.isCurrent)
         assertEquals(0, currentRows(screen).size)
@@ -124,7 +124,7 @@ class MappingCurrentSelectionTest {
     @Test fun `selectCurrent puts the cursor on the current row`() {
         val f = fixture("cur-cursor")
         f.config.setPlatformChoice("GBA", EmulatorChoice(EmulatorSource.RetroArch, "mgba_libretro"))
-        val screen = f.builder.buildPlatformMapping("GBA", "GBA", showAll = true, selectCurrent = true)
+        val screen = f.builder.buildPlatformMapping("GBA", "GBA", selectCurrent = true)
         val item = screen.items.filter { it.isSelectable }[screen.selectedIndex]
         assertTrue(item is MappingItem.EmulatorOption && item.isCurrent)
     }
@@ -132,11 +132,11 @@ class MappingCurrentSelectionTest {
     @Test fun `game scope drops the platform wide actions and platform scope keeps them`() {
         val f = fixture("cur-actions")
         f.config.setPlatformChoice("GBA", EmulatorChoice(EmulatorSource.Embedded, "mgba_libretro"))
-        val scoped = f.builder.buildPlatformMapping("GBA", "GBA", showAll = true, romId = f.romId)
+        val scoped = f.builder.buildPlatformMapping("GBA", "GBA", romId = f.romId)
         assertTrue(scoped.items.none { it is MappingItem.Action })
         assertEquals(f.romId, scoped.romId)
 
-        val platform = f.builder.buildPlatformMapping("GBA", "GBA", showAll = true)
+        val platform = f.builder.buildPlatformMapping("GBA", "GBA")
         assertTrue(platform.items.any { it is MappingItem.Action })
         assertTrue(platform.items.none { it is MappingItem.PlatformDefault })
     }
@@ -144,12 +144,14 @@ class MappingCurrentSelectionTest {
     @Test fun `rebuild preserves tag and game scope`() {
         val f = fixture("cur-rebuild")
         val screen = f.builder.buildPlatformMapping(
-            "GBA", "GBA", showAll = false, romId = f.romId, gameName = "Game",
+            "GBA", "GBA", romId = f.romId, gameName = "Game",
         )
-        val again = f.builder.rebuild(screen, showAll = true)
+        // scrollTarget is passed through untouched, so changing it proves the screen was actually
+        // rebuilt rather than handed back, which is what makes the scope assertions mean something.
+        val again = f.builder.rebuild(screen, scrollTarget = 5)
         assertEquals(f.romId, again.romId)
         assertEquals("GBA", again.tag)
         assertEquals("Game", again.gameName)
-        assertTrue(again.showAll)
+        assertEquals(5, again.scrollTarget)
     }
 }

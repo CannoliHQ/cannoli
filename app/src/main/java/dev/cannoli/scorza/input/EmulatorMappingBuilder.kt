@@ -82,13 +82,14 @@ class EmulatorMappingBuilder @Inject constructor(
         else -> all
     }
 
+    // A single platform's screen always lists every option. The Show All toggle that used to gate
+    // this hid most of the list behind a face button nobody found, so the emulator a user wanted
+    // read as unavailable rather than as not yet installed.
     fun buildPlatformMapping(
         tag: String,
         platformName: String,
-        showAll: Boolean,
         selectedIndex: Int = 0,
         scrollTarget: Int = 0,
-        defaultShowAllIfEmpty: Boolean = false,
         romId: Long? = null,
         gameName: String? = null,
         selectCurrent: Boolean = false,
@@ -182,14 +183,7 @@ class EmulatorMappingBuilder @Inject constructor(
             return section
         }
 
-        var effectiveShowAll = showAll
-        var section = emulatorSection(effectiveShowAll).toMutableList()
-        if (defaultShowAllIfEmpty && !effectiveShowAll &&
-            section.none { it is MappingItem.EmulatorOption }
-        ) {
-            effectiveShowAll = true
-            section = emulatorSection(true).toMutableList()
-        }
+        val section = emulatorSection(true).toMutableList()
 
         // A stored choice must always render, even when the option generator can no longer
         // produce it: a shipped update can drop an app from platforms.json, and a hand-edited
@@ -216,12 +210,6 @@ class EmulatorMappingBuilder @Inject constructor(
                 }
             }
         }
-
-        // Installed-only is always a subset of Show All, so equal option counts mean the
-        // toggle would not change anything and the legend is hidden.
-        val optionCount = section.count { it is MappingItem.EmulatorOption }
-        val canToggleShowAll =
-            emulatorSection(!effectiveShowAll).count { it is MappingItem.EmulatorOption } != optionCount
 
         val items = mutableListOf<MappingItem>()
         if (romId != null) {
@@ -280,8 +268,6 @@ class EmulatorMappingBuilder @Inject constructor(
             tag = tag,
             platformName = platformName,
             items = items,
-            showAll = effectiveShowAll,
-            canToggleShowAll = canToggleShowAll,
             overridesCount = overridesCount,
             resettable = resettable,
             romId = romId,
@@ -295,13 +281,11 @@ class EmulatorMappingBuilder @Inject constructor(
     // game-scoped screen into a platform-scoped one, which would write the wrong mapping.
     fun rebuild(
         screen: LauncherScreen.PlatformMapping,
-        showAll: Boolean = screen.showAll,
         selectedIndex: Int = screen.selectedIndex,
         scrollTarget: Int = screen.scrollTarget,
     ): LauncherScreen.PlatformMapping = buildPlatformMapping(
         tag = screen.tag,
         platformName = screen.platformName,
-        showAll = showAll,
         selectedIndex = selectedIndex,
         scrollTarget = scrollTarget,
         romId = screen.romId,

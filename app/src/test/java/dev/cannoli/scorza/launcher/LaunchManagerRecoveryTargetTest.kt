@@ -126,6 +126,39 @@ class LaunchManagerRecoveryTargetTest {
         assertEquals(InstalledCoreService.getPackageLabel(RA), dialog.packageLabel)
     }
 
+    // A standalone platform with nothing to resolve used to report a missing core named "unknown",
+    // which named a core the user never chose. It is a different failure and says so.
+    @Test fun `a standalone platform with no app resolved names the platform, not a core`() {
+        val root = tmp.newFolder()
+        val mgr = manager(root)
+        every { platformConfig.getPlatformChoice("GC") } returns
+            EmulatorChoice(EmulatorSource.Standalone)
+        every { platformConfig.getUserAppMapping("GC") } returns null
+        every { platformConfig.getFirstInstalledApp("GC", any()) } returns null
+        every { platformConfig.getAppPackage("GC") } returns null
+        every { platformConfig.getDisplayName("GC") } returns "GameCube"
+
+        val dialog = mgr.launchRom(rom(root)) as DialogState.NoEmulatorSet
+
+        assertEquals("GameCube", dialog.platformName)
+        assertEquals("GC", dialog.platformTag)
+    }
+
+    // Recovery still has to land somewhere, or the dialog offers a fix that goes nowhere.
+    @Test fun `a per game standalone override with no app resolved points recovery at the game`() {
+        val root = tmp.newFolder()
+        val mgr = manager(root)
+        val gc = rom(root)
+        every { gameOverrides.get(gc.id) } returns EmulatorChoice(EmulatorSource.Standalone)
+        every { platformConfig.getUserAppMapping("GC") } returns null
+        every { platformConfig.getFirstInstalledApp("GC", any()) } returns null
+        every { platformConfig.getAppPackage("GC") } returns null
+
+        val dialog = mgr.launchRom(gc) as DialogState.NoEmulatorSet
+
+        assertEquals(gc.id, dialog.romId)
+    }
+
     @Test fun `a package that cannot report its cores skips the core install precheck`() {
         val root = tmp.newFolder()
         val mgr = manager(root)

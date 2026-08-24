@@ -379,7 +379,7 @@ class InputRouter @Inject constructor(
     private fun emulatorMappingHandler() = scrollable<LauncherScreen.EmulatorMapping>(
         onConfirm = {
             val entry = mappings.getOrNull(selectedIndex) ?: return@scrollable
-            nav.push(emulatorMappingBuilder.buildPlatformMapping(entry.tag, entry.platformName, showAll = false, defaultShowAllIfEmpty = true))
+            nav.push(emulatorMappingBuilder.buildPlatformMapping(entry.tag, entry.platformName))
         },
         onBack = { nav.pop() },
         onWest = {
@@ -459,13 +459,6 @@ class InputRouter @Inject constructor(
             nav.pop()
             if (scoped) dialogHandler.restoreContextMenu()
         },
-        onNorth = {
-            if (canToggleShowAll) {
-                nav.replaceTop(emulatorMappingBuilder.rebuild(
-                    this, showAll = !showAll, selectedIndex = 0, scrollTarget = 0,
-                ))
-            }
-        },
     )
 
     private fun biosStatusHandler() = scrollable<LauncherScreen.BiosStatus>(
@@ -487,7 +480,7 @@ class InputRouter @Inject constructor(
                 if (mappingIdx >= 0) {
                     val mapping = nav.screenStack[mappingIdx] as LauncherScreen.PlatformMapping
                     nav.screenStack[mappingIdx] = emulatorMappingBuilder.buildPlatformMapping(
-                        mapping.tag, mapping.platformName, showAll = mapping.showAll,
+                        mapping.tag, mapping.platformName,
                         selectedIndex = mapping.selectedIndex, scrollTarget = mapping.scrollTarget,
                     )
                 }

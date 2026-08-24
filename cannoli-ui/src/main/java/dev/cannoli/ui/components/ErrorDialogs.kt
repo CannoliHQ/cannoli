@@ -15,51 +15,16 @@ import dev.cannoli.ui.ButtonStyle
 import dev.cannoli.ui.R
 import dev.cannoli.ui.theme.LocalCannoliColors
 
+/**
+ * One screen for every way a game can fail to reach an emulator: the core is absent, the standalone
+ * app is absent, or the platform has no emulator at all. They read as the same problem to the person
+ * holding the device, and the fix is the same screen, so they are not three dialogs.
+ *
+ * [problem] names what is missing and is built by the caller, which knows which failure this is.
+ */
 @Composable
-fun MissingCoreDialog(
-    coreName: String,
-    packageLabel: String? = null,
-    showChangeEmulator: Boolean = false,
-    buttonStyle: ButtonStyle = ButtonStyle()
-) {
-    OverlayScrim(
-        bottomBar = {
-            if (showChangeEmulator) {
-                BottomBar(
-                    leftItems = listOf(buttonStyle.back to stringResource(R.string.label_close)),
-                    rightItems = listOf(buttonStyle.confirm to stringResource(R.string.label_change_emulator))
-                )
-            } else {
-                LegendPill(button = buttonStyle.back, label = stringResource(R.string.label_close))
-            }
-        }
-    ) {
-        Text(
-            text = stringResource(R.string.dialog_title_missing_core),
-            style = MaterialTheme.typography.titleLarge,
-            color = Color.White,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        val problem = if (packageLabel != null) {
-            stringResource(R.string.dialog_missing_core_pkg, coreName, packageLabel)
-        } else {
-            stringResource(R.string.dialog_missing_core_plain, coreName)
-        }
-        Text(
-            text = problem + "\n" + stringResource(R.string.dialog_missing_core_hint),
-            style = MaterialTheme.typography.bodyLarge,
-            color = LocalCannoliColors.current.text.copy(alpha = 0.6f),
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-        )
-    }
-}
-
-@Composable
-fun MissingAppDialog(
-    appName: String,
+fun MissingEmulatorDialog(
+    problem: String,
     showRemove: Boolean = false,
     showChangeEmulator: Boolean = false,
     buttonStyle: ButtonStyle = ButtonStyle()
@@ -82,15 +47,21 @@ fun MissingAppDialog(
         }
     ) {
         Text(
-            text = stringResource(R.string.dialog_title_missing_app),
+            text = stringResource(R.string.dialog_title_missing_emulator),
             style = MaterialTheme.typography.titleLarge,
-            color = Color.White
+            color = Color.White,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(12.dp))
+        // The hint rides with every case: knowing what is missing is no use without knowing where
+        // to fix it, and the standalone screen used to say only the former.
         Text(
-            text = stringResource(R.string.dialog_missing_app, appName),
+            text = problem + "\n" + stringResource(R.string.dialog_missing_emulator_hint),
             style = MaterialTheme.typography.bodyLarge,
-            color = LocalCannoliColors.current.text.copy(alpha = 0.6f)
+            color = LocalCannoliColors.current.text.copy(alpha = 0.6f),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
         )
     }
 }

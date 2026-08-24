@@ -219,8 +219,6 @@ sealed class LauncherScreen {
         val tag: String,
         val platformName: String,
         val items: List<dev.cannoli.scorza.ui.screens.MappingItem>,
-        val showAll: Boolean = false,
-        val canToggleShowAll: Boolean = true,
         val overridesCount: Int = 0,
         val resettable: Boolean = false,
         // Non-null scopes the screen to a single game: it edits that game's override instead
@@ -789,10 +787,6 @@ fun AppNavGraph(
                 val highlightedIndex = selectableIndices.getOrNull(
                     currentScreen.selectedIndex.coerceIn(0, (selectableIndices.size - 1).coerceAtLeast(0))
                 ) ?: -1
-                val yLabel = if (currentScreen.showAll)
-                    stringResource(R.string.label_show_installed)
-                else
-                    stringResource(R.string.label_show_all)
                 val highlighted = currentScreen.items.getOrNull(highlightedIndex)
                 val confirmLabel = if ((highlighted as? dev.cannoli.scorza.ui.screens.MappingItem.EmulatorOption)?.downloadable == true)
                     stringResource(R.string.label_download)
@@ -809,7 +803,6 @@ fun AppNavGraph(
                     listLineHeight = listLineHeight,
                     fullWidth = true,
                     rightBottomItems = buildList {
-                        if (currentScreen.canToggleShowAll) add(labels.north to yLabel)
                         if (highlightedIndex >= 0) add(labels.confirm to confirmLabel)
                     },
                     buttonStyle = labels
@@ -852,7 +845,7 @@ fun AppNavGraph(
                                     item.isCurrent -> stringResource(R.string.value_active)
                                     opt.availability == dev.cannoli.scorza.ui.screens.CoreAvailability.UNAVAILABLE -> {
                                         val resId = when (opt.runnerLabel) {
-                                            "Internal" -> R.string.value_not_bundled
+                                            "Internal" -> R.string.value_not_downloaded
                                             else -> R.string.value_not_installed
                                         }
                                         stringResource(resId)

@@ -445,6 +445,7 @@ class DialogInputHandler @Inject constructor(
                 }
             }
             is DialogState.MissingCore -> openEmulatorRecovery(ds.platformTag, ds.romId)
+            is DialogState.NoEmulatorSet -> openEmulatorRecovery(ds.platformTag, ds.romId)
             is DialogState.DeleteCollectionConfirm -> {
                 val glState = gameListViewModel.state.value
                 val deletingFromParent = glState.isCollection && !glState.isCollectionsList
@@ -1094,6 +1095,7 @@ class DialogInputHandler @Inject constructor(
             }
             is DialogState.MissingCore,
             is DialogState.MissingApp,
+            is DialogState.NoEmulatorSet,
             is DialogState.LaunchError,
             is DialogState.Launching -> {
                 nav.dialogState.value = DialogState.None
@@ -1627,8 +1629,8 @@ class DialogInputHandler @Inject constructor(
     private fun openGameEmulatorPicker(tag: String, romId: Long?, displayName: String) {
         nav.dialogState.value = DialogState.None
         nav.screenStack.add(emulatorMappingBuilder.buildPlatformMapping(
-            tag = tag, platformName = platformResolver.getDisplayName(tag), showAll = false,
-            defaultShowAllIfEmpty = true, romId = romId, gameName = displayName, selectCurrent = true,
+            tag = tag, platformName = platformResolver.getDisplayName(tag),
+            romId = romId, gameName = displayName, selectCurrent = true,
         ))
     }
 
@@ -1650,8 +1652,8 @@ class DialogInputHandler @Inject constructor(
     private fun openPlatformEmulatorPicker(tag: String) {
         nav.dialogState.value = DialogState.None
         nav.screenStack.add(emulatorMappingBuilder.buildPlatformMapping(
-            tag = tag, platformName = platformResolver.getDisplayName(tag), showAll = false,
-            defaultShowAllIfEmpty = true, selectCurrent = true,
+            tag = tag, platformName = platformResolver.getDisplayName(tag),
+            selectCurrent = true,
         ))
     }
 
@@ -1860,7 +1862,7 @@ class DialogInputHandler @Inject constructor(
         nav.dialogState.value = DialogState.None
         val mapping = nav.screenStack.lastOrNull() as? LauncherScreen.PlatformMapping ?: return
         nav.screenStack[nav.screenStack.lastIndex] = emulatorMappingBuilder.buildPlatformMapping(
-            mapping.tag, mapping.platformName, showAll = mapping.showAll,
+            mapping.tag, mapping.platformName,
             selectedIndex = mapping.selectedIndex, scrollTarget = mapping.scrollTarget,
         )
         val mappingIdx = nav.screenStack.indexOfLast { it is LauncherScreen.EmulatorMapping }

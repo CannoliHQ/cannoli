@@ -47,8 +47,6 @@ import dev.cannoli.ui.components.ConfirmOverlay
 import dev.cannoli.ui.components.LaunchErrorDialog
 import dev.cannoli.ui.components.List
 import dev.cannoli.ui.components.MessageOverlay
-import dev.cannoli.ui.components.MissingAppDialog
-import dev.cannoli.ui.components.MissingCoreDialog
 import dev.cannoli.ui.components.PillRowText
 import dev.cannoli.ui.components.ScreenBackground
 import dev.cannoli.ui.components.ScreenTitle

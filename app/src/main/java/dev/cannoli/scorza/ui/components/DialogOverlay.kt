@@ -57,8 +57,7 @@ import dev.cannoli.ui.components.PillRowInfo
 import dev.cannoli.ui.components.PillRowKeyValue
 import dev.cannoli.ui.components.PillRowText
 import dev.cannoli.ui.components.MessageOverlay
-import dev.cannoli.ui.components.MissingAppDialog
-import dev.cannoli.ui.components.MissingCoreDialog
+import dev.cannoli.ui.components.MissingEmulatorDialog
 import dev.cannoli.ui.components.OverlayScrim
 import dev.cannoli.ui.components.SectionedList
 import dev.cannoli.ui.components.RALoggingInOverlay
@@ -940,16 +939,25 @@ fun DialogOverlay(
             }
         }
 
-        is DialogState.MissingCore -> MissingCoreDialog(
-            coreName = dialogState.coreName,
-            packageLabel = dialogState.packageLabel,
+        is DialogState.MissingCore -> MissingEmulatorDialog(
+            problem = if (dialogState.packageLabel != null) {
+                stringResource(R.string.dialog_missing_core_pkg, dialogState.coreName, dialogState.packageLabel!!)
+            } else {
+                stringResource(R.string.dialog_missing_core_plain, dialogState.coreName)
+            },
             showChangeEmulator = dialogState.platformTag != null,
             buttonStyle = buttonStyle,
         )
 
-        is DialogState.MissingApp -> MissingAppDialog(
-            appName = dialogState.appName,
+        is DialogState.MissingApp -> MissingEmulatorDialog(
+            problem = stringResource(R.string.dialog_missing_app, dialogState.appName),
             showRemove = appListPlatformTag == "tools" || appListPlatformTag == "ports",
+            showChangeEmulator = dialogState.platformTag != null,
+            buttonStyle = buttonStyle,
+        )
+
+        is DialogState.NoEmulatorSet -> MissingEmulatorDialog(
+            problem = stringResource(R.string.dialog_no_emulator_set, dialogState.platformName),
             showChangeEmulator = dialogState.platformTag != null,
             buttonStyle = buttonStyle,
         )

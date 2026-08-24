@@ -512,16 +512,17 @@
     <!-- %1$s = file name. -->
     <string name="launch_error_bad_game_file">Could not read a game ID from %1$s</string>
     <!-- %1$s = core name, %2$s = emulator app. -->
-    <string name="dialog_missing_core_pkg">%1$s isn\'t installed in %2$s.</string>
+    <string name="dialog_missing_core_pkg">%1$s is not installed in %2$s.</string>
     <!-- %1$s = core name. -->
-    <string name="dialog_missing_core_plain">%1$s isn\'t installed.</string>
-    <string name="dialog_missing_core_hint">Set it up in Emulator Mapping.</string>
+    <string name="dialog_missing_core_plain">%1$s is not installed.</string>
     <!-- %1$s = app name. -->
     <string name="dialog_missing_app">%1$s is not installed.</string>
+    <!-- %1$s = platform name, shown when the platform has no emulator chosen at all. -->
+    <string name="dialog_no_emulator_set">No emulator is set for %1$s.</string>
+    <string name="dialog_missing_emulator_hint">Set it up in Emulator Mapping.</string>
     <!-- %1$s = folder path. -->
     <string name="dialog_missing_bios_header">At least one BIOS file is required in %1$s:</string>
-    <string name="dialog_title_missing_core">Missing core</string>
-    <string name="dialog_title_missing_app">Missing App</string>
+    <string name="dialog_title_missing_emulator">Missing emulator</string>
     <string name="dialog_title_launch_error">Launch failed</string>
     <string name="dialog_rename_success">Renamed successfully</string>
     <!-- %1$s = error detail. -->
@@ -876,12 +877,10 @@
     <!-- Setting: maps each platform to an emulator/core. -->
     <string name="setting_emulator_mapping">Emulator Mapping</string>
     <string name="label_reset">RESET</string>
-    <string name="label_show_all">SHOW ALL</string>
     <string name="label_group_manufacturer">BY MAKER</string>
     <string name="label_group_alphabetical">A-Z</string>
-    <string name="label_show_installed">SHOW INSTALLED</string>
-    <!-- The core is not bundled with the app. -->
-    <string name="value_not_bundled">NOT BUNDLED</string>
+    <!-- The core has not been downloaded yet. -->
+    <string name="value_not_downloaded">Not Downloaded</string>
     <string name="value_no_overrides">No per-game overrides.</string>
     <string name="value_no_firmware">No firmware required for this core.</string>
     <string name="mapping_action_bios">BIOS Files</string>

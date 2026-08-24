@@ -105,6 +105,17 @@ sealed interface DialogState {
         val romId: Long? = null,
     ) : DialogState
     data class MissingApp(val appName: String, val packageName: String, val platformTag: String? = null, val romId: Long? = null) : DialogState
+
+    /**
+     * The platform resolves to no emulator at all, which is a different problem from one that is
+     * merely uninstalled. It used to report a missing core named "unknown", which named a core that
+     * was never chosen and told the user nothing.
+     */
+    data class NoEmulatorSet(
+        val platformName: String,
+        val platformTag: String? = null,
+        val romId: Long? = null,
+    ) : DialogState
     data class LaunchError(val message: String) : DialogState
     data object Launching : DialogState
     data class ContextMenu(val gameName: String, val selectedOption: Int = 0, val options: List<String>) : DialogState

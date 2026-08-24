@@ -67,13 +67,13 @@ class MappingNoticeTest {
 
     @Test fun `no notice when RetroArch reports normally`() {
         val f = fixture("notice-reports", CoreReporting.REPORTS)
-        val screen = f.builder.buildPlatformMapping("GBA", "GBA", showAll = true)
+        val screen = f.builder.buildPlatformMapping("GBA", "GBA")
         assertTrue(screen.items.none { it is MappingItem.Notice })
     }
 
     @Test fun `unsupported RetroArch shows the cannot-report notice directly under its header`() {
         val f = fixture("notice-unsupported", CoreReporting.UNSUPPORTED)
-        val screen = f.builder.buildPlatformMapping("GBA", "GBA", showAll = true)
+        val screen = f.builder.buildPlatformMapping("GBA", "GBA")
         val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
         val expected = ctx.getString(dev.cannoli.scorza.R.string.mapping_notice_cannot_report_cores)
 
@@ -86,7 +86,7 @@ class MappingNoticeTest {
 
     @Test fun `a RetroArch that is not installed says so instead of flagging every core`() {
         val f = fixture("notice-absent", CoreReporting.NOT_INSTALLED)
-        val screen = f.builder.buildPlatformMapping("GBA", "GBA", showAll = true)
+        val screen = f.builder.buildPlatformMapping("GBA", "GBA")
         val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
         val expected = ctx.getString(dev.cannoli.scorza.R.string.mapping_notice_not_installed)
 
@@ -110,7 +110,7 @@ class MappingNoticeTest {
     // stays silent. The rows still must not claim the cores are absent.
     @Test fun `an unscanned RetroArch shows no notice and claims nothing about its cores`() {
         val f = fixture("notice-unscanned", CoreReporting.UNSCANNED)
-        val screen = f.builder.buildPlatformMapping("GBA", "GBA", showAll = true)
+        val screen = f.builder.buildPlatformMapping("GBA", "GBA")
         assertTrue(screen.items.none { it is MappingItem.Notice })
 
         val headerAt = retroArchHeaderIndex(screen.items, f.raLabel)
@@ -125,7 +125,7 @@ class MappingNoticeTest {
 
     @Test fun `silent RetroArch shows the no-response notice directly under its header`() {
         val f = fixture("notice-silent", CoreReporting.SILENT)
-        val screen = f.builder.buildPlatformMapping("GBA", "GBA", showAll = true)
+        val screen = f.builder.buildPlatformMapping("GBA", "GBA")
         val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
         val expected = ctx.getString(dev.cannoli.scorza.R.string.mapping_notice_no_response)
 

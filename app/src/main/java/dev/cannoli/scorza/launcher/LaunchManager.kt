@@ -372,7 +372,7 @@ class LaunchManager(
                     if (cfg != null) {
                         launchStandalone(rom, launchFile, cfg)
                     } else {
-                        LaunchResult.CoreNotInstalled("unknown")
+                        LaunchResult.NoEmulatorSet
                     }
                 } else {
                     val core = resolvedCore
@@ -420,7 +420,7 @@ class LaunchManager(
                         if (appPkg != null && !context.isPackageInstalled(appPkg)) {
                             LaunchResult.AppNotInstalled(appPkg)
                         } else {
-                            LaunchResult.CoreNotInstalled("unknown")
+                            LaunchResult.NoEmulatorSet
                         }
                     }
                 }
@@ -444,7 +444,9 @@ class LaunchManager(
             }
         }
 
-        return launchResultDialog(result, rom.platformTag)
+        // Carries the same attribution the early returns above use: a launch that failed on a
+        // per-game override must send recovery to that override, not to the platform mapping.
+        return launchResultDialog(result, rom.platformTag, overrideRomId)
     }
 
     fun launchApp(app: App): DialogState? {
@@ -474,7 +476,7 @@ class LaunchManager(
                 ?: platformConfig.getFirstInstalledApp(rom.platformTag, context.packageManager)
             return launchResultDialog(
                 if (cfg != null) launchStandalone(rom, launchFile, cfg)
-                else LaunchResult.CoreNotInstalled("unknown"),
+                else LaunchResult.NoEmulatorSet,
                 rom.platformTag, rom.id,
             )
         }
@@ -539,6 +541,11 @@ class LaunchManager(
                 val appName = InstalledCoreService.getPackageLabel(result.packageName)
                 DialogState.MissingApp(appName, result.packageName, platformTag, romId)
             }
+            LaunchResult.NoEmulatorSet -> DialogState.NoEmulatorSet(
+                platformName = platformTag?.let { platformConfig.getDisplayName(it) } ?: "",
+                platformTag = platformTag,
+                romId = romId,
+            )
             is LaunchResult.Error -> DialogState.LaunchError(result.message)
             LaunchResult.Success -> null
         }
