@@ -20,35 +20,6 @@ class CoreInfoRepository(private val assets: AssetManager, private val cacheDir:
     @Volatile private var cores = listOf<CoreInfo>()
     @Volatile private var coreById = mapOf<String, CoreInfo>()
 
-    /** Core id to the ABI flags it is built for, from the generated android_cores.txt asset. */
-    private val androidCores: Map<String, Set<String>> by lazy {
-        val parsed = mutableMapOf<String, Set<String>>()
-        try {
-            assets.open("android_cores.txt").bufferedReader().useLines { lines ->
-                for (line in lines) {
-                    if (line.isBlank() || line.startsWith("#")) continue
-                    val id = line.substringBefore(' ')
-                    val abis = line.substringAfter(' ', "").split(',')
-                        .map { it.trim() }.filter { it.isNotEmpty() }.toSet()
-                    if (id.isNotEmpty() && abis.isNotEmpty()) parsed[id] = abis
-                }
-            }
-        } catch (e: Exception) {
-            dev.cannoli.scorza.util.ErrorLog.write("android_cores.txt unreadable: ${e.message}")
-        }
-        parsed
-    }
-
-    private val deviceAbiFlags: Set<String> by lazy {
-        android.os.Build.SUPPORTED_ABIS.orEmpty().mapNotNull {
-            when (it) {
-                "arm64-v8a" -> "64"
-                "armeabi-v7a" -> "32"
-                else -> null
-            }
-        }.toSet()
-    }
-
     private val tagToDatabases = mapOf(
         "GB" to listOf("Nintendo - Game Boy"),
         "GBC" to listOf("Nintendo - Game Boy Color"),
@@ -201,14 +172,11 @@ class CoreInfoRepository(private val assets: AssetManager, private val cacheDir:
     }
 
     /**
-     * Both fallbacks open the filter rather than closing it. A missing asset or an ABI we do not
-     * ship for should cost curation, never the ability to pick an emulator at all.
+     * Whether this core is one Cannoli ships. Every curated core builds for both ABIs, which
+     * CuratedCatalogueTest enforces, so membership is the whole question: a core outside the
+     * catalogue is one the picker will never offer, and putting it on disk would help nobody.
      */
-    fun runsOnThisDevice(coreId: String): Boolean {
-        if (androidCores.isEmpty()) return true
-        val abis = androidCores[coreId] ?: return false
-        return deviceAbiFlags.isEmpty() || deviceAbiFlags.any { it in abis }
-    }
+    fun isCurated(coreId: String): Boolean = coreId in coreById
 
     fun getFirmwareFor(coreId: String): List<FirmwareEntry> {
         val filename = "$coreId.info"

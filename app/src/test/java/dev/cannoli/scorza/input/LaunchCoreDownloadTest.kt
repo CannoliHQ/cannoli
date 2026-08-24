@@ -74,7 +74,7 @@ class LaunchCoreDownloadTest {
 
     @Test fun `a missing but downloadable core downloads instead of reporting missing`() {
         setUpCommon()
-        every { coreInfo.runsOnThisDevice("snes9x_libretro") } returns true
+        every { coreInfo.isCurated("snes9x_libretro") } returns true
         every { launchManager.launchRom(rom) } returns missing("snes9x_libretro", "Snes9x")
 
         val result = launch()
@@ -85,7 +85,7 @@ class LaunchCoreDownloadTest {
 
     @Test fun `the launch is retried once the core lands`() {
         setUpCommon()
-        every { coreInfo.runsOnThisDevice("snes9x_libretro") } returns true
+        every { coreInfo.isCurated("snes9x_libretro") } returns true
         every { launchManager.launchRom(rom) } returns missing("snes9x_libretro", "Snes9x")
         val onInstalled = slot<() -> Unit>()
         every { installer.downloadCore(any(), any(), any(), any(), capture(onInstalled)) } answers {}
@@ -97,12 +97,13 @@ class LaunchCoreDownloadTest {
         verify(exactly = 2) { launchManager.launchRom(rom) }
     }
 
-    // A core with no Android build can never arrive, so the dialog is the honest answer.
-    @Test fun `a core with no Android build still reports missing`() {
+    // A stored mapping can name a core that has since left the catalogue. Fetching it would put a
+    // core on disk the picker will never offer, so the missing screen is the honest answer.
+    @Test fun `a core that is no longer curated reports missing`() {
         setUpCommon()
-        every { coreInfo.runsOnThisDevice("mupen64plus_next_libretro") } returns false
+        every { coreInfo.isCurated("bsnes_mercury_balanced_libretro") } returns false
         every { launchManager.launchRom(rom) } returns
-            missing("mupen64plus_next_libretro", "Mupen64Plus-Next")
+            missing("bsnes_mercury_balanced_libretro", "bsnes-mercury Balanced")
 
         val result = launch()
 
@@ -117,7 +118,7 @@ class LaunchCoreDownloadTest {
         val nav = mockk<dev.cannoli.scorza.navigation.NavigationController>(relaxed = true)
         val dialogState = kotlinx.coroutines.flow.MutableStateFlow<DialogState>(DialogState.None)
         every { nav.dialogState } returns dialogState
-        every { coreInfo.runsOnThisDevice("snes9x_libretro") } returns true
+        every { coreInfo.isCurated("snes9x_libretro") } returns true
         every { launchManager.launchRom(rom) } returns missing("snes9x_libretro", "Snes9x")
         val onFailed = slot<() -> Unit>()
         every {

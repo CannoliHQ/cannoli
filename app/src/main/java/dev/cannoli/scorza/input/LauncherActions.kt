@@ -260,7 +260,7 @@ class LauncherActions @Inject constructor(
      */
     private fun downloadThenLaunch(dialog: DialogState?, retry: () -> DialogState?): DialogState? {
         val missing = dialog as? DialogState.MissingCore ?: return dialog
-        if (missing.coreId.isEmpty() || !coreInfo.runsOnThisDevice(missing.coreId)) return dialog
+        if (missing.coreId.isEmpty() || !coreInfo.isCurated(missing.coreId)) return dialog
         coreInstaller.downloadCore(
             context.packageName, missing.coreId, missing.coreName,
             // A failed fetch lands back on the missing-core screen, which names the core and offers

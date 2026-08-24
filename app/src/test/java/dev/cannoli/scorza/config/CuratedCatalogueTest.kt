@@ -60,7 +60,7 @@ class CuratedCatalogueTest {
     // half the devices, so it fails here instead.
     @Test
     fun `every curated core has a build for both ABIs`() {
-        val abis = repoFile("app/src/main/assets/android_cores.txt").readLines()
+        val abis = repoFile("scripts/data/android_cores.txt").readLines()
             .filter { it.isNotBlank() && !it.startsWith("#") }
             .associate { line ->
                 line.substringBefore(' ') to line.substringAfter(' ').split(',').map { it.trim() }.toSet()
