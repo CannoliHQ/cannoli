@@ -115,9 +115,6 @@ class PlatformConfig(
     // v1 per-game overrides, keyed by absolute path, held only until the boot-time migration
     // moves them into the game_overrides table where they are keyed by rom_id.
     private var pendingV1Overrides: MutableMap<String, EmulatorChoice> = java.util.concurrent.ConcurrentHashMap()
-    // True while reading a file written before RetroArch choices carried their package, which is
-    // the only situation in which a packageless RetroArch choice needs reinterpreting.
-    private var legacyFile = false
     private val paths: CannoliPaths get() = CannoliPaths(cannoliRootProvider())
     private val coresFile get() = paths.coresJson
 
@@ -147,11 +144,9 @@ class PlatformConfig(
         if (!coresFile.exists()) return
         try {
             val json = JSONObject(coresFile.readText())
+            // A v1 file has no version field at all and stores the picker's caption as the runner,
+            // so it needs a different reader rather than a flag.
             val version = json.optInt("v", 1)
-            // v3 is the first version whose RetroArch choices name their package. Anything older
-            // needs the source split applied on read; anything at v3 is already correct, and
-            // re-running the migration would rewrite a deliberate packageless choice.
-            legacyFile = version < CORES_JSON_VERSION
             if (version >= 2) loadV2(json) else migrateV1(json)
         } catch (e: java.io.IOException) {
             loadFailed = true
