@@ -103,6 +103,9 @@ sealed interface DialogState {
         val packageLabel: String? = null,
         val platformTag: String? = null,
         val romId: Long? = null,
+        // coreName is a display name, which cannot be looked up or downloaded. The id is carried
+        // separately so a caller can decide whether the core is one we can fetch.
+        val coreId: String = "",
     ) : DialogState
     data class MissingApp(val appName: String, val packageName: String, val platformTag: String? = null, val romId: Long? = null) : DialogState
 

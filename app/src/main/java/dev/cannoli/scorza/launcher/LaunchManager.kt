@@ -404,11 +404,25 @@ class LaunchManager(
                                 && !installedCoreService.hasCoreInPackage(core, raPackage)) {
                                 val label = InstalledCoreService.getPackageLabel(raPackage)
                                 val coreName = platformConfig.getCoreDisplayName(core)
-                                return errorAndReset(DialogState.MissingCore(coreName, label, rom.platformTag, overrideRomId))
+                                return errorAndReset(DialogState.MissingCore(
+                                    coreName, label, rom.platformTag, overrideRomId, coreId = core,
+                                ))
                             }
                             val raConfig = "/storage/emulated/0/Android/data/$raPackage/files/retroarch.cfg"
                             retroArchLauncher.launchRetroArchIntent(launchFile, core, raConfig, raPackage)
                         } else {
+                            // The embedded runner was never asked whether it holds the core, so a
+                            // mapping naming one it does not have launched RetroArch and failed
+                            // inside it. Migrated mappings make that the common case rather than a
+                            // corner, since they name cores this runner has never downloaded.
+                            if (installedCoreService != null && core !in installedCoreService.embeddedCores()) {
+                                return errorAndReset(DialogState.MissingCore(
+                                    platformConfig.getCoreDisplayName(core),
+                                    platformTag = rom.platformTag,
+                                    romId = overrideRomId,
+                                    coreId = core,
+                                ))
+                            }
                             syncRetroArchConfig(File(settings.sdCardRoot))
                             val launchConfig = buildGameConfig(rom, core) ?: raConfigPath
                             retroArchLauncher.launchRicotta(launchFile, core, launchConfig, buildRicottaIgm(rom))
@@ -501,7 +515,7 @@ class LaunchManager(
                 return errorAndReset(DialogState.MissingCore(
                     platformConfig.getCoreDisplayName(core),
                     InstalledCoreService.getPackageLabel(raPackage),
-                    rom.platformTag, rom.id,
+                    rom.platformTag, rom.id, coreId = core,
                 ))
             }
         }
