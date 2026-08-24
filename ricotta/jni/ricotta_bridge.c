@@ -77,6 +77,9 @@ static char g_core_id[PATH_MAX_LENGTH];
 /* Timestamp of when the IGM was opened, to debounce the menu button */
 static volatile long long g_igm_open_time = 0;
 
+/* Set by the input poll, raised by the pump. See ricotta_bridge_intercept_key. */
+static volatile int g_igm_trigger_pending = 0;
+
 /* Menu close polling */
 #define MENU_POLL_INTERVAL_MS 50
 #define MENU_OPEN_TIMEOUT_MS  2000
@@ -93,6 +96,8 @@ static volatile int g_menu_poll_active = 0;
 #define RICOTTA_QCMD_CHEAT_LOAD       -4
 #define RICOTTA_QCMD_CHEAT_TOGGLE     -5
 #define RICOTTA_QCMD_CHEAT_APPLY      -6
+#define RICOTTA_QCMD_OSD_EVENT        -7
+#define RICOTTA_QCMD_OSD_ACHIEVEMENT  -8
 typedef struct
 {
    int   cmd;
@@ -101,6 +106,7 @@ typedef struct
    char *ra_key;
    char *ra_value;
    int   ra_scope;
+   int   osd_type;
 } ricotta_cmd_entry;
 static ricotta_cmd_entry g_cmd_queue[RICOTTA_CMD_QUEUE_SIZE];
 static int g_cmd_head = 0;
@@ -241,6 +247,19 @@ static void ricotta_ra_apply(const char *key, const char *value);
 static void ricotta_ra_save_override(int scope, const char *keys);
 static JNIEnv *ricotta_runloop_env(void);
 
+/* A pending exception is sticky: once a callback into Kotlin throws, every later JNI call on that
+ * thread aborts the process under CheckJNI, so the crash lands in whatever unrelated code called
+ * into Java next rather than at the throw. Clear it at our own boundary and name the site. */
+static int ricotta_jni_check(JNIEnv *env, const char *where)
+{
+   if (!env || !(*env)->ExceptionCheck(env))
+      return 0;
+   RLOG("JNI exception pending at %s", where);
+   (*env)->ExceptionDescribe(env);
+   (*env)->ExceptionClear(env);
+   return 1;
+}
+
 /* RETRO-handler cheats need a system RAM mapping. Same two checks
  * cheat_manager_initialize_memory makes, without its allocations or its failure toast. */
 static int ricotta_cheat_has_system_ram(void)
@@ -300,12 +319,26 @@ static void ricotta_cheat_emit_snapshot(void)
    if (!payload)
       return;
    (*env)->CallVoidMethod(env, g_bridge_obj, g_on_cheats_loaded_mid, payload);
+   ricotta_jni_check(env, "onCheatsLoaded");
    (*env)->DeleteLocalRef(env, payload);
 }
 
-/* Called from runloop.c on the runloop thread, once per iteration. */
+/* Called from runloop_iterate on the runloop thread, once per iteration, and deliberately not from
+ * the input driver's poll: a core enters that from within retro_run, and one running its own
+ * coroutine stack makes every JNI call from there throw a spurious StackOverflowError. */
 void ricotta_bridge_poll_commands(void)
 {
+   if (g_igm_trigger_pending)
+   {
+      JNIEnv *env = ricotta_runloop_env();
+      g_igm_trigger_pending = 0;
+      if (env && g_bridge_obj && g_on_igm_trigger_mid)
+      {
+         (*env)->CallVoidMethod(env, g_bridge_obj, g_on_igm_trigger_mid);
+         ricotta_jni_check(env, "onIgmTrigger");
+      }
+   }
+
    for (;;)
    {
       ricotta_cmd_entry entry;
@@ -371,6 +404,30 @@ void ricotta_bridge_poll_commands(void)
             cheat_manager_toggle_index(true,
                   settings ? settings->bools.notification_show_cheats_applied : false,
                   (unsigned)entry.slot);
+         continue;
+      }
+      if (entry.cmd == RICOTTA_QCMD_OSD_EVENT)
+      {
+         JNIEnv *env = ricotta_runloop_env();
+         if (env && g_bridge_obj && g_on_osd_event_mid)
+         {
+            (*env)->CallVoidMethod(env, g_bridge_obj, g_on_osd_event_mid,
+                  (jint)entry.osd_type, (jint)entry.slot);
+            ricotta_jni_check(env, "onOsdEvent");
+         }
+         continue;
+      }
+      if (entry.cmd == RICOTTA_QCMD_OSD_ACHIEVEMENT)
+      {
+         JNIEnv *env = ricotta_runloop_env();
+         if (env && g_bridge_obj && g_on_osd_achievement_mid && entry.ra_key)
+         {
+            jstring jtitle = (*env)->NewStringUTF(env, entry.ra_key);
+            (*env)->CallVoidMethod(env, g_bridge_obj, g_on_osd_achievement_mid, jtitle);
+            ricotta_jni_check(env, "onOsdAchievement");
+            (*env)->DeleteLocalRef(env, jtitle);
+         }
+         free(entry.ra_key);
          continue;
       }
       if (entry.cmd == RICOTTA_QCMD_CHEAT_APPLY)
@@ -851,6 +908,7 @@ static void ricotta_ra_apply(const char *key, const char *value)
             jstring jk = (*env)->NewStringUTF(env, key);
             jstring jv = (*env)->NewStringUTF(env, buf);
             (*env)->CallVoidMethod(env, g_bridge_obj, g_on_ra_applied_mid, jk, jv);
+            ricotta_jni_check(env, "onRaSettingApplied");
             (*env)->DeleteLocalRef(env, jk);
             (*env)->DeleteLocalRef(env, jv);
          }
@@ -1075,6 +1133,7 @@ static void *menu_close_poll_func(void *arg)
          /* Menu has closed - notify Kotlin */
          if (g_bridge_obj && g_on_menu_closed_mid)
             (*env)->CallVoidMethod(env, g_bridge_obj, g_on_menu_closed_mid);
+         ricotta_jni_check(env, "onNativeMenuClosed");
          break;
       }
 
@@ -1107,6 +1166,8 @@ static JNIEnv *ricotta_runloop_env(void)
             return NULL;
       }
    }
+   /* Pending here and none of our callbacks ran: it came from RetroArch's own JNI on this thread. */
+   ricotta_jni_check(g_native_env, "runloop env, before our call");
    return g_native_env;
 }
 
@@ -1134,12 +1195,11 @@ int ricotta_bridge_intercept_key(int keycode, int action)
       }
       if (is_trigger)
       {
+         /* Record only. A core that runs on its own coroutine stack enters this poll from inside
+          * retro_run, where a JNI call throws a spurious StackOverflowError; the pump raises it
+          * from runloop_iterate instead, which is always on this thread's own stack. */
          if (action == 0) /* AKEY_EVENT_ACTION_DOWN */
-         {
-            JNIEnv *env = ricotta_runloop_env();
-            if (env && g_bridge_obj && g_on_igm_trigger_mid)
-               (*env)->CallVoidMethod(env, g_bridge_obj, g_on_igm_trigger_mid);
-         }
+            g_igm_trigger_pending = 1;
          return 1; /* consume down and up so the game never sees the trigger key */
       }
    }
@@ -1809,10 +1869,9 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeCheatHardcoreActive(
  * state_slot (< 0 = auto). */
 void ricotta_osd_event(int type, int slot)
 {
-   JNIEnv *env  = NULL;
-   int attached = 0;
-   /* This may run on RetroArch's task thread (threaded savestates), not the
-    * runloop thread, so we must use THIS thread's JNIEnv, not the cached one. */
+   /* Queued, not called: this may run on RetroArch's task thread (threaded savestates) or inside
+    * retro_run on a core's own coroutine stack, and a JNI call is unsafe from either. The pump
+    * raises it from the runloop thread. */
    if (!g_jvm || !g_bridge_obj || !g_on_osd_event_mid)
       return;
    /* RA-key-backed OSD toggles gate here against the live setting the IGM writes,
@@ -1845,28 +1904,25 @@ void ricotta_osd_event(int type, int slot)
          }
       }
    }
-   if ((*g_jvm)->GetEnv(g_jvm, (void **)&env, JNI_VERSION_1_6) != JNI_OK)
    {
-      if ((*g_jvm)->AttachCurrentThread(g_jvm, &env, NULL) != JNI_OK)
-         return;
-      attached = 1;
+      ricotta_cmd_entry entry = {0};
+      entry.cmd      = RICOTTA_QCMD_OSD_EVENT;
+      entry.osd_type = type;
+      entry.slot     = slot;
+      ricotta_enqueue_entry(entry);
    }
-   (*env)->CallVoidMethod(env, g_bridge_obj, g_on_osd_event_mid, (jint)type, (jint)slot);
-   if (attached)
-      (*g_jvm)->DetachCurrentThread(g_jvm);
 }
 
 /* Called from cheevos.c (HAVE_RICOTTA_OSD) on an achievement unlock. */
 void ricotta_osd_achievement(const char *title)
 {
-   JNIEnv *env;
-   jstring jtitle;
-   if (!title || !title[0])
+   ricotta_cmd_entry entry = {0};
+   /* Unlocks are checked inside retro_run, so this runs on the core's stack. Queue it. */
+   if (!title || !title[0] || !g_bridge_obj || !g_on_osd_achievement_mid)
       return;
-   env = ricotta_runloop_env();
-   if (!env || !g_bridge_obj || !g_on_osd_achievement_mid)
+   entry.cmd    = RICOTTA_QCMD_OSD_ACHIEVEMENT;
+   entry.ra_key = strdup(title);
+   if (!entry.ra_key)
       return;
-   jtitle = (*env)->NewStringUTF(env, title);
-   (*env)->CallVoidMethod(env, g_bridge_obj, g_on_osd_achievement_mid, jtitle);
-   (*env)->DeleteLocalRef(env, jtitle);
+   ricotta_enqueue_entry(entry);
 }
