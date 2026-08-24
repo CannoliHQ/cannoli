@@ -100,14 +100,14 @@ class LaunchManagerRecoveryTargetTest {
         val mgr = manager(root)
         val gc = rom(root)
         every { gameOverrides.get(gc.id) } returns
-            EmulatorChoice(EmulatorSource.RetroArch, coreId = "dolphin_libretro", appPackage = RA)
+            EmulatorChoice(EmulatorSource.Embedded, coreId = "dolphin_libretro")
 
         val dialog = mgr.launchRom(gc) as DialogState.MissingCore
 
         assertEquals(gc.id, dialog.romId)
         assertEquals("GC", dialog.platformTag)
-        // Pins the core-install check as the branch under test, not the generic "unknown" fallback.
-        assertEquals(InstalledCoreService.getPackageLabel(RA), dialog.packageLabel)
+        // Pins the core-presence check as the branch under test, not the no-emulator-set fallback.
+        assertEquals("dolphin_libretro", dialog.coreId)
     }
 
     @Test fun `a platform level core that is missing points recovery at the platform`() {
@@ -115,7 +115,7 @@ class LaunchManagerRecoveryTargetTest {
         val mgr = manager(root)
         every { platformConfig.getPlatformChoice("GC") } returns
             dev.cannoli.scorza.config.EmulatorChoice(
-                dev.cannoli.scorza.config.EmulatorSource.RetroArch, "dolphin_libretro", RA,
+                dev.cannoli.scorza.config.EmulatorSource.Embedded, "dolphin_libretro",
             )
         every { platformConfig.getCoreName("GC") } returns "dolphin_libretro"
 
@@ -123,7 +123,7 @@ class LaunchManagerRecoveryTargetTest {
 
         assertNull(dialog.romId)
         assertEquals("GC", dialog.platformTag)
-        assertEquals(InstalledCoreService.getPackageLabel(RA), dialog.packageLabel)
+        assertEquals("dolphin_libretro", dialog.coreId)
     }
 
     // A standalone platform with nothing to resolve used to report a missing core named "unknown",
@@ -157,23 +157,6 @@ class LaunchManagerRecoveryTargetTest {
         val dialog = mgr.launchRom(gc) as DialogState.NoEmulatorSet
 
         assertEquals(gc.id, dialog.romId)
-    }
-
-    @Test fun `a package that cannot report its cores skips the core install precheck`() {
-        val root = tmp.newFolder()
-        val mgr = manager(root)
-        every { platformConfig.getPlatformChoice("GC") } returns
-            dev.cannoli.scorza.config.EmulatorChoice(
-                dev.cannoli.scorza.config.EmulatorSource.RetroArch, "dolphin_libretro", RA,
-            )
-        every { platformConfig.getCoreName("GC") } returns "dolphin_libretro"
-        every { installedCoreService.canReport(any()) } returns false
-        every { installedCoreService.hasCoreInPackage(any(), any()) } returns false
-        every { retroArchLauncher.launchRetroArchIntent(any(), any(), any(), any()) } returns LaunchResult.Success
-
-        val dialog = mgr.launchRom(rom(root))
-
-        assertFalse(dialog is DialogState.MissingCore)
     }
 
     companion object {

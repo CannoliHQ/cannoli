@@ -27,17 +27,13 @@ class EmulatorMappingBuilder @Inject constructor(
     private val gameOverrideStore: dev.cannoli.scorza.db.GameOverrideStore,
     @ActivityContext private val context: Context,
 ) {
-    // Fallback caption for a RetroArch row that names no package. Rows that do name one are
-    // labelled from it, so this only covers a choice written before the source split.
-    private val raLabel: String get() = context.getString(EmulatorSource.RetroArch.labelRes)
-
     /** Per-game override rows for a platform, resolved through the rom_id join. */
     fun overrideRows(tag: String): List<dev.cannoli.scorza.ui.screens.GameOverrideRow> =
         gameOverrideStore.forPlatform(tag).map { entry ->
             dev.cannoli.scorza.ui.screens.GameOverrideRow(
                 romId = entry.romId,
                 gameName = entry.displayName,
-                label = platformConfig.describeChoice(entry.choice, context.packageManager, raLabel),
+                label = platformConfig.describeChoice(entry.choice, context.packageManager),
             )
         }
 
@@ -112,9 +108,6 @@ class EmulatorMappingBuilder @Inject constructor(
             if (opt.source != cur.source) return false
             return when (cur.source) {
                 EmulatorSource.Standalone -> opt.appPackage == cur.appPackage
-                // Two installs can both carry the same core, so the package is part of the
-                // identity here. Embedded has no package and is identified by its core alone.
-                EmulatorSource.RetroArch -> opt.coreId == cur.coreId && opt.appPackage == cur.appPackage
                 EmulatorSource.Embedded -> opt.coreId == cur.coreId
             }
         }
@@ -166,13 +159,9 @@ class EmulatorMappingBuilder @Inject constructor(
                 if (options.isEmpty()) continue
                 val header = when (source) {
                     EmulatorSource.Embedded -> context.getString(EmulatorSource.Embedded.labelRes)
-                    EmulatorSource.RetroArch -> context.getString(EmulatorSource.RetroArch.labelRes)
                     EmulatorSource.Standalone -> context.getString(EmulatorSource.Standalone.labelRes)
                 }
                 section.add(MappingItem.SectionHeader(header))
-                if (source == EmulatorSource.RetroArch) {
-                    retroArchNotice()?.let { section.add(it) }
-                }
                 options.forEach {
                     section.add(MappingItem.EmulatorOption(
                         it, isCurrent(it),
@@ -193,7 +182,6 @@ class EmulatorMappingBuilder @Inject constructor(
             synthesizeCurrentRow(current, raCannotReport)?.let { row ->
                 val header = when (current.source) {
                     EmulatorSource.Embedded -> context.getString(EmulatorSource.Embedded.labelRes)
-                    EmulatorSource.RetroArch -> context.getString(EmulatorSource.RetroArch.labelRes)
                     EmulatorSource.Standalone -> context.getString(EmulatorSource.Standalone.labelRes)
                 }
                 val at = section.indexOfFirst { it is MappingItem.SectionHeader && it.label == header }
@@ -203,9 +191,6 @@ class EmulatorMappingBuilder @Inject constructor(
                     section.add(insertAt, row)
                 } else {
                     section.add(MappingItem.SectionHeader(header))
-                    if (current.source == EmulatorSource.RetroArch) {
-                        retroArchNotice()?.let { section.add(it) }
-                    }
                     section.add(row)
                 }
             }
@@ -215,7 +200,7 @@ class EmulatorMappingBuilder @Inject constructor(
         if (romId != null) {
             val platformLabel = platformConfig.detailedMappingFor(
                 tag, context.packageManager, installedRaCores, bundled,
-                unreportableRaPackages, raLabel,
+                unreportableRaPackages,
             ).coreDisplayName
             val label = if (platformLabel.isNotEmpty()) {
                 context.getString(dev.cannoli.scorza.R.string.emulator_platform_setting_named, platformLabel)
@@ -309,12 +294,11 @@ class EmulatorMappingBuilder @Inject constructor(
         }
         val label = when (current.source) {
             EmulatorSource.Embedded -> context.getString(EmulatorSource.Embedded.labelRes)
-            EmulatorSource.RetroArch -> current.appPackage
-                ?.let { InstalledCoreService.getPackageLabel(it) }
-                ?: context.getString(EmulatorSource.RetroArch.labelRes)
             EmulatorSource.Standalone -> context.getString(EmulatorSource.Standalone.labelRes)
         }
-        val availability = currentRowAvailability(current.source, raCannotReport)
+        // Both remaining sources answer for certain: the embedded runner reads a directory and a
+        // standalone app is either installed or not, so a synthesized row is never unknowable.
+        val availability = CoreAvailability.UNAVAILABLE
         return MappingItem.EmulatorOption(
             dev.cannoli.scorza.ui.screens.EmulatorPickerOption(
                 coreId = current.coreId, displayName = name,
@@ -333,7 +317,7 @@ class EmulatorMappingBuilder @Inject constructor(
             ?.takeIf { it.source != EmulatorSource.Standalone }
             ?.coreId?.ifEmpty { null }
             ?: platformConfig.getCoreMapping(tag)
-        val runner = platformConfig.getRunnerLabel(tag, coreId, raLabel)
+        val runner = platformConfig.getRunnerLabel(tag, coreId)
         val biosDir = CannoliPaths(File(settings.sdCardRoot)).biosFor(tag)
         val firmware = platformConfig.getFirmwareStatus(coreId, biosDir)
             .map { dev.cannoli.scorza.ui.screens.FirmwareStatus(it.first, it.second) }
@@ -361,11 +345,5 @@ class EmulatorMappingBuilder @Inject constructor(
         fun isDownloadable(source: EmulatorSource, availability: CoreAvailability): Boolean =
             source == EmulatorSource.Embedded && availability != CoreAvailability.AVAILABLE
 
-        // A synthesized current row can only claim UNAVAILABLE when the availability check
-        // actually ran. When RetroArch cannot report, "not in the candidate list" is unknowable,
-        // not confirmed absent. The embedded runner always knows, since it reads a directory.
-        fun currentRowAvailability(source: EmulatorSource, raCannotReport: Boolean): CoreAvailability =
-            if (source == EmulatorSource.RetroArch && raCannotReport) CoreAvailability.UNKNOWN
-            else CoreAvailability.UNAVAILABLE
     }
 }

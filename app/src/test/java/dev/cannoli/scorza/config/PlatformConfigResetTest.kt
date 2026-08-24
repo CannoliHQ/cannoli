@@ -23,7 +23,7 @@ class PlatformConfigResetTest {
     @Test fun `reset with no resolvable default leaves the platform unmapped`() {
         val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
         val pc = config()
-        pc.setPlatformChoice("NES", EmulatorChoice(EmulatorSource.RetroArch, "nestopia_libretro"))
+        pc.setPlatformChoice("NES", EmulatorChoice(EmulatorSource.Embedded, "nestopia_libretro"))
         assertTrue(pc.hasUserMapping("NES"))
         pc.resetPlatformToDefault("NES", ctx.packageManager)
         assertFalse(pc.hasUserMapping("NES"))

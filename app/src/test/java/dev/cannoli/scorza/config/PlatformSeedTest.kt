@@ -56,10 +56,10 @@ class PlatformSeedTest {
 
     @Test fun `an uninstalled core choice also survives seeding`() {
         val pc = config("seed-keep-core", bundled = listOf("mgba_libretro"))
-        pc.setPlatformChoice("GBA", EmulatorChoice(EmulatorSource.RetroArch, "gpsp_libretro"))
+        pc.setPlatformChoice("GBA", EmulatorChoice(EmulatorSource.Embedded, "gpsp_libretro"))
         pc.seedUnsetPlatforms(pm())
         assertEquals(
-            EmulatorChoice(EmulatorSource.RetroArch, "gpsp_libretro"),
+            EmulatorChoice(EmulatorSource.Embedded, "gpsp_libretro"),
             pc.getPlatformChoice("GBA"),
         )
     }
@@ -90,7 +90,7 @@ class PlatformSeedTest {
 
     @Test fun `reset persists so a reload keeps the restored default`() {
         val pc = config("seed-reset-persist", bundled = listOf("mgba_libretro"))
-        pc.setPlatformChoice("GBA", EmulatorChoice(EmulatorSource.RetroArch, "gpsp_libretro"))
+        pc.setPlatformChoice("GBA", EmulatorChoice(EmulatorSource.Embedded, "gpsp_libretro"))
         pc.resetPlatformToDefault("GBA", pm())
         pc.reloadCoreMappings()
         assertEquals(EmulatorChoice(EmulatorSource.Embedded, "mgba_libretro"), pc.getPlatformChoice("GBA"))

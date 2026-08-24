@@ -85,7 +85,7 @@ class MappingCurrentSelectionTest {
         assertExactlyOneCurrent("cur-p-int", EmulatorChoice(EmulatorSource.Embedded, "mgba_libretro"), false)
 
     @Test fun `platform retroarch core is current`() =
-        assertExactlyOneCurrent("cur-p-ra", EmulatorChoice(EmulatorSource.RetroArch, "mgba_libretro"), false)
+        assertExactlyOneCurrent("cur-p-ra", EmulatorChoice(EmulatorSource.Embedded, "mgba_libretro"), false)
 
     @Test fun `platform standalone app is current`() =
         assertExactlyOneCurrent(
@@ -96,7 +96,7 @@ class MappingCurrentSelectionTest {
         assertExactlyOneCurrent("cur-g-int", EmulatorChoice(EmulatorSource.Embedded, "mgba_libretro"), true)
 
     @Test fun `game retroarch core is current`() =
-        assertExactlyOneCurrent("cur-g-ra", EmulatorChoice(EmulatorSource.RetroArch, "mgba_libretro"), true)
+        assertExactlyOneCurrent("cur-g-ra", EmulatorChoice(EmulatorSource.Embedded, "mgba_libretro"), true)
 
     @Test fun `game standalone app is current`() =
         assertExactlyOneCurrent(
@@ -106,7 +106,7 @@ class MappingCurrentSelectionTest {
     // A shipped update can drop an app from platforms.json, and a hand-edited cores.json can
     // name a core that is not a candidate for the tag. Neither may make the row disappear.
     @Test fun `a core the generator cannot produce is still current`() =
-        assertExactlyOneCurrent("cur-orphan-core", EmulatorChoice(EmulatorSource.RetroArch, "not_a_real_core"), false)
+        assertExactlyOneCurrent("cur-orphan-core", EmulatorChoice(EmulatorSource.Embedded, "not_a_real_core"), false)
 
     @Test fun `an app the generator cannot produce is still current`() =
         assertExactlyOneCurrent(
@@ -123,7 +123,7 @@ class MappingCurrentSelectionTest {
 
     @Test fun `selectCurrent puts the cursor on the current row`() {
         val f = fixture("cur-cursor")
-        f.config.setPlatformChoice("GBA", EmulatorChoice(EmulatorSource.RetroArch, "mgba_libretro"))
+        f.config.setPlatformChoice("GBA", EmulatorChoice(EmulatorSource.Embedded, "mgba_libretro"))
         val screen = f.builder.buildPlatformMapping("GBA", "GBA", selectCurrent = true)
         val item = screen.items.filter { it.isSelectable }[screen.selectedIndex]
         assertTrue(item is MappingItem.EmulatorOption && item.isCurrent)

@@ -40,7 +40,7 @@ class PlatformSettingLabelTest {
 
     @Test fun `a core pick still names the core`() {
         val pc = config()
-        pc.setPlatformChoice("NES", EmulatorChoice(EmulatorSource.RetroArch, "fceumm_libretro"))
+        pc.setPlatformChoice("NES", EmulatorChoice(EmulatorSource.Embedded, "fceumm_libretro"))
         assertEquals(pc.getCoreDisplayName("fceumm_libretro"), label(pc, "NES"))
     }
 

@@ -377,7 +377,7 @@ class PlatformConfig(
     }
 
     /** Renders a choice for a list row. Used for per-game override rows and the context menu. */
-    fun describeChoice(choice: EmulatorChoice, pm: PackageManager? = null, raLabel: String = "RetroArch"): String =
+    fun describeChoice(choice: EmulatorChoice, pm: PackageManager? = null): String =
         when (choice.source) {
             EmulatorSource.Standalone -> {
                 val pkg = choice.appPackage ?: return emptyOverrideLabel
@@ -385,13 +385,8 @@ class PlatformConfig(
             }
             EmulatorSource.Embedded ->
                 "${internalLabel}: ${getCoreDisplayName(choice.coreId)}"
-            EmulatorSource.RetroArch ->
-                "${raPackageLabel(choice.appPackage, raLabel)}: ${getCoreDisplayName(choice.coreId)}"
         }
 
-    /** The caption for an external RetroArch, taken from the package the choice names. */
-    private fun raPackageLabel(pkg: String?, fallback: String): String =
-        pkg?.let { InstalledCoreService.getPackageLabel(it) } ?: fallback
 
     /**
      * Restores the platform to the same choice a first run would have seeded: the bundled core
@@ -468,13 +463,12 @@ class PlatformConfig(
 
     // The caption is derived, never stored, so a choice that names a different RetroArch package
     // updates every label instead of leaving stale ones behind.
-    fun getRunnerLabel(tag: String, coreId: String, raLabel: String = "RetroArch"): String {
+    fun getRunnerLabel(tag: String, coreId: String): String {
         if (File(romsTagDir(tag), ".emu_launch").exists()) return "External"
         val choice = userChoices[tag]
         return when (choice?.source ?: EmulatorSource.Embedded) {
             EmulatorSource.Embedded -> internalLabel
             EmulatorSource.Standalone -> standaloneLabel
-            EmulatorSource.RetroArch -> raPackageLabel(choice?.appPackage, raLabel)
         }
     }
 
@@ -483,11 +477,10 @@ class PlatformConfig(
         installedRaCores: Map<String, Set<String>> = emptyMap(),
         embeddedCoresDir: String? = null,
         unreportablePackages: Set<String> = emptySet(),
-        raLabel: String = "RetroArch",
     ): List<dev.cannoli.scorza.ui.screens.EmulatorMappingEntry> {
         val tags = (defaultCores.keys + defaultApps.keys + userChoices.keys)
         return tags.map { tag ->
-            detailedMappingFor(tag, pm, installedRaCores, embeddedCoresDir, unreportablePackages, raLabel)
+            detailedMappingFor(tag, pm, installedRaCores, embeddedCoresDir, unreportablePackages)
         }.sortedNatural { it.platformName }
     }
 
@@ -497,7 +490,6 @@ class PlatformConfig(
         installedRaCores: Map<String, Set<String>> = emptyMap(),
         embeddedCoresDir: String? = null,
         unreportablePackages: Set<String> = emptySet(),
-        raLabel: String = "RetroArch",
     ): dev.cannoli.scorza.ui.screens.EmulatorMappingEntry {
         val choice = userChoices[tag]
         val app = getAppPackage(tag)
@@ -533,7 +525,7 @@ class PlatformConfig(
                 status = EmulatorMappingStatus.NEEDS_SETUP
             )
         } else {
-            val resolvedRunner = getRunnerLabel(tag, coreId, raLabel)
+            val resolvedRunner = getRunnerLabel(tag, coreId)
             val status = coreStatus(tag, coreId, resolvedRunner, installedRaCores, embeddedCoresDir, unreportablePackages)
             // "Missing" is a confirmed absence: an internal .so that is not on disk, or a
             // RetroArch that reported its cores and did not name this one. "Unknown" means no
@@ -581,7 +573,6 @@ class PlatformConfig(
             // missing core is downloadable into the in-APK RetroArch, so absence is not a reason
             // to hide the runner that can fix it.
             if (hasCoreCandidates) add(EmulatorSource.Embedded)
-            if (hasCoreCandidates) add(EmulatorSource.RetroArch)
             if (hasStandaloneCandidates) add(EmulatorSource.Standalone)
         }
     }
@@ -620,36 +611,6 @@ class PlatformConfig(
                         availability = CoreAvailability.UNAVAILABLE,
                     )
                     else -> null
-                }
-            }
-            // One row per (core, install) pair. Two RetroArch installs that both carry a core are
-            // two distinct choices, and the choice records which one, so nothing depends on a
-            // global "the configured RetroArch" any more.
-            EmulatorSource.RetroArch -> externalRaPackages.flatMap { pkg ->
-                val reported = installedRaCores[pkg].orEmpty()
-                val cannotReport = pkg in unreportableRaPackages
-                candidateCoreIds.mapNotNull { coreId ->
-                    val label = InstalledCoreService.getPackageLabel(pkg)
-                    when {
-                        coreId in reported -> dev.cannoli.scorza.ui.screens.EmulatorPickerOption(
-                            coreId = coreId, displayName = getCoreDisplayName(coreId),
-                            source = EmulatorSource.RetroArch, runnerLabel = label, appPackage = pkg,
-                        )
-                        // Installed-only is not a filter that can be computed against a package
-                        // that reports nothing, so the section ignores includeAll rather than
-                        // filtering every candidate away and reading as "you have no cores".
-                        cannotReport -> dev.cannoli.scorza.ui.screens.EmulatorPickerOption(
-                            coreId = coreId, displayName = getCoreDisplayName(coreId),
-                            source = EmulatorSource.RetroArch, runnerLabel = label, appPackage = pkg,
-                            availability = CoreAvailability.UNKNOWN,
-                        )
-                        includeAll -> dev.cannoli.scorza.ui.screens.EmulatorPickerOption(
-                            coreId = coreId, displayName = getCoreDisplayName(coreId),
-                            source = EmulatorSource.RetroArch, runnerLabel = label, appPackage = pkg,
-                            availability = CoreAvailability.UNAVAILABLE,
-                        )
-                        else -> null
-                    }
                 }
             }
             EmulatorSource.Standalone -> getAppOptions(tag).mapNotNull { cfg ->

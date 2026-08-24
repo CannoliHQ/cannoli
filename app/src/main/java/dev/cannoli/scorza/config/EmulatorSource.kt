@@ -12,15 +12,12 @@ enum class EmulatorSource(val labelRes: Int) {
      */
     Embedded(R.string.value_emulator_source_internal),
 
-    /** A separately installed RetroArch. The choice names which package. */
-    RetroArch(R.string.value_emulator_source_retroarch),
-
     /** A separate emulator app. The choice names which package. */
     Standalone(R.string.value_emulator_source_standalone);
 
     val emptyMessageRes: Int
         get() = when (this) {
-            Embedded, RetroArch -> R.string.value_no_cores_found
+            Embedded -> R.string.value_no_cores_found
             Standalone -> R.string.value_none_installed
         }
 

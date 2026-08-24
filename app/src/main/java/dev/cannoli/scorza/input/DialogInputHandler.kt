@@ -1903,10 +1903,7 @@ class DialogInputHandler @Inject constructor(
                             // generated option list used to blank this row whenever the option
                             // could no longer be produced, e.g. an undownloaded Ricotta core.
                             val desc = gameOverrideStore.get(rom.id)?.let {
-                                platformResolver.describeChoice(
-                                    it, context.packageManager,
-                                    context.getString(dev.cannoli.scorza.config.EmulatorSource.RetroArch.labelRes),
-                                )
+                                platformResolver.describeChoice(it, context.packageManager)
                             } ?: context.getString(dev.cannoli.scorza.R.string.emulator_platform_default)
                             "$MENU_EMULATOR_OVERRIDE\t$desc"
                         }

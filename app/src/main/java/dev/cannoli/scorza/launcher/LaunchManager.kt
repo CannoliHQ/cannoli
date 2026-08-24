@@ -301,12 +301,6 @@ class LaunchManager(
     private fun usesEmbeddedRetroArch(rom: Rom): Boolean =
         (sourceFor(rom) ?: EmulatorSource.Embedded) == EmulatorSource.Embedded
 
-    /** The external RetroArch a choice names, game override first. */
-    private fun externalRaPackageFor(rom: Rom): String? =
-        overrideFor(rom)?.takeIf { it.source == EmulatorSource.RetroArch }?.appPackage
-            ?: platformConfig.getPlatformChoice(rom.platformTag)
-                ?.takeIf { it.source == EmulatorSource.RetroArch }?.appPackage
-
     fun findResumableRoms(roms: List<Rom>): Set<String> {
         val result = mutableSetOf<String>()
         for (rom in roms) {
@@ -378,55 +372,21 @@ class LaunchManager(
                     val core = resolvedCore
                     if (core != null) {
                         debugLog("RetroArch target: core=$core source=$source")
-                        // Null source means nothing is stored yet, which resolves to the runner
-                        // that is always present.
-                        val raPackage = if (source == EmulatorSource.RetroArch) {
-                            externalRaPackageFor(rom)
-                                ?: return errorAndReset(DialogState.MissingApp(
-                                    context.getString(EmulatorSource.RetroArch.labelRes), "",
-                                    rom.platformTag, overrideRomId,
-                                ))
-                        } else null
-                        if (raPackage != null) {
-                            if (!context.isPackageInstalled(raPackage)) {
-                                val appName = try {
-                                    val info = context.packageManager.getApplicationInfo(raPackage, 0)
-                                    context.packageManager.getApplicationLabel(info).toString()
-                                } catch (_: PackageManager.NameNotFoundException) { raPackage }
-                                return errorAndReset(DialogState.MissingApp(appName, raPackage, rom.platformTag, overrideRomId))
-                            }
-                            // The core-install check applies to any package that can report its
-                            // cores. It self-skips for one that cannot, since a missing report is
-                            // not evidence of a missing core.
-                            if (installedCoreService != null
-                                && installedCoreService.cacheReady
-                                && installedCoreService.canReport(raPackage)
-                                && !installedCoreService.hasCoreInPackage(core, raPackage)) {
-                                val label = InstalledCoreService.getPackageLabel(raPackage)
-                                val coreName = platformConfig.getCoreDisplayName(core)
-                                return errorAndReset(DialogState.MissingCore(
-                                    coreName, label, rom.platformTag, overrideRomId, coreId = core,
-                                ))
-                            }
-                            val raConfig = "/storage/emulated/0/Android/data/$raPackage/files/retroarch.cfg"
-                            retroArchLauncher.launchRetroArchIntent(launchFile, core, raConfig, raPackage)
-                        } else {
-                            // The embedded runner was never asked whether it holds the core, so a
-                            // mapping naming one it does not have launched RetroArch and failed
-                            // inside it. Migrated mappings make that the common case rather than a
-                            // corner, since they name cores this runner has never downloaded.
-                            if (installedCoreService != null && core !in installedCoreService.embeddedCores()) {
-                                return errorAndReset(DialogState.MissingCore(
-                                    platformConfig.getCoreDisplayName(core),
-                                    platformTag = rom.platformTag,
-                                    romId = overrideRomId,
-                                    coreId = core,
-                                ))
-                            }
-                            syncRetroArchConfig(File(settings.sdCardRoot))
-                            val launchConfig = buildGameConfig(rom, core) ?: raConfigPath
-                            retroArchLauncher.launchRicotta(launchFile, core, launchConfig, buildRicottaIgm(rom))
+                        // The embedded runner was never asked whether it holds the core, so a
+                        // mapping naming one it does not have launched RetroArch and failed
+                        // inside it. Migrated mappings make that the common case rather than a
+                        // corner, since they name cores this runner has never downloaded.
+                        if (installedCoreService != null && core !in installedCoreService.embeddedCores()) {
+                            return errorAndReset(DialogState.MissingCore(
+                                platformConfig.getCoreDisplayName(core),
+                                platformTag = rom.platformTag,
+                                romId = overrideRomId,
+                                coreId = core,
+                            ))
                         }
+                        syncRetroArchConfig(File(settings.sdCardRoot))
+                        val launchConfig = buildGameConfig(rom, core) ?: raConfigPath
+                        retroArchLauncher.launchRicotta(launchFile, core, launchConfig, buildRicottaIgm(rom))
                     } else {
                         // App-only platform (no core) that reached here has nothing installed to
                         // run it, so name the app it wants instead of a core it never had.
@@ -500,33 +460,15 @@ class LaunchManager(
         // Resume used to fire and forget: it discarded the LaunchResult and returned without
         // clearing launching, so a failed startActivity never reached onResume and every later
         // launch became a silent no-op. It now runs the same pre-checks and funnel as launchRom.
-        val raPackage = if (usesEmbeddedRetroArch(rom)) null else externalRaPackageFor(rom)
-        if (raPackage != null) {
-            if (!context.isPackageInstalled(raPackage)) {
-                return errorAndReset(DialogState.MissingApp(
-                    InstalledCoreService.getPackageLabel(raPackage), raPackage,
-                    rom.platformTag, rom.id,
-                ))
-            }
-            if (installedCoreService != null
-                && installedCoreService.cacheReady
-                && installedCoreService.canReport(raPackage)
-                && !installedCoreService.hasCoreInPackage(core, raPackage)) {
-                return errorAndReset(DialogState.MissingCore(
-                    platformConfig.getCoreDisplayName(core),
-                    InstalledCoreService.getPackageLabel(raPackage),
-                    rom.platformTag, rom.id, coreId = core,
-                ))
-            }
+        if (installedCoreService != null && core !in installedCoreService.embeddedCores()) {
+            return errorAndReset(DialogState.MissingCore(
+                platformConfig.getCoreDisplayName(core),
+                platformTag = rom.platformTag, romId = rom.id, coreId = core,
+            ))
         }
-        val result = if (raPackage == null) {
-            syncRetroArchConfig(File(settings.sdCardRoot))
-            val launchConfig = buildGameConfig(rom, core, resume = true, slot = resumeSlot) ?: raConfigPath
-            retroArchLauncher.launchRicotta(launchFile, core, launchConfig, buildRicottaIgm(rom))
-        } else {
-            val raConfig = "/storage/emulated/0/Android/data/$raPackage/files/retroarch.cfg"
-            retroArchLauncher.launchRetroArchIntent(launchFile, core, raConfig, raPackage)
-        }
+        syncRetroArchConfig(File(settings.sdCardRoot))
+        val launchConfig = buildGameConfig(rom, core, resume = true, slot = resumeSlot) ?: raConfigPath
+        val result = retroArchLauncher.launchRicotta(launchFile, core, launchConfig, buildRicottaIgm(rom))
         return launchResultDialog(result, rom.platformTag, rom.id)
     }
 
