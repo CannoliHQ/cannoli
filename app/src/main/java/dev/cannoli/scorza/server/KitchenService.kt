@@ -84,6 +84,7 @@ class KitchenService : Service() {
             atomicRename = atomicRename,
             isArcadePlatform = { tag -> platformConfig.isArcade(tag) },
             platformTagsProvider = { platformConfig.getAllTags().map { it.uppercase() } },
+            platformGroupsProvider = { tags -> platformConfig.getGroups(tags) },
             volumesProvider = {
                 setupCoordinator.detectStorageVolumes().mapIndexed { index, (label, path) ->
                     KitchenVolume(

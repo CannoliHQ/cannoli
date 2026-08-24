@@ -18,6 +18,7 @@ class KitchenHttpServer internal constructor(
     internal val atomicRename: dev.cannoli.scorza.util.AtomicRename? = null,
     internal val isArcadePlatform: (String) -> Boolean = { false },
     internal val platformTagsProvider: () -> Collection<String> = { emptyList() },
+    internal val platformGroupsProvider: (Collection<String>) -> Map<String, String> = { emptyMap() },
     internal val volumesProvider: () -> List<KitchenVolume> = { emptyList() },
     internal val apkInstalls: ApkInstalls? = null,
     internal val appsRepository: dev.cannoli.scorza.db.AppsRepository? = null,

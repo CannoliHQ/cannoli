@@ -5,7 +5,8 @@ import fi.iki.elonen.NanoHTTPD.Response
 import java.io.File
 
 /** Answers with the canonical spelling of every platform that has a folder, so the dashboard keys
- *  its labels, icons, grouping and game requests off the same string the games endpoint accepts.
+ *  its labels, icons and game requests off the same string the games endpoint accepts, and the
+ *  manufacturer grouping alongside them so it does not keep a second list of its own.
  *  Never fails the request: an empty list leaves the dashboard empty, where an error status would
  *  leave it unable to render at all. */
 internal fun KitchenHttpServer.handleTags(): Response {
@@ -18,7 +19,7 @@ internal fun KitchenHttpServer.handleTags(): Response {
         ?.distinct()
         ?.sorted()
         ?: emptyList()
-    return jsonResponse(200, TagsResponse.serializer(), TagsResponse(tags))
+    return jsonResponse(200, TagsResponse.serializer(), TagsResponse(tags, platformGroupsProvider(tags)))
 }
 
 internal fun KitchenHttpServer.handleApps(): Response {

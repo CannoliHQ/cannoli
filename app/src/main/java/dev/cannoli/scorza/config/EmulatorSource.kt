@@ -2,15 +2,21 @@ package dev.cannoli.scorza.config
 
 import dev.cannoli.scorza.R
 
-enum class EmulatorSource(val displayName: String) {
-    /** The RetroArch built into this APK. Always present, and the only runner with the IGM. */
-    Embedded("Embedded"),
+enum class EmulatorSource(val labelRes: Int) {
+    /**
+     * The RetroArch built into this APK. Always present, and the only runner with the IGM.
+     *
+     * Shown as "Internal", which is what v1 called its built-in runner and what testers still
+     * recognise. The constant stays Embedded because cores.json stores `source.name`, and because
+     * [RETIRED_INTERNAL_SOURCE] already maps the v1 caption onto this value.
+     */
+    Embedded(R.string.value_emulator_source_internal),
 
     /** A separately installed RetroArch. The choice names which package. */
-    RetroArch("RetroArch"),
+    RetroArch(R.string.value_emulator_source_retroarch),
 
     /** A separate emulator app. The choice names which package. */
-    Standalone("Standalone");
+    Standalone(R.string.value_emulator_source_standalone);
 
     val emptyMessageRes: Int
         get() = when (this) {

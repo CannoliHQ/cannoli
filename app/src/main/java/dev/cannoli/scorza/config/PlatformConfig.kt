@@ -23,6 +23,8 @@ class PlatformConfig(
     // Resolved string passed in because this class has no Context; defaulted for tests.
     private val emptyOverrideLabel: String = "(empty override)",
     private val needsSetupLabel: String = "Needs setup",
+    private val internalLabel: String = "Internal",
+    private val standaloneLabel: String = "Standalone",
     /**
      * Migration only. Before the source split, which RetroArch ran a mapping was a single global
      * setting rather than part of the mapping. Null means that setting named the in-APK RetroArch,
@@ -41,6 +43,13 @@ class PlatformConfig(
 
     private var defaultCores = mapOf<String, String>()
     private var defaultPlatformNames = mapOf<String, String>()
+
+    /**
+     * Manufacturer per platform, from platforms.json. The launcher is the source of truth so
+     * Kitchen can read it rather than keeping a second list that drifts every time a platform is
+     * added on one side only.
+     */
+    private var platformGroups = mapOf<String, String>()
     private var defaultApps = mapOf<String, List<AppConfig>>()
     private var arcadePlatforms = setOf<String>()
 
@@ -54,12 +63,14 @@ class PlatformConfig(
         val json = JSONObject(assets.open("platforms.json").use { it.bufferedReader().readText() })
         val cores = mutableMapOf<String, String>()
         val names = mutableMapOf<String, String>()
+        val groups = mutableMapOf<String, String>()
         val apps = mutableMapOf<String, List<AppConfig>>()
         val arcade = mutableSetOf<String>()
         for (tag in json.keys()) {
             val entry = json.getJSONObject(tag)
             entry.optString("name", "").takeIf { it.isNotEmpty() }?.let { names[tag] = it }
             entry.optString("core", "").takeIf { it.isNotEmpty() }?.let { cores[tag] = it }
+            entry.optString("group", "").takeIf { it.isNotEmpty() }?.let { groups[tag] = it }
             if (entry.optBoolean("arcade")) arcade.add(tag)
             val appArray = entry.optJSONArray("app")
             val list = mutableListOf<AppConfig>()
@@ -82,6 +93,7 @@ class PlatformConfig(
         }
         defaultCores = cores
         defaultPlatformNames = names
+        platformGroups = groups
         defaultApps = apps
         arcadePlatforms = arcade
     }
@@ -363,7 +375,7 @@ class PlatformConfig(
                 pm?.let { resolveAppLabel(it, pkg) } ?: (knownAppLabels[pkg] ?: pkg)
             }
             EmulatorSource.Embedded ->
-                "${EmulatorSource.Embedded.displayName}: ${getCoreDisplayName(choice.coreId)}"
+                "${internalLabel}: ${getCoreDisplayName(choice.coreId)}"
             EmulatorSource.RetroArch ->
                 "${raPackageLabel(choice.appPackage, raLabel)}: ${getCoreDisplayName(choice.coreId)}"
         }
@@ -396,6 +408,13 @@ class PlatformConfig(
     fun isArcade(tag: String): Boolean = tag.uppercase() in arcadePlatforms
 
     fun getAllTags(): Set<String> = defaultPlatformNames.keys + ini.getSection("platforms").keys
+
+    /** Null for a tag the bundled definitions do not group, which callers show as ungrouped. */
+    fun getGroup(tag: String): String? = platformGroups[tag.uppercase(java.util.Locale.ROOT)]
+
+    /** Group per tag, for the tags asked about. Absent tags are simply not in the result. */
+    fun getGroups(tags: Collection<String>): Map<String, String> =
+        tags.mapNotNull { tag -> getGroup(tag)?.let { tag to it } }.toMap()
 
     fun getAppPackage(tag: String): String? =
         userChoices[tag]?.appPackage ?: defaultApps[tag.uppercase()]?.firstOrNull()?.packageName
@@ -436,8 +455,8 @@ class PlatformConfig(
         if (File(romsTagDir(tag), ".emu_launch").exists()) return "External"
         val choice = userChoices[tag]
         return when (choice?.source ?: EmulatorSource.Embedded) {
-            EmulatorSource.Embedded -> EmulatorSource.Embedded.displayName
-            EmulatorSource.Standalone -> EmulatorSource.Standalone.displayName
+            EmulatorSource.Embedded -> internalLabel
+            EmulatorSource.Standalone -> standaloneLabel
             EmulatorSource.RetroArch -> raPackageLabel(choice?.appPackage, raLabel)
         }
     }
@@ -522,7 +541,7 @@ class PlatformConfig(
         embeddedCoresDir: String?,
         unreportablePackages: Set<String>
     ): String {
-        if (runner == EmulatorSource.Embedded.displayName) {
+        if (runner == internalLabel) {
             val dir = embeddedCoresDir ?: nativeLibDir ?: return "Missing"
             return if (File(dir, "${coreId}_android.so").exists()) "Present" else "Missing"
         }
@@ -575,12 +594,12 @@ class PlatformConfig(
                     present -> dev.cannoli.scorza.ui.screens.EmulatorPickerOption(
                         coreId = coreId, displayName = getCoreDisplayName(coreId),
                         source = EmulatorSource.Embedded,
-                        runnerLabel = EmulatorSource.Embedded.displayName,
+                        runnerLabel = internalLabel,
                     )
                     includeAll -> dev.cannoli.scorza.ui.screens.EmulatorPickerOption(
                         coreId = coreId, displayName = getCoreDisplayName(coreId),
                         source = EmulatorSource.Embedded,
-                        runnerLabel = EmulatorSource.Embedded.displayName,
+                        runnerLabel = internalLabel,
                         availability = CoreAvailability.UNAVAILABLE,
                     )
                     else -> null
@@ -622,12 +641,12 @@ class PlatformConfig(
                 when {
                     installed -> dev.cannoli.scorza.ui.screens.EmulatorPickerOption(
                         coreId = "", displayName = appName,
-                        source = EmulatorSource.Standalone, runnerLabel = EmulatorSource.Standalone.displayName,
+                        source = EmulatorSource.Standalone, runnerLabel = standaloneLabel,
                         appPackage = cfg.packageName,
                     )
                     includeAll -> dev.cannoli.scorza.ui.screens.EmulatorPickerOption(
                         coreId = "", displayName = appName,
-                        source = EmulatorSource.Standalone, runnerLabel = EmulatorSource.Standalone.displayName,
+                        source = EmulatorSource.Standalone, runnerLabel = standaloneLabel,
                         appPackage = cfg.packageName, availability = CoreAvailability.UNAVAILABLE,
                     )
                     else -> null

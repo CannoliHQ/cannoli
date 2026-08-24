@@ -1903,7 +1903,7 @@ class DialogInputHandler @Inject constructor(
                             val desc = gameOverrideStore.get(rom.id)?.let {
                                 platformResolver.describeChoice(
                                     it, context.packageManager,
-                                    dev.cannoli.scorza.config.EmulatorSource.RetroArch.displayName,
+                                    context.getString(dev.cannoli.scorza.config.EmulatorSource.RetroArch.labelRes),
                                 )
                             } ?: context.getString(dev.cannoli.scorza.R.string.emulator_platform_default)
                             "$MENU_EMULATOR_OVERRIDE\t$desc"

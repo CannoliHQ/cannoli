@@ -383,7 +383,7 @@ class LaunchManager(
                         val raPackage = if (source == EmulatorSource.RetroArch) {
                             externalRaPackageFor(rom)
                                 ?: return errorAndReset(DialogState.MissingApp(
-                                    EmulatorSource.RetroArch.displayName, "",
+                                    context.getString(EmulatorSource.RetroArch.labelRes), "",
                                     rom.platformTag, overrideRomId,
                                 ))
                         } else null

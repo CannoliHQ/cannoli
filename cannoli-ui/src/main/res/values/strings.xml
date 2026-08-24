@@ -219,6 +219,9 @@
     <!-- Emulation setting: chooses which settings list the in-game menu shows. "In-Game" means the menu opened while a game is running. -->
     <string name="setting_igm_settings_mode">In-Game Settings</string>
     <string name="setting_default_video_driver">Default Video Driver</string>
+    <string name="value_emulator_source_internal">Internal</string>
+    <string name="value_emulator_source_retroarch">RetroArch</string>
+    <string name="value_emulator_source_standalone">Standalone</string>
     <string name="value_video_driver_gl">OpenGL</string>
     <string name="value_video_driver_vulkan">Vulkan</string>
     <!-- Advanced setting toggle: skip the passcode gate for Nonna's Kitchen. Keep "Kitchen" consistent with the feature name. -->

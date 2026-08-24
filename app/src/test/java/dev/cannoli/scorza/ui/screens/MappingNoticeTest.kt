@@ -54,7 +54,7 @@ class MappingNoticeTest {
         val store = GameOverrideStore(db)
         return Fixture(
             EmulatorMappingBuilder(config, cores, settings, store, ctx),
-            dev.cannoli.scorza.config.EmulatorSource.RetroArch.displayName,
+            ctx.getString(dev.cannoli.scorza.config.EmulatorSource.RetroArch.labelRes),
         )
     }
 

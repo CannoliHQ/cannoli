@@ -29,7 +29,7 @@ class EmulatorMappingBuilder @Inject constructor(
 ) {
     // Fallback caption for a RetroArch row that names no package. Rows that do name one are
     // labelled from it, so this only covers a choice written before the source split.
-    private val raLabel: String get() = EmulatorSource.RetroArch.displayName
+    private val raLabel: String get() = context.getString(EmulatorSource.RetroArch.labelRes)
 
     /** Per-game override rows for a platform, resolved through the rom_id join. */
     fun overrideRows(tag: String): List<dev.cannoli.scorza.ui.screens.GameOverrideRow> =
@@ -155,9 +155,9 @@ class EmulatorMappingBuilder @Inject constructor(
                 }
                 if (options.isEmpty()) continue
                 val header = when (source) {
-                    EmulatorSource.Embedded -> EmulatorSource.Embedded.displayName
-                    EmulatorSource.RetroArch -> EmulatorSource.RetroArch.displayName
-                    EmulatorSource.Standalone -> EmulatorSource.Standalone.displayName
+                    EmulatorSource.Embedded -> context.getString(EmulatorSource.Embedded.labelRes)
+                    EmulatorSource.RetroArch -> context.getString(EmulatorSource.RetroArch.labelRes)
+                    EmulatorSource.Standalone -> context.getString(EmulatorSource.Standalone.labelRes)
                 }
                 section.add(MappingItem.SectionHeader(header))
                 if (source == EmulatorSource.RetroArch) {
@@ -189,9 +189,9 @@ class EmulatorMappingBuilder @Inject constructor(
         if (current != null && section.none { it is MappingItem.EmulatorOption && it.isCurrent }) {
             synthesizeCurrentRow(current, raCannotReport)?.let { row ->
                 val header = when (current.source) {
-                    EmulatorSource.Embedded -> EmulatorSource.Embedded.displayName
-                    EmulatorSource.RetroArch -> EmulatorSource.RetroArch.displayName
-                    EmulatorSource.Standalone -> EmulatorSource.Standalone.displayName
+                    EmulatorSource.Embedded -> context.getString(EmulatorSource.Embedded.labelRes)
+                    EmulatorSource.RetroArch -> context.getString(EmulatorSource.RetroArch.labelRes)
+                    EmulatorSource.Standalone -> context.getString(EmulatorSource.Standalone.labelRes)
                 }
                 val at = section.indexOfFirst { it is MappingItem.SectionHeader && it.label == header }
                 if (at >= 0) {
@@ -315,11 +315,11 @@ class EmulatorMappingBuilder @Inject constructor(
             else -> platformConfig.getCoreDisplayName(current.coreId)
         }
         val label = when (current.source) {
-            EmulatorSource.Embedded -> EmulatorSource.Embedded.displayName
+            EmulatorSource.Embedded -> context.getString(EmulatorSource.Embedded.labelRes)
             EmulatorSource.RetroArch -> current.appPackage
                 ?.let { InstalledCoreService.getPackageLabel(it) }
-                ?: EmulatorSource.RetroArch.displayName
-            EmulatorSource.Standalone -> EmulatorSource.Standalone.displayName
+                ?: context.getString(EmulatorSource.RetroArch.labelRes)
+            EmulatorSource.Standalone -> context.getString(EmulatorSource.Standalone.labelRes)
         }
         val availability = currentRowAvailability(current.source, raCannotReport)
         return MappingItem.EmulatorOption(

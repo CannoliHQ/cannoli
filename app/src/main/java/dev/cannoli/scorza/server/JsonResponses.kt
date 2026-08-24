@@ -20,7 +20,15 @@ internal data class OkResponse(
 internal data class ErrorResponse(val error: String)
 
 @Serializable
-internal data class TagsResponse(val tags: List<String>)
+internal data class TagsResponse(
+    val tags: List<String>,
+    /**
+     * Manufacturer per tag, so the dashboard groups off the launcher's definitions rather than a
+     * second list of its own. Added after tags, and defaulted, so a Kitchen build that predates it
+     * keeps working.
+     */
+    val groups: Map<String, String> = emptyMap(),
+)
 
 @Serializable
 internal data class AppsResponse(val tools: List<String>, val ports: List<String>)
