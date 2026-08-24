@@ -162,15 +162,41 @@ class CoreInfoRepository(private val assets: AssetManager, private val cacheDir:
         return coreById[coreId]?.displayName ?: coreId
     }
 
+    /** Tag to the cores excluded from it. Hand-maintained, unlike the generated core lists. */
+    private val exclusions: Map<String, Set<String>> by lazy {
+        val parsed = mutableMapOf<String, MutableSet<String>>()
+        try {
+            assets.open("core_exclusions.txt").bufferedReader().useLines { lines ->
+                for (line in lines) {
+                    val trimmed = line.trim()
+                    if (trimmed.isEmpty() || trimmed.startsWith("#")) continue
+                    val tag = trimmed.substringBefore(' ').uppercase()
+                    val core = trimmed.substringAfter(' ', "").trim()
+                    if (tag.isNotEmpty() && core.isNotEmpty()) {
+                        parsed.getOrPut(tag) { mutableSetOf() }.add(core)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            dev.cannoli.scorza.util.ErrorLog.write("core_exclusions.txt unreadable: ${e.message}")
+        }
+        parsed
+    }
+
     /**
-     * The bundled core_info set is upstream's whole catalogue, most of which has no Android build,
-     * so it is filtered to what can actually run on this device. A core the user already chose is
-     * re-synthesised by the picker rather than read from here, so filtering cannot strand anyone on
-     * a choice they already made.
+     * The catalogue is curated, so what a tag's databases match is already close to the offer. The
+     * exclusions cover what curation alone cannot: a core kept for one system has to ship, which
+     * also offers it on every other system its database claims.
+     *
+     * A core the user already chose is re-synthesised by the picker rather than read from here, so
+     * neither filter can strand anyone on a choice they already made.
      */
     fun getCoresForTag(tag: String): List<CoreInfo> {
-        val dbs = tagToDatabases[tag.uppercase()] ?: return emptyList()
-        return cores.filter { core -> core.databases.any { it in dbs } && runsOnThisDevice(core.id) }
+        val upper = tag.uppercase()
+        val dbs = tagToDatabases[upper] ?: return emptyList()
+        val excluded = exclusions[upper].orEmpty()
+        return cores
+            .filter { core -> core.databases.any { it in dbs } && core.id !in excluded }
             .sortedBy { it.displayName }
     }
 

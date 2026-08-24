@@ -1,0 +1,13 @@
+# Cores kept for one system and cut from another. A core's .info database field decides which
+# platforms it appears under, so trimming the catalogue cannot express this: the file has to ship
+# for the platform that keeps it.
+#
+# Each of these has its primary system elsewhere, and the platform it is cut from already keeps a
+# better answer.
+#
+# <TAG> <core id>
+GB mesen-s_libretro
+GBC mesen-s_libretro
+GB vbam_libretro
+GBC vbam_libretro
+GB skyemu_libretro
