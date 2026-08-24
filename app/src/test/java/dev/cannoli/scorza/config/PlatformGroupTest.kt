@@ -63,6 +63,32 @@ class PlatformGroupTest {
         assertNull(config().getGroup("NOT_A_PLATFORM"))
     }
 
+    // The mapping list reads by release year, so the asset's order is load-bearing rather than
+    // cosmetic. Each pair below is one an alphabetical sort would invert, which is the regression
+    // this guards: sorting by display name put Game Boy above NES and Game Boy Color above SNES.
+    @Test
+    fun `tags within a group are ordered by release year, not by name`() {
+        val config = config()
+        fun assertBefore(earlier: String, later: String) {
+            assertTrue(
+                "$earlier should rank before $later",
+                config.tagRank(earlier) < config.tagRank(later),
+            )
+        }
+        assertBefore("NES", "GB")
+        assertBefore("SNES", "GBC")
+        assertBefore("N64", "GBA")
+        assertBefore("SG1000", "SMS")
+        assertBefore("PS2", "PSP")
+        assertBefore("ATARI2600", "LYNX")
+        assertBefore("NEOGEO", "NGP")
+    }
+
+    @Test
+    fun `an unknown tag ranks last rather than first`() {
+        assertEquals(Int.MAX_VALUE, config().tagRank("NOT_A_PLATFORM"))
+    }
+
     // What the tags endpoint hands Kitchen: only the tags asked about, and nothing invented.
     @Test
     fun `getGroups answers only for the tags it was given`() {

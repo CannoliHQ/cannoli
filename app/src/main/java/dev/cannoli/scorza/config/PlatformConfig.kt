@@ -59,6 +59,13 @@ class PlatformConfig(
      * it wherever its first member happens to sit.
      */
     private var platformGroupOrder = listOf<String>()
+
+    /**
+     * Platform order within a group, taken from platforms.json, where the tags are listed by
+     * release year. Sorting the rows by name instead would read as alphabetical, which is not how
+     * anyone thinks about a console line.
+     */
+    private var platformTagOrder = mapOf<String, Int>()
     private var defaultApps = mapOf<String, List<AppConfig>>()
     private var arcadePlatforms = setOf<String>()
 
@@ -105,6 +112,7 @@ class PlatformConfig(
         platformGroups = groups
         platformGroupOrder = groups.values.distinct()
             .sortedBy { if (it == UNGROUPED) 1 else 0 }
+        platformTagOrder = groups.keys.withIndex().associate { (i, tag) -> tag to i }
         defaultApps = apps
         arcadePlatforms = arcade
     }
@@ -423,6 +431,10 @@ class PlatformConfig(
     /** Sort key for a group, so a list reads in the asset's order with the catch-all last. */
     fun groupRank(group: String?): Int =
         if (group == null) Int.MAX_VALUE else platformGroupOrder.indexOf(group).takeIf { it >= 0 } ?: Int.MAX_VALUE
+
+    /** Position in platforms.json, which lists each group's tags by release year. */
+    fun tagRank(tag: String): Int =
+        platformTagOrder[tag.uppercase(java.util.Locale.ROOT)] ?: Int.MAX_VALUE
 
     /** Null for a tag the bundled definitions do not group, which callers show as ungrouped. */
     fun getGroup(tag: String): String? = platformGroups[tag.uppercase(java.util.Locale.ROOT)]

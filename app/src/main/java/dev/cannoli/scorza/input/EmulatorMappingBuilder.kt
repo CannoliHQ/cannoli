@@ -63,11 +63,14 @@ class EmulatorMappingBuilder @Inject constructor(
         }.let { order(it, alphabetical) }
     }
 
-    // Manufacturer order comes from platforms.json; alphabetical is a flat A-Z with no grouping,
-    // which is what the list falls back to when the user turns headers off.
+    // Manufacturer mode takes both the group order and the order within a group from
+    // platforms.json, which lists each manufacturer's tags by release year. Alphabetical is a flat
+    // A-Z with no grouping, which is what the list falls back to when the user turns headers off.
     private fun order(entries: List<EmulatorMappingEntry>, alphabetical: Boolean): List<EmulatorMappingEntry> =
         if (alphabetical) entries.sortedNatural { it.platformName }
-        else entries.sortedNatural { it.platformName }.sortedBy { platformConfig.groupRank(it.group) }
+        else entries.sortedWith(
+            compareBy({ platformConfig.groupRank(it.group) }, { platformConfig.tagRank(it.tag) }),
+        )
 
     fun filter(all: List<EmulatorMappingEntry>, filter: Int): List<EmulatorMappingEntry> = when (filter) {
         1 -> all.filter { it.status == dev.cannoli.scorza.ui.screens.EmulatorMappingStatus.NOT_INSTALLED }
