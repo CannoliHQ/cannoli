@@ -1,0 +1,17 @@
+diff --git a/runloop.c b/runloop.c
+index a94e72a199..126c06a451 100644
+--- a/runloop.c
++++ b/runloop.c
+@@ -7946,6 +7946,12 @@ int runloop_iterate(void)
+     * which a core enters from within retro_run(), so the save it asks for
+     * is performed here instead of where the command arrives. */
+    android_input_flush_pending_state();
++#ifdef HAVE_RICOTTA_IGM
++   /* Same reason, and this one also calls into Java. A core running its own coroutine stack
++    * (mupen64plus_next) enters that poll with a stack pointer outside the bounds ART recorded for
++    * this thread, so every JNI call made from there throws a spurious StackOverflowError. */
++   ricotta_bridge_poll_commands();
++#endif
+ #endif
+ 
+ #if defined(HAVE_DYNAMIC) && defined(HAVE_MENU)

@@ -1,5 +1,5 @@
 diff --git a/input/drivers/android_input.c b/input/drivers/android_input.c
-index e555e11b8e..414b60f0df 100644
+index e555e11b8e..8e9a442566 100644
 --- a/input/drivers/android_input.c
 +++ b/input/drivers/android_input.c
 @@ -1588,6 +1588,13 @@ static INLINE void android_input_poll_event_type_key(
@@ -16,13 +16,3 @@ index e555e11b8e..414b60f0df 100644
     uint8_t *buf;
     int action           = AKeyEvent_getAction(event);
     int keysym           = keycode;
-@@ -2520,6 +2527,9 @@ static void android_input_reinit(void)
-  */
- static void android_input_poll(void *data)
- {
-+#ifdef HAVE_RICOTTA_IGM
-+   ricotta_bridge_poll_commands();
-+#endif
-    int ident;
-    struct android_app *android_app = (struct android_app*)g_android;
-    android_input_t *android        = (android_input_t*)data;
