@@ -16,11 +16,9 @@ import javax.inject.Singleton
 @Singleton
 class ApkLauncher @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val shellLauncher: ShellLauncher,
 ) {
 
     var debugLog: (String) -> Unit = {}
-        set(value) { field = value; shellLauncher.debugLog = value }
 
     companion object {
         const val VIRTUAL_TV_SETTINGS_PACKAGE = "cannoli.virtual.tv_settings"
@@ -55,7 +53,6 @@ class ApkLauncher @Inject constructor(
         }
         return when (config.launchMethod) {
             LaunchMethod.INTENT -> dispatchIntent(resolved, config, romFile, packageName)
-            LaunchMethod.SHELL  -> shellLauncher.launch(ShellCommandFormatter.format(resolved))
             // LaunchManager routes these to DelfinoLauncher; the params protocol cannot be
             // expressed as a generic intent, so reaching here means a misrouted launch.
             LaunchMethod.DELFINO -> {

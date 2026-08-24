@@ -282,17 +282,4 @@ class EmulatorIntentBuilderTest {
         } catch (_: IllegalArgumentException) {
         }
     }
-
-    @Test fun `custom scheme builds scheme URI with rom path`() {
-        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
-        val romFile = rom()
-        val cfg = AppConfig(
-            packageName = "com.pixelrespawn.linkboy",
-            data = DataBinding.CustomScheme("linkboy", "emulator"),
-        )
-        val resolved = EmulatorIntentBuilder.resolve(ctx, cfg, romFile)
-        assertEquals("linkboy", resolved.dataUri?.scheme)
-        assertEquals("emulator", resolved.dataUri?.authority)
-        assertEquals(romFile.absolutePath, resolved.dataUri?.lastPathSegment)
-    }
 }

@@ -626,39 +626,17 @@ class PlatformConfig(
     }
 
     private val knownAppLabels = mapOf(
-        "com.explusalpha.A2600Emu" to "2600.emu",
-        "com.explusalpha.GbaEmu" to "GBA.emu",
-        "com.explusalpha.GbcEmu" to "GBC.emu",
-        "com.explusalpha.LynxEmu" to "Lynx.emu",
-        "com.explusalpha.MdEmu" to "MD.emu",
-        "com.explusalpha.NeoEmu" to "NEO.emu",
-        "com.explusalpha.NesEmu" to "NES.emu",
-        "com.explusalpha.NgpEmu" to "NGP.emu",
-        "com.explusalpha.SaturnEmu" to "Saturn.emu",
-        "com.explusalpha.Snes9xPlus" to "Snes9x EX+",
-        "com.explusalpha.SwanEmu" to "Swan.emu",
-        "com.PceEmu" to "PCE.emu",
-        "com.fastemulator.gba" to "My Boy!",
-        "com.fastemulator.gbc" to "My OldBoy!",
-        "it.dbtecno.pizzaboygbapro" to "Pizza Boy GBA Pro",
-        "it.dbtecno.pizzaboygba" to "Pizza Boy GBA",
-        "it.dbtecno.pizzaboypro" to "Pizza Boy GBC Pro",
-        "it.dbtecno.pizzaboy" to "Pizza Boy GBC",
         "com.fms.ines.free" to "iNES",
         "com.androidemu.nes" to "Nesoid",
         "org.mupen64plusae.v3.fzurita" to "M64Plus FZ",
         "org.mupen64plusae.v3.alpha" to "Mupen64Plus AE",
         "me.magnum.melonds" to "melonDS",
-        "me.magnum.melonds.nightly" to "melonDS Nightly",
         "com.dsemu.drastic" to "DraStic",
-        "com.fms.mg" to "MasterGear",
-        "org.devmiyax.yabasanshioro2.pro" to "YabaSanshiro2 Pro",
         "org.devmiyax.yabasanshioro2" to "YabaSanshiro2",
         "com.flycast.emulator" to "Flycast",
         "io.recompiled.redream" to "Redream",
         "com.github.stenzek.duckstation" to "DuckStation",
         "com.emulator.fpse" to "FPse",
-        "com.emulator.fpse64" to "FPse64",
         "org.ppsspp.ppsspp" to "PPSSPP",
         "org.ppsspp.ppssppgold" to "PPSSPP Gold",
         "xyz.aethersx2.android" to "NetherSX2",
@@ -671,22 +649,15 @@ class PlatformConfig(
         "org.vita3k.emulator" to "Vita3K",
         "aenu.aps3e" to "aPS3e",
         "ru.vastness.altmer.iratajaguar" to "IrataJaguar",
-        "com.fms.colem.deluxe" to "ColEm Deluxe",
         "com.fms.colem" to "ColEm",
-        "com.sky.SkyEmu" to "SkyEmu",
-        "com.pixelrespawn.linkboy" to "Linkboy",
-        "it.dbtecno.pizzaboyscpro" to "Pizza Boy SC Pro",
         "it.dbtecno.pizzaboyscbasic" to "Pizza Boy SC Basic",
-        "com.hydra.noods" to "NooDS",
-        "me.magnum.melondualds" to "melonDS DualDS",
+        "me.magnum.melondualds" to "WatermelonDS",
         "com.armsx2" to "ARMSX2",
         "dev.eden.eden_emulator" to "Eden",
         "dev.eden.eden_emulator.nightly" to "Eden Nightly",
-        "aenu.aps3e.premium" to "aPS3e Premium",
-        "org.mupen64plusae.v3.fzurita.pro" to "M64Plus FZ Pro",
+        "dev.legacy.eden_emulator" to "Eden (Legacy)",
         "org.mupen64plusae.v3.fzurita.amazon" to "M64Plus FZ (Amazon)",
         "org.vita3k.emulator.ikhoeyZX" to "Vita3K ikhoeyZX",
-        "com.seleuco.mame4droid" to "MAME4droid",
     )
 
     fun getDisplayName(tag: String): String {
@@ -794,14 +765,6 @@ class PlatformConfig(
                 "file_provider" -> DataBinding.FileProvider(grantPermission = obj.optBoolean("grantPermission", true))
                 "absolute_path" -> DataBinding.AbsolutePath
                 "external_storage_saf" -> DataBinding.ExternalStorageSaf
-                "custom_scheme" -> DataBinding.CustomScheme(
-                    scheme = obj.optString("scheme").ifEmpty {
-                        throw IllegalArgumentException("custom_scheme: missing `scheme`")
-                    },
-                    authority = obj.optString("authority").ifEmpty {
-                        throw IllegalArgumentException("custom_scheme: missing `authority`")
-                    },
-                )
                 else -> throw IllegalArgumentException("Unknown data.kind: `$kind`")
             }
         }
@@ -843,7 +806,6 @@ class PlatformConfig(
 
         private fun parseLaunchMethod(s: String): LaunchMethod = when (s) {
             "intent" -> LaunchMethod.INTENT
-            "shell" -> LaunchMethod.SHELL
             "delfino" -> LaunchMethod.DELFINO
             else -> throw IllegalArgumentException("Unknown launchMethod: `$s`")
         }

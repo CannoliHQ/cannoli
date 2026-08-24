@@ -20,7 +20,7 @@ class PlatformConfigStandaloneDisplayTest {
 
     @Test fun `standalone selection renders app name not bundled core`() {
         val pc = config()
-        pc.setPlatformChoice("NES", EmulatorChoice(EmulatorSource.Standalone, appPackage = "com.explusalpha.NesEmu"))
+        pc.setPlatformChoice("NES", EmulatorChoice(EmulatorSource.Standalone, appPackage = "com.androidemu.nes"))
         val entry = pc.getDetailedMappings().first { it.tag == "NES" }
         assertEquals("Standalone", entry.runnerLabel)
         assertTrue(entry.coreDisplayName != pc.getCoreDisplayName("nestopia_libretro"))

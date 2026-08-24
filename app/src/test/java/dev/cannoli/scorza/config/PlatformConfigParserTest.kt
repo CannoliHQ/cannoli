@@ -47,19 +47,6 @@ class PlatformConfigParserTest {
         assertEquals(LaunchMethod.INTENT, cfg.launchMethod)
     }
 
-    @Test fun `dolphin entry with shell launch`() {
-        val cfg = parse("""
-            {
-              "package": "org.dolphinemu.dolphinemu",
-              "activity": "org.dolphinemu.dolphinemu.ui.main.MainActivity",
-              "action": "android.intent.action.MAIN",
-              "extras": [{"key": "AutoStartFile", "kind": "uri_string"}],
-              "launchMethod": "shell"
-            }
-        """.trimIndent())
-        assertEquals(LaunchMethod.SHELL, cfg.launchMethod)
-    }
-
     @Test fun `delfino entry parses the delfino launch method`() {
         val cfg = parse("""{"package":"dev.cannoli.delfino","launchMethod":"delfino"}""")
         assertEquals(LaunchMethod.DELFINO, cfg.launchMethod)
@@ -69,16 +56,6 @@ class PlatformConfigParserTest {
         val cfg = parse("""{"package":"com.sky.SkyEmu","data":{"kind":"file_provider"}}""")
         val data = cfg.data as DataBinding.FileProvider
         assertTrue(data.grantPermission)
-    }
-
-    @Test fun `custom_scheme data parses scheme and authority`() {
-        val cfg = parse("""
-            {"package":"com.pixelrespawn.linkboy",
-             "data":{"kind":"custom_scheme","scheme":"linkboy","authority":"emulator"}}
-        """.trimIndent())
-        val data = cfg.data as DataBinding.CustomScheme
-        assertEquals("linkboy", data.scheme)
-        assertEquals("emulator", data.authority)
     }
 
     @Test fun `extras list parses uri_parcelable kind`() {

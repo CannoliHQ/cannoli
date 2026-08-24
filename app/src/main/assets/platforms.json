@@ -4,7 +4,6 @@
     "group": "Nintendo",
     "core": "nestopia_libretro",
     "app": [
-      { "package": "com.explusalpha.NesEmu", "data": { "kind": "file_provider" } },
       { "package": "com.fms.ines.free", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } },
       { "package": "com.androidemu.nes", "action": "android.intent.action.VIEW", "data": { "kind": "absolute_path" } }
     ]
@@ -14,7 +13,6 @@
     "group": "Nintendo",
     "core": "nestopia_libretro",
     "app": [
-      { "package": "com.explusalpha.NesEmu", "data": { "kind": "file_provider" } },
       { "package": "com.fms.ines.free", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } },
       { "package": "com.androidemu.nes", "action": "android.intent.action.VIEW", "data": { "kind": "absolute_path" } }
     ]
@@ -22,23 +20,12 @@
   "GB": {
     "name": "Game Boy",
     "group": "Nintendo",
-    "core": "gambatte_libretro",
-    "app": [
-      { "package": "com.sky.SkyEmu", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } },
-      { "package": "com.explusalpha.GbcEmu", "data": { "kind": "file_provider" } },
-      { "package": "com.fastemulator.gbc", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } },
-      { "package": "com.pixelrespawn.linkboy", "data": { "kind": "custom_scheme", "scheme": "linkboy", "authority": "emulator" } },
-      { "package": "it.dbtecno.pizzaboypro", "extras": [{ "key": "rom_uri", "kind": "uri_string" }] },
-      { "package": "it.dbtecno.pizzaboy", "extras": [{ "key": "rom_uri", "kind": "uri_string" }] }
-    ]
+    "core": "gambatte_libretro"
   },
   "SNES": {
     "name": "Super Nintendo Entertainment System",
     "group": "Nintendo",
-    "core": "snes9x_libretro",
-    "app": [
-      { "package": "com.explusalpha.Snes9xPlus", "data": { "kind": "file_provider" } }
-    ]
+    "core": "snes9x_libretro"
   },
   "VIRTUALBOY": {
     "name": "Virtual Boy",
@@ -52,7 +39,6 @@
     "name": "Nintendo 64",
     "group": "Nintendo",
     "app": [
-      { "package": "org.mupen64plusae.v3.fzurita.pro", "activity": "paulscode.android.mupen64plusae.SplashActivity", "action": "android.intent.action.VIEW", "data": { "kind": "absolute_path" } },
       { "package": "org.mupen64plusae.v3.fzurita", "activity": "paulscode.android.mupen64plusae.SplashActivity", "action": "android.intent.action.VIEW", "data": { "kind": "absolute_path" } },
       { "package": "org.mupen64plusae.v3.fzurita.amazon", "activity": "paulscode.android.mupen64plusae.SplashActivity", "action": "android.intent.action.VIEW", "data": { "kind": "absolute_path" } },
       { "package": "com.m64.fx.plus.emulate", "activity": "paulscode.android.mupen64plusae.SplashActivity", "action": "android.intent.action.VIEW", "data": { "kind": "absolute_path" } },
@@ -62,29 +48,12 @@
   "GBC": {
     "name": "Game Boy Color",
     "group": "Nintendo",
-    "core": "gambatte_libretro",
-    "app": [
-      { "package": "com.sky.SkyEmu", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } },
-      { "package": "com.explusalpha.GbcEmu", "data": { "kind": "file_provider" } },
-      { "package": "com.fastemulator.gbc", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } },
-      { "package": "com.pixelrespawn.linkboy", "data": { "kind": "custom_scheme", "scheme": "linkboy", "authority": "emulator" } },
-      { "package": "it.dbtecno.pizzaboypro", "extras": [{ "key": "rom_uri", "kind": "uri_string" }] },
-      { "package": "it.dbtecno.pizzaboy", "extras": [{ "key": "rom_uri", "kind": "uri_string" }] }
-    ]
+    "core": "gambatte_libretro"
   },
   "GBA": {
     "name": "Game Boy Advance",
     "group": "Nintendo",
-    "core": "mgba_libretro",
-    "app": [
-      { "package": "com.hydra.noods", "extras": [{ "key": "LaunchPath", "kind": "path" }] },
-      { "package": "com.sky.SkyEmu", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } },
-      { "package": "com.explusalpha.GbaEmu", "data": { "kind": "file_provider" } },
-      { "package": "com.fastemulator.gba", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } },
-      { "package": "com.pixelrespawn.linkboy", "data": { "kind": "custom_scheme", "scheme": "linkboy", "authority": "emulator" } },
-      { "package": "it.dbtecno.pizzaboygbapro", "extras": [{ "key": "rom_uri", "kind": "uri_string" }] },
-      { "package": "it.dbtecno.pizzaboygba", "extras": [{ "key": "rom_uri", "kind": "uri_string" }] }
-    ]
+    "core": "mgba_libretro"
   },
   "GC": {
     "name": "GameCube",
@@ -107,11 +76,8 @@
     "core": "melonds_libretro",
     "app": [
       { "package": "me.magnum.melonds", "action": "me.magnum.melonds.LAUNCH_ROM", "extras": [{ "key": "uri", "kind": "uri_parcelable" }] },
-      { "package": "me.magnum.melondualds", "action": "me.magnum.melonds.LAUNCH_ROM", "extras": [{ "key": "uri", "kind": "uri_parcelable" }] },
-      { "package": "me.magnum.melonds.nightly", "action": "me.magnum.melonds.nightly.LAUNCH_ROM", "extras": [{ "key": "uri", "kind": "uri_parcelable" }] },
-      { "package": "com.hydra.noods", "extras": [{ "key": "LaunchPath", "kind": "path" }] },
-      { "package": "com.dsemu.drastic", "activity": "com.dsemu.drastic.DraSticActivity", "action": "android.intent.action.VIEW", "data": { "kind": "absolute_path" } },
-      { "package": "com.sky.SkyEmu", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } }
+      { "package": "me.magnum.melondualds", "action": "me.magnum.melondualds.LAUNCH_ROM", "extras": [{ "key": "uri", "kind": "uri_parcelable" }] },
+      { "package": "com.dsemu.drastic", "activity": "com.dsemu.drastic.DraSticActivity", "action": "android.intent.action.VIEW", "data": { "kind": "absolute_path" } }
     ]
   },
   "WII": {
@@ -143,26 +109,21 @@
     "group": "Nintendo",
     "app": [
       { "package": "dev.eden.eden_emulator", "action": "android.nfc.action.TECH_DISCOVERED", "data": { "kind": "file_provider" }, "intentFlags": 268468224  },
-      { "package": "dev.eden.eden_emulator.nightly", "action": "android.nfc.action.TECH_DISCOVERED", "data": { "kind": "file_provider" }, "intentFlags": 268468224 }
+      { "package": "dev.eden.eden_emulator.nightly", "action": "android.nfc.action.TECH_DISCOVERED", "data": { "kind": "file_provider" }, "intentFlags": 268468224 },
+      { "package": "dev.legacy.eden_emulator", "action": "android.nfc.action.TECH_DISCOVERED", "data": { "kind": "file_provider" }, "intentFlags": 268468224 }
     ]
   },
 
   "SG1000": {
     "name": "Sega SG-1000",
     "group": "Sega",
-    "core": "genesis_plus_gx_libretro",
-    "app": [
-      { "package": "com.fms.mg", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } }
-    ]
+    "core": "genesis_plus_gx_libretro"
   },
   "SMS": {
     "name": "Master System",
     "group": "Sega",
     "core": "genesis_plus_gx_libretro",
     "app": [
-      { "package": "com.explusalpha.MdEmu", "data": { "kind": "file_provider" } },
-      { "package": "com.fms.mg", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } },
-      { "package": "it.dbtecno.pizzaboyscpro", "extras": [{ "key": "rom_uri", "kind": "uri_string" }] },
       { "package": "it.dbtecno.pizzaboyscbasic", "extras": [{ "key": "rom_uri", "kind": "uri_string" }] }
     ]
   },
@@ -171,8 +132,6 @@
     "group": "Sega",
     "core": "genesis_plus_gx_libretro",
     "app": [
-      { "package": "com.explusalpha.MdEmu", "data": { "kind": "file_provider" } },
-      { "package": "it.dbtecno.pizzaboyscpro", "extras": [{ "key": "rom_uri", "kind": "uri_string" }] },
       { "package": "it.dbtecno.pizzaboyscbasic", "extras": [{ "key": "rom_uri", "kind": "uri_string" }] }
     ]
   },
@@ -181,8 +140,6 @@
     "group": "Sega",
     "core": "genesis_plus_gx_libretro",
     "app": [
-      { "package": "com.fms.mg", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } },
-      { "package": "it.dbtecno.pizzaboyscpro", "extras": [{ "key": "rom_uri", "kind": "uri_string" }] },
       { "package": "it.dbtecno.pizzaboyscbasic", "extras": [{ "key": "rom_uri", "kind": "uri_string" }] }
     ]
   },
@@ -191,8 +148,6 @@
     "group": "Sega",
     "core": "genesis_plus_gx_libretro",
     "app": [
-      { "package": "com.explusalpha.MdEmu", "data": { "kind": "file_provider" } },
-      { "package": "it.dbtecno.pizzaboyscpro", "extras": [{ "key": "rom_uri", "kind": "uri_string" }] },
       { "package": "it.dbtecno.pizzaboyscbasic", "extras": [{ "key": "rom_uri", "kind": "uri_string" }] }
     ]
   },
@@ -206,8 +161,6 @@
     "group": "Sega",
     "core": "mednafen_saturn_libretro",
     "app": [
-      { "package": "com.explusalpha.SaturnEmu", "data": { "kind": "file_provider" } },
-      { "package": "org.devmiyax.yabasanshioro2.pro", "activity": "org.uoyabause.android.Yabause", "extras": [{ "key": "org.uoyabause.android.FileNameEx", "kind": "path" }] },
       { "package": "org.devmiyax.yabasanshioro2", "activity": "org.uoyabause.android.Yabause", "extras": [{ "key": "org.uoyabause.android.FileNameEx", "kind": "path" }] }
     ]
   },
@@ -227,7 +180,6 @@
     "core": "pcsx_rearmed_libretro",
     "app": [
       { "package": "com.github.stenzek.duckstation", "activity": "com.github.stenzek.duckstation.EmulationActivity", "action": "android.intent.action.MAIN", "extras": [{ "key": "bootPath", "kind": "uri_string" }] },
-      { "package": "com.emulator.fpse64", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } },
       { "package": "com.emulator.fpse", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } }
     ]
   },
@@ -252,7 +204,6 @@
     "name": "PlayStation 3",
     "group": "Sony",
     "app": [
-      { "package": "aenu.aps3e.premium", "action": "aenu.intent.action.APS3E", "extras": [{ "key": "iso_uri", "kind": "uri_string" }] },
       { "package": "aenu.aps3e", "action": "aenu.intent.action.APS3E", "extras": [{ "key": "iso_uri", "kind": "uri_string" }] }
     ]
   },
@@ -278,10 +229,7 @@
   "ATARI2600": {
     "name": "Atari 2600",
     "group": "Atari",
-    "core": "stella_libretro",
-    "app": [
-      { "package": "com.explusalpha.A2600Emu", "data": { "kind": "file_provider" } }
-    ]
+    "core": "stella_libretro"
   },
   "ATARI5200": {
     "name": "Atari 5200",
@@ -296,10 +244,7 @@
   "LYNX": {
     "name": "Atari Lynx",
     "group": "Atari",
-    "core": "handy_libretro",
-    "app": [
-      { "package": "com.explusalpha.LynxEmu", "data": { "kind": "file_provider" } }
-    ]
+    "core": "handy_libretro"
   },
   "JAGUAR": {
     "name": "Atari Jaguar",
@@ -313,18 +258,12 @@
   "PCE": {
     "name": "PC Engine",
     "group": "NEC",
-    "core": "mednafen_pce_fast_libretro",
-    "app": [
-      { "package": "com.PceEmu", "data": { "kind": "file_provider" } }
-    ]
+    "core": "mednafen_pce_fast_libretro"
   },
   "SUPERGRAFX": {
     "name": "PC Engine SuperGrafx",
     "group": "NEC",
-    "core": "mednafen_supergrafx_libretro",
-    "app": [
-      { "package": "com.PceEmu", "data": { "kind": "file_provider" } }
-    ]
+    "core": "mednafen_supergrafx_libretro"
   },
   "PCFX": {
     "name": "PC-FX",
@@ -336,70 +275,41 @@
     "name": "Neo Geo",
     "group": "SNK",
     "core": "fbneo_libretro",
-    "arcade": true,
-    "app": [
-      { "package": "com.explusalpha.NeoEmu", "data": { "kind": "file_provider" } },
-      { "package": "com.seleuco.mame4droid", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } },
-      "com.bangkokfusion.finalburn"
-    ]
+    "arcade": true
   },
   "NGP": {
     "name": "Neo Geo Pocket",
     "group": "SNK",
-    "core": "mednafen_ngp_libretro",
-    "app": [
-      { "package": "com.explusalpha.NgpEmu", "data": { "kind": "file_provider" } }
-    ]
+    "core": "mednafen_ngp_libretro"
   },
   "NGPC": {
     "name": "Neo Geo Pocket Color",
     "group": "SNK",
-    "core": "mednafen_ngp_libretro",
-    "app": [
-      { "package": "com.explusalpha.NgpEmu", "data": { "kind": "file_provider" } }
-    ]
+    "core": "mednafen_ngp_libretro"
   },
 
   "WS": {
     "name": "WonderSwan",
     "group": "Bandai",
-    "core": "mednafen_wswan_libretro",
-    "app": [
-      { "package": "com.explusalpha.SwanEmu", "data": { "kind": "file_provider" } }
-    ]
+    "core": "mednafen_wswan_libretro"
   },
   "WSC": {
     "name": "WonderSwan Color",
     "group": "Bandai",
-    "core": "mednafen_wswan_libretro",
-    "app": [
-      { "package": "com.explusalpha.SwanEmu", "data": { "kind": "file_provider" } }
-    ]
+    "core": "mednafen_wswan_libretro"
   },
 
   "MAME": {
     "name": "Arcade",
     "group": "Arcade",
     "core": "mame2003_plus_libretro",
-    "arcade": true,
-    "app": [
-      { "package": "com.seleuco.mame4droid", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } },
-      { "package": "com.explusalpha.NeoEmu", "data": { "kind": "file_provider" } },
-      { "package": "com.flycast.emulator", "activity": "com.flycast.emulator.MainActivity", "action": "android.intent.action.VIEW", "data": { "kind": "external_storage_saf" } },
-      "com.bangkokfusion.finalburn"
-    ]
+    "arcade": true
   },
   "FBN": {
     "name": "Arcade",
     "group": "Arcade",
     "core": "fbneo_libretro",
-    "arcade": true,
-    "app": [
-      { "package": "com.seleuco.mame4droid", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } },
-      { "package": "com.explusalpha.NeoEmu", "data": { "kind": "file_provider" } },
-      { "package": "com.flycast.emulator", "activity": "com.flycast.emulator.MainActivity", "action": "android.intent.action.VIEW", "data": { "kind": "external_storage_saf" } },
-      "com.bangkokfusion.finalburn"
-    ]
+    "arcade": true
   },
 
   "DOS": {
@@ -473,8 +383,6 @@
     "group": "Other",
     "core": "bluemsx_libretro",
     "app": [
-      { "package": "com.explusalpha.MsxEmu", "data": { "kind": "file_provider" } },
-      { "package": "com.fms.colem.deluxe", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } },
       { "package": "com.fms.colem", "action": "android.intent.action.VIEW", "data": { "kind": "file_provider" } }
     ]
   },

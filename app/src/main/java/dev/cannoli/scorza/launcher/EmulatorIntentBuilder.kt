@@ -20,7 +20,6 @@ object EmulatorIntentBuilder {
             is DataBinding.FileProvider -> fileProviderUri(context, romFile)
             DataBinding.AbsolutePath -> Uri.fromFile(romFile)
             DataBinding.ExternalStorageSaf -> externalStorageSafUri(romFile) ?: Uri.fromFile(romFile)
-            is DataBinding.CustomScheme -> Uri.parse("${d.scheme}://${d.authority}")
                 .buildUpon().appendPath(romFile.absolutePath).build()
         }
         val resolvedExtras = config.extras.mapNotNull { spec -> resolveExtra(context, spec, romFile) }
@@ -30,7 +29,6 @@ object EmulatorIntentBuilder {
             action = config.action,
             dataUri = dataUri,
             mimeType = if (dataUri != null) config.mimeType else null,
-            flagsHex = "0x${Integer.toHexString(config.intentFlags)}",
             extras = resolvedExtras,
         )
     }

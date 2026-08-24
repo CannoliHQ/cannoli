@@ -18,7 +18,6 @@ sealed class DataBinding {
     data class FileProvider(val grantPermission: Boolean = true) : DataBinding()
     data object AbsolutePath : DataBinding()
     data object ExternalStorageSaf : DataBinding()
-    data class CustomScheme(val scheme: String, val authority: String) : DataBinding()
 }
 
 data class ExtraSpec(
@@ -41,4 +40,4 @@ enum class ExtraValueKind {
     BOOL,
 }
 
-enum class LaunchMethod { INTENT, SHELL, DELFINO }
+enum class LaunchMethod { INTENT, DELFINO }
