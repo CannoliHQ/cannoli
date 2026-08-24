@@ -82,15 +82,15 @@ class LaunchManager(
     }
 
     /**
-     * Ensures the embedded RetroArch has a config to load.
+     * Writes the config the embedded runner loads, and records its path for [buildGameConfig] to
+     * compose the override tiers onto.
      *
-     * This used to seed itself from whichever external RetroArch the global setting named, and
-     * re-sync whenever that file changed. With the source split there is no single external
-     * RetroArch to copy from, and Cannoli owns the embedded runner's config outright, so it is
-     * regenerated on every launch: an install upgraded from an older build gets today's default
-     * keys immediately instead of carrying whatever it happened to have on disk forever.
+     * Regenerated on every launch rather than seeded once, so an install upgraded from an older
+     * build gets today's default keys immediately instead of carrying whatever it had on disk. It
+     * was called syncRetroArchConfig back when it copied from a separately installed RetroArch;
+     * nothing external is involved now, and the old name read as dead code that could be deleted.
      */
-    fun syncRetroArchConfig(root: File) {
+    fun writeRunnerConfig(root: File) {
         val raDir = CannoliPaths(root).configRetroArch
         raDir.mkdirs()
         val localConfig = File(raDir, "retroarch.cfg")
@@ -381,7 +381,7 @@ class LaunchManager(
                                 coreId = core,
                             ))
                         }
-                        syncRetroArchConfig(File(settings.sdCardRoot))
+                        writeRunnerConfig(File(settings.sdCardRoot))
                         val launchConfig = buildGameConfig(rom, core) ?: raConfigPath
                         retroArchLauncher.launchRicotta(launchFile, core, launchConfig, buildRicottaIgm(rom))
                     } else {
@@ -463,7 +463,7 @@ class LaunchManager(
                 platformTag = rom.platformTag, romId = rom.id, coreId = core,
             ))
         }
-        syncRetroArchConfig(File(settings.sdCardRoot))
+        writeRunnerConfig(File(settings.sdCardRoot))
         val launchConfig = buildGameConfig(rom, core, resume = true, slot = resumeSlot) ?: raConfigPath
         val result = retroArchLauncher.launchRicotta(launchFile, core, launchConfig, buildRicottaIgm(rom))
         return launchResultDialog(result, rom.platformTag, rom.id)

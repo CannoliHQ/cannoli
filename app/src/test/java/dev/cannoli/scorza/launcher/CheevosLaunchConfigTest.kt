@@ -42,7 +42,7 @@ class CheevosLaunchConfigTest : LaunchConfigHarness() {
     }
 
     /**
-     * Seeds a stale cheevos block into the base config. syncRetroArchConfig now regenerates the
+     * Seeds a stale cheevos block into the base config. writeRunnerConfig now regenerates the
      * base every launch, so the seed is overwritten before buildGameConfig reads it; these cases
      * therefore duplicate the plain logged-in/out cases and simply reconfirm the plumbing wins.
      */

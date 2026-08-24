@@ -29,8 +29,7 @@ object LaunchModule {
     @Provides @Singleton
     fun provideRetroArchLauncher(
         @ApplicationContext context: Context,
-        settings: SettingsRepository,
-    ): RetroArchLauncher = RetroArchLauncher(context) { settings.retroArchPackage }
+    ): RetroArchLauncher = RetroArchLauncher(context)
 
     @Provides @Singleton
     fun provideDelfinoLauncher(

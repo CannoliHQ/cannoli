@@ -268,7 +268,6 @@ class SettingsViewModel @Inject constructor(
         val fghCollectionId: Long?,
         val sdRoot: String,
         val romDirectory: String,
-        val raPackage: String,
         val toolsName: String,
         val portsName: String,
         val releaseChannel: String,
@@ -727,7 +726,6 @@ class SettingsViewModel @Inject constructor(
         fghCollectionId = settings.fghCollectionId,
         sdRoot = settings.sdCardRoot,
         romDirectory = settings.romDirectory,
-        raPackage = settings.retroArchPackage,
         toolsName = settings.toolsName,
         portsName = settings.portsName,
         releaseChannel = settings.releaseChannel,
@@ -767,7 +765,6 @@ class SettingsViewModel @Inject constructor(
         settings.fghCollectionId = snap.fghCollectionId
         settings.sdCardRoot = snap.sdRoot
         settings.romDirectory = snap.romDirectory
-        settings.retroArchPackage = snap.raPackage
         settings.toolsName = snap.toolsName
         settings.portsName = snap.portsName
         settings.releaseChannel = snap.releaseChannel

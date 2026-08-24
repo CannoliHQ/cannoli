@@ -31,10 +31,7 @@ data class RicottaIgm(
     val curatedSettings: Boolean = true,
 )
 
-class RetroArchLauncher(
-    private val context: Context,
-    private val getRetroArchPackage: () -> String,
-) {
+class RetroArchLauncher(private val context: Context) {
     // Managed RicottaArch: structured launch contract that drives the shared Cannoli in-game
     // menu, targeting the RetroArch component embedded in this APK.
     fun launchRicotta(

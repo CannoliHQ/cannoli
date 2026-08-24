@@ -181,10 +181,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         get() = jsonRead { optString(KEY_ROM_DIRECTORY, "") }
         set(value) = jsonWrite { if (value.isEmpty()) remove(KEY_ROM_DIRECTORY) else put(KEY_ROM_DIRECTORY, value) }
 
-    var retroArchPackage: String
-        get() = jsonRead { optString(KEY_RA_PACKAGE, DEFAULT_RA_PACKAGE) }
-        set(value) = jsonWrite { put(KEY_RA_PACKAGE, value) }
-
     var textSize: TextSize
         get() = TextSize.fromString(jsonRead { if (has(KEY_TEXT_SIZE)) optString(KEY_TEXT_SIZE) else null })
         set(value) = jsonWrite { put(KEY_TEXT_SIZE, value.name) }
@@ -490,11 +486,9 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         set(value) = jsonWrite { put(KEY_ROMM_SAVE_BACKUP_COUNT, value.coerceAtLeast(0)) }
 
     companion object {
-        const val DEFAULT_RA_PACKAGE = "dev.cannoli.ricotta.aarch64"
         private const val KEY_SETUP_COMPLETED = "setup_completed"
         private const val KEY_SD_ROOT = "sd_root"
         private const val KEY_ROM_DIRECTORY = "rom_directory"
-        private const val KEY_RA_PACKAGE = "ra_package"
         private const val KEY_TEXT_SIZE = "text_size"
         private const val KEY_FONT = "font"
         private const val KEY_LANGUAGE = "language"
