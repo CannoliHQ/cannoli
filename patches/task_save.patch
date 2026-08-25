@@ -1,5 +1,5 @@
 diff --git a/tasks/task_save.c b/tasks/task_save.c
-index 161fce6462..9cc0a6e412 100644
+index 161fce6462..8aa2d020a3 100644
 --- a/tasks/task_save.c
 +++ b/tasks/task_save.c
 @@ -794,6 +794,21 @@ static void task_save_handler(retro_task_t *task)
@@ -53,38 +53,55 @@ index 161fce6462..9cc0a6e412 100644
  
        task_load_handler_finished(task, state);
     }
-@@ -1481,13 +1504,33 @@ static void save_state_cb(retro_task_t *task,
+@@ -1481,13 +1504,38 @@ static void save_state_cb(retro_task_t *task,
     {
        char               *path   = strdup(state->path);
        if (state->flags & SAVE_TASK_FLAG_THUMBNAIL_ENABLE)
+-         take_screenshot(config_get_ptr()->paths.directory_screenshot,
 +      {
 +#ifdef HAVE_RICOTTA_OSD
-+         /* Written on this thread rather than queued, so the notification below
-+          * cannot beat the file it describes. */
-+         bool threaded = false;
-+#else
-+         bool threaded = true;
++         /* Latched rather than raised here. The screenshot task raises it once the
++          * PNG is on disk, so the notification still cannot beat the file it names
++          * while the encode no longer runs on this thread. */
++         if (!error)
++            ricotta_osd_defer_save((state->flags & SAVE_TASK_FLAG_UNDO_SAVE)
++                  ? RICOTTA_OSD_UNDO_SAVE_STATE : RICOTTA_OSD_SAVE_STATE,
++                  state->state_slot);
 +#endif
-          take_screenshot(config_get_ptr()->paths.directory_screenshot,
++         if (!take_screenshot(config_get_ptr()->paths.directory_screenshot,
                 path, true,
 -               state->flags & SAVE_TASK_FLAG_HAS_VALID_FB, false, true);
-+               state->flags & SAVE_TASK_FLAG_HAS_VALID_FB, false, threaded);
++               state->flags & SAVE_TASK_FLAG_HAS_VALID_FB, false, true))
++         {
++            /* The one blocking task slot was taken, so nothing was queued. Write it
++             * here instead: the stall is worth more than a missing thumbnail. */
++            take_screenshot(config_get_ptr()->paths.directory_screenshot,
++                  path, true,
++                  state->flags & SAVE_TASK_FLAG_HAS_VALID_FB, false, false);
++#ifdef HAVE_RICOTTA_OSD
++            ricotta_osd_flush_save();
++#endif
++         }
 +      }
        free(path);
     }
  #endif
  
 +#ifdef HAVE_RICOTTA_OSD
-+   /* The half of the save notification task_save_handler deferred: the thumbnail
-+    * exists now, so Cannoli can read it as soon as this lands. */
-+   if (!error && (state->flags & SAVE_TASK_FLAG_THUMBNAIL_ENABLE))
-+   {
-+      ricotta_osd_event((state->flags & SAVE_TASK_FLAG_UNDO_SAVE)
-+            ? RICOTTA_OSD_UNDO_SAVE_STATE : RICOTTA_OSD_SAVE_STATE,
-+            state->state_slot);
-+   }
++   ricotta_save_end();
 +#endif
 +
     free(state);
  }
+ 
+@@ -1554,6 +1602,10 @@ static void task_push_save_state(const char *path, void *data, size_t len, bool
+       free(task);
+       free(state);
+    }
++#ifdef HAVE_RICOTTA_OSD
++   else
++      ricotta_save_begin();
++#endif
+ 
+    return;
  

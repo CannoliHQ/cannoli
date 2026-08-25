@@ -35,6 +35,7 @@ command:command.c
 configuration:configuration.c configuration.h
 disk_control_interface:disk_control_interface.c
 gfx_widgets:gfx/gfx_widgets.c
+gl2:gfx/drivers/gl2.c
 netplay_frontend:network/netplay/netplay_frontend.c
 retroarch:retroarch.c
 task_autodetect:tasks/task_autodetect.c

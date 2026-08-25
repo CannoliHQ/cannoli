@@ -1867,6 +1867,41 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeCheatHardcoreActive(
 /* Called from RetroArch source sites (HAVE_RICOTTA_OSD) when Cannoli owns an
  * event, with structured data. type: 0 save, 1 load, 4 undo-save. slot: RetroArch
  * state_slot (< 0 = auto). */
+static volatile int g_pending_save_type = -1;
+static volatile int g_pending_save_slot;
+static volatile int g_save_active;
+
+void ricotta_osd_defer_save(int type, int slot)
+{
+   g_pending_save_slot = slot;
+   g_pending_save_type = type;
+}
+
+void ricotta_osd_flush_save(void)
+{
+   int type = g_pending_save_type;
+
+   if (type < 0)
+      return;
+   g_pending_save_type = -1;
+   ricotta_osd_event(type, g_pending_save_slot);
+}
+
+void ricotta_save_begin(void)
+{
+   g_save_active = 1;
+}
+
+void ricotta_save_end(void)
+{
+   g_save_active = 0;
+}
+
+int ricotta_save_is_active(void)
+{
+   return g_save_active;
+}
+
 void ricotta_osd_event(int type, int slot)
 {
    /* Queued, not called: this may run on RetroArch's task thread (threaded savestates) or inside

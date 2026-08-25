@@ -1,8 +1,22 @@
 diff --git a/tasks/task_screenshot.c b/tasks/task_screenshot.c
-index f583d84c50..3adbab2604 100644
+index f583d84c50..3b966bc44c 100644
 --- a/tasks/task_screenshot.c
 +++ b/tasks/task_screenshot.c
-@@ -399,10 +399,18 @@ static void task_screenshot_callback(retro_task_t *task,
+@@ -356,6 +356,13 @@ static void task_screenshot_handler(retro_task_t *task)
+ #endif
+    }
+ 
++#ifdef HAVE_RICOTTA_OSD
++   /* The save notification task_save latched. Raised here, after the write, so
++    * Cannoli never reads a thumbnail that is not on disk yet. A no-op unless a
++    * savestate queued this screenshot. */
++   ricotta_osd_flush_save();
++#endif
++
+    if (task->title)
+       task_free_title(task);
+ 
+@@ -399,10 +406,18 @@ static void task_screenshot_callback(retro_task_t *task,
     if (!(state = (screenshot_task_state_t*)task->state))
        return;
  

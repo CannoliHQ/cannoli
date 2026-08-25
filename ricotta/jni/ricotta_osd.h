@@ -34,6 +34,19 @@ enum ricotta_osd_type
  * (0 otherwise) on RICOTTA_OSD_CHEEVOS_LOGIN_FAILED. It is unused elsewhere. */
 void ricotta_osd_event(int type, int slot);
 
+/* The save notification is deferred until the thumbnail it names exists on disk. task_save latches
+ * it before queueing the screenshot; the screenshot task raises it once the PNG is written. That
+ * ordering used to be bought by encoding the PNG on the runloop thread, which stalled the frame. */
+void ricotta_osd_defer_save(int type, int slot);
+void ricotta_osd_flush_save(void);
+
+/* Open across a savestate. Video drivers skip black frame insertion while it is set: a save stalls
+ * the runloop, and whichever frame was swapped last stays on screen for the duration, so a BFI dark
+ * frame reads as the screen blanking. */
+void ricotta_save_begin(void);
+void ricotta_save_end(void);
+int  ricotta_save_is_active(void);
+
 /* The input hooks RetroArch's android_input.c calls. Declared here because this header is
  * force-included everywhere, which keeps the patch down to the two call sites: an extern in the
  * patch itself would be a third hunk to rebase, anchored on whatever happened to sit above it. */

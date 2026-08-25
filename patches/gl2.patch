@@ -1,0 +1,17 @@
+diff --git a/gfx/drivers/gl2.c b/gfx/drivers/gl2.c
+index 9c79a8b118..a382342000 100644
+--- a/gfx/drivers/gl2.c
++++ b/gfx/drivers/gl2.c
+@@ -4391,6 +4391,12 @@ static bool gl2_frame(void *data, const void *frame,
+          && !video_info->input_driver_nonblock_state
+          && !video_info->runloop_is_slowmotion
+          && !video_info->runloop_is_paused
++#ifdef HAVE_RICOTTA_OSD
++         /* A savestate stalls the runloop, and the last frame swapped before the
++          * stall stays on screen for its duration. Without this the dark half of
++          * the strobe is what sits there, which reads as the screen blanking. */
++         && !ricotta_save_is_active()
++#endif
+          && !(gl->flags & GL2_FLAG_MENU_TEXTURE_ENABLE))
+    {
+       unsigned n;
