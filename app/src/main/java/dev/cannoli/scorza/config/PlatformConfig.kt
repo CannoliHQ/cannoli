@@ -684,6 +684,9 @@ class PlatformConfig(
         "dev.eden.eden_emulator" to "Eden",
         "dev.eden.eden_emulator.nightly" to "Eden Nightly",
         "dev.legacy.eden_emulator" to "Eden (Legacy)",
+        "app.gamenative" to "GameNative",
+        "gamehub.lite" to "GameHub Lite",
+        "io.wip.pico8" to "PICO-8 for Android",
     )
 
     fun getDisplayName(tag: String): String {
