@@ -626,9 +626,17 @@ fun AppNavGraph(
     val topExtra = titleMetrics.rowBelowInk + edge - titleMetrics.titleBelowInk
     val bottomExtra = titleMetrics.rowAboveInk + edge
     val rhythm =
-        solveListRhythm(available, titleHeight, barHeight, rowHeight, topExtra, bottomExtra, true, pixel)
+        solveListRhythm(
+            available = available, titleHeight = titleHeight, barHeight = barHeight,
+            rowHeight = rowHeight, topExtra = topExtra, bottomExtra = bottomExtra,
+            titled = true, pixel = pixel,
+        )
     val untitledRhythm =
-        solveListRhythm(available, titleHeight, barHeight, rowHeight, topExtra, bottomExtra, false, pixel)
+        solveListRhythm(
+            available = available, titleHeight = titleHeight, barHeight = barHeight,
+            rowHeight = rowHeight, topExtra = topExtra, bottomExtra = bottomExtra,
+            titled = false, pixel = pixel,
+        )
     CompositionLocalProvider(
         LocalListRhythm provides rhythm,
         LocalUntitledListRhythm provides untitledRhythm

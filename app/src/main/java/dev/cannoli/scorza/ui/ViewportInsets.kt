@@ -27,8 +27,12 @@ fun effectiveViewportPadding(): PaddingValues {
     val config = LocalConfiguration.current
     val portrait = config.orientation == Configuration.ORIENTATION_PORTRAIT
     val rect = computeScreenGeometryRect(
-        config.screenWidthDp, config.screenHeightDp,
-        insets.geometryWidthPct, insets.geometryHeightPct, insets.geometryXPct, insets.geometryYPct,
+        surfaceWidth = config.screenWidthDp,
+        surfaceHeight = config.screenHeightDp,
+        widthPct = insets.geometryWidthPct,
+        heightPct = insets.geometryHeightPct,
+        xPct = insets.geometryXPct,
+        yPct = insets.geometryYPct,
     )
     val bottomMargin = if (portrait) insets.portraitMarginPx else 0
     val density = LocalDensity.current

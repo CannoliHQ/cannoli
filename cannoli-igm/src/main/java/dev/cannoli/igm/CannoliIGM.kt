@@ -104,8 +104,12 @@ fun CannoliIGM(
     val density = LocalDensity.current
     val portrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
     val geoRect = dev.cannoli.ui.computeScreenGeometryRect(
-        configuration.screenWidthDp, configuration.screenHeightDp,
-        config.geometryWidthPct, config.geometryHeightPct, config.geometryXPct, config.geometryYPct,
+        surfaceWidth = configuration.screenWidthDp,
+        surfaceHeight = configuration.screenHeightDp,
+        widthPct = config.geometryWidthPct,
+        heightPct = config.geometryHeightPct,
+        xPct = config.geometryXPct,
+        yPct = config.geometryYPct,
     )
     val bottomMarginPx = if (portrait) config.portraitMarginPx else 0
     val viewportPadding = with(density) {
