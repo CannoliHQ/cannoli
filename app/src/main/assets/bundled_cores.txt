@@ -1,0 +1,37 @@
+# What each bundled core was when it was bundled, written by scripts/record_bundled_core.py.
+#
+# The etag lets the app ask the buildbot whether a build changed rather than re-downloading
+# to find out. The date is when that binary was built, which is the only honest way to say
+# which build a core from the APK actually is.
+#
+# <abi> <core> <etag> <built>
+arm64-v8a gambatte_libretro "3504022420" 2026-08-25
+arm64-v8a genesis_plus_gx_libretro "3346916247" 2026-08-25
+arm64-v8a handy_libretro "3353267110" 2026-08-25
+arm64-v8a mednafen_ngp_libretro "3621552574" 2026-08-25
+arm64-v8a mednafen_pce_fast_libretro "1147051883" 2026-08-25
+arm64-v8a mednafen_vb_libretro "584890302" 2026-08-25
+arm64-v8a mednafen_wswan_libretro "2611555573" 2026-08-25
+arm64-v8a mgba_libretro "3864739091" 2026-08-25
+arm64-v8a nestopia_libretro "3520600642" 2026-08-25
+arm64-v8a pcsx_rearmed_libretro "4040828288" 2026-08-25
+arm64-v8a pokemini_libretro "2789979738" 2026-08-25
+arm64-v8a prosystem_libretro "2781599464" 2026-08-25
+arm64-v8a snes9x_libretro "257413542" 2026-08-25
+arm64-v8a stella_libretro "1164121523" 2026-08-25
+arm64-v8a swanstation_libretro "2986046144" 2026-08-25
+armeabi-v7a gambatte_libretro "3235892156" 2026-08-25
+armeabi-v7a genesis_plus_gx_libretro "1956561885" 2026-08-25
+armeabi-v7a handy_libretro "3881694299" 2026-08-25
+armeabi-v7a mednafen_ngp_libretro "4057851985" 2026-08-25
+armeabi-v7a mednafen_pce_fast_libretro "3697277891" 2026-08-25
+armeabi-v7a mednafen_vb_libretro "3924533654" 2026-08-25
+armeabi-v7a mednafen_wswan_libretro "4012613777" 2026-08-25
+armeabi-v7a mgba_libretro "4234132740" 2026-08-25
+armeabi-v7a nestopia_libretro "2371467992" 2026-08-25
+armeabi-v7a pcsx_rearmed_libretro "2270777446" 2026-08-25
+armeabi-v7a pokemini_libretro "2395723807" 2026-08-25
+armeabi-v7a prosystem_libretro "535556244" 2026-08-25
+armeabi-v7a snes9x_libretro "3864284128" 2026-08-25
+armeabi-v7a stella_libretro "1730023912" 2026-08-25
+armeabi-v7a swanstation_libretro "605635491" 2026-08-25

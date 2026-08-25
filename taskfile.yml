@@ -3,6 +3,7 @@ version: '3'
 vars:
   BUILDBOT: https://buildbot.libretro.com/nightly/android/latest
   CORES_DIR: app/src/main/jniLibs
+  MANIFEST: app/src/main/assets/bundled_cores.txt
   KITCHEN_SRC: ../cannoli-kitchen
   KITCHEN_DEST: app/src/main/assets/kitchen
   PKG: dev.cannoli.scorza
@@ -43,10 +44,19 @@ tasks:
               continue
             fi
             echo "FETCH ${arch}/{{.ITEM}}"
-            curl -sfL "{{.BUILDBOT}}/${arch}/${zip}" -o "/tmp/${zip}" && \
-              unzip -o "/tmp/${zip}" -d "${dest}" && \
-              rm "/tmp/${zip}" || \
+            # The etag is only knowable here. Recorded per fetch rather than for the whole task,
+            # because a core skipped above keeps whatever build it already has.
+            if curl -sfL -D "/tmp/${zip}.h" "{{.BUILDBOT}}/${arch}/${zip}" -o "/tmp/${zip}" && \
+                 unzip -o "/tmp/${zip}" -d "${dest}"; then
+              etag=$(grep -i '^etag:' "/tmp/${zip}.h" | tr -d '\r' | cut -d' ' -f2-)
+              lastmod=$(grep -i '^last-modified:' "/tmp/${zip}.h" | tr -d '\r' | cut -d' ' -f2-)
+              python3 scripts/record_bundled_core.py \
+                --manifest {{.MANIFEST}} --abi "${arch}" --core "{{.ITEM}}" \
+                --etag "${etag}" --last-modified "${lastmod}"
+            else
               echo "FAIL ${arch}/{{.ITEM}}"
+            fi
+            rm -f "/tmp/${zip}" "/tmp/${zip}.h"
           done
 
   cores:clean:
