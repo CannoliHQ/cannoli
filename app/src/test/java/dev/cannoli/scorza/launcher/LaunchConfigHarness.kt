@@ -23,8 +23,12 @@ abstract class LaunchConfigHarness {
     val gameOverrides = mockk<dev.cannoli.scorza.db.GameOverrideStore>(relaxed = true)
     val retroArchLauncher = mockk<RetroArchLauncher>(relaxed = true)
 
-    /** The core every harness launch resolves to; the override tiers are keyed by it. */
-    val launchCore = "mgba_libretro"
+    /**
+     * The core every harness launch resolves to; the override tiers and the save state directory
+     * are keyed by it. Settable so a test can launch the same game on a second core; JUnit builds a
+     * fresh instance per test, so a change cannot reach another one.
+     */
+    var launchCore = "mgba_libretro"
 
     fun manager(root: File): LaunchManager {
         every { settings.sdCardRoot } returns root.absolutePath

@@ -2,6 +2,7 @@ package dev.cannoli.scorza.launcher
 
 import io.mockk.every
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Test
 import java.io.File
 
@@ -35,12 +36,29 @@ class GameConfigSaveDirTest : LaunchConfigHarness() {
         assertEquals("false", cfg["sort_savefiles_by_content_enable"])
     }
 
-    @Test fun `save states stay pinned per game with sorting off`() {
+    /**
+     * States are keyed by core as well as by game. A state is only loadable by the core that wrote
+     * it and nothing in the file says who that was, so sharing one directory across a platform's
+     * cores is what handed a mupen64plus-next state to a sibling core and crashed it.
+     */
+    @Test fun `save states are pinned per game and per core, with sorting off`() {
         val root = tmp.newFolder()
         val cfg = launchedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA"))
-        assertEquals(File(root, "Save States/GBA/Game").absolutePath, cfg["savestate_directory"])
+        assertEquals(
+            File(root, "Save States/GBA/Game/mgba_libretro").absolutePath,
+            cfg["savestate_directory"],
+        )
         assertEquals("false", cfg["sort_savestates_enable"])
         assertEquals("false", cfg["sort_savestates_by_content_enable"])
+    }
+
+    // Two cores on one platform must not share a directory, which is the whole point of the key.
+    @Test fun `a different core for the same game is a different directory`() {
+        val root = tmp.newFolder()
+        val default = launchedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA"))
+        launchCore = "vbam_libretro"
+        val other = launchedConfig(root, rom(root, "Roms/GBA/Game.gba", "GBA"))
+        assertNotEquals(default["savestate_directory"], other["savestate_directory"])
     }
 
     // The base config is written once and only when it is absent, so an install made before the

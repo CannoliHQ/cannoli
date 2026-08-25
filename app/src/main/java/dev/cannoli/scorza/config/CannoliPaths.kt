@@ -94,11 +94,23 @@ class CannoliPaths(val root: File) {
     fun romsFor(tag: String): File = File(romsDir, tag)
 
     // Per-game helpers
-    fun saveStateDir(tag: String, romBaseName: String): File =
+    /** The per-game folder. Every core's states for that game live under it, one folder each. */
+    fun saveStateGameDir(tag: String, romBaseName: String): File =
         File(saveStatesFor(tag), romBaseName)
 
-    fun saveStateBase(tag: String, romBaseName: String): File =
-        File(saveStateDir(tag, romBaseName), "$romBaseName.state")
+    /**
+     * Where one core keeps its states for one game.
+     *
+     * Keyed by core because a state is only loadable by the core that wrote it, and nothing in the
+     * file says who that was: mupen64plus-next accepts on a version prefix and the ROM's MD5, so a
+     * state written by one N64 core is handed to another and crashes it. Cannoli tells RetroArch
+     * where to write, so the key is a directory rather than a filename convention.
+     */
+    fun saveStateDir(tag: String, romBaseName: String, coreId: String): File =
+        File(saveStateGameDir(tag, romBaseName), coreId)
+
+    fun saveStateBase(tag: String, romBaseName: String, coreId: String): File =
+        File(saveStateDir(tag, romBaseName, coreId), "$romBaseName.state")
 
     fun sramFile(tag: String, romBaseName: String): File =
         File(savesFor(tag), "$romBaseName.srm")

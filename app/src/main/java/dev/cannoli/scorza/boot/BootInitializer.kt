@@ -69,6 +69,8 @@ class BootInitializer @Inject constructor(
     private val setupCoordinator: SetupCoordinator,
     private val autoconfigSeeder: AutoconfigSeeder,
     private val autoconfigRepository: AutoconfigRepository,
+    private val romsRepository: dev.cannoli.scorza.db.RomsRepository,
+    private val gameOverrides: dev.cannoli.scorza.db.GameOverrideStore,
 ) {
 
     suspend fun run(onPhase: (BootPhase, Float, String) -> Unit): BootResult {
@@ -112,6 +114,11 @@ class BootInitializer @Inject constructor(
         }
         ioScope.launch {
             dev.cannoli.scorza.util.DirectoryLayout.ensure(root, romDir, context.assets, platformConfig, context)
+            // A v1 install's states are shared across a platform's cores, which is what handed a
+            // mupen64plus-next state to a sibling core and crashed it. Runs here rather than at
+            // launch because it is a one-time upgrade, and it needs no disk scan: the roms and
+            // their overrides are already in the database from the previous run.
+            migrateSaveStatesByCore(root)
         }
 
         val importer = Importer(
@@ -189,6 +196,31 @@ class BootInitializer @Inject constructor(
                     onPhase(BootPhase.LIBRARY_REFRESH, current.toFloat() / total.coerceAtLeast(1), tag)
                 },
                 onComplete = { cont.resume(BootResult.Success) },
+            )
+        }
+    }
+
+    /**
+     * Adopt loose save states into the folder of the core that will load them. The effective core
+     * is the game's own override first, then the platform's mapping: sending an overridden game's
+     * state to the platform's core would move a working state away from the only core that can
+     * load it.
+     */
+    private fun migrateSaveStatesByCore(root: java.io.File) {
+        val paths = dev.cannoli.scorza.config.CannoliPaths(root)
+        val overrides = runCatching {
+            romsRepository.allRoms().associate { rom ->
+                (rom.platformTag to dev.cannoli.core.RomKey.baseName(rom.path)) to
+                    gameOverrides.get(rom.id)?.coreId?.ifEmpty { null }
+            }
+        }.getOrDefault(emptyMap())
+
+        val result = dev.cannoli.scorza.util.SaveStateCoreMigration.run(paths) { tag, base ->
+            overrides[tag to base] ?: platformConfig.getCoreName(tag)
+        }
+        if (result.files > 0) {
+            dev.cannoli.scorza.util.ErrorLog.write(
+                "save states keyed by core: ${result.files} files across ${result.games} games"
             )
         }
     }

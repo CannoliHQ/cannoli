@@ -129,7 +129,7 @@ class LaunchManager(
                 readOverrideLayer(paths.customCfg),
             ),
         )
-        val stateDir = paths.saveStateDir(rom.platformTag, romName)
+        val stateDir = paths.saveStateDir(rom.platformTag, romName, core)
         stateDir.mkdirs()
         val saveDir = paths.savesFor(rom.platformTag)
         saveDir.mkdirs()
@@ -281,13 +281,23 @@ class LaunchManager(
         return rom.path
     }
 
+    /**
+     * The core this ROM would run on: its own override first, then the platform's mapping. Save
+     * states are keyed by it, so the picker and the launch have to agree on the answer.
+     */
+    fun coreForStates(rom: Rom): String? =
+        overrideFor(rom)?.coreId?.ifEmpty { null } ?: platformConfig.getCoreName(rom.platformTag)
+
     /** The stored source that applies to this ROM, game override first. Null means unset. */
     private fun sourceFor(rom: Rom): EmulatorSource? =
         overrideFor(rom)?.source ?: platformConfig.getPlatformChoice(rom.platformTag)?.source
 
     fun saveStateBasePath(rom: Rom): String {
         val romName = normalizedRomName(rom)
-        return CannoliPaths(settings.sdCardRoot).saveStateBase(rom.platformTag, romName).absolutePath
+        val core = coreForStates(rom) ?: return CannoliPaths(settings.sdCardRoot)
+            .saveStateGameDir(rom.platformTag, romName).absolutePath
+        return CannoliPaths(settings.sdCardRoot)
+            .saveStateBase(rom.platformTag, romName, core).absolutePath
     }
 
     fun slotOccupancy(rom: Rom): List<Boolean> =
@@ -650,7 +660,9 @@ class LaunchManager(
     private fun buildRicottaIgm(rom: Rom): RicottaIgm {
         val paths = CannoliPaths(settings.sdCardRoot)
         val romName = normalizedRomName(rom)
-        val stateBase = paths.saveStateBase(rom.platformTag, romName)
+        val stateBase = paths.saveStateBase(
+            rom.platformTag, romName, coreForStates(rom).orEmpty()
+        )
         val batteryDisplay = when (settings.batteryDisplay) {
             dev.cannoli.scorza.settings.BatteryDisplay.HIDE -> BatteryDisplayMode.HIDE
             dev.cannoli.scorza.settings.BatteryDisplay.PERCENT -> BatteryDisplayMode.PERCENT

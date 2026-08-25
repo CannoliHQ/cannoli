@@ -640,6 +640,11 @@ class RomDirectoryWalker(
         val stateSubTarget = File(statesTagDir, toStem)
         if (stateSub.isDirectory && !stateSubTarget.exists() && stateSub.renameTo(stateSubTarget)) {
             renameStemMatchedFiles(stateSubTarget, fromStem, toStem)
+            // States are keyed by core now, so each core has a folder inside the game folder and
+            // the files that carry the ROM's name are one level further down.
+            stateSubTarget.listFiles { f: File -> f.isDirectory }?.forEach {
+                renameStemMatchedFiles(it, fromStem, toStem)
+            }
         }
     }
 
