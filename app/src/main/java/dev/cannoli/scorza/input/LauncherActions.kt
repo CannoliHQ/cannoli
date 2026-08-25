@@ -107,12 +107,14 @@ class LauncherActions @Inject constructor(
         val fghId = validateFghCollection()
         gameListViewModel.showFavoriteStars = settings.contentMode != ContentMode.FIVE_GAME_HANDHELD
         systemListViewModel.scan(
-            showRecentlyPlayed = settings.showRecentlyPlayed,
-            showFavorites = settings.showFavorites,
-            contentMode = settings.contentMode,
-            fghCollectionId = fghId,
-            toolsName = settings.toolsName,
-            portsName = settings.portsName,
+            SystemListViewModel.ScanConfig(
+                showRecentlyPlayed = settings.showRecentlyPlayed,
+                showFavorites = settings.showFavorites,
+                contentMode = settings.contentMode,
+                fghCollectionId = fghId,
+                toolsName = settings.toolsName,
+                portsName = settings.portsName,
+            ),
             scanDisk = scanDisk,
             reconcileOrphans = reconcileOrphans,
             onProgress = onProgress,

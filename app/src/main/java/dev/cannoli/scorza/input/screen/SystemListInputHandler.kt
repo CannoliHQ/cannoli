@@ -72,12 +72,14 @@ class SystemListInputHandler @Inject constructor(
     override fun onBack() {
         if (systemListViewModel.isReorderMode()) {
             systemListViewModel.cancelReorder(
-                showRecentlyPlayed = settings.showRecentlyPlayed,
-                showFavorites = settings.showFavorites,
-                contentMode = settings.contentMode,
-                fghCollectionId = launcherActions.validateFghCollection(),
-                toolsName = settings.toolsName,
-                portsName = settings.portsName
+                SystemListViewModel.ScanConfig(
+                    showRecentlyPlayed = settings.showRecentlyPlayed,
+                    showFavorites = settings.showFavorites,
+                    contentMode = settings.contentMode,
+                        fghCollectionId = launcherActions.validateFghCollection(),
+                    toolsName = settings.toolsName,
+                    portsName = settings.portsName,
+                )
             )
         } else if (settings.mainMenuQuit) {
             nav.dialogState.value = DialogState.QuitConfirm
