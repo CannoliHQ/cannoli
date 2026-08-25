@@ -234,13 +234,6 @@ class SettingsViewModel @Inject constructor(
         Category("advanced", R.string.settings_advanced),
     )
 
-    private fun detectInstalledRaPackages(): List<String> {
-        val pm = packageManager ?: return emptyList()
-        return pm.getInstalledPackages(0)
-            .map { it.packageName }
-            .filter { it.startsWith("com.retroarch") || it.startsWith("dev.cannoli.ricotta") }
-    }
-
     private data class SettingsSnapshot(
         val textSize: TextSize,
         val font: String,
@@ -918,9 +911,11 @@ class SettingsViewModel @Inject constructor(
             add(SettingsItem("core_mapping", R.string.setting_emulator_mapping, isEditable = true))
             // No RetroArch package row: which RetroArch runs a platform is part of the mapping
             // itself now, so a global package would only be a second thing claiming that answer.
-            if (detectInstalledRaPackages().isNotEmpty()) {
-                add(SettingsItem("installed_cores", R.string.setting_installed_cores_all, isEditable = true))
-            }
+            //
+            // Nor is this row gated on one being installed. It used to be, from when RetroArch was
+            // a separate app and its cores were its own; the embedded runner keeps them in
+            // filesDir, so Cannoli always has cores to show and the gate only hid them.
+            add(SettingsItem("installed_cores", R.string.setting_installed_cores_all, isEditable = true))
             add(SettingsItem("always_save_on_quit", R.string.setting_always_save_on_quit, valueRes = onOff(settings.alwaysSaveOnQuit)))
             add(SettingsItem("igm_settings_mode", R.string.setting_igm_settings_mode, valueRes = when (settings.igmSettingsMode) {
                 IgmSettingsMode.CURATED -> R.string.value_igm_mode_curated
