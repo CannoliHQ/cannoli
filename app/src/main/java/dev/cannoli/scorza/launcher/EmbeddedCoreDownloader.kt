@@ -74,6 +74,37 @@ object EmbeddedCoreDownloader {
         }
     }
 
+    /**
+     * Pull the system files a downloaded core needs from the buildbot into its platform's BIOS
+     * directory. Fetched here rather than bundled because these are the two sets that must not
+     * ride in the APK: ScummVM's is 76 MB, and blueMSX's is original console firmware.
+     *
+     * Failure is not the core's failure. The core is already installed and runs; a missing engine
+     * data set is a degraded platform, not a broken one, so this logs and returns.
+     */
+    fun installRemoteSystemFiles(context: Context, coreName: String, biosFor: (String) -> File): Boolean {
+        var allLanded = true
+        for (entry in SystemFiles.remoteFor(context.assets, coreName)) {
+            val tmp = File.createTempFile("system_", ".zip", context.cacheDir)
+            try {
+                fetch("${SystemFiles.BUILDBOT_SYSTEM}/${encode(entry.archive)}", tmp)
+                val dest = biosFor(entry.tag)
+                tmp.inputStream().use { SystemFiles.install(it, dest) }
+                Log.i(TAG, "installed ${entry.archive} into ${dest.name}")
+            } catch (t: Throwable) {
+                Log.w(TAG, "system files ${entry.archive} failed for $coreName", t)
+                allLanded = false
+            } finally {
+                tmp.delete()
+            }
+        }
+        return allLanded
+    }
+
+    // Buildbot asset names carry spaces. URLEncoder is form encoding, which turns a space into
+    // "+" and breaks the path, so only the space is replaced.
+    private fun encode(name: String): String = name.replace(" ", "%20")
+
     private fun pickAbi(): String =
         Build.SUPPORTED_ABIS?.firstOrNull { it == "arm64-v8a" || it == "armeabi-v7a" }
             ?: "arm64-v8a"

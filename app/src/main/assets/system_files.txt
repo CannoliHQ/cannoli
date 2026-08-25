@@ -1,0 +1,28 @@
+# System files a core needs beyond its BIOS: PPSSPP's fonts and shaders, MAME's cheat and hiscore
+# data, FBNeo's hiscore table. RetroArch's own Online Updater ships these; Cannoli fetches them
+# itself so the updater never has to be reachable.
+#
+# Bundled sets ride in assets/system and extract on first launch of the platform. Remote sets come
+# from the libretro buildbot when the core is downloaded, and are remote for a reason: ScummVM's is
+# 76 MB, and blueMSX's is 84 original console firmware ROMs that Cannoli must not redistribute.
+#
+# Keyed by core and platform both, because the destination is per-platform (BIOS/<TAG>) while the
+# need belongs to the core. A core serving two platforms gets a row each.
+#
+# The folders column names what the archive unpacks, comma separated, and does different work for
+# the two kinds. A remote set whose folder is absent means the core is not installed, because only a
+# download can put it there. A bundled set whose folder is absent is re-extracted at the next
+# launch, because the APK is already carrying it.
+#
+# The archive name is last so the ones carrying spaces and parentheses survive the split, and it is
+# spelled exactly as the buildbot spells it: "FinalBurn Neo.zip" is a 404, the real asset is
+# "FinalBurn Neo (hiscore).zip".
+#
+# <core> <TAG> <bundled|remote> <folders> <archive>
+ppsspp_libretro         PSP           bundled  PPSSPP              PPSSPP.zip
+mame2003_plus_libretro  MAME          bundled  mame2003-plus       MAME 2003-Plus.zip
+mame2003_libretro       MAME          bundled  mame2003            MAME 2003.zip
+fbneo_libretro          FBN           bundled  fbneo               FinalBurn Neo (hiscore).zip
+fbneo_libretro          NEOGEO        bundled  fbneo               FinalBurn Neo (hiscore).zip
+bluemsx_libretro        COLECOVISION  remote   Databases,Machines  blueMSX.zip
+scummvm_libretro        SCUMMVM       remote   scummvm             ScummVM.zip

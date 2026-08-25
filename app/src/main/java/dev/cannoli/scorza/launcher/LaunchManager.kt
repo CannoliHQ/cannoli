@@ -133,8 +133,7 @@ class LaunchManager(
         stateDir.mkdirs()
         val saveDir = paths.savesFor(rom.platformTag)
         saveDir.mkdirs()
-        val biosDir = paths.biosFor(rom.platformTag)
-        biosDir.mkdirs()
+        val biosDir = prepareBios(rom.platformTag, paths.biosFor(rom.platformTag))
         val raSlot = if (slot > 0) slot - 1 else 0
         val cheevos = cheevosFor(rom)
         val hardcore = hardcoreInEffect(cheevos)
@@ -379,7 +378,7 @@ class LaunchManager(
                         // mapping naming one it does not have launched RetroArch and failed
                         // inside it. Migrated mappings make that the common case rather than a
                         // corner, since they name cores this runner has never downloaded.
-                        if (installedCoreService != null && core !in installedCoreService.embeddedCores()) {
+                        if (installedCoreService != null && !coreIsComplete(core, rom.platformTag)) {
                             return errorAndReset(DialogState.MissingCore(
                                 platformConfig.getCoreDisplayName(core),
                                 platformTag = rom.platformTag,
@@ -473,7 +472,7 @@ class LaunchManager(
         // Resume used to fire and forget: it discarded the LaunchResult and returned without
         // clearing launching, so a failed startActivity never reached onResume and every later
         // launch became a silent no-op. It now runs the same pre-checks and funnel as launchRom.
-        if (installedCoreService != null && core !in installedCoreService.embeddedCores()) {
+        if (installedCoreService != null && !coreIsComplete(core, rom.platformTag)) {
             return errorAndReset(DialogState.MissingCore(
                 platformConfig.getCoreDisplayName(core),
                 platformTag = rom.platformTag, romId = rom.id, coreId = core,
@@ -501,8 +500,34 @@ class LaunchManager(
      * cannot express it: FBNeo marks every entry optional, which is right for arcade romsets and
      * wrong for Neo Geo.
      */
-    private fun missingRequiredBios(tag: String, core: String): List<String> {
+    /**
+     * Installed means complete: the `.so` on disk and the system files that download alongside it.
+     * A core missing either cannot run, and both are Cannoli's to deliver, so one screen and one
+     * outlet serve them. Bundled sets are not consulted, since the APK carries them and
+     * [SystemFiles.ensureBundled] lays them down on this same path.
+     */
+    private fun coreIsComplete(core: String, tag: String): Boolean {
+        val service = installedCoreService ?: return true
+        if (core !in service.embeddedCores()) return false
         val biosDir = CannoliPaths(File(settings.sdCardRoot)).biosFor(tag)
+        return SystemFiles.remoteSetsPresent(context.assets, core, tag, biosDir)
+    }
+
+    /**
+     * The BIOS directory as a core will see it. Bundled system files land on first use, and they
+     * have to land before anything reads the directory: the gate runs ahead of the launch config,
+     * and PSP declares `PPSSPP/ppge_atlas.zim` required firmware while shipping it inside
+     * `PPSSPP.zip`. Extracting any later would block a platform on a file the APK is carrying for
+     * it. Every later call is a marker read.
+     */
+    private fun prepareBios(tag: String, dir: File): File {
+        dir.mkdirs()
+        SystemFiles.ensureBundled(context.assets, tag, dir, apkStamp(context))
+        return dir
+    }
+
+    private fun missingRequiredBios(tag: String, core: String): List<String> {
+        val biosDir = prepareBios(tag, CannoliPaths(File(settings.sdCardRoot)).biosFor(tag))
         return platformConfig.getFirmwareStatus(tag, core, biosDir)
             .filter { (entry, present) -> !entry.optional && !present }
             .map { (entry, _) -> File(entry.path).name }
@@ -765,11 +790,18 @@ class LaunchManager(
             return null
         }
 
+        // Identifies the installed build. Both the bundled cores and the bundled system files key
+        // their extraction markers on it, so an upgrade re-lays what it ships and nothing else.
+        // Falls back rather than throwing: this sits on the launch path, and a build we cannot
+        // identify is a reason to skip an extraction, never a reason to fail the launch.
+        fun apkStamp(context: Context): String =
+            context.applicationInfo?.sourceDir?.let { File(it).lastModified().toString() } ?: ""
+
         fun extractBundledCores(context: Context): String {
             val coresDir = File(context.filesDir, "cores")
             coresDir.mkdirs()
             val versionFile = File(coresDir, ".version")
-            val currentVersion = File(context.applicationInfo.sourceDir).lastModified().toString()
+            val currentVersion = apkStamp(context)
             if (versionFile.exists() && versionFile.readText() == currentVersion) return coresDir.absolutePath
             // Extraction only ever overwrites what the current APK bundles; it must never delete
             // a core, since a name dropped from the bundle (v2 is moving to download-on-first-run)
