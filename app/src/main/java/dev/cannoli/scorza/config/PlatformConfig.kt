@@ -612,7 +612,14 @@ class PlatformConfig(
             // The in-APK RetroArch loads from filesDir/cores, so presence is a file check rather
             // than a query. It never reports "unknown": the directory is always readable.
             EmulatorSource.Embedded -> candidateCoreIds.mapNotNull { coreId ->
-                val present = embeddedDir != null && File(embeddedDir, "${coreId}_android.so").exists()
+                // Installed means complete, not merely present: a core whose system files are a
+                // separate download has not arrived until they have. Only remote sets count, since
+                // a bundled set's absence is not something downloading the core would fix.
+                val present = embeddedDir != null &&
+                    File(embeddedDir, "${coreId}_android.so").exists() &&
+                    dev.cannoli.scorza.launcher.SystemFiles.remoteSetsPresent(
+                        assets, coreId, upper, paths.biosFor(upper)
+                    )
                 when {
                     present -> dev.cannoli.scorza.ui.screens.EmulatorPickerOption(
                         coreId = coreId, displayName = getCoreDisplayName(coreId),

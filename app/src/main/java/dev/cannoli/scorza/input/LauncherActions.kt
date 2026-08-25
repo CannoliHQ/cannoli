@@ -62,8 +62,6 @@ class LauncherActions @Inject constructor(
     private val settingsViewModel: SettingsViewModel,
     private val saveSyncService: SaveSyncService,
     private val pathsProvider: CannoliPathsProvider,
-    private val coreInstaller: CoreInstaller,
-    private val coreInfo: dev.cannoli.scorza.config.CoreInfoRepository,
 ) {
 
     private var pendingLaunch: (() -> DialogState?)? = null
@@ -77,10 +75,7 @@ class LauncherActions @Inject constructor(
         pendingLaunch = null
         pendingRecentPath = null
         pendingRecentReorder = false
-        // A save-synced game reaches the launch through here rather than through launchSelectedRom,
-        // so it needs the same missing-core handling or the download only ever fires for one half
-        // of the library.
-        if (p != null) downloadThenLaunch(p.invoke(), p)?.let { nav.dialogState.value = it }
+        if (p != null) p.invoke()?.let { nav.dialogState.value = it }
         if (recentPath != null) {
             recordRecentlyPlayedByPath(recentPath)
             if (reorder) nav.pendingRecentlyPlayedReorder = true
@@ -254,31 +249,12 @@ class LauncherActions @Inject constructor(
         else -> null
     }
 
-    /**
-     * A mapping migrated off external RetroArch names a core the embedded runner has very likely
-     * never downloaded. Fetching it and launching when it lands keeps the migration invisible: the
-     * user's choice survived, only the file was missing. A core with no Android build can never
-     * arrive, so that one still reports missing.
-     */
-    private fun downloadThenLaunch(dialog: DialogState?, retry: () -> DialogState?): DialogState? {
-        val missing = dialog as? DialogState.MissingCore ?: return dialog
-        if (missing.coreId.isEmpty() || !coreInfo.isCurated(missing.coreId)) return dialog
-        coreInstaller.downloadCore(
-            context.packageName, missing.coreId, missing.coreName,
-            // A failed fetch lands back on the missing-core screen, which names the core and offers
-            // Change Emulator. Without it the launch just stops and the only word said about it is
-            // an OSD that has already gone.
-            onFailed = { nav.dialogState.value = missing },
-        ) { retry() }
-        return DialogState.Launching
-    }
-
     private fun launchSelectedRom(rom: Rom, resume: Boolean): DialogState? {
         val gameKey = RomKeys.relativeKey(rom.path, pathsProvider.romDir)
         val romId = saveSyncService.isSyncableGame(gameKey)
         if (romId == null) {
             val run = { if (resume) launchManager.resumeRom(rom) else launchManager.launchRom(rom) }
-            return downloadThenLaunch(run(), run)
+            return run()
         }
         val tag = rom.platformTag
         val base = java.text.Normalizer.normalize(rom.path.nameWithoutExtension, java.text.Normalizer.Form.NFC)
