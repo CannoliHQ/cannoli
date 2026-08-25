@@ -1,8 +1,18 @@
 diff --git a/tasks/task_screenshot.c b/tasks/task_screenshot.c
-index f583d84c50..3b966bc44c 100644
+index f583d84c50..1887e9d2a6 100644
 --- a/tasks/task_screenshot.c
 +++ b/tasks/task_screenshot.c
-@@ -356,6 +356,13 @@ static void task_screenshot_handler(retro_task_t *task)
+@@ -160,6 +160,9 @@ static bool screenshot_save_bmp(const char *path, const void *frame,
+ }
+ #endif
+ 
++/* Longest edge of a savestate thumbnail, in pixels. */
++#define SAVESTATE_THUMBNAIL_MAX_EDGE 640
++
+ static bool screenshot_dump_direct(screenshot_task_state_t *state)
+ {
+    struct scaler_ctx *scaler     = (struct scaler_ctx*)&state->scaler;
+@@ -356,6 +359,13 @@ static void task_screenshot_handler(retro_task_t *task)
  #endif
     }
  
@@ -16,7 +26,7 @@ index f583d84c50..3b966bc44c 100644
     if (task->title)
        task_free_title(task);
  
-@@ -399,10 +406,18 @@ static void task_screenshot_callback(retro_task_t *task,
+@@ -399,10 +409,18 @@ static void task_screenshot_callback(retro_task_t *task,
     if (!(state = (screenshot_task_state_t*)task->state))
        return;
  
@@ -35,3 +45,32 @@ index f583d84c50..3b966bc44c 100644
  
     free(state);
     /* Must explicitly set task->state to NULL here,
+@@ -561,6 +579,28 @@ static bool screenshot_dump(
+          state->out_height       = height;
+       }
+ 
++      /* Cap the long edge. "Native core output" is only small while the core runs at
++       * 1x: at an 8x internal resolution it is a 1.5 MP frame, and encoding that PNG
++       * costs about a second on ARM for something the menu draws small. Scaling first
++       * is far cheaper than encoding it, and keeps save time independent of the
++       * upscale setting. Cores at or below the cap keep the direct-encode fast path. */
++      {
++         unsigned longest         = (state->out_width > state->out_height)
++               ? state->out_width : state->out_height;
++
++         if (longest > SAVESTATE_THUMBNAIL_MAX_EDGE)
++         {
++            state->out_width      = (state->out_width
++                  * SAVESTATE_THUMBNAIL_MAX_EDGE) / longest;
++            state->out_height     = (state->out_height
++                  * SAVESTATE_THUMBNAIL_MAX_EDGE) / longest;
++            if (state->out_width  < 1)
++               state->out_width   = 1;
++            if (state->out_height < 1)
++               state->out_height  = 1;
++         }
++      }
++
+       state->flags              |= SS_TASK_FLAG_SILENCE;
+    }
+ 
