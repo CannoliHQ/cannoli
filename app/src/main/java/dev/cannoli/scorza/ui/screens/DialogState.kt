@@ -104,6 +104,21 @@ sealed interface DialogState {
         val coreId: String = "",
         val platformName: String = "",
     ) : DialogState
+    /**
+     * The core cannot parse this file. Distinct from a failed load: nothing about the content is
+     * wrong, the pairing is. Geolith takes the NeoSD `.neo` format, so a MAME-style Neo Geo romset
+     * is not content it fails on, it is content it has no parser for.
+     */
+    data class UnsupportedContent(
+        val platformName: String,
+        val coreName: String,
+        val extension: String,
+        // In the order the core declares them, which leads with the format it is actually for.
+        val supported: List<String> = emptyList(),
+        val platformTag: String? = null,
+        val romId: Long? = null,
+    ) : DialogState
+
     data class MissingApp(
         val appName: String,
         val packageName: String,

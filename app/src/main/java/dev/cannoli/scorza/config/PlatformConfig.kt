@@ -472,6 +472,9 @@ class PlatformConfig(
         }
     }
 
+    /** What the core parses. Empty when its `.info` did not say, which reads as unknown. */
+    fun coreExtensions(coreId: String): List<String> = coreInfo?.getExtensionsFor(coreId).orEmpty()
+
     /** Platform and core to the BIOS that pair genuinely needs. Hand-maintained. */
     private val requiredBios: Map<Pair<String, String>, Set<String>> by lazy {
         val parsed = mutableMapOf<Pair<String, String>, MutableSet<String>>()

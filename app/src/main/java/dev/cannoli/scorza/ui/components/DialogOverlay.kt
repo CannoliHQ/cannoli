@@ -945,6 +945,41 @@ fun DialogOverlay(
             buttonStyle = buttonStyle,
         )
 
+        is DialogState.UnsupportedContent -> LaunchIssue(
+            title = stringResource(R.string.launch_issue_unsupported, ".${dialogState.extension}"),
+            // A third line says what the core does read, so the answer to "then what do I need" is
+            // on the screen rather than left to the picker. Trimmed by line length rather than by
+            // a count, because formats are short: six of them still fit, while the wide computer
+            // cores that declare twenty would not. Those are also the cores this gate almost never
+            // fires for, since they read nearly everything. The order is the core's own, which
+            // leads with the format it is actually for.
+            subject = buildList {
+                val all = dialogState.supported.map { ".$it" }
+                // The pairing line carries the label, so the formats below it read as the answer to
+                // the title rather than as a loose list.
+                add(stringResource(
+                    if (all.isEmpty()) R.string.launch_issue_subject else R.string.launch_issue_supports,
+                    dialogState.platformName,
+                    dialogState.coreName,
+                ))
+                if (all.isNotEmpty()) {
+                    val shown = formatsThatFit(all, FORMAT_LINE_CHARS)
+                    val rest = all.size - shown
+                    val head = all.take(shown).joinToString(", ")
+                    add(
+                        if (rest > 0) {
+                            head + " " + pluralStringResource(
+                                R.plurals.launch_issue_more_formats, rest, rest
+                            )
+                        } else head
+                    )
+                }
+            }.joinToString("\n"),
+            confirmLabel = stringResource(R.string.label_change_emulator)
+                .takeIf { dialogState.platformTag != null },
+            buttonStyle = buttonStyle,
+        )
+
         is DialogState.MissingApp -> LaunchIssue(
             title = stringResource(R.string.launch_issue_app_missing),
             subject = stringResource(R.string.launch_issue_subject, dialogState.platformName, dialogState.appName),
@@ -1401,3 +1436,21 @@ internal fun ListDialogScreen(
 // on a 320dp handheld. Amiga's four Kickstart ROMs are the worst real case, so nothing is truncated
 // today; the cap is a guard for a core that declares more.
 private const val BIOS_FILES_SHOWN = 4
+
+// Roughly one line of the subject at its usual size. The screen shrinks a long subject rather
+// than clipping it, so this only decides where a list stops being worth reading.
+private const val FORMAT_LINE_CHARS = 40
+
+/**
+ * How many formats to name before "and N more" is the better use of the room. Returns every one of
+ * them when they all fit, so a short list is never truncated just for having several entries.
+ */
+private fun formatsThatFit(all: List<String>, budget: Int): Int {
+    if (all.joinToString(", ").length <= budget) return all.size
+    // Room kept for the longest " and NN more" this can append.
+    val reserved = 12
+    for (n in all.size - 1 downTo 2) {
+        if (all.take(n).joinToString(", ").length + reserved <= budget) return n
+    }
+    return 1
+}

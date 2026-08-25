@@ -6,7 +6,11 @@ import java.io.File
 data class CoreInfo(
     val id: String,
     val displayName: String,
-    val databases: List<String>
+    val databases: List<String>,
+    // What the core itself parses. RetroArch delivers more than this: it unpacks archives and
+    // resolves m3u playlists before the core sees anything, so an absent extension here does not
+    // mean the file cannot be played. See ContentSupport.
+    val extensions: List<String> = emptyList()
 )
 
 data class FirmwareEntry(
@@ -81,6 +85,7 @@ class CoreInfoRepository(private val assets: AssetManager, private val cacheDir:
             val id = filename.removeSuffix(".info")
             var displayName: String? = null
             val databases = mutableListOf<String>()
+            val extensions = mutableListOf<String>()
             try {
                 assets.open("core_info/$filename").bufferedReader().useLines { lines ->
                     for (line in lines) {
@@ -93,13 +98,20 @@ class CoreInfoRepository(private val assets: AssetManager, private val cacheDir:
                         } else if (databases.isEmpty() && key == "database") {
                             val value = trimmed.substringAfter('=').trim().removeSurrounding("\"")
                             databases.addAll(value.split('|').map { it.trim() })
+                        } else if (extensions.isEmpty() && key == "supported_extensions") {
+                            val value = trimmed.substringAfter('=').trim().removeSurrounding("\"")
+                            // puae ends its list with a trailing pipe, which would otherwise put an
+                            // empty extension in the list and render as a bare dot.
+                            extensions.addAll(
+                                value.split('|').map { it.trim().lowercase() }.filter { it.isNotEmpty() }
+                            )
                         }
-                        if (displayName != null && databases.isNotEmpty()) break
+                        if (displayName != null && databases.isNotEmpty() && extensions.isNotEmpty()) break
                     }
                 }
             } catch (_: Exception) {}
             if (displayName != null) {
-                result.add(CoreInfo(id, displayName, databases))
+                result.add(CoreInfo(id, displayName, databases, extensions))
             }
         }
         cores = result
@@ -115,8 +127,14 @@ class CoreInfoRepository(private val assets: AssetManager, private val cacheDir:
         if (versionFile.readText().trim() != apkLastModified.toString()) return null
         return try {
             cacheFile.readLines().mapNotNull { line ->
-                val parts = line.split('\t', limit = 3)
-                if (parts.size == 3) CoreInfo(parts[0], parts[1], parts[2].split('|')) else null
+                val parts = line.split('\t', limit = 4)
+                // A three-field line is a cache from before extensions were recorded. It cannot
+                // outlive its build, since the version file is the APK stamp, but an empty list
+                // reads as "unknown" rather than "supports nothing" either way.
+                if (parts.size >= 3) CoreInfo(
+                    parts[0], parts[1], parts[2].split('|'),
+                    parts.getOrNull(3)?.split('|')?.filter { it.isNotEmpty() }.orEmpty(),
+                ) else null
             }
         } catch (_: Exception) { null }
     }
@@ -126,11 +144,21 @@ class CoreInfoRepository(private val assets: AssetManager, private val cacheDir:
         dir.mkdirs()
         try {
             File(dir, "core_info.cache").writeText(
-                cores.joinToString("\n") { "${it.id}\t${it.displayName}\t${it.databases.joinToString("|")}" }
+                cores.joinToString("\n") {
+                    "${it.id}\t${it.displayName}\t${it.databases.joinToString("|")}\t" +
+                        it.extensions.joinToString("|")
+                }
             )
             File(dir, ".core_info_version").writeText(apkLastModified.toString())
         } catch (_: Exception) {}
     }
+
+    /**
+     * What the core parses, lowercase and without dots, in the order the `.info` declares them:
+     * that order leads with the format the core is actually for. Empty means it did not say.
+     */
+    fun getExtensionsFor(coreId: String): List<String> =
+        coreById[coreId]?.extensions.orEmpty()
 
     fun getDisplayName(coreId: String): String {
         return coreById[coreId]?.displayName ?: coreId

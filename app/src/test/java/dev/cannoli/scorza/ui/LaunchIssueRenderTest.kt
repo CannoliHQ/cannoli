@@ -34,6 +34,35 @@ class LaunchIssueRenderTest {
         compose.onNodeWithText("VIEW BIOS").assertIsDisplayed()
     }
 
+    // Three lines now: the problem, the pairing, and what the core does read. The third is the
+    // longest, so it is the one that would push the title off a short screen if it were not capped.
+    @Test fun `the unsupported format screen renders all three lines`() {
+        render("Core Does Not Support .zip", "Neo Geo \u00b7 Geolith Supports:\n.neo, .cue, .chd", "CHANGE EMULATOR")
+        compose.onNodeWithText("Core Does Not Support .zip").assertIsDisplayed()
+        compose.onNodeWithText("Neo Geo \u00b7 Geolith Supports:\n.neo, .cue, .chd").assertIsDisplayed()
+        compose.onNodeWithText("CHANGE EMULATOR").assertIsDisplayed()
+    }
+
+    // Six short formats fit, so a list is only trimmed when it genuinely will not.
+    @Test fun `a six format list is shown in full`() {
+        render(
+            "Core Does Not Support .zip",
+            "Super Nintendo \u00b7 Snes9x Supports:\n.smc, .sfc, .swc, .fig, .bs, .st",
+            "CHANGE EMULATOR",
+        )
+        compose.onNodeWithText("Super Nintendo \u00b7 Snes9x Supports:\n.smc, .sfc, .swc, .fig, .bs, .st")
+            .assertIsDisplayed()
+    }
+
+    @Test fun `a trimmed format list still renders`() {
+        render(
+            "Core Does Not Support .rom",
+            "Amiga \u00b7 PUAE Supports:\n.adf, .adz, .dms, .fdi, .ipf and 17 more",
+            "CHANGE EMULATOR",
+        )
+        compose.onNodeWithText("Core Does Not Support .rom").assertIsDisplayed()
+    }
+
     @Test fun `a long subject still renders every line`() {
         render(
             "Required BIOS Missing",

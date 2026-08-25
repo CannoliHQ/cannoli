@@ -515,9 +515,19 @@
     <string name="launch_issue_app_missing">Standalone Emulator Not Installed</string>
     <string name="launch_issue_no_emulator">No Emulator Set</string>
     <string name="launch_issue_bios_missing">Required BIOS Missing</string>
+    <!-- Launch issue title. %1$s = file extension with its dot, for example ".zip". -->
+    <string name="launch_issue_unsupported">Core Does Not Support %1$s</string>
     <string name="label_view_bios">VIEW BIOS</string>
     <!-- Shown when more BIOS files are missing than the screen can list. The BIOS screen has all. -->
     <plurals name="launch_issue_more_files">
+        <item quantity="one">and %1$d more</item>
+        <item quantity="other">and %1$d more</item>
+    </plurals>
+    <!-- Launch issue subject when the formats the core reads follow on the next line.
+         %1$s = platform, %2$s = core. -->
+    <string name="launch_issue_supports">%1$s \u00b7 %2$s Supports:</string>
+    <!-- Shown when a core reads more formats than the screen can list. -->
+    <plurals name="launch_issue_more_formats">
         <item quantity="one">and %1$d more</item>
         <item quantity="other">and %1$d more</item>
     </plurals>

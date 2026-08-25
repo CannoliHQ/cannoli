@@ -387,6 +387,17 @@ class LaunchManager(
                                 platformName = platformConfig.getDisplayName(rom.platformTag),
                             ))
                         }
+                        val badExt = unsupportedExtension(launchFile, core)
+                        if (badExt != null) {
+                            return errorAndReset(DialogState.UnsupportedContent(
+                                platformName = platformConfig.getDisplayName(rom.platformTag),
+                                coreName = platformConfig.getCoreDisplayName(core),
+                                extension = badExt,
+                                supported = platformConfig.coreExtensions(core),
+                                platformTag = rom.platformTag,
+                                romId = overrideRomId,
+                            ))
+                        }
                         val absentBios = missingRequiredBios(rom.platformTag, core)
                         if (absentBios.isNotEmpty()) {
                             return errorAndReset(DialogState.MissingBios(
@@ -479,6 +490,17 @@ class LaunchManager(
                 platformName = platformConfig.getDisplayName(rom.platformTag),
             ))
         }
+        val badExt = unsupportedExtension(launchFile, core)
+        if (badExt != null) {
+            return errorAndReset(DialogState.UnsupportedContent(
+                platformName = platformConfig.getDisplayName(rom.platformTag),
+                coreName = platformConfig.getCoreDisplayName(core),
+                extension = badExt,
+                supported = platformConfig.coreExtensions(core),
+                platformTag = rom.platformTag,
+                romId = rom.id,
+            ))
+        }
         val absentBios = missingRequiredBios(rom.platformTag, core)
         if (absentBios.isNotEmpty()) {
             return errorAndReset(DialogState.MissingBios(
@@ -500,6 +522,14 @@ class LaunchManager(
      * cannot express it: FBNeo marks every entry optional, which is right for arcade romsets and
      * wrong for Neo Geo.
      */
+    /**
+     * The file's extension when the resolved core has no parser for it, null when the launch should
+     * go ahead. Runs ahead of the BIOS gate: sending someone to find a BIOS for a pairing that could
+     * never load is worse than saying the pairing is wrong.
+     */
+    private fun unsupportedExtension(launchFile: File, core: String): String? =
+        ContentSupport.unsupported(launchFile, platformConfig.coreExtensions(core))
+
     /**
      * Installed means complete: the `.so` on disk and the system files that download alongside it.
      * A core missing either cannot run, and both are Cannoli's to deliver, so one screen and one

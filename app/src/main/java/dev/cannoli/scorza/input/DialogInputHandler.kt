@@ -458,6 +458,7 @@ class DialogInputHandler @Inject constructor(
                 }
             }
             is DialogState.MissingCore -> openEmulatorRecovery(ds.platformTag, ds.romId)
+            is DialogState.UnsupportedContent -> openEmulatorRecovery(ds.platformTag, ds.romId)
             is DialogState.NoEmulatorSet -> openEmulatorRecovery(ds.platformTag, ds.romId)
             // The one launch issue whose remedy is not the emulator picker: the emulator is right,
             // the BIOS is not, so confirm goes to the screen that lists which files are absent.
@@ -1118,6 +1119,7 @@ class DialogInputHandler @Inject constructor(
             }
             is DialogState.MissingCore,
             is DialogState.MissingApp,
+            is DialogState.UnsupportedContent,
             is DialogState.MissingBios,
             is DialogState.NoEmulatorSet,
             is DialogState.LaunchError,
