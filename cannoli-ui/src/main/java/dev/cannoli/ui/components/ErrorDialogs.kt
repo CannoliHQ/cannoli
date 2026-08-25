@@ -16,26 +16,23 @@ import dev.cannoli.ui.R
 import dev.cannoli.ui.theme.LocalCannoliColors
 
 /**
- * One screen for every way a game can fail to reach an emulator: the core is absent, the standalone
- * app is absent, or the platform has no emulator at all. They read as the same problem to the person
- * holding the device, and the fix is the same screen, so they are not three dialogs.
+ * One screen for every way a game fails to start: a core or app that is absent, a platform with
+ * nothing mapped, a required BIOS that is not there, or a file that would not read.
  *
- * [problem] names what is missing and is built by the caller, which knows which failure this is.
+ * Three parts, none repeating another. [title] is the problem itself rather than a generic heading,
+ * so the first line already says what went wrong. [subject] names only what it went wrong with, a
+ * platform and the thing that is missing, never a sentence. The remedy is left to the legend, which
+ * states it once: [confirmLabel] when there is something to do, Close alone when there is not.
  */
 @Composable
-fun MissingEmulatorDialog(
-    problem: String,
-    showRemove: Boolean = false,
-    showChangeEmulator: Boolean = false,
+fun LaunchIssue(
+    title: String,
+    subject: String,
+    confirmLabel: String? = null,
     buttonStyle: ButtonStyle = ButtonStyle()
 ) {
     OverlayScrim(
         bottomBar = {
-            val confirmLabel = when {
-                showRemove -> stringResource(R.string.label_remove)
-                showChangeEmulator -> stringResource(R.string.label_change_emulator)
-                else -> null
-            }
             if (confirmLabel != null) {
                 BottomBar(
                     leftItems = listOf(buttonStyle.back to stringResource(R.string.label_close)),
@@ -47,40 +44,19 @@ fun MissingEmulatorDialog(
         }
     ) {
         Text(
-            text = stringResource(R.string.dialog_title_missing_emulator),
+            text = title,
             style = MaterialTheme.typography.titleLarge,
             color = Color.White,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(12.dp))
-        // The hint rides with every case: knowing what is missing is no use without knowing where
-        // to fix it, and the standalone screen used to say only the former.
         Text(
-            text = problem + "\n" + stringResource(R.string.dialog_missing_emulator_hint),
+            text = subject,
             style = MaterialTheme.typography.bodyLarge,
             color = LocalCannoliColors.current.text.copy(alpha = 0.6f),
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
-        )
-    }
-}
-
-@Composable
-fun LaunchErrorDialog(message: String, buttonStyle: ButtonStyle = ButtonStyle()) {
-    OverlayScrim(
-        bottomBar = { LegendPill(button = buttonStyle.back, label = stringResource(R.string.label_close)) }
-    ) {
-        Text(
-            text = stringResource(R.string.dialog_title_launch_error),
-            style = MaterialTheme.typography.titleLarge,
-            color = Color.White
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyLarge,
-            color = LocalCannoliColors.current.text.copy(alpha = 0.6f)
         )
     }
 }

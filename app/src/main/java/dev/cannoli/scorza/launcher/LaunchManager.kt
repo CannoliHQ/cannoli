@@ -379,6 +379,16 @@ class LaunchManager(
                                 platformTag = rom.platformTag,
                                 romId = overrideRomId,
                                 coreId = core,
+                                platformName = platformConfig.getDisplayName(rom.platformTag),
+                            ))
+                        }
+                        val absentBios = missingRequiredBios(rom.platformTag, core)
+                        if (absentBios.isNotEmpty()) {
+                            return errorAndReset(DialogState.MissingBios(
+                                platformName = platformConfig.getDisplayName(rom.platformTag),
+                                files = absentBios,
+                                platformTag = rom.platformTag,
+                                romId = overrideRomId,
                             ))
                         }
                         writeRunnerConfig(File(settings.sdCardRoot))
@@ -461,12 +471,35 @@ class LaunchManager(
             return errorAndReset(DialogState.MissingCore(
                 platformConfig.getCoreDisplayName(core),
                 platformTag = rom.platformTag, romId = rom.id, coreId = core,
+                platformName = platformConfig.getDisplayName(rom.platformTag),
+            ))
+        }
+        val absentBios = missingRequiredBios(rom.platformTag, core)
+        if (absentBios.isNotEmpty()) {
+            return errorAndReset(DialogState.MissingBios(
+                platformName = platformConfig.getDisplayName(rom.platformTag),
+                files = absentBios,
+                platformTag = rom.platformTag,
+                romId = rom.id,
             ))
         }
         writeRunnerConfig(File(settings.sdCardRoot))
         val launchConfig = buildGameConfig(rom, core, resume = true, slot = resumeSlot) ?: raConfigPath
         val result = retroArchLauncher.launchRicotta(launchFile, core, launchConfig, buildRicottaIgm(rom))
         return launchResultDialog(result, rom.platformTag, rom.id)
+    }
+
+    /**
+     * Required BIOS the platform does not have, so a launch can be stopped before the emulator sits
+     * on a missing file. Requiredness is corrected by `bios_required.txt` where a core's own flags
+     * cannot express it: FBNeo marks every entry optional, which is right for arcade romsets and
+     * wrong for Neo Geo.
+     */
+    private fun missingRequiredBios(tag: String, core: String): List<String> {
+        val biosDir = CannoliPaths(File(settings.sdCardRoot)).biosFor(tag)
+        return platformConfig.getFirmwareStatus(tag, core, biosDir)
+            .filter { (entry, present) -> !entry.optional && !present }
+            .map { (entry, _) -> File(entry.path).name }
     }
 
     private fun errorAndReset(dialog: DialogState): DialogState {
@@ -491,7 +524,10 @@ class LaunchManager(
                 // getApplicationLabel cannot resolve a package that is not installed, and this
                 // branch only fires when it is not, so use the curated label like MissingCore does.
                 val appName = InstalledCoreService.getPackageLabel(result.packageName)
-                DialogState.MissingApp(appName, result.packageName, platformTag, romId)
+                DialogState.MissingApp(
+                    appName, result.packageName, platformTag, romId,
+                    platformName = platformTag?.let { platformConfig.getDisplayName(it) } ?: "",
+                )
             }
             LaunchResult.NoEmulatorSet -> DialogState.NoEmulatorSet(
                 platformName = platformTag?.let { platformConfig.getDisplayName(it) } ?: "",

@@ -44,7 +44,6 @@ import dev.cannoli.ui.STAR
 import dev.cannoli.ui.START_GLYPH
 import dev.cannoli.ui.components.BottomBar
 import dev.cannoli.ui.components.ConfirmOverlay
-import dev.cannoli.ui.components.LaunchErrorDialog
 import dev.cannoli.ui.components.List
 import dev.cannoli.ui.components.MessageOverlay
 import dev.cannoli.ui.components.PillRowText

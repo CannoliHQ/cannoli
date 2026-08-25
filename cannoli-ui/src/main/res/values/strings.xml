@@ -510,16 +510,14 @@
     <string name="launch_error_generic">Failed to launch game</string>
     <!-- %1$s = file name. -->
     <string name="launch_error_bad_game_file">Could not read a game ID from %1$s</string>
-    <!-- %1$s = core name. -->
-    <string name="dialog_missing_core_plain">%1$s is not installed.</string>
-    <!-- %1$s = app name. -->
-    <string name="dialog_missing_app">%1$s is not installed.</string>
-    <!-- %1$s = platform name, shown when the platform has no emulator chosen at all. -->
-    <string name="dialog_no_emulator_set">No emulator is set for %1$s.</string>
-    <string name="dialog_missing_emulator_hint">Set it up in Emulator Mapping.</string>
-    <!-- %1$s = folder path. -->
-    <string name="dialog_missing_bios_header">At least one BIOS file is required in %1$s:</string>
-    <string name="dialog_title_missing_emulator">Missing emulator</string>
+    <!-- LaunchIssue titles: each names the problem, since the screen has no generic heading. -->
+    <string name="launch_issue_core_missing">Core Not Installed</string>
+    <string name="launch_issue_app_missing">Standalone Emulator Not Installed</string>
+    <string name="launch_issue_no_emulator">No Emulator Set</string>
+    <string name="launch_issue_bios_missing">Required BIOS Missing</string>
+    <string name="label_view_bios">VIEW BIOS</string>
+    <!-- %1$s = platform, %2$s = what is missing. The subject names only that; the legend says what to do. -->
+    <string name="launch_issue_subject">%1$s \u00b7 %2$s</string>
     <string name="dialog_title_launch_error">Launch failed</string>
     <string name="dialog_rename_success">Renamed successfully</string>
     <!-- %1$s = error detail. -->

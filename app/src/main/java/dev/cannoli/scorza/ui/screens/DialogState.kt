@@ -102,8 +102,27 @@ sealed interface DialogState {
         // coreName is a display name, which cannot be looked up or downloaded. The id is carried
         // separately so a caller can decide whether the core is one we can fetch.
         val coreId: String = "",
+        val platformName: String = "",
     ) : DialogState
-    data class MissingApp(val appName: String, val packageName: String, val platformTag: String? = null, val romId: Long? = null) : DialogState
+    data class MissingApp(
+        val appName: String,
+        val packageName: String,
+        val platformTag: String? = null,
+        val romId: Long? = null,
+        val platformName: String = "",
+    ) : DialogState
+
+    /**
+     * A BIOS the platform genuinely needs is absent, so the launch is stopped before the emulator
+     * gets a chance to hang on it. Required-ness comes from `bios_required.txt` where the core's own
+     * metadata cannot express it, which is why this is not simply read off the firmware flags.
+     */
+    data class MissingBios(
+        val platformName: String,
+        val files: List<String>,
+        val platformTag: String? = null,
+        val romId: Long? = null,
+    ) : DialogState
 
     /**
      * The platform resolves to no emulator at all, which is a different problem from one that is

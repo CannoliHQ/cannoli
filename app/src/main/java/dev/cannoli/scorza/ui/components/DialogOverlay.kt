@@ -50,14 +50,13 @@ import dev.cannoli.ui.components.ColorPickerOverlay
 import dev.cannoli.ui.components.HexColorInputOverlay
 import dev.cannoli.ui.components.KeyboardHelpOverlay
 import dev.cannoli.ui.components.KeyboardOverlay
-import dev.cannoli.ui.components.LaunchErrorDialog
+import dev.cannoli.ui.components.LaunchIssue
 import dev.cannoli.ui.components.List
 import dev.cannoli.ui.components.ListSection
 import dev.cannoli.ui.components.PillRowInfo
 import dev.cannoli.ui.components.PillRowKeyValue
 import dev.cannoli.ui.components.PillRowText
 import dev.cannoli.ui.components.MessageOverlay
-import dev.cannoli.ui.components.MissingEmulatorDialog
 import dev.cannoli.ui.components.OverlayScrim
 import dev.cannoli.ui.components.SectionedList
 import dev.cannoli.ui.components.RALoggingInOverlay
@@ -939,26 +938,48 @@ fun DialogOverlay(
             }
         }
 
-        is DialogState.MissingCore -> MissingEmulatorDialog(
-            problem = stringResource(R.string.dialog_missing_core_plain, dialogState.coreName),
-            showChangeEmulator = dialogState.platformTag != null,
+        is DialogState.MissingCore -> LaunchIssue(
+            title = stringResource(R.string.launch_issue_core_missing),
+            subject = stringResource(R.string.launch_issue_subject, dialogState.platformName, dialogState.coreName),
+            confirmLabel = stringResource(R.string.label_change_emulator).takeIf { dialogState.platformTag != null },
             buttonStyle = buttonStyle,
         )
 
-        is DialogState.MissingApp -> MissingEmulatorDialog(
-            problem = stringResource(R.string.dialog_missing_app, dialogState.appName),
-            showRemove = appListPlatformTag == "tools" || appListPlatformTag == "ports",
-            showChangeEmulator = dialogState.platformTag != null,
+        is DialogState.MissingApp -> LaunchIssue(
+            title = stringResource(R.string.launch_issue_app_missing),
+            subject = stringResource(R.string.launch_issue_subject, dialogState.platformName, dialogState.appName),
+            confirmLabel = when {
+                appListPlatformTag == "tools" || appListPlatformTag == "ports" ->
+                    stringResource(R.string.label_remove)
+                dialogState.platformTag != null -> stringResource(R.string.label_change_emulator)
+                else -> null
+            },
             buttonStyle = buttonStyle,
         )
 
-        is DialogState.NoEmulatorSet -> MissingEmulatorDialog(
-            problem = stringResource(R.string.dialog_no_emulator_set, dialogState.platformName),
-            showChangeEmulator = dialogState.platformTag != null,
+        is DialogState.NoEmulatorSet -> LaunchIssue(
+            title = stringResource(R.string.launch_issue_no_emulator),
+            subject = dialogState.platformName,
+            confirmLabel = stringResource(R.string.label_change_emulator).takeIf { dialogState.platformTag != null },
             buttonStyle = buttonStyle,
         )
 
-        is DialogState.LaunchError -> LaunchErrorDialog(dialogState.message, buttonStyle = buttonStyle)
+        is DialogState.MissingBios -> LaunchIssue(
+            title = stringResource(R.string.launch_issue_bios_missing),
+            subject = stringResource(
+                R.string.launch_issue_subject,
+                dialogState.platformName,
+                dialogState.files.joinToString(", "),
+            ),
+            confirmLabel = stringResource(R.string.label_view_bios).takeIf { dialogState.platformTag != null },
+            buttonStyle = buttonStyle,
+        )
+
+        is DialogState.LaunchError -> LaunchIssue(
+            title = stringResource(R.string.dialog_title_launch_error),
+            subject = dialogState.message,
+            buttonStyle = buttonStyle,
+        )
 
         is DialogState.Launching -> dev.cannoli.ui.components.LaunchScrim()
 

@@ -459,6 +459,16 @@ class DialogInputHandler @Inject constructor(
             }
             is DialogState.MissingCore -> openEmulatorRecovery(ds.platformTag, ds.romId)
             is DialogState.NoEmulatorSet -> openEmulatorRecovery(ds.platformTag, ds.romId)
+            // The one launch issue whose remedy is not the emulator picker: the emulator is right,
+            // the BIOS is not, so confirm goes to the screen that lists which files are absent.
+            is DialogState.MissingBios -> {
+                val tag = ds.platformTag
+                if (tag != null) {
+                    pendingContextReturn = null
+                    nav.dialogState.value = DialogState.None
+                    nav.screenStack.add(emulatorMappingBuilder.buildBiosStatus(tag, ds.platformName))
+                }
+            }
             is DialogState.DeleteCollectionConfirm -> {
                 val glState = gameListViewModel.state.value
                 val deletingFromParent = glState.isCollection && !glState.isCollectionsList
@@ -1108,6 +1118,7 @@ class DialogInputHandler @Inject constructor(
             }
             is DialogState.MissingCore,
             is DialogState.MissingApp,
+            is DialogState.MissingBios,
             is DialogState.NoEmulatorSet,
             is DialogState.LaunchError,
             is DialogState.Launching -> {
