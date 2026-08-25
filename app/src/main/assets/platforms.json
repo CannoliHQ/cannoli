@@ -237,7 +237,7 @@
   "NEOGEO": {
     "name": "Neo Geo",
     "group": "SNK",
-    "core": "geolith_libretro",
+    "core": "fbneo_libretro",
     "arcade": true
   },
   "NGP": {

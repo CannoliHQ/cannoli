@@ -28,7 +28,6 @@ gearlynx_libretro
 gearsystem_libretro
 genesis_plus_gx_libretro
 genesis_plus_gx_wide_libretro
-geolith_libretro
 gpsp_libretro
 handy_libretro
 holani_libretro
