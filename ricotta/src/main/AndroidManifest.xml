@@ -9,13 +9,13 @@
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
 
     <application>
-        <activity
+        <!-- Upstream declares this as an activity-alias, so an <activity> override never matched
+             it and its LAUNCHER filter survived the merge, putting a second icon in the drawer that
+             opened RetroArch's own menu. Nothing references the alias and it has no class of its
+             own, so it goes entirely rather than merely losing its filter. -->
+        <activity-alias
             android:name="com.retroarch.browser.mainmenu.MainMenuActivity"
-            android:exported="false"
-            tools:node="merge"
-            tools:replace="android:exported">
-            <intent-filter tools:node="removeAll"/>
-        </activity>
+            tools:node="remove"/>
 
         <activity
             android:name="dev.cannoli.ricotta.RicottaLaunchActivity"
