@@ -5,6 +5,7 @@ import dev.cannoli.scorza.romm.RommArtUrl
 import dev.cannoli.scorza.romm.RommHttp
 import dev.cannoli.scorza.util.ScanLog
 import okhttp3.Request
+import dev.cannoli.scorza.util.DirectoryLayout
 import java.io.File
 
 class RommArtDownloader(
@@ -22,7 +23,10 @@ class RommArtDownloader(
                     val candidate = segment.substringAfterLast('.', "")
                     if (candidate.length in 2..5 && candidate.all { it.isLetterOrDigit() }) candidate else "png"
                 }
-                val artDir = File(paths.root, "Art/$tag").apply { mkdirs() }
+                val artDir = File(paths.root, "Art/$tag").apply {
+                    mkdirs()
+                    DirectoryLayout.hideFromGallery(this)
+                }
                 val dest = File(artDir, "$baseName.$ext")
                 val temp = File(artDir, "$baseName.$ext.part")
                 try {

@@ -173,7 +173,10 @@ internal fun KitchenHttpServer.handleGames(
                     val name = query["name"]
                     if (name.isNullOrBlank()) return errorResponse(400, "name param required")
                     val ext = name.substringAfterLast('.', "png").lowercase(java.util.Locale.ROOT)
-                    val artDir = File(cannoliRoot, "Art/$platformTag")
+                    val artDir = File(cannoliRoot, "Art/$platformTag").apply {
+                        mkdirs()
+                        dev.cannoli.scorza.util.DirectoryLayout.hideFromGallery(this)
+                    }
                     artDir.listFiles { f ->
                         f.isFile && f.nameWithoutExtension.equals(base, ignoreCase = true)
                     }?.forEach { it.delete() }

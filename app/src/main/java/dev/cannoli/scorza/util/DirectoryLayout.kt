@@ -1,6 +1,8 @@
 package dev.cannoli.scorza.util
 
+import android.content.Context
 import android.content.res.AssetManager
+import android.media.MediaScannerConnection
 import dev.cannoli.scorza.config.CannoliPaths
 import dev.cannoli.scorza.config.PlatformConfig
 import dev.cannoli.scorza.model.AppType
@@ -10,7 +12,13 @@ import java.io.File
 private const val CUSTOM_CFG_BANNER = "# This file is yours. Cannoli never overwrites it. Keys here win.\n"
 
 object DirectoryLayout {
-    fun ensure(cannoliRoot: File, romDirectory: File, assets: AssetManager, platformConfig: PlatformConfig) {
+    fun ensure(
+        cannoliRoot: File,
+        romDirectory: File,
+        assets: AssetManager,
+        platformConfig: PlatformConfig,
+        context: Context? = null,
+    ) {
         val paths = CannoliPaths(cannoliRoot)
         listOf(
             romDirectory,
@@ -55,8 +63,9 @@ object DirectoryLayout {
             scaffoldRomFolders(romDirectory, tags)
         }
         seedRomFolderOnce(romDirectory, paths.configState, "PC")
+        hideFromGallery(paths.artDir)
         for (tag in tags) {
-            paths.artFor(tag).mkdirs()
+            paths.artFor(tag).also { it.mkdirs(); hideFromGallery(it) }
             paths.biosFor(tag).mkdirs()
             paths.savesFor(tag).mkdirs()
             paths.saveStatesFor(tag).mkdirs()
@@ -64,8 +73,44 @@ object DirectoryLayout {
             paths.cheatsFor(tag).mkdirs()
         }
         for (type in AppType.entries) {
-            paths.artFor(type.artTag).mkdirs()
+            paths.artFor(type.artTag).also { it.mkdirs(); hideFromGallery(it) }
         }
+        if (context != null) forgetIndexedArt(context, paths.artDir)
+    }
+
+    /**
+     * Drop art the gallery already indexed. The marker only stops the next scan; it does not touch
+     * rows MediaStore already holds, and a library scraped before the marker existed is entirely
+     * such rows, so on an upgrade the covers stay in the user's photos until something asks
+     * MediaStore to look again.
+     *
+     * One scan of the root is enough: the scanner walks the tree, finds the marker, and removes the
+     * entries beneath it rather than merely skipping them. Verified on device.
+     */
+    private fun forgetIndexedArt(context: Context, artDir: File) {
+        val marker = File(artDir, ".rescanned_for_nomedia")
+        if (marker.exists() || !artDir.isDirectory) return
+        try {
+            MediaScannerConnection.scanFile(context, arrayOf(artDir.absolutePath), null, null)
+            marker.createNewFile()
+        } catch (_: Exception) {}
+    }
+
+    /**
+     * Keep box art out of the gallery. Without this every cover Cannoli downloads turns up in the
+     * user's photos, mixed in with their camera roll.
+     *
+     * Written into each platform folder as well as the root, rather than relying on the root alone
+     * to cover the tree, because a folder can outlive the marker above it: a sync tool or a manual
+     * copy that recreates `Art` without it would expose every platform underneath at once.
+     */
+    fun hideFromGallery(dir: File) {
+        val marker = File(dir, ".nomedia")
+        if (marker.exists()) return
+        try {
+            dir.mkdirs()
+            marker.createNewFile()
+        } catch (_: Exception) {}
     }
 
     // Tags added after a user's install was scaffolded never get a Roms folder, because the

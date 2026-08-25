@@ -110,7 +110,9 @@ class BootInitializer @Inject constructor(
             // the fresh per-launch injection is the only copy on disk and nothing stale layers back.
             cheevosOverrideMigration.scrubIfNeeded()
         }
-        ioScope.launch { dev.cannoli.scorza.util.DirectoryLayout.ensure(root, romDir, context.assets, platformConfig) }
+        ioScope.launch {
+            dev.cannoli.scorza.util.DirectoryLayout.ensure(root, romDir, context.assets, platformConfig, context)
+        }
 
         val importer = Importer(
             context = context,
