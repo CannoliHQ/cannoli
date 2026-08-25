@@ -446,7 +446,9 @@ sealed class LauncherScreen {
         override val itemCount: Int get() = entries.size
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
     }
-    data class InstalledCores(val cores: List<String> = emptyList(), val loading: Boolean = true, override val selectedIndex: Int = 0, override val scrollTarget: Int = 0, val title: String? = null) : LauncherScreen(), ScrollableScreen {
+    /** [detail] is the version the core calls itself, from the info file fetched alongside it. */
+    data class InstalledCore(val name: String, val detail: String)
+    data class InstalledCores(val cores: List<InstalledCore> = emptyList(), val loading: Boolean = true, val updating: Boolean = false, override val selectedIndex: Int = 0, override val scrollTarget: Int = 0, val title: String? = null) : LauncherScreen(), ScrollableScreen {
         override val itemCount: Int get() = cores.size
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
     }
@@ -1331,7 +1333,9 @@ fun AppNavGraph(
                     listFontSize = listFontSize,
                     listLineHeight = listLineHeight,
                     fullWidth = true,
-                    rightBottomItems = emptyList(),
+                    rightBottomItems = if (currentScreen.cores.isNotEmpty() && !currentScreen.updating) {
+                        listOf(dev.cannoli.ui.START_GLYPH to stringResource(R.string.label_update_all))
+                    } else emptyList(),
                     buttonStyle = labels
                 ) {
                     if (currentScreen.loading) {
@@ -1351,8 +1355,9 @@ fun AppNavGraph(
                             scrollTarget = currentScreen.scrollTarget,
                             onListStateChanged = onListStateChanged
                         ) { _, core, isSelected ->
-                            PillRowText(
-                                label = core,
+                            PillRowKeyValue(
+                                label = core.name,
+                                value = core.detail,
                                 isSelected = isSelected,
                                 fontSize = listFontSize,
                                 lineHeight = listLineHeight,

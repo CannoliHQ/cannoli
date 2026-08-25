@@ -32,6 +32,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import javax.inject.Inject
 
 @ActivityScoped
@@ -57,6 +58,8 @@ class SettingsInputHandler @Inject constructor(
     private val cannoliPaths: CannoliPathsProvider,
     private val raLoginController: dev.cannoli.scorza.achievements.RaLoginController,
     private val permissionsInputHandler: PermissionsInputHandler,
+    private val coreDownloadService: dev.cannoli.scorza.launcher.CoreDownloadService,
+    private val osdController: dev.cannoli.ui.components.OsdController,
 ) : ScreenInputHandler {
 
     override fun onUp() {
@@ -285,13 +288,79 @@ class SettingsInputHandler @Inject constructor(
             title = context.getString(dev.cannoli.scorza.R.string.title_installed_cores_all)
         ))
         ioScope.launch {
-            // The cores this runner holds, which is a directory listing rather than a scan.
-            val cores = installedCoreService.embeddedCores()
-                .map { platformConfig.getCoreDisplayName(it) }
-                .sorted()
+            val rows = readInstalledCores()
             withContext(Dispatchers.Main) {
                 val screen = nav.screenStack.lastOrNull() as? LauncherScreen.InstalledCores ?: return@withContext
-                nav.screenStack[nav.screenStack.lastIndex] = screen.copy(cores = cores, loading = false)
+                nav.screenStack[nav.screenStack.lastIndex] = screen.copy(cores = rows, loading = false)
+            }
+        }
+    }
+
+    /**
+     * The cores this runner holds, which is a directory listing rather than a scan.
+     *
+     * The date is when the buildbot built that binary, not when we fetched it and not the core's
+     * `display_version`. That field is hand-maintained upstream and moves on a different clock:
+     * gambatte has declared v0.5.0 since 2022 while its binary is rebuilt nightly, so showing it
+     * would tell two users with builds months apart that they hold the same thing.
+     *
+     * Shown as an ISO date behind the word build. These cores come from unversioned nightlies, so
+     * the build date is the only thing that identifies one, and it is the only thing a user can
+     * quote when a core misbehaves.
+     */
+    private fun readInstalledCores(): List<LauncherScreen.InstalledCore> {
+        val stamps = dev.cannoli.scorza.launcher.DownloadStamps.read(context.filesDir)
+        return installedCoreService.embeddedCores().map { id ->
+            // A stamp means this core came over the network. Without one it is still the APK's
+            // binary, and the manifest the build machine wrote is what dates it.
+            val downloaded = stamps.entries.firstOrNull { it.key.endsWith("/${id}_android.so.zip") }
+            val iso = downloaded?.value?.built?.takeIf { it.isNotBlank() }
+                ?: dev.cannoli.scorza.launcher.BundledCoreManifest.builtFor(context.assets, id)
+            LauncherScreen.InstalledCore(
+                name = platformConfig.getCoreDisplayName(id),
+                detail = iso?.let {
+                    context.getString(dev.cannoli.scorza.R.string.installed_core_build, it)
+                }.orEmpty(),
+            )
+        }.sortedBy { it.name.lowercase(java.util.Locale.ROOT) }
+    }
+
+    /**
+     * Revalidate every downloaded core against the buildbot. Nothing is compared locally: each
+     * request carries the etag recorded at install time, so an unchanged build answers 304 and
+     * transfers nothing, which is what makes checking all of them affordable.
+     */
+    fun updateAllCores() {
+        val screen = nav.currentScreen as? LauncherScreen.InstalledCores ?: return
+        if (screen.updating) return
+        // Every installed core, bundled included. A bundled core reverts only if an app update
+        // happens to carry an older build than the one fetched, which the next update corrects.
+        val ids = installedCoreService.embeddedCores()
+        if (ids.isEmpty()) return
+        nav.replaceTop(screen.copy(updating = true))
+        osdController.show(
+            context.getString(dev.cannoli.scorza.R.string.osd_checking_cores),
+            durationMs = 120_000L,
+        )
+        ioScope.launch {
+            val summary = coreDownloadService.updateAll(ids)
+            val rows = readInstalledCores()
+            withContext(Dispatchers.Main) {
+                osdController.show(
+                    when {
+                        summary.failed > 0 -> context.resources.getQuantityString(
+                            dev.cannoli.scorza.R.plurals.osd_cores_update_failed,
+                            summary.failed, summary.failed,
+                        )
+                        summary.updated > 0 -> context.resources.getQuantityString(
+                            dev.cannoli.scorza.R.plurals.osd_cores_updated,
+                            summary.updated, summary.updated,
+                        )
+                        else -> context.getString(dev.cannoli.scorza.R.string.osd_cores_current)
+                    }
+                )
+                val top = nav.screenStack.lastOrNull() as? LauncherScreen.InstalledCores ?: return@withContext
+                nav.screenStack[nav.screenStack.lastIndex] = top.copy(cores = rows, updating = false)
             }
         }
     }

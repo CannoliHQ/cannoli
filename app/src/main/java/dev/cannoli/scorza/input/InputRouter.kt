@@ -558,7 +558,9 @@ class InputRouter @Inject constructor(
 
     private fun creditsSectionHandler() = scrollable<LauncherScreen.CreditsSection>()
 
-    private fun installedCoresHandler() = scrollable<LauncherScreen.InstalledCores>()
+    private fun installedCoresHandler() = scrollable<LauncherScreen.InstalledCores>(
+        onStart = { settingsHandler.updateAllCores() },
+    )
 
     private fun rommPlatformListHandler() = scrollable<LauncherScreen.RommPlatformList>(
         onConfirm = {

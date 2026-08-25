@@ -258,6 +258,26 @@
     <!-- Screen title. %s is the emulator app name (e.g. RetroArch). -->
     <string name="title_installed_cores">%s Installed Cores</string>
     <string name="title_installed_cores_all">Installed Cores</string>
+    <!-- Value on the installed cores screen. %1$s = an ISO date, e.g. 2026-08-25. The word matters:
+         a bare date beside a core name reads as its version, which these cores do not usefully have.
+         They come from unversioned nightly builds, so the build date is what identifies one. -->
+    <string name="installed_core_build">built on %1$s</string>
+    <!-- Footer action on the installed cores screen. -->
+    <string name="label_update_all">UPDATE ALL</string>
+    <!-- OSD while cores are being revalidated against the buildbot. -->
+    <string name="osd_checking_cores">Checking for core updates</string>
+    <!-- OSD toast. %1$d = how many cores or system file sets were updated. -->
+    <plurals name="osd_cores_updated">
+        <item quantity="one">Updated %1$d core</item>
+        <item quantity="other">Updated %1$d cores</item>
+    </plurals>
+    <!-- OSD toast when the buildbot had nothing newer than what is installed. -->
+    <string name="osd_cores_current">Everything is up to date</string>
+    <!-- OSD toast. %1$d = how many failed. -->
+    <plurals name="osd_cores_update_failed">
+        <item quantity="one">%1$d core could not be checked</item>
+        <item quantity="other">%1$d cores could not be checked</item>
+    </plurals>
     <string name="installed_cores_none">No cores found</string>
     <!-- Setting: the app's root storage folder on the SD card. -->
     <string name="setting_sd_root">Cannoli Root</string>
