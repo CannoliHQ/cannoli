@@ -162,6 +162,12 @@ class LaunchManager(
             // path of its own, which has no platform or game dimension at all.
             put("core_options_path", composeCoreOptions(paths, rom.platformTag, romName, core))
             put("global_core_options", "true")
+            // A core that shuts down must return to Cannoli, not to RetroArch. Left at its own
+            // default, RetroArch loads the dummy core instead of exiting, and a dummy core with no
+            // content has nothing to draw but RetroArch's own menu: that is how pressing a button on
+            // FBNeo's missing-firmware screen landed in Load Core and the Online Updater. The Core
+            // settings screen is already hidden below, but hiding the screen never set the value.
+            put("load_dummy_on_core_shutdown", "false")
             putAll(hiddenRaSettingsScreens)
             // settings.language is what Cannoli actually renders in: it defaults to en, and
             // ProvideLocalizedResources applies it whether or not the user ever chose. RetroArch
