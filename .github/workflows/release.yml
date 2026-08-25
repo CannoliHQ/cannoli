@@ -52,6 +52,33 @@ jobs:
             done
           done
 
+      # Fetched here rather than read from the tree so a release ships info that matches the cores
+      # downloaded above, from the same upstream at the same moment. This replaced a weekly sync
+      # that opened a PR against the committed copy: that only ever reviewed the tree, never what
+      # shipped, so it could not catch an upstream core changing its database field between syncs.
+      #
+      # The committed copy stays as the offline fallback that dev builds and the test suite read.
+      # Nothing refreshes it now, so it is a seed rather than a mirror, and the check below is what
+      # holds the line at release.
+      - name: Refresh core info
+        run: |
+          git clone --depth=1 https://github.com/libretro/libretro-super /tmp/libretro-super
+          missing=0
+          while read -r core; do
+            case "$core" in ''|\#*) continue ;; esac
+            src="/tmp/libretro-super/dist/info/$core.info"
+            if [ -f "$src" ]; then
+              cp "$src" app/src/main/assets/core_info/
+            else
+              echo "::error::curated core '$core' has no info file upstream, it may have been renamed"
+              missing=$((missing + 1))
+            fi
+          done < scripts/curated-cores.txt
+          if [ "$missing" -gt 0 ]; then
+            echo "$missing curated cores are missing upstream, refusing to package a catalogue with holes"
+            exit 1
+          fi
+
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -97,6 +124,14 @@ jobs:
           sed -i "s/versionCode = [0-9]*/versionCode = $VERSION_CODE/" app/build.gradle.kts
           sed -i "s/versionName = \"[^\"]*\"/versionName = \"${{ inputs.version }}\"/" app/build.gradle.kts
           echo "versionCode=$VERSION_CODE, versionName=${{ inputs.version }}"
+
+      # The catalogue invariants run against the info just fetched, which is what will ship. The
+      # weekly sync only ever reviewed the committed copy, so it could not catch an upstream core
+      # changing its database field between syncs and breaking platform mapping at release.
+      - name: Verify the fetched catalogue
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: ./gradlew :app:testDebugUnitTest --tests "dev.cannoli.scorza.config.*"
 
       - name: Build release APK
         env:
