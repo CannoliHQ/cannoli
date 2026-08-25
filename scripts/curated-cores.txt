@@ -59,7 +59,6 @@ mupen64plus_next_gles2_libretro
 mupen64plus_next_gles3_libretro
 nestopia_libretro
 noods_libretro
-parallel_n64_libretro
 pcsx_rearmed_libretro
 picodrive_libretro
 pokemini_libretro
