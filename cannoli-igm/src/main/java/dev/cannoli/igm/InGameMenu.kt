@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -179,6 +180,10 @@ fun InGameMenu(
     }
 }
 
+/* Laid-out height of the slot indicator row: one labelSmall line at 10.sp plus its padding.
+ * Named rather than derived because the photo has to be sized before the row is measured. */
+private val SlotIndicatorRowHeight = 16.dp
+
 @Composable
 fun PolaroidFrame(
     thumbnail: Bitmap?,
@@ -189,93 +194,113 @@ fun PolaroidFrame(
 ) {
     val selectedColor = PolaroidSelect
 
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .clip(RoundedCornerShape(Radius.Sm))
-            .background(Color.White)
-            .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = if (showIndicators) 12.dp else 8.dp)
-    ) {
-        Box(
+    // Empty slots have no bitmap to measure, so the last ratio seen for this game is held here
+    // and reused: without it the frame would change height as you cycle onto an empty slot.
+    val lastRatio = remember { floatArrayOf(10f / 9f) }
+    val photoRatio = remember(thumbnail) {
+        if (thumbnail != null && thumbnail.height > 0)
+            (thumbnail.width.toFloat() / thumbnail.height).also { lastRatio[0] = it }
+        else
+            lastRatio[0]
+    }
+
+    BoxWithConstraints(contentAlignment = Alignment.Center) {
+        // Width drives the card, but a tall ratio would otherwise run past the space the caller gave
+        // us. Cap the width so the whole card, chrome included, still fits the available height.
+        val chrome = 8.dp + if (showIndicators) 12.dp + Spacing.Sm + SlotIndicatorRowHeight else 8.dp
+        val cardWidth = maxWidth.coerceAtMost(
+            ((maxHeight - chrome) * photoRatio).coerceAtLeast(0.dp)
+        )
+
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(10f / 9f)
+                .width(cardWidth)
                 .clip(RoundedCornerShape(Radius.Sm))
-                .background(PolaroidDark),
-            contentAlignment = Alignment.Center
+                .background(Color.White)
+                .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = if (showIndicators) 12.dp else 8.dp)
         ) {
-            if (thumbnail != null) {
-                val imageBitmap = remember(thumbnail) { thumbnail.asImageBitmap() }
-                Image(
-                    bitmap = imageBitmap,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else if (thumbnailLoaded) {
-                Text(
-                    text = stringResource(dev.cannoli.ui.R.string.igm_slot_empty),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = GrayText
-                )
-            }
-        }
-
-        if (showIndicators) {
-        Spacer(modifier = Modifier.height(Spacing.Sm))
-
-        Row(
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            val autoSelected = selectedSlotIndex == 0
-            val autoOccupied = slotOccupied.getOrElse(0) { false }
             Box(
                 modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(photoRatio)
                     .clip(RoundedCornerShape(Radius.Sm))
-                    .then(if (autoSelected) Modifier.background(selectedColor) else Modifier)
-                    .padding(horizontal = 4.dp, vertical = 1.dp)
+                    .background(PolaroidDark),
+                contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = stringResource(dev.cannoli.ui.R.string.igm_slot_auto).uppercase(),
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 10.sp,
-                        color = when {
-                            autoSelected -> Color.White
-                            autoOccupied -> Color.Black
-                            else -> PolaroidInactive
-                        }
+                if (thumbnail != null) {
+                    val imageBitmap = remember(thumbnail) { thumbnail.asImageBitmap() }
+                    Image(
+                        bitmap = imageBitmap,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
                     )
-                )
+                } else if (thumbnailLoaded) {
+                    Text(
+                        text = stringResource(dev.cannoli.ui.R.string.igm_slot_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = GrayText
+                    )
+                }
             }
-            Spacer(modifier = Modifier.width(6.dp))
 
-            for (i in 1..10) {
-                val occupied = slotOccupied.getOrElse(i) { false }
-                val selected = selectedSlotIndex == i
-                val dotSize = if (selected) 10.dp else 8.dp
+            if (showIndicators) {
+            Spacer(modifier = Modifier.height(Spacing.Sm))
 
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                val autoSelected = selectedSlotIndex == 0
+                val autoOccupied = slotOccupied.getOrElse(0) { false }
                 Box(
                     modifier = Modifier
-                        .padding(horizontal = 3.dp)
-                        .size(dotSize)
-                        .then(
-                            if (occupied) {
-                                Modifier
-                                    .clip(CircleShape)
-                                    .background(if (selected) selectedColor else Color.Black)
-                            } else {
-                                Modifier
-                                    .clip(CircleShape)
-                                    .border(1.dp, Color.Black, CircleShape)
+                        .clip(RoundedCornerShape(Radius.Sm))
+                        .then(if (autoSelected) Modifier.background(selectedColor) else Modifier)
+                        .padding(horizontal = 4.dp, vertical = 1.dp)
+                ) {
+                    Text(
+                        text = stringResource(dev.cannoli.ui.R.string.igm_slot_auto).uppercase(),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 10.sp,
+                            color = when {
+                                autoSelected -> Color.White
+                                autoOccupied -> Color.Black
+                                else -> PolaroidInactive
                             }
                         )
-                )
+                    )
+                }
+                Spacer(modifier = Modifier.width(6.dp))
+
+                for (i in 1..10) {
+                    val occupied = slotOccupied.getOrElse(i) { false }
+                    val selected = selectedSlotIndex == i
+                    val dotSize = if (selected) 10.dp else 8.dp
+
+                    Box(
+                        modifier = Modifier
+                            .padding(horizontal = 3.dp)
+                            .size(dotSize)
+                            .then(
+                                if (occupied) {
+                                    Modifier
+                                        .clip(CircleShape)
+                                        .background(if (selected) selectedColor else Color.Black)
+                                } else {
+                                    Modifier
+                                        .clip(CircleShape)
+                                        .border(1.dp, Color.Black, CircleShape)
+                                }
+                            )
+                    )
+                }
             }
-        }
-        }
+            }
+    }
     }
 }
 
