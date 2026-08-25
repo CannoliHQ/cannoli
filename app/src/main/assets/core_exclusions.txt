@@ -11,3 +11,4 @@ GBC mesen-s_libretro
 GB vbam_libretro
 GBC vbam_libretro
 GB skyemu_libretro
+SG1000 bluemsx_libretro

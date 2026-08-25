@@ -43,6 +43,14 @@ class CoreExclusionsTest {
         assertFalse("skyemu_libretro" in idsFor("GB"))
     }
 
+    // blueMSX is the default on ColecoVision and one of four on SG-1000, where Genesis Plus GX is
+    // the default. Cutting it there leaves it serving a single platform, so its system files have
+    // one destination rather than two.
+    @Test fun `blueMSX is offered for ColecoVision but not for SG-1000`() {
+        assertTrue("bluemsx_libretro" in idsFor("COLECOVISION"))
+        assertFalse("bluemsx_libretro" in idsFor("SG1000"))
+    }
+
     // The cap is the reason all of this exists, so it is asserted rather than assumed.
     @Test fun `no platform offers more than six cores`() {
         val r = repo()
