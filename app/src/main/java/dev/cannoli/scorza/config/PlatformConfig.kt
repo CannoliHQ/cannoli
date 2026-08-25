@@ -451,9 +451,44 @@ class PlatformConfig(
         return coreInfo?.getMissingFirmware(coreId, biosDir) ?: emptyList()
     }
 
-    fun getFirmwareStatus(coreId: String, biosDir: File): List<Pair<FirmwareEntry, Boolean>> {
+    /**
+     * Firmware for a core, with two corrections the `.info` files cannot make themselves.
+     *
+     * Presence accepts the file at the declared path or at the root of the platform's BIOS folder.
+     * A core searches several locations and the system directory is the last of them, so a file
+     * sitting at the root is found and must not be reported missing.
+     *
+     * Requiredness comes from `bios_required.txt` where a core spans platforms with different
+     * needs, since `firmware*_opt` is declared once per core and cannot vary by platform.
+     */
+    fun getFirmwareStatus(tag: String, coreId: String, biosDir: File): List<Pair<FirmwareEntry, Boolean>> {
         val all = coreInfo?.getFirmwareFor(coreId) ?: emptyList()
-        return all.map { it to File(biosDir, it.path).exists() }
+        val required = requiredBios[tag.uppercase(java.util.Locale.ROOT) to coreId].orEmpty()
+        return all.map { entry ->
+            val name = File(entry.path).name
+            val present = File(biosDir, entry.path).exists() || File(biosDir, name).exists()
+            val corrected = if (entry.optional && name in required) entry.copy(optional = false) else entry
+            corrected to present
+        }
+    }
+
+    /** Platform and core to the BIOS that pair genuinely needs. Hand-maintained. */
+    private val requiredBios: Map<Pair<String, String>, Set<String>> by lazy {
+        val parsed = mutableMapOf<Pair<String, String>, MutableSet<String>>()
+        try {
+            assets.open("bios_required.txt").bufferedReader().useLines { lines ->
+                for (line in lines) {
+                    val parts = line.trim().takeIf { it.isNotEmpty() && !it.startsWith("#") }
+                        ?.split(Regex("\\s+")) ?: continue
+                    if (parts.size < 3) continue
+                    parsed.getOrPut(parts[0].uppercase(java.util.Locale.ROOT) to parts[1]) { mutableSetOf() }
+                        .add(parts[2])
+                }
+            }
+        } catch (e: Exception) {
+            dev.cannoli.scorza.util.ErrorLog.write("bios_required.txt unreadable: ${e.message}")
+        }
+        parsed
     }
 
     // The caption is derived, never stored, so a choice that names a different RetroArch package

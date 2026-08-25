@@ -1,0 +1,14 @@
+# BIOS a platform genuinely needs, where the core's own .info does not say so.
+#
+# Firmware is declared per core, but a core can span platforms with different needs. FBNeo marks
+# every one of its 23 entries optional, which is honest for arcade romsets and wrong for Neo Geo:
+# neogeo.zip carries the mandatory MVS BIOS. Nothing upstream can express that difference, so the
+# pair is named here instead.
+#
+# Keyed by platform AND core, because two cores on one platform can differ. Geolith needed both
+# aes.zip and neogeo.zip and declared them correctly; FBNeo needs neither declared nor aes.zip.
+#
+# A wrong entry here reports a working setup as incomplete, so add only what has been confirmed.
+#
+# <TAG> <core id> <filename as the core looks for it>
+NEOGEO fbneo_libretro neogeo.zip

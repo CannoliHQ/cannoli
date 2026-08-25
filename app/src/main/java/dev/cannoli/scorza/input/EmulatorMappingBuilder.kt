@@ -185,7 +185,7 @@ class EmulatorMappingBuilder @Inject constructor(
             val biosCore = current?.takeIf { it.source != EmulatorSource.Standalone }?.coreId.orEmpty()
             if (biosCore.isNotBlank()) {
                 val biosDir = CannoliPaths(File(settings.sdCardRoot)).biosFor(tag)
-                val firmware = platformConfig.getFirmwareStatus(biosCore, biosDir)
+                val firmware = platformConfig.getFirmwareStatus(tag, biosCore, biosDir)
                 val requiredMissing = firmware.count { (entry, present) -> !entry.optional && !present }
                 val warning = requiredMissing > 0
                 val status = if (warning) context.getString(dev.cannoli.scorza.R.string.mapping_required_missing, requiredMissing) else ""
@@ -277,7 +277,7 @@ class EmulatorMappingBuilder @Inject constructor(
             ?: platformConfig.getCoreMapping(tag)
         val runner = platformConfig.getRunnerLabel(tag, coreId)
         val biosDir = CannoliPaths(File(settings.sdCardRoot)).biosFor(tag)
-        val firmware = platformConfig.getFirmwareStatus(coreId, biosDir)
+        val firmware = platformConfig.getFirmwareStatus(tag, coreId, biosDir)
             .map { dev.cannoli.scorza.ui.screens.FirmwareStatus(it.first, it.second) }
         return LauncherScreen.BiosStatus(
             tag = tag,

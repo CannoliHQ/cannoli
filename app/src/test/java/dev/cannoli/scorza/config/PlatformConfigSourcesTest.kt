@@ -42,13 +42,13 @@ class PlatformConfigSourcesTest {
         assertTrue("a5200 core_info should declare firmware", expected.isNotEmpty())
 
         val biosDir = File(ctx.cacheDir, "fw-bios").apply { mkdirs() }
-        val missing = pc.getFirmwareStatus(coreId, biosDir)
+        val missing = pc.getFirmwareStatus("ATARI5200", coreId, biosDir)
         assertTrue(missing.isNotEmpty())
         assertTrue("no firmware files present yet", missing.all { !it.second })
 
         val firstPath = expected.first().path
         File(biosDir, firstPath).apply { parentFile?.mkdirs() }.writeText("stub")
-        val afterPlacing = pc.getFirmwareStatus(coreId, biosDir)
+        val afterPlacing = pc.getFirmwareStatus("ATARI5200", coreId, biosDir)
         assertTrue("placed firmware is reported present",
             afterPlacing.first { it.first.path == firstPath }.second)
     }
