@@ -966,11 +966,17 @@ fun DialogOverlay(
 
         is DialogState.MissingBios -> LaunchIssue(
             title = stringResource(R.string.launch_issue_bios_missing),
-            subject = stringResource(
-                R.string.launch_issue_subject,
-                dialogState.platformName,
-                dialogState.files.joinToString(", "),
-            ),
+            // The only case whose subject is a list, so the files get a line each rather than a
+            // run-on that wraps mid-filename. Capped because the screen does not scroll: past the
+            // cap the count stands in, and the BIOS screen behind the remedy has the full set.
+            subject = buildList {
+                add(dialogState.platformName)
+                val shown = if (dialogState.files.size > BIOS_FILES_SHOWN) BIOS_FILES_SHOWN - 1
+                            else dialogState.files.size
+                addAll(dialogState.files.take(shown))
+                val rest = dialogState.files.size - shown
+                if (rest > 0) add(pluralStringResource(R.plurals.launch_issue_more_files, rest, rest))
+            }.joinToString("\n"),
             confirmLabel = stringResource(R.string.label_view_bios).takeIf { dialogState.platformTag != null },
             buttonStyle = buttonStyle,
         )
@@ -1390,3 +1396,8 @@ internal fun ListDialogScreen(
         }
     }
 }
+
+// Four filenames plus the platform is the tallest subject the screen holds at the largest text size
+// on a 320dp handheld. Amiga's four Kickstart ROMs are the worst real case, so nothing is truncated
+// today; the cap is a guard for a core that declares more.
+private const val BIOS_FILES_SHOWN = 4

@@ -516,6 +516,11 @@
     <string name="launch_issue_no_emulator">No Emulator Set</string>
     <string name="launch_issue_bios_missing">Required BIOS Missing</string>
     <string name="label_view_bios">VIEW BIOS</string>
+    <!-- Shown when more BIOS files are missing than the screen can list. The BIOS screen has all. -->
+    <plurals name="launch_issue_more_files">
+        <item quantity="one">and %1$d more</item>
+        <item quantity="other">and %1$d more</item>
+    </plurals>
     <!-- %1$s = platform, %2$s = what is missing. The subject names only that; the legend says what to do. -->
     <string name="launch_issue_subject">%1$s \u00b7 %2$s</string>
     <string name="dialog_title_launch_error">Launch failed</string>
