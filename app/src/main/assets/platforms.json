@@ -48,8 +48,7 @@
     "app": [
       { "package": "org.dolphinemu.dolphinemu", "activity": "org.dolphinemu.dolphinemu.ui.main.MainActivity", "action": "android.intent.action.MAIN", "extras": [{ "key": "AutoStartFile", "kind": "path" }] },
       { "package": "org.dolphinemu.mmjr", "activity": "org.dolphinemu.dolphinemu.ui.main.MainActivity", "action": "android.intent.action.MAIN", "extras": [{ "key": "AutoStartFile", "kind": "path" }] },
-      { "package": "dev.cannoli.delfino", "launchMethod": "delfino" },
-      { "package": "dev.cannoli.delfino.debug", "launchMethod": "delfino" }
+      { "package": "dev.cannoli.delfino", "launchMethod": "delfino" }
     ]
   },
   "POKEMINI": {
@@ -73,8 +72,7 @@
     "app": [
       { "package": "org.dolphinemu.dolphinemu", "activity": "org.dolphinemu.dolphinemu.ui.main.MainActivity", "action": "android.intent.action.MAIN", "extras": [{ "key": "AutoStartFile", "kind": "path" }] },
       { "package": "org.dolphinemu.mmjr", "activity": "org.dolphinemu.dolphinemu.ui.main.MainActivity", "action": "android.intent.action.MAIN", "extras": [{ "key": "AutoStartFile", "kind": "path" }] },
-      { "package": "dev.cannoli.delfino", "launchMethod": "delfino" },
-      { "package": "dev.cannoli.delfino.debug", "launchMethod": "delfino" }
+      { "package": "dev.cannoli.delfino", "launchMethod": "delfino" }
     ]
   },
   "3DS": {
