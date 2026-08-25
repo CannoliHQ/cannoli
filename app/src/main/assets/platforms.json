@@ -29,7 +29,7 @@
     "group": "Nintendo",
     "app": [
       { "package": "org.mupen64plusae.v3.fzurita", "activity": "paulscode.android.mupen64plusae.SplashActivity", "action": "android.intent.action.VIEW", "data": { "kind": "absolute_path" } },
-      { "package": "org.mupen64plusae.v3.alpha", "activity": "paulscode.android.mupen64plusae.SplashActivity", "action": "android.intent.action.VIEW", "data": { "kind": "absolute_path" } }
+      { "package": "org.mupen64plusae.v3.fzurita.pro", "activity": "paulscode.android.mupen64plusae.SplashActivity", "action": "android.intent.action.VIEW", "data": { "kind": "absolute_path" } }
     ]
   },
   "GBC": {

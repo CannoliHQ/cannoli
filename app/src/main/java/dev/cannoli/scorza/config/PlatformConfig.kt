@@ -627,7 +627,7 @@ class PlatformConfig(
 
     private val knownAppLabels = mapOf(
         "org.mupen64plusae.v3.fzurita" to "M64Plus FZ",
-        "org.mupen64plusae.v3.alpha" to "Mupen64Plus AE",
+        "org.mupen64plusae.v3.fzurita.pro" to "M64Plus FZ Pro",
         "me.magnum.melonds" to "melonDS",
         "com.dsemu.drastic" to "DraStic",
         "org.devmiyax.yabasanshioro2" to "YabaSanshiro2",
