@@ -22,7 +22,17 @@ object EmbeddedCoreDownloader {
 
     fun coresDir(context: Context): File = File(context.filesDir, "cores")
 
-    fun download(context: Context, coreName: String, forceInfoRefresh: Boolean = false): CoreDownloadService.Result {
+    /**
+     * [conditional] sends the etag recorded at install time, so an unchanged build answers 304 and
+     * nothing transfers. Left off for a first install, where there is nothing to compare against
+     * and a stale stamp from a deleted core would wrongly skip the download.
+     */
+    fun download(
+        context: Context,
+        coreName: String,
+        forceInfoRefresh: Boolean = false,
+        conditional: Boolean = false,
+    ): CoreDownloadService.Result {
         val abi = pickAbi()
         val coresDir = coresDir(context).apply { mkdirs() }
         val infoDir = File(context.filesDir, "info").apply { mkdirs() }
@@ -35,14 +45,27 @@ object EmbeddedCoreDownloader {
             ensureInfoFiles(infoDir, context.cacheDir, forceInfoRefresh)
 
             val tmp = File.createTempFile("core_", ".zip", context.cacheDir)
+            // A downloaded core's own stamp first; a bundled core has none, so the manifest the
+            // build machine wrote answers for the binary the APK shipped.
+            val known = if (conditional) {
+                DownloadStamps.etagFor(context.filesDir, soUrl)
+                    ?: BundledCoreManifest.etagFor(context.assets, coreName)
+            } else null
             try {
-                fetch(soUrl, tmp)
+                val result = fetch(soUrl, tmp, known)
+                if (!result.modified) {
+                    // Unchanged, but the date may be newly known.
+                    DownloadStamps.put(context.filesDir, soUrl, result.etag, result.built)
+                    Log.i(TAG, "$soName already current")
+                    return CoreDownloadService.Result("core", coreName, true, null, changed = false)
+                }
                 extractEntry(tmp, soName, File(coresDir, soName))
+                DownloadStamps.put(context.filesDir, soUrl, result.etag, result.built)
             } finally {
                 tmp.delete()
             }
             Log.i(TAG, "installed $soName")
-            CoreDownloadService.Result("core", coreName, true, null)
+            CoreDownloadService.Result("core", coreName, true, null, changed = true)
         } catch (t: Throwable) {
             Log.w(TAG, "download failed for $coreName", t)
             CoreDownloadService.Result("core", coreName, false, t.message ?: t.javaClass.simpleName)
@@ -82,14 +105,33 @@ object EmbeddedCoreDownloader {
      * Failure is not the core's failure. The core is already installed and runs; a missing engine
      * data set is a degraded platform, not a broken one, so this logs and returns.
      */
-    fun installRemoteSystemFiles(context: Context, coreName: String, biosFor: (String) -> File): Boolean {
+    fun installRemoteSystemFiles(
+        context: Context,
+        coreName: String,
+        conditional: Boolean = false,
+        biosFor: (String) -> File,
+    ): SystemFilesResult {
         var allLanded = true
+        var changed = 0
         for (entry in SystemFiles.remoteFor(context.assets, coreName)) {
             val tmp = File.createTempFile("system_", ".zip", context.cacheDir)
+            val url = "${SystemFiles.BUILDBOT_SYSTEM}/${encode(entry.archive)}"
+            val dest = biosFor(entry.tag)
+            // Only revalidate a set that is actually on disk. A folder the user deleted must be
+            // fetched in full, which a matching etag would otherwise skip.
+            val known = if (conditional && entry.foldersPresent(dest)) {
+                DownloadStamps.etagFor(context.filesDir, url)
+            } else null
             try {
-                fetch("${SystemFiles.BUILDBOT_SYSTEM}/${encode(entry.archive)}", tmp)
-                val dest = biosFor(entry.tag)
+                val result = fetch(url, tmp, known)
+                if (!result.modified) {
+                    DownloadStamps.put(context.filesDir, url, result.etag, result.built)
+                    Log.i(TAG, "${entry.archive} already current")
+                    continue
+                }
                 tmp.inputStream().use { SystemFiles.install(it, dest) }
+                DownloadStamps.put(context.filesDir, url, result.etag, result.built)
+                changed++
                 Log.i(TAG, "installed ${entry.archive} into ${dest.name}")
             } catch (t: Throwable) {
                 Log.w(TAG, "system files ${entry.archive} failed for $coreName", t)
@@ -98,8 +140,10 @@ object EmbeddedCoreDownloader {
                 tmp.delete()
             }
         }
-        return allLanded
+        return SystemFilesResult(allLanded, changed)
     }
+
+    data class SystemFilesResult(val ok: Boolean, val changed: Int)
 
     // Buildbot asset names carry spaces. URLEncoder is form encoding, which turns a space into
     // "+" and breaks the path, so only the space is replaced.
@@ -109,34 +153,84 @@ object EmbeddedCoreDownloader {
         Build.SUPPORTED_ABIS?.firstOrNull { it == "arm64-v8a" || it == "armeabi-v7a" }
             ?: "arm64-v8a"
 
-    private fun fetch(url: String, out: File) {
+    /** [modified] false means the server answered 304 and [out] was not written. */
+    data class Fetched(val modified: Boolean, val etag: String?, val built: String = "")
+
+    /**
+     * Fetch [url] into [out], sending [etag] as `If-None-Match` when one is known.
+     *
+     * The buildbot honours conditional requests on both cores and system archives, verified
+     * 2026-08-25, so an unchanged file costs one small request and no body. That is what makes
+     * checking every installed core affordable: ScummVM's 76 MB answers "nothing new" in 0 bytes.
+     */
+    // Internal rather than private so the conditional-request behaviour can be tested against a
+    // real server: the 304 path is the whole mechanism, and mocking it would test the mock.
+    internal fun fetch(url: String, out: File, etag: String? = null): Fetched {
         val conn = URL(url).openConnection() as HttpURLConnection
         conn.connectTimeout = 15_000
         conn.readTimeout = 60_000
         conn.instanceFollowRedirects = true
+        if (etag != null) conn.setRequestProperty("If-None-Match", etag)
         try {
             val code = conn.responseCode
+            // A 304 still carries the validators, so an unchanged build is where a stamp written
+            // before dates were recorded gets its date. Without this those rows stay blank until
+            // the core happens to change.
+            if (code == HttpURLConnection.HTTP_NOT_MODIFIED) {
+                return Fetched(false, etag, DownloadStamps.isoDate(conn.getHeaderField("Last-Modified")))
+            }
             if (code !in 200..299) throw RuntimeException("HTTP $code for $url")
             conn.inputStream.use { input ->
                 out.outputStream().use { output -> input.copyTo(output) }
             }
+            return Fetched(
+                modified = true,
+                etag = conn.getHeaderField("ETag"),
+                built = DownloadStamps.isoDate(conn.getHeaderField("Last-Modified")),
+            )
         } finally {
             conn.disconnect()
         }
     }
 
-    private fun extractEntry(zip: File, entrySuffix: String, dest: File) {
-        ZipInputStream(zip.inputStream().buffered()).use { zis ->
-            var e = zis.nextEntry
-            while (e != null) {
-                if (!e.isDirectory && e.name.endsWith(entrySuffix)) {
-                    dest.outputStream().use { zis.copyTo(it) }
-                    return
+    /**
+     * Unpack one entry over [dest] without ever leaving it partly written.
+     *
+     * Writing straight into [dest] truncates the core the launcher loads, so an interrupted
+     * extraction leaves a file RetroArch will still try to `dlopen`. Staging beside it and renaming
+     * makes the swap atomic: the destination is the old build or the new one, never half of either.
+     * The stage sits in the same directory because rename is only atomic within a filesystem.
+     */
+    // Internal rather than private for the same reason as fetch: the failure mode is the point.
+    // A test that cannot see this can only assert the happy path, which was never the risk.
+    internal fun extractEntry(zip: File, entrySuffix: String, dest: File) {
+        val stage = File(dest.parentFile, "${dest.name}.part")
+        try {
+            ZipInputStream(zip.inputStream().buffered()).use { zis ->
+                var e = zis.nextEntry
+                while (e != null) {
+                    if (!e.isDirectory && e.name.endsWith(entrySuffix)) {
+                        stage.outputStream().use { zis.copyTo(it) }
+                        if (!replace(stage, dest)) throw RuntimeException("could not replace ${dest.name}")
+                        return
+                    }
+                    e = zis.nextEntry
                 }
-                e = zis.nextEntry
             }
+        } finally {
+            stage.delete()
         }
         throw RuntimeException("$entrySuffix not found in ${zip.name}")
+    }
+
+    /**
+     * Move [stage] onto [dest]. `renameTo` replaces an existing file on Android's filesystems, and
+     * the fallback covers the case where it does not rather than leaving the stage orphaned.
+     */
+    private fun replace(stage: File, dest: File): Boolean {
+        if (stage.renameTo(dest)) return true
+        if (!dest.delete() && dest.exists()) return false
+        return stage.renameTo(dest)
     }
 
     private fun extractAllInfo(zip: File, infoDir: File) {

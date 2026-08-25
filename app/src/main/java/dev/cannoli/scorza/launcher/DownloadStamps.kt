@@ -1,0 +1,73 @@
+package dev.cannoli.scorza.launcher
+
+import java.io.File
+
+/**
+ * What the buildbot said when we last downloaded something: the build identity, so we can ask
+ * whether it changed, and the build date, so we can say which build the user has.
+ *
+ * There is nothing to pin to. The buildbot keeps dated APKs but a single unversioned `latest`
+ * directory of cores, its stable releases carry no cores at all, and RetroArch's own updater points
+ * at the same place. So Cannoli tracks build identity rather than build version.
+ *
+ * The date is deliberately not the core's `display_version`. That field is hand-maintained upstream
+ * and moves on a completely different clock: gambatte last changed it in 2022 while the binary is
+ * rebuilt nightly, and mGBA declares `0.10-dev`, which is not a release at all. Showing it would
+ * tell two users with builds months apart that they have the same thing.
+ *
+ * Keyed by URL because that is unambiguous across cores, ABIs and system archives alike.
+ */
+object DownloadStamps {
+
+    private const val FILE = "download_etags.txt"
+
+    /** [built] is an ISO date, or empty when the server sent no `Last-Modified`. */
+    data class Stamp(val etag: String, val built: String)
+
+    fun read(filesDir: File): Map<String, Stamp> = try {
+        File(filesDir, FILE).takeIf { it.isFile }?.readLines().orEmpty()
+            .mapNotNull { line ->
+                val parts = line.split('\t', limit = 3)
+                if (parts.size >= 2 && parts[0].isNotBlank() && parts[1].isNotBlank()) {
+                    parts[0] to Stamp(parts[1], parts.getOrNull(2).orEmpty())
+                } else null
+            }
+            .toMap()
+    } catch (_: Exception) {
+        emptyMap()
+    }
+
+    fun etagFor(filesDir: File, url: String): String? = read(filesDir)[url]?.etag
+
+    fun builtFor(filesDir: File, url: String): String? =
+        read(filesDir)[url]?.built?.takeIf { it.isNotBlank() }
+
+    @Synchronized
+    fun put(filesDir: File, url: String, etag: String?, built: String?) {
+        if (etag.isNullOrBlank()) return
+        val merged = read(filesDir) + (url to Stamp(etag, built.orEmpty()))
+        try {
+            filesDir.mkdirs()
+            File(filesDir, FILE).writeText(
+                merged.entries.joinToString("\n") { "${it.key}\t${it.value.etag}\t${it.value.built}" }
+            )
+        } catch (_: Exception) {}
+    }
+
+    /**
+     * `Last-Modified` as an ISO date. The header is RFC 1123 in GMT, and only the day is shown, so
+     * the wall clock and the reader's zone do not matter.
+     */
+    fun isoDate(lastModified: String?): String {
+        if (lastModified.isNullOrBlank()) return ""
+        return try {
+            val parsed = java.time.ZonedDateTime.parse(
+                lastModified.trim(),
+                java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME,
+            )
+            parsed.toLocalDate().toString()
+        } catch (_: Exception) {
+            ""
+        }
+    }
+}
