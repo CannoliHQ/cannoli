@@ -441,6 +441,19 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         get() = jsonRead { optBoolean(KEY_ALWAYS_SAVE_ON_QUIT, false) }
         set(value) = jsonWrite { put(KEY_ALWAYS_SAVE_ON_QUIT, value) }
 
+    /** When the user last refreshed cores, as an ISO date. Empty means never. */
+    var lastCoreUpdate: String
+        get() = jsonRead { optString(KEY_LAST_CORE_UPDATE, "") }
+        set(value) = jsonWrite { put(KEY_LAST_CORE_UPDATE, value) }
+
+    /**
+     * Whether that run reached the end. A cancelled run still replaced some cores, so it is not
+     * nothing, but reporting it as a refresh would say every core is current when most are not.
+     */
+    var lastCoreUpdateCompleted: Boolean
+        get() = jsonRead { optBoolean(KEY_LAST_CORE_UPDATE_DONE, true) }
+        set(value) = jsonWrite { put(KEY_LAST_CORE_UPDATE_DONE, value) }
+
     var raHardcore: Boolean
         get() = jsonRead { optBoolean(KEY_RA_HARDCORE, false) }
         set(value) = jsonWrite { put(KEY_RA_HARDCORE, value) }
@@ -546,6 +559,8 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         private const val KEY_LOGGING_STORAGE = "logging_storage"
         private const val KEY_LOGGING_ROMM = "logging_romm"
         private const val KEY_ALWAYS_SAVE_ON_QUIT = "always_save_on_quit"
+        private const val KEY_LAST_CORE_UPDATE = "lastCoreUpdate"
+        private const val KEY_LAST_CORE_UPDATE_DONE = "lastCoreUpdateCompleted"
         private const val KEY_RA_HARDCORE = "ra_hardcore"
         private const val KEY_PORTRAIT_MARGIN_PX = "portrait_margin_px"
         private const val KEY_SCREEN_GEOMETRY_WIDTH = "screen_geometry_width"

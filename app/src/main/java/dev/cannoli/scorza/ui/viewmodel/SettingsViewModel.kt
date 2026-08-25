@@ -110,6 +110,10 @@ class SettingsViewModel @Inject constructor(
         @param:StringRes val valueRes: Int? = null,
         val valueText: String? = null,
         val isEditable: Boolean = false,
+        // A row that does something when confirmed, rather than cycling a value or opening a
+        // screen. It can still show a value, which is what distinguishes it: a status the action
+        // acts on, like when cores were last updated.
+        val isAction: Boolean = false,
         val canCycle: Boolean = true,
         val swatchColor: Color? = null,
         val disabled: Boolean = false
@@ -915,7 +919,20 @@ class SettingsViewModel @Inject constructor(
             // Nor is this row gated on one being installed. It used to be, from when RetroArch was
             // a separate app and its cores were its own; the embedded runner keeps them in
             // filesDir, so Cannoli always has cores to show and the gate only hid them.
-            add(SettingsItem("installed_cores", R.string.setting_installed_cores_all, isEditable = true))
+            add(SettingsItem(
+                "update_cores",
+                R.string.setting_update_cores,
+                valueText = settings.lastCoreUpdate.takeIf { it.isNotBlank() }?.let {
+                    context.getString(
+                        if (settings.lastCoreUpdateCompleted) R.string.setting_update_cores_last
+                        else R.string.setting_update_cores_stopped,
+                        it,
+                    )
+                } ?: context.getString(R.string.setting_update_cores_never),
+                isEditable = true,
+                isAction = true,
+                canCycle = false,
+            ))
             add(SettingsItem("always_save_on_quit", R.string.setting_always_save_on_quit, valueRes = onOff(settings.alwaysSaveOnQuit)))
             add(SettingsItem("igm_settings_mode", R.string.setting_igm_settings_mode, valueRes = when (settings.igmSettingsMode) {
                 IgmSettingsMode.CURATED -> R.string.value_igm_mode_curated

@@ -114,7 +114,10 @@ fun SettingsScreen(
                 listOf(buttonStyle.back to stringResource(R.string.label_back))
             }
             val showClear = selectedItem?.key == "rom_directory" && selectedItem.valueText != null
-            val isRommPairAction = selectedItem?.key == "romm_pair" || selectedItem?.key == "romm_pair_code"
+            // Rows that act rather than cycle or navigate. The two RomM pairing rows were the
+            // only ones when this was a key check; the flag is what the check was really asking.
+            val isRommPairAction = selectedItem?.isAction == true ||
+                selectedItem?.key == "romm_pair" || selectedItem?.key == "romm_pair_code"
             val isNavInto = selectedItem?.isEditable == true
                 && selectedItem.valueText == null
                 && selectedItem.valueRes == null
