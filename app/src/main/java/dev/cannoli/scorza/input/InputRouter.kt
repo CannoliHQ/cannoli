@@ -224,7 +224,6 @@ class InputRouter @Inject constructor(
         is LauncherScreen.ShortcutBinding   -> shortcutBindingHandler()
         is LauncherScreen.Credits           -> creditsHandler()
         is LauncherScreen.CreditsSection    -> creditsSectionHandler()
-        is LauncherScreen.InstalledCores    -> installedCoresHandler()
         is LauncherScreen.IconGallery       -> scrollable<LauncherScreen.IconGallery>()
         is LauncherScreen.RommPlatformList      -> rommPlatformListHandler()
         is LauncherScreen.RommGameList          -> rommGameListHandler()
@@ -557,10 +556,6 @@ class InputRouter @Inject constructor(
     )
 
     private fun creditsSectionHandler() = scrollable<LauncherScreen.CreditsSection>()
-
-    private fun installedCoresHandler() = scrollable<LauncherScreen.InstalledCores>(
-        onStart = { settingsHandler.updateAllCores() },
-    )
 
     private fun rommPlatformListHandler() = scrollable<LauncherScreen.RommPlatformList>(
         onConfirm = {

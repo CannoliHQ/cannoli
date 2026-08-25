@@ -254,16 +254,19 @@
     <string name="setting_color_accent">Accent</string>
     <string name="setting_color_background">Background</string>
     <string name="setting_color_status_bar">Status Bar</string>
-    <string name="setting_installed_cores_all">Installed Cores</string>
     <!-- Screen title. %s is the emulator app name (e.g. RetroArch). -->
-    <string name="title_installed_cores">%s Installed Cores</string>
-    <string name="title_installed_cores_all">Installed Cores</string>
-    <!-- Value on the installed cores screen. %1$s = an ISO date, e.g. 2026-08-25. The word matters:
-         a bare date beside a core name reads as its version, which these cores do not usefully have.
-         They come from unversioned nightly builds, so the build date is what identifies one. -->
-    <string name="installed_core_build">built on %1$s</string>
-    <!-- Footer action on the installed cores screen. -->
-    <string name="label_update_all">UPDATE ALL</string>
+    <!-- Settings row that refreshes every installed core. -->
+    <string name="setting_update_cores">Update Cores</string>
+    <!-- Value on that row. %1$s = an ISO date. -->
+    <string name="setting_update_cores_last">Last run %1$s</string>
+    <string name="setting_update_cores_never">Never run</string>
+    <!-- Value on that row when the last run was cancelled part way. %1$s = an ISO date. Some cores
+         were replaced and the rest were not, so it is neither a refresh nor nothing. -->
+    <string name="setting_update_cores_stopped">Stopped %1$s</string>
+    <!-- Confirmation before replacing every core. %1$d = how many, %2$s = a size like "196 MB". -->
+    <string name="dialog_update_cores_confirm">This will replace every installed core with the current build from the libretro buildbot. Cores are rebuilt daily.\n\n%1$d cores \u00b7 about %2$s</string>
+    <!-- Progress overlay while cores are being replaced. -->
+    <string name="updating_cores">Updating Cores</string>
     <!-- OSD while cores are being revalidated against the buildbot. -->
     <string name="osd_checking_cores">Checking for core updates</string>
     <!-- OSD toast. %1$d = how many cores or system file sets were updated. -->
@@ -278,7 +281,6 @@
         <item quantity="one">%1$d core could not be checked</item>
         <item quantity="other">%1$d cores could not be checked</item>
     </plurals>
-    <string name="installed_cores_none">No cores found</string>
     <!-- Setting: the app's root storage folder on the SD card. -->
     <string name="setting_sd_root">Cannoli Root</string>
     <string name="setting_rom_directory">ROM Directory</string>

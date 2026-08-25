@@ -32,6 +32,7 @@ object EmbeddedCoreDownloader {
         coreName: String,
         forceInfoRefresh: Boolean = false,
         conditional: Boolean = false,
+        onBytes: ((read: Long, total: Long) -> Unit)? = null,
     ): CoreDownloadService.Result {
         val abi = pickAbi()
         val coresDir = coresDir(context).apply { mkdirs() }
@@ -52,7 +53,7 @@ object EmbeddedCoreDownloader {
                     ?: BundledCoreManifest.etagFor(context.assets, coreName)
             } else null
             try {
-                val result = fetch(soUrl, tmp, known)
+                val result = fetch(soUrl, tmp, known, onBytes)
                 if (!result.modified) {
                     // Unchanged, but the date may be newly known.
                     DownloadStamps.put(context.filesDir, soUrl, result.etag, result.built)
@@ -165,7 +166,12 @@ object EmbeddedCoreDownloader {
      */
     // Internal rather than private so the conditional-request behaviour can be tested against a
     // real server: the 304 path is the whole mechanism, and mocking it would test the mock.
-    internal fun fetch(url: String, out: File, etag: String? = null): Fetched {
+    internal fun fetch(
+        url: String,
+        out: File,
+        etag: String? = null,
+        onBytes: ((read: Long, total: Long) -> Unit)? = null,
+    ): Fetched {
         val conn = URL(url).openConnection() as HttpURLConnection
         conn.connectTimeout = 15_000
         conn.readTimeout = 60_000
@@ -180,8 +186,25 @@ object EmbeddedCoreDownloader {
                 return Fetched(false, etag, DownloadStamps.isoDate(conn.getHeaderField("Last-Modified")))
             }
             if (code !in 200..299) throw RuntimeException("HTTP $code for $url")
+            val total = conn.contentLengthLong
             conn.inputStream.use { input ->
-                out.outputStream().use { output -> input.copyTo(output) }
+                out.outputStream().use { output ->
+                    if (onBytes == null) {
+                        input.copyTo(output)
+                    } else {
+                        // Counted rather than copied wholesale: one core is 68 MB, so a bar that
+                        // only moves between cores would sit still for minutes on it.
+                        val buf = ByteArray(64 * 1024)
+                        var done = 0L
+                        while (true) {
+                            val n = input.read(buf)
+                            if (n < 0) break
+                            output.write(buf, 0, n)
+                            done += n
+                            onBytes(done, total)
+                        }
+                    }
+                }
             }
             return Fetched(
                 modified = true,

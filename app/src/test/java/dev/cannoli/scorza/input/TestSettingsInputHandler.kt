@@ -35,6 +35,6 @@ internal fun testSettingsInputHandler(
     cannoliPaths = mockk(relaxed = true),
     raLoginController = mockk(relaxed = true),
     permissionsInputHandler = mockk(relaxed = true),
-    coreDownloadService = mockk(relaxed = true),
     osdController = mockk(relaxed = true),
+    coreUpdateController = mockk(relaxed = true),
 )

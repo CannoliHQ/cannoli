@@ -91,6 +91,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var osdController: dev.cannoli.ui.components.OsdController
     @Inject lateinit var inputTesterController: InputTesterController
     @Inject lateinit var updateManager: UpdateManager
+    @Inject lateinit var coreDownloadService: dev.cannoli.scorza.launcher.CoreDownloadService
     @Inject lateinit var launchManager: Provider<LaunchManager>
     @Inject lateinit var launchState: dev.cannoli.scorza.launcher.LaunchState
     @Inject lateinit var installedCoreService: Provider<InstalledCoreService>
@@ -304,6 +305,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
         val cvm = controllersViewModel.get()
         val updateInfo = updateManager.updateAvailable.collectAsState().value
         val dlProgress = updateManager.downloadProgress.collectAsState().value
+        val coreUpdate = coreDownloadService.progress.collectAsState().value
         val dlError = updateManager.downloadError.collectAsState().value
         val navScreen = nav.currentScreen
         val navDialogState = nav.dialogState
@@ -370,6 +372,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
             resumableGames = navResumableGames,
             updateAvailable = updateInfo != null,
             downloadProgress = dlProgress ?: 0f,
+            coreUpdate = coreUpdate,
             downloadError = dlError,
             osdController = osdController,
             activeMapping = activeMapping,

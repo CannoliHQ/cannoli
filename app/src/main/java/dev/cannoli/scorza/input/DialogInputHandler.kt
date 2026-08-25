@@ -93,6 +93,7 @@ class DialogInputHandler @Inject constructor(
     private val saveSyncService: dev.cannoli.scorza.romm.sync.SaveSyncService,
     private val slotManager: dev.cannoli.scorza.romm.sync.SlotManager,
     private val saveSlotsHandler: dev.cannoli.scorza.input.screen.SaveSlotsInputHandler,
+    private val coreUpdateController: CoreUpdateController,
     private val syncHistoryStore: dev.cannoli.scorza.romm.sync.SyncHistoryStore,
     private val pendingConflictStore: dev.cannoli.scorza.romm.sync.PendingConflictStore,
     private val saveSyncStatusHolder: dev.cannoli.scorza.romm.sync.SaveSyncStatusHolder,
@@ -457,6 +458,7 @@ class DialogInputHandler @Inject constructor(
                     openEmulatorRecovery(ds.platformTag, ds.romId)
                 }
             }
+            is DialogState.UpdateCoresConfirm -> coreUpdateController.start()
             is DialogState.MissingCore -> openEmulatorRecovery(ds.platformTag, ds.romId)
             is DialogState.UnsupportedContent -> openEmulatorRecovery(ds.platformTag, ds.romId)
             is DialogState.NoEmulatorSet -> openEmulatorRecovery(ds.platformTag, ds.romId)
@@ -1117,6 +1119,8 @@ class DialogInputHandler @Inject constructor(
             is DialogState.RenameResult -> {
                 nav.dialogState.value = DialogState.None
             }
+            is DialogState.UpdateCoresConfirm -> nav.dialogState.value = DialogState.None
+            is DialogState.UpdatingCores -> coreUpdateController.cancel()
             is DialogState.MissingCore,
             is DialogState.MissingApp,
             is DialogState.UnsupportedContent,

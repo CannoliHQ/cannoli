@@ -83,6 +83,7 @@ fun DialogOverlay(
     listVerticalPadding: Dp,
     downloadProgress: Float = 0f,
     downloadError: String? = null,
+    coreUpdate: dev.cannoli.scorza.launcher.CoreDownloadService.UpdateProgress? = null,
     downloads: List<RommDownloadItem> = emptyList(),
     updateAvailable: Boolean = false,
     buttonStyle: ButtonStyle = ButtonStyle(),
@@ -1040,6 +1041,28 @@ fun DialogOverlay(
             message = stringResource(R.string.dialog_quit_confirm),
             buttonStyle = buttonStyle,
             confirmLabel = stringResource(R.string.label_quit),
+        )
+
+        is DialogState.UpdateCoresConfirm -> ConfirmOverlay(
+            message = stringResource(
+                R.string.dialog_update_cores_confirm,
+                dialogState.cores,
+                android.text.format.Formatter.formatShortFileSize(
+                    androidx.compose.ui.platform.LocalContext.current, dialogState.bytes
+                ),
+            ),
+            buttonStyle = buttonStyle,
+            confirmLabel = stringResource(R.string.label_update),
+        )
+
+        // One standing statement rather than the core name: twenty-seven names in five seconds
+        // reads as flicker, and which core is in flight is not something to act on.
+        is DialogState.UpdatingCores -> dev.cannoli.ui.components.ProgressOverlay(
+            title = stringResource(R.string.updating_cores),
+            subtitle = "",
+            progress = coreUpdate?.fraction,
+            error = null,
+            buttonStyle = buttonStyle,
         )
 
         is DialogState.RetroAchievementsLogoutConfirm -> ConfirmOverlay(

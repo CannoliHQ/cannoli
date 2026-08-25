@@ -446,12 +446,6 @@ sealed class LauncherScreen {
         override val itemCount: Int get() = entries.size
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
     }
-    /** [detail] is the version the core calls itself, from the info file fetched alongside it. */
-    data class InstalledCore(val name: String, val detail: String)
-    data class InstalledCores(val cores: List<InstalledCore> = emptyList(), val loading: Boolean = true, val updating: Boolean = false, override val selectedIndex: Int = 0, override val scrollTarget: Int = 0, val title: String? = null) : LauncherScreen(), ScrollableScreen {
-        override val itemCount: Int get() = cores.size
-        override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
-    }
     // Debug builds only. Renders CannoliIcons.all so what you see is what the app draws, rather
     // than a second hand-maintained list that could disagree with it.
     data class IconGallery(override val selectedIndex: Int = 0, override val scrollTarget: Int = 0) : LauncherScreen(), ScrollableScreen {
@@ -534,6 +528,7 @@ fun AppNavGraph(
     resumableGames: Set<String> = emptySet(),
     updateAvailable: Boolean = false,
     downloadProgress: Float = 0f,
+    coreUpdate: dev.cannoli.scorza.launcher.CoreDownloadService.UpdateProgress? = null,
     downloadError: String? = null,
     osdController: dev.cannoli.ui.components.OsdController,
     activeMapping: dev.cannoli.scorza.input.DeviceMapping? = null,
@@ -1321,52 +1316,6 @@ fun AppNavGraph(
                     }
                 }
             }
-            is LauncherScreen.InstalledCores -> {
-                if (inputRouter != null) {
-                    val handler = remember { inputRouter.currentHandler() }
-                    dev.cannoli.scorza.input.screen.compose.ScreenInput(handler)
-                }
-                ListDialogScreen(
-                    backgroundImagePath = appSettings.backgroundImagePath,
-                    backgroundTint = appSettings.backgroundTint,
-                    title = currentScreen.title ?: stringResource(R.string.title_installed_cores),
-                    listFontSize = listFontSize,
-                    listLineHeight = listLineHeight,
-                    fullWidth = true,
-                    rightBottomItems = if (currentScreen.cores.isNotEmpty() && !currentScreen.updating) {
-                        listOf(dev.cannoli.ui.START_GLYPH to stringResource(R.string.label_update_all))
-                    } else emptyList(),
-                    buttonStyle = labels
-                ) {
-                    if (currentScreen.loading) {
-                        // wait for broadcast response
-                    } else if (currentScreen.cores.isEmpty()) {
-                        Text(
-                            text = stringResource(R.string.installed_cores_none),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = cannoliColors.text.copy(alpha = 0.6f),
-                            modifier = Modifier.padding(start = 14.dp)
-                        )
-                    } else {
-                        List(
-                            items = currentScreen.cores,
-                            selectedIndex = currentScreen.selectedIndex,
-                            itemHeight = itemHeight,
-                            scrollTarget = currentScreen.scrollTarget,
-                            onListStateChanged = onListStateChanged
-                        ) { _, core, isSelected ->
-                            PillRowKeyValue(
-                                label = core.name,
-                                value = core.detail,
-                                isSelected = isSelected,
-                                fontSize = listFontSize,
-                                lineHeight = listLineHeight,
-                                verticalPadding = listVerticalPadding
-                            )
-                        }
-                    }
-                }
-            }
             is LauncherScreen.DirectoryBrowser -> {
                 inputRouter?.let { dev.cannoli.scorza.input.screen.compose.ScreenInput(it.directoryBrowserHandler) }
                 DirectoryBrowserScreen(
@@ -2095,6 +2044,7 @@ fun AppNavGraph(
             listLineHeight = listLineHeight,
             listVerticalPadding = listVerticalPadding,
             downloadProgress = downloadProgress,
+            coreUpdate = coreUpdate,
             downloadError = downloadError,
             downloads = overlayDownloads,
             updateAvailable = updateAvailable,
