@@ -26,6 +26,11 @@ class ViewportController(
 ) {
     private var active = false
 
+    // The apply below forces aspect_ratio_index to ASPECT_RATIO_CUSTOM, so once a viewport is
+    // live the index no longer tells us what the user chose. Remember the last mode derived
+    // while the index still reflected their choice, and fall back to it on later refreshes.
+    private var rememberedMode: ScalingMode? = null
+
     /** Test seam: declares a viewport already applied, as it would be after a prior refresh. */
     fun markActive() { active = true }
 
@@ -41,16 +46,23 @@ class ViewportController(
             if (active) {
                 clearViewport(readAspectIdx())
                 active = false
+                rememberedMode = null
             }
             return false
         }
 
         val g = coreGeometry() ?: return false
         val aspectIdx = readAspectIdx()
-        val mode = when {
-            aspectIdx == ASPECT_RATIO_FULL -> ScalingMode.FULLSCREEN
-            readIntegerScale() -> ScalingMode.INTEGER
-            else -> ScalingMode.CORE_REPORTED
+        val mode = if (aspectIdx == ASPECT_RATIO_CUSTOM) {
+            rememberedMode ?: ScalingMode.CORE_REPORTED
+        } else {
+            val derived = when {
+                aspectIdx == ASPECT_RATIO_FULL -> ScalingMode.FULLSCREEN
+                readIntegerScale() -> ScalingMode.INTEGER
+                else -> ScalingMode.CORE_REPORTED
+            }
+            rememberedMode = derived
+            derived
         }
 
         val rect = computeViewport(
@@ -75,5 +87,6 @@ class ViewportController(
     private companion object {
         // retroarch/gfx/video_defines.h
         const val ASPECT_RATIO_FULL = 24
+        const val ASPECT_RATIO_CUSTOM = 23
     }
 }

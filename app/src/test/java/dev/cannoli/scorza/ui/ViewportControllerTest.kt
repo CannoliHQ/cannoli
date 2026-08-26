@@ -11,6 +11,9 @@ class ViewportControllerTest {
 
     private class FakeBridge(
         var geometry: IntArray? = intArrayOf(320, 240, 13333, 10000),
+        // Mutable so a test can change what the index reads back between two refresh() calls,
+        // the way a successful apply forces it to ASPECT_RATIO_CUSTOM on the native side.
+        var aspectIdx: Int = 22,
     ) {
         var applied: IntArray? = null
         var cleared: Int? = null
@@ -25,14 +28,17 @@ class ViewportControllerTest {
         marginPx: Int = 0,
         wPct: Int = 100, hPct: Int = 100, xPct: Int = 0, yPct: Int = 0,
         aspectIdx: Int = 22, integer: Boolean = false,
-    ) = ViewportController(
-        coreGeometry = { b.geometry },
-        applyViewport = b::apply,
-        clearViewport = b::clear,
-        readAspectIdx = { aspectIdx },
-        readIntegerScale = { integer },
-        settings = ViewportSettings(marginPx, wPct, hPct, xPct, yPct),
-    )
+    ): ViewportController {
+        b.aspectIdx = aspectIdx
+        return ViewportController(
+            coreGeometry = { b.geometry },
+            applyViewport = b::apply,
+            clearViewport = b::clear,
+            readAspectIdx = { b.aspectIdx },
+            readIntegerScale = { integer },
+            settings = ViewportSettings(marginPx, wPct, hPct, xPct, yPct),
+        )
+    }
 
     @Test fun `defaults apply nothing and leave the aspect index alone`() {
         val b = FakeBridge()
@@ -82,5 +88,42 @@ class ViewportControllerTest {
         back.markActive()
         assertFalse(back.refresh(1920, 1080))
         assertEquals(22, b.cleared)
+    }
+
+    // A successful apply forces aspect_ratio_index to ASPECT_RATIO_CUSTOM (23) on the native
+    // side, so a naive re-derivation on the next refresh would lose the user's chosen mode.
+
+    @Test fun `a fullscreen user stays fullscreen once the apply forces the index to custom`() {
+        val b = FakeBridge()
+        val c = controller(b, wPct = 50, aspectIdx = 24)
+        assertTrue(c.refresh(1920, 1080))
+        assertEquals(960, b.applied!![2])
+        assertEquals(1080, b.applied!![3])
+
+        b.aspectIdx = 23
+        assertTrue(c.refresh(1920, 1080))
+        assertEquals(960, b.applied!![2])
+        assertEquals(1080, b.applied!![3])
+    }
+
+    @Test fun `an integer user stays integer once the apply forces the index to custom`() {
+        val b = FakeBridge()
+        val c = controller(b, wPct = 75, aspectIdx = 22, integer = true)
+        assertTrue(c.refresh(1920, 1080))
+        assertEquals(1280, b.applied!![2])
+
+        b.aspectIdx = 23
+        assertTrue(c.refresh(1920, 1080))
+        assertEquals(1280, b.applied!![2])
+    }
+
+    @Test fun `an index of 23 with nothing remembered falls back to core reported`() {
+        val reported = FakeBridge()
+        controller(reported, wPct = 50, aspectIdx = 22).refresh(1920, 1080)
+
+        val b = FakeBridge()
+        val c = controller(b, wPct = 50, aspectIdx = 23)
+        assertTrue(c.refresh(1920, 1080))
+        assertEquals(reported.applied!!.toList(), b.applied!!.toList())
     }
 }
