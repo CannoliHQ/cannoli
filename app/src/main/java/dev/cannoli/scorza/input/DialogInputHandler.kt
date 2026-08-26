@@ -1958,7 +1958,15 @@ class DialogInputHandler @Inject constructor(
                 if (app?.artFile != null) add(MENU_DELETE_ART)
                 add(MENU_REMOVE)
             } else {
-                addAll(gameContextOptions.map { menuItem ->
+                // Both RetroAchievements rows are meaningless logged out: a game id identifies a
+                // game to an account that is not connected, and softcore is a property of a session
+                // that does not exist. They read as settings that do nothing rather than as rows
+                // waiting on a login.
+                val raRows = setOf(MENU_RA_GAME_ID, MENU_FORCE_SOFTCORE)
+                val options =
+                    if (settings.raToken.isNotEmpty()) gameContextOptions
+                    else gameContextOptions.filterNot { it in raRows }
+                addAll(options.map { menuItem ->
                     when {
                         menuItem == MENU_EMULATOR_OVERRIDE && rom != null -> {
                             // Reads the stored choice directly. Matching it back against a

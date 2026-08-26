@@ -25,11 +25,15 @@ internal fun testDialogInputHandler(
     rommDownloader: Downloader = emptyQueueDownloader(),
     gameListViewModel: GameListViewModel = mockk(relaxed = true),
     romsRepository: RomsRepository = mockk(relaxed = true),
+    // A relaxed SettingsRepository answers every String with "", so the default here is logged
+    // out of RetroAchievements. Rows that only exist for a connected account are absent unless a
+    // test says otherwise.
+    raToken: String = "",
 ) = DialogInputHandler(
     nav = nav,
     ioScope = ioScope,
     context = context,
-    settings = mockk(relaxed = true),
+    settings = mockk(relaxed = true) { every { this@mockk.raToken } returns raToken },
     collectionManager = mockk(relaxed = true),
     recentlyPlayedManager = mockk(relaxed = true),
     platformResolver = mockk(relaxed = true),

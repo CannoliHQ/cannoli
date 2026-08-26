@@ -45,6 +45,8 @@ class ContextMenuForceSoftcoreTest {
             context = context,
             gameListViewModel = glvm,
             romsRepository = romsRepository,
+            // These rows only exist for a connected account, so the handler under test is one.
+            raToken = "token",
         )
     }
 
@@ -94,5 +96,26 @@ class ContextMenuForceSoftcoreTest {
         )
         handler.onConfirm()
         verify { romsRepository.setForceSoftcore(7L, true) }
+    }
+
+    // Both rows describe a RetroAchievements account: an id identifies a game to one, and softcore
+    // is a property of a session. Logged out they are settings that cannot do anything, so they are
+    // not offered rather than shown inert.
+    @Test fun `the achievements rows are absent when logged out`() {
+        val loggedOut = testDialogInputHandler(
+            nav = NavigationController(),
+            ioScope = CoroutineScope(Dispatchers.Unconfined),
+            context = context,
+            gameListViewModel = glvm,
+            romsRepository = romsRepository,
+            raToken = "",
+        )
+        val options = loggedOut.buildGameContextOptions(
+            ListItem.RomItem(rom(raGameId = 1234)), GameListViewModel.State()
+        )
+        assertTrue(options.none { it == MENU_RA_GAME_ID || it.startsWith("$MENU_RA_GAME_ID\t") })
+        assertTrue(options.none { it == MENU_FORCE_SOFTCORE || it.startsWith("$MENU_FORCE_SOFTCORE\t") })
+        // The rest of the menu is untouched.
+        assertTrue(options.any { it == MENU_RENAME })
     }
 }
