@@ -21,15 +21,26 @@ object DownloadStamps {
 
     private const val FILE = "download_etags.txt"
 
-    /** [built] is an ISO date, or empty when the server sent no `Last-Modified`. */
-    data class Stamp(val etag: String, val built: String)
+    /**
+     * [built] is an ISO date, or empty when the server sent no `Last-Modified`. [crc] is the
+     * buildbot's CRC32 of the inner `.so`, lowercase hex, or empty when the index did not name it.
+     *
+     * The etag cannot answer whether a rebuild changed anything: a zip embeds a build timestamp, so
+     * it differs every night whether or not the core did. The CRC covers the binary alone and is
+     * stable across an unchanged rebuild, which is what makes skipping the download safe.
+     */
+    data class Stamp(val etag: String, val built: String, val crc: String = "")
 
     fun read(filesDir: File): Map<String, Stamp> = try {
         File(filesDir, FILE).takeIf { it.isFile }?.readLines().orEmpty()
             .mapNotNull { line ->
-                val parts = line.split('\t', limit = 3)
+                val parts = line.split('\t', limit = 4)
                 if (parts.size >= 2 && parts[0].isNotBlank() && parts[1].isNotBlank()) {
-                    parts[0] to Stamp(parts[1], parts.getOrNull(2).orEmpty())
+                    parts[0] to Stamp(
+                        parts[1],
+                        parts.getOrNull(2).orEmpty(),
+                        parts.getOrNull(3).orEmpty(),
+                    )
                 } else null
             }
             .toMap()
@@ -42,14 +53,23 @@ object DownloadStamps {
     fun builtFor(filesDir: File, url: String): String? =
         read(filesDir)[url]?.built?.takeIf { it.isNotBlank() }
 
+    fun crcFor(filesDir: File, url: String): String? =
+        read(filesDir)[url]?.crc?.takeIf { it.isNotBlank() }
+
     @Synchronized
-    fun put(filesDir: File, url: String, etag: String?, built: String?) {
+    fun put(filesDir: File, url: String, etag: String?, built: String?, crc: String? = null) {
         if (etag.isNullOrBlank()) return
-        val merged = read(filesDir) + (url to Stamp(etag, built.orEmpty()))
+        // A caller with nothing new to say about the CRC keeps whatever is already recorded, so a
+        // 304 that carries no index lookup does not erase it.
+        val prior = read(filesDir)
+        val keptCrc = crc?.takeIf { it.isNotBlank() } ?: prior[url]?.crc.orEmpty()
+        val merged = prior + (url to Stamp(etag, built.orEmpty(), keptCrc))
         try {
             filesDir.mkdirs()
             File(filesDir, FILE).writeText(
-                merged.entries.joinToString("\n") { "${it.key}\t${it.value.etag}\t${it.value.built}" }
+                merged.entries.joinToString("\n") {
+                    "${it.key}\t${it.value.etag}\t${it.value.built}\t${it.value.crc}"
+                }
             )
         } catch (_: Exception) {}
     }

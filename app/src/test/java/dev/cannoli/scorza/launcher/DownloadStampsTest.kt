@@ -95,4 +95,37 @@ class DownloadStampsTest {
         File(d, "download_etags.txt").mkdirs()
         assertTrue(DownloadStamps.read(d).isEmpty())
     }
+
+    @Test fun `a crc survives a round trip`() {
+        val d = dir()
+        DownloadStamps.put(d, "https://host/core.so.zip", "\"abc\"", "2026-08-26", "e861a19d")
+        assertEquals("e861a19d", DownloadStamps.crcFor(d, "https://host/core.so.zip"))
+    }
+
+    // A 304 knows the etag and the date but says nothing about the binary. Erasing the crc there
+    // would make the next pass download a core it already has, which is the whole thing this avoids.
+    @Test fun `a later stamp with no crc keeps the one already recorded`() {
+        val d = dir()
+        DownloadStamps.put(d, "https://host/core.so.zip", "\"abc\"", "2026-08-26", "e861a19d")
+        DownloadStamps.put(d, "https://host/core.so.zip", "\"def\"", "2026-08-27", null)
+        assertEquals("e861a19d", DownloadStamps.crcFor(d, "https://host/core.so.zip"))
+        assertEquals("\"def\"", DownloadStamps.etagFor(d, "https://host/core.so.zip"))
+    }
+
+    @Test fun `a new crc replaces the old one`() {
+        val d = dir()
+        DownloadStamps.put(d, "https://host/core.so.zip", "\"abc\"", "2026-08-26", "e861a19d")
+        DownloadStamps.put(d, "https://host/core.so.zip", "\"def\"", "2026-08-27", "7a2a3c39")
+        assertEquals("7a2a3c39", DownloadStamps.crcFor(d, "https://host/core.so.zip"))
+    }
+
+    // Rows written before crcs were recorded are three fields wide. They have to keep answering for
+    // the etag, and report no crc rather than a wrong one.
+    @Test fun `a stamp written before crcs existed still reads`() {
+        val d = dir()
+        File(d, "download_etags.txt").writeText("https://host/core.so.zip\t\"abc\"\t2026-08-25")
+        assertEquals("\"abc\"", DownloadStamps.etagFor(d, "https://host/core.so.zip"))
+        assertEquals("2026-08-25", DownloadStamps.builtFor(d, "https://host/core.so.zip"))
+        assertNull(DownloadStamps.crcFor(d, "https://host/core.so.zip"))
+    }
 }

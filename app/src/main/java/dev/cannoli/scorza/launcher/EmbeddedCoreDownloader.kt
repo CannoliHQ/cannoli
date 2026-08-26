@@ -20,7 +20,52 @@ object EmbeddedCoreDownloader {
     private const val INFO_ZIP_URL = "https://buildbot.libretro.com/assets/frontend/info.zip"
     private const val INFO_MARKER = ".cannoli_info_fetched"
 
+    /**
+     * The buildbot's per-ABI index: `<date> <crc32> <filename>`, one line per archive, every core
+     * in a single request. It is the only published statement about the inner `.so` rather than the
+     * zip around it, which is what makes it worth a fetch.
+     */
+    private fun indexUrl(abi: String) = "$BUILDBOT/$abi/.index-extended"
+
     fun coresDir(context: Context): File = File(context.filesDir, "cores")
+
+    /**
+     * `<date> <crc32> <filename>` per line. A line shaped differently is skipped rather than
+     * guessed at: a wrong CRC here would silently skip a real update, so anything unrecognised has
+     * to read as "not known" and fall through to the etag.
+     */
+    internal fun parseIndex(lines: Sequence<String>): Map<String, String> =
+        lines.mapNotNull { line ->
+            val parts = line.trim().split(' ').filter { it.isNotEmpty() }
+            if (parts.size == 3 && parts[1].length == 8 && parts[1].all { it.isDigit() || it in 'a'..'f' || it in 'A'..'F' }) {
+                parts[2] to parts[1].lowercase()
+            } else null
+        }.toMap()
+
+    /**
+     * The buildbot's published CRC32 for every archive of the running ABI, keyed by archive
+     * filename. One request covers the whole catalogue, so an update pass fetches it once and asks
+     * it about each core rather than issuing a conditional request per core.
+     *
+     * Returns an empty map on any failure, which reads as "nothing is known" and leaves every core
+     * to the etag path it used before. A missing index must never be able to skip a download.
+     */
+    fun fetchPublishedCrcs(): Map<String, String> = try {
+        val conn = URL(indexUrl(pickAbi())).openConnection() as HttpURLConnection
+        conn.connectTimeout = 15_000
+        conn.readTimeout = 30_000
+        conn.instanceFollowRedirects = true
+        try {
+            if (conn.responseCode !in 200..299) emptyMap() else {
+                conn.inputStream.bufferedReader().useLines { parseIndex(it) }
+            }
+        } finally {
+            conn.disconnect()
+        }
+    } catch (t: Throwable) {
+        Log.w(TAG, "index-extended unavailable, falling back to etags", t)
+        emptyMap()
+    }
 
     /**
      * [conditional] sends the etag recorded at install time, so an unchanged build answers 304 and
@@ -32,6 +77,7 @@ object EmbeddedCoreDownloader {
         coreName: String,
         forceInfoRefresh: Boolean = false,
         conditional: Boolean = false,
+        publishedCrcs: Map<String, String> = emptyMap(),
         onBytes: ((read: Long, total: Long) -> Unit)? = null,
     ): CoreDownloadService.Result {
         val abi = pickAbi()
@@ -40,10 +86,25 @@ object EmbeddedCoreDownloader {
         // Accept either "snes9x" or "snes9x_libretro" — buildbot names always end in "_libretro_android.so".
         val baseName = coreName.removeSuffix("_libretro")
         val soName = "${baseName}_libretro_android.so"
-        val soUrl = "$BUILDBOT/$abi/$soName.zip"
+        val soUrl = soUrlFor(coreName)
 
         return try {
             ensureInfoFiles(infoDir, context.cacheDir, forceInfoRefresh)
+
+            // The etag cannot answer this. A zip embeds a build timestamp, so it changes on every
+            // nightly rebuild whether or not the core did: measured 2026-08-26, 130 of 148 rebuilt
+            // cores were byte-identical, so the conditional request transferred a full binary to
+            // deliver nothing. The published CRC covers the inner .so alone. Recorded at install
+            // time, an unchanged one means the file on disk is already that build.
+            val soFile = File(coresDir, soName)
+            if (conditional && soFile.isFile) {
+                val published = publishedCrcs["$soName.zip"]
+                val installed = DownloadStamps.crcFor(context.filesDir, soUrl)
+                if (published != null && published == installed) {
+                    Log.i(TAG, "$soName unchanged by CRC, not fetched")
+                    return CoreDownloadService.Result("core", coreName, true, null, changed = false)
+                }
+            }
 
             val tmp = File.createTempFile("core_", ".zip", context.cacheDir)
             // A downloaded core's own stamp first; a bundled core has none, so the manifest the
@@ -55,13 +116,25 @@ object EmbeddedCoreDownloader {
             try {
                 val result = fetch(soUrl, tmp, known, onBytes)
                 if (!result.modified) {
-                    // Unchanged, but the date may be newly known.
-                    DownloadStamps.put(context.filesDir, soUrl, result.etag, result.built)
+                    // Unchanged, but the date may be newly known. The checksum is read off the
+                    // installed file rather than copied from the index, for the same reason as
+                    // below: the stamp has to describe what this device holds, not what the
+                    // catalogue claims about it.
+                    DownloadStamps.put(
+                        context.filesDir, soUrl, result.etag, result.built, crc32Of(soFile),
+                    )
                     Log.i(TAG, "$soName already current")
                     return CoreDownloadService.Result("core", coreName, true, null, changed = false)
                 }
-                extractEntry(tmp, soName, File(coresDir, soName))
-                DownloadStamps.put(context.filesDir, soUrl, result.etag, result.built)
+                extractEntry(tmp, soName, soFile)
+                // Stamped from the .so that landed, not from what the index promised about it.
+                // The index describes the inner binary and the etag describes the zip around it,
+                // published separately and observed to disagree, so only reading the installed
+                // file says what this device actually holds. It also means a first install is
+                // stamped without needing the index at all.
+                DownloadStamps.put(
+                    context.filesDir, soUrl, result.etag, result.built, crc32Of(soFile),
+                )
             } finally {
                 tmp.delete()
             }
@@ -89,8 +162,17 @@ object EmbeddedCoreDownloader {
         infoDir.mkdirs()
         val tmp = File.createTempFile("info_", ".zip", cacheDir)
         try {
-            fetch(INFO_ZIP_URL, tmp)
+            // Conditional, so a pass that finds nothing new costs one small request and no body.
+            // Upstream edits these on its own clock, independent of whether any binary changed, so
+            // they cannot ride on a core having been replaced.
+            val known = DownloadStamps.etagFor(infoDir.parentFile ?: infoDir, INFO_ZIP_URL)
+            val result = fetch(INFO_ZIP_URL, tmp, known)
+            if (!result.modified) {
+                marker.writeText(System.currentTimeMillis().toString())
+                return
+            }
             extractAllInfo(tmp, infoDir)
+            DownloadStamps.put(infoDir.parentFile ?: infoDir, INFO_ZIP_URL, result.etag, result.built)
             marker.writeText(System.currentTimeMillis().toString())
             Log.i(TAG, "info files refreshed into ${infoDir.absolutePath}")
         } finally {
@@ -148,6 +230,66 @@ object EmbeddedCoreDownloader {
 
     // Buildbot asset names carry spaces. URLEncoder is form encoding, which turns a space into
     // "+" and breaks the path, so only the space is replaced.
+    /** The archive name a core is published under, which is also its key in the index. */
+    fun archiveNameFor(coreName: String): String =
+        "${coreName.removeSuffix("_libretro")}_libretro_android.so.zip"
+
+    /** One builder, so the stamp key and the fetch target cannot drift apart. */
+    fun soUrlFor(coreName: String): String = "$BUILDBOT/${pickAbi()}/${archiveNameFor(coreName)}"
+
+    /** Lowercase hex, to compare against the buildbot's published CRC32 of the same bytes. */
+    internal fun crc32Of(file: File): String? = try {
+        val crc = java.util.zip.CRC32()
+        file.inputStream().buffered().use { input ->
+            val buf = ByteArray(64 * 1024)
+            while (true) {
+                val n = input.read(buf)
+                if (n < 0) break
+                crc.update(buf, 0, n)
+            }
+        }
+        "%08x".format(crc.value)
+    } catch (_: Throwable) {
+        // Unreadable means unknown, which costs a download rather than skipping a real one. Silent
+        // by design: the caller already reports whatever went wrong with the file itself.
+        null
+    }
+
+    /** [stale] false means the buildbot answered 304: the archive already downloaded is current. */
+    data class Availability(val stale: Boolean, val bytes: Long)
+
+    /**
+     * Asks the buildbot directly whether a core needs fetching, with a HEAD carrying the etag
+     * recorded at install time. No body either way, and a 200 reports the download size.
+     *
+     * This is the authority, not the index. The two can disagree: on 2026-08-26 the index
+     * advertised `3d09e4a1` for nestopia while the zip it served contained a `.so` of `c33bbcc0`.
+     * A CRC comparison alone then reports that core stale forever, because downloading it stamps
+     * the real checksum, which still will not match what the index claims. The etag describes the
+     * exact bytes on offer, so it cannot contradict itself that way.
+     */
+    fun checkAvailability(coreName: String, knownEtag: String?): Availability = try {
+        val conn = (URL(soUrlFor(coreName)).openConnection() as HttpURLConnection).apply {
+            requestMethod = "HEAD"
+            connectTimeout = 15_000
+            readTimeout = 15_000
+            instanceFollowRedirects = true
+            if (knownEtag != null) setRequestProperty("If-None-Match", knownEtag)
+        }
+        try {
+            when (conn.responseCode) {
+                HttpURLConnection.HTTP_NOT_MODIFIED -> Availability(false, 0L)
+                in 200..299 -> Availability(true, conn.contentLengthLong.coerceAtLeast(0L))
+                // An error says nothing about freshness, so let the pass decide for itself.
+                else -> Availability(true, 0L)
+            }
+        } finally {
+            conn.disconnect()
+        }
+    } catch (_: Throwable) {
+        Availability(true, 0L)
+    }
+
     private fun encode(name: String): String = name.replace(" ", "%20")
 
     private fun pickAbi(): String =
