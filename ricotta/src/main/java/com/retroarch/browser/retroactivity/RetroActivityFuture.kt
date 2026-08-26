@@ -141,6 +141,11 @@ class RetroActivityFuture : RetroActivityCamera() {
                 this, osdFont,
                 colors?.highlight, colors?.text, colors?.highlightText,
                 colors?.accent, colors?.title,
+                portraitMarginPx = ds?.portraitMarginPx ?: 0,
+                geometryWidthPct = ds?.geometryWidthPct ?: 100,
+                geometryHeightPct = ds?.geometryHeightPct ?: 100,
+                geometryXPct = ds?.geometryXPct ?: 0,
+                geometryYPct = ds?.geometryYPct ?: 0,
             )
             osd.attach(savedInstanceState)
             osdOverlay = osd

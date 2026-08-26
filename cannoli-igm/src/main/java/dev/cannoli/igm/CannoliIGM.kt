@@ -7,7 +7,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,6 +32,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -102,24 +102,21 @@ fun CannoliIGM(
 
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
+    val view = LocalView.current
     val portrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
-    val geoRect = dev.cannoli.ui.computeScreenGeometryRect(
-        surfaceWidth = configuration.screenWidthDp,
-        surfaceHeight = configuration.screenHeightDp,
+    val viewportPadding = dev.cannoli.ui.computeScreenGeometryPadding(
+        surfaceWidthPx = view.width,
+        surfaceHeightPx = view.height,
+        surfaceWidthDp = configuration.screenWidthDp,
+        surfaceHeightDp = configuration.screenHeightDp,
         widthPct = config.geometryWidthPct,
         heightPct = config.geometryHeightPct,
         xPct = config.geometryXPct,
         yPct = config.geometryYPct,
+        portraitMarginPx = config.portraitMarginPx,
+        portrait = portrait,
+        density = density,
     )
-    val bottomMarginPx = if (portrait) config.portraitMarginPx else 0
-    val viewportPadding = with(density) {
-        PaddingValues(
-            start = geoRect.x.dp,
-            top = geoRect.y.dp,
-            end = (configuration.screenWidthDp - geoRect.x - geoRect.w).coerceAtLeast(0).dp,
-            bottom = (configuration.screenHeightDp - geoRect.y - geoRect.h).coerceAtLeast(0).dp + bottomMarginPx.toDp(),
-        )
-    }
 
     CompositionLocalProvider(
         LocalStatusBarLeftEdge provides statusBarLeftEdge,

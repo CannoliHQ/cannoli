@@ -1,19 +1,25 @@
 package com.retroarch.browser.retroactivity
 
 import android.app.Activity
+import android.content.res.Configuration
 import android.graphics.PixelFormat
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontFamily
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import dev.cannoli.ui.computeScreenGeometryPadding
 import dev.cannoli.ui.components.OsdController
 import dev.cannoli.ui.components.OsdHost
 import dev.cannoli.ui.components.OsdPosition
@@ -36,6 +42,11 @@ class OsdOverlay(
     private val colorHighlightText: String? = null,
     private val colorAccent: String? = null,
     private val colorTitle: String? = null,
+    private val portraitMarginPx: Int = 0,
+    private val geometryWidthPct: Int = 100,
+    private val geometryHeightPct: Int = 100,
+    private val geometryXPct: Int = 0,
+    private val geometryYPct: Int = 0,
 ) {
     val controller = OsdController()
     private val lifecycleOwner = IGMLifecycleOwner()
@@ -121,7 +132,24 @@ class OsdOverlay(
         )
         CannoliTheme(fontFamily = fontFamily) {
             CompositionLocalProvider(LocalCannoliColors provides colors) {
-                Box(Modifier.fillMaxSize()) { OsdHost(controller) }
+                val configuration = LocalConfiguration.current
+                val density = LocalDensity.current
+                val hostView = LocalView.current
+                val portrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+                val regionPadding = computeScreenGeometryPadding(
+                    surfaceWidthPx = hostView.width,
+                    surfaceHeightPx = hostView.height,
+                    surfaceWidthDp = configuration.screenWidthDp,
+                    surfaceHeightDp = configuration.screenHeightDp,
+                    widthPct = geometryWidthPct,
+                    heightPct = geometryHeightPct,
+                    xPct = geometryXPct,
+                    yPct = geometryYPct,
+                    portraitMarginPx = portraitMarginPx,
+                    portrait = portrait,
+                    density = density,
+                )
+                Box(Modifier.fillMaxSize().padding(regionPadding)) { OsdHost(controller) }
             }
         }
     }
