@@ -56,6 +56,12 @@ class RetroActivityFuture : RetroActivityCamera() {
         mDecorView = window.decorView
         quitfocus = intent.hasExtra("QUITFOCUS")
 
+        // Immersive before the surface exists. RetroArch posts this toggle a few hundred ms into
+        // the run, and applying it first time round let the system bars lay out and then resized
+        // the window under a live surface. Setting the flags here keeps the window one size for
+        // the whole launch.
+        attemptToggleImmersiveMode(true)
+
         try {
             val params = dev.cannoli.igm.RicottaLaunchParams.readFromIntent(intent)
             val gameTitle = (params?.gameTitle?.takeIf { it.isNotEmpty() }
