@@ -271,6 +271,26 @@
         <item quantity="other">Newer builds are available.\n\n%1$d cores \u00b7 %2$s</item>
     </plurals>
     <!-- Progress overlay while cores are being replaced. -->
+    <string name="setting_installed_cores">Installed Cores</string>
+    <!-- Confirm removing one core. %1$s = its name, %2$s = a size like "12 MB". -->
+    <string name="dialog_uninstall_core_confirm">Remove %1$s?\n\nIt can be downloaded again from the emulator picker.\n\n%2$s</string>
+    <!-- Confirm removing every unused core. %1$d = how many, %2$s = a size like "50 MB". -->
+    <plurals name="dialog_remove_unused_cores_confirm">
+        <item quantity="one">One core is not used by any platform or game.\n\n%1$d core \u00b7 %2$s</item>
+        <item quantity="other">These cores are not used by any platform or game.\n\n%1$d cores \u00b7 %2$s</item>
+    </plurals>
+    <!-- OSD after removing cores. %1$s = a size like "50 MB". -->
+    <string name="osd_cores_removed">Removed %1$s</string>
+
+    <!-- Installed core list. %1$s = the total size of every installed core, like "217 MB". -->
+    <string name="title_installed_cores">Installed Cores \u00b7 %1$s</string>
+    <!-- A core row. The row only has to answer whether the core can be removed, so it says that
+         rather than which platforms claim it. %1$s = a size like "12 MB". -->
+    <string name="value_core_used">%1$s \u00b7 In Use</string>
+    <string name="value_core_unused">%1$s \u00b7 Unused</string>
+    <string name="value_no_installed_cores">No cores are installed</string>
+    <string name="label_uninstall">UNINSTALL</string>
+    <string name="label_remove_unused">REMOVE UNUSED</string>
     <string name="updating_cores">Updating Cores</string>
     <!-- OSD while cores are being revalidated against the buildbot. -->
     <string name="osd_checking_cores">Checking for core updates</string>
@@ -374,6 +394,7 @@
     <string name="romm_download_notification_count">%1$d downloading</string>
     <string name="romm_art_notification_active">Downloading box art</string>
     <string name="label_retry">RETRY</string>
+    <string name="label_clear_finished">CLEAR FINISHED</string>
     <string name="label_cancel_all">CANCEL ALL</string>
 
     <string name="romm_settings_concurrent">Concurrent Downloads</string>
@@ -943,6 +964,19 @@
     <string name="value_unmapped">Unmapped</string>
     <string name="label_download">DOWNLOAD</string>
     <!-- OSD toast. %1$s = core name. -->
+    <!-- OSD when a core joins the download queue. %1$s = the core name. -->
+    <!-- OSD when a transfer lands, for someone not watching the queue. %1$s = its name. -->
+    <string name="osd_download_done_one">%1$s downloaded</string>
+    <string name="osd_download_failed_one">%1$s failed</string>
+    <plurals name="osd_download_done_many">
+        <item quantity="one">%1$d download finished</item>
+        <item quantity="other">%1$d downloads finished</item>
+    </plurals>
+    <plurals name="osd_download_failed_many">
+        <item quantity="one">%1$d download failed</item>
+        <item quantity="other">%1$d downloads failed</item>
+    </plurals>
+    <string name="osd_core_queued">%1$s queued</string>
     <string name="osd_downloading_core">Downloading %1$s</string>
     <!-- OSD toast. %1$s = core name. -->
     <string name="osd_core_downloaded">Downloaded %1$s</string>

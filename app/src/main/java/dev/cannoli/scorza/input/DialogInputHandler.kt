@@ -23,8 +23,8 @@ import dev.cannoli.scorza.model.artTag
 import dev.cannoli.scorza.model.recentKey
 import dev.cannoli.scorza.navigation.LauncherScreen
 import dev.cannoli.scorza.navigation.NavigationController
-import dev.cannoli.scorza.romm.download.DownloadStatus
-import dev.cannoli.scorza.romm.download.inDisplayOrder
+import dev.cannoli.scorza.download.DownloadStatus
+import dev.cannoli.scorza.download.inDisplayOrder
 import dev.cannoli.scorza.romm.download.sanitizeFsName
 import dev.cannoli.scorza.romm.sync.RomKeys
 import dev.cannoli.scorza.settings.SettingsRepository
@@ -85,7 +85,7 @@ class DialogInputHandler @Inject constructor(
     private val controllersViewModel: dev.cannoli.scorza.ui.viewmodel.ControllersViewModel,
     private val emulatorMappingBuilder: EmulatorMappingBuilder,
     private val rommStore: dev.cannoli.scorza.romm.RommConnectionStore,
-    private val rommDownloader: dev.cannoli.scorza.romm.download.RommDownloader,
+    private val rommDownloader: dev.cannoli.scorza.download.Downloader,
     private val rommBrowseViewModel: dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel,
     private val rommArtFetcher: dev.cannoli.scorza.romm.art.RommArtFetcher,
     private val raPreloadController: dev.cannoli.scorza.achievements.RaPreloadController,
@@ -126,7 +126,8 @@ class DialogInputHandler @Inject constructor(
             saveSyncEnabled = settings.rommSaveSyncEnabled,
             pendingConflicts = conflicts,
             syncErrors = errors,
-            downloadCount = rommDownloader.queue.state.value.size,
+            downloadCount = rommDownloader.state.value.size,
+            activeDownloads = rommDownloader.activeCount(),
             debugBuild = dev.cannoli.scorza.BuildConfig.DEBUG,
         )
         return DialogState.QuickMenu(
@@ -178,7 +179,7 @@ class DialogInputHandler @Inject constructor(
         }
         if (ds != DialogState.None) return false
         if (isRommScreen()) {
-            if (rommDownloader.queue.state.value.isEmpty()) return true
+            if (rommDownloader.state.value.isEmpty()) return true
             nav.dialogState.value = DialogState.RommActionsMenu(hasDownloads = true)
             return true
         }
@@ -290,7 +291,7 @@ class DialogInputHandler @Inject constructor(
         is DialogState.SaveBackupList -> ds.backups.size
         is DialogState.ConflictsMenu -> ds.rows.size
         is DialogState.RommAdvancedMenu -> dev.cannoli.scorza.ui.components.ROMM_ADVANCED_ROWS.size
-        is DialogState.RommDownloads -> rommDownloader.queue.state.value.size
+        is DialogState.RommDownloads -> rommDownloader.state.value.size
         is DialogState.QuickMenu -> ds.rows.size
         is DialogState.QuickInfo -> ds.endpoints.size
         is DialogState.Kitchen -> ds.urls.size
@@ -458,6 +459,23 @@ class DialogInputHandler @Inject constructor(
                     openEmulatorRecovery(ds.platformTag, ds.romId)
                 }
             }
+            is DialogState.UninstallCoreConfirm -> {
+                installedCoreService.uninstall(ds.coreId)
+                nav.dialogState.value = DialogState.None
+                refreshInstalledCores()
+            }
+            is DialogState.RemoveUnusedCoresConfirm -> {
+                val screen = nav.currentScreen as? LauncherScreen.InstalledCores
+                screen?.rows?.filterNot { it.inUse }?.forEach { installedCoreService.uninstall(it.coreId) }
+                nav.dialogState.value = DialogState.None
+                osdController.show(
+                    context.getString(
+                        dev.cannoli.scorza.R.string.osd_cores_removed,
+                        android.text.format.Formatter.formatShortFileSize(context, ds.bytes),
+                    )
+                )
+                refreshInstalledCores()
+            }
             is DialogState.UpdateCoresConfirm -> coreUpdateController.start()
             is DialogState.MissingCore -> openEmulatorRecovery(ds.platformTag, ds.romId)
             is DialogState.UnsupportedContent -> openEmulatorRecovery(ds.platformTag, ds.romId)
@@ -564,7 +582,7 @@ class DialogInputHandler @Inject constructor(
                 }
             }
             is DialogState.RommDownloads -> {
-                val item = rommDownloader.queue.state.value.inDisplayOrder().getOrNull(ds.selectedIndex) ?: return true
+                val item = rommDownloader.state.value.inDisplayOrder().getOrNull(ds.selectedIndex) ?: return true
                 when (item.status) {
                     is DownloadStatus.Failed -> rommDownloader.retry(item.key)
                     DownloadStatus.Queued, is DownloadStatus.Downloading ->
@@ -618,7 +636,7 @@ class DialogInputHandler @Inject constructor(
                     else -> {
                         val tags = romsRepository.knownPlatformTags()
                         nav.dialogState.value = DialogState.None
-                        dev.cannoli.scorza.romm.download.RommDownloadManager.ensureStarted(context)
+                        dev.cannoli.scorza.download.DownloadManager.ensureStarted(context)
                         rommArtFetcher.start(tags)
                     }
                 }
@@ -1065,10 +1083,8 @@ class DialogInputHandler @Inject constructor(
     private fun onRommVersionConfirm(ds: DialogState.RommVersionPicker) {
         val entry = ds.members.getOrNull(ds.selectedIndex) ?: return
         nav.dialogState.value = DialogState.None
-        rommDownloader.enqueue(listOf(dev.cannoli.scorza.romm.download.RommDownloadItem(
-            rommId = entry.game.id, game = entry.game, tag = ds.tag,
-            kind = dev.cannoli.scorza.romm.download.RommDownloadKind.ROM)))
-        dev.cannoli.scorza.romm.download.RommDownloadManager.ensureStarted(context)
+        rommDownloader.enqueue(listOf(dev.cannoli.scorza.romm.download.rommItem(entry.game, ds.tag, dev.cannoli.scorza.download.DownloadKind.ROM)))
+        dev.cannoli.scorza.download.DownloadManager.ensureStarted(context)
         osdController.show(context.getString(dev.cannoli.ui.R.string.romm_osd_download_queued))
     }
 
@@ -1119,6 +1135,8 @@ class DialogInputHandler @Inject constructor(
             is DialogState.RenameResult -> {
                 nav.dialogState.value = DialogState.None
             }
+            is DialogState.UninstallCoreConfirm,
+            is DialogState.RemoveUnusedCoresConfirm -> nav.dialogState.value = DialogState.None
             is DialogState.UpdateCoresConfirm -> nav.dialogState.value = DialogState.None
             is DialogState.CheckingCores -> coreUpdateController.cancel()
             is DialogState.UpdatingCores -> coreUpdateController.cancel()
@@ -1327,7 +1345,7 @@ class DialogInputHandler @Inject constructor(
                     currentHex = currentHex
                 )
             }
-            is DialogState.RommDownloads -> if (rommDownloader.queue.activeCount() >= 2) {
+            is DialogState.RommDownloads -> if (rommDownloader.activeCount() >= 2) {
                 nav.dialogState.value = DialogState.RommConfirm(dev.cannoli.scorza.ui.screens.RommConfirmAction.CANCEL_ALL, fromQuickMenu = ds.fromQuickMenu)
             }
             else -> {}
@@ -1339,6 +1357,19 @@ class DialogInputHandler @Inject constructor(
         val ds = nav.dialogState.value
         if (ds == DialogState.None) return false
         when (ds) {
+            is DialogState.RommDownloads -> {
+                rommDownloader.clearFinished()
+                // The selection can be past the end once the finished rows go, and an empty queue
+                // has nothing left to show.
+                val left = rommDownloader.state.value
+                if (left.isEmpty()) {
+                    if (ds.fromQuickMenu) openQuickMenu(dev.cannoli.scorza.ui.quickmenu.QuickMenuRow.DOWNLOADS)
+                    else nav.dialogState.value = DialogState.None
+                } else {
+                    nav.dialogState.value =
+                        ds.copy(selectedIndex = ds.selectedIndex.coerceAtMost(left.size - 1))
+                }
+            }
             is DialogState.RenameInput,
             is DialogState.CollectionRenameInput -> {
                 restoreContextMenu()
@@ -1466,7 +1497,7 @@ class DialogInputHandler @Inject constructor(
                         val tag = systemListViewModel.getSelectedPlatformTag()
                         nav.dialogState.value = DialogState.None
                         if (tag != null) {
-                            dev.cannoli.scorza.romm.download.RommDownloadManager.ensureStarted(context)
+                            dev.cannoli.scorza.download.DownloadManager.ensureStarted(context)
                             rommArtFetcher.start(listOf(tag))
                         }
                     }
@@ -2498,4 +2529,18 @@ class DialogInputHandler @Inject constructor(
         }
     }
 
+
+    /**
+     * Rebuilds the list in place after a removal, so the sizes, the totals and the footer actions
+     * all describe what is on disk now. Leaving the screen as it was would keep offering to remove
+     * a core that is already gone.
+     */
+    private fun refreshInstalledCores() {
+        if (nav.currentScreen !is LauncherScreen.InstalledCores) return
+        val rebuilt = emulatorMappingBuilder.buildInstalledCores()
+        val prior = nav.currentScreen as LauncherScreen.InstalledCores
+        nav.replaceTop(
+            rebuilt.copy(selectedIndex = prior.selectedIndex.coerceAtMost((rebuilt.rows.size - 1).coerceAtLeast(0)))
+        )
+    }
 }

@@ -28,10 +28,10 @@ import dev.cannoli.scorza.input.MENU_FORCE_SOFTCORE
 import dev.cannoli.scorza.romm.sync.PreLaunchOutcome
 import dev.cannoli.scorza.romm.sync.SyncDirection
 import dev.cannoli.scorza.ui.screens.SyncHistoryRow
-import dev.cannoli.scorza.romm.download.DownloadStatus
-import dev.cannoli.scorza.romm.download.RommDownloadItem
-import dev.cannoli.scorza.romm.download.RommDownloadKind
-import dev.cannoli.scorza.romm.download.inDisplayOrder
+import dev.cannoli.scorza.download.DownloadStatus
+import dev.cannoli.scorza.download.DownloadItem
+import dev.cannoli.scorza.download.DownloadKind
+import dev.cannoli.scorza.download.inDisplayOrder
 import dev.cannoli.scorza.ui.screens.ConflictChoice
 import dev.cannoli.scorza.ui.screens.DialogState
 import dev.cannoli.scorza.ui.screens.KeyboardHost
@@ -84,7 +84,7 @@ fun DialogOverlay(
     downloadProgress: Float = 0f,
     downloadError: String? = null,
     coreUpdate: dev.cannoli.scorza.launcher.CoreDownloadService.UpdateProgress? = null,
-    downloads: List<RommDownloadItem> = emptyList(),
+    downloads: List<DownloadItem> = emptyList(),
     updateAvailable: Boolean = false,
     buttonStyle: ButtonStyle = ButtonStyle(),
     // Only the Tools and Ports lists offer to drop a shortcut for an app that has gone missing,
@@ -644,6 +644,11 @@ fun DialogOverlay(
                 rightBottomItems = buildList {
                     if (confirmLabel != null) add(buttonStyle.confirm to stringResource(confirmLabel))
                     if (activeCount >= 2) add(buttonStyle.north to stringResource(R.string.label_cancel_all))
+                    // Its own button rather than sharing north: a queue can hold finished rows and
+                    // active ones at the same time, so clearing and cancelling have to coexist.
+                    if (ordered.any { it.status == DownloadStatus.Done || it.status is DownloadStatus.Failed }) {
+                        add(buttonStyle.west to stringResource(R.string.label_clear_finished))
+                    }
                 },
                 buttonStyle = buttonStyle,
             ) {
@@ -1043,6 +1048,31 @@ fun DialogOverlay(
             confirmLabel = stringResource(R.string.label_quit),
         )
 
+        is DialogState.UninstallCoreConfirm -> ConfirmOverlay(
+            message = stringResource(
+                R.string.dialog_uninstall_core_confirm,
+                dialogState.coreName,
+                android.text.format.Formatter.formatShortFileSize(
+                    androidx.compose.ui.platform.LocalContext.current, dialogState.bytes
+                ),
+            ),
+            buttonStyle = buttonStyle,
+            confirmLabel = stringResource(R.string.label_uninstall),
+        )
+
+        is DialogState.RemoveUnusedCoresConfirm -> ConfirmOverlay(
+            message = pluralStringResource(
+                R.plurals.dialog_remove_unused_cores_confirm,
+                dialogState.cores,
+                dialogState.cores,
+                android.text.format.Formatter.formatShortFileSize(
+                    androidx.compose.ui.platform.LocalContext.current, dialogState.bytes
+                ),
+            ),
+            buttonStyle = buttonStyle,
+            confirmLabel = stringResource(R.string.label_remove_unused),
+        )
+
         is DialogState.CheckingCores -> dev.cannoli.ui.components.ProgressOverlay(
             title = stringResource(R.string.osd_checking_cores),
             subtitle = "",
@@ -1151,13 +1181,12 @@ private fun SyncErrorRowItem(err: dev.cannoli.scorza.romm.sync.SyncFailure, isSe
 }
 
 @Composable
-private fun DownloadRow(item: RommDownloadItem, isSelected: Boolean, fontSize: TextUnit, lineHeight: TextUnit, verticalPadding: Dp) {
+private fun DownloadRow(item: DownloadItem, isSelected: Boolean, fontSize: TextUnit, lineHeight: TextUnit, verticalPadding: Dp) {
     val colors = LocalCannoliColors.current
     val font = LocalCannoliFont.current
     val text = if (isSelected) colors.highlightText else colors.text
-    val muted = text.copy(alpha = 0.55f)
     val context = androidx.compose.ui.platform.LocalContext.current
-    val label = if (item.kind == RommDownloadKind.MANUAL)
+    val label = if (item.kind == DownloadKind.MANUAL)
         "${item.displayName}  ·  ${stringResource(R.string.romm_download_manual)}"
     else item.displayName
     PillRowInfo(
@@ -1179,7 +1208,16 @@ private fun DownloadRow(item: RommDownloadItem, isSelected: Boolean, fontSize: T
                 is DownloadStatus.Failed -> stringResource(R.string.romm_download_failed)
                 else -> ""
             }
-            Text(right, color = muted, fontFamily = font, fontSize = (fontSize.value * 0.8f).sp)
+            // Same colour as the label it sits beside, and the row's own lineHeight: without it the
+            // smaller type falls back to its own default and rides high in the pill instead of
+            // centring against the name.
+            Text(
+                right,
+                color = text,
+                fontFamily = font,
+                fontSize = (fontSize.value * 0.8f).sp,
+                lineHeight = lineHeight,
+            )
         }
     }
 }

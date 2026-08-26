@@ -73,7 +73,7 @@ class InputRouter @Inject constructor(
     private val settingsViewModel: dev.cannoli.scorza.ui.viewmodel.SettingsViewModel,
     private val coreInstaller: CoreInstaller,
     private val rommBrowseViewModel: dev.cannoli.scorza.ui.viewmodel.RommBrowseViewModel,
-    private val rommDownloader: dev.cannoli.scorza.romm.download.RommDownloader,
+    private val rommDownloader: dev.cannoli.scorza.download.Downloader,
     private val osdController: dev.cannoli.ui.components.OsdController,
     private val raPreloadController: dev.cannoli.scorza.achievements.RaPreloadController,
     @IoScope private val ioScope: CoroutineScope,
@@ -131,10 +131,8 @@ class InputRouter @Inject constructor(
             override fun onWest() {
                 val s = nav.currentScreen as? LauncherScreen.RommGameDetail ?: return
                 if (!dev.cannoli.scorza.romm.download.RommManual.isAvailable(s.game)) return
-                rommDownloader.enqueue(listOf(dev.cannoli.scorza.romm.download.RommDownloadItem(
-                    rommId = s.game.id, game = s.game, tag = s.tag,
-                    kind = dev.cannoli.scorza.romm.download.RommDownloadKind.MANUAL)))
-                dev.cannoli.scorza.romm.download.RommDownloadManager.ensureStarted(context)
+                rommDownloader.enqueue(listOf(dev.cannoli.scorza.romm.download.rommItem(s.game, s.tag, dev.cannoli.scorza.download.DownloadKind.MANUAL)))
+                dev.cannoli.scorza.download.DownloadManager.ensureStarted(context)
                 osdController.show(context.getString(dev.cannoli.ui.R.string.romm_osd_manual_queued))
             }
             override fun onBack() { nav.pop() }
@@ -172,10 +170,8 @@ class InputRouter @Inject constructor(
                     return
                 }
                 if (s.localState != dev.cannoli.scorza.romm.LocalState.REMOTE) return
-                rommDownloader.enqueue(listOf(dev.cannoli.scorza.romm.download.RommDownloadItem(
-                    rommId = s.game.id, game = s.game, tag = s.tag,
-                    kind = dev.cannoli.scorza.romm.download.RommDownloadKind.ROM)))
-                dev.cannoli.scorza.romm.download.RommDownloadManager.ensureStarted(context)
+                rommDownloader.enqueue(listOf(dev.cannoli.scorza.romm.download.rommItem(s.game, s.tag, dev.cannoli.scorza.download.DownloadKind.ROM)))
+                dev.cannoli.scorza.download.DownloadManager.ensureStarted(context)
                 osdController.show(context.getString(dev.cannoli.ui.R.string.romm_osd_download_queued))
             }
         }
@@ -217,6 +213,7 @@ class InputRouter @Inject constructor(
         is LauncherScreen.PlatformMapping     -> platformMappingHandler()
         is LauncherScreen.BiosStatus          -> biosStatusHandler()
         is LauncherScreen.PlatformOverrides   -> platformOverridesHandler()
+        is LauncherScreen.InstalledCores      -> installedCoresHandler()
         is LauncherScreen.ColorList         -> colorListHandler()
         is LauncherScreen.CollectionPicker  -> collectionPickerHandler()
         is LauncherScreen.ChildPicker       -> childPickerHandler()
@@ -463,6 +460,29 @@ class InputRouter @Inject constructor(
         onBack = { nav.pop() },
     )
 
+    private fun installedCoresHandler() = scrollable<LauncherScreen.InstalledCores>(
+        onConfirm = {
+            // Only a core nothing points at can go. The footer already hides the action on a used
+            // row, so this is the guard rather than the message: a stale screen must not be able
+            // to delete something a platform picked up in the meantime.
+            val row = rows.getOrNull(selectedIndex)
+            if (row != null && !row.inUse) {
+                nav.dialogState.value = DialogState.UninstallCoreConfirm(
+                    coreId = row.coreId, coreName = row.displayName, bytes = row.sizeBytes,
+                )
+            }
+        },
+        onNorth = {
+            val unused = rows.filterNot { it.inUse }
+            if (unused.isNotEmpty()) {
+                nav.dialogState.value = DialogState.RemoveUnusedCoresConfirm(
+                    cores = unused.size, bytes = unused.sumOf { it.sizeBytes },
+                )
+            }
+        },
+        onBack = { nav.pop() },
+    )
+
     private fun platformOverridesHandler() = scrollable<LauncherScreen.PlatformOverrides>(
         onNorth = {
             val entry = overrides.getOrNull(selectedIndex)
@@ -579,7 +599,9 @@ class InputRouter @Inject constructor(
             }
         },
         onBack = {
-            rommDownloader.clearFinished()
+            // The finished rows used to be swept up on the way out of this screen. They are the
+            // record of what happened and there is an explicit action to clear them now, so leaving
+            // a screen no longer throws them away behind the user's back.
             nav.pop()
             launcherActions.refreshLauncherLists()
         },
@@ -655,9 +677,9 @@ class InputRouter @Inject constructor(
                 .filter { it.game.id in ids }
             if (rows.isEmpty()) return@scrollable
             rommDownloader.enqueue(rows.map {
-                dev.cannoli.scorza.romm.download.RommDownloadItem(rommId = it.game.id, game = it.game, tag = it.platform.cannoliTag)
+                dev.cannoli.scorza.romm.download.rommItem(it.game, it.platform.cannoliTag)
             })
-            dev.cannoli.scorza.romm.download.RommDownloadManager.ensureStarted(context)
+            dev.cannoli.scorza.download.DownloadManager.ensureStarted(context)
             osdController.show(context.resources.getQuantityString(
                 dev.cannoli.ui.R.plurals.romm_osd_downloads_queued, rows.size, rows.size))
         },
@@ -704,9 +726,9 @@ class InputRouter @Inject constructor(
                 .filter { it.game.id in ids }.map { it.game }
             if (games.isEmpty()) return@scrollable
             rommDownloader.enqueue(games.map {
-                dev.cannoli.scorza.romm.download.RommDownloadItem(rommId = it.id, game = it, tag = platform.cannoliTag)
+                dev.cannoli.scorza.romm.download.rommItem(it, platform.cannoliTag)
             })
-            dev.cannoli.scorza.romm.download.RommDownloadManager.ensureStarted(context)
+            dev.cannoli.scorza.download.DownloadManager.ensureStarted(context)
             osdController.show(context.resources.getQuantityString(
                 dev.cannoli.ui.R.plurals.romm_osd_downloads_queued, games.size, games.size))
         },
@@ -752,14 +774,9 @@ class InputRouter @Inject constructor(
             val chosen = rows.filter { it.firmware.id in checkedIds }
             if (chosen.isEmpty()) return@scrollable
             rommDownloader.enqueue(chosen.map {
-                dev.cannoli.scorza.romm.download.RommDownloadItem(
-                    rommId = it.firmware.id,
-                    tag = platform.cannoliTag,
-                    kind = dev.cannoli.scorza.romm.download.RommDownloadKind.FIRMWARE,
-                    firmware = it.firmware,
-                )
+                dev.cannoli.scorza.romm.download.firmwareItem(it.firmware, platform.cannoliTag)
             })
-            dev.cannoli.scorza.romm.download.RommDownloadManager.ensureStarted(context)
+            dev.cannoli.scorza.download.DownloadManager.ensureStarted(context)
             nav.pop()
         },
     )

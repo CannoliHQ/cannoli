@@ -222,6 +222,11 @@ sealed interface DialogState {
      */
     /** Working out what an update would cost, before asking. One index request and a HEAD per
      *  differing core, so it is brief but not instant. */
+    /** [bytes] is what the one core reclaims; the name is already display text. */
+    data class UninstallCoreConfirm(val coreId: String, val coreName: String, val bytes: Long) : DialogState
+
+    data class RemoveUnusedCoresConfirm(val cores: Int, val bytes: Long) : DialogState
+
     data object CheckingCores : DialogState
 
     data class UpdateCoresConfirm(val cores: Int, val bytes: Long) : DialogState

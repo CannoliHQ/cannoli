@@ -82,6 +82,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     @Inject lateinit var onboardingCoordinator: dev.cannoli.scorza.onboarding.OnboardingCoordinator
     @Inject lateinit var inputDispatcher: InputDispatcher
     @Inject lateinit var screenInputRegistry: dev.cannoli.scorza.input.runtime.ScreenInputRegistry
+    @Inject lateinit var downloadOutcomeReporter: dev.cannoli.scorza.download.DownloadOutcomeReporter
     @Inject lateinit var menuNavigationPoller: dev.cannoli.scorza.input.runtime.MenuNavigationPoller
     @Inject lateinit var stickAutoRepeat: dev.cannoli.scorza.input.runtime.StickAutoRepeat
     @Inject lateinit var controllerBridge: ControllerBridge
@@ -118,7 +119,7 @@ class MainActivity : ComponentActivity(), ActivityActions {
     // Provider because the loader bakes its disk cache dir in at build time, so it must not be
     // built until the setup flow has settled where Cannoli lives.
     @Inject lateinit var rommImageLoader: Provider<coil.ImageLoader>
-    @Inject lateinit var rommDownloader: dev.cannoli.scorza.romm.download.RommDownloader
+    @Inject lateinit var rommDownloader: dev.cannoli.scorza.download.Downloader
     @Inject lateinit var rommArtFetcher: dev.cannoli.scorza.romm.art.RommArtFetcher
     @Inject lateinit var syncScheduler: dev.cannoli.scorza.romm.sync.SyncScheduler
     @Inject lateinit var saveSyncStatusHolder: dev.cannoli.scorza.romm.sync.SaveSyncStatusHolder
@@ -190,6 +191,9 @@ class MainActivity : ComponentActivity(), ActivityActions {
             }
         }
         super.onCreate(savedInstanceState)
+        // After super.onCreate, which is where Hilt fills the injected fields in: starting this any
+        // earlier reads a lateinit that has not been set and takes the activity down on launch.
+        downloadOutcomeReporter.start(lifecycleScope)
 
         // A launcher intent does not reuse this task when a game is running, it stacks a second
         // MainActivity on top of the emulator, and every icon tap adds another. Standing aside
