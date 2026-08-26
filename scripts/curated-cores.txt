@@ -41,7 +41,6 @@ mednafen_supafaust_libretro
 mednafen_supergrafx_libretro
 mednafen_vb_libretro
 mednafen_wswan_libretro
-melonds_libretro
 melondsds_libretro
 mesen-s_libretro
 mesen_libretro
@@ -56,9 +55,7 @@ ppsspp_libretro
 prosystem_libretro
 puae2021_libretro
 puae_libretro
-quicknes_libretro
 race_libretro
-rustynes_libretro
 sameboy_libretro
 scummvm_libretro
 smsplus_libretro

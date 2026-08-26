@@ -23,7 +23,7 @@ class PlatformConfigStandaloneDisplayTest {
         pc.setPlatformChoice("NDS", EmulatorChoice(EmulatorSource.Standalone, appPackage = "me.magnum.melonds"))
         val entry = pc.getDetailedMappings().first { it.tag == "NDS" }
         assertEquals("Standalone", entry.runnerLabel)
-        assertTrue(entry.coreDisplayName != pc.getCoreDisplayName("melonds_libretro"))
+        assertTrue(entry.coreDisplayName != pc.getCoreDisplayName("melondsds_libretro"))
     }
 
     @Test fun `a mapped core confirmed missing is flagged NOT_INSTALLED`() {

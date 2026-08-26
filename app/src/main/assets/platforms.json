@@ -59,7 +59,7 @@
   "NDS": {
     "name": "Nintendo DS",
     "group": "Nintendo",
-    "core": "melonds_libretro",
+    "core": "melondsds_libretro",
     "app": [
       { "package": "me.magnum.melonds", "action": "me.magnum.melonds.LAUNCH_ROM", "extras": [{ "key": "uri", "kind": "uri_parcelable" }] },
       { "package": "me.magnum.melondualds", "action": "me.magnum.melondualds.LAUNCH_ROM", "extras": [{ "key": "uri", "kind": "uri_parcelable" }] },
