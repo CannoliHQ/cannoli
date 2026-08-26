@@ -109,7 +109,7 @@ class SystemFilesTest {
 
         SystemFiles.ensureBundled(assets, "MAME", dest, "build-1")
         assertTrue(marker.exists())
-        val planted = File(dest, "mame2003/cheat.dat")
+        val planted = File(dest, "mame2003-plus/cheat.dat")
         assertTrue(planted.exists())
 
         // A second launch on the same build must not re-extract: prove it by deleting a file the
@@ -200,14 +200,14 @@ class SystemFilesTest {
     fun `a deleted bundled folder is laid down again despite a matching marker`() {
         val dest = tempDir("sysfiles-selfheal")
         SystemFiles.ensureBundled(assets, "MAME", dest, "build-1")
-        val folder = File(dest, "mame2003")
+        val folder = File(dest, "mame2003-plus")
         assertTrue(folder.isDirectory)
 
         folder.deleteRecursively()
         SystemFiles.ensureBundled(assets, "MAME", dest, "build-1")
 
         assertTrue("the folder was not restored", folder.isDirectory)
-        assertTrue(File(dest, "mame2003/cheat.dat").exists())
+        assertTrue(File(dest, "mame2003-plus/cheat.dat").exists())
     }
 
     @Test

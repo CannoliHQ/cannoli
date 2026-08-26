@@ -115,7 +115,7 @@ class CoreCompletenessTest {
         val root = root("complete-othertag")
         val bios = File(root, "BIOS/MAME").apply { mkdirs() }
         assertTrue(
-            SystemFiles.remoteSetsPresent(ctx.assets, "mame2003_libretro", "MAME", bios)
+            SystemFiles.remoteSetsPresent(ctx.assets, "mame2003_plus_libretro", "MAME", bios)
         )
         assertFalse(
             SystemFiles.remoteSetsPresent(

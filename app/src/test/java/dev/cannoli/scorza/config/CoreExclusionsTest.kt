@@ -37,12 +37,6 @@ class CoreExclusionsTest {
         assertFalse("vbam_libretro" in idsFor("GBC"))
     }
 
-    // Excluded from GB only: GBC is not one of the databases SkyEmu claims.
-    @Test fun `SkyEmu is offered for GBA but not for Game Boy`() {
-        assertTrue("skyemu_libretro" in idsFor("GBA"))
-        assertFalse("skyemu_libretro" in idsFor("GB"))
-    }
-
     // blueMSX is the default on ColecoVision and one of four on SG-1000, where Genesis Plus GX is
     // the default. Cutting it there leaves it serving a single platform, so its system files have
     // one destination rather than two.

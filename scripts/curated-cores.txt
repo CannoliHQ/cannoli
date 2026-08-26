@@ -10,7 +10,6 @@ atari800_libretro
 bluemsx_libretro
 bsnes_hd_beta_libretro
 bsnes_libretro
-clownmdemu_libretro
 desmume2015_libretro
 desmume_libretro
 dosbox_core_libretro
@@ -31,12 +30,7 @@ genesis_plus_gx_wide_libretro
 geolith_libretro
 gpsp_libretro
 handy_libretro
-holani_libretro
-jollycv_libretro
-mame2000_libretro
-mame2003_libretro
 mame2003_plus_libretro
-mamearcade_libretro
 mednafen_gba_libretro
 mednafen_lynx_libretro
 mednafen_ngp_libretro
@@ -58,7 +52,6 @@ mgba_libretro
 mupen64plus_next_gles2_libretro
 mupen64plus_next_gles3_libretro
 nestopia_libretro
-noods_libretro
 pcsx_rearmed_libretro
 picodrive_libretro
 pokemini_libretro
@@ -71,7 +64,6 @@ race_libretro
 rustynes_libretro
 sameboy_libretro
 scummvm_libretro
-skyemu_libretro
 smsplus_libretro
 snes9x2010_libretro
 snes9x_libretro
@@ -80,7 +72,6 @@ stella2023_libretro
 stella_libretro
 swanstation_libretro
 tgbdual_libretro
-tia_libretro
 vba_next_libretro
 vbam_libretro
 vecx_libretro
