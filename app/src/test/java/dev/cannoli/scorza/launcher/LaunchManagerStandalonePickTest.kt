@@ -66,6 +66,7 @@ class LaunchManagerStandalonePickTest {
             delfinoLauncher = delfinoLauncher,
             launchState = mockk(relaxed = true),
             activeMappingHolder = activeMappingHolder,
+            portRouter = dev.cannoli.scorza.input.runtime.PortRouter(),
             atomicRename = mockk(relaxed = true),
             gameOverrides = gameOverrides,
         )

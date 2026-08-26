@@ -46,6 +46,7 @@ class LaunchManager(
     private val delfinoLauncher: DelfinoLauncher,
     private val launchState: LaunchState,
     private val activeMappingHolder: dev.cannoli.scorza.input.runtime.ActiveMappingHolder,
+    private val portRouter: dev.cannoli.scorza.input.runtime.PortRouter,
     private val atomicRename: dev.cannoli.scorza.util.AtomicRename,
     private val installedCoreService: InstalledCoreService? = null,
     private val gameOverrides: dev.cannoli.scorza.db.GameOverrideStore? = null,
@@ -673,6 +674,7 @@ class LaunchManager(
             dev.cannoli.scorza.settings.TimeFormat.TWENTY_FOUR_HOUR -> TimeFormatMode.TWENTY_FOUR_HOUR
         }
         return RicottaIgm(
+            builtinPorts = builtinPorts(),
             gameTitle = rom.displayName,
             stateBasePath = stateBase.absolutePath,
             cannoliRoot = paths.root.absolutePath,
@@ -712,6 +714,15 @@ class LaunchManager(
     // Keycodes bound to BTN_MENU in the active mapping open the Cannoli IGM in ricotta,
     // mirroring how the launcher's own in-game menu opens. Falls back to the platform
     // default (BACK + BUTTON_MODE) when no mapping is active.
+    // A launch-time snapshot, which is the whole of it: a built-in pad is by definition present
+    // before the game starts, so anything arriving later is a real connection worth announcing.
+    private fun builtinPorts(): List<Int> =
+        portRouter.snapshotEntries()
+            .filter { it.mapping.match.builtin ?: it.device.isBuiltIn }
+            .mapNotNull { it.port }
+            .distinct()
+            .sorted()
+
     private fun resolveMenuKeycodes(): List<Int> =
         activeMappingHolder.active.value
             ?.bindings

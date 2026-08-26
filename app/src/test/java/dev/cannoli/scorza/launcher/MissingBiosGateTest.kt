@@ -65,6 +65,7 @@ class MissingBiosGateTest {
             delfinoLauncher = mockk(relaxed = true),
             launchState = mockk(relaxed = true),
             activeMappingHolder = holder,
+            portRouter = dev.cannoli.scorza.input.runtime.PortRouter(),
             atomicRename = mockk(relaxed = true),
             installedCoreService = installedCoreService,
             gameOverrides = gameOverrides,

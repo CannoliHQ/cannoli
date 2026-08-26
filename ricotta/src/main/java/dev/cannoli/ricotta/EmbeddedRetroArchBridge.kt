@@ -88,6 +88,8 @@ class EmbeddedRetroArchBridge(
 
     fun setIgmTriggerKeycodes(keycodes: IntArray) = nativeSetIgmTriggerKeycodes(keycodes)
 
+    fun setBuiltinPorts(ports: IntArray) = nativeSetBuiltinPorts(ports)
+
     fun setIGMVisible(visible: Boolean) {
         nativeSetIGMVisible(visible)
     }
@@ -295,6 +297,8 @@ class EmbeddedRetroArchBridge(
     private external fun nativeSetDiskIndex(index: Int)
     private external fun nativeSetIGMVisible(visible: Boolean)
     private external fun nativeSetIgmTriggerKeycodes(keycodes: IntArray)
+
+    private external fun nativeSetBuiltinPorts(ports: IntArray)
     private external fun nativeGetAchievementData(): String
     private external fun nativeCheatLoadFile(path: String)
     private external fun nativeCheatToggle(index: Int)

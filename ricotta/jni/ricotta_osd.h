@@ -47,6 +47,11 @@ void ricotta_save_begin(void);
 void ricotta_save_end(void);
 int  ricotta_save_is_active(void);
 
+/* True when the launcher marked this 0-based port's pad as built in. RetroArch announces every
+ * configured pad; a handheld's own controls are not news. Ports come from the launch intent, so
+ * a pad that connects after launch is never suppressed. */
+int  ricotta_port_is_builtin(int port);
+
 /* The input hooks RetroArch's android_input.c calls. Declared here because this header is
  * force-included everywhere, which keeps the patch down to the two call sites: an extern in the
  * patch itself would be a third hunk to rebase, anchored on whatever happened to sit above it. */

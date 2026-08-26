@@ -29,6 +29,7 @@ data class RicottaIgm(
     val romBaseName: String = "",
     val hardcoreInEffect: Boolean = false,
     val curatedSettings: Boolean = true,
+    val builtinPorts: List<Int> = emptyList(),
 )
 
 class RetroArchLauncher(private val context: Context) {
@@ -59,6 +60,7 @@ class RetroArchLauncher(private val context: Context) {
             romBaseName = igm.romBaseName,
             hardcoreInEffect = igm.hardcoreInEffect,
             curatedSettings = igm.curatedSettings,
+            builtinPorts = igm.builtinPorts,
         )
 
         val intent = Intent().apply {

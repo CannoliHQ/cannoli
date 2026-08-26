@@ -66,6 +66,13 @@ data class RicottaLaunchParams(
     // never reaches an override and no two games can disagree about it.
     // Trailing field: a sender that predates it reads back true, the launcher's own default.
     val curatedSettings: Boolean = true,
+    // Ports whose pad the input DB marks built in, as of launch. RetroArch announces a configured
+    // pad on every port; a handheld's own controls are not news, so these stay quiet. A launch-time
+    // snapshot is the whole of it, since a built-in pad is present before the game starts and
+    // anything arriving later is a real connection worth announcing.
+    // Trailing field: a sender that predates it reads back empty, which announces everything, the
+    // behaviour before this existed.
+    val builtinPorts: List<Int> = emptyList(),
 ) : Parcelable {
     override fun describeContents() = 0
 
@@ -93,6 +100,7 @@ data class RicottaLaunchParams(
         dest.writeString(romBaseName)
         dest.writeInt(if (hardcoreInEffect) 1 else 0)
         dest.writeInt(if (curatedSettings) 1 else 0)
+        dest.writeIntArray(builtinPorts.toIntArray())
     }
 
     companion object {
@@ -132,11 +140,13 @@ data class RicottaLaunchParams(
                 // returns 0 and degrades correctly on its own. This one defaults to true, so it has
                 // to ask whether the sender wrote it at all.
                 val curatedSettings = if (p.dataAvail() > 0) p.readInt() != 0 else true
+                val builtinPorts =
+                    if (p.dataAvail() > 0) (p.createIntArray() ?: IntArray(0)).toList() else emptyList()
                 return RicottaLaunchParams(
                     coreId, romPath, configFilePath, gameTitle, stateBasePath,
                     cannoliRoot, platformTag, platformName, igmTriggerKeycodes, quitOnFocusLoss,
                     preferredRefreshRate, colors, displaySettings, inputMapping, localeTag,
-                    romBaseName, hardcoreInEffect, curatedSettings,
+                    romBaseName, hardcoreInEffect, curatedSettings, builtinPorts,
                 )
             }
 

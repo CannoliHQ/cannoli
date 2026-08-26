@@ -136,6 +136,7 @@ class RetroActivityFuture : RetroActivityCamera() {
             // claim it back for whatever the user picked.
             igmOverlay?.onHidden = { refreshViewport() }
             params?.let { bridge.setIgmTriggerKeycodes(it.igmTriggerKeycodes.toIntArray()) }
+            params?.let { bridge.setBuiltinPorts(it.builtinPorts.toIntArray()) }
             bridge.curatedSettings = params?.curatedSettings ?: true
             igmOverlay?.controller?.setInputMapping(params?.inputMapping)
 

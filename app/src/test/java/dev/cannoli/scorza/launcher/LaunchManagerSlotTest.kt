@@ -38,6 +38,7 @@ class LaunchManagerSlotTest {
             delfinoLauncher = mockk(relaxed = true),
             launchState = mockk(relaxed = true),
             activeMappingHolder = mockk(relaxed = true),
+            portRouter = dev.cannoli.scorza.input.runtime.PortRouter(),
             atomicRename = mockk(relaxed = true),
         )
     }

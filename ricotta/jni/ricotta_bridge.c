@@ -58,6 +58,12 @@ static volatile int g_igm_visible = 0;
 #define RICOTTA_MAX_TRIGGER_KEYS 8
 static volatile int g_igm_trigger_keycodes[RICOTTA_MAX_TRIGGER_KEYS];
 static volatile int g_igm_trigger_keycount = 0;
+
+/* Ports whose pad the launcher's input DB marks built in, from the launch intent. RetroArch has
+ * no notion of built in, so it announces the handheld's own controls on every launch. */
+#define RICOTTA_MAX_PORTS 16
+static volatile int g_builtin_ports[RICOTTA_MAX_PORTS];
+static volatile int g_builtin_port_count = 0;
 static jmethodID g_on_igm_trigger_mid = NULL;
 static jmethodID g_on_osd_event_mid = NULL;
 static jmethodID g_on_osd_achievement_mid = NULL;
@@ -1327,6 +1333,46 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetIgmTriggerKeycodes(
 
    (*env)->ReleaseIntArrayElements(env, keycodes, elems, JNI_ABORT);
    g_igm_trigger_keycount = (int)n; /* set count last so the reader never sees partial state */
+}
+
+JNIEXPORT void JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeSetBuiltinPorts(
+      JNIEnv *env, jobject obj, jintArray ports)
+{
+   jsize n;
+   jint *elems;
+   jsize i;
+
+   (void)obj;
+
+   g_builtin_port_count = 0;
+   if (!ports)
+      return;
+
+   n = (*env)->GetArrayLength(env, ports);
+   if (n > RICOTTA_MAX_PORTS)
+      n = RICOTTA_MAX_PORTS;
+
+   elems = (*env)->GetIntArrayElements(env, ports, NULL);
+   if (!elems)
+      return;
+
+   for (i = 0; i < n; i++)
+      g_builtin_ports[i] = (int)elems[i];
+
+   (*env)->ReleaseIntArrayElements(env, ports, elems, JNI_ABORT);
+   g_builtin_port_count = (int)n; /* set count last so the reader never sees partial state */
+}
+
+int ricotta_port_is_builtin(int port)
+{
+   int i;
+   int n = g_builtin_port_count;
+
+   for (i = 0; i < n; i++)
+      if (g_builtin_ports[i] == port)
+         return 1;
+   return 0;
 }
 
 /* One RetroArch settings screen, as "key\x1fname\x1fisMenu" per row. An empty label is the root.

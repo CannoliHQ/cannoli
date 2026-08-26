@@ -64,12 +64,13 @@ object LaunchModule {
         delfinoLauncher: DelfinoLauncher,
         launchState: LaunchState,
         activeMappingHolder: dev.cannoli.scorza.input.runtime.ActiveMappingHolder,
+        portRouter: dev.cannoli.scorza.input.runtime.PortRouter,
         atomicRename: AtomicRename,
         installedCoreService: InstalledCoreService,
         gameOverrides: dev.cannoli.scorza.db.GameOverrideStore,
     ): LaunchManager = LaunchManager(
         context, settings, platformConfig,
         retroArchLauncher, emuLauncher, apkLauncher, delfinoLauncher, launchState, activeMappingHolder,
-        atomicRename, installedCoreService, gameOverrides
+        portRouter, atomicRename, installedCoreService, gameOverrides
     )
 }
