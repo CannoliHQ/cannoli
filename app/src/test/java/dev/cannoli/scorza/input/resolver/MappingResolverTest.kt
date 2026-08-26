@@ -641,4 +641,39 @@ class MappingResolverTest {
         val resolved = resolver(bundled = ra).resolve(device())
         assertEquals("a_pad", resolved.id)
     }
+
+    private val pocketTacoCfg = """
+        input_device = "GameSir-Pocket 1"
+        input_vendor_id = "13623"
+        input_product_id = "4402"
+        cannoli_source = "INPUT_DB"
+        cannoli_device_aliases = "GameSir-Pocket 1 Keyboard"
+        input_b_btn = "96"
+    """.trimIndent() + "\n"
+
+    @Test
+    fun `a db entry alias resolves the pad when nothing claims the reported name`() {
+        writeCfg("gamesir_pocket_taco.cfg", pocketTacoCfg)
+        val resolved = resolver().resolve(device(name = "GameSir-Pocket 1 Keyboard", vendorId = 13623, productId = 4402))
+        assertEquals(MappingSource.RETROARCH_AUTOCONFIG, resolved.source)
+        assertEquals(listOf(InputBinding.Button(96)), resolved.bindings[CanonicalButton.BTN_SOUTH])
+    }
+
+    @Test
+    fun `a user cfg claiming the reported name outranks an alias match`() {
+        writeCfg("gamesir_pocket_taco.cfg", pocketTacoCfg)
+        writeCfg(
+            "android_default_gamesir_pocket_1_keyboard.cfg",
+            """
+            input_device = "GameSir-Pocket 1 Keyboard"
+            input_vendor_id = "13623"
+            input_product_id = "4402"
+            cannoli_source = "USER"
+            input_b_btn = "97"
+            """.trimIndent() + "\n",
+        )
+        val resolved = resolver().resolve(device(name = "GameSir-Pocket 1 Keyboard", vendorId = 13623, productId = 4402))
+        assertTrue(resolved.userEdited)
+        assertEquals(listOf(InputBinding.Button(97)), resolved.bindings[CanonicalButton.BTN_SOUTH])
+    }
 }

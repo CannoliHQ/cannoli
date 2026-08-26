@@ -7,6 +7,7 @@ enum class MatchRank {
     NAME_AND_MODEL,
     NAME_AND_VID_PID,
     NAME_ONLY,
+    ALIAS,
     VID_PID_UNNAMED,
 }
 
@@ -18,7 +19,10 @@ object IdentityMatcher {
     fun rank(entry: RetroArchCfgEntry, device: ConnectedDevice): MatchRank? {
         val entryName = entry.deviceName.trim()
         val deviceName = device.name.trim()
-        if (entryName.isNotEmpty() && deviceName.isNotEmpty() && entryName != deviceName) return null
+        // Aliases are exact names someone confirmed (or the database ships) for this same pad, so
+        // they clear the name contradiction without loosening it into a prefix or fuzzy match.
+        val aliasMatch = deviceName.isNotEmpty() && entry.deviceAliases.any { it.trim() == deviceName }
+        if (entryName.isNotEmpty() && deviceName.isNotEmpty() && entryName != deviceName && !aliasMatch) return null
 
         val pin = entry.buildModel?.trim()
         if (!pin.isNullOrEmpty() && !pin.equals(device.androidBuildModel.trim(), ignoreCase = true)) return null
@@ -31,6 +35,7 @@ object IdentityMatcher {
             nameMatch && !pin.isNullOrEmpty() -> MatchRank.NAME_AND_MODEL
             nameMatch && vidPidMatch -> MatchRank.NAME_AND_VID_PID
             nameMatch -> MatchRank.NAME_ONLY
+            aliasMatch -> MatchRank.ALIAS
             entryName.isEmpty() && vidPidMatch -> MatchRank.VID_PID_UNNAMED
             else -> null
         }

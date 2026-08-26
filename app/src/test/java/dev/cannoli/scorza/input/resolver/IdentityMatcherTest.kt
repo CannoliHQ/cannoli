@@ -31,6 +31,7 @@ class IdentityMatcherTest {
         productId: Int? = null,
         buildModel: String? = null,
         builtin: Boolean? = null,
+        aliases: List<String> = emptyList(),
     ) = RetroArchCfgEntry(
         deviceName = name,
         vendorId = vendorId,
@@ -38,6 +39,7 @@ class IdentityMatcherTest {
         buttonBindings = emptyMap(),
         buildModel = buildModel,
         builtin = builtin,
+        deviceAliases = aliases,
     )
 
     // A DS4 on a Retroid Pocket Classic reports the host's phantom 0x2022:0x3001.
@@ -93,5 +95,29 @@ class IdentityMatcherTest {
         val builtInEntry = entry("Wireless Controller", 1356, 2508, builtin = true)
         assertEquals(MatchRank.NAME_AND_VID_PID, IdentityMatcher.rank(builtInEntry, phantomDs4.copy(vendorId = 1356, productId = 2508)))
         assertEquals(false, IdentityMatcher.builtinAgrees(builtInEntry, phantomDs4))
+    }
+
+    // Android merges this pad's three HID nodes into one InputDevice and names it after whichever
+    // node enumerated first, so the same pad reports either name across reconnects.
+    private val mergedAsKeyboard = device("GameSir-Pocket 1 Keyboard", 13623, 4402, "moto g play - 2024")
+
+    @Test fun `a collected alias matches the pad`() {
+        val taco = entry("GameSir-Pocket 1", 13623, 4402, aliases = listOf("GameSir-Pocket 1 Keyboard"))
+        assertEquals(MatchRank.ALIAS, IdentityMatcher.rank(taco, mergedAsKeyboard))
+    }
+
+    @Test fun `an exact device name outranks an alias`() {
+        assertEquals(true, MatchRank.NAME_ONLY.ordinal < MatchRank.ALIAS.ordinal)
+    }
+
+    @Test fun `another pad's alias does not match`() {
+        val other = entry("Some Other Pad", 13623, 4402, aliases = listOf("Some Other Pad Keyboard"))
+        assertEquals(null, IdentityMatcher.rank(other, mergedAsKeyboard))
+    }
+
+    @Test fun `a sibling product is not swept in by a neighbouring name`() {
+        val pocketTen = device("GameSir-Pocket 10", 13623, 4402, "moto g play - 2024")
+        val taco = entry("GameSir-Pocket 1", 13623, 4402, aliases = listOf("GameSir-Pocket 1 Keyboard"))
+        assertEquals(null, IdentityMatcher.rank(taco, pocketTen))
     }
 }
