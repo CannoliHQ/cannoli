@@ -6,6 +6,7 @@ import dagger.hilt.android.scopes.ActivityScoped
 import dev.cannoli.scorza.config.CannoliPaths
 import dev.cannoli.scorza.config.EmulatorSource
 import dev.cannoli.scorza.config.PlatformConfig
+import dev.cannoli.scorza.launcher.CoreUsage
 import dev.cannoli.scorza.launcher.InstalledCoreService
 import dev.cannoli.scorza.launcher.LaunchManager
 import dev.cannoli.scorza.navigation.LauncherScreen
@@ -296,5 +297,40 @@ class EmulatorMappingBuilder @Inject constructor(
         fun isDownloadable(source: EmulatorSource, availability: CoreAvailability): Boolean =
             source == EmulatorSource.Embedded && availability != CoreAvailability.AVAILABLE
 
+    }
+
+    /**
+     * Every installed core with what still points at it.
+     *
+     * getCoreMapping rather than the raw pick, because it folds in the built-in default: a platform
+     * nobody has configured still runs a core, and reading explicit choices alone would offer to
+     * delete the default core of every platform the user never opened the picker for.
+     */
+    fun buildInstalledCores(): LauncherScreen.InstalledCores {
+        val coresDir = File(context.filesDir, "cores")
+        val tags = platformConfig.getAllTags()
+        val claims = mutableMapOf<String, MutableList<String>>()
+        for (tag in tags) {
+            val name = platformConfig.getDisplayName(tag)
+            platformConfig.getCoreMapping(tag).takeIf { it.isNotBlank() }?.let {
+                claims.getOrPut(it) { mutableListOf() }.add(name)
+            }
+            for (entry in gameOverrideStore.forPlatform(tag)) {
+                entry.choice?.coreId?.takeIf { it.isNotBlank() }?.let {
+                    claims.getOrPut(it) { mutableListOf() }.add(name)
+                }
+            }
+        }
+        val rows = CoreUsage.rows(
+            installed = installedCoreService.embeddedCores(),
+            sizeOf = { File(coresDir, "${it}_android.so").length() },
+            displayNameOf = { platformConfig.getCoreDisplayName(it) },
+            usedBy = { claims[it]?.distinct()?.sorted().orEmpty() },
+        )
+        return LauncherScreen.InstalledCores(
+            rows = rows,
+            totalBytes = rows.sumOf { it.sizeBytes },
+            reclaimableBytes = CoreUsage.reclaimableBytes(rows),
+        )
     }
 }

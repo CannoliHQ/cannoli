@@ -936,6 +936,13 @@ class SettingsViewModel @Inject constructor(
                 isAction = true,
                 canCycle = false,
             ))
+            add(SettingsItem(
+                "installed_cores",
+                R.string.setting_installed_cores,
+                isEditable = true,
+                isAction = true,
+                canCycle = false,
+            ))
             add(SettingsItem("always_save_on_quit", R.string.setting_always_save_on_quit, valueRes = onOff(settings.alwaysSaveOnQuit)))
             add(SettingsItem("igm_settings_mode", R.string.setting_igm_settings_mode, valueRes = when (settings.igmSettingsMode) {
                 IgmSettingsMode.CURATED -> R.string.value_igm_mode_curated

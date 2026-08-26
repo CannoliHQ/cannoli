@@ -74,6 +74,20 @@ object DownloadStamps {
         } catch (_: Exception) {}
     }
 
+    /** Drops one row, so an uninstalled core does not leave a stamp describing a file that is gone. */
+    @Synchronized
+    fun remove(filesDir: File, url: String) {
+        val prior = read(filesDir)
+        if (url !in prior) return
+        try {
+            File(filesDir, FILE).writeText(
+                (prior - url).entries.joinToString("\n") {
+                    "${it.key}\t${it.value.etag}\t${it.value.built}\t${it.value.crc}"
+                }
+            )
+        } catch (_: Exception) {}
+    }
+
     /**
      * `Last-Modified` as an ISO date. The header is RFC 1123 in GMT, and only the day is shown, so
      * the wall clock and the reader's zone do not matter.

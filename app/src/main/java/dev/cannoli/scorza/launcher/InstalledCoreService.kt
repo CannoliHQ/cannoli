@@ -30,6 +30,21 @@ class InstalledCoreService @Inject constructor(
             ?.toSet()
             ?: emptySet()
 
+    /**
+     * Deletes the core's binary, which is the whole of an uninstall: embeddedCores() lists the
+     * directory, so a core with no file simply stops being installed and leaves nothing stale
+     * behind. Its stamp goes too, so nothing describes a file that is gone.
+     *
+     * System files are deliberately untouched. Those live on the SD card, are shared between
+     * cores, and are the user's own data rather than something this download put there.
+     */
+    fun uninstall(coreId: String): Boolean {
+        val file = File(File(context.filesDir, "cores"), "${coreId}_android.so")
+        val gone = !file.exists() || file.delete()
+        if (gone) DownloadStamps.remove(context.filesDir, EmbeddedCoreDownloader.soUrlFor(coreId))
+        return gone
+    }
+
     companion object {
         private val PACKAGE_LABELS = mapOf(
             "dev.cannoli.ricotta.aarch64" to "RicottaArch",
