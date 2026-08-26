@@ -34,12 +34,12 @@ class ViewportGeometryTest {
         assertEquals(vp(), vp(portraitMarginPx = 200))
 
     // Portrait: 1080 wide, 1920 tall, 200px reserved at the bottom.
-    // effH = 1720, 4:3 fits to width, so 1080x810, centred in the region above the margin.
+    // effTop = 0, effH = 1720, 4:3 fits to width, so 1080x810, centred in the region above the margin.
     @Test fun `margin shrinks the picture in portrait`() {
         val r = vp(surfaceWidth = 1080, surfaceHeight = 1920, portraitMarginPx = 200)
         assertEquals(1080, r.w)
         assertEquals(810, r.h)
-        assertEquals(200 + (1720 - 810) / 2, r.y)
+        assertEquals(0 + (1720 - 810) / 2, r.y)
     }
 
     @Test fun `margin never distorts the picture`() {
@@ -81,4 +81,10 @@ class ViewportGeometryTest {
         assertEquals(810, r.w)
         assertEquals(1080, r.h)
     }
+
+    // Region: h = 540 (50%), y = (1080-540)/2 + 1080*-10/100 = 270-108 = 162, so effTop = 162.
+    // 4:3 fits to height inside 1920x540 (screen is wider than 4:3), giving 720x540, so
+    // outH == effH and y is untouched: a bottom-left regression would instead put y at 378.
+    @Test fun `a y offset in the region lands top-left, not bottom-left`() =
+        assertEquals(ViewportRect(600, 162, 720, 540), vp(geometryHeightPct = 50, geometryYPct = -10))
 }

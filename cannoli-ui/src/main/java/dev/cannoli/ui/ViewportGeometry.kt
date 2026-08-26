@@ -9,7 +9,7 @@ data class ViewportRect(val x: Int, val y: Int, val w: Int, val h: Int)
 /**
  * Screen Geometry gives the region, Portrait Margin shrinks it from the bottom in portrait, and the
  * game is fitted inside what remains. Restored from v1, where the internal runner did the same job.
- * Returns a rect in RetroArch viewport coordinates, so y counts up from the bottom.
+ * Returns a top-left rect, matching computeScreenGeometryRect.
  */
 fun computeViewport(
     surfaceWidth: Int,
@@ -36,10 +36,10 @@ fun computeViewport(
     val effLeft = region.x
     val effW = region.w.coerceAtLeast(1)
     val effH = (region.h - pm).coerceAtLeast(1)
-    val effBottom = surfaceHeight - (region.y + region.h) + pm
+    val effTop = region.y
 
     if (scalingMode == ScalingMode.FULLSCREEN)
-        return ViewportRect(effLeft, effBottom, effW, effH)
+        return ViewportRect(effLeft, effTop, effW, effH)
 
     val base = if (coreAspectRatio > 0f)
         coreAspectRatio
@@ -71,7 +71,7 @@ fun computeViewport(
     val outH = vpH.coerceAtLeast(1)
     return ViewportRect(
         effLeft + (effW - outW) / 2,
-        effBottom + (effH - outH) / 2,
+        effTop + (effH - outH) / 2,
         outW,
         outH,
     )

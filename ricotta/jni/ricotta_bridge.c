@@ -382,6 +382,14 @@ void ricotta_bridge_poll_commands(void)
                /* Cannoli's own integer mode already yields an integer scaled rect, so
                 * RetroArch's would re-quantise one that is already correct. */
                configuration_set_bool(settings, settings->bools.video_scale_integer, false);
+               /* With bias zero the padding term RetroArch adds to custom_vp vanishes, so
+                * the rect below resolves to an absolute top-left rect under both drivers' y conventions. */
+               configuration_set_float(settings, settings->floats.video_vp_bias_x, 0.0f);
+               configuration_set_float(settings, settings->floats.video_vp_bias_y, 0.0f);
+#if defined(RARCH_MOBILE)
+               configuration_set_float(settings, settings->floats.video_vp_bias_portrait_x, 0.0f);
+               configuration_set_float(settings, settings->floats.video_vp_bias_portrait_y, 0.0f);
+#endif
             }
             else
                configuration_set_uint(settings,
