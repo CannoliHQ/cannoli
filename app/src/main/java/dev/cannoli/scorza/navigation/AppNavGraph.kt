@@ -172,6 +172,17 @@ sealed class LauncherScreen {
         val selectedIndex: Int
         val scrollTarget: Int
         val itemCount: Int
+
+        /**
+         * Where each selectable row is drawn, when that differs from its position in selection.
+         *
+         * Selection counts only rows you can land on, while the list renders headers and dividers
+         * too, so on such a screen the two index spaces drift apart. A page jump reads the viewport
+         * in rendered space and has no way back without this. Null, the default, means every row is
+         * selectable and the two are the same.
+         */
+        val selectableRows: List<Int>? get() = null
+
         fun withScroll(selectedIndex: Int, scrollTarget: Int): LauncherScreen
     }
 
@@ -235,6 +246,10 @@ sealed class LauncherScreen {
         val selectableItems: List<dev.cannoli.scorza.ui.screens.MappingItem>
             get() = items.filter { it.isSelectable }
         override val itemCount: Int get() = selectableItems.size
+        // The same list the renderer builds to place the highlight, so a page jump measures the
+        // viewport against the rows actually on screen.
+        override val selectableRows: List<Int>
+            get() = items.mapIndexedNotNull { idx, it -> idx.takeIf { _ -> it.isSelectable } }
         override fun withScroll(selectedIndex: Int, scrollTarget: Int) = copy(selectedIndex = selectedIndex, scrollTarget = scrollTarget)
     }
     data class BiosStatus(

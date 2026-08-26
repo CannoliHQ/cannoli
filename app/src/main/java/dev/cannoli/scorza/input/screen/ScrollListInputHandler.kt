@@ -55,7 +55,7 @@ class ScrollListInputHandler @AssistedInject constructor(
             onLeftOverride.invoke()
             return
         }
-        val newIdx = PageJump.compute(-1, itemCount(), selectedIndex(), nav.activeListState)
+        val newIdx = PageJump.compute(-1, itemCount(), selectedIndex(), nav.activeListState, selectableRows())
         if (newIdx != selectedIndex()) onMove(newIdx)
     }
 
@@ -64,9 +64,14 @@ class ScrollListInputHandler @AssistedInject constructor(
             onRightOverride.invoke()
             return
         }
-        val newIdx = PageJump.compute(1, itemCount(), selectedIndex(), nav.activeListState)
+        val newIdx = PageJump.compute(1, itemCount(), selectedIndex(), nav.activeListState, selectableRows())
         if (newIdx != selectedIndex()) onMove(newIdx)
     }
+
+    // Read from the screen rather than passed in: this handler is built for a dozen screens and
+    // only the ones that render non-selectable rows have anything to say here.
+    private fun selectableRows(): List<Int>? =
+        (nav.currentScreen as? dev.cannoli.scorza.navigation.LauncherScreen.ScrollableScreen)?.selectableRows
 
     override fun onConfirm() = onConfirm.invoke()
     override fun onBack() = onBack.invoke()
