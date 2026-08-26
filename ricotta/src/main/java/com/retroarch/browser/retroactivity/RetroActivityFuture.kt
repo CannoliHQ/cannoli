@@ -248,7 +248,22 @@ class RetroActivityFuture : RetroActivityCamera() {
         val w = v.width
         val h = v.height
         if (w > 0 && h > 0)
-            viewportController?.refresh(w, h)
+            refreshViewportRetrying(w, h)
+    }
+
+    // The surface commonly becomes ready before the core has reported its geometry, so a decline
+    // for that reason alone is retried rather than left to silently do nothing for the session.
+    // Ten attempts 100ms apart cover about a second, which is comfortably past the gap seen on
+    // device (geometry showed up 449ms after the first decline), while still giving up if a core
+    // never reports geometry at all.
+    private fun refreshViewportRetrying(width: Int, height: Int, attempt: Int = 0) {
+        val result = viewportController?.refresh(width, height) ?: return
+        if (result == ViewportController.RefreshResult.NOT_READY && attempt < GEOMETRY_RETRY_MAX_ATTEMPTS) {
+            mHandler.postDelayed(
+                { refreshViewportRetrying(width, height, attempt + 1) },
+                GEOMETRY_RETRY_DELAY_MS
+            )
+        }
     }
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
@@ -260,7 +275,7 @@ class RetroActivityFuture : RetroActivityCamera() {
     // trigger: RetroArch has no Kotlin-visible hook for "content is running" here.
     override fun surfaceChanged(holder: android.view.SurfaceHolder, format: Int, width: Int, height: Int) {
         super.surfaceChanged(holder, format, width, height)
-        viewportController?.refresh(width, height)
+        refreshViewportRetrying(width, height)
     }
 
     private fun sendUiMessage(what: Int, state: Boolean) {
@@ -369,6 +384,7 @@ class RetroActivityFuture : RetroActivityCamera() {
         private const val HANDLER_ARG_TRUE = 1
         private const val HANDLER_ARG_FALSE = 0
         private const val HANDLER_MESSAGE_DELAY_DEFAULT_MS = 300
-
+        private const val GEOMETRY_RETRY_DELAY_MS = 100L
+        private const val GEOMETRY_RETRY_MAX_ATTEMPTS = 10
     }
 }

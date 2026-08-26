@@ -37,7 +37,15 @@ class ViewportController(
     /** Test seam: declares a viewport already applied, as it would be after a prior refresh. */
     fun markActive() { active = true }
 
-    fun refresh(surfaceWidth: Int, surfaceHeight: Int): Boolean {
+    /**
+     * DECLINED means there is nothing to do (defaults) or the apply itself failed; a caller has
+     * no reason to try again. NOT_READY means the core hasn't reported its geometry yet, which
+     * happens transiently right after the surface is created, before content has loaded - a
+     * caller that wants the viewport to eventually apply should retry.
+     */
+    enum class RefreshResult { APPLIED, DECLINED, NOT_READY }
+
+    fun refresh(surfaceWidth: Int, surfaceHeight: Int): RefreshResult {
         val portrait = surfaceWidth < surfaceHeight
         val marginWanted = portrait && settings.portraitMarginPx > 0
         val geometryWanted = settings.geometryWidthPct != 100 ||
@@ -52,10 +60,10 @@ class ViewportController(
                 rememberedMode = null
                 rememberedAspect = 0f
             }
-            return false
+            return RefreshResult.DECLINED
         }
 
-        val g = coreGeometry() ?: return false
+        val g = coreGeometry() ?: return RefreshResult.NOT_READY
         val aspectIdx = readAspectIdx()
         val mode: ScalingMode
         val requestedAspect: Float
@@ -97,7 +105,7 @@ class ViewportController(
         )
         val ok = applyViewport(rect.x, rect.y, rect.w, rect.h)
         if (ok) active = true
-        return ok
+        return if (ok) RefreshResult.APPLIED else RefreshResult.DECLINED
     }
 
     private companion object {

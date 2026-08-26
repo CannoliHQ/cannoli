@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,14 +30,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cannoli.ui.ButtonStyle
@@ -102,11 +104,14 @@ fun CannoliIGM(
 
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
-    val view = LocalView.current
+    // LocalView.current.width/.height isn't Compose state: a layout pass doesn't invalidate this
+    // composable, so reading it directly sticks at the pre-layout 0x0 forever. onSizeChanged below
+    // hoists the laid-out size into state that recomposition actually observes.
+    val surfaceSize = remember { mutableStateOf(IntSize.Zero) }
     val portrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
     val viewportPadding = dev.cannoli.ui.computeScreenGeometryPadding(
-        surfaceWidthPx = view.width,
-        surfaceHeightPx = view.height,
+        surfaceWidthPx = surfaceSize.value.width,
+        surfaceHeightPx = surfaceSize.value.height,
         surfaceWidthDp = configuration.screenWidthDp,
         surfaceHeightDp = configuration.screenHeightDp,
         widthPct = config.geometryWidthPct,
@@ -124,7 +129,12 @@ fun CannoliIGM(
         LocalCannoliTypography provides igmTypography,
         LocalPillScale provides igmPillScale,
     ) {
-        Box(modifier = Modifier.fillMaxSize().padding(viewportPadding)) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .onSizeChanged { surfaceSize.value = it }
+                .padding(viewportPadding)
+        ) {
             when (screen) {
                 is IGMScreen.Menu -> {
                     InGameMenu(

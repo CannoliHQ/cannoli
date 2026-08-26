@@ -10,13 +10,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import dev.cannoli.ui.computeScreenGeometryPadding
@@ -134,11 +137,14 @@ class OsdOverlay(
             CompositionLocalProvider(LocalCannoliColors provides colors) {
                 val configuration = LocalConfiguration.current
                 val density = LocalDensity.current
-                val hostView = LocalView.current
+                // Unlike the IGM, nothing else in this content reads state that would trigger a
+                // later recomposition, so without hoisting the laid-out size here the dp fallback
+                // below would be permanent, not just a first-frame default.
+                val surfaceSize = remember { mutableStateOf(IntSize.Zero) }
                 val portrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
                 val regionPadding = computeScreenGeometryPadding(
-                    surfaceWidthPx = hostView.width,
-                    surfaceHeightPx = hostView.height,
+                    surfaceWidthPx = surfaceSize.value.width,
+                    surfaceHeightPx = surfaceSize.value.height,
                     surfaceWidthDp = configuration.screenWidthDp,
                     surfaceHeightDp = configuration.screenHeightDp,
                     widthPct = geometryWidthPct,
@@ -149,7 +155,12 @@ class OsdOverlay(
                     portrait = portrait,
                     density = density,
                 )
-                Box(Modifier.fillMaxSize().padding(regionPadding)) { OsdHost(controller) }
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .onSizeChanged { surfaceSize.value = it }
+                        .padding(regionPadding)
+                ) { OsdHost(controller) }
             }
         }
     }

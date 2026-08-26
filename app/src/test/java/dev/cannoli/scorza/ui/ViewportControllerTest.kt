@@ -1,10 +1,9 @@
 package dev.cannoli.scorza.ui
 
 import dev.cannoli.ricotta.ViewportController
+import dev.cannoli.ricotta.ViewportController.RefreshResult
 import dev.cannoli.ricotta.ViewportSettings
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ViewportControllerTest {
@@ -18,6 +17,7 @@ class ViewportControllerTest {
     ) {
         var applied: IntArray? = null
         var cleared: Int? = null
+        var geometryReads = 0
         fun apply(x: Int, y: Int, w: Int, h: Int): Boolean {
             applied = intArrayOf(x, y, w, h); return true
         }
@@ -32,7 +32,7 @@ class ViewportControllerTest {
     ): ViewportController {
         b.aspectIdx = aspectIdx
         return ViewportController(
-            coreGeometry = { b.geometry },
+            coreGeometry = { b.geometryReads++; b.geometry },
             applyViewport = b::apply,
             clearViewport = b::clear,
             readAspectIdx = { b.aspectIdx },
@@ -44,27 +44,33 @@ class ViewportControllerTest {
 
     @Test fun `defaults apply nothing and leave the aspect index alone`() {
         val b = FakeBridge()
-        assertFalse(controller(b).refresh(1920, 1080))
+        assertEquals(RefreshResult.DECLINED, controller(b).refresh(1920, 1080))
         assertEquals(null, b.applied)
         assertEquals(null, b.cleared)
     }
 
+    @Test fun `defaults decline before ever asking the core for geometry`() {
+        val b = FakeBridge()
+        assertEquals(RefreshResult.DECLINED, controller(b).refresh(1920, 1080))
+        assertEquals(0, b.geometryReads)
+    }
+
     @Test fun `a geometry change applies a viewport`() {
         val b = FakeBridge()
-        assertTrue(controller(b, wPct = 80).refresh(1920, 1080))
+        assertEquals(RefreshResult.APPLIED, controller(b, wPct = 80).refresh(1920, 1080))
         assertEquals(4, b.applied!!.size)
     }
 
     @Test fun `a margin applies a viewport only in portrait`() {
         val land = FakeBridge()
-        assertFalse(controller(land, marginPx = 200).refresh(1920, 1080))
+        assertEquals(RefreshResult.DECLINED, controller(land, marginPx = 200).refresh(1920, 1080))
         val port = FakeBridge()
-        assertTrue(controller(port, marginPx = 200).refresh(1080, 1920))
+        assertEquals(RefreshResult.APPLIED, controller(port, marginPx = 200).refresh(1080, 1920))
     }
 
-    @Test fun `no core geometry declines rather than guessing`() {
+    @Test fun `no core geometry yields not-ready rather than a plain decline`() {
         val b = FakeBridge(geometry = null)
-        assertFalse(controller(b, wPct = 80).refresh(1920, 1080))
+        assertEquals(RefreshResult.NOT_READY, controller(b, wPct = 80).refresh(1920, 1080))
         assertEquals(null, b.applied)
     }
 
@@ -85,10 +91,10 @@ class ViewportControllerTest {
     @Test fun `returning to defaults clears the viewport`() {
         val b = FakeBridge()
         val live = controller(b, wPct = 80)
-        assertTrue(live.refresh(1920, 1080))
+        assertEquals(RefreshResult.APPLIED, live.refresh(1920, 1080))
         val back = controller(b, wPct = 100)
         back.markActive()
-        assertFalse(back.refresh(1920, 1080))
+        assertEquals(RefreshResult.DECLINED, back.refresh(1920, 1080))
         assertEquals(22, b.cleared)
     }
 
@@ -98,12 +104,12 @@ class ViewportControllerTest {
     @Test fun `a fullscreen user stays fullscreen once the apply forces the index to custom`() {
         val b = FakeBridge()
         val c = controller(b, wPct = 50, aspectIdx = 24)
-        assertTrue(c.refresh(1920, 1080))
+        assertEquals(RefreshResult.APPLIED, c.refresh(1920, 1080))
         assertEquals(960, b.applied!![2])
         assertEquals(1080, b.applied!![3])
 
         b.aspectIdx = 23
-        assertTrue(c.refresh(1920, 1080))
+        assertEquals(RefreshResult.APPLIED, c.refresh(1920, 1080))
         assertEquals(960, b.applied!![2])
         assertEquals(1080, b.applied!![3])
     }
@@ -111,11 +117,11 @@ class ViewportControllerTest {
     @Test fun `an integer user stays integer once the apply forces the index to custom`() {
         val b = FakeBridge()
         val c = controller(b, wPct = 75, aspectIdx = 22, integer = true)
-        assertTrue(c.refresh(1920, 1080))
+        assertEquals(RefreshResult.APPLIED, c.refresh(1920, 1080))
         assertEquals(1280, b.applied!![2])
 
         b.aspectIdx = 23
-        assertTrue(c.refresh(1920, 1080))
+        assertEquals(RefreshResult.APPLIED, c.refresh(1920, 1080))
         assertEquals(1280, b.applied!![2])
     }
 
@@ -125,7 +131,7 @@ class ViewportControllerTest {
 
         val b = FakeBridge()
         val c = controller(b, wPct = 50, aspectIdx = 23)
-        assertTrue(c.refresh(1920, 1080))
+        assertEquals(RefreshResult.APPLIED, c.refresh(1920, 1080))
         assertEquals(reported.applied!!.toList(), b.applied!!.toList())
     }
 
@@ -137,7 +143,7 @@ class ViewportControllerTest {
         val b = FakeBridge()
         b.aspectValue = 16f / 9f
         val c = controller(b, wPct = 50, aspectIdx = 0)
-        assertTrue(c.refresh(1920, 1080))
+        assertEquals(RefreshResult.APPLIED, c.refresh(1920, 1080))
         assertEquals(960, b.applied!![2])
         assertEquals(540, b.applied!![3])
     }
