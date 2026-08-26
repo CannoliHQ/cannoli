@@ -14,6 +14,7 @@ class ViewportControllerTest {
         // Mutable so a test can change what the index reads back between two refresh() calls,
         // the way a successful apply forces it to ASPECT_RATIO_CUSTOM on the native side.
         var aspectIdx: Int = 22,
+        var aspectValue: Float = 0f,
     ) {
         var applied: IntArray? = null
         var cleared: Int? = null
@@ -36,6 +37,7 @@ class ViewportControllerTest {
             clearViewport = b::clear,
             readAspectIdx = { b.aspectIdx },
             readIntegerScale = { integer },
+            readAspectValue = { b.aspectValue },
             settings = ViewportSettings(marginPx, wPct, hPct, xPct, yPct),
         )
     }
@@ -125,5 +127,18 @@ class ViewportControllerTest {
         val c = controller(b, wPct = 50, aspectIdx = 23)
         assertTrue(c.refresh(1920, 1080))
         assertEquals(reported.applied!!.toList(), b.applied!!.toList())
+    }
+
+    // Region: wPct 50 on 1920x1080 -> 960x1080. Index 0 (4:3) is neither 22 nor 24, so the fit
+    // must use the LUT's 16:9 rather than the core's own ~4:3 (13333/10000): screenAspect is
+    // 960/1080 = 0.89, narrower than 16:9, so w = effW = 960, h = 960 / (16/9) = 540. The core's
+    // own aspect would instead give h = 720.
+    @Test fun `an index outside 22 and 24 uses the LUT value instead of the core's own aspect`() {
+        val b = FakeBridge()
+        b.aspectValue = 16f / 9f
+        val c = controller(b, wPct = 50, aspectIdx = 0)
+        assertTrue(c.refresh(1920, 1080))
+        assertEquals(960, b.applied!![2])
+        assertEquals(540, b.applied!![3])
     }
 }

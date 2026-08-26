@@ -1820,6 +1820,22 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaAspectIndex(
    return settings ? (jint)settings->uints.video_aspect_ratio_idx : 22;
 }
 
+JNIEXPORT jfloat JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaAspectValue(
+      JNIEnv *env, jobject obj)
+{
+   settings_t *settings = config_get_ptr();
+   unsigned idx;
+   (void)env; (void)obj;
+
+   if (!settings)
+      return 0.0f;
+   idx = settings->uints.video_aspect_ratio_idx;
+   if (idx >= ASPECT_RATIO_END)
+      return 0.0f;
+   return aspectratio_lut[idx].value;
+}
+
 JNIEXPORT jboolean JNICALL
 Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaIntegerScale(
       JNIEnv *env, jobject obj)

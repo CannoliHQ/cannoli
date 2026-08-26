@@ -58,6 +58,9 @@ interface RetroArchBridge {
 
     fun raIntegerScale(): Boolean = false
 
+    /** The value RetroArch's aspect ratio LUT holds for the current index, or 0 when unavailable. */
+    fun raAspectValue(): Float = 0f
+
     /**
      * One row of RetroArch's live cheat list. [index] is the index every toggle must use: it is
      * observed by reading RetroArch back after a load, never inferred from the .cht file's order.

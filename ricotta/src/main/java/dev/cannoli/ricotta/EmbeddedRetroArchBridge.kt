@@ -214,6 +214,8 @@ class EmbeddedRetroArchBridge(
 
     override fun raIntegerScale(): Boolean = nativeRaIntegerScale()
 
+    override fun raAspectValue(): Float = nativeRaAspectValue()
+
     // RetroArch decides which rows a settings screen has right now, in what order, under what name,
     // and which of them lead somewhere. Values are not read here: both menu modes go through
     // raGetSetting so there stays one read path, one write path and one changed-key set.
@@ -299,6 +301,7 @@ class EmbeddedRetroArchBridge(
     private external fun nativeApplyViewport(x: Int, y: Int, w: Int, h: Int): Boolean
     private external fun nativeClearViewport(restoreAspectIdx: Int): Boolean
     private external fun nativeRaAspectIndex(): Int
+    private external fun nativeRaAspectValue(): Float
     private external fun nativeRaIntegerScale(): Boolean
 
     companion object {

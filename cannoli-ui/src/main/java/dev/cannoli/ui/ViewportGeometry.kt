@@ -17,6 +17,8 @@ fun computeViewport(
     frameWidth: Int,
     frameHeight: Int,
     coreAspectRatio: Float,
+    /** The aspect the user asked for, or 0 to use the core's own. */
+    requestedAspect: Float,
     rotation: Int,
     scalingMode: ScalingMode,
     portraitMarginPx: Int,
@@ -41,24 +43,25 @@ fun computeViewport(
     if (scalingMode == ScalingMode.FULLSCREEN)
         return ViewportRect(effLeft, effTop, effW, effH)
 
-    val base = if (coreAspectRatio > 0f)
-        coreAspectRatio
-    else
-        frameWidth.toFloat() / frameHeight.toFloat()
+    val base = when {
+        requestedAspect > 0f -> requestedAspect
+        coreAspectRatio > 0f -> coreAspectRatio
+        else -> frameWidth.toFloat() / frameHeight.toFloat()
+    }
     val gameAspect = if (rotated) 1f / base else base
     val screenAspect = effW.toFloat() / effH.toFloat()
 
+    val dimW = if (rotated) frameHeight else frameWidth
+    val dimH = if (rotated) frameWidth else frameHeight
+    val integerScale = floor(minOf(effW.toFloat() / dimW, effH.toFloat() / dimH)).toInt()
+
     val vpW: Int
     val vpH: Int
-    if (scalingMode == ScalingMode.INTEGER) {
-        val dimW = if (rotated) frameHeight else frameWidth
-        val dimH = if (rotated) frameWidth else frameHeight
-        val scale = maxOf(
-            1,
-            floor(minOf(effW.toFloat() / dimW, effH.toFloat() / dimH)).toInt(),
-        )
-        vpW = dimW * scale
-        vpH = dimH * scale
+    // A whole multiple below 1x still overflows the region, so a scale that thin abandons
+    // integer scaling and falls through to the aspect fit below instead.
+    if (scalingMode == ScalingMode.INTEGER && integerScale >= 1) {
+        vpW = dimW * integerScale
+        vpH = dimH * integerScale
     } else if (gameAspect > screenAspect) {
         vpW = effW
         vpH = (effW / gameAspect).toInt()

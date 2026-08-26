@@ -22,14 +22,17 @@ class ViewportController(
     private val clearViewport: (Int) -> Boolean,
     private val readAspectIdx: () -> Int,
     private val readIntegerScale: () -> Boolean,
+    private val readAspectValue: () -> Float,
     private val settings: ViewportSettings,
 ) {
     private var active = false
 
     // The apply below forces aspect_ratio_index to ASPECT_RATIO_CUSTOM, so once a viewport is
-    // live the index no longer tells us what the user chose. Remember the last mode derived
-    // while the index still reflected their choice, and fall back to it on later refreshes.
+    // live the index no longer tells us what the user chose. Remember the last mode and requested
+    // aspect derived while the index still reflected their choice, and fall back to them on later
+    // refreshes.
     private var rememberedMode: ScalingMode? = null
+    private var rememberedAspect: Float = 0f
 
     /** Test seam: declares a viewport already applied, as it would be after a prior refresh. */
     fun markActive() { active = true }
@@ -47,22 +50,34 @@ class ViewportController(
                 clearViewport(readAspectIdx())
                 active = false
                 rememberedMode = null
+                rememberedAspect = 0f
             }
             return false
         }
 
         val g = coreGeometry() ?: return false
         val aspectIdx = readAspectIdx()
-        val mode = if (aspectIdx == ASPECT_RATIO_CUSTOM) {
-            rememberedMode ?: ScalingMode.CORE_REPORTED
+        val mode: ScalingMode
+        val requestedAspect: Float
+        if (aspectIdx == ASPECT_RATIO_CUSTOM) {
+            mode = rememberedMode ?: ScalingMode.CORE_REPORTED
+            requestedAspect = rememberedAspect
         } else {
-            val derived = when {
+            mode = when {
                 aspectIdx == ASPECT_RATIO_FULL -> ScalingMode.FULLSCREEN
                 readIntegerScale() -> ScalingMode.INTEGER
                 else -> ScalingMode.CORE_REPORTED
             }
-            rememberedMode = derived
-            derived
+            // 24 fills the region outright and 22 defers to the core's own aspect below; every
+            // other index is a deliberate ratio (e.g. 4:3), read from RetroArch's own LUT rather
+            // than discarded the way falling through to CORE_REPORTED/INTEGER used to discard it.
+            requestedAspect = if (aspectIdx == ASPECT_RATIO_FULL || aspectIdx == ASPECT_RATIO_CORE) {
+                0f
+            } else {
+                readAspectValue().takeIf { it > 0f } ?: 0f
+            }
+            rememberedMode = mode
+            rememberedAspect = requestedAspect
         }
 
         val rect = computeViewport(
@@ -71,6 +86,7 @@ class ViewportController(
             frameWidth = g[0],
             frameHeight = g[1],
             coreAspectRatio = if (g[3] != 0) g[2].toFloat() / g[3] else 0f,
+            requestedAspect = requestedAspect,
             rotation = 0,
             scalingMode = mode,
             portraitMarginPx = settings.portraitMarginPx,
@@ -86,7 +102,8 @@ class ViewportController(
 
     private companion object {
         // retroarch/gfx/video_defines.h
-        const val ASPECT_RATIO_FULL = 24
+        const val ASPECT_RATIO_CORE = 22
         const val ASPECT_RATIO_CUSTOM = 23
+        const val ASPECT_RATIO_FULL = 24
     }
 }

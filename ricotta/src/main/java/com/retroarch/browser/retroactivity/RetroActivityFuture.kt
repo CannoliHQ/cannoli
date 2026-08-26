@@ -115,6 +115,7 @@ class RetroActivityFuture : RetroActivityCamera() {
                 clearViewport = bridge::clearViewport,
                 readAspectIdx = bridge::raAspectIndex,
                 readIntegerScale = bridge::raIntegerScale,
+                readAspectValue = bridge::raAspectValue,
                 settings = ViewportSettings(
                     portraitMarginPx = ds?.portraitMarginPx ?: 0,
                     geometryWidthPct = ds?.geometryWidthPct ?: 100,
