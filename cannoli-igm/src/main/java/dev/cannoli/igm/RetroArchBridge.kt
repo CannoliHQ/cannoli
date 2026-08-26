@@ -45,6 +45,19 @@ interface RetroArchBridge {
 
     fun settingsProvider(): IgmSettingsProvider? = null
 
+    /** [frameWidth, frameHeight, aspectNumerator, aspectDenominator], or null before the core loads. */
+    fun coreGeometry(): IntArray? = null
+
+    fun applyViewport(x: Int, y: Int, w: Int, h: Int): Boolean = false
+
+    /** Hands the aspect index back to whatever the scaling row had set. */
+    fun clearViewport(restoreAspectIdx: Int): Boolean = false
+
+    /** The scaling row owns these two; the fit reads them rather than overriding them. */
+    fun raAspectIndex(): Int = 22
+
+    fun raIntegerScale(): Boolean = false
+
     /**
      * One row of RetroArch's live cheat list. [index] is the index every toggle must use: it is
      * observed by reading RetroArch back after a load, never inferred from the .cht file's order.

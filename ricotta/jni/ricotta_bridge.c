@@ -98,6 +98,7 @@ static volatile int g_menu_poll_active = 0;
 #define RICOTTA_QCMD_CHEAT_APPLY      -6
 #define RICOTTA_QCMD_OSD_EVENT        -7
 #define RICOTTA_QCMD_OSD_ACHIEVEMENT  -8
+#define RICOTTA_QCMD_VIEWPORT_SET     -9
 typedef struct
 {
    int   cmd;
@@ -107,6 +108,10 @@ typedef struct
    char *ra_value;
    int   ra_scope;
    int   osd_type;
+   int   vp_x;
+   int   vp_y;
+   int   vp_w;
+   int   vp_h;
 } ricotta_cmd_entry;
 static ricotta_cmd_entry g_cmd_queue[RICOTTA_CMD_QUEUE_SIZE];
 static int g_cmd_head = 0;
@@ -359,6 +364,30 @@ void ricotta_bridge_poll_commands(void)
             ricotta_ra_apply(entry.ra_key, entry.ra_value);
          free(entry.ra_key);
          free(entry.ra_value);
+         continue;
+      }
+      if (entry.cmd == RICOTTA_QCMD_VIEWPORT_SET)
+      {
+         settings_t *settings = config_get_ptr();
+         if (settings)
+         {
+            if (entry.vp_w > 0 && entry.vp_h > 0)
+            {
+               settings->video_vp_custom.x      = entry.vp_x;
+               settings->video_vp_custom.y      = entry.vp_y;
+               settings->video_vp_custom.width  = entry.vp_w;
+               settings->video_vp_custom.height = entry.vp_h;
+               configuration_set_uint(settings,
+                     settings->uints.video_aspect_ratio_idx, ASPECT_RATIO_CUSTOM);
+               /* Cannoli's own integer mode already yields an integer scaled rect, so
+                * RetroArch's would re-quantise one that is already correct. */
+               configuration_set_bool(settings, settings->bools.video_scale_integer, false);
+            }
+            else
+               configuration_set_uint(settings,
+                     settings->uints.video_aspect_ratio_idx, (unsigned)entry.vp_x);
+            command_event(CMD_EVENT_VIDEO_SET_ASPECT_RATIO, NULL);
+         }
          continue;
       }
       if (entry.cmd == RICOTTA_QCMD_DISK_SET)
@@ -1718,6 +1747,78 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaSetSetting(
 
    ricotta_enqueue_entry(entry);
    return JNI_TRUE;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeApplyViewport(
+      JNIEnv *env, jobject obj, jint x, jint y, jint w, jint h)
+{
+   ricotta_cmd_entry entry = {0};
+   (void)env; (void)obj;
+   entry.cmd  = RICOTTA_QCMD_VIEWPORT_SET;
+   entry.vp_x = x;
+   entry.vp_y = y;
+   entry.vp_w = w;
+   entry.vp_h = h;
+   ricotta_enqueue_entry(entry);
+   return JNI_TRUE;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeClearViewport(
+      JNIEnv *env, jobject obj, jint restoreAspectIdx)
+{
+   ricotta_cmd_entry entry = {0};
+   (void)env; (void)obj;
+   entry.cmd  = RICOTTA_QCMD_VIEWPORT_SET;
+   entry.vp_x = restoreAspectIdx;
+   entry.vp_w = 0;
+   entry.vp_h = 0;
+   ricotta_enqueue_entry(entry);
+   return JNI_TRUE;
+}
+
+JNIEXPORT jintArray JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeCoreGeometry(
+      JNIEnv *env, jobject obj)
+{
+   video_driver_state_t *video_st = video_state_get_ptr();
+   jintArray out;
+   jint vals[4];
+   (void)obj;
+
+   if (!video_st || video_st->av_info.geometry.base_width == 0)
+      return NULL;
+
+   vals[0] = (jint)video_st->av_info.geometry.base_width;
+   vals[1] = (jint)video_st->av_info.geometry.base_height;
+   /* aspect_ratio is a float; send it as a rational so the Kotlin side does one divide. */
+   vals[2] = (jint)(video_st->av_info.geometry.aspect_ratio * 10000.0f);
+   vals[3] = 10000;
+
+   out = (*env)->NewIntArray(env, 4);
+   if (!out)
+      return NULL;
+   (*env)->SetIntArrayRegion(env, out, 0, 4, vals);
+   return out;
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaAspectIndex(
+      JNIEnv *env, jobject obj)
+{
+   settings_t *settings = config_get_ptr();
+   (void)env; (void)obj;
+   return settings ? (jint)settings->uints.video_aspect_ratio_idx : 22;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeRaIntegerScale(
+      JNIEnv *env, jobject obj)
+{
+   settings_t *settings = config_get_ptr();
+   (void)env; (void)obj;
+   return (settings && settings->bools.video_scale_integer) ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT void JNICALL

@@ -202,6 +202,18 @@ class EmbeddedRetroArchBridge(
     // asynchronous and its outcome arrives later through the applied echo.
     override fun raSetSetting(key: String, value: String): Boolean = nativeRaSetSetting(key, value)
 
+    override fun coreGeometry(): IntArray? = nativeCoreGeometry()
+
+    override fun applyViewport(x: Int, y: Int, w: Int, h: Int): Boolean =
+        nativeApplyViewport(x, y, w, h)
+
+    override fun clearViewport(restoreAspectIdx: Int): Boolean =
+        nativeClearViewport(restoreAspectIdx)
+
+    override fun raAspectIndex(): Int = nativeRaAspectIndex()
+
+    override fun raIntegerScale(): Boolean = nativeRaIntegerScale()
+
     // RetroArch decides which rows a settings screen has right now, in what order, under what name,
     // and which of them lead somewhere. Values are not read here: both menu modes go through
     // raGetSetting so there stays one read path, one write path and one changed-key set.
@@ -283,6 +295,11 @@ class EmbeddedRetroArchBridge(
     private external fun nativeRaGetSetting(key: String): Array<String>?
     private external fun nativeRaSetSetting(key: String, value: String): Boolean
     private external fun nativeRaSaveOverride(scope: Int, keys: String)
+    private external fun nativeCoreGeometry(): IntArray?
+    private external fun nativeApplyViewport(x: Int, y: Int, w: Int, h: Int): Boolean
+    private external fun nativeClearViewport(restoreAspectIdx: Int): Boolean
+    private external fun nativeRaAspectIndex(): Int
+    private external fun nativeRaIntegerScale(): Boolean
 
     companion object {
         // Matches RICOTTA_CORE_OPT_PREFIX in ricotta_bridge.c.
