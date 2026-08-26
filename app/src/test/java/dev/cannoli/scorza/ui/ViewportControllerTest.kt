@@ -4,6 +4,7 @@ import dev.cannoli.ricotta.ViewportController
 import dev.cannoli.ricotta.ViewportController.RefreshResult
 import dev.cannoli.ricotta.ViewportSettings
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Test
 
 class ViewportControllerTest {
@@ -160,6 +161,29 @@ class ViewportControllerTest {
         b.aspectIdx = 23
         assertEquals(RefreshResult.APPLIED, c.refresh(1920, 1080))
         assertEquals(1280, b.applied!![2])
+    }
+
+    // The launcher writes the scaling row through a queued command while this reads settings
+    // synchronously, so a refresh fired on menu dismissal can read the value from before the
+    // change. Once a viewport is live the index reads as custom and the remembered mode wins on
+    // every later refresh, so a stale latch never corrects itself. What rescues it is refreshing
+    // again once the write has actually landed, which is when the index reflects the new choice.
+    @Test fun `a refresh after the write lands replaces a mode latched from a stale read`() {
+        val b = FakeBridge()
+        // The user picked fullscreen, but the queued write has not drained: the read still says 22.
+        val c = controller(b, wPct = 50, aspectIdx = 22)
+        assertEquals(RefreshResult.APPLIED, c.refresh(1920, 1080))
+        val coreReported = b.applied!!.toList()
+
+        // The write lands, so the index now says what the user chose, and the echo drives a refresh.
+        b.aspectIdx = 24
+        assertEquals(RefreshResult.APPLIED, c.refresh(1920, 1080))
+        val afterEcho = b.applied!!.toList()
+
+        val fullscreen = FakeBridge()
+        controller(fullscreen, wPct = 50, aspectIdx = 24).refresh(1920, 1080)
+        assertEquals("the landed choice has to win", fullscreen.applied!!.toList(), afterEcho)
+        assertNotEquals("otherwise the stale read is what stuck", coreReported, afterEcho)
     }
 
     @Test fun `an index of 23 with nothing remembered falls back to core reported`() {

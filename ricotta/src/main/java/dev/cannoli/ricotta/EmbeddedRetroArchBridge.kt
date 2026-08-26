@@ -244,9 +244,24 @@ class EmbeddedRetroArchBridge(
         onRaAppliedCallback = callback
     }
 
+    /**
+     * A second listener for the same echo, owned by this process rather than by the in-game menu.
+     * setOnRaSettingApplied is a single slot the IGM's settings provider claims, and the viewport
+     * needs the same signal for a different reason, so it gets its own rather than the two
+     * contending for one.
+     */
+    private var onRaAppliedLocal: ((String, String) -> Unit)? = null
+
+    fun setOnRaSettingAppliedLocal(callback: ((key: String, value: String) -> Unit)?) {
+        onRaAppliedLocal = callback
+    }
+
     @Suppress("unused")
     fun onRaSettingApplied(key: String, value: String) {
-        mainHandler.post { onRaAppliedCallback?.invoke(key, value) }
+        mainHandler.post {
+            onRaAppliedCallback?.invoke(key, value)
+            onRaAppliedLocal?.invoke(key, value)
+        }
     }
 
     private var onCheatsLoadedCallback: ((List<RetroArchBridge.CheatRow>) -> Unit)? = null

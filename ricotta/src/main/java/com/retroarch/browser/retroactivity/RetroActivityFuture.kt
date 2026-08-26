@@ -27,6 +27,9 @@ class RetroActivityFuture : RetroActivityCamera() {
     private var igmOverlay: IGMOverlay? = null
     private var osdOverlay: OsdOverlay? = null
     private var viewportController: ViewportController? = null
+    // Held so the echo listener can be released: the native side keeps a global ref to the
+    // bridge, so it outlives the local scope it is built in.
+    private var raBridge: EmbeddedRetroArchBridge? = null
 
     // The OSD sits beside the IGM, so it must resolve strings in the launcher's chosen
     // language rather than the system one, exactly as IGMOverlay's uiContext does.
@@ -109,6 +112,7 @@ class RetroActivityFuture : RetroActivityCamera() {
                 stateBasePath, params?.hardcoreInEffect ?: false, cannoliRoot, platformTag, romBaseName,
                 params?.coreId ?: "",
             )
+            raBridge = bridge
             viewportController = ViewportController(
                 coreGeometry = { bridge.coreGeometry() },
                 applyViewport = bridge::applyViewport,
@@ -135,6 +139,15 @@ class RetroActivityFuture : RetroActivityCamera() {
             // of the custom viewport Cannoli applied; once the whole menu closes and play resumes,
             // claim it back for whatever the user picked.
             igmOverlay?.onHidden = { refreshViewport() }
+            // The menu writes the scaling row through a queued command while the viewport reads
+            // settings synchronously, so a refresh fired on dismissal can read the value from
+            // before the change and remember it. Once a viewport is live the index reads as custom
+            // and that remembered mode wins on every later refresh, so the wrong choice sticks.
+            // The applied echo arrives after RetroArch has taken the write, which is the only
+            // moment the index actually reflects what the user picked.
+            bridge.setOnRaSettingAppliedLocal { key, _ ->
+                if (key == "aspect_ratio_index" || key == "video_scale_integer") refreshViewport()
+            }
             params?.let { bridge.setIgmTriggerKeycodes(it.igmTriggerKeycodes.toIntArray()) }
             params?.let { bridge.setBuiltinPorts(it.builtinPorts.toIntArray()) }
             bridge.curatedSettings = params?.curatedSettings ?: true
@@ -228,6 +241,8 @@ class RetroActivityFuture : RetroActivityCamera() {
     }
 
     override fun onDestroy() {
+        raBridge?.setOnRaSettingAppliedLocal(null)
+        raBridge = null
         osdOverlay?.detach()
         igmOverlay?.onDestroy()
         super.onDestroy()
