@@ -50,8 +50,8 @@ interface RetroArchBridge {
 
     fun applyViewport(x: Int, y: Int, w: Int, h: Int): Boolean = false
 
-    /** Hands the aspect index back to whatever the scaling row had set. */
-    fun clearViewport(restoreAspectIdx: Int): Boolean = false
+    /** Hands the aspect index and integer-scale setting back to whatever the scaling row had set. */
+    fun clearViewport(restoreAspectIdx: Int, restoreIntegerScale: Boolean): Boolean = false
 
     /** The scaling row owns these two; the fit reads them rather than overriding them. */
     fun raAspectIndex(): Int = 22

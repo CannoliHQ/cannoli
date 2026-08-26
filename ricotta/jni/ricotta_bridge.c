@@ -112,6 +112,7 @@ typedef struct
    int   vp_y;
    int   vp_w;
    int   vp_h;
+   int   vp_integer_scale;
 } ricotta_cmd_entry;
 static ricotta_cmd_entry g_cmd_queue[RICOTTA_CMD_QUEUE_SIZE];
 static int g_cmd_head = 0;
@@ -328,6 +329,18 @@ static void ricotta_cheat_emit_snapshot(void)
    (*env)->DeleteLocalRef(env, payload);
 }
 
+/* The four viewport bias floats the RICOTTA_QCMD_VIEWPORT_SET apply branch forces to zero below
+ * are not menu settings under RaSettingsHost, so nothing on the Kotlin side can shadow and restore
+ * them the way it does aspect_ratio_index and video_scale_integer. Stash them here across the
+ * takeover instead and hand them back verbatim when the viewport clears. */
+static int   g_vp_bias_saved = 0;
+static float g_vp_bias_x = 0.0f;
+static float g_vp_bias_y = 0.0f;
+#if defined(RARCH_MOBILE)
+static float g_vp_bias_portrait_x = 0.0f;
+static float g_vp_bias_portrait_y = 0.0f;
+#endif
+
 /* Called from runloop_iterate on the runloop thread, once per iteration, and deliberately not from
  * the input driver's poll: a core enters that from within retro_run, and one running its own
  * coroutine stack makes every JNI call from there throw a spurious StackOverflowError. */
@@ -373,6 +386,11 @@ void ricotta_bridge_poll_commands(void)
          {
             if (entry.vp_w > 0 && entry.vp_h > 0)
             {
+               /* aspect_ratio_index, video_scale_integer and the four bias floats forced below are
+                * runtime-only: LaunchManager.kt writes config_save_on_exit = "false" for every
+                * launch that reaches here, which is what keeps a normal exit from writing these
+                * takeover values back into the user's config or per-game override. If that line
+                * ever changes, these forces need their own persistence story. */
                settings->video_vp_custom.x      = entry.vp_x;
                settings->video_vp_custom.y      = entry.vp_y;
                settings->video_vp_custom.width  = entry.vp_w;
@@ -382,6 +400,19 @@ void ricotta_bridge_poll_commands(void)
                /* Cannoli's own integer mode already yields an integer scaled rect, so
                 * RetroArch's would re-quantise one that is already correct. */
                configuration_set_bool(settings, settings->bools.video_scale_integer, false);
+               /* Stash the pre-takeover bias values the first time so the clear branch can hand
+                * them back; a later apply while still active must not re-stash the zeros this
+                * already wrote. */
+               if (!g_vp_bias_saved)
+               {
+                  g_vp_bias_x = settings->floats.video_vp_bias_x;
+                  g_vp_bias_y = settings->floats.video_vp_bias_y;
+#if defined(RARCH_MOBILE)
+                  g_vp_bias_portrait_x = settings->floats.video_vp_bias_portrait_x;
+                  g_vp_bias_portrait_y = settings->floats.video_vp_bias_portrait_y;
+#endif
+                  g_vp_bias_saved = 1;
+               }
                /* With bias zero the padding term RetroArch adds to custom_vp vanishes, so
                 * the rect below resolves to an absolute top-left rect under both drivers' y conventions. */
                configuration_set_float(settings, settings->floats.video_vp_bias_x, 0.0f);
@@ -392,8 +423,24 @@ void ricotta_bridge_poll_commands(void)
 #endif
             }
             else
+            {
                configuration_set_uint(settings,
                      settings->uints.video_aspect_ratio_idx, (unsigned)entry.vp_x);
+               configuration_set_bool(settings, settings->bools.video_scale_integer,
+                     entry.vp_integer_scale != 0);
+               if (g_vp_bias_saved)
+               {
+                  configuration_set_float(settings, settings->floats.video_vp_bias_x, g_vp_bias_x);
+                  configuration_set_float(settings, settings->floats.video_vp_bias_y, g_vp_bias_y);
+#if defined(RARCH_MOBILE)
+                  configuration_set_float(settings,
+                        settings->floats.video_vp_bias_portrait_x, g_vp_bias_portrait_x);
+                  configuration_set_float(settings,
+                        settings->floats.video_vp_bias_portrait_y, g_vp_bias_portrait_y);
+#endif
+                  g_vp_bias_saved = 0;
+               }
+            }
             command_event(CMD_EVENT_VIDEO_SET_ASPECT_RATIO, NULL);
          }
          continue;
@@ -1774,14 +1821,15 @@ Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeApplyViewport(
 
 JNIEXPORT jboolean JNICALL
 Java_dev_cannoli_ricotta_EmbeddedRetroArchBridge_nativeClearViewport(
-      JNIEnv *env, jobject obj, jint restoreAspectIdx)
+      JNIEnv *env, jobject obj, jint restoreAspectIdx, jboolean restoreIntegerScale)
 {
    ricotta_cmd_entry entry = {0};
    (void)env; (void)obj;
-   entry.cmd  = RICOTTA_QCMD_VIEWPORT_SET;
-   entry.vp_x = restoreAspectIdx;
-   entry.vp_w = 0;
-   entry.vp_h = 0;
+   entry.cmd              = RICOTTA_QCMD_VIEWPORT_SET;
+   entry.vp_x             = restoreAspectIdx;
+   entry.vp_w             = 0;
+   entry.vp_h             = 0;
+   entry.vp_integer_scale = restoreIntegerScale == JNI_TRUE ? 1 : 0;
    ricotta_enqueue_entry(entry);
    return JNI_TRUE;
 }

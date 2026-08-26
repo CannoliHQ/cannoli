@@ -19,7 +19,7 @@ data class ViewportSettings(
 class ViewportController(
     private val coreGeometry: () -> IntArray?,
     private val applyViewport: (Int, Int, Int, Int) -> Boolean,
-    private val clearViewport: (Int) -> Boolean,
+    private val clearViewport: (Int, Boolean) -> Boolean,
     private val readAspectIdx: () -> Int,
     private val readIntegerScale: () -> Boolean,
     private val readAspectValue: () -> Float,
@@ -76,7 +76,13 @@ class ViewportController(
 
         if (!marginWanted && !geometryWanted) {
             if (active) {
-                clearViewport(readAspectIdx())
+                // The live index and integer-scale flag are Cannoli's own takeover values by now
+                // (the apply below forces both); restore what shadowedSettings() captured before
+                // that apply instead, falling back to the live read only for the corner case
+                // where nothing was ever captured.
+                val restoreIdx = shadowedAspectIdx?.toIntOrNull() ?: readAspectIdx()
+                val restoreIntegerScale = shadowedIntegerScale?.toBoolean() ?: readIntegerScale()
+                clearViewport(restoreIdx, restoreIntegerScale)
                 active = false
                 rememberedMode = null
                 rememberedAspect = 0f

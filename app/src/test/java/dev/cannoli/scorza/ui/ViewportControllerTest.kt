@@ -10,18 +10,22 @@ class ViewportControllerTest {
 
     private class FakeBridge(
         var geometry: IntArray? = intArrayOf(320, 240, 13333, 10000),
-        // Mutable so a test can change what the index reads back between two refresh() calls,
-        // the way a successful apply forces it to ASPECT_RATIO_CUSTOM on the native side.
+        // Mutable so a test can change what these read back between two refresh() calls, the way
+        // a successful apply forces both to Cannoli's takeover values on the native side.
         var aspectIdx: Int = 22,
+        var integerScale: Boolean = false,
         var aspectValue: Float = 0f,
     ) {
         var applied: IntArray? = null
-        var cleared: Int? = null
+        var clearedAspectIdx: Int? = null
+        var clearedIntegerScale: Boolean? = null
         var geometryReads = 0
         fun apply(x: Int, y: Int, w: Int, h: Int): Boolean {
             applied = intArrayOf(x, y, w, h); return true
         }
-        fun clear(idx: Int): Boolean { cleared = idx; return true }
+        fun clear(idx: Int, integer: Boolean): Boolean {
+            clearedAspectIdx = idx; clearedIntegerScale = integer; return true
+        }
     }
 
     private fun controller(
@@ -31,12 +35,13 @@ class ViewportControllerTest {
         aspectIdx: Int = 22, integer: Boolean = false,
     ): ViewportController {
         b.aspectIdx = aspectIdx
+        b.integerScale = integer
         return ViewportController(
             coreGeometry = { b.geometryReads++; b.geometry },
             applyViewport = b::apply,
             clearViewport = b::clear,
             readAspectIdx = { b.aspectIdx },
-            readIntegerScale = { integer },
+            readIntegerScale = { b.integerScale },
             readAspectValue = { b.aspectValue },
             settings = ViewportSettings(marginPx, wPct, hPct, xPct, yPct),
         )
@@ -46,7 +51,7 @@ class ViewportControllerTest {
         val b = FakeBridge()
         assertEquals(RefreshResult.DECLINED, controller(b).refresh(1920, 1080))
         assertEquals(null, b.applied)
-        assertEquals(null, b.cleared)
+        assertEquals(null, b.clearedAspectIdx)
     }
 
     @Test fun `defaults decline before ever asking the core for geometry`() {
@@ -87,15 +92,47 @@ class ViewportControllerTest {
         assertEquals(1280, b.applied!![2])
     }
 
-    // Once a viewport is live, returning the settings to their defaults must hand the index back.
-    @Test fun `returning to defaults clears the viewport`() {
+    // The previous version of this test forced "active with nothing wanted" via markActive() on a
+    // fresh controller, which leaves shadowedAspectIdx unset even though active is true - a
+    // combination refresh() can never produce. ViewportSettings is fixed per controller instance,
+    // so geometryWanted never changes within one instance's lifetime; the only way a live controller
+    // actually sees both marginWanted and geometryWanted go false is rotating out of portrait when
+    // only the margin wanted a viewport. That is what actually drives the clear branch in
+    // production, and the clear must hand back what was captured before the apply, not RetroArch's
+    // live (forced-to-custom) values.
+    @Test fun `rotating out of portrait clears a margin-only viewport with the captured values`() {
         val b = FakeBridge()
-        val live = controller(b, wPct = 80)
-        assertEquals(RefreshResult.APPLIED, live.refresh(1920, 1080))
-        val back = controller(b, wPct = 100)
-        back.markActive()
-        assertEquals(RefreshResult.DECLINED, back.refresh(1920, 1080))
-        assertEquals(22, b.cleared)
+        val c = controller(b, marginPx = 200, aspectIdx = 24, integer = true)
+        assertEquals(RefreshResult.APPLIED, c.refresh(1080, 1920))
+
+        // The apply just ran forces these on the native side; the fake has to be told explicitly
+        // since it does not simulate the native force itself.
+        b.aspectIdx = 23
+        b.integerScale = false
+
+        assertEquals(RefreshResult.DECLINED, c.refresh(1920, 1080))
+        assertEquals(24, b.clearedAspectIdx)
+        assertEquals(true, b.clearedIntegerScale)
+    }
+
+    @Test fun `the clear restores the captured aspect index rather than the live one`() {
+        val b = FakeBridge()
+        val c = controller(b, marginPx = 200, aspectIdx = 24)
+        assertEquals(RefreshResult.APPLIED, c.refresh(1080, 1920))
+
+        b.aspectIdx = 23
+        assertEquals(RefreshResult.DECLINED, c.refresh(1920, 1080))
+        assertEquals(24, b.clearedAspectIdx)
+    }
+
+    @Test fun `the clear restores video_scale_integer to its captured value`() {
+        val b = FakeBridge()
+        val c = controller(b, marginPx = 200, aspectIdx = 22, integer = true)
+        assertEquals(RefreshResult.APPLIED, c.refresh(1080, 1920))
+
+        b.integerScale = false
+        assertEquals(RefreshResult.DECLINED, c.refresh(1920, 1080))
+        assertEquals(true, b.clearedIntegerScale)
     }
 
     // A successful apply forces aspect_ratio_index to ASPECT_RATIO_CUSTOM (23) on the native
@@ -166,8 +203,9 @@ class ViewportControllerTest {
         )
     }
 
-    // Mirrors `returning to defaults clears the viewport`: a second controller stands in for the
-    // same session after Screen Geometry settings changed back to defaults.
+    // Mirrors `rotating out of portrait clears a margin-only viewport with the captured values`:
+    // a second controller stands in for the same session after Screen Geometry settings changed
+    // back to defaults.
     @Test fun `shadowedSettings is empty again once the viewport clears`() {
         val b = FakeBridge()
         controller(b, wPct = 80).refresh(1920, 1080)

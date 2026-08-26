@@ -213,8 +213,8 @@ class EmbeddedRetroArchBridge(
     override fun applyViewport(x: Int, y: Int, w: Int, h: Int): Boolean =
         nativeApplyViewport(x, y, w, h)
 
-    override fun clearViewport(restoreAspectIdx: Int): Boolean =
-        nativeClearViewport(restoreAspectIdx)
+    override fun clearViewport(restoreAspectIdx: Int, restoreIntegerScale: Boolean): Boolean =
+        nativeClearViewport(restoreAspectIdx, restoreIntegerScale)
 
     override fun raAspectIndex(): Int = nativeRaAspectIndex()
 
@@ -305,7 +305,7 @@ class EmbeddedRetroArchBridge(
     private external fun nativeRaSaveOverride(scope: Int, keys: String)
     private external fun nativeCoreGeometry(): IntArray?
     private external fun nativeApplyViewport(x: Int, y: Int, w: Int, h: Int): Boolean
-    private external fun nativeClearViewport(restoreAspectIdx: Int): Boolean
+    private external fun nativeClearViewport(restoreAspectIdx: Int, restoreIntegerScale: Boolean): Boolean
     private external fun nativeRaAspectIndex(): Int
     private external fun nativeRaAspectValue(): Float
     private external fun nativeRaIntegerScale(): Boolean
