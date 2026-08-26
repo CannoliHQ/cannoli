@@ -1,4 +1,4 @@
-package dev.cannoli.scorza.romm.download
+package dev.cannoli.scorza.download
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -22,9 +22,17 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class RommDownloadService : Service() {
+/**
+ * Keeps the process alive while the queue has work, and reports it in a notification.
+ *
+ * Two things are deliberately still RomM's. It also watches the art fetcher, because that runs
+ * alongside a RomM download and has to hold the same notification: abstracting it would be
+ * inventing an interface for one caller. And the notification strings keep their romm_ keys, since
+ * those are translated through Crowdin and renaming a key orphans every translation of it.
+ */
+class DownloadService : Service() {
 
-    @Inject lateinit var downloader: RommDownloader
+    @Inject lateinit var downloader: Downloader
     @Inject lateinit var artFetcher: dev.cannoli.scorza.romm.art.RommArtFetcher
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -34,14 +42,14 @@ class RommDownloadService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        RommDownloadManager.onServiceCreated(this)
+        DownloadManager.onServiceCreated(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.romm_download_notification_starting)), ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         } else {
             startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.romm_download_notification_starting)))
         }
         watcher = scope.launch {
-            combine(downloader.queue.state, artFetcher.state) { items, art -> items to art }
+            combine(downloader.state, artFetcher.state) { items, art -> items to art }
                 .collectLatest { (items, art) ->
                     val artRunning = art is dev.cannoli.scorza.romm.art.ArtFetchState.Running
                     if (!downloader.hasWork() && !artRunning) { stopSelf(); return@collectLatest }
@@ -67,7 +75,7 @@ class RommDownloadService : Service() {
     override fun onDestroy() {
         watcher?.cancel()
         scope.cancel()
-        RommDownloadManager.onServiceDestroyed(this)
+        DownloadManager.onServiceDestroyed(this)
         super.onDestroy()
     }
 

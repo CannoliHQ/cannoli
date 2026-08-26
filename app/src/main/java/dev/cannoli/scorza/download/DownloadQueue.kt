@@ -1,14 +1,14 @@
-package dev.cannoli.scorza.romm.download
+package dev.cannoli.scorza.download
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
-class RommDownloadQueue {
-    private val _state = MutableStateFlow<List<RommDownloadItem>>(emptyList())
-    val state: StateFlow<List<RommDownloadItem>> = _state
+class DownloadQueue {
+    private val _state = MutableStateFlow<List<DownloadItem>>(emptyList())
+    val state: StateFlow<List<DownloadItem>> = _state
 
     @Synchronized
-    fun enqueue(items: List<RommDownloadItem>) {
+    fun enqueue(items: List<DownloadItem>) {
         val active = _state.value
             .filter { it.status == DownloadStatus.Queued || it.status is DownloadStatus.Downloading }
             .map { it.key }.toSet()
@@ -18,10 +18,18 @@ class RommDownloadQueue {
         _state.value = _state.value.filterNot { it.key in freshKeys } + fresh
     }
 
-    /** Atomically take the first queued item and mark it Downloading, so parallel workers can't claim the same rom. */
+    /**
+     * Atomically take the first queued item of one of [kinds] and mark it Downloading, so parallel
+     * workers cannot claim the same item.
+     *
+     * The kind filter is what keeps lanes independent: a core worker asks only for cores, so a
+     * queued core is never stuck behind a rom that happens to sit ahead of it in the list.
+     */
     @Synchronized
-    fun claimNext(): RommDownloadItem? {
-        val item = _state.value.firstOrNull { it.status == DownloadStatus.Queued } ?: return null
+    fun claimNext(kinds: Set<DownloadKind>): DownloadItem? {
+        val item = _state.value.firstOrNull {
+            it.status == DownloadStatus.Queued && it.kind in kinds
+        } ?: return null
         _state.value = _state.value.map {
             if (it.key == item.key) it.copy(status = DownloadStatus.Downloading(0, item.sizeBytes)) else it
         }
@@ -38,9 +46,14 @@ class RommDownloadQueue {
         _state.value = _state.value.filterNot { it.key == key }
     }
 
+    /**
+     * Drops what has not started. A transfer already running keeps its row, and so does anything
+     * finished: cancelling is about the work still to come, not about tidying up the record of what
+     * already happened, which is [clearFinished]'s job.
+     */
     @Synchronized
     fun cancelAll() {
-        _state.value = _state.value.filter { it.status is DownloadStatus.Downloading }
+        _state.value = _state.value.filterNot { it.status == DownloadStatus.Queued }
     }
 
     @Synchronized
@@ -60,5 +73,10 @@ class RommDownloadQueue {
     @Synchronized
     fun activeCount(): Int = _state.value.count {
         it.status == DownloadStatus.Queued || it.status is DownloadStatus.Downloading
+    }
+
+    @Synchronized
+    fun activeCount(kinds: Set<DownloadKind>): Int = _state.value.count {
+        it.kind in kinds && (it.status == DownloadStatus.Queued || it.status is DownloadStatus.Downloading)
     }
 }

@@ -17,9 +17,25 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import okhttp3.Request
 import java.io.File
+import dev.cannoli.scorza.download.DownloadCancelled
+import dev.cannoli.scorza.download.DownloadHandler
+import dev.cannoli.scorza.download.DownloadItem
+import dev.cannoli.scorza.download.DownloadKind
 
-class RommDownloader(
-    val queue: RommDownloadQueue,
+/** What a RomM transfer needs that the queue has no business knowing. */
+data class RommPayload(
+    val rommId: Int,
+    val game: RommGame? = null,
+    val firmware: dev.cannoli.scorza.romm.RommFirmware? = null,
+)
+
+/**
+ * The RomM half of the download queue: roms, their manuals and firmware. Scheduling, progress,
+ * cancellation and the terminal state belong to the queue now, so these bodies only fetch, install
+ * and clean up after themselves.
+ */
+class RommDownloadHandler(
+    override val kind: DownloadKind,
     private val client: RommClient,
     private val installer: RommInstaller,
     private val links: RommLinkRepository,
@@ -29,84 +45,37 @@ class RommDownloader(
     private val store: RommConnectionStore,
     private val http: RommHttp,
     private val paths: CannoliPathsProvider,
-    private val concurrency: () -> Int,
-    private val scope: CoroutineScope,
-) {
-    private val workers = mutableSetOf<Job>()
-    private val cancelled = mutableSetOf<String>()
+) : DownloadHandler {
 
-    /** True while there is queued or in-flight work. */
-    fun hasWork(): Boolean = queue.activeCount() > 0
-
-    @Synchronized
-    fun enqueue(items: List<RommDownloadItem>) {
-        queue.enqueue(items)
-        ensureWorkers()
-    }
-
-    fun cancel(key: String) {
-        if (isDownloading(key)) synchronized(cancelled) { cancelled.add(key) }
-        queue.cancel(key)
-    }
-    fun cancelAll() {
-        queue.state.value.forEach { if (it.status is DownloadStatus.Downloading) synchronized(cancelled) { cancelled.add(it.key) } }
-        queue.cancelAll()
-    }
-
-    @Synchronized
-    fun retry(key: String) { queue.retry(key); ensureWorkers() }
-
-    /** Drops Done/Failed entries; queued and in-flight downloads keep running. */
-    fun clearFinished() = queue.clearFinished()
-
-    private fun isDownloading(key: String): Boolean =
-        queue.state.value.any { it.key == key && it.status is DownloadStatus.Downloading }
-
-    @Synchronized
-    private fun ensureWorkers() {
-        workers.removeAll { !it.isActive }
-        val want = concurrency().coerceIn(1, MAX_CONCURRENCY)
-        while (workers.size < want) {
-            lateinit var job: Job
-            job = scope.launch(Dispatchers.IO) {
-                workerLoop()
-                synchronized(this@RommDownloader) { workers.remove(job) }
-            }
-            workers.add(job)
+    override fun run(
+        item: DownloadItem,
+        onProgress: (Long, Long) -> Unit,
+        isCancelled: () -> Boolean,
+    ) {
+        val p = item.payload as? RommPayload ?: throw Exception("not a RomM item")
+        when (kind) {
+            DownloadKind.ROM -> runRom(item, p, onProgress, isCancelled)
+            DownloadKind.MANUAL -> runManual(item, p, onProgress, isCancelled)
+            DownloadKind.FIRMWARE -> runFirmware(item, p, onProgress, isCancelled)
+            else -> throw Exception("unsupported kind $kind")
         }
     }
 
-    private fun workerLoop() {
-        while (true) {
-            val item = queue.claimNext() ?: break
-            synchronized(cancelled) { cancelled.remove(item.key) }
-            runItem(item)
-        }
-    }
-
-    private fun runItem(item: RommDownloadItem) {
-        when (item.kind) {
-            RommDownloadKind.ROM -> runRom(item)
-            RommDownloadKind.MANUAL -> runManual(item)
-            RommDownloadKind.FIRMWARE -> runFirmware(item)
-        }
-    }
-
-    private fun runRom(item: RommDownloadItem) {
-        val game = item.game ?: return
+    private fun runRom(item: DownloadItem, p: RommPayload, onProgress: (Long, Long) -> Unit, isCancelled: () -> Boolean) {
+        val game = p.game ?: return
         val tempDir = File(paths.root, "Config/Cache/RommDownloads").apply { mkdirs() }
         val multiPart = installer.isMultiPart(game)
-        val source = if (multiPart) File(tempDir, "${item.rommId}.parts") else File(tempDir, "${item.rommId}.part")
+        val source = if (multiPart) File(tempDir, "${p.rommId}.parts") else File(tempDir, "${p.rommId}.part")
         try {
-            queue.setStatus(item.key, DownloadStatus.Downloading(0, game.sizeBytes))
-            if (multiPart) downloadParts(item, game, source) else {
+            onProgress(0, game.sizeBytes)
+            if (multiPart) downloadParts(item, p, game, source, onProgress, isCancelled) else {
                 client.downloadRom(
-                    romId = item.rommId,
+                    romId = p.rommId,
                     fileName = game.fsName,
                     dest = source,
-                    isCancelled = { synchronized(cancelled) { item.key in cancelled } },
+                    isCancelled = isCancelled,
                     expectedTotal = game.sizeBytes,
-                ) { downloaded, total -> queue.setStatus(item.key, DownloadStatus.Downloading(downloaded, total)) }
+                ) { downloaded, total -> onProgress(downloaded, total) }
             }
 
             scanScheduler.markLauncherMutation(item.tag)
@@ -117,25 +86,22 @@ class RommDownloader(
                     guideBaseName(null, game.fsName),
                     guideBaseName(result.linkRelativePath, game.fsName),
                 )
-            }.onFailure { RommLog.write("ERROR romm guide adopt ${item.rommId} failed: ${it.message}") }
+            }.onFailure { RommLog.write("ERROR romm guide adopt ${p.rommId} failed: ${it.message}") }
             artDownloader.download(store.host, game.coverPath, item.tag, result.artBaseName)
-            links.upsertLink(item.rommId, result.linkRelativePath, "download")
+            links.upsertLink(p.rommId, result.linkRelativePath, "download")
             artwork.invalidate(item.tag)
             scanScheduler.runNow(item.tag)
-            queue.setStatus(item.key, DownloadStatus.Done)
         } catch (e: RommDownloadCancelled) {
             deleteSource(source)
-            queue.cancel(item.key)
+            throw DownloadCancelled()
         } catch (e: Exception) {
             deleteSource(source)
-            RommLog.write("ERROR romm download ${item.rommId} failed: ${e.message}")
-            queue.setStatus(item.key, DownloadStatus.Failed(e.message ?: "failed"))
-        } finally {
-            synchronized(cancelled) { cancelled.remove(item.key) }
+            RommLog.write("ERROR romm download ${p.rommId} failed: ${e.message}")
+            throw e
         }
     }
 
-    private fun downloadParts(item: RommDownloadItem, game: RommGame, staging: File) {
+    private fun downloadParts(item: DownloadItem, p: RommPayload, game: RommGame, staging: File, onProgress: (Long, Long) -> Unit, isCancelled: () -> Boolean) {
         if (staging.exists()) staging.deleteRecursively()
         staging.mkdirs()
         var completed = 0L
@@ -145,13 +111,13 @@ class RommDownloader(
                 throw Exception("invalid file path for ${file.fileName}")
             }
             client.downloadRomFile(
-                romId = item.rommId,
+                romId = p.rommId,
                 fileId = file.id,
                 fileName = File(file.fileName).name,
                 dest = dest,
-                isCancelled = { synchronized(cancelled) { item.key in cancelled } },
+                isCancelled = isCancelled,
                 expectedTotal = file.sizeBytes,
-            ) { downloaded, _ -> queue.setStatus(item.key, DownloadStatus.Downloading(completed + downloaded, game.sizeBytes)) }
+            ) { downloaded, _ -> onProgress(completed + downloaded, game.sizeBytes) }
             completed += dest.length()
         }
     }
@@ -160,25 +126,23 @@ class RommDownloader(
         if (source.isDirectory) source.deleteRecursively() else source.delete()
     }
 
-    private fun runManual(item: RommDownloadItem) {
-        val game = item.game ?: return
+    private fun runManual(item: DownloadItem, p: RommPayload, onProgress: (Long, Long) -> Unit, isCancelled: () -> Boolean) {
+        val game = p.game ?: return
         val url = RommManual.sourceUrl(store.host, game)
         if (url == null) {
-            queue.setStatus(item.key, DownloadStatus.Failed("no manual"))
-            return
+            throw Exception("no manual")
         }
-        val base = guideBaseName(links.relativePathFor(item.rommId), game.fsName)
+        val base = guideBaseName(links.relativePathFor(p.rommId), game.fsName)
         val dir = CannoliPaths(paths.root).guideDir(item.tag, base).apply { mkdirs() }
         val dest = File(dir, "Manual.pdf")
         val temp = File(dir, "Manual.pdf.part")
-        val isCancelled = { synchronized(cancelled) { item.key in cancelled } }
-        try {
-            queue.setStatus(item.key, DownloadStatus.Downloading(0, 0))
-            if (isCancelled()) { temp.delete(); queue.cancel(item.key); return }
+                try {
+            onProgress(0, 0)
+            if (isCancelled()) { temp.delete(); throw DownloadCancelled(); return }
             http.downloadClient().newCall(Request.Builder().url(url).get().build()).execute().use { resp ->
                 if (!resp.isSuccessful) throw Exception("HTTP ${resp.code}")
                 val total = (resp.body?.contentLength() ?: -1L).coerceAtLeast(0L)
-                queue.setStatus(item.key, DownloadStatus.Downloading(0, total))
+                onProgress(0, total)
                 temp.outputStream().use { out ->
                     val body = resp.body?.byteStream() ?: throw Exception("empty body")
                     val buf = ByteArray(64 * 1024)
@@ -189,71 +153,62 @@ class RommDownloader(
                         if (read < 0) break
                         out.write(buf, 0, read)
                         downloaded += read
-                        queue.setStatus(item.key, DownloadStatus.Downloading(downloaded, total))
+                        onProgress(downloaded, total)
                     }
                 }
                 if (!RommManual.looksLikePdf(temp)) {
                     RommLog.write(
-                        "ERROR romm manual ${item.rommId} not a pdf: " +
+                        "ERROR romm manual ${p.rommId} not a pdf: " +
                             "content-type=${resp.header("Content-Type") ?: "(none)"} " +
                             "bytes=${temp.length()} head=${RommManual.describeHead(temp)}"
                     )
                     temp.delete()
-                    queue.setStatus(item.key, DownloadStatus.Failed("manual is not a PDF"))
-                    return
+                    throw Exception("manual is not a PDF")
                 }
             }
             if (dest.exists()) dest.delete()
             if (!temp.renameTo(dest)) { temp.copyTo(dest, overwrite = true); temp.delete() }
-            queue.setStatus(item.key, DownloadStatus.Done)
         } catch (e: RommDownloadCancelled) {
             temp.delete()
-            queue.cancel(item.key)
+            throw DownloadCancelled()
         } catch (e: Exception) {
             temp.delete()
-            RommLog.write("ERROR romm manual ${item.rommId} failed: ${e.message}")
-            queue.setStatus(item.key, DownloadStatus.Failed(e.message ?: "failed"))
-        } finally {
-            synchronized(cancelled) { cancelled.remove(item.key) }
+            RommLog.write("ERROR romm manual ${p.rommId} failed: ${e.message}")
+            throw e
         }
     }
 
-    private fun runFirmware(item: RommDownloadItem) {
-        val fw = item.firmware ?: return
+    private fun runFirmware(item: DownloadItem, p: RommPayload, onProgress: (Long, Long) -> Unit, isCancelled: () -> Boolean) {
+        val fw = p.firmware ?: return
         val biosDir = CannoliPaths(paths.root).biosFor(item.tag).apply { mkdirs() }
         val safeName = File(fw.fileName).name
         val dest = File(biosDir, safeName)
         if (!dest.canonicalPath.startsWith(biosDir.canonicalPath)) {
             RommLog.write("ERROR romm firmware ${fw.id} blocked: path traversal in fileName")
-            queue.setStatus(item.key, DownloadStatus.Failed("invalid firmware filename"))
-            return
+            throw Exception("invalid firmware filename")
         }
         val temp = File(biosDir, "$safeName.part")
         try {
-            queue.setStatus(item.key, DownloadStatus.Downloading(0, fw.sizeBytes))
+            onProgress(0, fw.sizeBytes)
             client.downloadFirmware(
                 firmwareId = fw.id,
                 fileName = fw.fileName,
                 dest = temp,
-                isCancelled = { synchronized(cancelled) { item.key in cancelled } },
+                isCancelled = isCancelled,
                 expectedTotal = fw.sizeBytes,
-            ) { downloaded, total -> queue.setStatus(item.key, DownloadStatus.Downloading(downloaded, total)) }
+            ) { downloaded, total -> onProgress(downloaded, total) }
             if (dest.exists()) dest.delete()
             if (!temp.renameTo(dest)) { temp.copyTo(dest, overwrite = true); temp.delete() }
-            queue.setStatus(item.key, DownloadStatus.Done)
         } catch (e: RommDownloadCancelled) {
             temp.delete()
-            queue.cancel(item.key)
+            throw DownloadCancelled()
         } catch (e: Exception) {
             temp.delete()
             RommLog.write("ERROR romm firmware ${fw.id} failed: ${e.message}")
-            queue.setStatus(item.key, DownloadStatus.Failed(e.message ?: "failed"))
-        } finally {
-            synchronized(cancelled) { cancelled.remove(item.key) }
+            throw e
         }
     }
 
-    companion object {
-        const val MAX_CONCURRENCY = 4
-    }
+
+
 }

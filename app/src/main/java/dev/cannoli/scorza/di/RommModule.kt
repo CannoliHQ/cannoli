@@ -22,8 +22,10 @@ import dev.cannoli.scorza.romm.RommSlugMap
 import dev.cannoli.scorza.romm.cache.CachedRommLibrary
 import dev.cannoli.scorza.romm.cache.RommDatabase
 import dev.cannoli.scorza.romm.cache.RommSyncCoordinator
-import dev.cannoli.scorza.romm.download.RommDownloadQueue
-import dev.cannoli.scorza.romm.download.RommDownloader
+import dev.cannoli.scorza.download.DownloadKind
+import dev.cannoli.scorza.download.DownloadQueue
+import dev.cannoli.scorza.download.Downloader
+import dev.cannoli.scorza.romm.download.RommDownloadHandler
 import dev.cannoli.scorza.romm.download.RommInstaller
 import dev.cannoli.scorza.romm.sync.DeviceRegistrar
 import dev.cannoli.scorza.romm.sync.LocalSaveResolver
@@ -243,7 +245,7 @@ object RommModule {
     )
 
     @Provides @Singleton
-    fun provideRommDownloader(
+    fun provideDownloader(
         client: RommClient,
         links: RommLinkRepository,
         artwork: ArtworkLookup,
@@ -253,21 +255,44 @@ object RommModule {
         http: RommHttp,
         paths: CannoliPathsProvider,
         settings: dev.cannoli.scorza.settings.SettingsRepository,
+        @ApplicationContext context: Context,
         @IoScope ioScope: CoroutineScope,
-    ): RommDownloader = RommDownloader(
-        queue = RommDownloadQueue(),
-        client = client,
-        installer = RommInstaller(),
-        links = links,
-        artwork = artwork,
-        artDownloader = artDownloader,
-        scanScheduler = scanScheduler,
-        store = store,
-        http = http,
-        paths = paths,
-        concurrency = { settings.concurrentDownloads },
-        scope = ioScope,
-    )
+    ): Downloader {
+        // The three RomM kinds share every dependency and differ only in which body runs, so they
+        // are one class parameterised by kind rather than three near-identical ones.
+        fun romm(kind: DownloadKind) = RommDownloadHandler(
+            kind = kind,
+            client = client,
+            installer = RommInstaller(),
+            links = links,
+            artwork = artwork,
+            artDownloader = artDownloader,
+            scanScheduler = scanScheduler,
+            store = store,
+            http = http,
+            paths = paths,
+        )
+        return Downloader(
+            queue = DownloadQueue(),
+            handlers = listOf(
+                romm(DownloadKind.ROM),
+                romm(DownloadKind.MANUAL),
+                romm(DownloadKind.FIRMWARE),
+                dev.cannoli.scorza.launcher.CoreDownloadHandler(context),
+            ),
+            lanes = listOf(
+                // Cores get their own lane rather than a share of the RomM one: installing a core
+                // is what stands between the user and launching a game, so it must not wait behind
+                // a rom that may be gigabytes. Two workers, because picking several cores in a row
+                // is the normal way to use the picker and they are small enough to overlap.
+                Downloader.Lane(setOf(DownloadKind.CORE)) { 2 },
+                Downloader.Lane(
+                    setOf(DownloadKind.ROM, DownloadKind.MANUAL, DownloadKind.FIRMWARE)
+                ) { settings.concurrentDownloads },
+            ),
+            scope = ioScope,
+        )
+    }
 
     @Provides @Singleton
     fun provideSyncScheduler(

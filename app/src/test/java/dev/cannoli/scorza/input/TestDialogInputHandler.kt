@@ -3,7 +3,7 @@ package dev.cannoli.scorza.input
 import android.content.Context
 import dev.cannoli.scorza.db.RomsRepository
 import dev.cannoli.scorza.navigation.NavigationController
-import dev.cannoli.scorza.romm.download.RommDownloader
+import dev.cannoli.scorza.download.Downloader
 import dev.cannoli.scorza.romm.sync.SaveSyncStatusHolder
 import dev.cannoli.scorza.ui.viewmodel.GameListViewModel
 import dev.cannoli.scorza.ui.viewmodel.SettingsViewModel
@@ -22,7 +22,7 @@ internal fun testDialogInputHandler(
     systemListViewModel: SystemListViewModel = mockk(relaxed = true),
     updateManager: UpdateManager = mockk(relaxed = true),
     saveSyncStatusHolder: SaveSyncStatusHolder = SaveSyncStatusHolder(),
-    rommDownloader: RommDownloader = emptyQueueDownloader(),
+    rommDownloader: Downloader = emptyQueueDownloader(),
     gameListViewModel: GameListViewModel = mockk(relaxed = true),
     romsRepository: RomsRepository = mockk(relaxed = true),
 ) = DialogInputHandler(
@@ -69,6 +69,6 @@ internal fun testDialogInputHandler(
 
 // A relaxed mock answers queue.state.value with a bare Object, which blows up on the List cast the
 // moment anything builds the quick menu. Stub it so the rebuild path is reachable from tests.
-private fun emptyQueueDownloader(): RommDownloader = mockk(relaxed = true) {
-    every { queue.state } returns MutableStateFlow(emptyList())
+private fun emptyQueueDownloader(): Downloader = mockk(relaxed = true) {
+    every { state } returns MutableStateFlow(emptyList())
 }

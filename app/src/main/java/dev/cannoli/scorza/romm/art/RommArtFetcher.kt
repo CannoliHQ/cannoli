@@ -6,7 +6,7 @@ import dev.cannoli.scorza.di.CannoliPathsProvider
 import dev.cannoli.scorza.romm.RommConnectionStore
 import dev.cannoli.scorza.romm.RommGame
 import dev.cannoli.scorza.romm.cache.RommDatabase
-import dev.cannoli.scorza.romm.download.RommDownloader
+import dev.cannoli.scorza.download.Downloader
 import dev.cannoli.scorza.util.ArtworkLookup
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -70,7 +70,7 @@ class RommArtFetcher(
         val host = store.host
         val platformsByTag = db.platforms().associateBy { it.cannoliTag.lowercase() }
         val romRoot = paths.romDir
-        val gate = Semaphore(concurrency().coerceIn(1, RommDownloader.MAX_CONCURRENCY))
+        val gate = Semaphore(concurrency().coerceIn(1, Downloader.MAX_CONCURRENCY))
         val downloads = mutableListOf<Job>()
         val processedTags = mutableListOf<String>()
 
