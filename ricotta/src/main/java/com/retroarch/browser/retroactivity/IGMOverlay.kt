@@ -136,6 +136,9 @@ class IGMOverlay(
     /** Fired once the menu's window is up, so the host can keep the OSD above it. */
     var onWindowAttached: (() -> Unit)? = null
 
+    /** Fired once the whole menu has closed and play has resumed. */
+    var onHidden: (() -> Unit)? = null
+
     private var composeView: ComposeView? = null
     private val lifecycleOwner = IGMLifecycleOwner()
     private var showTimeMs = 0L
@@ -390,6 +393,7 @@ class IGMOverlay(
         hideWindow()
         controller.closeMenu()
         bridge.unpause()
+        onHidden?.invoke()
     }
 
     private fun hideWindow() {

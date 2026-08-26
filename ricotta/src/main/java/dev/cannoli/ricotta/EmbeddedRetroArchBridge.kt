@@ -147,6 +147,12 @@ class EmbeddedRetroArchBridge(
     var onOpenNativeMenu: (() -> Unit)? = null
     var curatedSettings: Boolean = true
 
+    // Points at ViewportController.shadowedSettings once the host wires it up. Left as a no-op
+    // provider until then, so raGetSetting-backed reads are the only source before the controller
+    // exists.
+    var shadowedSettingsProvider: () -> Map<String, String> = { emptyMap() }
+    override fun shadowedSettings(): Map<String, String> = shadowedSettingsProvider()
+
     override fun settingsProvider(): dev.cannoli.igm.IgmSettingsProvider =
         dev.cannoli.igm.RaIgmSettingsProvider(
             host = this,

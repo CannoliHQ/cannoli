@@ -10,6 +10,7 @@ private class CuratedFakeHost : RaSettingsHost {
     val savedKeys = mutableListOf<Set<String>>()
     var coreOptions: List<CoreOptionRef> = emptyList()
     var systemInfo: List<Pair<String, String>> = emptyList()
+    var shadow: Map<String, String> = emptyMap()
     // False models RetroArch's real behaviour: the write is queued and the value is not readable
     // back until the run loop applies it.
     var applyWrites: Boolean = true
@@ -28,6 +29,7 @@ private class CuratedFakeHost : RaSettingsHost {
         return true
     }
     override fun raSaveOverride(scope: RaOverrideScope, keys: Set<String>) { savedKeys.add(keys) }
+    override fun shadowedSettings(): Map<String, String> = shadow
     private var appliedCb: ((String, String) -> Unit)? = null
     override fun setOnRaSettingApplied(callback: (String, String) -> Unit) { appliedCb = callback }
 
@@ -149,6 +151,24 @@ class RaIgmSettingsProviderCuratedTest {
         }
         val r = choices(provider(h), listOf("video")).first { it.key == "curated_screen_scaling" }
         assertEquals("Core Reported", r.value)
+    }
+
+    // The defect this shadow exists for: a live viewport forces aspect_ratio_index to 23
+    // (ASPECT_RATIO_CUSTOM), a value no scaling preset expresses. Without the shadow, resolve()
+    // finds no match and adoptFirstPresetIfUnmatched overwrites RetroArch's index with the first
+    // preset the moment this screen opens, evicting the viewport for the rest of the session.
+    @Test
+    fun `a shadowed aspect index resolves against the user's choice, not Cannoli's takeover value`() {
+        val h = CuratedFakeHost()
+        h.settings["aspect_ratio_index"] =
+            RaSetting("aspect_ratio_index", "aspect_ratio_index", RaSettingType.ENUM, value = "Custom", rawValue = "23")
+        h.settings["video_scale_integer"] =
+            RaSetting("video_scale_integer", "video_scale_integer", RaSettingType.BOOL, value = "false", rawValue = "false")
+        h.shadow = mapOf("aspect_ratio_index" to "22", "video_scale_integer" to "true")
+
+        val r = choices(provider(h), listOf("video")).first { it.key == "curated_screen_scaling" }
+        assertEquals("Integer", r.value)
+        assertTrue(h.setCalls.isEmpty())
     }
 
     @Test

@@ -124,12 +124,17 @@ class RetroActivityFuture : RetroActivityCamera() {
                     geometryYPct = ds?.geometryYPct ?: 0,
                 ),
             )
+            bridge.shadowedSettingsProvider = { viewportController?.shadowedSettings() ?: emptyMap() }
             igmOverlay = IGMOverlay(
                 this, bridge, stateBasePath, gameTitle, hostConfig, cannoliRoot, platformTag, platformName,
                 colors?.highlight, colors?.text, colors?.highlightText,
                 colors?.accent, colors?.title, localeTag, romBaseName,
             )
             igmOverlay?.onCreate(savedInstanceState)
+            // The scaling row owns aspect_ratio_index, so writing a new preset pulls RetroArch out
+            // of the custom viewport Cannoli applied; once the whole menu closes and play resumes,
+            // claim it back for whatever the user picked.
+            igmOverlay?.onHidden = { refreshViewport() }
             params?.let { bridge.setIgmTriggerKeycodes(it.igmTriggerKeycodes.toIntArray()) }
             bridge.curatedSettings = params?.curatedSettings ?: true
             igmOverlay?.controller?.setInputMapping(params?.inputMapping)

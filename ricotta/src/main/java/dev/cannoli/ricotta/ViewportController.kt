@@ -34,6 +34,12 @@ class ViewportController(
     private var rememberedMode: ScalingMode? = null
     private var rememberedAspect: Float = 0f
 
+    // The raw aspect_ratio_index and video_scale_integer RetroArch held the moment before that
+    // same apply overwrote them, so shadowedSettings() can hand the in-game menu the value the
+    // user actually picked instead of Cannoli's takeover value.
+    private var shadowedAspectIdx: String? = null
+    private var shadowedIntegerScale: String? = null
+
     /** Test seam: declares a viewport already applied, as it would be after a prior refresh. */
     fun markActive() { active = true }
 
@@ -44,6 +50,21 @@ class ViewportController(
      * caller that wants the viewport to eventually apply should retry.
      */
     enum class RefreshResult { APPLIED, DECLINED, NOT_READY }
+
+    /**
+     * aspect_ratio_index and video_scale_integer as the user had them just before Cannoli's own
+     * apply overwrote them with its takeover values. Empty while Cannoli does not own the
+     * viewport, so a caller with nothing shadowed reads RetroArch as-is.
+     */
+    fun shadowedSettings(): Map<String, String> {
+        if (!active) return emptyMap()
+        val idx = shadowedAspectIdx ?: return emptyMap()
+        val integer = shadowedIntegerScale ?: return emptyMap()
+        return mapOf(
+            "aspect_ratio_index" to idx,
+            "video_scale_integer" to integer,
+        )
+    }
 
     fun refresh(surfaceWidth: Int, surfaceHeight: Int): RefreshResult {
         val portrait = surfaceWidth < surfaceHeight
@@ -59,6 +80,8 @@ class ViewportController(
                 active = false
                 rememberedMode = null
                 rememberedAspect = 0f
+                shadowedAspectIdx = null
+                shadowedIntegerScale = null
             }
             return RefreshResult.DECLINED
         }
@@ -86,6 +109,8 @@ class ViewportController(
             }
             rememberedMode = mode
             rememberedAspect = requestedAspect
+            shadowedAspectIdx = aspectIdx.toString()
+            shadowedIntegerScale = readIntegerScale().toString()
         }
 
         val rect = computeViewport(

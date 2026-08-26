@@ -147,4 +147,33 @@ class ViewportControllerTest {
         assertEquals(960, b.applied!![2])
         assertEquals(540, b.applied!![3])
     }
+
+    @Test fun `shadowedSettings is empty before any apply`() {
+        val b = FakeBridge()
+        assertEquals(emptyMap<String, String>(), controller(b, wPct = 80).shadowedSettings())
+    }
+
+    // The apply forces aspect_ratio_index to ASPECT_RATIO_CUSTOM (23) on the native side, so what
+    // shadowedSettings() hands back has to be captured from the read that happened before that,
+    // not read back afterwards.
+    @Test fun `shadowedSettings returns the pre-apply index and integer-scale values while active`() {
+        val b = FakeBridge()
+        val c = controller(b, wPct = 80, aspectIdx = 22, integer = true)
+        assertEquals(RefreshResult.APPLIED, c.refresh(1920, 1080))
+        assertEquals(
+            mapOf("aspect_ratio_index" to "22", "video_scale_integer" to "true"),
+            c.shadowedSettings(),
+        )
+    }
+
+    // Mirrors `returning to defaults clears the viewport`: a second controller stands in for the
+    // same session after Screen Geometry settings changed back to defaults.
+    @Test fun `shadowedSettings is empty again once the viewport clears`() {
+        val b = FakeBridge()
+        controller(b, wPct = 80).refresh(1920, 1080)
+        val back = controller(b, wPct = 100)
+        back.markActive()
+        assertEquals(RefreshResult.DECLINED, back.refresh(1920, 1080))
+        assertEquals(emptyMap<String, String>(), back.shadowedSettings())
+    }
 }

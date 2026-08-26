@@ -110,10 +110,13 @@ class RaIgmSettingsProvider(
         curatedCategory = category.key
         pending.clear()
         val rows = reachableRows(category)
+        val shadow = host.shadowedSettings()
+        // A shadowed key holds the value Cannoli overwrote it with, not the user's choice, so it
+        // is read from the shadow instead of the live host.
         curatedValues = rows
             .flatMap { it.settingKeys }
             .distinct()
-            .mapNotNull { key -> host.raGetSetting(key)?.rawValue?.let { key to it } }
+            .mapNotNull { key -> (shadow[key] ?: host.raGetSetting(key)?.rawValue)?.let { key to it } }
             .toMap(mutableMapOf())
         for (row in rows) adoptFirstPresetIfUnmatched(row)
     }
