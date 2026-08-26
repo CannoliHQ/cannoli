@@ -10,8 +10,6 @@ atari800_libretro
 bluemsx_libretro
 bsnes_hd_beta_libretro
 bsnes_libretro
-desmume2015_libretro
-desmume_libretro
 dosbox_core_libretro
 dosbox_pure_libretro
 dosbox_svn_libretro
@@ -32,7 +30,6 @@ gpsp_libretro
 handy_libretro
 mame2003_plus_libretro
 mednafen_gba_libretro
-mednafen_lynx_libretro
 mednafen_ngp_libretro
 mednafen_pce_fast_libretro
 mednafen_pce_libretro
