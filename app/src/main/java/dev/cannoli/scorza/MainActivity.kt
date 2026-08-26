@@ -488,8 +488,12 @@ class MainActivity : ComponentActivity(), ActivityActions {
 
     private fun registerControllerOsd() {
         controllerBridge.onDeviceAdded = { device ->
-            if (!device.isBuiltIn) {
-                val mapping = portRouter.mappingFor(device.androidDeviceId)
+            val mapping = portRouter.mappingFor(device.androidDeviceId)
+            // The curated entry decides. ConnectedDevice.isBuiltIn is a runtime guess from
+            // isExternal plus a Build.MODEL name prefix, and stands in only for a pad the input
+            // DB has no opinion about.
+            val builtin = mapping?.match?.builtin ?: device.isBuiltIn
+            if (!builtin) {
                 if (mapping != null && dev.cannoli.scorza.input.legend.shouldRunLegendWizard(mapping)) {
                     startLegendWizard(device.androidDeviceId, device.vendorId)
                 } else {
